@@ -276,7 +276,12 @@ func TestTailscaleStoreRealFileProfileAndLateObserver(t *testing.T) {
 	}
 }
 func TestTailscaleStoreCanonicalFactoryAndUnsafeFile(t *testing.T) {
-	root := t.TempDir()
+	// macOS temporary roots include /var -> /private/var. Canonicalize the
+	// fixture root independently; keep retargeted-alias/unsafe-file checks.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	a, b := filepath.Join(root, "a"), filepath.Join(root, "b")
 	for _, path := range []string{a, b} {
 		if err := os.Mkdir(path, 0700); err != nil {
