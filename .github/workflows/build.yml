@@ -987,7 +987,7 @@ jobs:
         mkdir -p clients/android/app/libs
         cp *.aar clients/android/app/libs
         cd clients/android
-        ./gradlew --build-cache --parallel ${{ matrix.task }}
+        ./gradlew --build-cache --parallel ${{ matrix.variant == 'other-legacy' && ':app:testOtherLegacyReleaseUnitTest' || ':app:testOtherReleaseUnitTest' }} ${{ matrix.task }}
       env:
         ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
     - name: Prepare upload
@@ -1037,9 +1037,17 @@ jobs:
       with:
         fetch-depth: 1
     - name: Checkout desktop client
-      run: git submodule update --init clients/desktop
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
+        git -C clients/desktop config core.autocrlf false
+        git -C clients/desktop config core.eol lf
     - name: Checkout desktop submodules
-      run: git -C clients/desktop submodule update --init --recursive
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
@@ -1099,8 +1107,11 @@ jobs:
     - name: Build
       run: |-
         python scripts/ci/unsigned_clients.py windows
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         pnpm -C clients/desktop package:win -- ${{ matrix.desktop_arch }}
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       env:
+        POLARIS_UNSIGNED_CLIENT: '1'
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Prepare upload
       run: |-
@@ -1115,6 +1126,7 @@ jobs:
       run: python scripts/ci/record_candidate.py dist
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
+        POLARIS_UNSIGNED_CLIENT: '1'
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -1148,9 +1160,17 @@ jobs:
       with:
         fetch-depth: 1
     - name: Checkout desktop client
-      run: git submodule update --init clients/desktop
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
+        git -C clients/desktop config core.autocrlf false
+        git -C clients/desktop config core.eol lf
     - name: Checkout desktop submodules
-      run: git -C clients/desktop submodule update --init --recursive
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
     - name: Setup Go
       uses: actions/setup-go@v5
       with:

@@ -35,3 +35,48 @@ Before any actual publication, inspect the real new tag/source, run-bound whole-
 ## Verification status
 
 Only static YAML/matrix checks, parser/security fixtures and pinned unsigned overlay tests have run. No Actions workflow, platform package build, real Go compiler, Xcode runner, signing, native smoke, release upload, anonymous readback or final consumer/device acceptance ran in this environment. Earlier handoff checks were source-only. The current consolidated regression controls must execute on the reviewed candidate in remote CI. Matrix parity checks establish configuration parity only, not built artifact completeness or runtime success.
+
+
+### Client source transformations and receipt
+
+Compatibility inputs apply first. Unsigned builds then use their explicit
+unsigned transformations; signed `owned_distribution.py apply` composes the
+compatibility inputs with the reviewed owned identity patch in that order.
+Version metadata generation follows. A late second compatibility pass is not
+allowed. The owned configuration remains absent/blocked until its actual public
+identities and source patch have been independently reviewed.
+
+Each future `clientIdentityPatches.<platform>` entry must keep its existing
+`path`, raw `sha256` and `clientCommit`, and include an exact `files` map. Each
+file declares `baseGitBlob` (original gitlink file, null only for an explicitly
+new file), `beforeSHA256` and `beforeMode` of the compatibility result,
+`afterSHA256` and `afterMode` of the owned patch result, and resulting `bytes`.
+Regular-file modes are `100644`/`100755`; null after identity means an explicit
+deletion with zero resulting bytes. Desktop applies the same reviewed desktop
+identity in the Windows/Linux producer appropriate to the actual job.
+
+The producer records original baseline bytes once per changed file, real binary
+Git diff, file before/after digests and byte counts, and source-owned identity
+configuration/patch digests. The reader replays the diff and the declared
+transform composition with Git and verifies actual row data; a self-declared
+diff digest alone is insufficient. Unknown nonignored untracked source files
+are rejected; declared new compatibility/identity files are explicitly included
+in the diff. Build outputs/dependencies and secret signing credentials keep their
+existing producer/secret handling and are not relabeled as source overlays.
+The native core's `sourceOverlay=0` does not describe these client differences.
+
+Limits are 64 changed source files, 1MiB original and resulting source bytes,
+1MiB source diff, and 3MiB serialized client evidence. These are file/scratch
+limits, not a measured process-RSS claim. No unsigned workflow consumes signing
+secrets. Windows checkout uses LF with autocrlf disabled before the submodule's
+first checkout, and a failed overlay command stops the step before pnpm.
+`POLARIS_UNSIGNED_CLIENT=1` is confined to that unsigned Windows build/receipt;
+it disables required signing in the builder and skips only daemon/native
+signing, retaining their presence checks. Signed mode keeps strict signing.
+
+Android retains both original variants and their minSDK ranges. API21/22 reject
+explicit interface binding before resolving Network/loading the isolated API23
+implementation. API23+ duplicates/binds/closes its own descriptor and propagates
+failures. The same existing Android producer invokes the pure JVM policy tests
+alongside its original assemble task; no new platform or separate CI is implied.
+Actual API21/22 device execution remains distinct from those JVM policy cases.

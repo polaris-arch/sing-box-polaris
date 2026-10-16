@@ -14,31 +14,87 @@
           "kind": "compatibility",
           "beforeGitBlob": "8956a84e41d44741de2a0d76ec64f908d30cbdc4",
           "beforeSHA256": "f562f33fa9ddfc8978a09e991ef0784cc1af32a2ce866bdeada45ea7ff74854c",
-          "afterSHA256": "bd448627c464bb7db77b6e2eaad60bdd59f4e943027b11885a14e1e007ad5f69",
+          "afterSHA256": "eb60deb02cc600e1fa4edfa0a8c97ed7dde6f693081544bf761372dea2265413",
           "edits": [
             {
+              "old": "import android.net.NetworkCapabilities",
+              "new": "import android.net.Network\nimport android.net.NetworkCapabilities",
+              "count": 1
+            },
+            {
+              "old": "import androidx.annotation.RequiresApi",
+              "new": "import androidx.annotation.DoNotInline\nimport androidx.annotation.RequiresApi",
+              "count": 1
+            },
+            {
               "old": "    override fun openTun(options: TunOptions): Int {",
-              "new": "    // Bind the socket to the actual Android Network that owns this interface.\n    // fromFd duplicates the descriptor; closing it never closes the Go socket.\n    override fun bindInterfaceControl(fd: Int, interfaceName: String?) {\n        require(!interfaceName.isNullOrEmpty()) { \"android: missing bind interface\" }\n        val network = Application.connectivity.allNetworks.firstOrNull {\n            Application.connectivity.getLinkProperties(it)?.interfaceName == interfaceName\n        } ?: error(\"android: network interface unavailable: $interfaceName\")\n        ParcelFileDescriptor.fromFd(fd).use { duplicate ->\n            network.bindSocket(duplicate.fileDescriptor)\n        }\n    }\n\n    override fun usePlatformAutoRedirect(): Boolean = false\n\n    override fun createAutoRedirect(\n        options: ByteArray?,\n        handler: io.nekohasekai.libbox.AutoRedirectHandler?,\n    ): io.nekohasekai.libbox.AutoRedirectSession {\n        error(\"android: platform auto redirect is unsupported\")\n    }\n\n    override fun openTun(options: TunOptions): Int {",
+              "new": "    // The policy rejects API21/22 before resolving a Network or loading Api23.\n    override fun bindInterfaceControl(fd: Int, interfaceName: String?) {\n        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {\n            throw UnsupportedOperationException(\"android: interface binding requires API23\")\n        }\n        bindPlatformNetworkInterface(\n            Build.VERSION.SDK_INT,\n            fd,\n            interfaceName,\n            resolve = { name ->\n                Application.connectivity.allNetworks.firstOrNull {\n                    Application.connectivity.getLinkProperties(it)?.interfaceName == name\n                }\n            },\n            bind = { network, descriptor -> Api23NetworkBinding.bind(network, descriptor) },\n        )\n    }\n\n    override fun usePlatformAutoRedirect(): Boolean = false\n\n    override fun createAutoRedirect(\n        options: ByteArray?,\n        handler: io.nekohasekai.libbox.AutoRedirectHandler?,\n    ): io.nekohasekai.libbox.AutoRedirectSession {\n        error(\"android: platform auto redirect is unsupported\")\n    }\n\n    override fun openTun(options: TunOptions): Int {",
+              "count": 1
+            },
+            {
+              "old": "private var neighborCallback: INeighborTableCallback.Stub? = null",
+              "new": "@RequiresApi(Build.VERSION_CODES.M)\nprivate object Api23NetworkBinding {\n    @DoNotInline\n    fun bind(network: Network, fd: Int) {\n        // Duplicate and close only our descriptor; preserve ownership of the Go fd.\n        ParcelFileDescriptor.fromFd(fd).use { duplicate ->\n            network.bindSocket(duplicate.fileDescriptor)\n        }\n    }\n}\n\nprivate var neighborCallback: INeighborTableCallback.Stub? = null",
               "count": 1
             }
-          ]
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/java/io/nekohasekai/sfa/bg/PlatformNetworkBinding.kt",
+          "kind": "compatibility",
+          "beforeGitBlob": null,
+          "beforeSHA256": null,
+          "afterSHA256": "620798850a95d8f78498b4a9b41343dfae79ea3c08b639dba52af12d073ca229",
+          "content": "package io.nekohasekai.sfa.bg\n\n// Kept free of Android classes so low-API rejection and all binding failures\n// are exercised by local JVM tests before the actual APK assembly.\ninternal fun <Network> bindPlatformNetworkInterface(\n    sdk: Int,\n    fd: Int,\n    interfaceName: String?,\n    resolve: (String) -> Network?,\n    bind: (Network, Int) -> Unit,\n) {\n    if (sdk < 23) {\n        throw UnsupportedOperationException(\"android: interface binding requires API23; API$sdk is unsupported\")\n    }\n    require(fd >= 0) { \"android: invalid bind descriptor\" }\n    val name = interfaceName?.takeIf { it.isNotEmpty() }\n        ?: throw IllegalArgumentException(\"android: missing bind interface\")\n    val network = resolve(name)\n        ?: error(\"android: network interface unavailable: $interfaceName\")\n    bind(network, fd) // Preserve errors; never report an empty-success bind.\n}\n",
+          "beforeMode": null
+        },
+        {
+          "path": "app/src/test/java/io/nekohasekai/sfa/bg/PlatformNetworkBindingTest.kt",
+          "kind": "compatibility",
+          "beforeGitBlob": null,
+          "beforeSHA256": null,
+          "afterSHA256": "1ef9a13a3834e74a17b6ec74fec4b18fc131ac4f3b7eae47d2f8689d17769dd4",
+          "content": "package io.nekohasekai.sfa.bg\n\nimport org.junit.Assert.*\nimport org.junit.Test\n\nclass PlatformNetworkBindingTest {\n    @Test fun api21And22RejectBeforeNetworkResolutionOrBinding() {\n        for (sdk in listOf(21, 22)) {\n            try {\n                bindPlatformNetworkInterface<String>(sdk, 7, \"wlan0\",\n                    resolve = { throw AssertionError(\"low API resolved Network\") },\n                    bind = { _, _ -> throw AssertionError(\"low API called bindSocket\") })\n                fail(\"low API silently accepted binding\")\n            } catch (expected: UnsupportedOperationException) {\n                assertTrue(expected.message!!.contains(\"API$sdk\"))\n            }\n        }\n    }\n\n    @Test fun api23AndLaterBindTheResolvedNetworkAndOriginalDescriptor() {\n        for (sdk in listOf(23, 24, 35)) {\n            var calls = 0\n            bindPlatformNetworkInterface(sdk, 17, \"wlan0\",\n                resolve = { assertEquals(\"wlan0\", it); \"exact-network\" },\n                bind = { network, fd -> assertEquals(\"exact-network\", network); assertEquals(17, fd); calls++ })\n            assertEquals(1, calls)\n        }\n    }\n\n    @Test fun supportedApiMissingNetworkDoesNotReportSuccess() {\n        try {\n            bindPlatformNetworkInterface<String>(23, 7, \"missing\",\n                resolve = { null }, bind = { _, _ -> fail(\"bound missing network\") })\n            fail(\"missing network silently accepted\")\n        } catch (expected: IllegalStateException) {\n            assertTrue(expected.message!!.contains(\"unavailable\"))\n        }\n    }\n\n    @Test fun supportedApiBindFailurePropagatesWithoutSuccess() {\n        val failure = SecurityException(\"network binding denied\")\n        try {\n            bindPlatformNetworkInterface(23, 7, \"wlan0\", resolve = { \"network\" }, bind = { _, _ -> throw failure })\n            fail(\"bind failure swallowed\")\n        } catch (actual: SecurityException) { assertSame(failure, actual) }\n    }\n\n    @Test fun invalidDescriptorAndNameAreRejectedBeforeResolution() {\n        for ((fd, name) in listOf(-1 to \"wlan0\", 7 to \"\", 7 to null)) {\n            try {\n                bindPlatformNetworkInterface<String>(23, fd, name,\n                    resolve = { throw AssertionError(\"invalid input resolved Network\") }, bind = { _, _ -> fail(\"invalid input bound\") })\n                fail(\"invalid binding input accepted\")\n            } catch (expected: IllegalArgumentException) { }\n        }\n    }\n}\n",
+          "beforeMode": null
+        },
+        {
+          "path": "app/build.gradle.kts",
+          "kind": "compatibility",
+          "beforeGitBlob": "85b78694cff9584ac23001ac92fa77b083030283",
+          "beforeSHA256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69",
+          "afterSHA256": "0f5755f83d7d9d4fbe8fbc9f7c1207ef3f2360ff625718b63c0a04ea32bbbce9",
+          "edits": [
+            {
+              "old": "    androidTestImplementation(\"androidx.compose.ui:ui-test-junit4\")",
+              "new": "    androidTestImplementation(\"androidx.compose.ui:ui-test-junit4\")\n    testImplementation(\"junit:junit:4.13.2\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
         },
         {
           "path": "app/build.gradle.kts",
           "kind": "unsigned",
-          "beforeGitBlob": "85b78694cff9584ac23001ac92fa77b083030283",
-          "beforeSHA256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69",
-          "afterSHA256": "249f84a4700b05ba9c3eb65806360492476c248db45b40bfc4b27afbcd71c965",
+          "beforeGitBlob": "987f6d5f5c066708bf5a0f9ffa944ac97bea9e52",
+          "beforeSHA256": "0f5755f83d7d9d4fbe8fbc9f7c1207ef3f2360ff625718b63c0a04ea32bbbce9",
+          "afterSHA256": "351c55557a29da95ef1dc6c1885747b76c84534d2e00dfaf1e0fa3d12e106b1e",
           "edits": [
             {
               "old": "signingConfig = signingConfigs.getByName(\"release\")",
               "new": "signingConfig = null // unsigned CI candidate; not installable release identity",
               "count": 2
             }
-          ]
+          ],
+          "beforeMode": "100644"
         }
       ],
-      "tree": "be0859307908afb7e8870b05af9b7c65797a1491"
+      "tree": "be0859307908afb7e8870b05af9b7c65797a1491",
+      "baselineFiles": {
+        "version.properties": {
+          "gitBlob": "1cffa705b18ce059fca3c1dd020d5db78498342c",
+          "mode": "100644"
+        }
+      }
     },
     "apple": {
       "path": "clients/apple",
@@ -65,7 +121,8 @@
               "new": "    public func bindInterfaceControl(_ fd: Int32, interfaceName: String?) throws {\n        guard let interfaceName, !interfaceName.isEmpty else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(EINVAL))\n        }\n        var interfaceIndex = if_nametoindex(interfaceName)\n        guard interfaceIndex != 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(ENODEV))\n        }\n        // Determine the real socket family; do not treat a failed bind as success.\n        var address = sockaddr_storage()\n        var addressLength = socklen_t(MemoryLayout<sockaddr_storage>.size)\n        let familyResult = withUnsafeMutablePointer(to: &address) {\n            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {\n                getsockname(fd, $0, &addressLength)\n            }\n        }\n        guard familyResult == 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))\n        }\n        let level: Int32\n        let option: Int32\n        switch Int32(address.ss_family) {\n        case AF_INET: level = IPPROTO_IP; option = IP_BOUND_IF\n        case AF_INET6: level = IPPROTO_IPV6; option = IPV6_BOUND_IF\n        default: throw NSError(domain: NSPOSIXErrorDomain, code: Int(EAFNOSUPPORT))\n        }\n        guard setsockopt(fd, level, option, &interfaceIndex, socklen_t(MemoryLayout<UInt32>.size)) == 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))\n        }\n    }\n\n    public func usePlatformAutoRedirect() -> Bool { false }\n\n    public func createAutoRedirect(_ options: Data?, handler: (any LibboxAutoRedirectHandlerProtocol)?) throws -> any LibboxAutoRedirectSessionProtocol {\n        throw NSError(domain: NSPOSIXErrorDomain, code: Int(ENOTSUP), userInfo: [\n            NSLocalizedDescriptionKey: \"Apple platform auto redirect is unsupported\",\n        ])\n    }\n\n    public func usePlatformAutoDetectControl() -> Bool {",
               "count": 1
             }
-          ]
+          ],
+          "beforeMode": "100644"
         },
         {
           "path": "Makefile",
@@ -79,7 +136,8 @@
               "new": "mkdir -p build/SFM.System-universal\n\tditto build/SFM.System-universal.xcarchive/Products/Applications/SFM.app build/SFM.System-universal/SFM.app",
               "count": 1
             }
-          ]
+          ],
+          "beforeMode": "100644"
         },
         {
           "path": "SFM.System/package_from_universal.sh",
@@ -103,10 +161,17 @@
               "new": "\t# Unsigned candidate: do not sign thinned app.",
               "count": 1
             }
-          ]
+          ],
+          "beforeMode": "100644"
         }
       ],
-      "tree": "ced7c1398c36931c0aa83877ec6c0cf08660618e"
+      "tree": "ced7c1398c36931c0aa83877ec6c0cf08660618e",
+      "baselineFiles": {
+        "sing-box.xcodeproj/project.pbxproj": {
+          "gitBlob": "36d0bcb36f89795aa6342c760106edd14df2ddf3",
+          "mode": "100644"
+        }
+      }
     },
     "windows": {
       "path": "clients/desktop",
@@ -121,7 +186,7 @@
           "kind": "unsigned",
           "beforeGitBlob": "3b322c70581f02f12015010ba07c866d62eaa368",
           "beforeSHA256": "14928df1da195cb8f3273aa8cb0f9f333655ae640cf376f4d63a2a01fe0d58d7",
-          "afterSHA256": "aee26895ac0046e8232a99bc33fcd7c7ec52fb07975d305bb246bc54168141d2",
+          "afterSHA256": "ab419281cefdb11c0d3807658ac2f42e918e0b420b2431d46d8be653023f94c7",
           "edits": [
             {
               "old": "signingConfiguration: WindowsSigningConfiguration,",
@@ -129,19 +194,46 @@
               "count": 1
             },
             {
-              "old": "signtoolOptions: {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          },",
-              "new": "signAndEditExecutable: signingConfiguration ? undefined : false,\n          signtoolOptions: signingConfiguration ? {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          } : undefined,",
+              "old": "const developmentPackage = process.argv[2] === \"dev\";",
+              "new": "const unsignedWindowsPackage = process.env.POLARIS_UNSIGNED_CLIENT === \"1\";\nif (unsignedWindowsPackage) {\n  process.env.CSC_IDENTITY_AUTO_DISCOVERY = \"false\";\n}\nconst developmentPackage = process.argv[2] === \"dev\";",
               "count": 1
             },
             {
               "old": "const signingConfiguration = readWindowsSigningConfiguration();",
-              "new": "const signingConfiguration = undefined; // explicitly unsigned per-architecture candidate",
+              "new": "const signingConfiguration = unsignedWindowsPackage ? undefined : readWindowsSigningConfiguration();",
+              "count": 1
+            },
+            {
+              "old": "signtoolOptions: {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          },",
+              "new": "forceCodeSigning: !unsignedWindowsPackage,\n          signAndEditExecutable: unsignedWindowsPackage ? false : undefined,\n          signtoolOptions: signingConfiguration ? {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          } : undefined,",
               "count": 1
             }
-          ]
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "scripts/afterPack.cjs",
+          "kind": "unsigned",
+          "beforeGitBlob": "ea14af96149996d899ec3661377caa58d2fac354",
+          "beforeSHA256": "4629e18245321ba43a7a9e8f0ca869a1e36255405f24d149e29d09242c26b6f1",
+          "afterSHA256": "03396b936b1db51f7a1c5b7897d71634a2e35dc29c1b77e8b32aa9df8dfb0964",
+          "edits": [
+            {
+              "old": "    const signed = await context.packager.signIf(executablePath);",
+              "new": "    if (!fs.statSync(executablePath).isFile()) {\n      throw new Error(`missing bundled Windows executable: ${relativePath.join(\"/\")}`);\n    }\n    if (process.env.POLARIS_UNSIGNED_CLIENT === \"1\") {\n      continue; // Explicit unsigned candidate: preserve payload checks, do not sign.\n    }\n    const signed = await context.packager.signIf(executablePath);",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
         }
       ],
-      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559"
+      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559",
+      "baselineFiles": {
+        "version.json": {
+          "gitBlob": "6a8c54986ef8db253dd050f2ba781ff877e97845",
+          "mode": "100644"
+        }
+      }
     },
     "linux": {
       "path": "clients/desktop",
@@ -151,7 +243,13 @@
         "version.json"
       ],
       "files": [],
-      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559"
+      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559",
+      "baselineFiles": {
+        "version.json": {
+          "gitBlob": "6a8c54986ef8db253dd050f2ba781ff877e97845",
+          "mode": "100644"
+        }
+      }
     }
   }
 }

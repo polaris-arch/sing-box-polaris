@@ -72,3 +72,11 @@ This candidate changes source and version. Existing alpha.12 annotated tag and
 successful original producer outputs remain their original identities; they are
 not publication inputs for alpha.13. No new tag or platform acceptance is
 asserted by the source changes themselves.
+
+
+The follow-up client source receipt composes compatibility, reviewed owned
+identity and version metadata and replays the real diff against its pinned
+baseline. Newly introduced compatibility/identity source is explicitly declared;
+unknown nonignored untracked input is rejected. See `RELEASE-GATES.md` for the
+owned-patch file inventory and evidence limits. This source change does not
+activate the absent owned signing configuration or assert a new platform result.

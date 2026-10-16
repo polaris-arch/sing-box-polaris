@@ -96,6 +96,9 @@ def identity(source, source_dir):
     require(command('git', '-C', str(source_dir), 'rev-parse', 'HEAD') == source, 'publisher checkout differs from source')
     require(not command('git', '-C', str(source_dir), 'status', '--porcelain', '--untracked-files=no'), 'tracked source is dirty')
     require(sha(ROOT / 'release/ci/client-overlays.json') == sha(source_dir / 'release/ci/client-overlays.json'), 'publisher client overlay contract differs from actual build source')
+    owned = Path('release/ci/owned-distribution.json')
+    if (ROOT / owned).exists() or (source_dir / owned).exists():
+        require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
 
 
 def tag_identity(source):
@@ -227,6 +230,7 @@ def inventory(runs, source, work, source_tree, tag_object):
                     relative = p.relative_to(directory).as_posix()
                     files[relative] = {'bytes': p.stat().st_size, 'sha256': sha(p), 'releaseName': default_name(role, a['name'], relative)}
                     if p.name.startswith('polaris-candidate-manifest-'):
+                        require(not client_platform(a['name']) or p.stat().st_size <= 3 * 1024**2, 'client source evidence exceeds its 3MiB serialized budget')
                         provenance = json.loads(p.read_text())
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
                         measured = validate_client_source(provenance, a['name'], role, source)

@@ -23,14 +23,14 @@ def verify_tag():
 def apply(platform):
  d=config();entry=d.get('clientIdentityPatches',{}).get(platform)
  if not entry:raise SystemExit(f'BLOCKED: reviewed owned {platform} client identity patch is required')
- root=Path('clients')/platform
- patch=Path(entry['path'])
- if patch.is_absolute() or '..' in patch.parts or not str(patch).startswith('release/ci/'):raise SystemExit('invalid identity patch path')
- raw=patch.read_bytes()
- if hashlib.sha256(raw).hexdigest()!=entry['sha256']:raise SystemExit('identity patch hash mismatch')
- if run('git','-C',str(root),'rev-parse','HEAD')!=entry['clientCommit']:raise SystemExit('identity patch client commit mismatch')
- subprocess.run(['git','-C',str(root),'apply','--check',str(patch.resolve())],check=True)
- subprocess.run(['git','-C',str(root),'apply',str(patch.resolve())],check=True)
+ # Replay source-owned compatibility first, then the reviewed identity patch.
+ # The same descriptor is consumed by the final client source receipt.
+ from client_source import apply as apply_source
+ if platform=='desktop':
+  job=os.environ.get('GITHUB_JOB')
+  if job not in ('build_windows_client','build_linux_client'):raise SystemExit('desktop identity needs an explicit client producer')
+  platform='windows' if job=='build_windows_client' else 'linux'
+ apply_source(platform,unsigned=False)
 
 def verify_apple():
  d=config();apple=d.get('apple',{})

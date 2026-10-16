@@ -956,8 +956,6 @@ jobs:
       uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
       with:
         cache-provider: basic
-    - name: Apply exact signed client compatibility overlays
-      run: python3 scripts/ci/client_source.py apply android
     - name: Update version
       if: github.event_name == 'workflow_dispatch'
       run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update
@@ -969,7 +967,7 @@ jobs:
         mkdir -p clients/android/app/libs
         cp *.aar clients/android/app/libs
         cd clients/android
-        ./gradlew --build-cache --parallel ${{ matrix.task }}
+        ./gradlew --build-cache --parallel ${{ matrix.variant == 'other-legacy' && ':app:testOtherLegacyReleaseUnitTest' || ':app:testOtherReleaseUnitTest' }} ${{ matrix.task }}
       env:
         ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
@@ -1112,9 +1110,17 @@ jobs:
       with:
         fetch-depth: 1
     - name: Checkout desktop client
-      run: git submodule update --init clients/desktop
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
+        git -C clients/desktop config core.autocrlf false
+        git -C clients/desktop config core.eol lf
     - name: Checkout desktop submodules
-      run: git -C clients/desktop submodule update --init --recursive
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
     - name: Apply reviewed owned client identity
       run: python scripts/ci/owned_distribution.py apply desktop
     - name: Setup Go
@@ -1235,9 +1241,17 @@ jobs:
       with:
         fetch-depth: 1
     - name: Checkout desktop client
-      run: git submodule update --init clients/desktop
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
+        git -C clients/desktop config core.autocrlf false
+        git -C clients/desktop config core.eol lf
     - name: Checkout desktop submodules
-      run: git -C clients/desktop submodule update --init --recursive
+      shell: bash
+      run: |
+        set -euo pipefail
+        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
     - name: Apply reviewed owned client identity
       run: python scripts/ci/owned_distribution.py apply desktop
     - name: Setup Go
@@ -1699,9 +1713,6 @@ jobs:
         PROJECT_VERSION=$(go run -v ./cmd/internal/app_store_connect next_project_version ${{ matrix.platform }})
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION"
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION" >> "$GITHUB_ENV"
-    - name: Apply exact signed client compatibility overlays
-      if: matrix.if
-      run: python3 scripts/ci/client_source.py apply apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
@@ -2030,9 +2041,6 @@ jobs:
         PROJECT_VERSION=$(go run -v ./cmd/internal/app_store_connect next_project_version ${{ matrix.platform }})
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION"
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION" >> "$GITHUB_ENV"
-    - name: Apply exact signed client compatibility overlays
-      if: matrix.if
-      run: python3 scripts/ci/client_source.py apply apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
