@@ -6,6 +6,7 @@ from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
 from release_identity import remote_tag_identity
+from polaris_version import validate as validate_version
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -18,11 +19,11 @@ import zipfile
 
 REPO = 'polaris-arch/sing-box-polaris'
 RID = 1421657509
-VERSION = '1.15.0-polaris-alpha.13'
-TAG = 'v' + VERSION
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = ROOT / 'release/ci/publisher-upstream-scope.json'
 CONFIG = ROOT / 'release/ci/github-release.json'
+VERSION = validate_version(json.loads(CONFIG.read_text())['version'])
+TAG = 'v' + VERSION
 RECEIPT = 'polaris-github-release-receipt-' + VERSION + '.json'
 BLOCKED = [
     'Signed installable iOS and tvOS IPA exports require owned signing and provisioning.',
@@ -158,6 +159,29 @@ def default_name(role, artifact, relative):
     return p.name
 
 
+def release_scope(version):
+    # Only the current source-owned release contract selects a version. Escape
+    # it as regex data; never guess it from artifact names or accept old mixes.
+    require(validate_version(version) == VERSION, 'scope version differs from reviewed release version')
+    scope = json.loads(SCOPE.read_text())
+    for role in scope.values():
+        for rules in role['payloadRules'].values():
+            for rule in rules:
+                pattern = rule['pattern']
+                require(isinstance(pattern, str) and pattern.count('{version}') <= 1, 'invalid version template')
+                require(not re.search(r'polaris\\?-(?:alpha|beta|rc)\\?\.\d+', pattern), 'literal branded version in scope template')
+                require(not re.search(r'\{[A-Za-z_]\w*\}', pattern.replace('{version}', '')), 'unknown scope template token')
+                require(type(rule['count']) is int and rule['count'] > 0, 'invalid exact payload count')
+                rule['pattern'] = pattern.replace('{version}', re.escape(version))
+                re.compile(rule['pattern'])
+    return scope
+
+
+def verify_artifact_names(names, required, role):
+    require(len(names) == len(set(names)), 'duplicate Actions artifact names')
+    require(set(names) == set(required), f'{role}: incomplete or unexpected artifact scope: missing={set(required)-set(names)}, extra={set(names)-set(required)}')
+
+
 def verify_payloads(files, rules, artifact):
     payloads = {p for p in files if not PurePosixPath(p).name.startswith(('polaris-candidate-manifest-', 'native-row-'))}
     if artifact.startswith('smoke-'):
@@ -193,7 +217,7 @@ def validate_client_source(provenance, artifact, role, source):
 
 
 def inventory(runs, source, work, source_tree, tag_object):
-    scope = json.loads(SCOPE.read_text())
+    scope = release_scope(VERSION)
     require(set(runs) in ({'all', 'linux', 'docker'}, {'all', 'linux', 'docker', 'signed'}), 'all, linux and docker runs are mandatory')
     result = {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'sourceCommit': source,
               'scopeSha256': sha(SCOPE), 'reviewed': False, 'runs': {}, 'signedOnlyBlockers': BLOCKED,
@@ -207,8 +231,7 @@ def inventory(runs, source, work, source_tree, tag_object):
         require(run['event'] == 'workflow_dispatch', 'explicit build dispatch required')
         artifacts = pages(f'repos/{REPO}/actions/runs/{rid}/artifacts', 'artifacts')
         names = [x['name'] for x in artifacts]
-        require(len(names) == len(set(names)), 'duplicate Actions artifact names')
-        require(set(names) == set(scope[role]['requiredArtifacts']), f'{role}: incomplete or unexpected artifact scope: missing={set(scope[role]["requiredArtifacts"])-set(names)}, extra={set(names)-set(scope[role]["requiredArtifacts"])}')
+        verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         for a in artifacts:
             require(not a['expired'], 'expired artifact')

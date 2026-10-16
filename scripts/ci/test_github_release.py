@@ -5,6 +5,11 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
+import re
+import os
+import runpy
+from contextlib import chdir
 import zipfile
 
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
@@ -19,6 +24,129 @@ class GateTests(unittest.TestCase):
             self.assertEqual(len(scope['requiredArtifacts']),len(set(scope['requiredArtifacts'])))
         self.assertEqual(len(s['docker']['matrices']['build_binary']['include']),10)
         self.assertEqual(len(s['docker']['matrices']['build_docker']['include']),9)
+
+    def test_reviewed_current_version_renders_all_linux_and_signed_payloads(self):
+        scope=p.release_scope(p.VERSION)
+        old='1.15.0-polaris-alpha.11'
+        for role in ['all','signed']:
+            rules=scope[role]['payloadRules']['binary-windows-client-x64']
+            current=f'SFW-{p.VERSION}-x64.exe';previous=f'SFW-{old}-x64.exe'
+            p.verify_payloads({current:{}},rules,'binary-windows-client-x64')
+            for files in [{previous:{}},{current:{},previous:{}},{current.replace('alpha.','alphaX'):{}},{}]:
+                with self.subTest(role=role,files=files),self.assertRaises(ValueError):
+                    p.verify_payloads(files,rules,'binary-windows-client-x64')
+            android=scope[role]['payloadRules']['binary-android-apks-other']
+            files={f'SFA-{p.VERSION}-{arch}.apk':{} for arch in ['universal','arm64','arm','x64','x86']}
+            files[f'SFA-{p.VERSION}-other-version-metadata.json']={}
+            p.verify_payloads(files,android,'binary-android-apks-other')
+            previous=dict(files);previous[f'SFA-{old}-other-version-metadata.json']=previous.pop(f'SFA-{p.VERSION}-other-version-metadata.json')
+            with self.assertRaises(ValueError):p.verify_payloads(previous,android,'binary-android-apks-other')
+        rules=scope['linux']['payloadRules']['binary-linux_amd64']
+        files={f'sing-box-polaris_{p.VERSION}_linux_amd64.deb':{},f'sing-box-polaris_{p.VERSION}_linux_x86_64.rpm':{}}
+        p.verify_payloads(files,rules,'binary-linux_amd64')
+        old_mix={name.replace(p.VERSION,old) if name.endswith('.rpm') else name:value for name,value in files.items()}
+        with self.assertRaises(ValueError):p.verify_payloads(old_mix,rules,'binary-linux_amd64')
+        from native_release_index import expected_native
+        for role in ['all','signed']:
+            patterns=[rule['pattern'] for rules in scope[role]['payloadRules'].values() for rule in rules]
+            for name,value in expected_native(p.VERSION).items():
+                archive=name+('.zip' if value['target'].startswith('windows/') else '.tar.gz')
+                self.assertTrue(any(re.fullmatch(pattern,archive) for pattern in patterns),(role,archive))
+                self.assertFalse(any(re.fullmatch(pattern,archive.replace(p.VERSION,old)) for pattern in patterns),(role,archive))
+        self.assertRaises(ValueError,p.release_scope,old)
+        self.assertRaises(ValueError,p.release_scope,'v'+p.VERSION)
+
+    def test_client_payloads_bind_exact_version_and_target_architecture(self):
+        scope=p.release_scope(p.VERSION)
+        linux={'x64':{'deb':'amd64','rpm':'x86_64','pkg.tar.zst':'x64'},
+               'arm64':{'deb':'arm64','rpm':'aarch64','pkg.tar.zst':'aarch64'},
+               'armv7l':{'deb':'armv7l','rpm':'armv7l','pkg.tar.zst':'armv7l'}}
+        for role in ['all','signed']:
+            for arch in ['x64','x86','arm64']:
+                artifact='binary-windows-client-'+arch;rules=scope[role]['payloadRules'][artifact]
+                current=f'SFW-{p.VERSION}-{arch}.exe';p.verify_payloads({current:{}},rules,artifact)
+                wrong='x86' if arch=='x64' else 'x64'
+                for invalid in [f'SFW-{p.VERSION}0-{arch}.exe',f'SFW-{p.VERSION}-{wrong}.exe',f'SFW-{p.VERSION}-extra-{arch}.exe']:
+                    with self.subTest(role=role,artifact=artifact,name=invalid),self.assertRaises(ValueError):
+                        p.verify_payloads({invalid:{}},rules,artifact)
+            for arch,formats in linux.items():
+                artifact='binary-linux-client-'+arch;rules=scope[role]['payloadRules'][artifact]
+                files={f'SFL-{p.VERSION}-{cpu}.{ext}':{} for ext,cpu in formats.items()}
+                p.verify_payloads(files,rules,artifact)
+                adjacent={name.replace(p.VERSION,p.VERSION+'0'):value for name,value in files.items()}
+                wrong_cpu='arm64' if arch=='x64' else 'amd64'
+                wrong=dict(files);wrong[f'SFL-{p.VERSION}-{wrong_cpu}.deb']=wrong.pop(f'SFL-{p.VERSION}-{formats["deb"]}.deb')
+                for invalid in [adjacent,wrong]:
+                    with self.subTest(role=role,artifact=artifact),self.assertRaises(ValueError):p.verify_payloads(invalid,rules,artifact)
+        # Independent Linux packages have their own exact version/architecture contract.
+        rules=scope['linux']['payloadRules']['binary-linux_amd64']
+        files={f'sing-box-polaris_{p.VERSION}_linux_amd64.deb':{},f'sing-box-polaris_{p.VERSION}_linux_x86_64.rpm':{}}
+        for invalid in [{name.replace(p.VERSION,p.VERSION+'0'):v for name,v in files.items()},
+                        {name.replace('linux_amd64','linux_arm64'):v for name,v in files.items()}]:
+            with self.assertRaises(ValueError):p.verify_payloads(invalid,rules,'binary-linux_amd64')
+
+    def test_all_and_signed_require_each_exact_openwrt_ipk_and_apk_architecture(self):
+        source=json.loads(p.SCOPE.read_text());rendered=p.release_scope(p.VERSION)
+        for role in ['all','signed']:
+            ipk_count=apk_count=0
+            for artifact,rules in source[role]['payloadRules'].items():
+                ipks=[x for x in rules if 'openwrt_' in x['pattern'] and x['pattern'].endswith(r'\.ipk')]
+                if not ipks:continue
+                files={}
+                for ipk in ipks:
+                    apk={'pattern':ipk['pattern'][:-len(r'\.ipk')]+r'\.apk','count':1}
+                    self.assertEqual(ipk['count'],1);self.assertIn(apk,rules)
+                    escaped=ipk['pattern'].removeprefix(r'sing\-box_{version}_openwrt_').removesuffix(r'\.ipk')
+                    arch=re.sub(r'\\(.)',r'\1',escaped)
+                    for ext in ['ipk','apk']:files[f'sing-box_{p.VERSION}_openwrt_{arch}.{ext}']={}
+                    ipk_count+=1;apk_count+=1
+                controls=[x for x in rendered[role]['payloadRules'][artifact] if 'openwrt_' in x['pattern']]
+                p.verify_payloads(files,controls,artifact)
+                chosen=next(name for name in files if name.endswith('.apk'))
+                missing=dict(files);missing.pop(chosen)
+                wrong=dict(files);wrong[chosen.removesuffix('.apk')+'-wrong.apk']=wrong.pop(chosen)
+                old=dict(files);old[chosen.replace(p.VERSION,'1.15.0-polaris-alpha.11')]=old.pop(chosen)
+                for invalid in [missing,wrong,old]:
+                    with self.subTest(role=role,artifact=artifact),self.assertRaises(ValueError):p.verify_payloads(invalid,controls,artifact)
+            self.assertEqual((ipk_count,apk_count),(32,32))
+
+    def test_scope_rejects_literal_versions_unknown_tokens_and_bad_counts(self):
+        raw=json.loads(p.SCOPE.read_text())
+        for kind in ['literal','token','duplicate','count']:
+            value=copy.deepcopy(raw);rule=value['all']['payloadRules']['binary-windows-client-x64'][0]
+            if kind=='literal':rule['pattern']=rule['pattern'].replace('{version}',re.escape(p.VERSION))
+            elif kind=='token':rule['pattern']=rule['pattern'].replace('{version}','{release_version}')
+            elif kind=='duplicate':rule['pattern']+='{version}'
+            else:rule['count']=True
+            with tempfile.TemporaryDirectory() as directory:
+                path=Path(directory)/'scope.json';path.write_text(json.dumps(value))
+                with self.subTest(kind=kind),mock.patch.object(p,'SCOPE',path),self.assertRaises(ValueError):p.release_scope(p.VERSION)
+
+    def test_docker_keeps_exact_products_and_rejects_missing_extra_or_diagnostic_assets(self):
+        scope=p.release_scope(p.VERSION);required=scope['docker']['requiredArtifacts']
+        self.assertEqual(len(required),20)
+        p.verify_artifact_names(list(required),required,'docker')
+        for names in [required[:-1],required+['unexpected'],required+['repository~random.dockerbuild'],
+                      required[:-1]+['repository~random.dockerbuild'],required+[required[0]]]:
+            with self.subTest(names=names),self.assertRaises(ValueError):p.verify_artifact_names(names,required,'docker')
+
+    def test_producer_receipt_uses_current_source_contract_and_rejects_old_or_tag_version(self):
+        release=json.loads(p.CONFIG.read_text());source='a'*40
+        env={'PUBLISHER_ROLE':'docker','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':p.REPO,
+             'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
+             'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
+             'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false'}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'release/ci').mkdir(parents=True)
+            (root/'release/ci/github-release.json').write_text(json.dumps(release))
+            script=p.ROOT/'scripts/ci/publisher_run_receipt.py'
+            with chdir(root),mock.patch.dict(os.environ,env),mock.patch('subprocess.check_output',return_value=source):
+                runpy.run_path(str(script),run_name='__main__')
+                receipt=json.loads((root/'publisher-run-receipt.json').read_text())
+                self.assertEqual((receipt['version'],receipt['sourceCommit'],receipt['role']),(p.VERSION,source,'docker'))
+                for version in ['1.15.0-polaris-alpha.11',p.VERSION+'0','v'+p.VERSION]:
+                    with mock.patch.dict(os.environ,RELEASE_VERSION=version),self.assertRaises(AssertionError):
+                        runpy.run_path(str(script),run_name='__main__')
 
     def test_path_traversal(self):
         for name in ['../bad','/bad','x/../../bad','C:/bad','x\\bad']:

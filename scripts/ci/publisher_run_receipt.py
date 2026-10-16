@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from polaris_version import validate as validate_version
 
 role = os.environ['PUBLISHER_ROLE']
 assert role in ('all', 'linux', 'docker', 'signed')
@@ -11,7 +12,11 @@ assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
 assert os.environ['GITHUB_REPOSITORY'] == 'polaris-arch/sing-box-polaris'
 assert os.environ['GITHUB_REPOSITORY_ID'] == '1421657509'
 assert os.environ['RELEASE_BUILD'] == 'All'
-assert os.environ['RELEASE_VERSION'] == '1.15.0-polaris-alpha.13'
+release = json.loads(Path('release/ci/github-release.json').read_text())
+assert (release['repository'], release['repositoryId']) == ('polaris-arch/sing-box-polaris', 1421657509)
+version = validate_version(release['version'])
+assert release['tag'] == 'v' + version
+assert os.environ['RELEASE_VERSION'] == version
 assert os.environ.get('PUBLISH_STORES', 'false') == 'false'
 assert os.environ.get('PUBLISH_REGISTRY', 'false') == 'false'
 head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()

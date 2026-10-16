@@ -242,6 +242,9 @@ jobs:
     - name: Build OCI archive
       id: build
       uses: docker/build-push-action@v6
+      env:
+        # Diagnostic records are not release payloads. Keep the exact 20-artifact scope.
+        DOCKER_BUILD_RECORD_UPLOAD: 'false'
       with:
         platforms: ${{ matrix.platform }}
         context: .
@@ -296,6 +299,6 @@ jobs:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.13
+        default: v1.15.0-polaris-alpha.12
 permissions:
   contents: read

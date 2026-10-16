@@ -569,577 +569,705 @@
     "payloadRules": {
       "binary-android-apks-other": [
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12-[^/]+\\.apk",
+          "pattern": "SFA\\-{version}-[^/]+\\.apk",
           "count": 5
         },
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-other\\-version\\-metadata\\.json",
+          "pattern": "SFA\\-{version}\\-other\\-version\\-metadata\\.json",
           "count": 1
         }
       ],
       "binary-android-apks-other-legacy": [
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12-[^/]+\\.apk",
+          "pattern": "SFA\\-{version}-[^/]+\\.apk",
           "count": 5
         },
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-other\\-legacy\\-version\\-metadata\\.json",
+          "pattern": "SFA\\-{version}\\-other\\-legacy\\-version\\-metadata\\.json",
           "count": 1
         }
       ],
       "binary-android_386": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-386\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-386\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_arm": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-arm\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-arm\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-apple-jailbreak": [
         {
-          "pattern": "SFI\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-iphoneos\\-arm64\\.deb",
+          "pattern": "SFI\\-{version}\\-iphoneos\\-arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFI\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-iphoneos\\-arm64e\\.deb",
+          "pattern": "SFI\\-{version}\\-iphoneos\\-arm64e\\.deb",
           "count": 1
         }
       ],
       "binary-apple-standalone-all": [
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Apple\\.pkg",
+          "pattern": "SFM\\-{version}\\-Apple\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Intel\\.pkg",
+          "pattern": "SFM\\-{version}\\-Intel\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Universal\\.pkg",
+          "pattern": "SFM\\-{version}\\-Universal\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\.dSYMs\\.zip",
+          "pattern": "SFM\\-{version}\\.dSYMs\\.zip",
           "count": 1
         }
       ],
       "binary-darwin_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-darwin_amd64-legacy-macos-10.13": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-amd64\\-legacy\\-macos\\-10\\.13\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-amd64\\-legacy\\-macos\\-10\\.13\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-darwin_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux-client-arm64": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-aarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-aarch64\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux-client-armv7l": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-armv7l\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-armv7l\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-armv7l\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux-client-x64": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-amd64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-x86_64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-x64\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux_386_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_i386_pentium\\-mmx\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium\\-mmx\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium\\-mmx\\.apk",
           "count": 1
         }
       ],
       "binary-linux_386_sse2": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_386_sse2-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_386_sse2-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.deb",
+          "pattern": "sing\\-box_{version}_linux_i386\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_i386\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86\\.apk",
+          "pattern": "sing\\-box_{version}_linux_x86\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_i386_pentium4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium4\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium4\\.apk",
           "count": 1
         }
       ],
       "binary-linux_amd64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_amd64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_amd64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_amd64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_x86_64\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_x86_64\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_x86_64\\.apk",
           "count": 1
         }
       ],
       "binary-linux_amd64-purego": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_arm64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_arm64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_arm64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a53\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a53\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a72\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a53\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a76\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a72\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a72\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a76\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a76\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_arm64-purego": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv5": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv5\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv5\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_arm926ej\\-s\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm926ej\\-s\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm926ej\\-s\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_fa526\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_xscale\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_fa526\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_fa526\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_xscale\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_xscale\\.apk",
           "count": 1
         }
       ],
       "binary-linux_armv6": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv6\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv6\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armel\\.deb",
+          "pattern": "sing\\-box_{version}_linux_armel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv6hl\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_armv6hl\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_arm1176jzf\\-s_vfp\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm1176jzf\\-s_vfp\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm1176jzf\\-s_vfp\\.apk",
           "count": 1
         }
       ],
       "binary-linux_armv7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv7-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv7-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armhf\\.deb",
+          "pattern": "sing\\-box_{version}_linux_armhf\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7hl\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_armv7hl\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7hl\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_armv7hl\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7\\.apk",
+          "pattern": "sing\\-box_{version}_linux_armv7\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a5_vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a5_vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a5_vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7_vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a8_vfpv3\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9_neon\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a8_vfpv3\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a8_vfpv3\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_neon\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_neon\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.apk",
           "count": 1
         }
       ],
       "binary-linux_loong64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_loong64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_loong64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_loongarch64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_loongarch64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_loongarch64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips64_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64_mips64r2\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64_mips64r2\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64_octeonplus\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64_mips64r2\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64_octeonplus\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64_octeonplus\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips64le_hardfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mips64le_hardfloat-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\-glibc\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.deb",
+          "pattern": "sing\\-box_{version}_linux_mips64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_mips64el\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_mips64le_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64el_mips64r2\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64el_mips64r2\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64el_mips64r2\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_24kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_24kc\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_4kec\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_24kc\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_mips32\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_4kec\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_4kec\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_mips32\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_mips32\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mipsle_hardfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_24kc_24kf\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc_24kf\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc_24kf\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mipsle_hardfloat-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mipsle_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-softfloat\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mipsle_softfloat-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-softfloat\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-softfloat\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.deb",
+          "pattern": "sing\\-box_{version}_linux_mipsel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_mipsel\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_24kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_74kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_mips32\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_74kc\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_74kc\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_mips32\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_mips32\\.apk",
           "count": 1
         }
       ],
       "binary-linux_ppc64le": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-ppc64le\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-ppc64le\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64el\\.deb",
+          "pattern": "sing\\-box_{version}_linux_ppc64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64le\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_ppc64le\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_riscv64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_riscv64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_riscv64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_riscv64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_riscv64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_riscv64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_s390x": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-s390x\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-s390x\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.deb",
+          "pattern": "sing\\-box_{version}_linux_s390x\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_s390x\\.rpm",
           "count": 1
         }
       ],
@@ -1155,49 +1283,49 @@
       ],
       "binary-windows-client-arm64": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-arm64\\.exe",
           "count": 1
         }
       ],
       "binary-windows-client-x64": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-x64\\.exe",
           "count": 1
         }
       ],
       "binary-windows-client-x86": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-x86\\.exe",
           "count": 1
         }
       ],
       "binary-windows_386": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-386\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-386\\.zip",
           "count": 1
         }
       ],
       "binary-windows_386-legacy-windows-7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-386\\-legacy\\-windows\\-7\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-386\\-legacy\\-windows\\-7\\.zip",
           "count": 1
         }
       ],
       "binary-windows_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-amd64\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-amd64\\.zip",
           "count": 1
         }
       ],
       "binary-windows_amd64-legacy-windows-7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-amd64\\-legacy\\-windows\\-7\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-amd64\\-legacy\\-windows\\-7\\.zip",
           "count": 1
         }
       ],
       "binary-windows_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-arm64\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-arm64\\.zip",
           "count": 1
         }
       ],
@@ -1277,19 +1405,19 @@
       "smoke-windows-amd64": [],
       "unsigned-apple-ios-archive": [
         {
-          "pattern": "unsigned\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-ios\\.xcarchive\\.tar",
+          "pattern": "unsigned\\-{version}\\-ios\\.xcarchive\\.tar",
           "count": 1
         }
       ],
       "unsigned-apple-macos-archive": [
         {
-          "pattern": "unsigned\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-macos\\.xcarchive\\.tar",
+          "pattern": "unsigned\\-{version}\\-macos\\.xcarchive\\.tar",
           "count": 1
         }
       ],
       "unsigned-apple-tvos-archive": [
         {
-          "pattern": "unsigned\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-tvos\\.xcarchive\\.tar",
+          "pattern": "unsigned\\-{version}\\-tvos\\.xcarchive\\.tar",
           "count": 1
         }
       ]
@@ -1403,111 +1531,111 @@
     "payloadRules": {
       "binary-linux_386": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_i386\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_i386\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_amd64": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_amd64\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_amd64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_x86_64\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_arm64": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_arm64\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_aarch64\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_armv6": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armel\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_armel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv6hl\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_armv6hl\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_armv7": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armhf\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_armhf\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7hl\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_armv7hl\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_loong64": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_loongarch64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_loongarch64\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_mips64le": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_mips64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_mips64el\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_mipsle": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_mipsel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_mipsel\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_ppc64le": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64el\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_ppc64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64le\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_ppc64le\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_riscv64": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_riscv64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_riscv64\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_s390x": [
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.deb",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_s390x\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box\\-polaris_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.rpm",
+          "pattern": "sing\\-box\\-polaris_{version}_linux_s390x\\.rpm",
           "count": 1
         }
       ],
@@ -2330,577 +2458,705 @@
     "payloadRules": {
       "binary-android-apks-other": [
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12-[^/]+\\.apk",
+          "pattern": "SFA\\-{version}-[^/]+\\.apk",
           "count": 5
         },
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-other\\-version\\-metadata\\.json",
+          "pattern": "SFA\\-{version}\\-other\\-version\\-metadata\\.json",
           "count": 1
         }
       ],
       "binary-android-apks-other-legacy": [
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12-[^/]+\\.apk",
+          "pattern": "SFA\\-{version}-[^/]+\\.apk",
           "count": 5
         },
         {
-          "pattern": "SFA\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-other\\-legacy\\-version\\-metadata\\.json",
+          "pattern": "SFA\\-{version}\\-other\\-legacy\\-version\\-metadata\\.json",
           "count": 1
         }
       ],
       "binary-android_386": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-386\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-386\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_arm": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-arm\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-arm\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-android_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-android\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-android\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-apple-jailbreak": [
         {
-          "pattern": "SFI\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-iphoneos\\-arm64\\.deb",
+          "pattern": "SFI\\-{version}\\-iphoneos\\-arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFI\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-iphoneos\\-arm64e\\.deb",
+          "pattern": "SFI\\-{version}\\-iphoneos\\-arm64e\\.deb",
           "count": 1
         }
       ],
       "binary-apple-standalone-all": [
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Apple\\.pkg",
+          "pattern": "SFM\\-{version}\\-Apple\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Intel\\.pkg",
+          "pattern": "SFM\\-{version}\\-Intel\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-Universal\\.pkg",
+          "pattern": "SFM\\-{version}\\-Universal\\.pkg",
           "count": 1
         },
         {
-          "pattern": "SFM\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\.dSYMs\\.zip",
+          "pattern": "SFM\\-{version}\\.dSYMs\\.zip",
           "count": 1
         }
       ],
       "binary-darwin_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-darwin_amd64-legacy-macos-10.13": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-amd64\\-legacy\\-macos\\-10\\.13\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-amd64\\-legacy\\-macos\\-10\\.13\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-darwin_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-darwin\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-darwin\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux-client-arm64": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-aarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-aarch64\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux-client-armv7l": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-armv7l\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-armv7l\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-armv7l\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux-client-x64": [
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.deb",
+          "pattern": "SFL\\-{version}\\-amd64\\.deb",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.rpm",
+          "pattern": "SFL\\-{version}\\-x86_64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "SFL\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.pkg\\.tar\\.zst",
+          "pattern": "SFL\\-{version}\\-x64\\.pkg\\.tar\\.zst",
           "count": 1
         }
       ],
       "binary-linux_386_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_i386_pentium\\-mmx\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium\\-mmx\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium\\-mmx\\.apk",
           "count": 1
         }
       ],
       "binary-linux_386_sse2": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_386_sse2-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_386_sse2-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-386\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-386\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.deb",
+          "pattern": "sing\\-box_{version}_linux_i386\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_i386\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_i386\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86\\.apk",
+          "pattern": "sing\\-box_{version}_linux_x86\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_i386_pentium4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium4\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_i386_pentium4\\.apk",
           "count": 1
         }
       ],
       "binary-linux_amd64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_amd64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_amd64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_amd64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_x86_64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_x86_64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_x86_64\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_x86_64\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_x86_64\\.apk",
           "count": 1
         }
       ],
       "binary-linux_amd64-purego": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-amd64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-amd64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_arm64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_arm64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_arm64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_arm64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_aarch64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_aarch64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a53\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a53\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a72\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a53\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_cortex\\-a76\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a72\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_aarch64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a72\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a76\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_cortex\\-a76\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_aarch64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_arm64-purego": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-arm64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-arm64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv5": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv5\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv5\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_arm926ej\\-s\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm926ej\\-s\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm926ej\\-s\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_fa526\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_xscale\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_fa526\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_fa526\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_xscale\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_xscale\\.apk",
           "count": 1
         }
       ],
       "binary-linux_armv6": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv6\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv6\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armel\\.deb",
+          "pattern": "sing\\-box_{version}_linux_armel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv6hl\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_armv6hl\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_arm1176jzf\\-s_vfp\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm1176jzf\\-s_vfp\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_arm1176jzf\\-s_vfp\\.apk",
           "count": 1
         }
       ],
       "binary-linux_armv7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv7-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_armv7-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-armv7\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-armv7\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armhf\\.deb",
+          "pattern": "sing\\-box_{version}_linux_armhf\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7hl\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_armv7hl\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7hl\\.pkg\\.tar\\.zst",
+          "pattern": "sing\\-box_{version}_linux_armv7hl\\.pkg\\.tar\\.zst",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_armv7\\.apk",
+          "pattern": "sing\\-box_{version}_linux_armv7\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a5_vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a5_vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a5_vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a7_vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a8_vfpv3\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_neon\\-vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9_neon\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_vfpv4\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a7_vfpv4\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a8_vfpv3\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a8_vfpv3\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_neon\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_neon\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a9_vfpv3\\-d16\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_arm_cortex\\-a15_neon\\-vfpv4\\.apk",
           "count": 1
         }
       ],
       "binary-linux_loong64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_loong64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_loong64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-loong64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-loong64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_loongarch64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_loongarch64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_loongarch64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_loongarch64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_loongarch64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips64_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64_mips64r2\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64_mips64r2\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64_octeonplus\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64_mips64r2\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64_octeonplus\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64_octeonplus\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips64le_hardfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mips64le_hardfloat-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\-glibc\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.deb",
+          "pattern": "sing\\-box_{version}_linux_mips64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mips64el\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_mips64el\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_mips64le_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips64le\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips64le\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips64el_mips64r2\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips64el_mips64r2\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips64el_mips64r2\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mips_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mips\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mips\\-softfloat\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_24kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_24kc\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_4kec\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_24kc\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mips_mips32\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mips_4kec\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_4kec\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_mips32\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mips_mips32\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mipsle_hardfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_24kc_24kf\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc_24kf\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc_24kf\\.apk",
           "count": 1
         }
       ],
       "binary-linux_mipsle_hardfloat-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mipsle_softfloat": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-softfloat\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-softfloat\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_mipsle_softfloat-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-mipsle\\-softfloat\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-mipsle\\-softfloat\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.deb",
+          "pattern": "sing\\-box_{version}_linux_mipsel\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_mipsel\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_mipsel\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_24kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc\\.ipk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_74kc\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_24kc\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_mipsel_mips32\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_74kc\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_74kc\\.apk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_mips32\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_mipsel_mips32\\.apk",
           "count": 1
         }
       ],
       "binary-linux_ppc64le": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-ppc64le\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-ppc64le\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64el\\.deb",
+          "pattern": "sing\\-box_{version}_linux_ppc64el\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_ppc64le\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_ppc64le\\.rpm",
           "count": 1
         }
       ],
       "binary-linux_riscv64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_riscv64-glibc": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\-glibc\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\-glibc\\.tar\\.gz",
           "count": 1
         }
       ],
       "binary-linux_riscv64-musl": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-riscv64\\-musl\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-riscv64\\-musl\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.deb",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.rpm",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_riscv64\\.apk",
+          "pattern": "sing\\-box_{version}_linux_riscv64\\.apk",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_openwrt_riscv64_generic\\.ipk",
+          "pattern": "sing\\-box_{version}_openwrt_riscv64_generic\\.ipk",
+          "count": 1
+        },
+        {
+          "pattern": "sing\\-box_{version}_openwrt_riscv64_generic\\.apk",
           "count": 1
         }
       ],
       "binary-linux_s390x": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-linux\\-s390x\\.tar\\.gz",
+          "pattern": "sing\\-box\\-{version}\\-linux\\-s390x\\.tar\\.gz",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.deb",
+          "pattern": "sing\\-box_{version}_linux_s390x\\.deb",
           "count": 1
         },
         {
-          "pattern": "sing\\-box_1\\.15\\.0\\-polaris\\-alpha\\.12_linux_s390x\\.rpm",
+          "pattern": "sing\\-box_{version}_linux_s390x\\.rpm",
           "count": 1
         }
       ],
@@ -2916,49 +3172,49 @@
       ],
       "binary-windows-client-arm64": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-arm64\\.exe",
           "count": 1
         }
       ],
       "binary-windows-client-x64": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-x64\\.exe",
           "count": 1
         }
       ],
       "binary-windows-client-x86": [
         {
-          "pattern": "SFW\\-1\\.15\\.0\\-polaris\\-alpha\\.12[^/]*\\.exe",
+          "pattern": "SFW\\-{version}\\-x86\\.exe",
           "count": 1
         }
       ],
       "binary-windows_386": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-386\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-386\\.zip",
           "count": 1
         }
       ],
       "binary-windows_386-legacy-windows-7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-386\\-legacy\\-windows\\-7\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-386\\-legacy\\-windows\\-7\\.zip",
           "count": 1
         }
       ],
       "binary-windows_amd64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-amd64\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-amd64\\.zip",
           "count": 1
         }
       ],
       "binary-windows_amd64-legacy-windows-7": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-amd64\\-legacy\\-windows\\-7\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-amd64\\-legacy\\-windows\\-7\\.zip",
           "count": 1
         }
       ],
       "binary-windows_arm64": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-windows\\-arm64\\.zip",
+          "pattern": "sing\\-box\\-{version}\\-windows\\-arm64\\.zip",
           "count": 1
         }
       ],
@@ -3034,19 +3290,19 @@
       ],
       "signed-apple-store-ios": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-ios\\-app\\-store\\.ipa",
+          "pattern": "sing\\-box\\-{version}\\-ios\\-app\\-store\\.ipa",
           "count": 1
         }
       ],
       "signed-apple-store-macos": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-macos\\-app\\-store\\.pkg",
+          "pattern": "sing\\-box\\-{version}\\-macos\\-app\\-store\\.pkg",
           "count": 1
         }
       ],
       "signed-apple-store-tvos": [
         {
-          "pattern": "sing\\-box\\-1\\.15\\.0\\-polaris\\-alpha\\.12\\-tvos\\-app\\-store\\.ipa",
+          "pattern": "sing\\-box\\-{version}\\-tvos\\-app\\-store\\.ipa",
           "count": 1
         }
       ],

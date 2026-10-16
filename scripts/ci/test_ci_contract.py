@@ -59,6 +59,20 @@ class TestCIContract(unittest.TestCase):
    checks=[x for x in job['steps'] if 'scripts/ci/release_identity.py' in x.get('run','')]
    self.assertEqual(len(checks),2)
    for step in checks:self.assertEqual(step['env']['EXPECTED_TAG_OBJECT'],'${{ needs.source.outputs.tag_object }}')
+ def test_exact_release_defaults_and_docker_diagnostic_upload_control(self):
+  release=json.loads((ROOT/'release/ci/github-release.json').read_text())
+  for name in ['build.yml','linux.yml','signed-release.yml','signed-linux.yml']:
+   w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
+   self.assertEqual(w['on']['workflow_dispatch']['inputs']['version']['default'],release['version'],name)
+  for name in ['docker.yml','publish-container.yml']:
+   w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
+   self.assertEqual(w['on']['workflow_dispatch']['inputs']['tag']['default'],release['tag'],name)
+  w=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
+  self.assertEqual(w['concurrency']['group'],'polaris-github-release-'+release['tag'])
+  w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
+  step=next(s for s in w['jobs']['build_docker']['steps'] if s.get('uses','').startswith('docker/build-push-action@'))
+  self.assertEqual(step['env']['DOCKER_BUILD_RECORD_UPLOAD'],'false')
+  self.assertFalse(step['with']['push']);self.assertIn('type=oci,dest=',step['with']['outputs'])
  def test_existing_build_entry_can_run_pretag_source_gates_without_products(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
