@@ -11,7 +11,7 @@ assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
 assert os.environ['GITHUB_REPOSITORY'] == 'polaris-arch/sing-box-polaris'
 assert os.environ['GITHUB_REPOSITORY_ID'] == '1421657509'
 assert os.environ['RELEASE_BUILD'] == 'All'
-assert os.environ['RELEASE_VERSION'] == '1.15.0-polaris-alpha.12'
+assert os.environ['RELEASE_VERSION'] == '1.15.0-polaris-alpha.13'
 assert os.environ.get('PUBLISH_STORES', 'false') == 'false'
 assert os.environ.get('PUBLISH_REGISTRY', 'false') == 'false'
 head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()

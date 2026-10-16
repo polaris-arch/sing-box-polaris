@@ -3,8 +3,8 @@
 ## Exact release identity
 
 Repository: `polaris-arch/sing-box-polaris` (1421657509).
-Tag and title: `v1.15.0-polaris-alpha.12`.
-Native/public version: `1.15.0-polaris-alpha.12`.
+Tag and title: `v1.15.0-polaris-alpha.13`.
+Native/public version: `1.15.0-polaris-alpha.13`.
 Future accepted family: `MAJOR.MINOR.PATCH-polaris-{alpha,beta,rc}.NUMBER`, with no leading zero in NUMBER.
 The GitHub-only publisher separately pins this exact release. It never creates or moves the source tag and refuses any existing Release.
 
@@ -29,7 +29,7 @@ Artifact naming alone is not numeric metadata validation:
 - Android application APK `VERSION_NAME` retains the entire branded string. The existing helper updates the committed upstream `VERSION_CODE` by its established +1 rule only when metadata changes; it does not consult or fabricate a store release history. `--allow-ci-update` makes isolated CI regeneration explicit while the default `--ci` fail-closed rule remains. The produced version metadata asset records the actual VERSION_NAME/VERSION_CODE. A signed store rollout would additionally require actual owned store version-code admission.
 - Windows keeps full semver for application version/filename/channel (`polaris-alpha`). Existing electron-builder converts the numeric resource components to MAJOR.MINOR.PATCH.BUILD_NUMBER. BUILD_NUMBER is the actual GitHub workflow run number, explicitly bounded to 1..65535; it is a CI counter, not an invented prior release or globally monotonic store history. Unsigned recipes do not claim an Authenticode signature or verified resource stamping.
 - Apple standalone branded marketing version becomes numeric `1.15.0`, while kernel version and artifact name keep the full brand. Legacy upstream formats keep their previous helper behavior. Unsigned Apple project build numbers use the actual GitHub run number for each platform. App Store/TestFlight marketing remains the upstream numeric `1.15.1000` helper rule; signed store project-number selection remains the real existing ASC query path and is not simulated without credentials. No unsigned CI counter is evidence of store admission.
-- Alpine and OpenWrt **package-manager APK** metadata maps `1.15.0-polaris-alpha.12` to `1.15.0_alpha12-r0` using apk-tools syntax. This is separate from Android application APK VERSION_NAME. External package filenames and embedded kernel version keep the brand. Other FPM packages retain the existing hyphen-to-tilde version normalization (`1.15.0~polaris~alpha.12`).
+- Alpine and OpenWrt **package-manager APK** metadata maps `1.15.0-polaris-alpha.13` to `1.15.0_alpha13-r0` using apk-tools syntax. This is separate from Android application APK VERSION_NAME. External package filenames and embedded kernel version keep the brand. Other FPM packages retain the existing hyphen-to-tilde version normalization (`1.15.0~polaris~alpha.13`).
 
 The actual outputs must still be inspected in the platform runs. Source-level compatibility is not proof that Xcode, Gradle, electron-builder or package-manager tools accepted the generated metadata.
 
@@ -48,9 +48,27 @@ The existing G4 source gate includes the five affected version packages in its s
 ## Source freeze and final-evidence sequence
 
 1. Freeze the complete candidate on the development branch. Complete its independent source review, then dispatch the existing `build.yml` entry at that SHA with `build=Source` and `evidence_mode=staging`. This runs the concentrated G4/CI-contract gates on Linux/macOS without tags or product builds. The added source-only menu choice retains every original product choice and matrix. It also works while the new standalone source workflow files are not yet on the default branch.
-2. Create the reviewed annotated `v1.15.0-polaris-alpha.12` exactly once, directly targeting that same source commit. Never move or recreate it. A full build does not create a tag.
+2. Create the reviewed annotated `v1.15.0-polaris-alpha.13` exactly once, directly targeting that same source commit. Never move or recreate it. A full build does not create a tag.
 3. Dispatch unsigned All at that exact SHA with `evidence_mode=final`, the Linux package workflow with the same version/SHA, and Docker with the same tag/SHA. All preflights the annotated tag before product builds; Docker checks out the dispatch SHA in each actual binary and image job, compares the captured tag object, and rechecks before uploading artifacts.
 4. Final index assembly validates the preflight tag object again and emits the final schema. `evidence_mode=staging` always emits staging with `tagObject=null`, even if a matching tag exists. It is useful only for candidate checks. Neither GitHub publisher nor signed GitHub publication admits staging as a formal release input.
 5. Review the actual complete inventory from the three successful runs. The GitHub publisher requires final schema, exact source commit/tree/tag/object, all 44 native identities, original index/source basenames and actual hashes. Its separate write phase repeats validation, uses the draft's validated complete `https://uploads.github.com/...` endpoint, and retains the draft on any failure. It never auto-accepts a staging index or overwrites a release.
 
 This ordering does not grant store, Fury, registry or signed-distribution authorization. Real absent signing identities remain blocked as listed above.
+
+### alpha.13 client source inputs
+
+The core native index's `sourceIdentity.sourceOverlay=0` describes only the
+kernel source. It does not describe these client builds. The exact client
+repository/gitlink/tree plus the source-owned `release/ci/client-overlays.json`
+are inputs to each client producer. Its candidate metadata contains the actual
+client diff and per-file before/after SHA-256, including generated version
+metadata. The release inventory validates the overlay manifest and exact file
+identities; the public aggregate receipt preserves this evidence. Compatibility
+overlays apply to signed and unsigned clients; credential-removal overlays apply
+only to the unsigned producer. Unsupported platform AutoRedirect reports false
+and an explicit error, while explicit interface binding must bind or fail.
+
+This candidate changes source and version. Existing alpha.12 annotated tag and
+successful original producer outputs remain their original identities; they are
+not publication inputs for alpha.13. No new tag or platform acceptance is
+asserted by the source changes themselves.

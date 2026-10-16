@@ -114,7 +114,7 @@ class GateTests(unittest.TestCase):
             x=copy.deepcopy(index)
             if kind=='staging':x.update(schema='polaris-upstream-native-staging-v1',tagObject=None)
             elif kind=='wrong-object':x['tagObject']='d'*40
-            elif kind=='wrong-tag':x['tag']='v1.15.0-polaris-alpha.13'
+            elif kind=='wrong-tag':x['tag']='v1.15.0-polaris-alpha.999'
             elif kind=='malformed-schema':x['producer']['runId']='42'
             elif kind=='mixed-source':x['platforms'][-1]['sourceCommit']='d'*40
             elif kind=='mixed-tree':x['platforms'][-1]['sourceTree']='d'*40

@@ -1,0 +1,157 @@
+{
+  "schema": "polaris-client-source-overlays-v1",
+  "platforms": {
+    "android": {
+      "path": "clients/android",
+      "repository": "SagerNet/sing-box-for-android",
+      "commit": "ae93152f21457723af77d144f28c1f7be7362aec",
+      "versionMetadata": [
+        "version.properties"
+      ],
+      "files": [
+        {
+          "path": "app/src/main/java/io/nekohasekai/sfa/bg/PlatformInterfaceWrapper.kt",
+          "kind": "compatibility",
+          "beforeGitBlob": "8956a84e41d44741de2a0d76ec64f908d30cbdc4",
+          "beforeSHA256": "f562f33fa9ddfc8978a09e991ef0784cc1af32a2ce866bdeada45ea7ff74854c",
+          "afterSHA256": "bd448627c464bb7db77b6e2eaad60bdd59f4e943027b11885a14e1e007ad5f69",
+          "edits": [
+            {
+              "old": "    override fun openTun(options: TunOptions): Int {",
+              "new": "    // Bind the socket to the actual Android Network that owns this interface.\n    // fromFd duplicates the descriptor; closing it never closes the Go socket.\n    override fun bindInterfaceControl(fd: Int, interfaceName: String?) {\n        require(!interfaceName.isNullOrEmpty()) { \"android: missing bind interface\" }\n        val network = Application.connectivity.allNetworks.firstOrNull {\n            Application.connectivity.getLinkProperties(it)?.interfaceName == interfaceName\n        } ?: error(\"android: network interface unavailable: $interfaceName\")\n        ParcelFileDescriptor.fromFd(fd).use { duplicate ->\n            network.bindSocket(duplicate.fileDescriptor)\n        }\n    }\n\n    override fun usePlatformAutoRedirect(): Boolean = false\n\n    override fun createAutoRedirect(\n        options: ByteArray?,\n        handler: io.nekohasekai.libbox.AutoRedirectHandler?,\n    ): io.nekohasekai.libbox.AutoRedirectSession {\n        error(\"android: platform auto redirect is unsupported\")\n    }\n\n    override fun openTun(options: TunOptions): Int {",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "app/build.gradle.kts",
+          "kind": "unsigned",
+          "beforeGitBlob": "85b78694cff9584ac23001ac92fa77b083030283",
+          "beforeSHA256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69",
+          "afterSHA256": "249f84a4700b05ba9c3eb65806360492476c248db45b40bfc4b27afbcd71c965",
+          "edits": [
+            {
+              "old": "signingConfig = signingConfigs.getByName(\"release\")",
+              "new": "signingConfig = null // unsigned CI candidate; not installable release identity",
+              "count": 2
+            }
+          ]
+        }
+      ],
+      "tree": "be0859307908afb7e8870b05af9b7c65797a1491"
+    },
+    "apple": {
+      "path": "clients/apple",
+      "repository": "SagerNet/sing-box-for-apple",
+      "commit": "e232aaf22d6d68773196ffc8e6e79684a6be717c",
+      "versionMetadata": [
+        "sing-box.xcodeproj/project.pbxproj"
+      ],
+      "files": [
+        {
+          "path": "Library/Network/ExtensionPlatformInterface.swift",
+          "kind": "compatibility",
+          "beforeGitBlob": "3ef2cbbe9a5e6d786e5b78b40baee7de891be578",
+          "beforeSHA256": "1093c5d0e76901a010317d31c6cee637151723f07867aa63001ece4f847e32d7",
+          "afterSHA256": "411136f66c448d14b7586c472950c547cb7c0fc2abb73919f588b793cdcc6c43",
+          "edits": [
+            {
+              "old": "import Foundation",
+              "new": "import Darwin\nimport Foundation",
+              "count": 1
+            },
+            {
+              "old": "    public func usePlatformAutoDetectControl() -> Bool {",
+              "new": "    public func bindInterfaceControl(_ fd: Int32, interfaceName: String?) throws {\n        guard let interfaceName, !interfaceName.isEmpty else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(EINVAL))\n        }\n        var interfaceIndex = if_nametoindex(interfaceName)\n        guard interfaceIndex != 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(ENODEV))\n        }\n        // Determine the real socket family; do not treat a failed bind as success.\n        var address = sockaddr_storage()\n        var addressLength = socklen_t(MemoryLayout<sockaddr_storage>.size)\n        let familyResult = withUnsafeMutablePointer(to: &address) {\n            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {\n                getsockname(fd, $0, &addressLength)\n            }\n        }\n        guard familyResult == 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))\n        }\n        let level: Int32\n        let option: Int32\n        switch Int32(address.ss_family) {\n        case AF_INET: level = IPPROTO_IP; option = IP_BOUND_IF\n        case AF_INET6: level = IPPROTO_IPV6; option = IPV6_BOUND_IF\n        default: throw NSError(domain: NSPOSIXErrorDomain, code: Int(EAFNOSUPPORT))\n        }\n        guard setsockopt(fd, level, option, &interfaceIndex, socklen_t(MemoryLayout<UInt32>.size)) == 0 else {\n            throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))\n        }\n    }\n\n    public func usePlatformAutoRedirect() -> Bool { false }\n\n    public func createAutoRedirect(_ options: Data?, handler: (any LibboxAutoRedirectHandlerProtocol)?) throws -> any LibboxAutoRedirectSessionProtocol {\n        throw NSError(domain: NSPOSIXErrorDomain, code: Int(ENOTSUP), userInfo: [\n            NSLocalizedDescriptionKey: \"Apple platform auto redirect is unsupported\",\n        ])\n    }\n\n    public func usePlatformAutoDetectControl() -> Bool {",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "Makefile",
+          "kind": "unsigned",
+          "beforeGitBlob": "274323492752448d66f96edffe6374f518ae1782",
+          "beforeSHA256": "acd8def858ad2143bdc3bda662ba70bf72e5b27c8c355d268696708c098d2fa2",
+          "afterSHA256": "f87c687dcb0cd968be5236222519b75ce66d91c9e1f4b6bc9214753b0d9252f7",
+          "edits": [
+            {
+              "old": "xcodebuild -exportArchive -archivePath build/SFM.System-universal.xcarchive -exportOptionsPlist SFM.System/Export.plist -exportPath build/SFM.System-universal",
+              "new": "mkdir -p build/SFM.System-universal\n\tditto build/SFM.System-universal.xcarchive/Products/Applications/SFM.app build/SFM.System-universal/SFM.app",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "SFM.System/package_from_universal.sh",
+          "kind": "unsigned",
+          "beforeGitBlob": "d1c2f8cdbcbf964933330f1846dff86e8e7cb4b4",
+          "beforeSHA256": "fc296e487159cd636627382d03b8857d71a0db9fcd7f73f42d606c65f4934185",
+          "afterSHA256": "54f359ddaca651cc9dc4c40da517db4d5abaf84739c2dd9b134d5100c43904f6",
+          "edits": [
+            {
+              "old": "\t\t--sign \"$INSTALLER_SIGN_IDENTITY\" \\\n",
+              "new": "",
+              "count": 1
+            },
+            {
+              "old": "\tpkgutil --check-signature \"build/SFM-$label.pkg\" > /dev/null",
+              "new": "\t# Unsigned candidate: no release signature is asserted.",
+              "count": 1
+            },
+            {
+              "old": "\tresign \"build/SFM.System-$arch-thin/SFM.app\"",
+              "new": "\t# Unsigned candidate: do not sign thinned app.",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "tree": "ced7c1398c36931c0aa83877ec6c0cf08660618e"
+    },
+    "windows": {
+      "path": "clients/desktop",
+      "repository": "SagerNet/sing-box-for-desktop",
+      "commit": "50f503849148dd73fa4f4bc231119acf5b2f3d7a",
+      "versionMetadata": [
+        "version.json"
+      ],
+      "files": [
+        {
+          "path": "scripts/package.ts",
+          "kind": "unsigned",
+          "beforeGitBlob": "3b322c70581f02f12015010ba07c866d62eaa368",
+          "beforeSHA256": "14928df1da195cb8f3273aa8cb0f9f333655ae640cf376f4d63a2a01fe0d58d7",
+          "afterSHA256": "aee26895ac0046e8232a99bc33fcd7c7ec52fb07975d305bb246bc54168141d2",
+          "edits": [
+            {
+              "old": "signingConfiguration: WindowsSigningConfiguration,",
+              "new": "signingConfiguration: WindowsSigningConfiguration | undefined,",
+              "count": 1
+            },
+            {
+              "old": "signtoolOptions: {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          },",
+              "new": "signAndEditExecutable: signingConfiguration ? undefined : false,\n          signtoolOptions: signingConfiguration ? {\n            certificateFile: signingConfiguration.certificateFile,\n            certificatePassword: signingConfiguration.certificatePassword,\n          } : undefined,",
+              "count": 1
+            },
+            {
+              "old": "const signingConfiguration = readWindowsSigningConfiguration();",
+              "new": "const signingConfiguration = undefined; // explicitly unsigned per-architecture candidate",
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559"
+    },
+    "linux": {
+      "path": "clients/desktop",
+      "repository": "SagerNet/sing-box-for-desktop",
+      "commit": "50f503849148dd73fa4f4bc231119acf5b2f3d7a",
+      "versionMetadata": [
+        "version.json"
+      ],
+      "files": [],
+      "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559"
+    }
+  }
+}

@@ -1472,6 +1472,9 @@ jobs:
         printf "%s=%s\n" "$PROJECT_VERSION_VARIABLE" "$CANDIDATE_BUILD_NUMBER" >> "$GITHUB_ENV"
       env:
         CANDIDATE_BUILD_NUMBER: ${{ github.run_number }}
+    - name: Apply exact client source overlays
+      if: matrix.if
+      run: python3 scripts/ci/unsigned_clients.py apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
@@ -1492,7 +1495,6 @@ jobs:
     - name: Build standalone packages
       if: matrix.if && matrix.type == 'standalone'
       run: |
-        python3 scripts/ci/unsigned_clients.py apple
         make -C clients/apple build_macos_pkg_all
       env:
         DISABLE_SWIFTLINT: '1'
@@ -1678,6 +1680,9 @@ jobs:
         printf "%s=%s\n" "$PROJECT_VERSION_VARIABLE" "$CANDIDATE_BUILD_NUMBER" >> "$GITHUB_ENV"
       env:
         CANDIDATE_BUILD_NUMBER: ${{ github.run_number }}
+    - name: Apply exact client source overlays
+      if: matrix.if
+      run: python3 scripts/ci/unsigned_clients.py apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
@@ -1698,7 +1703,6 @@ jobs:
     - name: Build standalone packages
       if: matrix.if && matrix.type == 'standalone'
       run: |
-        python3 scripts/ci/unsigned_clients.py apple
         make -C clients/apple build_macos_pkg_all
       env:
         DISABLE_SWIFTLINT: '1'
@@ -1906,7 +1910,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12
+        default: 1.15.0-polaris-alpha.13
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

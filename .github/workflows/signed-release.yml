@@ -956,6 +956,8 @@ jobs:
       uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
       with:
         cache-provider: basic
+    - name: Apply exact signed client compatibility overlays
+      run: python3 scripts/ci/client_source.py apply android
     - name: Update version
       if: github.event_name == 'workflow_dispatch'
       run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update
@@ -984,6 +986,8 @@ jobs:
         }
         EOF
         cat dist/SFA-${{ needs.calculate_version.outputs.version }}-${{ matrix.variant }}-version-metadata.json
+    - name: Record exact signed client source inputs
+      run: python3 scripts/ci/client_source.py record-signed android dist
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -1194,6 +1198,8 @@ jobs:
         }
         New-Item -ItemType Directory -Force dist | Out-Null
         Copy-Item $artifacts.FullName dist
+    - name: Record exact signed client source inputs
+      run: python3 scripts/ci/client_source.py record-signed windows dist
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -1370,6 +1376,8 @@ jobs:
         fi
         mkdir -p dist
         cp "${artifacts[@]}" dist
+    - name: Record exact signed client source inputs
+      run: python3 scripts/ci/client_source.py record-signed linux dist
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -1691,6 +1699,9 @@ jobs:
         PROJECT_VERSION=$(go run -v ./cmd/internal/app_store_connect next_project_version ${{ matrix.platform }})
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION"
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION" >> "$GITHUB_ENV"
+    - name: Apply exact signed client compatibility overlays
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py apply apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
@@ -1764,6 +1775,9 @@ jobs:
     - name: Prune Swift package repositories
       if: matrix.if
       run: rm -rf "$RUNNER_TEMP/SourcePackages/repositories"
+    - name: Record exact signed client source inputs
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py record-signed apple dist
     - name: Upload release artifact
       if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
       uses: actions/upload-artifact@v4
@@ -2016,6 +2030,9 @@ jobs:
         PROJECT_VERSION=$(go run -v ./cmd/internal/app_store_connect next_project_version ${{ matrix.platform }})
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION"
         echo "$PROJECT_VERSION_VARIABLE=$PROJECT_VERSION" >> "$GITHUB_ENV"
+    - name: Apply exact signed client compatibility overlays
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py apply apple
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
@@ -2107,6 +2124,9 @@ jobs:
         files=("$RUNNER_TEMP"/export/*.${{ matrix.upload_extension }})
         [[ ${#files[@]} == 1 && -f "${files[0]}" ]] || exit 1
         cp "${files[0]}" "store-dist/sing-box-${{ needs.calculate_version.outputs.version }}-${{ matrix.platform }}-app-store.${{ matrix.upload_extension }}"
+    - name: Record exact signed client source inputs
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py record-signed apple store-dist
     - name: Retain signed App Store export
       uses: actions/upload-artifact@v4
       if: matrix.if
@@ -2312,7 +2332,7 @@ jobs:
         description: Version name
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12
+        default: 1.15.0-polaris-alpha.13
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

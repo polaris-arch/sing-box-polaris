@@ -43,7 +43,7 @@ name: GitHub-only reviewed release
 permissions:
   contents: read
 concurrency:
-  group: polaris-github-release-v1.15.0-polaris-alpha.12
+  group: polaris-github-release-v1.15.0-polaris-alpha.13
   cancel-in-progress: false
 jobs:
   validate:

@@ -18,7 +18,7 @@ import zipfile
 
 REPO = 'polaris-arch/sing-box-polaris'
 RID = 1421657509
-VERSION = '1.15.0-polaris-alpha.12'
+VERSION = '1.15.0-polaris-alpha.13'
 TAG = 'v' + VERSION
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = ROOT / 'release/ci/publisher-upstream-scope.json'
@@ -95,6 +95,7 @@ def identity(source, source_dir):
     require(api(f'repos/{REPO}')['id'] == RID, 'remote repository ID mismatch')
     require(command('git', '-C', str(source_dir), 'rev-parse', 'HEAD') == source, 'publisher checkout differs from source')
     require(not command('git', '-C', str(source_dir), 'status', '--porcelain', '--untracked-files=no'), 'tracked source is dirty')
+    require(sha(ROOT / 'release/ci/client-overlays.json') == sha(source_dir / 'release/ci/client-overlays.json'), 'publisher client overlay contract differs from actual build source')
 
 
 def tag_identity(source):
@@ -167,6 +168,27 @@ def verify_payloads(files, rules, artifact):
     require(matched == payloads, 'unlisted payload file in '+artifact)
 
 
+def client_platform(artifact):
+    for prefix, platform in [('binary-android-apks-', 'android'), ('binary-windows-client-', 'windows'),
+                             ('binary-linux-client-', 'linux'), ('binary-apple-', 'apple'),
+                             ('unsigned-apple-', 'apple'), ('signed-apple-store-', 'apple')]:
+        if artifact.startswith(prefix):
+            return platform
+    return None
+
+
+def validate_client_source(provenance, artifact, role, source):
+    from client_source import validate
+    platform = client_platform(artifact)
+    record = provenance.get('clientSource')
+    if platform is None:
+        require(record is None, 'unexpected client source receipt in core/library artifact')
+    else:
+        require(isinstance(record, dict), 'client artifact lacks actual client source evidence')
+        validate(record, platform, source, role != 'signed')
+    return record
+
+
 def inventory(runs, source, work, source_tree, tag_object):
     scope = json.loads(SCOPE.read_text())
     require(set(runs) in ({'all', 'linux', 'docker'}, {'all', 'linux', 'docker', 'signed'}), 'all, linux and docker runs are mandatory')
@@ -199,6 +221,7 @@ def inventory(runs, source, work, source_tree, tag_object):
                 require(a.get('digest') == digest, 'Actions artifact digest missing or mismatched')
                 extract(zipped.name, directory)
             files = {}
+            client_sources = []
             for p in sorted(directory.rglob('*')):
                 if p.is_file():
                     relative = p.relative_to(directory).as_posix()
@@ -206,6 +229,13 @@ def inventory(runs, source, work, source_tree, tag_object):
                     if p.name.startswith('polaris-candidate-manifest-'):
                         provenance = json.loads(p.read_text())
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
+                        measured = validate_client_source(provenance, a['name'], role, source)
+                        if measured is not None:
+                            client_sources.append(measured)
+                            # Retained in reviewed inventory and final public receipt,
+                            # rather than only in a discarded metadata ZIP member.
+                            files[relative]['clientSource'] = measured
+            require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
             verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveSha256': digest, 'files': files}

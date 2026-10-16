@@ -21,6 +21,8 @@ def main(directory):
  job=os.environ['GITHUB_JOB']; suffix=os.environ.get('CANDIDATE_MATRIX_KEY','default')
  import re
  if not re.fullmatch('[A-Za-z0-9_.-]+',suffix):raise SystemExit('invalid artifact matrix key')
- record={'schema':'polaris-upstream-candidate-files-v1','repository':repo,'repositoryId':int(rid),'sourceCommit':git('rev-parse','HEAD'),'sourceTree':git('rev-parse','HEAD^{tree}'),'workflowRunId':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':job,'matrixKey':suffix,'signatureState':'unsigned-candidate','releasePublication':False,'runtimeAcceptance':False,'clientOverlays':'scripts/ci/unsigned_clients.py (pinned, build-only)','files':files}
+ record={'schema':'polaris-upstream-candidate-files-v1','repository':repo,'repositoryId':int(rid),'sourceCommit':git('rev-parse','HEAD'),'sourceTree':git('rev-parse','HEAD^{tree}'),'workflowRunId':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':job,'matrixKey':suffix,'signatureState':'unsigned-candidate','releasePublication':False,'runtimeAcceptance':False,'files':files}
+ from client_source import JOBS, collect
+ if job in JOBS:record['clientSource']=collect(JOBS[job],True)
  (root/f'polaris-candidate-manifest-{job}-{suffix}.json').write_text(json.dumps(record,indent=2)+'\n')
 if __name__=='__main__':main(sys.argv[1])
