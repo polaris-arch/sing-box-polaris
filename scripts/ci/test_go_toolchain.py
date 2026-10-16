@@ -126,6 +126,19 @@ class ToolchainControls(unittest.TestCase):
         self.assertNotIn(actual_target,mapping['Replace'])
         self.assertRaises(ValueError,gate.overlay_replacements,r'go\src\os',actual_target)
 
+    def test_final_consumer_contract_requires_the_same_exact_go_toolchain(self):
+        import jsonschema
+        schema=json.loads((ROOT/'release/ci/native-release-contract.schema.json').read_text())
+        expected='go'+(ROOT/'release/GO_VERSION').read_text().strip()
+        rows=schema['properties']['platforms']['properties']
+        self.assertEqual(set(rows),{'linux','win','mac-x64','mac-arm64'})
+        for target,row in rows.items():
+            field=row['properties']['goVersion']
+            with self.subTest(target=target):
+                jsonschema.Draft202012Validator(field).validate(expected)
+                for invalid in ['go1.26.8','go1.27.1','go1.27.20','unknown','']:
+                    with self.assertRaises(jsonschema.ValidationError):jsonschema.Draft202012Validator(field).validate(invalid)
+
     def test_archive_layout_and_resource_negative_controls(self):
         valid=tarfile.TarInfo('go/bin/go');valid.size=10;legacy.require_archive_members([valid])
         for name,kind in [('../escape',tarfile.REGTYPE),('/go/bin/go',tarfile.REGTYPE),('go/../escape',tarfile.REGTYPE),

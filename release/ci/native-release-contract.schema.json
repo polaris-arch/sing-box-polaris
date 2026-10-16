@@ -331,7 +331,7 @@
               "pattern": "^[a-f0-9]{40}$"
             },
             "goVersion": {
-              "const": "go1.26.8"
+              "const": "go1.27.2"
             },
             "tags": {
               "type": "string"
@@ -817,7 +817,7 @@
               "pattern": "^[a-f0-9]{40}$"
             },
             "goVersion": {
-              "const": "go1.26.8"
+              "const": "go1.27.2"
             },
             "tags": {
               "type": "string"
@@ -1303,7 +1303,7 @@
               "pattern": "^[a-f0-9]{40}$"
             },
             "goVersion": {
-              "const": "go1.26.8"
+              "const": "go1.27.2"
             },
             "tags": {
               "type": "string"
@@ -1789,7 +1789,7 @@
               "pattern": "^[a-f0-9]{40}$"
             },
             "goVersion": {
-              "const": "go1.26.8"
+              "const": "go1.27.2"
             },
             "tags": {
               "type": "string"
