@@ -34,7 +34,7 @@ def patch(before,after):
 
 class ClientSourceControls(unittest.TestCase):
     @contextmanager
-    def fixture(self,platform='windows',unsigned=True):
+    def fixture(self,platform='windows',unsigned=True,owned_mode='100644'):
         # Known original -> compatibility -> unsigned OR reviewed identity;
         # generated version metadata is a final, independently recorded stage.
         with tempfile.TemporaryDirectory() as temp:
@@ -54,11 +54,12 @@ class ClientSourceControls(unittest.TestCase):
                 baseline['owned.txt']=None;desired['owned.txt']=b'public owned identity\n'
                 identity_before={'source.txt':b'compat\n','owned.txt':None}
                 identity_after={name:desired[name] for name in identity_before}
-                raw=patch(identity_before,identity_after).encode();path=root/'release/ci/private-fixture.patch';path.write_bytes(raw)
+                raw=patch(identity_before,identity_after).replace('new file mode 100644','new file mode '+owned_mode).encode();path=root/'release/ci/private-fixture.patch';path.write_bytes(raw)
                 files={name:{'baseGitBlob':None if baseline[name] is None else client.blob(baseline[name]),
                              'beforeSHA256':None if identity_before[name] is None else client.sha(identity_before[name]),
                              'afterSHA256':client.sha(identity_after[name]),'bytes':len(identity_after[name]),
-                             'beforeMode':None if identity_before[name] is None else '100644','afterMode':'100644'} for name in identity_before}
+                             'beforeMode':None if identity_before[name] is None else '100644',
+                             'afterMode':owned_mode if name=='owned.txt' else '100644'} for name in identity_before}
                 key='desktop' if platform in ('windows','linux') else platform
                 config={'repository':'polaris-arch/sing-box-polaris','repositoryId':1421657509,'reviewed':True,
                         'clientIdentityPatches':{key:{'path':'release/ci/private-fixture.patch','sha256':client.sha(raw),'clientCommit':'b'*40,'files':files}}}
@@ -67,6 +68,7 @@ class ClientSourceControls(unittest.TestCase):
                 identity=client.identity_definition(platform,unsigned)
                 touched={e['path'] for e in client.selected(spec,unsigned)}|(set(identity['files']) if identity else set())
                 diff=patch(baseline,desired)
+                if not unsigned:diff=diff.replace('new file mode 100644','new file mode '+owned_mode)
                 record={'schema':'polaris-client-source-v1','platform':platform,'repository':spec['repository'],'baseCommit':'b'*40,'baseTree':'c'*40,
                         'coreSourceCommit':'a'*40,'overlayManifestSHA256':client.sha(policy.read_bytes()),'unsigned':unsigned,'sourceOverlayCount':len(touched),
                         'identity':identity,'baseline':{name:None if raw is None else base64.b64encode(raw).decode() for name,raw in baseline.items()},
@@ -153,14 +155,51 @@ class ClientSourceControls(unittest.TestCase):
         bad=copy.deepcopy(entry);bad['edits'][0]['count']=2
         with self.assertRaises(ValueError):client.edits(raw,bad)
 
+    def test_final_modes_are_bound_for_transforms_identity_and_version_metadata(self):
+        for unsigned in [True,False]:
+            with self.fixture(unsigned=unsigned) as record:
+                for name in ['source.txt','version.txt']+([] if unsigned else ['owned.txt']):
+                    value=copy.deepcopy(record)
+                    marker='diff --git a/'+name+' b/'+name+'\n'
+                    if name=='owned.txt':
+                        before=marker+'new file mode 100644\n'
+                        after=marker+'new file mode 100755\n'
+                    else:
+                        # Git index contains the Git blob, not the SHA256 row identity.
+                        body=value['diff'].split(marker,1)[1].split('\n',1)[0]
+                        self.assertTrue(body.startswith('index ') and body.endswith(' 100644'))
+                        before=marker+body+'\n';after=marker+'old mode 100644\nnew mode 100755\n'+body.removesuffix(' 100644')+'\n'
+                    self.assertEqual(value['diff'].count(before),1)
+                    value['diff']=value['diff'].replace(before,after,1);value['diffSHA256']=client.sha(value['diff'].encode())
+                    with self.subTest(unsigned=unsigned,path=name),self.assertRaisesRegex(ValueError,'final mode'):
+                        self.check(value)
+        # An explicitly reviewed executable new identity file is allowed.
+        with self.fixture(unsigned=False,owned_mode='100755') as record:self.check(record)
+
     def test_windows_unsigned_flag_covers_builder_and_nested_payloads_signed_stays_strict(self):
-        entries=client.definition('windows')['files'];self.assertEqual({e['path'] for e in entries},{'scripts/package.ts','scripts/afterPack.cjs'})
-        text='\n'.join(change['new'] for entry in entries for change in entry['edits'])
+        spec=client.definition('windows');entries=spec['files']
+        self.assertEqual(spec['commit'],'50f503849148dd73fa4f4bc231119acf5b2f3d7a')
+        self.assertEqual({e['path'] for e in entries},{'scripts/package.ts','scripts/afterPack.cjs'})
+        self.assertEqual(client.selected(spec,False),[])  # Signed uses the original strict sources.
+        result={}
+        original={}
+        for entry in entries:
+            raw=(REAL_ROOT/'scripts/ci/testdata/desktop-50f50384'/Path(entry['path']).name).read_bytes()
+            self.assertEqual(client.blob(raw),entry['beforeGitBlob'])
+            self.assertEqual(client.sha(raw),entry['beforeSHA256'])
+            original[entry['path']]=raw.decode()
+            result[entry['path']]=client.edits(raw,entry).decode()
+        package=result['scripts/package.ts'];nested=result['scripts/afterPack.cjs']
         for fragment in ['unsignedWindowsPackage ? undefined : readWindowsSigningConfiguration()',
-                         'forceCodeSigning: !unsignedWindowsPackage','signAndEditExecutable: unsignedWindowsPackage ? false : undefined',
-                         'POLARIS_UNSIGNED_CLIENT === "1"','context.packager.signIf(executablePath)','if (!signed)',
-                         'fs.statSync(executablePath).isFile()']:
-            self.assertIn(fragment,text)
+                         'forceCodeSigning: !unsignedWindowsPackage','signExecutable: unsignedWindowsPackage ? false : undefined']:
+            self.assertIn(fragment,package)
+        self.assertNotIn('signAndEditExecutable:',package)  # Keep resources and afterSign integrity/fuses.
+        strict='const signed = await context.packager.signIf(executablePath);\n    if (!signed) {\n      throw new Error(`failed to sign ${relativePath.join("/")}`);'
+        self.assertIn(strict,original['scripts/afterPack.cjs'])
+        self.assertIn(strict,nested)  # Check the full patched source, including unchanged signed checks.
+        for fragment in ['process.env.POLARIS_UNSIGNED_CLIENT === "1"','fs.statSync(executablePath).isFile()',
+                         'continue; // Explicit unsigned candidate']:
+            self.assertIn(fragment,nested)
         workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/build.yml').read_text())
         steps=workflow['jobs']['build_windows_client']['steps'];first=next(s for s in steps if s.get('name')=='Checkout desktop client')
         self.assertIn('-c core.autocrlf=false -c core.eol=lf submodule update',first['run'])

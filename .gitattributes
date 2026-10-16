@@ -8,3 +8,6 @@ release/dependency-sources/*.patch whitespace=-space-before-tab
 /release/ci/client-overlays.json -text
 /release/ci/owned-distribution.json -text
 /release/ci/*.patch -text
+
+# Exact upstream baseline fixture bytes used by the source overlay regression.
+/scripts/ci/testdata/desktop-50f50384/** -text

@@ -263,12 +263,13 @@ def validate(record,platform,source,unsigned):
         raise ValueError('declared client source output exceeds budget')
     if not isinstance(record.get('diff'),str) or len(record['diff'].encode())>MAX_DIFF_BYTES:raise ValueError('client diff exceeds budget')
     if record.get('diffSHA256')!=sha(record['diff'].encode()):raise ValueError('client source diff digest mismatch')
-    actual,_=apply_diff(baseline,{name:bases[name]['mode'] for name in paths},record['diff'],paths)
-    expected,_=overlay_result(spec,entries,identity,baseline)
+    actual,actual_modes=apply_diff(baseline,{name:bases[name]['mode'] for name in paths},record['diff'],paths)
+    expected,expected_modes=overlay_result(spec,entries,identity,baseline)
     for row in rows:
         name=row['path'];raw=actual[name]
         if (row.get('beforeSHA256'),row.get('afterSHA256'),row.get('bytes'))!=(None if baseline[name] is None else sha(baseline[name]),None if raw is None else sha(raw),0 if raw is None else len(raw)) or type(row.get('bytes')) is not int:
             raise ValueError('client diff and file row hashes/bytes are inconsistent')
+        if actual_modes[name]!=expected_modes[name]:raise ValueError('client final mode differs from composed transforms: '+name)
         if name not in spec['versionMetadata'] and raw!=expected[name]:raise ValueError('client final source differs from composed transforms: '+name)
 
 

@@ -58,7 +58,8 @@ identity in the Windows/Linux producer appropriate to the actual job.
 The producer records original baseline bytes once per changed file, real binary
 Git diff, file before/after digests and byte counts, and source-owned identity
 configuration/patch digests. The reader replays the diff and the declared
-transform composition with Git and verifies actual row data; a self-declared
+transform composition with Git and verifies actual row data and final modes
+(including generated version metadata); a self-declared
 diff digest alone is insufficient. Unknown nonignored untracked source files
 are rejected; declared new compatibility/identity files are explicitly included
 in the diff. Build outputs/dependencies and secret signing credentials keep their
@@ -71,8 +72,13 @@ limits, not a measured process-RSS claim. No unsigned workflow consumes signing
 secrets. Windows checkout uses LF with autocrlf disabled before the submodule's
 first checkout, and a failed overlay command stops the step before pnpm.
 `POLARIS_UNSIGNED_CLIENT=1` is confined to that unsigned Windows build/receipt;
-it disables required signing in the builder and skips only daemon/native
-signing, retaining their presence checks. Signed mode keeps strict signing.
+it uses electron-builder 26.15.3 `signExecutable: false` with
+`forceCodeSigning: false`, covering main EXE and NSIS installer/uninstaller
+`signIf` calls while preserving executable resource editing and the project
+`afterSign` ASAR/fuse checks. It also skips daemon/native signing while retaining
+their presence checks. `signAndEditExecutable` is not disabled. Signed mode keeps
+strict signing. The source control applies overlays to complete pinned original
+client files, rather than searching only replacement snippets.
 
 Android retains both original variants and their minSDK ranges. API21/22 reject
 explicit interface binding before resolving Network/loading the isolated API23
