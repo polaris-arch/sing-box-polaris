@@ -864,22 +864,22 @@ jobs:
           actual_baseline=$(git rev-parse --verify "refs/polaris/upstream-baseline^{commit}")
           test "$actual_baseline" = "$BASE_COMMIT"
           git merge-base --is-ancestor "$BASE_COMMIT" HEAD
-          # The tracked sing-tun replacement is an independent Go module.
-          # Keep it out of root package arguments and test its native packages
-          # from its own module root; ./... respects OS build constraints.
-          packages=$(git diff --name-only "$BASE_COMMIT..HEAD" -- '*.go' ':!third_party/sing-tun/**' | xargs -r -n1 dirname | sort -u | sed 's#^#./#')
-          if [ -z "$packages" ]; then
+          # Partition every changed Go/input path by its actual go.mod owner.
+          # Unknown modules fail closed instead of silently losing coverage.
+          python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
+          selection_dir="$RUNNER_TEMP/polaris-ci/patch-test-packages"
+          python3 -B scripts/ci/patch_test_packages.py --base "$BASE_COMMIT" --output-directory "$selection_dir"
+          mapfile -t packages < "$selection_dir/root-packages.txt"
+          if [ "${#packages[@]}" -eq 0 ]; then
             echo "no root Go package changed since $BASE_REF"
           else
-            echo "$packages"
-            # shellcheck disable=SC2086
+            printf '%s\n' "${packages[@]}"
             go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
               -tags "$(cat release/DEFAULT_BUILD_TAGS),with_purego" \
-              -ldflags "$(cat release/LDFLAGS)" $packages | tee test.log
+              -ldflags "$(cat release/LDFLAGS)" "${packages[@]}" | tee test.log
             grep -q '^ok' test.log
           fi
-          nested=$(git diff --name-only "$BASE_COMMIT..HEAD" -- 'third_party/sing-tun/*.go')
-          if [ -n "$nested" ]; then
+          if [ -f "$selection_dir/sing-tun-selected" ]; then
             grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod
             tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
             (cd third_party/sing-tun && go test -race -count=1 \
@@ -889,6 +889,12 @@ jobs:
             (cd third_party/sing-tun && go test -race -count=1 -v -tags "$tags" \
               -run '^TestPing$/^(ipv4|ipv6)$/^unprivileged$' ./ping) | tee sing-tun-unprivileged-ping.log
             grep -q '^ok' sing-tun-unprivileged-ping.log
+          fi
+          if [ -f "$selection_dir/metacubex-utls-selected" ]; then
+            grep -qx 'module github.com/metacubex/utls' third_party/metacubex-utls/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            (cd third_party/metacubex-utls && go test -race -count=1 -tags "$tags" ./...) | tee metacubex-utls-test.log
+            grep -q '^ok' metacubex-utls-test.log
           fi
           POLARIS_COMMAND
           python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-patch-tests-0 \

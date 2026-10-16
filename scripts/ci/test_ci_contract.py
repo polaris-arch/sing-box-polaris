@@ -101,33 +101,92 @@ class TestCIContract(unittest.TestCase):
   text=(ROOT/'scripts/ci/native_release_index.py').read_text()
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
- def test_lint_compatibility_exclusion_is_exactly_scoped(self):
+ def lint_rules(self):
   config=yaml.safe_load((ROOT/'.golangci.yml').read_text())
-  self.assertIn('staticcheck',config['linters']['enable'])
-  self.assertIn('unused',config['linters']['enable'])
-  self.assertIn('modernize',config['linters']['enable'])
+  for name in ['staticcheck','unused','modernize']:self.assertIn(name,config['linters']['enable'])
   checks=config['linters']['settings']['staticcheck']['checks']
-  self.assertIn('all',checks);self.assertNotIn('-SA1019',checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),1)
-  rule=rules[0];self.assertEqual(rule['linters'],['staticcheck'])
+  self.assertIn('all',checks)
+  for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),2)
+  by_code={code:[r for r in rules if r['text'].startswith('^'+code+':')] for code in ['SA1019','ST1008']}
+  for matches in by_code.values():self.assertEqual(len(matches),1)
+  return {code:matches[0] for code,matches in by_code.items()}
+ def rule_matches(self,rule,linter,path,text,source=''):
+  return (linter in rule['linters'] and re.search(rule['path'],path) is not None
+          and re.search(rule['text'],text) is not None
+          and ('source' not in rule or re.search(rule['source'],source) is not None))
+ def test_http2_compatibility_exclusion_is_exactly_scoped(self):
+  rule=self.lint_rules()['SA1019'];self.assertEqual(set(rule),{'linters','path','text'})
+  self.assertEqual(rule['linters'],['staticcheck'])
   allowed={
    'common/httpclient/http2_config.go','common/httpclient/http2_fallback_transport.go',
    'common/httpclient/http2_transport.go','common/tls/reality_client.go',
+   'dns/transport/https_transport.go',
    'transport/http/client.go','transport/http/client_h2_wrap.go',
    'transport/http/server.go','transport/http/server_h2.go',
-   'transport/v2raygrpclite/client.go','transport/v2rayhttp/client.go',
-   'transport/v2rayhttp/force_close.go','transport/v2rayhttp/force_close_go127.go',
-   'transport/v2rayhttp/server.go'}
+   'transport/v2raygrpclite/client.go','transport/v2raygrpclite/server.go',
+   'transport/v2rayhttp/client.go','transport/v2rayhttp/force_close.go',
+   'transport/v2rayhttp/force_close_go127.go','transport/v2rayhttp/server.go'}
+  self.assertEqual(len(allowed),15)
   path=re.compile(rule['path']);text=re.compile(rule['text'])
   matched={p.relative_to(ROOT).as_posix() for p in ROOT.rglob('*.go') if path.search(p.relative_to(ROOT).as_posix())}
   self.assertEqual(matched,allowed)
-  self.assertIsNotNone(text.search('SA1019: (*golang.org/x/net/http2.Transport).RoundTrip is deprecated'))
+  message='SA1019: (*golang.org/x/net/http2.Transport).RoundTrip is deprecated'
+  for name in allowed:self.assertTrue(self.rule_matches(rule,'staticcheck',name,message))
   for negative in ['SA4006: this value is never used','SA1019: unrelated.API is deprecated',
-                   'ST1008: error result order','SA1019: golang.org/x/net/http2evil.API is deprecated']:
+                   'ST1008: error should be returned as the last argument',
+                   'SA1019: golang.org/x/net/http2evil.API is deprecated']:
    self.assertIsNone(text.search(negative))
-  for negative in ['unrelated.go','other/transport/http/client.go','transport/http/new_path.go']:
+  for negative in ['box.go','unrelated.go','other/transport/http/client.go',
+                   'transport/http/new_path.go','dns/transport/https_transport_extra.go',
+                   'transport/v2raygrpclite/server_extra.go']:
    self.assertIsNone(path.search(negative))
+  self.assertFalse(self.rule_matches(rule,'unused','transport/http/client.go',message))
+ def test_public_compatibility_result_order_exclusion_requires_all_four_fields(self):
+  rule=self.lint_rules()['ST1008'];self.assertEqual(set(rule),{'linters','path','text','source'})
+  self.assertEqual(rule['linters'],['staticcheck'])
+  signature='func NewWithConstructionReport(options Options) (instance *Box, err error, report ConstructionReport) {'
+  actual=next(s for s in (ROOT/'box.go').read_text().splitlines() if s.startswith('func NewWithConstructionReport('))
+  self.assertEqual(actual,signature)
+  message='ST1008: error should be returned as the last argument'
+  self.assertTrue(self.rule_matches(rule,'staticcheck','box.go',message,signature))
+  for linter in ['unused','modernize']:
+   self.assertFalse(self.rule_matches(rule,linter,'box.go',message,signature))
+  for name in ['other.go','sub/box.go','box.go.backup']:
+   self.assertFalse(self.rule_matches(rule,'staticcheck',name,message,signature))
+  for text in ['SA4006: this value is never used','ST1008: another message',message+' extra']:
+   self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',text,signature))
+  for source in [signature.replace('NewWithConstructionReport','New'),
+                 signature.replace('options Options','other Options'),
+                 signature.replace('instance *Box','instance Box'),
+                 signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
+                 'return instance, err, report',signature+' // another line']:
+   self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
+ def test_lint_collects_uncapped_diagnostics_and_retains_failure_status(self):
   lint=yaml.safe_load((ROOT/'.github/workflows/lint.yml').read_text())
-  action=next(s for s in lint['jobs']['build']['steps'] if s.get('uses','').startswith('golangci/golangci-lint-action@'))
+  job=lint['jobs']['build']
+  action=next(s for s in job['steps'] if s.get('uses','').startswith('golangci/golangci-lint-action@'))
   self.assertEqual(action['with']['version'],'v2.15.0')
+  self.assertEqual(action['with']['args'],'--timeout=30m --max-same-issues=0 --max-issues-per-linter=0')
+  self.assertFalse(job.get('continue-on-error',False));self.assertFalse(action.get('continue-on-error',False))
+ def test_patch_queue_selection_and_each_owned_module_remain_wired(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/polaris-selfcheck.yml').read_text())
+  steps=w['jobs']['patch_tests']['steps']
+  command=next(s['run'] for s in steps if s.get('name')=='Test packages changed by the queue')
+  self.assertIn("python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'",command)
+  self.assertIn('scripts/ci/patch_test_packages.py --base "$BASE_COMMIT"',command)
+  self.assertIn('mapfile -t packages < "$selection_dir/root-packages.txt"',command)
+  self.assertIn('"${packages[@]}" | tee test.log',command)
+  self.assertNotIn("| xargs -r -n1 dirname",command)
+  for marker in ['sing-tun-selected','metacubex-utls-selected']:
+   self.assertIn('"$selection_dir/'+marker+'"',command)
+  self.assertIn("grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod",command)
+  self.assertIn("grep -qx 'module github.com/metacubex/utls' third_party/metacubex-utls/go.mod",command)
+  self.assertIn('cd third_party/metacubex-utls && go test -race -count=1 -tags "$tags" ./...',command)
+  self.assertIn('"^($INSTANCE_TESTS)\\$"',command)
+  self.assertIn('"^($SING_TUN_INSTANCE_TESTS)\\$"',command)
+  self.assertIn("-run '^TestPing$/^(ipv4|ipv6)$/^unprivileged$' ./ping",command)
+  instance=next(s for s in steps if s.get('name')=='Test instances in process')
+  self.assertEqual(instance['if'],'${{ inputs.run_instance_tests }}')
+  self.assertIn('"^($INSTANCE_TESTS)\\$"',instance['run'])
 if __name__=='__main__':unittest.main()

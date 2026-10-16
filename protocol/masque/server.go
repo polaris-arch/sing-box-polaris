@@ -76,11 +76,9 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		options.HTTP3Options.InitialPacketSize = min(int(options.MTU)+masque.QUICPacketOverhead, math.MaxUint16)
 	}
 	serverEndpoint := &ServerEndpoint{
-		endpointBase: endpointBase{
-			Adapter: endpoint.NewAdapter(C.TypeMASQUEServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
-			router:  router,
-			logger:  logger,
-		},
+		Adapter:        endpoint.NewAdapter(C.TypeMASQUEServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
+		router:         router,
+		logger:         logger,
 		ctx:            ctx,
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
 		http3:          serveHTTP3,

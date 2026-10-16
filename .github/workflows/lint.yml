@@ -52,7 +52,7 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       with:
         version: v2.15.0
-        args: --timeout=30m
+        args: --timeout=30m --max-same-issues=0 --max-issues-per-linter=0
         install-mode: binary
         verify: false
 'on':

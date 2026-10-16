@@ -50,6 +50,7 @@ func decodeProfileFields(raw []byte) ([]decodedProfileField, error) {
 	}
 	return fields, nil
 }
+
 func decodedProfileIntegers(f decodedProfileField) ([]uint64, error) {
 	if f.wire == 0 {
 		return []uint64{f.value}, nil
@@ -68,6 +69,7 @@ func decodedProfileIntegers(f decodedProfileField) ([]uint64, error) {
 	}
 	return result, nil
 }
+
 func requireDecodedHeapProfile(t *testing.T, raw []byte) {
 	t.Helper()
 	fields, err := decodeProfileFields(raw)

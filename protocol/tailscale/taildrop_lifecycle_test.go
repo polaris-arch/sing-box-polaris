@@ -55,13 +55,11 @@ func TestTaildropAdmissionSealRace(t *testing.T) {
 		m := lifecycleManager(t)
 		var workers sync.WaitGroup
 		for range 16 {
-			workers.Add(1)
-			go func() {
-				defer workers.Done()
+			workers.Go(func() {
 				if m.beginIO() {
 					m.endIO()
 				}
-			}()
+			})
 		}
 		m.close()
 		workers.Wait()

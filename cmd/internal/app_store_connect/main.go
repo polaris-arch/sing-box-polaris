@@ -494,8 +494,8 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 		log.Info(string(platform), " ", versionString, " create en-US localization")
 		_, _, err = client.Apps.CreateAppStoreVersionLocalization(ctx, asc.AppStoreVersionLocalizationCreateRequestAttributes{
 			Locale:          "en-US",
-			PromotionalText: common.Ptr(appStorePromotionalText),
-			WhatsNew:        common.Ptr(appStoreWhatsNew),
+			PromotionalText: new(appStorePromotionalText),
+			WhatsNew:        new(appStoreWhatsNew),
 		}, version.ID)
 		if err != nil {
 			return err
@@ -504,7 +504,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 		localization.Attributes.WhatsNew == nil || *localization.Attributes.WhatsNew != appStoreWhatsNew {
 		log.Info(string(platform), " ", versionString, " update en-US localization")
 		_, _, err = client.Apps.UpdateAppStoreVersionLocalization(ctx, localization.ID, &asc.AppStoreVersionLocalizationUpdateRequestAttributes{
-			PromotionalText: common.Ptr(appStorePromotionalText),
+			PromotionalText: new(appStorePromotionalText),
 			WhatsNew:        common.Ptr(appStoreWhatsNew),
 		})
 		if err != nil {

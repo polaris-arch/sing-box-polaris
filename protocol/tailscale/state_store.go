@@ -108,7 +108,7 @@ func (s *guardedStateStore) initialized() (delegate ipn.StateStore, err error) {
 		return s.delegate, nil
 	}
 	if s.factoryFailed {
-		return nil, errors.New("Tailscale state store initialization failed")
+		return nil, errors.New("tailscale state store initialization failed")
 	}
 	s.factoryAttempted = true
 	// A panic preserves its original propagation and marks possible construction
@@ -120,11 +120,11 @@ func (s *guardedStateStore) initialized() (delegate ipn.StateStore, err error) {
 	}()
 	canonical, err := canonicalStateDirectory(s.node.StateDirectory)
 	if err != nil || canonical != s.node.StateDirectory || !s.scopeValid {
-		return nil, errors.New("Tailscale state scope changed before initialization")
+		return nil, errors.New("tailscale state scope changed before initialization")
 	}
 	delegate, err = s.factory()
 	if err != nil || delegate == nil {
-		return nil, errors.New("Tailscale state store initialization failed")
+		return nil, errors.New("tailscale state store initialization failed")
 	}
 	s.delegate = delegate
 	return delegate, nil

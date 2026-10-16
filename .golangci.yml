@@ -39,11 +39,16 @@ linters:
     rules:
       # Keep the existing x/net HTTP/2 dialing, ALPN, pooling and close paths.
       # A stdlib transport migration needs separate behavior validation. Limit
-      # this temporary exception to these APIs in the 13 reviewed files;
+      # this temporary exception to these APIs in the 15 reviewed files;
       # every other staticcheck code and every other path stays enabled.
       - linters: [staticcheck]
-        path: '^(common/httpclient/http2_(config|fallback_transport|transport)\.go|common/tls/reality_client\.go|transport/http/(client|client_h2_wrap|server|server_h2)\.go|transport/v2raygrpclite/client\.go|transport/v2rayhttp/(client|force_close|force_close_go127|server)\.go)$'
+        path: '^(common/httpclient/http2_(config|fallback_transport|transport)\.go|common/tls/reality_client\.go|dns/transport/https_transport\.go|transport/http/(client|client_h2_wrap|server|server_h2)\.go|transport/v2raygrpclite/(client|server)\.go|transport/v2rayhttp/(client|force_close|force_close_go127|server)\.go)$'
         text: '^SA1019:.*golang\.org/x/net/http2\.'
+      # Preserve the public compatibility result order; match only this declaration.
+      - linters: [staticcheck]
+        path: '^box\.go$'
+        text: '^ST1008: error should be returned as the last argument$'
+        source: '^func NewWithConstructionReport\(options Options\) \(instance \*Box, err error, report ConstructionReport\) \{$'
     paths:
       - transport/simple-obfs
       - \.pb\.go$

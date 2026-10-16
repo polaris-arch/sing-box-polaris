@@ -124,8 +124,7 @@ func (f *v3Fixture) accept(listener net.Listener, handle func(net.Conn)) {
 				return
 			}
 			_ = c.SetDeadline(time.Now().Add(8 * time.Second))
-			f.workers.Add(1)
-			go func() { defer f.workers.Done(); defer f.connections.Delete(c); defer c.Close(); handle(c) }()
+			f.workers.Go(func() { defer f.connections.Delete(c); defer c.Close(); handle(c) })
 		}
 	})
 }

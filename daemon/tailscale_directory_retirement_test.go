@@ -2,9 +2,10 @@ package daemon
 
 import (
 	"errors"
-	"github.com/sagernet/sing-box/adapter"
 	"path/filepath"
 	"testing"
+
+	"github.com/sagernet/sing-box/adapter"
 )
 
 func TestDirectoryCensusRejectsForeignAndDuplicateOwners(t *testing.T) {

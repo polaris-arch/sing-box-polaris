@@ -22,7 +22,7 @@ func awaitDNSFinished(t *testing.T, finished <-chan struct{}) {
 func TestDNSBackgroundRegistrationStopsWithoutPermanentWaiter(t *testing.T) {
 	before := runtime.NumGoroutine()
 	var invoked atomic.Int32
-	for i := 0; i < 2000; i++ {
+	for range 2000 {
 		registration := newDNSCancelRegistration(context.Background(), func() error { invoked.Add(1); return nil })
 		awaitDNSFinished(t, registration.stopAndDetach())
 		registration.access.Lock()
@@ -83,7 +83,7 @@ func TestDNSRunningCancellationStopWaitsForActualExit(t *testing.T) {
 }
 
 func TestDNSCancellationRegistrationRaceAndPanicCompletion(t *testing.T) {
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		ctx, cancel := context.WithCancel(context.Background())
 		var invoked atomic.Int32
 		registration := newDNSCancelRegistration(ctx, func() error { invoked.Add(1); return nil })
@@ -176,7 +176,7 @@ func TestDNSCallbackCannotSelfJoinAndRetainsLeaseUntilExit(t *testing.T) {
 }
 
 func TestDNSAdmissionAndSealRace(t *testing.T) {
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		var gate dnsCallGate
 		start := make(chan struct{})
 		admitted := make(chan *dnsCallLease, 1)

@@ -121,11 +121,9 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		return nil, err
 	}
 	clientEndpoint := &ClientEndpoint{
-		endpointBase: endpointBase{
-			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeMASQUEClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-			router:  router,
-			logger:  logger,
-		},
+		Adapter:   endpoint.NewAdapterWithDialerOptions(C.TypeMASQUEClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+		router:    router,
+		logger:    logger,
 		ctx:       ctx,
 		dnsRouter: service.FromContext[adapter.DNSRouter](ctx),
 		mtu:       options.MTU,

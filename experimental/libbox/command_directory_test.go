@@ -2,9 +2,10 @@ package libbox
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-	"testing"
 )
 
 func TestDirectorySourceIdentityExact(t *testing.T) {

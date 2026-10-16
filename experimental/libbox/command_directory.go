@@ -3,6 +3,7 @@ package libbox
 import (
 	"encoding/json"
 	"errors"
+
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 )

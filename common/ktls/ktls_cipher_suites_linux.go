@@ -230,7 +230,6 @@ func kernelCipher(kernel *Support, hc *badtls.RawHalfConn, cipherSuite uint16, i
 	var err error
 	if *hc.Version == tls.VersionTLS13 {
 		key, iv, err = hc.TrafficKey(cipherSuite, *hc.TrafficSecret)
-
 	} else {
 		return nil
 	}
