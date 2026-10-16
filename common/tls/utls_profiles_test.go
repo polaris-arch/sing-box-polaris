@@ -7,13 +7,11 @@ import (
 	"context"
 	"crypto/sha256"
 	stdtls "crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	utls "github.com/refraction-networking/utls"
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/logger"
 	"io"
 	"net"
 	"reflect"
@@ -21,6 +19,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/logger"
+
+	utls "github.com/refraction-networking/utls"
 )
 
 func TestUTLSMappedProfilesAreRealAndMatchSchema(t *testing.T) {
@@ -120,6 +123,7 @@ func profileExchange(t *testing.T, config Config, serverConfig *stdtls.Config, i
 	}
 	done := make(chan result, 1)
 	go func() {
+		defer server.Close()
 		wire, err := firstTLSRecord(server)
 		if err != nil {
 			done <- result{wire, err}
@@ -412,5 +416,72 @@ func TestUTLSRealECHHandshakeAndSessionIDConflict(t *testing.T) {
 				t.Fatalf("ECH/sessionID conflict not rejected: %v", err)
 			}
 		})
+	}
+}
+
+func TestUTLSHostnameAndMutualTLS(t *testing.T) {
+	serverCert := newPinnedTestCertificate(t, "localhost")
+	clientCert := newPinnedTestCertificate(t, "client.invalid")
+	for _, name := range []string{"chrome_155", "safari_26_3"} {
+		t.Run(name, func(t *testing.T) {
+			server := &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}, ClientAuth: stdtls.RequireAnyClientCert,
+				VerifyPeerCertificate: func(raw [][]byte, _ [][]*x509.Certificate) error {
+					if len(raw) != 1 || !bytes.Equal(raw[0], clientCert.Certificate.Certificate[0]) {
+						return errors.New("wrong mutual TLS identity")
+					}
+					return nil
+				}}
+			good := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}, ClientCertificate: []string{clientCert.certificatePEM}, ClientKey: []string{clientCert.privateKeyPEM}})
+			if _, _, err := profileExchange(t, good, server, false); err != nil {
+				t.Fatal(err)
+			}
+			missing := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}})
+			if _, _, err := profileExchange(t, missing, server, false); err == nil {
+				t.Fatal("missing client identity admitted")
+			}
+			wrongHost := profileClient(t, name, option.OutboundTLSOptions{ServerName: "wrong.invalid", Certificate: []string{serverCert.certificatePEM}})
+			if _, _, err := profileExchange(t, wrongHost, &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}}, false); err == nil {
+				t.Fatal("wrong server hostname admitted")
+			}
+		})
+	}
+}
+
+func TestUTLSConcurrentWaitingHandshakeCancellation(t *testing.T) {
+	c := profileClient(t, "chrome_155", option.OutboundTLSOptions{ServerName: "localhost", Insecure: true})
+	left, right := net.Pipe()
+	defer right.Close()
+	_ = left.SetDeadline(time.Now().Add(5 * time.Second))
+	_ = right.SetDeadline(time.Now().Add(5 * time.Second))
+	wrapped, err := c.Client(left)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := make(chan error, 1)
+	wire := make(chan error, 1)
+	go func() { first <- wrapped.HandshakeContext(context.Background()) }()
+	go func() { _, err := firstTLSRecord(right); wire <- err }()
+	if err := <-wire; err != nil {
+		left.Close()
+		<-first
+		t.Fatal(err)
+	}
+	second := make(chan error, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { second <- wrapped.HandshakeContext(ctx) }()
+	cancel()
+	select {
+	case err := <-second:
+		if !errors.Is(err, context.Canceled) {
+			t.Error("waiting cancellation lost", err)
+		}
+	case <-time.After(time.Second):
+		t.Error("canceled caller remained blocked behind handshake")
+	}
+	left.Close()
+	select {
+	case <-first:
+	case <-time.After(time.Second):
+		t.Error("original handshake did not retire")
 	}
 }

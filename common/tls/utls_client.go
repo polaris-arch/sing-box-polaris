@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -174,17 +175,33 @@ type utlsALPNWrapper struct {
 	sessionIDGenerator func([]byte, []byte) error
 	realECH            bool
 	handshakeMu        sync.Mutex
+	handshakeComplete  atomic.Bool
 }
 
-func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) error {
-	c.handshakeMu.Lock()
-	defer c.handshakeMu.Unlock()
-	if c.ConnectionState().HandshakeComplete {
+func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) (ret error) {
+	if c.handshakeComplete.Load() {
 		return nil
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	// Install cancellation before waiting for preparation. A canceled concurrent
+	// caller must not remain blocked behind another connection handshake.
+	stop := context.AfterFunc(ctx, func() { _ = c.NetConn().Close() })
+	defer func() {
+		if !stop() {
+			ret = ctx.Err()
+		}
+	}()
+	c.handshakeMu.Lock()
+	defer c.handshakeMu.Unlock()
+	if c.handshakeComplete.Load() {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if c.sessionIDGenerator != nil && c.realECH {
 		return E.New("ShadowTLS session ID authentication cannot be combined with real ECH")
 	}
@@ -215,7 +232,15 @@ func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) error {
 			return err
 		}
 	}
-	return c.Conn.HandshakeContext(ctx)
+	ret = c.Conn.HandshakeContext(ctx)
+	if ret == nil {
+		c.handshakeComplete.Store(true)
+	}
+	return ret
+}
+
+func (c *utlsALPNWrapper) Handshake() error {
+	return c.HandshakeContext(context.Background())
 }
 
 func (c *utlsALPNWrapper) Read(b []byte) (int, error) {

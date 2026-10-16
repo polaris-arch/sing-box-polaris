@@ -210,7 +210,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 		fmt.Printf("REALITY uConn.AuthKey: %v\n", authKey)
 	}
 
-	err = uConn.HandshakeContext(ctx)
+	// Authenticate exactly the prepared raw ClientHello. Rebuilding it after
+	// sealing the session ID can change GREASE/ECH bytes covered by the AAD.
+	err = uConn.Conn.HandshakeContext(ctx)
 	if err != nil {
 		return nil, err
 	}

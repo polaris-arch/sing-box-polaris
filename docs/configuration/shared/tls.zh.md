@@ -622,6 +622,14 @@ X25519MLKEM768；REALITY 认证仍使用经典 X25519，两处混合组过滤均
 能力 JSON 的机器 schema 位于 `release/ci/tls-fingerprint-capabilities.schema.json`。
 进程重启后应重新查询；不可跨进程缓存 random 的具体抽取结果。
 
+固定 gomobile v0.1.13 将接口映射为 Java
+`Libbox.tlsFingerprintCapabilities()`（返回 String，抛 Exception），以及 ObjC
+`LibboxTLSFingerprintCapabilities(NSError **error)`（返回 NSString 指针）。
+生成器标注 `_Nonnull`，但错误路径会返回 nil；须同时检查 NSError 和返回对象。
+生成声明不能证明旧的 loaded libbox 有该符号，应安全解析/查询实际加载库，缺符号
+即能力不可用，不按版本猜测。producer 检查真实生成头、静态导出与 Java 声明，
+最终 App 的链接、符号保留和加载仍需单独观察。
+
 ### ECH 字段
 
 ECH (Encrypted Client Hello) 是一个 TLS 扩展，它允许客户端加密其 ClientHello 的第一部分信息。

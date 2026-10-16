@@ -12,6 +12,11 @@
       "filename": "go1.27.2.darwin-arm64.tar.gz",
       "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5",
       "bytes": 68195916
+    },
+    "darwin-amd64": {
+      "filename": "go1.27.2.darwin-amd64.tar.gz",
+      "sha256": "587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe",
+      "bytes": 71695284
     }
   },
   "legacy": {
@@ -46,5 +51,29 @@
       ],
       "appliedAgainst": "go1.27.2; zero fuzz, Windows root_windows.go offset6 only; actual build/platform validation pending"
     }
+  },
+  "iosCPU": {
+    "patch": ".github/go_ios_cpu_features.patch",
+    "patchSHA256": "d828e92f552764952a07b0002f3d0827c915a61d4aef68cde2bb7832c6c958d3",
+    "before": {
+      "src/internal/cpu/cpu_arm64_other.go": "810f3fed4a62636bc78b5896eccdcc46ba78129b13f4fe200ffa7285042cf0ba",
+      "src/internal/cpu/cpu_arm64_ios.go": null
+    },
+    "after": {
+      "src/internal/cpu/cpu_arm64_other.go": "4e2fbc29055e8607d16fb17a4572c83daab876787f7eada3555dea625b1b4d1e",
+      "src/internal/cpu/cpu_arm64_ios.go": "c3d9e06f0bc502d078ebb13847d4e5e9517b5879946cfe63f6b29b12a470e7f6"
+    },
+    "features": [
+      "AES",
+      "PMULL",
+      "SHA1",
+      "SHA2"
+    ],
+    "notAsserted": [
+      "ATOMICS",
+      "SHA512",
+      "SHA3"
+    ],
+    "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f"
   }
 }

@@ -646,6 +646,16 @@ reports these boundaries; it does not claim a successful handshake.
 groups. ShadowTLS v3 session-ID authentication together with real ECH is explicitly
 rejected; ordinary ECH remains a separate supported path requiring peer support.
 
+The pinned gomobile v0.1.13 generator maps the mobile query to Java
+`Libbox.tlsFingerprintCapabilities()` (String, throws Exception) and the ObjC
+function `LibboxTLSFingerprintCapabilities(NSError **error)` (NSString pointer).
+The generator annotates the string `_Nonnull` but its error path returns nil;
+check the error and returned object. A generated declaration is not proof that
+an old loaded library contains the symbol. Resolve/query the loaded library
+without inferring availability from a version; missing symbols mean unavailable
+capabilities. The producer checks the actual generated headers, static exports
+and Java declaration, while final App linkage/loading is a separate observation.
+
 ### ECH Fields
 
 ECH (Encrypted Client Hello) is a TLS extension that allows a client to encrypt the first part of its ClientHello

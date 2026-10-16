@@ -34,6 +34,47 @@ jobs:
       run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
     - name: Execute actual SDK and fork retirement gates
       run: python3 scripts/ci/g4_candidate.py
+  utls_gate:
+    name: Concentrated Go and uTLS compatibility (${{ matrix.os }})
+    if: inputs.build == 'Source'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+      GOMAXPROCS: '2'
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install capability schema validator
+      run: python -m pip install jsonschema==4.23.0
+    - name: Run raced protocol, crypto and actual selected-core gates
+      run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
+    - name: Measure whole-migration binary and idle RSS costs
+      if: always() && matrix.os == 'ubuntu-24.04'
+      run: python scripts/ci/utls_cost.py --output "${{ runner.temp }}/tls-fingerprint-evidence/cost"
+    - name: Preserve original commands, logs, identities and necessary binaries
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: utls-source-${{ matrix.os }}
+        path: ${{ runner.temp }}/tls-fingerprint-evidence
+        if-no-files-found: error
+        retention-days: 7
   calculate_version:
     if: inputs.build != 'Source'
     name: Calculate version
@@ -299,7 +340,7 @@ jobs:
       with:
         path: |
           ~/go/go_win7
-        key: go_win7_1272-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
+        key: go_win7_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
     - name: Setup Go for Windows 7
       if: matrix.legacy_win7
       env:
@@ -573,6 +614,7 @@ jobs:
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
+        cp ../release/licenses/TLS-DEPENDENCY-NOTICES.txt "${DIR_NAME}"
         if [ '${{ matrix.os }}' = 'windows' ]; then
           cp sing-box "${DIR_NAME}/sing-box.exe"
           zip -r "${DIR_NAME}.zip" "${DIR_NAME}"
@@ -645,7 +687,7 @@ jobs:
       with:
         path: |
           ~/go/go_osx
-        key: go_osx_1272-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/macos1013.patch', '.github/setup_legacy_go.py') }}
+        key: go_osx_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/macos1013.patch', '.github/setup_legacy_go.py') }}
     - name: Setup Go for macOS 10.13
       if: matrix.legacy_osx
       env:
@@ -698,6 +740,7 @@ jobs:
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
+        cp ../release/licenses/TLS-DEPENDENCY-NOTICES.txt "${DIR_NAME}"
         cp sing-box "${DIR_NAME}"
         tar -czvf "${DIR_NAME}.tar.gz" "${DIR_NAME}"
         rm -r "${DIR_NAME}"
@@ -799,6 +842,7 @@ jobs:
         $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
         mkdir "dist/$DIR_NAME"
         Copy-Item LICENSE "dist/$DIR_NAME"
+        Copy-Item release/licenses/TLS-DEPENDENCY-NOTICES.txt "dist/$DIR_NAME"
         Copy-Item "dist/sing-box.exe" "dist/$DIR_NAME"
         Copy-Item "dist/libcronet.dll" "dist/$DIR_NAME"
         Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
@@ -809,6 +853,7 @@ jobs:
         $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
         mkdir "dist/$DIR_NAME"
         Copy-Item LICENSE "dist/$DIR_NAME"
+        Copy-Item release/licenses/TLS-DEPENDENCY-NOTICES.txt "dist/$DIR_NAME"
         Copy-Item "dist/sing-box.exe" "dist/$DIR_NAME"
         Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
         Remove-Item -Recurse "dist/$DIR_NAME"
@@ -885,6 +930,7 @@ jobs:
         make lib_install
         export PATH="$PATH:$(go env GOPATH)/bin"
         go run ./cmd/internal/build_libbox -target android -platform android/${{ matrix.go_arch }}
+        python3 scripts/ci/mobile_fingerprint_exports.py android libbox.aar libbox-legacy.aar --arch ${{ matrix.go_arch }}
         mkdir -p dist/${{ matrix.go_arch }}
         mv libbox.aar libbox-legacy.aar dist/${{ matrix.go_arch }}
       env:
@@ -1329,6 +1375,7 @@ jobs:
         make lib_install
         export PATH="$PATH:$(go env GOPATH)/bin"
         go run ./cmd/internal/build_libbox -target apple -platform ${{ matrix.platform }}
+        python3 scripts/ci/mobile_fingerprint_exports.py apple Libbox.xcframework
         mkdir -p dist
         tar -cf dist/Libbox-${{ matrix.artifact }}.tar Libbox.xcframework
     - name: Record actual unsigned candidate files
@@ -1796,6 +1843,11 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: native
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install selected-core capability validator
+      run: python -m pip install jsonschema==4.23.0
     - name: Execute final-package Cronet smoke
       run: python scripts/ci/native_release_index.py smoke native
     - name: Upload actual smoke receipt

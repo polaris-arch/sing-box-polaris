@@ -52,13 +52,9 @@ func (c *Conn) handleKeyUpdate(keyUpdate *keyUpdateMsg) error {
 	//	return c.in.setErrorLocked(errors.New("tls: received unexpected key update message"))
 	//}
 
-	cipherSuite := cipherSuiteTLS13ByID(*c.rawConn.CipherSuite)
-	if cipherSuite == nil {
+	if err := c.rawConn.In.AdvanceTrafficSecret(*c.rawConn.CipherSuite, 0 /* QUICEncryptionLevelInitial */); err != nil {
 		return c.rawConn.In.SetErrorLocked(c.sendAlert(alertInternalError))
 	}
-
-	newSecret := nextTrafficSecret(cipherSuite, *c.rawConn.In.TrafficSecret)
-	c.rawConn.In.SetTrafficSecret(cipherSuite, 0 /*tls.QUICEncryptionLevelInitial*/, newSecret)
 
 	err := c.resetupRX()
 	if err != nil {
@@ -88,8 +84,9 @@ func (c *Conn) handleKeyUpdate(keyUpdate *keyUpdateMsg) error {
 			return nil
 		}
 
-		newSecret := nextTrafficSecret(cipherSuite, *c.rawConn.Out.TrafficSecret)
-		c.rawConn.Out.SetTrafficSecret(cipherSuite, 0 /*QUICEncryptionLevelInitial*/, newSecret)
+		if err := c.rawConn.Out.AdvanceTrafficSecret(*c.rawConn.CipherSuite, 0 /* QUICEncryptionLevelInitial */); err != nil {
+			return c.rawConn.Out.SetErrorLocked(err)
+		}
 
 		err = resetup()
 		if err != nil {

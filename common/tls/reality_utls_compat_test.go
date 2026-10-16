@@ -10,13 +10,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	meta "github.com/metacubex/utls"
-	"github.com/sagernet/sing-box/option"
-	"github.com/sagernet/sing/common/logger"
 	"io"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/logger"
+
+	meta "github.com/metacubex/utls"
 )
 
 // A controlled TLS1.3 camouflage endpoint and the actual MetaCubeX REALITY

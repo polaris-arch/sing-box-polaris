@@ -68,4 +68,23 @@ class TestCIContract(unittest.TestCase):
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
   self.assertEqual(w['permissions']['contents'],'read')
+ def test_go_utls_gate_is_part_of_one_existing_source_dispatch(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  gate=w['jobs']['utls_gate']
+  self.assertEqual(gate['if'],"inputs.build == 'Source'")
+  self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15'])
+  self.assertFalse(gate['strategy']['fail-fast'])
+  self.assertTrue(any(s.get('with',{}).get('go-version-file')=='release/GO_VERSION' for s in gate['steps']))
+  self.assertTrue(any('utls_gate.py' in s.get('run','') for s in gate['steps']))
+  cost=next(s for s in gate['steps'] if 'utls_cost.py' in s.get('run',''))
+  self.assertEqual(cost['if'],"always() && matrix.os == 'ubuntu-24.04'")
+ def test_new_capability_and_mobile_checks_use_original_product_jobs(self):
+  for name in ['build.yml','signed-release.yml']:
+   w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
+   for job,mode in [('build_android_library','android'),('build_apple_library','apple')]:
+    self.assertTrue(any('mobile_fingerprint_exports.py '+mode in s.get('run','') for s in w['jobs'][job]['steps']))
+   self.assertTrue(any('jsonschema==4.23.0' in s.get('run','') for s in w['jobs']['native_smoke']['steps']))
+  text=(ROOT/'scripts/ci/native_release_index.py').read_text()
+  self.assertIn('expected_sha=row[',text)
+  self.assertIn('expected_modules=modules',text)
 if __name__=='__main__':unittest.main()

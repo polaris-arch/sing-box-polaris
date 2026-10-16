@@ -2,7 +2,7 @@
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import shutil
 import subprocess
@@ -37,6 +37,29 @@ def toolchain_input(mode, host):
     return manifest, entry, patch, archive, hashlib.sha256(raw).hexdigest()
 
 
+def verify_cached_toolchain(target, host, identity):
+    measured = json.loads((target / 'polaris-toolchain.json').read_text())
+    if any(measured.get(k) != v for k, v in identity.items()):
+        raise RuntimeError('restored compatibility toolchain input mismatch; do not reuse this cache')
+    expected = {'bin/go', 'pkg/tool/' + host.replace('-', '_') + '/link'}
+    if set(measured.get('executables', {})) != expected:
+        raise RuntimeError('restored toolchain executable inventory mismatch')
+    for path, digest in measured['executables'].items():
+        if (target / path).is_symlink() or file_hash(target / path) != digest:
+            raise RuntimeError('restored toolchain executable mismatch')
+    return measured
+
+
+def require_archive_members(members):
+    if len(members) > 25000 or sum(m.size for m in members) > 1024 ** 3:
+        raise RuntimeError('official Go archive exceeds extraction budget')
+    for member in members:
+        path = PurePosixPath(member.name)
+        if (not path.parts or path.parts[0] != 'go' or path.is_absolute() or '..' in path.parts
+                or member.size < 0 or not (member.isfile() or member.isdir())):
+            raise RuntimeError('unexpected official Go archive layout')
+
+
 def main(mode):
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('GITHUB_REPOSITORY') != 'polaris-arch/sing-box-polaris':
         raise RuntimeError('legacy toolchain installation is restricted to the owned CI runner')
@@ -50,21 +73,15 @@ def main(mode):
     if target.is_symlink():
         raise RuntimeError("toolchain target must not be a symlink")
     if target.exists():
-        measured = json.loads(marker.read_text())
-        if any(measured.get(k) != v for k, v in identity.items()):
-            raise RuntimeError('restored compatibility toolchain input mismatch; do not reuse this cache')
-        expected_executables = {'bin/go', 'pkg/tool/' + host.replace('-', '_') + '/link'}
-        if set(measured.get('executables', {})) != expected_executables:
-            raise RuntimeError('restored toolchain executable inventory mismatch')
-        for path, digest in measured['executables'].items():
-            if file_hash(target / path) != digest:
-                raise RuntimeError('restored toolchain executable mismatch')
+        measured = verify_cached_toolchain(target, host, identity)
         print(json.dumps({'cacheValidated': True, **measured}, sort_keys=True))
         return
     runner_temp = Path(os.environ['RUNNER_TEMP']).resolve()
     if shutil.disk_usage(runner_temp).free < 11 * 1024 ** 3:
         raise RuntimeError("legacy toolchain requires 3GiB growth plus 8GiB headroom")
     target.parent.mkdir(parents=True, exist_ok=True)
+    if shutil.disk_usage(target.parent).free < 11 * 1024 ** 3:
+        raise RuntimeError('toolchain target filesystem lacks 3GiB growth plus 8GiB headroom')
     with tempfile.TemporaryDirectory(prefix='polaris-go-compat-', dir=runner_temp) as scratch_name:
         scratch = Path(scratch_name)
         downloaded = scratch / archive['filename']
@@ -81,15 +98,13 @@ def main(mode):
         bootstrap.mkdir()
         with tarfile.open(downloaded) as tar:
             members = tar.getmembers()
-            if len(members) > 25000 or sum(m.size for m in members) > 1024 ** 3:
-                raise RuntimeError('official Go archive exceeds extraction budget')
-            if any(not (m.name == 'go' or m.name.startswith('go/')) or m.issym() or m.islnk() for m in members):
-                raise RuntimeError('unexpected official Go archive layout')
+            require_archive_members(members)
             tar.extractall(bootstrap, members=members, filter='data')
         shutil.copytree(bootstrap / 'go', target)
         env = dict(os.environ, GOTOOLCHAIN='local', GOROOT_BOOTSTRAP=str(bootstrap / 'go'),
                    GOROOT_FINAL=str(target), GOMAXPROCS='2')
         env.pop('GOROOT', None)
+        env['GOOS'], env['GOARCH'] = host.split('-')
         # Source-only changes to cmd/link do not modify the shipped linker binary.
         # Rebuild all tools from the patched sources rather than reporting an
         # unpatched linker as legacy-compatible.

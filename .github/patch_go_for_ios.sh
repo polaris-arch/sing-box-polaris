@@ -1,34 +1,32 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
-
-# Go's internal/cpu never detects ARM64 features on GOOS=ios, so crypto/aes,
-# AES-GCM and crypto/sha256 use their generic implementations on iOS and tvOS.
-# See https://github.com/SagerNet/sing-box/issues/4486
-#
-# Only the ARMv8.0 cryptographic extensions are asserted; ARMv8.1 atomics and
-# SHA-512 are absent on the A8/A9 devices still supported by the deployment targets.
-#
-# Remove once the Go release used by the Apple library build includes the fix.
-
+# Keep only ARMv8.0 crypto features for supported A8/A9 devices. No atomics/SHA512.
+# Validate exact source state; an existing filename alone is not a cache receipt.
 export GOTOOLCHAIN=local
-
+SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GOROOT="$(go env GOROOT)"
-PATCH_FILE="$(cd "$(dirname "$0")" && pwd)/go_ios_cpu_features.patch"
-
-cd "$GOROOT"
-if [[ -f src/internal/cpu/cpu_arm64_ios.go ]]; then
-  echo "already patched"
-else
-  patch --verbose -p1 < "$PATCH_FILE"
-fi
-
+export SOURCE_ROOT GOROOT
+python3 - <<'PY'
+import hashlib,json,os,subprocess
+from pathlib import Path
+root=Path(os.environ['SOURCE_ROOT']);goroot=Path(os.environ['GOROOT'])
+manifest=json.loads((root/'.github/go-toolchains.json').read_text());entry=manifest['iosCPU']
+if subprocess.check_output(['go','env','GOVERSION'],text=True).strip()!='go'+manifest['version']:
+    raise RuntimeError('Apple CPU patch requires exact source-owned Go version')
+patch=root/entry['patch']
+if hashlib.sha256(patch.read_bytes()).hexdigest()!=entry['patchSHA256']:
+    raise RuntimeError('Apple CPU patch input hash mismatch')
+def matches(expected):
+    return all((hashlib.sha256((goroot/p).read_bytes()).hexdigest() if (goroot/p).is_file() else None)==h for p,h in expected.items())
+if matches(entry['before']):
+    subprocess.run(['patch','--batch','--fuzz=0','-p1','-i',str(patch)],cwd=goroot,check=True)
+if not matches(entry['after']):
+    raise RuntimeError('Apple CPU source is partial, unexpected or corrupt')
+print(json.dumps({'appleCPUSourceVerified':True,'goVersion':manifest['version'],'features':entry['features']}))
+PY
 CPU_FILES="$(GOOS=ios GOARCH=arm64 CGO_ENABLED=0 go list -f '{{.GoFiles}}' internal/cpu)"
 echo "internal/cpu files for ios/arm64: $CPU_FILES"
 case "$CPU_FILES" in
-*cpu_arm64_ios.go*) ;;
-*)
-  echo "patch is not effective" >&2
-  exit 1
-  ;;
+  *cpu_arm64_ios.go*) ;;
+  *) echo 'Apple CPU patch is not effective' >&2; exit 1 ;;
 esac

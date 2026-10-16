@@ -1,8 +1,9 @@
 package libbox
 
 import (
-	"github.com/sagernet/sing-box/common/tls"
 	"testing"
+
+	"github.com/sagernet/sing-box/common/tls"
 )
 
 func TestTLSFingerprintCapabilitiesMatchCoreContract(t *testing.T) {

@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	C "github.com/sagernet/sing-box/constant"
 	"runtime"
 	"runtime/debug"
 	"strings"
+
+	C "github.com/sagernet/sing-box/constant"
 )
 
 type FingerprintProfile struct {
