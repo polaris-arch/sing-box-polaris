@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-shadowtls"
 	"github.com/sagernet/sing/common"
+	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -39,6 +40,10 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		options.Version = 1
 	}
 
+	if options.Version == 3 && options.TLS.ECH != nil && options.TLS.ECH.Enabled {
+		return nil, E.New("ShadowTLS session ID authentication cannot be combined with real ECH")
+	}
+
 	if options.Version == 1 {
 		options.TLS.MinVersion = "1.2"
 		options.TLS.MaxVersion = "1.2"
@@ -55,10 +60,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return common.Error(tls.ClientHandshake(ctx, conn, tlsConfig))
 		}
 	case 3:
-		if idConfig, loaded := tlsConfig.(tls.WithSessionIDGenerator); loaded {
+		if _, loaded := tlsConfig.(tls.WithSessionIDGenerator); loaded {
 			tlsHandshakeFunc = func(ctx context.Context, conn net.Conn, sessionIDGenerator shadowtls.TLSSessionIDGeneratorFunc) error {
+				// A generator authenticates one connection; never mutate shared config.
+				connectionConfig := tlsConfig.Clone()
+				idConfig, ok := connectionConfig.(tls.WithSessionIDGenerator)
+				if !ok {
+					return E.New("TLS clone lost session ID generator support")
+				}
 				idConfig.SetSessionIDGenerator(sessionIDGenerator)
-				return common.Error(tls.ClientHandshake(ctx, conn, tlsConfig))
+				return common.Error(tls.ClientHandshake(ctx, conn, connectionConfig))
 			}
 		} else {
 			stdTLSConfig, err := tlsConfig.STDConfig()

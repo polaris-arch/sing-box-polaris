@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -22,7 +23,7 @@ import (
 	"github.com/sagernet/sing/common/ntp"
 	"github.com/sagernet/sing/service/filemanager"
 
-	utls "github.com/metacubex/utls"
+	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
 )
 
@@ -34,6 +35,7 @@ type UTLSClientConfig struct {
 	verifyServerName      bool
 	handshakeTimeout      time.Duration
 	id                    utls.ClientHelloID
+	sessionIDGenerator    func([]byte, []byte) error
 	fragment              bool
 	fragmentFallbackDelay time.Duration
 	recordFragment        bool
@@ -90,11 +92,11 @@ func (c *UTLSClientConfig) Client(conn net.Conn) (Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &utlsALPNWrapper{utlsConnWrapper{utls.UClient(conn, c.config.Clone(), c.id)}, c.config.NextProtos}, nil
+	return &utlsALPNWrapper{utlsConnWrapper: utlsConnWrapper{utls.UClient(conn, c.config.Clone(), c.id)}, nextProtocols: c.config.NextProtos, sessionIDGenerator: c.sessionIDGenerator, realECH: len(c.config.EncryptedClientHelloConfigList) > 0}, nil
 }
 
 func (c *UTLSClientConfig) SetSessionIDGenerator(generator func(clientHello []byte, sessionID []byte) error) {
-	c.config.SessionIDGenerator = generator
+	c.sessionIDGenerator = generator
 }
 
 func (c *UTLSClientConfig) Clone() Config {
@@ -106,6 +108,7 @@ func (c *UTLSClientConfig) Clone() Config {
 		verifyServerName:      c.verifyServerName,
 		handshakeTimeout:      c.handshakeTimeout,
 		id:                    c.id,
+		sessionIDGenerator:    c.sessionIDGenerator,
 		fragment:              c.fragment,
 		fragmentFallbackDelay: c.fragmentFallbackDelay,
 		recordFragment:        c.recordFragment,
@@ -136,6 +139,8 @@ func (c *utlsConnWrapper) ConnectionState() tls.ConnectionState {
 		HandshakeComplete:           state.HandshakeComplete,
 		DidResume:                   state.DidResume,
 		CipherSuite:                 state.CipherSuite,
+		CurveID:                     tls.CurveID(state.CurveID),
+		ECHAccepted:                 state.ECHAccepted,
 		NegotiatedProtocol:          state.NegotiatedProtocol,
 		NegotiatedProtocolIsMutual:  state.NegotiatedProtocolIsMutual,
 		ServerName:                  state.ServerName,
@@ -152,36 +157,79 @@ func (c *utlsConnWrapper) Upstream() any {
 }
 
 func (c *utlsConnWrapper) ReaderReplaceable() bool {
-	return true
+	return c.ConnectionState().HandshakeComplete
 }
 
 func (c *utlsConnWrapper) WriterReplaceable() bool {
-	return true
+	return c.ConnectionState().HandshakeComplete
 }
 
+// Preparation uses public UConn state and Conn.HandshakeContext. Calling the
+// latter after preparation deliberately avoids UConn's second BuildHandshakeState,
+// which would regenerate an ECH outer hello after the ShadowTLS authenticator.
+// Conn retains uTLS's installed handshakeFn, cancellation, verification and locks.
 type utlsALPNWrapper struct {
 	utlsConnWrapper
-	nextProtocols []string
+	nextProtocols      []string
+	sessionIDGenerator func([]byte, []byte) error
+	realECH            bool
+	handshakeMu        sync.Mutex
 }
 
 func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) error {
+	c.handshakeMu.Lock()
+	defer c.handshakeMu.Unlock()
+	if c.ConnectionState().HandshakeComplete {
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if c.sessionIDGenerator != nil && c.realECH {
+		return E.New("ShadowTLS session ID authentication cannot be combined with real ECH")
+	}
+	if err := c.BuildHandshakeState(); err != nil {
+		return err
+	}
 	if len(c.nextProtocols) > 0 {
-		err := c.BuildHandshakeState()
-		if err != nil {
-			return err
-		}
 		for _, extension := range c.Extensions {
-			if alpnExtension, isALPN := extension.(*utls.ALPNExtension); isALPN {
-				alpnExtension.AlpnProtocols = c.nextProtocols
-				err = c.BuildHandshakeState()
-				if err != nil {
-					return err
-				}
+			if alpn, ok := extension.(*utls.ALPNExtension); ok {
+				alpn.AlpnProtocols = c.nextProtocols
 				break
 			}
 		}
+		if err := c.BuildHandshakeState(); err != nil {
+			return err
+		}
 	}
-	return c.UConn.HandshakeContext(ctx)
+	if c.sessionIDGenerator != nil {
+		hello := c.HandshakeState.Hello
+		hello.SessionId = make([]byte, 32)
+		if err := c.MarshalClientHello(); err != nil {
+			return err
+		}
+		if err := c.sessionIDGenerator(hello.Raw, hello.SessionId); err != nil {
+			return E.Cause(err, "generate TLS session ID")
+		}
+		if err := c.MarshalClientHello(); err != nil {
+			return err
+		}
+	}
+	return c.Conn.HandshakeContext(ctx)
+}
+
+func (c *utlsALPNWrapper) Read(b []byte) (int, error) {
+	if err := c.HandshakeContext(context.Background()); err != nil {
+		return 0, err
+	}
+	return c.UConn.Read(b)
+}
+
+func (c *utlsALPNWrapper) Write(b []byte) (int, error) {
+	if err := c.HandshakeContext(context.Background()); err != nil {
+		return 0, err
+	}
+	return c.UConn.Write(b)
 }
 
 func NewUTLSClient(ctx context.Context, logger logger.ContextLogger, serverAddress string, options option.OutboundTLSOptions) (Config, error) {
@@ -199,6 +247,9 @@ func newUTLSClient(ctx context.Context, logger logger.ContextLogger, serverAddre
 		return nil, errMissingServerName
 	}
 
+	if len(options.CurvePreferences) > 0 {
+		return nil, E.New("curve_preferences is unsupported with uTLS; key exchange groups belong to the selected fingerprint")
+	}
 	var tlsConfig utls.Config
 	tlsConfig.Time = ntp.TimeFuncFromContext(ctx)
 	tlsConfig.RootCAs = adapter.RootPoolFromContext(ctx)
@@ -369,30 +420,24 @@ func init() {
 }
 
 func uTLSClientHelloID(name string) (utls.ClientHelloID, error) {
-	switch name {
-	case "chrome_psk", "chrome_psk_shuffle", "chrome_padding_psk_shuffle", "chrome_pq", "chrome_pq_psk":
-		fallthrough
-	case "chrome", "":
-		return utls.HelloChrome_Auto, nil
-	case "firefox":
-		return utls.HelloFirefox_Auto, nil
-	case "edge":
-		return utls.HelloEdge_Auto, nil
-	case "safari":
-		return utls.HelloSafari_Auto, nil
-	case "360":
-		return utls.Hello360_Auto, nil
-	case "qq":
-		return utls.HelloQQ_Auto, nil
-	case "ios":
-		return utls.HelloIOS_Auto, nil
-	case "android":
-		return utls.HelloAndroid_11_OkHttp, nil
-	case "random":
-		return randomFingerprint, nil
-	case "randomized":
-		return randomizedFingerprint, nil
-	default:
-		return utls.ClientHelloID{}, E.New("unknown uTLS fingerprint: ", name)
+	if name == "" {
+		name = "chrome"
 	}
+	if name == "random" {
+		return randomFingerprint, nil
+	}
+	if name == "randomized" {
+		return randomizedFingerprint, nil
+	}
+	for _, profile := range utlsProfiles {
+		if profile.ID == name {
+			return profile.Hello, nil
+		}
+	}
+	for _, alias := range utlsLegacyAliases {
+		if alias == name {
+			return utls.HelloChrome_Auto, nil
+		}
+	}
+	return utls.ClientHelloID{}, E.New("unknown uTLS fingerprint: ", name)
 }

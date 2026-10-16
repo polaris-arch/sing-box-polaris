@@ -582,6 +582,70 @@ Available fingerprint values:
 
 Chrome fingerprint will be used if empty.
 
+### Runtime fingerprint capabilities
+
+Query the exact selected executable with `sing-box tools tls-fingerprints`.
+Mobile callers use `libbox.TLSFingerprintCapabilities()` on the library actually
+loaded by the process. Both return `polaris-tls-fingerprint-capabilities-v1` JSON.
+A packaged version string does not identify the running helper or loaded library.
+
+The `profiles` array supplies accepted JSON `id`, `displayName`, actual template
+`client` and `templateVersion`, `selection`, and nullable
+`templateOffersX25519MLKEM768`. In this source revision the browser mappings are:
+
+| JSON ID | Template |
+| --- | --- |
+| `chrome`, `chrome_155` | Chrome 155 |
+| `chrome_133` | Chrome 133 |
+| `firefox`, `firefox_148` | Firefox 148 |
+| `firefox_120` | Firefox 120 |
+| `safari`, `safari_26_3` | Safari 26.3 |
+| `safari_16_0` | Safari 16.0 |
+| `edge` | Edge 85 |
+| `360` | 360 7.5 |
+| `qq` | QQ 11.1 |
+| `ios` | iOS 14 |
+| `android` | Android 11 OkHttp |
+
+These version labels identify the pinned library templates, not a guarantee that
+all browser behavior is reproduced. Auto aliases can change with a future core;
+read the selected core's response rather than assuming this table applies to it.
+The five `legacyChromeAliases` still select Chrome Auto. Explicit Safari 15.3/15.5
+IDs do not exist. `random` selects one browser Auto template per process; restarting
+a libbox service within that process does not reselect it. Query again after a
+process restart; do not persist the concrete random draw across processes. Its response records
+the selected template. `randomized` uses a process-scoped seeded generator, not
+a browser draw, and does not guarantee a different fingerprint per connection.
+
+An empty fingerprint selects `defaultFingerprint` (`chrome`). `default`,
+`disabled`, `none`, and `follow` are not fingerprint IDs: a caller implementing
+those preferences must resolve them before serialization. Disable uTLS with
+`utls.enabled=false`; default uTLS uses `enabled=true` and an omitted fingerprint.
+Without the `with_utls` build tag, `enabled=false` and `profiles` is empty.
+
+The same response includes `coreVersion`, `sourceCommit`, nullable
+`sourceModified`, actual runtime `goVersion`, informational `requiredGoVersion`,
+`buildTags`, `os`, `arch`, and linked uTLS `modules` with version, h1 sum and any
+replacement. Clean producers stamp the source commit even with `-trimpath` or
+`-buildvcs=false`; conflicting stamps are errors. Unavailable build metadata stays
+empty/null rather than being inferred from the version. Some mobile linkers omit
+module metadata. The response is a capability description, not a signature or a
+hash of its own executable. Bind it to the actual core file SHA-256 (or loaded
+mobile artifact identity), checked producer source/build receipts and actual
+BuildID. Cache by that selected artifact identity, and invalidate on a helper,
+source, library, or build change. Missing or unsupported queries on upstream,
+testing or custom old cores do not prove this fork's capabilities.
+
+A template offer is distinct from a negotiated connection. Chrome 155 advertises
+ML-DSA signature algorithms and Trust Anchors; this is not proof of an ML-DSA
+certificate or successful PQ authentication. Ordinary TLS may negotiate
+X25519MLKEM768 with a supporting peer. REALITY authentication remains classical:
+X25519MLKEM768 is removed from both supported groups and key shares. The response
+reports these boundaries; it does not claim a successful handshake.
+`curve_preferences` with uTLS is rejected because the selected template owns its
+groups. ShadowTLS v3 session-ID authentication together with real ECH is explicitly
+rejected; ordinary ECH remains a separate supported path requiring peer support.
+
 ### ECH Fields
 
 ECH (Encrypted Client Hello) is a TLS extension that allows a client to encrypt the first part of its ClientHello

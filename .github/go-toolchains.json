@@ -1,0 +1,50 @@
+{
+  "version": "1.27.2",
+  "officialCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+  "sourceURL": "https://go.dev/dl/?mode=json",
+  "archives": {
+    "linux-amd64": {
+      "filename": "go1.27.2.linux-amd64.tar.gz",
+      "sha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5",
+      "bytes": 70590635
+    },
+    "darwin-arm64": {
+      "filename": "go1.27.2.darwin-arm64.tar.gz",
+      "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5",
+      "bytes": 68195916
+    }
+  },
+  "legacy": {
+    "windows7": {
+      "target": "go_win7",
+      "patch": ".github/patches/go1.27.2/windows7.patch",
+      "patchSHA256": "3a499f685fd31c5197a29aeabd88bada36df0c08a5add56d44e9a9540cbb9a57",
+      "sourceRepository": "MetaCubeX/go",
+      "sourceCommits": [
+        "5bea096a8d38bcc2f7b29a423a2d7a677e7257b4",
+        "2fd9d96c8897586872cf00e335dad7d0e2d32601",
+        "51cbeef333241001a1106fbeeb7c7ef80054dac2",
+        "4fd81ff5c9844620e836e8d2052e082ac26484f0",
+        "2924464d68627505f876d4d275bf8432dbf81da5",
+        "5c36850df445d11d557c3d995e15a3ac159749ea",
+        "51c81072acbed32e4331026bc6ca308a3a495039"
+      ],
+      "appliedAgainst": "go1.27.2; zero fuzz, Windows root_windows.go offset6 only; actual build/platform validation pending"
+    },
+    "macos1013": {
+      "target": "go_osx",
+      "patch": ".github/patches/go1.27.2/macos1013.patch",
+      "patchSHA256": "431105096270056e305ebfe9dbcf62113bbcd245db4bf752fea49b310198ffe1",
+      "sourceRepository": "MetaCubeX/go",
+      "sourceCommits": [
+        "e515bdaa0a718950bfe427cc8488d1872b25240d",
+        "05330c9934b907f0fb7ff51c90d03cadb45c8246",
+        "79be7711a9490392bfa109a378ba287827c624e3",
+        "64f733bb77ba6369206d214633e18666007f36d1",
+        "6f035b951513a7076b30d446a76e0de8e5a962cb",
+        "c130b84646b4e4c5c2833371a0ad0bc3b3117b10"
+      ],
+      "appliedAgainst": "go1.27.2; zero fuzz, Windows root_windows.go offset6 only; actual build/platform validation pending"
+    }
+  }
+}

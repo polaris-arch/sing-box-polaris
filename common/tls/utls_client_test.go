@@ -9,7 +9,7 @@ import (
 
 	tf "github.com/sagernet/sing-box/common/tlsfragment"
 
-	utls "github.com/metacubex/utls"
+	utls "github.com/refraction-networking/utls"
 	"github.com/stretchr/testify/require"
 )
 

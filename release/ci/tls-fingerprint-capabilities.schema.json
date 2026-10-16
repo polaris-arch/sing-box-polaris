@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "polaris-tls-fingerprint-capabilities-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "coreVersion",
+    "sourceCommit",
+    "goVersion",
+    "requiredGoVersion",
+    "buildTags",
+    "os",
+    "arch",
+    "defaultFingerprint",
+    "randomSemantics",
+    "randomizedSemantics",
+    "realityX25519MLKEM768",
+    "negotiationEvidence",
+    "schema",
+    "enabled",
+    "sourceModified",
+    "shadowTLSSessionIDWithECHSupported",
+    "curvePreferencesSupported",
+    "modules",
+    "profiles",
+    "legacyChromeAliases"
+  ],
+  "properties": {
+    "coreVersion": {
+      "type": "string"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40})?$"
+    },
+    "goVersion": {
+      "type": "string"
+    },
+    "requiredGoVersion": {
+      "type": "string"
+    },
+    "buildTags": {
+      "type": "string"
+    },
+    "os": {
+      "type": "string"
+    },
+    "arch": {
+      "type": "string"
+    },
+    "defaultFingerprint": {
+      "type": "string"
+    },
+    "randomSemantics": {
+      "type": "string"
+    },
+    "randomizedSemantics": {
+      "type": "string"
+    },
+    "realityX25519MLKEM768": {
+      "type": "string"
+    },
+    "negotiationEvidence": {
+      "type": "string"
+    },
+    "schema": {
+      "const": "polaris-tls-fingerprint-capabilities-v1"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "sourceModified": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "shadowTLSSessionIDWithECHSupported": {
+      "const": false
+    },
+    "curvePreferencesSupported": {
+      "const": false
+    },
+    "modules": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "displayName",
+          "client",
+          "templateVersion",
+          "selection",
+          "templateOffersX25519MLKEM768"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "random",
+              "randomized",
+              "chrome",
+              "chrome_155",
+              "chrome_133",
+              "firefox",
+              "firefox_148",
+              "firefox_120",
+              "edge",
+              "safari",
+              "safari_26_3",
+              "safari_16_0",
+              "360",
+              "qq",
+              "ios",
+              "android"
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "client": {
+            "type": "string"
+          },
+          "templateVersion": {
+            "type": "string"
+          },
+          "selection": {
+            "enum": [
+              "profile",
+              "process-browser",
+              "process-seeded-generator"
+            ]
+          },
+          "templateOffersX25519MLKEM768": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "legacyChromeAliases": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "chrome_psk",
+          "chrome_psk_shuffle",
+          "chrome_padding_psk_shuffle",
+          "chrome_pq",
+          "chrome_pq_psk"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "version",
+        "sum"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "sum": {
+          "type": "string"
+        },
+        "replace": {
+          "$ref": "#/$defs/module"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "enabled": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "profiles": {
+            "maxItems": 0
+          },
+          "legacyChromeAliases": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ]
+}

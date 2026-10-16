@@ -78,7 +78,7 @@ defaults:
 
 env:
   SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
-  GO_VERSION: '1.25.5'
+  GO_VERSION: '1.27.2'
   GOTOOLCHAIN: local
   BASE_REF: ${{ inputs.base_ref || 'v1.15.0-alpha.12' }}
   BASE_COMMIT: ${{ inputs.base_commit || '25b0d5ea3e466d246c708ac0f20d0448110e566c' }}
