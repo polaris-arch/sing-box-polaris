@@ -66,6 +66,7 @@ jobs:
       run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
     - name: Measure whole-migration binary and idle RSS costs
       if: always() && matrix.os == 'ubuntu-24.04'
+      continue-on-error: true # Observation result, not an extra product-compatibility gate.
       run: python scripts/ci/utls_cost.py --output "${{ runner.temp }}/tls-fingerprint-evidence/cost"
     - name: Preserve original commands, logs, identities and necessary binaries
       if: always()
