@@ -30,3 +30,7 @@ third_party/metacubex-utls/SECURITY.md whitespace=-blank-at-eol
 third_party/metacubex-utls/dicttls/README.md whitespace=-blank-at-eol
 third_party/metacubex-utls/internal/cpu/cpu_s390x.s whitespace=-blank-at-eof
 third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=-space-before-tab
+
+# Source-identity module files must have identical raw bytes on every checkout.
+/go.mod text eol=lf
+/go.sum text eol=lf

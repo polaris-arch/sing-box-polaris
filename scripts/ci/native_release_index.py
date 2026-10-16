@@ -61,7 +61,26 @@ def buildinfo(core):
    graph['normalModules'].remove(x);graph['prebuiltAcquisitionModules'].append(x)
  return go,raw,graph
 
+def source_module_hashes():
+ hashes={}
+ for name,key in [('go.mod','goModSha256'),('go.sum','goSumSha256')]:
+  actual=Path(name).read_bytes()
+  committed=subprocess.check_output(['git','show','HEAD:'+name])
+  if actual!=committed:raise ValueError(name+' working-tree bytes differ from HEAD blob')
+  hashes[key]=sha(actual)
+ return hashes
+
+def validate_archived_source_identity(rows,source_tar,commit):
+ expected=source_module_hashes();prefix='sing-box-polaris-source-'+commit+'/'
+ with tarfile.open(fileobj=io.BytesIO(source_tar),mode='r:') as archive:
+  archived={key:sha(archive.extractfile(prefix+name).read()) for name,key in [('go.mod','goModSha256'),('go.sum','goSumSha256')]}
+ if archived!=expected:raise ValueError('archived module bytes differ from checked source')
+ for row in rows:
+  identity=row.get('sourceIdentity',{})
+  if any(identity.get(key)!=value for key,value in archived.items()):raise ValueError('native row module identity differs from archived source: '+row['id'])
+
 def source_identity():
+ hashes=source_module_hashes()
  mod=json.loads(run('go','mod','edit','-json'));replacements=[]
  for r in mod.get('Replace',[]) or []:
   new=r['New']
@@ -69,7 +88,7 @@ def source_identity():
   path=new['Path']
   if not path.startswith('./') or '..' in PurePosixPath(path).parts:raise ValueError('non-repository local replacement')
   replacements.append({'module':r['Old']['Path'],'path':path,'tree':git('rev-parse','HEAD:'+path[2:])})
- return {'sourceOverlay':0,'goModSha256':sha(Path('go.mod').read_bytes()),'goSumSha256':sha(Path('go.sum').read_bytes()),'replacements':replacements}
+ return {'sourceOverlay':0,**hashes,'replacements':replacements}
 
 def expected_native(version):
  validate_version(version)
@@ -177,6 +196,7 @@ def assemble(directory):
  # Source archive is the exact committed kernel tree, including tracked replacements/materials.
  source_name=f'sing-box-polaris-source-{commit}.tar.gz';source=d/source_name
  tar=subprocess.check_output(['git','archive','--format=tar','--prefix',f'sing-box-polaris-source-{commit}/',commit])
+ validate_archived_source_identity(rows.values(),tar,commit)
  with source.open('wb') as out:
   with gzip.GzipFile(filename='',mode='wb',fileobj=out,mtime=0) as gz:gz.write(tar)
  legal=[]
