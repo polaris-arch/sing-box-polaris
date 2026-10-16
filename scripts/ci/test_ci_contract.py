@@ -59,4 +59,13 @@ class TestCIContract(unittest.TestCase):
    checks=[x for x in job['steps'] if 'scripts/ci/release_identity.py' in x.get('run','')]
    self.assertEqual(len(checks),2)
    for step in checks:self.assertEqual(step['env']['EXPECTED_TAG_OBJECT'],'${{ needs.source.outputs.tag_object }}')
+ def test_existing_build_entry_can_run_pretag_source_gates_without_products(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
+  self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source'")
+  self.assertEqual(w['jobs']['calculate_version']['if'],"inputs.build != 'Source'")
+  gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
+  self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
+  self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
+  self.assertEqual(w['permissions']['contents'],'read')
 if __name__=='__main__':unittest.main()

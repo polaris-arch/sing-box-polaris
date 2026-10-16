@@ -3,7 +3,39 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
   cancel-in-progress: true
 jobs:
+  source_gate:
+    name: Concentrated G4 and CI source gates (${{ matrix.os }})
+    if: inputs.build == 'Source'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.5'
+        cache: true
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install source contract validators
+      run: python3 -m pip install PyYAML==6.0.2 jsonschema==4.23.0
+    - name: Execute concentrated CI contract controls
+      if: matrix.os == 'ubuntu-24.04'
+      run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+    - name: Execute actual SDK and fork retirement gates
+      run: python3 scripts/ci/g4_candidate.py
   calculate_version:
+    if: inputs.build != 'Source'
     name: Calculate version
     runs-on: ubuntu-latest
     outputs:
@@ -1888,6 +1920,7 @@ jobs:
         default: All
         options:
         - All
+        - Source
         - Binary
         - Android
         - Windows

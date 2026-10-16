@@ -47,7 +47,7 @@ The existing G4 source gate includes the five affected version packages in its s
 
 ## Source freeze and final-evidence sequence
 
-1. Freeze the complete candidate on the development branch. Complete its independent source review and concentrated G4/CI-contract source gates before starting the platform campaign.
+1. Freeze the complete candidate on the development branch. Complete its independent source review, then dispatch the existing `build.yml` entry at that SHA with `build=Source` and `evidence_mode=staging`. This runs the concentrated G4/CI-contract gates on Linux/macOS without tags or product builds. The added source-only menu choice retains every original product choice and matrix. It also works while the new standalone source workflow files are not yet on the default branch.
 2. Create the reviewed annotated `v1.15.0-polaris-alpha.12` exactly once, directly targeting that same source commit. Never move or recreate it. A full build does not create a tag.
 3. Dispatch unsigned All at that exact SHA with `evidence_mode=final`, the Linux package workflow with the same version/SHA, and Docker with the same tag/SHA. All preflights the annotated tag before product builds; Docker checks out the dispatch SHA in each actual binary and image job, compares the captured tag object, and rechecks before uploading artifacts.
 4. Final index assembly validates the preflight tag object again and emits the final schema. `evidence_mode=staging` always emits staging with `tagObject=null`, even if a matching tag exists. It is useful only for candidate checks. Neither GitHub publisher nor signed GitHub publication admits staging as a formal release input.

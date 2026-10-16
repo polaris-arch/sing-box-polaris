@@ -6,7 +6,7 @@ The independently added `POLARIS-BRANDING.md` and GitHub-only publisher describe
 
 ## Implemented entries
 
-- build.yml: manual-only unsigned full artifacts. All upstream CLI/client/library matrices remain. Android, Windows and macOS unsigned adapters are checked against exact upstream client git blobs and fail on unknown source. Apple store targets produce unsigned xcarchive.tar; these are build evidence, not installable IPA/pkg or store acceptance.
+- build.yml: manual-only unsigned full artifacts, with a pre-tag `Source` mode for the concentrated Linux/macOS G4 and CI-contract gates. All upstream CLI/client/library matrices remain. Android, Windows and macOS unsigned adapters are checked against exact upstream client git blobs and fail on unknown source. Apple store targets produce unsigned xcarchive.tar; these are build evidence, not installable IPA/pkg or store acceptance.
 - linux.yml: manual unsigned repository packages; docker.yml: all nine container platforms as OCI archives (ten upstream binary build rows retained).
 - signed-release.yml: complete upstream signed recipe, including signed Apple store exports. All-only GitHub publication waits for every product job including store exports and includes both binary-* and signed-apple-store-* artifacts. Explicit publish_github and publish_stores default false. Existing releases are rejected; a new draft is uploaded and API size/digests verified before publication.
 - signed-linux.yml: eleven distro package rows with explicit owned Gemfury publication. publish-container.yml: full upstream image matrix with explicit owned GHCR publication. No upstream registry or package-account destination is used.

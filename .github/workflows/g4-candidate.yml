@@ -1,13 +1,11 @@
 name: G4 candidate source gates
 on:
-  push:
-    branches: [collab/g4-directory-retirement-20261016]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: g4-candidate-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   retirement:
     strategy:
