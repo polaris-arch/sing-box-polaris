@@ -3,3 +3,7 @@ release/desktop-source-candidate/receipts/windows-amd64-producer720ead-run380725
 release/desktop-source-candidate/receipts/windows-arm64-producer226e88-run38074825396.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 third_party/sing-tun/** -text
 release/dependency-sources/*.patch whitespace=-space-before-tab
+
+# Source-owned SHA-pinned patches must retain exact Git blob bytes on every host.
+/.github/patches/** -text
+/.github/go_ios_cpu_features.patch -text
