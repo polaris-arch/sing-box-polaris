@@ -5,6 +5,7 @@ import os
 from pathlib import Path, PurePosixPath
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -37,17 +38,60 @@ def toolchain_input(mode, host):
     return manifest, entry, patch, archive, hashlib.sha256(raw).hexdigest()
 
 
+def toolchain_files(target):
+    """Measure the complete fixed toolchain, not only the driver and linker."""
+    if target.is_symlink() or not target.is_dir():
+        raise RuntimeError('toolchain target must be an ordinary directory')
+    files = {}
+    total = 0
+    for directory, dirs, names in os.walk(target, followlinks=False):
+        for name in sorted(dirs + names):
+            path = Path(directory) / name
+            metadata = path.lstat()
+            if stat.S_ISLNK(metadata.st_mode):
+                raise RuntimeError('toolchain contains a symlink')
+            if stat.S_ISDIR(metadata.st_mode):
+                continue
+            relative = path.relative_to(target).as_posix()
+            if relative == 'polaris-toolchain.json':
+                continue
+            if not stat.S_ISREG(metadata.st_mode):
+                raise RuntimeError('toolchain contains a non-regular file')
+            total += metadata.st_size
+            if len(files) >= 50000 or total > 3 * 1024 ** 3:
+                raise RuntimeError('rebuilt toolchain exceeds fixed inventory budget')
+            files[relative] = {'sha256': file_hash(path), 'bytes': metadata.st_size,
+                               'mode': stat.S_IMODE(metadata.st_mode)}
+    return files
+
+
 def verify_cached_toolchain(target, host, identity):
-    measured = json.loads((target / 'polaris-toolchain.json').read_text())
+    marker = target / 'polaris-toolchain.json'
+    if target.is_symlink() or not target.is_dir():
+        raise RuntimeError('toolchain target must be an ordinary directory')
+    metadata = marker.lstat()
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 16 * 1024 ** 2:
+        raise RuntimeError('invalid toolchain identity file')
+    # This detects restored-file drift against the post-build inventory; the
+    # mutable cache and its marker are not independent provenance/signatures.
+    measured = json.loads(marker.read_text())
     if any(measured.get(k) != v for k, v in identity.items()):
         raise RuntimeError('restored compatibility toolchain input mismatch; do not reuse this cache')
-    expected = {'bin/go', 'pkg/tool/' + host.replace('-', '_') + '/link'}
-    if set(measured.get('executables', {})) != expected:
-        raise RuntimeError('restored toolchain executable inventory mismatch')
-    for path, digest in measured['executables'].items():
-        if (target / path).is_symlink() or file_hash(target / path) != digest:
-            raise RuntimeError('restored toolchain executable mismatch')
+    files = toolchain_files(target)
+    required = {'bin/go', 'bin/gofmt', 'VERSION', 'go.env', 'src/runtime/runtime2.go',
+                'src/os/root.go', 'src/cmd/compile/main.go', 'src/cmd/asm/main.go'}
+    required.update('pkg/tool/' + host.replace('-', '_') + '/' + tool for tool in ('compile', 'asm', 'link'))
+    if not required <= files.keys() or measured.get('files') != files:
+        raise RuntimeError('restored complete toolchain file inventory/content/mode mismatch')
     return measured
+
+
+def cache_summary(measured):
+    files = measured['files']
+    return {**{k: v for k, v in measured.items() if k != 'files'},
+            'fileCount': len(files), 'fileBytes': sum(row['bytes'] for row in files.values()),
+            'filesSHA256': hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+            'verificationScope': 'post-build input-bound cache consistency, not independent provenance against replacement of both marker and tree'}
 
 
 def require_archive_members(members):
@@ -69,12 +113,15 @@ def main(mode):
     marker = target / 'polaris-toolchain.json'
     identity = {'goVersion': 'go' + manifest['version'], 'manifestSHA256': manifest_hash,
                 'archiveSHA256': archive['sha256'], 'patchSHA256': entry['patchSHA256'],
-                'officialCommit': manifest['officialCommit'], 'patchSourceCommits': entry['sourceCommits']}
+                'officialCommit': manifest['officialCommit'], 'patchSourceCommits': entry['sourceCommits'],
+                'host': host, 'cacheFormat': 'complete-toolchain-files-v1',
+                'installerSHA256': file_hash(Path(__file__)),
+                'buildEnvironment': {'GOEXPERIMENT': '', 'GOAMD64': 'v1', 'GOENV': 'off', 'GOFLAGS': ''}}
     if target.is_symlink():
         raise RuntimeError("toolchain target must not be a symlink")
     if target.exists():
         measured = verify_cached_toolchain(target, host, identity)
-        print(json.dumps({'cacheValidated': True, **measured}, sort_keys=True))
+        print(json.dumps({'cacheValidated': True, **cache_summary(measured)}, sort_keys=True))
         return
     runner_temp = Path(os.environ['RUNNER_TEMP']).resolve()
     if shutil.disk_usage(runner_temp).free < 11 * 1024 ** 3:
@@ -104,7 +151,9 @@ def main(mode):
         env = dict(os.environ, GOTOOLCHAIN='local', GOROOT_BOOTSTRAP=str(bootstrap / 'go'),
                    GOROOT_FINAL=str(target), GOMAXPROCS='2')
         env.pop('GOROOT', None)
+        env.update(identity['buildEnvironment'])
         env['GOOS'], env['GOARCH'] = host.split('-')
+        env['GOHOSTOS'], env['GOHOSTARCH'] = host.split('-')
         # Source-only changes to cmd/link do not modify the shipped linker binary.
         # Rebuild all tools from the patched sources rather than reporting an
         # unpatched linker as legacy-compatible.
@@ -113,9 +162,10 @@ def main(mode):
         version = subprocess.check_output([str(target / 'bin/go'), 'env', 'GOVERSION'], env=env, text=True).strip()
         if version != identity['goVersion']:
             raise RuntimeError('rebuilt compatibility Go version mismatch')
-        identity['executables'] = {str(f.relative_to(target)): file_hash(f) for f in [target / 'bin/go', target / 'pkg/tool' / (host.replace('-', '_')) / 'link']}
+        identity['files'] = toolchain_files(target)
         marker.write_text(json.dumps(identity, sort_keys=True, indent=2) + '\n')
-        print(json.dumps({'cacheValidated': False, **identity}, sort_keys=True))
+        verify_cached_toolchain(target, host, {k: v for k, v in identity.items() if k != 'files'})
+        print(json.dumps({'cacheValidated': False, **cache_summary(identity)}, sort_keys=True))
 
 
 if __name__ == '__main__':

@@ -60,23 +60,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return common.Error(tls.ClientHandshake(ctx, conn, tlsConfig))
 		}
 	case 3:
-		if _, loaded := tlsConfig.(tls.WithSessionIDGenerator); loaded {
-			tlsHandshakeFunc = func(ctx context.Context, conn net.Conn, sessionIDGenerator shadowtls.TLSSessionIDGeneratorFunc) error {
-				// A generator authenticates one connection; never mutate shared config.
-				connectionConfig := tlsConfig.Clone()
-				idConfig, ok := connectionConfig.(tls.WithSessionIDGenerator)
-				if !ok {
-					return E.New("TLS clone lost session ID generator support")
-				}
-				idConfig.SetSessionIDGenerator(sessionIDGenerator)
-				return common.Error(tls.ClientHandshake(ctx, conn, connectionConfig))
-			}
-		} else {
-			stdTLSConfig, err := tlsConfig.STDConfig()
-			if err != nil {
-				return nil, err
-			}
-			tlsHandshakeFunc = shadowtls.DefaultTLSHandshakeFunc(options.Password, stdTLSConfig)
+		tlsHandshakeFunc, err = newV3TLSHandshake(tlsConfig, options.Password)
+		if err != nil {
+			return nil, err
 		}
 	}
 	outboundDialer, err := dialer.New(ctx, options.DialerOptions, options.ServerIsDomain())
@@ -96,6 +82,27 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	outbound.client = client
 	return outbound, nil
+}
+
+// Shared by the production outbound and its actual-v3 protocol regressions.
+// The authenticator belongs to one dial; the caller's TLS configuration is immutable.
+func newV3TLSHandshake(config tls.Config, password string) (shadowtls.TLSHandshakeFunc, error) {
+	if _, ok := config.(tls.WithSessionIDGenerator); ok {
+		return func(ctx context.Context, conn net.Conn, generator shadowtls.TLSSessionIDGeneratorFunc) error {
+			connectionConfig := config.Clone()
+			idConfig, ok := connectionConfig.(tls.WithSessionIDGenerator)
+			if !ok {
+				return E.New("TLS clone lost session ID generator support")
+			}
+			idConfig.SetSessionIDGenerator(generator)
+			return common.Error(tls.ClientHandshake(ctx, conn, connectionConfig))
+		}, nil
+	}
+	stdConfig, err := config.STDConfig()
+	if err != nil {
+		return nil, err
+	}
+	return shadowtls.DefaultTLSHandshakeFunc(password, stdConfig), nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {

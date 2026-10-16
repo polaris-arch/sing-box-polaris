@@ -656,6 +656,13 @@ without inferring availability from a version; missing symbols mean unavailable
 capabilities. The producer checks the actual generated headers, static exports
 and Java declaration, while final App linkage/loading is a separate observation.
 
+
+This migration's controlled regression covers ordinary TLS records and the
+owning-library TLS 1.3 traffic-secret/key derivation for std TLS, Meta and
+refraction. It does not establish a peer KeyUpdate exchange, kernel offload key
+reinstallation or complete kTLS runtime acceptance. Those paths need their actual
+platform observations before such an acceptance claim.
+
 ### ECH Fields
 
 ECH (Encrypted Client Hello) is a TLS extension that allows a client to encrypt the first part of its ClientHello

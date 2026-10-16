@@ -23,20 +23,64 @@ class ToolchainControls(unittest.TestCase):
         self.assertEqual(m['iosCPU']['features'],['AES','PMULL','SHA1','SHA2'])
         self.assertNotIn('ATOMICS',m['iosCPU']['features']);self.assertNotIn('SHA512',m['iosCPU']['features'])
 
-    def test_reused_toolchain_requires_input_and_all_actual_executable_hashes(self):
+    def test_reused_toolchain_requires_complete_actual_file_identity(self):
         with tempfile.TemporaryDirectory() as td:
-            root=Path(td);files={'bin/go':b'go','pkg/tool/linux_amd64/link':b'link'}
-            for path,data in files.items():
-                p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
-            identity={'goVersion':'go1.27.2','patchSHA256':'fixture'}
-            marker=dict(identity,executables={p:hashlib.sha256(data).hexdigest() for p,data in files.items()})
-            (root/'polaris-toolchain.json').write_text(json.dumps(marker))
+            root=Path(td)
+            paths=['bin/go','bin/gofmt','pkg/tool/linux_amd64/link','pkg/tool/linux_amd64/compile',
+                   'pkg/tool/linux_amd64/asm','src/runtime/runtime2.go','src/os/root.go',
+                   'src/cmd/compile/main.go','src/cmd/asm/main.go','go.env','VERSION']
+            for path in paths:
+                p=root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(path.encode())
+            identity={'goVersion':'go1.27.2','patchSHA256':'fixture','archiveSHA256':'pinned fixture archive',
+                      'cacheFormat':'complete-toolchain-files-v1'}
+            marker=dict(identity,files=legacy.toolchain_files(root))
+            marker_path=root/'polaris-toolchain.json'
+            marker_path.write_text(json.dumps(marker))
             self.assertEqual(legacy.verify_cached_toolchain(root,'linux-amd64',identity),marker)
-            for bad in [dict(marker,goVersion='go1.27.1'),dict(marker,executables={}),dict(marker,executables={'../elsewhere':'wrong'})]:
-                (root/'polaris-toolchain.json').write_text(json.dumps(bad))
+            for path in paths:
+                with self.subTest(path=path):
+                    p=root/path;original=p.read_bytes();p.write_bytes(b'tampered')
+                    self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
+                    p.write_bytes(original)
+            for bad in [dict(marker,goVersion='go1.27.1'),dict(marker,files={}),
+                        dict(marker,archiveSHA256='different'),dict(marker,patchSHA256='different')]:
+                marker_path.write_text(json.dumps(bad))
                 self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
-            (root/'polaris-toolchain.json').write_text(json.dumps(marker));(root/'bin/go').write_bytes(b'tampered')
+            marker_path.write_text(json.dumps(marker))
+            extra=root/'src/unexpected.go';extra.write_bytes(b'added source')
             self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
+            extra.unlink()
+            missing=root/'pkg/tool/linux_amd64/asm';data=missing.read_bytes();missing.unlink()
+            self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
+            missing.write_bytes(data)
+            config=root/'go.env';mode=config.stat().st_mode;config.chmod(0o700)
+            self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
+            config.chmod(mode)
+            self.assertEqual(legacy.verify_cached_toolchain(root,'linux-amd64',identity),marker)
+            alias=root/'tool-link'
+            try:alias.symlink_to(root/'bin/go')
+            except OSError:pass  # Host permission; all regular-file controls above remain mandatory.
+            else:self.assertRaises(RuntimeError,legacy.verify_cached_toolchain,root,'linux-amd64',identity)
+
+    def test_windows_patch_retains_official_root_confinement_and_real_gate(self):
+        manifest=json.loads((ROOT/'.github/go-toolchains.json').read_text())
+        entry=manifest['legacy']['windows7'];patch=(ROOT/entry['patch']).read_text()
+        for name,digest in entry['preservedRootSources'].items():
+            self.assertEqual(len(digest),64)
+            self.assertNotIn('diff --git a/'+name+' ',patch)
+        spec=importlib.util.spec_from_file_location('root_gate',ROOT/'scripts/ci/windows_root_gate.py')
+        gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(gate)
+        source=gate.regression_source(patch)
+        self.assertEqual(hashlib.sha256(source.encode()).hexdigest(),entry['rootRemoveAllRegressionSHA256'])
+        for required in ['TestDeleteatFallback','"ordinary"','"junction"','"symlink"','root.RemoveAll(target)','root.RemoveAll("sub")']:
+            self.assertIn(required,source)
+        for broken in [patch.replace('@@ -0,0 +1,','@@ -0,1 +1,'),patch+'+extra\n']:
+            self.assertRaises(ValueError,gate.regression_source,broken)
+        text=(ROOT/'scripts/ci/utls_gate.py').read_text()
+        self.assertIn("sys.platform == 'win32'",text)
+        self.assertIn("'scripts/ci/windows_root_gate.py'",text)
+        self.assertIn("('native', 'legacy-fallback')",text)
+        self.assertIn("('ordinary', 'junction', 'symlink')",text)
 
     def test_archive_layout_and_resource_negative_controls(self):
         valid=tarfile.TarInfo('go/bin/go');valid.size=10;legacy.require_archive_members([valid])

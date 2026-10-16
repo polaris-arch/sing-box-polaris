@@ -630,6 +630,11 @@ X25519MLKEM768；REALITY 认证仍使用经典 X25519，两处混合组过滤均
 即能力不可用，不按版本猜测。producer 检查真实生成头、静态导出与 Java 声明，
 最终 App 的链接、符号保留和加载仍需单独观察。
 
+
+本次迁移的受控回归覆盖 std TLS、Meta、refraction 的普通 TLS record 与各自所属库的
+TLS 1.3 traffic-secret/key 派生；不证明真实 peer KeyUpdate 交换、内核 offload 密钥重装
+或完整 kTLS 运行验收。这些路径需要对应平台的实际观测，不能用上述回归代签。
+
 ### ECH 字段
 
 ECH (Encrypted Client Hello) 是一个 TLS 扩展，它允许客户端加密其 ClientHello 的第一部分信息。

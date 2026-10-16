@@ -913,174 +913,6 @@ index 9d779869531788..05626ecab1270a 100644
  		h, e = loadlibrary(namep)
  	}
 
-diff --git a/src/os/removeall_at.go b/src/os/removeall_at.go
-index 9a7cea613bd066..e6f581f8744af4 100644
---- a/src/os/removeall_at.go
-+++ b/src/os/removeall_at.go
-@@ -2,7 +2,7 @@
- // Use of this source code is governed by a BSD-style
- // license that can be found in the LICENSE file.
- 
--//go:build unix || wasip1 || windows
-+//go:build unix || wasip1
- 
- package os
- 
-@@ -179,3 +179,25 @@ func openDirAt(dirfd sysfdType, name string) (*File, error) {
- 	}
- 	return newDirFile(fd, name)
- }
-+
-+func rootRemoveAll(r *Root, name string) error {
-+	// Consistency with os.RemoveAll: Strip trailing /s from the name,
-+	// so RemoveAll("not_a_directory/") succeeds.
-+	for len(name) > 0 && IsPathSeparator(name[len(name)-1]) {
-+		name = name[:len(name)-1]
-+	}
-+	if endsWithDot(name) {
-+		// Consistency with os.RemoveAll: Return EINVAL when trying to remove .
-+		return &PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
-+	}
-+	_, err := doInRoot(r, name, 0, nil, func(parent sysfdType, name string, endsInSlash bool) (struct{}, error) {
-+		return struct{}{}, removeAllFrom(parent, name)
-+	})
-+	if IsNotExist(err) {
-+		return nil
-+	}
-+	if err != nil {
-+		return &PathError{Op: "RemoveAll", Path: name, Err: underlyingError(err)}
-+	}
-+	return err
-+}
-diff --git a/src/os/removeall_noat.go b/src/os/removeall_noat.go
-index 8e23df94af42ff..9c8c290d911ee0 100644
---- a/src/os/removeall_noat.go
-+++ b/src/os/removeall_noat.go
-@@ -2,7 +2,7 @@
- // Use of this source code is governed by a BSD-style
- // license that can be found in the LICENSE file.
- 
--//go:build (js && wasm) || plan9
-+//go:build (js && wasm) || plan9 || windows
- 
- package os
- 
-@@ -146,3 +146,27 @@ func removeAll(path string) error {
- 	}
- 	return err
- }
-+
-+func rootRemoveAll(r *Root, name string) error {
-+	// Consistency with os.RemoveAll: Strip trailing /s from the name,
-+	// so RemoveAll("not_a_directory/") succeeds.
-+	for len(name) > 0 && IsPathSeparator(name[len(name)-1]) {
-+		name = name[:len(name)-1]
-+	}
-+	if endsWithDot(name) {
-+		// Consistency with os.RemoveAll: Return EINVAL when trying to remove .
-+		return &PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
-+	}
-+	if err := checkPathEscapesLstat(r, name); err != nil {
-+		if err == syscall.ENOTDIR {
-+			// Some intermediate path component is not a directory.
-+			// RemoveAll treats this as success (since the target doesn't exist).
-+			return nil
-+		}
-+		return &PathError{Op: "RemoveAll", Path: name, Err: err}
-+	}
-+	if err := RemoveAll(joinPath(r.root.name, name)); err != nil {
-+		return &PathError{Op: "RemoveAll", Path: name, Err: underlyingError(err)}
-+	}
-+	return nil
-+}
-diff --git a/src/os/root_noopenat.go b/src/os/root_noopenat.go
-index f2513182f6f757..468a7887bea07d 100644
---- a/src/os/root_noopenat.go
-+++ b/src/os/root_noopenat.go
-@@ -192,30 +192,6 @@ func rootRemove(r *Root, name string) error {
- 	return nil
- }
- 
--func rootRemoveAll(r *Root, name string) error {
--	// Consistency with os.RemoveAll: Strip trailing /s from the name,
--	// so RemoveAll("not_a_directory/") succeeds.
--	for len(name) > 0 && IsPathSeparator(name[len(name)-1]) {
--		name = name[:len(name)-1]
--	}
--	if endsWithDot(name) {
--		// Consistency with os.RemoveAll: Return EINVAL when trying to remove .
--		return &PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
--	}
--	if err := checkPathEscapesLstat(r, name); err != nil {
--		if err == syscall.ENOTDIR {
--			// Some intermediate path component is not a directory.
--			// RemoveAll treats this as success (since the target doesn't exist).
--			return nil
--		}
--		return &PathError{Op: "RemoveAll", Path: name, Err: err}
--	}
--	if err := RemoveAll(joinPath(r.root.name, name)); err != nil {
--		return &PathError{Op: "RemoveAll", Path: name, Err: underlyingError(err)}
--	}
--	return nil
--}
--
- func rootReadlink(r *Root, name string) (string, error) {
- 	if err := checkPathEscapesLstat(r, name); err != nil {
- 		return "", &PathError{Op: "readlinkat", Path: name, Err: err}
-diff --git a/src/os/root_openat.go b/src/os/root_openat.go
-index 62e6be665a9233..2d848980841b1e 100644
---- a/src/os/root_openat.go
-+++ b/src/os/root_openat.go
-@@ -217,28 +217,6 @@ func rootRemove(r *Root, name string) error {
- 	return nil
- }
- 
--func rootRemoveAll(r *Root, name string) error {
--	// Consistency with os.RemoveAll: Strip trailing /s from the name,
--	// so RemoveAll("not_a_directory/") succeeds.
--	for len(name) > 0 && IsPathSeparator(name[len(name)-1]) {
--		name = name[:len(name)-1]
--	}
--	if endsWithDot(name) {
--		// Consistency with os.RemoveAll: Return EINVAL when trying to remove .
--		return &PathError{Op: "RemoveAll", Path: name, Err: syscall.EINVAL}
--	}
--	_, err := doInRoot(r, name, 0, nil, func(parent sysfdType, name string, endsInSlash bool) (struct{}, error) {
--		return struct{}{}, removeAllFrom(parent, name)
--	})
--	if IsNotExist(err) {
--		return nil
--	}
--	if err != nil {
--		return &PathError{Op: "RemoveAll", Path: name, Err: underlyingError(err)}
--	}
--	return err
--}
--
- func rootRename(r *Root, oldname, newname string) error {
- 	_, err := doInRoot(r, oldname, 0, nil, func(oldparent sysfdType, oldname string, oldEndsInSlash bool) (struct{}, error) {
- 		flags := uint(doInRootCreatingDirectory)
-diff --git a/src/os/root_windows.go b/src/os/root_windows.go
-index e03e5d4c2cc73b..787cddb6a2c54c 100644
---- a/src/os/root_windows.go
-+++ b/src/os/root_windows.go
-@@ -432,3 +432,14 @@ func isDirectoryLink(fi FileInfo) bool {
- 	fs, ok := fi.(*fileStat)
- 	return ok && fs.FileAttributes&syscall.FILE_ATTRIBUTE_DIRECTORY != 0
- }
-+
-+func checkPathEscapes(r *Root, name string) error {
-+	if !filepathlite.IsLocal(name) {
-+		return errPathEscapes
-+	}
-+	return nil
-+}
-+
-+func checkPathEscapesLstat(r *Root, name string) error {
-+	return checkPathEscapes(r, name)
-+}
-
 diff --git a/src/os/exec_windows.go b/src/os/exec_windows.go
 index 68c7064d2dd0e5..d01453f11169cf 100644
 --- a/src/os/exec_windows.go
@@ -1118,3 +950,110 @@ index 68c7064d2dd0e5..d01453f11169cf 100644
  	handle, status := p.handleTransientAcquire()
  	switch status {
 
+diff --git a/src/os/root_removeall_polaris_windows_test.go b/src/os/root_removeall_polaris_windows_test.go
+new file mode 100644
+--- /dev/null
++++ b/src/os/root_removeall_polaris_windows_test.go
+@@ -0,0 +1,102 @@
++// Copyright 2026 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++//go:build windows
++
++package os_test
++
++import (
++	"internal/syscall/windows"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"testing"
++)
++
++// No races are needed: the intermediate reparse point is already outside Root.
++// The fallback flag exercises the official older-Windows handle-based deletion,
++// rather than silently testing only modern FileDispositionInformationEx.
++func TestPolarisRootRemoveAllConfinement(t *testing.T) {
++	originalFallback := windows.TestDeleteatFallback
++	defer func() { windows.TestDeleteatFallback = originalFallback }()
++	for _, fallback := range []bool{false, true} {
++		name := "native"
++		if fallback {
++			name = "legacy-fallback"
++		}
++		t.Run(name, func(t *testing.T) {
++			windows.TestDeleteatFallback = fallback
++			for _, kind := range []string{"ordinary", "junction", "symlink"} {
++				t.Run(kind, func(t *testing.T) {
++					base := t.TempDir()
++					inside, outside := filepath.Join(base, "root"), filepath.Join(base, "outside")
++					for _, dir := range []string{inside, outside} {
++						if err := os.Mkdir(dir, 0700); err != nil {
++							t.Fatal(err)
++						}
++					}
++					victim := filepath.Join(outside, "victim")
++					const original = "outside bytes must survive"
++					if err := os.WriteFile(victim, []byte(original), 0600); err != nil {
++						t.Fatal(err)
++					}
++					root, err := os.OpenRoot(inside)
++					if err != nil {
++						t.Fatal(err)
++					}
++					defer root.Close()
++					if kind == "ordinary" {
++						dir := filepath.Join(inside, "sub", "nested")
++						if err := os.MkdirAll(dir, 0700); err != nil {
++							t.Fatal(err)
++						}
++						if err := os.WriteFile(filepath.Join(dir, "child"), []byte("inside"), 0600); err != nil {
++							t.Fatal(err)
++						}
++						if err := root.RemoveAll("sub"); err != nil {
++							t.Fatal(err)
++						}
++						if _, err := os.Stat(filepath.Join(inside, "sub")); !os.IsNotExist(err) {
++							t.Fatalf("normal deletion failed: %v", err)
++						}
++						if err := root.RemoveAll("missing"); err != nil {
++							t.Fatal(err)
++						}
++					} else {
++						link := filepath.Join(inside, "link")
++						if kind == "junction" {
++							if output, err := exec.Command("cmd", "/c", "mklink", "/J", link, outside).CombinedOutput(); err != nil {
++								t.Fatalf("required junction setup: %v: %s", err, output)
++							}
++						} else if err := os.Symlink(outside, link); err != nil {
++							t.Fatalf("required symlink setup: %v", err)
++						}
++						defer os.Remove(link)
++						for _, target := range []string{filepath.Join("link", "victim"), filepath.Join("link", "victim") + string(os.PathSeparator)} {
++							if err := root.RemoveAll(target); err == nil {
++								t.Fatalf("outside traversal %q accepted", target)
++							}
++							data, err := os.ReadFile(victim)
++							if err != nil || string(data) != original {
++								t.Fatalf("outside victim changed: %q %v", data, err)
++							}
++						}
++						// Removing the final reparse point must remove the link,
++						// without following it and deleting its outside target.
++						if err := root.RemoveAll("link"); err != nil {
++							t.Fatal(err)
++						}
++						if _, err := os.Lstat(link); !os.IsNotExist(err) {
++							t.Fatalf("link was not removed: %v", err)
++						}
++					}
++					data, err := os.ReadFile(victim)
++					if err != nil || string(data) != original {
++						t.Fatalf("outside victim changed: %q %v", data, err)
++					}
++				})
++			}
++		})
++	}
++}

@@ -23,7 +23,7 @@
     "windows7": {
       "target": "go_win7",
       "patch": ".github/patches/go1.27.2/windows7.patch",
-      "patchSHA256": "3a499f685fd31c5197a29aeabd88bada36df0c08a5add56d44e9a9540cbb9a57",
+      "patchSHA256": "89219b9b6dd43a368de1dba363b360f83f6ef9ca799f036c06b5e740a6bddfbb",
       "sourceRepository": "MetaCubeX/go",
       "sourceCommits": [
         "5bea096a8d38bcc2f7b29a423a2d7a677e7257b4",
@@ -34,7 +34,17 @@
         "5c36850df445d11d557c3d995e15a3ac159749ea",
         "51c81072acbed32e4331026bc6ca308a3a495039"
       ],
-      "appliedAgainst": "go1.27.2; zero fuzz, Windows root_windows.go offset6 only; actual build/platform validation pending"
+      "appliedAgainst": "go1.27.2; zero-fuzz source applicability and actual build/runtime gates pending; omit inherited os.Root/removeall rewrite and retain official handle-relative code",
+      "rootRemoveAllPolicy": "official Go1.27.2 handle-relative confinement and its older-Windows Deleteat fallback retained verbatim; required ordinary deletion/junction/symlink controls with native and forced-fallback paths",
+      "preservedRootSources": {
+        "src/os/removeall_at.go": "77d5ea8558ccf4d1018ac6baad111d67d6bc39ab120cf6efe18065700b6d14eb",
+        "src/os/removeall_noat.go": "150d0b4983e159b0e9484d4c0bffa634d61f5401ef2fee86d612255c50b1eb6d",
+        "src/os/root_openat.go": "ed015476176e245d77cd330242eb19fb4abcb9b81b125eece3b43b3a290f35f2",
+        "src/os/root_noopenat.go": "c89fa49bc6bb493d5c41a604ab177bb9be4646a3112149317aafa72f97fd3154",
+        "src/os/root_windows.go": "63ae6fb1bc4944944fe99684bcf4210147293a81ea21b33695b2f96e9cb19558",
+        "src/internal/syscall/windows/at_windows.go": "8e91b547504c80ea026bc96cd6bba3ab0b38f9218b3c0399eb49045641628e45"
+      },
+      "rootRemoveAllRegressionSHA256": "0babaaafa260ae24748e851aded2be2bb9fd2b3829cc7990411023ec650a65ac"
     },
     "macos1013": {
       "target": "go_osx",

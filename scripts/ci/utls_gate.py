@@ -29,7 +29,14 @@ REQUIRED_FORK = {'TestUTLSMappedProfilesAreRealAndMatchSchema', 'TestUTLSProfile
                  'TestUTLSRealECHHandshakeAndSessionIDConflict', 'TestRealityUpstreamClientMetaServerActualHandshake',
                  'TestFingerprintCapabilitiesDescribeLoadedCore', 'TestTLSFingerprintCapabilitiesMatchCoreContract', 'TestUTLSHostnameAndMutualTLS',
                  'TestUTLSConcurrentWaitingHandshakeCancellation', 'TestTLSReadWaitAndCipherMethodsStayInOwningLibrary',
-                 'TestFingerprintCapabilitiesRejectConflictingOrInvalidSourceStamps'}
+                 'TestFingerprintCapabilitiesRejectConflictingOrInvalidSourceStamps',
+                 'TestRealityExplicitALPNWireAndClone', 'TestShadowTLSV3ActualAuthenticationAndForwarding',
+                 'TestShadowTLSV3RejectsWrongPasswordAndTamperedSession', 'TestShadowTLSV3ConcurrentConfigIsolation',
+                 'TestShadowTLSV3RejectsRealECH'}
+
+REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos'))
+REQUIRED_FORK.update('TestShadowTLSV3RejectsWrongPasswordAndTamperedSession/' + name for name in ('wrong-password', 'tampered-session'))
+REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name for name in ('chrome_155', 'safari_26_3'))
 
 
 def commands(ldflags):
@@ -130,6 +137,14 @@ def main():
                 try:
                     if name == 'fork': require_tests(output / 'fork.log', REQUIRED_FORK)
                     if name == 'upstream': require_tests(output / 'upstream.log', REQUIRED_UPSTREAM)
+                except ValueError as error:
+                    receipt['errors'].append(str(error))
+        if sys.platform == 'win32':
+            if execute('windows-root', [sys.executable, 'scripts/ci/windows_root_gate.py', '--output', str(output / 'windows-root')], timeout=300):
+                try:
+                    required = {'TestPolarisRootRemoveAllConfinement/' + mode + '/' + kind
+                                for mode in ('native', 'legacy-fallback') for kind in ('ordinary', 'junction', 'symlink')}
+                    require_tests(output / 'windows-root.log', required)
                 except ValueError as error:
                     receipt['errors'].append(str(error))
         suffix = '.exe' if sys.platform == 'win32' else ''

@@ -133,6 +133,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 		serverName: e.uClient.ServerName(),
 	}
 	uConfig := e.uClient.config.Clone()
+	// The first preset build overwrites Config.NextProtos from its ALPN extension.
+	// Preserve the user request before that build, including Clone/SetNextProtos.
+	nextProtos := append([]string(nil), uConfig.NextProtos...)
 	uConfig.InsecureSkipVerify = true
 	uConfig.SessionTicketsDisabled = true
 	uConfig.VerifyPeerCertificate = verifier.VerifyPeerCertificate
@@ -143,23 +146,29 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 		return nil, err
 	}
 	filterRealityKeyShares(uConn)
-	err = uConn.BuildHandshakeState()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(uConfig.NextProtos) > 0 {
+	if len(nextProtos) > 0 {
+		found := false
 		for _, extension := range uConn.Extensions {
-			if alpnExtension, isALPN := extension.(*utls.ALPNExtension); isALPN {
-				alpnExtension.AlpnProtocols = uConfig.NextProtos
+			if alpn, ok := extension.(*utls.ALPNExtension); ok {
+				alpn.AlpnProtocols = nextProtos
+				found = true
 				break
 			}
 		}
+		if !found {
+			uConn.Extensions = append(uConn.Extensions, &utls.ALPNExtension{AlpnProtocols: nextProtos})
+		}
 	}
-
+	// Finalize PQ/ALPN before serializing the zeroed session ID used as AAD.
+	// Neither template rebuild nor serialization is allowed after authentication.
+	if err := uConn.BuildHandshakeState(); err != nil {
+		return nil, err
+	}
 	hello := uConn.HandshakeState.Hello
 	hello.SessionId = make([]byte, 32)
-	copy(hello.Raw[39:], hello.SessionId)
+	if err := uConn.MarshalClientHello(); err != nil {
+		return nil, err
+	}
 
 	var nowTime time.Time
 	if uConfig.Time != nil {
