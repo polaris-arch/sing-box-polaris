@@ -32,9 +32,17 @@ REQUIRED_FORK = {'TestUTLSMappedProfilesAreRealAndMatchSchema', 'TestUTLSProfile
                  'TestFingerprintCapabilitiesRejectConflictingOrInvalidSourceStamps',
                  'TestRealityExplicitALPNWireAndClone', 'TestShadowTLSV3ActualAuthenticationAndForwarding',
                  'TestShadowTLSV3RejectsWrongPasswordAndTamperedSession', 'TestShadowTLSV3ConcurrentConfigIsolation',
-                 'TestShadowTLSV3RejectsRealECH'}
+                 'TestShadowTLSV3RejectsRealECH', 'TestOOMHeapRuntimeRecordLayout'}
 
-REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos'))
+REQUIRED_FORK.update({'TestUTLSExplicitALPNUpsertAbsentAndPSKLast','TestOOMAdjacentRuntimeProfilesEncode'})
+REQUIRED_FORK.update('TestUTLSHostnameAndMutualTLS/' + profile + '/' + case
+                     for profile in ('chrome_155', 'safari_26_3')
+                     for case in ('good', 'missing-client-identity', 'wrong-hostname'))
+REQUIRED_FORK.update('TestUTLSRealECHHandshakeAndSessionIDConflict/' + profile + '/' + case
+                     for profile in ('chrome_155', 'safari_26_3')
+                     for case in ('accepted', 'session-id-conflict'))
+
+REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos', 'server-policy-independent-of-camouflage'))
 REQUIRED_FORK.update('TestShadowTLSV3RejectsWrongPasswordAndTamperedSession/' + name for name in ('wrong-password', 'tampered-session'))
 REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name for name in ('chrome_155', 'safari_26_3'))
 
@@ -42,8 +50,8 @@ REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name 
 def commands(ldflags):
     common = ['go', 'test', '-json', '-race', '-p=2', '-parallel=2', '-count=1', '-timeout=15m', '-ldflags=' + ldflags]
     return [
-        ('fork', common + ['-tags=with_utls,badlinkname', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './cmd/sing-box']),
-        ('stub', common + ['./common/tls', './experimental/libbox', './cmd/sing-box']),
+        ('fork', common + ['-tags=with_utls,badlinkname', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
+        ('stub', common + ['./common/tls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
         ('upstream', common + ['-run=^(' + UPSTREAM_TESTS + ')$', 'github.com/refraction-networking/utls']),
     ]
 
@@ -100,11 +108,15 @@ def main():
     scratch = Path(os.environ['RUNNER_TEMP']).resolve() / 'tls-fingerprint-scratch'
     scratch.mkdir(exist_ok=True)
     os.environ['TMPDIR'] = str(scratch)
+    def source_status(name):
+        status = subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=ROOT, text=True)
+        (output / (name + '-source-status.log')).write_text(status)
+        return status
     # Per isolated CI VM: 8GiB cache/build growth + 6GiB system headroom.
     if shutil.disk_usage(output).free < 14 * 1024**3:
         raise RuntimeError('Go/uTLS gate lacks its 8GiB growth plus 6GiB headroom budget')
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    if source != os.environ['GITHUB_SHA'] or subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=ROOT):
+    if source != os.environ['GITHUB_SHA'] or source_status('initial'):
         raise RuntimeError('gate requires exact clean dispatch source')
     required_go = 'go' + (ROOT / 'release/GO_VERSION').read_text().strip()
     env = dict(os.environ, GOTOOLCHAIN='local', GOFLAGS='-mod=readonly', GOMAXPROCS='2')
@@ -126,6 +138,7 @@ def main():
             if code is None: receipt['errors'].append(name + ': timeout; owned process tree retired')
         receipt['commands'].append({'name': name, 'command': list(map(str, command)), 'exitCode': code,
                                     'elapsedSeconds': time.monotonic() - start, 'log': logfile.name})
+        source_status(name + '-after')
         if code != 0:
             receipt['errors'].append(name + ': failed; preserve original log')
         return code == 0
@@ -147,6 +160,11 @@ def main():
                     require_tests(output / 'windows-root.log', required)
                 except ValueError as error:
                     receipt['errors'].append(str(error))
+        # Python caches belong in runner.temp, never in the source whose VCS
+        # identity the actual core queries. Check all untracked inputs too.
+        status = source_status('pre-core')
+        if status:
+            raise RuntimeError('core source became dirty before capability build: ' + status)
         suffix = '.exe' if sys.platform == 'win32' else ''
         for enabled in [True, False]:
             name = 'selected-core' if enabled else 'stub-core';core = output / (name + suffix)
@@ -161,6 +179,7 @@ def main():
                     receipt['errors'].append(name + ': ' + repr(error))
         execute('module-source-clean', ['git', 'diff', '--exit-code', '--', 'go.mod', 'go.sum'])
     finally:
+        source_status('final')
         (output / 'gate.json').write_text(json.dumps(receipt, indent=2) + '\n')
     if receipt['errors']:
         raise RuntimeError('; '.join(receipt['errors']))

@@ -111,8 +111,24 @@ func firstTLSRecord(c net.Conn) ([]byte, error) {
 // Capture the actual wire record before the controlled TLS server consumes it.
 func profileExchange(t *testing.T, config Config, serverConfig *stdtls.Config, implicit bool) (stdtls.ConnectionState, []byte, error) {
 	t.Helper()
-	client, server := net.Pipe()
+	// TLS 1.3 mutual authentication can exchange client Finished/application
+	// data concurrently with the server's NewSessionTicket flight. A zero
+	// buffer net.Pipe deadlocks that valid full-duplex exchange. Use the same
+	// bounded local TCP transport as the actual REALITY/ShadowTLS fixtures.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	client, err := net.DialTimeout("tcp", listener.Addr().String(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer client.Close()
+	server, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer server.Close()
 	deadline := time.Now().Add(5 * time.Second)
 	_ = client.SetDeadline(deadline)
@@ -396,25 +412,29 @@ func TestUTLSRealECHHandshakeAndSessionIDConflict(t *testing.T) {
 	for _, id := range []string{"chrome_155", "safari_26_3"} {
 		t.Run(id, func(t *testing.T) {
 			c := profileClient(t, id, option.OutboundTLSOptions{ServerName: "localhost", MinVersion: "1.3", Certificate: []string{cert.certificatePEM}, ECH: &option.OutboundECHOptions{Enabled: true, Config: []string{configPEM}}})
-			state, _, err := profileExchange(t, c, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, MinVersion: stdtls.VersionTLS13, EncryptedClientHelloKeys: keys}, false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !state.ECHAccepted {
-				t.Fatal("real ECH was not accepted")
-			}
-			c.SetSessionIDGenerator(func([]byte, []byte) error { t.Error("unsupported ECH authenticator invoked"); return nil })
-			left, right := net.Pipe()
-			defer left.Close()
-			defer right.Close()
-			wrapped, err := c.Client(left)
-			if err != nil {
-				t.Fatal(err)
-			}
-			err = wrapped.HandshakeContext(context.Background())
-			if err == nil || !strings.Contains(err.Error(), "real ECH") {
-				t.Fatalf("ECH/sessionID conflict not rejected: %v", err)
-			}
+			t.Run("accepted", func(t *testing.T) {
+				state, _, err := profileExchange(t, c, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, MinVersion: stdtls.VersionTLS13, EncryptedClientHelloKeys: keys}, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !state.ECHAccepted {
+					t.Fatal("real ECH was not accepted")
+				}
+			})
+			t.Run("session-id-conflict", func(t *testing.T) {
+				c.SetSessionIDGenerator(func([]byte, []byte) error { t.Error("unsupported ECH authenticator invoked"); return nil })
+				left, right := net.Pipe()
+				defer left.Close()
+				defer right.Close()
+				wrapped, err := c.Client(left)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = wrapped.HandshakeContext(context.Background())
+				if err == nil || !strings.Contains(err.Error(), "real ECH") {
+					t.Fatalf("ECH/sessionID conflict not rejected: %v", err)
+				}
+			})
 		})
 	}
 }
@@ -431,18 +451,24 @@ func TestUTLSHostnameAndMutualTLS(t *testing.T) {
 					}
 					return nil
 				}}
-			good := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}, ClientCertificate: []string{clientCert.certificatePEM}, ClientKey: []string{clientCert.privateKeyPEM}})
-			if _, _, err := profileExchange(t, good, server, false); err != nil {
-				t.Fatal(err)
-			}
-			missing := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}})
-			if _, _, err := profileExchange(t, missing, server, false); err == nil {
-				t.Fatal("missing client identity admitted")
-			}
-			wrongHost := profileClient(t, name, option.OutboundTLSOptions{ServerName: "wrong.invalid", Certificate: []string{serverCert.certificatePEM}})
-			if _, _, err := profileExchange(t, wrongHost, &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}}, false); err == nil {
-				t.Fatal("wrong server hostname admitted")
-			}
+			t.Run("good", func(t *testing.T) {
+				good := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}, ClientCertificate: []string{clientCert.certificatePEM}, ClientKey: []string{clientCert.privateKeyPEM}})
+				if _, _, err := profileExchange(t, good, server, false); err != nil {
+					t.Fatal(err)
+				}
+			})
+			t.Run("missing-client-identity", func(t *testing.T) {
+				missing := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}})
+				if _, _, err := profileExchange(t, missing, server, false); err == nil {
+					t.Fatal("missing client identity admitted")
+				}
+			})
+			t.Run("wrong-hostname", func(t *testing.T) {
+				wrongHost := profileClient(t, name, option.OutboundTLSOptions{ServerName: "wrong.invalid", Certificate: []string{serverCert.certificatePEM}})
+				if _, _, err := profileExchange(t, wrongHost, &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}}, false); err == nil {
+					t.Fatal("wrong server hostname admitted")
+				}
+			})
 		})
 	}
 }
@@ -483,5 +509,58 @@ func TestUTLSConcurrentWaitingHandshakeCancellation(t *testing.T) {
 	case <-first:
 	case <-time.After(time.Second):
 		t.Error("original handshake did not retire")
+	}
+}
+
+func TestUTLSExplicitALPNUpsertAbsentAndPSKLast(t *testing.T) {
+	// Fixed seed AND an explicitly no-ALPN generator: absence is deterministic,
+	// independent of the random process seed that hid the original regression.
+	id := utls.HelloRandomizedNoALPN
+	id.Seed = &utls.PRNGSeed{}
+	spec, err := utls.UTLSIdToSpec(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ext := range spec.Extensions {
+		if _, ok := ext.(*utls.ALPNExtension); ok {
+			t.Fatal("fixture unexpectedly has ALPN")
+		}
+	}
+	cert := newPinnedTestCertificate(t, "localhost")
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("explicit-%v", explicit), func(t *testing.T) {
+			original := profileClient(t, "randomized", option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{cert.certificatePEM}})
+			original.id = id
+			config := original.Clone().(*UTLSClientConfig)
+			want := ""
+			if explicit {
+				config.SetNextProtos([]string{"polaris-fixed/1"})
+				want = "polaris-fixed/1"
+			}
+			state, wire, err := profileExchange(t, config, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, NextProtos: []string{"polaris-fixed/1"}}, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if state.NegotiatedProtocol != want {
+				t.Fatalf("actual ALPN %q != %q", state.NegotiatedProtocol, want)
+			}
+			hello := utls.UnmarshalClientHello(wire[5:])
+			if hello == nil || (explicit && !slices.Equal(hello.AlpnProtocols, []string{want})) || (!explicit && len(hello.AlpnProtocols) != 0) {
+				t.Fatal("actual wire did not preserve explicit/default ALPN")
+			}
+			if len(original.NextProtos()) != 0 {
+				t.Fatal("clone mutated original ALPN")
+			}
+		})
+	}
+	psk := &utls.UtlsPreSharedKeyExtension{}
+	extensions := []utls.TLSExtension{&utls.SNIExtension{}, psk}
+	if !reflect.DeepEqual(upsertUTLSALPN(append([]utls.TLSExtension(nil), extensions...), nil), extensions) {
+		t.Fatal("no override changed original template")
+	}
+	extensions = upsertUTLSALPN(extensions, []string{"http/1.1"})
+	extensions = insertUTLSExtension(extensions, &utls.GREASEEncryptedClientHelloExtension{})
+	if extensions[len(extensions)-1] != psk {
+		t.Fatal("new ALPN/ECH extension moved PSK from last")
 	}
 }

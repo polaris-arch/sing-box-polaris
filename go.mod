@@ -206,3 +206,6 @@ require (
 replace github.com/sagernet/sing-tun => ./third_party/sing-tun
 
 replace github.com/sagernet/tailscale => github.com/polaris-arch/tailscale v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046
+
+// Source-owned Meta v1.8.8 ALPN compatibility; baseline and exact delta in release/dependency-sources.
+replace github.com/metacubex/utls => ./third_party/metacubex-utls

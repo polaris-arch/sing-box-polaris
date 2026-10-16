@@ -44,7 +44,8 @@
         "src/os/root_windows.go": "63ae6fb1bc4944944fe99684bcf4210147293a81ea21b33695b2f96e9cb19558",
         "src/internal/syscall/windows/at_windows.go": "8e91b547504c80ea026bc96cd6bba3ab0b38f9218b3c0399eb49045641628e45"
       },
-      "rootRemoveAllRegressionSHA256": "0babaaafa260ae24748e851aded2be2bb9fd2b3829cc7990411023ec650a65ac"
+      "rootRemoveAllRegressionSHA256": "0babaaafa260ae24748e851aded2be2bb9fd2b3829cc7990411023ec650a65ac",
+      "rootRemoveAllTestHostSHA256": "2d0c1219cdcfe28b728d048cdc5962f3b7a3dc6a5e34de3fe56fb93431e27da4"
     },
     "macos1013": {
       "target": "go_osx",

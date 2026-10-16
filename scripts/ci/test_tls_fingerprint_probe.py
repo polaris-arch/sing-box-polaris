@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 import tls_fingerprint_probe as probe
 from utls_gate import REQUIRED_FORK, REQUIRED_UPSTREAM, commands, require_tests
@@ -22,7 +23,7 @@ class FingerprintProbeControls(unittest.TestCase):
         return {'schema':'polaris-tls-fingerprint-capabilities-v1','enabled':True,'sourceCommit':'1'*40,'sourceModified':False,
                 'coreVersion':'1.15.0-polaris-alpha.12','goVersion':'go1.27.2','requiredGoVersion':'go1.27.2',
                 'buildTags':'with_utls','os':'linux','arch':'amd64','defaultFingerprint':'chrome','profiles':profiles,
-                'modules':[{'path':p,'version':v,'sum':s} for p,(v,s) in probe.source_module_pins().items()],
+                'modules':list(probe.linked_module_pins().values()),
                 'legacyChromeAliases':aliases,'randomSemantics':'process','randomizedSemantics':'process seed',
                 'shadowTLSSessionIDWithECHSupported':False,'curvePreferencesSupported':False,
                 'realityX25519MLKEM768':'filtered from supported groups and shares','negotiationEvidence':'offer only'}
@@ -80,3 +81,40 @@ class FingerprintProbeControls(unittest.TestCase):
     def test_disabled_and_default_are_serialized_as_enabled_not_invented_ids(self):
         self.assertEqual(probe.outbound_config()['outbounds'][0]['tls']['utls'],{'enabled':True})
         self.assertEqual(probe.outbound_config(enabled=False)['outbounds'][0]['tls']['utls'],{'enabled':False})
+
+    def test_source_gate_prevents_python_source_cache_and_requires_actual_windows_tests(self):
+        import yaml
+        workflow=yaml.safe_load((probe.ROOT/'.github/workflows/build.yml').read_text())
+        self.assertEqual(workflow['jobs']['utls_gate']['env']['PYTHONDONTWRITEBYTECODE'],'1')
+        gate=(probe.ROOT/'scripts/ci/utls_gate.py').read_text()
+        self.assertIn("'--untracked-files=all'",gate)
+        self.assertIn('TestOOMHeapRuntimeRecordLayout',REQUIRED_FORK)
+        self.assertIn('./experimental/libbox/internal/oomprofile',commands('fixture')[0][1])
+
+    def test_source_owned_replacement_is_not_mislabeled_as_upstream_h1(self):
+        pins=probe.linked_module_pins();meta=pins['github.com/metacubex/utls']
+        self.assertEqual(meta['sum'],'')
+        self.assertEqual(meta['replace'],{'path':'./third_party/metacubex-utls','version':'(devel)','sum':''})
+        for bad in [dict(meta,sum=probe.source_module_pins()['github.com/metacubex/utls'][1]),
+                    {'path':meta['path'],'version':meta['version'],'sum':''},
+                    dict(meta,replace={'path':'./other','version':'(devel)','sum':''})]:
+            doc=self.fixture();doc['modules']=[m if m['path']!=meta['path'] else bad for m in doc['modules']]
+            with self.assertRaises(ValueError):self.validate(doc)
+
+    def test_source_owned_module_inventory_and_actual_producer_graph_are_strict(self):
+        expected=probe.linked_module_pins();graph={'normalModules':[],'localReplacements':[]}
+        for module in expected.values():
+            row={'module':module['path'],'version':module['version'],'h1':module['sum']}
+            if 'replace' in module:
+                replacement=module['replace'];row['replacement']={'module':replacement['path'],'version':replacement['version'],'h1':replacement['sum']}
+                graph['localReplacements'].append(row)
+            else:graph['normalModules'].append(row)
+        self.assertEqual(probe.producer_module_identities(graph),expected)
+        doc=self.fixture()
+        probe.validate(doc,source='1'*40,version='1.15.0-polaris-alpha.12',go_version='go1.27.2',target='linux/amd64',expected_modules=expected)
+        with self.assertRaises(ValueError):
+            probe.validate(doc,source='1'*40,version='1.15.0-polaris-alpha.12',go_version='go1.27.2',target='linux/amd64',expected_modules={})
+        real_sha=probe.sha
+        def tampered(path):
+            return '0'*64 if str(path).endswith('metacubex-utls/reality.go') else real_sha(path)
+        with mock.patch.object(probe,'sha',side_effect=tampered),self.assertRaises(ValueError):probe.linked_module_pins()

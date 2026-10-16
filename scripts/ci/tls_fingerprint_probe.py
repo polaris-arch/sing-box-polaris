@@ -45,6 +45,50 @@ def source_module_pins():
     return result
 
 
+def linked_module_pins():
+    """Actual BuildInfo identities, including the one source-owned Meta delta.
+
+    The upstream h1 is baseline provenance, not the checksum of modified code.
+    The producer's sourceCommit/tree and localReplacement tree bind those bytes.
+    """
+    pins=source_module_pins()
+    expected={path:{'path':path,'version':version,'sum':checksum} for path,(version,checksum) in pins.items()}
+    module='github.com/metacubex/utls';local='./third_party/metacubex-utls'
+    manifest=json.loads((ROOT/'release/dependency-sources/metacubex-utls-replacement.json').read_text())
+    if (manifest['schema'],manifest['module'],manifest['upstreamVersion'],manifest['upstreamH1'],manifest['replacementPath']) != (
+            'polaris-repository-module-replacement-v1',module,*pins[module],local):
+        raise ValueError('source-owned Meta baseline/replacement differs from direct source pins')
+    if not re.search(r'^replace '+re.escape(module)+r' => '+re.escape(local)+r'$',(ROOT/'go.mod').read_text(),re.M):
+        raise ValueError('missing exact source-owned Meta replacement')
+    root=ROOT/local[2:]
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('source-owned Meta root must be a real directory')
+    actual={p.relative_to(root).as_posix():p for p in root.rglob('*') if p.is_file()}
+    if set(actual)!=set(manifest['files']) or any(p.is_symlink() for p in root.rglob('*')):
+        raise ValueError('source-owned Meta file inventory mismatch')
+    for name,p in actual.items():
+        if sha(p)!=manifest['files'][name]['afterSHA256'] or p.stat().st_size!=manifest['files'][name]['bytes']:
+            raise ValueError('source-owned Meta bytes differ: '+name)
+    if sha(ROOT/manifest['patch'])!=manifest['patchSHA256']:
+        raise ValueError('source-owned Meta delta digest differs')
+    expected[module]={'path':module,'version':pins[module][0],'sum':'',
+                      'replace':{'path':local,'version':'(devel)','sum':''}}
+    return expected
+
+
+def producer_module_identities(graph):
+    identities={}
+    for row in graph['normalModules']+graph['localReplacements']:
+        if row['module'] not in UTLS_MODULES:continue
+        if row['module'] in identities:raise ValueError('duplicate actual producer uTLS module')
+        item={'path':row['module'],'version':row['version'],'sum':row['h1']}
+        if 'replacement' in row:
+            replacement=row['replacement']
+            item['replace']={'path':replacement['module'],'version':replacement['version'],'sum':replacement['h1']}
+        identities[row['module']]=item
+    return identities
+
+
 def validate(document, *, source, version, go_version, target, enabled=True, expected_modules=None):
     import jsonschema
     schema = json.loads((ROOT / 'release/ci/tls-fingerprint-capabilities.schema.json').read_text())
@@ -81,10 +125,10 @@ def validate(document, *, source, version, go_version, target, enabled=True, exp
             raise ValueError('random generator cannot promise a concrete PQ offer')
         modules = {}
         for module in document['modules']:
-            if module['path'] in modules or module.get('replace'):
-                raise ValueError('duplicate or replaced uTLS module')
-            modules[module['path']] = (module['version'], module['sum'])
-        pins = source_module_pins()
+            if module['path'] in modules:
+                raise ValueError('duplicate uTLS module')
+            modules[module['path']] = module
+        pins = linked_module_pins()
         if expected_modules is not None and expected_modules != pins:
             raise ValueError('producer module graph differs from source-owned direct pins')
         if modules != pins:
@@ -140,9 +184,20 @@ def probe(core, *, source, version, go_version, target, enabled=True, expected_s
     digest = sha(core)
     if expected_sha is not None and digest != expected_sha:
         raise ValueError('actual selected core bytes differ from producer row')
-    result = subprocess.run([str(core), 'tools', 'tls-fingerprints'], check=True,
-                            text=True, capture_output=True, timeout=30)
-    document = json.loads(result.stdout)
+    command = [str(core), 'tools', 'tls-fingerprints']
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, timeout=30)
+        query = {'command': command, 'exitCode': result.returncode,
+                 'stdout': result.stdout, 'stderr': result.stderr, 'timedOut': False}
+    except subprocess.TimeoutExpired as error:
+        def output_text(value):
+            return value.decode(errors='replace') if isinstance(value, bytes) else (value or '')
+        query = {'command': command, 'exitCode': None, 'stdout': output_text(error.stdout),
+                 'stderr': output_text(error.stderr), 'timedOut': True}
+    core.with_name(core.name + '-capability-query.json').write_text(json.dumps(query, indent=2) + '\n')
+    if query['exitCode'] != 0:
+        raise ValueError('actual core capability query failed: ' + json.dumps(query))
+    document = json.loads(query['stdout'])
     validate(document, source=source, version=version, go_version=go_version, target=target,
              enabled=enabled, expected_modules=expected_modules)
     observations = check_configs(core, document)

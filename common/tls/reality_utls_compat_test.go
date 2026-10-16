@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +29,7 @@ type realityHandshakeCase struct {
 	profile                string
 	wrongKey               bool
 	clientALPN, serverALPN []string
+	camouflageALPN         []string
 	cloneALPN              []string
 	negotiated             string
 	reject                 bool
@@ -50,7 +52,8 @@ func TestRealityExplicitALPNWireAndClone(t *testing.T) {
 	}{
 		{"http1-only", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"http/1.1"}, serverALPN: []string{"h2", "http/1.1"}, negotiated: "http/1.1"}},
 		{"custom", realityHandshakeCase{profile: "safari_26_3", clientALPN: []string{"polaris-test/1"}, serverALPN: []string{"polaris-test/1"}, negotiated: "polaris-test/1"}},
-		{"mismatch", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"client-only/1"}, serverALPN: []string{"server-only/1"}, reject: true}},
+		{"mismatch", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"client-only/1"}, serverALPN: []string{"server-only/1"}, camouflageALPN: []string{"client-only/1"}, reject: true}},
+		{"server-policy-independent-of-camouflage", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"h2", "http/1.1"}, serverALPN: []string{"http/1.1", "h2"}, camouflageALPN: []string{"h2", "http/1.1"}, negotiated: "http/1.1"}},
 		{"clone-set-next-protos", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"original-only/1"}, cloneALPN: []string{"clone-only/1"}, serverALPN: []string{"clone-only/1"}, negotiated: "clone-only/1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) { realityHandshakeExchange(t, tc.realityHandshakeCase) })
@@ -68,6 +71,12 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 	}
 	defer camouflage.Close()
 	camouflageDone := make(chan struct{})
+	camouflageHello := make(chan []string, 1)
+	camouflageALPN := tc.camouflageALPN
+	if camouflageALPN == nil {
+		camouflageALPN = tc.serverALPN
+	}
+	realityHandshakeError := make(chan string, 1)
 	go func() {
 		defer close(camouflageDone)
 		c, err := camouflage.Accept()
@@ -76,7 +85,11 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 		}
 		defer c.Close()
 		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
-		secured := stdtls.Server(c, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, NextProtos: tc.serverALPN,
+		secured := stdtls.Server(c, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, NextProtos: camouflageALPN,
+			GetConfigForClient: func(hello *stdtls.ClientHelloInfo) (*stdtls.Config, error) {
+				camouflageHello <- append([]string(nil), hello.SupportedProtos...)
+				return nil, nil
+			},
 			MinVersion: stdtls.VersionTLS13, MaxVersion: stdtls.VersionTLS13, CurvePreferences: []stdtls.CurveID{stdtls.X25519}})
 		if secured.Handshake() == nil {
 			_, _ = io.Copy(io.Discard, secured)
@@ -90,7 +103,14 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 	short[0] = 0x21
 	server := &RealityServerConfig{config: &meta.RealityConfig{Type: "tcp", Dest: camouflage.Addr().String(), PrivateKey: private.Bytes(),
 		ServerNames: map[string]bool{"localhost": true}, ShortIds: map[[8]byte]bool{short: true},
-		Log: func(string, ...any) {}, DialContext: (&net.Dialer{}).DialContext}}
+		Log: func(format string, args ...any) {
+			if strings.Contains(format, "hs.handshake() err:") {
+				select {
+				case realityHandshakeError <- fmt.Sprintf(format, args...):
+				default:
+				}
+			}
+		}, DialContext: (&net.Dialer{}).DialContext}}
 	server.config.SessionTicketsDisabled = true
 	server.config.NextProtos = tc.serverALPN
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -208,6 +228,26 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 	}
 	if tc.cloneALPN != nil && !slices.Equal(config.NextProtos(), tc.cloneALPN) {
 		t.Fatal("clone ALPN mutated")
+	}
+	if tc.camouflageALPN != nil && tc.reject {
+		// The target explicitly accepts the offered ALPN. A failure here must
+		// come from REALITY's own disjoint NextProtos, not the camouflage site.
+		select {
+		case offered := <-camouflageHello:
+			if !slices.Equal(offered, expectedALPN) {
+				t.Fatalf("camouflage saw wrong wire ALPN %v", offered)
+			}
+		default:
+			t.Fatal("camouflage ClientHello was not observed")
+		}
+		select {
+		case reason := <-realityHandshakeError:
+			if !strings.Contains(reason, "unsupported application protocols") {
+				t.Fatalf("unrelated REALITY rejection: %s", reason)
+			}
+		default:
+			t.Fatal("missing actual REALITY ALPN rejection")
+		}
 	}
 	if tc.reject {
 		if admitted || r.payload {

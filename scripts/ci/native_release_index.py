@@ -136,8 +136,8 @@ def smoke(directory):
    if sha(data)!=row['archive']['members'][root+'/'+name]:raise ValueError('member changed')
   for name,data in members.items():(Path(td)/name).write_bytes(data)
   core=Path(td)/row['core']['member'];core.chmod(0o755)
-  from tls_fingerprint_probe import probe
-  modules={x['module']:(x['version'],x['h1']) for x in row['buildGraph']['normalModules'] if x['module'] in ('github.com/refraction-networking/utls','github.com/metacubex/utls')}
+  from tls_fingerprint_probe import probe, producer_module_identities
+  modules=producer_module_identities(row['buildGraph'])
   probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules)
   args=[str(core),'tools','cronet','--expected-version',pins['cronetVersion']]
   if row['sidecar']:args+=['--library',str(Path(td)/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']]

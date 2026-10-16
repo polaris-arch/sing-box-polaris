@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"math/rand"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -93,7 +94,34 @@ func (c *UTLSClientConfig) Client(conn net.Conn) (Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &utlsALPNWrapper{utlsConnWrapper: utlsConnWrapper{utls.UClient(conn, c.config.Clone(), c.id)}, nextProtocols: c.config.NextProtos, sessionIDGenerator: c.sessionIDGenerator, realECH: len(c.config.EncryptedClientHelloConfigList) > 0}, nil
+	connectionConfig := c.config.Clone()
+	realECH := len(connectionConfig.EncryptedClientHelloConfigList) > 0
+	uConn := utls.UClient(conn, connectionConfig, c.id)
+	if realECH {
+		// Prepare the selected template BEFORE the first BuildHandshakeState.
+		// Safari has no ECH placeholder; changing every default Safari hello or
+		// serializing a first real-ECH hello without it would be incorrect.
+		spec, err := utls.UTLSIdToSpec(c.id)
+		if err != nil {
+			return nil, err
+		}
+		spec.Extensions = upsertUTLSALPN(spec.Extensions, c.config.NextProtos)
+		found := false
+		for _, extension := range spec.Extensions {
+			if _, ok := extension.(utls.EncryptedClientHelloExtension); ok {
+				found = true
+				break
+			}
+		}
+		if !found {
+			spec.Extensions = insertUTLSExtension(spec.Extensions, &utls.GREASEEncryptedClientHelloExtension{})
+		}
+		uConn = utls.UClient(conn, connectionConfig, utls.HelloCustom)
+		if err := uConn.ApplyPreset(&spec); err != nil {
+			return nil, err
+		}
+	}
+	return &utlsALPNWrapper{utlsConnWrapper: utlsConnWrapper{uConn}, nextProtocols: append([]string(nil), c.config.NextProtos...), sessionIDGenerator: c.sessionIDGenerator, realECH: realECH}, nil
 }
 
 func (c *UTLSClientConfig) SetSessionIDGenerator(generator func(clientHello []byte, sessionID []byte) error) {
@@ -169,6 +197,29 @@ func (c *utlsConnWrapper) WriterReplaceable() bool {
 // latter after preparation deliberately avoids UConn's second BuildHandshakeState,
 // which would regenerate an ECH outer hello after the ShadowTLS authenticator.
 // Conn retains uTLS's installed handshakeFn, cancellation, verification and locks.
+// New extensions must precede pre_shared_key (RFC 8446 section 4.2.11).
+func insertUTLSExtension(extensions []utls.TLSExtension, extension utls.TLSExtension) []utls.TLSExtension {
+	for i, current := range extensions {
+		if _, ok := current.(utls.PreSharedKeyExtension); ok {
+			return slices.Insert(extensions, i, extension)
+		}
+	}
+	return append(extensions, extension)
+}
+
+func upsertUTLSALPN(extensions []utls.TLSExtension, protocols []string) []utls.TLSExtension {
+	if len(protocols) == 0 {
+		return extensions
+	}
+	for _, extension := range extensions {
+		if alpn, ok := extension.(*utls.ALPNExtension); ok {
+			alpn.AlpnProtocols = append([]string(nil), protocols...)
+			return extensions
+		}
+	}
+	return insertUTLSExtension(extensions, &utls.ALPNExtension{AlpnProtocols: append([]string(nil), protocols...)})
+}
+
 type utlsALPNWrapper struct {
 	utlsConnWrapper
 	nextProtocols      []string
@@ -209,12 +260,7 @@ func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) (ret error) {
 		return err
 	}
 	if len(c.nextProtocols) > 0 {
-		for _, extension := range c.Extensions {
-			if alpn, ok := extension.(*utls.ALPNExtension); ok {
-				alpn.AlpnProtocols = c.nextProtocols
-				break
-			}
-		}
+		c.Extensions = upsertUTLSALPN(c.Extensions, c.nextProtocols)
 		if err := c.BuildHandshakeState(); err != nil {
 			return err
 		}

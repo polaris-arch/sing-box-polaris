@@ -28,6 +28,21 @@ def regression_source(patch):
     return ''.join(line[1:] + '\n' for line in lines[1:])
 
 
+def combined_test_source(host, regression):
+    if host.count('package os_test') != 1 or host.count('import (') != 1:
+        raise ValueError('unexpected official Windows Root test host')
+    # All other regression imports already exist in the pinned official file.
+    for required in ['"internal/syscall/windows"', '"os"', '"path/filepath"', '"testing"']:
+        if required not in host:
+            raise ValueError('Windows Root test host import missing: ' + required)
+    if '"os/exec"' in host or 'TestPolarisRootRemoveAllConfinement' in host:
+        raise ValueError('Windows Root test host unexpectedly contains overlay inputs')
+    marker = 'func TestPolarisRootRemoveAllConfinement(t *testing.T) {'
+    if regression.count(marker) != 1:
+        raise ValueError('Windows Root regression entry mismatch')
+    return host.replace('import (', 'import (\n\t"os/exec"', 1) + '\n' + regression[regression.index(marker):]
+
+
 def main():
     parser = argparse.ArgumentParser();parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -52,22 +67,50 @@ def main():
     if hashlib.sha256(test.encode()).hexdigest() != entry['rootRemoveAllRegressionSHA256']:
         raise RuntimeError('Windows Root regression source hash mismatch')
     output = args.output.resolve();output.mkdir(parents=True, exist_ok=True)
-    test_file = output / 'root_removeall_polaris_windows_test.go';test_file.write_text(test, encoding='utf-8', newline='\n')
+    # Overlay an existing, discovered os_test file. Adding a synthetic new
+    # filename to the standard library overlay did not make go test discover it.
+    host = goroot / 'src/os/root_windows_test.go'
+    host_raw = host.read_bytes()
+    host_sha = hashlib.sha256(host_raw).hexdigest()
+    if host_sha != entry['rootRemoveAllTestHostSHA256']:
+        raise RuntimeError('official Windows Root test host bytes differ')
+    combined = combined_test_source(host_raw.decode(), test)
+    test_file = output / 'root_windows_test.go';test_file.write_text(combined, encoding='utf-8', newline='\n')
     overlay = output / 'overlay.json'
-    overlay.write_text(json.dumps({'Replace': {str(goroot / 'src/os/root_removeall_polaris_windows_test.go'): str(test_file)}}) + '\n')
+    overlay.write_text(json.dumps({'Replace': {str(host): str(test_file)}}) + '\n')
     command = ['go', 'test', '-json', '-p=2', '-parallel=1', '-count=1', '-timeout=3m',
                '-overlay=' + str(overlay), '-run=^TestPolarisRootRemoveAllConfinement$', 'os']
     receipt = {'sourceCommit': os.environ['GITHUB_SHA'], 'goVersion': actual_go, 'manifestSHA256': manifest_hash,
                'patchSHA256': entry['patchSHA256'], 'preservedRootSources': measured,
-               'regressionSHA256': entry['rootRemoveAllRegressionSHA256'], 'command': command,
+               'regressionSHA256': entry['rootRemoveAllRegressionSHA256'],
+               'hostSHA256': host_sha, 'combinedTestSHA256': hashlib.sha256(combined.encode()).hexdigest(), 'command': command,
                'scope': 'official Root on hosted Windows; normal + junction/symlink confinement; native and forced legacy Deleteat fallback',
                'notVerified': ['actual Win7 runtime', 'rebuilt legacy compiler runtime']}
-    # Parent owns this process tree, deadline, scratch/cache slots and original log.
-    result = subprocess.run(command, cwd=ROOT, env=dict(os.environ, GOTOOLCHAIN='local', GOENV='off'))
-    receipt['exitCode'] = result.returncode
-    (output / 'root-gate.json').write_text(json.dumps(receipt, indent=2) + '\n')
-    if result.returncode:
-        raise RuntimeError('Windows Root confinement regression failed')
+    # First demand actual Go test discovery. Merely presenting overlay source
+    # and obtaining exit0 ('no tests to run') cannot satisfy this gate.
+    discover = ['go', 'test', '-p=2', '-overlay=' + str(overlay),
+                '-list=^TestPolarisRootRemoveAllConfinement$', 'os']
+    receipt['discoveryCommand'] = discover
+    receipt['exitCode'] = None
+    try:
+        discovery = subprocess.run(discover, cwd=ROOT, env=dict(os.environ, GOTOOLCHAIN='local', GOENV='off'),
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        (output / 'test-discovery.log').write_text(discovery.stdout)
+        receipt['discoveryExitCode'] = discovery.returncode
+        if discovery.returncode or discovery.stdout.splitlines().count('TestPolarisRootRemoveAllConfinement') != 1:
+            raise RuntimeError('actual Go test discovery omitted the required Root regression')
+        # Parent owns this process tree, deadline and scratch/cache slots.
+        result = subprocess.run(command, cwd=ROOT, env=dict(os.environ, GOTOOLCHAIN='local', GOENV='off'))
+        receipt['exitCode'] = result.returncode
+        if result.returncode:
+            raise RuntimeError('Windows Root confinement regression failed')
+    finally:
+        after = {name: legacy.file_hash(goroot / name) for name in entry['preservedRootSources']}
+        receipt['preservedRootSourcesAfter'] = after
+        receipt['testHostAfterSHA256'] = legacy.file_hash(host)
+        (output / 'root-gate.json').write_text(json.dumps(receipt, indent=2) + '\n')
+        if after != measured or receipt['testHostAfterSHA256'] != host_sha:
+            raise RuntimeError('official Windows Root sources changed during test overlay')
 
 
 if __name__ == '__main__':

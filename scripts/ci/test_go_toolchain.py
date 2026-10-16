@@ -95,6 +95,12 @@ class ToolchainControls(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('root_gate',ROOT/'scripts/ci/windows_root_gate.py')
         gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(gate)
         source=gate.regression_source(patch)
+        host='package os_test\nimport (\n\t"internal/syscall/windows"\n\t"os"\n\t"path/filepath"\n\t"testing"\n)\n'
+        combined=gate.combined_test_source(host,source)
+        self.assertIn('func TestPolarisRootRemoveAllConfinement',combined)
+        self.assertIn('"os/exec"',combined)
+        self.assertRaises(ValueError,gate.combined_test_source,host.replace('package os_test','package os'),source)
+        self.assertRaises(ValueError,gate.combined_test_source,host,source.replace('func TestPolarisRootRemoveAllConfinement','func Removed'))
         self.assertEqual(hashlib.sha256(source.encode()).hexdigest(),entry['rootRemoveAllRegressionSHA256'])
         for required in ['TestDeleteatFallback','"ordinary"','"junction"','"symlink"','root.RemoveAll(target)','root.RemoveAll("sub")']:
             self.assertIn(required,source)

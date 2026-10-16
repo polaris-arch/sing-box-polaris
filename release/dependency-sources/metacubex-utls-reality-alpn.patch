@@ -1,0 +1,19 @@
+--- a/reality.go
++++ b/reality.go
+@@ -218,6 +218,16 @@
+ 	c := hs.c
+ 	config := hs.Config
+ 
++	// REALITY bypasses processClientHello while constructing its authenticated
++	// server flight. Preserve normal TLS ALPN selection and rejection here;
++	// camouflage's own NextProtos is not the REALITY application's policy.
++	selectedProto, err := negotiateALPN(c.config.NextProtos, hs.clientHello.alpnProtocols, false)
++	if err != nil {
++		c.sendAlert(alertNoApplicationProtocol)
++		return err
++	}
++	c.clientProtocol = selectedProto
++
+ 	// For an overview of the TLS 1.3 handshake, see RFC 8446, Section 2.
+ 	/*
+ 		if err := hs.processClientHello(); err != nil {
