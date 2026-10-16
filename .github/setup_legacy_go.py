@@ -32,8 +32,10 @@ def toolchain_input(mode, host):
     patch = ROOT / entry['patch']
     if not patch.resolve().is_relative_to(ROOT / '.github/patches'):
         raise RuntimeError('patch escaped source-owned directory')
-    if file_hash(patch) != entry['patchSHA256']:
-        raise RuntimeError('source-owned patch hash mismatch')
+    actual_patch_hash = file_hash(patch)
+    if actual_patch_hash != entry['patchSHA256']:
+        raise RuntimeError('source-owned patch hash mismatch: path=' + entry['patch'] +
+                           ' expected=' + entry['patchSHA256'] + ' actual=' + actual_patch_hash)
     archive = manifest['archives'][host]
     return manifest, entry, patch, archive, hashlib.sha256(raw).hexdigest()
 

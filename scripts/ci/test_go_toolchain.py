@@ -6,6 +6,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('legacy_go',ROOT/'.github/setup_legacy_go.py')
@@ -22,6 +23,29 @@ class ToolchainControls(unittest.TestCase):
         self.assertEqual(legacy.file_hash(ROOT/m['iosCPU']['patch']),m['iosCPU']['patchSHA256'])
         self.assertEqual(m['iosCPU']['features'],['AES','PMULL','SHA1','SHA2'])
         self.assertNotIn('ATOMICS',m['iosCPU']['features']);self.assertNotIn('SHA512',m['iosCPU']['features'])
+
+    def test_crlf_patch_is_rejected_without_normalizing_raw_identity(self):
+        raw=b"source-owned patch\nsecond line\n"
+        expected=hashlib.sha256(raw).hexdigest()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'.github/patches').mkdir(parents=True);(root/'release').mkdir()
+            patch=root/'.github/patches/fixture.patch';patch.write_bytes(raw)
+            (root/'release/GO_VERSION').write_bytes(b'1.27.2\n')
+            fixture={'version':'1.27.2','legacy':{'windows7':{'patch':'.github/patches/fixture.patch','patchSHA256':expected}},'archives':{'linux-amd64':{}}}
+            (root/'.github/go-toolchains.json').write_text(json.dumps(fixture))
+            with mock.patch.object(legacy,'ROOT',root):
+                self.assertEqual(legacy.toolchain_input('windows7','linux-amd64')[1]['patchSHA256'],expected)
+                crlf=raw.replace(b'\n',b'\r\n');patch.write_bytes(crlf)
+                actual=hashlib.sha256(crlf).hexdigest()
+                with self.assertRaises(RuntimeError) as rejected:
+                    legacy.toolchain_input('windows7','linux-amd64')
+                self.assertIn('expected='+expected,str(rejected.exception))
+                self.assertIn('actual='+actual,str(rejected.exception))
+                self.assertEqual(patch.read_bytes(),crlf)
+                self.assertNotEqual(actual,expected)
+        attrs=(ROOT/'.gitattributes').read_text()
+        self.assertIn('/.github/patches/** -text',attrs)
+        self.assertIn('/.github/go_ios_cpu_features.patch -text',attrs)
 
     def test_reused_toolchain_requires_complete_actual_file_identity(self):
         with tempfile.TemporaryDirectory() as td:
