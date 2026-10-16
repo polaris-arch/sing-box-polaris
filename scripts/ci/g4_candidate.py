@@ -8,6 +8,9 @@ import tempfile
 
 SDK = 'github.com/sagernet/tailscale'
 OWNED_SDK = 'github.com/polaris-arch/tailscale'
+# This is the product's existing linker contract (including its reviewed
+# runtime linkname use), not a new test-only relaxation.
+PRODUCTION_LDFLAGS = (Path(__file__).resolve().parents[2] / 'release/LDFLAGS').read_text().strip()
 SDK_PACKAGES = (
     'util/dirscope', 'util/execqueue', 'control/controlclient', 'ipn/store',
     'ipn/ipnlocal', 'ipn/ipnlocal/netmapcache', 'feature/acme', 'tka', 'tsnet',
@@ -33,7 +36,7 @@ def commands():
     return [
         ['go', 'test', '-race', '-count=1', '-timeout=10m',
          *[SDK + '/' + package for package in SDK_PACKAGES]],
-        ['go', 'test', '-race', '-count=1', '-timeout=10m', '-tags=with_tailscale', *FORK_PACKAGES],
+        ['go', 'test', '-race', '-count=1', '-timeout=10m', '-ldflags=' + PRODUCTION_LDFLAGS, '-tags=with_tailscale', *FORK_PACKAGES],
     ]
 
 
@@ -61,7 +64,7 @@ def main():
         # This specifically includes directory_taildrop_other.go, absent on Unix.
         with tempfile.TemporaryDirectory(prefix='g4-cross-') as temporary:
             cross_env = dict(env, GOOS='windows', GOARCH='amd64', CGO_ENABLED='0')
-            command = ['go', 'test', '-c', '-tags=with_tailscale',
+            command = ['go', 'test', '-c', '-ldflags=' + PRODUCTION_LDFLAGS, '-tags=with_tailscale',
                        '-o', str(Path(temporary) / 'tailscale.test.exe'), './protocol/tailscale']
             print('+ cross compile only:', ' '.join(command), flush=True)
             subprocess.run(command, cwd=root, env=cross_env, check=True)

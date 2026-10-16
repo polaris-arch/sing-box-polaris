@@ -178,6 +178,30 @@ func TestTailscaleStoreNoConstructionFailureAndPanic(t *testing.T) {
 		})
 	}
 }
+func TestSealedStoreStartDoesNotAcquireDirectory(t *testing.T) {
+	ctx := context.Background()
+	directory := filepath.Join(t.TempDir(), "not-created")
+	store := newGuardedStateStore(ctx, "sealed", directory, func() (ipn.StateStore, error) {
+		t.Fatal("Start constructed a sealed Store")
+		return nil, nil
+	})
+	store.retire(time.Now().Add(time.Second), nil)
+	owner := newDirectoryOwner(ctx, "sealed", directory)
+	owner.managedPaths = true
+	endpoint := &Endpoint{stateStore: store, directory: owner}
+	for _, stage := range []adapter.StartStage{adapter.StartStateInitialize, adapter.StartStateStart, adapter.StartStatePostStart} {
+		if err := endpoint.Start(stage, nil); !errors.Is(err, os.ErrClosed) {
+			t.Fatalf("sealed Start stage %v = %v", stage, err)
+		}
+	}
+	if owner.ready() || owner.lease != nil {
+		t.Fatal("sealed Start acquired a directory lease")
+	}
+	if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("sealed Start touched the managed directory: %v", err)
+	}
+}
+
 func profileStateBytes(t *testing.T, id, key string) []byte {
 	t.Helper()
 	profiles, err := json.Marshal(map[string]ipn.LoginProfile{id: {ID: ipn.ProfileID(id), Key: ipn.StateKey(key)}})

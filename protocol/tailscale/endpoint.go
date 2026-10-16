@@ -294,6 +294,11 @@ func (t *Endpoint) References() []string {
 func (t *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	t.directoryStartMu.Lock()
 	defer t.directoryStartMu.Unlock()
+	// A permanently sealed Store cannot re-enter Start, including before the
+	// directory owner was initialized. Reject it before acquiring any lease.
+	if t.stateStore != nil && t.stateStore.isSealed() {
+		return os.ErrClosed
+	}
 	release, directoryErr := t.directory.scope.Begin()
 	if directoryErr != nil {
 		return directoryErr

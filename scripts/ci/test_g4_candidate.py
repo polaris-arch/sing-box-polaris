@@ -1,7 +1,8 @@
 """Pure command/admission controls; no subprocesses or compiler invocation."""
 from copy import deepcopy
+from pathlib import Path
 import unittest
-from g4_candidate import SDK, OWNED_SDK, SDK_PACKAGES, FORK_PACKAGES, commands, require_owned_sdk
+from g4_candidate import SDK, OWNED_SDK, SDK_PACKAGES, FORK_PACKAGES, PRODUCTION_LDFLAGS, commands, require_owned_sdk
 
 
 class CandidateGates(unittest.TestCase):
@@ -13,6 +14,8 @@ class CandidateGates(unittest.TestCase):
             self.assertIn('-race', command)
             self.assertIn('-count=1', command)
         self.assertIn('-tags=with_tailscale', fork)
+        self.assertIn('-ldflags=' + PRODUCTION_LDFLAGS, fork)
+        self.assertEqual(PRODUCTION_LDFLAGS, (Path(__file__).resolve().parents[2] / 'release/LDFLAGS').read_text().strip())
 
     def test_only_immutable_owned_sdk_is_admitted(self):
         module = {'Path': SDK, 'Replace': {'Path': OWNED_SDK, 'Version': 'fixture-version', 'Sum': 'h1:fixture'}}

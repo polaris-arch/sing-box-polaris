@@ -140,11 +140,23 @@ func validationTailscaleConfig(t *testing.T, directory string) string {
 	return string(bytes)
 }
 
+// t.TempDir may itself have symlink parents (macOS /var -> /private/var).
+// Expectations use the physical fixture root independently of the product's
+// state-directory canonicalization, while the explicit alias remains in inputs.
+func validationPhysicalTempDir(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestValidationTailscaleOriginalConstructorNoStoreAndCachedFile(t *testing.T) {
 	requireValidationTailscaleRegistry(t)
 	for _, existing := range []bool{false, true} {
 		t.Run(fmt.Sprint(existing), func(t *testing.T) {
-			directory := filepath.Join(t.TempDir(), "lazy")
+			directory := filepath.Join(validationPhysicalTempDir(t), "lazy")
 			var original []byte
 			if existing {
 				if err := os.Mkdir(directory, 0700); err != nil {
@@ -172,20 +184,19 @@ func TestValidationTailscaleOriginalConstructorNoStoreAndCachedFile(t *testing.T
 			if strings.Contains(result.GetTailscaleStoreRetirement(), "synthetic-auth-key") || strings.Contains(result.GetTailscaleStoreRetirement(), "old-state-secret") {
 				t.Fatal("secret leaked")
 			}
+			// No Start/lease occurred. G4 must not inspect the authentication file
+			// to improve a witness, even when this fixture knows the file exists.
+			if node.StateFileState != "Unknown" || node.ProfileState != "Unknown" || node.ProfileFingerprint != "" || node.StateFileRevision != "" {
+				t.Fatalf("unleased authentication witness: %+v", node)
+			}
 			if existing {
 				b, err := os.ReadFile(filepath.Join(directory, "tailscaled.state"))
 				if err != nil || string(b) != string(original) {
 					t.Fatal("validation changed cached state")
 				}
-				if node.StateFileState != "Regular" || node.ProfileState != "Unknown" || node.ProfileFingerprint != "" {
-					t.Fatalf("cache became identity proof: %+v", node)
-				}
 			} else {
 				if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("lazy directory created: %v", err)
-				}
-				if node.StateFileState != "Missing" || node.ProfileState != "None" {
-					t.Fatalf("missing witness: %+v", node)
 				}
 			}
 			snapshot := *result
@@ -315,7 +326,7 @@ func requireValidationTailscaleRegistry(t *testing.T) {
 
 func TestValidationTailscaleCanonicalImplicitScope(t *testing.T) {
 	requireValidationTailscaleRegistry(t)
-	directory := t.TempDir()
+	directory := validationPhysicalTempDir(t)
 	real := filepath.Join(directory, "real")
 	alias := filepath.Join(directory, "alias")
 	if err := os.Mkdir(real, 0700); err != nil {
@@ -483,7 +494,7 @@ func TestValidationMembershipActualNoTailscaleAndOriginalBinding(t *testing.T) {
 
 func TestValidationMembershipActualCanonicalOrderedTargetsAndCache(t *testing.T) {
 	requireValidationTailscaleRegistry(t)
-	directory := t.TempDir()
+	directory := validationPhysicalTempDir(t)
 	real, alias := filepath.Join(directory, "real"), filepath.Join(directory, "alias")
 	if err := os.Mkdir(real, 0700); err != nil {
 		t.Fatal(err)
