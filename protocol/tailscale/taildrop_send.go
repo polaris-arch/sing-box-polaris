@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,23 @@ import (
 )
 
 func (t *Endpoint) SendTaildropFile(ctx context.Context, peerStableID string, fileName string, size int64, content io.Reader, progress func(sentBytes int64)) error {
+	if !t.taildrop.beginIO() {
+		return os.ErrClosed
+	}
+	defer t.taildrop.endIO()
+	ctx, cancel := context.WithCancel(ctx)
+	stopCancel := context.AfterFunc(t.taildrop.ctx, cancel)
+	defer stopCancel()
+	defer cancel()
+	// net/http can finish RoundTrip before its request-body Read returns.
+	// Join source reads and progress callbacks before releasing the IO lease.
+	source := &taildropSendReader{reader: content}
+	defer func() {
+		cancel()
+		source.close()
+	}()
+	content = source
+
 	if !t.started.Load() {
 		return E.New("Tailscale is not ready yet")
 	}
@@ -68,6 +86,11 @@ func (t *Endpoint) SendTaildropFile(ctx context.Context, peerStableID string, fi
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+				// Transport dials may outlive RoundTrip.
+				if !t.taildrop.beginIO() {
+					return nil, os.ErrClosed
+				}
+				defer t.taildrop.endIO()
 				return t.DialContext(ctx, N.NetworkTCP, M.ParseSocksaddr(address))
 			},
 		},
@@ -75,11 +98,16 @@ func (t *Endpoint) SendTaildropFile(ctx context.Context, peerStableID string, fi
 	defer httpClient.CloseIdleConnections()
 	fileURL := peerAPIBase + "/v0/put/" + url.PathEscape(fileName)
 	offset, remaining := taildropResume(ctx, httpClient, fileURL, content)
-	request, err := http.NewRequestWithContext(ctx, http.MethodPut, fileURL, &taildropProgressReader{
+	body := &taildropSendReader{reader: &taildropProgressReader{
 		reader:   remaining,
 		sent:     offset,
 		progress: progress,
-	})
+	}}
+	defer func() {
+		cancel()
+		body.close()
+	}()
+	request, err := http.NewRequestWithContext(ctx, http.MethodPut, fileURL, body)
 	if err != nil {
 		return err
 	}
@@ -173,6 +201,11 @@ func (r *taildropProgressReader) Read(buffer []byte) (int, error) {
 }
 
 func (t *Endpoint) taildropTargets() (canShareFiles bool, targets map[string]bool) {
+	if !t.taildrop.beginIO() {
+		return false, nil
+	}
+	defer t.taildrop.endIO()
+
 	if !t.started.Load() {
 		return false, nil
 	}

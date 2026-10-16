@@ -24,11 +24,13 @@ type tailscaleRetirementInstance struct {
 	Nodes          []adapter.TailscaleStoreNode `json:"nodes"`
 }
 type tailscaleRetirementRun struct {
-	access   sync.Mutex
-	binding  adapter.TailscaleStoreRunBinding
-	expected []string
-	active   []adapter.TailscaleStoreNode
-	final    *tailscaleRetirementInstance
+	directoryScopes func() []adapter.TailscaleDirectoryNode
+	directoryFinal  *tailscaleDirectoryInstance
+	access          sync.Mutex
+	binding         adapter.TailscaleStoreRunBinding
+	expected        []string
+	active          []adapter.TailscaleStoreNode
+	final           *tailscaleRetirementInstance
 }
 
 func newTailscaleRetirementRun(content string, options option.Options) (*tailscaleRetirementRun, error) {

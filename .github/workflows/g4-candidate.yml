@@ -1,0 +1,35 @@
+name: G4 candidate source gates
+on:
+  push:
+    branches: [collab/g4-directory-retirement-20261016]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: g4-candidate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  retirement:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.5'
+          cache: true
+      - name: Validate and execute SDK plus fork retirement gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts/ci -p 'test_g4_candidate.py'
+          python3 scripts/ci/g4_candidate.py

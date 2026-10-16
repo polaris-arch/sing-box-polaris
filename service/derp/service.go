@@ -284,7 +284,7 @@ func (d *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 				if !isTailscale {
 					return E.New("verify_client_endpoint: endpoint is not Tailscale: ", endpointTag)
 				}
-				localClient, err := tsEndpoint.Server().LocalClient()
+				localClient, err := tsEndpoint.NewLocalClient()
 				if err != nil {
 					return err
 				}

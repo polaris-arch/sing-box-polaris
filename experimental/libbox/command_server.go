@@ -30,7 +30,8 @@ import (
 )
 
 type CommandServer struct {
-	transient bool
+	transient       bool
+	directoryDomain *adapter.TailscaleDirectoryDomain
 	*daemon.StartedService
 	ctx                  context.Context
 	managedService       *daemon.ManagedService
@@ -78,8 +79,13 @@ func NewTransientCommandServer(handler CommandServerHandler, platformInterface P
 	return newCommandServer(handler, platformInterface, true, true)
 }
 
-func newCommandServer(handler CommandServerHandler, platformInterface PlatformInterface, transient, strictCleanup bool) (*CommandServer, error) {
+func newCommandServer(handler CommandServerHandler, platformInterface PlatformInterface, transient, strictCleanup bool, domains ...*adapter.TailscaleDirectoryDomain) (*CommandServer, error) {
 	ctx := baseContext(platformInterface)
+	var domain *adapter.TailscaleDirectoryDomain
+	if len(domains) != 0 {
+		domain = domains[0]
+		ctx = adapter.ContextWithTailscaleDirectoryDomain(ctx, domain)
+	}
 	powerManager := powerreport.NewManager()
 	service.MustRegister[*powerreport.Manager](ctx, powerManager)
 	platformWrapper := &platformInterfaceWrapper{
@@ -90,6 +96,7 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 	service.MustRegister[adapter.PlatformInterface](ctx, platformWrapper)
 	server := &CommandServer{
 		transient:         transient,
+		directoryDomain:   domain,
 		ctx:               ctx,
 		handler:           handler,
 		platformInterface: platformInterface,
@@ -297,8 +304,13 @@ type OverrideOptions struct {
 }
 
 func (s *CommandServer) StartOrReloadService(configContent string, options *OverrideOptions) error {
+	if s.directoryDomain != nil && !s.directoryDomain.Activated() {
+		return errors.New("managed directory bootstrap has not been activated")
+	}
+	// Managed profiles stay in the original owner; in particular raw physical
+	// paths cannot reach a shared snapshot before the daemon poison gate.
 	var beforeStart func()
-	if !s.transient {
+	if !s.transient && s.directoryDomain == nil {
 		beforeStart = func() {
 			saveConfigSnapshot(configContent)
 			if s.powerManager.Recorder() != nil {
@@ -450,4 +462,10 @@ func (h *platformHandler) ConnectSSHAgent() (int32, error) {
 // It is not a global cleanup or SDK task-quiescence certificate.
 func (s *CommandServer) ExportTailscaleStoreRetirement() string {
 	return s.StartedService.ExportTailscaleStoreRetirement()
+}
+
+// ExportTailscaleDirectoryRetirement returns original per-run directory IO
+// terminals. It is independent of authentication-store retirement.
+func (s *CommandServer) ExportTailscaleDirectoryRetirement() string {
+	return s.StartedService.ExportTailscaleDirectoryRetirement()
 }

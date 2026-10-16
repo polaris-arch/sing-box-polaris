@@ -45,6 +45,11 @@ type Instance struct {
 }
 
 func (s *StartedService) CheckConfig(ctx context.Context, configContent string) error {
+	// Construction checks have no retirement run/lease custody. Managed hosts
+	// must not construct an independent writer, including during preparation.
+	if adapter.TailscaleDirectoryDomainFromContext(s.ctx) != nil {
+		return E.New("independent construction check is unavailable in managed directory domain")
+	}
 	selectedLocale := locale.FromContext(ctx)
 	ctx, _ = locale.ContextWithLocale(s.ctx, selectedLocale.Locale)
 	ctx = service.ExtendContext(ctx)
@@ -88,6 +93,17 @@ type OverrideOptions struct {
 }
 
 func (s *StartedService) newInstance(ctx context.Context, profileContent string, overrideOptions *OverrideOptions, reloading bool) (*Instance, error) {
+	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil {
+		if !domain.Activated() {
+			return nil, E.New("managed directory domain is not activated")
+		}
+		if err := domain.FailurePersistenceError(); err != nil {
+			return nil, err
+		}
+	}
+	if err := guardRawDirectoryNamespace(s.ctx, profileContent); err != nil {
+		return nil, err
+	}
 	selectedLocale := locale.FromContext(ctx)
 	ctx, _ = locale.ContextWithLocale(s.ctx, selectedLocale.Locale)
 	ctx = service.ExtendContext(ctx)
@@ -133,6 +149,11 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 	}
 	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, retirement)
 	ctx = service.ContextWithPtr(ctx, &retirement.binding)
+	ctx, err = prepareTailscaleDirectoryMapping(ctx, options)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
 	i := &Instance{
@@ -146,6 +167,7 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 	defer func() {
 		if !constructed {
 			retirement.freeze(nil, false)
+			retirement.freezeDirectories(nil, false)
 		}
 	}()
 	boxInstance, err := box.New(box.Options{
@@ -160,6 +182,7 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 	constructed = true
 	boxInstance.CaptureTailscaleStateStores()
 	retirement.capture(boxInstance.TailscaleStateStoreScopes())
+	retirement.captureDirectories(boxInstance.TailscaleDirectoryScopes)
 	i.instance = boxInstance
 	i.connectionManager = service.FromContext[adapter.ConnectionManager](ctx)
 	i.clashMode = service.PtrFromContext[clashmode.Manager](ctx)
@@ -231,6 +254,7 @@ func (i *Instance) finishClose() {
 	i.closeResult = i.instance.CloseWithResult()
 	if i.tailscaleRetirement != nil {
 		i.tailscaleRetirement.freeze(i.instance.TailscaleStoreRetirement(), true)
+		i.tailscaleRetirement.freezeDirectories(i.instance.TailscaleDirectoryRetirement(), true)
 	}
 }
 

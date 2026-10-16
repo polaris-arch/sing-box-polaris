@@ -1,0 +1,133 @@
+name: GitHub-only reviewed release
+'on':
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options:
+        - inventory
+        - validate
+        - publish
+        default: inventory
+        required: true
+        description: Inventory and validate never publish; publish additionally requires environment approval and enabled
+          variable
+      source_sha:
+        type: string
+        required: true
+        description: Exact 40-character producer source SHA
+      all_run:
+        type: string
+        required: true
+        description: all exact successful run ID
+      linux_run:
+        type: string
+        required: true
+        description: linux exact successful run ID
+      docker_run:
+        type: string
+        required: true
+        description: docker exact successful run ID
+      signed_run:
+        type: string
+        required: false
+        description: signed exact successful run ID
+      inventory_run:
+        type: string
+        required: false
+        description: 'Required for validate/publish: successful inventory run ID'
+      inventory_sha256:
+        type: string
+        required: false
+        description: 'Required for validate/publish: explicitly reviewed proposal SHA-256 from inventory log'
+permissions:
+  contents: read
+concurrency:
+  group: polaris-github-release-v1.15.0-polaris-alpha.12
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    if: github.repository == 'polaris-arch/sing-box-polaris' && github.repository_id == '1421657509'
+    permissions:
+      contents: read
+      actions: read
+    steps:
+    - name: Checkout reviewed publisher revision
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        persist-credentials: false
+    - name: Install final native index validator
+      run: python3 -m pip install jsonschema==4.23.0
+    - name: Checkout exact build source separately
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: reviewed-source
+        persist-credentials: false
+    - name: Fetch exact runs and validate scope without remote writes
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE: ${{ inputs.source_sha }}
+        ALL_RUN: ${{ inputs.all_run }}
+        LINUX_RUN: ${{ inputs.linux_run }}
+        DOCKER_RUN: ${{ inputs.docker_run }}
+        SIGNED_RUN: ${{ inputs.signed_run }}
+        MODE: ${{ inputs.mode }}
+        INVENTORY_RUN: ${{ inputs.inventory_run }}
+        INVENTORY_SHA256: ${{ inputs.inventory_sha256 }}
+      run: |
+        args=(--source "$SOURCE" --all-run "$ALL_RUN" --linux-run "$LINUX_RUN" --docker-run "$DOCKER_RUN")
+        if [[ -n "$SIGNED_RUN" ]]; then args+=(--signed-run "$SIGNED_RUN"); fi
+        if [[ "$MODE" == inventory ]]; then
+          python3 scripts/ci/github_release.py inventory "${args[@]}" --output release-inventory-proposal.json
+        else
+          python3 scripts/ci/github_release.py validate "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+        fi
+    - name: Retain actual validation output
+      uses: actions/upload-artifact@v4
+      with:
+        name: github-release-validation
+        path: |-
+          release-inventory-proposal.json
+          github-release-dist
+        if-no-files-found: error
+  publish:
+    needs: validate
+    if: inputs.mode == 'publish' && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: polaris-github-release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+    - name: Checkout reviewed publisher revision
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        persist-credentials: false
+    - name: Install final native index validator
+      run: python3 -m pip install jsonschema==4.23.0
+    - name: Checkout exact build source separately
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: reviewed-source
+        persist-credentials: false
+    - name: Revalidate actual bytes; create new draft; validate remote hashes; publish
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE: ${{ inputs.source_sha }}
+        ALL_RUN: ${{ inputs.all_run }}
+        LINUX_RUN: ${{ inputs.linux_run }}
+        DOCKER_RUN: ${{ inputs.docker_run }}
+        SIGNED_RUN: ${{ inputs.signed_run }}
+        MODE: ${{ inputs.mode }}
+        POLARIS_GITHUB_PUBLISH_ENABLED: ${{ vars.POLARIS_GITHUB_PUBLISH_ENABLED }}
+        INVENTORY_RUN: ${{ inputs.inventory_run }}
+        INVENTORY_SHA256: ${{ inputs.inventory_sha256 }}
+      run: |
+        args=(--source "$SOURCE" --all-run "$ALL_RUN" --linux-run "$LINUX_RUN" --docker-run "$DOCKER_RUN")
+        if [[ -n "$SIGNED_RUN" ]]; then args+=(--signed-run "$SIGNED_RUN"); fi
+        python3 scripts/ci/github_release.py publish "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"

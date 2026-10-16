@@ -73,10 +73,12 @@ func main() {
 	}
 }
 
-const (
-	appID   = "6785326793"
-	groupID = "39f9ebdc-05d4-421f-9595-dae71df227c4"
+var (
+	appID   = os.Getenv("POLARIS_ASC_APP_ID")
+	groupID = os.Getenv("POLARIS_ASC_GROUP_ID")
+)
 
+const (
 	applePath               = "../sing-box-for-apple"
 	appStorePromotionalText = "The universal proxy platform."
 	appStoreWhatsNew        = "Fixes and improvements"
@@ -106,6 +108,9 @@ func parsePlatform(name string) (asc.Platform, error) {
 }
 
 func createClient(expireDuration time.Duration) *asc.Client {
+	if appID == "" || groupID == "" || appID == "6785326793" || groupID == "39f9ebdc-05d4-421f-9595-dae71df227c4" {
+		log.Fatal("owned Polaris App Store app and group IDs are required; upstream distribution is forbidden")
+	}
 	privateKey, err := os.ReadFile(os.Getenv("ASC_KEY_PATH"))
 	if err != nil {
 		log.Fatal(err)

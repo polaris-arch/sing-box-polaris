@@ -125,6 +125,8 @@ func (f *taildropIncomingFile) Write(content []byte) (int, error) {
 }
 
 type taildropManager struct {
+	// Bound before publication; nil is reserved for standalone legacy tests.
+	directoryReady    func() bool
 	ctx               context.Context
 	logger            logger.ContextLogger
 	tag               string
@@ -132,6 +134,14 @@ type taildropManager struct {
 	platformInterface adapter.PlatformInterface
 
 	renameAccess sync.Mutex
+
+	// Admission and ioWG.Add are serialized with sealing by access.
+	ioWG      sync.WaitGroup
+	closeOnce sync.Once
+	drainDone chan struct{}
+	drainErr  error
+	cancelIO  context.CancelFunc
+	openFiles map[*taildropReadCloser]struct{}
 
 	totalReceived atomic.Int64
 	emptySince    atomic.Int64
@@ -147,7 +157,11 @@ type taildropManager struct {
 }
 
 func newTaildropManager(ctx context.Context, logger logger.ContextLogger, tag string, directory string, platformInterface adapter.PlatformInterface) *taildropManager {
+	ctx, cancelIO := context.WithCancel(ctx)
 	manager := &taildropManager{
+		drainDone:         make(chan struct{}),
+		cancelIO:          cancelIO,
+		openFiles:         make(map[*taildropReadCloser]struct{}),
 		ctx:               ctx,
 		logger:            logger,
 		tag:               tag,
@@ -165,7 +179,12 @@ func newTaildropManager(ctx context.Context, logger logger.ContextLogger, tag st
 }
 
 func (m *taildropManager) start() {
-	entries, err := os.ReadDir(m.directory)
+	if !m.beginIO() {
+		return
+	}
+	defer m.endIO()
+
+	entries, err := m.readDir(m.directory)
 	if err != nil {
 		return
 	}
@@ -196,27 +215,13 @@ func (m *taildropManager) start() {
 	}
 }
 
-func (m *taildropManager) close() {
-	m.access.Lock()
-	m.closed = true
-	for _, timer := range m.deleteTimers {
-		timer.Stop()
-	}
-	clear(m.deleteTimers)
-	watchers := make([]chan struct{}, 0, len(m.inboxWatchers)+len(m.fileWatchers))
-	for signal := range m.inboxWatchers {
-		watchers = append(watchers, signal)
-	}
-	for signal := range m.fileWatchers {
-		watchers = append(watchers, signal)
-	}
-	m.access.Unlock()
-	for _, signal := range watchers {
-		select {
-		case signal <- struct{}{}:
-		default:
-		}
-	}
+// close bounds the caller wait; a deadline is an explicit incomplete drain.
+// It is never proof that the whole directory can be retired.
+func (m *taildropManager) close() error {
+	m.seal()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return m.waitContext(ctx)
 }
 
 func (m *taildropManager) scheduleDelete(name string, delay time.Duration) {
@@ -231,9 +236,22 @@ func (m *taildropManager) scheduleDelete(name string, delay time.Duration) {
 	if _, exists := m.deleteTimers[name]; exists {
 		return
 	}
-	m.deleteTimers[name] = time.AfterFunc(delay, func() {
+	// Count the callback before publishing the timer. Stop and the callback
+	// divide ownership of Done according to Timer.Stop's result.
+	m.ioWG.Add(1)
+	var timer *time.Timer
+	timer = time.AfterFunc(delay, func() {
+		defer m.endIO()
+		m.access.Lock()
+		if m.deleteTimers[name] != timer {
+			m.access.Unlock()
+			return
+		}
+		delete(m.deleteTimers, name)
+		m.access.Unlock()
 		m.deleteExpired(name)
 	})
+	m.deleteTimers[name] = timer
 }
 
 func (m *taildropManager) cancelDelete(name string) {
@@ -241,14 +259,20 @@ func (m *taildropManager) cancelDelete(name string) {
 	defer m.access.Unlock()
 	timer, exists := m.deleteTimers[name]
 	if exists {
-		timer.Stop()
+		if timer.Stop() {
+			m.endIO()
+		}
 		delete(m.deleteTimers, name)
 	}
 }
 
 func (m *taildropManager) deleteExpired(name string) {
+	if !m.beginIO() {
+		return
+	}
+	defer m.endIO()
+
 	m.access.Lock()
-	delete(m.deleteTimers, name)
 	closed := m.closed
 	var active bool
 	if nameAndSender, isPartial := strings.CutSuffix(name, taildropPartialSuffix); isPartial {
@@ -379,6 +403,11 @@ func nextFileName(name string) string {
 }
 
 func (m *taildropManager) putFile(senderID string, senderName string, baseName string, content io.Reader, offset int64, declaredLength int64, interrupt func()) error {
+	if !m.beginIO() {
+		return os.ErrClosed
+	}
+	defer m.endIO()
+
 	err := validateTaildropFileName(baseName)
 	if err != nil {
 		return err
@@ -399,6 +428,10 @@ func (m *taildropManager) putFile(senderID string, senderName string, baseName s
 		copied:     offset,
 	}
 	m.access.Lock()
+	if m.closed {
+		m.access.Unlock()
+		return os.ErrClosed
+	}
 	if m.incoming[key] != nil {
 		m.access.Unlock()
 		return errTaildropFileExists
@@ -449,7 +482,7 @@ func (m *taildropManager) putFile(senderID string, senderName string, baseName s
 		}
 	}
 	if err != nil {
-		file.Close()
+		m.closeFile(file)
 		m.scheduleDelete(partialName, taildropDeleteDelay)
 		return err
 	}
@@ -462,7 +495,7 @@ func (m *taildropManager) putFile(senderID string, senderName string, baseName s
 		err = E.New("taildrop: copied ", copied, " bytes, expected ", declaredLength)
 	}
 	if err != nil {
-		file.Close()
+		m.closeFile(file)
 		if errors.Is(err, errTaildropCanceled) {
 			removeErr := os.Remove(partialPath)
 			if removeErr != nil && !os.IsNotExist(removeErr) {
@@ -473,7 +506,7 @@ func (m *taildropManager) putFile(senderID string, senderName string, baseName s
 		}
 		return err
 	}
-	err = file.Close()
+	err = m.closeFile(file)
 	if err != nil {
 		m.scheduleDelete(partialName, taildropDeleteDelay)
 		return E.Cause(err, "taildrop: close partial file")
@@ -516,7 +549,7 @@ func (m *taildropManager) renamePartial(partialPath string, baseName string) (st
 		if statErr != nil {
 			return "", E.Cause(statErr, "taildrop: stat received file")
 		}
-		identical, compareErr := filesIdentical(partialPath, finalPath, partialInfo.Size())
+		identical, compareErr := filesIdentical(partialPath, finalPath, partialInfo.Size(), m.failIO)
 		if compareErr != nil {
 			return "", E.Cause(compareErr, "taildrop: compare received file")
 		}
@@ -532,7 +565,7 @@ func (m *taildropManager) renamePartial(partialPath string, baseName string) (st
 	return "", E.New("taildrop: too many rename attempts for ", baseName)
 }
 
-func filesIdentical(leftPath string, rightPath string, leftSize int64) (bool, error) {
+func filesIdentical(leftPath string, rightPath string, leftSize int64, failures ...func(error)) (bool, error) {
 	rightInfo, err := os.Stat(rightPath)
 	if err != nil {
 		return false, err
@@ -540,24 +573,29 @@ func filesIdentical(leftPath string, rightPath string, leftSize int64) (bool, er
 	if rightInfo.Size() != leftSize {
 		return false, nil
 	}
-	leftSum, err := fileChecksum(leftPath)
+	leftSum, err := fileChecksum(leftPath, failures...)
 	if err != nil {
 		return false, err
 	}
-	rightSum, err := fileChecksum(rightPath)
+	rightSum, err := fileChecksum(rightPath, failures...)
 	if err != nil {
 		return false, err
 	}
 	return leftSum == rightSum, nil
 }
 
-func fileChecksum(filePath string) ([sha256.Size]byte, error) {
-	var sum [sha256.Size]byte
+func fileChecksum(filePath string, failures ...func(error)) (sum [sha256.Size]byte, resultErr error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return sum, err
 	}
-	defer file.Close()
+	defer func() {
+		closeErr := file.Close()
+		for _, fail := range failures {
+			fail(closeErr)
+		}
+		resultErr = errors.Join(resultErr, closeErr)
+	}()
 	hash := sha256.New()
 	_, err = io.Copy(hash, file)
 	if err != nil {
@@ -619,8 +657,13 @@ func (m *taildropManager) cancelReceiving(senderID string, baseName string) {
 }
 
 func (m *taildropManager) inbox() *adapter.TaildropInbox {
+	if !m.beginIO() {
+		return &adapter.TaildropInbox{}
+	}
+	defer m.endIO()
+
 	inbox := &adapter.TaildropInbox{}
-	entries, err := os.ReadDir(m.directory)
+	entries, err := m.readDir(m.directory)
 	if err == nil {
 		deletedNames := make(map[string]bool)
 		fileNames := make(map[string]bool, len(entries))
@@ -698,11 +741,16 @@ func (m *taildropManager) inbox() *adapter.TaildropInbox {
 }
 
 func (m *taildropManager) waitingFileCount() int32 {
+	if !m.beginIO() {
+		return 0
+	}
+	defer m.endIO()
+
 	totalReceived := m.totalReceived.Load()
 	if totalReceived == m.emptySince.Load() {
 		return 0
 	}
-	entries, err := os.ReadDir(m.directory)
+	entries, err := m.readDir(m.directory)
 	if err != nil {
 		return 0
 	}
@@ -743,8 +791,13 @@ func (m *taildropManager) unreadFileCount() int32 {
 }
 
 func (m *taildropManager) partialFileNames(senderID string) []string {
+	if !m.beginIO() {
+		return nil
+	}
+	defer m.endIO()
+
 	fileNames := make([]string, 0)
-	entries, err := os.ReadDir(m.directory)
+	entries, err := m.readDir(m.directory)
 	if err != nil {
 		return fileNames
 	}
@@ -758,6 +811,17 @@ func (m *taildropManager) partialFileNames(senderID string) []string {
 }
 
 func (m *taildropManager) openFile(baseName string) (io.ReadCloser, int64, error) {
+	if !m.beginIO() {
+		return nil, 0, os.ErrClosed
+	}
+	// Transfer this lease to the returned reader only on success.
+	transferred := false
+	defer func() {
+		if !transferred {
+			m.endIO()
+		}
+	}()
+
 	err := validateTaildropFileName(baseName)
 	if err != nil {
 		return nil, 0, err
@@ -772,13 +836,28 @@ func (m *taildropManager) openFile(baseName string) (io.ReadCloser, int64, error
 	}
 	information, err := file.Stat()
 	if err != nil {
-		file.Close()
+		m.closeFile(file)
 		return nil, 0, err
 	}
-	return file, information.Size(), nil
+	reader := &taildropReadCloser{file: file, manager: m}
+	m.access.Lock()
+	if m.closed {
+		m.access.Unlock()
+		m.closeFile(file)
+		return nil, 0, os.ErrClosed
+	}
+	m.openFiles[reader] = struct{}{}
+	transferred = true
+	m.access.Unlock()
+	return reader, information.Size(), nil
 }
 
 func (m *taildropManager) deleteFile(baseName string) error {
+	if !m.beginIO() {
+		return os.ErrClosed
+	}
+	defer m.endIO()
+
 	err := validateTaildropFileName(baseName)
 	if err != nil {
 		return err
@@ -811,7 +890,9 @@ func (m *taildropManager) deleteFile(baseName string) error {
 		if markerErr != nil {
 			return E.Cause(err, "taildrop: delete received file")
 		}
-		marker.Close()
+		if closeErr := m.closeFile(marker); closeErr != nil {
+			return closeErr
+		}
 		m.scheduleDelete(baseName+taildropDeletedSuffix, taildropDeleteDelay)
 		break
 	}
@@ -830,6 +911,12 @@ type taildropBlockChecksum struct {
 }
 
 func (m *taildropManager) handlePeerRequest(handler ipnlocal.PeerAPIHandler, w http.ResponseWriter, r *http.Request) {
+	if !m.beginIO() {
+		http.Error(w, "taildrop closed", http.StatusServiceUnavailable)
+		return
+	}
+	defer m.endIO()
+
 	if handler.Peer().UnsignedPeerAPIOnly() ||
 		!(handler.IsSelfUntagged() || handler.PeerCaps().HasCapability(tailcfg.PeerCapabilityFileSharingSend)) {
 		http.Error(w, "Taildrop access denied", http.StatusForbidden)
@@ -928,6 +1015,12 @@ func (m *taildropManager) handlePeerRequest(handler ipnlocal.PeerAPIHandler, w h
 }
 
 func (m *taildropManager) writePartialChecksums(w http.ResponseWriter, senderID string, baseName string) {
+	if !m.beginIO() {
+		http.Error(w, "taildrop closed", http.StatusServiceUnavailable)
+		return
+	}
+	defer m.endIO()
+
 	if validateTaildropFileName(baseName) != nil {
 		http.Error(w, errTaildropInvalidFileName.Error(), http.StatusBadRequest)
 		return
@@ -940,7 +1033,7 @@ func (m *taildropManager) writePartialChecksums(w http.ResponseWriter, senderID 
 		http.Error(w, "taildrop: open partial file", http.StatusInternalServerError)
 		return
 	}
-	defer file.Close()
+	defer m.closeFile(file)
 	encoder := json.NewEncoder(w)
 	block := make([]byte, taildropBlockSize)
 	for {
@@ -976,6 +1069,9 @@ func (t *Endpoint) SubscribeTaildropInbox(ctx context.Context, fn func(*adapter.
 	}
 	defer manager.unwatch(manager.inboxWatchers, signal)
 	for {
+		if manager.isClosed() {
+			return os.ErrClosed
+		}
 		fn(manager.inbox())
 		select {
 		case <-ctx.Done():
@@ -989,6 +1085,11 @@ func (t *Endpoint) SubscribeTaildropInbox(ctx context.Context, fn func(*adapter.
 }
 
 func (t *Endpoint) MarkTaildropInboxRead() error {
+	if !t.taildrop.beginIO() {
+		return os.ErrClosed
+	}
+	defer t.taildrop.endIO()
+
 	t.taildrop.markInboxRead()
 	return nil
 }
@@ -1002,6 +1103,11 @@ func (t *Endpoint) DeleteTaildropFile(fileName string) error {
 }
 
 func (t *Endpoint) CancelTaildropReceiving(senderID string, fileName string) error {
+	if !t.taildrop.beginIO() {
+		return os.ErrClosed
+	}
+	defer t.taildrop.endIO()
+
 	err := validateTaildropFileName(fileName)
 	if err != nil {
 		return err

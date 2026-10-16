@@ -760,6 +760,7 @@ func (s *Box) finishClose() error {
 	// retirement stays unknown is reported by the endpoint's construction
 	// cleanup, which the scope runs last.
 	s.retireTailscaleStateStores()
+	s.sealTailscaleDirectories()
 	return s.scope.Close()
 }
 

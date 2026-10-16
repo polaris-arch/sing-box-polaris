@@ -55,10 +55,10 @@ func main() {
 		}
 	}
 	var standaloneVersionUpdated bool
-	newContent, standaloneVersionUpdated = findAndReplace(objectsMap, newContent, []string{"io.nekohasekai.sfamt.standalone", "io.nekohasekai.sfamt.system"}, newVersion.String())
+	newContent, standaloneVersionUpdated = findAndReplace(objectsMap, newContent, []string{"io.nekohasekai.sfamt.standalone", "io.nekohasekai.sfamt.system"}, appleMarketingVersion(newVersion))
 	if standaloneVersionUpdated {
 		marketingVersionUpdated = true
-		log.Info("updated version to ", newVersion.String())
+		log.Info("updated version to ", appleMarketingVersion(newVersion))
 	}
 	var projectVersionUpdated bool
 	for environmentName, directory := range map[string]string{
@@ -80,6 +80,15 @@ func main() {
 	if marketingVersionUpdated || projectVersionUpdated {
 		common.Must(os.WriteFile("sing-box.xcodeproj/project.pbxproj", []byte(newContent), 0o644))
 	}
+}
+
+// Apple CFBundleShortVersionString uses numeric components. The full branded
+// version remains in the kernel and public artifact filename.
+func appleMarketingVersion(version badversion.Version) string {
+	if strings.HasPrefix(version.PreReleaseIdentifier, "polaris-") {
+		return version.VersionString()
+	}
+	return version.String()
 }
 
 func findAndReplace(objectsMap map[string]any, projectContent string, bundleIDList []string, newVersion string) (string, bool) {

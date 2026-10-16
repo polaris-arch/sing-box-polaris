@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/sagernet/tailscale/util/dirscope"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,6 +29,8 @@ const maxStateStoreBytes = 4 << 20
 // Its lazy factory and every read/write share admission. Seal is permanent,
 // including when construction or a delegate write is blocked or fails.
 type guardedStateStore struct {
+	directoryScope   *dirscope.Scope
+	directoryReady   func() bool
 	access           sync.Mutex
 	initAccess       sync.Mutex
 	sealed           bool
@@ -200,6 +203,12 @@ func (s *guardedStateStore) retire(deadline time.Time, profile func() (string, s
 		} else {
 			result.WriterState = "NoStoreConstruction"
 		}
+		// A never-started owner has no process lease. Do not inspect its path
+		// merely to improve an authentication witness.
+		if s.directoryScope != nil && (s.directoryReady == nil || !s.directoryReady()) {
+			s.terminal = result
+			return
+		}
 		type fileWitness struct {
 			content   []byte
 			state     string
@@ -208,7 +217,13 @@ func (s *guardedStateStore) retire(deadline time.Time, profile func() (string, s
 		}
 		fileReady := make(chan fileWitness, 1)
 		go func() {
-			content, state, err := readStateFile(result.StateDirectory, result.StateFile)
+			release, scopeErr := s.directoryScope.Begin()
+			if scopeErr != nil {
+				fileReady <- fileWitness{state: "Unknown", err: scopeErr, completed: time.Now()}
+				return
+			}
+			defer release()
+			content, state, err := readStateFile(result.StateDirectory, result.StateFile, s.directoryScope.Fail)
 			fileReady <- fileWitness{content, state, err, time.Now()}
 		}()
 		var witness fileWitness
@@ -262,7 +277,7 @@ func (s *guardedStateStore) retire(deadline time.Time, profile func() (string, s
 	return s.terminal
 }
 
-func readStateFile(directory, path string) ([]byte, string, error) {
+func readStateFile(directory, path string, failures ...func(error)) (data []byte, state string, resultErr error) {
 	canonical, err := canonicalStateDirectory(directory)
 	if err != nil || canonical != directory {
 		return nil, "Unknown", errors.New("Tailscale state scope changed")
@@ -281,7 +296,16 @@ func readStateFile(directory, path string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "Unknown", err
 	}
-	defer file.Close()
+	defer func() {
+		closeErr := file.Close()
+		for _, fail := range failures {
+			fail(closeErr)
+		}
+		if closeErr != nil {
+			state = "Unknown"
+			resultErr = errors.Join(resultErr, closeErr)
+		}
+	}()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) {
 		return nil, "Unknown", errors.New("Tailscale state file changed")
@@ -362,10 +386,18 @@ func (t *Endpoint) retireStateStore() error {
 	return nil
 }
 
-func makeStateStore(ctx context.Context, tag, directory string) *guardedStateStore {
+func makeStateStore(ctx context.Context, tag, directory string, scopes ...*dirscope.Scope) *guardedStateStore {
+	var scope *dirscope.Scope
+	if len(scopes) == 1 {
+		scope = scopes[0]
+	}
 	guard := newGuardedStateStore(ctx, tag, directory, nil)
+	guard.directoryScope = scope
 	guard.factory = func() (ipn.StateStore, error) {
-		return store.NewFileStore(func(string, ...any) {}, guard.node.StateFile)
+		if scope != nil && (guard.directoryReady == nil || !guard.directoryReady()) {
+			return nil, errors.New("directory lifetime lease not acquired")
+		}
+		return store.NewFileStoreWithScope(func(string, ...any) {}, guard.node.StateFile, scope)
 	}
 	return guard
 }
