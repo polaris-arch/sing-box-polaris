@@ -183,10 +183,9 @@ func profileExchange(t *testing.T, config Config, serverConfig *stdtls.Config, i
 	state := wrapped.ConnectionState()
 	client.Close()
 	r := <-done
-	if err == nil {
-		err = r.err
-	}
-	return state, r.wire, err
+	// Keep the peer's actual TLS rejection as well as the client error. An
+	// unrelated EOF/timeout must not masquerade as certificate authentication.
+	return state, r.wire, errors.Join(err, r.err)
 }
 
 func profileClient(t *testing.T, id string, opts option.OutboundTLSOptions) *UTLSClientConfig {
@@ -459,14 +458,16 @@ func TestUTLSHostnameAndMutualTLS(t *testing.T) {
 			})
 			t.Run("missing-client-identity", func(t *testing.T) {
 				missing := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}})
-				if _, _, err := profileExchange(t, missing, server, false); err == nil {
-					t.Fatal("missing client identity admitted")
+				_, _, err := profileExchange(t, missing, server, false)
+				if assertion := profileAuthenticationFailure(err, true); assertion != nil {
+					t.Fatal(assertion)
 				}
 			})
 			t.Run("wrong-hostname", func(t *testing.T) {
 				wrongHost := profileClient(t, name, option.OutboundTLSOptions{ServerName: "wrong.invalid", Certificate: []string{serverCert.certificatePEM}})
-				if _, _, err := profileExchange(t, wrongHost, &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}}, false); err == nil {
-					t.Fatal("wrong server hostname admitted")
+				_, _, err := profileExchange(t, wrongHost, &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}}, false)
+				if assertion := profileAuthenticationFailure(err, false); assertion != nil {
+					t.Fatal(assertion)
 				}
 			})
 		})
@@ -562,5 +563,66 @@ func TestUTLSExplicitALPNUpsertAbsentAndPSKLast(t *testing.T) {
 	extensions = insertUTLSExtension(extensions, &utls.GREASEEncryptedClientHelloExtension{})
 	if extensions[len(extensions)-1] != psk {
 		t.Fatal("new ALPN/ECH extension moved PSK from last")
+	}
+}
+
+func profileAuthenticationFailure(err error, missingClient bool) error {
+	if err == nil {
+		return errors.New("authentication negative control admitted the peer")
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || profileErrorHasTimeout(err) {
+		return fmt.Errorf("authentication negative control failed for transport/cancellation: %w", err)
+	}
+	if missingClient {
+		if !strings.Contains(err.Error(), "tls: client didn't provide a certificate") {
+			return fmt.Errorf("missing-client rejection was not the peer certificate requirement: %w", err)
+		}
+	} else {
+		var hostname x509.HostnameError
+		if !errors.As(err, &hostname) {
+			return fmt.Errorf("wrong-host rejection was not hostname verification: %w", err)
+		}
+	}
+	return nil
+}
+
+func profileErrorHasTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if network, ok := err.(net.Error); ok && network.Timeout() {
+		return true
+	}
+	switch wrapped := err.(type) {
+	case interface{ Unwrap() []error }:
+		for _, child := range wrapped.Unwrap() {
+			if profileErrorHasTimeout(child) {
+				return true
+			}
+		}
+	case interface{ Unwrap() error }:
+		return profileErrorHasTimeout(wrapped.Unwrap())
+	}
+	return false
+}
+
+func TestUTLSAuthenticationNegativesRejectTransportFailures(t *testing.T) {
+	missing := errors.New("tls: client didn't provide a certificate")
+	hostname := x509.HostnameError{Certificate: &x509.Certificate{DNSNames: []string{"localhost"}}, Host: "wrong.invalid"}
+	if err := profileAuthenticationFailure(errors.Join(io.EOF, missing), true); err != nil {
+		t.Fatal(err)
+	}
+	if err := profileAuthenticationFailure(errors.Join(io.EOF, hostname), false); err != nil {
+		t.Fatal(err)
+	}
+	for _, missingClient := range []bool{true, false} {
+		for _, err := range []error{nil, io.EOF, net.ErrClosed, errors.New("unrelated setup failure"), context.DeadlineExceeded, context.Canceled,
+			errors.Join(missing, context.DeadlineExceeded), &net.OpError{Op: "write", Net: "tcp", Err: context.DeadlineExceeded},
+			errors.Join(&net.OpError{Op: "read", Net: "tcp", Err: io.EOF}, missing, &net.DNSError{IsTimeout: true}),
+			errors.Join(hostname, &net.DNSError{IsTimeout: true})} {
+			if profileAuthenticationFailure(err, missingClient) == nil {
+				t.Fatalf("unrelated negative failure accepted missing=%v err=%v", missingClient, err)
+			}
+		}
 	}
 }

@@ -557,7 +557,16 @@ func (hc *halfConn) encrypt(record, payload []byte, rand io.Reader) ([]byte, err
 				}
 				padding -= len(record) + c.Overhead()
 				if padding < 0 {
-					return nil, fmt.Errorf("payload[0]: %v, padding: %v", payload[0], padding)
+					// The target is a padding goal, not permission to truncate
+					// our negotiated EncryptedExtensions. Independent ALPN can
+					// make EE (or an existing coalesced EE-led flight) larger
+					// than the camouflage record. Emit its minimum valid TLS
+					// record in that case; preserve exact padding when it fits.
+					// Other handshake record budgets remain strict.
+					if payload[0] != typeEncryptedExtensions || len(payload) > maxPlaintext {
+						return nil, fmt.Errorf("payload[0]: %v, padding: %v", payload[0], padding)
+					}
+					padding = 0
 				}
 				record = append(record, make([]byte, padding)...)
 			}

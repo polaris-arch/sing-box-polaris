@@ -279,6 +279,11 @@ See [Application-Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Appli
 With REALITY, an explicit client list is preserved in the authenticated
 ClientHello. This fork's REALITY server selects from its own `alpn` list and
 rejects disjoint lists, independently of the camouflage server's ALPN policy.
+Camouflage record sizes remain padding targets when the actual encrypted
+extensions fit. A larger negotiated extension uses its own minimum valid TLS
+record rather than negative padding or truncation; exact camouflage record
+length is therefore not promised for a different ALPN policy. Other handshake
+record budgets retain their existing checks.
 Use the completed connection's `NegotiatedProtocol` as evidence; a ClientHello
 offer or the camouflage site's configuration is not a negotiated protocol.
 Older remote REALITY servers may omit ALPN even when the client offers it. HTTP/2
@@ -640,7 +645,7 @@ replacement. The Meta v1.8.8 REALITY ALPN compatibility code is a source-owned
 replacement is reported as `(devel)`; the original upstream h1 describes only
 the immutable baseline, not these modified bytes. Bind the replacement to the
 producer's exact source commit/tree and local replacement tree, with baseline
-and sole production delta in `release/dependency-sources/metacubex-utls-replacement.json`.
+and explicit two-file production delta (`reality.go`/`conn.go`) in `release/dependency-sources/metacubex-utls-replacement.json`.
 Clean producers stamp the source commit even with `-trimpath` or
 `-buildvcs=false`; conflicting stamps are errors. Unavailable build metadata stays
 empty/null rather than being inferred from the version. Some mobile linkers omit

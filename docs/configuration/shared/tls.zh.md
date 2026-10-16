@@ -278,13 +278,15 @@ TLS 版本值：
 
 REALITY 客户端显式 ALPN 列表会保留在经过认证的 ClientHello 中。本 fork 的
 REALITY 服务端按自己的 `alpn` 列表选择协议，无共同项时明确拒绝，与伪装站的
-ALPN 策略独立。只有实际完成连接的 `NegotiatedProtocol` 能证明协商结果；
+ALPN 策略独立。实际加密扩展放得下时仍按伪装记录大小填充；独立 ALPN 使扩展
+更长时发送自身最小合法 TLS 记录，不负填充或截断，因此不承诺不同 ALPN 策略
+下仍保持完全相同的伪装记录长度；其他握手记录预算维持原检查。只有实际完成连接的 `NegotiatedProtocol` 能证明协商结果；
 ClientHello offer 或伪装站配置不能代签。旧远端 REALITY 服务端可能不返回 ALPN，
 HTTP/2 调用方仍须核实真实 `h2`。
 
 本 fork 将 Meta v1.8.8 的最小 REALITY ALPN 修正保存在
 `third_party/metacubex-utls`，沿用仓库源码 replacement 模式。运行时模块查询如实
-返回本地 replacement 与空 sum，不冒用原上游 h1；完整基线、唯一生产差异及摘要
+返回本地 replacement 与空 sum，不冒用原上游 h1；完整基线、两处生产差异（`reality.go`/`conn.go`）及摘要
 见 `release/dependency-sources/metacubex-utls-replacement.json`，与准确核源码
 commit/tree、producer 的 local replacement tree 及实际加载字节绑定。
 

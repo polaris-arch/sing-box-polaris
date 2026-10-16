@@ -54,6 +54,8 @@ func TestRealityExplicitALPNWireAndClone(t *testing.T) {
 		{"custom", realityHandshakeCase{profile: "safari_26_3", clientALPN: []string{"polaris-test/1"}, serverALPN: []string{"polaris-test/1"}, negotiated: "polaris-test/1"}},
 		{"mismatch", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"client-only/1"}, serverALPN: []string{"server-only/1"}, camouflageALPN: []string{"client-only/1"}, reject: true}},
 		{"server-policy-independent-of-camouflage", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"h2", "http/1.1"}, serverALPN: []string{"http/1.1", "h2"}, camouflageALPN: []string{"h2", "http/1.1"}, negotiated: "http/1.1"}},
+		{"server-long-alpn-exceeds-camouflage", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"h2", strings.Repeat("p", 200)}, serverALPN: []string{strings.Repeat("p", 200)}, camouflageALPN: []string{"h2"}, negotiated: strings.Repeat("p", 200)}},
+		{"server-shorter-alpn-keeps-camouflage-budget", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"h2", strings.Repeat("p", 200)}, serverALPN: []string{"h2"}, camouflageALPN: []string{strings.Repeat("p", 200)}, negotiated: "h2"}},
 		{"clone-set-next-protos", realityHandshakeCase{profile: "chrome_155", clientALPN: []string{"original-only/1"}, cloneALPN: []string{"clone-only/1"}, serverALPN: []string{"clone-only/1"}, negotiated: "clone-only/1"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) { realityHandshakeExchange(t, tc.realityHandshakeCase) })

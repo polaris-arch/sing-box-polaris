@@ -34,7 +34,7 @@ REQUIRED_FORK = {'TestUTLSMappedProfilesAreRealAndMatchSchema', 'TestUTLSProfile
                  'TestShadowTLSV3RejectsWrongPasswordAndTamperedSession', 'TestShadowTLSV3ConcurrentConfigIsolation',
                  'TestShadowTLSV3RejectsRealECH', 'TestOOMHeapRuntimeRecordLayout'}
 
-REQUIRED_FORK.update({'TestUTLSExplicitALPNUpsertAbsentAndPSKLast','TestOOMAdjacentRuntimeProfilesEncode'})
+REQUIRED_FORK.update({'TestUTLSExplicitALPNUpsertAbsentAndPSKLast','TestOOMAdjacentRuntimeProfilesEncode','TestUTLSAuthenticationNegativesRejectTransportFailures'})
 REQUIRED_FORK.update('TestUTLSHostnameAndMutualTLS/' + profile + '/' + case
                      for profile in ('chrome_155', 'safari_26_3')
                      for case in ('good', 'missing-client-identity', 'wrong-hostname'))
@@ -42,7 +42,7 @@ REQUIRED_FORK.update('TestUTLSRealECHHandshakeAndSessionIDConflict/' + profile +
                      for profile in ('chrome_155', 'safari_26_3')
                      for case in ('accepted', 'session-id-conflict'))
 
-REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos', 'server-policy-independent-of-camouflage'))
+REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos', 'server-policy-independent-of-camouflage', 'server-long-alpn-exceeds-camouflage', 'server-shorter-alpn-keeps-camouflage-budget'))
 REQUIRED_FORK.update('TestShadowTLSV3RejectsWrongPasswordAndTamperedSession/' + name for name in ('wrong-password', 'tampered-session'))
 REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name for name in ('chrome_155', 'safari_26_3'))
 

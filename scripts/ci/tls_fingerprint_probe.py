@@ -46,7 +46,7 @@ def source_module_pins():
 
 
 def linked_module_pins():
-    """Actual BuildInfo identities, including the one source-owned Meta delta.
+    """Actual BuildInfo identities, including the source-owned Meta delta.
 
     The upstream h1 is baseline provenance, not the checksum of modified code.
     The producer's sourceCommit/tree and localReplacement tree bind those bytes.

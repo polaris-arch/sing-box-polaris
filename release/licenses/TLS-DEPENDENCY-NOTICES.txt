@@ -1,6 +1,9 @@
-TLS dependency notices for this source revision. Exact linked versions and h1
-sums are recorded by go.mod/go.sum and the actual producer BuildInfo. This text
-does not assert browser indistinguishability, signature trust or PQ negotiation.
+TLS dependency notices for this source revision. Actual linked versions and
+replacements are recorded by the producer BuildInfo. go.mod/go.sum also retain
+upstream baseline h1 values; a modified local replacement is instead bound to
+its committed source/tree and explicit dependency-source manifest, never to the
+unmodified upstream h1. This text does not assert browser indistinguishability,
+signature trust or PQ negotiation.
 
 
 github.com/refraction-networking/utls v1.8.3-0.20261006222701-ff1b50fbbe9a
@@ -94,3 +97,38 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+dicttls (included in both pinned uTLS modules)
+https://github.com/refraction-networking/utls/tree/ff1b50fbbe9a6dff1dcb1cfc0493bd5b0f073f67/dicttls
+https://github.com/MetaCubeX/utls/tree/449a38f8780006758205a60661a0bc374a182ca5/dicttls
+Both copies have identical license text (SHA256 ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec).
+
+BSD 3-Clause License
+
+Copyright (c) 2023, Gaukas Wang
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

@@ -8,7 +8,7 @@
   "upstreamModuleZipSHA256": "2eb4a99f8d7295c16500ac215f912796deac43d8b67054d589d8ed680515747e",
   "replacementPath": "./third_party/metacubex-utls",
   "patch": "release/dependency-sources/metacubex-utls-reality-alpn.patch",
-  "patchSHA256": "a10cdb01965aaaaf93675058b6e772cc502ba26a85ff11ccea9eb59ae7ef8ca4",
+  "patchSHA256": "a0f7bcf8429b003e008ac38fa4a4c083f8c8397b4d75f5e3bd992e24d8fcc932",
   "files": {
     ".github/workflows/go.yml": {
       "beforeSHA256": "887964fe51696e7a3e9e60528e43ec03c6482b14355ce5caedeebece025ab46a",
@@ -92,8 +92,8 @@
     },
     "conn.go": {
       "beforeSHA256": "e6137560579925a8aaa64615944c97e1f34e7f64ed52f5eda7f99e14cf68abaa",
-      "afterSHA256": "e6137560579925a8aaa64615944c97e1f34e7f64ed52f5eda7f99e14cf68abaa",
-      "bytes": 55828
+      "afterSHA256": "f69e667b9d828c6e0f623c2432a9022eff524af1891bb27eb986ca2216e05171",
+      "bytes": 56309
     },
     "conn_test.go": {
       "beforeSHA256": "4e3b5a1f5dd0112d1115c5158fdb566b5e8814c589dbf4f2af09fe5e7602f3a1",
@@ -1787,7 +1787,8 @@
     }
   },
   "changedFiles": [
+    "conn.go",
     "reality.go"
   ],
-  "reason": "REALITY authenticated server must negotiate its own ALPN; existing HTTP2 consumer checks actual NegotiatedProtocol. No source-cache overlay or fictitious upstream module h1."
+  "reason": "REALITY authenticated server ALPN selection/rejection and bounded EE record sizing independent of camouflage. Original upstream h1 remains baseline provenance only."
 }

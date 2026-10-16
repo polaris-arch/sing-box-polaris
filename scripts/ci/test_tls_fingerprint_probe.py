@@ -118,3 +118,21 @@ class FingerprintProbeControls(unittest.TestCase):
         def tampered(path):
             return '0'*64 if str(path).endswith('metacubex-utls/reality.go') else real_sha(path)
         with mock.patch.object(probe,'sha',side_effect=tampered),self.assertRaises(ValueError):probe.linked_module_pins()
+
+    def test_binary_and_legal_notice_retains_complete_dicttls_bsd_copyright(self):
+        import hashlib
+        manifest=json.loads((probe.ROOT/'release/ci/tls-dependency-notices.json').read_text())
+        full=(probe.ROOT/'third_party/metacubex-utls/dicttls/LICENSE').read_bytes()
+        self.assertEqual(hashlib.sha256(full).hexdigest(),'ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec')
+        notice=probe.ROOT/manifest['notice']
+        self.assertIn(full,notice.read_bytes())
+        self.assertIn(b'Copyright (c) 2023, Gaukas Wang',notice.read_bytes())
+        for name in probe.UTLS_MODULES:
+            component=next(x for x in manifest['components'] if x['module']==name)
+            source=component['additionalLicenseSources']
+            self.assertEqual(source,[{'licenseSourceFile':'dicttls/LICENSE','licenseSHA256':hashlib.sha256(full).hexdigest(),
+                                     'source':component['source']+'/dicttls/LICENSE'}])
+        for workflow in ['build.yml','signed-release.yml']:
+            text=(probe.ROOT/'.github/workflows'/workflow).read_text()
+            self.assertIn('release/licenses/TLS-DEPENDENCY-NOTICES.txt',text)
+        self.assertIn("Path('release/licenses').rglob('*')",(probe.ROOT/'scripts/ci/native_release_index.py').read_text())
