@@ -227,19 +227,17 @@ func kernelCipher(kernel *Support, hc *badtls.RawHalfConn, cipherSuite uint16, i
 	}
 
 	var key, iv []byte
+	var err error
 	if *hc.Version == tls.VersionTLS13 {
-		key, iv = trafficKey(cipherSuiteTLS13ByID(cipherSuite), *hc.TrafficSecret)
-		/*if isRX {
-			key, iv = trafficKey(cipherSuiteTLS13ByID(cipherSuite), keyLog.RemoteTrafficSecret)
-		} else {
-			key, iv = trafficKey(cipherSuiteTLS13ByID(cipherSuite), keyLog.TrafficSecret)
-		}*/
+		key, iv, err = hc.TrafficKey(cipherSuite, *hc.TrafficSecret)
+
 	} else {
-		// csPtr := cipherSuiteByID(cipherSuite)
-		// keysFromMasterSecret(*hc.Version, csPtr, keyLog.Secret, keyLog.Random)
 		return nil
 	}
 
+	if err != nil {
+		return nil
+	}
 	switch cipherSuite {
 	case tls.TLS_AES_128_GCM_SHA256, tls.TLS_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
 		crypto := new(kernelCryptoAES128GCM)

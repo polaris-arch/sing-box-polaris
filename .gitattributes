@@ -11,3 +11,20 @@ release/dependency-sources/*.patch whitespace=-space-before-tab
 
 # Exact upstream baseline fixture bytes used by the source overlay regression.
 /scripts/ci/testdata/desktop-50f50384/** -text
+
+# Source-owned SHA-pinned patches must retain exact Git blob bytes on every host.
+/.github/patches/** -text
+/.github/go_ios_cpu_features.patch -text
+
+third_party/metacubex-utls/** -text
+
+/release/dependency-sources/metacubex-utls-reality-alpn.patch -text whitespace=-blank-at-eol,-space-before-tab
+
+# Preserve exact, H1-inventoried upstream baseline assets. No allowance for the
+# modified reality.go or other product code is added.
+third_party/metacubex-utls/CONTRIBUTORS_GUIDE.md whitespace=-blank-at-eol
+third_party/metacubex-utls/README.md whitespace=-blank-at-eol
+third_party/metacubex-utls/SECURITY.md whitespace=-blank-at-eol
+third_party/metacubex-utls/dicttls/README.md whitespace=-blank-at-eol
+third_party/metacubex-utls/internal/cpu/cpu_s390x.s whitespace=-blank-at-eof
+third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=-space-before-tab

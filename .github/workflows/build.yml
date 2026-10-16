@@ -22,7 +22,7 @@ jobs:
         persist-credentials: false
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.25.5'
+        go-version: '1.27.2'
         cache: true
     - uses: actions/setup-python@v5
       with:
@@ -34,6 +34,49 @@ jobs:
       run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
     - name: Execute actual SDK and fork retirement gates
       run: python3 scripts/ci/g4_candidate.py
+  utls_gate:
+    name: Concentrated Go and uTLS compatibility (${{ matrix.os }})
+    if: inputs.build == 'Source'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+      GOMAXPROCS: '2'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install capability schema validator
+      run: python -m pip install jsonschema==4.23.0
+    - name: Run raced protocol, crypto and actual selected-core gates
+      run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
+    - name: Measure whole-migration binary and idle RSS costs
+      if: always() && matrix.os == 'ubuntu-24.04'
+      continue-on-error: true # Observation result, not an extra product-compatibility gate.
+      run: python scripts/ci/utls_cost.py --output "${{ runner.temp }}/tls-fingerprint-evidence/cost"
+    - name: Preserve original commands, logs, identities and necessary binaries
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: utls-source-${{ matrix.os }}
+        path: ${{ runner.temp }}/tls-fingerprint-evidence
+        if-no-files-found: error
+        retention-days: 7
   calculate_version:
     if: inputs.build != 'Source'
     name: Calculate version
@@ -49,7 +92,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache/restore@v4
@@ -284,7 +327,7 @@ jobs:
       if: ${{ ! matrix.legacy_win7 }}
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache/restore@v4
@@ -299,9 +342,9 @@ jobs:
       with:
         path: |
           ~/go/go_win7
-        key: go_win7_1268
+        key: go_win7_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
     - name: Setup Go for Windows 7
-      if: matrix.legacy_win7 && steps.cache-go-for-windows7.outputs.cache-hit != 'true'
+      if: matrix.legacy_win7
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: .github/setup_go_for_windows7.sh
@@ -373,7 +416,7 @@ jobs:
         echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
     - name: Set shared ldflags
       run: |
-        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS)" >> "${GITHUB_ENV}"
+        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
     - name: Build (purego)
       if: matrix.variant == 'purego'
       run: |
@@ -573,6 +616,7 @@ jobs:
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
+        cp ../release/licenses/TLS-DEPENDENCY-NOTICES.txt "${DIR_NAME}"
         if [ '${{ matrix.os }}' = 'windows' ]; then
           cp sing-box "${DIR_NAME}/sing-box.exe"
           zip -r "${DIR_NAME}.zip" "${DIR_NAME}"
@@ -630,7 +674,7 @@ jobs:
       if: ${{ ! matrix.legacy_osx }}
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache/restore@v4
@@ -645,9 +689,9 @@ jobs:
       with:
         path: |
           ~/go/go_osx
-        key: go_osx_1268
+        key: go_osx_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/macos1013.patch', '.github/setup_legacy_go.py') }}
     - name: Setup Go for macOS 10.13
-      if: matrix.legacy_osx && steps.cache-go-for-macos1013.outputs.cache-hit != 'true'
+      if: matrix.legacy_osx
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: .github/setup_go_for_macos1013.sh
@@ -671,7 +715,7 @@ jobs:
         echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
     - name: Set shared ldflags
       run: |
-        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS)" >> "${GITHUB_ENV}"
+        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
     - name: Build
       run: |
         set -xeuo pipefail
@@ -698,6 +742,7 @@ jobs:
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
+        cp ../release/licenses/TLS-DEPENDENCY-NOTICES.txt "${DIR_NAME}"
         cp sing-box "${DIR_NAME}"
         tar -czvf "${DIR_NAME}.tar.gz" "${DIR_NAME}"
         rm -r "${DIR_NAME}"
@@ -742,7 +787,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -758,7 +803,7 @@ jobs:
       if: matrix.naive
       run: |
         $TAGS = Get-Content release/DEFAULT_BUILD_TAGS_WINDOWS
-        $LDFLAGS_SHARED = Get-Content release/LDFLAGS
+        $LDFLAGS_SHARED = "$(Get-Content release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$env:GITHUB_SHA"
         mkdir -p dist
         go build -v -trimpath -o dist/sing-box.exe -tags "$TAGS" `
         -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' $LDFLAGS_SHARED -s -w -buildid=" `
@@ -772,7 +817,7 @@ jobs:
       if: ${{ !matrix.naive }}
       run: |
         $TAGS = Get-Content release/DEFAULT_BUILD_TAGS_OTHERS
-        $LDFLAGS_SHARED = Get-Content release/LDFLAGS
+        $LDFLAGS_SHARED = "$(Get-Content release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$env:GITHUB_SHA"
         mkdir -p dist
         go build -v -trimpath -o dist/sing-box.exe -tags "$TAGS" `
         -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' $LDFLAGS_SHARED -s -w -buildid=" `
@@ -799,6 +844,7 @@ jobs:
         $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
         mkdir "dist/$DIR_NAME"
         Copy-Item LICENSE "dist/$DIR_NAME"
+        Copy-Item release/licenses/TLS-DEPENDENCY-NOTICES.txt "dist/$DIR_NAME"
         Copy-Item "dist/sing-box.exe" "dist/$DIR_NAME"
         Copy-Item "dist/libcronet.dll" "dist/$DIR_NAME"
         Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
@@ -809,6 +855,7 @@ jobs:
         $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
         mkdir "dist/$DIR_NAME"
         Copy-Item LICENSE "dist/$DIR_NAME"
+        Copy-Item release/licenses/TLS-DEPENDENCY-NOTICES.txt "dist/$DIR_NAME"
         Copy-Item "dist/sing-box.exe" "dist/$DIR_NAME"
         Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
         Remove-Item -Recurse "dist/$DIR_NAME"
@@ -858,7 +905,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -885,6 +932,7 @@ jobs:
         make lib_install
         export PATH="$PATH:$(go env GOPATH)/bin"
         go run ./cmd/internal/build_libbox -target android -platform android/${{ matrix.go_arch }}
+        python3 scripts/ci/mobile_fingerprint_exports.py android libbox.aar libbox-legacy.aar --arch ${{ matrix.go_arch }}
         mkdir -p dist/${{ matrix.go_arch }}
         mv libbox.aar libbox-legacy.aar dist/${{ matrix.go_arch }}
       env:
@@ -929,7 +977,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache/restore@v4
@@ -1051,7 +1099,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -1174,7 +1222,7 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -1319,7 +1367,7 @@ jobs:
       if: matrix.build
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Patch Go for iOS
       if: matrix.build && (matrix.platform == 'ios/arm64' || matrix.platform == 'tvos/arm64')
@@ -1336,8 +1384,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/Library/Caches/go-build
-        key: libbox-go-build-${{ matrix.artifact }}-1.26.8-${{ hashFiles('go.sum') }}
-        restore-keys: libbox-go-build-${{ matrix.artifact }}-1.26.8-
+        key: libbox-go-build-${{ matrix.artifact }}-1.27.2-${{ hashFiles('go.sum') }}
+        restore-keys: libbox-go-build-${{ matrix.artifact }}-1.27.2-
     - name: Set tag
       if: matrix.build
       run: git tag v${{ needs.calculate_version.outputs.version }} -f
@@ -1349,6 +1397,7 @@ jobs:
         make lib_install
         export PATH="$PATH:$(go env GOPATH)/bin"
         go run ./cmd/internal/build_libbox -target apple -platform ${{ matrix.platform }}
+        python3 scripts/ci/mobile_fingerprint_exports.py apple Libbox.xcframework
         mkdir -p dist
         tar -cf dist/Libbox-${{ matrix.artifact }}.tar Libbox.xcframework
     - name: Record actual unsigned candidate files
@@ -1415,7 +1464,7 @@ jobs:
       if: matrix.if
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       if: matrix.if
@@ -1623,7 +1672,7 @@ jobs:
       if: matrix.if
       uses: actions/setup-go@v5
       with:
-        go-version: 1.26.8
+        go-version: 1.27.2
         cache: false
     - name: Cache Go modules
       if: matrix.if
@@ -1820,6 +1869,11 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: native
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install selected-core capability validator
+      run: python -m pip install jsonschema==4.23.0
     - name: Execute final-package Cronet smoke
       run: python scripts/ci/native_release_index.py smoke native
     - name: Upload actual smoke receipt

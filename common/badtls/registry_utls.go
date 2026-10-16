@@ -24,12 +24,15 @@ func init() {
 		return pointer, &Methods{
 			readRecord:                 utlsReadRecord,
 			handlePostHandshakeMessage: utlsHandlePostHandshakeMessage,
-			writeRecordLocked:          utlsWriteRecordLocked,
+			writeRecordLocked: func(c unsafe.Pointer, typ uint16, data []byte) (int, error) {
+				return utlsWriteRecordLocked(c, uint8(typ), data)
+			},
 
-			setErrorLocked:   utlsSetErrorLocked,
-			decrypt:          utlsDecrypt,
-			setTrafficSecret: utlsSetTrafficSecret,
-			explicitNonceLen: utlsExplicitNonceLen,
+			setErrorLocked:       utlsSetErrorLocked,
+			decrypt:              utlsDecrypt,
+			setTrafficSecret:     utlsSetTrafficSecret,
+			explicitNonceLen:     utlsExplicitNonceLen,
+			cipherSuiteTLS13ByID: metaCipherSuiteTLS13ByID, nextTrafficSecret: metaNextTrafficSecret, trafficKey: metaTrafficKey,
 		}, true
 	})
 }
@@ -41,7 +44,7 @@ func utlsReadRecord(c unsafe.Pointer) error
 func utlsHandlePostHandshakeMessage(c unsafe.Pointer) error
 
 //go:linkname utlsWriteRecordLocked github.com/metacubex/utls.(*Conn).writeRecordLocked
-func utlsWriteRecordLocked(hc unsafe.Pointer, typ uint16, data []byte) (int, error)
+func utlsWriteRecordLocked(hc unsafe.Pointer, typ uint8, data []byte) (int, error)
 
 //go:linkname utlsSetErrorLocked github.com/metacubex/utls.(*halfConn).setErrorLocked
 func utlsSetErrorLocked(hc unsafe.Pointer, err error) error
@@ -54,3 +57,12 @@ func utlsSetTrafficSecret(hc unsafe.Pointer, suite unsafe.Pointer, level int, se
 
 //go:linkname utlsExplicitNonceLen github.com/metacubex/utls.(*halfConn).explicitNonceLen
 func utlsExplicitNonceLen(hc unsafe.Pointer) int
+
+//go:linkname metaCipherSuiteTLS13ByID github.com/metacubex/utls.cipherSuiteTLS13ByID
+func metaCipherSuiteTLS13ByID(id uint16) unsafe.Pointer
+
+//go:linkname metaNextTrafficSecret github.com/metacubex/utls.(*cipherSuiteTLS13).nextTrafficSecret
+func metaNextTrafficSecret(suite unsafe.Pointer, secret []byte) []byte
+
+//go:linkname metaTrafficKey github.com/metacubex/utls.(*cipherSuiteTLS13).trafficKey
+func metaTrafficKey(suite unsafe.Pointer, secret []byte) (key, iv []byte)

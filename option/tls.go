@@ -248,7 +248,7 @@ type OutboundECHOptions struct {
 
 type OutboundUTLSOptions struct {
 	Enabled     bool   `json:"enabled,omitempty"`
-	Fingerprint string `json:"fingerprint,omitempty" enum:"chrome_psk,chrome_psk_shuffle,chrome_padding_psk_shuffle,chrome_pq,chrome_pq_psk,chrome,firefox,edge,safari,360,qq,ios,android,random,randomized"`
+	Fingerprint string `json:"fingerprint,omitempty" enum:"chrome_psk,chrome_psk_shuffle,chrome_padding_psk_shuffle,chrome_pq,chrome_pq_psk,chrome,chrome_155,chrome_133,firefox,firefox_148,firefox_120,edge,safari,safari_26_3,safari_16_0,360,qq,ios,android,random,randomized"`
 }
 
 type OutboundRealityOptions struct {

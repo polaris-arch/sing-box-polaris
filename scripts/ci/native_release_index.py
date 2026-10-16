@@ -111,6 +111,9 @@ def collect(directory,matrix):
   variant={'linkage':linkage,'libc':matrix.get('variant','') if osname=='linux' and matrix.get('variant') in ('glibc','musl') else '', 'goarm':str(matrix.get('goarm','')),'gomips':str(matrix.get('gomips','')),'go386':str(matrix.get('go386','')),'legacy':bool(matrix.get('legacy_win7') or matrix.get('legacy_osx'))}
   if osname!=os.environ['NATIVE_OS'] or arch!=matrix['arch']:raise ValueError('binary GOOS/GOARCH differs from matrix')
   if expected['target']!=osname+'/'+arch or expected['variant']!=variant:raise ValueError('native archive variant differs from exact upstream matrix')
+  if variant['legacy']:
+   from legacy_binary_version import minimum_version
+   print('LEGACY_PLATFORM_HEADER '+json.dumps({'target':osname+'/'+arch,'coreSHA256':sha(core),'observation':minimum_version(core,osname),'oldOSRuntimeValidated':False}),flush=True)
   for key,value in [('GOARM',matrix.get('goarm')),('GO386',matrix.get('go386')),('GOMIPS64' if '64' in arch else 'GOMIPS',matrix.get('gomips'))]:
    if value is not None and settings.get(key,'').split(',')[0]!=str(value):raise ValueError('binary setting differs from matrix: '+key)
   def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
@@ -133,6 +136,9 @@ def smoke(directory):
    if sha(data)!=row['archive']['members'][root+'/'+name]:raise ValueError('member changed')
   for name,data in members.items():(Path(td)/name).write_bytes(data)
   core=Path(td)/row['core']['member'];core.chmod(0o755)
+  from tls_fingerprint_probe import probe, producer_module_identities
+  modules=producer_module_identities(row['buildGraph'])
+  probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules)
   args=[str(core),'tools','cronet','--expected-version',pins['cronetVersion']]
   if row['sidecar']:args+=['--library',str(Path(td)/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']]
   observed=json.loads(run(*args,cwd=td))

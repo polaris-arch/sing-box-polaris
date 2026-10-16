@@ -1,0 +1,41 @@
+{
+  "schema": "polaris-tls-dependency-notices-v1",
+  "components": [
+    {
+      "module": "github.com/refraction-networking/utls",
+      "version": "v1.8.3-0.20261006222701-ff1b50fbbe9a",
+      "source": "https://github.com/refraction-networking/utls/tree/ff1b50fbbe9a6dff1dcb1cfc0493bd5b0f073f67",
+      "licenseSourceFile": "LICENSE",
+      "licenseSHA256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+      "additionalLicenseSources": [
+        {
+          "licenseSourceFile": "dicttls/LICENSE",
+          "licenseSHA256": "ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec",
+          "source": "https://github.com/refraction-networking/utls/tree/ff1b50fbbe9a6dff1dcb1cfc0493bd5b0f073f67/dicttls/LICENSE"
+        }
+      ]
+    },
+    {
+      "module": "github.com/metacubex/utls",
+      "version": "v1.8.8",
+      "source": "https://github.com/MetaCubeX/utls/tree/449a38f8780006758205a60661a0bc374a182ca5",
+      "licenseSourceFile": "LICENSE",
+      "licenseSHA256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+      "additionalLicenseSources": [
+        {
+          "licenseSourceFile": "dicttls/LICENSE",
+          "licenseSHA256": "ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec",
+          "source": "https://github.com/MetaCubeX/utls/tree/449a38f8780006758205a60661a0bc374a182ca5/dicttls/LICENSE"
+        }
+      ]
+    },
+    {
+      "module": "github.com/molecule-man/go-brrr",
+      "version": "v1.2.0",
+      "source": "https://github.com/molecule-man/go-brrr/tree/v1.2.0",
+      "licenseSourceFile": "LICENSE",
+      "licenseSHA256": "a12fbad03be79cbaf575982d5dfa5ba515d42ffa4c08a42da137fe938e28e851"
+    }
+  ],
+  "notice": "release/licenses/TLS-DEPENDENCY-NOTICES.txt"
+}

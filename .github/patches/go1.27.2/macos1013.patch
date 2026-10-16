@@ -1,0 +1,450 @@
+diff --git a/src/crypto/x509/internal/macos/security.go b/src/crypto/x509/internal/macos/security.go
+index 6af19bafe59ce9..d1366b1e7936db 100644
+--- a/src/crypto/x509/internal/macos/security.go
++++ b/src/crypto/x509/internal/macos/security.go
+@@ -122,6 +122,25 @@ func SecTrustEvaluateWithError(trustObj CFRef) (int, error) {
+ }
+ func x509_SecTrustEvaluateWithError_trampoline()
+ 
++//go:cgo_import_dynamic x509_SecTrustGetCertificateCount SecTrustGetCertificateCount "/System/Library/Frameworks/Security.framework/Versions/A/Security"
++
++func SecTrustGetCertificateCount(trustObj CFRef) int {
++	ret := syscall(abi.FuncPCABI0(x509_SecTrustGetCertificateCount_trampoline), uintptr(trustObj), 0, 0, 0, 0, 0)
++	return int(ret)
++}
++func x509_SecTrustGetCertificateCount_trampoline()
++
++//go:cgo_import_dynamic x509_SecTrustGetCertificateAtIndex SecTrustGetCertificateAtIndex "/System/Library/Frameworks/Security.framework/Versions/A/Security"
++
++func SecTrustGetCertificateAtIndex(trustObj CFRef, i int) (CFRef, error) {
++	ret := syscall(abi.FuncPCABI0(x509_SecTrustGetCertificateAtIndex_trampoline), uintptr(trustObj), uintptr(i), 0, 0, 0, 0)
++	if ret == 0 {
++		return 0, OSStatus{"SecTrustGetCertificateAtIndex", int32(ret)}
++	}
++	return CFRef(ret), nil
++}
++func x509_SecTrustGetCertificateAtIndex_trampoline()
++
+ //go:cgo_import_dynamic x509_SecCertificateCopyData SecCertificateCopyData "/System/Library/Frameworks/Security.framework/Versions/A/Security"
+ 
+ func SecCertificateCopyData(cert CFRef) ([]byte, error) {
+@@ -134,14 +153,3 @@ func SecCertificateCopyData(cert CFRef) ([]byte, error) {
+ 	return b, nil
+ }
+ func x509_SecCertificateCopyData_trampoline()
+-
+-//go:cgo_import_dynamic x509_SecTrustCopyCertificateChain SecTrustCopyCertificateChain "/System/Library/Frameworks/Security.framework/Versions/A/Security"
+-
+-func SecTrustCopyCertificateChain(trustObj CFRef) (CFRef, error) {
+-	ret := syscall(abi.FuncPCABI0(x509_SecTrustCopyCertificateChain_trampoline), uintptr(trustObj), 0, 0, 0, 0, 0)
+-	if ret == 0 {
+-		return 0, OSStatus{"SecTrustCopyCertificateChain", int32(ret)}
+-	}
+-	return CFRef(ret), nil
+-}
+-func x509_SecTrustCopyCertificateChain_trampoline()
+diff --git a/src/crypto/x509/internal/macos/security.s b/src/crypto/x509/internal/macos/security.s
+index ca5337c788d673..dc630eccb7fe41 100644
+--- a/src/crypto/x509/internal/macos/security.s
++++ b/src/crypto/x509/internal/macos/security.s
+@@ -21,7 +21,9 @@ TEXT ·x509_SecTrustEvaluate_trampoline(SB),NOSPLIT,$0-0
+ 	JMP x509_SecTrustEvaluate(SB)
+ TEXT ·x509_SecTrustEvaluateWithError_trampoline(SB),NOSPLIT,$0-0
+ 	JMP x509_SecTrustEvaluateWithError(SB)
++TEXT ·x509_SecTrustGetCertificateCount_trampoline(SB),NOSPLIT,$0-0
++	JMP x509_SecTrustGetCertificateCount(SB)
++TEXT ·x509_SecTrustGetCertificateAtIndex_trampoline(SB),NOSPLIT,$0-0
++	JMP x509_SecTrustGetCertificateAtIndex(SB)
+ TEXT ·x509_SecCertificateCopyData_trampoline(SB),NOSPLIT,$0-0
+ 	JMP x509_SecCertificateCopyData(SB)
+-TEXT ·x509_SecTrustCopyCertificateChain_trampoline(SB),NOSPLIT,$0-0
+-	JMP x509_SecTrustCopyCertificateChain(SB)
+diff --git a/src/crypto/x509/root_darwin.go b/src/crypto/x509/root_darwin.go
+index 76433b7fc19030..9aef27ed6730b4 100644
+--- a/src/crypto/x509/root_darwin.go
++++ b/src/crypto/x509/root_darwin.go
+@@ -76,13 +76,12 @@ func (c *Certificate) systemVerify(opts *VerifyOptions) (chains [][]*Certificate
+ 	}
+ 
+ 	chain := [][]*Certificate{{}}
+-	chainRef, err := macos.SecTrustCopyCertificateChain(trustObj)
+-	if err != nil {
+-		return nil, err
+-	}
+-	defer macos.CFRelease(chainRef)
+-	for i := 0; i < macos.CFArrayGetCount(chainRef); i++ {
+-		certRef := macos.CFArrayGetValueAtIndex(chainRef, i)
++	numCerts := macos.SecTrustGetCertificateCount(trustObj)
++	for i := 0; i < numCerts; i++ {
++		certRef, err := macos.SecTrustGetCertificateAtIndex(trustObj, i)
++		if err != nil {
++			return nil, err
++		}
+ 		cert, err := exportCertificate(certRef)
+ 		if err != nil {
+ 			return nil, err
+
+diff --git a/src/cmd/link/internal/ld/macho.go b/src/cmd/link/internal/ld/macho.go
+index 9d984fa7a3d878..490fa649214842 100644
+--- a/src/cmd/link/internal/ld/macho.go
++++ b/src/cmd/link/internal/ld/macho.go
+@@ -446,7 +446,7 @@ var (
+ 	//	go.dev/issue/30488
+ 	//	go.dev/issue/56784
+ 	//	go.dev/issue/77917
+-	macOS  = macVersionFlag{13, 0, 0}
++	macOS  = macVersionFlag{12, 0, 0}
+ 	macSDK = macVersionFlag{26, 2, 0}
+ )
+ 
+diff --git a/src/cmd/link/link_test.go b/src/cmd/link/link_test.go
+index e7c406c4ad1eb8..af75c55a3d0f11 100644
+--- a/src/cmd/link/link_test.go
++++ b/src/cmd/link/link_test.go
+@@ -483,8 +483,8 @@ func TestMachOBuildVersion(t *testing.T) {
+ 	found := false
+ 	checkMin := func(ver uint32) {
+ 		major, minor, patch := (ver>>16)&0xff, (ver>>8)&0xff, (ver>>0)&0xff
+-		if major < 13 {
+-			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 13.0.0", major, minor, patch)
++		if major < 12 {
++			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 12.0.0", major, minor, patch)
+ 		}
+ 	}
+ 	for _, cmd := range exem.Loads {
+
+diff --git a/src/cmd/link/internal/ld/macho.go b/src/cmd/link/internal/ld/macho.go
+index 490fa649214842..e0e5c538b3af0f 100644
+--- a/src/cmd/link/internal/ld/macho.go
++++ b/src/cmd/link/internal/ld/macho.go
+@@ -461,9 +461,14 @@ func (ctxt *Link) domacho() {
+ 		if err != nil {
+ 			Exitf("%v", err)
+ 		}
+-		if load != nil && load.platform != PLATFORM_MACOS {
++		if load != nil {
++			machoPlatform = load.platform
+ 			ml := newMachoLoad(ctxt.Arch, load.cmd.type_, uint32(len(load.cmd.data)))
+ 			copy(ml.data, load.cmd.data)
++			if machoPlatform == PLATFORM_MACOS {
++				ml.data[1] = macOS.version()
++				ml.data[2] = macSDK.version()
++			}
+ 			break
+ 		}
+ 	}
+@@ -472,7 +477,7 @@ func (ctxt *Link) domacho() {
+ 		if buildcfg.GOOS == "ios" {
+ 			machoPlatform = PLATFORM_IOS
+ 		}
+-		if load == nil && machoPlatform == PLATFORM_MACOS {
++		if ctxt.LinkMode == LinkInternal && machoPlatform == PLATFORM_MACOS {
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_BUILD_VERSION, 4)
+ 			ml.data[0] = uint32(machoPlatform)
+ 			ml.data[1] = macOS.version()
+
+diff --git a/src/cmd/link/internal/ld/elf.go b/src/cmd/link/internal/ld/elf.go
+index 949ca6a3f698ae..1cb21926a6990a 100644
+--- a/src/cmd/link/internal/ld/elf.go
++++ b/src/cmd/link/internal/ld/elf.go
+@@ -878,7 +878,7 @@ func addbuildinfo(ctxt *Link) {
+ 		}
+ 
+ 		if ctxt.IsDarwin() {
+-			buildinfo = uuidFromHash(hash.Sum32([]byte(buildID)))
++			buildinfo = uuidFromGoBuildId(buildID)
+ 			return
+ 		}
+ 
+diff --git a/src/cmd/link/internal/ld/macho.go b/src/cmd/link/internal/ld/macho.go
+index e0e5c538b3af0f..20c8c7ee2192b0 100644
+--- a/src/cmd/link/internal/ld/macho.go
++++ b/src/cmd/link/internal/ld/macho.go
+@@ -7,7 +7,6 @@ package ld
+ import (
+ 	"bytes"
+ 	"cmd/internal/codesign"
+-	"cmd/internal/hash"
+ 	imacho "cmd/internal/macho"
+ 	"cmd/internal/objabi"
+ 	"cmd/internal/sys"
+@@ -20,7 +19,6 @@ import (
+ 	"io"
+ 	"os"
+ 	"sort"
+-	"strconv"
+ 	"strings"
+ 	"unsafe"
+ )
+@@ -406,50 +404,6 @@ func machowrite(ctxt *Link, arch *sys.Arch, out *OutBuf, linkmode LinkMode) int
+ 	return int(out.Offset() - o1)
+ }
+ 
+-type macVersionFlag [3]byte
+-
+-func (f *macVersionFlag) String() string {
+-	return fmt.Sprintf("%d.%d.%d", f[0], f[1], f[2])
+-}
+-
+-func (f *macVersionFlag) Set(s string) error {
+-	var parsed macVersionFlag
+-	nums := strings.Split(s, ".")
+-	if len(nums) > 3 {
+-		goto Error
+-	}
+-	for i, num := range nums {
+-		n, err := strconv.Atoi(num)
+-		if err != nil || n < 0 || n > 0xFF {
+-			goto Error
+-		}
+-		parsed[i] = byte(n)
+-	}
+-	// success, now modify f
+-	*f = parsed
+-	return nil
+-
+-Error:
+-	return fmt.Errorf("invalid version %q", s)
+-}
+-
+-func (f *macVersionFlag) version() uint32 {
+-	return uint32(f[0])<<16 | uint32(f[1])<<8 | uint32(f[2])
+-}
+-
+-var (
+-	// On advice from Apple engineers, we keep macOS set to the
+-	// oldest supported macOS version but keep macSDK to the newest
+-	// tested OS/SDK version. If these defaults are not good enough,
+-	// the -macos and -macsdk linker flags can override them.
+-	// For past problems involving these values, see
+-	//	go.dev/issue/30488
+-	//	go.dev/issue/56784
+-	//	go.dev/issue/77917
+-	macOS  = macVersionFlag{12, 0, 0}
+-	macSDK = macVersionFlag{26, 2, 0}
+-)
+-
+ func (ctxt *Link) domacho() {
+ 	if *FlagD {
+ 		return
+@@ -465,10 +419,6 @@ func (ctxt *Link) domacho() {
+ 			machoPlatform = load.platform
+ 			ml := newMachoLoad(ctxt.Arch, load.cmd.type_, uint32(len(load.cmd.data)))
+ 			copy(ml.data, load.cmd.data)
+-			if machoPlatform == PLATFORM_MACOS {
+-				ml.data[1] = macOS.version()
+-				ml.data[2] = macSDK.version()
+-			}
+ 			break
+ 		}
+ 	}
+@@ -478,11 +428,22 @@ func (ctxt *Link) domacho() {
+ 			machoPlatform = PLATFORM_IOS
+ 		}
+ 		if ctxt.LinkMode == LinkInternal && machoPlatform == PLATFORM_MACOS {
++			var version uint32
++			switch ctxt.Arch.Family {
++			case sys.ARM64, sys.AMD64:
++				// This must be fairly recent for Apple signing (go.dev/issue/30488).
++				// Having too old a version here was also implicated in some problems
++				// calling into macOS libraries (go.dev/issue/56784).
++				// CL 460476 noted that in general this can be the most recent supported
++				// macOS version, but we haven't tested if going higher than Go's oldest
++				// supported macOS version could cause new problems.
++				version = 12<<16 | 0<<8 | 0<<0 // 12.0.0
++			}
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_BUILD_VERSION, 4)
+ 			ml.data[0] = uint32(machoPlatform)
+-			ml.data[1] = macOS.version()
+-			ml.data[2] = macSDK.version()
+-			ml.data[3] = 0 // ntools
++			ml.data[1] = version // OS version
++			ml.data[2] = version // SDK version
++			ml.data[3] = 0       // ntools
+ 		}
+ 	}
+ 
+@@ -845,24 +806,18 @@ func asmbMacho(ctxt *Link) {
+ 			}
+ 		}
+ 
+-		if ctxt.IsInternal() && *flagHostBuildid != "none" {
++		if ctxt.IsInternal() && len(buildinfo) > 0 {
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_UUID, 4)
+-			var uuid [16]byte
+-			if len(buildinfo) >= 16 {
+-				copy(uuid[:], buildinfo)
+-			} else {
+-				// Note: When setting macSDK to 26.2, dyld refuses to run any
+-				// binary without an LC_UUID, which makes bootstrap fail.
+-				// To work around that situation, if buildinfo is missing we
+-				// construct a hash of the binary written so far and use that.
+-				// Using -B none will bypass this if desired,
+-				// but the resulting binary may not be runnable.
+-				copy(uuid[:], uuidFromHash(hash.Sum32(ctxt.Out.Data())))
++			// Mach-O UUID is 16 bytes
++			if len(buildinfo) < 16 {
++				buildinfo = append(buildinfo, make([]byte, 16)...)
+ 			}
+-			ml.data[0] = ctxt.Arch.ByteOrder.Uint32(uuid[0:])
+-			ml.data[1] = ctxt.Arch.ByteOrder.Uint32(uuid[4:])
+-			ml.data[2] = ctxt.Arch.ByteOrder.Uint32(uuid[8:])
+-			ml.data[3] = ctxt.Arch.ByteOrder.Uint32(uuid[12:])
++			// By default, buildinfo is already in UUIDv3 format
++			// (see uuidFromGoBuildId).
++			ml.data[0] = ctxt.Arch.ByteOrder.Uint32(buildinfo)
++			ml.data[1] = ctxt.Arch.ByteOrder.Uint32(buildinfo[4:])
++			ml.data[2] = ctxt.Arch.ByteOrder.Uint32(buildinfo[8:])
++			ml.data[3] = ctxt.Arch.ByteOrder.Uint32(buildinfo[12:])
+ 		}
+ 
+ 		if ctxt.IsInternal() && ctxt.NeedCodeSign() {
+diff --git a/src/cmd/link/internal/ld/macho_update_uuid.go b/src/cmd/link/internal/ld/macho_update_uuid.go
+index 71e1fbf6b9b6d4..968bd7bb2554af 100644
+--- a/src/cmd/link/internal/ld/macho_update_uuid.go
++++ b/src/cmd/link/internal/ld/macho_update_uuid.go
+@@ -18,6 +18,7 @@ package ld
+ // final executable generated by the external linker.
+ 
+ import (
++	"cmd/internal/hash"
+ 	imacho "cmd/internal/macho"
+ 
+ 	"debug/macho"
+@@ -25,19 +26,27 @@ import (
+ 	"os"
+ )
+ 
+-// uuidFromHash converts a hash to a UUID
+-// suitable for use in the Macho LC_UUID load command.
+-func uuidFromHash(hashed [32]byte) []byte {
+-	rv := make([]byte, 16)
+-	copy(rv, hashed[:16])
++// uuidFromGoBuildId hashes the Go build ID and returns a slice of 16
++// bytes suitable for use as the payload in a Macho LC_UUID load
++// command.
++func uuidFromGoBuildId(buildID string) []byte {
++	if buildID == "" {
++		return make([]byte, 16)
++	}
++	hashedBuildID := hash.Sum32([]byte(buildID))
++	rv := hashedBuildID[:16]
+ 
+-	// Mark the UUID as version 3, variant 1, which is an MD5-hash-based UUID.
+-	// We are not actually using MD5, but we're also not using SHA1 (version 5),
+-	// and LLVM also uses version 3 [1] so this seems good enough.
+-	//
+-	// [1] https://github.com/llvm/llvm-project/blob/2a3a79ce4c2149d7787d56f9841b66cacc9061d0/lld/MachO/Writer.cpp#L524
+-	rv[6] = (rv[6] &^ 0xF0) | 0x30 // version 3
+-	rv[8] = (rv[8] &^ 0xC0) | 0x80 // variant 1
++	// RFC 4122 conformance (see RFC 4122 Sections 4.2.2, 4.1.3). We
++	// want the "version" of this UUID to appear as 'hashed' as opposed
++	// to random or time-based.  This is something of a fiction since
++	// we're not actually hashing using MD5 or SHA1, but it seems better
++	// to use this UUID flavor than any of the others. This is similar
++	// to how other linkers handle this (for example this code in lld:
++	// https://github.com/llvm/llvm-project/blob/2a3a79ce4c2149d7787d56f9841b66cacc9061d0/lld/MachO/Writer.cpp#L524).
++	rv[6] &= 0x0f
++	rv[6] |= 0x30
++	rv[8] &= 0x3f
++	rv[8] |= 0xc0
+ 
+ 	return rv
+ }
+@@ -65,7 +74,7 @@ func machoRewriteUuid(ctxt *Link, exef *os.File, exem *macho.File, outexe string
+ 
+ 	// Read the load commands, looking for the LC_UUID cmd. If/when we
+ 	// locate it, overwrite it with a new value produced by
+-	// uuidFromHash.
++	// uuidFromGoBuildId.
+ 	reader := imacho.NewLoadCmdUpdater(outf, exem.ByteOrder, cmdOffset)
+ 	for i := uint32(0); i < exem.Ncmd; i++ {
+ 		cmd, err := reader.Next()
+diff --git a/src/cmd/link/internal/ld/main.go b/src/cmd/link/internal/ld/main.go
+index 19ed197a20b57e..54afc021c7c4aa 100644
+--- a/src/cmd/link/internal/ld/main.go
++++ b/src/cmd/link/internal/ld/main.go
+@@ -55,11 +55,9 @@ var (
+ )
+ 
+ func init() {
++	flag.Var(&rpath, "r", "set the ELF dynamic linker search `path` to dir1:dir2:...")
+ 	flag.Var(&flagExtld, "extld", "use `linker` when linking in external mode")
+ 	flag.Var(&flagExtldflags, "extldflags", "pass `flags` to external linker")
+-	flag.Var(&macOS, "macos", "mac OS version to write in build info (only used in internal linking)")
+-	flag.Var(&macSDK, "macsdk", "mac SDK version to write in build info (only used in internal linking)")
+-	flag.Var(&rpath, "r", "set the ELF dynamic linker search `path` to dir1:dir2:...")
+ 	flag.Var(&flagW, "w", "disable DWARF generation")
+ }
+ 
+
+diff --git a/src/cmd/link/internal/ld/macho.go b/src/cmd/link/internal/ld/macho.go
+index 20c8c7ee2192b0..5d11fd76649966 100644
+--- a/src/cmd/link/internal/ld/macho.go
++++ b/src/cmd/link/internal/ld/macho.go
+@@ -434,10 +434,8 @@ func (ctxt *Link) domacho() {
+ 				// This must be fairly recent for Apple signing (go.dev/issue/30488).
+ 				// Having too old a version here was also implicated in some problems
+ 				// calling into macOS libraries (go.dev/issue/56784).
+-				// CL 460476 noted that in general this can be the most recent supported
+-				// macOS version, but we haven't tested if going higher than Go's oldest
+-				// supported macOS version could cause new problems.
+-				version = 12<<16 | 0<<8 | 0<<0 // 12.0.0
++				// In general this can be the most recent supported macOS version.
++				version = 11<<16 | 0<<8 | 0<<0 // 11.0.0
+ 			}
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_BUILD_VERSION, 4)
+ 			ml.data[0] = uint32(machoPlatform)
+diff --git a/src/cmd/link/link_test.go b/src/cmd/link/link_test.go
+index af75c55a3d0f11..1528b4b1f98d64 100644
+--- a/src/cmd/link/link_test.go
++++ b/src/cmd/link/link_test.go
+@@ -483,8 +483,8 @@ func TestMachOBuildVersion(t *testing.T) {
+ 	found := false
+ 	checkMin := func(ver uint32) {
+ 		major, minor, patch := (ver>>16)&0xff, (ver>>8)&0xff, (ver>>0)&0xff
+-		if major < 12 {
+-			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 12.0.0", major, minor, patch)
++		if major < 11 {
++			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 11.0.0", major, minor, patch)
+ 		}
+ 	}
+ 	for _, cmd := range exem.Loads {
+
+diff --git a/src/cmd/link/internal/ld/macho.go b/src/cmd/link/internal/ld/macho.go
+index 5d11fd76649966..1dae8e9e9cdf87 100644
+--- a/src/cmd/link/internal/ld/macho.go
++++ b/src/cmd/link/internal/ld/macho.go
+@@ -430,11 +430,13 @@ func (ctxt *Link) domacho() {
+ 		if ctxt.LinkMode == LinkInternal && machoPlatform == PLATFORM_MACOS {
+ 			var version uint32
+ 			switch ctxt.Arch.Family {
+-			case sys.ARM64, sys.AMD64:
++			case sys.AMD64:
+ 				// This must be fairly recent for Apple signing (go.dev/issue/30488).
+ 				// Having too old a version here was also implicated in some problems
+ 				// calling into macOS libraries (go.dev/issue/56784).
+ 				// In general this can be the most recent supported macOS version.
++				version = 10<<16 | 13<<8 | 0<<0 // 10.13.0
++			case sys.ARM64:
+ 				version = 11<<16 | 0<<8 | 0<<0 // 11.0.0
+ 			}
+ 			ml := newMachoLoad(ctxt.Arch, imacho.LC_BUILD_VERSION, 4)
+diff --git a/src/cmd/link/link_test.go b/src/cmd/link/link_test.go
+index 1528b4b1f98d64..c03c1223967e94 100644
+--- a/src/cmd/link/link_test.go
++++ b/src/cmd/link/link_test.go
+@@ -482,9 +482,9 @@ func TestMachOBuildVersion(t *testing.T) {
+ 	}
+ 	found := false
+ 	checkMin := func(ver uint32) {
+-		major, minor, patch := (ver>>16)&0xff, (ver>>8)&0xff, (ver>>0)&0xff
+-		if major < 11 {
+-			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 11.0.0", major, minor, patch)
++		major, minor := (ver>>16)&0xff, (ver>>8)&0xff
++		if major != 10 || minor < 9 {
++			t.Errorf("LC_BUILD_VERSION version %d.%d < 10.9", major, minor)
+ 		}
+ 	}
+ 	for _, cmd := range exem.Loads {
+

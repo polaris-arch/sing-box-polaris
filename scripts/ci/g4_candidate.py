@@ -8,6 +8,7 @@ import tempfile
 
 SDK = 'github.com/sagernet/tailscale'
 OWNED_SDK = 'github.com/polaris-arch/tailscale'
+GO_VERSION = (Path(__file__).resolve().parents[2] / 'release/GO_VERSION').read_text().strip()
 # This is the product's existing linker contract (including its reviewed
 # runtime linkname use), not a new test-only relaxation.
 PRODUCTION_LDFLAGS = (Path(__file__).resolve().parents[2] / 'release/LDFLAGS').read_text().strip()
@@ -16,7 +17,7 @@ SDK_PACKAGES = (
     'ipn/ipnlocal', 'ipn/ipnlocal/netmapcache', 'feature/acme', 'tka', 'tsnet',
 )
 FORK_PACKAGES = (
-    './adapter', './daemon', './experimental/libbox', './protocol/tailscale',
+    './adapter', './daemon', './experimental/libbox', './experimental/libbox/internal/oomprofile', './protocol/tailscale',
     './common/badversion', './cmd/internal/read_tag',
     './cmd/internal/update_android_version', './cmd/internal/update_desktop_version',
     './cmd/internal/update_apple_version',
@@ -50,8 +51,8 @@ def main():
         print('+', ' '.join(command), flush=True)
         return subprocess.run(command, cwd=root, env=env, check=True, text=True, **kwargs)
 
-    if run(['go', 'env', 'GOVERSION'], capture_output=True).stdout.strip() != 'go1.25.5':
-        raise RuntimeError('candidate gates require pinned Go1.25.5')
+    if run(['go', 'env', 'GOVERSION'], capture_output=True).stdout.strip() != 'go' + GO_VERSION:
+        raise RuntimeError('candidate gates require pinned Go' + GO_VERSION)
     run(['go', 'mod', 'download', SDK])
     module = json.loads(run(['go', 'list', '-m', '-json', SDK], capture_output=True).stdout)
     require_owned_sdk(module)
