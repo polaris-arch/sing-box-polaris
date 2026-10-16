@@ -1,6 +1,7 @@
 package box
 
 import (
+	"slices"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -48,14 +49,7 @@ func (s *Box) retireTailscaleStateStores() {
 			if current.Type() != C.TypeTailscale {
 				continue
 			}
-			found := false
-			for _, original := range endpoints {
-				if original == current {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !slices.Contains(endpoints, current) {
 				endpoints = append(endpoints, current)
 			}
 		}

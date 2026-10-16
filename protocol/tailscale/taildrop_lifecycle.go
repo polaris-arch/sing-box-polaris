@@ -14,7 +14,7 @@ import (
 
 // This sentinel must not unwrap context.Canceled/DeadlineExceeded: Scope.Close
 // filters ordinary canceled errors, but incomplete IO retirement is a failure.
-var errTaildropDrainIncomplete = errors.New("Taildrop IO retirement unknown")
+var errTaildropDrainIncomplete = errors.New("taildrop IO retirement unknown")
 
 // beginIO is the only admission point. Once seal returns, no further positive
 // Add is possible, so wait cannot race a zero-to-one WaitGroup transition.

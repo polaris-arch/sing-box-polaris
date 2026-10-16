@@ -145,9 +145,7 @@ func TestDNSPlatformFrozenResultRejectsConcurrentLateWrites(t *testing.T) {
 	var invoked atomic.Int32
 	var writing sync.WaitGroup
 	for i := 0; i < 8; i++ {
-		writing.Add(1)
-		go func() {
-			defer writing.Done()
+		writing.Go(func() {
 			for j := 0; j < 50; j++ {
 				captured.Success("203.0.113.2")
 				captured.RawSuccess(lateBytes)
@@ -155,7 +153,7 @@ func TestDNSPlatformFrozenResultRejectsConcurrentLateWrites(t *testing.T) {
 				captured.ErrnoCode(int32(syscall.EIO))
 				captured.OnCancel(fakeDNSFunc(func() error { invoked.Add(1); return nil }))
 			}
-		}()
+		})
 	}
 	writing.Wait()
 	if len(response.Answer) != 1 || response.Answer[0].(*mDNS.A).A.String() != "203.0.113.1" || invoked.Load() != 0 {

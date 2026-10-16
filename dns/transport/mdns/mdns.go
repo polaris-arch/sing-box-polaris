@@ -378,12 +378,10 @@ func newResponse(message *mDNS.Msg) *mDNS.Msg {
 func newResponseFromQuestion(question mDNS.Question) *mDNS.Msg {
 	stripQuestionClass(&question)
 	return &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Response:      true,
-			Authoritative: true,
-			Rcode:         mDNS.RcodeSuccess,
-		},
-		Question: []mDNS.Question{question},
+		Response:      true,
+		Authoritative: true,
+		Rcode:         mDNS.RcodeSuccess,
+		Question:      []mDNS.Question{question},
 	}
 }
 

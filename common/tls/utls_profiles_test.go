@@ -578,8 +578,7 @@ func profileAuthenticationFailure(err error, missingClient bool) error {
 			return fmt.Errorf("missing-client rejection was not the peer certificate requirement: %w", err)
 		}
 	} else {
-		var hostname x509.HostnameError
-		if !errors.As(err, &hostname) {
+		if _, ok := errors.AsType[x509.HostnameError](err); !ok {
 			return fmt.Errorf("wrong-host rejection was not hostname verification: %w", err)
 		}
 	}
@@ -595,11 +594,7 @@ func profileErrorHasTimeout(err error) bool {
 	}
 	switch wrapped := err.(type) {
 	case interface{ Unwrap() []error }:
-		for _, child := range wrapped.Unwrap() {
-			if profileErrorHasTimeout(child) {
-				return true
-			}
-		}
+		return slices.ContainsFunc(wrapped.Unwrap(), profileErrorHasTimeout)
 	case interface{ Unwrap() error }:
 		return profileErrorHasTimeout(wrapped.Unwrap())
 	}

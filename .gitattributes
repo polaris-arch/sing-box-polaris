@@ -34,3 +34,6 @@ third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=
 # Source-identity module files must have identical raw bytes on every checkout.
 /go.mod text eol=lf
 /go.sum text eol=lf
+
+# This fixture revision is a raw-byte SDK/FileStore contract on every checkout.
+/protocol/tailscale/testdata/synthetic-sealed-state.json text eol=lf

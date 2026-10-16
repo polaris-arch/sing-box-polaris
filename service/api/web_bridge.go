@@ -12,7 +12,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 
-	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 )
 
@@ -97,7 +96,7 @@ type bodyReadCloser struct {
 
 // webResponseWriter translates a native gRPC response into a gRPC-Web
 // response: headers set after the first write, including the gRPC status the
-// handler transport sets via http2.TrailerPrefix keys, become a trailer
+// handler transport sets via http.TrailerPrefix keys, become a trailer
 // frame at the end of the body instead of HTTP trailers.
 type webResponseWriter struct {
 	writer       http.ResponseWriter
@@ -154,7 +153,7 @@ func (w *webResponseWriter) Flush() {
 func (w *webResponseWriter) prepareHeaders() {
 	rawHeader := w.rawWriter.Header()
 	for key, values := range w.header {
-		canonicalKey := http.CanonicalHeaderKey(strings.TrimPrefix(key, http2.TrailerPrefix))
+		canonicalKey := http.CanonicalHeaderKey(strings.TrimPrefix(key, http.TrailerPrefix))
 		if canonicalKey == "Trailer" {
 			continue
 		}
@@ -185,7 +184,7 @@ func (w *webResponseWriter) writeTrailerFrame() {
 	}
 	trailerHeader := make(http.Header)
 	for key, values := range w.header {
-		lowerKey := strings.ToLower(strings.TrimPrefix(key, http2.TrailerPrefix))
+		lowerKey := strings.ToLower(strings.TrimPrefix(key, http.TrailerPrefix))
 		if lowerKey == "trailer" || flushedKeys[lowerKey] {
 			continue
 		}

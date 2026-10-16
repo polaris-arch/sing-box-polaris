@@ -44,15 +44,13 @@ func NewService(options ServiceOptions) (*Service, error) {
 		serviceLogger = logger.NOP()
 	}
 	instance := &Service{
-		serviceBase: serviceBase{
-			logger:            serviceLogger,
-			mtu:               options.MTU,
-			inet4Port:         options.Inet4Port,
-			inet6Port:         options.Inet6Port,
-			tunFileDescriptor: -1,
-		},
-		ruleIndex:  options.RuleIndex,
-		routeTable: options.RouteTable,
+		logger:            serviceLogger,
+		mtu:               options.MTU,
+		inet4Port:         options.Inet4Port,
+		inet6Port:         options.Inet6Port,
+		tunFileDescriptor: -1,
+		ruleIndex:         options.RuleIndex,
+		routeTable:        options.RouteTable,
 	}
 	instance.applyEgress = instance.syncEgressLocked
 	err := instance.start(options.BridgeName)

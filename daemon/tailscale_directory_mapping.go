@@ -36,7 +36,7 @@ func prepareTailscaleDirectoryMapping(ctx context.Context, options option.Option
 		}
 		ts, ok := endpoint.Options.(*option.TailscaleEndpointOptions)
 		if !ok || ts == nil || (ts.SSHServer != nil && ts.SSHServer.Enabled) {
-			err := domain.Fail(errors.New("Tailscale endpoint cannot be scoped in managed domain"))
+			err := domain.Fail(errors.New("tailscale endpoint cannot be scoped in managed domain"))
 			return ctx, err
 		}
 		inputs = append(inputs, adapter.TailscaleDirectoryMappingInput{StateDirectory: ts.StateDirectory, TaildropDirectory: ts.TaildropDirectory})

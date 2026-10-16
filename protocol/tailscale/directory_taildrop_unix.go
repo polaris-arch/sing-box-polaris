@@ -31,7 +31,7 @@ func (t *Endpoint) prepareTaildropDirectory() (resultErr error) {
 	}
 	// Descriptor Close errors are sticky before the enclosing Start token ends.
 	defer func() { err := unix.Close(fd); d.scope.Fail(err); resultErr = errors.Join(resultErr, err) }()
-	for _, part := range strings.Split(relative, string(filepath.Separator)) {
+	for part := range strings.SplitSeq(relative, string(filepath.Separator)) {
 		if part == "" || part == "." || part == ".." {
 			return fmt.Errorf("tailscale: invalid Taildrop child")
 		}

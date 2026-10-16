@@ -67,13 +67,11 @@ func TestConfigurationConcurrentRefresh(t *testing.T) {
 	reads := 0
 	var wg sync.WaitGroup
 	for range 32 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if s.configuration(now, func() *Config { reads++; return changed }) != changed {
 				t.Error("inconsistent snapshot")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if reads != 1 {

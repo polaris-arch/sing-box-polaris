@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+
 	"github.com/sagernet/sing-box/adapter"
 )
 

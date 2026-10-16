@@ -149,6 +149,8 @@ func New(options Options) (*Box, error) {
 
 // NewWithConstructionReport is like New, but waits for the cleanup of a
 // failed construction and reports its result.
+//
+//lint:ignore ST1008 Compatibility API keeps its existing instance, error, report result order.
 func NewWithConstructionReport(options Options) (instance *Box, err error, report ConstructionReport) {
 	var scope *adapter.Scope
 	defer func() {

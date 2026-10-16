@@ -855,8 +855,6 @@ func TestValidationMembershipCleanupErrorDoesNotSignGlobalRetirement(t *testing.
 	}
 }
 
-const boundValidationProfile = `{"log":{"level":"error"},"certificate":{"store":"none"},"outbounds":[{"type":"direct","tag":"direct"}],"route":{"final":"direct"}}`
-
 func TestValidationPublicEntryNeverReportsExactDisposal(t *testing.T) {
 	for _, config := range []string{`{}`, `{"outbounds":[{"type":"direct","tag":"direct"}]}`} {
 		result := CheckConfigWithResult(config, "request", 10000)

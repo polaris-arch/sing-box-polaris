@@ -133,6 +133,8 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 	if err != nil {
 		return nil, err
 	}
+	// Preserve all snapshot fields for the Expensive/Constrained projections below.
+	//nolint:staticcheck // SA4006: Windows analysis reports this assignment although isExpensive feeds Expensive below.
 	defaultInterface, isExpensive, isConstrained := w.monitorSnapshot()
 	var interfaces []adapter.NetworkInterface
 	for _, netInterface := range iteratorToArray[*NetworkInterface](interfaceIterator) {

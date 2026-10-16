@@ -111,9 +111,7 @@ func newV3Fixture(t *testing.T, users []shadow.User) *v3Fixture {
 }
 
 func (f *v3Fixture) accept(listener net.Listener, handle func(net.Conn)) {
-	f.workers.Add(1)
-	go func() {
-		defer f.workers.Done()
+	f.workers.Go(func() {
 		for {
 			c, err := listener.Accept()
 			if err != nil {
@@ -129,7 +127,7 @@ func (f *v3Fixture) accept(listener net.Listener, handle func(net.Conn)) {
 			f.workers.Add(1)
 			go func() { defer f.workers.Done(); defer f.connections.Delete(c); defer c.Close(); handle(c) }()
 		}
-	}()
+	})
 }
 
 func (f *v3Fixture) close() {

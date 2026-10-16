@@ -505,10 +505,8 @@ func uTLSClientHelloID(name string) (utls.ClientHelloID, error) {
 			return profile.Hello, nil
 		}
 	}
-	for _, alias := range utlsLegacyAliases {
-		if alias == name {
-			return utls.HelloChrome_Auto, nil
-		}
+	if slices.Contains(utlsLegacyAliases, name) {
+		return utls.HelloChrome_Auto, nil
 	}
 	return utls.ClientHelloID{}, E.New("unknown uTLS fingerprint: ", name)
 }

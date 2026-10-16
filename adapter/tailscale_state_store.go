@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 )
 
@@ -53,8 +54,8 @@ func CanonicalTailscaleStateDirectory(path string) (string, error) {
 	for {
 		canonical, err := filepath.EvalSymlinks(parent)
 		if err == nil {
-			for i := len(remaining) - 1; i >= 0; i-- {
-				canonical = filepath.Join(canonical, remaining[i])
+			for _, component := range slices.Backward(remaining) {
+				canonical = filepath.Join(canonical, component)
 			}
 			return canonical, nil
 		}

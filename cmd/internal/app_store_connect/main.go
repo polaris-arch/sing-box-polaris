@@ -282,7 +282,7 @@ func publishTestflight(ctx context.Context) error {
 		}
 		if localization.Attributes == nil || localization.Attributes.WhatsNew == nil || *localization.Attributes.WhatsNew == "" {
 			log.Info(string(platform), " ", tag, " update localization")
-			_, _, err = client.TestFlight.UpdateBetaBuildLocalization(ctx, localization.ID, common.Ptr(releaseNotes))
+			_, _, err = client.TestFlight.UpdateBetaBuildLocalization(ctx, localization.ID, new(releaseNotes))
 			if err != nil {
 				return err
 			}
@@ -390,7 +390,7 @@ func cancelAppStore(ctx context.Context, platformName string) error {
 			continue
 		}
 		log.Info(string(platform), " ", tag, " cancel review submission ", submission.ID)
-		_, _, err = client.Submission.UpdateReviewSubmission(ctx, submission.ID, nil, common.Ptr(true))
+		_, _, err = client.Submission.UpdateReviewSubmission(ctx, submission.ID, nil, new(true))
 		if err != nil {
 			return err
 		}
@@ -473,7 +473,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 		log.Info(string(platform), " ", versionString, " create version")
 		created, _, err := client.Apps.CreateAppStoreVersion(ctx, asc.AppStoreVersionCreateRequestAttributes{
 			Platform:      platform,
-			ReleaseType:   common.Ptr("MANUAL"),
+			ReleaseType:   new("MANUAL"),
 			VersionString: versionString,
 		}, appID, nil)
 		if err != nil {

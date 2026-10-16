@@ -11,10 +11,19 @@ import polaris_ci_impact as impact
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'a635e5345b0f44e716c20ddf95e5d2eba9db3159'
-INHERITED_SHA256 = {'build.yml': 'd8b360327678fc83e42623259ddd61837b48bb05888ff1cfcd4aeb21d6f79797', 'docker.yml': 'd3885bf24d8963d083a9af5616947b86e1210e10ba36082ad5e89a8b6fb833f3', 'lint.yml': '9b64db877204005136a387cb27efa91946bee5a19f47cc2e50685348cd3ebbc0', 'linux.yml': '3cffc76d7e92229757a3832b38ba7154810dc59a68c7e36eaeafd919dd0aaf2e', 'stale.yml': 'bc7400aff64735578e663d255ac576185dd35599d9e5711b907428af3be24e48', 'test.yml': '4280bfd5da874a8119a44aad5cff3bd9ed700e636dd2bf391efb943ae08fd5b5'}
-INHERITED = ('build.yml', 'docker.yml', 'linux.yml', 'lint.yml', 'test.yml', 'stale.yml')
-WORKFLOWS = set(INHERITED) | {'polaris-selfcheck.yml', 'polaris-production-native.yml',
-    'polaris-production-release.yml', 'polaris-native-candidate.yml', 'polaris-dns-native-candidate.yml'}
+# Only stale.yml is still an immutable upstream workflow. The other five were
+# migrated to owned, guarded workflows and are checked structurally below.
+INHERITED_SHA256 = {'stale.yml': 'bc7400aff64735578e663d255ac576185dd35599d9e5711b907428af3be24e48'}
+INHERITED = ('stale.yml',)
+MIGRATED = {'build.yml', 'docker.yml', 'linux.yml', 'lint.yml', 'test.yml'}
+SOURCE_OWNED = MIGRATED | {
+    'polaris-selfcheck.yml', 'polaris-production-native.yml',
+    'polaris-production-release.yml', 'polaris-native-candidate.yml',
+    'polaris-dns-native-candidate.yml', 'ci-contract.yml', 'g4-candidate.yml',
+    'publish-container.yml', 'publish-github.yml', 'signed-linux.yml',
+    'signed-release.yml',
+}
+WORKFLOWS = set(INHERITED) | SOURCE_OWNED
 
 
 class ImpactTests(unittest.TestCase):
@@ -54,7 +63,7 @@ class ImpactTests(unittest.TestCase):
             (repo / 'box.go').write_text('package box\n')
             git('add', '.'); git('commit', '-qm', 'base'); before = git('rev-parse', 'HEAD')
             guide.write_text('revised instructions\n'); git('add', '.'); git('commit', '-qm', 'docs'); head = git('rev-parse', 'HEAD')
-            event = {'repository': {'full_name': 'polaris-arch/polaris-box'}, 'before': before,
+            event = {'repository': {'full_name': 'polaris-arch/sing-box-polaris', 'id': 1421657509}, 'before': before,
                      'after': head, 'deleted': False, 'forced': False}
             def run(event=event, name='push', ref='refs/heads/polaris-main', sha=head):
                 return impact.classify(repo, event, name, ref, sha)
@@ -65,6 +74,11 @@ class ImpactTests(unittest.TestCase):
             for change in ({'forced': True}, {'deleted': True}, {'before': '0' * 40},
                            {'after': 'a' * 40}, {'repository': None}, {'repository': {'full_name': 'other/repo'}}):
                 self.assertTrue(run(event={**event, **change})['runFull'])
+            for repository in ({'full_name': 'polaris-arch/polaris-box', 'id': 1421657509},
+                               {'full_name': 'SagerNet/sing-box', 'id': 1421657509},
+                               {'full_name': 'polaris-arch/sing-box-polaris', 'id': 1},
+                               {'full_name': 'polaris-arch/sing-box-polaris'}):
+                self.assertTrue(run(event={**event, 'repository': repository})['runFull'])
             with patch.object(impact, 'git', side_effect=OSError('unavailable')):
                 self.assertTrue(run()['runFull'])
             (repo / 'box.go').write_text('package box\n//go:embed all:release/*\n')
@@ -85,7 +99,7 @@ class ImpactTests(unittest.TestCase):
                 (repo / filename).write_text('package box\nimport _ "embed"\n//go:embed '+pattern+'\nvar guide string\n')
                 git('add','.');git('commit','-qm','embedded');before=git('rev-parse','HEAD')
                 guide.write_text('revised instructions');git('add','.');git('commit','-qm','only guide');head=git('rev-parse','HEAD')
-                event={'repository':{'full_name':'polaris-arch/polaris-box'},'before':before,'after':head,'deleted':False,'forced':False}
+                event={'repository':{'full_name':'polaris-arch/sing-box-polaris','id':1421657509},'before':before,'after':head,'deleted':False,'forced':False}
                 self.assertTrue(impact.classify(repo,event,'push','refs/heads/polaris-main',head)['runFull'])
 
     def test_observed_shell_and_evidence_roots_and_shared_budget_wiring(self):
@@ -115,6 +129,8 @@ class ImpactTests(unittest.TestCase):
 
     def test_complete_workflow_coverage_and_frozen_inherited_sources(self):
         self.assertEqual({p.name for p in (ROOT / '.github/workflows').glob('*.yml')}, WORKFLOWS)
+        self.assertFalse(set(INHERITED) & SOURCE_OWNED)
+        self.assertEqual(SOURCE_OWNED, WORKFLOWS - set(INHERITED))
         for name in INHERITED:
             self.assertEqual(hashlib.sha256((ROOT / '.github/workflows' / name).read_bytes()).hexdigest(), INHERITED_SHA256[name])
         for name in ('polaris-production-release.yml', 'polaris-native-candidate.yml', 'polaris-dns-native-candidate.yml'):
@@ -128,6 +144,44 @@ class ImpactTests(unittest.TestCase):
         for name, pin in [('polaris-native-candidate.yml', 'a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932'),
                           ('polaris-dns-native-candidate.yml', 'aafc521b745e0d1a8f50a6a3f41169433f1c2194')]:
             self.assertIn('ref: ' + pin, (ROOT / '.github/workflows' / name).read_text())
+
+
+    def test_migrated_and_new_workflows_keep_owned_security_boundaries(self):
+        def events(text):
+            match = re.search(r"^(?:'on'|on):\n((?:[ \t].*\n|\n)+)", text, re.M)
+            self.assertIsNotNone(match)
+            return set(re.findall(r'^  ([a-z_]+):', match[1], re.M))
+        for name in MIGRATED | {'ci-contract.yml', 'g4-candidate.yml', 'publish-github.yml',
+                                'publish-container.yml', 'signed-linux.yml', 'signed-release.yml'}:
+            with self.subTest(workflow=name):
+                text = (ROOT / '.github/workflows' / name).read_text()
+                self.assertIn('contents: read', text)
+                if name in {'lint.yml', 'test.yml', 'ci-contract.yml'}:
+                    self.assertEqual(events(text) - {'workflow_dispatch'}, {'push', 'pull_request'})
+                    self.assertIn('- polaris-main', text)
+                else:
+                    self.assertEqual(events(text), {'workflow_dispatch'})
+                if name in {'build.yml', 'linux.yml', 'docker.yml'}:
+                    for forbidden in ('push.fury.io', 'ghr --replace', 'publish_testflight', 'push=true'):
+                        self.assertNotIn(forbidden, text)
+                if name in {'signed-release.yml', 'signed-linux.yml', 'publish-container.yml'}:
+                    self.assertIn("github.repository == 'polaris-arch/sing-box-polaris'", text)
+                    self.assertIn("vars.POLARIS_DISTRIBUTION_ENABLED == 'true'", text)
+                    self.assertIn('environment: polaris-distribution', text)
+        publisher = (ROOT / '.github/workflows/publish-github.yml').read_text()
+        self.assertIn("github.repository_id == '1421657509'", publisher)
+        self.assertIn("inputs.mode == 'publish' && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'", publisher)
+        self.assertIn('environment: polaris-github-release', publisher)
+        self.assertIn('--inventory-sha256 "$INVENTORY_SHA256"', publisher)
+
+    def test_state_store_fixture_checkout_keeps_exact_revision_bytes(self):
+        path = 'protocol/tailscale/testdata/synthetic-sealed-state.json'
+        attributes = (ROOT / '.gitattributes').read_text().splitlines()
+        self.assertIn('/' + path + ' text eol=lf', attributes)
+        content = (ROOT / path).read_bytes()
+        expected = json.loads((ROOT / 'protocol/tailscale/testdata/synthetic-sealed-state.expected.json').read_text())
+        self.assertNotIn(b'\r', content)
+        self.assertEqual(hashlib.sha256(content).hexdigest(), expected['stateFileRevision'])
 
 
 if __name__ == '__main__':

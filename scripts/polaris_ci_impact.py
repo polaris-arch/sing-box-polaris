@@ -89,7 +89,8 @@ def classify(repo, event, event_name, ref, workflow_sha):
         return result
     before, after = event.get('before'), event.get('after')
     repository = event.get('repository')
-    if (not isinstance(repository, dict) or repository.get('full_name') != 'polaris-arch/polaris-box'
+    if (not isinstance(repository, dict) or repository.get('full_name') != 'polaris-arch/sing-box-polaris'
+            or repository.get('id') != 1421657509
             or event.get('deleted') is not False or event.get('forced') is not False
             or not isinstance(before, str) or not SHA.fullmatch(before)
             or before == '0' * 40 or not SHA.fullmatch(workflow_sha)

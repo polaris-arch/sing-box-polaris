@@ -124,7 +124,7 @@ func openDirectoryPathWithCreate(path string, create bool) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	for _, component := range strings.Split(strings.TrimPrefix(filepath.Clean(path), "/"), "/") {
+	for component := range strings.SplitSeq(strings.TrimPrefix(filepath.Clean(path), "/"), "/") {
 		if component == "" {
 			continue
 		}

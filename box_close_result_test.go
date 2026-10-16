@@ -117,11 +117,9 @@ func TestDuplicateCloseReturnsBeforeFirstCloseCompletes(t *testing.T) {
 	var waiters sync.WaitGroup
 	results := make(chan error, 4)
 	for range 4 {
-		waiters.Add(1)
-		go func() {
-			defer waiters.Done()
+		waiters.Go(func() {
 			results <- instance.CloseWithResult()
-		}()
+		})
 	}
 	select {
 	case err := <-results:

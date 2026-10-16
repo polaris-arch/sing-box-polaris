@@ -87,11 +87,11 @@ func TestUnspecifiedDefaultRestoresCachedMode(t *testing.T) {
 func TestConcurrentModeReadAndSwitch(t *testing.T) {
 	m, cache, dns := newTestManager("Rule", "")
 	var wg sync.WaitGroup
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		wg.Add(2)
 		go func(i int) {
 			defer wg.Done()
-			for j := 0; j < 1000; j++ {
+			for j := range 1000 {
 				if (i+j)%2 == 0 {
 					m.SetMode("Direct")
 				} else {
@@ -101,7 +101,7 @@ func TestConcurrentModeReadAndSwitch(t *testing.T) {
 		}(i)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 1000; j++ {
+			for range 1000 {
 				if mode := m.Mode(); mode != "Rule" && mode != "Direct" {
 					t.Errorf("unexpected mode %q", mode)
 					return

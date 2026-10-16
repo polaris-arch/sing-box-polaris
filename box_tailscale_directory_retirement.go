@@ -1,9 +1,11 @@
 package box
 
 import (
+	"slices"
+	"time"
+
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-	"time"
 )
 
 func (s *Box) directoryEndpoints() []adapter.Endpoint {
@@ -13,14 +15,7 @@ func (s *Box) directoryEndpoints() []adapter.Endpoint {
 			if current.Type() != C.TypeTailscale {
 				continue
 			}
-			found := false
-			for _, original := range endpoints {
-				if current == original {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !slices.Contains(endpoints, current) {
 				endpoints = append(endpoints, current)
 			}
 		}

@@ -185,7 +185,7 @@ func NewTailscaleDirectoryMapping(d *TailscaleDirectoryDomain, inputs []Tailscal
 		rel, err := filepath.Rel(in.StateDirectory, in.TaildropDirectory)
 		valid = valid && err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 		if !valid || seen[in.StateDirectory] {
-			err := errors.New("Tailscale configuration is outside managed directory domain")
+			err := errors.New("tailscale configuration is outside managed directory domain")
 			d.Fail(err)
 			return nil, err
 		}

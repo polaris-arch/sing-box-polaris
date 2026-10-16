@@ -751,8 +751,7 @@ func (c *Client) exchangeToTransport(ctx context.Context, transport adapter.DNST
 		stripDNSPadding(response)
 		return response, nil
 	}
-	var rcodeError RcodeError
-	if errors.As(err, &rcodeError) {
+	if rcodeError, ok := errors.AsType[RcodeError](err); ok {
 		return FixedResponseStatus(message, int(rcodeError)), nil
 	}
 	return nil, err
@@ -765,8 +764,7 @@ func (c *Client) exchangeToTransportAsync(ctx context.Context, transport adapter
 			callback(response, nil)
 			return
 		}
-		var rcodeError RcodeError
-		if errors.As(err, &rcodeError) {
+		if rcodeError, ok := errors.AsType[RcodeError](err); ok {
 			callback(FixedResponseStatus(message, int(rcodeError)), nil)
 			return
 		}

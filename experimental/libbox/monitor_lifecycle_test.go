@@ -364,8 +364,14 @@ func TestMonitorDNSWatcherCloseErrorRetained(t *testing.T) {
 	m, _, _ := successorMonitor(t, w)
 	watcher := attachTestDNSWatcher(t, m)
 	watcher.closeError = errors.New("DNS watcher close")
-	if !errors.Is(m.Close(), watcher.closeError) || !errors.Is(m.Close(), watcher.closeError) || watcher.closes.Load() != 1 {
-		t.Fatal("DNS watcher close failure lost")
+	if err := m.Close(); !errors.Is(err, watcher.closeError) {
+		t.Fatal("first DNS watcher close failure lost")
+	}
+	if err := m.Close(); !errors.Is(err, watcher.closeError) {
+		t.Fatal("repeated DNS watcher close failure lost")
+	}
+	if watcher.closes.Load() != 1 {
+		t.Fatal("DNS watcher was closed more than once")
 	}
 }
 

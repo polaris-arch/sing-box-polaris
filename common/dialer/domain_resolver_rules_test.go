@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing/common/json/badoption"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/service"
+
 	"github.com/stretchr/testify/require"
 )
 
