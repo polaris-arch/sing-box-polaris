@@ -4,7 +4,9 @@ import copy
 from contextlib import contextmanager
 import difflib
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -228,3 +230,93 @@ class ClientSourceControls(unittest.TestCase):
             self.assertFalse(any('client_source.py apply' in s.get('run','') for s in steps),name)
             builds=[i for i,s in enumerate(steps) if './gradlew' in s.get('run','') or 'xcodebuild archive' in s.get('run','') or 'package:win' in s.get('run','')]
             if builds:self.assertLess(identities[0],min(builds))
+
+
+    def test_android_release_unit_tests_are_enabled_in_the_complete_pinned_properties(self):
+        spec=client.definition('android')
+        entry=next(e for e in spec['files'] if e['path']=='gradle.properties')
+        raw=(REAL_ROOT/'scripts/ci/testdata/android-ae93152f/gradle.properties').read_bytes()
+        self.assertEqual(client.blob(raw),entry['beforeGitBlob'])
+        self.assertEqual(client.sha(raw),entry['beforeSHA256'])
+        self.assertEqual(entry['beforeMode'],'100644')
+        self.assertEqual(entry['kind'],'compatibility')
+        text=client.edits(raw,entry).decode()
+        flag='android.onlyEnableUnitTestForTheTestedBuildType'
+        self.assertEqual([line for line in text.splitlines() if line.startswith(flag+'=')],[flag+'=false'])
+        for unsigned in [True,False]:
+            self.assertIn(entry,client.selected(spec,unsigned))
+        for replacement in [flag+'=true','']:
+            bad=copy.deepcopy(entry)
+            bad['edits'][0]['new']=bad['edits'][0]['new'].replace(flag+'=false',replacement)
+            with self.subTest(replacement=replacement),self.assertRaisesRegex(ValueError,'result identity'):
+                client.edits(raw,bad)
+        # The adjoining producer/API controls still require both release tasks
+        # and their real API21/22 rejection inputs.
+
+    def test_jailbreak_full_package_and_numeric_marketing_versions_use_complete_source(self):
+        spec=client.definition('apple')
+        entry=next(e for e in spec['files'] if e['path']=='Jailbreak/package.sh')
+        raw=(REAL_ROOT/'scripts/ci/testdata/apple-e232aaf2/package.sh').read_bytes()
+        self.assertEqual(client.blob(raw),entry['beforeGitBlob'])
+        self.assertEqual(client.sha(raw),entry['beforeSHA256'])
+        self.assertEqual(entry['beforeMode'],'100755')
+        self.assertEqual(entry['kind'],'compatibility')
+        script=client.edits(raw,entry).decode()
+        self.assertNotRegex(script,r'(?m)^VERSION=')
+        self.assertIn('MARKETING_VERSION="$MARKETING_VERSION"',script)
+        self.assertIn('Set :CFBundleShortVersionString $MARKETING_VERSION',script)
+        self.assertIn('Version: $DEB_VERSION\n',script)
+        self.assertNotIn('Version: $MARKETING_VERSION',script)
+        self.assertIn('SFI-${PACKAGE_VERSION}-${architecture}.deb',script)
+        for unsigned in [True,False]:
+            self.assertIn(entry,client.selected(spec,unsigned))
+        # Only pure version assignments and the variable prologue of build_deb
+        # are taken from the full patched source. No Xcode, ldid or dpkg runs.
+        capture=script[:script.index('\nREPO_ROOT=')]
+        start=script.index('# Apple bundle marketing')
+        marketing=script[start:script.index('\necho "Packaging',start)]
+        debian=script[script.index('TILDE="~"'):script.index('\nbuild_deb() {')]
+        prologue=script[script.index('build_deb() {'):script.index('\n\trm -rf "$deb_root"')]
+        finish='\n\tprintf "%s\\n" "$PACKAGE_VERSION" "$MARKETING_VERSION" "$DEB_VERSION" "$deb_out"\n}\nbuild_deb /var/jb iphoneos-arm64\nbuild_deb "" iphoneos-arm64e\n'
+        fragment='\n'.join([capture,marketing,debian,prologue])+finish
+        def evaluate(version,marketing_version):
+            with tempfile.TemporaryDirectory() as temp:
+                directory=Path(temp);(directory/'sing-box.xcodeproj').mkdir()
+                (directory/'sing-box.xcodeproj/project.pbxproj').write_text(
+                    'MARKETING_VERSION = '+marketing_version+';\n'
+                    'PRODUCT_BUNDLE_IDENTIFIER = "$(BASE_PACKAGE_IDENTIFIER).standalone";\n')
+                env=dict(os.environ,REPO_ROOT=temp,PRODUCT_NAME='sing-box')
+                if version is None:env.pop('VERSION',None)
+                else:env['VERSION']=version
+                result=subprocess.run(['bash','-c',fragment],cwd=directory,env=env,capture_output=True,text=True,timeout=10)
+                return result,temp
+        for version,marketing_version,deb_version in [
+                ('1.15.0-polaris-alpha.12','1.15.0','1.15.0~polaris~alpha.12'),
+                ('2.0.0-polaris-beta.0','2.0.0','2.0.0~polaris~beta.0')]:
+            with self.subTest(version=version):
+                result,temp=evaluate(version,marketing_version)
+                self.assertEqual(result.returncode,0,result.stderr)
+                expected=[]
+                for arch in ['iphoneos-arm64','iphoneos-arm64e']:
+                    expected += [version,marketing_version,deb_version,temp+'/build/jailbreak/SFI-'+version+'-'+arch+'.deb']
+                self.assertEqual(result.stdout.splitlines(),expected)
+        for version in [None,'','1.15.0','1.15.0-alpha.12','../1.15.0-polaris-alpha.12','1.15.0-polaris-alpha.12\n']:
+            with self.subTest(invalid_package=version):
+                result,_=evaluate(version,'1.15.0')
+                self.assertNotEqual(result.returncode,0)
+                self.assertIn('VERSION',result.stderr)
+        for marketing_version in ['','1.16.0','1.15.0-alpha.12']:
+            with self.subTest(invalid_marketing=marketing_version):
+                result,_=evaluate('1.15.0-polaris-alpha.12',marketing_version)
+                self.assertNotEqual(result.returncode,0)
+                self.assertIn('version',result.stderr.lower())
+        for filename in ['build.yml','signed-release.yml']:
+            workflow=yaml.safe_load((REAL_ROOT/'.github/workflows'/filename).read_text())
+            for job in ['build_apple','build_apple_app_store']:
+                steps=workflow['jobs'][job]['steps']
+                version=next(step for step in steps if step.get('name')=='Set tag')
+                package=next(step for step in steps if step.get('name')=='Build jailbreak package')
+                self.assertIn('echo "VERSION=${{ needs.calculate_version.outputs.version }}"',version['run'])
+                self.assertIn('make -C clients/apple build_ios_deb',package['run'])
+                for arch in ['iphoneos-arm64','iphoneos-arm64e']:
+                    self.assertIn('SFI-${VERSION}-'+arch+'.deb',package['run'])

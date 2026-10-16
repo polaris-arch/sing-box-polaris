@@ -73,6 +73,21 @@
           "beforeMode": "100644"
         },
         {
+          "path": "gradle.properties",
+          "kind": "compatibility",
+          "beforeGitBlob": "e091da284e14b9acdc75e21602579d5799493dcb",
+          "beforeSHA256": "8757cf68af1e1684d6b3a5e77fb97541af940293f4fc989155313df6bfbe53b1",
+          "afterSHA256": "d66ff7e31877e99e1d76070cf42c2523be273e680760bdeee7f95ea3c6fad6f1",
+          "edits": [
+            {
+              "old": "android.builtInKotlin=false\n",
+              "new": "android.builtInKotlin=false\n# AGP 9 generates the release UnitTest tasks used by both APK producers.\nandroid.onlyEnableUnitTestForTheTestedBuildType=false\n",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
           "path": "app/build.gradle.kts",
           "kind": "unsigned",
           "beforeGitBlob": "987f6d5f5c066708bf5a0f9ffa944ac97bea9e52",
@@ -123,6 +138,51 @@
             }
           ],
           "beforeMode": "100644"
+        },
+        {
+          "path": "Jailbreak/package.sh",
+          "kind": "compatibility",
+          "beforeGitBlob": "417a29d02dcff29b8a156aee161fd6e53bc749c0",
+          "beforeSHA256": "0aac83ea17ee10855411522f79947a17b1e48a3b7e59f0cb62b27ef2acd2b1aa",
+          "afterSHA256": "b2354b1ed39d45c8f73ebf967d5a93be2ff30968332e536473f0ff632a632961",
+          "edits": [
+            {
+              "old": "set -euo pipefail\n",
+              "new": "set -euo pipefail\n\n# Capture the full workflow version before reading numeric Apple marketing metadata.\nPACKAGE_VERSION=\"${VERSION:?full release VERSION is required}\"\n[[ \"$PACKAGE_VERSION\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(alpha|beta|rc)\\.(0|[1-9][0-9]*)$ ]] || { echo \"error: invalid full package VERSION\" >&2; exit 1; }\n",
+              "count": 1
+            },
+            {
+              "old": "# The SFI MARKETING_VERSION is stripped to X.Y.Z for App Store Connect; the SFM.System\n# standalone target keeps the full prerelease form (set by sing-box's update_apple_version).\nVERSION=\"$(awk -F' = ' '\n\t/MARKETING_VERSION = / { v=$2; gsub(/[\";]/,\"\",v) }\n\t/PRODUCT_BUNDLE_IDENTIFIER = \"\\$\\(BASE_PACKAGE_IDENTIFIER\\)\\.standalone\";/ { print v; exit }\n' sing-box.xcodeproj/project.pbxproj)\"\n[[ -n \"$VERSION\" ]] || { echo \"error: could not read standalone MARKETING_VERSION from project.pbxproj\" >&2; exit 1; }\necho \"Packaging $PRODUCT_NAME $VERSION\"\n",
+              "new": "# Apple bundle marketing is numeric; the caller's full package version stays separate.\nMARKETING_VERSION=\"$(awk -F' = ' '\n\t/MARKETING_VERSION = / { v=$2; gsub(/[\";]/,\"\",v) }\n\t/PRODUCT_BUNDLE_IDENTIFIER = \"\\$\\(BASE_PACKAGE_IDENTIFIER\\)\\.standalone\";/ { print v; exit }\n' sing-box.xcodeproj/project.pbxproj)\"\n[[ -n \"$MARKETING_VERSION\" ]] || { echo \"error: could not read standalone MARKETING_VERSION from project.pbxproj\" >&2; exit 1; }\n[[ \"$MARKETING_VERSION\" == \"${PACKAGE_VERSION%%-*}\" ]] || { echo \"error: Apple marketing version differs from package version\" >&2; exit 1; }\necho \"Packaging $PRODUCT_NAME $PACKAGE_VERSION (Apple $MARKETING_VERSION)\"\n",
+              "count": 1
+            },
+            {
+              "old": "echo \"Building sfajb-roothelper daemon ($VERSION)\"",
+              "new": "echo \"Building sfajb-roothelper daemon ($MARKETING_VERSION)\"",
+              "count": 1
+            },
+            {
+              "old": "MARKETING_VERSION=\"$VERSION\"",
+              "new": "MARKETING_VERSION=\"$MARKETING_VERSION\"",
+              "count": 1
+            },
+            {
+              "old": "Set :CFBundleShortVersionString $VERSION",
+              "new": "Set :CFBundleShortVersionString $MARKETING_VERSION",
+              "count": 1
+            },
+            {
+              "old": "DEB_VERSION=\"${VERSION//-/$TILDE}\"",
+              "new": "DEB_VERSION=\"${PACKAGE_VERSION//-/$TILDE}\"",
+              "count": 1
+            },
+            {
+              "old": "SFI-${VERSION}-${architecture}.deb",
+              "new": "SFI-${PACKAGE_VERSION}-${architecture}.deb",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100755"
         },
         {
           "path": "Makefile",
