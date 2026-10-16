@@ -99,13 +99,11 @@ func assertSuccessor(t *testing.T, w *platformInterfaceWrapper, m *platformDefau
 	if b.calls.Load() != 0 || m.DefaultInterface() != expected {
 		t.Fatalf("old A changed B: calls=%d default=%v", b.calls.Load(), m.DefaultInterface())
 	}
-	projected, err := w.NetworkInterfaces()
-	if err != nil {
-		t.Fatal(err)
+	defaultInterface, expensive, constrained := w.monitorSnapshot()
+	if defaultInterface != expected || !expensive || !constrained {
+		t.Fatalf("old A changed B snapshot: default=%v expensive=%v constrained=%v", defaultInterface, expensive, constrained)
 	}
-	if len(projected) != 1 || !projected[0].Expensive || !projected[0].Constrained {
-		t.Fatalf("successor projection changed: %+v", projected)
-	}
+	assertSuccessorNetworkProjection(t, w)
 }
 func TestMonitorClosedAIsolatedFromReloadB(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}

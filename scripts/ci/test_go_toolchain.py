@@ -112,6 +112,20 @@ class ToolchainControls(unittest.TestCase):
         self.assertIn("('native', 'legacy-fallback')",text)
         self.assertIn("('ordinary', 'junction', 'symlink')",text)
 
+    def test_windows_overlay_keeps_go_loader_junction_spelling(self):
+        spec=importlib.util.spec_from_file_location('root_gate',ROOT/'scripts/ci/windows_root_gate.py')
+        gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(gate)
+        selected=r'C:\hostedtoolcache\windows\go\1.27.2\x64\src\os'
+        actual_target=r'D:\a\_temp\root_windows_test.go'
+        # Metadata regression runs on Linux/macOS too; no junction or compiler
+        # is needed, and no filesystem resolution may replace the Go loader key.
+        with mock.patch.object(Path,'resolve',side_effect=AssertionError('unexpected junction resolution')):
+            mapping=gate.overlay_replacements(selected,actual_target)
+        key=selected+r'\root_windows_test.go'
+        self.assertEqual(mapping,{'Replace':{key:actual_target}})
+        self.assertNotIn(actual_target,mapping['Replace'])
+        self.assertRaises(ValueError,gate.overlay_replacements,r'go\src\os',actual_target)
+
     def test_archive_layout_and_resource_negative_controls(self):
         valid=tarfile.TarInfo('go/bin/go');valid.size=10;legacy.require_archive_members([valid])
         for name,kind in [('../escape',tarfile.REGTYPE),('/go/bin/go',tarfile.REGTYPE),('go/../escape',tarfile.REGTYPE),

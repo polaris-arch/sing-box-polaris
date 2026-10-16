@@ -47,11 +47,46 @@ REQUIRED_FORK.update('TestShadowTLSV3RejectsWrongPasswordAndTamperedSession/' + 
 REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name for name in ('chrome_155', 'safari_26_3'))
 
 
+# Both modes run real Tailscale constructors and generic validation/lifecycle
+# controls. Stub means no with_utls; it does not omit the constructor feature.
+REQUIRED_LIBBOX = {
+    'TestValidationParseRejectHasNoConstruction',
+    'TestValidationNeverPromotesUnreviewedConstruction',
+    'TestValidationTailscaleOriginalConstructorNoStoreAndCachedFile',
+    'TestValidationTailscalePartialAndEmptyRemainUnknown',
+    'TestValidationTailscaleCanonicalImplicitScope',
+    'TestValidationTailscaleOriginalDuplicateMembershipRemainsUnknown',
+    'TestValidationTailscaleConstructionPanicAfterActualDisposal',
+    'TestValidationMembershipActualCanonicalOrderedTargetsAndCache',
+    'TestValidationMembershipActualFailureRemainsUnknown',
+    'TestValidationMembershipOriginalScopeDoesNotProveWriterTerminal',
+    'TestValidationMembershipLateOriginalGuardBeforeAndAfterCommit',
+    'TestValidationMembershipActualDifferentTagsSameCanonicalFileUnknown',
+    'TestValidationMembershipCleanupErrorDoesNotSignGlobalRetirement',
+    'TestFingerprintCapabilitiesDescribeLoadedCore',
+    'TestTLSFingerprintCapabilitiesMatchCoreContract',
+    'TestMonitorClosedAIsolatedFromReloadB',
+    'TestMonitorAlreadyDeliveringAIsolatedFromReloadB',
+    'TestMonitorPartialConstructionCloseCannotDetachLive',
+    'TestMonitorCallbackSelfCloseAndFirstErrors',
+    'TestMonitorNativeIdentityAndSynchronousInitialUpdate',
+    'TestMonitorRejectForeignAndUnbound',
+    'TestMonitorDNSChangeWithoutInterfaceEvent',
+    'TestMonitorDNSWatcherCallbackCanCloseItself',
+    'TestMonitorDNSReadClosedAIsolatedFromB',
+    'TestMonitorDNSWatcherCreationRacingClose',
+    'TestMonitorDNSWatcherCloseErrorRetained',
+    'TestMonitorDNSReadCannotOverwriteChangedInterface',
+    'TestMonitorDNSWatcherStartFailureRevokesProjection',
+    'TestMonitorPlatformStartFailureClosesDNSWatcher',
+}
+
+
 def commands(ldflags):
     common = ['go', 'test', '-json', '-race', '-p=2', '-parallel=2', '-count=1', '-timeout=15m', '-ldflags=' + ldflags]
     return [
-        ('fork', common + ['-tags=with_utls,badlinkname', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
-        ('stub', common + ['./common/tls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
+        ('fork', common + ['-tags=with_utls,badlinkname,with_tailscale', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
+        ('stub', common + ['-tags=with_tailscale', './common/tls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
         ('upstream', common + ['-run=^(' + UPSTREAM_TESTS + ')$', 'github.com/refraction-networking/utls']),
     ]
 
@@ -148,6 +183,7 @@ def main():
         for name, command in commands(ldflags):
             if execute(name, command):
                 try:
+                    if name in ('fork', 'stub'): require_tests(output / (name + '.log'), REQUIRED_LIBBOX)
                     if name == 'fork': require_tests(output / 'fork.log', REQUIRED_FORK)
                     if name == 'upstream': require_tests(output / 'upstream.log', REQUIRED_UPSTREAM)
                 except ValueError as error:

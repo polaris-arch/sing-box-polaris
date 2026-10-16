@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 import tls_fingerprint_probe as probe
-from utls_gate import REQUIRED_FORK, REQUIRED_UPSTREAM, commands, require_tests
+from utls_gate import REQUIRED_FORK, REQUIRED_LIBBOX, REQUIRED_UPSTREAM, commands, require_tests
 from mobile_fingerprint_exports import APPLE_DECLARATION, JAVA_DECLARATION
 
 
@@ -58,7 +58,17 @@ class FingerprintProbeControls(unittest.TestCase):
         items=dict(commands('production flags'))
         for name, command in items.items():self.assertIn('-race',command);self.assertIn('-count=1',command)
         self.assertIn('github.com/refraction-networking/utls',items['upstream'])
-        self.assertIn('-tags=with_utls,badlinkname',items['fork']);self.assertNotIn('-tags=with_utls,badlinkname',items['stub'])
+        self.assertIn('-tags=with_utls,badlinkname,with_tailscale',items['fork'])
+        self.assertIn('-tags=with_tailscale',items['stub'])
+        self.assertFalse(any('with_utls' in argument for argument in items['stub']))
+        for mode in ['fork','stub']:
+            self.assertIn('./experimental/libbox',items[mode])
+            self.assertFalse(any(argument.startswith('-run=') for argument in items[mode]))
+        for required in ['TestValidationTailscaleOriginalConstructorNoStoreAndCachedFile',
+                         'TestValidationParseRejectHasNoConstruction','TestValidationNeverPromotesUnreviewedConstruction',
+                         'TestMonitorClosedAIsolatedFromReloadB','TestMonitorDNSReadClosedAIsolatedFromB',
+                         'TestFingerprintCapabilitiesDescribeLoadedCore','TestTLSFingerprintCapabilitiesMatchCoreContract']:
+            self.assertIn(required,REQUIRED_LIBBOX)
         self.assertIn('TestChrome155CapturedClientHello',REQUIRED_UPSTREAM)
         self.assertIn('TestRealityUpstreamClientMetaServerActualHandshake',REQUIRED_FORK)
 

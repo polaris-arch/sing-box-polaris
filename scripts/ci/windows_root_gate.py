@@ -9,7 +9,7 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import subprocess
 import sys
@@ -43,6 +43,15 @@ def combined_test_source(host, regression):
     return host.replace('import (', 'import (\n\t"os/exec"', 1) + '\n' + regression[regression.index(marker):]
 
 
+def overlay_replacements(os_directory, test_file):
+    # Go's loader keys overlays by the lexical go-list Dir. Resolve/realpath can
+    # cross setup-go's C: junction into D: and silently stop applying the overlay.
+    directory = PureWindowsPath(os_directory)
+    if not directory.is_absolute():
+        raise ValueError('Go os package directory is not an absolute Windows path')
+    return {'Replace': {str(directory / 'root_windows_test.go'): str(test_file)}}
+
+
 def main():
     parser = argparse.ArgumentParser();parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -54,7 +63,10 @@ def main():
     actual_go = subprocess.check_output(['go', 'env', 'GOVERSION'], text=True).strip()
     if actual_go != 'go' + manifest['version']:
         raise RuntimeError('Windows Root gate Go version mismatch')
-    goroot = Path(subprocess.check_output(['go', 'env', 'GOROOT'], text=True).strip()).resolve()
+    raw_goroot = subprocess.check_output(['go', 'env', 'GOROOT'], text=True).strip()
+    goroot = Path(raw_goroot)  # Preserve the selected Go toolchain's junction spelling.
+    raw_os_directory = subprocess.check_output(['go', 'list', '-f', '{{.Dir}}', 'os'],
+                                              env=dict(os.environ, GOTOOLCHAIN='local', GOENV='off'), text=True).strip()
     measured = {name: legacy.file_hash(goroot / name) for name in entry['preservedRootSources']}
     if measured != entry['preservedRootSources']:
         raise RuntimeError('official preserved Root source bytes differ')
@@ -69,7 +81,7 @@ def main():
     output = args.output.resolve();output.mkdir(parents=True, exist_ok=True)
     # Overlay an existing, discovered os_test file. Adding a synthetic new
     # filename to the standard library overlay did not make go test discover it.
-    host = goroot / 'src/os/root_windows_test.go'
+    host = Path(raw_os_directory) / 'root_windows_test.go'
     host_raw = host.read_bytes()
     host_sha = hashlib.sha256(host_raw).hexdigest()
     if host_sha != entry['rootRemoveAllTestHostSHA256']:
@@ -77,12 +89,15 @@ def main():
     combined = combined_test_source(host_raw.decode(), test)
     test_file = output / 'root_windows_test.go';test_file.write_text(combined, encoding='utf-8', newline='\n')
     overlay = output / 'overlay.json'
-    overlay.write_text(json.dumps({'Replace': {str(host): str(test_file)}}) + '\n')
+    replacements = overlay_replacements(raw_os_directory, test_file)
+    overlay.write_text(json.dumps(replacements) + '\n')
     command = ['go', 'test', '-json', '-p=2', '-parallel=1', '-count=1', '-timeout=3m',
                '-overlay=' + str(overlay), '-run=^TestPolarisRootRemoveAllConfinement$', 'os']
     receipt = {'sourceCommit': os.environ['GITHUB_SHA'], 'goVersion': actual_go, 'manifestSHA256': manifest_hash,
                'patchSHA256': entry['patchSHA256'], 'preservedRootSources': measured,
                'regressionSHA256': entry['rootRemoveAllRegressionSHA256'],
+               'rawGOROOT': raw_goroot, 'rawOSPackageDirectory': raw_os_directory,
+               'overlayHostKey': next(iter(replacements['Replace'])),
                'hostSHA256': host_sha, 'combinedTestSHA256': hashlib.sha256(combined.encode()).hexdigest(), 'command': command,
                'scope': 'official Root on hosted Windows; normal + junction/symlink confinement; native and forced legacy Deleteat fallback',
                'notVerified': ['actual Win7 runtime', 'rebuilt legacy compiler runtime']}
