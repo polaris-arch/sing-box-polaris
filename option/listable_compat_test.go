@@ -13,8 +13,8 @@ import (
 // Listable retains assignment compatibility with the existing slice consumers.
 var (
 	_ []TailcatDERPServer = TailcatDERPOptions{}.DERPServers
-	_ []netip.Prefix     = MASQUEClientEndpointOptions{}.AdvertiseRoutes
-	_ []netip.Prefix     = MASQUEServerEndpointOptions{}.AdvertiseRoutes
+	_ []netip.Prefix      = MASQUEClientEndpointOptions{}.AdvertiseRoutes
+	_ []netip.Prefix      = MASQUEServerEndpointOptions{}.AdvertiseRoutes
 )
 
 func TestTailcatDERPServersListableJSON(t *testing.T) {

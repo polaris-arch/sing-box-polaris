@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
@@ -23,12 +24,17 @@ type callbackTransport struct {
 	adapter.DNSTransport
 	tag, scenario string
 	calls         atomic.Int32
+	workerGate    <-chan struct{}
 }
 
 func (t *callbackTransport) Type() string { return "test" }
 func (t *callbackTransport) Tag() string  { return t.tag }
 func (t *callbackTransport) Exchange(_ context.Context, request *mDNS.Msg) (*mDNS.Msg, error) {
 	t.calls.Add(1)
+	return t.exchangeResponse(request)
+}
+
+func (t *callbackTransport) exchangeResponse(request *mDNS.Msg) (*mDNS.Msg, error) {
 	response := dns.FixedResponseStatus(request, mDNS.RcodeSuccess)
 	text := "node.native.test. 60 IN HTTPS 1 . alpn=h2 ipv4hint=203.0.113.9"
 	if t.scenario == "missing-rtype" {
@@ -50,7 +56,15 @@ func (t *callbackTransport) Exchange(_ context.Context, request *mDNS.Msg) (*mDN
 }
 
 func (t *callbackTransport) ExchangeAsync(ctx context.Context, request *mDNS.Msg, callback func(*mDNS.Msg, error)) {
-	go func() { callback(t.Exchange(ctx, request)) }()
+	// Count native request dispatch, not eventual worker execution. A losing
+	// already-dispatched request can start after the winner is cached.
+	t.calls.Add(1)
+	go func() {
+		if t.workerGate != nil {
+			<-t.workerGate
+		}
+		callback(t.exchangeResponse(request))
+	}()
 }
 
 type callbackTransports struct {
@@ -144,8 +158,38 @@ func TestNaiveCallbackUsesActualNativePolicyForHTTPS(t *testing.T) {
 					require.Greater(t, again, calls)
 				} else {
 					require.Equal(t, calls, again, "final policy cache is retained")
+					// Negative control: a deliberate cache bypass must dispatch
+					// new native work, so equal counts cannot mask a cache bug.
+					uncachedOptions := options
+					uncachedOptions.DisableCache = true
+					uncached := newDNSResolver(router, uncachedOptions, factory.Logger())
+					uncached(ctx, request)
+					forced := int32(0)
+					for _, transport := range candidates {
+						forced += transport.calls.Load()
+					}
+					require.Greater(t, forced, again, "cache bypass dispatches fresh upstream work")
 				}
 			})
 		}
 	}
+}
+
+// A dispatched transport request must be counted before its async worker runs.
+// This models the macOS/Windows scheduler interleaving seen in the cache test.
+func TestNaiveQueryCounterCountsDispatchBeforeWorkerRuns(t *testing.T) {
+	gate := make(chan struct{})
+	done := make(chan struct{})
+	transport := &callbackTransport{tag: "delayed", scenario: "https-hit", workerGate: gate}
+	request := &mDNS.Msg{Question: []mDNS.Question{{Name: "node.native.test.", Qtype: mDNS.TypeHTTPS, Qclass: mDNS.ClassINET}}}
+	transport.ExchangeAsync(context.Background(), request, func(*mDNS.Msg, error) { close(done) })
+	t.Cleanup(func() {
+		close(gate)
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Error("worker failed to drain")
+		}
+	})
+	require.EqualValues(t, 1, transport.calls.Load(), "dispatch count cannot depend on worker scheduling")
 }

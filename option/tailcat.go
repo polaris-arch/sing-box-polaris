@@ -9,10 +9,10 @@ import (
 )
 
 type TailcatDERPOptions struct {
-	DERPMapURL  string              `json:"derp_map_url,omitempty"`
-	DERPRegion  int                 `json:"derp_region,omitempty"`
+	DERPMapURL  string                                `json:"derp_map_url,omitempty"`
+	DERPRegion  int                                   `json:"derp_region,omitempty"`
 	DERPServers badoption.Listable[TailcatDERPServer] `json:"derp_servers,omitempty"`
-	HTTPClient  *HTTPClientOptions  `json:"http_client,omitempty"`
+	HTTPClient  *HTTPClientOptions                    `json:"http_client,omitempty"`
 }
 
 type _TailcatDERPServer struct {

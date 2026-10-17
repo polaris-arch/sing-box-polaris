@@ -21,7 +21,7 @@ SOURCE_OWNED = MIGRATED | {
     'polaris-production-release.yml', 'polaris-native-candidate.yml',
     'polaris-dns-native-candidate.yml', 'ci-contract.yml', 'g4-candidate.yml',
     'publish-container.yml', 'publish-github.yml', 'signed-linux.yml',
-    'signed-release.yml',
+    'signed-release.yml', 'android-runtime-materials.yml',
 }
 WORKFLOWS = set(INHERITED) | SOURCE_OWNED
 

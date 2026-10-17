@@ -1,7 +1,7 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "Native node DNS policy v2 review corrections implemented; independent differential review and unified platform CI remain required before release adoption.",
+  "status": "Native node DNS policy v2 passed independent review; first unified CI remediation is implemented and pending differential review plus platform CI.",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
@@ -589,6 +589,24 @@
       "bytes": 2704
     },
     {
+      "path": "option/listable_compat_test.go",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "dc9bac97f679e1d25770a0c263fa24001bb5e49b",
+      "newBlob": "4216ba404f2d1187aaa78812379c037fbd9804a1",
+      "newSHA256": "2e3853d67737a46cf274405e6810e6ae58f636a1db66d43a16aa2e546a1c7007",
+      "mode": "100644",
+      "bytes": 6106
+    },
+    {
+      "path": "option/masque.go",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "b415d526db3099a9183b913e72bf0d8d37ee6954",
+      "newBlob": "1ee1b0992c15406c245d1531eec23a3c76b58eb9",
+      "newSHA256": "4408cb321532c790daa22f372b87ca6d29b1d1977898f3b5c1c49e83b936533d",
+      "mode": "100644",
+      "bytes": 4697
+    },
+    {
       "path": "option/options.go",
       "owner": "windows-kernel",
       "baseBlob": "b2116d3488104a55012fceb79accf10cee4fa8a4",
@@ -634,6 +652,15 @@
       "bytes": 14540
     },
     {
+      "path": "option/tailcat.go",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "0fcf1716fd760f4668faecc83f682aafb45b2c89",
+      "newBlob": "6bf0406056eaa11459288e5b62faed0d6b7e3660",
+      "newSHA256": "e1ea281443746b69600ae4e749934dc5e781b01a653eae5eff3936bb52816d3c",
+      "mode": "100644",
+      "bytes": 2259
+    },
+    {
       "path": "option/tailscale.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "4b1a3747e69eb6e33d4b2390d8c6fedaecbe1ed5",
@@ -671,12 +698,12 @@
     },
     {
       "path": "protocol/naive/dns_resolver_test.go",
-      "owner": "native-node-dns-policy",
+      "owner": "native-node-dns-ci-remediation",
       "baseBlob": null,
-      "newBlob": "927e6630c7914db1b19bf0d8fe02e1ce91703fb3",
-      "newSHA256": "054d4b162fdfa63568e19162b5b25ea31e9c1f1d52f806f1a7c5831ba6d5c080",
+      "newBlob": "767226b2b359030deb00f15c15172bf9e8503384",
+      "newSHA256": "5be186af1bb73c7aaefd74d2aa7ec11ac13c8ee125e94ec80e5797c349aa047b",
       "mode": "100644",
-      "bytes": 5514
+      "bytes": 7248
     },
     {
       "path": "protocol/naive/outbound.go",
@@ -949,6 +976,15 @@
       "bytes": 1696
     },
     {
+      "path": "release/dependency-sources/sing-usbip/sing-box-source-evidence/go.mod",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": null,
+      "newBlob": "a0fe51c35e6527542048f70dbeb218f9adf90544",
+      "newSHA256": "3a66a99db393247af3c4b1626d976f774a2d92ad6513b37bbbe2d142d9f9a2f0",
+      "mode": "100644",
+      "bytes": 388
+    },
+    {
       "path": "route/conn.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "4e527c5e2caba3fee1249741a1781f4ceb939574",
@@ -1093,6 +1129,15 @@
       "bytes": 1913
     },
     {
+      "path": "scripts/ci/patch_test_packages.py",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "ef3e32cecd82c050a79325e14515bcf3aede29d1",
+      "newBlob": "d6bdb06718748abbb9407bcaf1caf8346fc6abc8",
+      "newSHA256": "cbafec7e0af63c812cfabc661ce90471cfbdbb64f8fd7b405edc282f5a14d383",
+      "mode": "100644",
+      "bytes": 9339
+    },
+    {
       "path": "scripts/ci/test_ci_contract.py",
       "owner": "kernel-ci-remediation",
       "baseBlob": "cb405be179e0a6d41fccb2d78584d63dfdeaa795",
@@ -1100,6 +1145,24 @@
       "newSHA256": "825cbd14e6f24fc675aa8d9c3af7ab8ab1d07a8ea3a092e82a0dbd0d922f06ef",
       "bytes": 38841,
       "mode": "100644"
+    },
+    {
+      "path": "scripts/ci/test_patch_test_packages.py",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "34e0c5b0ca662261114f03ee917318d27909973c",
+      "newBlob": "e56c3a2d1d3b29403e3c272440c4e472f66e9e85",
+      "newSHA256": "cb01aa044a6ec57874214a7fe7566a5693e40b21752fa6c4f9cc5038c43ab101",
+      "mode": "100644",
+      "bytes": 9395
+    },
+    {
+      "path": "scripts/test_polaris_ci_impact.py",
+      "owner": "native-node-dns-ci-remediation",
+      "baseBlob": "138516f1ed2b354b15befd89f22ffd3b2ac81164",
+      "newBlob": "661b52566fde53540318854ddc247b9c24923c84",
+      "newSHA256": "5d029545aefdff587502eb9eef49c79aa15a5fd183a770748c8e1d323f26b52a",
+      "mode": "100644",
+      "bytes": 12621
     },
     {
       "path": "service/acme/service.go",

@@ -106,5 +106,71 @@ class PatchModuleSelectionTests(unittest.TestCase):
                 selection(root, ['alias/test.go'])
 
 
+class ReadOnlyEvidenceBoundaryTests(unittest.TestCase):
+    def fixture(self, root):
+        import hashlib
+        import json
+        from patch_test_packages import EVIDENCE_ROOT, EVIDENCE_MODULE, EVIDENCE_MANIFEST
+        (root / 'go.mod').write_text('module ' + MODULES['.'] + '\n\ngo 1.27.0\n')
+        directory = root / EVIDENCE_ROOT
+        directory.mkdir(parents=True)
+        (directory / 'go.mod').write_text('module ' + EVIDENCE_MODULE + '\n\ngo 1.27.0\n')
+        data = b'package evidence\n'
+        (directory / 'snapshot.go').write_bytes(data)
+        manifest = {'schema': 'polaris-sing-usbip-source-tar-materials-v1',
+                    'baseDirectory': 'release/dependency-sources', 'files': [{
+                        'path': 'sing-usbip/sing-box-source-evidence/snapshot.go',
+                        'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}]}
+        (root / EVIDENCE_MANIFEST).write_text(json.dumps(manifest))
+        return directory
+
+    def test_verified_archive_is_reported_separately_and_live_packages_remain_selected(self):
+        from patch_test_packages import EVIDENCE_ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.fixture(root)
+            live = ['service/usbip/client.go', 'cmd/internal/build_boxdd/main.go',
+                    'release/dependency-sources/live/helper.go']
+            for name in live:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('package live\n')
+            evidence = [EVIDENCE_ROOT + '/go.mod', EVIDENCE_ROOT + '/snapshot.go']
+            plan = selection(root, live + evidence)
+            self.assertEqual(plan['modules']['.']['packages'],
+                             ['./cmd/internal/build_boxdd', './release/dependency-sources/live', './service/usbip'])
+            self.assertCountEqual(plan['readOnlyEvidence'][EVIDENCE_ROOT]['changedPaths'], evidence)
+            self.assertEqual(plan['readOnlyEvidence'][EVIDENCE_ROOT]['verifiedFiles'], 1)
+
+    def test_archive_changes_missing_boundary_and_directives_fail_closed(self):
+        from patch_test_packages import EVIDENCE_ROOT
+        for mutation in ['bytes', 'extra', 'missing', 'identity', 'replace', 'symlink']:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                directory = self.fixture(root)
+                if mutation == 'bytes':
+                    (directory / 'snapshot.go').write_text('package changed\n')
+                elif mutation == 'extra':
+                    (directory / 'new.go').write_text('package hidden\n')
+                elif mutation == 'missing':
+                    (directory / 'go.mod').unlink()
+                elif mutation == 'identity':
+                    (directory / 'go.mod').write_text('module wrong/module\n')
+                elif mutation == 'replace':
+                    with (directory / 'go.mod').open('a') as out:
+                        out.write('replace example.org/live => ../../../../..\n')
+                else:
+                    (directory / 'hidden').symlink_to(root, target_is_directory=True)
+                with self.assertRaises(ValueError):
+                    selection(root, [EVIDENCE_ROOT + '/snapshot.go'])
+
+    def test_real_archived_files_match_historical_manifest(self):
+        from patch_test_packages import EVIDENCE_MODULES, verify_read_only_evidence
+        root = Path(__file__).resolve().parents[2]
+        for owner in EVIDENCE_MODULES:
+            result = verify_read_only_evidence(root, owner)
+            self.assertGreater(result['verifiedFiles'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
