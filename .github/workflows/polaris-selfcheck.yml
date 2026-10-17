@@ -895,6 +895,7 @@ jobs:
           allowed_event = ((kind == 'pull_request' and event.get('number') == 2) or
                            (kind == 'push' and ref == 'refs/heads/polaris-main'))
           allowed = False
+          print('Netns authorization predicates: event=' + str(allowed_event) + ', repository=' + str(os.environ['EVENT_REPOSITORY'] == repo))
           if allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
               def get(path):
                   request = urllib.request.Request('https://api.github.com/repos/' + repo + path,
@@ -909,20 +910,23 @@ jobs:
               same_repo = all(pr[side]['repo']['id'] == repo_id and
                               pr[side]['repo']['full_name'] == repo for side in ['base', 'head'])
               identity = same_repo and pr['number'] == 2 and pr['head']['ref'] == branch and pr['base']['ref'] == 'polaris-main'
+              print('Netns authorization predicates: fixed_pr_identity=' + str(identity))
               if identity:
                   head = pr['head']['sha']
                   actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
                   if actual != os.environ['SOURCE_COMMIT']:
                       raise SystemExit('Checkout HEAD differs from SOURCE_COMMIT; no elevation')
                   allowed = actual == head
-                  # PR checkouts use a synthetic merge commit. Accept only the exact event merge,
-                  # with the current PR head as a parent and an identical tree; never any same-tree commit.
-                  if not allowed and kind == 'pull_request' and actual == event['pull_request'].get('merge_commit_sha'):
+                  print('Netns authorization predicates: checkout_source=True, direct_head=' + str(allowed))
+                  # PR checkouts use a synthetic merge commit. Verify its source identity directly,
+                  # with the current PR head as a parent and an identical tree; event merge metadata may lag.
+                  if not allowed and kind == 'pull_request':
                       headers = subprocess.check_output(['git', 'cat-file', '-p', 'HEAD'], text=True).split('\n\n', 1)[0].splitlines()
                       parents = [line[7:] for line in headers if line.startswith('parent ')]
                       current_tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
                       head_commit = get('/git/commits/' + head)
                       allowed = head in parents and head_commit['sha'] == head and current_tree == head_commit['tree']['sha']
+                      print('Netns authorization predicates: head_parent=' + str(head in parents) + ', fetched_head=' + str(head_commit['sha'] == head) + ', identical_tree=' + str(current_tree == head_commit['tree']['sha']))
                   if kind == 'push':
                       allowed = allowed and actual == head
           print('Batch netns binary elevation authorized' if allowed else

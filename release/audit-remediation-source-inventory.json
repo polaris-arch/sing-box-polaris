@@ -1,16 +1,16 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "K2 remaining CI failures remediated in source; explicit batch-only netns execution guard implemented; fresh independent review and unified CI pending",
+  "status": "K3 remaining three CI failures remediated in source; all 112 lightweight Python tests passed; independent final identity review and fresh unified CI pending",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
       "owner": "validation",
       "baseBlob": "c85bd8ce5ddcaffcb5a459c89dc78854ce3d9e41",
-      "newBlob": "db8e188ab437e5db2db3d09098a7719275a45d3b",
-      "newSHA256": "170e5d544592ba9f235735bbd67814a0251c1d7731be517174179e35608e59be",
+      "newBlob": "82557fb274d7d228736caf63e3156f941544ca7a",
+      "newSHA256": "13596f32d7fd422aad200c1881458cc97cf84632e9b7bc7aca17faf165150307",
       "mode": "100644",
-      "bytes": 54112
+      "bytes": 54623
     },
     {
       "path": "adapter/inbound_test.go",
@@ -601,10 +601,10 @@
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "d3805fa5192c1c847d7d0a17372ff44fa9b9ffa8",
-      "newSHA256": "f2be2118b4e3bc7f8fcdc4436686c3aa0b6feaaf5976f3199e53fc7ae7e10e44",
+      "newBlob": "36f2288b084ce94f9d63f41faf31a5c67dae11ee",
+      "newSHA256": "2f5bd04cb2ff9c7dab1ffa7f096f107b5dc88300cb8951c4afb8c9bd6c184dae",
       "mode": "100644",
-      "bytes": 23226
+      "bytes": 27083
     },
     {
       "path": "protocol/tailscale/directory_store_admission_test.go",
@@ -859,6 +859,15 @@
       "bytes": 1913
     },
     {
+      "path": "scripts/ci/test_ci_contract.py",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "cb405be179e0a6d41fccb2d78584d63dfdeaa795",
+      "newBlob": "164176c175b73baf7866b5d53069dae757c33122",
+      "newSHA256": "825cbd14e6f24fc675aa8d9c3af7ab8ab1d07a8ea3a092e82a0dbd0d922f06ef",
+      "bytes": 38841,
+      "mode": "100644"
+    },
+    {
       "path": "service/acme/service.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "0b67d58e957dc369f6122c8206c324d93eaafbc5",
@@ -933,14 +942,13 @@
   ],
   "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes.",
   "validationBoundary": {
-    "lastTestedCommit": "e4df75e43c76c83aa35a9b9fe9f8eb8eeafe61a4",
-    "lastTestedTree": "f923292171fe1d9354d4c47fed8cc322652728fc",
-    "lint": "all 10 K2 platforms failed on 14 unique staticcheck findings; corrected directive integration and STUN projection await rerun",
-    "tests": "K2 Linux/macOS passed; Windows only two DACL cleanup restoration failures remain; fixture restoration and diagnostics await rerun",
-    "selfcheck": "K2 formatter and all other nine selfcheck jobs passed; Patch tests failed on missing CLONE_NEWNET runner capability. Current guarded netns-only sudo-n binary execution is explicitly authorized for this batch, not executed yet.",
-    "contract": "K2 contract passed; current changed tree still needs fresh unified CI",
-    "formatter": "current 92 owned Go files fmt --diff exit0 empty; official golangci2.15.0 binary built Go1.27.0, CI1.27.2; local gci module discovery warning retained",
-    "sourceReview": "current batch requires independent static review; no final commit embedded",
-    "netnsAuthorization": "Only the common/netns test binary on this batch disposable GitHub Linux runner. Fixed same-repository PR2 identity plus exact current head or verified same-tree event merge; polaris-main only exact same head. Read-only API failure forbids elevation, unrelated sources retain original unprivileged gate. No host sysctl/AppArmor change; other packages and compilation remain unprivileged."
+    "lastTestedCommit": "846406cb04529cd942c6c12829c83fd99d6e878e",
+    "lastTestedTree": "d5cbf3a6b0e07fb355971cd476f868e5e33b1625",
+    "lint": "all 10 K3 platforms passed; no unrelated lint changes",
+    "tests": "K3 Linux/macOS passed; Windows only two DACL restored-control mismatches remain (0x9004 -> 0x9404); new exact-ACE comparison awaits real Windows validation",
+    "selfcheck": "K3 nine other jobs passed; Patch tests ran unprivileged because authorization was false, then netns EPERM; guard step success did not mean elevation; actual approved netns execution remains unverified",
+    "contract": "K3 had one stale package-pipeline assertion; candidate all 10 Python suites / 112 tests passed in isolated cloud with exact source dependencies, without product compilation or real sudo",
+    "formatter": "current 92 owned Go files fmt --diff exit0 empty; official golangci2.15.0 built Go1.27.0 versus CI1.27.2 and local module-discovery warning retained",
+    "sourceReview": "three-source semantic static review found no blocker; final metadata/identity review pending; no final commit embedded"
   }
 }

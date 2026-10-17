@@ -1,6 +1,20 @@
 # Audit remediation status
 
-## Current K2 remaining CI remediation
+## Current K3 remaining CI remediation
+
+Last tested commit `846406cb04529cd942c6c12829c83fd99d6e878e`, tree `d5cbf3a6b0e07fb355971cd476f868e5e33b1625`: all ten lint platforms, Linux/macOS ordinary tests, and the nine non-Patch selfcheck jobs passed. Exactly three failure classes remained: the contract's obsolete package-pipeline assertion; two Windows cleanup DACL comparisons; and netns EPERM after the authorization output was false. A successful authorization step did not mean sudo ran. These historical passes do not certify current changed bytes.
+
+The current three-source delta updates the contract to execute extracted workflow shell and authorization code with closed fake Go/sudo/API fixtures; retains the original matrix/module assertions; and adds observed PR/commit metadata regression cases. All ten available Python test suites (112 tests, no skips) passed against the combined candidate in isolated cloud. Eighteen mutation checks reject lost privilege, package-selection, failure-propagation and source-identity boundaries. Original event payload values were unavailable: null/stale event merge SHA values are explicit regression scenarios, not asserted historical facts.
+
+The workflow retains fixed same-repository PR #2 and expected head/base refs, actual checkout HEAD equal to SOURCE_COMMIT, and current PR head identity. A synthetic merge must contain the current head as an actual parent and have the identical complete tree. It no longer additionally relies on a transient event/API merge SHA field. A polaris-main push must equal that same current PR head. API failure cannot elevate; other identities execute the original unprivileged tests. User authorization remains limited to this batch disposable GitHub Linux runner and only common/netns test binary execution with sudo -n. Compilation and all other packages remain unprivileged; no host security/network settings change. Real authorized netns execution still awaits CI.
+
+Windows restoration now succeeds in K3; readback differs by SE_DACL_AUTO_INHERITED (0x0400), which records automatic-inheritance model conversion independently of SE_DACL_PROTECTED. The candidate requires PRESENT and PROTECTED, permits only AUTO_INHERITED 0-to-1, and compares each ACE in order byte-for-byte including flags, access masks and SID. Null/missing DACL and other control changes fail. Fourteen comparison cases and a reverse-transition negative control were added. The actual ACL operations, production policy and two cross-process negative controls are unchanged. The logs do not prove actual ACE equality; the new assertion must be judged by real Windows CI. Reference: https://learn.microsoft.com/en-us/windows/win32/secauthz/automatic-propagation-of-inheritable-aces
+
+Official formatter write made no changes to the sole Go file; all 92 owned Go files passed --diff. The official tool-build Go1.27.0 versus CI1.27.2 difference and module-discovery warning remain documented. No new product compilation, privileged runtime test, or remote CI execution is claimed by the cloud checks. Independent final identity review and one unified CI campaign remain required.
+
+Earlier sections below are retained as historical snapshots.
+
+## Historical K2 remaining CI remediation
 
 Last tested source: commit `e4df75e43c76c83aa35a9b9fe9f8eb8eeafe61a4`, tree `f923292171fe1d9354d4c47fed8cc322652728fc`. All ten lint jobs now report only 14 unique staticcheck findings. Previous modernize/gci/gofumpt/unused findings disappeared, the owned-format gate passed, and Linux/macOS ordinary tests passed. Windows ordinary tests now report only two cleanup DACL restoration failures; the earlier native enumeration and JSON fixture failures disappeared. Patch tests separately failed at CLONE_NEWNET creation without runner capability. The contract workflow and all other nine selfcheck jobs, including iOS/Android and cross-platform libraries, completed successfully for K2. None of these results certify the changed source below.
 

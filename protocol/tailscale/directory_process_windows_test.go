@@ -15,6 +15,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -565,6 +566,100 @@ func TestWindowsDirectoryCrossProcessReplacementCannotAdoptOldIdentity(t *testin
 	rejected.wait(t, false)
 }
 
+// SetSecurityInfo can record conversion to the current inheritance model by
+// setting AUTO_INHERITED, even while PROTECTED remains set. Permit only that
+// one-way metadata transition; compare the ordered ACE bytes without SDDL.
+func windowsTestRestoredDACL(original, restored *windows.SECURITY_DESCRIPTOR) error {
+	if original == nil || restored == nil || !original.IsValid() || !restored.IsValid() {
+		return fmt.Errorf("invalid DACL security descriptor")
+	}
+	originalControl, _, err := original.Control()
+	if err != nil {
+		return fmt.Errorf("read original control: %w", err)
+	}
+	restoredControl, _, err := restored.Control()
+	if err != nil {
+		return fmt.Errorf("read restored control: %w", err)
+	}
+	const required = windows.SE_DACL_PRESENT | windows.SE_DACL_PROTECTED
+	if originalControl&required != required || restoredControl&required != required {
+		return fmt.Errorf("DACL must remain present and protected")
+	}
+	if restoredControl != originalControl && restoredControl != originalControl|windows.SE_DACL_AUTO_INHERITED {
+		return fmt.Errorf("unexpected DACL control transition")
+	}
+	originalACL, _, err := original.DACL()
+	if err != nil {
+		return fmt.Errorf("read original ACE list: %w", err)
+	}
+	restoredACL, _, err := restored.DACL()
+	if err != nil {
+		return fmt.Errorf("read restored ACE list: %w", err)
+	}
+	if originalACL == nil || restoredACL == nil {
+		return fmt.Errorf("null DACL cannot verify private permission restoration")
+	}
+	if originalACL.AceCount != restoredACL.AceCount {
+		return fmt.Errorf("restored ACE count differs")
+	}
+	for i := range uint32(originalACL.AceCount) {
+		var originalACE, restoredACE *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(originalACL, i, &originalACE); err != nil {
+			return fmt.Errorf("read original ACE %d: %w", i, err)
+		}
+		if err := windows.GetAce(restoredACL, i, &restoredACE); err != nil {
+			return fmt.Errorf("read restored ACE %d: %w", i, err)
+		}
+		originalBytes := unsafe.Slice((*byte)(unsafe.Pointer(originalACE)), originalACE.Header.AceSize)
+		restoredBytes := unsafe.Slice((*byte)(unsafe.Pointer(restoredACE)), restoredACE.Header.AceSize)
+		if !bytes.Equal(originalBytes, restoredBytes) {
+			return fmt.Errorf("restored ACE %d differs", i)
+		}
+	}
+	return nil
+}
+
+func TestWindowsDirectoryDACLRestorationComparison(t *testing.T) {
+	parse := func(sddl string) *windows.SECURITY_DESCRIPTOR {
+		t.Helper()
+		sd, err := windows.SecurityDescriptorFromString(sddl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sd
+	}
+	original := parse("D:P(A;;FA;;;SY)(A;;FR;;;BA)")
+	for _, tc := range []struct {
+		name string
+		sddl string
+		want bool
+	}{
+		{"exact", "D:P(A;;FA;;;SY)(A;;FR;;;BA)", true},
+		{"auto-inherited-metadata", "D:PAI(A;;FA;;;SY)(A;;FR;;;BA)", true},
+		{"unprotected", "D:(A;;FA;;;SY)(A;;FR;;;BA)", false},
+		{"auto-inherit-request", "D:PAR(A;;FA;;;SY)(A;;FR;;;BA)", false},
+		{"missing-dacl", "O:SY", false},
+		{"null-dacl", "D:PNO_ACCESS_CONTROL", false},
+		{"empty-dacl", "D:P", false},
+		{"added-ace", "D:P(A;;FA;;;SY)(A;;FR;;;BA)(A;;FW;;;WD)", false},
+		{"removed-ace", "D:P(A;;FA;;;SY)", false},
+		{"changed-rights", "D:P(A;;FA;;;SY)(A;;FW;;;BA)", false},
+		{"changed-sid", "D:P(A;;FA;;;SY)(A;;FR;;;WD)", false},
+		{"changed-inheritance-flags", "D:P(A;OI;FA;;;SY)(A;;FR;;;BA)", false},
+		{"changed-ace-type", "D:P(D;;FA;;;SY)(A;;FR;;;BA)", false},
+		{"changed-order", "D:P(A;;FR;;;BA)(A;;FA;;;SY)", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := windowsTestRestoredDACL(original, parse(tc.sddl)); (err == nil) != tc.want {
+				t.Fatalf("restoration comparison accepted=%v, want %v: %v", err == nil, tc.want, err)
+			}
+		})
+	}
+	if err := windowsTestRestoredDACL(parse("D:PAI(A;;FA;;;SY)(A;;FR;;;BA)"), original); err == nil {
+		t.Fatal("loss of auto-inherited metadata accepted")
+	}
+}
+
 func windowsTestBroadenDACL(t *testing.T, path string) {
 	t.Helper()
 	wide, err := windows.UTF16PtrFromString(path)
@@ -585,9 +680,8 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("read original DACL control: %v", err)
 	}
-	originalDACL := original.String()
-	if originalDACL == "" {
-		t.Fatal("cannot encode original DACL")
+	if err := windowsTestRestoredDACL(original, original); err != nil {
+		t.Fatalf("validate original DACL: %v", err)
 	}
 	owner, err := windowsCurrentSID()
 	if err != nil {
@@ -628,8 +722,8 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 				restoredControl, _, err := restored.Control()
 				if err != nil {
 					t.Errorf("read restored DACL control: %v", err)
-				} else if restored.String() != originalDACL {
-					t.Errorf("restored DACL mismatch (original control %#x, restored control %#x)", originalControl, restoredControl)
+				} else if err := windowsTestRestoredDACL(original, restored); err != nil {
+					t.Errorf("restored DACL mismatch (original control %#x, restored control %#x): %v", originalControl, restoredControl, err)
 				}
 			}
 		}

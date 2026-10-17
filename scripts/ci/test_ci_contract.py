@@ -1,5 +1,7 @@
 from pathlib import Path
 import json,re,unittest,yaml
+import contextlib,copy,io,os,shlex,shutil,subprocess,sys,tempfile,urllib.error
+from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
 class TestCIContract(unittest.TestCase):
  def test_complete_upstream_matrices(self):
@@ -176,7 +178,9 @@ class TestCIContract(unittest.TestCase):
   self.assertIn("python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'",command)
   self.assertIn('scripts/ci/patch_test_packages.py --base "$BASE_COMMIT"',command)
   self.assertIn('mapfile -t packages < "$selection_dir/root-packages.txt"',command)
-  self.assertIn('"${packages[@]}" | tee test.log',command)
+  # The queue must retain every ordinary package and isolate the exact netns
+  # package. Runtime contracts below check selection, flags and privilege scope.
+  self.assertIn('"${ordinary_packages[@]}" | tee test.log',command)
   self.assertNotIn("| xargs -r -n1 dirname",command)
   for marker in ['sing-tun-selected','metacubex-utls-selected']:
    self.assertIn('"$selection_dir/'+marker+'"',command)
@@ -189,4 +193,407 @@ class TestCIContract(unittest.TestCase):
   instance=next(s for s in steps if s.get('name')=='Test instances in process')
   self.assertEqual(instance['if'],'${{ inputs.run_instance_tests }}')
   self.assertIn('"^($INSTANCE_TESTS)\\$"',instance['run'])
+
+
+class TestPatchQueueNetnsContract(unittest.TestCase):
+    NETNS = 'github.com/sagernet/sing-box/common/netns'
+    ORDINARY = ['github.com/sagernet/sing-box/adapter',
+                'github.com/sagernet/sing-box/daemon']
+    TAGS = 'with_fixture,with_other,with_purego'
+    LDFLAGS = '-X fixture.Version=contract -s'
+
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow = ROOT / '.github/workflows/polaris-selfcheck.yml'
+        cls.document = yaml.safe_load(cls.workflow.read_text())
+        cls.steps = cls.document['jobs']['patch_tests']['steps']
+        cls.step = next(s for s in cls.steps if s.get('name') == 'Test packages changed by the queue')
+        cls.authorization = next(s for s in cls.steps if s.get('id') == 'netns_batch_authorization')
+
+    def run_queue(self, selected=None, resolved=None, authorized='false', modules=(),
+                  statuses=None, outputs=None):
+        """Run the real post-selection shell with fake Go and a non-elevating sudo.
+
+        No real Go, sudo, git, network, or product test is reachable through PATH.
+        Only package-selection inputs are synthetic; the partition and all test
+        commands are extracted unchanged from the workflow.
+        """
+        bash = shutil.which('bash')
+        if os.name != 'posix' or not bash:
+            self.skipTest('Linux patch gate shell requires Bash with mapfile')
+        probe = subprocess.run([bash, '--noprofile', '--norc', '-c', 'type mapfile'],
+                               capture_output=True, text=True)
+        if probe.returncode:
+            self.skipTest('Linux patch gate shell requires Bash with mapfile')
+        command = self.step['run']
+        body, runner = command.split("<<'POLARIS_COMMAND'\n", 1)[1].split('\nPOLARIS_COMMAND\n', 1)
+        launch = shlex.split(runner)
+        launch = launch[launch.index('--') + 1:]
+        self.assertEqual(launch, ['$POLARIS_RUNNER_BASH', '--noprofile', '--norc', '-e', '-o', 'pipefail',
+                                  '$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-0.sh'])
+        start = 'mapfile -t packages < "$selection_dir/root-packages.txt"'
+        self.assertEqual(body.count(start), 1)
+        body = body[body.index(start):]
+        selected = ['./...'] if selected is None else selected
+        resolved = self.ORDINARY + [self.NETNS] if resolved is None else resolved
+        with tempfile.TemporaryDirectory(prefix='polaris-netns-contract-') as directory:
+            root = Path(directory)
+            bin_dir = root / 'bin'
+            bin_dir.mkdir()
+            selection = root / 'selection'
+            selection.mkdir()
+            (selection / 'root-packages.txt').write_text(''.join(p + '\n' for p in selected))
+            for module in modules:
+                (selection / (module + '-selected')).touch()
+            for module, owner in [('sing-tun', 'sagernet/sing-tun'), ('metacubex-utls', 'metacubex/utls')]:
+                path = root / 'third_party' / module
+                path.mkdir(parents=True)
+                (path / 'go.mod').write_text('module github.com/' + owner + '\n')
+            (root / 'release').mkdir()
+            (root / 'release/DEFAULT_BUILD_TAGS').write_text('with_fixture,with_other\n')
+            (root / 'release/LDFLAGS').write_text(self.LDFLAGS + '\n')
+            config = root / 'config.json'
+            config.write_text(json.dumps({'resolved': resolved, 'statuses': statuses or {}, 'outputs': outputs or {}}))
+            log = root / 'calls.jsonl'
+            # The sudo fixture records the wrapper request without executing any
+            # binary or changing privileges. It rejects sudo-go orchestration.
+            stub = '''import json, os, shlex, subprocess, sys
+from pathlib import Path
+args = sys.argv[1:]
+tool = Path(sys.argv[0]).name
+config = json.loads(Path(os.environ['FIXTURE_CONFIG']).read_text())
+cwd = Path.cwd().relative_to(Path(os.environ['FIXTURE_ROOT'])).as_posix()
+with open(os.environ['FIXTURE_CALLS'], 'a') as stream:
+    stream.write(json.dumps({'tool': tool, 'args': args, 'cwd': cwd}) + '\\n')
+if tool == 'sudo':
+    if args != ['-n', '--', 'fixture-netns.test']:
+        raise SystemExit(96)
+    group = 'netns'
+elif args and args[0] == 'list':
+    sys.stdout.write(''.join(package + '\\n' for package in config['resolved']))
+    raise SystemExit(config['statuses'].get('list', 0))
+elif args and args[0] == 'test':
+    group = ('netns' if 'github.com/sagernet/sing-box/common/netns' in args
+             else 'sing-tun-ping' if cwd == 'third_party/sing-tun' and './ping' in args
+             else Path(cwd).name if cwd != '.' else 'ordinary')
+    if '-exec' in args:
+        if group != 'netns':
+            raise SystemExit(95)
+        wrapper = shlex.split(args[args.index('-exec') + 1])
+        # Absolute or alternate executables can never escape the fixture.
+        if wrapper != ['sudo', '-n', '--']:
+            raise SystemExit(94)
+        raise SystemExit(subprocess.run([os.environ['FIXTURE_SUDO'], '-n', '--', 'fixture-netns.test']).returncode)
+else:
+    raise SystemExit(93)
+output = ('--- PASS: TestUnshareNamespace (0.00s)\\nok fixture/netns\\n'
+          if group == 'netns' else 'ok fixture/' + group + '\\n')
+sys.stdout.write(config['outputs'].get(group, output))
+raise SystemExit(config['statuses'].get(group, 0))
+'''
+            for name in ['go', 'sudo']:
+                path = bin_dir / name
+                path.write_text('#!' + sys.executable + '\n' + stub)
+                path.chmod(0o755)
+            for name in ['cat', 'tee', 'grep']:
+                executable = shutil.which(name)
+                self.assertIsNotNone(executable, name)
+                (bin_dir / name).symlink_to(executable)
+            env = {'PATH': str(bin_dir), 'HOME': str(root), 'TMPDIR': str(root),
+                   'LC_ALL': 'C', 'selection_dir': str(selection), 'BASE_REF': 'v1.2.3',
+                   'INSTANCE_TESTS': 'TestInstanceOne|TestInstanceTwo',
+                   'SING_TUN_INSTANCE_TESTS': 'TestTunOne|TestPing',
+                   'NETNS_BATCH_ELEVATION': authorized, 'FIXTURE_CONFIG': str(config),
+                   'FIXTURE_ROOT': str(root), 'FIXTURE_CALLS': str(log),
+                   'FIXTURE_SUDO': str(bin_dir / 'sudo')}
+            result = subprocess.run([bash] + launch[1:-1] + ['-c', body],
+                                    cwd=root, env=env, capture_output=True, text=True, timeout=15)
+            calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+            return result, calls
+
+    def assert_root_test(self, call, packages, elevated=False):
+        args = ['test', '-race', '-count=1']
+        if packages == [self.NETNS]:
+            args += ['-v']
+        if elevated:
+            args += ['-exec', 'sudo -n --']
+        args += ['-skip', '^(TestInstanceOne|TestInstanceTwo)$', '-tags', self.TAGS,
+                 '-ldflags', self.LDFLAGS] + packages
+        self.assertEqual(call, {'tool': 'go', 'args': args, 'cwd': '.'})
+
+    def test_authorization_output_is_the_only_elevation_input(self):
+        self.assertEqual(self.authorization['shell'], 'python')
+        self.assertEqual(self.step['env']['NETNS_BATCH_ELEVATION'],
+                         '${{ steps.netns_batch_authorization.outputs.authorized }}')
+        self.assertLess(self.steps.index(self.authorization), self.steps.index(self.step))
+        for name, value in [('GH_TOKEN', '${{ github.token }}'), ('EVENT_NAME', '${{ github.event_name }}'),
+                            ('EVENT_REF', '${{ github.ref }}'), ('EVENT_REPOSITORY', '${{ github.repository }}')]:
+            self.assertEqual(self.authorization['env'][name], value)
+        self.assertFalse(self.authorization.get('continue-on-error', False))
+        self.assertFalse(self.step.get('continue-on-error', False))
+        self.assertFalse(self.document['jobs']['patch_tests'].get('continue-on-error', False))
+        instance = next(s['run'] for s in self.steps if s.get('name') == 'Test instances in process')
+        executable_lines = '\n'.join(line for line in instance.splitlines() if not line.lstrip().startswith('#'))
+        self.assertNotIn('sudo', executable_lines)
+        self.assertNotIn('-exec', executable_lines)
+
+    def test_wildcard_selection_runs_ordinary_group_then_only_netns_wrapper(self):
+        result, calls = self.run_queue(authorized='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(calls[0], {'tool': 'go', 'args': ['list', '-tags', self.TAGS, './...'], 'cwd': '.'})
+        self.assert_root_test(calls[1], self.ORDINARY)
+        self.assert_root_test(calls[2], [self.NETNS], elevated=True)
+        self.assertEqual(calls[3], {'tool': 'sudo', 'args': ['-n', '--', 'fixture-netns.test'], 'cwd': '.'})
+
+    def test_elevation_requires_exact_package_and_exact_true(self):
+        for approved in ['false', '', 'TRUE', 'true ', '1']:
+            with self.subTest(authorized=approved):
+                result, calls = self.run_queue(authorized=approved)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(len(calls), 3)
+                self.assert_root_test(calls[1], self.ORDINARY)
+                self.assert_root_test(calls[2], [self.NETNS])
+        packages = self.ORDINARY + [self.NETNS + '/child', self.NETNS + 'extra']
+        result, calls = self.run_queue(selected=['./adapter', './daemon', './common/netns...'],
+                                       resolved=packages, authorized='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls[0]['args'][-3:], ['./adapter', './daemon', './common/netns...'])
+        self.assertEqual(len(calls), 2)
+        self.assert_root_test(calls[1], packages)
+
+    def test_empty_and_netns_only_selection_never_expand_test_scope(self):
+        result, calls = self.run_queue(selected=[], resolved=[], authorized='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [])
+        result, calls = self.run_queue(selected=['./common/netns'], resolved=[self.NETNS], authorized='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 3)
+        self.assert_root_test(calls[1], [self.NETNS], elevated=True)
+
+    def test_list_errors_and_empty_resolution_fail_before_tests(self):
+        for resolved, statuses in [(self.ORDINARY + [self.NETNS], {'list': 17}), ([], {})]:
+            with self.subTest(resolved=resolved, statuses=statuses):
+                result, calls = self.run_queue(resolved=resolved, statuses=statuses, authorized='true')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(calls[0]['args'][0], 'list')
+
+    def test_test_failures_survive_tee_and_stop_later_groups(self):
+        for group, approved, count in [('ordinary', 'true', 2), ('netns', 'true', 4), ('netns', 'false', 3)]:
+            with self.subTest(group=group, authorized=approved):
+                result, calls = self.run_queue(authorized=approved, statuses={group: 23},
+                                               modules=['sing-tun', 'metacubex-utls'])
+                self.assertEqual(result.returncode, 23, result.stderr)
+                self.assertEqual(len(calls), count)
+                self.assertTrue(all(c['cwd'] == '.' for c in calls))
+
+    def test_success_requires_ordinary_ok_and_real_named_netns_pass(self):
+        cases = [('ordinary', '? fixture [no test files]\n'),
+                 ('netns', '--- SKIP: TestUnshareNamespace (0.00s)\nok fixture/netns\n'),
+                 ('netns', '--- PASS: TestAnotherNamespace (0.00s)\nok fixture/netns\n'),
+                 ('netns', '--- PASS: TestUnshareNamespace (0.00s)\n')]
+        for group, output in cases:
+            with self.subTest(group=group, output=output):
+                result, calls = self.run_queue(authorized='true', outputs={group: output},
+                                               modules=['sing-tun', 'metacubex-utls'])
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(all(c['cwd'] == '.' for c in calls))
+
+    def test_selected_owned_modules_keep_separate_unprivileged_coverage(self):
+        expected = [
+            {'tool': 'go', 'cwd': 'third_party/sing-tun',
+             'args': ['test', '-race', '-count=1', '-skip', '^(TestTunOne|TestPing)$', '-tags', self.TAGS, './...']},
+            {'tool': 'go', 'cwd': 'third_party/sing-tun',
+             'args': ['test', '-race', '-count=1', '-v', '-tags', self.TAGS,
+                      '-run', '^TestPing$/^(ipv4|ipv6)$/^unprivileged$', './ping']},
+            {'tool': 'go', 'cwd': 'third_party/metacubex-utls',
+             'args': ['test', '-race', '-count=1', '-tags', self.TAGS, './...']}]
+        # Check nested owners both alone and after netns configured its wrapper:
+        # reusing netns_exec in a later module must never inherit elevation.
+        for selected in [[], ['./...']]:
+            with self.subTest(root_selection=selected):
+                result, calls = self.run_queue(selected=selected, authorized='true',
+                                               modules=['sing-tun', 'metacubex-utls'])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(len(calls), 7 if selected else 3)
+                self.assertEqual(calls[-3:], expected)
+                self.assertEqual(sum(c['tool'] == 'sudo' for c in calls), 1 if selected else 0)
+        for module in ['sing-tun', 'sing-tun-ping', 'metacubex-utls']:
+            with self.subTest(failing_module=module):
+                result, calls = self.run_queue(selected=[], authorized='true',
+                                               modules=['sing-tun', 'metacubex-utls'], statuses={module: 29})
+                self.assertEqual(result.returncode, 29, result.stderr)
+                self.assertTrue(all(c['tool'] == 'go' and '-exec' not in c['args'] for c in calls))
+
+
+class TestNetnsBatchAuthorization(unittest.TestCase):
+    # Sanitized GitHub PR #2 and Git commit responses observed 2026-10-17:
+    # https://github.com/polaris-arch/sing-box-polaris/pull/2
+    # https://github.com/polaris-arch/sing-box-polaris/commit/48977ba52bcb4920bd4cd87abcbe31e5b59005f7
+    # Preserve real IDs, refs, SHAs, parents and trees; omit unrelated personal
+    # and signature fields. The original Actions event payload was unavailable;
+    # null/stale event merge values below are explicit regression scenarios.
+    HEAD = '846406cb04529cd942c6c12829c83fd99d6e878e'
+    MERGE = '48977ba52bcb4920bd4cd87abcbe31e5b59005f7'
+    TREE = 'd5cbf3a6b0e07fb355971cd476f868e5e33b1625'
+    BASE = '46eb46721034564b05ae321aa21761a2e4c7b0f6'
+    OTHER = 'd' * 40
+    REPO = {'id': 1421657509, 'full_name': 'polaris-arch/sing-box-polaris'}
+    OBSERVED_PR = {
+        'number': 2, 'merge_commit_sha': MERGE,
+        'base': {'ref': 'polaris-main', 'sha': BASE, 'repo': dict(REPO)},
+        'head': {'ref': 'collab/dots-audit-remediation-20261017', 'sha': HEAD, 'repo': dict(REPO)},
+    }
+    OBSERVED_MERGE = {'sha': MERGE, 'tree': {'sha': TREE}, 'parents': [{'sha': BASE}, {'sha': HEAD}]}
+    OBSERVED_HEAD = {'sha': HEAD, 'tree': {'sha': TREE}}
+
+    def authorize(self, kind='pull_request', actual=None, source=None, change_pr=None,
+                  event_number=2, ref=None, repository=None, tree=None, parents=None,
+                  merge=..., commit_sha=None, fail_api=None, message='message\n'):
+        workflow = ROOT / '.github/workflows/polaris-selfcheck.yml'
+        document = yaml.safe_load(workflow.read_text())
+        code = next(s['run'] for s in document['jobs']['patch_tests']['steps']
+                    if s.get('id') == 'netns_batch_authorization')
+        pr = copy.deepcopy(self.OBSERVED_PR)
+        if change_pr:
+            change_pr(pr)
+        event = {'number': event_number, 'pull_request': {'merge_commit_sha': self.MERGE if merge is ... else merge}}
+        actual = actual or self.HEAD
+        urls, git = [], []
+
+        def urlopen(request, timeout):
+            urls.append(request.full_url)
+            self.assertEqual(request.get_method(), 'GET')
+            self.assertEqual(timeout, 30)
+            self.assertEqual(request.get_header('Authorization'), 'Bearer fixture-token-never-network')
+            prefix = 'https://api.github.com/repos/' + self.REPO['full_name']
+            self.assertIn(request.full_url, [prefix + '/pulls/2', prefix + '/git/commits/' + self.HEAD])
+            if fail_api == len(urls):
+                raise urllib.error.HTTPError(request.full_url, 403, 'Forbidden', {}, None)
+            payload = pr if request.full_url.endswith('/pulls/2') else {
+                'sha': commit_sha or self.HEAD, 'tree': {'sha': tree or self.TREE}}
+            return io.BytesIO(json.dumps(payload).encode())
+
+        def check_output(args, **kwargs):
+            git.append(args)
+            self.assertEqual(kwargs, {'text': True})
+            if args == ['git', 'rev-parse', 'HEAD']:
+                return actual + '\n'
+            if args == ['git', 'rev-parse', 'HEAD^{tree}']:
+                return self.TREE + '\n'
+            if args == ['git', 'cat-file', '-p', 'HEAD']:
+                parent_list = [p['sha'] for p in self.OBSERVED_MERGE['parents']] if parents is None else parents
+                return 'tree ' + self.TREE + '\n' + ''.join('parent ' + sha + '\n' for sha in parent_list) + '\n' + message
+            self.fail('Unexpected subprocess: ' + repr(args))
+
+        with tempfile.TemporaryDirectory(prefix='polaris-netns-auth-') as directory:
+            path = Path(directory)
+            event_path, output = path / 'event.json', path / 'output'
+            event_path.write_text(json.dumps(event))
+            env = {'GITHUB_EVENT_PATH': str(event_path), 'GITHUB_OUTPUT': str(output),
+                   'EVENT_NAME': kind, 'EVENT_REF': ref or ('refs/heads/polaris-main' if kind == 'push' else 'refs/pull/2/merge'),
+                   'EVENT_REPOSITORY': repository or self.REPO['full_name'],
+                   'SOURCE_COMMIT': source or actual, 'GH_TOKEN': 'fixture-token-never-network'}
+            log, failure = io.StringIO(), None
+            with mock.patch.dict(os.environ, env, clear=True), \
+                 mock.patch('urllib.request.urlopen', side_effect=urlopen), \
+                 mock.patch('subprocess.check_output', side_effect=check_output), \
+                 mock.patch('subprocess.Popen', side_effect=AssertionError('No real subprocess allowed')), \
+                 contextlib.redirect_stdout(log), contextlib.redirect_stderr(log):
+                try:
+                    exec(compile(code, str(workflow), 'exec'), {})
+                except SystemExit as error:
+                    failure = str(error)
+            result = output.read_bytes() if output.exists() else b''
+        self.assertNotIn('fixture-token', log.getvalue())
+        self.assertNotIn('fixture-token', failure or '')
+        return result, failure, urls, git
+
+    def test_current_head_exact_merge_and_main_fast_forward_are_authorized(self):
+        for options in [{}, {'actual': self.MERGE}, {'kind': 'push'}]:
+            with self.subTest(options=options):
+                result, failure, urls, git = self.authorize(**options)
+                self.assertIsNone(failure)
+                self.assertEqual(result, b'authorized=true\n')
+                self.assertEqual(len(urls), 2 if options.get('actual') == self.MERGE else 1)
+                self.assertTrue(git)
+
+    def test_observed_pr2_merge_ignores_null_or_stale_merge_metadata(self):
+        # The actual checkout has the current PR head as a parent and the same
+        # complete tree. Mutable merge metadata must not veto this identity.
+        for event_merge in [None, self.OTHER]:
+            for api_merge in [self.MERGE, None, self.OTHER]:
+                with self.subTest(event_merge=event_merge, api_merge=api_merge):
+                    result, failure, urls, git = self.authorize(
+                        actual=self.OBSERVED_MERGE['sha'], merge=event_merge,
+                        change_pr=lambda pr: pr.update(merge_commit_sha=api_merge))
+                    self.assertIsNone(failure)
+                    self.assertEqual(result, b'authorized=true\n')
+                    self.assertEqual(len(urls), 2)
+                    self.assertIn(['git', 'cat-file', '-p', 'HEAD'], git)
+                    self.assertIn(['git', 'rev-parse', 'HEAD^{tree}'], git)
+
+    def test_stale_merge_metadata_never_overrides_source_parent_or_tree(self):
+        for options in [{'parents': [self.BASE]}, {'tree': self.OTHER},
+                        {'commit_sha': self.OTHER}, {'source': self.OTHER}, {'fail_api': 2}]:
+            with self.subTest(options=options):
+                result, failure, _, _ = self.authorize(actual=self.MERGE, merge=None, **options)
+                if 'source' in options or 'fail_api' in options:
+                    self.assertIsNotNone(failure)
+                    self.assertEqual(result, b'')
+                else:
+                    self.assertIsNone(failure)
+                    self.assertEqual(result, b'authorized=false\n')
+
+    def test_wrong_repository_pr_or_branch_identity_is_rejected(self):
+        mutations = [
+            ('PR number', lambda p: p.update(number=3)),
+            ('base ref', lambda p: p['base'].update(ref='other')),
+            ('head ref', lambda p: p['head'].update(ref='other')),
+        ]
+        for side in ['base', 'head']:
+            mutations += [
+                (side + ' repository ID', lambda p, side=side: p[side]['repo'].update(id=1)),
+                (side + ' repository name', lambda p, side=side: p[side]['repo'].update(full_name='fork/repo')),
+            ]
+        for name, mutation in mutations:
+            with self.subTest(identity=name):
+                result, failure, urls, git = self.authorize(change_pr=mutation)
+                self.assertIsNone(failure)
+                self.assertEqual(result, b'authorized=false\n')
+                self.assertEqual(len(urls), 1)
+                self.assertEqual(git, [])
+
+    def test_unapproved_events_do_not_query_api_or_git(self):
+        for options in [{'event_number': 3}, {'kind': 'workflow_dispatch'},
+                        {'kind': 'pull_request_target'}, {'kind': 'push', 'ref': 'refs/heads/other'},
+                        {'kind': 'push', 'ref': 'refs/tags/polaris-test'}, {'repository': 'fork/repo'}]:
+            with self.subTest(options=options):
+                result, failure, urls, git = self.authorize(**options)
+                self.assertIsNone(failure)
+                self.assertEqual(result, b'authorized=false\n')
+                self.assertEqual((urls, git), ([], []))
+
+    def test_commit_tree_and_parent_scope_reject_same_tree_substitutes(self):
+        for options in [{'kind': 'push', 'actual': self.OTHER},
+                        {'actual': self.OTHER, 'parents': [self.BASE]}, {'actual': self.MERGE, 'tree': self.OTHER},
+                        {'actual': self.MERGE, 'parents': [self.OTHER]},
+                        {'actual': self.MERGE, 'parents': []},
+                        {'actual': self.MERGE, 'parents': [self.OTHER], 'message': 'parent ' + self.HEAD + '\n'},
+                        {'actual': self.MERGE, 'commit_sha': self.OTHER}]:
+            with self.subTest(options=options):
+                result, failure, _, _ = self.authorize(**options)
+                self.assertIsNone(failure)
+                self.assertEqual(result, b'authorized=false\n')
+
+    def test_checkout_mismatch_and_api_failure_never_emit_authorization(self):
+        for options in [{'source': self.OTHER}, {'fail_api': 1},
+                        {'actual': self.MERGE, 'fail_api': 2}]:
+            with self.subTest(options=options):
+                result, failure, _, _ = self.authorize(**options)
+                self.assertIsNotNone(failure)
+                self.assertEqual(result, b'')
+
+
 if __name__=='__main__':unittest.main()
