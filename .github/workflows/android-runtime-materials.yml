@@ -1,0 +1,52 @@
+name: Inspect Android runtime materials
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect_android_runtime:
+    name: Resolve both unsigned Android runtime graphs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        submodules: false
+        persist-credentials: false
+    - name: Checkout exact Android source
+      run: git submodule update --init clients/android
+    - name: Apply the same unsigned client overlay
+      run: python scripts/ci/unsigned_clients.py android
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+    - name: Resolve without compiling APKs or libbox
+      working-directory: clients/android
+      run: |
+        for variant in other otherLegacy; do
+          export POLARIS_ANDROID_RUNTIME_CONFIGURATION="${variant}ReleaseRuntimeClasspath"
+          export POLARIS_ANDROID_RUNTIME_OUTPUT="$GITHUB_WORKSPACE/runtime-evidence/${variant}.json"
+          ./gradlew --no-daemon --init-script ../../scripts/ci/android_runtime_materials.init.gradle :app:polarisRuntimeMaterials
+        done
+    - name: Bind resolution evidence to this source and run
+      run: |
+        python - <<'PYTHON'
+        import hashlib,json,os,subprocess,sys
+        from pathlib import Path
+        sys.path.insert(0,'scripts/ci')
+        from android_runtime_materials import validate
+        from client_source import collect
+        root=Path('runtime-evidence')
+        records={}
+        for variant in ('other','otherLegacy'):
+            p=root/(variant+'.json')
+            records[variant]={'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'resolved':validate(json.loads(p.read_text()),variant+'ReleaseRuntimeClasspath')}
+        receipt={'schema':'polaris-android-resolution-diagnostic-v1','sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sourceTree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'runId':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'publicationEligible':False,'clientSource':collect('android',True),'variants':records}
+        (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        PYTHON
+    - uses: actions/upload-artifact@v4
+      with:
+        name: android-runtime-resolution-evidence
+        path: runtime-evidence
+        if-no-files-found: error

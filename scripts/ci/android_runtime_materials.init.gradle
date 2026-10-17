@@ -1,0 +1,40 @@
+// Source-owned, resolution-only evidence. Does not compile or execute APK code.
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.project(':app')
+    app.tasks.register('polarisRuntimeMaterials') {
+        doLast {
+            def name = System.getenv('POLARIS_ANDROID_RUNTIME_CONFIGURATION')
+            if (!(name in ['otherReleaseRuntimeClasspath', 'otherLegacyReleaseRuntimeClasspath'])) {
+                throw new GradleException('unexpected Android runtime configuration')
+            }
+            def target = System.getenv('POLARIS_ANDROID_RUNTIME_OUTPUT')
+            if (!target) throw new GradleException('missing runtime evidence output')
+            def configuration = app.configurations.getByName(name)
+            def components = configuration.incoming.resolutionResult.allComponents.collect { c ->
+                [id: c.id.displayName, module: c.moduleVersion?.toString()]
+            }.sort { it.id }
+            def artifacts = configuration.resolvedConfiguration.resolvedArtifacts.collect { a ->
+                def digest = MessageDigest.getInstance('SHA-256')
+                a.file.withInputStream { stream ->
+                    byte[] buffer = new byte[1024 * 1024]
+                    int length
+                    while ((length = stream.read(buffer)) != -1) digest.update(buffer, 0, length)
+                }
+                [module: a.moduleVersion.id.toString(), name: a.file.name,
+                 type: a.type, classifier: a.classifier,
+                 bytes: a.file.length(), sha256: digest.digest().encodeHex().toString()]
+            }.sort { a, b -> (a.module + '/' + a.name) <=> (b.module + '/' + b.name) }
+            // Local libbox AAR is measured by the existing core producer/receipt,
+            // not represented as an external Maven artifact.
+            def record = [schema: 'polaris-android-runtime-materials-v1',
+                configuration: name, components: components, artifacts: artifacts,
+                localCoreEvidence: 'existing same-source libbox AAR producer and candidate receipt']
+            def output = new File(target)
+            output.parentFile.mkdirs()
+            output.text = JsonOutput.prettyPrint(JsonOutput.toJson(record)) + '\n'
+        }
+    }
+}
