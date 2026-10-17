@@ -32,29 +32,43 @@ jobs:
     - name: Resolve without compiling APKs or libbox
       working-directory: clients/android
       run: |
+        mkdir -p "$GITHUB_WORKSPACE/runtime-evidence"
+        status=0
         for variant in other otherLegacy; do
           export POLARIS_ANDROID_RUNTIME_CONFIGURATION="${variant}ReleaseRuntimeClasspath"
           export POLARIS_ANDROID_RUNTIME_OUTPUT="$GITHUB_WORKSPACE/runtime-evidence/${variant}.json"
-          ./gradlew --no-daemon --init-script ../../scripts/ci/android_runtime_materials.init.gradle :app:polarisRuntimeMaterials
+          if ./gradlew --no-daemon --init-script ../../scripts/ci/android_runtime_materials.init.gradle :app:polarisRuntimeMaterials; then
+            code=0
+          else
+            code=$?
+            status=1
+          fi
+          printf '%s\t%s\n' "$variant" "$code" >> "$GITHUB_WORKSPACE/runtime-evidence/resolution-status.tsv"
         done
+        exit "$status"
     - name: Bind resolution evidence to this source and run
+      if: always()
       run: |
         python - <<'PYTHON'
-        import hashlib,json,os,subprocess,sys
-        from pathlib import Path
+        import os,subprocess,sys
         sys.path.insert(0,'scripts/ci')
-        from android_runtime_materials import validate
+        from android_runtime_materials import write_diagnostic
         from client_source import collect
-        root=Path('runtime-evidence')
-        records={}
-        for variant in ('other','otherLegacy'):
-            p=root/(variant+'.json')
-            records[variant]={'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'resolved':validate(json.loads(p.read_text()),variant+'ReleaseRuntimeClasspath')}
-        receipt={'schema':'polaris-android-resolution-diagnostic-v1','sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sourceTree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'runId':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'publicationEligible':False,'clientSource':collect('android',True),'variants':records}
-        (root/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+        try:
+            client=collect('android',True)
+        except Exception:
+            client=None
+        metadata={'sourceCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sourceTree':subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip(),'runId':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT']}
+        sys.exit(0 if write_diagnostic('runtime-evidence',metadata,client) else 1)
         PYTHON
     - uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: android-runtime-resolution-evidence
-        path: runtime-evidence
+        path: |
+          runtime-evidence/other.json
+          runtime-evidence/otherLegacy.json
+          runtime-evidence/receipt.json
+          runtime-evidence/diagnostics.json
+          runtime-evidence/resolution-status.tsv
         if-no-files-found: error

@@ -13,7 +13,19 @@ gradle.projectsEvaluated {
             def target = System.getenv('POLARIS_ANDROID_RUNTIME_OUTPUT')
             if (!target) throw new GradleException('missing runtime evidence output')
             def configuration = app.configurations.getByName(name)
+            def selectedVariants = [:]
             def components = configuration.incoming.resolutionResult.allComponents.collect { c ->
+                if (c.moduleVersion != null) {
+                    selectedVariants[c.moduleVersion.toString()] = c.variants.collect { v ->
+                        [owner: v.owner.displayName, name: v.displayName,
+                         attributes: v.attributes.keySet().collectEntries { key ->
+                             [(key.name): v.attributes.getAttribute(key).toString()]
+                         }.sort(),
+                         capabilities: v.capabilities.collect { cap ->
+                             "${cap.group}:${cap.name}:${cap.version}".toString()
+                         }.sort()]
+                    }.unique().sort { JsonOutput.toJson(it) }
+                }
                 [id: c.id.displayName, module: c.moduleVersion?.toString()]
             }.sort { it.id }
             def artifacts = configuration.resolvedConfiguration.resolvedArtifacts.collect { a ->
@@ -24,12 +36,14 @@ gradle.projectsEvaluated {
                     while ((length = stream.read(buffer)) != -1) digest.update(buffer, 0, length)
                 }
                 [module: a.moduleVersion.id.toString(), name: a.file.name,
-                 type: a.type, classifier: a.classifier,
+                 artifactIdentity: a.id.displayName, artifactName: a.name,
+                 type: a.type, extension: a.extension, classifier: a.classifier,
+                 componentSelectedVariants: selectedVariants[a.moduleVersion.id.toString()],
                  bytes: a.file.length(), sha256: digest.digest().encodeHex().toString()]
             }.sort { a, b -> (a.module + '/' + a.name) <=> (b.module + '/' + b.name) }
             // Local libbox AAR is measured by the existing core producer/receipt,
             // not represented as an external Maven artifact.
-            def record = [schema: 'polaris-android-runtime-materials-v1',
+            def record = [schema: 'polaris-android-runtime-materials-v2',
                 configuration: name, components: components, artifacts: artifacts,
                 localCoreEvidence: 'existing same-source libbox AAR producer and candidate receipt']
             def output = new File(target)
