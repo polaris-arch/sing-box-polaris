@@ -238,10 +238,16 @@ func windowsCurrentSID() (string, error) {
 	return u.User.Sid.String(), nil
 }
 
-func windowsPrivateDescriptor(owner string) (*windows.SECURITY_DESCRIPTOR, error) {
-	acl := "O:" + owner + "D:P(A;OICI;FA;;;" + owner + ")"
+func windowsPrivateDescriptor(owner string, directory bool) (*windows.SECURITY_DESCRIPTOR, error) {
+	// Only containers propagate ACEs. Leaf protocol files need effective
+	// grants without inheritance flags that SetSecurityInfo would strip.
+	inheritance := ""
+	if directory {
+		inheritance = "OICI"
+	}
+	acl := "O:" + owner + "D:P(A;" + inheritance + ";FA;;;" + owner + ")"
 	if owner != "S-1-5-18" {
-		acl += "(A;OICI;FA;;;SY)"
+		acl += "(A;" + inheritance + ";FA;;;SY)"
 	}
 	return windows.SecurityDescriptorFromString(acl)
 }

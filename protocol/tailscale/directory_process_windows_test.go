@@ -824,7 +824,6 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 		defer runtime.KeepAlive(original)
 		defer runtime.KeepAlive(originalStorage)
 		originalUnchanged := bytes.Equal(originalStorage, unsafe.Slice((*byte)(unsafe.Pointer(original)), len(originalStorage)))
-		t.Logf("DACL before restore: original storage unchanged=%v, original control=%#x", originalUnchanged, originalControl)
 		if !originalUnchanged {
 			t.Error("original DACL storage changed before restoration")
 		}
@@ -848,7 +847,6 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 				t.Errorf("read restored DACL (requested access %#x, original control %#x): %v", requestedAccess, originalControl, err)
 			} else {
 				originalUnchanged := bytes.Equal(originalStorage, unsafe.Slice((*byte)(unsafe.Pointer(original)), len(originalStorage)))
-				t.Logf("DACL after restore: original storage unchanged=%v", originalUnchanged)
 				if !originalUnchanged {
 					t.Error("original DACL storage changed during restoration")
 				}
@@ -856,16 +854,19 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 				if copyErr != nil {
 					t.Errorf("snapshot restored ACEs: %v", copyErr)
 				}
-				for _, message := range windowsTestACEDifferences("after restore", originalACEs, restoredACEs) {
-					t.Log(message)
-				}
 				restoredControl, _, err := restored.Control()
 				if err != nil {
 					t.Errorf("read restored DACL control: %v", err)
 				} else {
-					t.Logf("DACL after restore: original control=%#x, restored control=%#x", originalControl, restoredControl)
-					if err := windowsTestRestoredDACL(original, restored); err != nil {
-						t.Errorf("restored DACL mismatch (original control %#x, restored control %#x): %v", originalControl, restoredControl, err)
+					comparisonErr := windowsTestRestoredDACL(original, restored)
+					if comparisonErr != nil || copyErr != nil || !originalUnchanged {
+						t.Logf("DACL after restore: original storage unchanged=%v, original control=%#x, restored control=%#x", originalUnchanged, originalControl, restoredControl)
+						for _, message := range windowsTestACEDifferences("after restore", originalACEs, restoredACEs) {
+							t.Log(message)
+						}
+					}
+					if comparisonErr != nil {
+						t.Errorf("restored DACL mismatch (original control %#x, restored control %#x): %v", originalControl, restoredControl, comparisonErr)
 					}
 				}
 			}

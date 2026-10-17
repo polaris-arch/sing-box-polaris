@@ -144,7 +144,7 @@ func windowsCreatePrivateAt(parent windows.Handle, name string, directory bool, 
 	if err != nil || parentOwner == nil || !parentOwner.IsValid() || parentOwner.String() != owner {
 		return 0, fmt.Errorf("directory lease: private creation owner differs from retained parent")
 	}
-	sd, err := windowsPrivateDescriptor(owner)
+	sd, err := windowsPrivateDescriptor(owner, directory)
 	if err != nil {
 		return 0, err
 	}

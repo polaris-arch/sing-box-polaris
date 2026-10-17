@@ -1,7 +1,7 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "DIAGNOSTIC ONLY: K4 Windows cleanup ACE mismatch remains unresolved; strict restoration gate retained; do not merge to polaris-main",
+  "status": "K5 diagnostics identified regular-file directory-inheritance flags; object-type ACL construction fixed in source; fresh unified CI required before merge",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
@@ -601,10 +601,10 @@
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "e8d53805b9202c623ec1cc23fee8027396fbca9a",
-      "newSHA256": "35fa013407d8fe872c769f322193b88c2de11174027f02ae4ab24755c157d935",
+      "newBlob": "995b43b8570790616b2d27be6912c9f9d4bf77c8",
+      "newSHA256": "03f3782f31d323cc7096fe92290e65241ebfb9fd1a5c6806283bb69ebd2570ff",
       "mode": "100644",
-      "bytes": 33206
+      "bytes": 33171
     },
     {
       "path": "protocol/tailscale/directory_store_admission_test.go",
@@ -643,13 +643,22 @@
       "bytes": 835
     },
     {
+      "path": "protocol/tailscale/directory_windows_acl_test.go",
+      "owner": "windows-kernel",
+      "baseBlob": null,
+      "newBlob": "b5c25ebd85ae67b56e0c49199e454e9909210dc8",
+      "newSHA256": "bf4669359f59917c198af4d763fa347c775af63347a79a475b80659aad8dd06f",
+      "bytes": 5109,
+      "mode": "100644"
+    },
+    {
       "path": "protocol/tailscale/directory_windows_native.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "632a985fab1d8240b6e6530a5996aaa8f59806e8",
-      "newSHA256": "c78cd4630f4dbdea80011a00f9ddb2f6e8679601cb3dcbb71323fca03beff250",
+      "newBlob": "764b4b0d7110ccd28a7f766d3485e0f6c3874777",
+      "newSHA256": "39e1ea58f4b95fc17ea2df8748e5fc8cecc53da04cab217b0f815d362df2bbd8",
       "mode": "100644",
-      "bytes": 12689
+      "bytes": 12938
     },
     {
       "path": "protocol/tailscale/directory_windows_native_test.go",
@@ -664,10 +673,10 @@
       "path": "protocol/tailscale/directory_windows_owner.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "31d8e622bb2fefe7879548fe03f00b63c49e807b",
-      "newSHA256": "224cdfa7c99a69ac5f364d4ab9dc5a28dcdf9bce9bb2e769b9503861a41409d9",
+      "newBlob": "19bfe0f9e8236da7262e5b836fd8e4f362cf7e66",
+      "newSHA256": "1559cfce6fa94837438152bcad0abb59ab7ec9d3fc9d433285c015e36487d5f6",
       "mode": "100644",
-      "bytes": 7924
+      "bytes": 7935
     },
     {
       "path": "protocol/tailscale/directory_windows_owner_test.go",
@@ -942,13 +951,13 @@
   ],
   "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes.",
   "validationBoundary": {
-    "lastTestedCommit": "90becdbed62ea3602ed2744784d574341f754db6",
-    "lastTestedTree": "abc204de1a42cf78cd488b40087bbf093fc50f7a",
-    "lint": "K4 all 10 platforms passed; diagnostic source requires fresh gate",
-    "tests": "K4 Linux/macOS passed; Windows two cleanup failures now identify ACE 0 mismatch; actual type/flags/mask/SID/order difference still unknown",
-    "selfcheck": "K4 actual netns authorization true and TestUnshareNamespace passed; wiring unchanged in this diagnostic candidate",
-    "contract": "K4 contract passed; diagnostic candidate does not change Python/workflow source",
-    "formatter": "diagnostic sole Go file formatter write made zero changes; all 92 owned Go files --diff exit0/empty; official tool Go1.27.0 versus CI1.27.2 and GOMOD probe warning retained",
-    "sourceReview": "diagnostic-only independent review required; comparator and ACL operations must remain unchanged; no SID/SDDL logging"
+    "lastTestedCommit": "1139d6d95557a686c77d1f2c1a1fa0601e95c349",
+    "lastTestedTree": "9cf3058eed2aada52104ac35fa9785de8b2b7333",
+    "lint": "K5 all 10 platforms passed; current changed source requires fresh CI",
+    "tests": "K5 Linux/macOS passed; two Windows cleanup failures show only both ACE flags OICI 0x3 -> 0, with equal type/mask/SID/size/count and unchanged original SD storage; constructor now uses existing directory bool, strict restoration comparison retained",
+    "selfcheck": "actual netns authorization and TestUnshareNamespace passed in K4; no workflow/netns changes in this batch",
+    "contract": "K5 contract passed; current source changes do not alter Python/workflow source; cloud lightweight result is separately recorded",
+    "formatter": "official concentrated formatter/fixed-point evidence accompanies this candidate; tool Go1.27.0 versus CI1.27.2 and module-discovery warning retained",
+    "sourceReview": "independent review must verify every descriptor caller preserves object type, directory inheritance/full access and legacy-file admission; product CI remains pending"
   }
 }

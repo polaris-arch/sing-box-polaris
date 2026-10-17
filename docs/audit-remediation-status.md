@@ -1,6 +1,16 @@
 # Audit remediation status
 
-## Current K4 diagnostic candidate: not merge-ready
+## Current K5 object-type ACL correction
+
+Last tested commit `1139d6d95557a686c77d1f2c1a1fa0601e95c349`, tree `9cf3058eed2aada52104ac35fa9785de8b2b7333`. Complete Windows diagnostics identify the same change in both ACEs of both regular lease files: inheritance flags `0x3` (OI/CI) become `0x0`; ACE type, access mask `0x1f01ff`, SID, size, count and original security-descriptor storage remain equal. This rules out the observed failures being caused by original-storage mutation, lost access rights, changed SID or ACE reordering. The diagnosis does not require ignoring an ACL difference.
+
+The initializer had reused one directory-style descriptor for every private object even though its caller already knew whether it was creating a file or directory. The minimal production correction passes that existing boolean into descriptor construction: directories retain OI/CI and the same owner/SYSTEM full-control grants, while newly created regular files have no inheritance flags. The actual NT create already enforces FILE_DIRECTORY_FILE versus FILE_NON_DIRECTORY_FILE. Existing-file admission still accepts the prior supported flags and existing files are neither rewritten nor migrated.
+
+Object-type construction, real file/directory creation and legacy-file reopening regressions accompany the fix. The strict restoration comparator and original two cross-process security-negative tests remain intact. Diagnostic evidence is retained for failures instead of logging successful restoration details. No permissions are broadened, no directory flag is ignored, and no workflow or netns privilege wiring changes.
+
+The prior diagnostic-only batch is superseded as a source proposal, not as a product validation result. Independent review, official formatter evidence and cloud lightweight contracts do not replace the required fresh unified Windows and other CI runs. Do not merge on historical passes. Earlier sections below remain historical snapshots.
+
+## Historical K4 diagnostic candidate: not merge-ready
 
 Last tested source is `90becdbed62ea3602ed2744784d574341f754db6`, tree `abc204de1a42cf78cd488b40087bbf093fc50f7a`. All ten lint platforms and the contract workflow passed. Linux/macOS ordinary tests passed. Windows still reports two cleanup failures: original control `0x9004`, restored `0x9404`, and ordered ACE 0 differs. The logs do not identify which ACE fields changed. K4 netns logs now show actual authorization true and a real TestUnshareNamespace PASS; the earlier successful guard-step-only claim is not reused.
 
