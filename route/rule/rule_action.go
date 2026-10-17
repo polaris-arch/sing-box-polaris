@@ -130,32 +130,28 @@ func NewDNSRuleAction(logger logger.ContextLogger, action option.DNSRuleAction) 
 		return nil
 	case C.RuleActionTypeRoute:
 		return &RuleActionDNSRoute{
-			Server:      action.RouteOptions.Server,
-			Speculative: action.RouteOptions.Speculative,
-			RuleActionDNSRouteOptions: RuleActionDNSRouteOptions{
-				Strategy:               C.DomainStrategy(action.RouteOptions.Strategy),
-				Timeout:                time.Duration(action.RouteOptions.Timeout),
-				DisableCache:           action.RouteOptions.DisableCache,
-				DisableOptimisticCache: action.RouteOptions.DisableOptimisticCache,
-				RewriteTTL:             action.RouteOptions.RewriteTTL,
-				ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.RouteOptions.ClientSubnet)),
-				RemoveClientSubnet:     action.RouteOptions.RemoveClientSubnet,
-			},
+			Server:                 action.RouteOptions.Server,
+			Speculative:            action.RouteOptions.Speculative,
+			Strategy:               C.DomainStrategy(action.RouteOptions.Strategy),
+			Timeout:                time.Duration(action.RouteOptions.Timeout),
+			DisableCache:           action.RouteOptions.DisableCache,
+			DisableOptimisticCache: action.RouteOptions.DisableOptimisticCache,
+			RewriteTTL:             action.RouteOptions.RewriteTTL,
+			ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.RouteOptions.ClientSubnet)),
+			RemoveClientSubnet:     action.RouteOptions.RemoveClientSubnet,
 		}
 	case C.RuleActionTypeEvaluate:
 		return &RuleActionEvaluate{
-			Server:      action.EvaluateOptions.Server,
-			Tag:         action.EvaluateOptions.Tag,
-			Speculative: action.EvaluateOptions.Speculative,
-			RuleActionDNSRouteOptions: RuleActionDNSRouteOptions{
-				Strategy:               C.DomainStrategy(action.EvaluateOptions.Strategy),
-				Timeout:                time.Duration(action.EvaluateOptions.Timeout),
-				DisableCache:           action.EvaluateOptions.DisableCache,
-				DisableOptimisticCache: action.EvaluateOptions.DisableOptimisticCache,
-				RewriteTTL:             action.EvaluateOptions.RewriteTTL,
-				ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.EvaluateOptions.ClientSubnet)),
-				RemoveClientSubnet:     action.EvaluateOptions.RemoveClientSubnet,
-			},
+			Server:                 action.EvaluateOptions.Server,
+			Tag:                    action.EvaluateOptions.Tag,
+			Speculative:            action.EvaluateOptions.Speculative,
+			Strategy:               C.DomainStrategy(action.EvaluateOptions.Strategy),
+			Timeout:                time.Duration(action.EvaluateOptions.Timeout),
+			DisableCache:           action.EvaluateOptions.DisableCache,
+			DisableOptimisticCache: action.EvaluateOptions.DisableOptimisticCache,
+			RewriteTTL:             action.EvaluateOptions.RewriteTTL,
+			ClientSubnet:           netip.Prefix(common.PtrValueOrDefault(action.EvaluateOptions.ClientSubnet)),
+			RemoveClientSubnet:     action.EvaluateOptions.RemoveClientSubnet,
 		}
 	case C.RuleActionTypeRespond:
 		return &RuleActionRespond{}
@@ -631,18 +627,16 @@ func (r *RuleActionPredefined) String() string {
 
 func (r *RuleActionPredefined) Response(request *dns.Msg) *dns.Msg {
 	return &dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 request.Id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              r.Rcode,
-		},
-		Question: request.Question,
-		Answer:   rewriteRecords(r.Answer, request.Question[0]),
-		Ns:       rewriteRecords(r.Ns, request.Question[0]),
-		Extra:    rewriteRecords(r.Extra, request.Question[0]),
+		Id:                 request.Id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              r.Rcode,
+		Question:           request.Question,
+		Answer:             rewriteRecords(r.Answer, request.Question[0]),
+		Ns:                 rewriteRecords(r.Ns, request.Question[0]),
+		Extra:              rewriteRecords(r.Extra, request.Question[0]),
 	}
 }
 

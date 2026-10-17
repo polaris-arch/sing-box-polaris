@@ -64,8 +64,10 @@ func newV3Fixture(t *testing.T, users []shadow.User) *v3Fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "localhost"}, DNSNames: []string{"localhost"},
-		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "localhost"}, DNSNames: []string{"localhost"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {
 		t.Fatal(err)
@@ -89,8 +91,10 @@ func newV3Fixture(t *testing.T, users []shadow.User) *v3Fixture {
 		}
 	})
 	f.accept(f.echo, func(c net.Conn) { f.echoCalls.Add(1); _, _ = io.Copy(c, c) })
-	service, err := shadow.NewService(shadow.ServiceConfig{Version: 3, Users: users, StrictMode: true,
-		Handshake: shadow.HandshakeConfig{Server: M.SocksaddrFromNet(f.camouflage.Addr()), Dialer: N.SystemDialer}, Handler: f, Logger: logger.NOP()})
+	service, err := shadow.NewService(shadow.ServiceConfig{
+		Version: 3, Users: users, StrictMode: true,
+		Handshake: shadow.HandshakeConfig{Server: M.SocksaddrFromNet(f.camouflage.Addr()), Dialer: N.SystemDialer}, Handler: f, Logger: logger.NOP(),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,8 +438,10 @@ func TestShadowTLSV3ConcurrentConfigIsolation(t *testing.T) {
 }
 
 func TestShadowTLSV3RejectsRealECH(t *testing.T) {
-	_, err := NewOutbound(context.Background(), nil, log.NewNOPFactory().Logger(), "", option.ShadowTLSOutboundOptions{Version: 3,
-		OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Enabled: true, ECH: &option.OutboundECHOptions{Enabled: true}, UTLS: &option.OutboundUTLSOptions{Enabled: true, Fingerprint: "chrome_155"}}}})
+	_, err := NewOutbound(context.Background(), nil, log.NewNOPFactory().Logger(), "", option.ShadowTLSOutboundOptions{
+		Version: 3,
+		TLS:     &option.OutboundTLSOptions{Enabled: true, ECH: &option.OutboundECHOptions{Enabled: true}, UTLS: &option.OutboundUTLSOptions{Enabled: true, Fingerprint: "chrome_155"}},
+	})
 	if err == nil || !strings.Contains(err.Error(), "real ECH") {
 		t.Fatalf("actual v3 outbound did not reject real ECH: %v", err)
 	}

@@ -61,8 +61,8 @@ func (c *linuxTransportCredentials) ServerHandshake(rawConnection net.Conn) (net
 	}
 	c.daemon.registerPeerConnection(connection)
 	authenticationInformation := &peerAuthInfo{
-		CommonAuthInfo: credentials.CommonAuthInfo{SecurityLevel: credentials.PrivacyAndIntegrity},
-		identity:       identity,
+		SecurityLevel: credentials.PrivacyAndIntegrity,
+		identity:      identity,
 	}
 	return connection, authenticationInformation, nil
 }

@@ -20,13 +20,14 @@ import (
 	"github.com/sagernet/sing-box/service/powerreport"
 	tun "github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
-	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 )
 
-var _ adapter.PlatformInterface = (*platformInterfaceWrapper)(nil)
-var _ adapter.PlatformInterfaceBinder = (*platformInterfaceWrapper)(nil)
+var (
+	_ adapter.PlatformInterface       = (*platformInterfaceWrapper)(nil)
+	_ adapter.PlatformInterfaceBinder = (*platformInterfaceWrapper)(nil)
+)
 
 type platformInterfaceWrapper struct {
 	iif           PlatformInterface
@@ -143,13 +144,11 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 		//nolint:staticcheck
 		isDefault := netInterface.Name != w.myTunName && defaultInterface != nil && int(netInterface.Index) == defaultInterface.Index
 		interfaces = append(interfaces, adapter.NetworkInterface{
-			Interface: control.Interface{
-				Index:     int(netInterface.Index),
-				MTU:       int(netInterface.MTU),
-				Name:      netInterface.Name,
-				Addresses: common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
-				Flags:     linkFlags(uint32(netInterface.Flags)),
-			},
+			Index:            int(netInterface.Index),
+			MTU:              int(netInterface.MTU),
+			Name:             netInterface.Name,
+			Addresses:        common.Map(iteratorToArray[string](netInterface.Addresses), netip.MustParsePrefix),
+			Flags:            linkFlags(uint32(netInterface.Flags)),
 			Type:             C.InterfaceType(netInterface.Type),
 			DNSServers:       iteratorToArray[string](netInterface.DNSServer),
 			DNSSearchDomains: iteratorToArray[string](netInterface.DNSSearchDomain),

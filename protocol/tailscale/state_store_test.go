@@ -29,6 +29,7 @@ type retirementMockStore struct {
 }
 
 func (*retirementMockStore) ReadState(ipn.StateKey) ([]byte, error) { return nil, ipn.ErrStateNotExist }
+
 func (s *retirementMockStore) WriteState(ipn.StateKey, []byte) error {
 	s.writes.Add(1)
 	if s.write != nil {
@@ -36,6 +37,7 @@ func (s *retirementMockStore) WriteState(ipn.StateKey, []byte) error {
 	}
 	return nil
 }
+
 func waitStoreSealed(t *testing.T, s *guardedStateStore) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
@@ -46,6 +48,7 @@ func waitStoreSealed(t *testing.T, s *guardedStateStore) {
 		time.Sleep(time.Millisecond)
 	}
 }
+
 func TestTailscaleStoreLazyConstructionLeaseAndLateWrites(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "not-created")
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -55,11 +58,11 @@ func TestTailscaleStoreLazyConstructionLeaseAndLateWrites(t *testing.T) {
 	store := newGuardedStateStore(ctx, "target", directory, func() (ipn.StateStore, error) {
 		close(entered)
 		<-release
-		if err := os.Mkdir(directory, 0700); err != nil {
+		if err := os.Mkdir(directory, 0o700); err != nil {
 			return nil, err
 		}
 		// Model NewFileStore's synchronous initial write before its return.
-		if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), []byte("{}"), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), []byte("{}"), 0o600); err != nil {
 			return nil, err
 		}
 		return mock, nil
@@ -99,6 +102,7 @@ func TestTailscaleStoreLazyConstructionLeaseAndLateWrites(t *testing.T) {
 		t.Fatal("terminal changed")
 	}
 }
+
 func TestTailscaleStoreWriteTimeoutStaysUnknownAfterLateCompletion(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	mock := &retirementMockStore{write: func() error { close(entered); <-release; return nil }}
@@ -124,6 +128,7 @@ func TestTailscaleStoreWriteTimeoutStaysUnknownAfterLateCompletion(t *testing.T)
 		t.Fatal("late write reached delegate")
 	}
 }
+
 func TestTailscaleStoreNoConstructionFailureAndPanic(t *testing.T) {
 	t.Run("no-construction", func(t *testing.T) {
 		calls := 0
@@ -150,7 +155,7 @@ func TestTailscaleStoreNoConstructionFailureAndPanic(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			directory := t.TempDir()
 			store := newGuardedStateStore(context.Background(), "target", directory, func() (ipn.StateStore, error) {
-				os.WriteFile(filepath.Join(directory, "tailscaled.state"), []byte("partial"), 0600)
+				os.WriteFile(filepath.Join(directory, "tailscaled.state"), []byte("partial"), 0o600)
 				if kind == "panic" {
 					panic("original constructor panic")
 				}
@@ -178,6 +183,7 @@ func TestTailscaleStoreNoConstructionFailureAndPanic(t *testing.T) {
 		})
 	}
 }
+
 func TestSealedStoreStartDoesNotAcquireDirectory(t *testing.T) {
 	ctx := context.Background()
 	directory := filepath.Join(t.TempDir(), "not-created")
@@ -215,12 +221,13 @@ func profileStateBytes(t *testing.T, id, key string) []byte {
 	}
 	return content
 }
+
 func TestTailscaleStoreRealFileProfileAndLateObserver(t *testing.T) {
 	for _, kind := range []string{"bound", "failed-write-cache", "late-observer", "no-original-backend"} {
 		t.Run(kind, func(t *testing.T) {
 			directory := t.TempDir()
 			content := profileStateBytes(t, "old-id", "profile-old")
-			if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), content, 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), content, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			store := newGuardedStateStore(context.Background(), "target", directory, func() (ipn.StateStore, error) {
@@ -275,6 +282,7 @@ func TestTailscaleStoreRealFileProfileAndLateObserver(t *testing.T) {
 		})
 	}
 }
+
 func TestTailscaleStoreCanonicalFactoryAndUnsafeFile(t *testing.T) {
 	// macOS temporary roots include /var -> /private/var. Canonicalize the
 	// fixture root independently; keep retargeted-alias/unsafe-file checks.
@@ -284,7 +292,7 @@ func TestTailscaleStoreCanonicalFactoryAndUnsafeFile(t *testing.T) {
 	}
 	a, b := filepath.Join(root, "a"), filepath.Join(root, "b")
 	for _, path := range []string{a, b} {
-		if err := os.Mkdir(path, 0700); err != nil {
+		if err := os.Mkdir(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -331,7 +339,7 @@ func TestTailscaleStoreCanonicalFactoryAndUnsafeFile(t *testing.T) {
 				}
 				file.Close()
 			case "directory":
-				if err := os.Mkdir(path, 0700); err != nil {
+				if err := os.Mkdir(path, 0o700); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -361,7 +369,7 @@ func TestTailscaleStorePinnedSDKProjectionFixture(t *testing.T) {
 	}
 	directory := t.TempDir()
 	path := filepath.Join(directory, "tailscaled.state")
-	if err := os.WriteFile(path, content, 0600); err != nil {
+	if err := os.WriteFile(path, content, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	guard := makeStateStore(context.Background(), "target", directory)

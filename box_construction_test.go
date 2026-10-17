@@ -17,6 +17,7 @@ import (
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 )
 
 type constructedService struct {
@@ -62,9 +63,30 @@ func (p *constructionProbe) options(tags ...string) Options {
 	ctx := Context(context.Background(), inbound.NewRegistry(), outbound.NewRegistry(), endpoint.NewRegistry(), dns.NewTransportRegistry(), p.registry, boxCertificate.NewRegistry())
 	options := option.Options{Log: &option.LogOptions{Disabled: true}}
 	for _, tag := range tags {
-		options.Services = append(options.Services, option.Service{Type: "construction-probe", Tag: tag})
+		options.Services = append(options.Services, option.Service{Type: "construction-probe", Tag: tag, Options: &struct{}{}})
 	}
 	return Options{Context: ctx, Options: options}
+}
+
+// Keep programmatic fixtures equivalent to parsed options: the Windows reserved-
+// path admission check serializes all service options before construction.
+func TestConstructionProbeOptionsRoundTrip(t *testing.T) {
+	probe := newConstructionProbe()
+	options := probe.options("one")
+	content, err := json.MarshalContext(options.Context, options.Options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded option.Options
+	if err = json.UnmarshalContext(options.Context, content, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Services) != 1 || decoded.Services[0].Type != "construction-probe" || decoded.Services[0].Tag != "one" {
+		t.Fatalf("service fixture changed during JSON round trip: %+v", decoded.Services)
+	}
+	if _, ok := decoded.Services[0].Options.(*struct{}); !ok {
+		t.Fatalf("service fixture lost its registered options type: %T", decoded.Services[0].Options)
+	}
 }
 
 func TestNewPropagatesErrorOrPanicWithoutWaitingForRollback(t *testing.T) {

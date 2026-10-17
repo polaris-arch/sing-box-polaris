@@ -16,24 +16,20 @@ func TestDNSResponseAddressesUnmapsHTTPSIPv4Hints(t *testing.T) {
 	require.NotNil(t, ipv4Hint)
 
 	response := &dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Response: true,
-			Rcode:    dns.RcodeSuccess,
-		},
+		Response: true,
+		Rcode:    dns.RcodeSuccess,
 		Answer: []dns.RR{
 			&dns.HTTPS{
-				SVCB: dns.SVCB{
-					Hdr: dns.RR_Header{
-						Name:   dns.Fqdn("example.com"),
-						Rrtype: dns.TypeHTTPS,
-						Class:  dns.ClassINET,
-						Ttl:    60,
-					},
-					Priority: 1,
-					Target:   ".",
-					Value: []dns.SVCBKeyValue{
-						&dns.SVCBIPv4Hint{Hint: []net.IP{ipv4Hint}},
-					},
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn("example.com"),
+					Rrtype: dns.TypeHTTPS,
+					Class:  dns.ClassINET,
+					Ttl:    60,
+				},
+				Priority: 1,
+				Target:   ".",
+				Value: []dns.SVCBKeyValue{
+					&dns.SVCBIPv4Hint{Hint: []net.IP{ipv4Hint}},
 				},
 			},
 		},

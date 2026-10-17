@@ -126,12 +126,10 @@ func startACME(ctx context.Context, logger logger.Logger, options option.Inbound
 		switch dnsOptions.Provider {
 		case C.DNSProviderAliDNS:
 			solver.DNSProvider = &alidns.Provider{
-				CredentialInfo: alidns.CredentialInfo{
-					AccessKeyID:     dnsOptions.AliDNSOptions.AccessKeyID,
-					AccessKeySecret: dnsOptions.AliDNSOptions.AccessKeySecret,
-					RegionID:        dnsOptions.AliDNSOptions.RegionID,
-					SecurityToken:   dnsOptions.AliDNSOptions.SecurityToken,
-				},
+				AccessKeyID:     dnsOptions.AliDNSOptions.AccessKeyID,
+				AccessKeySecret: dnsOptions.AliDNSOptions.AccessKeySecret,
+				RegionID:        dnsOptions.AliDNSOptions.RegionID,
+				SecurityToken:   dnsOptions.AliDNSOptions.SecurityToken,
 			}
 		case C.DNSProviderCloudflare:
 			solver.DNSProvider = &cloudflare.Provider{

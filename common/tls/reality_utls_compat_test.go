@@ -87,12 +87,14 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 		}
 		defer c.Close()
 		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
-		secured := stdtls.Server(c, &stdtls.Config{Certificates: []stdtls.Certificate{cert.Certificate}, NextProtos: camouflageALPN,
+		secured := stdtls.Server(c, &stdtls.Config{
+			Certificates: []stdtls.Certificate{cert.Certificate}, NextProtos: camouflageALPN,
 			GetConfigForClient: func(hello *stdtls.ClientHelloInfo) (*stdtls.Config, error) {
 				camouflageHello <- append([]string(nil), hello.SupportedProtos...)
 				return nil, nil
 			},
-			MinVersion: stdtls.VersionTLS13, MaxVersion: stdtls.VersionTLS13, CurvePreferences: []stdtls.CurveID{stdtls.X25519}})
+			MinVersion: stdtls.VersionTLS13, MaxVersion: stdtls.VersionTLS13, CurvePreferences: []stdtls.CurveID{stdtls.X25519},
+		})
 		if secured.Handshake() == nil {
 			_, _ = io.Copy(io.Discard, secured)
 		}
@@ -103,7 +105,8 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 	}
 	var short [8]byte
 	short[0] = 0x21
-	server := &RealityServerConfig{config: &meta.RealityConfig{Type: "tcp", Dest: camouflage.Addr().String(), PrivateKey: private.Bytes(),
+	server := &RealityServerConfig{config: &meta.RealityConfig{
+		Type: "tcp", Dest: camouflage.Addr().String(), PrivateKey: private.Bytes(),
 		ServerNames: map[string]bool{"localhost": true}, ShortIds: map[[8]byte]bool{short: true},
 		Log: func(format string, args ...any) {
 			if strings.Contains(format, "hs.handshake() err:") {
@@ -112,7 +115,8 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 				default:
 				}
 			}
-		}, DialContext: (&net.Dialer{}).DialContext}}
+		}, DialContext: (&net.Dialer{}).DialContext,
+	}}
 	server.config.SessionTicketsDisabled = true
 	server.config.NextProtos = tc.serverALPN
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -164,9 +168,11 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 		}
 		public = wrong.PublicKey().Bytes()
 	}
-	config, err := NewRealityClient(ctx, logger.NOP(), "localhost", option.OutboundTLSOptions{ServerName: "localhost", ALPN: tc.clientALPN,
+	config, err := NewRealityClient(ctx, logger.NOP(), "localhost", option.OutboundTLSOptions{
+		ServerName: "localhost", ALPN: tc.clientALPN,
 		UTLS:    &option.OutboundUTLSOptions{Enabled: true, Fingerprint: tc.profile},
-		Reality: &option.OutboundRealityOptions{Enabled: true, PublicKey: base64.RawURLEncoding.EncodeToString(public), ShortID: "21"}})
+		Reality: &option.OutboundRealityOptions{Enabled: true, PublicKey: base64.RawURLEncoding.EncodeToString(public), ShortID: "21"},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

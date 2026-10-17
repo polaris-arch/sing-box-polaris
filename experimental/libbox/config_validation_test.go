@@ -159,11 +159,11 @@ func TestValidationTailscaleOriginalConstructorNoStoreAndCachedFile(t *testing.T
 			directory := filepath.Join(validationPhysicalTempDir(t), "lazy")
 			var original []byte
 			if existing {
-				if err := os.Mkdir(directory, 0700); err != nil {
+				if err := os.Mkdir(directory, 0o700); err != nil {
 					t.Fatal(err)
 				}
 				original = []byte(`{"synthetic":"old-state-secret"}`)
-				if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), original, 0600); err != nil {
+				if err := os.WriteFile(filepath.Join(directory, "tailscaled.state"), original, 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -329,7 +329,7 @@ func TestValidationTailscaleCanonicalImplicitScope(t *testing.T) {
 	directory := validationPhysicalTempDir(t)
 	real := filepath.Join(directory, "real")
 	alias := filepath.Join(directory, "alias")
-	if err := os.Mkdir(real, 0700); err != nil {
+	if err := os.Mkdir(real, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(real, alias); err != nil {
@@ -496,19 +496,19 @@ func TestValidationMembershipActualCanonicalOrderedTargetsAndCache(t *testing.T)
 	requireValidationTailscaleRegistry(t)
 	directory := validationPhysicalTempDir(t)
 	real, alias := filepath.Join(directory, "real"), filepath.Join(directory, "alias")
-	if err := os.Mkdir(real, 0700); err != nil {
+	if err := os.Mkdir(real, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(real, alias); err != nil {
 		t.Fatal(err)
 	}
 	firstDirectory := filepath.Join(real, "cached")
-	if err := os.Mkdir(firstDirectory, 0700); err != nil {
+	if err := os.Mkdir(firstDirectory, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	state := []byte(`{"synthetic":"membership-old-state-secret"}`)
 	stateFile := filepath.Join(firstDirectory, "tailscaled.state")
-	if err := os.WriteFile(stateFile, state, 0600); err != nil {
+	if err := os.WriteFile(stateFile, state, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("POLARIS_MEMBERSHIP_DIRECTORY", alias)
@@ -767,7 +767,7 @@ func TestValidationMembershipActualDifferentTagsSameCanonicalFileUnknown(t *test
 	requireValidationTailscaleRegistry(t)
 	directory := t.TempDir()
 	real, alias := filepath.Join(directory, "real"), filepath.Join(directory, "alias")
-	if err := os.Mkdir(real, 0700); err != nil {
+	if err := os.Mkdir(real, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(real, alias); err != nil {

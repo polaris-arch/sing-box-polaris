@@ -29,10 +29,12 @@ func (p *monitorTestPlatform) StartDefaultInterfaceMonitor(l InterfaceUpdateList
 	}
 	return p.startError
 }
+
 func (p *monitorTestPlatform) CloseDefaultInterfaceMonitor(InterfaceUpdateListener) error {
 	p.closes.Add(1)
 	return p.closeError
 }
+
 func (*monitorTestPlatform) GetInterfaces() (NetworkInterfaceIterator, error) {
 	return newIterator([]*NetworkInterface{{Name: "successor", Index: 12}}), nil
 }
@@ -51,11 +53,12 @@ func (m *monitorTestManager) NetworkInterfaces() []adapter.NetworkInterface {
 	if m.dnsRead != nil {
 		servers = m.dnsRead()
 	}
-	return []adapter.NetworkInterface{{Interface: control.Interface{Index: 12}, DNSServers: servers}}
+	return []adapter.NetworkInterface{{Index: 12, DNSServers: servers}}
 }
 
 func (m *monitorTestManager) InterfaceMonitor() tun.DefaultInterfaceMonitor { return m.monitor }
 func (m *monitorTestManager) InterfaceFinder() control.InterfaceFinder      { return m.finder }
+
 func (m *monitorTestManager) UpdateInterfaces() error {
 	m.calls.Add(1)
 	if m.entered != nil {
@@ -71,6 +74,7 @@ type monitorTestFinder struct {
 }
 
 func (f monitorTestFinder) ByIndex(int) (*control.Interface, error) { return f.value, nil }
+
 func createBoundMonitor(t *testing.T, w *platformInterfaceWrapper, manager *monitorTestManager, start bool) *platformDefaultInterfaceMonitor {
 	t.Helper()
 	// Actual route.New -> box.New order: Create before Initialize.
@@ -86,6 +90,7 @@ func createBoundMonitor(t *testing.T, w *platformInterfaceWrapper, manager *moni
 	}
 	return m
 }
+
 func successorMonitor(t *testing.T, w *platformInterfaceWrapper) (*platformDefaultInterfaceMonitor, *monitorTestManager, *control.Interface) {
 	expected := &control.Interface{Name: "successor", Index: 12}
 	manager := &monitorTestManager{finder: monitorTestFinder{value: expected}}
@@ -94,6 +99,7 @@ func successorMonitor(t *testing.T, w *platformInterfaceWrapper) (*platformDefau
 	manager.calls.Store(0)
 	return m, manager, expected
 }
+
 func assertSuccessor(t *testing.T, w *platformInterfaceWrapper, m *platformDefaultInterfaceMonitor, b *monitorTestManager, expected *control.Interface) {
 	t.Helper()
 	if b.calls.Load() != 0 || m.DefaultInterface() != expected {
@@ -105,6 +111,7 @@ func assertSuccessor(t *testing.T, w *platformInterfaceWrapper, m *platformDefau
 	}
 	assertSuccessorNetworkProjection(t, w)
 }
+
 func TestMonitorClosedAIsolatedFromReloadB(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	a := &monitorTestManager{}
@@ -122,6 +129,7 @@ func TestMonitorClosedAIsolatedFromReloadB(t *testing.T) {
 		t.Fatal("sealed A delivered")
 	}
 }
+
 func TestMonitorAlreadyDeliveringAIsolatedFromReloadB(t *testing.T) {
 	for _, fixStack := range []bool{false, true} {
 		t.Run(map[bool]string{false: "direct", true: "android-worker"}[fixStack], func(t *testing.T) {
@@ -153,6 +161,7 @@ func TestMonitorAlreadyDeliveringAIsolatedFromReloadB(t *testing.T) {
 		})
 	}
 }
+
 func TestMonitorPartialConstructionCloseCannotDetachLive(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	live, b, expected := successorMonitor(t, w)
@@ -171,6 +180,7 @@ func TestMonitorPartialConstructionCloseCannotDetachLive(t *testing.T) {
 		t.Fatal("foreign wrapper bound")
 	}
 }
+
 func TestMonitorCallbackSelfCloseAndFirstErrors(t *testing.T) {
 	closeErr := errors.New("native close")
 	platform := &monitorTestPlatform{closeError: closeErr}
@@ -190,6 +200,7 @@ func TestMonitorCallbackSelfCloseAndFirstErrors(t *testing.T) {
 		t.Fatal("partial Start lost original error or remained live")
 	}
 }
+
 func TestMonitorNativeIdentityAndSynchronousInitialUpdate(t *testing.T) {
 	p := &monitorTestPlatform{onStart: func(l InterfaceUpdateListener) { l.UpdateDefaultInterface("", -1, false, false) }}
 	w := &platformInterfaceWrapper{iif: p}
@@ -212,6 +223,7 @@ type monitorForeignListener struct{}
 
 func (monitorForeignListener) UpdateDefaultInterface(string, int32, bool, bool) {}
 func (monitorForeignListener) UpdateNetworkPath(string)                         {}
+
 func TestMonitorRejectForeignAndUnbound(t *testing.T) {
 	if InterfaceUpdateListenerIdentity(monitorForeignListener{}) != "" {
 		t.Fatal("foreign listener gained native identity")
@@ -242,6 +254,7 @@ func (w *monitorTestDNSWatcher) notify() {
 		w.callback()
 	}
 }
+
 func (w *monitorTestDNSWatcher) Close() error {
 	w.access.Lock()
 	defer w.access.Unlock()
@@ -249,6 +262,7 @@ func (w *monitorTestDNSWatcher) Close() error {
 	w.closes.Add(1)
 	return w.closeError
 }
+
 func readTestMonitorDNS(manager adapter.NetworkManager, _ int) []string {
 	return append([]string(nil), manager.NetworkInterfaces()[0].DNSServers...)
 }
@@ -264,6 +278,7 @@ func attachTestDNSWatcher(t *testing.T, m *platformDefaultInterfaceMonitor) *mon
 	}
 	return watcher
 }
+
 func TestMonitorDNSChangeWithoutInterfaceEvent(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	m, manager, expected := successorMonitor(t, w)
@@ -288,6 +303,7 @@ func TestMonitorDNSChangeWithoutInterfaceEvent(t *testing.T) {
 		t.Fatal("lost interface retained DNS")
 	}
 }
+
 func TestMonitorDNSWatcherCallbackCanCloseItself(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	m, manager, _ := successorMonitor(t, w)
@@ -311,6 +327,7 @@ func TestMonitorDNSWatcherCallbackCanCloseItself(t *testing.T) {
 		t.Fatal("repeated close reopened watcher")
 	}
 }
+
 func TestMonitorDNSReadClosedAIsolatedFromB(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	old, manager, _ := successorMonitor(t, w)
@@ -333,6 +350,7 @@ func TestMonitorDNSReadClosedAIsolatedFromB(t *testing.T) {
 		t.Fatal("sealed DNS read published callbacks or leaked admission")
 	}
 }
+
 func TestMonitorDNSWatcherCreationRacingClose(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	m, _, _ := successorMonitor(t, w)
@@ -359,6 +377,7 @@ func TestMonitorDNSWatcherCreationRacingClose(t *testing.T) {
 		t.Fatal("late watcher leaked")
 	}
 }
+
 func TestMonitorDNSWatcherCloseErrorRetained(t *testing.T) {
 	w := &platformInterfaceWrapper{iif: &monitorTestPlatform{}}
 	m, _, _ := successorMonitor(t, w)
@@ -393,6 +412,7 @@ func TestMonitorDNSReadCannotOverwriteChangedInterface(t *testing.T) {
 		t.Fatal("stale DNS read replaced current interface/DNS")
 	}
 }
+
 func TestMonitorDNSWatcherStartFailureRevokesProjection(t *testing.T) {
 	platform := &monitorTestPlatform{}
 	w := &platformInterfaceWrapper{iif: platform}
@@ -403,6 +423,7 @@ func TestMonitorDNSWatcherStartFailureRevokesProjection(t *testing.T) {
 		t.Fatal("watcher start failure retained active monitor or started platform")
 	}
 }
+
 func TestMonitorPlatformStartFailureClosesDNSWatcher(t *testing.T) {
 	failure := errors.New("platform start")
 	platform := &monitorTestPlatform{startError: failure}

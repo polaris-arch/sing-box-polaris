@@ -1,6 +1,18 @@
-# Reconstructed audit remediation batch
+# Audit remediation status
 
-All four implementation review partitions have statically closed their reported findings. This source-only snapshot has not undergone product compilation, tests or CI. Final integration metadata remains subject to its own review. No historical PASS certifies these reconstructed bytes.
+## Current K1 CI remediation
+
+Last tested source: commit `918198714a6ef8a7661e0c566761a0c0892fb53a`, tree `40e4fbc23ae827f3e001d84610ce95b2cb4a7981`. That CI was not green: all 10 lint platforms failed (149 unique findings), self-check stopped at formatting, and Windows product tests failed. Linux/macOS tests and the contract workflow passed only for K1.
+
+The current 71 source/helper changes have passed independent static review. They address all known lint findings, Windows native enumeration admission, typed construction-test fixtures, and formatter diagnostic output. Existing lint gates and stable Windows/Tailscale error strings are retained; 13 precise proper-name ST1005 directives are documented. No current-tree product test or lint PASS is claimed.
+
+Official golangci-lint2.15.0 formatting write and subsequent --diff both exited0, with empty diff. The official local binary was built with Go1.27.0, whereas CI uses Go1.27.2. Local gci module discovery was unavailable; complete warning/output evidence was retained. This is a formatting fixed point with environment caveats, not CI certification. A fresh single unified CI campaign remains required.
+
+The source inventory retains earlier ownership/baseline entries, updates affected hashes and includes all current remediation files. It excludes itself and this status document to avoid hash self-reference. No predicted final commit or old success receipt is relabeled as current evidence.
+
+## Historical reconstruction snapshot
+
+The following original finding table and integration notes record the preceding source reconstruction. Their product-validation labels are historical; the current state and remaining validation requirements are stated above.
 
 ## Original 45 findings
 

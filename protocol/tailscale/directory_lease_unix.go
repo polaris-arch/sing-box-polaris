@@ -23,8 +23,10 @@ import (
 // The control directory and lock are permanent protocol anchors. Neither side
 // may unlink/replace them, including after target deletion. This is cooperative
 // exclusion, not protection against a malicious process with the same UID.
-const directoryControlPrefix = ".polaris-directory-control-"
-const directoryIncarnationStamp = ".polaris-directory-incarnation"
+const (
+	directoryControlPrefix    = ".polaris-directory-control-"
+	directoryIncarnationStamp = ".polaris-directory-incarnation"
+)
 
 type directoryLease struct {
 	Identity    string

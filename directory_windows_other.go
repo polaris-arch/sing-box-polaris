@@ -11,6 +11,7 @@ import (
 
 func prepareWindowsDirectoryDomain(ctx context.Context, options option.Options) (context.Context, error) {
 	if options.PolarisWindowsDirectory != nil {
+		//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory protocol requires Windows and with_tailscale")
 	}
 	return ctx, nil

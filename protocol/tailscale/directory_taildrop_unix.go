@@ -5,9 +5,10 @@ package tailscale
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 func (t *Endpoint) prepareTaildropDirectory() (resultErr error) {

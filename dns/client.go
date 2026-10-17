@@ -542,10 +542,8 @@ func (c *Client) lookupToExchange(ctx context.Context, transport adapter.DNSTran
 		Qclass: dns.ClassINET,
 	}
 	message := dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			RecursionDesired: true,
-		},
-		Question: []dns.Question{question},
+		RecursionDesired: true,
+		Question:         []dns.Question{question},
 	}
 	disableCache := c.disableCache || options.DisableCache
 	if !disableCache {
@@ -778,29 +776,25 @@ func MessageToAddresses(response *dns.Msg) []netip.Addr {
 
 func FixedResponseStatus(message *dns.Msg, rcode int) *dns.Msg {
 	return &dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 message.Id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              rcode,
-		},
-		Question: message.Question,
+		Id:                 message.Id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              rcode,
+		Question:           message.Question,
 	}
 }
 
 func FixedResponse(id uint16, question dns.Question, addresses []netip.Addr, timeToLive uint32) *dns.Msg {
 	response := dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              dns.RcodeSuccess,
-		},
-		Question: []dns.Question{question},
+		Id:                 id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              dns.RcodeSuccess,
+		Question:           []dns.Question{question},
 	}
 	for _, address := range addresses {
 		if address.Is4() && question.Qtype == dns.TypeA {
@@ -830,15 +824,13 @@ func FixedResponse(id uint16, question dns.Question, addresses []netip.Addr, tim
 
 func FixedResponseCNAME(id uint16, question dns.Question, record string, timeToLive uint32) *dns.Msg {
 	response := dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              dns.RcodeSuccess,
-		},
-		Question: []dns.Question{question},
+		Id:                 id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              dns.RcodeSuccess,
+		Question:           []dns.Question{question},
 		Answer: []dns.RR{
 			&dns.CNAME{
 				Hdr: dns.RR_Header{
@@ -856,15 +848,13 @@ func FixedResponseCNAME(id uint16, question dns.Question, record string, timeToL
 
 func FixedResponseTXT(id uint16, question dns.Question, records []string, timeToLive uint32) *dns.Msg {
 	response := dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              dns.RcodeSuccess,
-		},
-		Question: []dns.Question{question},
+		Id:                 id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              dns.RcodeSuccess,
+		Question:           []dns.Question{question},
 		Answer: []dns.RR{
 			&dns.TXT{
 				Hdr: dns.RR_Header{
@@ -882,15 +872,13 @@ func FixedResponseTXT(id uint16, question dns.Question, records []string, timeTo
 
 func FixedResponseMX(id uint16, question dns.Question, records []*net.MX, timeToLive uint32) *dns.Msg {
 	response := dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			Id:                 id,
-			Response:           true,
-			Authoritative:      true,
-			RecursionDesired:   true,
-			RecursionAvailable: true,
-			Rcode:              dns.RcodeSuccess,
-		},
-		Question: []dns.Question{question},
+		Id:                 id,
+		Response:           true,
+		Authoritative:      true,
+		RecursionDesired:   true,
+		RecursionAvailable: true,
+		Rcode:              dns.RcodeSuccess,
+		Question:           []dns.Question{question},
 	}
 	for _, record := range records {
 		response.Answer = append(response.Answer, &dns.MX{

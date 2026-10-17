@@ -28,9 +28,11 @@ func (m *resolverTestManager) Transport(tag string) (adapter.DNSTransport, bool)
 	m.lookups++
 	return m.transport, tag == "bootstrap"
 }
+
 func (m *resolverTestManager) Transports() []adapter.DNSTransport {
 	return []adapter.DNSTransport{m.transport}
 }
+
 func (m *resolverTestManager) Default() adapter.DNSTransport { return m.transport }
 
 type resolverTestNetwork struct {
@@ -39,9 +41,11 @@ type resolverTestNetwork struct {
 }
 
 func (m resolverTestNetwork) DefaultOptions() adapter.NetworkOptions { return m.options }
+
 func (m resolverTestNetwork) InterfaceFinder() control.InterfaceFinder {
 	return control.NewDefaultInterfaceFinder()
 }
+
 func (m resolverTestNetwork) AutoDetectInterface() bool                { return false }
 func (m resolverTestNetwork) AutoRedirectOutputMarkFunc() control.Func { return nil }
 
@@ -99,7 +103,7 @@ func TestDomainResolverRulesWrapsDetourAndRejectsDNSBootstrap(t *testing.T) {
 	rules := &option.DomainResolveOptions{Mode: option.DomainResolverModeRules}
 	ctx := service.ContextWith[adapter.OutboundManager](context.Background(), resolverTestOutboundManager{})
 	for _, detour := range []string{"", "node-exit"} {
-		dialerOptions := option.DialerOptions{Detour: detour, AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: rules}}
+		dialerOptions := option.DialerOptions{Detour: detour, DomainResolver: rules}
 		resolved, err := NewWithOptions(Options{Context: ctx, Options: dialerOptions, RemoteIsDomain: true, NewDialer: true})
 		require.NoError(t, err)
 		require.True(t, resolved.(ResolveDialer).QueryOptions().UseRules)
@@ -131,6 +135,7 @@ func (d *resolverTestDialer) DialContext(ctx context.Context, network string, de
 	d.destination = destination
 	return nil, nil
 }
+
 func (d *resolverTestDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	panic("unused")
 }

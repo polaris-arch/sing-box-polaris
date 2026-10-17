@@ -214,10 +214,8 @@ func (t *Transport) updateTransports(link *TransportLink) error {
 		servers.serverScope.Close()
 	}
 	serverDialer := common.Must1(dialer.NewDefault(t.ctx, option.DialerOptions{
-		AbstractDialerOptions: option.AbstractDialerOptions{
-			BindInterface:      link.iif.Name,
-			UDPFragmentDefault: true,
-		},
+		BindInterface:      link.iif.Name,
+		UDPFragmentDefault: true,
 	}))
 	var transports []adapter.DNSTransport
 	for _, address := range link.address {

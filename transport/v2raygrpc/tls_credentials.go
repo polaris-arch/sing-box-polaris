@@ -39,10 +39,8 @@ func (c *TLSTransportCredentials) ClientHandshake(ctx context.Context, authority
 		return nil, nil, err
 	}
 	tlsInfo := credentials.TLSInfo{
-		State: conn.ConnectionState(),
-		CommonAuthInfo: credentials.CommonAuthInfo{
-			SecurityLevel: credentials.PrivacyAndIntegrity,
-		},
+		State:         conn.ConnectionState(),
+		SecurityLevel: credentials.PrivacyAndIntegrity,
 	}
 	id := internal_credentials.SPIFFEIDFromState(conn.ConnectionState())
 	if id != nil {
@@ -62,10 +60,8 @@ func (c *TLSTransportCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, c
 		return nil, nil, err
 	}
 	tlsInfo := credentials.TLSInfo{
-		State: conn.ConnectionState(),
-		CommonAuthInfo: credentials.CommonAuthInfo{
-			SecurityLevel: credentials.PrivacyAndIntegrity,
-		},
+		State:         conn.ConnectionState(),
+		SecurityLevel: credentials.PrivacyAndIntegrity,
 	}
 	id := internal_credentials.SPIFFEIDFromState(conn.ConnectionState())
 	if id != nil {

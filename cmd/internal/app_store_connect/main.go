@@ -505,7 +505,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 		log.Info(string(platform), " ", versionString, " update en-US localization")
 		_, _, err = client.Apps.UpdateAppStoreVersionLocalization(ctx, localization.ID, &asc.AppStoreVersionLocalizationUpdateRequestAttributes{
 			PromotionalText: new(appStorePromotionalText),
-			WhatsNew:        common.Ptr(appStoreWhatsNew),
+			WhatsNew:        new(appStoreWhatsNew),
 		})
 		if err != nil {
 			return err
@@ -549,7 +549,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 	}
 	if response.StatusCode != http.StatusOK || currentBuild.Data.ID != build.ID {
 		log.Info(string(platform), " ", versionString, " attach build ", *build.Attributes.Version)
-		_, err = client.Apps.UpdateBuildForAppStoreVersion(ctx, version.ID, common.Ptr(build.ID))
+		_, err = client.Apps.UpdateBuildForAppStoreVersion(ctx, version.ID, new(build.ID))
 		if err != nil {
 			return err
 		}
@@ -595,7 +595,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 	}
 	if submission.ID == "" {
 		log.Info(string(platform), " ", versionString, " create review submission")
-		created, _, err := client.Submission.CreateReviewSubmission(ctx, appID, common.Ptr(platform))
+		created, _, err := client.Submission.CreateReviewSubmission(ctx, appID, new(platform))
 		if err != nil {
 			return err
 		}
@@ -609,7 +609,7 @@ func submitAppStoreVersion(ctx context.Context, client *asc.Client, platform asc
 		}
 	}
 	log.Info(string(platform), " ", versionString, " submit review submission ", submission.ID)
-	_, _, err = client.Submission.UpdateReviewSubmission(ctx, submission.ID, common.Ptr(true), nil)
+	_, _, err = client.Submission.UpdateReviewSubmission(ctx, submission.ID, new(true), nil)
 	if err != nil {
 		return err
 	}

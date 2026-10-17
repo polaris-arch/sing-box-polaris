@@ -5,10 +5,11 @@ package tailscale
 import (
 	"context"
 	"errors"
-	"github.com/sagernet/sing-box/adapter"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sagernet/sing-box/adapter"
 )
 
 func TestGenericDirectoryOwnerDoesNotEnrollOrIssueProof(t *testing.T) {

@@ -46,20 +46,18 @@ func TestRuleSetSnapshotPublicationAndClose(t *testing.T) {
 func TestRuleSetSnapshotConcurrentReadPublishCleanupClose(t *testing.T) {
 	var s ruleSetPublication
 	var wg sync.WaitGroup
-	for worker := 0; worker < 4; worker++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < 1000; i++ {
+	for range 4 {
+		wg.Go(func() {
+			for range 1000 {
 				p := s.loadSnapshot()
 				if p.digest == "ip" && !p.metadata.ContainsIPCIDRRule {
 					t.Error("mixed generation")
 				}
 				_ = s.RuleSetStatus()
 			}
-		}()
+		})
 	}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		_, _ = s.publish(nil, adapter.RuleSetMetadata{ContainsIPCIDRRule: true}, "ip")
 		s.cleanupPublication()
 	}

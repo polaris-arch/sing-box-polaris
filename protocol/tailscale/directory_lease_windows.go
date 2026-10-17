@@ -195,7 +195,7 @@ func windowsDecodeMarkerLog(data []byte) (*directoryLeaseMarker, error) {
 		return nil, fmt.Errorf("directory lease: incomplete marker log")
 	}
 	var previous *directoryLeaseMarker
-	for _, line := range bytes.Split(data[:len(data)-1], []byte{'\n'}) {
+	for line := range bytes.SplitSeq(data[:len(data)-1], []byte{'\n'}) {
 		if len(line) == 0 || len(line) > 16<<10 {
 			return nil, fmt.Errorf("directory lease: invalid marker record size")
 		}

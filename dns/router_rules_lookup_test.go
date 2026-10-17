@@ -84,12 +84,13 @@ func (t *rulesCancelTransport) Exchange(ctx context.Context, message *mDNS.Msg) 
 	t.canceled <- qType
 	return nil, ctx.Err()
 }
+
 func (t *rulesCancelTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(*mDNS.Msg, error)) {
 	go func() { callback(t.Exchange(ctx, message)) }()
 }
 
 func TestDNSRulesLookupCancellationAndDefaultBudget(t *testing.T) {
-	transport := &rulesCancelTransport{fakeDNSTransport: fakeDNSTransport{tag: "blocked"}, started: make(chan uint16, 2), canceled: make(chan uint16, 2)}
+	transport := &rulesCancelTransport{tag: "blocked", started: make(chan uint16, 2), canceled: make(chan uint16, 2)}
 	router := raceTestRouter(t)
 	router.transport = &fakeDNSTransportManager{transports: map[string]adapter.DNSTransport{"blocked": transport}, defaultTransport: transport}
 	router.rules = raceTestRules(t, []option.DNSRule{evaluateRule("blocked", "pending", true), respondRule("pending", true, true)})
@@ -161,12 +162,12 @@ func TestDNSRulesLookupEarlierCallerDeadline(t *testing.T) {
 // DNS servers reject rules mode before creating a dialer, for domain/IP/local
 // servers alike. These constructors do not start a kernel or open a listener.
 func TestDNSRulesModeRejectedByTransportBootstrap(t *testing.T) {
-	options := option.DialerOptions{AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules}}}
+	options := option.DialerOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules}}
 	for _, server := range []string{"resolver.example", "192.0.2.1"} {
-		_, err := NewRemoteDialer(context.Background(), option.RemoteDNSServerOptions{RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: options}, DNSServerAddressOptions: option.DNSServerAddressOptions{Server: server}})
+		_, err := NewRemoteDialer(context.Background(), option.RemoteDNSServerOptions{DialerOptions: options, Server: server})
 		require.ErrorContains(t, err, "cannot use rules mode")
 	}
-	_, err := NewLocalDialer(context.Background(), option.LocalDNSServerOptions{RawLocalDNSServerOptions: option.RawLocalDNSServerOptions{DialerOptions: options}})
+	_, err := NewLocalDialer(context.Background(), option.LocalDNSServerOptions{DialerOptions: options})
 	require.ErrorContains(t, err, "cannot use rules mode")
 }
 
@@ -183,6 +184,7 @@ func (t *rulesPoisonTransport) Exchange(ctx context.Context, message *mDNS.Msg) 
 	}
 	return FixedResponse(message.Id, message.Question[0], addresses, 1), nil
 }
+
 func (t *rulesPoisonTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(*mDNS.Msg, error)) {
 	callback(t.Exchange(ctx, message))
 }
@@ -191,7 +193,7 @@ func (t *rulesPoisonTransport) ExchangeAsync(ctx context.Context, message *mDNS.
 // the new entry. A mixed answer must stay rejected even while cached. A
 // recovered upstream is not re-queried until that rejected cache entry expires.
 func TestDNSRulesLookupMixedAnswerRemainsRejectedInInnerCache(t *testing.T) {
-	primary := &rulesPoisonTransport{fakeDNSTransport: fakeDNSTransport{tag: "primary", address: netip.MustParseAddr("192.0.2.11")}, poison: true}
+	primary := &rulesPoisonTransport{tag: "primary", address: netip.MustParseAddr("192.0.2.11"), poison: true}
 	fallback := &fakeDNSTransport{tag: "fallback", address: netip.MustParseAddr("192.0.2.12"), immediate: true}
 	router := raceTestRouter(t)
 	router.client = NewClient(ClientOptions{Context: context.Background(), Logger: router.logger})

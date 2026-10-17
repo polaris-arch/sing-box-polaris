@@ -76,11 +76,9 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 	}
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	serverEndpoint := &ServerEndpoint{
-		endpointBase: endpointBase{
-			Adapter: endpoint.NewAdapter(C.TypeOpenVPNServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
-			router:  router,
-			logger:  logger,
-		},
+		Adapter:        endpoint.NewAdapter(C.TypeOpenVPNServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
+		router:         router,
+		logger:         logger,
 		ctx:            ctx,
 		cancelLoop:     cancelLoop,
 		options:        options,
@@ -200,11 +198,9 @@ func (s *ServerEndpoint) Start(stage adapter.StartStage, scope *adapter.Scope) e
 		listenAddress := s.options.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1}))
 		if listenAddress.IsUnspecified() && s.options.BindInterface == "" && s.options.RoutingMark == 0 && s.options.NetNs == "" {
 			udpDialer, dialerErr := dialer.NewDefault(s.ctx, option.DialerOptions{
-				AbstractDialerOptions: option.AbstractDialerOptions{
-					ReuseAddr:          s.options.ReuseAddr,
-					UDPFragment:        s.options.UDPFragment,
-					UDPFragmentDefault: s.options.UDPFragmentDefault,
-				},
+				ReuseAddr:          s.options.ReuseAddr,
+				UDPFragment:        s.options.UDPFragment,
+				UDPFragmentDefault: s.options.UDPFragmentDefault,
 			})
 			if dialerErr != nil {
 				return dialerErr

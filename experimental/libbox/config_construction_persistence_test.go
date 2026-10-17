@@ -42,7 +42,7 @@ func TestRealSSMCachePreservedByLegacyTypedFailureReplacementAndCancellation(t *
 		t.Run(operation, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "cache.json")
 			before := []byte(`{"endpoints":{"/probe":{"global_uplink":123,"users":{"alice":"persist-me"}}}}`)
-			if err := os.WriteFile(path, before, 0600); err != nil {
+			if err := os.WriteFile(path, before, 0o600); err != nil {
 				t.Fatal(err)
 			}
 			ssm := map[string]any{"type": "ssm-api", "tag": "cache", "cache_path": path, "servers": map[string]string{"/probe": "managed"}}
@@ -112,7 +112,7 @@ func TestOptionalRegistryTypesRemainConservativeAcrossBuildTags(t *testing.T) {
 			if kind == "ocm" {
 				content = `{"OPENAI_API_KEY":"isolated-test"}`
 			}
-			if err := os.WriteFile(credentials, []byte(content), 0600); err != nil {
+			if err := os.WriteFile(credentials, []byte(content), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			config := fixtureConfig(t, []map[string]any{{"type": kind, "credential_path": credentials, "detour": "unused-isolated-detour"}})

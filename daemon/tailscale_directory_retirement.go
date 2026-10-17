@@ -25,8 +25,10 @@ func (r *tailscaleRetirementRun) captureDirectories(scopes func() []adapter.Tail
 }
 
 func (r *tailscaleRetirementRun) directorySnapshotUnderLock() tailscaleDirectoryInstance {
-	result := tailscaleDirectoryInstance{RunNonce: r.binding.RunNonce, ConfigDigest: r.binding.ConfigDigest,
-		Terminal: "Unknown", Nodes: []adapter.TailscaleDirectoryNode{}}
+	result := tailscaleDirectoryInstance{
+		RunNonce: r.binding.RunNonce, ConfigDigest: r.binding.ConfigDigest,
+		Terminal: "Unknown", Nodes: []adapter.TailscaleDirectoryNode{},
+	}
 	if r.directoryFinal != nil {
 		result = *r.directoryFinal
 		result.Nodes = append([]adapter.TailscaleDirectoryNode{}, result.Nodes...)
@@ -68,8 +70,10 @@ func (r *tailscaleRetirementRun) freezeDirectories(nodes []adapter.TailscaleDire
 	if r.directoryFinal != nil {
 		return
 	}
-	result := tailscaleDirectoryInstance{RunNonce: r.binding.RunNonce, ConfigDigest: r.binding.ConfigDigest,
-		Terminal: "Unknown", Nodes: append([]adapter.TailscaleDirectoryNode{}, nodes...)}
+	result := tailscaleDirectoryInstance{
+		RunNonce: r.binding.RunNonce, ConfigDigest: r.binding.ConfigDigest,
+		Terminal: "Unknown", Nodes: append([]adapter.TailscaleDirectoryNode{}, nodes...),
+	}
 	result.CensusComplete = constructed && r.directoryCensus(nodes)
 	complete := result.CensusComplete
 	for _, node := range nodes {

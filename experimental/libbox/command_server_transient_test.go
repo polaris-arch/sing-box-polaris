@@ -19,6 +19,7 @@ import (
 	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing/service"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -216,10 +217,13 @@ func (transientTestPlatform) LocalDNSTransport() LocalDNSTransport        { retu
 func (transientTestPlatform) UseProcFS() bool                             { return false }
 func (transientTestPlatform) UsePlatformAutoDetectInterfaceControl() bool { return false }
 func (transientTestPlatform) UnderNetworkExtension() bool                 { return false }
+
 func (transientTestPlatform) GetInterfaces() (NetworkInterfaceIterator, error) {
 	return newIterator([]*NetworkInterface{}), nil
 }
+
 func (transientTestPlatform) StartDefaultInterfaceMonitor(InterfaceUpdateListener) error { return nil }
+
 func (transientTestPlatform) CloseDefaultInterfaceMonitor(InterfaceUpdateListener) error { return nil }
 
 func transientTestSetup(t *testing.T) {

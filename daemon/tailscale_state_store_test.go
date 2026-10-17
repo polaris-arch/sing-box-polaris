@@ -37,10 +37,13 @@ type retirementTestEndpoint struct {
 
 func (*retirementTestEndpoint) Type() string  { return C.TypeTailscale }
 func (e *retirementTestEndpoint) Tag() string { return e.node.Tag }
+
 func (*retirementTestEndpoint) Start(adapter.StartStage, *adapter.Scope) error {
 	panic("pure constructor test must not start runtime")
 }
+
 func (e *retirementTestEndpoint) TailscaleStateStoreScope() adapter.TailscaleStoreNode { return e.node }
+
 func (e *retirementTestEndpoint) RetireTailscaleStateStore(time.Time) adapter.TailscaleStoreNode {
 	e.retired++
 	node := e.node
@@ -49,6 +52,7 @@ func (e *retirementTestEndpoint) RetireTailscaleStateStore(time.Time) adapter.Ta
 	node.ProfileState = "None"
 	return node
 }
+
 func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoint) {
 	t.Helper()
 	t.Chdir(t.TempDir())
@@ -79,6 +83,7 @@ func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoi
 	t.Cleanup(func() { host.Close() })
 	return host, created
 }
+
 func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T) {
 	host, created := retirementPureHost(t)
 	content := `{"endpoints":[{"type":"tailscale","tag":"a"},{"type":"tailscale","tag":"b"}]}`
@@ -137,6 +142,7 @@ func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T
 		t.Fatal("reload reused original nonce")
 	}
 }
+
 func TestTailscaleStoreFailedConstructionCannotUpgrade(t *testing.T) {
 	host, _ := retirementPureHost(t)
 	content := `{"endpoints":[{"type":"tailscale","tag":"constructed"},{"type":"test-constructor-failure","tag":"fails"}]}`
@@ -159,6 +165,7 @@ func TestTailscaleStoreFailedConstructionCannotUpgrade(t *testing.T) {
 		t.Fatal("late finalizer upgraded partial construction")
 	}
 }
+
 func TestTailscaleStoreWrongCensusBindingAndStickyClose(t *testing.T) {
 	options := option.Options{Endpoints: []option.Endpoint{{Type: C.TypeTailscale, Tag: "a"}, {Type: C.TypeTailscale, Tag: "b"}}}
 	for _, kind := range []string{"complete", "missing", "extra", "duplicate-tag", "duplicate-path", "wrong-nonce", "wrong-config", "unknown", "constructor-partial"} {

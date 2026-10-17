@@ -443,13 +443,15 @@ func TestUTLSHostnameAndMutualTLS(t *testing.T) {
 	clientCert := newPinnedTestCertificate(t, "client.invalid")
 	for _, name := range []string{"chrome_155", "safari_26_3"} {
 		t.Run(name, func(t *testing.T) {
-			server := &stdtls.Config{Certificates: []stdtls.Certificate{serverCert.Certificate}, ClientAuth: stdtls.RequireAnyClientCert,
+			server := &stdtls.Config{
+				Certificates: []stdtls.Certificate{serverCert.Certificate}, ClientAuth: stdtls.RequireAnyClientCert,
 				VerifyPeerCertificate: func(raw [][]byte, _ [][]*x509.Certificate) error {
 					if len(raw) != 1 || !bytes.Equal(raw[0], clientCert.Certificate.Certificate[0]) {
 						return errors.New("wrong mutual TLS identity")
 					}
 					return nil
-				}}
+				},
+			}
 			t.Run("good", func(t *testing.T) {
 				good := profileClient(t, name, option.OutboundTLSOptions{ServerName: "localhost", Certificate: []string{serverCert.certificatePEM}, ClientCertificate: []string{clientCert.certificatePEM}, ClientKey: []string{clientCert.privateKeyPEM}})
 				if _, _, err := profileExchange(t, good, server, false); err != nil {
@@ -611,10 +613,12 @@ func TestUTLSAuthenticationNegativesRejectTransportFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, missingClient := range []bool{true, false} {
-		for _, err := range []error{nil, io.EOF, net.ErrClosed, errors.New("unrelated setup failure"), context.DeadlineExceeded, context.Canceled,
+		for _, err := range []error{
+			nil, io.EOF, net.ErrClosed, errors.New("unrelated setup failure"), context.DeadlineExceeded, context.Canceled,
 			errors.Join(missing, context.DeadlineExceeded), &net.OpError{Op: "write", Net: "tcp", Err: context.DeadlineExceeded},
 			errors.Join(&net.OpError{Op: "read", Net: "tcp", Err: io.EOF}, missing, &net.DNSError{IsTimeout: true}),
-			errors.Join(hostname, &net.DNSError{IsTimeout: true})} {
+			errors.Join(hostname, &net.DNSError{IsTimeout: true}),
+		} {
 			if profileAuthenticationFailure(err, missingClient) == nil {
 				t.Fatalf("unrelated negative failure accepted missing=%v err=%v", missingClient, err)
 			}

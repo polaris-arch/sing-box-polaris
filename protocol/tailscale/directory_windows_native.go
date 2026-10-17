@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"unicode/utf8"
 	"unsafe"
@@ -29,9 +30,9 @@ type windowsDirectoryID struct {
 	FileID [16]byte
 }
 
-func (id windowsDirectoryID) hex() string                         { return hex.EncodeToString(id.FileID[:]) }
-func (id windowsDirectoryID) key() string                         { return fmt.Sprintf("%d-%s", id.Volume, id.hex()) }
-func (id windowsDirectoryID) equal(other windowsDirectoryID) bool { return id == other }
+func (id windowsDirectoryID) hex() string { return hex.EncodeToString(id.FileID[:]) }
+func (id windowsDirectoryID) key() string { return fmt.Sprintf("%d-%s", id.Volume, id.hex()) }
+
 func windowsDirectoryIdentity(root, target windowsDirectoryID) string {
 	return fmt.Sprintf("%s:%d:%s:%d:%s", windowsDirectoryPlatform, root.Volume, root.hex(), target.Volume, target.hex())
 }
@@ -67,8 +68,7 @@ func windowsCanonicalPath(path string) bool {
 }
 
 func windowsNormalizeError(err error) error {
-	var s windows.NTStatus
-	if errors.As(err, &s) {
+	if s, ok := errors.AsType[windows.NTStatus](err); ok {
 		return s.Errno()
 	}
 	return err
@@ -161,13 +161,14 @@ func windowsRequireNTFS(h windows.Handle) error {
 type windowsPathHandles struct{ handles []windows.Handle }
 
 func (p *windowsPathHandles) last() windows.Handle { return p.handles[len(p.handles)-1] }
+
 func (p *windowsPathHandles) close() error {
 	if p == nil {
 		return nil
 	}
 	var err error
-	for i := len(p.handles) - 1; i >= 0; i-- {
-		err = errors.Join(err, windows.CloseHandle(p.handles[i]))
+	for _, handle := range slices.Backward(p.handles) {
+		err = errors.Join(err, windows.CloseHandle(handle))
 	}
 	p.handles = nil
 	return err
@@ -216,7 +217,7 @@ func windowsOpenPath(path string) (_ *windowsPathHandles, resultErr error) {
 	if err := windowsRequireNTFS(h); err != nil {
 		return nil, err
 	}
-	for _, component := range strings.Split(strings.TrimPrefix(path, root), `\`) {
+	for component := range strings.SplitSeq(strings.TrimPrefix(path, root), `\`) {
 		if component == "" {
 			continue
 		}
@@ -355,7 +356,14 @@ func windowsUnlock(h windows.Handle) error {
 }
 
 func windowsReadNames(h windows.Handle) (_ []string, resultErr error) {
-	name, _ := windows.NewNTUnicodeString(".")
+	id, err := windowsInspect(h, true)
+	if err != nil {
+		return nil, err
+	}
+	// NT relative names do not normalize "." like Win32 paths. An empty
+	// name reopens the retained directory itself with an independent cursor;
+	// never resolve its pathname again or duplicate its enumeration state.
+	name := &windows.NTUnicodeString{}
 	oa := windows.OBJECT_ATTRIBUTES{RootDirectory: h, ObjectName: name, Attributes: windows.OBJ_CASE_INSENSITIVE | windows.OBJ_DONT_REPARSE}
 	oa.Length = uint32(unsafe.Sizeof(oa))
 	var fd windows.Handle
@@ -364,6 +372,13 @@ func windowsReadNames(h windows.Handle) (_ []string, resultErr error) {
 		return nil, windowsNormalizeError(err)
 	}
 	runtime.KeepAlive(name)
+	reopenedID, err := windowsInspect(fd, true)
+	if err != nil {
+		return nil, errors.Join(err, windows.CloseHandle(fd))
+	}
+	if reopenedID != id {
+		return nil, errors.Join(fmt.Errorf("directory lease: enumeration identity changed"), windows.CloseHandle(fd))
+	}
 	file := os.NewFile(uintptr(fd), "directory protocol control")
 	defer func() { resultErr = errors.Join(resultErr, file.Close()) }()
 	return file.Readdirnames(-1)

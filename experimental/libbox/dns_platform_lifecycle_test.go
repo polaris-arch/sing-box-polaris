@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
-	mDNS "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+
+	mDNS "github.com/miekg/dns"
 )
 
 type fakeDNSFunc func() error
@@ -34,6 +35,7 @@ func (p *fakeDNSPlatform) Raw() bool {
 	}
 	return false
 }
+
 func (p *fakeDNSPlatform) Lookup(c *ExchangeContext, network, domain string) error {
 	if p.lookup != nil {
 		return p.lookup(c, network, domain)
@@ -41,6 +43,7 @@ func (p *fakeDNSPlatform) Lookup(c *ExchangeContext, network, domain string) err
 	c.Success("203.0.113.1")
 	return nil
 }
+
 func (p *fakeDNSPlatform) Exchange(c *ExchangeContext, message []byte) error {
 	return p.exchange(c, message)
 }
@@ -79,7 +82,7 @@ func TestDNSPlatformBackgroundSuccessStopsOnCancel(t *testing.T) {
 		c.Success("203.0.113.1")
 		return nil
 	}}}
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		response, err := p.Exchange(context.Background(), dnsTestQuery())
 		if err != nil || response == nil || len(response.Answer) != 1 {
 			t.Fatalf("success was canceled by internal cleanup: %v / %v", response, err)
@@ -107,7 +110,7 @@ func TestDNSPlatformPreCancelledSkipsAllPlatformAccess(t *testing.T) {
 }
 
 func TestDNSPlatformOnCancelAndCompletionRace(t *testing.T) {
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		var invoked atomic.Int32
 		var registering sync.WaitGroup
 		registering.Add(1)
@@ -144,9 +147,9 @@ func TestDNSPlatformFrozenResultRejectsConcurrentLateWrites(t *testing.T) {
 	}
 	var invoked atomic.Int32
 	var writing sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		writing.Go(func() {
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				captured.Success("203.0.113.2")
 				captured.RawSuccess(lateBytes)
 				captured.ErrorCode(mDNS.RcodeServerFailure)

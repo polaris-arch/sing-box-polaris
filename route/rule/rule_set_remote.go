@@ -67,18 +67,18 @@ func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag stri
 	}
 	url := strings.ReplaceAll(options.RemoteOptions.URL, C.RuleSetTagPlaceholder, tag)
 	return &RemoteRuleSet{
-		ruleSetPublication: ruleSetPublication{watcherState: "remote"},
-		ctx:                ctx,
-		cancel:             cancel,
-		outbound:           service.FromContext[adapter.OutboundManager](ctx),
-		logger:             logger,
-		tag:                tag,
-		url:                url,
-		urlHash:            sha256.Sum256([]byte(url)),
-		initialPath:        initialPath,
-		options:            options,
-		updateInterval:     updateInterval,
-		pauseManager:       service.FromContext[pause.Manager](ctx),
+		watcherState:   "remote",
+		ctx:            ctx,
+		cancel:         cancel,
+		outbound:       service.FromContext[adapter.OutboundManager](ctx),
+		logger:         logger,
+		tag:            tag,
+		url:            url,
+		urlHash:        sha256.Sum256([]byte(url)),
+		initialPath:    initialPath,
+		options:        options,
+		updateInterval: updateInterval,
+		pauseManager:   service.FromContext[pause.Manager](ctx),
 	}, nil
 }
 

@@ -151,12 +151,15 @@ func (d *TailscaleDirectoryDomain) LogicalRoot() string  { return d.logicalRoot 
 func (d *TailscaleDirectoryDomain) PhysicalRoot() string { return d.physicalRoot }
 func (d *TailscaleDirectoryDomain) OwnerNonce() string   { return d.ownerNonce }
 
-type tailscaleDirectoryDomainKey struct{}
-type tailscaleDirectoryMappingKey struct{}
+type (
+	tailscaleDirectoryDomainKey  struct{}
+	tailscaleDirectoryMappingKey struct{}
+)
 
 func ContextWithTailscaleDirectoryDomain(ctx context.Context, d *TailscaleDirectoryDomain) context.Context {
 	return context.WithValue(ctx, tailscaleDirectoryDomainKey{}, d)
 }
+
 func TailscaleDirectoryDomainFromContext(ctx context.Context) *TailscaleDirectoryDomain {
 	d, _ := ctx.Value(tailscaleDirectoryDomainKey{}).(*TailscaleDirectoryDomain)
 	return d
@@ -213,6 +216,7 @@ func (m *TailscaleDirectoryMapping) Resolve(state, taildrop string) (string, str
 func ContextWithTailscaleDirectoryMapping(ctx context.Context, m *TailscaleDirectoryMapping) context.Context {
 	return context.WithValue(ctx, tailscaleDirectoryMappingKey{}, m)
 }
+
 func TailscaleDirectoryMappingFromContext(ctx context.Context) *TailscaleDirectoryMapping {
 	m, _ := ctx.Value(tailscaleDirectoryMappingKey{}).(*TailscaleDirectoryMapping)
 	return m

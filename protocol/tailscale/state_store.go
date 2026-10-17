@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/sagernet/tailscale/util/dirscope"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,10 +19,13 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/tailscale/ipn"
 	"github.com/sagernet/tailscale/ipn/store"
+	"github.com/sagernet/tailscale/util/dirscope"
 )
 
-const stateStoreDrainTimeout = 5 * time.Second
-const maxStateStoreBytes = 4 << 20
+const (
+	stateStoreDrainTimeout = 5 * time.Second
+	maxStateStoreBytes     = 4 << 20
+)
 
 // guardedStateStore owns the only delegate supplied to tsnet.Server.Store.
 // Its lazy factory and every read/write share admission. Seal is permanent,
@@ -48,9 +50,11 @@ type guardedStateStore struct {
 }
 
 func newGuardedStateStore(ctx context.Context, tag, directory string, factory func() (ipn.StateStore, error)) *guardedStateStore {
-	node := adapter.TailscaleStoreNode{Tag: tag, StateDirectory: directory,
+	node := adapter.TailscaleStoreNode{
+		Tag: tag, StateDirectory: directory,
 		StateFile: filepath.Join(directory, "tailscaled.state"), WriterState: "Unknown",
-		StateFileState: "Unknown", ProfileState: "Unknown"}
+		StateFileState: "Unknown", ProfileState: "Unknown",
+	}
 	if binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](ctx); binding != nil {
 		node.RunNonce, node.ConfigDigest = binding.RunNonce, binding.ConfigDigest
 	}
@@ -92,6 +96,7 @@ func (s *guardedStateStore) admit() error {
 	s.inflight++
 	return nil
 }
+
 func (s *guardedStateStore) release() {
 	s.access.Lock()
 	defer s.access.Unlock()
@@ -101,6 +106,7 @@ func (s *guardedStateStore) release() {
 		close(s.drained)
 	}
 }
+
 func (s *guardedStateStore) initialized() (delegate ipn.StateStore, err error) {
 	s.initAccess.Lock()
 	defer s.initAccess.Unlock()
@@ -129,6 +135,7 @@ func (s *guardedStateStore) initialized() (delegate ipn.StateStore, err error) {
 	s.delegate = delegate
 	return delegate, nil
 }
+
 func (s *guardedStateStore) ReadState(id ipn.StateKey) ([]byte, error) {
 	if err := s.admit(); err != nil {
 		return nil, err
@@ -140,6 +147,7 @@ func (s *guardedStateStore) ReadState(id ipn.StateKey) ([]byte, error) {
 	}
 	return delegate.ReadState(id)
 }
+
 func (s *guardedStateStore) WriteState(id ipn.StateKey, value []byte) error {
 	if err := s.admit(); err != nil {
 		return err
@@ -151,6 +159,7 @@ func (s *guardedStateStore) WriteState(id ipn.StateKey, value []byte) error {
 	}
 	return delegate.WriteState(id, value)
 }
+
 func (s *guardedStateStore) isSealed() bool {
 	s.access.Lock()
 	defer s.access.Unlock()
@@ -280,6 +289,7 @@ func (s *guardedStateStore) retire(deadline time.Time, profile func() (string, s
 func readStateFile(directory, path string, failures ...func(error)) (data []byte, state string, resultErr error) {
 	canonical, err := canonicalStateDirectory(directory)
 	if err != nil || canonical != directory {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state scope changed")
 	}
 	before, err := os.Lstat(path)
@@ -290,6 +300,7 @@ func readStateFile(directory, path string, failures ...func(error)) (data []byte
 		return nil, "Unknown", err
 	}
 	if !before.Mode().IsRegular() || before.Size() > maxStateStoreBytes {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file is not bounded regular data")
 	}
 	file, err := os.Open(path)
@@ -308,15 +319,18 @@ func readStateFile(directory, path string, failures ...func(error)) (data []byte
 	}()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file changed")
 	}
 	content, err := io.ReadAll(io.LimitReader(file, maxStateStoreBytes+1))
 	if err != nil || len(content) > maxStateStoreBytes {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file read failed")
 	}
 	after, err := os.Lstat(path)
 	canonicalAfter, canonicalErr := canonicalStateDirectory(directory)
 	if err != nil || canonicalErr != nil || canonicalAfter != directory || !os.SameFile(before, after) || before.Size() != after.Size() || before.ModTime() != after.ModTime() {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file changed")
 	}
 	return content, "Regular", nil
@@ -381,6 +395,7 @@ func (t *Endpoint) RetireTailscaleStateStore(deadline time.Time) adapter.Tailsca
 func (t *Endpoint) retireStateStore() error {
 	result := t.RetireTailscaleStateStore(time.Now().Add(stateStoreDrainTimeout))
 	if result.WriterState == "Unknown" {
+		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
 		return errors.New("Tailscale state writer retirement unknown")
 	}
 	return nil

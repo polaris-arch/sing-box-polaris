@@ -14,7 +14,7 @@ func TestUnstartedTUNValidationCannotDeleteOtherInstanceRules(t *testing.T) {
 	dir := t.TempDir()
 	trace := filepath.Join(dir, "unexpected-command")
 	// Any cleanup command would be captured, never sent to the system firewall.
-	if err := os.WriteFile(filepath.Join(dir, "iptables"), []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$POLARIS_TUN_TRACE\"\n"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "iptables"), []byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$POLARIS_TUN_TRACE\"\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)

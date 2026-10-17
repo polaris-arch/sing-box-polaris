@@ -22,7 +22,7 @@ func TestOptionalRealServicesPreserveUsageAcrossConstructionPaths(t *testing.T) 
 			t.Run(kind+"/"+operation, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "usage.json")
 				before := []byte(`{"last_updated":"2026-09-30T00:00:00Z","combinations":[{"model":"probe","total":{"input_tokens":41},"by_user":{}}]}`)
-				if err := os.WriteFile(path, before, 0600); err != nil {
+				if err := os.WriteFile(path, before, 0o600); err != nil {
 					t.Fatal(err)
 				}
 				credentials := filepath.Join(t.TempDir(), "credentials.json")
@@ -30,7 +30,7 @@ func TestOptionalRealServicesPreserveUsageAcrossConstructionPaths(t *testing.T) 
 				if kind == "ocm" {
 					content = `{"OPENAI_API_KEY":"isolated-test"}`
 				}
-				if err := os.WriteFile(credentials, []byte(content), 0600); err != nil {
+				if err := os.WriteFile(credentials, []byte(content), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				settings := map[string]any{"type": kind, "tag": "usage", "credential_path": credentials, "usages_path": path, "detour": "unused-isolated-detour"}

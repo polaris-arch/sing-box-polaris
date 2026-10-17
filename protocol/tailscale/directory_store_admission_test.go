@@ -5,10 +5,11 @@ package tailscale
 import (
 	"context"
 	"fmt"
-	"github.com/sagernet/tailscale/util/dirscope"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/sagernet/tailscale/util/dirscope"
 )
 
 func TestScopedStoreCannotConstructWithoutLease(t *testing.T) {

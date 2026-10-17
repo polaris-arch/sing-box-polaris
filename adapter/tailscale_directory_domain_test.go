@@ -56,7 +56,9 @@ func TestDirectoryMappingRejectsWholeInvalidSet(t *testing.T) {
 	state := filepath.Join(base, "tailscale", "node")
 	good := TailscaleDirectoryMappingInput{state, filepath.Join(state, "Taildrop")}
 	cases := []TailscaleDirectoryMappingInput{
-		{state, ""}, {state, state}, {state, filepath.Join(base, "outside")},
+		{state, ""},
+		{state, state},
+		{state, filepath.Join(base, "outside")},
 		{filepath.Join(state, "nested"), filepath.Join(state, "nested", "Taildrop")},
 		{filepath.Join(base, "tailscale-g4-v1", "foreign"), filepath.Join(base, "tailscale-g4-v1", "foreign", "Taildrop")},
 		good,

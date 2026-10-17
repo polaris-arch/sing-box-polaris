@@ -320,9 +320,9 @@
       "sha256": "4890d9f6786a18c62804906b87626c3eefb0ee0fb1321bdf2b9e973d16864028"
     },
     "box_construction_test.go": {
-      "gitBlob": "3e3acb68f97e63958b2426cc43d5a353d4691e54",
-      "bytes": 9510,
-      "sha256": "d83f4494a4aeb38c99190eb93d60a13f42cad558f71cd37bb2a76c22ff1ecbfe"
+      "gitBlob": "d7b4ee5a9cb0add82cf986bd91d519aa9879e59e",
+      "bytes": 10459,
+      "sha256": "971f0841ae734d419804be9501d76055554f3539f39bc126b5e021d7432e4598"
     },
     "box_tailscale_state_store.go": {
       "gitBlob": "993340d8f0b5c24d2ef1d30f64e25fe209e884f3",
@@ -345,9 +345,9 @@
       "sha256": "a91611da6a3b203ec55ea690e3a87959c73c6e529081ce1faed9c6f317536410"
     },
     "common/dialer/domain_resolver_rules_test.go": {
-      "gitBlob": "611f0b562f1edd18ebf2659faeaed04cffb93605",
-      "bytes": 6506,
-      "sha256": "bb172ee92d492a728be0441fcb4bfad01387b83cd5e2a3166155e60d3504c64b"
+      "gitBlob": "34e22e106d6c7e3f0a45b98de377097e8f755e47",
+      "bytes": 6458,
+      "sha256": "33931fcbe7fb952502eb2caf0147a94c6d38f8846a2b2eeeb620ca77bc19f43c"
     },
     "common/dialer/interface_binding.go": {
       "gitBlob": "66cc3444553780d93f500783a37c9fa73ca404ee",
@@ -355,9 +355,9 @@
       "sha256": "8d2182545c2bd6109f8e48561ff145bab502d9aadf532f3da2ff6e3c0920d84e"
     },
     "common/dialer/interface_binding_test.go": {
-      "gitBlob": "cf66fe42969951c951409be81eecb3738634a2dd",
-      "bytes": 5107,
-      "sha256": "7d122e5bca931d62128e90d6cccb30255e0496d278d9dc3592b2df73ded06cb3"
+      "gitBlob": "dfcd7650bb89adb914c5b57b6170edd4a23394c1",
+      "bytes": 5057,
+      "sha256": "d9060c5d793e98d9da36d87a0cde432c9c459a63bb285d3a55d1b59eef0e7b35"
     },
     "daemon/instance.go": {
       "gitBlob": "7777d66b5ce87a3ea438030ce993931807c7f617",
@@ -375,24 +375,24 @@
       "sha256": "ca046fd893a48681423ba28ff1879ceb198e2b6e08eab2419bcc4e556d86894c"
     },
     "daemon/tailscale_state_store.go": {
-      "gitBlob": "c7948fafb5f645375ab7d72ad97aa1069df52dc5",
-      "bytes": 4540,
-      "sha256": "89a2d7fb10b825fff5c068c26697ae7606a90ee10ffb1f6155083cefb2e323fd"
+      "gitBlob": "ed065f2988e3473e96696132a4b462c1340d7384",
+      "bytes": 4549,
+      "sha256": "d30fec3d376021aaf84e2571e15fad1e8847ddf1271ce557784dfecb22dcc097"
     },
     "daemon/tailscale_state_store_test.go": {
-      "gitBlob": "988009d4292a0a2dc92a90422f6a114fcbcf70cf",
-      "bytes": 9157,
-      "sha256": "3e0bc78215a58560db466650a162e04da9ff0099a52ae0da0418c6dff36bca00"
+      "gitBlob": "42296b228262c916ada1eb8e435226fd588787f4",
+      "bytes": 9164,
+      "sha256": "111c5cf29e52e67aa950cfe9ed0e67113aaded5def62fd6323c9f559f9ac2858"
     },
     "dns/router.go": {
-      "gitBlob": "011c0bc9067ff0a3f2ce579b9ba0ca007d990200",
-      "bytes": 58970,
-      "sha256": "8cf086fc415c456b944960477e5efeec02ce4237da914011059aa9bf0f515d46"
+      "gitBlob": "43852286892b60225cf85d07e585d9f733a49905",
+      "bytes": 58813,
+      "sha256": "1724264ab0509cfd48b0671b2a6008933fc9523b3e2688f8554d329a6e24976d"
     },
     "dns/router_rules_lookup_test.go": {
-      "gitBlob": "6d0d687098b37fb14471a5bdc0540051b933ac78",
-      "bytes": 11180,
-      "sha256": "f5ead2169dc58c718a8e642c00ba107b6080a89925da876dd633200cb20edebe"
+      "gitBlob": "7ef4ce99bb912e8d778fd31536b5b8794529ff32",
+      "bytes": 10882,
+      "sha256": "f65ded9c62ff0750a789318bcf1b5ade678460ceb8ff8b470023bd7551b04e0e"
     },
     "dns/transport/local/construction_test.go": {
       "gitBlob": "9b03256ebc09927ac5717632b78fe4088de7fbbb",
@@ -455,9 +455,9 @@
       "sha256": "30099f70e5eba4bb829b9895d23d9c4a90b6fe6abe4ccf3895028a22daa2f0bc"
     },
     "experimental/libbox/command_server_transient_test.go": {
-      "gitBlob": "b9aba252891352704c34c0e9b7b6c1406e3fa50b",
-      "bytes": 13834,
-      "sha256": "9515f5a0d6f1a3b6a226996210fc549bb92419ee7a51e565f09cd360f6186553"
+      "gitBlob": "f9d7a095b82cfc9019b5a478ff5655abe5769371",
+      "bytes": 13838,
+      "sha256": "ce3ea942e1c069bbea592d6b61da24d403bb04345a00956642f5b1693ff1f0d4"
     },
     "experimental/libbox/config.go": {
       "gitBlob": "22e92cdcf296ab46952eabd90eeb7c0da219f69c",
@@ -465,14 +465,14 @@
       "sha256": "6e137967557cc7681e10dc39609a7460e32f2fd42f4534a39d63476da7a5edb2"
     },
     "experimental/libbox/config_construction_persistence_test.go": {
-      "gitBlob": "83c69c4de40ee2769414119afe0109ed915964f6",
-      "bytes": 5104,
-      "sha256": "e87b9796dfe0948f6563d2cd620c273852cb7f284c16ac08474d46aea6703eb1"
+      "gitBlob": "7b997e79d7e903fbe7024c52ba4aa1b0e0a11836",
+      "bytes": 5106,
+      "sha256": "1d3fb1b021c398445552bdc76cdaa8b3d81589b7c0ebaa91e1c4fab29f523c6a"
     },
     "experimental/libbox/config_optional_persistence_test.go": {
-      "gitBlob": "cf1df0ecf09f7e8f1d98f098d55c560085900407",
-      "bytes": 3404,
-      "sha256": "f3c1aaec5ad7d82acb82216526b57f88178dbbb699dc3f812c025d2b9035b643"
+      "gitBlob": "14dac0d7f7c81485be9d9ed7bffa34bd857a8dd3",
+      "bytes": 3406,
+      "sha256": "47713cf6cc1625f5089098b43b31dc7b0425c02e790634695c3734a9b15d784b"
     },
     "experimental/libbox/config_validation.go": {
       "gitBlob": "83ae3cda5549f17206baf7c956c02bd70f1def2a",
@@ -480,9 +480,9 @@
       "sha256": "4297d01d97da3583d689209f92bd2e8848918d9a52f9997a810d126a0deeb362"
     },
     "experimental/libbox/config_validation_test.go": {
-      "gitBlob": "adb5ce4e02623e7f8ff5b3b635ffdd2d440b09fe",
-      "bytes": 39692,
-      "sha256": "9daf29e11b89adf54bc3425a0d39179c2b21f5188044f393e4e8db80de84aea0"
+      "gitBlob": "9507189ae846ad6b1dcbfc1203ca95c7feead81f",
+      "bytes": 39699,
+      "sha256": "276b6072fb4922079f075086e09be691ae704bbd6031e4ce0a8415c776666f0f"
     },
     "experimental/libbox/dns.go": {
       "gitBlob": "652c5e4fdc16e753c45fd0aed5b8af5abed7982c",
@@ -500,9 +500,9 @@
       "sha256": "11bb8f0d2ef94d5065c87bd1846b1db709f875d73ec296e5aac8fd75184c2097"
     },
     "experimental/libbox/dns_platform_lifecycle_test.go": {
-      "gitBlob": "84216d7d066f17fe243d485a53e330960bedce90",
-      "bytes": 13102,
-      "sha256": "89944774a87f3defe380927226691694d738eb2a58e4d7674a6be7de56dcda64"
+      "gitBlob": "5092d818f4231fae82b862c6e289a16fc4badde0",
+      "bytes": 13061,
+      "sha256": "3caa1dfb0b1846b3b84a4123e8498a9cfcd3dac654eeae2a201a969b4ec8af4a"
     },
     "experimental/libbox/interface_binding_test.go": {
       "gitBlob": "6502d30f3917b982d87a1456791ed5869569e314",
@@ -515,9 +515,9 @@
       "sha256": "691274ed88abfe7e40d0ab041742dd531695c6d0b32081180e686d015864a445"
     },
     "experimental/libbox/monitor_lifecycle_test.go": {
-      "gitBlob": "f6f4301649ca36b3a7ef1b8941a4946171850578",
-      "bytes": 15194,
-      "sha256": "a302abdc8f8ea1047cc78f350d0a821b6fdd0739d7dbb2fb1f076506086a93f1"
+      "gitBlob": "e5eed4357961d4c786798bbb01f5d06dd22a90e1",
+      "bytes": 15185,
+      "sha256": "2bef177f7051a1cd8d437678916b7c02007e6d440d41a3e3f6a42c8f45b157c8"
     },
     "experimental/libbox/platform.go": {
       "gitBlob": "e63d40598db027bc55141ef5b469a55ad62e82c3",
@@ -525,9 +525,9 @@
       "sha256": "b32f07edc6b3846805a82c9a9f6c1e472297f21cf2fdf6b514d115c4cf2bb1f0"
     },
     "experimental/libbox/service.go": {
-      "gitBlob": "0eaf782291277f51967743b25052fb09f70a2a1a",
-      "bytes": 15510,
-      "sha256": "669f382dafa5f3109735a47b7f6e75fc02970ed04a2cb2389bdab02500794ae7"
+      "gitBlob": "33cb2d1c2174d5dc4db59e6f2d29d1f1e4f60d3c",
+      "bytes": 15466,
+      "sha256": "49e5d615a88e44c76474a21850b335a6000b8df933eccf1993b95b7f0639753f"
     },
     "experimental/libbox/tailscale_state_store_test.go": {
       "gitBlob": "f1e10746e31aa385670491b7c0d2e2823b6cb33a",
@@ -535,9 +535,9 @@
       "sha256": "6c3f7d83c6d994d17902b516b982fc6d23caa836f9dd6a20c7dc4ee0c1135a35"
     },
     "option/domain_resolver_rules_test.go": {
-      "gitBlob": "c855c9b7e63c7eb2123ce308bb2ce6beeac1de3d",
-      "bytes": 2703,
-      "sha256": "4eb9c45313fb9663c4b3bcfb22acc0db029b8d653f02ff42d506ff2de60ab52c"
+      "gitBlob": "61808a888dd8b5ad777f8a2f8a9e6d21c4d210d0",
+      "bytes": 2704,
+      "sha256": "28356d1d99eb5887484066304aa32752b1560f9bcfc90e842bbcd17ce262b6f1"
     },
     "option/outbound.go": {
       "gitBlob": "1fb168ae41f226077841ac2386c528c5aaa8873a",
@@ -555,19 +555,19 @@
       "sha256": "45013fed9614e466de0107989288e92ba731236688f07b6afc9379b488317dad"
     },
     "protocol/tailscale/endpoint.go": {
-      "gitBlob": "efd58de23824a5ecb1d12ea7b063b9d907ac4671",
-      "bytes": 34279,
-      "sha256": "4228752fd77fb89fbf87cc5835de8dd17482b85c4dca03a31b3bc158e923be10"
+      "gitBlob": "0309527ea20290d4d44959df5330e0e07b7d181e",
+      "bytes": 34114,
+      "sha256": "0c354536aaed7e737992e9584c71fd241552a43c71839eb0c8a282c6c0f1d321"
     },
     "protocol/tailscale/state_store.go": {
-      "gitBlob": "f8399dbccd60a674ae603aef7b5ad4ae6c70ba31",
-      "bytes": 12366,
-      "sha256": "713616b63735f71ec102dbe634e47fd12ffec17683a1e11b9fd1bad3eb7d9cfc"
+      "gitBlob": "d9254ea9f4424f2debfa44bc45713d044084885f",
+      "bytes": 12903,
+      "sha256": "fe3e002085c49953548a05aac08506ee5be78e39ef5e8f0f87defe2f5db611c3"
     },
     "protocol/tailscale/state_store_test.go": {
-      "gitBlob": "2055fb12789af13f906bb1ce6b4cf6149515c2c8",
-      "bytes": 17941,
-      "sha256": "7b299b3d7ac5f4ddb6b30f9b68af5628171a39bfe0844eac80fb955455cf2849"
+      "gitBlob": "2fac14c42613cf042c17c1df741561c3757bdf31",
+      "bytes": 17956,
+      "sha256": "2726c444a119c56c50c072c44a0f2094d168f35f95a87f5ccfdc7a99517b10b0"
     },
     "protocol/tailscale/testdata/synthetic-sealed-state.expected.json": {
       "gitBlob": "6642a65e3621373ce29b62a1ebddc62933df9549",
@@ -585,9 +585,9 @@
       "sha256": "e693f89c31d5bc3b365a3a67f92f43e8ca1802495649deb47e57ed18f04119a7"
     },
     "route/network_domain_resolver_rules_test.go": {
-      "gitBlob": "9afd33879c6405130b3512a49be0506caa9018cc",
-      "bytes": 1954,
-      "sha256": "f202036e312d1e5e627ab757796b0f6000afb157d31fc6286e33481ce0c27054"
+      "gitBlob": "2bdeb874012ee83712c1e9a9ebe55770c30fd58f",
+      "bytes": 1955,
+      "sha256": "5cf62c466f011a57191d63b8f2b8ea01e1b78a0b3765647961ca148b23260e37"
     },
     "service/api/server.go": {
       "gitBlob": "e57c509a440dfd046eb1012284a64a07aa60b0e5",

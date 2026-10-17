@@ -1,7 +1,7 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "implementation reconstructed; partition static review closed; product validation not run; integration metadata pending review",
+  "status": "K1 CI failures remediated in source; independent static review closed; official formatter fixed point recorded with environment caveats; fresh unified CI pending",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
@@ -13,6 +13,15 @@
       "bytes": 48797
     },
     {
+      "path": "adapter/inbound_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "ec8c31289ca2919658adb5ff2026715387d5d05d",
+      "newBlob": "88ccad8fb4240c3c1cfb0f1b1c594ea53f541267",
+      "newSHA256": "9ea1042a4aa5df27ab5116d4adb39885dcfcc0b21e49db66882fad545cba3f5d",
+      "mode": "100644",
+      "bytes": 817
+    },
+    {
       "path": "adapter/rule_set_status.go",
       "owner": "hot-kernel",
       "baseBlob": null,
@@ -20,6 +29,24 @@
       "newSHA256": "5b1b7d9f2b99cde98274bad66bd1c1e8545c4e3d77fbd26bd7a9cdfacb53cda7",
       "mode": "100644",
       "bytes": 379
+    },
+    {
+      "path": "adapter/tailscale_directory_domain.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "7829532ca3fa4d00542c56018b4e2405c7fe8726",
+      "newBlob": "ef5a0174618db5f9d00546bb15c2dcac0156204a",
+      "newSHA256": "432f3666cfbb94448f9310fca6aeab822ba67427349073fdb1cd7f6540d24199",
+      "mode": "100644",
+      "bytes": 8231
+    },
+    {
+      "path": "adapter/tailscale_directory_domain_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "ffbe0f14c1dea7b52f84c1a3f7462fc50481dc69",
+      "newBlob": "265edf96d7027bcbc184b999a71247b09c908be3",
+      "newSHA256": "ad22e8c61fa96d910f01edd4a7c34b7a6cc5b7ba11fb2bc46566dc10d76c2e97",
+      "mode": "100644",
+      "bytes": 4465
     },
     {
       "path": "adapter/tailscale_directory_domain_windows.go",
@@ -38,6 +65,96 @@
       "newSHA256": "9ad951fdcefeb192c069891c3b2d4d4cfae9706d5e4449923a6f8e1239a3d173",
       "mode": "100644",
       "bytes": 27119
+    },
+    {
+      "path": "box_construction_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "3e3acb68f97e63958b2426cc43d5a353d4691e54",
+      "newBlob": "d7b4ee5a9cb0add82cf986bd91d519aa9879e59e",
+      "newSHA256": "971f0841ae734d419804be9501d76055554f3539f39bc126b5e021d7432e4598",
+      "mode": "100644",
+      "bytes": 10459
+    },
+    {
+      "path": "cmd/internal/app_store_connect/main.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "4661c643ed50a6b45f19d747bdc65d282da7779a",
+      "newBlob": "096dc3e135c9fcc9e8ae8b3bb63b4e9cac6b5306",
+      "newSHA256": "ecb6b818636bf4ffb3658ca29b4ef1c601f0887005a2306182fc300855b2f19d",
+      "mode": "100644",
+      "bytes": 22224
+    },
+    {
+      "path": "cmd/sing-box/cmd_geoip_export.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "414fc23fdffe452718dd1121c27a9a5237bd1944",
+      "newBlob": "a56cc2929ef086a6e7d6980388310a17ef32d867",
+      "newSHA256": "8db7fc686ab34c3bc5eef9409d5e698573c2f1166d4138848ff12a910831faa9",
+      "mode": "100644",
+      "bytes": 2666
+    },
+    {
+      "path": "common/dialer/domain_resolver_rules_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "611f0b562f1edd18ebf2659faeaed04cffb93605",
+      "newBlob": "34e22e106d6c7e3f0a45b98de377097e8f755e47",
+      "newSHA256": "33931fcbe7fb952502eb2caf0147a94c6d38f8846a2b2eeeb620ca77bc19f43c",
+      "mode": "100644",
+      "bytes": 6458
+    },
+    {
+      "path": "common/dialer/interface_binding_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "cf66fe42969951c951409be81eecb3738634a2dd",
+      "newBlob": "dfcd7650bb89adb914c5b57b6170edd4a23394c1",
+      "newSHA256": "d9060c5d793e98d9da36d87a0cde432c9c459a63bb285d3a55d1b59eef0e7b35",
+      "mode": "100644",
+      "bytes": 5057
+    },
+    {
+      "path": "common/srs/binary.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "f54f8e0fe9be03734fc24148a14990c1320f1327",
+      "newBlob": "aa02085c1bf808cb53331db6a6d5cc564c845ed0",
+      "newSHA256": "fa3064d0bd451f0c5b143e6c5d53452937a7a65f4582c6f8b2bc0f0b6585c6fb",
+      "mode": "100644",
+      "bytes": 19545
+    },
+    {
+      "path": "common/srs/mmap_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "04340ef6f79e9c54196b477e72234e9b5be106c4",
+      "newBlob": "9323719705d0edfc0a99701c3b17e97ac1526713",
+      "newSHA256": "f3c634fa5e30fbf9b8f86ab3ad5b4ca42cb6bb836c7350813561f98003930ff6",
+      "mode": "100644",
+      "bytes": 3032
+    },
+    {
+      "path": "common/tls/acme.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "0bf554f43afa96bf446cc71feda9a58a26f7261a",
+      "newBlob": "7c50153f06979fae43f517e03cd495c6d70c2fcb",
+      "newSHA256": "a4248d25c645be068a1b0351ed048c70244625b02926a602dd5411e1098a8a41",
+      "mode": "100644",
+      "bytes": 5168
+    },
+    {
+      "path": "common/tls/reality_utls_compat_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "d37a64ee5f4827a851fbd75060e4b6fa127a38e2",
+      "newBlob": "ac9122185ab8deac76719027d2b620a62d2086ca",
+      "newSHA256": "952a5c541068f2f9beb492da3d20327f66c9d76187c79a47963a26257c4af2de",
+      "mode": "100644",
+      "bytes": 9439
+    },
+    {
+      "path": "common/tls/utls_profiles_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "ccda1fde8d5b2103d5f5092482f12f0c61079546",
+      "newBlob": "7bfbcccc90fe9d20e58900c22ec58a896c88f1e8",
+      "newSHA256": "90b7f06ca23dc67779d65f4d15c9be82cb291bcc014eaa9d0d83dedc5edded76",
+      "mode": "100644",
+      "bytes": 22256
     },
     {
       "path": "daemon/started_service.pb.go",
@@ -76,6 +193,33 @@
       "bytes": 3808
     },
     {
+      "path": "daemon/tailscale_directory_retirement.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "bd391a8b1c0a163b1300e8c2b189d4ea4a64f8d6",
+      "newBlob": "6e53cb55e290a6d677bbe59aa3116efeda06e26d",
+      "newSHA256": "ffcf7366d389e5fd9f4fe2ac702761cce76d18b00b3d8fa1c86d03412ef6c7db",
+      "mode": "100644",
+      "bytes": 4665
+    },
+    {
+      "path": "daemon/tailscale_state_store.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "c7948fafb5f645375ab7d72ad97aa1069df52dc5",
+      "newBlob": "ed065f2988e3473e96696132a4b462c1340d7384",
+      "newSHA256": "d30fec3d376021aaf84e2571e15fad1e8847ddf1271ce557784dfecb22dcc097",
+      "mode": "100644",
+      "bytes": 4549
+    },
+    {
+      "path": "daemon/tailscale_state_store_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "988009d4292a0a2dc92a90422f6a114fcbcf70cf",
+      "newBlob": "42296b228262c916ada1eb8e435226fd588787f4",
+      "newSHA256": "111c5cf29e52e67aa950cfe9ed0e67113aaded5def62fd6323c9f559f9ac2858",
+      "mode": "100644",
+      "bytes": 9164
+    },
+    {
       "path": "directory_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
@@ -88,10 +232,10 @@
       "path": "directory_windows_other.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "939fd872dbf71680274c860616e1db311013b38f",
-      "newSHA256": "39f251c1d27466c0c68d64cf46429c4b4f57b8f80f935ed4215276ac71d6e18f",
+      "newBlob": "27973bc9558bd312dd6babc8750f98804c06662a",
+      "newSHA256": "10e64d25f5a645633f8963963e0fc0b5c3241a0b9514892d2c5b4cc36d62a9be",
       "mode": "100644",
-      "bytes": 388
+      "bytes": 473
     },
     {
       "path": "directory_windows_test.go",
@@ -103,13 +247,175 @@
       "bytes": 5119
     },
     {
+      "path": "dns/client.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "50edeb09b09440534c4e07551573027cc9697b87",
+      "newBlob": "b612f8f95b12dcd68b03212ed0e5e9ee02397001",
+      "newSHA256": "ce6196e3312236b81702263c5012f9e433ebcfd52429e4ef9e68ba552a1a103b",
+      "mode": "100644",
+      "bytes": 26845
+    },
+    {
+      "path": "dns/router.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "011c0bc9067ff0a3f2ce579b9ba0ca007d990200",
+      "newBlob": "43852286892b60225cf85d07e585d9f733a49905",
+      "newSHA256": "1724264ab0509cfd48b0671b2a6008933fc9523b3e2688f8554d329a6e24976d",
+      "mode": "100644",
+      "bytes": 58813
+    },
+    {
+      "path": "dns/router_race_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "eabb54802cd2f4c931d73e8477c607f059389a82",
+      "newBlob": "64c2000064231c1da1ff7a4d381a2c147e815180",
+      "newSHA256": "58d4191ef6214134429aaf114edb9a91021f1b67b62ead7947e7aa6b5d8b4ac4",
+      "mode": "100644",
+      "bytes": 23281
+    },
+    {
+      "path": "dns/router_rules_lookup_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "6d0d687098b37fb14471a5bdc0540051b933ac78",
+      "newBlob": "7ef4ce99bb912e8d778fd31536b5b8794529ff32",
+      "newSHA256": "f65ded9c62ff0750a789318bcf1b5ade678460ceb8ff8b470023bd7551b04e0e",
+      "mode": "100644",
+      "bytes": 10882
+    },
+    {
+      "path": "dns/transport/exchange_strategy.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "633c7fce7747d792c0c86ced9665f68e350156d1",
+      "newBlob": "e8774138ac6b21cd66fe1214630cb871f7b76cbe",
+      "newSHA256": "07f1f4ad94e3c01b5c8c2c49c7d43910f31d6acbc144722e66857bdbc54dfd86",
+      "mode": "100644",
+      "bytes": 5880
+    },
+    {
+      "path": "dns/transport/hosts/hosts.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "d0f8fbffb3c30582ac4c1f37bfaef018a507eff2",
+      "newBlob": "5fdcad7f784cba6f736d795508e7f81a428d8cdf",
+      "newSHA256": "cfb0b36a18e22e0795cca67707d7e32b9560bf55a436fb691cd6a3ad52bda197",
+      "mode": "100644",
+      "bytes": 2774
+    },
+    {
+      "path": "dns/transport/local/local_resolved_linux.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "82f04fd1fdf9e190e1d3e9d8617f950dec9795c3",
+      "newBlob": "92ecc3d41edf000a53edb9d7865aab2ccbacab67",
+      "newSHA256": "2df76ef50a2abb7ad0bbe795555fb4c1755ead2bda0e03593a8f08a7f0a4ca45",
+      "mode": "100644",
+      "bytes": 25518
+    },
+    {
+      "path": "experimental/boxdd/peer_linux.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "5543fcabe23739123a8b7486a05cfd65cc4a27f8",
+      "newBlob": "30c4e165a338268efc047502ccbf5808286e1631",
+      "newSHA256": "56f364b2d33faf86a362b1f0bbf0357b9a184e2b5153f71f16f77fe8c69bfddb",
+      "mode": "100644",
+      "bytes": 4405
+    },
+    {
+      "path": "experimental/boxdd/peer_windows.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "7ccaf16723f2566ebb5f9e3b7068233bebe1b4c8",
+      "newBlob": "230977e8e1984de485f6ab5b5288fde741c144e0",
+      "newSHA256": "2b0b776a2787e489a05539458ad2761cd13bdc469634f57a42f69cd16a9488a5",
+      "mode": "100644",
+      "bytes": 18741
+    },
+    {
       "path": "experimental/directorywindows/activation_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "e4a3dd2319b227a0d9475f4cf8113e15281966be",
-      "newSHA256": "cc05281fd463d333bd4a95d9cd296222bc2ec20c31f530912168d136386de156",
+      "newBlob": "3f44c0e047a627a012d7906fd4bd37538420daca",
+      "newSHA256": "fd77a5feb3254aa0ec562da6d830a413ba3d2adbad8d73a325e76f5de181c87c",
       "mode": "100644",
-      "bytes": 6259
+      "bytes": 6771
+    },
+    {
+      "path": "experimental/libbox/command_client.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "3d2860037e91f2ae53e4ad692ddb33a4c5711bfd",
+      "newBlob": "4308037053ac1250561c2d01c470c78c2375c46a",
+      "newSHA256": "711627707d20fc594e10b119185f71256b14a61966dc4fb5229e359a4c5b4a6b",
+      "mode": "100644",
+      "bytes": 46229
+    },
+    {
+      "path": "experimental/libbox/command_server_transient_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "b9aba252891352704c34c0e9b7b6c1406e3fa50b",
+      "newBlob": "f9d7a095b82cfc9019b5a478ff5655abe5769371",
+      "newSHA256": "ce3ea942e1c069bbea592d6b61da24d403bb04345a00956642f5b1693ff1f0d4",
+      "mode": "100644",
+      "bytes": 13838
+    },
+    {
+      "path": "experimental/libbox/config_construction_persistence_linux_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "dbf573d717600797783da7db8ed46ddbb5b1cedf",
+      "newBlob": "9f09932ffe4c06c25708f8e4d3e8a8ae71aedbea",
+      "newSHA256": "ef2bd52e2109be3f405514c26bb1bc3b17dedd8c3da3b00efd4646ad3d839928",
+      "mode": "100644",
+      "bytes": 1220
+    },
+    {
+      "path": "experimental/libbox/config_construction_persistence_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "83c69c4de40ee2769414119afe0109ed915964f6",
+      "newBlob": "7b997e79d7e903fbe7024c52ba4aa1b0e0a11836",
+      "newSHA256": "1d3fb1b021c398445552bdc76cdaa8b3d81589b7c0ebaa91e1c4fab29f523c6a",
+      "mode": "100644",
+      "bytes": 5106
+    },
+    {
+      "path": "experimental/libbox/config_optional_persistence_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "cf1df0ecf09f7e8f1d98f098d55c560085900407",
+      "newBlob": "14dac0d7f7c81485be9d9ed7bffa34bd857a8dd3",
+      "newSHA256": "47713cf6cc1625f5089098b43b31dc7b0425c02e790634695c3734a9b15d784b",
+      "mode": "100644",
+      "bytes": 3406
+    },
+    {
+      "path": "experimental/libbox/config_validation_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "adb5ce4e02623e7f8ff5b3b635ffdd2d440b09fe",
+      "newBlob": "9507189ae846ad6b1dcbfc1203ca95c7feead81f",
+      "newSHA256": "276b6072fb4922079f075086e09be691ae704bbd6031e4ce0a8415c776666f0f",
+      "mode": "100644",
+      "bytes": 39699
+    },
+    {
+      "path": "experimental/libbox/dns_platform_lifecycle_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "84216d7d066f17fe243d485a53e330960bedce90",
+      "newBlob": "5092d818f4231fae82b862c6e289a16fc4badde0",
+      "newSHA256": "3caa1dfb0b1846b3b84a4123e8498a9cfcd3dac654eeae2a201a969b4ec8af4a",
+      "mode": "100644",
+      "bytes": 13061
+    },
+    {
+      "path": "experimental/libbox/monitor_lifecycle_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "f6f4301649ca36b3a7ef1b8941a4946171850578",
+      "newBlob": "e5eed4357961d4c786798bbb01f5d06dd22a90e1",
+      "newSHA256": "2bef177f7051a1cd8d437678916b7c02007e6d440d41a3e3f6a42c8f45b157c8",
+      "mode": "100644",
+      "bytes": 15185
+    },
+    {
+      "path": "experimental/libbox/service.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "0eaf782291277f51967743b25052fb09f70a2a1a",
+      "newBlob": "33cb2d1c2174d5dc4db59e6f2d29d1f1e4f60d3c",
+      "newSHA256": "49e5d615a88e44c76474a21850b335a6000b8df933eccf1993b95b7f0639753f",
+      "mode": "100644",
+      "bytes": 15466
     },
     {
       "path": "go.mod",
@@ -130,6 +436,15 @@
       "bytes": 62093
     },
     {
+      "path": "option/domain_resolver_rules_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "c855c9b7e63c7eb2123ce308bb2ce6beeac1de3d",
+      "newBlob": "61808a888dd8b5ad777f8a2f8a9e6d21c4d210d0",
+      "newSHA256": "28356d1d99eb5887484066304aa32752b1560f9bcfc90e842bbcd17ce262b6f1",
+      "mode": "100644",
+      "bytes": 2704
+    },
+    {
       "path": "option/options.go",
       "owner": "windows-kernel",
       "baseBlob": "b2116d3488104a55012fceb79accf10cee4fa8a4",
@@ -139,6 +454,24 @@
       "bytes": 4793
     },
     {
+      "path": "option/resolved.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "60981da30db95fa1db26a41830570b7fe90119f8",
+      "newBlob": "e5c0acb0372cb09baf7f5b8f81764da181f84141",
+      "newSHA256": "73a3c7bdd11478c051556193c9577e934e7d66158b4da3c676835f6c638622df",
+      "mode": "100644",
+      "bytes": 1723
+    },
+    {
+      "path": "option/tailscale.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "4b1a3747e69eb6e33d4b2390d8c6fedaecbe1ed5",
+      "newBlob": "27634f67cef44957a86a07a5f943b2ad5e33bfcb",
+      "newSHA256": "080df7b919150f03c963d78ce49a974d99b5a2faca133f6e252599d04b9a0dbf",
+      "mode": "100644",
+      "bytes": 7457
+    },
+    {
       "path": "option/windows_directory.go",
       "owner": "windows-kernel",
       "baseBlob": null,
@@ -146,6 +479,42 @@
       "newSHA256": "8ed6fbc4ad5e7f907c2f706f6240eed921d175559d04a50adee47a8cee0c2e45",
       "mode": "100644",
       "bytes": 468
+    },
+    {
+      "path": "protocol/openconnect/client.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "85c893035f5305f14c048f0cab4de19973d2b10f",
+      "newBlob": "0cff8207b114581582482dfe70a0b2065e91038a",
+      "newSHA256": "98c6d0dcf14292682c703678ce42472e60585ae3ca4ec2406d504c0aff71aa23",
+      "mode": "100644",
+      "bytes": 23154
+    },
+    {
+      "path": "protocol/openvpn/client.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "b07ad149f4620cffe3afe2348a2c35c213d93a01",
+      "newBlob": "dffc1bcc109965173cf88cd6adf5357d608a2872",
+      "newSHA256": "e4a68ab6bba37bf3cb1a6c4421bacc7b134102145ec2d0bc32fa488e4dc13adb",
+      "mode": "100644",
+      "bytes": 31829
+    },
+    {
+      "path": "protocol/openvpn/server.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "1026579f567a34dbcb21f0ba99dfc4e34983a27c",
+      "newBlob": "aa20e7ceeccea8cda9394807d9c844196e6f6fb8",
+      "newSHA256": "97c4d567dff8eeae71ba9947b3b32aa03921df4c06fe95944fad7f56ce3d5058",
+      "mode": "100644",
+      "bytes": 27722
+    },
+    {
+      "path": "protocol/shadowtls/outbound_v3_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "fc5b520a746d0003fc5aa3d0a7021711b27a71a8",
+      "newBlob": "aee732d293dc18ca0f68c439d8dd2b2ee15d9754",
+      "newSHA256": "906e4882f0472e7b761a99387829ae1e30427eddd9176a55f995bf83c271ae81",
+      "mode": "100644",
+      "bytes": 13670
     },
     {
       "path": "protocol/tailscale/directory_close_other.go",
@@ -175,11 +544,20 @@
       "bytes": 2307
     },
     {
+      "path": "protocol/tailscale/directory_lease_unix.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "e210411645f4d52d0c2e97846e74323d0b436e67",
+      "newBlob": "d8b4b10b7a2e56b298df99e9f275ef406a59cf11",
+      "newSHA256": "234cda2c1e04fbbca91b002816a70a0c97a50d5b075969628ad0e52bfeebcafe",
+      "mode": "100644",
+      "bytes": 39890
+    },
+    {
       "path": "protocol/tailscale/directory_lease_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "461709c65fe27284e869c4520c639d172dd57c10",
-      "newSHA256": "68e008460dfab646406cdf419bf7c488f8431e39fee85b500b884789e6121fe6",
+      "newBlob": "dbc366a8e30b0d355e733cc4eab492c0247066e9",
+      "newSHA256": "2d1ff86dd86a2ebd0e33f7c8a557b0b43370f09f437575e13c6f4c629205a442",
       "mode": "100644",
       "bytes": 26810
     },
@@ -202,13 +580,31 @@
       "bytes": 7897
     },
     {
+      "path": "protocol/tailscale/directory_managed_integration_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "9a0cecad99c59a06f0febc4e4633eb511445bf54",
+      "newBlob": "a74ae8ef766c71d0c8783e67d71e9d286af917c0",
+      "newSHA256": "4dadbfc043c340e6d49d3d813b12896caf49e6010c0f61a8914f57c9932cf851",
+      "mode": "100644",
+      "bytes": 2828
+    },
+    {
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "5367a0013450a0de8a6dde606266f39476e56a94",
-      "newSHA256": "bbbee1531d48746a1ac35bbc970acd84dd76cbd9d93b93050ab9958d275b252b",
+      "newBlob": "aba9dbbd7e3bb74f017eff49f9f32dec931f4953",
+      "newSHA256": "a35fced97a46aaadf0fa348aaae4d2d408c2b6567253156ceea1513b4eb28555",
       "mode": "100644",
-      "bytes": 21617
+      "bytes": 21619
+    },
+    {
+      "path": "protocol/tailscale/directory_store_admission_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "0bf6e352658a37cc068638d726dad80cc8490087",
+      "newBlob": "3506fc4ae274252fcd295e8181549839b84203d2",
+      "newSHA256": "95ae0ba56c4783e8ac569ac0f5beb74c1a65f0b6055b480c0f72f66551d33a3c",
+      "mode": "100644",
+      "bytes": 1620
     },
     {
       "path": "protocol/tailscale/directory_taildrop_other.go",
@@ -220,11 +616,20 @@
       "bytes": 423
     },
     {
+      "path": "protocol/tailscale/directory_taildrop_unix.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "6d4b1fb293c312a4a6c1ee07d1a22e088a72b1e6",
+      "newBlob": "d6f8c7d061934c0a55b3a983b79f1f0cd693465e",
+      "newSHA256": "82dd648b6c42681e4df68e8ab3ea9d66f97f86464cfdc6ca074bc7844d12d8ee",
+      "mode": "100644",
+      "bytes": 1788
+    },
+    {
       "path": "protocol/tailscale/directory_taildrop_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "2c4a2903c4815d7d7a60f25980d8caebd79eece4",
-      "newSHA256": "19a89f0554d6148143bbcb818793c7d50f8d22821eb9bf241c387e3f7e577e84",
+      "newBlob": "a493a52dc06a389fae2a3ef3191f584d0a522b9d",
+      "newSHA256": "61b4893fa902826a7d1c6722c4e88ccd28392e670c8be8b01238f091db678b2f",
       "mode": "100644",
       "bytes": 835
     },
@@ -232,10 +637,19 @@
       "path": "protocol/tailscale/directory_windows_native.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "c5a01b0f5778424e0a18bb316a24a72eadc492d0",
-      "newSHA256": "50b3cbe76c3716eb57c4a5c024cefa7f44fc06e0783ea2f8e4ea01541d7e5fb6",
+      "newBlob": "632a985fab1d8240b6e6530a5996aaa8f59806e8",
+      "newSHA256": "c78cd4630f4dbdea80011a00f9ddb2f6e8679601cb3dcbb71323fca03beff250",
       "mode": "100644",
-      "bytes": 12261
+      "bytes": 12689
+    },
+    {
+      "path": "protocol/tailscale/directory_windows_native_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": null,
+      "newBlob": "1a980ee86066493364de7715a2bad43508179bcb",
+      "newSHA256": "d2f04e000e6c622993951aa3308df90b7e4119e04af349523e0d126e000f2ea8",
+      "mode": "100644",
+      "bytes": 2547
     },
     {
       "path": "protocol/tailscale/directory_windows_owner.go",
@@ -256,6 +670,42 @@
       "bytes": 12908
     },
     {
+      "path": "protocol/tailscale/dns_transport.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "b9bb604ef852c56e80c73cc5e01e4ec3ae450d32",
+      "newBlob": "93fb7d656f04df101944b9640d5f9907eb239ce8",
+      "newSHA256": "9d649d2d41cc94a2b2a408a86445ea0d877a57f8e7b4289d32cdad53b92653d0",
+      "mode": "100644",
+      "bytes": 17496
+    },
+    {
+      "path": "protocol/tailscale/endpoint.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "efd58de23824a5ecb1d12ea7b063b9d907ac4671",
+      "newBlob": "0309527ea20290d4d44959df5330e0e07b7d181e",
+      "newSHA256": "0c354536aaed7e737992e9584c71fd241552a43c71839eb0c8a282c6c0f1d321",
+      "mode": "100644",
+      "bytes": 34114
+    },
+    {
+      "path": "protocol/tailscale/state_store.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "f8399dbccd60a674ae603aef7b5ad4ae6c70ba31",
+      "newBlob": "d9254ea9f4424f2debfa44bc45713d044084885f",
+      "newSHA256": "fe3e002085c49953548a05aac08506ee5be78e39ef5e8f0f87defe2f5db611c3",
+      "mode": "100644",
+      "bytes": 12903
+    },
+    {
+      "path": "protocol/tailscale/state_store_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "2055fb12789af13f906bb1ce6b4cf6149515c2c8",
+      "newBlob": "2fac14c42613cf042c17c1df741561c3757bdf31",
+      "newSHA256": "2726c444a119c56c50c072c44a0f2094d168f35f95a87f5ccfdc7a99517b10b0",
+      "mode": "100644",
+      "bytes": 17956
+    },
+    {
       "path": "release/dependency-sources/sing-tun-baseline.json",
       "owner": "testing",
       "baseBlob": "21897876b2967cdbcffa0d98c86005c50efedaa3",
@@ -272,6 +722,51 @@
       "newSHA256": "220629fde8bd7a858c4cf5cc5b5efb91a5c0aef24d720b38b58f283f1e3cd6a8",
       "mode": "100644",
       "bytes": 1696
+    },
+    {
+      "path": "route/conn.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "4e527c5e2caba3fee1249741a1781f4ceb939574",
+      "newBlob": "3fa34c7bf62582dd614a54473ec0677cbe5f6e72",
+      "newSHA256": "40fb2768477471e289cbe510a223442df48260504a972695070983bda0e4d092",
+      "mode": "100644",
+      "bytes": 16823
+    },
+    {
+      "path": "route/network_domain_resolver_rules_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "9afd33879c6405130b3512a49be0506caa9018cc",
+      "newBlob": "2bdeb874012ee83712c1e9a9ebe55770c30fd58f",
+      "newSHA256": "5cf62c466f011a57191d63b8f2b8ea01e1b78a0b3765647961ca148b23260e37",
+      "mode": "100644",
+      "bytes": 1955
+    },
+    {
+      "path": "route/rule/rule_abstract_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "ea2e2062e6e159ba1b4680fcc11df0acaad7c58b",
+      "newBlob": "d045819d91bad2a19986fa8d00a654bc3c69dd32",
+      "newSHA256": "42161b93dd4d6a7905b82a3937dd897413096c18d483cbc2777109127a10ed25",
+      "mode": "100644",
+      "bytes": 3393
+    },
+    {
+      "path": "route/rule/rule_action.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "cb6561181b2da67dbb33790af47065c79b05e0aa",
+      "newBlob": "4944a4fcf4a6a57c8d21394f91634b8f1fb6d9d4",
+      "newSHA256": "8b29151fd4cac90b9d3200a3f1d3876246357b0dcdfbc01ca4e94b97ac4036ea",
+      "mode": "100644",
+      "bytes": 20529
+    },
+    {
+      "path": "route/rule/rule_dns.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "c7a8c216fb6e16d25b5aefeb2272c6d084d5c2db",
+      "newBlob": "04ec0cfcde454da4b3287ace1f7bde82c32c7c89",
+      "newSHA256": "b498c2ad5027817b3a21743d8db62b142e6f73f6ed461f1e175586debeba43fe",
+      "mode": "100644",
+      "bytes": 19693
     },
     {
       "path": "route/rule/rule_item_rule_set.go",
@@ -295,19 +790,19 @@
       "path": "route/rule/rule_set_remote.go",
       "owner": "hot-kernel",
       "baseBlob": "5d694d81fa29d4de47ebe366f98e87764fa1ef82",
-      "newBlob": "35e05ff1c52b84a17a41f36997718e0bfae3184f",
-      "newSHA256": "4d2f17e92b2243bef00a04dba9793b2eaca0141b5788593fcb9c21bf8859614e",
+      "newBlob": "9603b55438c88c9219197e780781ff2f197311bd",
+      "newSHA256": "d09dd5ba25012ac77d0b99e7e65c55196b35143e52e624139c4f351fef5e83b6",
       "mode": "100644",
-      "bytes": 9682
+      "bytes": 9600
     },
     {
       "path": "route/rule/rule_set_semantics_test.go",
       "owner": "hot-kernel",
       "baseBlob": "b6e2af0abd1fa68baf3035dd31b9a6b3936640ac",
-      "newBlob": "ed9c38630bb59b51290fa9d625dd1cfccbb33598",
-      "newSHA256": "6b523038ee54f3b320a562ebfda14935cd023fc2ccf5a9e289e5d703af189b52",
+      "newBlob": "0997feca4b2742d348f6e3becb48245c45ad6961",
+      "newSHA256": "c58a67dba10027303e348ab19f4608febb99841730f52e40536928475ed77616",
       "mode": "100644",
-      "bytes": 56350
+      "bytes": 56099
     },
     {
       "path": "route/rule/rule_set_snapshot.go",
@@ -322,10 +817,10 @@
       "path": "route/rule/rule_set_snapshot_test.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "9b86558930d4009f4fcb9061d694249104f5d365",
-      "newSHA256": "6418f69b3b1427be4e9eed5453c923de8604401d8c9b81c9fe8ce8c1dbe3eb35",
+      "newBlob": "8dc4e00180d87d67f1f7d1ea43afca9a58def672",
+      "newSHA256": "38b2a5fd96d879b9a9ea2c87f9c1d97f222c168aa68a769a6a1bd9f019ea6070",
       "mode": "100644",
-      "bytes": 2905
+      "bytes": 2828
     },
     {
       "path": "route/rule/rule_set_update_validation_test.go",
@@ -337,13 +832,58 @@
       "bytes": 3804
     },
     {
+      "path": "route/splice.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "9908dc0e4d104b9e46e2ac7be3adb33f17fd6dcf",
+      "newBlob": "bf1ec7068d7980025079c8a5dfc43b60575e16f4",
+      "newSHA256": "0ade874c629b6000c6e1b5bb0ec1d235e02f4350a0c93d2c90d362dff816473d",
+      "mode": "100644",
+      "bytes": 9592
+    },
+    {
       "path": "scripts/ci/check_remediation_format.py",
       "owner": "validation",
       "baseBlob": null,
-      "newBlob": "3f1745474d89f805925e66febc693400543a0468",
-      "newSHA256": "12ed2c7d985ad903196e6bbe647cd35b0a8d9158e1bbae88db8b41978a7c15fe",
+      "newBlob": "1d48d983381f0402c8baea6bb5e2438c8b4d0760",
+      "newSHA256": "932ba2d38dd176744fc74ae238b424bccb84f2a02d35ffbe9d714fdb5c4d110d",
       "mode": "100644",
-      "bytes": 1505
+      "bytes": 1913
+    },
+    {
+      "path": "service/acme/service.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "0b67d58e957dc369f6122c8206c324d93eaafbc5",
+      "newBlob": "48e68dea49c0ae52d907350fb126ae9a71881384",
+      "newSHA256": "ad977a6c9c3e5fc2ed1fcfb4f0f13c4198dba4c368dd1ee7c631aef5c86b8691",
+      "mode": "100644",
+      "bytes": 13568
+    },
+    {
+      "path": "service/derp/service.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "5e95c111c346e4032c5a5e93b1aa5977044e7529",
+      "newBlob": "8e2fcd0da4603dc91efd9ff9682c10a0e9638c52",
+      "newSHA256": "04744bee56859d9a6b8ceff78cd1c0a387ecbcbbb90cf88950de07fed8097ea0",
+      "mode": "100644",
+      "bytes": 16998
+    },
+    {
+      "path": "service/resolved/resolve1.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "adbd0cdc2cddf938712a4a3d92fe26bc161c55c9",
+      "newBlob": "c1e1b9ce8501eab858e7fe573c4323f10951d446",
+      "newSHA256": "e7332ac015eaae4d67113290f1bd6c21529a1c3b95448eb17a6b4bf0117dc691",
+      "mode": "100644",
+      "bytes": 16820
+    },
+    {
+      "path": "service/resolved/transport.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "4c78eaf474dbbcab246447968b36e52b03b945fa",
+      "newBlob": "13475cd7c599e18245009ab3cc14d5467fbc849b",
+      "newSHA256": "a105fbca2a8982547583b94a64bc3aaaab4cab02414ea67d5f21901bf0655a49",
+      "mode": "100644",
+      "bytes": 11958
     },
     {
       "path": "third_party/sing-tun/stack_go_engine.go",
@@ -371,7 +911,26 @@
       "newSHA256": "4a4204919729e236b1d38f53d479b428c310b89aa8e010f5504eacee75f00092",
       "mode": "100644",
       "bytes": 4687
+    },
+    {
+      "path": "transport/v2raygrpc/tls_credentials.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": "c695ac14e41019e7583786c675832f2454d87ab6",
+      "newBlob": "b88507976509f91d31daefd89d59f1d0f9b1d5a1",
+      "newSHA256": "97b16f1152aba85c0783d1b983eb0a85593efed60037d8f3bddb56e51c901cdb",
+      "mode": "100644",
+      "bytes": 2245
     }
   ],
-  "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes."
+  "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes.",
+  "validationBoundary": {
+    "lastTestedCommit": "918198714a6ef8a7661e0c566761a0c0892fb53a",
+    "lastTestedTree": "40e4fbc23ae827f3e001d84610ce95b2cb4a7981",
+    "lint": "all 10 platforms failed; 149 unique findings addressed in current source, pending rerun",
+    "tests": "K1 Linux/macOS passed, Windows failed; current Windows fixes await rerun",
+    "selfcheck": "K1 format gate failed; current formatter fixed point and diagnostic fix do not certify CI",
+    "contract": "K1 passed; fresh current-tree run required",
+    "formatter": "golangci-lint2.15.0 official binary built Go1.27.0; current CI Go1.27.2; gci module discovery unavailable locally; write and --diff exited0 with empty diff",
+    "sourceReview": "71 source/helper paths statically reviewed; metadata reviewed separately; no final commit embedded"
+  }
 }

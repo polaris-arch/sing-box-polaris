@@ -13,8 +13,10 @@ import (
 	"github.com/sagernet/sing/common/format"
 )
 
-const tailscaleStoreRetirementVersion = "polaris-ts-auth-writer-retirement-v1"
-const maxTailscaleRetirementRuns = 256
+const (
+	tailscaleStoreRetirementVersion = "polaris-ts-auth-writer-retirement-v1"
+	maxTailscaleRetirementRuns      = 256
+)
 
 type tailscaleRetirementInstance struct {
 	RunNonce       string                       `json:"runNonce"`
@@ -52,6 +54,7 @@ func newTailscaleRetirementRun(content string, options option.Options) (*tailsca
 	}
 	return run, nil
 }
+
 func (r *tailscaleRetirementRun) capture(nodes []adapter.TailscaleStoreNode) {
 	r.access.Lock()
 	defer r.access.Unlock()
@@ -59,6 +62,7 @@ func (r *tailscaleRetirementRun) capture(nodes []adapter.TailscaleStoreNode) {
 		r.active = append([]adapter.TailscaleStoreNode{}, nodes...)
 	}
 }
+
 func (r *tailscaleRetirementRun) freeze(nodes []adapter.TailscaleStoreNode, constructed bool) {
 	r.access.Lock()
 	defer r.access.Unlock()
@@ -97,9 +101,11 @@ func (r *tailscaleRetirementRun) freeze(nodes []adapter.TailscaleStoreNode, cons
 	}
 	r.final = &result
 }
+
 func (r *tailscaleRetirementRun) snapshotUnderLock() tailscaleRetirementInstance {
 	return tailscaleRetirementInstance{RunNonce: r.binding.RunNonce, ConfigDigest: r.binding.ConfigDigest, Terminal: "Unknown", Nodes: append([]adapter.TailscaleStoreNode{}, r.active...)}
 }
+
 func (r *tailscaleRetirementRun) snapshot() tailscaleRetirementInstance {
 	r.access.Lock()
 	defer r.access.Unlock()

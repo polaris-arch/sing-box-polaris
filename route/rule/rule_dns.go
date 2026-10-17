@@ -109,10 +109,8 @@ type DefaultDNSRule struct {
 
 func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options option.DefaultDNSRule, legacyDNSMode bool) (*DefaultDNSRule, error) {
 	rule := &DefaultDNSRule{
-		abstractDefaultRule: abstractDefaultRule{
-			invert: options.Invert,
-			action: NewDNSRuleAction(logger, options.DNSRuleAction),
-		},
+		invert:           options.Invert,
+		action:           NewDNSRuleAction(logger, options.DNSRuleAction),
 		matchResponse:    options.MatchResponse.IsEnabled(),
 		matchResponseTag: options.MatchResponse.ResponseTag(),
 		race:             options.Race,
@@ -505,12 +503,10 @@ func (r *LogicalDNSRule) Race() bool {
 
 func NewLogicalDNSRule(ctx context.Context, logger log.ContextLogger, options option.LogicalDNSRule, legacyDNSMode bool) (*LogicalDNSRule, error) {
 	r := &LogicalDNSRule{
-		abstractLogicalRule: abstractLogicalRule{
-			rules:  make([]adapter.HeadlessRule, len(options.Rules)),
-			invert: options.Invert,
-			action: NewDNSRuleAction(logger, options.DNSRuleAction),
-		},
-		race: options.Race,
+		rules:  make([]adapter.HeadlessRule, len(options.Rules)),
+		invert: options.Invert,
+		action: NewDNSRuleAction(logger, options.DNSRuleAction),
+		race:   options.Race,
 	}
 	switch options.Mode {
 	case C.LogicalTypeAnd:

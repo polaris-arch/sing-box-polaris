@@ -27,7 +27,7 @@ func (t *Endpoint) prepareTaildropDirectory() error {
 		return err
 	}
 	parent := l.target
-	for _, name := range strings.Split(relative, string(filepath.Separator)) {
+	for name := range strings.SplitSeq(relative, string(filepath.Separator)) {
 		h, err := l.openPrivate(parent, name, true, windows.FILE_OPEN_IF, false)
 		if err != nil {
 			return err

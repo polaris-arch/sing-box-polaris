@@ -39,6 +39,7 @@ func (c bindingTestRawConn) Control(f func(uintptr)) error {
 	f(42)
 	return nil
 }
+
 func (bindingTestRawConn) Read(func(uintptr) bool) error  { panic("unused") }
 func (bindingTestRawConn) Write(func(uintptr) bool) error { panic("unused") }
 
@@ -81,9 +82,11 @@ type bindingTestNetworkManager struct{ adapter.NetworkManager }
 func (bindingTestNetworkManager) InterfaceFinder() control.InterfaceFinder {
 	return control.NewDefaultInterfaceFinder()
 }
+
 func (bindingTestNetworkManager) DefaultOptions() adapter.NetworkOptions {
 	return adapter.NetworkOptions{BindInterface: "lo"}
 }
+
 func (bindingTestNetworkManager) AutoRedirectOutputMarkFunc() control.Func { return nil }
 
 func TestNamedInterfaceBindingPreservesNonAndroidAndAutomaticDialers(t *testing.T) {
@@ -92,7 +95,7 @@ func TestNamedInterfaceBindingPreservesNonAndroidAndAutomaticDialers(t *testing.
 	}
 	p := &bindingTestPlatform{err: errors.New("must not be called")}
 	ctx := service.ContextWith[adapter.PlatformInterface](context.Background(), p)
-	for _, options := range []option.DialerOptions{{}, {AbstractDialerOptions: option.AbstractDialerOptions{BindInterface: "lo"}}} {
+	for _, options := range []option.DialerOptions{{}, {BindInterface: "lo"}} {
 		dialer, err := NewDefault(ctx, options)
 		if err != nil {
 			t.Fatal(err)

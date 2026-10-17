@@ -33,6 +33,7 @@ const windowsProcessTimeout = 70 * time.Second
 type windowsTestEndpointRegistry struct{}
 
 func (windowsTestEndpointRegistry) OptionTypes() []string { return []string{C.TypeTailscale} }
+
 func (windowsTestEndpointRegistry) CreateOptions(kind string) (any, bool) {
 	if kind == C.TypeTailscale {
 		return new(option.TailscaleEndpointOptions), true
@@ -115,6 +116,7 @@ func (b *windowsProcessOutput) Write(p []byte) (int, error) {
 	defer b.mu.Unlock()
 	return b.buffer.Write(p)
 }
+
 func (b *windowsProcessOutput) text() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()

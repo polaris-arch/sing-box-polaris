@@ -92,11 +92,9 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 		}
 	}
 	return &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Id:       message.Id,
-			Rcode:    mDNS.RcodeNameError,
-			Response: true,
-		},
+		Id:       message.Id,
+		Rcode:    mDNS.RcodeNameError,
+		Response: true,
 		Question: []mDNS.Question{question},
 	}, nil
 }
