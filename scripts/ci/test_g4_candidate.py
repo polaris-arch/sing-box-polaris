@@ -34,3 +34,13 @@ class CandidateGates(unittest.TestCase):
                     './cmd/internal/update_apple_version'}
         self.assertTrue(required.issubset(set(FORK_PACKAGES)))
         self.assertEqual(len(FORK_PACKAGES), len(set(FORK_PACKAGES)))
+
+    def test_option_single_value_regressions_share_the_source_gate(self):
+        self.assertEqual(FORK_PACKAGES.count('./option'), 1)
+        self.assertIn('./option', commands()[1])
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/build.yml').read_text()
+        self.assertIn('python3 scripts/ci/g4_candidate.py', workflow)
+        tests = (root / 'option/listable_compat_test.go').read_text()
+        for name in ['TestTailcatDERPServersListableJSON', 'TestMASQUEAdvertiseRoutesListableJSON']:
+            self.assertIn('func ' + name + '(t *testing.T)', tests)

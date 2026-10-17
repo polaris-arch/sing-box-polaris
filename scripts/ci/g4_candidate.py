@@ -17,7 +17,7 @@ SDK_PACKAGES = (
     'ipn/ipnlocal', 'ipn/ipnlocal/netmapcache', 'feature/acme', 'tka', 'tsnet',
 )
 FORK_PACKAGES = (
-    './adapter', './daemon', './experimental/libbox', './experimental/libbox/internal/oomprofile', './protocol/tailscale',
+    './option', './adapter', './daemon', './experimental/libbox', './experimental/libbox/internal/oomprofile', './protocol/tailscale',
     './common/badversion', './cmd/internal/read_tag',
     './cmd/internal/update_android_version', './cmd/internal/update_desktop_version',
     './cmd/internal/update_apple_version',
