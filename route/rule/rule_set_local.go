@@ -2,6 +2,9 @@ package rule
 
 import (
 	"context"
+ "crypto/sha256"
+ "encoding/hex"
+ "io"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -29,12 +32,10 @@ type LocalRuleSet struct {
 	ctx        context.Context
 	logger     logger.Logger
 	tag        string
-	access     sync.RWMutex
-	rules      []adapter.HeadlessRule
-	metadata   adapter.RuleSetMetadata
+	ruleSetPublication
 	fileFormat string
 	watcher    *fswatch.Watcher
-	callbacks  list.List[adapter.RuleSetUpdateCallback]
+ lifecycleAccess sync.Mutex
 	refs       atomic.Int32
 }
 
@@ -45,7 +46,9 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 		tag:        tag,
 		fileFormat: options.Format,
 	}
-	if options.Type == C.RuleSetTypeInline {
+	ruleSet.watcherState = "not-started"
+ if options.Type == C.RuleSetTypeInline {
+ ruleSet.watcherState = "inline"
 		if len(options.InlineOptions.Rules) == 0 {
 			return nil, E.New("empty inline rule-set")
 		}
@@ -82,20 +85,35 @@ func (s *LocalRuleSet) Name() string {
 }
 
 func (s *LocalRuleSet) String() string {
-	return strings.Join(F.MapToString(s.rules), " ")
+	return strings.Join(F.MapToString(s.loadSnapshot().rules), " ")
 }
 
 func (s *LocalRuleSet) StartContext(ctx context.Context, startContext *adapter.HTTPStartContext) error {
-	if s.watcher != nil {
-		err := s.watcher.Start()
-		if err != nil {
-			s.logger.Error(E.Cause(err, "watch rule-set file"))
-		}
-	}
+ s.lifecycleAccess.Lock()
+ defer s.lifecycleAccess.Unlock()
+ s.access.RLock()
+ closed := s.closed
+ s.access.RUnlock()
+ if closed { return E.New("rule-set is closed") }
+ if s.watcher != nil {
+  err := s.watcher.Start()
+  s.access.Lock()
+  if err != nil { s.watcherState = "failed"; s.lastError = err.Error() } else { s.watcherState = "watching" }
+  s.access.Unlock()
+  if err != nil { s.logger.Error(E.Cause(err, "watch rule-set file")) }
+ }
 	return nil
 }
 
-func (s *LocalRuleSet) reloadFile(path string) error {
+func (s *LocalRuleSet) reloadFile(path string) (result error) {
+ s.reloadAccess.Lock()
+ var callbacks []adapter.RuleSetUpdateCallback
+ defer func() {
+  s.recordError(result)
+  s.reloadAccess.Unlock()
+  if result == nil { for _, callback := range callbacks { callback(s) } }
+ }()
+ var digest string
 	var ruleSet option.PlainRuleSetCompat
 	switch s.fileFormat {
 	case C.RuleSetFormatSource, "":
@@ -103,6 +121,8 @@ func (s *LocalRuleSet) reloadFile(path string) error {
 		if err != nil {
 			return err
 		}
+		sum := sha256.Sum256(content)
+ digest = hex.EncodeToString(sum[:])
 		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
 		if err != nil {
 			return err
@@ -113,7 +133,11 @@ func (s *LocalRuleSet) reloadFile(path string) error {
 			return err
 		}
 		defer setFile.Close()
-		ruleSet, err = srs.Read(setFile, false)
+		h := sha256.New()
+ reader := io.TeeReader(setFile, h)
+ ruleSet, err = srs.Read(reader, false)
+ if err == nil { _, err = io.Copy(io.Discard, reader) }
+ digest = hex.EncodeToString(h.Sum(nil))
 		if err != nil {
 			return err
 		}
@@ -124,44 +148,42 @@ func (s *LocalRuleSet) reloadFile(path string) error {
 	if err != nil {
 		return err
 	}
-	return s.reloadRules(plainRuleSet.Rules)
+	callbacks, result = s.prepareRules(plainRuleSet.Rules, digest)
+ return result
 }
 
 func (s *LocalRuleSet) reloadRules(headlessRules []option.HeadlessRule) error {
+ s.reloadAccess.Lock()
+ callbacks, err := s.prepareRules(headlessRules, "")
+ s.recordError(err)
+ s.reloadAccess.Unlock()
+ if err == nil { for _, callback := range callbacks { callback(s) } }
+ return err
+}
+
+func (s *LocalRuleSet) prepareRules(headlessRules []option.HeadlessRule, digest string) ([]adapter.RuleSetUpdateCallback, error) {
 	rules := make([]adapter.HeadlessRule, len(headlessRules))
 	var err error
 	for i, ruleOptions := range headlessRules {
 		rules[i], err = NewHeadlessRule(s.ctx, ruleOptions)
 		if err != nil {
-			return E.Cause(err, "parse rule_set.rules.[", i, "]")
+			return nil, E.Cause(err, "parse rule_set.rules.[", i, "]")
 		}
 	}
 	metadata := buildRuleSetMetadata(headlessRules)
 	err = validateRuleSetMetadataUpdate(s.ctx, s.tag, metadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.access.Lock()
-	s.rules = rules
-	s.metadata = metadata
-	callbacks := s.callbacks.Array()
-	s.access.Unlock()
-	for _, callback := range callbacks {
-		callback(s)
-	}
-	return nil
+	return s.publish(rules, metadata, digest)
 }
 
 func (s *LocalRuleSet) Metadata() adapter.RuleSetMetadata {
-	s.access.RLock()
-	defer s.access.RUnlock()
-	return s.metadata
+	return s.loadSnapshot().metadata
 }
 
 func (s *LocalRuleSet) ExtractIPSet() []*netipx.IPSet {
-	s.access.RLock()
-	defer s.access.RUnlock()
-	return common.FlatMap(s.rules, extractIPSetFromRule)
+	return common.FlatMap(s.loadSnapshot().rules, extractIPSetFromRule)
 }
 
 func (s *LocalRuleSet) IncRef() {
@@ -176,7 +198,7 @@ func (s *LocalRuleSet) DecRef() {
 
 func (s *LocalRuleSet) Cleanup() {
 	if s.refs.Load() == 0 {
-		s.rules = nil
+		s.cleanupPublication()
 	}
 }
 
@@ -193,14 +215,16 @@ func (s *LocalRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSetU
 }
 
 func (s *LocalRuleSet) Close() error {
-	s.rules = nil
+	s.lifecycleAccess.Lock()
+ defer s.lifecycleAccess.Unlock()
+ s.closePublication()
 	return common.Close(common.PtrOrNil(s.watcher))
 }
 
 func (s *LocalRuleSet) Match(metadata *adapter.InboundContext) bool {
-	return matchAnyHeadlessRule(s.rules, metadata)
+	return matchAnyHeadlessRule(s.loadSnapshot().rules, metadata)
 }
 
 func (s *LocalRuleSet) mergeableRule() *DefaultHeadlessRule {
-	return mergeableRuleIn(s.rules)
+	return mergeableRuleIn(s.loadSnapshot().rules)
 }

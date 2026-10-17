@@ -300,19 +300,19 @@
       "sha256": "cbc6942db9e25f834da6f64305fe069e372dbcaf6fece2be1c3d649889f181d3"
     },
     "adapter/tailscale_state_store.go": {
-      "gitBlob": "3a98d11b9a865b91ee20385e53c42062dc3650ec",
-      "bytes": 2258,
-      "sha256": "d5efd08c5761bac409a7fbcc9647e3a84dcd7808a7220e0b1ebd54facd59d847"
+      "gitBlob": "d4115087b03d1b7ba75f1f9bc99a083577815b69",
+      "bytes": 2277,
+      "sha256": "95402f4b5a3ec40b38614c5476d1ac70f70ad36d3bfeaadf31ec41685834396e"
     },
     "box.go": {
-      "gitBlob": "6e509a5942cc12a21d06154c21e34afd7eb7d3a9",
-      "bytes": 26924,
-      "sha256": "f6f2fc16eded60b7cf965dbf180655c0827721093d25865aea3c6de091020e33"
+      "gitBlob": "9db84ccaff8a40b74547ac565eff47f30fd35ecf",
+      "bytes": 27116,
+      "sha256": "43dd30f785bef29af5774b835d11922399b9ca4acf5fae3677f6712b613ef468"
     },
     "box_close_result_test.go": {
-      "gitBlob": "416e6ccd9f34b93498b482f6969a0ccade280a5b",
-      "bytes": 5689,
-      "sha256": "e0ff546fe54c1f29d61929a212eadcf9e7dcc49b4bd572d1108f8a1d1cea0851"
+      "gitBlob": "90cb5b46948b70d10f038415bce66140d169f2c6",
+      "bytes": 5655,
+      "sha256": "d3a1624d146fd979913f4812437146d1b965f5cf89704776fa3a818c4c6c0cdd"
     },
     "box_construction_leak_test.go": {
       "gitBlob": "8bb42daf772682c90b21103a056484f3f1dc42d6",
@@ -325,9 +325,9 @@
       "sha256": "d83f4494a4aeb38c99190eb93d60a13f42cad558f71cd37bb2a76c22ff1ecbfe"
     },
     "box_tailscale_state_store.go": {
-      "gitBlob": "b7a5ddc1a5c30fcb9fdf3b67612b352024d3bcb6",
-      "bytes": 2479,
-      "sha256": "79e6350956df3230774abbc190c41524e9ba8dc4d0b672adccb21871559c3932"
+      "gitBlob": "993340d8f0b5c24d2ef1d30f64e25fe209e884f3",
+      "bytes": 2392,
+      "sha256": "48712c97d0bb09a957d10961d3e0a183113b2930597d185bb32663473072fa33"
     },
     "box_tailscale_state_store_test.go": {
       "gitBlob": "816d1b37add34c5cced35a804529a2cac8546086",
@@ -345,9 +345,9 @@
       "sha256": "a91611da6a3b203ec55ea690e3a87959c73c6e529081ce1faed9c6f317536410"
     },
     "common/dialer/domain_resolver_rules_test.go": {
-      "gitBlob": "ace55a360ac2e6f356c151a6e94f5d0a22322ec4",
-      "bytes": 6505,
-      "sha256": "385a896f58759c2147852324ed0c46b717365c3e82174c97658327aa4dfd9b59"
+      "gitBlob": "611f0b562f1edd18ebf2659faeaed04cffb93605",
+      "bytes": 6506,
+      "sha256": "bb172ee92d492a728be0441fcb4bfad01387b83cd5e2a3166155e60d3504c64b"
     },
     "common/dialer/interface_binding.go": {
       "gitBlob": "66cc3444553780d93f500783a37c9fa73ca404ee",
@@ -360,9 +360,9 @@
       "sha256": "7d122e5bca931d62128e90d6cccb30255e0496d278d9dc3592b2df73ded06cb3"
     },
     "daemon/instance.go": {
-      "gitBlob": "94b5e3ba22aec45f98b180e9ebe7254dd35ea4ba",
-      "bytes": 8797,
-      "sha256": "35873ad738ee3a7016d39d445cbffee6f8b77c220e46d1082350371e53e63ed8"
+      "gitBlob": "7777d66b5ce87a3ea438030ce993931807c7f617",
+      "bytes": 9780,
+      "sha256": "2be0379ae1cf5802134bf1a8b04b84478a1d164a2a58120237873aa14bc218c5"
     },
     "daemon/started_service.go": {
       "gitBlob": "4e997a3f74605c044b5d0101b71cf188fcd82118",
@@ -375,9 +375,9 @@
       "sha256": "ca046fd893a48681423ba28ff1879ceb198e2b6e08eab2419bcc4e556d86894c"
     },
     "daemon/tailscale_state_store.go": {
-      "gitBlob": "b29d2b4919af1757598b8dc7cfcb7d605a81a84d",
-      "bytes": 4403,
-      "sha256": "ae352b9297ce579ff6b557f5b36caafdad158e18a74d6ffcb82bd371fbdebc91"
+      "gitBlob": "c7948fafb5f645375ab7d72ad97aa1069df52dc5",
+      "bytes": 4540,
+      "sha256": "89a2d7fb10b825fff5c068c26697ae7606a90ee10ffb1f6155083cefb2e323fd"
     },
     "daemon/tailscale_state_store_test.go": {
       "gitBlob": "988009d4292a0a2dc92a90422f6a114fcbcf70cf",
@@ -420,9 +420,9 @@
       "sha256": "01c87f9ad1277e28f37474f2860158c34da7a11c9006957833607c395ccd8063"
     },
     "dns/transport/local/systemconfig/source_windows_test.go": {
-      "gitBlob": "f05d02ccb1ae57cb0a720ecddbde4f5165fe4e8c",
-      "bytes": 2677,
-      "sha256": "7cafa4e5b0d077e59007b081f72aac0c5c9535214f73a5bb7f51d2cf4dad8615"
+      "gitBlob": "1d6e410337f610726283ac261e98390ce81d8ad9",
+      "bytes": 2648,
+      "sha256": "5c78b4f5e38c722ba7e01415690f0d65f628ab36e51fbe386427eaae62c4dfd4"
     },
     "dns/transport/mdns/construction_test.go": {
       "gitBlob": "78a275af576e48daf8fb03a32ed0566ea738c45c",
@@ -430,9 +430,9 @@
       "sha256": "850d9a0a8096e93feadf0a949f0e0d3b0036e3248eeda3468e194dab12440bae"
     },
     "dns/transport/mdns/mdns.go": {
-      "gitBlob": "e4dbade248875e50957ddef21a9b2c19e748fd11",
-      "bytes": 13817,
-      "sha256": "3b93306127b896a570ecdcec19b2c94dd4ac175f0f7a83e01fa2bab5b0cc4b65"
+      "gitBlob": "0aea614bed7207193c0e0c2becb79f0b7f4f651d",
+      "bytes": 13791,
+      "sha256": "5749cc66723bc1a38d7efd8dde50e56e3952df730a2ba9ddacac0caa046c4fc0"
     },
     "docs/configuration/shared/dial.md": {
       "gitBlob": "761eae3aae997c17280eb60d4b8c58d9d792fbfd",
@@ -445,14 +445,14 @@
       "sha256": "dfe3e24eaf69713da0c1c84c7d7d2e7d8b2c2405efc0fa24bc220998037554fb"
     },
     "experimental/clashmode/manager_test.go": {
-      "gitBlob": "4f881d7c46212948cd710549542dfb382bf4ca88",
-      "bytes": 3118,
-      "sha256": "c82a6ba503fb597cc9a08683e0cf7503851a4790d9446859d9af1448e8f9268a"
+      "gitBlob": "1da6f04215d2dff4807cf99d696a1b76a5983f15",
+      "bytes": 3095,
+      "sha256": "c5d2dc2417526d9d57cde4d56bd86d3b913b71a61fb5e834182b14bc29e614b9"
     },
     "experimental/libbox/command_server.go": {
-      "gitBlob": "e30c8972a8f3b6a2714decdf7e6f088f39301ed6",
-      "bytes": 13682,
-      "sha256": "0d2d8f2041964d531f678ea6a80cb2b21324099440c4d621fe278b9d285c3e92"
+      "gitBlob": "6f89467149e989fe6f7f8808a0086266adcc45ed",
+      "bytes": 14571,
+      "sha256": "30099f70e5eba4bb829b9895d23d9c4a90b6fe6abe4ccf3895028a22daa2f0bc"
     },
     "experimental/libbox/command_server_transient_test.go": {
       "gitBlob": "b9aba252891352704c34c0e9b7b6c1406e3fa50b",
@@ -465,9 +465,9 @@
       "sha256": "6e137967557cc7681e10dc39609a7460e32f2fd42f4534a39d63476da7a5edb2"
     },
     "experimental/libbox/config_construction_persistence_test.go": {
-      "gitBlob": "1564622942a2e208750bc072c1151271a6e7df5c",
-      "bytes": 6087,
-      "sha256": "c1d60629cf689d5d0dff8ec2108123a9b6919d3cf16e11ac2f1c53d7b86c81a8"
+      "gitBlob": "83c69c4de40ee2769414119afe0109ed915964f6",
+      "bytes": 5104,
+      "sha256": "e87b9796dfe0948f6563d2cd620c273852cb7f284c16ac08474d46aea6703eb1"
     },
     "experimental/libbox/config_optional_persistence_test.go": {
       "gitBlob": "cf1df0ecf09f7e8f1d98f098d55c560085900407",
@@ -480,9 +480,9 @@
       "sha256": "4297d01d97da3583d689209f92bd2e8848918d9a52f9997a810d126a0deeb362"
     },
     "experimental/libbox/config_validation_test.go": {
-      "gitBlob": "6e69869f80e89eda218ef1bfc3d38dae90e0ab4d",
-      "bytes": 39348,
-      "sha256": "5657b2a036fcf83542d10b42c659e3aa160e12c7da3eee9172c48b8b0cb0fea1"
+      "gitBlob": "adb5ce4e02623e7f8ff5b3b635ffdd2d440b09fe",
+      "bytes": 39692,
+      "sha256": "9daf29e11b89adf54bc3425a0d39179c2b21f5188044f393e4e8db80de84aea0"
     },
     "experimental/libbox/dns.go": {
       "gitBlob": "652c5e4fdc16e753c45fd0aed5b8af5abed7982c",
@@ -495,14 +495,14 @@
       "sha256": "94e418dce2376ac269cc663e15033eda800006208501e02714ebea43caec4fe7"
     },
     "experimental/libbox/dns_lifecycle_test.go": {
-      "gitBlob": "fbaa5651bf11c09a0fe07c758458b36cc7e3d4e5",
-      "bytes": 8990,
-      "sha256": "e24e2f2e430a0e6b4848c6d8b64c26240fca2dc0a72b0ab34130c7de846f0a3c"
+      "gitBlob": "a74fc1e900b370476638b81d4c4ca290b9c362be",
+      "bytes": 8957,
+      "sha256": "11bb8f0d2ef94d5065c87bd1846b1db709f875d73ec296e5aac8fd75184c2097"
     },
     "experimental/libbox/dns_platform_lifecycle_test.go": {
-      "gitBlob": "1a419fc6f54ecec47470dd28fb64a9a5789e6c98",
-      "bytes": 13136,
-      "sha256": "286b154a99655cfd62f65dc5b4fb6e3473a1f26857d2ef07643530bcd7f87713"
+      "gitBlob": "84216d7d066f17fe243d485a53e330960bedce90",
+      "bytes": 13102,
+      "sha256": "89944774a87f3defe380927226691694d738eb2a58e4d7674a6be7de56dcda64"
     },
     "experimental/libbox/interface_binding_test.go": {
       "gitBlob": "6502d30f3917b982d87a1456791ed5869569e314",
@@ -515,9 +515,9 @@
       "sha256": "691274ed88abfe7e40d0ab041742dd531695c6d0b32081180e686d015864a445"
     },
     "experimental/libbox/monitor_lifecycle_test.go": {
-      "gitBlob": "5381c020b4fd5bbd87efc68caa173a3538a9321f",
-      "bytes": 14974,
-      "sha256": "20c044e57ea0bf0e9d53836f57059d1467c9948f92aa753b3849f9925d309402"
+      "gitBlob": "f6f4301649ca36b3a7ef1b8941a4946171850578",
+      "bytes": 15194,
+      "sha256": "a302abdc8f8ea1047cc78f350d0a821b6fdd0739d7dbb2fb1f076506086a93f1"
     },
     "experimental/libbox/platform.go": {
       "gitBlob": "e63d40598db027bc55141ef5b469a55ad62e82c3",
@@ -525,9 +525,9 @@
       "sha256": "b32f07edc6b3846805a82c9a9f6c1e472297f21cf2fdf6b514d115c4cf2bb1f0"
     },
     "experimental/libbox/service.go": {
-      "gitBlob": "b459908c61aa2727e30c95788b292fcd77c29eac",
-      "bytes": 15310,
-      "sha256": "63dfa3fd7988b66b0cd2403f70fd7625b51d71abe1d8240a37b343bd6e9fde1c"
+      "gitBlob": "0eaf782291277f51967743b25052fb09f70a2a1a",
+      "bytes": 15510,
+      "sha256": "669f382dafa5f3109735a47b7f6e75fc02970ed04a2cb2389bdab02500794ae7"
     },
     "experimental/libbox/tailscale_state_store_test.go": {
       "gitBlob": "f1e10746e31aa385670491b7c0d2e2823b6cb33a",
@@ -555,19 +555,19 @@
       "sha256": "45013fed9614e466de0107989288e92ba731236688f07b6afc9379b488317dad"
     },
     "protocol/tailscale/endpoint.go": {
-      "gitBlob": "821fa83156fa59ce30c286ee650e34b33d6cb807",
-      "bytes": 31744,
-      "sha256": "e62717271c1ec84c5cd5d913a443481a74fa07cd083f49d10b1259ab6e94b7d8"
+      "gitBlob": "efd58de23824a5ecb1d12ea7b063b9d907ac4671",
+      "bytes": 34279,
+      "sha256": "4228752fd77fb89fbf87cc5835de8dd17482b85c4dca03a31b3bc158e923be10"
     },
     "protocol/tailscale/state_store.go": {
-      "gitBlob": "66b0d9c5aebbc2d99cb1dec1c7eb9868ff39260f",
-      "bytes": 11273,
-      "sha256": "0b1869e07eadae52b1d789f5ab3faa8e514ce319d4398e1828d72a5cfa93f5d7"
+      "gitBlob": "f8399dbccd60a674ae603aef7b5ad4ae6c70ba31",
+      "bytes": 12366,
+      "sha256": "713616b63735f71ec102dbe634e47fd12ffec17683a1e11b9fd1bad3eb7d9cfc"
     },
     "protocol/tailscale/state_store_test.go": {
-      "gitBlob": "3580efc63438ccd75e63c11119a52c72ef6be553",
-      "bytes": 16733,
-      "sha256": "ecbe0d22ff2be79756e8beb638824d125dbd61d7323fbd9a74991a399e8ec552"
+      "gitBlob": "2055fb12789af13f906bb1ce6b4cf6149515c2c8",
+      "bytes": 17941,
+      "sha256": "7b299b3d7ac5f4ddb6b30f9b68af5628171a39bfe0844eac80fb955455cf2849"
     },
     "protocol/tailscale/testdata/synthetic-sealed-state.expected.json": {
       "gitBlob": "6642a65e3621373ce29b62a1ebddc62933df9549",
@@ -642,5 +642,8 @@
   "upstreamDeltaExpected": [
     ".github/workflows/build.yml",
     "docs/changelog.md"
-  ]
+  ],
+  "currentSourceInventory": "release/audit-remediation-source-inventory.json",
+  "currentSourceIdentityNote": "runtimeFiles tracks these actual source bytes. baselineCommit, reviewedRuntimeReference, introducedCommit and historical receipts are provenance only; none assert validation of this reconstructed batch.",
+  "currentSourceEntry": "scripts/ci/native_release_index.py -> upstream-native receipts/assets -> App polaris-reviewed-kernel-source-v1 source_policy.py and upstream-release.mjs. Legacy fork-source-fingerprint-v1 producer remains historical-only and unsupported for this current source."
 }

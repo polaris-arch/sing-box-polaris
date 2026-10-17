@@ -12,6 +12,7 @@ import (
 )
 
 type _Options struct {
+	PolarisWindowsDirectory *WindowsDirectoryOptions `json:"polaris_windows_directory,omitempty"`
 	RawMessage           json.RawMessage       `json:"-"`
 	CommentsSet          *json.CommentSet      `json:"-"`
 	Schema               string                `json:"$schema,omitempty" examples:"https://sing-box.sagernet.org/schema.json"`

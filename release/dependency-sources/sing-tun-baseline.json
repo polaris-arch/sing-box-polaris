@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "module": "github.com/sagernet/sing-tun",
-  "version": "v0.9.7-0.20261009022811-5c2edb183cc9",
-  "originCommit": "5c2edb183cc92eb190d41c04dedfa5519ca3e78c",
-  "zipSha256": "d30c485149d53a88d3d31dd2312b5e4ca97649169ac4d0ed81a918fa80c9bcaf",
-  "moduleSum": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+  "version": "v0.9.7-0.20261013140216-9ffa5391a2ad",
+  "originCommit": "9ffa5391a2adc292182ffbeac089e795b1a3190d",
+  "zipSha256": "99bc3fd54c62dbe3d78dc2fa3b6427827cd3ceb526b312d4be4e86c03ece7d56",
+  "moduleSum": "h1:1IrvHXjYfOFIqmfaj6GObeyZ7/M3fGn7rb9tVOo8o1A=",
   "modePolicy": "ZIP mode 0 records no permissions; readable regular Git files 100644 selected for this source snapshot. No executable modes inferred.",
   "files": [
     {
@@ -1136,8 +1136,8 @@
     },
     {
       "path": "stack_go_engine.go",
-      "bytes": 30163,
-      "sha256": "3f6aac87c28c082d87e14eed85b72363e58093feb5beb88851fcba84bd87515b",
+      "bytes": 30326,
+      "sha256": "a42032587cd30fa4a07dbef7c8125e51cde64d2c633035a0ce940604249e2591",
       "zipMode": 0,
       "gitMode": "100644"
     },
@@ -1290,8 +1290,8 @@
     },
     {
       "path": "stack_go_io_darwin.go",
-      "bytes": 26811,
-      "sha256": "9a5885db53941287c4cafbe15410d95f11685f36f4d9f8c1e9f19095286bd182",
+      "bytes": 26839,
+      "sha256": "9819a866f6cfb5679d46c427a1dd1dde43872854f0e7db2a47913a98dc82e835",
       "zipMode": 0,
       "gitMode": "100644"
     },
@@ -1339,8 +1339,8 @@
     },
     {
       "path": "stack_go_memory_arena.go",
-      "bytes": 4701,
-      "sha256": "cce286b75a35bfb90606ca011e8a31139688cbe7f880602740413b171e52fe52",
+      "bytes": 4687,
+      "sha256": "4a4204919729e236b1d38f53d479b428c310b89aa8e010f5504eacee75f00092",
       "zipMode": 0,
       "gitMode": "100644"
     },

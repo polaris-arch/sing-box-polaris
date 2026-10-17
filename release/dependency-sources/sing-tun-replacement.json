@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "module": "github.com/sagernet/sing-tun",
-  "version": "v0.9.7-0.20261009022811-5c2edb183cc9",
+  "version": "v0.9.7-0.20261013140216-9ffa5391a2ad",
   "replacementPath": "./third_party/sing-tun",
-  "replacementTree": "f3d3ebdbe6d7180d52388a5f3ba2214db4cffd6b",
+  "replacementTree": "46c2d2c2232ca4d912d9c30b043304e8ea7b2b5a",
   "replacementFileCount": 256,
-  "baselineOriginCommit": "5c2edb183cc92eb190d41c04dedfa5519ca3e78c",
-  "baselineZipSha256": "d30c485149d53a88d3d31dd2312b5e4ca97649169ac4d0ed81a918fa80c9bcaf",
-  "baselineModuleSum": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+  "baselineOriginCommit": "9ffa5391a2adc292182ffbeac089e795b1a3190d",
+  "baselineZipSha256": "99bc3fd54c62dbe3d78dc2fa3b6427827cd3ceb526b312d4be4e86c03ece7d56",
+  "baselineModuleSum": "h1:1IrvHXjYfOFIqmfaj6GObeyZ7/M3fGn7rb9tVOo8o1A=",
   "baselineFiles": 253,
   "changedBaselineFiles": [
     "tun_windows.go",
@@ -21,8 +21,10 @@
   "windowsAfterDNSSuffixUnchanged": true,
   "patchSha256": "812956b42cfbb5d302343998b898b9c6489a93f633b1f446c367c5c24681ecd1",
   "fingerprintSchema": "fork-source-fingerprint-v1",
-  "fourKernelPolicy": "Collect same schema from each actual new kernel source/build input; existing a01 and mobilealpha8 fingerprints remain historical and unchanged.",
+  "fourKernelPolicy": "Current release source identity follows scripts/ci/native_release_index.py and upstream-native receipts/assets, consumed by App polaris-reviewed-kernel-source-v1/source_policy.py and upstream-release.mjs. fork-source-fingerprint-v1 and existing a01/mobilealpha8 receipts remain historical-only; their producer is unsupported for this current source.",
   "other251BaselineFilesByteExact": true,
   "testFormatPatchPath": "release/dependency-sources/sing-tun-test-printf.patch",
-  "testFormatPatchSha256": "67b1fbb85b5d0358ecfd5e1fe94fc0f0ef99d3ec1e55dbe9b21022dff82c980b"
+  "testFormatPatchSha256": "67b1fbb85b5d0358ecfd5e1fe94fc0f0ef99d3ec1e55dbe9b21022dff82c980b",
+  "fingerprintSchemaScope": "Historical-only; unsupported for this current source.",
+  "currentAppSourcePolicySchema": "polaris-reviewed-kernel-source-v1"
 }

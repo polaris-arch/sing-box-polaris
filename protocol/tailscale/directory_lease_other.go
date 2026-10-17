@@ -1,4 +1,4 @@
-//go:build with_tailscale && !darwin && !linux
+//go:build with_tailscale && !darwin && !linux && !windows
 
 package tailscale
 

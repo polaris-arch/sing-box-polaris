@@ -170,7 +170,15 @@ func (t *Endpoint) beginDirectoryRetirement() {
 			lease := d.lease
 			d.mu.Unlock()
 			if lease != nil {
-				if err := lease.Close(); err != nil {
+				failure := d.scope.Wait(context.Background())
+				d.mu.Lock()
+				if d.node.Failure != "" { failure = errors.Join(failure, errors.New(d.node.Failure)) }
+				d.mu.Unlock()
+				if err := prepareDirectoryLeaseClose(lease, failure); err != nil {
+					// Failed durable revocation retains the original handles. A
+					// timeout or Close error cannot create retirement authority.
+					d.scope.Fail(err)
+				} else if err := lease.Close(); err != nil {
 					d.scope.Fail(err)
 				}
 			}
