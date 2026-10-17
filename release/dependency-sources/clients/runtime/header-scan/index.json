@@ -1,0 +1,54 @@
+{
+  "scope": "Finite update to the three previous unscanned source observations. No new component scope, no builds or final-binary inspection.",
+  "fullSourceFileHeaderScan": true,
+  "scanCounts": {
+    "CodeEditLanguages": 120,
+    "CodeEditSymbols": 44,
+    "codemirror-json5-source": 5,
+    "codemirror-json5-npm": 7
+  },
+  "excludedBinaryCount": 23,
+  "method": "Every nonbinary fixed Git-tree blob or exact archive file decoded UTF8, hashed, scanned across full text for licensing/copyright/SPDX/grant terms and author markers; hits reviewed in context. All fixed Apple tree blobs independently Git-blob verified. Exact npm archive SHA256 and lock SHA512 and exact source archive SHA256 verified. Binary files were not falsely treated as notice text.",
+  "recoveredOriginalNoticeCount": 2,
+  "noticeFiles": [
+    {
+      "path": "release/licenses/clients/runtime/header-scan/09d3092eca1ba1e7-CodeEditLanguages-haskell-original-header.txt",
+      "sha256": "09d3092eca1ba1e7a6176360f75a9462dcbb7c3821e8044f6bb913dea514f91c",
+      "bytes": 592,
+      "component": "CodeEditLanguages resource/tree-sitter-haskell",
+      "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+      "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+      "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1",
+      "sourceGitBlobSHA1": "3ab843e8337d939907497ce48a8315e742cf4a36",
+      "sourceGitBlobVerified": true,
+      "lineStart": 1,
+      "lineEnd": 13,
+      "byteStart": 0,
+      "byteEnd": 592,
+      "extraction": "Exact original leading comment lines, no rewritten grant",
+      "scope": "applies to this resource source, not a repository-wide license grant"
+    },
+    {
+      "path": "release/licenses/clients/runtime/header-scan/212bd68c4844aa21-CodeEditLanguages-kotlin-original-header.txt",
+      "sha256": "212bd68c4844aa2186447ee21caeb8d4d1079238eb546f65076d0cd98801092a",
+      "bytes": 81,
+      "component": "CodeEditLanguages resource/tree-sitter-kotlin",
+      "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+      "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+      "sourceSHA256": "0dda9e2b7d1192a5c8f08a057e98c29fd42bea610f1b9d49f8f4ca8f7d97ff3f",
+      "sourceGitBlobSHA1": "6f1c9687ccd6556f33e448aca11224929d154c02",
+      "sourceGitBlobVerified": true,
+      "lineStart": 1,
+      "lineEnd": 1,
+      "byteStart": 0,
+      "byteEnd": 81,
+      "extraction": "Exact original leading comment lines, no rewritten grant",
+      "scope": "applies to this resource source, not a repository-wide license grant"
+    }
+  ],
+  "noGenericReplacementTextGenerated": true,
+  "publicationBlockerAssessment": "Not assessed; observations do not automatically establish a blocker.",
+  "finalMachOInspectionRequiredByThisPass": false,
+  "completeRuntimeBOM": false,
+  "legalComplianceCertified": false
+}

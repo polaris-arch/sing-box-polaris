@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "status": "current-scope-review-required",
+  "historicalEvidence": "release/desktop-source-candidate is frozen prior-scope evidence; do not relabel it.",
+  "sharedDelivery": "Existing immutable source archive and final native index; publisher receipt associates every payload with both.",
+  "scope": [
+    "44 native CLI archives",
+    "Android AAR/APK",
+    "Apple libbox and unsigned archives/packages",
+    "desktop clients",
+    "distro packages",
+    "OCI archives"
+  ],
+  "openItems": [
+    {
+      "id": "client-derivative-identity",
+      "detail": "Android/Desktop derivative naming clause awaits the user decision. No identity rename or upstream consent is assumed; original authors and license texts remain intact."
+    }
+  ],
+  "legalConclusion": false,
+  "resolvedItems": [
+    {
+      "id": "go-current-notices",
+      "evidence": "release/licenses/go-1.27.2/provenance.json",
+      "scope": "Official fixed-commit LICENSE and PATENTS texts; target patches remain .github/go-toolchains.json."
+    },
+    {
+      "id": "current-module-delta",
+      "evidence": "release/ci/current-module-sources.json",
+      "scope": "11 current source ZIPs full GET + h1/SHA256 and 33 extracted notice texts; 11 additional Cronet modules only metadata/availability checked."
+    },
+    {
+      "id": "windivert-driver-source",
+      "evidence": "release/dependency-sources/windivert/",
+      "scope": "Official v2.2.2 release drivers exactly match in-tree .sys; fixed source archive full GET with47 Git blob checks;10 build/license inputs retained."
+    },
+    {
+      "id": "current-go-module-notice-source-map",
+      "evidence": "release/ci/current44-notice-mappings.json and current-module-sources.json",
+      "scope": "Actual148 external Go source modules (147 normal+remote replacement),145 old public pins include137 normal+8 acquisition; exact reused notice slices plus11 fresh module ZIPs. h1 and ZIP hashes distinguish source identity from licence conclusion."
+    },
+    {
+      "id": "current44-cronet-static-library-origin",
+      "evidence": "release/ci/current44-static-cronet-origin-bindings.json",
+      "scope": "13 static current rows exact origin/wrapper Git blobs+size and libcronet_cgo.go direct-link route; no new independent.a SHA256 claimed."
+    },
+    {
+      "id": "native-windivert-inclusion",
+      "evidence": "release/dependency-sources/windivert/current44-inclusion-proof.json",
+      "scope": "4 windows386/amd64 variants embed matching driver; ARM64 excluded. Published source/build and original LGPLv3 text shared. Desktop external stage separately mapped."
+    },
+    {
+      "id": "cronet-current-platform-applicability",
+      "evidence": "release/ci/current44-notice-mappings.json; current44-static-cronet-origin-bindings.json; original fixed engine/driver provenance",
+      "scope": "80 conservative engine texts and exact current fixed-source/library linkage reconciled. No concrete missing required notice or generator identified by this bounded engineering pass; no Chromium rebuild or bit-reproduction claim."
+    },
+    {
+      "id": "oci-current-source-and-notices",
+      "evidence": "release/dependency-sources/oci/oci-source-notice-map.json",
+      "scope": "9 actual images243package records,33 origin/commit,299 fixed aports files withGit modes,38 source inputs fullGET+SHA512,61 original/inline notices. New producer must match actual package/base identities before reuse."
+    },
+    {
+      "id": "usbip-driver-source-notices",
+      "evidence": "release/dependency-sources/sing-usbip/driver-source-notice-reconciliation.json",
+      "scope": "20 exact driverasset SHA256,actualamd64 embedded10files,8originalVBox sidecars,VirtualBox7.2.14+usbip-win20.9.7.7/.5 fixedsources/recipes/originallicenses. Three nativeWindows variants and Desktopx64/arm64mapped; no driver execution."
+    },
+    {
+      "id": "bounded-client-runtime-source-materials",
+      "evidence": "release/dependency-sources/clients/runtime/index.json",
+      "scope": "145 npm locked source candidates,23 Apple runtime pins and37 grammars,70 Android direct coordinates;166 original UTF-8 notice texts/305 mappings. Actual desktop17 notice files are matched separately. This is not the unresolved Android transitive graph or a final Apple binary BOM. False OfLong.class notice matches were removed; desugar JAR yields zero standalone original notices."
+    },
+    {
+      "id": "desugar-jdk11-2.1.5-source-and-original-license",
+      "evidence": "release/dependency-sources/clients/runtime/desugar-2.1.5-source.json",
+      "scope": "Official fixed release-preparation commit73170c345e6a762fc6a1f0301bb15218850023ef declares2.1.5;18.25MB source fullGET/9124 Git blobs verified;actual6113073-byte MavenJAR SHA matches previously acquired input. GPL2/Classpath LICENSE,ADDITIONAL_LICENSE_INFO,ASSEMBLY_EXCEPTION and22 exact build/root inputs retained. No JAR-embedded Git revision or bit-for-bit reproduction is claimed."
+    },
+    {
+      "id": "oci-actual-new-run-reuse-gate",
+      "evidence": "scripts/ci/github_release.py validate_oci_material_reuse; release/dependency-sources/oci/reuse-reference.json",
+      "scope": "Existing inventory compares actual OCI source/run/attempt,unique platform image,OCI artifact subject and explicit-empty SLSA subject,base/repositories/complete7-field package records. Every referenced blob size/hash/media checked; required-file whiteout/shadow and alternate outer formats rejected. All9 actual historical archives and hostile fixtures passed. Future new producer must pass actual comparison; no old image/core hash is reused."
+    },
+    {
+      "id": "ghostty-finite-native-source-notices",
+      "evidence": "release/dependency-sources/clients/runtime/ghostty-native/index.json",
+      "scope": "Observed iOS arm64 static archive:167 members associated with fixed source families/recipes;70 original texts,76 notice mappings,105 build inputs. gettext0.24 LGPL2.1+ and generated Bison special exception preserved,simdutf actual9.0.0 distinguished from stale5.2.8 shell. Compiler-runtime aggregate and final application retention remain bounded limitations; no complete runtime BOM,ZIP checksum verification or reproducible-build claim."
+    },
+    {
+      "id": "apple-prebuilt-finite-source-and-notice-scope",
+      "evidence": "release/dependency-sources/clients/runtime/ghostty-native/index.json; runtime/index.json; runtime/apple-root-source-acquisition.json; runtime/apple-nested-source-acquisition.json",
+      "scope": "Fixed Apple wrapper and native dependency source/recipes with conservative original notice coverage; fixed CodeLanguagesContainer source and grammar inputs. Exact final-link function tracing and bit-identical rebuilding are not required by this engineering assessment and are not used as publication gates. Original mixed licenses/exceptions are preserved; this is not a legal opinion."
+    },
+    {
+      "id": "android-actual-resolved-source-notices",
+      "evidence": "release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json; reuse-reference.json; scripts/ci/github_release.py validate_android_material_reuse",
+      "scope": "Successful diagnostic39031988065 measured other181/legacy164 unique artifacts,254 actual modules. Exact254 POM and253 sources.jar acquired;1 hash-verified empty Guava artifact has no class/native code.303 original texts,281 metadata/native recipe inputs;camera-core andgraphics-path JNI fixed-source/notice supplements included. Existing inventory requires actual full artifact identity/bytes/SHA and client base/overlay identity to match reviewed source-owned mapping; no root project/version injection or prior core hash reused."
+    }
+  ],
+  "noticeTextObservations": [
+    {
+      "components": [
+        "codemirror-json5@1.0.3",
+        "CodeEditLanguages@331d5dbc5fc8513be5848fce8a2a312908f36a11",
+        "CodeEditSymbols@ae69712b08571c4469c2ed5cd38ad9f19439793e"
+      ],
+      "detail": "Complete fixed-text scan now covers CodeEditLanguages120 texts,CodeEditSymbols44 texts,codemirror source5 and npm7 files. Two resource-specific Apache headers recovered and retained; no repository-wide grant found for Languages wrapper or Symbols. Symbols production import exists but no image API use was found in159 SourceEditor+312 client Swift files. codemirror exact manifest declares MIT/author but no original full MIT text was found. These are precise observations, not a conclusion of absent permission or automatic blocker; no substitute text fabricated. See runtime/header-scan/index.json and notice-observation-scope.json."
+    }
+  ],
+  "verificationLimits": [
+    {
+      "id": "apple-bounded-prebuilt-correspondence",
+      "detail": "Ghostty fixed wrapper/upstream/native recipes, ordered patches and applicable original texts cover the identified archive families conservatively; CodeLanguagesContainer fixed source and 37 grammars are retained. Final Mach-O function retention, full binary reproduction and every aggregate-object function have not been measured. These are verification limits, not an identified missing license obligation or automatic publication blocker. No precise unmet notice/source obligation was identified by this finite pass."
+    }
+  ]
+}

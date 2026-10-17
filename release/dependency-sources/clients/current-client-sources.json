@@ -1,0 +1,231 @@
+{
+  "schema": 1,
+  "clients": [
+    {
+      "repository": "SagerNet/sing-box-for-android",
+      "baseCommit": "ae93152f21457723af77d144f28c1f7be7362aec",
+      "sourceURL": "https://github.com/SagerNet/sing-box-for-android/archive/ae93152f21457723af77d144f28c1f7be7362aec.tar.gz",
+      "sourceArchiveSHA256": "536628016d037717f332c857cd3e110f3643378b67967725199303df6a3918ed",
+      "sourceArchiveBytes": 760475,
+      "fullSourceGetVerified": true,
+      "sourceInputs": [
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/sing-box-for-android/LICENSE",
+          "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-android/build-inputs/app/build.gradle.kts",
+          "sha256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-android/build-inputs/build.gradle.kts",
+          "sha256": "7dade69367b80004c72bde18d974b313fce1cec22deda8ced878296104adfb85"
+        },
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/sing-box-for-android/third_party/libxposed-api/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-android/build-inputs/third_party/libxposed-api/build.gradle.kts",
+          "sha256": "293505e0b14eac7e1273a6a10d0406a765a82c11c317348345f668f0c8b82660"
+        }
+      ],
+      "gitlinks": [],
+      "verifiedRegularGitBlobs": 449,
+      "delivery": "fixed public source plus source-owned overlay/build inputs",
+      "completeRuntimeNotices": false,
+      "overlayInputs": "release/ci/client-overlays.json"
+    },
+    {
+      "repository": "SagerNet/sing-box-for-desktop",
+      "baseCommit": "50f503849148dd73fa4f4bc231119acf5b2f3d7a",
+      "sourceURL": "https://github.com/SagerNet/sing-box-for-desktop/archive/50f503849148dd73fa4f4bc231119acf5b2f3d7a.tar.gz",
+      "sourceArchiveSHA256": "8bf8fa0ccd22fb36063a0a6741b2357e6736952abfab9278b03110a168b6f8fd",
+      "sourceArchiveBytes": 1402590,
+      "fullSourceGetVerified": true,
+      "sourceInputs": [
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/sing-box-for-desktop/LICENSE",
+          "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-desktop/build-inputs/native/windows-share/Cargo.lock",
+          "sha256": "6994fef64666be29b1dfee9f9b3031616dca9ec658addee74dcd0fd93de1e1c6"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-desktop/build-inputs/native/windows-share/Cargo.toml",
+          "sha256": "2c8fafe043cf370a87e5d04166ae655678d6704139aaae396dd6ca0f4ab4a29c"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-desktop/build-inputs/native/windows-share/package.json",
+          "sha256": "0e31dafab71b95d069e47cd4a6fa7032307fddb5c9071cc8fad095eccc0360af"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-desktop/build-inputs/package.json",
+          "sha256": "af0a3872639cab803eebf9193ad29da93672626dbdcda319a413dbb15bcc4da0"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-desktop/build-inputs/pnpm-lock.yaml",
+          "sha256": "950b1b6b304fc7f8c47a5ce624ff739412a62e165278fbaad52f3a7b42da988d"
+        }
+      ],
+      "gitlinks": [
+        {
+          "path": "dashboard",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "f231354bc786dfcffcf09f6ec771bc5683050194"
+        }
+      ],
+      "verifiedRegularGitBlobs": 112,
+      "delivery": "fixed public source plus source-owned overlay/build inputs",
+      "completeRuntimeNotices": false,
+      "overlayInputs": "release/ci/client-overlays.json"
+    },
+    {
+      "repository": "SagerNet/sing-box-for-apple",
+      "baseCommit": "e232aaf22d6d68773196ffc8e6e79684a6be717c",
+      "sourceURL": "https://github.com/SagerNet/sing-box-for-apple/archive/e232aaf22d6d68773196ffc8e6e79684a6be717c.tar.gz",
+      "sourceArchiveSHA256": "add239c77c1888577343b912aacf33c75dc798fd5ddc5fc60330d9a70027978d",
+      "sourceArchiveBytes": 8279937,
+      "fullSourceGetVerified": true,
+      "sourceInputs": [
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-apple/build-inputs/Frameworks/TreeSitterJSON5/Package.resolved",
+          "sha256": "e85da1018f368dc86af11acc7fbb2dead6136cf6f439f364d6f1d8b695c1c6ea"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-apple/build-inputs/Frameworks/TreeSitterJSON5/Package.swift",
+          "sha256": "fdf85a0e34afd8d5314ddf1ab148caa6f673c99753cc9f0c4a3d1a3cec54eb1e"
+        },
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/sing-box-for-apple/LICENSE",
+          "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-apple/build-inputs/Makefile",
+          "sha256": "acd8def858ad2143bdc3bda662ba70bf72e5b27c8c355d268696708c098d2fa2"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-for-apple/build-inputs/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+          "sha256": "ecf4c6fc36511d2542be625ba2a44aea9710c4561313e11576def9b1351e1654"
+        }
+      ],
+      "gitlinks": [
+        {
+          "path": "Frameworks/Runestone",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f"
+        }
+      ],
+      "verifiedRegularGitBlobs": 461,
+      "delivery": "fixed public source plus source-owned overlay/build inputs",
+      "completeRuntimeNotices": false,
+      "overlayInputs": "release/ci/client-overlays.json"
+    },
+    {
+      "repository": "SagerNet/sing-box-dashboard",
+      "baseCommit": "f231354bc786dfcffcf09f6ec771bc5683050194",
+      "sourceURL": "https://github.com/SagerNet/sing-box-dashboard/archive/f231354bc786dfcffcf09f6ec771bc5683050194.tar.gz",
+      "sourceArchiveSHA256": "d3eb0e50697306b994e44c62715807dcef9b8d4fdce64f612bb50e050eae0aee",
+      "sourceArchiveBytes": 288218,
+      "fullSourceGetVerified": true,
+      "sourceInputs": [
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/sing-box-dashboard/LICENSE",
+          "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-dashboard/build-inputs/package.json",
+          "sha256": "3c9ba98a5446a7f1bc3d546504f1c5fe5fe5dc242e0a2c00fed893973f4205db"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/sing-box-dashboard/build-inputs/pnpm-lock.yaml",
+          "sha256": "4f18292602a189a761311c5962ae9c7742b6541ed3b5279f9b4d2211ad31a8c8"
+        }
+      ],
+      "gitlinks": [],
+      "verifiedRegularGitBlobs": null,
+      "delivery": "fixed public source plus source-owned overlay/build inputs",
+      "completeRuntimeNotices": false,
+      "parentGitlink": {
+        "repository": "SagerNet/sing-box-for-desktop",
+        "path": "dashboard"
+      }
+    },
+    {
+      "repository": "nekohasekai/Runestone",
+      "baseCommit": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f",
+      "sourceURL": "https://github.com/nekohasekai/Runestone/archive/baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f.tar.gz",
+      "sourceArchiveSHA256": "e5afbea461990ae657ab199c669b58e5fe9d159375d76d7eca1242d559fd9ef2",
+      "sourceArchiveBytes": 56373622,
+      "fullSourceGetVerified": true,
+      "sourceInputs": [
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/Example/Example.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+          "sha256": "b9eba2d6df22eb839dd2b7c44c0fc73bcc9e63839226c8e610bfa395409442ce"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/Example/Languages/Package.swift",
+          "sha256": "2f880acbe119ea882293e8bc6a7a31007bc6737703cccd8aacf894a0c9356089"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/Example/Themes/Package.swift",
+          "sha256": "bd7a426cbe207d59e60ab23cfc4abe7a9e7d50700e8c751e3c99322f44672c96"
+        },
+        {
+          "kind": "notice",
+          "path": "release/licenses/clients/Runestone/LICENSE",
+          "sha256": "b34c869efe68c5082708d220ec01e7a4531a92b4ab96bf50b7b1e323bdea53c2"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/Package.resolved",
+          "sha256": "e85da1018f368dc86af11acc7fbb2dead6136cf6f439f364d6f1d8b695c1c6ea"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/Package.swift",
+          "sha256": "24c8ef04d82354f42ef06b2db0fbd68e83e4292e0ad31182e0588731a377303d"
+        },
+        {
+          "kind": "build-input",
+          "path": "release/dependency-sources/clients/Runestone/build-inputs/UITests/Languages/Package.swift",
+          "sha256": "86c24761daff8c51444139e0575b878171e73b32c55864f83af8d099a9549f3a"
+        }
+      ],
+      "gitlinks": [],
+      "verifiedRegularGitBlobs": null,
+      "delivery": "fixed public source plus source-owned overlay/build inputs",
+      "completeRuntimeNotices": false,
+      "parentGitlink": {
+        "repository": "SagerNet/sing-box-for-apple",
+        "path": "Frameworks/Runestone"
+      }
+    }
+  ],
+  "scope": "Exact client bases and2 fixed nested gitlinks. Source acquisition is not full runtime/license closure."
+}

@@ -1,0 +1,1414 @@
+{
+  "schema": "polaris-current44-public-source-delta-research-v1",
+  "sourceCommit": "68ffb209ded1f9337f9115741cba24f9f4c63421",
+  "current44IndexSha256": "24c3b14c8e91aa4e16806fb920efd8b01faf7a353c99f118f1d3d991dabc7a65",
+  "reusedPublicInputCount": 145,
+  "delta": [
+    {
+      "module": "github.com/klauspost/compress",
+      "version": "v1.20.1",
+      "h1": "h1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLMPdiQ=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.20.1.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/klauspost/compress/@v/v1.20.1.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 196,
+        "sha256": "4bc5a0f397e38630cc8de511a6912c6749b6558558f9d9c61ce572d7c8841250",
+        "data": {
+          "Version": "v1.20.1",
+          "Time": "2026-09-25T08:00:35Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/klauspost/compress",
+            "Hash": "5d880f230c38a0fc806b9ca1613103a44feff0ac",
+            "Ref": "refs/tags/v1.20.1"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 40331560,
+      "zipSha256": "eedb58d7e4a65669f9a290536646cbfe4188112368424b56a8c75cfdadb27dea",
+      "verifiedH1": "h1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLMPdiQ=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 16733,
+          "sha256": "0d9e582ee4bff57bf1189c9e514e6da7ce277f9cd3bc2d488b22fbb39a6d87cf",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/LICENSE"
+        },
+        {
+          "sourcePath": "gzhttp/LICENSE",
+          "bytes": 11361,
+          "sha256": "2252a5b1e2b1d3663b53ea77051b8ed065cb9270a3d1174d5d6ead8a2de051b6",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/gzhttp/LICENSE"
+        },
+        {
+          "sourcePath": "internal/lz4ref/LICENSE",
+          "bytes": 1477,
+          "sha256": "6a358d2540ca14048f02d366f23787c0a480157e58f058113f0e27168dd4e447",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/internal/lz4ref/LICENSE"
+        },
+        {
+          "sourcePath": "internal/snapref/LICENSE",
+          "bytes": 1486,
+          "sha256": "f69f157b0be75da373605dbc8bbf142e8924ee82d8f44f11bcaf351335bf98cf",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/internal/snapref/LICENSE"
+        },
+        {
+          "sourcePath": "s2/LICENSE",
+          "bytes": 1538,
+          "sha256": "08683b14bda8ae3538abf19e1879e853a39e3b8276a8d673363b529d15a61c1a",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/s2/LICENSE"
+        },
+        {
+          "sourcePath": "s2/cmd/internal/filepathx/LICENSE",
+          "bytes": 1061,
+          "sha256": "8582c87d9a6baa28f7827c5205b7d16c3179bc794ebd4c7cc287c49a89b7eaa1",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/s2/cmd/internal/filepathx/LICENSE"
+        },
+        {
+          "sourcePath": "s2/cmd/internal/readahead/LICENSE",
+          "bytes": 1100,
+          "sha256": "10fa24a602fde465db603cd5d546e37e33642a73cd24ddf5910be81724fec8b2",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/s2/cmd/internal/readahead/LICENSE"
+        },
+        {
+          "sourcePath": "snappy/LICENSE",
+          "bytes": 1486,
+          "sha256": "f69f157b0be75da373605dbc8bbf142e8924ee82d8f44f11bcaf351335bf98cf",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/snappy/LICENSE"
+        },
+        {
+          "sourcePath": "snappy/xerial/LICENSE",
+          "bytes": 1106,
+          "sha256": "d4ff111fa30ac75e28dca3868de957a3b73ff50b76bc4b8fe5c3a1f008d26703",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/snappy/xerial/LICENSE"
+        },
+        {
+          "sourcePath": "zstd/internal/xxhash/LICENSE.txt",
+          "bytes": 1068,
+          "sha256": "f566a9f97bacdaf00d9f21dd991e81dc11201c4e016c86b470799429a1c9a79c",
+          "retainedPath": "release/licenses/current-modules/github.com_klauspost_compress/v1.20.1/zstd/internal/xxhash/LICENSE.txt"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "github.com/molecule-man/go-brrr",
+      "version": "v1.2.0",
+      "h1": "h1:dOJU45BC3Gc2WXoxAW0rgCAgVuu2gruAOGncfieA0Jw=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/molecule-man/go-brrr/@v/v1.2.0.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/molecule-man/go-brrr/@v/v1.2.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 196,
+        "sha256": "7d13493bf93c5cc7e784a507d1800c15a452e10f6f03bab55e575af1006d7c0b",
+        "data": {
+          "Version": "v1.2.0",
+          "Time": "2026-10-03T16:55:04Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/molecule-man/go-brrr",
+            "Hash": "14592e54becfc8d4c6bf6c33f0340d6c059b4321",
+            "Ref": "refs/tags/v1.2.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 1182546,
+      "zipSha256": "8616b7b25491246ffe45ebc785510dc5b1b6d66b8390de3af3c26eeb7bb36a80",
+      "verifiedH1": "h1:dOJU45BC3Gc2WXoxAW0rgCAgVuu2gruAOGncfieA0Jw=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1076,
+          "sha256": "a12fbad03be79cbaf575982d5dfa5ba515d42ffa4c08a42da137fe938e28e851",
+          "retainedPath": "release/licenses/current-modules/github.com_molecule-man_go-brrr/v1.2.0/LICENSE"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "github.com/refraction-networking/utls",
+      "version": "v1.8.3-0.20261006222701-ff1b50fbbe9a",
+      "h1": "h1:YwnpbX4nj1GfLEsvGDDqzpbxTVVbHcEqCfUcfMYe1gc=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/refraction-networking/utls/@v/v1.8.3-0.20261006222701-ff1b50fbbe9a.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/refraction-networking/utls/@v/v1.8.3-0.20261006222701-ff1b50fbbe9a.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 207,
+        "sha256": "2e13c649259de23344ac7abd75fd6469ab1a885151289e0c4a2f11912392745c",
+        "data": {
+          "Version": "v1.8.3-0.20261006222701-ff1b50fbbe9a",
+          "Time": "2026-10-06T22:27:01Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/refraction-networking/utls",
+            "Hash": "ff1b50fbbe9a6dff1dcb1cfc0493bd5b0f073f67"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 1437966,
+      "zipSha256": "fbb0f7832c33046515c4207b259dbea220403138213bfae3720fdf82dc788d7b",
+      "verifiedH1": "h1:YwnpbX4nj1GfLEsvGDDqzpbxTVVbHcEqCfUcfMYe1gc=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1479,
+          "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067",
+          "retainedPath": "release/licenses/current-modules/github.com_refraction-networking_utls/v1.8.3-0.20261006222701-ff1b50fbbe9a/LICENSE"
+        },
+        {
+          "sourcePath": "dicttls/LICENSE",
+          "bytes": 1498,
+          "sha256": "ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec",
+          "retainedPath": "release/licenses/current-modules/github.com_refraction-networking_utls/v1.8.3-0.20261006222701-ff1b50fbbe9a/dicttls/LICENSE"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/crypto",
+      "version": "v0.57.0",
+      "h1": "h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/crypto/@v/v0.57.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/crypto/@v/v0.57.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 193,
+        "sha256": "b5711159f8090af77db970774d86305791718dae7c54256a898a9b432e98375a",
+        "data": {
+          "Version": "v0.57.0",
+          "Time": "2026-09-08T18:05:01Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/crypto",
+            "Hash": "3f62bf119e84c6e35e8518a2958089ade622d1a3",
+            "Ref": "refs/tags/v0.57.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 2312809,
+      "zipSha256": "856c916b92f1fc5b53983c04f6249f632f56c47ebc003bbcdfc503500dfb58b8",
+      "verifiedH1": "h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_crypto/v0.57.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_crypto/v0.57.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/mod",
+      "version": "v0.41.0",
+      "h1": "h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/mod/@v/v0.41.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/mod/@v/v0.41.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 190,
+        "sha256": "bed4e9e321ace8501613625b04436dbbaebc1821d01b9bc5306da23fcc9a7dfc",
+        "data": {
+          "Version": "v0.41.0",
+          "Time": "2026-08-24T20:56:42Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/mod",
+            "Hash": "d0a27b2d4a48460806692bf5c87fc157c3c65292",
+            "Ref": "refs/tags/v0.41.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 180455,
+      "zipSha256": "201e678d0a35b18b246abe58d80017b75d60be21cbaf4cbb9e963b48872565a9",
+      "verifiedH1": "h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_mod/v0.41.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_mod/v0.41.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/net",
+      "version": "v0.59.0",
+      "h1": "h1:5zfYln+w5XCxwrnMMJPufRgNoXEaGxl0wo5GqPXyues=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/net/@v/v0.59.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/net/@v/v0.59.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 190,
+        "sha256": "f2f059aefc08c37826ae9739869ef4d9324e147c9897a79a5de3f2e2d2f00900",
+        "data": {
+          "Version": "v0.59.0",
+          "Time": "2026-09-08T19:18:02Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/net",
+            "Hash": "540d04cfe5028e2655754591a4d3e08c586809f2",
+            "Ref": "refs/tags/v0.59.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 1941034,
+      "zipSha256": "1dc3bf31fcebe80d393288ac8fe5cac7f0e82e9b3a2630021dcdf5ffbfa3f601",
+      "verifiedH1": "h1:5zfYln+w5XCxwrnMMJPufRgNoXEaGxl0wo5GqPXyues=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_net/v0.59.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_net/v0.59.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/sync",
+      "version": "v0.23.0",
+      "h1": "h1:KameEIfc1IkluZyXWLn39Wd4tURc6GbCiISGiZm2bQk=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/sync/@v/v0.23.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/sync/@v/v0.23.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 191,
+        "sha256": "0842b53e293bdd9e9574ddbf33bb39538b447cf336b6f385e69928b5df4cf5ff",
+        "data": {
+          "Version": "v0.23.0",
+          "Time": "2026-08-31T03:04:41Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/sync",
+            "Hash": "f75267d8412fc1dfd12b343644a7ea46e4d9c85d",
+            "Ref": "refs/tags/v0.23.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 26276,
+      "zipSha256": "c19a11baba5c1a093cb4fd2f6d0d8d79673c97a82cb0fe2d693c9b6ad84f0f82",
+      "verifiedH1": "h1:KameEIfc1IkluZyXWLn39Wd4tURc6GbCiISGiZm2bQk=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_sync/v0.23.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_sync/v0.23.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/sys",
+      "version": "v0.48.0",
+      "h1": "h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/sys/@v/v0.48.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/sys/@v/v0.48.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 190,
+        "sha256": "f52c0a8146a472f3c780756e50b62c11d7fcd1f29dd379a962b5cb5cc392cbec",
+        "data": {
+          "Version": "v0.48.0",
+          "Time": "2026-08-31T19:43:43Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/sys",
+            "Hash": "613e2570718ecde85c04e69ebd5585c3881c442c",
+            "Ref": "refs/tags/v0.48.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 2094772,
+      "zipSha256": "3a47e06431ba1e24d5b2aca3a7ce31fd13faff34df3e5d8e63f105ff9d0c1786",
+      "verifiedH1": "h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_sys/v0.48.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_sys/v0.48.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/term",
+      "version": "v0.46.0",
+      "h1": "h1:3+OXuTbaKDgwk8jTi3aSLHRlmWqHEUDUtxnbFigO4YE=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/term/@v/v0.46.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/term/@v/v0.46.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 191,
+        "sha256": "9cc8085269ff2b8089d9b7e91363a1dd9d822d94e5c33c79bfc768cae41de5eb",
+        "data": {
+          "Version": "v0.46.0",
+          "Time": "2026-09-08T16:27:41Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/term",
+            "Hash": "6226200ed12cba417a9d9e799c2a7179d3fc0e27",
+            "Ref": "refs/tags/v0.46.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 22601,
+      "zipSha256": "9147fdd982f1aed1392183d5b48055f4f74c85d496604766c7f0b1d3bbd61c7c",
+      "verifiedH1": "h1:3+OXuTbaKDgwk8jTi3aSLHRlmWqHEUDUtxnbFigO4YE=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_term/v0.46.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_term/v0.46.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "golang.org/x/text",
+      "version": "v0.42.0",
+      "h1": "h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=",
+      "role": "normalModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/golang.org/x/text/@v/v0.42.0.zip",
+      "infoUrl": "https://proxy.golang.org/golang.org/x/text/@v/v0.42.0.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 191,
+        "sha256": "5b9b61f55293ec161f0cce9c4357abf80071864a801f8971490c68b84019df87",
+        "data": {
+          "Version": "v0.42.0",
+          "Time": "2026-09-08T16:29:55Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://go.googlesource.com/text",
+            "Hash": "fafe4a06967e06550e69ee42787d9902845d2a3f",
+            "Ref": "refs/tags/v0.42.0"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 7337550,
+      "zipSha256": "a7b64e003056b6470303f408202098d8f3714a115f23091b8cac85edeb265476",
+      "verifiedH1": "h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_text/v0.42.0/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+          "retainedPath": "release/licenses/current-modules/golang.org_x_text/v0.42.0/PATENTS"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "github.com/polaris-arch/tailscale",
+      "version": "v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046",
+      "h1": "h1:+7AyRBB7rvyU/QQ7eOQuGvLxmPF3kA7O/r+ar0I1X50=",
+      "role": "localReplacements",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-android-386",
+        "sing-box-1.15.0-polaris-alpha.12-android-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm",
+        "sing-box-1.15.0-polaris-alpha.12-android-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13",
+        "sing-box-1.15.0-polaris-alpha.12-darwin-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-arm64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv5",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv6",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat",
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-ppc64le",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc",
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl",
+        "sing-box-1.15.0-polaris-alpha.12-linux-s390x",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386",
+        "sing-box-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64",
+        "sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7",
+        "sing-box-1.15.0-polaris-alpha.12-windows-arm64"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/polaris-arch/tailscale/@v/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/polaris-arch/tailscale/@v/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 225,
+        "sha256": "7bf59a0bd4f6aff41cad4e95e82e848ffc6672da601a70fdf6022c42792ce752",
+        "data": {
+          "Version": "v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046",
+          "Time": "2026-10-16T04:35:20Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/polaris-arch/tailscale",
+            "Hash": "2f88101070463571831f8fdca7e0d58cbe26cb4b"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "zipBytes": 3885667,
+      "zipSha256": "532c8ef3039ff4aa60f3beb85dba5d869e49d2ffc2db49436bbe3c8b7ef79442",
+      "verifiedH1": "h1:+7AyRBB7rvyU/QQ7eOQuGvLxmPF3kA7O/r+ar0I1X50=",
+      "noticeFiles": [
+        {
+          "sourcePath": "LICENSE",
+          "bytes": 1515,
+          "sha256": "a7ca6186a7963a0a60740f6047760eecd7a0234e8c38bd7e1e0bbcb324bda45b",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/LICENSE"
+        },
+        {
+          "sourcePath": "PATENTS",
+          "bytes": 1377,
+          "sha256": "debc5ca73d082a6c7de743fecdba6f75deafdf9200acfbddeb8ca32d66e6e128",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/PATENTS"
+        },
+        {
+          "sourcePath": "derp/xdp/headers/LICENSE.BSD-2-Clause",
+          "bytes": 1649,
+          "sha256": "e1638b9a0c68ca90fad3df1d6b4e430804d2fbdc15e58d02cffddfae38953bbf",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/derp/xdp/headers/LICENSE.BSD-2-Clause"
+        },
+        {
+          "sourcePath": "internal/godown/github.com/go-json-experiment/json/LICENSE",
+          "bytes": 1479,
+          "sha256": "14a34c4db2d21bf9cf80d028b802cd22fed9bf597a6c2db7ce30ee6ffd04967a",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/internal/godown/github.com/go-json-experiment/json/LICENSE"
+        },
+        {
+          "sourcePath": "license_test.go",
+          "bytes": 2733,
+          "sha256": "3896d49f5a6de055f36273d76669eb4d2b2c299d0e44e82b8e591756c81f6cf7",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/license_test.go"
+        },
+        {
+          "sourcePath": "tempfork/spf13/cobra/LICENSE.txt",
+          "bytes": 10140,
+          "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283",
+          "retainedPath": "release/licenses/current-modules/github.com_polaris-arch_tailscale/v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046/tempfork/spf13/cobra/LICENSE.txt"
+        }
+      ],
+      "fullZipAndH1Verified": true,
+      "sourceArchiveRetention": "full bytes checked transiently; stable fixed URL + SHA256/h1 retained, no blanket source archive required"
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_386",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:YKTs7860q5YC+arXDoxuAuCq4Ba7hcJnau7/QtkVgcs=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_386/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_386/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 222,
+        "sha256": "69d3b0e3116406133026adc3ce4f3dbafb72d728bea6df7aa8ebc6d19027fc90",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_386",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "19828936",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_386_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:GbLerpkeRw1SGLHkwSNZXzR02f4aecpOBscKOp2vRkE=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-386-musl"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_386_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_386_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 227,
+        "sha256": "b58cf48554a647007331f99e300d8697bd632787764a22732060c1078b993b06",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_386_musl",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "15056113",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:1z4WrEbt5eB6Arpltl/x4pL/cooe6sn+grHrXk0lDCw=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_arm/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_arm/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 222,
+        "sha256": "57ec251efb5d06bdbe596846f4318033aa3bb457af3ec665c08f563ad1b5ff7b",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_arm",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "21245512",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:6h/hBfvE9xr+FszN4fvHPlRuMQmkhveOVnlfPiJcNW0=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-armv7-musl"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_arm_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_arm_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 227,
+        "sha256": "66425b6ceeb128a1f5f02b09eae7c0d913ca20bb5036d902adb7a2431aa9febb",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_arm_musl",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "16809287",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_loong64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:/Vy00lZZkG5usxUMAD/9vRTT93KvJh8NAO4lP1IZEVU=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_loong64/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_loong64/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 226,
+        "sha256": "b5df747e1fa1a4d6b35537a112730e334cc7b90ca5c67aabca7ec3283c1c9954",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_loong64",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "22275458",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_loong64_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:r6u8oKJ19t4gNtmggIgFgybaMLa3bliALxFTNN/OUy0=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-loong64-musl"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_loong64_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_loong64_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 231,
+        "sha256": "25383ed13eb7db0c31c190ac1f67a4de0ae5ec3f02b1b3cd7096a7f0d5f612ca",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_loong64_musl",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "17570746",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_mips64le",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:ZWfdGEaOPFCsvX26dQi3ac80nL8HP6hmHtRhy4MsYlI=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-mips64le-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mips64le/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mips64le/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 227,
+        "sha256": "1c7f4d3310ce4d9e8f57e122e345243ed2341fb54512c64f3a6c26c019b53d88",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_mips64le",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "24379377",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_mipsle",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:kYGMQ9qe7MyK8qpTuFaleAxVrQx9DAez1jNKFCFMLVQ=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mipsle/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mipsle/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 225,
+        "sha256": "cd1f6581264058c0c8d076acd34ed2b89908c09864b63d75cb4900b0f4318dd0",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_mipsle",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "23909188",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_mipsle_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:a2/KeGNQagO+eexS97/qykr68YLr616QRFot4aV4sJ4=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mipsle_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_mipsle_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 230,
+        "sha256": "630298fb33dd1a911325bb168fe720ff94f6a352147a5aa17d6dbc4637afd4dd",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_mipsle_musl",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "18451357",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_riscv64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:lxJLDTBemaS8j+xdOeK+EdxH4FSEndxNG321AO7f/ds=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-glibc"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_riscv64/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_riscv64/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 226,
+        "sha256": "eff7014cbde613c349cfb3067cb45e69e02989491ef1009e125d1ad31fcf3051",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_riscv64",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "23867713",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    },
+    {
+      "module": "github.com/sagernet/cronet-go/lib/linux_riscv64_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1": "h1:1ycIIAvgJsm6opK1nrXgle7QVCo9lOtyUGEDEeDOJQQ=",
+      "role": "prebuiltAcquisitionModules",
+      "platforms": [
+        "sing-box-1.15.0-polaris-alpha.12-linux-riscv64-musl"
+      ],
+      "zipUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_riscv64_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.zip",
+      "infoUrl": "https://proxy.golang.org/github.com/sagernet/cronet-go/lib/linux_riscv64_musl/@v/v0.0.0-20260929213014-a1cafd93eb1f.info",
+      "checkedAtUtc": "2026-10-17T11:09:00Z",
+      "publicInfo": {
+        "bytes": 231,
+        "sha256": "0327d9a7ef0bd8b37045966d3df384db05bf762598c1916a41a83db899b28299",
+        "data": {
+          "Version": "v0.0.0-20260929213014-a1cafd93eb1f",
+          "Time": "2026-09-29T21:30:14Z",
+          "Origin": {
+            "VCS": "git",
+            "URL": "https://github.com/sagernet/cronet-go",
+            "Subdir": "lib/linux_riscv64_musl",
+            "Hash": "a1cafd93eb1f748f354378309f84de3e2d4a71e4"
+          }
+        },
+        "fullGetVerified": true
+      },
+      "archiveAvailability": {
+        "httpStatus": 200,
+        "contentLength": "19201296",
+        "method": "HEAD",
+        "fullBytesVerified": false
+      }
+    }
+  ]
+}

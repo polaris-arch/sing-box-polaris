@@ -169,6 +169,146 @@ def smoke(directory):
   row['finalPackageCronetSmoke']={'status':'passed','os':expected_os,'arch':expected_arch,'go':observed['go'],'gvisorCompiled':True,'naiveOutbound':True,'linkage':observed['linkage'],'version':observed['version'],'librarySha256':row['sidecar']['sha256'] if row['sidecar'] else None,'coreSha256':row['core']['sha256']}
  rows[0].write_text(json.dumps(row,indent=2)+'\n')
 
+def validate_distribution_assessment(catalog):
+ if not isinstance(catalog,dict) or catalog.get('schema')!=1:
+  raise ValueError('invalid current distribution assessment')
+ if catalog.get('status') not in ('current-scope-review-required','reviewed-current-scope'):
+  raise ValueError('invalid current distribution status')
+ if not isinstance(catalog.get('openItems'),list):
+  raise ValueError('current distribution assessment requires explicit openItems list')
+ for item in catalog['openItems']:
+  if not isinstance(item,dict) or not isinstance(item.get('id'),str) or not item['id'] or not isinstance(item.get('detail'),str) or not item['detail']:
+   raise ValueError('invalid current distribution open item')
+ return catalog['status']=='reviewed-current-scope' and catalog['openItems']==[]
+
+
+def distribution_materials(index, root=Path('.')):
+ """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
+ root=Path(root)
+ inputs=['go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
+         'release/ci/client-overlays.json','release/ci/distribution-materials.json',
+         'release/ci/current-module-sources.json','release/polaris-public-source-inputs.json',
+         'release/ci/current44-notice-mappings.json','release/licenses/CURRENT44-NOTICE-CANDIDATE.txt',
+         'release/dependency-sources/sing-usbip/source-tar-materials-manifest.json',
+         'release/dependency-sources/sing-usbip/driver-source-notice-reconciliation.json',
+         'release/dependency-sources/ACQUIRE-AND-BUILD-CURRENT.md',
+         'release/dependency-sources/gomobile-v0.1.13.json','cmd/internal/build_libbox/main.go',
+         'release/dependency-sources/oci/oci-source-notice-map.json',
+         'release/dependency-sources/oci/source-acquisition.json',
+         'release/dependency-sources/oci/reuse-reference.json','scripts/ci/github_release.py',
+         'release/dependency-sources/clients/current-client-sources.json',
+         'release/dependency-sources/clients/runtime/index.json',
+         'release/dependency-sources/clients/runtime/recipe-index.json',
+         'release/dependency-sources/clients/runtime/desugar-2.1.5-source.json',
+         'release/dependency-sources/clients/runtime/ghostty-native/index.json',
+         'release/dependency-sources/clients/runtime/header-scan/index.json',
+         'release/dependency-sources/clients/runtime/notice-observation-scope.json',
+         'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json',
+         'release/dependency-sources/clients/runtime/android-resolved/reuse-reference.json',
+         'release/dependency-sources/clients/actual-desktop-notice-proof.json',
+         'release/dependency-sources/clients/actual-asar-notice-proof.json',
+         'release/ci/current44-static-cronet-origin-bindings.json',
+         'release/dependency-sources/windivert/current44-inclusion-proof.json',
+         'release/dependency-sources/windivert/fixed-source-availability-proof.json',
+         'release/dependency-sources/windivert/upstream-release-driver-proof.json',
+         'release/polaris-cronet-materials.json','release/polaris-cronet-graph-kernel-materials.json',
+         'scripts/ci/client_source.py','scripts/ci/native_release_index.py',
+         'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
+         'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
+         '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
+ toolchain=json.loads((root/'.github/go-toolchains.json').read_text())
+ inputs += [x['patch'] for x in toolchain['legacy'].values()]+[toolchain['iosCPU']['patch']]
+ catalog=json.loads((root/'release/ci/distribution-materials.json').read_text())
+ eligible=validate_distribution_assessment(catalog)
+ selection=json.loads((root/'release/ci/current44-notice-mappings.json').read_text())
+ notice_bytes=(root/selection['noticeBundle']['path']).read_bytes()
+ if sha(notice_bytes)!=selection['noticeBundle']['sha256']:raise ValueError('current notice bundle hash mismatch')
+ for notice in selection['noticeRecords']:
+  data=notice_bytes[notice['byteOffset']:notice['byteOffset']+notice['bytes']]
+  if len(data)!=notice['bytes'] or sha(data)!=notice['sha256']:raise ValueError('current notice slice hash mismatch')
+ runtime=json.loads((root/'release/dependency-sources/clients/runtime/index.json').read_text())
+ recipes=json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text())
+ ghostty=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text())
+ android=json.loads((root/'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json').read_text())
+ if android.get('concreteUnresolvedMaterials')!=[]:raise ValueError('unresolved actual Android source/notice materials')
+ for record in runtime['noticeTexts']+recipes+ghostty['noticeFiles']+ghostty['recipeFiles']+android['noticeFiles']+android['materialFiles']:
+  name=record['path']
+  if not isinstance(name,str) or not name.startswith(('release/licenses/clients/runtime/','release/dependency-sources/clients/runtime/recipes/','release/dependency-sources/clients/runtime/ghostty-native/recipes/','release/dependency-sources/clients/runtime/android-resolved/')) or '..' in Path(name).parts:
+   raise ValueError('invalid shared client material path')
+  data=(root/name).read_bytes()
+  if ('bytes' in record and len(data)!=record['bytes']) or sha(data)!=record['sha256']:
+   raise ValueError('shared client runtime material identity mismatch')
+ old_sources=json.loads((root/'release/polaris-public-source-inputs.json').read_text())['modules']
+ current_sources=json.loads((root/'release/ci/current-module-sources.json').read_text())['delta']
+ source_key=lambda x:(x['module'],x['version'],x.get('h1',''))
+ pinned_sources={source_key(x):x for x in old_sources}
+ current_sources={source_key(x):x for x in current_sources}
+ modules={}; native=[]; missing_materials=[]
+ notice_components={(x['module'],x.get('version'),x.get('h1')):x for x in selection['components'] if 'version' in x}
+ def module_id(item):
+  return sha(json.dumps(item,sort_keys=True,separators=(',',':')).encode())
+ def module_record(item):
+  # Go BuildInfo labels both local and remote replacements as localReplacements.
+  actual=item.get('replacement',item)
+  m=dict(actual)
+  if m['module'].startswith('./'):
+   m['delivery']='tracked-source-archive'
+  else:
+   if not m.get('version') or not m.get('h1'):raise ValueError('unbound external module source')
+   escape=lambda x: ''.join('!'+c.lower() if c.isupper() else c for c in x)
+   m['sourceURL']='https://proxy.golang.org/'+escape(m['module'])+'/@v/'+escape(m['version'])+'.zip'
+   m['delivery']='fixed-module-source-location'
+   m['availabilityVerified']=False
+   key=source_key(m)
+   if key not in pinned_sources and key not in current_sources:
+    missing_materials.append({'module':m['module'],'version':m['version'],'h1':m['h1'],'reason':'no exact source acquisition input'})
+   if key in notice_components:
+    m['noticeRecordIndexes']=notice_components[key].get('noticeRecordIndexes',[])
+   else:
+    missing_materials.append({'module':m['module'],'version':m['version'],'h1':m['h1'],'reason':'no exact notice component mapping'})
+   if key in pinned_sources:
+    source=pinned_sources[key]
+    m['sourceArchive']={k:source[k] for k in ('zipUrl','zipBytes','zipSha256')}
+    m['sourceEvidence']='release/polaris-public-source-inputs.json (exact module/version/h1 match; historical acquisition)'
+   if key in current_sources:
+    source=current_sources[key]
+    m['sourceEvidence']='release/ci/current-module-sources.json'
+    m['availabilityVerified']=source.get('verifiedH1')==m['h1']
+    m['publicMetadataAvailable']=source.get('publicInfo',{}).get('fullGetVerified',False)
+    if source.get('verifiedH1')==m['h1']:
+     m['sourceArchive']={k:source[k] for k in ('zipUrl','zipBytes','zipSha256')}
+     m['noticeFiles']=source.get('noticeFiles',[])
+  if 'replacement' in item:m['replaces']={k:v for k,v in item.items() if k!='replacement'}
+  key=module_id(m);modules[key]=m;return key
+ for row in sorted(index['platforms'],key=lambda x:x['id']):
+  if row['sourceCommit']!=index['sourceCommit'] or row['sourceTree']!=index['sourceTree']:
+   raise ValueError('mixed source material binding')
+  if row['goVersion']!='go'+toolchain['version']:
+   missing_materials.append({'toolchain':row['goVersion'],'reason':'actual toolchain differs from source-owned current material version'})
+  graph=row['buildGraph']
+  ids=sorted({module_record(m) for kind in ['normalModules','prebuiltAcquisitionModules','localReplacements'] for m in graph[kind]})
+  native.append({'archive':row['archive']['name'],'archiveSHA256':row['archive']['sha256'],
+                 'coreSHA256':row['core']['sha256'],'goVersion':row['goVersion'],
+                 'modules':ids,'localSourceIdentity':row['sourceIdentity'],
+                 'cronetSidecar':row['sidecar'],
+                 'windivertSourceEvidence':'release/dependency-sources/windivert/' if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else None,
+                 'repositoryNoticePaths':['licenses/repository-components/JA3-LICENSE'] +
+                     (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else [])})
+ return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
+         'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],
+         'sourceURL':'https://github.com/'+REPO+'/tree/'+index['sourceCommit'],
+         'toolchain':toolchain,'inputs':{p:sha((root/p).read_bytes()) for p in sorted(set(inputs))},
+         'legalFiles':{x['path']:x['sha256'] for x in index['legalFiles']},
+         'modules':dict(sorted(modules.items())),'nativeArchives':native,
+         'noticeSelection':{'path':'release/ci/current44-notice-mappings.json','sha256':sha((root/'release/ci/current44-notice-mappings.json').read_bytes()),'bundle':selection['noticeBundle']},
+         'assessment':catalog,'unmappedMaterialIdentities':[json.loads(x) for x in sorted({json.dumps(x,sort_keys=True) for x in missing_materials})],
+         'publicationEligible':eligible and not missing_materials,
+         'limitations':['This binding proves identity and association, not license/source closure.',
+                        'The kernel source archive does not expand client gitlinks.',
+                        'Module h1 is a Go directory checksum, not a downloaded ZIP SHA256.',
+                        'Historical source/notice evidence remains historical.']}
+
+
 def assemble(directory):
  commit,tree=identity();d=Path(directory);v=os.environ['VERSION'];tag='v'+v
  final=os.environ.get('REQUIRE_RELEASE_TAG')=='true'
@@ -221,6 +361,7 @@ def assemble(directory):
   if len(matches)!=1:raise ValueError('missing unique successful native smoke API evidence: '+name)
   native_jobs[key]={'id':matches[0]['id'],'name':name}
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
+ index['distributionMaterials']=distribution_materials(index)
  if final:
   verify_checkout(tag,commit,tag_object)
   import jsonschema

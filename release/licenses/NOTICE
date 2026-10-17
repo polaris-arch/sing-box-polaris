@@ -1,21 +1,28 @@
-Polaris candidate includes sing-box, SagerNet Cronet Go bindings, and the matching
-Cronet library identified by module version, Git blob and byte SHA256 in provenance.
+Polaris / sing-box-polaris release source and notice association
 
-sing-box: GPL-3.0-or-later; COPYING and full GPL text accompany this candidate.
-Source: https://github.com/polaris-arch/polaris-box/tree/a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932
-Go dependency versions/checksums: same source go.mod and go.sum.
-Cronet Go wrapper/module: GPL-3.0-or-later.
-Source: https://github.com/SagerNet/cronet-go/tree/4d18a60dc3a8d327065b058f92fbbfc9391b84bc
-Library module origin: a1cafd93eb1f748f354378309f84de3e2d4a71e4
-Library blobs: https://github.com/SagerNet/cronet-go/tree/4d18a60dc3a8d327065b058f92fbbfc9391b84bc/lib
-Naiveproxy fork: BSD; its exact fixed gitlink, not a moving branch:
-https://github.com/SagerNet/naiveproxy/tree/be1be963131154ba82761a7ed85ba426b2027319
-Chromium source snapshot within that gitlink:
-https://github.com/SagerNet/naiveproxy/tree/be1be963131154ba82761a7ed85ba426b2027319/src
-Top-level BSD texts are NAIVEPROXY-LICENSE and CHROMIUM-LICENSE.
+Upstream sing-box and SagerNet Cronet Go bindings retain their upstream identities.
+sing-box and Cronet Go wrapper: GPL-3.0-or-later; see LICENSE and GPL texts.
+Current kernel source: the exact sourceCommit/sourceTree in the accompanying
+polaris-upstream-native-assets.json and sing-box-polaris-source-<sourceCommit>.tar.gz.
+Repository: https://github.com/polaris-arch/sing-box-polaris
+The final index distributionMaterials binds all 44 CLI archives to actual linked
+module versions/h1, local replacements, Go toolchain patches and notice hashes.
+The GitHub receipt associates every public payload with those shared materials;
+client records additionally identify exact upstream base commits and applied diff.
+The source tar contains tracked kernel files; client gitlinks are not expanded.
 
-DISTRIBUTION BLOCKER: complete per-library Chromium third-party notice and
-Corresponding Source/build-input closure has not been attested for these prebuilt
-bytes. Top-level license texts and source addresses do not establish that closure.
-This is an unsigned CI/local review candidate, not a distributable release.
-No old source-only tag is used as proof that these binary assets are complete.
+Toolchain: official Go 1.27.2, commit 022c8636110ebac86a9b88724cda168ed713c21f,
+with only target-specific patches recorded in .github/go-toolchains.json.
+Old go-1.25.5 texts and desktop-source-candidate receipts are historical evidence,
+not an assertion of current Go/runtime or whole release coverage.
+Cronet engine: 154.0.8037.49. Match each library hash with
+release/polaris-cronet-materials.json and polaris-cronet-graph-kernel-materials.json.
+Naiveproxy/Chromium top-level BSD notices do not classify all nested components.
+Retain applicable nested notices, including Apache-2.0 WITH LLVM-exception material.
+
+DISTRIBUTION REVIEW PENDING: the current finite unresolved source/notice items are
+recorded in release/ci/distribution-materials.json, embedded in the final index.
+An identity match or a public source URL alone does not prove corresponding-source
+or notice closure. Do not describe an unresolved candidate as publication-eligible.
+Historical warnings and receipts remain unmodified under their original evidence
+paths; the prior active notices are retained in licenses/historical.

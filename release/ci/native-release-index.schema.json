@@ -661,6 +661,33 @@
         ],
         "additionalProperties": false
       }
+    },
+    "distributionMaterials": {
+      "type": "object",
+      "required": [
+        "schema",
+        "sourceCommit",
+        "sourceTree",
+        "sourceArchive",
+        "modules",
+        "nativeArchives",
+        "legalFiles",
+        "assessment",
+        "publicationEligible"
+      ],
+      "properties": {
+        "schema": {
+          "const": "polaris-distribution-materials-v1"
+        },
+        "publicationEligible": {
+          "type": "boolean"
+        },
+        "nativeArchives": {
+          "type": "array",
+          "minItems": 44,
+          "maxItems": 44
+        }
+      }
     }
   },
   "required": [
@@ -675,7 +702,8 @@
     "producer",
     "legalFiles",
     "sourceArchive",
-    "platforms"
+    "platforms",
+    "distributionMaterials"
   ],
   "additionalProperties": false
 }

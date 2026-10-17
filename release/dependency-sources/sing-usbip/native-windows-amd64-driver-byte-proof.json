@@ -1,0 +1,82 @@
+{
+  "coreMember": "sing-box-1.15.0-polaris-alpha.12-windows-amd64/sing-box.exe",
+  "coreBytes": 82633216,
+  "coreSha256": "3e0143eb4f6b751b1b73bbd9029fce36629d4a79d3e0d53c1b61601dfb821b68",
+  "expectedCore": {
+    "member": "sing-box.exe",
+    "bytes": 82633216,
+    "sha256": "3e0143eb4f6b751b1b73bbd9029fce36629d4a79d3e0d53c1b61601dfb821b68"
+  },
+  "files": [
+    {
+      "driverPath": "internal/vboxusb/assets/amd64/VBoxUSB.cat",
+      "bytes": 12014,
+      "sha256": "bb74edb4ae22b1923ad85e89b119deeb0103cf124f3c0aeaebf91d21d16712ba",
+      "fullByteOffsetInCore": 78813357,
+      "present": true
+    },
+    {
+      "driverPath": "internal/vboxusb/assets/amd64/VBoxUSB.inf",
+      "bytes": 2944,
+      "sha256": "21137c65e8856c77414c928d776cc01baedd4b7919dd6224a5b715f85a76df06",
+      "fullByteOffsetInCore": 78599064,
+      "present": true
+    },
+    {
+      "driverPath": "internal/vboxusb/assets/amd64/VBoxUSB.sys",
+      "bytes": 182792,
+      "sha256": "4e60921286307172fd42888cc4855f01cdb5b7bd7a71eebba2636093d8742732",
+      "fullByteOffsetInCore": 79527096,
+      "present": true
+    },
+    {
+      "driverPath": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys",
+      "bytes": 197232,
+      "sha256": "9eb9d512e13c8747cee74057aa6491cb22550f46a7917f03b8eddfa8b0d78307",
+      "fullByteOffsetInCore": 79709888,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_filter.cat",
+      "bytes": 11938,
+      "sha256": "02a95969ba033ded3bf9a8c136551697d097da076c8886630145ef8d39a1dd33",
+      "fullByteOffsetInCore": 78801419,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_filter.inf",
+      "bytes": 2052,
+      "sha256": "a149b941d124b9e2f4c503d8af0c1fdb6907480d372d34b4f76d7452648466a2",
+      "fullByteOffsetInCore": 78580448,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_filter.sys",
+      "bytes": 54352,
+      "sha256": "c290299ff4d0f6a597db5ce03e15b29a5349cdce7c587ebfbd9ecaeca04f73ed",
+      "fullByteOffsetInCore": 79052512,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_ude.cat",
+      "bytes": 11915,
+      "sha256": "a1fdd6612242e14c71d33a3693f3010b1f1accb9f6922f0b12543dc5c0217e87",
+      "fullByteOffsetInCore": 78789504,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_ude.inf",
+      "bytes": 3041,
+      "sha256": "00a1dbfe02c0bbbed38b6e1c81ef0a6dcfe23fe39b07628592167383f7656256",
+      "fullByteOffsetInCore": 78607904,
+      "present": true
+    },
+    {
+      "driverPath": "internal/usbipvhci/assets/amd64/usbip2_ude.sys",
+      "bytes": 137752,
+      "sha256": "51db440065393e588a6b2585508c50eb3e1510b7b06d9afa6c5bde583751ea7d",
+      "fullByteOffsetInCore": 79389344,
+      "present": true
+    }
+  ]
+}

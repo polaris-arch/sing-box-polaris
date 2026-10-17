@@ -103,4 +103,23 @@ class TestNative(unittest.TestCase):
  def test_assembled_rejects_missing_row_source_identity(self):
   rows,archive=self.archived_module_fixture();del rows[-1]['sourceIdentity'];reads,blobs=self.module_mocks()
   with reads,blobs:self.assertRaisesRegex(ValueError,'native row module identity differs',n.validate_archived_source_identity,rows,archive,'a'*40)
+ def test_shared_notice_files_are_text_not_compiled_payloads(self):
+  for path in (R.parents[1]/'release/licenses').rglob('*'):
+   if path.is_file():
+    with self.subTest(path=path):
+     path.read_bytes().decode('utf-8')
+     self.assertNotEqual(path.suffix.lower(),'.class')
+ def test_ghostty_logf_retains_all_original_notice_blocks(self):
+  root=R.parents[1]
+  index=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text())
+  rows=[row for row in index['noticeFiles'] if row['path'].endswith('-logf.c.original-header.txt')]
+  self.assertEqual(len(rows),1)
+  row=rows[0];data=(root/row['path']).read_bytes()
+  self.assertEqual(len(data),515)
+  self.assertEqual(n.sha(data),'8321493840d6ffec09121148a782785c0591b42a3a270dfda01b4ce4d5c7aa6b')
+  self.assertIn(b'Ian Lance Taylor',data)
+  self.assertIn(b'Copyright (C) 1993 by Sun Microsystems',data)
+  self.assertIn(b'is preserved.',data)
+  self.assertEqual(row['mappings'][0]['byteStart'],0)
+  self.assertEqual(row['mappings'][0]['byteEnd'],515)
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,1235 @@
+{
+  "allChecksPassed": true,
+  "noticeCount": 70,
+  "noticeMappingCount": 76,
+  "recipeCount": 105,
+  "noClassFiles": true,
+  "oldFrozenClientRuntimeArchiveUnchangedSHA256": "8c7ee340f496af239502bdf5cbe237d856342b4d76a09795f1c89789387798f0",
+  "checks": [
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/386211873e5b7a02-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/2e3bbb7d7c5c3963-LICENSE.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/08c135755dd58903-FTL.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/c4120c6752c910c2-GPLv2.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/980af1d09d9a1092-AUTHORS",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/7317e078e2d3b5d7-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/845efc77857d485d-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/172a2a72c080d306-AUTHORS",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/70ba5469ea0bab6e-COPYING",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/43070e2d4e532684-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/d25e82e26acd42ca-LICENSE-BSD3",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/4bd9e2cd15ab6d68-AUTHORS",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/e79e9c8a0c85d735-COPYING",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/20e50fe7aae3e563-COPYING.LIB",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/9bdb2271fdd879dd-bindtextdom.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/5dac99dbf81d70a2-dcgettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/e9d63953719c37d3-dcigettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/848c681776e99d3e-dcngettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/d0ae2520dd2f357a-dgettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/d0491fa69b904082-dngettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/a0a0ed116848b1f9-explodename.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/ed9f023084350a4d-finddomain.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/1e9b8cbff80d1c18-gettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/228c8c64a73b83f3-hash-string.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/c102c91165ff86c9-intl-compat.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/dbe643b3917855bc-l10nflist.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/1740ec6ab2cee6fa-langprefs.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/3dc2eebc9d6c1cf6-loadmsgcat.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/f956cb95e48f1e26-localealias.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/71ff65b0c0d7572f-log.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/4ac46e9f11fc899d-ngettext.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/354ae38322779166-plural-exp.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/1592cc21b2d7148f-setlocale.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/2b0562532dc7a93b-textdomain.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/2790a6a7aaf5a5f8-version.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/c39a27b502b50dba-compat.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/f90e4ffecb814865-getlocalename_l-unsafe.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/de890101fe483e00-localename.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/75ab29a83067fc92-setlocale-lock.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/977e8a5b8c774c4f-setlocale_null.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/e33b1bafd3e0b08f-setlocale_null-unlocked.c.header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/f8ac2c75e7f629a8-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/0d542e0c8804e39a-LICENSE-APACHE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/bb811a4b485eac3c-LICENSE-MIT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/10ed5a55912965c9-src_stb_stb_image.h.block31.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/acffdbe9983f5996-pkg_simdutf_vendor_simdutf.h.block34.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/fa04727dc6e4a77f-fthash.h.block1.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/18d9782898d9eac0-README.pcf-full.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/02538fb019fe962c-ft-hb.c.block0.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/4ce814c61160ae6c-zlib.h.block0.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/7984455e7e5a9fab-README.bdf-full.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/3f832ebe1d7741df-plural.c.block1.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/c80564db958dedc5-plural.c.block2.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/f8af142d317947ae-abort.cc.original-prefix-with-modifications.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/a988ca976b669c4a-targets.cpp.original-prefix-with-modifications.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/603a133ed0f86da5-per_target.cc.original-prefix-with-modifications.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/aebb50198a567584-targets.cc.original-license.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/eb4cdf9ca0039167-libintl.h.original-license.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/6cbb3cfd5baf82d1-wuffs-v0.4.c.original-license.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/7d44f8a20ce2b9ab-log.c.original-header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/8321493840d6ffec-logf.c.original-header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/8e483126930e4dda-fp_add_impl.inc.original-header.txt",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/fc8dbc04e03ad4ef-LICENSE-MIT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/3d34610fc6b5e1b0-LICENSE-APACHE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/1f4b38df6a142e67-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/5c537d6853e00529-LICENSE",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/539dd7aed86e8a4f-LICENSE.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/e2b35be49f7284a4-LICENSE.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/f9bc4423732350eb-COPYRIGHT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "notice",
+      "path": "release/licenses/clients/runtime/ghostty-native/1a8f1058753f1ba8-LICENSE.TXT",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/freetype/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/freetype/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/abort.cc",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/per_target.cc",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/targets.cpp",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/aarch64_darwin.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/aarch64_linux.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/linux.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/loongarch.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/ppc.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/riscv.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/s390x.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/x86.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/main.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/targets.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/config.h",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/libintl.h",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libpng/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libpng/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/os/zig_macos.c",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/text/ext.c",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/oniguruma/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/oniguruma/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/simdutf/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/simdutf/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/wuffs/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/wuffs/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/zlib/build.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/zlib/build.zig.zon",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/CombineArchivesStep.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/Config.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/GhosttyLib.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/GhosttyXCFramework.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LibsystemOverrideStep.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LibtoolStep.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LipoStep.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/SharedDeps.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/base64.cpp",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/codepoint_width.cpp",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/index_of.cpp",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/vt.cpp",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/stb/stb.c",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/.github/workflows/build.yml",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/.github/workflows/release.yml",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Ghostty.ref",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0001-darwin-libghostty-install.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0002-host-managed-io.patch",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0003-prebuilt-framedata.patch",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0004-ios-fixes.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0005-ios-metal-rendering.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0006-disable-custom-shaders.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0007-disable-inspector.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0008-macos-metal-texture-storage.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0009-libcxx-apple-availability.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0011-replay-response-suppression.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0012-visionos.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0013-host-toolchain.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0014-preserve-sync-on-resize.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0016-maccatalyst.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0018-screen-text-history.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/README.md",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/zig/README.md",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/README.md",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/apply-patches.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-ghostty.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-manifest.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-platform.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/check-licenses.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/merge-xcframework.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/prepare-zig-lib.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/storage-tag.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/support/anchored_edit.py",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/support/libcxx-verbose-abort-compat.c",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/addf3.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/cos.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/log.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/udivmod.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/ubsan_rt.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/trig.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2f.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2l.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/sincos.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/exp.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/exp2.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/log2.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/sqrt.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/fma.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/GhosttyLib.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/LibsystemOverrideStep.zig",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    },
+    {
+      "kind": "recipe",
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/libsystem_override.sh",
+      "sha256Verified": true,
+      "utf8Verified": true,
+      "nulFree": true
+    }
+  ]
+}

@@ -1,0 +1,692 @@
+{
+  "schema": "polaris-sing-usbip-source-tar-materials-v1",
+  "baseDirectory": "release/dependency-sources",
+  "files": [
+    {
+      "path": "sing-usbip/VirtualBox-7.2.14-SHA256SUMS",
+      "bytes": 2959,
+      "sha256": "dcd1a3aafc2f6f986e3f3e046e2233f4d1f3bafa604cb18694b6dee02acf1754"
+    },
+    {
+      "path": "sing-usbip/VirtualBox-checksum-readback.json",
+      "bytes": 173,
+      "sha256": "2a97b63659d51c89f67dd10efcd37b20a06ffffea633a4e0611b4116fa4fd598"
+    },
+    {
+      "path": "sing-usbip/driver-source-notice-reconciliation.json",
+      "bytes": 21235,
+      "sha256": "a5eb4aae86375aab2e757373ac7ce86e6b00e7fd061781a8be795f7e8a5c2fcc"
+    },
+    {
+      "path": "sing-usbip/native-windows-amd64-driver-byte-proof.json",
+      "bytes": 2869,
+      "sha256": "110b2447499c8f2d52a463986241f769c45cd4438e0e371240ea6a60225c0ac5"
+    },
+    {
+      "path": "sing-usbip/notice-append-proof.json",
+      "bytes": 523,
+      "sha256": "b9a1215b40047555c78cb7791ba187ef38752ab7931edf19fe1028edb361fd50"
+    },
+    {
+      "path": "sing-usbip/sing-box-source-evidence/cmd/internal/build_boxdd/main.go",
+      "bytes": 6713,
+      "sha256": "e0bff3a5509d4d0b2e58032aff21e719bc75da7fc9792a475acc8ac0b90c97fc"
+    },
+    {
+      "path": "sing-usbip/sing-box-source-evidence/include/usbip.go",
+      "bytes": 279,
+      "sha256": "24b9ee3f7b7cead035b8d4b0cfa9b725eae0cb39a0010d20871d3506f59d1158"
+    },
+    {
+      "path": "sing-usbip/sing-box-source-evidence/service/usbip/client.go",
+      "bytes": 1765,
+      "sha256": "e33c0939367a47cc7604c66b6082b981b4e5ccb1ea38ce8f43d3d4c710464842"
+    },
+    {
+      "path": "sing-usbip/sing-box-source-evidence/service/usbip/server.go",
+      "bytes": 2967,
+      "sha256": "e0d066659340e1d89e729edcabfc5725d077a70b5f50ddb2bdc8eb16ba1a9cf7"
+    },
+    {
+      "path": "sing-usbip/source-input.json",
+      "bytes": 404,
+      "sha256": "2e0dbb1112783c5c4ab5aec7c482b7e10c90b2e6de03e84a35d03ab020078c67"
+    },
+    {
+      "path": "sing-usbip/source/.github/workflows/lint.yml",
+      "bytes": 487,
+      "sha256": "f7a788a6c88238d46d892533da53e3ccbdc95fbc514e93cb7987cd329e5c95c1"
+    },
+    {
+      "path": "sing-usbip/source/.github/workflows/test.yml",
+      "bytes": 5724,
+      "sha256": "9267176b6a01a8866fe8fa4ef98d4033c9708a504b7eaf0e73dc10f1c63b9f4a"
+    },
+    {
+      "path": "sing-usbip/source/LICENSE",
+      "bytes": 674,
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+    },
+    {
+      "path": "sing-usbip/source/README.md",
+      "bytes": 1689,
+      "sha256": "26cf88bd8056d8516f312a69cd92049cc345341e1f48e7f1c38841786e734184"
+    },
+    {
+      "path": "sing-usbip/source/driverassets/digests.go",
+      "bytes": 2234,
+      "sha256": "4254fecd1c854cda735a35581342343c32f06c2759dcfa1c2dd9757bb9413e86"
+    },
+    {
+      "path": "sing-usbip/source/driverassets/driverassets.go",
+      "bytes": 458,
+      "sha256": "5ba27ea3412bd6234802b4440e31a63900e3951e234444ef5e17bd200e26edca"
+    },
+    {
+      "path": "sing-usbip/source/driverassets/generate/main.go",
+      "bytes": 1973,
+      "sha256": "194de305fad644d36c58875cf17f36a984720952a051680126193de3ef9b6b52"
+    },
+    {
+      "path": "sing-usbip/source/go.mod",
+      "bytes": 393,
+      "sha256": "abe6f7f14d0ea699b418899a332455e7d11b8eba376815a22089554767089adf"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets/LICENSE.txt",
+      "bytes": 1356,
+      "sha256": "4a4d332cbf1c623639df7ffc756243d86462beb4c79c8b11081cb44a4792eda2"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets/amd64/usbip2_filter.inf",
+      "bytes": 2052,
+      "sha256": "a149b941d124b9e2f4c503d8af0c1fdb6907480d372d34b4f76d7452648466a2"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets/amd64/usbip2_ude.inf",
+      "bytes": 3041,
+      "sha256": "00a1dbfe02c0bbbed38b6e1c81ef0a6dcfe23fe39b07628592167383f7656256"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets/arm64/usbip2_filter.inf",
+      "bytes": 2051,
+      "sha256": "d09d25dbe3129e4b2180e12ea11076d0953dbd52196de5867bcc7da4a6aea417"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets/arm64/usbip2_ude.inf",
+      "bytes": 2891,
+      "sha256": "4ebaa77c54dba2fa27ea4aae5d4a3f288720623ace52742c99d0a0020494c604"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets_external_windows.go",
+      "bytes": 1121,
+      "sha256": "ea447ba6d5b7c92406136b1a2d716c7779828f47306beee4c37655805265aacc"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets_windows_amd64.go",
+      "bytes": 734,
+      "sha256": "31d0194a5057c75bee09d28f98e717a3dfb4210a09bb019a2f52b3aa69068742"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets_windows_arm64.go",
+      "bytes": 734,
+      "sha256": "e724affbe22e4e061243ee06836a8a241b8f8ec8990ef58a3cc2e56b596d08d7"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/assets_windows_unsupported.go",
+      "bytes": 150,
+      "sha256": "5fc1de8971a0b67c376bd93007dbfb922ca1060b47a5643d410450f4eebf7594"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/controller_windows.go",
+      "bytes": 6694,
+      "sha256": "5fae8535a27458d9a0a6cde0a52e44ad115d91ba4d1da8f6975579b0c5b6b97b"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/driver_windows.go",
+      "bytes": 7928,
+      "sha256": "48170782f78c924e017798f8d1188a690d8d53e6c4093e2ce4184da0c246c8ee"
+    },
+    {
+      "path": "sing-usbip/source/internal/usbipvhci/usbipvhci.go",
+      "bytes": 1958,
+      "sha256": "2eebb3db3bd1a1a58dd6a52f72bc9a0790a682a75f056890d96e0093def80342"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/amd64/VBoxUSB.cat.license",
+      "bytes": 85,
+      "sha256": "c4d67d09bc00aaf8f703323e74bbf9042715a12ae2b215718faaaece3c2a8237"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/amd64/VBoxUSB.inf",
+      "bytes": 2944,
+      "sha256": "21137c65e8856c77414c928d776cc01baedd4b7919dd6224a5b715f85a76df06"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/amd64/VBoxUSB.inf.license",
+      "bytes": 102,
+      "sha256": "c8a90f51ac8d8af51c961268fbad0228861e67f26efe480bc843d12648e94d66"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/amd64/VBoxUSB.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/amd64/VBoxUSBMon.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/arm64/VBoxUSB.cat.license",
+      "bytes": 85,
+      "sha256": "c4d67d09bc00aaf8f703323e74bbf9042715a12ae2b215718faaaece3c2a8237"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/arm64/VBoxUSB.inf",
+      "bytes": 2944,
+      "sha256": "d1986bd897143b110855ca14c9034708f3a1e5e0cfe6e172c526a565ab150faa"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/arm64/VBoxUSB.inf.license",
+      "bytes": 102,
+      "sha256": "c8a90f51ac8d8af51c961268fbad0228861e67f26efe480bc843d12648e94d66"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/arm64/VBoxUSB.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets/arm64/VBoxUSBMon.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets_external_windows.go",
+      "bytes": 1113,
+      "sha256": "382806a7bed5ffdcd4d022aa5ff21430fdaff3922dcfd17cac628f6f00544b75"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets_windows_amd64.go",
+      "bytes": 540,
+      "sha256": "b3c7e67a9c79339fc45d45bc4918891b2985d52714314265bd545d0e3c93f9d8"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets_windows_arm64.go",
+      "bytes": 540,
+      "sha256": "37831da4e01f8a99023ac1354e623dc7651f7961f424b3e02a162dd1e272a892"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/assets_windows_unsupported.go",
+      "bytes": 148,
+      "sha256": "88cc3aae8b9c753b3b33201bf7ad36a6063acb51e1a7cb9831db192ba0990511"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/device_windows.go",
+      "bytes": 8252,
+      "sha256": "28d1d3b0be2da580688fd47ee0c2e93140d774b19b65179a27ad9b0110879dad"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/driver_windows.go",
+      "bytes": 7316,
+      "sha256": "5c12f24ab9d49cd6bc9f04e8f917114628613181dcdc2a447bf9d7bb8b3da93e"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/monitor_windows.go",
+      "bytes": 4871,
+      "sha256": "4ff6e6af6973f6421f6c1ac8239b388e7aa8cff7c67204ba9b71e16a3b0c9a5e"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/pnp_windows.go",
+      "bytes": 8466,
+      "sha256": "0f85882b5268bfba14deabf4214716a69ac7dd2fc94b511e8290c25ba54bd5ad"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/privilege_windows.go",
+      "bytes": 2349,
+      "sha256": "369872d6a1c6b09b4e3f3a55693e93d5345b0a849005198a6ea1156c38b885b4"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/restart_windows.go",
+      "bytes": 4559,
+      "sha256": "ed48645127039f8f8b803d9f265808192f729f0ed002d8f2a7b32b889d479e01"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/speed_windows.go",
+      "bytes": 7210,
+      "sha256": "f3092d7bbf9d0f92c0a38d79731135b12472fff8e17000cfac4d34c462293e82"
+    },
+    {
+      "path": "sing-usbip/source/internal/vboxusb/vboxusb.go",
+      "bytes": 2681,
+      "sha256": "26748bda4125e0302332a5642083a50d45d471d487f81cd0fb308b22d8301eef"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/VirtualBox-v7.2.14-ref.json",
+      "bytes": 386,
+      "sha256": "2e42aa79e05412ea37f0f4f34005e580cc51a85e548a92007311bbf004f2829c"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/currentUsbipCommit.json",
+      "bytes": 28719,
+      "sha256": "a1f4522d5003b8b3b1d59188ab745f657a8b0c681b39a985ae8368d64c128d71"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/currentUsbipTree.json",
+      "bytes": 41526,
+      "sha256": "1a3e3d6cbcd8ae50eee8c3a7a947636c57b82776ee57baa2e1e5d51af438fc9a"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/usbip75tree.json",
+      "bytes": 97221,
+      "sha256": "1175e285baab0a51d5fcb3313e19c49c7001ad0863c0f2e626613f4ad71b2f1e"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/usbip77tree.json",
+      "bytes": 95505,
+      "sha256": "3dfa019cf06b26e24d603d9ec440e89f5ce10bf30a1389ed96678dd8056812b9"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/v.0.9.7.5.json",
+      "bytes": 7273,
+      "sha256": "e2351278bcc085347aefed80616b4a8bb8dbe9b3b3e9418e4c826802ecdd0e74"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/v.0.9.7.5ref.json",
+      "bytes": 396,
+      "sha256": "a7b050c46be56be8a678850d144259c278f0cbee9d49aa4985381127c39599cf"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/v.0.9.7.7.json",
+      "bytes": 5193,
+      "sha256": "4a68505d299909d7b7e93b4e08914b7d53d8d7b5971490460526416c17ee2495"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/v.0.9.7.7ref.json",
+      "bytes": 396,
+      "sha256": "89fdc44e2ce1126500ad52d19a14103cffc491fc0b0b3332dc65643add879475"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vbox7214root.json",
+      "bytes": 7288,
+      "sha256": "97260044a8e4518fad23e3447000f5eed1a44558dd87e3622a2a4ee8660d261f"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vboxUsbDir.json",
+      "bytes": 10417,
+      "sha256": "269eea689191bf28823cf474cb4c1ba9ebc81969559c68d4e6971a05ee02645b"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vboxUsbWinDir.json",
+      "bytes": 8685,
+      "sha256": "7daf7f0a8e443300cff3f642f6eeb99dc379ec32e5ad7b74b7809a16490ca5be"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vboxassetcommits.json",
+      "bytes": 8595,
+      "sha256": "a73704bb7eccca249b0d1dffe0f0f2a77ffef81c33de8fa23480619334bc06b1"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vboxupdate.json",
+      "bytes": 11540,
+      "sha256": "bf45a3e77c93c80fd8e42095c15a78af62af40e6f3608140dc00fd8664fce232"
+    },
+    {
+      "path": "sing-usbip/upstream-metadata/vhcihistory.json",
+      "bytes": 4090,
+      "sha256": "8df933d9eb78cd61d3d63cca84e8b2adafe45c9ea950b426de9c9cab0f0f2874"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/LICENSE.txt",
+      "bytes": 1332,
+      "sha256": "eb8cb84e3a84b2d349857ac69957a9c89bcdd1b1e2436734165009d3c65c6a2f"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/LICENSE.txt.receipt.json",
+      "bytes": 328,
+      "sha256": "18159ee33fa6df190c041424926304fe6226e77a1fb67b66cff04326b0e8b842"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/README.md",
+      "bytes": 12515,
+      "sha256": "e71d4c9a2c6bdf03052cce036fdee343afc1b6b7b9fc43934d76df3d01737ce7"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/README.md.receipt.json",
+      "bytes": 325,
+      "sha256": "a735834976607ceb400fb5285872d27ad533ba9099ab773656ae88f92d345358"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/bootstrap.bat",
+      "bytes": 140,
+      "sha256": "58b8a478f610e18c65c059ba690ac15f37d992f443390fa7efa9917ca221946f"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/bootstrap.bat.receipt.json",
+      "bytes": 331,
+      "sha256": "c8b31b1b67185c5b491f2931e1ad8eef1180959e269b7defda6bb3fd5fcdc77b"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/packages.config",
+      "bytes": 556,
+      "sha256": "91f01ab4b90eb6f9f8f2bcf7afa11a26f2ce6c37fd57b3a5c9ffe9c3125eca35"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/packages.config.receipt.json",
+      "bytes": 347,
+      "sha256": "2e8b7f6b8893c5c4a8dc3df49de063131979879584c02cd0b38853c5bec10407"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/usbip2_ude.inf",
+      "bytes": 2757,
+      "sha256": "78c867c627962d9fcd513eb9b9a72d6742d75ce4c76517441489bc56ac37088c"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/usbip2_ude.inf.receipt.json",
+      "bytes": 346,
+      "sha256": "aa2cde465b5fdebf577732a4f3397a3db16fc2323fd624230a16bc6ac2b89bb7"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/usbip2_ude.vcxproj",
+      "bytes": 17762,
+      "sha256": "de504f943836b053848a694e08d78d1f22bfc4f864cc4bb0383dae627e24517f"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude/usbip2_ude.vcxproj.receipt.json",
+      "bytes": 355,
+      "sha256": "d5c044f4cfad7f0250f8a8380b34f47dd4835a37dc395d0601235ff5ca8447cc"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude_filter/ude_filter.vcxproj",
+      "bytes": 13900,
+      "sha256": "565ac11b7ea4eee8e30c862e046a2cf99642cc4d1985554771fcefc42a070790"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude_filter/ude_filter.vcxproj.receipt.json",
+      "bytes": 362,
+      "sha256": "42114abad28d6d4ec95bf5b5957ac4a1848ed292681b55c01ba28b0dfb1094cc"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude_filter/usbip2_filter.inf",
+      "bytes": 1957,
+      "sha256": "6bfa16d34d88601ad315e1950f86132f76b5870ac145de312607bcf3f805d0f5"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/drivers/ude_filter/usbip2_filter.inf.receipt.json",
+      "bytes": 359,
+      "sha256": "3723aba7141e87e7251a70887ad46581cab1c9d43272e657daa315d7dc1f748a"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/usbip2_filter.inf.module.diff",
+      "bytes": 1218,
+      "sha256": "6166168e627514a464ba1716ee069add4ecb0f5da08d61e35e241ad9186fb1de"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.5/usbip2_ude.inf.module.diff",
+      "bytes": 1075,
+      "sha256": "4bc7923b30cfeeab51a673d5fddf3e57f788fdec96d64d19eb319c17c8a0f451"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/LICENSE.txt",
+      "bytes": 1332,
+      "sha256": "723572b1487231edcc3a2594da30961c693da7a0d7b676ca718fe3391920b8ca"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/LICENSE.txt.receipt.json",
+      "bytes": 328,
+      "sha256": "2173e5d89966cf0051711a5f29af43e330b8ac994ef2b74d45681b2aaaeb2327"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/README.md",
+      "bytes": 12882,
+      "sha256": "216657f6da8f3bd7f3d5e43f7dddea653c2e5c8eeb12d383382320e8f8997041"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/README.md.receipt.json",
+      "bytes": 325,
+      "sha256": "b644ccfbe98d12b472373622d474fb8635fe045270080061573f3f88f8f2d68b"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/bootstrap.bat",
+      "bytes": 140,
+      "sha256": "58b8a478f610e18c65c059ba690ac15f37d992f443390fa7efa9917ca221946f"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/bootstrap.bat.receipt.json",
+      "bytes": 331,
+      "sha256": "420e0b9e44a778e533502a65ae18aa88f5173ae52e490fd0d4aae89a9b635c80"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/packages.config",
+      "bytes": 556,
+      "sha256": "9e7c814274b4c054164f9adddcf89b4ed12855846141891fca2ba6c99b719da6"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/packages.config.receipt.json",
+      "bytes": 347,
+      "sha256": "5dcec3b509049f993b6dd58b7093e1e02bb5cae43c7d9ea27f0aeb74ad589d12"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/usbip2_ude.inf",
+      "bytes": 2921,
+      "sha256": "0b33010ec478871ab80500661c46e032d2ac24118b4f31d35616e6330fd71311"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/usbip2_ude.inf.receipt.json",
+      "bytes": 346,
+      "sha256": "b8c439aca685fb925a5b629f99ae8ddc160e887c1975b4061a7caa184978e196"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/usbip2_ude.vcxproj",
+      "bytes": 17762,
+      "sha256": "4c1cefc49708985b3b56c2d305d641c1009b9bac6efbf9322420ef8beb23661a"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude/usbip2_ude.vcxproj.receipt.json",
+      "bytes": 355,
+      "sha256": "d7e3cbd62114f4b4bea5af1c846210faa356443a2cce9e08d51c29f1f15e5adf"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude_filter/ude_filter.vcxproj",
+      "bytes": 13900,
+      "sha256": "9ca368d3fd1e937e4b206301ecf4bd8f619934d205fb09aebedeb6daaa622981"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude_filter/ude_filter.vcxproj.receipt.json",
+      "bytes": 362,
+      "sha256": "780f96fc866ee4146431eaf975ab19eaa883808a7943aaf638c2479aa0a3dbf6"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude_filter/usbip2_filter.inf",
+      "bytes": 1957,
+      "sha256": "6bfa16d34d88601ad315e1950f86132f76b5870ac145de312607bcf3f805d0f5"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/drivers/ude_filter/usbip2_filter.inf.receipt.json",
+      "bytes": 359,
+      "sha256": "f7b23dc83505fa6c723f4fcc270fc0664aa0c696a7c54f07c28884d0add69287"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/usbip2_filter.inf.module.diff",
+      "bytes": 1219,
+      "sha256": "de84c95de02a42bdb3dca703dd6199d30d4ffec71e3ce013ba28cbd5f6040416"
+    },
+    {
+      "path": "sing-usbip/upstream-usbip-win2/0.9.7.7/usbip2_ude.inf.module.diff",
+      "bytes": 688,
+      "sha256": "86cac7695bb7dcbfb858928063089caac8ff6c35350ea2e15a21bef7a3728789"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/COPYING",
+      "bytes": 36037,
+      "sha256": "8d684127eb278ec9a4e80a8c34320645d8579712ef6e893fe7393393fbbf59a4"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/COPYING.receipt.json",
+      "bytes": 323,
+      "sha256": "ed50010ad3bc3b427c8bc036905f377ff48f8608d70d421490305255041be513"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/LICENSE.txt",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/LICENSE.txt.receipt.json",
+      "bytes": 331,
+      "sha256": "844ed98f10b4de4023737c3a951871ebe7e2cd63683eceb482c671a10f400980"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/README.md",
+      "bytes": 3909,
+      "sha256": "f5cb94f35e66b5efc28a9b417d01f5f3fbb0474c36815af847fbc3d31c462aaa"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/README.md.receipt.json",
+      "bytes": 326,
+      "sha256": "06405ee7649af5b4db21277e1650b677a8875ddf6afb32ab4aa5c993e623023e"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/Version.kmk",
+      "bytes": 1870,
+      "sha256": "79722c17a028e73c106bdf946b3c0ac05ba142d6afecabc3f89bebcb34d24e5f"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/Version.kmk.receipt.json",
+      "bytes": 330,
+      "sha256": "9e1b7abd4a34b9ea769cb2aa74ffb8d48b9ba98aab990c6e800dfa71185e5f74"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/src/VBox/HostDrivers/VBoxUSB/win/Makefile.kmk",
+      "bytes": 6976,
+      "sha256": "f2cc3f9e7f8b3a5e4bb2db0220be96d975db8d58342bf58edf05c1c128649c11"
+    },
+    {
+      "path": "sing-usbip/upstream-virtualbox-7.2.14/src/VBox/HostDrivers/VBoxUSB/win/Makefile.kmk.receipt.json",
+      "bytes": 365,
+      "sha256": "e3ec62770685873141695b09f489c8dda64ab6771c713055e5e288d3e39ce060"
+    },
+    {
+      "path": "sing-usbip/verified-module-materials.json",
+      "bytes": 10262,
+      "sha256": "628054fd06b06cb7a253e52d2783194b174b8af7d78d5aa23d225903fa62f66a"
+    }
+  ],
+  "noticeSidecarCount": 8,
+  "sourceDriverBinaryBytes": "Fixed public module ZIP is separately pinned; binary .sys/.cat files omitted from this finite text/receipt bundle.",
+  "sourceOrigins": [
+    {
+      "component": "VirtualBox-VBoxUSB",
+      "declaredVersion": "7.2.14.24565",
+      "moduleInfDriverVer": "07/17/2026,7.2.14.24565 ; r174565",
+      "declaredUpstreamUpdateCommit": "990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+      "declaredUpstreamUpdateMessage": "Update VBoxUSB drivers to VirtualBox 7.2.14",
+      "sixBinaryPackageGitBlobsUnchangedSinceUpdate": true,
+      "twoInfFilesOnlyChangedLFToCRLF": true,
+      "upstreamTag": "v7.2.14",
+      "sourceCommit": "51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "sourceUrl": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "sourceArchiveUrl": "https://download.virtualbox.org/virtualbox/7.2.14/VirtualBox-7.2.14.tar.bz2",
+      "sourceArchiveSha256FromOfficialSums": "384f293184c52fd51bc941c17d753b4019446f53a6b07c828adfb3e61fe0a500",
+      "sourceArchiveFreshDownload": false,
+      "officialBinaryUrl": "https://download.virtualbox.org/virtualbox/7.2.14/VirtualBox-7.2.14-174565-Win.exe",
+      "officialBinarySha256FromOfficialSums": "5fb111f32a15763d519bf9ef23e0111153521f641cde7460e5b8e895ca27a1d2",
+      "officialBinaryFreshExtraction": false,
+      "checksumProof": "VirtualBox-checksum-readback.json",
+      "driverSourcePath": "src/VBox/HostDrivers/VBoxUSB/win",
+      "buildRecipePath": "upstream-virtualbox-7.2.14/src/VBox/HostDrivers/VBoxUSB/win/Makefile.kmk",
+      "buildRecipeSourceLists": [
+        "VBoxUSB_SOURCES",
+        "VBoxUSBMon_SOURCES"
+      ],
+      "buildRecipeSupports": [
+        "amd64",
+        "arm64"
+      ],
+      "upstreamSourceLicense": "GPL-3.0-only OR CDDL-1.0",
+      "moduleBinarySidecarLicense": "GPL-3.0-only",
+      "fixedOriginalLicensePaths": [
+        "upstream-virtualbox-7.2.14/COPYING",
+        "upstream-virtualbox-7.2.14/LICENSE.txt"
+      ],
+      "rootReadmeBuildDirections": "upstream-virtualbox-7.2.14/README.md"
+    },
+    {
+      "component": "usbip-win2",
+      "architecture": "amd64",
+      "declaredDriverassetsVersion": "0.9.7.7",
+      "tag": "v.0.9.7.7",
+      "sourceCommit": "7c219953101cc5d0ec9a0bcb3eb87259cf72bedd",
+      "sourceUrl": "https://github.com/vadimgrn/usbip-win2/tree/7c219953101cc5d0ec9a0bcb3eb87259cf72bedd",
+      "sourceArchiveUrl": "https://github.com/vadimgrn/usbip-win2/archive/7c219953101cc5d0ec9a0bcb3eb87259cf72bedd.tar.gz",
+      "releaseUrl": "https://github.com/vadimgrn/usbip-win2/releases/tag/v.0.9.7.7",
+      "releaseAssets": [
+        {
+          "name": "USBip-0.9.7.7-x64.exe",
+          "url": "https://github.com/vadimgrn/usbip-win2/releases/download/v.0.9.7.7/USBip-0.9.7.7-x64.exe",
+          "bytes": 33226344,
+          "upstreamDigest": "sha256:51620fa5f9f8be5932bc9d786deee557ce06d5407a99cab490dcfac71f185fea"
+        }
+      ],
+      "license": "BSD-2-Clause",
+      "originalLicense": {
+        "encoding": "base64",
+        "sha": "e920d6b11a428b640eeb502e22791101ce6a6ece",
+        "display_url": "https://github.com/vadimgrn/usbip-win2/blob/7c219953101cc5d0ec9a0bcb3eb87259cf72bedd/LICENSE.txt",
+        "display_title": "LICENSE.txt",
+        "bytes": 1332,
+        "sha256": "723572b1487231edcc3a2594da30961c693da7a0d7b676ca718fe3391920b8ca"
+      },
+      "buildInstructionsPath": "upstream-usbip-win2/0.9.7.7/README.md",
+      "driverBuildProjects": [
+        "drivers/ude/usbip2_ude.vcxproj",
+        "drivers/ude_filter/ude_filter.vcxproj"
+      ],
+      "driverSourcesUnder": [
+        "drivers/ude",
+        "drivers/ude_filter",
+        "drivers/libdrv"
+      ],
+      "binaryReleaseIndependentlyExtracted": false
+    },
+    {
+      "component": "usbip-win2",
+      "architecture": "arm64",
+      "declaredDriverassetsVersion": "0.9.7.5",
+      "tag": "v.0.9.7.5",
+      "sourceCommit": "e1ffd3f974755a70e2290d585486bfbdb11304bf",
+      "sourceUrl": "https://github.com/vadimgrn/usbip-win2/tree/e1ffd3f974755a70e2290d585486bfbdb11304bf",
+      "sourceArchiveUrl": "https://github.com/vadimgrn/usbip-win2/archive/e1ffd3f974755a70e2290d585486bfbdb11304bf.tar.gz",
+      "releaseUrl": "https://github.com/vadimgrn/usbip-win2/releases/tag/v.0.9.7.5",
+      "releaseAssets": [
+        {
+          "name": "USBip-0.9.7.5-arm64-release.exe",
+          "url": "https://github.com/vadimgrn/usbip-win2/releases/download/v.0.9.7.5/USBip-0.9.7.5-arm64-release.exe",
+          "bytes": 18691632,
+          "upstreamDigest": "sha256:0dc47a895ab6dddcfa5ef4cd12014f9f3515770bec706773c9e9f5f876ebccb5"
+        }
+      ],
+      "license": "BSD-2-Clause",
+      "originalLicense": {
+        "encoding": "base64",
+        "sha": "5195cc72381089a19d80587877c07a23c12f9b85",
+        "display_url": "https://github.com/vadimgrn/usbip-win2/blob/e1ffd3f974755a70e2290d585486bfbdb11304bf/LICENSE.txt",
+        "display_title": "LICENSE.txt",
+        "bytes": 1332,
+        "sha256": "eb8cb84e3a84b2d349857ac69957a9c89bcdd1b1e2436734165009d3c65c6a2f"
+      },
+      "buildInstructionsPath": "upstream-usbip-win2/0.9.7.5/README.md",
+      "driverBuildProjects": [
+        "drivers/ude/usbip2_ude.vcxproj",
+        "drivers/ude_filter/ude_filter.vcxproj"
+      ],
+      "driverSourcesUnder": [
+        "drivers/ude",
+        "drivers/ude_filter",
+        "drivers/libdrv"
+      ],
+      "binaryReleaseIndependentlyExtracted": false
+    }
+  ]
+}

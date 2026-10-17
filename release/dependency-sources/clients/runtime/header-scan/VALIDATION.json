@@ -1,0 +1,886 @@
+{
+  "allChecksPassed": true,
+  "files": [
+    {
+      "path": "texts/CodeEditLanguages/.gitattributes",
+      "sha256": "0f88ddecc7c4a63e007bf23a295dd1e84796e08c6e6ed16e1c478d2342fe4680",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/ISSUE_TEMPLATE/bug_report.yml",
+      "sha256": "ee2c5f0b46c2a14e422e484d31e0ffd27680e9095884ffc60730b53f0b6ca569",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/ISSUE_TEMPLATE/config.yml",
+      "sha256": "13064e7bea658e01e718b414fbb7b3b244f36411fe25ee2055c151f7b534547a",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/ISSUE_TEMPLATE/feature_request.yml",
+      "sha256": "53c2b87f21457cf9e56b3caef18baf4085b81171e2959d1cf99fc8a4a1fcde0c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/ISSUE_TEMPLATE/new-language.yml",
+      "sha256": "d981efb2ea20144500c6c6bc6d17211ae724cc644b9e239fd275209ea6fc591f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/pull_request_template.md",
+      "sha256": "ed2f811be417b756509430bc300e88b57aa070f9227b85982f04f2f779160476",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/scripts/build-docc.sh",
+      "sha256": "fb3c604b862e429be269d3b74ea685262a97dbc7e4a29013498f115f287dc4c5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/scripts/tests.sh",
+      "sha256": "c16983f5784099440d9f60177efcc2fbad5a6133e221d16e5f144b05449f9b16",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/CI-pull-request.yml",
+      "sha256": "cd000d0254c5af39541e2128504ce1351069bc490a9652ab6b65e7461dfd6955",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/CI-push.yml",
+      "sha256": "10d5cf707d49b9cf68d5c78e4ca8041c880a79dd6cb796159e58bd4885f95ca3",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/add-to-project.yml",
+      "sha256": "54dde77184f94122866617f5b9259c1602c6ab1fe98b4c3427c35516611983e0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/build-documentation.yml",
+      "sha256": "5c5dd04b1f45eae475c7ec4302fea8bd79fdef2755ebe561f0acc0c0dd98dcbb",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/swiftlint.yml",
+      "sha256": "ee504586c23135802b14295fbcbd29b83bb54fe6211c4a80cb67babec80273ce",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.github/workflows/tests.yml",
+      "sha256": "c0007800e5169f2ec875236f00db8a7b758aa2232e88bffd4b2e1d6eb48240c6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.gitignore",
+      "sha256": "26ff3e671a1495a347074dbb6368dc61289c544c5fbb2035f92584dc14603f57",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.swiftlint.yml",
+      "sha256": "5f0dd8b129f625621d02bf2105c69b766628c4f9d93dc3c4afa813724f5db832",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.swiftpm/xcode/package.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+      "sha256": "dfa0f9bb85b95ccba9c6811adadf8cb407fb5d52088e89db83ebc308ec448542",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/.swiftpm/xcode/xcshareddata/xcschemes/CodeEditLanguages.xcscheme",
+      "sha256": "0a858b110564bd315ca538c0f71f1b7ada2b7d1ec40e847bcae27544ca872352",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.pbxproj",
+      "sha256": "f62e0c55c4747c2f2f222b6a575b98a8808c21e835267e8434bd5851a8401fb4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "sha256": "7f3b00b5c3fdb45242d7b87e1e5c4e25d1fa8129a16c94295ecc4e8ea2235c5f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist",
+      "sha256": "dfa0f9bb85b95ccba9c6811adadf8cb407fb5d52088e89db83ebc308ec448542",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "sha256": "6c21a8437cd38b3346bbf509c53c601b16ef43cbe22de224c8e224b4ab127460",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container/CodeLanguages_Container.h",
+      "sha256": "b0fc6aef1ecb585ff4e95bc803a51ee54e26b8c4d5cf0b3c5b47e8c5e91e6d6f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Package.resolved",
+      "sha256": "fd5be1e1a051a55ff52d4e24b32ffd8bed9c60201210984f7909e89c0d6e43d2",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Package.swift",
+      "sha256": "0774e9442110393492f8cf38d4256c63657e9dda1bcf0036f0d7278b587bf39f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/README.md",
+      "sha256": "3e33b8db29c73f1eaf4454d61f57a7580e1a781d2fa4555f969db0eca5ac9e58",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage+Definitions.swift",
+      "sha256": "b3a4b462f87939018e1dc21824c236b890213f6ea4b180952faebfdfa48c3e06",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage+DetectLanguage.swift",
+      "sha256": "dc508f17ce4b1cf2ae5739ed0e714eae07e7f3dc410639cf1977349ec30c68f6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage.swift",
+      "sha256": "f3aecb1e50daecb7f1e34e61f22d6c0ec283d53fd5b56a3e204a9dfed7d0e78c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/Add-Languages.md",
+      "sha256": "1de8ca3b37dd4ca4420af17405ad772c689edaac32fe7fa0265d40f144f6486f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/CodeLanguage.md",
+      "sha256": "bf56996f34048ea6d57b7247a501707a1eba50bc45c853f99cdbf1abb9e5d157",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/Documentation.md",
+      "sha256": "554abb316c71c828a0ef5e9ff447212952d5ef1c9d4f714cd6b445ae5bef71b6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/TreeSitterModel.md",
+      "sha256": "fea1736e545752b03e09722c086b447a216a2b253a4b40cc08963f665a007345",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/Update-Languages.md",
+      "sha256": "e74771da2c30dbbc993b3a6b8852224558085bc7bd6f5bf6af081e1f7b412895",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-agda/highlights.scm",
+      "sha256": "0b24acfefcd3117061a5b6178acec0acab911e02f76526b76b4086e70b28b0ed",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-bash/highlights.scm",
+      "sha256": "b74220d954f485b7626d2b2b61f37b522e12eb1830803e388e57dd797dc99f11",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-c-sharp/highlights.scm",
+      "sha256": "cc90d681f15f65ed56813664ef535b2a01fcf69a588428c564d2c54426f88cbb",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-c-sharp/tags.scm",
+      "sha256": "8c35e68e3698ce29b996e1b0a91b7124ecbde846f0c7c99789de386222367124",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-c/highlights.scm",
+      "sha256": "d9bee4e8509c5774276d37643508838c65a2f79e37e9ab058834d95d155eea27",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-c/tags.scm",
+      "sha256": "774ca67cfe23b0e0d1d3a4f01788049a822beb1311feee72b20a595a37be1e28",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-cpp/highlights.scm",
+      "sha256": "7694a711d512d335b298306b0e89592f1452a17d796130ce74aea2fa5007c886",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-cpp/injections.scm",
+      "sha256": "0791a308ef7c0a9e40b8415a2e9cee85b528a8bb21697e65c79872e8848dd972",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-cpp/tags.scm",
+      "sha256": "029731ca946e32f919491d9f76c85a50e5deb5ad1934e37fd6849312c0d4a705",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-css/highlights.scm",
+      "sha256": "f66ed9c20a566a01084ec1dd5b0f72d8b08b221bde43e9fafef645498e90d28f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-dart/highlights.scm",
+      "sha256": "232d1efb3b46eacccaef9bb6b90ebdee10fc59dce2124ff81e4ce778b63a69f0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-dart/tags.scm",
+      "sha256": "8fe038cc09d042897d6e7e927e44aca273821115f82b1ae74766936cc77738ba",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-dart/test.scm",
+      "sha256": "3db1a0d439b7d1226ca9aedb3f86af681bf27e35c73aa79c67f2d81a74dad6b1",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-dockerfile/highlights.scm",
+      "sha256": "39318633dc12c464ca10e304029b7bfe8f6a4f64de996c91cb8ecc4c6c8e4a63",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-elixir/highlights.scm",
+      "sha256": "565001be35ce783353e91a7a7b8e2b3b1e34f383e71b273ff4faf4936d9de149",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-elixir/injections.scm",
+      "sha256": "c35c58ca2561fb2997eea58271ea79912e85ea74cfe03dc933c7bf2b7061b935",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-elixir/tags.scm",
+      "sha256": "03f1a49995f1f0d793bb412971344b3437a6768475da199132e034a80bfdd9f1",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-go-mod/highlights.scm",
+      "sha256": "1fb11c8f4679f84f351523c0346c4a47499127879f8c4890ba09332db3c45692",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-go-mod/structure.scm",
+      "sha256": "ac59399b4f4cd25daed3ee3fc46f2af0a9562f99773ffa16191c22960a7e0581",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-go/highlights.scm",
+      "sha256": "16b616d2f4f35534d14169fc7c50889bc534e5f9807609d33a17121c60e030fe",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-go/structure.scm",
+      "sha256": "10db32be32ab3e0dc60e6d30f0ab1999ae619810fc3beefa2d023d0dd14dc583",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-go/tags.scm",
+      "sha256": "5f372652f0553021f534af36f3955668260dc6b9951adc5812f66c2b4963d3ff",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+      "sha256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/locals.scm",
+      "sha256": "ec3c93075352f58e54eda8ff8d29e4e7f184608883c624b5b4c12ea41f916372",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-html/highlights.scm",
+      "sha256": "1ebb3811a8cdc054385b847a3aac6fbf7079faefd5b3dfab5bbad256cd5afdcf",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-html/injections.scm",
+      "sha256": "6faa29537e952ee444aaa6ac00f72956d13f65616aade74bd665f5ac405f9c32",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-java/highlights.scm",
+      "sha256": "97b4cd3bee614453e17e61515a98e8d650e66ff9bf7a18ac501f119df0937e9e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-java/tags.scm",
+      "sha256": "bcb22147b8582d92743fc973864cefb894a4c12b3957f16f3d472b2ec7cd4c49",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/highlights-jsx.scm",
+      "sha256": "0cad1712acaf40804bc5dc7c8476858752c1f549cdf7d8c63c747317be0f8fa6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/highlights-params.scm",
+      "sha256": "bbe7a58cacfb1c954cb0eab44779fd80421ed59b762b975723447207635de50d",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/highlights.scm",
+      "sha256": "1f93ffa86c0b4d4367ff1fbd178f3ae6d3d056129d03a87244906420368452c8",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/injections.scm",
+      "sha256": "ccca928988045b8f2bc1956fd0545569b88617deb2ce922833b46b54dd80d7ba",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/locals.scm",
+      "sha256": "534d9106ba17b21f21d31ac7b6bb0fa62204bb9c51757cc40010e9548b0d6594",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-javascript/tags.scm",
+      "sha256": "78ce46b5a4847569f66084eafe54d674805d8b732b7876993530362bc1ecc8c4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-jsdoc/highlights.scm",
+      "sha256": "d455d6b541bc03d624b9e57b2957dfe2134e9a75ee0773e62c594c1c9ba29db6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-json/highlights.scm",
+      "sha256": "0511524465b56aed122580792254e68b6abbbfde7119f1d02b135acbe278233f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+      "sha256": "0dda9e2b7d1192a5c8f08a057e98c29fd42bea610f1b9d49f8f4ca8f7d97ff3f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-lua/highlights.scm",
+      "sha256": "042f38eb07cbe3777d852743179e0f48762a671bd9b035736692a8d0dab9325a",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-lua/injections.scm",
+      "sha256": "f7b9f46b2666cf96ee17658d150d25c48ed9c69f68de303b77d5315c399fb599",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-lua/locals.scm",
+      "sha256": "a2058ac84ea311dd1768a7f4638ad6c6cd7b8683ad986511666e6a56d21356c0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-lua/tags.scm",
+      "sha256": "9499ef7bcd5d7f064153e6acaa4c5b001d04081df17830dc5879009aab63ce0c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-markdown-inline/highlights.scm",
+      "sha256": "7b1915baef43e3e48669a79fd8da4d0a262f06dc31586cf6bd48d7fa2779c8b4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-markdown-inline/injections.scm",
+      "sha256": "af0d1471b49b1d979860cf619a13fc84e1ecbdfda522320afe7477b554e7e5b5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-markdown/highlights.scm",
+      "sha256": "0f8db8b016b0c739db7307215dcd1d33d9cbf5222b64e60d45dc4f4c08dc684b",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-markdown/injections.scm",
+      "sha256": "69f16cdc0a850c0a14e0f3844f878e68aaf8a055505d6f602f642508c1bbef81",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-objc/folds.scm",
+      "sha256": "ab98525c9291c1d2bfc1047ef321cd34c754f965526b7f1c4dc00c2e1f643ebf",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-objc/highlights.scm",
+      "sha256": "ce7e30b5aab3d659a096812d8c227e83cd9bbb60470eb44def45bd5cb7737386",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-objc/indents.scm",
+      "sha256": "e721d3ecb16a6bb63c84329693d5756b63e1aa3d3732f03631921bfa0d13d536",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-objc/injections.scm",
+      "sha256": "567f5dabcabdf8287bd92a073397aa0646aef97770fa57c0b357f0e64ddee16d",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-objc/locals.scm",
+      "sha256": "e721d3ecb16a6bb63c84329693d5756b63e1aa3d3732f03631921bfa0d13d536",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ocaml/highlights.scm",
+      "sha256": "b32d450fe9b88baa5e590296ae60d7cc18fce64bc80d712a358c5500f6cbe226",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ocaml/locals.scm",
+      "sha256": "594e282fa69c85a54255e54f574c525c9400b8357db81c314ab4b93e59f49363",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ocaml/tags.scm",
+      "sha256": "ab68f9dd80618c7eedf350ec0ed21dee33b66771baff2c7edeb1f4eae23e8fb0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-php/highlights.scm",
+      "sha256": "f4244aa9e8e23be4fcb2e89063af299dbfbee10a3cfa8df47c9d855bc1afffd6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-php/injections.scm",
+      "sha256": "9bc2887727aae6e0cb219cb71266e56276d46c4407a82f08bf94152861fac126",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-php/tags.scm",
+      "sha256": "00bdd0ac7a2e30fe08db03c6ff536080540ee6e6ae55fa501d3abc58577cfc19",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-python/highlights.scm",
+      "sha256": "c7fb56611eab34cd2c7cf1e3a46119da2cc2765349ab0064e745c18695a7e6a5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-python/tags.scm",
+      "sha256": "d0f3e577878167bfabc30e526e497bce58d1699b9bcabf8ab3a50698efb5ca3e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-regex/highlights.scm",
+      "sha256": "ade28f54c53cfe89a856d22a3d8438d3c2e46cafaaaa08b2c9eabeea9f0b73de",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ruby/highlights.scm",
+      "sha256": "c7c111f30927ce1657a47ed74e123d11cdb152e6c82e5063741e02b350693994",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ruby/locals.scm",
+      "sha256": "f00178e94b9c2ea672fd4ee2e60ac5d7d90be59c72e86292e22620358ac9dbb0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-ruby/tags.scm",
+      "sha256": "ed1e7dc07a95b87aef267e7f9715c6717a70f09efbd7b6f48bbd51c7b7510cf3",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-rust/highlights.scm",
+      "sha256": "1121094caebe76ff176fe567bae9de3b2bd37c88bf8ed81a62d156ff5ad747e8",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-rust/injections.scm",
+      "sha256": "723146f179bc0edfba2f51731c99afce8bed3b677dfb4435c303859fae299ba5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-rust/tags.scm",
+      "sha256": "399a103b7ca297e8de3efd63c1da55e3d617d4c9b77140265e88d51835cdf382",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-scala/highlights.scm",
+      "sha256": "5f8a7af1e2329617ef96c27dd4b71cb63385c801b666b4be0a6735a5ceea77ca",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-scala/locals.scm",
+      "sha256": "809c455e32a921b4f9f7c8e02ddfd14bd7fad700aa0b5ecf7e74cb0d8c8f78a4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-sql/highlights.scm",
+      "sha256": "b3200c889939e89f78b2607c57ea5016b1a5a3a4420c97eb38e853ba5abf9572",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-sql/indents.scm",
+      "sha256": "c90c797ffe6ccee5912eab2c9b8644ba0db0477ed93cbfefa10c574552348b32",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-swift/highlights.scm",
+      "sha256": "33b43db0a1de5cca2e92ad35b2d4a1db9831bdaaf9470604cdf60e5dee1686c4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-swift/locals.scm",
+      "sha256": "91e92aa1662847605ee25a8fdec27f6619b739ffaae23c2a0a0d28673ea1177d",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-swift/tags.scm",
+      "sha256": "9d24b288f032c18e79d5a37a86f2870bcd7789100cf93addb0171ecf910b3a50",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-toml/highlights.scm",
+      "sha256": "788d7f2a11ececbc4daa52d7ff3571d910f03dffe857bf3d258d4bc4dc65ab2f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-typescript/highlights.scm",
+      "sha256": "e0c35adb819127bfd4f853fac5419e7d8ba44760246201d04a4a5ce0228a10c5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-typescript/locals.scm",
+      "sha256": "c3680f9b56276fb2ccc9f1d5f4d03dbca5d64bdf3e6d52ce5a4ad342cec162d5",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-typescript/tags.scm",
+      "sha256": "b391288bcc71b513a5df7c9bb232d8bc7418d7e274b125aa0aa4bdd6121a0338",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-yaml/highlights.scm",
+      "sha256": "2fbfbbd5ca0928d0a7e09e59f8f2964b14a328a7ee0ce799270d9013dcce49a0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-zig/folds.scm",
+      "sha256": "e27dc66370e7f2dc344fff86e5e85b9a01694703bfbbdb663ad3e13afdf91c3f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-zig/highlights.scm",
+      "sha256": "27a7ffc77086ec6394c04e59b42f0da4c9d3c294a0225bc155c80305ee54ca86",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-zig/indents.scm",
+      "sha256": "e97fa8bd0cefb0bc1fafe4cacf3a4e715304067d4765c5995c2742b71840a755",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-zig/injections.scm",
+      "sha256": "6c68bd360ae39e7e04e64ca647d925a0eae1dc9ce98de6088b8af34956f5c6a0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/TreeSitterLanguage.swift",
+      "sha256": "3fc0673e6aadbf07ee090aac34a20dd9ef8b0b5f559347200051879164bffad0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/TreeSitterModel.swift",
+      "sha256": "b2c63861ecdbaad92947ecc25b8c86127ed8b038a17e1eaad277dfaad4654cd2",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Tests/CodeEditLanguagesTests/CodeEditLanguagesTests.swift",
+      "sha256": "9c3c9a153f618ab532ac78ef3db7ecc793a4e200b1437108c3dfcffc74a6c7c8",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/Tests/CodeEditLanguagesTests/LanguageDetectionTests.swift",
+      "sha256": "20770815ff20e01c05908b82ba1566d7db90bdb90ad42e049482bdbc3f24465c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditLanguages/build_framework.sh",
+      "sha256": "ae62cb57cbd80bf71624f29e7e3d121c7769d906fcac01796b468ae4a7a94e6e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/.github/ISSUE_TEMPLATE/bug_report.yml",
+      "sha256": "86c9ca2b1dc57032c92ab6e61dde967dca0ce373313ef13b064530d5e8eb8854",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/.github/ISSUE_TEMPLATE/feature_request.yml",
+      "sha256": "53c2b87f21457cf9e56b3caef18baf4085b81171e2959d1cf99fc8a4a1fcde0c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/.github/pull_request_template.md",
+      "sha256": "ed2f811be417b756509430bc300e88b57aa070f9227b85982f04f2f779160476",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/.gitignore",
+      "sha256": "9af57d9b01e3664f84c67fd8ba43785e09dc9854c7bf20fb67fb328a4fb3e95a",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Package.resolved",
+      "sha256": "96686340c880e0ebf3c8d2abdf56fe52ec630145fd8404a982ea1f1879649b6e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Package.swift",
+      "sha256": "1b3e68130112845afcc30d46712960f4c3af28b0866a74cdcf4b60e634fc784d",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/README.md",
+      "sha256": "5a9b7f9882a54c6b962dfc265d7931e1ef3dd45db7720b7ae6f363d95dfcee0c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/CodeEditSymbols.swift",
+      "sha256": "c485c03203d96aa4ac75576202f1a676ec911d90b21531f9689f536e48947d4e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Documentation.docc/Add Custom Symbols.md",
+      "sha256": "47f45eaaf6587739aab870c7b87dfad5866e7bbc711e485cd38a6ce2e030ef9f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Documentation.docc/Documentation.md",
+      "sha256": "b4974a0a2550e42c022d633b4f877dc3ed08f11aaace5c373d05cd6f7df389ad",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/Contents.json",
+      "sha256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/branch.symbolset/Contents.json",
+      "sha256": "af6adc831df5aa7e7154e466b295a4416595d85524be8261b2a6a910d6c5f252",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/branch.symbolset/branch.svg",
+      "sha256": "125c959c80a95a472eb4105b9dced926bd35ceee2ee83edfc41c3a1c781aada0",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.fill.symbolset/Contents.json",
+      "sha256": "41aa29ff3613ffd0865b0e065ce3a98934a3b4ca37d28fd7ce05131209681c40",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.fill.symbolset/breakpoint.fill.svg",
+      "sha256": "a3b245a1c045c246893f7e38a8dd1ef23f9421f38cc58b0e54781e4bf5c81286",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.symbolset/Contents.json",
+      "sha256": "020be37219678351a39c260151375e6487e494a0368b07b667332a84ce7f03e7",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.symbolset/breakpoint.svg",
+      "sha256": "1f8f41eae94b19a4ca94cccb997c13dd06848a9ed76654699ef485aeb1439f0c",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/checkout.symbolset/Contents.json",
+      "sha256": "c7b249089d6fa2780e67fbf7ae481137fdcdfe3b5ef7c687bf514bac821404a2",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/checkout.symbolset/checkout.svg",
+      "sha256": "5cd458474af4f010b5ffd6ea2aef33d4e0a4925c8c662c350facdcb0e3188b7d",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/chevron.up.chevron.down.symbolset/Contents.json",
+      "sha256": "9fe9df50b8c768ee1fd1623cd0700e426deda6ba63d7527d95097c7375223248",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/chevron.up.chevron.down.symbolset/chevron.up.chevron.down.svg",
+      "sha256": "0d4870ccc23c036e71109192a8aa8b5b8956689685cb573b2f8286221f0b9675",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/commit.symbolset/Contents.json",
+      "sha256": "f73b9b92ea7f518c4c422b0efe80e8d03c734a268467a15a0539ea9936273cd4",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/commit.symbolset/commit.svg",
+      "sha256": "25b714203c69304e0849b70459db0d996e26de87891d7f106556867c273c5574",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.java.symbolset/Contents.json",
+      "sha256": "10756a53f4306612b5f383a5bd864324d6e43adb52cb25d5fda10a7907201fcb",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.java.symbolset/doc.java.svg",
+      "sha256": "4b7335fddc1b927c25ffa96caa0b83c4824798ea38ba310e8eb91997c95e531e",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.javascript.symbolset/Contents.json",
+      "sha256": "71e085fd1397ecc3693a297d3f735baa7bda120e42cca5ac49d305008ce647be",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.javascript.symbolset/doc.javascript.svg",
+      "sha256": "f6a3e64f1115404aea4071b9a086d6428f19e39208f75eebc13eac9e92418934",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.json.symbolset/Contents.json",
+      "sha256": "5b6aec88cae69cb60ea8664f5b525ae95c99441f3b968506faf2d639ca6a31aa",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.json.symbolset/doc.json.svg",
+      "sha256": "c2bdad4bc1235c2cb6014f7be7a7acb7fb1ae45ad9cc5298b47a0a2470d5af62",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.python.symbolset/Contents.json",
+      "sha256": "735693a26bd14b67a6788d3994dc504ed5347ffcc170a21e63779688f9e39c67",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.python.symbolset/doc.python.svg",
+      "sha256": "1d96b858b33feeb4014bece0d03a382f4c28ca05a525c06817f9cb690258ba3f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.ruby.symbolset/Contents.json",
+      "sha256": "7a793ca77594c3062a46a1b5e21177d149163d881af6ae78016f4ffb188913a3",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.ruby.symbolset/doc.ruby.svg",
+      "sha256": "909330ed3bdf9ab5216de0c434738933437a3c572369c9deb5ac54d3ceff4e74",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/github.symbolset/Contents.json",
+      "sha256": "a6acedf2b1042fb324e897ee6610d0488381a219f39a640980a8bcd3761e5967",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/github.symbolset/github.svg",
+      "sha256": "b3fdfb2608af66783b11bc9b813bb31e94087d685fcd1ad6d3f4bfbe2a5cef8f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.horizontal.plus.symbolset/Contents.json",
+      "sha256": "0666a9fdc7af918d8826ceb7f70db896861cccab77d9e6fa447e2b7f0b5e39ac",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.horizontal.plus.symbolset/square.split.horizontal.plus.svg",
+      "sha256": "93da3f4d85763a1f335aa421e02c68c89867db3c19bc6eb4ba9ee02ddac9efa6",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.vertical.plus.symbolset/Contents.json",
+      "sha256": "021417e018127937a2dd824e7f3c537411132e19b02ac98590c49d9540fcd94b",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.vertical.plus.symbolset/square.split.vertical.plus.svg",
+      "sha256": "2dc19dc202ce24a86a6752f73bf6831c5f56fd6fc210b21d4ab94fa008e687e8",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.fill.symbolset/Contents.json",
+      "sha256": "523a0b9a5b0e92342c18922b6cd2d631499d63112b6694b20335d8f9f207f3e7",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.fill.symbolset/vault.fill.svg",
+      "sha256": "9c59ca0688bfcbcc6903633943e2fda1129a20ce7140ccd411e965572f184bbb",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.symbolset/Contents.json",
+      "sha256": "3e16a5f5c8f1bdcc73b4561f4b27b34de6e3bf7e8e75839b8f4cd48eef7dcc6f",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.symbolset/vault.svg",
+      "sha256": "594518ef12836007907be2bb2089cf242a50245040a5016effe67a192ae290b7",
+      "verified": true
+    },
+    {
+      "path": "texts/CodeEditSymbols/Tests/CodeEditSymbolsTests/CodeEditSymbolsTests.swift",
+      "sha256": "8c5e1f4cb43974de47182c9d0c4714debaa4f11ebdec3784751b39c37fca722b",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-source/.gitignore",
+      "sha256": "36563e74a1261d6cc0f886ac327dda9a4a556a66237cb6ea8a0eafde9f7a82a8",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-source/README.md",
+      "sha256": "e03a2e02c131ae9467cd623e3f80e6aca50ca343bf862d84ae2a926b138fcee9",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-source/package.json",
+      "sha256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-source/src/editor.ts",
+      "sha256": "5375f3f5fc8bfec731466f257a4c703205654bad1a6db7e11fe50e1260f53d75",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-source/src/index.ts",
+      "sha256": "36fb9e9e3cdf39e8fb7caf7dea2b007fad57ff73e0490a330178dddaa190d176",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/dist/index.cjs",
+      "sha256": "7e86ea62b7bcde55b8c6c1d5e60428c01e9b1cee1a12ed82c4d6f8a953c6ab8e",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/dist/index.js",
+      "sha256": "9616bf5cc288073a55cff47bb001d252a2cba1ec981f7e66460cc2fadd64f0a6",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/package.json",
+      "sha256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/README.md",
+      "sha256": "e03a2e02c131ae9467cd623e3f80e6aca50ca343bf862d84ae2a926b138fcee9",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/src/editor.ts",
+      "sha256": "5375f3f5fc8bfec731466f257a4c703205654bad1a6db7e11fe50e1260f53d75",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/dist/index.d.ts",
+      "sha256": "b951665a6b9deff1dda0990f120467f5cba26ad4f9a21edbed31be6757cda187",
+      "verified": true
+    },
+    {
+      "path": "texts/codemirror-json5-npm/src/index.ts",
+      "sha256": "36fb9e9e3cdf39e8fb7caf7dea2b007fad57ff73e0490a330178dddaa190d176",
+      "verified": true
+    }
+  ],
+  "allNoticeTextsUTF8AndNulFree": true
+}

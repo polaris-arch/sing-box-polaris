@@ -1,0 +1,4 @@
+/*
+ * Based on GWT AbstractMap
+ * Copyright 2007 Google Inc.
+ */

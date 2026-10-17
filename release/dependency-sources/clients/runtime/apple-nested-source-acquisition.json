@@ -1,0 +1,1353 @@
+{
+  "scope": "37 nested locked grammar candidates for CodeLanguagesContainer, plus bounded root acquisition fallback. Root lock controls current TreeSitter and SwiftTreeSitter; old nested library pins are not imported as runtime duplicates.",
+  "components": [
+    {
+      "identity": "tree-sitter-agda",
+      "repository": "tree-sitter/tree-sitter-agda",
+      "revision": "b9b32fa042c2952a7bfca86847ea325e44ccc897",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/ef120ea13e3e5432-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-agda/b9b32fa042c2952a7bfca86847ea325e44ccc897/LICENSE",
+          "sha256": "ef120ea13e3e543234f3d9a193c99ea512872979802dc0cebaea404c1a47047c",
+          "gitBlob": "70f51714c33fbbf40b45858286df9e562b08cc6e",
+          "bytes": 1069,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-agda/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-agda/b9b32fa042c2952a7bfca86847ea325e44ccc897/Package.swift",
+          "sha256": "066370c917d8c5684ab3af1bd0d8a7482b2fd3d2b4b3fb749009503267d965b3",
+          "gitBlob": "d2cfa5b126e27e20d091d21079f85e36257aea54",
+          "bytes": 993,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-agda/archive/b9b32fa042c2952a7bfca86847ea325e44ccc897.tar.gz",
+      "archiveBytes": 750644,
+      "archiveSHA256": "e704e8d8f070b3341bf4ddce01fc55c000f2e430df9c7652bc750f2245fa815a"
+    },
+    {
+      "identity": "tree-sitter-bash",
+      "repository": "tree-sitter/tree-sitter-bash",
+      "revision": "49c31006d8307dcb12bc5770f35b6d5b9e2be68e",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/49bf33cf78ef5897-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-bash/49c31006d8307dcb12bc5770f35b6d5b9e2be68e/LICENSE",
+          "sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559",
+          "gitBlob": "aa9f858db5722d9576104726471b11cc0e31f131",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-bash/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-bash/49c31006d8307dcb12bc5770f35b6d5b9e2be68e/Package.swift",
+          "sha256": "7606bd4b643a3232d33941a7a9c6c72841a4a44bfc3263d0810243a98fcfa8ce",
+          "gitBlob": "21425cd63399bdc28388ad85dcae7fe3eacd8195",
+          "bytes": 993,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-bash/archive/49c31006d8307dcb12bc5770f35b6d5b9e2be68e.tar.gz",
+      "archiveBytes": 544400,
+      "archiveSHA256": "330364d1376a32a71464574e3598a6db251935b95c699485f51835f8b442a1f3"
+    },
+    {
+      "identity": "tree-sitter-c",
+      "repository": "tree-sitter/tree-sitter-c",
+      "revision": "212a80f86452bb1316324fa0db730cf52f29e05a",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c/212a80f86452bb1316324fa0db730cf52f29e05a/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-c/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c/212a80f86452bb1316324fa0db730cf52f29e05a/Package.swift",
+          "sha256": "a71859ce4f0c2e64b2f4f0eb2721899f88fdb4d4b7a2d79261791d6cc8145454",
+          "gitBlob": "97f073da7f51e1571152cd64b8b0183199cd5d24",
+          "bytes": 1048,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-c/archive/212a80f86452bb1316324fa0db730cf52f29e05a.tar.gz",
+      "archiveBytes": 356793,
+      "archiveSHA256": "b01f1f35fbac8c2f724e5ae2cdbda6b9f0f340fbc16a34c90be7b017d6b006a0"
+    },
+    {
+      "identity": "tree-sitter-c-sharp",
+      "repository": "tree-sitter/tree-sitter-c-sharp",
+      "revision": "dd5e59721a5f8dae34604060833902b882023aaf",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/d4df07bcd39ce18e-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c-sharp/dd5e59721a5f8dae34604060833902b882023aaf/LICENSE",
+          "sha256": "d4df07bcd39ce18e53b903c724e6f309e49e32fda391a3bdff33c666b62024fd",
+          "gitBlob": "a350fd6bd0114ee8f78d1c1a015bb4453114bae9",
+          "bytes": 1118,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-c-sharp/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c-sharp/dd5e59721a5f8dae34604060833902b882023aaf/Package.swift",
+          "sha256": "4416f6146d50ee78700f5ad7b73189cfe12961e0ca6ed35cbe4aebc0afaf6e8c",
+          "gitBlob": "e76c5687c4817ea6c8ead98a21d95a0b2f43f3ad",
+          "bytes": 1118,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-c-sharp/archive/dd5e59721a5f8dae34604060833902b882023aaf.tar.gz",
+      "archiveBytes": 1856148,
+      "archiveSHA256": "e59b8d4d1dfe23fe0e7b4250dc89e6423f8882c31f77520dad835a98b2a9d7cd"
+    },
+    {
+      "identity": "tree-sitter-cpp",
+      "repository": "tree-sitter/tree-sitter-cpp",
+      "revision": "a71474021410973b29bfe99440d57bcd750246b1",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-cpp/a71474021410973b29bfe99440d57bcd750246b1/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-cpp/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-cpp/a71474021410973b29bfe99440d57bcd750246b1/Package.swift",
+          "sha256": "182a72aa38fcfcc03ac8c1528e127cea6aba261b1f6104e4db61a1c5a4b754f4",
+          "gitBlob": "a2fd9a0b34331003899c71615367823d16113cd8",
+          "bytes": 1123,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-cpp/archive/a71474021410973b29bfe99440d57bcd750246b1.tar.gz",
+      "archiveBytes": 1058667,
+      "archiveSHA256": "dbb423572f2ab96c868450afffa1804c6d718c69e407d2d372f94f32e477341d"
+    },
+    {
+      "identity": "tree-sitter-css",
+      "repository": "tree-sitter/tree-sitter-css",
+      "revision": "98c7b3dceb24f1ee17f1322f3947e55638251c37",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c5cfb43042b6b720-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-css/98c7b3dceb24f1ee17f1322f3947e55638251c37/LICENSE",
+          "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+          "gitBlob": "971b81f9a86c0c91827e225aeac9159a13bfd3c1",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-css/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-css/98c7b3dceb24f1ee17f1322f3947e55638251c37/Package.swift",
+          "sha256": "bc8e815a1b79d8b628953c0eef1213a4ec91e3c78322a10bab70dcc9966d1b64",
+          "gitBlob": "674c7e32d028c58c7b8e7b99efcfba67fe8b720d",
+          "bytes": 930,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-css/archive/98c7b3dceb24f1ee17f1322f3947e55638251c37.tar.gz",
+      "archiveBytes": 94003,
+      "archiveSHA256": "bc19b7cf6c769b8a433d6ccb21ece482a68a3c6c93c78cd06a026f0d4ea355b6"
+    },
+    {
+      "identity": "tree-sitter-dart",
+      "repository": "UserNobody14/tree-sitter-dart",
+      "revision": "e81af6ab94a728ed99c30083be72d88e6d56cf9e",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "apple-nested/tree-sitter-dart/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/.gitmodules",
+          "sha256": "9bf4768683abc6b06312439c07a6162d1a4b39b302dd45349cab13206d4b8742",
+          "gitBlob": "94ba3e0f391b438e9f834f124f532fa940b7f0e3",
+          "bytes": 104,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/d270cb3a4985d750-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/LICENSE",
+          "sha256": "d270cb3a4985d75033bd77d875ccebff1d66e32788a3f727891e28d76132dd46",
+          "gitBlob": "9633f23d30fc86c9ee3914c25ae356a92c8a191c",
+          "bytes": 1071,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-dart/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/Package.swift",
+          "sha256": "f5ba2170668c87f6f10bf600621b92a41679d8c176610d1c23edba08f6b1d4d0",
+          "gitBlob": "d7ead7508cabb109b2c4c8ee0ef86350c1d322e4",
+          "bytes": 1429,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/d4f4a51b5d4dd65e-LICENSE",
+          "originalPath": "tree_sitter/LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/tree_sitter/LICENSE",
+          "sha256": "d4f4a51b5d4dd65e1e05d1499c0366eb27cc6fd57307a2e637565644c85f26d3",
+          "gitBlob": "7b682a4386e41a8b1bf7810d987ed8b0fdcabd89",
+          "bytes": 1058,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/UserNobody14/tree-sitter-dart/archive/e81af6ab94a728ed99c30083be72d88e6d56cf9e.tar.gz",
+      "archiveBytes": 495146,
+      "archiveSHA256": "503f7467973cf181d41a5ba52f9078e9db01653d93c3e5a97349e1976071a07a"
+    },
+    {
+      "identity": "tree-sitter-dockerfile",
+      "repository": "camdencheek/tree-sitter-dockerfile",
+      "revision": "33e22c33bcdbfc33d42806ee84cfd0b1248cc392",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/806b8fcd19c1cdf2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-dockerfile/33e22c33bcdbfc33d42806ee84cfd0b1248cc392/LICENSE",
+          "sha256": "806b8fcd19c1cdf23e178eb25942acc844a38669e36b2c896c7baf5f8bcecbb4",
+          "gitBlob": "97faf2b669c6a117400ede53c66691c542f400a0",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-dockerfile/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-dockerfile/33e22c33bcdbfc33d42806ee84cfd0b1248cc392/Package.swift",
+          "sha256": "2eb9180e439701191d9be32de8d60b526a428c91baebd2b4995e16ed077c6e5f",
+          "gitBlob": "167205bbf881e5a7d4fa87ddfa82372fc8929dbf",
+          "bytes": 1115,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/camdencheek/tree-sitter-dockerfile/archive/33e22c33bcdbfc33d42806ee84cfd0b1248cc392.tar.gz",
+      "archiveBytes": 51340,
+      "archiveSHA256": "ac5ada9d2ece1b3674c51130b783875e42b1505c63d2155186c047783edcafaa"
+    },
+    {
+      "identity": "tree-sitter-elixir",
+      "repository": "elixir-lang/tree-sitter-elixir",
+      "revision": "11426c5fd20eef360d5ecaf10729191f6bc5d715",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/a6cba85bc92e0cff-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/LICENSE",
+          "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+          "gitBlob": "d9a10c0d8e868ebf8da0b3dc95bb0be634c34bfe",
+          "bytes": 10173,
+          "kind": "notice"
+        },
+        {
+          "path": "release/licenses/clients/runtime/119588423fbaa46a-NOTICE",
+          "originalPath": "NOTICE",
+          "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/NOTICE",
+          "sha256": "119588423fbaa46a6955a044fee5a23338c7de190d8c4651a94c6d0b98ca2cda",
+          "gitBlob": "2bb21df55582f0254dc0731df02a1c6b460ee8d4",
+          "bytes": 2967,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-elixir/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/Package.swift",
+          "sha256": "55ca46193c1fceb009f5827db3d864d79cc4f24edd4674e5b4c951f2ed60a4c8",
+          "gitBlob": "a3414baa06eebb0327370edd1bc8aae6173fbf27",
+          "bytes": 1191,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/elixir-lang/tree-sitter-elixir/archive/11426c5fd20eef360d5ecaf10729191f6bc5d715.tar.gz",
+      "archiveBytes": 600499,
+      "archiveSHA256": "09b1a7a5eb5553111a7dada5ed1caf446c9c6ffc57c23c1df97c153a43321206"
+    },
+    {
+      "identity": "tree-sitter-go",
+      "repository": "tree-sitter/tree-sitter-go",
+      "revision": "ff86c7f1734873c8c4874ca4dd95603695686d7a",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-go/ff86c7f1734873c8c4874ca4dd95603695686d7a/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-go/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-go/ff86c7f1734873c8c4874ca4dd95603695686d7a/Package.swift",
+          "sha256": "7b2f780e10da99ef13ec10efec758e1e6d5250e43165915d0eafe96f5d5f57d9",
+          "gitBlob": "50f5223770c86c50d92acc5b3d604afc8a74825a",
+          "bytes": 1113,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-go/archive/ff86c7f1734873c8c4874ca4dd95603695686d7a.tar.gz",
+      "archiveBytes": 191488,
+      "archiveSHA256": "f20c1fa2e0c393e87a23ba3bc13c502f7915cbe74f125b3a0e0616549d2a2432"
+    },
+    {
+      "identity": "tree-sitter-go-mod",
+      "repository": "camdencheek/tree-sitter-go-mod",
+      "revision": "bbe2fe3be4b87e06a613e685250f473d2267f430",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/806b8fcd19c1cdf2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-go-mod/bbe2fe3be4b87e06a613e685250f473d2267f430/LICENSE",
+          "sha256": "806b8fcd19c1cdf23e178eb25942acc844a38669e36b2c896c7baf5f8bcecbb4",
+          "gitBlob": "97faf2b669c6a117400ede53c66691c542f400a0",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-go-mod/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-go-mod/bbe2fe3be4b87e06a613e685250f473d2267f430/Package.swift",
+          "sha256": "3c3b00cb1cb8183460a5d7f11126dacd1cd3ef218f80156142ed2f1369ff29af",
+          "gitBlob": "c9940a35db2acdf9dd876cdddc6149a60bf5e434",
+          "bytes": 1063,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/camdencheek/tree-sitter-go-mod/archive/bbe2fe3be4b87e06a613e685250f473d2267f430.tar.gz",
+      "archiveBytes": 20552,
+      "archiveSHA256": "e13012d9ef9463992eeebf440306e10c60e60c9d657524a54cf07308e7786f3b"
+    },
+    {
+      "identity": "tree-sitter-haskell",
+      "repository": "tree-sitter/tree-sitter-haskell",
+      "revision": "dd924b8df1eb76261f009e149fc6f3291c5081c2",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-haskell/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/Package.swift",
+          "sha256": "1d66f4a20646e00ef6a43e5c3eb0e1ec765ede830004e1eaf40b7dd034b56843",
+          "gitBlob": "1651580eea543374ea5ba157bf27b7bcd9b3bc29",
+          "bytes": 1270,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/c71d239df91726fc-LICENSE",
+          "originalPath": "queries/LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/queries/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "gitBlob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+          "bytes": 11357,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-haskell/archive/dd924b8df1eb76261f009e149fc6f3291c5081c2.tar.gz",
+      "archiveBytes": 1569003,
+      "archiveSHA256": "3fb0b2bcc0bfe48a8d0b6564d0db30f843315d18948964eb134716e313affecc"
+    },
+    {
+      "identity": "tree-sitter-html",
+      "repository": "tree-sitter/tree-sitter-html",
+      "revision": "d742025fa2d8e6100f134a6ea990443aa1f074b3",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-html/d742025fa2d8e6100f134a6ea990443aa1f074b3/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-html/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-html/d742025fa2d8e6100f134a6ea990443aa1f074b3/Package.swift",
+          "sha256": "d6524a0d3d7a6c17b2ca32341e571cd45c3acceca8059de76bf7d3cb77f6c367",
+          "gitBlob": "5935559c08752c4ba78116169302430ec9a40c2c",
+          "bytes": 935,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-html/archive/d742025fa2d8e6100f134a6ea990443aa1f074b3.tar.gz",
+      "archiveBytes": 26117,
+      "archiveSHA256": "e413710a8532fe7267a28378f638bcbc901188ccae856f074192e87f7fb35aae"
+    },
+    {
+      "identity": "tree-sitter-java",
+      "repository": "tree-sitter/tree-sitter-java",
+      "revision": "2b57cd9541f9fd3a89207d054ce8fbe72657c444",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/52ed137b039cd9c4-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-java/2b57cd9541f9fd3a89207d054ce8fbe72657c444/LICENSE",
+          "sha256": "52ed137b039cd9c46409bc22e89938af911c95b157feae2d040b51e6084369a7",
+          "gitBlob": "4e0446f76ca7d380d615e31b5500711df66a9ea2",
+          "bytes": 1069,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-java/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-java/2b57cd9541f9fd3a89207d054ce8fbe72657c444/Package.swift",
+          "sha256": "2643fed8b90ef1d6613c0fddf276e7e28a73efadb008db0073eb3b3aabf9c585",
+          "gitBlob": "fc691ff9249e4b4203a4dc9c393f0ca1cbaf8486",
+          "bytes": 1041,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-java/archive/2b57cd9541f9fd3a89207d054ce8fbe72657c444.tar.gz",
+      "archiveBytes": 200908,
+      "archiveSHA256": "a208bd4cd8586879c4179daf9e5f613b96a3fdf02dd6036af0041af315f39533"
+    },
+    {
+      "identity": "tree-sitter-javascript",
+      "repository": "tree-sitter/tree-sitter-javascript",
+      "revision": "f1e5a09b8d02f8209a68249c93f0ad647b228e6e",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-javascript/f1e5a09b8d02f8209a68249c93f0ad647b228e6e/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-javascript/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-javascript/f1e5a09b8d02f8209a68249c93f0ad647b228e6e/Package.swift",
+          "sha256": "436bd26d014a31684e672799072796e11345a4160af7e889e3fbb313fc8ddedc",
+          "gitBlob": "feb7ed8b5a17d7c27400b5c97851fb41e1229ef8",
+          "bytes": 1100,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-javascript/archive/f1e5a09b8d02f8209a68249c93f0ad647b228e6e.tar.gz",
+      "archiveBytes": 371441,
+      "archiveSHA256": "990407b12470c90b9704bb4f063da483076d7652bca85b44708a86ff6a20898d"
+    },
+    {
+      "identity": "tree-sitter-jsdoc",
+      "repository": "tree-sitter/tree-sitter-jsdoc",
+      "revision": "d01984de49927c979b46ea5c01b78c8ddd79baf9",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/ffaefecad6846713-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-jsdoc/d01984de49927c979b46ea5c01b78c8ddd79baf9/LICENSE",
+          "sha256": "ffaefecad68467134f8c701120a2410a2384ffff7a605b63638cf0b51e7d16cc",
+          "gitBlob": "f0fb3e7da462c9f0f708c570384643d3ccea523b",
+          "bytes": 1105,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-jsdoc/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-jsdoc/d01984de49927c979b46ea5c01b78c8ddd79baf9/Package.swift",
+          "sha256": "7bb9a675f80700152aca32265597f37b1fa5d19f473025d016d31a2f62ce12fa",
+          "gitBlob": "2b5f98658f620399f28ec11182bf02aa235fb75c",
+          "bytes": 1030,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-jsdoc/archive/d01984de49927c979b46ea5c01b78c8ddd79baf9.tar.gz",
+      "archiveBytes": 15244,
+      "archiveSHA256": "f489eea6f1cc4d489073e223de56641b35313afdbfdc41e84882cac49ea85a78"
+    },
+    {
+      "identity": "tree-sitter-json",
+      "repository": "tree-sitter/tree-sitter-json",
+      "revision": "3fef30de8aee74600f25ec2e319b62a1a870d51e",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3fef30de8aee74600f25ec2e319b62a1a870d51e/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-json/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3fef30de8aee74600f25ec2e319b62a1a870d51e/Package.swift",
+          "sha256": "14cfe39ca55e7fa2cacaccd40215d63090af51614198f2f2ad564a2e79b074f0",
+          "gitBlob": "223fc56056a4e31e916d823e903e3c821be5aabe",
+          "bytes": 1027,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-json/archive/3fef30de8aee74600f25ec2e319b62a1a870d51e.tar.gz",
+      "archiveBytes": 15535,
+      "archiveSHA256": "6b6c5f421a1518f6c51044666eb793a7540a206992cbe1a45f2d5fe9ecf31334"
+    },
+    {
+      "identity": "tree-sitter-julia",
+      "repository": "tree-sitter/tree-sitter-julia",
+      "revision": "0c088d1ad270f02c4e84189247ac7001e86fe342",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/74f800107f200f4e-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-julia/0c088d1ad270f02c4e84189247ac7001e86fe342/LICENSE",
+          "sha256": "74f800107f200f4e28da33e9c3f86230d37d8f4c0a4916f7111e800c395ee3a2",
+          "gitBlob": "607d94b7fa6196b7a11744acbc1556048adb3937",
+          "bytes": 1088,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-julia/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-julia/0c088d1ad270f02c4e84189247ac7001e86fe342/Package.swift",
+          "sha256": "e111740107a2fef0543917298834a62c696180e195cb0729e157211ec5ea26c6",
+          "gitBlob": "4e8ac84df913928c528239cf7f9f49d8105c285d",
+          "bytes": 984,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-julia/archive/0c088d1ad270f02c4e84189247ac7001e86fe342.tar.gz",
+      "archiveBytes": 4032864,
+      "archiveSHA256": "8bd484754fb4a8ba55ae169cccb3c284ce58463e4ce33226e7394c78c603316e"
+    },
+    {
+      "identity": "tree-sitter-kotlin",
+      "repository": "fwcd/tree-sitter-kotlin",
+      "revision": "76f53c48d29e8588934fb55b0240d7bdfe00bfe5",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/948495f61768f7de-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/fwcd/tree-sitter-kotlin/76f53c48d29e8588934fb55b0240d7bdfe00bfe5/LICENSE",
+          "sha256": "948495f61768f7de26bcc61113d8cd95f50bbc15adb678c28c941c6c8fcd5903",
+          "gitBlob": "777756371d981380e00992bed77f52d220d7d6f5",
+          "bytes": 1071,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-kotlin/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/fwcd/tree-sitter-kotlin/76f53c48d29e8588934fb55b0240d7bdfe00bfe5/Package.swift",
+          "sha256": "951530b98684e2e94d8120f2db130789a6177bdb232679d56032dedb835318c0",
+          "gitBlob": "34463d1019e64915ff8d3eb550e20aaad688066e",
+          "bytes": 1438,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/fwcd/tree-sitter-kotlin/archive/76f53c48d29e8588934fb55b0240d7bdfe00bfe5.tar.gz",
+      "archiveBytes": 1785542,
+      "archiveSHA256": "702b5156ba0b59bb6efddfefe4e9ffd8e8a124d20f2c4657547ec0448b9928ca"
+    },
+    {
+      "identity": "tree-sitter-lua",
+      "repository": "tree-sitter-grammars/tree-sitter-lua",
+      "revision": "34e60e7f45fc313463c68090d88d742a55d1bd7a",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/9a32b02e4c917b1c-LICENSE.md",
+          "originalPath": "LICENSE.md",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-lua/34e60e7f45fc313463c68090d88d742a55d1bd7a/LICENSE.md",
+          "sha256": "9a32b02e4c917b1ce6b5e79d8ea81e25cefd7f27d89c7235f2afb262c06cf32e",
+          "gitBlob": "ff0407e77c183db53bf525741a76314e15e8f6ea",
+          "bytes": 1079,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-lua/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-lua/34e60e7f45fc313463c68090d88d742a55d1bd7a/Package.swift",
+          "sha256": "48823af818211b547b7604abcd235cd58e0049bdefce58b3574fe8ac3f740b85",
+          "gitBlob": "be3df127ed7a482c954a9e3842e9f9144525e9d0",
+          "bytes": 986,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter-grammars/tree-sitter-lua/archive/34e60e7f45fc313463c68090d88d742a55d1bd7a.tar.gz",
+      "archiveBytes": 61952,
+      "archiveSHA256": "6d65b531942e901093446c411d7658d2f43c33016b7edf06b8d0dab5f3e16032"
+    },
+    {
+      "identity": "tree-sitter-markdown",
+      "repository": "tree-sitter-grammars/tree-sitter-markdown",
+      "revision": "5cdc549ab8f461aff876c5be9741027189299cec",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/52ec8a1bf8256511-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-markdown/5cdc549ab8f461aff876c5be9741027189299cec/LICENSE",
+          "sha256": "52ec8a1bf8256511e2a92613e0bb41ffefba3897f16fa958d7bb28c466dd4804",
+          "gitBlob": "c125939af9e397f845811e9d8f31e07dc69170db",
+          "bytes": 1071,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-markdown/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-markdown/5cdc549ab8f461aff876c5be9741027189299cec/Package.swift",
+          "sha256": "c9852bbfc3561242c84c92a727e0b00f870cca177f72fb48b97b4ff43ed681fa",
+          "gitBlob": "375750cbeafc6de7c2bd21b6ec454a1adb40dd48",
+          "bytes": 1618,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter-grammars/tree-sitter-markdown/archive/5cdc549ab8f461aff876c5be9741027189299cec.tar.gz",
+      "archiveBytes": 420429,
+      "archiveSHA256": "365fb89d2911ac68d929bed30fe27f31f7738588dae6dda9c6b10800d5842932"
+    },
+    {
+      "identity": "tree-sitter-objc",
+      "repository": "tree-sitter-grammars/tree-sitter-objc",
+      "revision": "62e61b6f5c0289c376d61a8c91faf6435cde9012",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/099c44248f8cf353-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-objc/62e61b6f5c0289c376d61a8c91faf6435cde9012/LICENSE",
+          "sha256": "099c44248f8cf353123211318680e93465587c005a4b3730ce8cb5334de043d6",
+          "gitBlob": "5af536362c15275bb3a57445bc5be23b349cd1de",
+          "bytes": 1101,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-objc/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-objc/62e61b6f5c0289c376d61a8c91faf6435cde9012/Package.swift",
+          "sha256": "dd4faaf2d33faa0ff4c72ffa66c82dc88f68f7b20f2d3f106870b282945669b3",
+          "gitBlob": "8475f4a377f921090af69a5eb146e255ed178654",
+          "bytes": 1086,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter-grammars/tree-sitter-objc/archive/62e61b6f5c0289c376d61a8c91faf6435cde9012.tar.gz",
+      "archiveBytes": 2584024,
+      "archiveSHA256": "cb7ffe1618a09eabf70b7fbb00d1e9e278b7f37654fd6e929180c58c0d9b5d98"
+    },
+    {
+      "identity": "tree-sitter-ocaml",
+      "repository": "tree-sitter/tree-sitter-ocaml",
+      "revision": "4abfdc1c7af2c6c77a370aee974627be1c285b3b",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/f977a20805dd6e27-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ocaml/4abfdc1c7af2c6c77a370aee974627be1c285b3b/LICENSE",
+          "sha256": "f977a20805dd6e275f14bc090a5f8e638401dad4df366841c1060f12c75b74ae",
+          "gitBlob": "82557a14d7f9606f8f5c25de89f55b365bb9b000",
+          "bytes": 1094,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-ocaml/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ocaml/4abfdc1c7af2c6c77a370aee974627be1c285b3b/Package.swift",
+          "sha256": "8d2a8e492e4188e136ed43b1f0d6824297697e0a5415ec42d5e85843b7a1c2ed",
+          "gitBlob": "12b6e37bc0a579961c7e0c69b3876803fcf5c81a",
+          "bytes": 1090,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-ocaml/archive/4abfdc1c7af2c6c77a370aee974627be1c285b3b.tar.gz",
+      "archiveBytes": 2872053,
+      "archiveSHA256": "60453ee27f69c2d565aa021c5e9664fe0aad41be4aff270dc1c54610749c1cb8"
+    },
+    {
+      "identity": "tree-sitter-perl",
+      "repository": "ganezdragon/tree-sitter-perl",
+      "revision": "15a6914b9b891974c888ba7bf6c432665b920a3f",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/02c343f074753716-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/ganezdragon/tree-sitter-perl/15a6914b9b891974c888ba7bf6c432665b920a3f/LICENSE",
+          "sha256": "02c343f074753716e9c54fe12e6a27d03a041b54be545af8ecb280a7bb0ee703",
+          "gitBlob": "ee4ef4af307f95ad9d2e737323d6bb479d143669",
+          "bytes": 1064,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-perl/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/ganezdragon/tree-sitter-perl/15a6914b9b891974c888ba7bf6c432665b920a3f/Package.swift",
+          "sha256": "a37d9fa47e07d7fec8b2ff13c8e514e13fe50be2f95627e2af5947a64e5e6b10",
+          "gitBlob": "72e92694e6f97fe479cd3b06577f11e71117a34d",
+          "bytes": 1023,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/ganezdragon/tree-sitter-perl/archive/15a6914b9b891974c888ba7bf6c432665b920a3f.tar.gz",
+      "archiveBytes": 4546464,
+      "archiveSHA256": "6bcd15c1bcd79fe5e2d2d29e3331ebab067fd65b215d81021de21e078dc47f69"
+    },
+    {
+      "identity": "tree-sitter-php",
+      "repository": "tree-sitter/tree-sitter-php",
+      "revision": "b569a5f2c0d592e67430520d1a0e1f765d83ceb0",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/0e6225de0b737b9a-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-php/b569a5f2c0d592e67430520d1a0e1f765d83ceb0/LICENSE",
+          "sha256": "0e6225de0b737b9a3c3a3d52381989cc52025fe689dd036aaeb890beb7a593e5",
+          "gitBlob": "622fc85955958719a72ad1b795183446e60525d7",
+          "bytes": 1084,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-php/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-php/b569a5f2c0d592e67430520d1a0e1f765d83ceb0/Package.swift",
+          "sha256": "5c8c1d4d7a1345505f2844419390ef99d6e9ad10082c5e2923bf675a136a2c09",
+          "gitBlob": "3d0d6da9f5b21117d62465d8deb9c33f83f32c53",
+          "bytes": 768,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-php/archive/b569a5f2c0d592e67430520d1a0e1f765d83ceb0.tar.gz",
+      "archiveBytes": 531253,
+      "archiveSHA256": "d3c38d14367746043581eacc41699f15a09f455d2a82c10eb2b1583a843fad4e"
+    },
+    {
+      "identity": "tree-sitter-python",
+      "repository": "tree-sitter/tree-sitter-python",
+      "revision": "4bfdd9033a2225cc95032ce77066b7aeca9e2efc",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/d724405ce238a22c-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-python/4bfdd9033a2225cc95032ce77066b7aeca9e2efc/LICENSE",
+          "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+          "gitBlob": "ff8ed93cb0dd57d68feeefe4829dbc9083584b5e",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-python/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-python/4bfdd9033a2225cc95032ce77066b7aeca9e2efc/Package.swift",
+          "sha256": "d1fabe177e817e5f3215cd9a94b838ef14b767b4a46f52b0ca6584b1a885b51d",
+          "gitBlob": "a5e4524d446486ee286de0c75457ef81e2a086f9",
+          "bytes": 942,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-python/archive/4bfdd9033a2225cc95032ce77066b7aeca9e2efc.tar.gz",
+      "archiveBytes": 252108,
+      "archiveSHA256": "d815b5ecbe3a098ac62127922d617c46ba400347a711d26396fba58e728380b6"
+    },
+    {
+      "identity": "tree-sitter-regex",
+      "repository": "tree-sitter/tree-sitter-regex",
+      "revision": "4470c59041416e8a2a9fa343595ca28ed91f38b8",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-regex/4470c59041416e8a2a9fa343595ca28ed91f38b8/LICENSE",
+          "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+          "gitBlob": "4b52d191cead337b11e274b79459a86f1b5a7779",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-regex/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-regex/4470c59041416e8a2a9fa343595ca28ed91f38b8/Package.swift",
+          "sha256": "713e257b8e68ea7f7cd9a336c0e35dd0aa070dd14fda5f93fb9ea9aa75fb495f",
+          "gitBlob": "71d9022ffa59f14f73eb434b92dec4834e2f90c5",
+          "bytes": 1047,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-regex/archive/4470c59041416e8a2a9fa343595ca28ed91f38b8.tar.gz",
+      "archiveBytes": 52211,
+      "archiveSHA256": "dd710d5e3cd08ed77349c2992e4defb6735f38caea2987c4f596200f1c9ed609"
+    },
+    {
+      "identity": "tree-sitter-ruby",
+      "repository": "tree-sitter/tree-sitter-ruby",
+      "revision": "4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "apple-nested/tree-sitter-ruby/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/.gitmodules",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "gitBlob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "bytes": 0,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/ee006f02a3d856df-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/LICENSE",
+          "sha256": "ee006f02a3d856df282e409be2a86e24a65bb573a98b9c28343771141351bb6b",
+          "gitBlob": "2a79f435f473717691c5e2b356fbf3e758ba930d",
+          "bytes": 1075,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-ruby/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/Package.swift",
+          "sha256": "21f88314e68e34449fc02622e648e58bd36c772c99210151a146393d7e341135",
+          "gitBlob": "f3e294beafc6cf24c1aa2e2c0f5c3109b5b9e83c",
+          "bytes": 1125,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-ruby/archive/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7.tar.gz",
+      "archiveBytes": 596842,
+      "archiveSHA256": "195a16f9b9035fc1178b7a6230c16bcca6e3351c1a87a3f1a3e4e2e0ac8917b3"
+    },
+    {
+      "identity": "tree-sitter-rust",
+      "repository": "tree-sitter/tree-sitter-rust",
+      "revision": "79456e6080f50fc1ca7c21845794308fa5d35a51",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "apple-nested/tree-sitter-rust/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/.gitmodules",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "gitBlob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "bytes": 0,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/31d5b6f4243d5c7c-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/LICENSE",
+          "sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36",
+          "gitBlob": "ceaf3c9adca54f7d3242593dd4db8065b1611699",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-rust/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/Package.swift",
+          "sha256": "75abe94ded1c856080f413ec07458e3ce26faf318b57044407a24618cbfb7099",
+          "gitBlob": "1831c6a72725f4568ecf1aa9968d6ff167d684dd",
+          "bytes": 1156,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-rust/archive/79456e6080f50fc1ca7c21845794308fa5d35a51.tar.gz",
+      "archiveBytes": 400974,
+      "archiveSHA256": "af065b09ae5ff7a062a9859d6e21c14679445344c1272c9c0a8aeed21c71bbe5"
+    },
+    {
+      "identity": "tree-sitter-scala",
+      "repository": "tree-sitter/tree-sitter-scala",
+      "revision": "45b5ba0e749a8477a8fd2666f082f352859bdc3c",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/1f95ed26e1f40740-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-scala/45b5ba0e749a8477a8fd2666f082f352859bdc3c/LICENSE",
+          "sha256": "1f95ed26e1f4074074c9c7083e61c0a9e4c3b9f435745044995f3beb4ed28575",
+          "gitBlob": "bd0a4d6c7d625591c54e1f023b93af2a4650271a",
+          "bytes": 1091,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-scala/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-scala/45b5ba0e749a8477a8fd2666f082f352859bdc3c/Package.swift",
+          "sha256": "b8a590d43f751a2fb3a4c46be9a812683dfd66ba7369cc7bb5dc532f80807932",
+          "gitBlob": "c7d80f931ca8bcd1c311d0e177cc9289c8ab37dc",
+          "bytes": 659,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-scala/archive/45b5ba0e749a8477a8fd2666f082f352859bdc3c.tar.gz",
+      "archiveBytes": 1340268,
+      "archiveSHA256": "df59c346d3f2c03dd7c894c200c343ec6cc82d129aab459ff08886c4312d02fe"
+    },
+    {
+      "identity": "tree-sitter-sql",
+      "repository": "DerekStride/tree-sitter-sql",
+      "revision": "fd70fb358d164cd93fbe2674a9cca276dc5203f7",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/3b3e4e4252d5d7d1-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/DerekStride/tree-sitter-sql/fd70fb358d164cd93fbe2674a9cca276dc5203f7/LICENSE",
+          "sha256": "3b3e4e4252d5d7d1c18e1257005f23242bf0580ad619204fd093c99b8c56748d",
+          "gitBlob": "b976c9b4c70b2aad4bb31de3d6504193dc0be83c",
+          "bytes": 1069,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-sql/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/DerekStride/tree-sitter-sql/fd70fb358d164cd93fbe2674a9cca276dc5203f7/Package.swift",
+          "sha256": "2b9451338c630dd6ece20ce25048fcf0cbb6c018f93731cb1ee81ed24f938c01",
+          "gitBlob": "3abc28b4e75848aafba630cadc764e3f58644088",
+          "bytes": 977,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/DerekStride/tree-sitter-sql/archive/fd70fb358d164cd93fbe2674a9cca276dc5203f7.tar.gz",
+      "archiveBytes": 800153,
+      "archiveSHA256": "e4061270f466b33a99015185da3fd783bfd0acc06b21d0da907ce5929e375fdd"
+    },
+    {
+      "identity": "tree-sitter-swift",
+      "repository": "alex-pinkus/tree-sitter-swift",
+      "revision": "eda05af7ac41adb4eb19c346883c0fa32fe3bdd8",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/3533cec129bb4bba-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/alex-pinkus/tree-sitter-swift/eda05af7ac41adb4eb19c346883c0fa32fe3bdd8/LICENSE",
+          "sha256": "3533cec129bb4bba015c0d61d86dd7c3b7e82110e4d2ff7837a01eff5bad5ccc",
+          "gitBlob": "f158d7005311344ac316830fe68492214e1645e6",
+          "bytes": 1068,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-swift/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/alex-pinkus/tree-sitter-swift/eda05af7ac41adb4eb19c346883c0fa32fe3bdd8/Package.swift",
+          "sha256": "43852d8133a539f01ba3d0b91c621ef662ad544f5e13f511b7e7a2af3c7795ab",
+          "gitBlob": "97c78c332d0a94d12edde026d1c7534a6dd3f9f7",
+          "bytes": 662,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/alex-pinkus/tree-sitter-swift/archive/eda05af7ac41adb4eb19c346883c0fa32fe3bdd8.tar.gz",
+      "archiveBytes": 1621842,
+      "archiveSHA256": "9843b13e9ae1fe45895dc9a85982b86cc569cf1ea17e0238526a1c1d81f57932"
+    },
+    {
+      "identity": "tree-sitter-toml",
+      "repository": "cengelbart39/tree-sitter-toml",
+      "revision": "28db724e8e30920638b46d408c0fbac007ac6a62",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "apple-nested/tree-sitter-toml/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/.gitmodules",
+          "sha256": "bd0de83836a8b84a2800dd9ae9dc1ef8529f37f01d6276de9ea08cd4a4f4ae0c",
+          "gitBlob": "922f976cab6d86735d385d03d850036031dfa529",
+          "bytes": 118,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/b727eee929bee836-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/LICENSE",
+          "sha256": "b727eee929bee836e8102cecf749a795b199f291b58c885bcd81cae727ac5a46",
+          "gitBlob": "7bf071b1d83ca0644118769f568c978bb7ccf3ae",
+          "bytes": 1116,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-toml/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/Package.swift",
+          "sha256": "0f62809177dcdca1f39fccb57ef8b9137d411b83b85bf6ec1e9f067fe6ca9cd6",
+          "gitBlob": "e2e3094dd303bf1f07a9741e49e235d81b9de42a",
+          "bytes": 1061,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "apple-nested/tree-sitter-toml/docs/assets/tree-sitter-playground-0.19.3/LICENSE",
+          "originalPath": "docs/assets/tree-sitter-playground-0.19.3/LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/docs/assets/tree-sitter-playground-0.19.3/LICENSE",
+          "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+          "gitBlob": "971b81f9a86c0c91827e225aeac9159a13bfd3c1",
+          "bytes": 1080,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-toml/docs/assets/web-tree-sitter-0.19.3/LICENSE",
+          "originalPath": "docs/assets/web-tree-sitter-0.19.3/LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/docs/assets/web-tree-sitter-0.19.3/LICENSE",
+          "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+          "gitBlob": "971b81f9a86c0c91827e225aeac9159a13bfd3c1",
+          "bytes": 1080,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/cengelbart39/tree-sitter-toml/archive/28db724e8e30920638b46d408c0fbac007ac6a62.tar.gz",
+      "archiveBytes": 162877,
+      "archiveSHA256": "21364faa750f17fd934316929bb3c48db434e78541a635d69a02306fbabd68eb"
+    },
+    {
+      "identity": "tree-sitter-typescript",
+      "repository": "tree-sitter/tree-sitter-typescript",
+      "revision": "d847898fec3fe596798c9fda55cb8c05a799001a",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c873307dab492c1e-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-typescript/d847898fec3fe596798c9fda55cb8c05a799001a/LICENSE",
+          "sha256": "c873307dab492c1ea6e6d26bf43d0ef9aaac09447d25ff017b20e590f9c6ebe2",
+          "gitBlob": "131d9c019308824219e3a1fce63d845e4670289e",
+          "bytes": 1073,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-typescript/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-typescript/d847898fec3fe596798c9fda55cb8c05a799001a/Package.swift",
+          "sha256": "ba1c4ec68de7c81fef7b35976d288d98dd5ce484ddefa52b0c1a13804aec74cc",
+          "gitBlob": "f789c0200e6c317a77278454bdcc2f2a4cebcee9",
+          "bytes": 785,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-typescript/archive/d847898fec3fe596798c9fda55cb8c05a799001a.tar.gz",
+      "archiveBytes": 844212,
+      "archiveSHA256": "c695dd926a1d7cb1258eba85fdf66dfdae8b15d7debe2f85cf3339ae2c5f0751"
+    },
+    {
+      "identity": "tree-sitter-verilog",
+      "repository": "tree-sitter/tree-sitter-verilog",
+      "revision": "902031343056bc0b11f3e47b33f036a9cf59f58d",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/8d2ff8d1e3088280-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-verilog/902031343056bc0b11f3e47b33f036a9cf59f58d/LICENSE",
+          "sha256": "8d2ff8d1e308828099436c43dc8bfbb8b6f368ad2a012ab9802a80ca22b03b53",
+          "gitBlob": "d7a5632c880f77a952a89c23deb431eb9a1602ca",
+          "bytes": 1082,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-verilog/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-verilog/902031343056bc0b11f3e47b33f036a9cf59f58d/Package.swift",
+          "sha256": "6e240f9757a4745759ae3949be4bdd96e476dfcb9d8aa5bc64ac8e24acf646e1",
+          "gitBlob": "6fc7974afb0a160b2546ee0af202aae5cded9794",
+          "bytes": 985,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter-verilog/archive/902031343056bc0b11f3e47b33f036a9cf59f58d.tar.gz",
+      "archiveBytes": 2625566,
+      "archiveSHA256": "2098987af09ce41caa15b98d1796feed7f1385bea8b1c9f17678a583d5683d58"
+    },
+    {
+      "identity": "tree-sitter-yaml",
+      "repository": "tree-sitter-grammars/tree-sitter-yaml",
+      "revision": "7b03feefd36b5f155465ca736c6304aca983b267",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "apple-nested/tree-sitter-yaml/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/.gitmodules",
+          "sha256": "bf19106e4aad7fba0365d6a6f97474a6bfe6c7e451faf08da6110d1f350e208a",
+          "gitBlob": "7804057c12f4d9b4ce7b264123d6ed31700318ca",
+          "bytes": 141,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/2d181298822a124f-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/LICENSE",
+          "sha256": "2d181298822a124f6d106118dcc69c8d4d26ac668559be29682c452e712b0947",
+          "gitBlob": "262eb4627a5a69362c210c270c304e2341591585",
+          "bytes": 1105,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-yaml/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/Package.swift",
+          "sha256": "af56fddc99010b9b379402b150aac73125445e73866cdcb5aa56c61ebe9bc303",
+          "gitBlob": "e074da08c93f7d64aedaa48e925a5cb1eeb1a741",
+          "bytes": 1430,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter-grammars/tree-sitter-yaml/archive/7b03feefd36b5f155465ca736c6304aca983b267.tar.gz",
+      "archiveBytes": 145396,
+      "archiveSHA256": "2dc24eb8fde0827d808a8b196e4c4e1450125df46bb37cadc2b817dff21d36b3"
+    },
+    {
+      "identity": "tree-sitter-zig",
+      "repository": "tree-sitter-grammars/tree-sitter-zig",
+      "revision": "eb7d58c2dc4fbeea4745019dee8df013034ae66b",
+      "basis": "apple/codeeditlanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "CodeLanguagesContainer runtime grammar source candidate; binary-to-source reproducibility not proven",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/0eea8dc45e89deeb-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-zig/eb7d58c2dc4fbeea4745019dee8df013034ae66b/LICENSE",
+          "sha256": "0eea8dc45e89deeb03c7799bbbc7b4688f365fb274562f4540ecfebdea82e727",
+          "gitBlob": "4e8c9b38350135b69d7137e508d29e8980794569",
+          "bytes": 1101,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter-zig/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-zig/eb7d58c2dc4fbeea4745019dee8df013034ae66b/Package.swift",
+          "sha256": "5801fd5ab78461352f56aaf11c3405b12e466d7117275427c89633d4047c5025",
+          "gitBlob": "81021c145b981594b968fc17aa0a8a21c85ab08b",
+          "bytes": 1389,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter-grammars/tree-sitter-zig/archive/eb7d58c2dc4fbeea4745019dee8df013034ae66b.tar.gz",
+      "archiveBytes": 250132,
+      "archiveSHA256": "cbd7e67a98c9d2d7e4d28e2e87f4965625d864795bf5b46241bf839faae95f2c"
+    },
+    {
+      "identity": "swifttreesitter",
+      "repository": "ChimeHQ/SwiftTreeSitter",
+      "revision": "08ef81eb8620617b55b08868126707ad72bf754f",
+      "basis": "clients/sing-box-for-apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "Apple root lock runtime candidate; API tree retrieval rate-limited, archive fallback",
+      "files": [
+        {
+          "path": "apple-nested/swifttreesitter/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/.gitmodules",
+          "sha256": "99aaa8d9457db22915504e8ccee90555cae7904fe682cb62d49835742eb669c4",
+          "gitBlob": "7193ad3c963e9551b6cfbb154988ff176444428f",
+          "bytes": 145,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/792197b8debcdecb-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/LICENSE",
+          "sha256": "792197b8debcdecb17f429bab3a43a5911364e2a6e8e7c0f7faf02032212fb5f",
+          "gitBlob": "79ee939a3dccd21b2b6a5a69809b65afca15f389",
+          "bytes": 1513,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/swifttreesitter/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/Package.swift",
+          "sha256": "7fa322bc8dcc44444ba8ec29052e1857e012bf231747a002c13f5724dd42a9ee",
+          "gitBlob": "e40fbaf4df210a45c21743bcdb3da6daf0adb62e",
+          "bytes": 1371,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/ChimeHQ/SwiftTreeSitter/archive/08ef81eb8620617b55b08868126707ad72bf754f.tar.gz",
+      "archiveBytes": 68001,
+      "archiveSHA256": "7d5f1894b9cb99071e9ab601686231066825a14a365e1d57212d03a11962d2f1"
+    },
+    {
+      "identity": "textstory",
+      "repository": "ChimeHQ/TextStory",
+      "revision": "a52db1a2eca74d37c8c19bf3165416941632ed45",
+      "basis": "clients/sing-box-for-apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "Apple root lock runtime candidate; API tree retrieval rate-limited, archive fallback",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/afbec25c49bc05b3-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextStory/a52db1a2eca74d37c8c19bf3165416941632ed45/LICENSE",
+          "sha256": "afbec25c49bc05b3db57755ce2839d578c01319e5c7c29d7ad3781cd97660c9b",
+          "gitBlob": "26829fff2c7c4945244529344003f3c193eb794a",
+          "bytes": 1513,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/textstory/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextStory/a52db1a2eca74d37c8c19bf3165416941632ed45/Package.swift",
+          "sha256": "eb92856ed0a8df7914a06155586149067cb0f147fab4d156fc456529ae8af833",
+          "gitBlob": "74587ac2052881154387bac5c80351088baabedc",
+          "bytes": 734,
+          "kind": "build-manifest"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/ChimeHQ/TextStory/archive/a52db1a2eca74d37c8c19bf3165416941632ed45.tar.gz",
+      "archiveBytes": 17935,
+      "archiveSHA256": "490e1c18cb41efc1305ef0713baaff0e85ac8f72d1c82e56ab2142095b407b63"
+    },
+    {
+      "identity": "tree-sitter",
+      "repository": "tree-sitter/tree-sitter",
+      "revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+      "basis": "clients/sing-box-for-apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "role": "Apple root lock runtime candidate; API tree retrieval rate-limited, archive fallback",
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/5f9cf9fb6acb1972-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/LICENSE",
+          "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147",
+          "gitBlob": "451fe1d26ee6043ac94f6c8a81a6143f17748b4d",
+          "bytes": 1085,
+          "kind": "notice"
+        },
+        {
+          "path": "apple-nested/tree-sitter/Package.swift",
+          "originalPath": "Package.swift",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/Package.swift",
+          "sha256": "674895421bbe1c6d06c3007015a5f833d3700b3adeed82d3ba8de0cd564b9c96",
+          "gitBlob": "a92d3d149b31d2355887f79866fb593116b38fa0",
+          "bytes": 1178,
+          "kind": "build-manifest"
+        },
+        {
+          "path": "release/licenses/clients/runtime/6a18c5fac70d7860-LICENSE",
+          "originalPath": "lib/src/unicode/LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/lib/src/unicode/LICENSE",
+          "sha256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d",
+          "gitBlob": "2e01e368768a4b992e22f98c05ead747134492a6",
+          "bytes": 21001,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/tree-sitter/tree-sitter/archive/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406.tar.gz",
+      "archiveBytes": 865727,
+      "archiveSHA256": "d7ccf512347cac69a151ff174140ae6563ea01c6424b62dd963c977cfa8a0992"
+    }
+  ]
+}

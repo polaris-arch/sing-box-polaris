@@ -1,0 +1,462 @@
+[
+  {
+    "package": "freetype",
+    "url": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAKLKpwC4H27Ps_0iL3bPkQb-z6ZVSrB-x_3EEkub",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "freetype-VER-2-13-2/LICENSE.TXT",
+        "path": "sources/freetype/legal/LICENSE.TXT",
+        "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
+        "bytes": 2074
+      },
+      {
+        "sourcePath": "freetype-VER-2-13-2/docs/FTL.TXT",
+        "path": "sources/freetype/legal/docs/FTL.TXT",
+        "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+        "bytes": 6743
+      },
+      {
+        "sourcePath": "freetype-VER-2-13-2/docs/GPLv2.TXT",
+        "path": "sources/freetype/legal/docs/GPLv2.TXT",
+        "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+        "bytes": 17994
+      }
+    ],
+    "archiveBytes": 2480637,
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c"
+  },
+  {
+    "package": "libpng",
+    "url": "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAJrvXQCqAT8Mg9o_tk6m0yf5Fz-gCNEOKLyTSerD",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "libpng-1.6.43/AUTHORS",
+        "path": "sources/libpng/legal/AUTHORS",
+        "sha256": "980af1d09d9a1092e35c463776757c90becb07f9879f6549d46e90e22629f4e1",
+        "bytes": 1450
+      },
+      {
+        "sourcePath": "libpng-1.6.43/LICENSE",
+        "path": "sources/libpng/legal/LICENSE",
+        "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+        "bytes": 5345
+      },
+      {
+        "sourcePath": "libpng-1.6.43/ci/LICENSE_MIT.txt",
+        "path": "sources/libpng/legal/ci/LICENSE_MIT.txt",
+        "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+        "bytes": 1036
+      },
+      {
+        "sourcePath": "libpng-1.6.43/contrib/gregbook/COPYING",
+        "path": "sources/libpng/legal/contrib/gregbook/COPYING",
+        "sha256": "d6cb0e9e560f51085556949a84af12b79a00f10ab8b66c752537faf7cd665572",
+        "bytes": 18097
+      },
+      {
+        "sourcePath": "libpng-1.6.43/contrib/gregbook/LICENSE",
+        "path": "sources/libpng/legal/contrib/gregbook/LICENSE",
+        "sha256": "b6a03c1803eb58ffb1f1278d5c7d4096c4c116e66dce8a7553e8c77d163c3438",
+        "bytes": 2373
+      },
+      {
+        "sourcePath": "libpng-1.6.43/contrib/pngexif/LICENSE_MIT.txt",
+        "path": "sources/libpng/legal/contrib/pngexif/LICENSE_MIT.txt",
+        "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+        "bytes": 1036
+      },
+      {
+        "sourcePath": "libpng-1.6.43/contrib/pngminus/LICENSE.txt",
+        "path": "sources/libpng/legal/contrib/pngminus/LICENSE.txt",
+        "sha256": "eeb50cca0bf0537aeeef00874e1e22f0de50cb035f5db37e36036dc9b8218e8d",
+        "bytes": 1165
+      },
+      {
+        "sourcePath": "libpng-1.6.43/scripts/cmake/AUTHORS.md",
+        "path": "sources/libpng/legal/scripts/cmake/AUTHORS.md",
+        "sha256": "c7cc03f49a26c66803ccbe51964ed7df3ce6faed8cc8648c9534b9138bfe80f9",
+        "bytes": 791
+      }
+    ],
+    "archiveBytes": 1554715,
+    "archiveSHA256": "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a"
+  },
+  {
+    "package": "zlib",
+    "url": "https://deps.files.ghostty.org/zlib-1220fed0c74e1019b3ee29edae2051788b080cd96e90d56836eea857b0b966742efb.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAB0eQwD-0MdOEBmz7intriBReIsIDNlukNVoNu6o",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "zlib-1.3.1/LICENSE",
+        "path": "sources/zlib/legal/LICENSE",
+        "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+        "bytes": 1002
+      },
+      {
+        "sourcePath": "zlib-1.3.1/contrib/dotzlib/LICENSE_1_0.txt",
+        "path": "sources/zlib/legal/contrib/dotzlib/LICENSE_1_0.txt",
+        "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+        "bytes": 1359
+      }
+    ],
+    "archiveBytes": 1572744,
+    "archiveSHA256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c"
+  },
+  {
+    "package": "oniguruma",
+    "url": "https://deps.files.ghostty.org/oniguruma-1220c15e72eadd0d9085a8af134904d9a0f5dfcbed5f606ad60edc60ebeccd9706bb.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAHjwMQDBXnLq3Q2QhaivE0kE2aD138vtX2Bq1g7c",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "oniguruma-6.9.9/AUTHORS",
+        "path": "sources/oniguruma/legal/AUTHORS",
+        "sha256": "172a2a72c080d3067969599308c91385af86fdeb2419f8ad687883ca5a8ff912",
+        "bytes": 32
+      },
+      {
+        "sourcePath": "oniguruma-6.9.9/COPYING",
+        "path": "sources/oniguruma/legal/COPYING",
+        "sha256": "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f",
+        "bytes": 1340
+      }
+    ],
+    "archiveBytes": 645616,
+    "archiveSHA256": "001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0"
+  },
+  {
+    "package": "highway",
+    "url": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAGmZhABbsPJLfbqrh6JTHsXhY6qCaLAQyx25e0XE",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE",
+        "path": "sources/highway/legal/LICENSE",
+        "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+        "bytes": 11356
+      },
+      {
+        "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE-BSD3",
+        "path": "sources/highway/legal/LICENSE-BSD3",
+        "sha256": "d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2",
+        "bytes": 1515
+      },
+      {
+        "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/debian/copyright",
+        "path": "sources/highway/legal/debian/copyright",
+        "sha256": "6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76",
+        "bytes": 825
+      }
+    ],
+    "archiveBytes": 3563730,
+    "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212"
+  },
+  {
+    "package": "libintl",
+    "url": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "gettext-0.24/AUTHORS",
+        "path": "sources/libintl/legal/AUTHORS",
+        "sha256": "b0a47f17ae2fbe64475d144d03076fe3893f7c2a7bb93af357db41beae4b7bda",
+        "bytes": 2572
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/AUTHORS",
+        "path": "sources/libintl/legal/gettext-runtime/intl/AUTHORS",
+        "sha256": "4bd9e2cd15ab6d68b30965512b63a1d4aae95f4c1dd040657a4d1300252a695f",
+        "bytes": 96
+      },
+      {
+        "sourcePath": "gettext-0.24/COPYING",
+        "path": "sources/libintl/legal/COPYING",
+        "sha256": "e79e9c8a0c85d735ff98185918ec94ed7d175efc377012787aebcf3b80f0d90b",
+        "bytes": 35151
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/COPYING.LIB",
+        "path": "sources/libintl/legal/gettext-runtime/intl/COPYING.LIB",
+        "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+        "bytes": 26419
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/bindtextdom.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/bindtextdom.c.header.txt",
+        "sourceFileSHA256": "7b28ce5c913896f77056a3cc7d39de0aed621bce68cdcbf2ab504f450ec7ab0b",
+        "sha256": "9bdb2271fdd879ddc09005d889cfd130be740787d8b41f3327eb07597b9e0549",
+        "bytes": 780
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/dcgettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/dcgettext.c.header.txt",
+        "sourceFileSHA256": "75cf5f57b14d83a992beb17b05fc762b0b7dc87c271ac1070edea77c9bb96c05",
+        "sha256": "5dac99dbf81d70a2e55d82bab49d252d0a168b19e113b8aeb14e8c2f4d85f41d",
+        "bytes": 776
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/dcigettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/dcigettext.c.header.txt",
+        "sourceFileSHA256": "dbeddd3cdbcc81a3c20401cf0feec4944169d2a64ea6e36393d8866f2df66b1c",
+        "sha256": "e9d63953719c37d3808e823046f52b2c916729344cbc0eec3dadae57fe4347ed",
+        "bytes": 783
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/dcngettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/dcngettext.c.header.txt",
+        "sourceFileSHA256": "66a5e9bcc4ef4aaf0a820974030c2d2b6489a8aabb56acef07a1277cbe9d63d8",
+        "sha256": "848c681776e99d3eef691118fa2a729ce219cec16423dab0c60683975d3a6c99",
+        "bytes": 777
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/dgettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/dgettext.c.header.txt",
+        "sourceFileSHA256": "b3570c73b07320da8cba439e01a3f4a5d0c1070c1e83bc599d72dbe0f0bde154",
+        "sha256": "d0ae2520dd2f357af6e2fcf04aaa3b81afbbc557bd0a6512c69bb31450f89fe3",
+        "bytes": 775
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/dngettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/dngettext.c.header.txt",
+        "sourceFileSHA256": "f4771cf69ea3830226e8a226a264dcb9bc3d6c87f6bcec1ae71a5e383e7dfa00",
+        "sha256": "d0491fa69b904082a91d125f566d26c0588e529df58f3e9dfe5ade0441ac4b7b",
+        "bytes": 776
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/explodename.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/explodename.c.header.txt",
+        "sourceFileSHA256": "2cca5dcb0bf1f997dfc615f017b13e0e62f205a73001045d8541e0925677bbdc",
+        "sha256": "a0a0ed116848b1f965e333684373d286de4696fab1fbc7f93953dfd6c05c40d9",
+        "bytes": 799
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/finddomain.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/finddomain.c.header.txt",
+        "sourceFileSHA256": "0f0cadf37f9179ded97b1a0dce5ac9d14d46772af29810c11cd2a2382e727472",
+        "sha256": "ed9f023084350a4dc7ddccbc3aaf4fe1dd3fcb30342eeb8849ea1957898e05da",
+        "bytes": 824
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gettext.c.header.txt",
+        "sourceFileSHA256": "0525bd632a5156617fe10c03417f1b11263a3d69969ba44923b8f3d5220a3e7a",
+        "sha256": "1e9b8cbff80d1c1878752016101e6aab2f9b2b1c5d00613e11c91e2fb803783c",
+        "bytes": 770
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/hash-string.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/hash-string.c.header.txt",
+        "sourceFileSHA256": "72bbd26b5e73bfa058e0955d2f506316c50d39c284005ac7455e0905ce35c433",
+        "sha256": "228c8c64a73b83f3797ba7308f9b277526343acc797ec9dc6745f8ef4340c183",
+        "bytes": 829
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/intl-compat.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/intl-compat.c.header.txt",
+        "sourceFileSHA256": "eba2e4e12781e43a8cb367ed3f2e3885f9e0cfb73745db405c80220d953d9037",
+        "sha256": "c102c91165ff86c996bee7202b17ad6f494649bccc49212d8b36cdf462d9e8a0",
+        "bytes": 815
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/l10nflist.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/l10nflist.c.header.txt",
+        "sourceFileSHA256": "0178fff39ffddca535d346d3e22a65b4573779c0860bba1862b906d172107632",
+        "sha256": "dbe643b3917855bc73ddff545da7a98b90ad92bfdcefec918ac9b0502aae966e",
+        "bytes": 793
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/langprefs.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/langprefs.c.header.txt",
+        "sourceFileSHA256": "4a7d2c969726496c35431f1da43036f432b6cf8c6564c9fcf26a5e9c1f805709",
+        "sha256": "1740ec6ab2cee6fab510094d50518ad8f6fa9e5f319288bbcbf599baf6fa22b5",
+        "bytes": 785
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/loadmsgcat.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/loadmsgcat.c.header.txt",
+        "sourceFileSHA256": "698c9150d816c3c499a0e25d93bdcecad4559c512179ff4d7dcf33e27395ef2c",
+        "sha256": "3dc2eebc9d6c1cf60017967d91168c1bac91cd8d8077bb8a25c64e3ddb781c45",
+        "bytes": 761
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/localealias.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/localealias.c.header.txt",
+        "sourceFileSHA256": "4a4ef4fb14f972b377abc02d3d4948a6132613754746e402c19bb51ccf6b7cd5",
+        "sha256": "f956cb95e48f1e2629335e57f63b0524c383cc7d164c77180903c43e32c6a493",
+        "bytes": 764
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/log.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/log.c.header.txt",
+        "sourceFileSHA256": "49f04ca3f9a198b64faf09ac1acdf7f87057e87ed2ee725fdb2cbd64ab74dc66",
+        "sha256": "71ff65b0c0d7572fff6c7960c83ff33872db7465f53f9a11c01272c0c0996a40",
+        "bytes": 748
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/ngettext.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/ngettext.c.header.txt",
+        "sourceFileSHA256": "b4428dc18bbbc00984090eaa9861d0e9648fc8e1f165e538422d303b5477b945",
+        "sha256": "4ac46e9f11fc899d97f8fcbb848b91c8a191c0ebf347d61ee96e7e2991bde4c9",
+        "bytes": 771
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/plural-exp.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/plural-exp.c.header.txt",
+        "sourceFileSHA256": "60edfffa12e4a3a3d5b50d8333a9814472df66670007971e17143bef7c542cf1",
+        "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+        "bytes": 834
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/plural.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/plural.c.header.txt",
+        "sourceFileSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+        "sha256": "fb0c571b39270dcb9117ed21197e8ca812a2048e9f45d2867d0ceb9eb356a0f2",
+        "bytes": 47
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/setlocale.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/setlocale.c.header.txt",
+        "sourceFileSHA256": "126bbce12481947a5f62bc257f871d8e6ddfdff341b55492f17793ee75414d55",
+        "sha256": "1592cc21b2d7148f98c611990ef6d7e411c2c760f645ecf8dc74ec96caa627c7",
+        "bytes": 855
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/textdomain.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/textdomain.c.header.txt",
+        "sourceFileSHA256": "75bd5033bf8a81417c457ae44c18d57a08a8d1471567d08686295691e893b285",
+        "sha256": "2b0562532dc7a93b02b3bae2e1eed43baeded7b8ab04d8ccad428d75592b104f",
+        "bytes": 777
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/version.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/version.c.header.txt",
+        "sourceFileSHA256": "5ed86e0d31f85a0606d6a1b72edb758914a1bf2e02022c0b0de5a8ef331802af",
+        "sha256": "2790a6a7aaf5a5f8f1eaa4fe2f4bc7f05359cdf7acd43ba60ad0fb66bb8f372e",
+        "bytes": 751
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/compat.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/compat.c.header.txt",
+        "sourceFileSHA256": "04b3f4237b2005d482ffd15f895e30a0d19639a765b825b479cb173b312a4720",
+        "sha256": "c39a27b502b50dbad9cdf4a66f02a997636deb6c3a7dc62d97b5856218bad210",
+        "bytes": 762
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/getlocalename_l-unsafe.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/getlocalename_l-unsafe.c.header.txt",
+        "sourceFileSHA256": "4aa01a79077a7fd7e7a15b89993423e4079b797185a20fbda4e12d2084c964f1",
+        "sha256": "f90e4ffecb8148658c0e145d994c9843b922a8b78a626e2412cf5df1401c5d20",
+        "bytes": 766
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename.c.header.txt",
+        "sourceFileSHA256": "218e678aae71d0b6129fe6b5248657440d0a4cc37028df68553a697d7f0e9302",
+        "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+        "bytes": 774
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-environ.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-environ.c.header.txt",
+        "sourceFileSHA256": "c801b16cc7c78dca704aa6211344abacdff0df9637cb52cf712a9d2f1d436a2f",
+        "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+        "bytes": 774
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-unsafe.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-unsafe.c.header.txt",
+        "sourceFileSHA256": "eb224cf2396911f144e3922a46710f48a47a60bde28d5cd87fe6d2a6fc78cb3a",
+        "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+        "bytes": 774
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale-lock.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale-lock.c.header.txt",
+        "sourceFileSHA256": "1802ddbe8017f8624e46a5d32ee991940c7165de4198028783a40325dbc1cc04",
+        "sha256": "75ab29a83067fc921dbe96ca2054aff493e9a688a4e8e908c976e815f4f15626",
+        "bytes": 776
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null.c.header.txt",
+        "sourceFileSHA256": "0b01ba097b1086593251fa108d55269ce935f7bdfbab3cca19a15e853a6770c3",
+        "sha256": "977e8a5b8c774c4f1ab5feeb4c679a299ffe0551f5d6e2d84680ef16356c9a71",
+        "bytes": 770
+      },
+      {
+        "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null-unlocked.c",
+        "extraction": "exact leading block comment",
+        "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null-unlocked.c.header.txt",
+        "sourceFileSHA256": "d845f754a738e05540a3980d4898225fd8589d2bb67ea616651bca441d455ae4",
+        "sha256": "e33b1bafd3e0b08f6894d895adfb4d13c10dabf3b2365aa0405da74dd831093f",
+        "bytes": 787
+      }
+    ],
+    "archiveBytes": 27367136,
+    "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7"
+  },
+  {
+    "package": "wuffs",
+    "url": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+    "declaredZigPackageHash": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+    "declaredZigHashIndependentlyVerified": false,
+    "files": [
+      {
+        "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE",
+        "path": "sources/wuffs/legal/LICENSE",
+        "sha256": "f8ac2c75e7f629a87565c80d61ff9fe5aa15cdea0bda997d52a4dc13fdbd19cb",
+        "bytes": 11372
+      },
+      {
+        "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-APACHE",
+        "path": "sources/wuffs/legal/LICENSE-APACHE",
+        "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "bytes": 10174
+      },
+      {
+        "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-MIT",
+        "path": "sources/wuffs/legal/LICENSE-MIT",
+        "sha256": "bb811a4b485eac3caeb8bdc58bbafb355fbcb6116010a7ea9179e5c70b0bc878",
+        "bytes": 1057
+      }
+    ],
+    "archiveBytes": 771698,
+    "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c"
+  }
+]

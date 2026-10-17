@@ -1,0 +1,11 @@
+{
+  "retainedSourceAndManifestFilesVerified": 169,
+  "sourceEditorTargetSwiftFiles": 159,
+  "sourceEditorSourceBytes": 525319,
+  "appleClientSwiftFilesVerified": 312,
+  "symbolsModuleImportMatches": 1,
+  "symbolsAPIExecutableUseObserved": false,
+  "symbolsImportSource": "Sources/CodeEditSourceEditor/Find/PanelView/FindPanelView.swift:10",
+  "finalBinaryInclusionVerified": false,
+  "buildRun": false
+}

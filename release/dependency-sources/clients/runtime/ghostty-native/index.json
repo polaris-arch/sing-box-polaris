@@ -1,0 +1,3729 @@
+{
+  "schema": "ghostty-native-finite-source-notices-v1",
+  "upstreamCommit": "35a81a980bb9fce09a1ea762a68b55f8eb3477ed",
+  "archiveMemberCount": 167,
+  "objectMemberCount": 166,
+  "unmappedMemberNames": [],
+  "completeRuntimeBOM": false,
+  "legalComplianceCertified": false,
+  "fullArchiveSHAIndependentlyVerified": false,
+  "independentlyReproducedBuild": false,
+  "finalAppRetainedCodeVerified": false,
+  "declaredZigPackageHashesIndependentlyRecomputed": false,
+  "components": [
+    {
+      "name": "freetype",
+      "observedArchiveMembers": [
+        "autofit.o",
+        "bdf.o",
+        "cff.o",
+        "ftbase.o",
+        "ftbbox.o",
+        "ftbdf.o",
+        "ftbitmap.o",
+        "ftbzip2.o",
+        "ftcache.o",
+        "ftcid.o",
+        "ftdebug.o",
+        "ftfstype.o",
+        "ftgasp.o",
+        "ftglyph.o",
+        "ftgxval.o",
+        "ftgzip.o",
+        "ftinit.o",
+        "ftlzw.o",
+        "ftmm.o",
+        "ftotval.o",
+        "ftpatent.o",
+        "ftpfr.o",
+        "ftstroke.o",
+        "ftsynth.o",
+        "ftsystem.o",
+        "fttype1.o",
+        "ftwinfnt.o",
+        "pcf.o",
+        "pfr.o",
+        "psaux.o",
+        "pshinter.o",
+        "psnames.o",
+        "raster.o",
+        "sdf.o",
+        "sfnt.o",
+        "smooth.o",
+        "svg.o",
+        "truetype.o",
+        "type1.o",
+        "type1cid.o",
+        "type42.o",
+        "winfnt.o"
+      ],
+      "version": "2.13.2",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "libpng",
+      "observedArchiveMembers": [
+        "png.o",
+        "pngerror.o",
+        "pngget.o",
+        "pngmem.o",
+        "pngpread.o",
+        "pngread.o",
+        "pngrio.o",
+        "pngrtran.o",
+        "pngrutil.o",
+        "pngset.o",
+        "pngtrans.o",
+        "pngwio.o",
+        "pngwrite.o",
+        "pngwtran.o",
+        "pngwutil.o"
+      ],
+      "version": "1.6.43",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "zlib",
+      "observedArchiveMembers": [
+        "adler32.o",
+        "compress.o",
+        "crc32.o",
+        "deflate.o",
+        "gzclose.o",
+        "gzlib.o",
+        "gzread.o",
+        "gzwrite.o",
+        "infback.o",
+        "inffast.o",
+        "inflate.o",
+        "inftrees.o",
+        "trees.o",
+        "uncompr.o",
+        "zutil.o"
+      ],
+      "version": "1.3.1",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "oniguruma",
+      "observedArchiveMembers": [
+        "ascii.o",
+        "big5.o",
+        "cp1251.o",
+        "euc_jp.o",
+        "euc_jp_prop.o",
+        "euc_kr.o",
+        "euc_tw.o",
+        "gb18030.o",
+        "iso8859_1.o",
+        "iso8859_10.o",
+        "iso8859_11.o",
+        "iso8859_13.o",
+        "iso8859_14.o",
+        "iso8859_15.o",
+        "iso8859_16.o",
+        "iso8859_2.o",
+        "iso8859_3.o",
+        "iso8859_4.o",
+        "iso8859_5.o",
+        "iso8859_6.o",
+        "iso8859_7.o",
+        "iso8859_8.o",
+        "iso8859_9.o",
+        "koi8_r.o",
+        "onig_init.o",
+        "regcomp.o",
+        "regenc.o",
+        "regerror.o",
+        "regexec.o",
+        "regext.o",
+        "reggnu.o",
+        "regparse.o",
+        "regsyntax.o",
+        "regtrav.o",
+        "regversion.o",
+        "sjis.o",
+        "sjis_prop.o",
+        "st.o",
+        "unicode.o",
+        "unicode_fold1_key.o",
+        "unicode_fold2_key.o",
+        "unicode_fold3_key.o",
+        "unicode_unfold_key.o",
+        "utf16_be.o",
+        "utf16_le.o",
+        "utf32_be.o",
+        "utf32_le.o",
+        "utf8.o"
+      ],
+      "version": "6.9.9",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "libintl",
+      "observedArchiveMembers": [
+        "bindtextdom.o",
+        "compat.o",
+        "dcgettext.o",
+        "dcigettext.o",
+        "dcngettext.o",
+        "dgettext.o",
+        "dngettext.o",
+        "explodename.o",
+        "finddomain.o",
+        "getlocalename_l-unsafe.o",
+        "gettext.o",
+        "hash-string.o",
+        "intl-compat.o",
+        "l10nflist.o",
+        "langprefs.o",
+        "loadmsgcat.o",
+        "localealias.o",
+        "localename-environ.o",
+        "localename-unsafe.o",
+        "localename.o",
+        "log.o",
+        "ngettext.o",
+        "plural-exp.o",
+        "plural.o",
+        "setlocale-lock.o",
+        "setlocale.o",
+        "setlocale_null-unlocked.o",
+        "setlocale_null.o",
+        "textdomain.o",
+        "version.o"
+      ],
+      "version": "gettext0.24 / wrapper package0.24.0",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality",
+      "licenseDetails": "30 matching compilation units.29 leading headers sayLGPL2.1-or-later. plural.c includesLGPL2.1-or-later user grammar plusBison3.8.2 GPL3-or-later skeleton with original Bison special exception; preserve all applicable original terms."
+    },
+    {
+      "name": "simdutf",
+      "observedArchiveMembers": [
+        "simdutf.o"
+      ],
+      "version": "9.0.0",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality",
+      "versionDiscrepancy": "build.zig.zon package wrapper says5.2.8; actual compiled vendor/simdutf.h says9.0.0 at line936."
+    },
+    {
+      "name": "highway",
+      "observedArchiveMembers": [
+        "abort.o",
+        "per_target.o",
+        "targets.o",
+        "libhighway_zcu.o"
+      ],
+      "version": "1.2.0 with Ghostty local modifications",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "macos",
+      "observedArchiveMembers": [
+        "zig_macos.o",
+        "ext.o"
+      ],
+      "version": "1.3.2-dev at35a81a980bb9fce09a1ea762a68b55f8eb3477ed",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "Ghostty SIMD",
+      "observedArchiveMembers": [
+        "base64.o",
+        "codepoint_width.o",
+        "index_of.o",
+        "vt.o"
+      ],
+      "version": "1.3.2-dev at35a81a980bb9fce09a1ea762a68b55f8eb3477ed",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "stb",
+      "observedArchiveMembers": [
+        "stb.o"
+      ],
+      "version": "stb_image2.28; stb_image_resize0.97",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "wuffs",
+      "observedArchiveMembers": [
+        "wuffs-v0.4.o"
+      ],
+      "version": "0.4.0-alpha.10+3966.20260623, fixed commit7411f488fe2e2c205c3d3b3d28638b7356522930",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    },
+    {
+      "name": "Ghostty core",
+      "observedArchiveMembers": [
+        "libghostty_zcu.o"
+      ],
+      "version": "1.3.2-dev at35a81a980bb9fce09a1ea762a68b55f8eb3477ed",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality",
+      "limitations": "Aggregate libghostty_zcu.o is assigned to fixed Ghostty source, without enumerating every folded Zig dependency or embedded asset."
+    },
+    {
+      "name": "compiler runtime",
+      "observedArchiveMembers": [
+        "compiler_rt.o"
+      ],
+      "version": "Zig0.16.0 at24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality",
+      "limitations": "Runtime source includes LLVM and musl-derived functions. Exact compiler_rt.o retained function set was not symbol-resolved here; conservative original source notices cannot prove full binary notice closure."
+    },
+    {
+      "name": "wrapper compatibility",
+      "observedArchiveMembers": [
+        "libcxx-verbose-abort-compat.o"
+      ],
+      "version": "libghostty-spm cffef22c16dd61d22ebef539ae2ff1624db77363; relevant assettag e037035e17ce07618d48e70b1282ffdca01c318e",
+      "evidenceLevel": "precompiled static-archive member names + matching fixed-source build recipes; not final app retention or reproducible object-byte equality"
+    }
+  ],
+  "noticeCount": 70,
+  "noticeMappingCount": 76,
+  "noticeSHA256AlreadyInFrozenClientDelivery": [
+    "1f4b38df6a142e678a85d84c3a7ec4d1db328a556483241df714156134e81615"
+  ],
+  "noticeFiles": [
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/386211873e5b7a02-LICENSE",
+      "sha256": "386211873e5b7a02f663ae4d7adf96285999f91608f8f9f31fecfd0f4095e6f1",
+      "bytes": 1097,
+      "mappings": [
+        {
+          "component": "Ghostty core",
+          "path": "upstream/LICENSE",
+          "originalPath": "LICENSE",
+          "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/LICENSE",
+          "sha256": "386211873e5b7a02f663ae4d7adf96285999f91608f8f9f31fecfd0f4095e6f1",
+          "bytes": 1097,
+          "gitBlobSHA1": "0a07a66cd1ad6ea35cc3b8150e2c37702fe5989d",
+          "gitBlobVerified": true
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/2e3bbb7d7c5c3963-LICENSE.TXT",
+      "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
+      "bytes": 2074,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourceURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+          "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+          "declaredZigPackageHash": "N-V-__8AAKLKpwC4H27Ps_0iL3bPkQb-z6ZVSrB-x_3EEkub",
+          "sourcePath": "freetype-VER-2-13-2/LICENSE.TXT",
+          "path": "sources/freetype/legal/LICENSE.TXT",
+          "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
+          "bytes": 2074
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/08c135755dd58903-FTL.TXT",
+      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+      "bytes": 6743,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourceURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+          "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+          "declaredZigPackageHash": "N-V-__8AAKLKpwC4H27Ps_0iL3bPkQb-z6ZVSrB-x_3EEkub",
+          "sourcePath": "freetype-VER-2-13-2/docs/FTL.TXT",
+          "path": "sources/freetype/legal/docs/FTL.TXT",
+          "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+          "bytes": 6743
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/c4120c6752c910c2-GPLv2.TXT",
+      "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+      "bytes": 17994,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourceURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+          "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+          "declaredZigPackageHash": "N-V-__8AAKLKpwC4H27Ps_0iL3bPkQb-z6ZVSrB-x_3EEkub",
+          "sourcePath": "freetype-VER-2-13-2/docs/GPLv2.TXT",
+          "path": "sources/freetype/legal/docs/GPLv2.TXT",
+          "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+          "bytes": 17994
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/980af1d09d9a1092-AUTHORS",
+      "sha256": "980af1d09d9a1092e35c463776757c90becb07f9879f6549d46e90e22629f4e1",
+      "bytes": 1450,
+      "mappings": [
+        {
+          "component": "libpng",
+          "sourceURL": "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+          "archiveSHA256": "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a",
+          "declaredZigPackageHash": "N-V-__8AAJrvXQCqAT8Mg9o_tk6m0yf5Fz-gCNEOKLyTSerD",
+          "sourcePath": "libpng-1.6.43/AUTHORS",
+          "path": "sources/libpng/legal/AUTHORS",
+          "sha256": "980af1d09d9a1092e35c463776757c90becb07f9879f6549d46e90e22629f4e1",
+          "bytes": 1450
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/7317e078e2d3b5d7-LICENSE",
+      "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+      "bytes": 5345,
+      "mappings": [
+        {
+          "component": "libpng",
+          "sourceURL": "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+          "archiveSHA256": "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a",
+          "declaredZigPackageHash": "N-V-__8AAJrvXQCqAT8Mg9o_tk6m0yf5Fz-gCNEOKLyTSerD",
+          "sourcePath": "libpng-1.6.43/LICENSE",
+          "path": "sources/libpng/legal/LICENSE",
+          "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+          "bytes": 5345
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/845efc77857d485d-LICENSE",
+      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+      "bytes": 1002,
+      "mappings": [
+        {
+          "component": "zlib",
+          "sourceURL": "https://deps.files.ghostty.org/zlib-1220fed0c74e1019b3ee29edae2051788b080cd96e90d56836eea857b0b966742efb.tar.gz",
+          "archiveSHA256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
+          "declaredZigPackageHash": "N-V-__8AAB0eQwD-0MdOEBmz7intriBReIsIDNlukNVoNu6o",
+          "sourcePath": "zlib-1.3.1/LICENSE",
+          "path": "sources/zlib/legal/LICENSE",
+          "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+          "bytes": 1002
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/172a2a72c080d306-AUTHORS",
+      "sha256": "172a2a72c080d3067969599308c91385af86fdeb2419f8ad687883ca5a8ff912",
+      "bytes": 32,
+      "mappings": [
+        {
+          "component": "oniguruma",
+          "sourceURL": "https://deps.files.ghostty.org/oniguruma-1220c15e72eadd0d9085a8af134904d9a0f5dfcbed5f606ad60edc60ebeccd9706bb.tar.gz",
+          "archiveSHA256": "001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0",
+          "declaredZigPackageHash": "N-V-__8AAHjwMQDBXnLq3Q2QhaivE0kE2aD138vtX2Bq1g7c",
+          "sourcePath": "oniguruma-6.9.9/AUTHORS",
+          "path": "sources/oniguruma/legal/AUTHORS",
+          "sha256": "172a2a72c080d3067969599308c91385af86fdeb2419f8ad687883ca5a8ff912",
+          "bytes": 32
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/70ba5469ea0bab6e-COPYING",
+      "sha256": "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f",
+      "bytes": 1340,
+      "mappings": [
+        {
+          "component": "oniguruma",
+          "sourceURL": "https://deps.files.ghostty.org/oniguruma-1220c15e72eadd0d9085a8af134904d9a0f5dfcbed5f606ad60edc60ebeccd9706bb.tar.gz",
+          "archiveSHA256": "001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0",
+          "declaredZigPackageHash": "N-V-__8AAHjwMQDBXnLq3Q2QhaivE0kE2aD138vtX2Bq1g7c",
+          "sourcePath": "oniguruma-6.9.9/COPYING",
+          "path": "sources/oniguruma/legal/COPYING",
+          "sha256": "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f",
+          "bytes": 1340
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/43070e2d4e532684-LICENSE",
+      "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+      "bytes": 11356,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourceURL": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+          "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212",
+          "declaredZigPackageHash": "N-V-__8AAGmZhABbsPJLfbqrh6JTHsXhY6qCaLAQyx25e0XE",
+          "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE",
+          "path": "sources/highway/legal/LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+          "bytes": 11356
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/d25e82e26acd42ca-LICENSE-BSD3",
+      "sha256": "d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2",
+      "bytes": 1515,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourceURL": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+          "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212",
+          "declaredZigPackageHash": "N-V-__8AAGmZhABbsPJLfbqrh6JTHsXhY6qCaLAQyx25e0XE",
+          "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE-BSD3",
+          "path": "sources/highway/legal/LICENSE-BSD3",
+          "sha256": "d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2",
+          "bytes": 1515
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/4bd9e2cd15ab6d68-AUTHORS",
+      "sha256": "4bd9e2cd15ab6d68b30965512b63a1d4aae95f4c1dd040657a4d1300252a695f",
+      "bytes": 96,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/AUTHORS",
+          "path": "sources/libintl/legal/gettext-runtime/intl/AUTHORS",
+          "sha256": "4bd9e2cd15ab6d68b30965512b63a1d4aae95f4c1dd040657a4d1300252a695f",
+          "bytes": 96
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/e79e9c8a0c85d735-COPYING",
+      "sha256": "e79e9c8a0c85d735ff98185918ec94ed7d175efc377012787aebcf3b80f0d90b",
+      "bytes": 35151,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/COPYING",
+          "path": "sources/libintl/legal/COPYING",
+          "sha256": "e79e9c8a0c85d735ff98185918ec94ed7d175efc377012787aebcf3b80f0d90b",
+          "bytes": 35151
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/20e50fe7aae3e563-COPYING.LIB",
+      "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+      "bytes": 26419,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/COPYING.LIB",
+          "path": "sources/libintl/legal/gettext-runtime/intl/COPYING.LIB",
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+          "bytes": 26419
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/9bdb2271fdd879dd-bindtextdom.c.header.txt",
+      "sha256": "9bdb2271fdd879ddc09005d889cfd130be740787d8b41f3327eb07597b9e0549",
+      "bytes": 780,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/bindtextdom.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/bindtextdom.c.header.txt",
+          "sourceFileSHA256": "7b28ce5c913896f77056a3cc7d39de0aed621bce68cdcbf2ab504f450ec7ab0b",
+          "sha256": "9bdb2271fdd879ddc09005d889cfd130be740787d8b41f3327eb07597b9e0549",
+          "bytes": 780
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/5dac99dbf81d70a2-dcgettext.c.header.txt",
+      "sha256": "5dac99dbf81d70a2e55d82bab49d252d0a168b19e113b8aeb14e8c2f4d85f41d",
+      "bytes": 776,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcgettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcgettext.c.header.txt",
+          "sourceFileSHA256": "75cf5f57b14d83a992beb17b05fc762b0b7dc87c271ac1070edea77c9bb96c05",
+          "sha256": "5dac99dbf81d70a2e55d82bab49d252d0a168b19e113b8aeb14e8c2f4d85f41d",
+          "bytes": 776
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/e9d63953719c37d3-dcigettext.c.header.txt",
+      "sha256": "e9d63953719c37d3808e823046f52b2c916729344cbc0eec3dadae57fe4347ed",
+      "bytes": 783,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcigettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcigettext.c.header.txt",
+          "sourceFileSHA256": "dbeddd3cdbcc81a3c20401cf0feec4944169d2a64ea6e36393d8866f2df66b1c",
+          "sha256": "e9d63953719c37d3808e823046f52b2c916729344cbc0eec3dadae57fe4347ed",
+          "bytes": 783
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/848c681776e99d3e-dcngettext.c.header.txt",
+      "sha256": "848c681776e99d3eef691118fa2a729ce219cec16423dab0c60683975d3a6c99",
+      "bytes": 777,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcngettext.c.header.txt",
+          "sourceFileSHA256": "66a5e9bcc4ef4aaf0a820974030c2d2b6489a8aabb56acef07a1277cbe9d63d8",
+          "sha256": "848c681776e99d3eef691118fa2a729ce219cec16423dab0c60683975d3a6c99",
+          "bytes": 777
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/d0ae2520dd2f357a-dgettext.c.header.txt",
+      "sha256": "d0ae2520dd2f357af6e2fcf04aaa3b81afbbc557bd0a6512c69bb31450f89fe3",
+      "bytes": 775,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dgettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dgettext.c.header.txt",
+          "sourceFileSHA256": "b3570c73b07320da8cba439e01a3f4a5d0c1070c1e83bc599d72dbe0f0bde154",
+          "sha256": "d0ae2520dd2f357af6e2fcf04aaa3b81afbbc557bd0a6512c69bb31450f89fe3",
+          "bytes": 775
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/d0491fa69b904082-dngettext.c.header.txt",
+      "sha256": "d0491fa69b904082a91d125f566d26c0588e529df58f3e9dfe5ade0441ac4b7b",
+      "bytes": 776,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dngettext.c.header.txt",
+          "sourceFileSHA256": "f4771cf69ea3830226e8a226a264dcb9bc3d6c87f6bcec1ae71a5e383e7dfa00",
+          "sha256": "d0491fa69b904082a91d125f566d26c0588e529df58f3e9dfe5ade0441ac4b7b",
+          "bytes": 776
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/a0a0ed116848b1f9-explodename.c.header.txt",
+      "sha256": "a0a0ed116848b1f965e333684373d286de4696fab1fbc7f93953dfd6c05c40d9",
+      "bytes": 799,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/explodename.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/explodename.c.header.txt",
+          "sourceFileSHA256": "2cca5dcb0bf1f997dfc615f017b13e0e62f205a73001045d8541e0925677bbdc",
+          "sha256": "a0a0ed116848b1f965e333684373d286de4696fab1fbc7f93953dfd6c05c40d9",
+          "bytes": 799
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/ed9f023084350a4d-finddomain.c.header.txt",
+      "sha256": "ed9f023084350a4dc7ddccbc3aaf4fe1dd3fcb30342eeb8849ea1957898e05da",
+      "bytes": 824,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/finddomain.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/finddomain.c.header.txt",
+          "sourceFileSHA256": "0f0cadf37f9179ded97b1a0dce5ac9d14d46772af29810c11cd2a2382e727472",
+          "sha256": "ed9f023084350a4dc7ddccbc3aaf4fe1dd3fcb30342eeb8849ea1957898e05da",
+          "bytes": 824
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/1e9b8cbff80d1c18-gettext.c.header.txt",
+      "sha256": "1e9b8cbff80d1c1878752016101e6aab2f9b2b1c5d00613e11c91e2fb803783c",
+      "bytes": 770,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gettext.c.header.txt",
+          "sourceFileSHA256": "0525bd632a5156617fe10c03417f1b11263a3d69969ba44923b8f3d5220a3e7a",
+          "sha256": "1e9b8cbff80d1c1878752016101e6aab2f9b2b1c5d00613e11c91e2fb803783c",
+          "bytes": 770
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/228c8c64a73b83f3-hash-string.c.header.txt",
+      "sha256": "228c8c64a73b83f3797ba7308f9b277526343acc797ec9dc6745f8ef4340c183",
+      "bytes": 829,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/hash-string.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/hash-string.c.header.txt",
+          "sourceFileSHA256": "72bbd26b5e73bfa058e0955d2f506316c50d39c284005ac7455e0905ce35c433",
+          "sha256": "228c8c64a73b83f3797ba7308f9b277526343acc797ec9dc6745f8ef4340c183",
+          "bytes": 829
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/c102c91165ff86c9-intl-compat.c.header.txt",
+      "sha256": "c102c91165ff86c996bee7202b17ad6f494649bccc49212d8b36cdf462d9e8a0",
+      "bytes": 815,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/intl-compat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/intl-compat.c.header.txt",
+          "sourceFileSHA256": "eba2e4e12781e43a8cb367ed3f2e3885f9e0cfb73745db405c80220d953d9037",
+          "sha256": "c102c91165ff86c996bee7202b17ad6f494649bccc49212d8b36cdf462d9e8a0",
+          "bytes": 815
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/dbe643b3917855bc-l10nflist.c.header.txt",
+      "sha256": "dbe643b3917855bc73ddff545da7a98b90ad92bfdcefec918ac9b0502aae966e",
+      "bytes": 793,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/l10nflist.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/l10nflist.c.header.txt",
+          "sourceFileSHA256": "0178fff39ffddca535d346d3e22a65b4573779c0860bba1862b906d172107632",
+          "sha256": "dbe643b3917855bc73ddff545da7a98b90ad92bfdcefec918ac9b0502aae966e",
+          "bytes": 793
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/1740ec6ab2cee6fa-langprefs.c.header.txt",
+      "sha256": "1740ec6ab2cee6fab510094d50518ad8f6fa9e5f319288bbcbf599baf6fa22b5",
+      "bytes": 785,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/langprefs.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/langprefs.c.header.txt",
+          "sourceFileSHA256": "4a7d2c969726496c35431f1da43036f432b6cf8c6564c9fcf26a5e9c1f805709",
+          "sha256": "1740ec6ab2cee6fab510094d50518ad8f6fa9e5f319288bbcbf599baf6fa22b5",
+          "bytes": 785
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/3dc2eebc9d6c1cf6-loadmsgcat.c.header.txt",
+      "sha256": "3dc2eebc9d6c1cf60017967d91168c1bac91cd8d8077bb8a25c64e3ddb781c45",
+      "bytes": 761,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/loadmsgcat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/loadmsgcat.c.header.txt",
+          "sourceFileSHA256": "698c9150d816c3c499a0e25d93bdcecad4559c512179ff4d7dcf33e27395ef2c",
+          "sha256": "3dc2eebc9d6c1cf60017967d91168c1bac91cd8d8077bb8a25c64e3ddb781c45",
+          "bytes": 761
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/f956cb95e48f1e26-localealias.c.header.txt",
+      "sha256": "f956cb95e48f1e2629335e57f63b0524c383cc7d164c77180903c43e32c6a493",
+      "bytes": 764,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/localealias.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/localealias.c.header.txt",
+          "sourceFileSHA256": "4a4ef4fb14f972b377abc02d3d4948a6132613754746e402c19bb51ccf6b7cd5",
+          "sha256": "f956cb95e48f1e2629335e57f63b0524c383cc7d164c77180903c43e32c6a493",
+          "bytes": 764
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/71ff65b0c0d7572f-log.c.header.txt",
+      "sha256": "71ff65b0c0d7572fff6c7960c83ff33872db7465f53f9a11c01272c0c0996a40",
+      "bytes": 748,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/log.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/log.c.header.txt",
+          "sourceFileSHA256": "49f04ca3f9a198b64faf09ac1acdf7f87057e87ed2ee725fdb2cbd64ab74dc66",
+          "sha256": "71ff65b0c0d7572fff6c7960c83ff33872db7465f53f9a11c01272c0c0996a40",
+          "bytes": 748
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/4ac46e9f11fc899d-ngettext.c.header.txt",
+      "sha256": "4ac46e9f11fc899d97f8fcbb848b91c8a191c0ebf347d61ee96e7e2991bde4c9",
+      "bytes": 771,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/ngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/ngettext.c.header.txt",
+          "sourceFileSHA256": "b4428dc18bbbc00984090eaa9861d0e9648fc8e1f165e538422d303b5477b945",
+          "sha256": "4ac46e9f11fc899d97f8fcbb848b91c8a191c0ebf347d61ee96e7e2991bde4c9",
+          "bytes": 771
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/354ae38322779166-plural-exp.c.header.txt",
+      "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+      "bytes": 834,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/plural-exp.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/plural-exp.c.header.txt",
+          "sourceFileSHA256": "60edfffa12e4a3a3d5b50d8333a9814472df66670007971e17143bef7c542cf1",
+          "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+          "bytes": 834
+        },
+        {
+          "component": "libintl",
+          "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+          "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+          "path": "source-license-evidence/libintl/plural.c.block14.txt",
+          "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+          "bytes": 834,
+          "byteStart": 2832,
+          "byteEnd": 3666,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/1592cc21b2d7148f-setlocale.c.header.txt",
+      "sha256": "1592cc21b2d7148f98c611990ef6d7e411c2c760f645ecf8dc74ec96caa627c7",
+      "bytes": 855,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/setlocale.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/setlocale.c.header.txt",
+          "sourceFileSHA256": "126bbce12481947a5f62bc257f871d8e6ddfdff341b55492f17793ee75414d55",
+          "sha256": "1592cc21b2d7148f98c611990ef6d7e411c2c760f645ecf8dc74ec96caa627c7",
+          "bytes": 855
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/2b0562532dc7a93b-textdomain.c.header.txt",
+      "sha256": "2b0562532dc7a93b02b3bae2e1eed43baeded7b8ab04d8ccad428d75592b104f",
+      "bytes": 777,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/textdomain.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/textdomain.c.header.txt",
+          "sourceFileSHA256": "75bd5033bf8a81417c457ae44c18d57a08a8d1471567d08686295691e893b285",
+          "sha256": "2b0562532dc7a93b02b3bae2e1eed43baeded7b8ab04d8ccad428d75592b104f",
+          "bytes": 777
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/2790a6a7aaf5a5f8-version.c.header.txt",
+      "sha256": "2790a6a7aaf5a5f8f1eaa4fe2f4bc7f05359cdf7acd43ba60ad0fb66bb8f372e",
+      "bytes": 751,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/version.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/version.c.header.txt",
+          "sourceFileSHA256": "5ed86e0d31f85a0606d6a1b72edb758914a1bf2e02022c0b0de5a8ef331802af",
+          "sha256": "2790a6a7aaf5a5f8f1eaa4fe2f4bc7f05359cdf7acd43ba60ad0fb66bb8f372e",
+          "bytes": 751
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/c39a27b502b50dba-compat.c.header.txt",
+      "sha256": "c39a27b502b50dbad9cdf4a66f02a997636deb6c3a7dc62d97b5856218bad210",
+      "bytes": 762,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/compat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/compat.c.header.txt",
+          "sourceFileSHA256": "04b3f4237b2005d482ffd15f895e30a0d19639a765b825b479cb173b312a4720",
+          "sha256": "c39a27b502b50dbad9cdf4a66f02a997636deb6c3a7dc62d97b5856218bad210",
+          "bytes": 762
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/f90e4ffecb814865-getlocalename_l-unsafe.c.header.txt",
+      "sha256": "f90e4ffecb8148658c0e145d994c9843b922a8b78a626e2412cf5df1401c5d20",
+      "bytes": 766,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/getlocalename_l-unsafe.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/getlocalename_l-unsafe.c.header.txt",
+          "sourceFileSHA256": "4aa01a79077a7fd7e7a15b89993423e4079b797185a20fbda4e12d2084c964f1",
+          "sha256": "f90e4ffecb8148658c0e145d994c9843b922a8b78a626e2412cf5df1401c5d20",
+          "bytes": 766
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/de890101fe483e00-localename.c.header.txt",
+      "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+      "bytes": 774,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename.c.header.txt",
+          "sourceFileSHA256": "218e678aae71d0b6129fe6b5248657440d0a4cc37028df68553a697d7f0e9302",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        },
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-environ.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-environ.c.header.txt",
+          "sourceFileSHA256": "c801b16cc7c78dca704aa6211344abacdff0df9637cb52cf712a9d2f1d436a2f",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        },
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-unsafe.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-unsafe.c.header.txt",
+          "sourceFileSHA256": "eb224cf2396911f144e3922a46710f48a47a60bde28d5cd87fe6d2a6fc78cb3a",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/75ab29a83067fc92-setlocale-lock.c.header.txt",
+      "sha256": "75ab29a83067fc921dbe96ca2054aff493e9a688a4e8e908c976e815f4f15626",
+      "bytes": 776,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale-lock.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale-lock.c.header.txt",
+          "sourceFileSHA256": "1802ddbe8017f8624e46a5d32ee991940c7165de4198028783a40325dbc1cc04",
+          "sha256": "75ab29a83067fc921dbe96ca2054aff493e9a688a4e8e908c976e815f4f15626",
+          "bytes": 776
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/977e8a5b8c774c4f-setlocale_null.c.header.txt",
+      "sha256": "977e8a5b8c774c4f1ab5feeb4c679a299ffe0551f5d6e2d84680ef16356c9a71",
+      "bytes": 770,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null.c.header.txt",
+          "sourceFileSHA256": "0b01ba097b1086593251fa108d55269ce935f7bdfbab3cca19a15e853a6770c3",
+          "sha256": "977e8a5b8c774c4f1ab5feeb4c679a299ffe0551f5d6e2d84680ef16356c9a71",
+          "bytes": 770
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/e33b1bafd3e0b08f-setlocale_null-unlocked.c.header.txt",
+      "sha256": "e33b1bafd3e0b08f6894d895adfb4d13c10dabf3b2365aa0405da74dd831093f",
+      "bytes": 787,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourceURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+          "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+          "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null-unlocked.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null-unlocked.c.header.txt",
+          "sourceFileSHA256": "d845f754a738e05540a3980d4898225fd8589d2bb67ea616651bca441d455ae4",
+          "sha256": "e33b1bafd3e0b08f6894d895adfb4d13c10dabf3b2365aa0405da74dd831093f",
+          "bytes": 787
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/f8ac2c75e7f629a8-LICENSE",
+      "sha256": "f8ac2c75e7f629a87565c80d61ff9fe5aa15cdea0bda997d52a4dc13fdbd19cb",
+      "bytes": 11372,
+      "mappings": [
+        {
+          "component": "wuffs",
+          "sourceURL": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+          "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c",
+          "declaredZigPackageHash": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE",
+          "path": "sources/wuffs/legal/LICENSE",
+          "sha256": "f8ac2c75e7f629a87565c80d61ff9fe5aa15cdea0bda997d52a4dc13fdbd19cb",
+          "bytes": 11372
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/0d542e0c8804e39a-LICENSE-APACHE",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "bytes": 10174,
+      "mappings": [
+        {
+          "component": "wuffs",
+          "sourceURL": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+          "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c",
+          "declaredZigPackageHash": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-APACHE",
+          "path": "sources/wuffs/legal/LICENSE-APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "bytes": 10174
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/bb811a4b485eac3c-LICENSE-MIT",
+      "sha256": "bb811a4b485eac3caeb8bdc58bbafb355fbcb6116010a7ea9179e5c70b0bc878",
+      "bytes": 1057,
+      "mappings": [
+        {
+          "component": "wuffs",
+          "sourceURL": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+          "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c",
+          "declaredZigPackageHash": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-MIT",
+          "path": "sources/wuffs/legal/LICENSE-MIT",
+          "sha256": "bb811a4b485eac3caeb8bdc58bbafb355fbcb6116010a7ea9179e5c70b0bc878",
+          "bytes": 1057
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/10ed5a55912965c9-src_stb_stb_image.h.block31.txt",
+      "sha256": "10ed5a55912965c9846c947486fc42a537c6e7f92dbabd68bf26963da320e46d",
+      "bytes": 2673,
+      "mappings": [
+        {
+          "component": "stb",
+          "sourcePath": "src/stb/stb_image.h",
+          "sourceSHA256": "7fb1521970dc268639ed95ab9808ef3b47aa0800fd2d0e9250b1b90be03ee75b",
+          "extraction": "exact original block comment",
+          "byteStart": 282059,
+          "byteEnd": 284732,
+          "path": "source-license-evidence/src_stb_stb_image.h.block31.txt",
+          "sha256": "10ed5a55912965c9846c947486fc42a537c6e7f92dbabd68bf26963da320e46d",
+          "bytes": 2673
+        },
+        {
+          "component": "stb",
+          "sourcePath": "src/stb/stb_image_resize.h",
+          "sourceSHA256": "6a0e75adbabb48df9031c2e39ccd97437bb226fe31e7d4a01c7bf70a18d32ec6",
+          "extraction": "exact original block comment",
+          "byteStart": 113842,
+          "byteEnd": 116515,
+          "path": "source-license-evidence/src_stb_stb_image_resize.h.block1.txt",
+          "sha256": "10ed5a55912965c9846c947486fc42a537c6e7f92dbabd68bf26963da320e46d",
+          "bytes": 2673
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/acffdbe9983f5996-pkg_simdutf_vendor_simdutf.h.block34.txt",
+      "sha256": "acffdbe9983f5996c4bd096132ffdd745a074ed8c9ba9b26b0d09c654fd45e43",
+      "bytes": 2316,
+      "mappings": [
+        {
+          "component": "simdutf",
+          "sourcePath": "pkg/simdutf/vendor/simdutf.h",
+          "sourceSHA256": "d3501fc2143f0edc5c84e6bb013a7fdb8ccd95514f7fd0816669248e62676301",
+          "extraction": "exact original block comment",
+          "byteStart": 33238,
+          "byteEnd": 35554,
+          "path": "source-license-evidence/pkg_simdutf_vendor_simdutf.h.block34.txt",
+          "sha256": "acffdbe9983f5996c4bd096132ffdd745a074ed8c9ba9b26b0d09c654fd45e43",
+          "bytes": 2316
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/fa04727dc6e4a77f-fthash.h.block1.txt",
+      "sha256": "fa04727dc6e4a77fd2e7cf3980ac6a3690103a1712679b28664c15ec491bcbc3",
+      "bytes": 1231,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/include/freetype/internal/fthash.h",
+          "sourceSHA256": "351299f86d56190d44c829deb70256c3343b9da416f0451c6aabd4586b174dbe",
+          "path": "source-license-evidence/freetype/fthash.h.block1.txt",
+          "sha256": "fa04727dc6e4a77fd2e7cf3980ac6a3690103a1712679b28664c15ec491bcbc3",
+          "bytes": 1231,
+          "byteStart": 144,
+          "byteEnd": 1375,
+          "extraction": "exact original source text byte range"
+        },
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/base/fthash.c",
+          "sourceSHA256": "73fca7e875ea7bfc7496dc9eb84abe9f16844ebd7589f0e4eafd9b1d1df137e3",
+          "path": "source-license-evidence/freetype/fthash.c.block1.txt",
+          "sha256": "fa04727dc6e4a77fd2e7cf3980ac6a3690103a1712679b28664c15ec491bcbc3",
+          "bytes": 1231,
+          "byteStart": 135,
+          "byteEnd": 1366,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/18d9782898d9eac0-README.pcf-full.txt",
+      "sha256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+      "bytes": 3311,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/pcf/README",
+          "sourceSHA256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+          "path": "source-license-evidence/freetype/README.pcf-full.txt",
+          "sha256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+          "bytes": 3311,
+          "byteStart": 0,
+          "byteEnd": 3311,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/02538fb019fe962c-ft-hb.c.block0.txt",
+      "sha256": "02538fb019fe962c58be4863a2fc6d21e5b072f4681ca3ea96bf813f31487e43",
+      "bytes": 1147,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/autofit/ft-hb.c",
+          "sourceSHA256": "65c23597427a2954bed2145191d2f129fe26b6f290d371b900628ac0c6b5af37",
+          "path": "source-license-evidence/freetype/ft-hb.c.block0.txt",
+          "sha256": "02538fb019fe962c58be4863a2fc6d21e5b072f4681ca3ea96bf813f31487e43",
+          "bytes": 1147,
+          "byteStart": 0,
+          "byteEnd": 1147,
+          "extraction": "exact original source text byte range"
+        },
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/autofit/ft-hb.h",
+          "sourceSHA256": "6f21bd19ea7d53accc407a3dbd18648de36940cfabf235e4970f009f7a4def04",
+          "path": "source-license-evidence/freetype/ft-hb.h.block0.txt",
+          "sha256": "02538fb019fe962c58be4863a2fc6d21e5b072f4681ca3ea96bf813f31487e43",
+          "bytes": 1147,
+          "byteStart": 0,
+          "byteEnd": 1147,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/4ce814c61160ae6c-zlib.h.block0.txt",
+      "sha256": "4ce814c61160ae6c1aa3feb2e09924106741b66ade821c19a910677018ab3742",
+      "bytes": 1328,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/gzip/zlib.h",
+          "sourceSHA256": "b3bff4c483860d26cec9587c3b287b79b0d40b5f5fe6bb6000deb663b03955bb",
+          "path": "source-license-evidence/freetype/zlib.h.block0.txt",
+          "sha256": "4ce814c61160ae6c1aa3feb2e09924106741b66ade821c19a910677018ab3742",
+          "bytes": 1328,
+          "byteStart": 0,
+          "byteEnd": 1328,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/7984455e7e5a9fab-README.bdf-full.txt",
+      "sha256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+      "bytes": 5972,
+      "mappings": [
+        {
+          "component": "freetype",
+          "sourcePath": "sources/freetype/source-context/src/bdf/README",
+          "sourceSHA256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+          "path": "source-license-evidence/freetype/README.bdf-full.txt",
+          "sha256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+          "bytes": 5972,
+          "byteStart": 0,
+          "byteEnd": 5972,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/3f832ebe1d7741df-plural.c.block1.txt",
+      "sha256": "3f832ebe1d7741df20fe4cb988c52366076fc460348540934a0567488633412b",
+      "bytes": 788,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+          "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+          "path": "source-license-evidence/libintl/plural.c.block1.txt",
+          "sha256": "3f832ebe1d7741df20fe4cb988c52366076fc460348540934a0567488633412b",
+          "bytes": 788,
+          "byteStart": 49,
+          "byteEnd": 837,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/c80564db958dedc5-plural.c.block2.txt",
+      "sha256": "c80564db958dedc5c8a19ccf6e761a3465291fa7b26306dd91a5c1010ba8329a",
+      "bytes": 693,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+          "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+          "path": "source-license-evidence/libintl/plural.c.block2.txt",
+          "sha256": "c80564db958dedc5c8a19ccf6e761a3465291fa7b26306dd91a5c1010ba8329a",
+          "bytes": 693,
+          "byteStart": 839,
+          "byteEnd": 1532,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/f8af142d317947ae-abort.cc.original-prefix-with-modifications.txt",
+      "sha256": "f8af142d317947aec1366b0e89b91aaef3aaba8264f40e053627e12e718c61b6",
+      "bytes": 1011,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourcePath": "upstream/pkg/highway/src/cpp/abort.cc",
+          "sourceSHA256": "a649c742c96e6985343f376b41af3de16d3c3d6bf98e5b37dc85d87a637a1d2c",
+          "path": "source-license-evidence/highway/abort.cc.original-prefix-with-modifications.txt",
+          "sha256": "f8af142d317947aec1366b0e89b91aaef3aaba8264f40e053627e12e718c61b6",
+          "bytes": 1011,
+          "byteStart": 0,
+          "byteEnd": 1011,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/a988ca976b669c4a-targets.cpp.original-prefix-with-modifications.txt",
+      "sha256": "a988ca976b669c4ae7677b21c057a4b33a2316381a29156d29531133c255d3c8",
+      "bytes": 944,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourcePath": "upstream/pkg/highway/src/cpp/targets.cpp",
+          "sourceSHA256": "9c12932cec47755fa60100e338198e56b0998157e8c8d934e4223db1a3e909b4",
+          "path": "source-license-evidence/highway/targets.cpp.original-prefix-with-modifications.txt",
+          "sha256": "a988ca976b669c4ae7677b21c057a4b33a2316381a29156d29531133c255d3c8",
+          "bytes": 944,
+          "byteStart": 0,
+          "byteEnd": 944,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/603a133ed0f86da5-per_target.cc.original-prefix-with-modifications.txt",
+      "sha256": "603a133ed0f86da578130f6ebb7fba666854b2e127e80f33e7fb147b30bb4aca",
+      "bytes": 1444,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourcePath": "upstream/pkg/highway/src/cpp/per_target.cc",
+          "sourceSHA256": "5d3063e332cbbc28b44c5f44c12b3fbcd6b687549edabff65ffabcb5db9692e6",
+          "path": "source-license-evidence/highway/per_target.cc.original-prefix-with-modifications.txt",
+          "sha256": "603a133ed0f86da578130f6ebb7fba666854b2e127e80f33e7fb147b30bb4aca",
+          "bytes": 1444,
+          "byteStart": 0,
+          "byteEnd": 1444,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/aebb50198a567584-targets.cc.original-license.txt",
+      "sha256": "aebb50198a5675842379f7290b7a93c0bf1fb554f21f1cf0a7c067ad48ee35fb",
+      "bytes": 628,
+      "mappings": [
+        {
+          "component": "highway",
+          "sourcePath": "sources/highway/version-source/hwy/targets.cc",
+          "sourceSHA256": "9c1ab7e9ea4854ce0d3b40664fef1910c54c1a58b13cd30c4146eec4106c3235",
+          "path": "source-license-evidence/highway/targets.cc.original-license.txt",
+          "sha256": "aebb50198a5675842379f7290b7a93c0bf1fb554f21f1cf0a7c067ad48ee35fb",
+          "bytes": 628,
+          "byteStart": 0,
+          "byteEnd": 628,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/eb4cdf9ca0039167-libintl.h.original-license.txt",
+      "sha256": "eb4cdf9ca0039167ba223c54aea734db9f4a9bab6ee6fdbb6538df1fa2a8c6b5",
+      "bytes": 774,
+      "mappings": [
+        {
+          "component": "libintl",
+          "sourcePath": "upstream/pkg/libintl/libintl.h",
+          "sourceSHA256": "311c1dc1e6727196f575e9eae44f440b45c955af2f8fe48b2c665820fa0d9393",
+          "path": "source-license-evidence/libintl/libintl.h.original-license.txt",
+          "sha256": "eb4cdf9ca0039167ba223c54aea734db9f4a9bab6ee6fdbb6538df1fa2a8c6b5",
+          "bytes": 774,
+          "byteStart": 0,
+          "byteEnd": 774,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/6cbb3cfd5baf82d1-wuffs-v0.4.c.original-license.txt",
+      "sha256": "6cbb3cfd5baf82d1e882bfa82705bb9aa0b9072df7e5cba13ddf2b6d957ce0ce",
+      "bytes": 390,
+      "mappings": [
+        {
+          "component": "wuffs",
+          "sourcePath": "sources/wuffs/version-source/release/c/wuffs-v0.4.c",
+          "sourceSHA256": "1f8039ef82911604c063f6ac2ed57254bdb17d742aebdeae06356530d4a0fde7",
+          "path": "source-license-evidence/wuffs/wuffs-v0.4.c.original-license.txt",
+          "sha256": "6cbb3cfd5baf82d1e882bfa82705bb9aa0b9072df7e5cba13ddf2b6d957ce0ce",
+          "bytes": 390,
+          "byteStart": 1056,
+          "byteEnd": 1446,
+          "extraction": "exact original source text byte range"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/7d44f8a20ce2b9ab-log.c.original-header.txt",
+      "sha256": "7d44f8a20ce2b9ab074ce883201b78815c98e669108b1dbdf3a699098444c326",
+      "bytes": 114,
+      "mappings": [
+        {
+          "component": "compiler runtime",
+          "sourcePath": "wrapper/musl-port/log.c",
+          "sourceSHA256": "a0694d8587a0d145d0f8ae87cbffba014d7988bc2ebcbfad94cea73b394c9ecc",
+          "path": "source-license-evidence/compiler-runtime/log.c.original-header.txt",
+          "sha256": "7d44f8a20ce2b9ab074ce883201b78815c98e669108b1dbdf3a699098444c326",
+          "bytes": 114,
+          "byteStart": 0,
+          "byteEnd": 114,
+          "extraction": "exact original source text byte range",
+          "sourceProvenance": {
+            "path": "log.c",
+            "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/log.c?id=1b76ff0767d01df72f692806ee5adee13c67ef88",
+            "bytes": 3030,
+            "sha256": "a0694d8587a0d145d0f8ae87cbffba014d7988bc2ebcbfad94cea73b394c9ecc",
+            "gitBlob": "cc52585a949886be2788a80f46af23f0784fde7f",
+            "gitBlobVerified": false,
+            "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+          }
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/8321493840d6ffec-logf.c.original-header.txt",
+      "sha256": "8321493840d6ffec09121148a782785c0591b42a3a270dfda01b4ce4d5c7aa6b",
+      "bytes": 515,
+      "mappings": [
+        {
+          "component": "compiler runtime",
+          "sourcePath": "wrapper/musl-port/logf.c",
+          "sourceSHA256": "9d054cebcf07ad0aa0f63c397dd10d115cc6c76ac706c4425219dd796202db08",
+          "path": "release/licenses/clients/runtime/ghostty-native/8321493840d6ffec-logf.c.original-header.txt",
+          "sha256": "8321493840d6ffec09121148a782785c0591b42a3a270dfda01b4ce4d5c7aa6b",
+          "bytes": 515,
+          "byteStart": 0,
+          "byteEnd": 515,
+          "extraction": "exact original source text byte range",
+          "sourceProvenance": {
+            "path": "logf.c",
+            "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/logf.c?id=2d7d05f031e014068a61d3076c6178513395d2ae",
+            "bytes": 1740,
+            "sha256": "9d054cebcf07ad0aa0f63c397dd10d115cc6c76ac706c4425219dd796202db08",
+            "gitBlob": "52230a1bd4dd6776fc55163729763766b589010e",
+            "gitBlobVerified": false,
+            "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+          }
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/8e483126930e4dda-fp_add_impl.inc.original-header.txt",
+      "sha256": "8e483126930e4dda5411d47c311bb109bb688719f41342797c104779ca1b0f00",
+      "bytes": 567,
+      "mappings": [
+        {
+          "component": "compiler runtime",
+          "sourcePath": "wrapper/llvm-port/compiler-rt/lib/builtins/fp_add_impl.inc",
+          "sourceSHA256": "e74e28c8c70ff65962cf08aa7ebb0f53e7a749c4db73e1112b6ed2e8cde07642",
+          "path": "source-license-evidence/compiler-runtime/fp_add_impl.inc.original-header.txt",
+          "sha256": "8e483126930e4dda5411d47c311bb109bb688719f41342797c104779ca1b0f00",
+          "bytes": 567,
+          "byteStart": 0,
+          "byteEnd": 567,
+          "extraction": "exact original source text byte range",
+          "sourceProvenance": {
+            "sourceURL": "https://raw.githubusercontent.com/llvm/llvm-project/02d85149a05cb1f6dc49f0ba7a2ceca53718ae17/compiler-rt/lib/builtins/fp_add_impl.inc",
+            "revision": "02d85149a05cb1f6dc49f0ba7a2ceca53718ae17",
+            "bytes": 5405,
+            "sha256": "e74e28c8c70ff65962cf08aa7ebb0f53e7a749c4db73e1112b6ed2e8cde07642",
+            "gitBlob": "f9a32ce67336b46d6f52144382723a855f59b942",
+            "expectedGitBlob": "f9a32ce67336b46d6f52144382723a855f59b942",
+            "gitBlobVerified": true,
+            "metadataURL": "https://api.github.com/repos/llvm/llvm-project/contents/compiler-rt/lib/builtins/fp_add_impl.inc?ref=02d85149a05cb1f6dc49f0ba7a2ceca53718ae17"
+          }
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/fc8dbc04e03ad4ef-LICENSE-MIT",
+      "sha256": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f",
+      "bytes": 1059,
+      "mappings": [
+        {
+          "component": "simdutf",
+          "fixedSupplementCommit": "ca7acbcea967b5dcbab490066e99e3a6e6925539",
+          "vendorCorrespondence": "9.0.0 version matches fixed vendored header; vendored Ghostty bytes are authoritative and not asserted identical to a fresh upstream amalgamation",
+          "url": "https://raw.githubusercontent.com/simdutf/simdutf/ca7acbcea967b5dcbab490066e99e3a6e6925539/LICENSE-MIT",
+          "path": "sources/simdutf/LICENSE-MIT",
+          "sha256": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f",
+          "bytes": 1059
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/3d34610fc6b5e1b0-LICENSE-APACHE",
+      "sha256": "3d34610fc6b5e1b0bfe4e2f36171c2d62c28ef05cb8d704f5a0073be41a43b3d",
+      "bytes": 11330,
+      "mappings": [
+        {
+          "component": "simdutf",
+          "fixedSupplementCommit": "ca7acbcea967b5dcbab490066e99e3a6e6925539",
+          "vendorCorrespondence": "9.0.0 version matches fixed vendored header; vendored Ghostty bytes are authoritative and not asserted identical to a fresh upstream amalgamation",
+          "url": "https://raw.githubusercontent.com/simdutf/simdutf/ca7acbcea967b5dcbab490066e99e3a6e6925539/LICENSE-APACHE",
+          "path": "sources/simdutf/LICENSE-APACHE",
+          "sha256": "3d34610fc6b5e1b0bfe4e2f36171c2d62c28ef05cb8d704f5a0073be41a43b3d",
+          "bytes": 11330
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/1f4b38df6a142e67-LICENSE",
+      "sha256": "1f4b38df6a142e678a85d84c3a7ec4d1db328a556483241df714156134e81615",
+      "bytes": 1065,
+      "mappings": [
+        {
+          "component": "libghostty-spm compatibility shim",
+          "path": "source/LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/LICENSE",
+          "bytes": 1065,
+          "sha256": "1f4b38df6a142e678a85d84c3a7ec4d1db328a556483241df714156134e81615",
+          "gitBlob": "cfc9ac9ebae5710535a20dcd354a5260ed35fb9c",
+          "expectedGitBlob": "cfc9ac9ebae5710535a20dcd354a5260ed35fb9c",
+          "gitBlobVerified": true,
+          "assetTagRevisionGitBlob": "cfc9ac9ebae5710535a20dcd354a5260ed35fb9c",
+          "sameAtAssetTagRevision": true
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/5c537d6853e00529-LICENSE",
+      "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177",
+      "bytes": 1080,
+      "mappings": [
+        {
+          "component": "Zig compiler runtime",
+          "scope": "compiler runtime source candidate",
+          "path": "LICENSE",
+          "sourceURL": "https://codeberg.org/ziglang/zig/raw/tag/0.16.0/LICENSE",
+          "bytes": 1080,
+          "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177",
+          "gitBlob": "9ce01373c89082fd81e8ea0793aab0978140526b",
+          "expectedGitBlob": "9ce01373c89082fd81e8ea0793aab0978140526b",
+          "gitBlobVerified": true,
+          "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/539dd7aed86e8a4f-LICENSE.TXT",
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "bytes": 16703,
+      "mappings": [
+        {
+          "component": "Zig compiler runtime",
+          "scope": "conditional libc++ header/runtime source evidence",
+          "path": "lib/libcxx/LICENSE.TXT",
+          "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libcxx/LICENSE.TXT",
+          "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+          "bytes": 16703,
+          "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+          "gitBlob": "e159d283443f92ac78b964d2bccebe8f95d5d445",
+          "expectedGitBlob": "e159d283443f92ac78b964d2bccebe8f95d5d445",
+          "gitBlobVerified": true,
+          "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/e2b35be49f7284a4-LICENSE.TXT",
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "bytes": 16706,
+      "mappings": [
+        {
+          "component": "Zig compiler runtime",
+          "scope": "conditional libc++ header/runtime source evidence",
+          "path": "lib/libcxxabi/LICENSE.TXT",
+          "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libcxxabi/LICENSE.TXT",
+          "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+          "bytes": 16706,
+          "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+          "gitBlob": "b75c0441bcd5be32b5a07e2a1ffc7e67b6d99f16",
+          "expectedGitBlob": "b75c0441bcd5be32b5a07e2a1ffc7e67b6d99f16",
+          "gitBlobVerified": true,
+          "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/f9bc4423732350eb-COPYRIGHT",
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+      "bytes": 6204,
+      "mappings": [
+        {
+          "component": "Zig compiler runtime",
+          "scope": "compiler runtime source candidate",
+          "path": "lib/libc/musl/COPYRIGHT",
+          "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libc/musl/COPYRIGHT",
+          "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+          "bytes": 6204,
+          "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+          "gitBlob": "c1628e9ac84f927fe791124ec172fb61c760bb9b",
+          "expectedGitBlob": "c1628e9ac84f927fe791124ec172fb61c760bb9b",
+          "gitBlobVerified": true,
+          "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+        }
+      ]
+    },
+    {
+      "path": "release/licenses/clients/runtime/ghostty-native/1a8f1058753f1ba8-LICENSE.TXT",
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "bytes": 16708,
+      "mappings": [
+        {
+          "component": "Zig compiler runtime",
+          "sourceURL": "https://raw.githubusercontent.com/llvm/llvm-project/02d85149a05cb1f6dc49f0ba7a2ceca53718ae17/compiler-rt/LICENSE.TXT",
+          "revision": "02d85149a05cb1f6dc49f0ba7a2ceca53718ae17",
+          "bytes": 16708,
+          "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+          "gitBlob": "5a79a1b9d5cb0af9a779751f07033e44ca3b14d8",
+          "expectedGitBlob": "5a79a1b9d5cb0af9a779751f07033e44ca3b14d8",
+          "gitBlobVerified": true,
+          "metadataURL": "https://api.github.com/repos/llvm/llvm-project/contents/compiler-rt/LICENSE.TXT?ref=02d85149a05cb1f6dc49f0ba7a2ceca53718ae17"
+        }
+      ]
+    }
+  ],
+  "recipeCount": 105,
+  "recipeFiles": [
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/build.zig",
+      "sha256": "47e682da2d758a01cbe448841a18014c5d9fc68f8a918a9ffdc71ad80bf1453e",
+      "bytes": 15899,
+      "source": {
+        "path": "upstream/build.zig",
+        "originalPath": "build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/build.zig",
+        "sha256": "47e682da2d758a01cbe448841a18014c5d9fc68f8a918a9ffdc71ad80bf1453e",
+        "bytes": 15899,
+        "gitBlobSHA1": "d09cc177d3248ae0a7fd1728b902390d46e44078",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/build.zig.zon",
+      "sha256": "1b2fe95088af49a4e3b4c25162ca7f9e9198629c029f8ef79d344dce7516bcb8",
+      "bytes": 5808,
+      "source": {
+        "path": "upstream/build.zig.zon",
+        "originalPath": "build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/build.zig.zon",
+        "sha256": "1b2fe95088af49a4e3b4c25162ca7f9e9198629c029f8ef79d344dce7516bcb8",
+        "bytes": 5808,
+        "gitBlobSHA1": "b1b6d7ebc24b3f6c4d59791c2dccf2dec9e141cc",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/freetype/build.zig",
+      "sha256": "985d79c516089b027a80159edf504361990ff6ad798d067b75df4c7d61e46337",
+      "bytes": 6724,
+      "source": {
+        "path": "upstream/pkg/freetype/build.zig",
+        "originalPath": "pkg/freetype/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/freetype/build.zig",
+        "sha256": "985d79c516089b027a80159edf504361990ff6ad798d067b75df4c7d61e46337",
+        "bytes": 6724,
+        "gitBlobSHA1": "8272700408f83ace99f8644f459debddfb4d6e9a",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/freetype/build.zig.zon",
+      "sha256": "46ce4eb4a795e07ac2b89fd2a648fa23e651aedf940e28c9c4e57f9e0afce325",
+      "bytes": 630,
+      "source": {
+        "path": "upstream/pkg/freetype/build.zig.zon",
+        "originalPath": "pkg/freetype/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/freetype/build.zig.zon",
+        "sha256": "46ce4eb4a795e07ac2b89fd2a648fa23e651aedf940e28c9c4e57f9e0afce325",
+        "bytes": 630,
+        "gitBlobSHA1": "b0244365ddde37401d80920671e8748cf31d23f9",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/build.zig",
+      "sha256": "055f1018030cd39282db11b420daad35d346d52250a08ff35a00a33707df5d1a",
+      "bytes": 4447,
+      "source": {
+        "path": "upstream/pkg/highway/build.zig",
+        "originalPath": "pkg/highway/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/build.zig",
+        "sha256": "055f1018030cd39282db11b420daad35d346d52250a08ff35a00a33707df5d1a",
+        "bytes": 4447,
+        "gitBlobSHA1": "af3300eb356744488e86e4038dd66326d536288c",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/build.zig.zon",
+      "sha256": "57103e0424e9ca660756bb2cd0475ca3057e61e7f2d4038aba2a90eae890b932",
+      "bytes": 511,
+      "source": {
+        "path": "upstream/pkg/highway/build.zig.zon",
+        "originalPath": "pkg/highway/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/build.zig.zon",
+        "sha256": "57103e0424e9ca660756bb2cd0475ca3057e61e7f2d4038aba2a90eae890b932",
+        "bytes": 511,
+        "gitBlobSHA1": "e6863630968cc5e54f3418c6fbaca24e7eee6eda",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/abort.cc",
+      "sha256": "a649c742c96e6985343f376b41af3de16d3c3d6bf98e5b37dc85d87a637a1d2c",
+      "bytes": 2088,
+      "source": {
+        "path": "upstream/pkg/highway/src/cpp/abort.cc",
+        "originalPath": "pkg/highway/src/cpp/abort.cc",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/abort.cc",
+        "sha256": "a649c742c96e6985343f376b41af3de16d3c3d6bf98e5b37dc85d87a637a1d2c",
+        "bytes": 2088,
+        "gitBlobSHA1": "152619b0dc31b511bb4c5dba3fae6d8033270074",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/per_target.cc",
+      "sha256": "5d3063e332cbbc28b44c5f44c12b3fbcd6b687549edabff65ffabcb5db9692e6",
+      "bytes": 2849,
+      "source": {
+        "path": "upstream/pkg/highway/src/cpp/per_target.cc",
+        "originalPath": "pkg/highway/src/cpp/per_target.cc",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/per_target.cc",
+        "sha256": "5d3063e332cbbc28b44c5f44c12b3fbcd6b687549edabff65ffabcb5db9692e6",
+        "bytes": 2849,
+        "gitBlobSHA1": "44973ad3fd2a6a9a7aba11c4892543f887438b9f",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/cpp/targets.cpp",
+      "sha256": "9c12932cec47755fa60100e338198e56b0998157e8c8d934e4223db1a3e909b4",
+      "bytes": 2630,
+      "source": {
+        "path": "upstream/pkg/highway/src/cpp/targets.cpp",
+        "originalPath": "pkg/highway/src/cpp/targets.cpp",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/targets.cpp",
+        "sha256": "9c12932cec47755fa60100e338198e56b0998157e8c8d934e4223db1a3e909b4",
+        "bytes": 2630,
+        "gitBlobSHA1": "7977cd5736c29504f6a23a903a46f859fae795c8",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect.zig",
+      "sha256": "682139ac52fc671d75a9ec8c718dacb84a166707dd13c465b4c839d18affd4fe",
+      "bytes": 1808,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect.zig",
+        "originalPath": "pkg/highway/src/detect.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect.zig",
+        "sha256": "682139ac52fc671d75a9ec8c718dacb84a166707dd13c465b4c839d18affd4fe",
+        "bytes": 1808,
+        "gitBlobSHA1": "471314d946d1961c98925d94df680428f36b2c72",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/aarch64_darwin.zig",
+      "sha256": "f89a33bfd7b5774f8c207fb64b1f974aa8feb7af14f3266238c8f792dc36e736",
+      "bytes": 976,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/aarch64_darwin.zig",
+        "originalPath": "pkg/highway/src/detect/aarch64_darwin.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/aarch64_darwin.zig",
+        "sha256": "f89a33bfd7b5774f8c207fb64b1f974aa8feb7af14f3266238c8f792dc36e736",
+        "bytes": 976,
+        "gitBlobSHA1": "f69edb441274d606ad0a39580ef3ffdc5cb44610",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/aarch64_linux.zig",
+      "sha256": "cc761ef41d5bce1571ff65ab0067e0c4b71b5888a5acf645227bb70a78d4dc23",
+      "bytes": 1828,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/aarch64_linux.zig",
+        "originalPath": "pkg/highway/src/detect/aarch64_linux.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/aarch64_linux.zig",
+        "sha256": "cc761ef41d5bce1571ff65ab0067e0c4b71b5888a5acf645227bb70a78d4dc23",
+        "bytes": 1828,
+        "gitBlobSHA1": "a4e74e674213d89193c1358f2ae7d3d66ef502f6",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/linux.zig",
+      "sha256": "d9df0f976369e7f8f8247fa940c573e7aadf7c55e211a09cd03ad60ca0f2a82d",
+      "bytes": 399,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/linux.zig",
+        "originalPath": "pkg/highway/src/detect/linux.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/linux.zig",
+        "sha256": "d9df0f976369e7f8f8247fa940c573e7aadf7c55e211a09cd03ad60ca0f2a82d",
+        "bytes": 399,
+        "gitBlobSHA1": "951cf3e6b950ff0c23d9674405dd0500ae027097",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/loongarch.zig",
+      "sha256": "9632f04aa86b691cd17dc84df46c6b11c17556d01317a8feae57f29bd48ad2c4",
+      "bytes": 621,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/loongarch.zig",
+        "originalPath": "pkg/highway/src/detect/loongarch.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/loongarch.zig",
+        "sha256": "9632f04aa86b691cd17dc84df46c6b11c17556d01317a8feae57f29bd48ad2c4",
+        "bytes": 621,
+        "gitBlobSHA1": "686d11e622da5d6fb711f765d876153ad0f34219",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/ppc.zig",
+      "sha256": "5a66f25b2dc9803f3a3bdab42548ca78cff9950b96daee9b9d642ba187139196",
+      "bytes": 1369,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/ppc.zig",
+        "originalPath": "pkg/highway/src/detect/ppc.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/ppc.zig",
+        "sha256": "5a66f25b2dc9803f3a3bdab42548ca78cff9950b96daee9b9d642ba187139196",
+        "bytes": 1369,
+        "gitBlobSHA1": "587965ce88063f2c2dafe5c552a1325c0b15beb5",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/riscv.zig",
+      "sha256": "0e6398131c1c76edd9f86f310cd069add74d9cf27b6b1404e84e26e7c539cf52",
+      "bytes": 552,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/riscv.zig",
+        "originalPath": "pkg/highway/src/detect/riscv.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/riscv.zig",
+        "sha256": "0e6398131c1c76edd9f86f310cd069add74d9cf27b6b1404e84e26e7c539cf52",
+        "bytes": 552,
+        "gitBlobSHA1": "619d12faa6c16b38b092a9c28d0dc9ce8f77d1cb",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/s390x.zig",
+      "sha256": "4bc53623629ffeda23c19aef91c39b851c2b3460936525259a9eba102bd941f4",
+      "bytes": 724,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/s390x.zig",
+        "originalPath": "pkg/highway/src/detect/s390x.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/s390x.zig",
+        "sha256": "4bc53623629ffeda23c19aef91c39b851c2b3460936525259a9eba102bd941f4",
+        "bytes": 724,
+        "gitBlobSHA1": "90d2ae3d57538eeb8dc3f35eb892aac2dfba8214",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/detect/x86.zig",
+      "sha256": "351d231fc4206083b22fb3c84fa7a23d29d7891cc4b259ec06694738b5dd968a",
+      "bytes": 5446,
+      "source": {
+        "path": "upstream/pkg/highway/src/detect/x86.zig",
+        "originalPath": "pkg/highway/src/detect/x86.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/x86.zig",
+        "sha256": "351d231fc4206083b22fb3c84fa7a23d29d7891cc4b259ec06694738b5dd968a",
+        "bytes": 5446,
+        "gitBlobSHA1": "bdfd3f5d29855a3e73c2c520fe66f1a4801d0a62",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/main.zig",
+      "sha256": "13b93a0bdef12f3126738f2240e5862ffdfa7d8b99838344b1b053e7f7356b37",
+      "bytes": 260,
+      "source": {
+        "path": "upstream/pkg/highway/src/main.zig",
+        "originalPath": "pkg/highway/src/main.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/main.zig",
+        "sha256": "13b93a0bdef12f3126738f2240e5862ffdfa7d8b99838344b1b053e7f7356b37",
+        "bytes": 260,
+        "gitBlobSHA1": "614fd14af3919e4de866bece0c7ea40b8a8b556a",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/highway/src/targets.zig",
+      "sha256": "585d0cb44b85eba346ebb2edb8139b6327ed7a3ab1c04fcd0786fd9bea0d7611",
+      "bytes": 2830,
+      "source": {
+        "path": "upstream/pkg/highway/src/targets.zig",
+        "originalPath": "pkg/highway/src/targets.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/targets.zig",
+        "sha256": "585d0cb44b85eba346ebb2edb8139b6327ed7a3ab1c04fcd0786fd9bea0d7611",
+        "bytes": 2830,
+        "gitBlobSHA1": "5ae77bcad014a6a1c6f4e0120907320837acba56",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/build.zig",
+      "sha256": "06a041149c20696b44a6a5256f5dbbc95d5e79a7ee5fd8a3e66b1d13674f03db",
+      "bytes": 3319,
+      "source": {
+        "path": "upstream/pkg/libintl/build.zig",
+        "originalPath": "pkg/libintl/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/build.zig",
+        "sha256": "06a041149c20696b44a6a5256f5dbbc95d5e79a7ee5fd8a3e66b1d13674f03db",
+        "bytes": 3319,
+        "gitBlobSHA1": "8ef26c7a4915c321ea57d2586e50caaa7abf4381",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/build.zig.zon",
+      "sha256": "63c216f3e46c96a41f791f59ab86194acf270d758aec4cc2248e8d604f7e1084",
+      "bytes": 396,
+      "source": {
+        "path": "upstream/pkg/libintl/build.zig.zon",
+        "originalPath": "pkg/libintl/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/build.zig.zon",
+        "sha256": "63c216f3e46c96a41f791f59ab86194acf270d758aec4cc2248e8d604f7e1084",
+        "bytes": 396,
+        "gitBlobSHA1": "a32e200981b5df4d49b6174f9372f6d27c67921b",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/config.h",
+      "sha256": "00ec8d3fdd1b65c88739a1fbbfcd1d8dfbbf4b81c525cdcf51c16388004e01d3",
+      "bytes": 87293,
+      "source": {
+        "path": "upstream/pkg/libintl/config.h",
+        "originalPath": "pkg/libintl/config.h",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/config.h",
+        "sha256": "00ec8d3fdd1b65c88739a1fbbfcd1d8dfbbf4b81c525cdcf51c16388004e01d3",
+        "bytes": 87293,
+        "gitBlobSHA1": "93d4e02467d6b78bf94bb114bd69c1f41fab8e53",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libintl/libintl.h",
+      "sha256": "311c1dc1e6727196f575e9eae44f440b45c955af2f8fe48b2c665820fa0d9393",
+      "bytes": 42693,
+      "source": {
+        "path": "upstream/pkg/libintl/libintl.h",
+        "originalPath": "pkg/libintl/libintl.h",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/libintl.h",
+        "sha256": "311c1dc1e6727196f575e9eae44f440b45c955af2f8fe48b2c665820fa0d9393",
+        "bytes": 42693,
+        "gitBlobSHA1": "f49301816df61b77230f16ff098ab5a89a4a4d7e",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libpng/build.zig",
+      "sha256": "0590437cc1710fe4b3a75071c826cfae5679ce0e18b6d012012ed2e2c935e3d0",
+      "bytes": 2807,
+      "source": {
+        "path": "upstream/pkg/libpng/build.zig",
+        "originalPath": "pkg/libpng/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libpng/build.zig",
+        "sha256": "0590437cc1710fe4b3a75071c826cfae5679ce0e18b6d012012ed2e2c935e3d0",
+        "bytes": 2807,
+        "gitBlobSHA1": "559f42a065ee8afc8bee2335119c50021bfc0387",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/libpng/build.zig.zon",
+      "sha256": "4546494e09ee5459dca7caf363521545d96aaff65d07d84ab22b74ee80a9e4de",
+      "bytes": 537,
+      "source": {
+        "path": "upstream/pkg/libpng/build.zig.zon",
+        "originalPath": "pkg/libpng/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libpng/build.zig.zon",
+        "sha256": "4546494e09ee5459dca7caf363521545d96aaff65d07d84ab22b74ee80a9e4de",
+        "bytes": 537,
+        "gitBlobSHA1": "b5153ff740a5413d670959888f3c0bf546c5764d",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/build.zig",
+      "sha256": "2dd0771763791353aad37d49855f615fbda8b02d6fe875863a0d57b672f70f9d",
+      "bytes": 4117,
+      "source": {
+        "path": "upstream/pkg/macos/build.zig",
+        "originalPath": "pkg/macos/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/build.zig",
+        "sha256": "2dd0771763791353aad37d49855f615fbda8b02d6fe875863a0d57b672f70f9d",
+        "bytes": 4117,
+        "gitBlobSHA1": "f6b6f2e52bd698780dda58e052f8f034f10935e4",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/build.zig.zon",
+      "sha256": "d9d9f1c74b7ddfdd40a4dfa1cf797e95b1e994bb1d21886d9e4535c03ddf5905",
+      "bytes": 242,
+      "source": {
+        "path": "upstream/pkg/macos/build.zig.zon",
+        "originalPath": "pkg/macos/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/build.zig.zon",
+        "sha256": "d9d9f1c74b7ddfdd40a4dfa1cf797e95b1e994bb1d21886d9e4535c03ddf5905",
+        "bytes": 242,
+        "gitBlobSHA1": "b29f41bf57bb54f9e831867dd328f4a7d1dc0d70",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/os/zig_macos.c",
+      "sha256": "b0c70f38190ac54ca1fc2c1523cb8536859ad6c5d6fa70adf73e2e3cc238da6c",
+      "bytes": 256,
+      "source": {
+        "path": "upstream/pkg/macos/os/zig_macos.c",
+        "originalPath": "pkg/macos/os/zig_macos.c",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/os/zig_macos.c",
+        "sha256": "b0c70f38190ac54ca1fc2c1523cb8536859ad6c5d6fa70adf73e2e3cc238da6c",
+        "bytes": 256,
+        "gitBlobSHA1": "1c4f069827fbd68dd4d80d0fa6755dda80e366e2",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/macos/text/ext.c",
+      "sha256": "ec694f620c6982ed76fc83fe15ead5ad2bab04d3f300d3d3691c5d92c2da2874",
+      "bytes": 248,
+      "source": {
+        "path": "upstream/pkg/macos/text/ext.c",
+        "originalPath": "pkg/macos/text/ext.c",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/text/ext.c",
+        "sha256": "ec694f620c6982ed76fc83fe15ead5ad2bab04d3f300d3d3691c5d92c2da2874",
+        "bytes": 248,
+        "gitBlobSHA1": "55bff8a612c9307831cc6fd98e5f89dc6948d604",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/oniguruma/build.zig",
+      "sha256": "d9eb9902968d21b6047abe0f27380eca09e3e7da22428f7e909a43b5d749a187",
+      "bytes": 5469,
+      "source": {
+        "path": "upstream/pkg/oniguruma/build.zig",
+        "originalPath": "pkg/oniguruma/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/oniguruma/build.zig",
+        "sha256": "d9eb9902968d21b6047abe0f27380eca09e3e7da22428f7e909a43b5d749a187",
+        "bytes": 5469,
+        "gitBlobSHA1": "58182553cdf8ed18aa41bc74790e161c56b8582d",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/oniguruma/build.zig.zon",
+      "sha256": "bc851cd6de7c55484822ee8eb45651885717940bc66c5d1a7a3150f0803f91af",
+      "bytes": 545,
+      "source": {
+        "path": "upstream/pkg/oniguruma/build.zig.zon",
+        "originalPath": "pkg/oniguruma/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/oniguruma/build.zig.zon",
+        "sha256": "bc851cd6de7c55484822ee8eb45651885717940bc66c5d1a7a3150f0803f91af",
+        "bytes": 545,
+        "gitBlobSHA1": "f90caa5fa7414cdb2245656e64687d6170fd7dac",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/simdutf/build.zig",
+      "sha256": "0a1e4fdfc6225192cc143b1e9d281c2dcaa4c36719dc1278a1e7012c6ba66668",
+      "bytes": 4044,
+      "source": {
+        "path": "upstream/pkg/simdutf/build.zig",
+        "originalPath": "pkg/simdutf/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/build.zig",
+        "sha256": "0a1e4fdfc6225192cc143b1e9d281c2dcaa4c36719dc1278a1e7012c6ba66668",
+        "bytes": 4044,
+        "gitBlobSHA1": "3efc0826344c30e406b6801f669852fcec500fab",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/simdutf/build.zig.zon",
+      "sha256": "686d11ef1912a877be38cfe3fbf4b1d52c523c3f84c131070b82b142bac45266",
+      "bytes": 243,
+      "source": {
+        "path": "upstream/pkg/simdutf/build.zig.zon",
+        "originalPath": "pkg/simdutf/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/build.zig.zon",
+        "sha256": "686d11ef1912a877be38cfe3fbf4b1d52c523c3f84c131070b82b142bac45266",
+        "bytes": 243,
+        "gitBlobSHA1": "afbef54182136f3a74db8c8a57b4dd68ebc6bb21",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/wuffs/build.zig",
+      "sha256": "e9a4a14099a87ae063a84f7d903535dc4d9977d2554775f561db4320436fce69",
+      "bytes": 4429,
+      "source": {
+        "path": "upstream/pkg/wuffs/build.zig",
+        "originalPath": "pkg/wuffs/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/wuffs/build.zig",
+        "sha256": "e9a4a14099a87ae063a84f7d903535dc4d9977d2554775f561db4320436fce69",
+        "bytes": 4429,
+        "gitBlobSHA1": "82cfec3b0c7c7086ad4df8afc874c68640858c2a",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/wuffs/build.zig.zon",
+      "sha256": "fc90571cbef7acefb618bfef0cf9e301d8609ecfd229f17cfce8a935be6efa28",
+      "bytes": 852,
+      "source": {
+        "path": "upstream/pkg/wuffs/build.zig.zon",
+        "originalPath": "pkg/wuffs/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/wuffs/build.zig.zon",
+        "sha256": "fc90571cbef7acefb618bfef0cf9e301d8609ecfd229f17cfce8a935be6efa28",
+        "bytes": 852,
+        "gitBlobSHA1": "89156e9b042c9e3e957971afe2c8666cbf326133",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/zlib/build.zig",
+      "sha256": "69846b6b17251936d69f08391d33929e00666cd46f8fdf7d85f1f73059bc57c0",
+      "bytes": 2074,
+      "source": {
+        "path": "upstream/pkg/zlib/build.zig",
+        "originalPath": "pkg/zlib/build.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/zlib/build.zig",
+        "sha256": "69846b6b17251936d69f08391d33929e00666cd46f8fdf7d85f1f73059bc57c0",
+        "bytes": 2074,
+        "gitBlobSHA1": "3fa9e6bd2f14917340f3e99d3e716e75508d0237",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/pkg/zlib/build.zig.zon",
+      "sha256": "ec984b740c5bc72bdb6e4afe45130bd3fe1d5a83eada1c36ece319b48883b69b",
+      "bytes": 473,
+      "source": {
+        "path": "upstream/pkg/zlib/build.zig.zon",
+        "originalPath": "pkg/zlib/build.zig.zon",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/zlib/build.zig.zon",
+        "sha256": "ec984b740c5bc72bdb6e4afe45130bd3fe1d5a83eada1c36ece319b48883b69b",
+        "bytes": 473,
+        "gitBlobSHA1": "0f75bca75d245c92668b755f6348e46bcad6bb86",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/CombineArchivesStep.zig",
+      "sha256": "31be7eee49915ea374e808982c0eb1d1c1bea972a313fb06a55286c3c0abcba0",
+      "bytes": 1937,
+      "source": {
+        "path": "upstream/src/build/CombineArchivesStep.zig",
+        "originalPath": "src/build/CombineArchivesStep.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/CombineArchivesStep.zig",
+        "sha256": "31be7eee49915ea374e808982c0eb1d1c1bea972a313fb06a55286c3c0abcba0",
+        "bytes": 1937,
+        "gitBlobSHA1": "cebd8e9fcd4518c2d92d714f5d0d8adde13a2186",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/Config.zig",
+      "sha256": "e15abd51f767a70c92faac2bc8bf86fbb096db6680bca3de7388b9a4568fd739",
+      "bytes": 31073,
+      "source": {
+        "path": "upstream/src/build/Config.zig",
+        "originalPath": "src/build/Config.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/Config.zig",
+        "sha256": "e15abd51f767a70c92faac2bc8bf86fbb096db6680bca3de7388b9a4568fd739",
+        "bytes": 31073,
+        "gitBlobSHA1": "71fa4d289ec8dbffb0b1e26573ee01b5dd7cf4c5",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/GhosttyLib.zig",
+      "sha256": "66dbcc07a01d31803e5c45105f59a2bb95c2adc81f971dfffb50779b6c634da8",
+      "bytes": 10101,
+      "source": {
+        "path": "upstream/src/build/GhosttyLib.zig",
+        "originalPath": "src/build/GhosttyLib.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyLib.zig",
+        "sha256": "66dbcc07a01d31803e5c45105f59a2bb95c2adc81f971dfffb50779b6c634da8",
+        "bytes": 10101,
+        "gitBlobSHA1": "529bb2821da592aa80edab2ed616d4ea9bdcc932",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/GhosttyXCFramework.zig",
+      "sha256": "a664c054aa3e5ef0ada2f94f47ac1fe308f485aac0d9256342554c55b590fca6",
+      "bytes": 2353,
+      "source": {
+        "path": "upstream/src/build/GhosttyXCFramework.zig",
+        "originalPath": "src/build/GhosttyXCFramework.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyXCFramework.zig",
+        "sha256": "a664c054aa3e5ef0ada2f94f47ac1fe308f485aac0d9256342554c55b590fca6",
+        "bytes": 2353,
+        "gitBlobSHA1": "3f3b97eb2c87590ffeeeb7a899ceefcb3da27738",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LibsystemOverrideStep.zig",
+      "sha256": "fc95a42f30190c779d24d72fa2de0cbc8f1bf117dcb90a33e1c423740052f07a",
+      "bytes": 2146,
+      "source": {
+        "path": "upstream/src/build/LibsystemOverrideStep.zig",
+        "originalPath": "src/build/LibsystemOverrideStep.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LibsystemOverrideStep.zig",
+        "sha256": "fc95a42f30190c779d24d72fa2de0cbc8f1bf117dcb90a33e1c423740052f07a",
+        "bytes": 2146,
+        "gitBlobSHA1": "3e1cafa5e4da65a48bd210704788e9c0bf8c6b78",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LibtoolStep.zig",
+      "sha256": "0236983b8c58c7e4f354acb871c0a8615eaf38bef951bdc50e96a006e8784f68",
+      "bytes": 2302,
+      "source": {
+        "path": "upstream/src/build/LibtoolStep.zig",
+        "originalPath": "src/build/LibtoolStep.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LibtoolStep.zig",
+        "sha256": "0236983b8c58c7e4f354acb871c0a8615eaf38bef951bdc50e96a006e8784f68",
+        "bytes": 2302,
+        "gitBlobSHA1": "856a33aa85337241ad78361b28c5ad01d6d3d43f",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/LipoStep.zig",
+      "sha256": "ed7565d9548ace72aa31ded21f065f8ebb5c59d7365dd600e33885f711fe4ec3",
+      "bytes": 1077,
+      "source": {
+        "path": "upstream/src/build/LipoStep.zig",
+        "originalPath": "src/build/LipoStep.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LipoStep.zig",
+        "sha256": "ed7565d9548ace72aa31ded21f065f8ebb5c59d7365dd600e33885f711fe4ec3",
+        "bytes": 1077,
+        "gitBlobSHA1": "c9c1530efa3a86993ce551c449d77082224c1cc7",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/build/SharedDeps.zig",
+      "sha256": "257fa7f4782dea68190d214b885d9fe9e5398e3585de7d223805e7239e643d03",
+      "bytes": 44392,
+      "source": {
+        "path": "upstream/src/build/SharedDeps.zig",
+        "originalPath": "src/build/SharedDeps.zig",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/SharedDeps.zig",
+        "sha256": "257fa7f4782dea68190d214b885d9fe9e5398e3585de7d223805e7239e643d03",
+        "bytes": 44392,
+        "gitBlobSHA1": "7f777faa16ebad5146e20f3ffadc33d9ee00d99b",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/base64.cpp",
+      "sha256": "ea0653b21ca866948806bd2bb4c3ae0bd544d32d145a92fa1d60298195ce6c99",
+      "bytes": 480,
+      "source": {
+        "path": "upstream/src/simd/base64.cpp",
+        "originalPath": "src/simd/base64.cpp",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/base64.cpp",
+        "sha256": "ea0653b21ca866948806bd2bb4c3ae0bd544d32d145a92fa1d60298195ce6c99",
+        "bytes": 480,
+        "gitBlobSHA1": "63f26b50554ffc5923d7d0e54cd421c016c219f7",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/codepoint_width.cpp",
+      "sha256": "c77e6adadfc556d3b985665d485d3bf743cd022bcc2550d77855dc96e3118154",
+      "bytes": 23037,
+      "source": {
+        "path": "upstream/src/simd/codepoint_width.cpp",
+        "originalPath": "src/simd/codepoint_width.cpp",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/codepoint_width.cpp",
+        "sha256": "c77e6adadfc556d3b985665d485d3bf743cd022bcc2550d77855dc96e3118154",
+        "bytes": 23037,
+        "gitBlobSHA1": "7f0dfd87cdaf9f602f1abf530586818c42df3818",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/index_of.cpp",
+      "sha256": "5f74a282f35cb204fb8a6d3cfd8b60605c41255206f7bcd9a030be23caa687a1",
+      "bytes": 1307,
+      "source": {
+        "path": "upstream/src/simd/index_of.cpp",
+        "originalPath": "src/simd/index_of.cpp",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/index_of.cpp",
+        "sha256": "5f74a282f35cb204fb8a6d3cfd8b60605c41255206f7bcd9a030be23caa687a1",
+        "bytes": 1307,
+        "gitBlobSHA1": "8dad4bc47edb6f3ad40a13dcba2d0aa71005eafd",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/simd/vt.cpp",
+      "sha256": "6b85e1814bb4485a6d7f3ffa20ef4dd22bb6e1548ec278c98f1933b95574a7e0",
+      "bytes": 14660,
+      "source": {
+        "path": "upstream/src/simd/vt.cpp",
+        "originalPath": "src/simd/vt.cpp",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/vt.cpp",
+        "sha256": "6b85e1814bb4485a6d7f3ffa20ef4dd22bb6e1548ec278c98f1933b95574a7e0",
+        "bytes": 14660,
+        "gitBlobSHA1": "15d46966a7d5f3e7b1d8906ee447945199e0da7f",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/upstream/src/stb/stb.c",
+      "sha256": "7857633abab0e0f115e4fdb036bfc7b0af8cd0bc827e7ebdcc5375b8f7aebbef",
+      "bytes": 410,
+      "source": {
+        "path": "upstream/src/stb/stb.c",
+        "originalPath": "src/stb/stb.c",
+        "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/stb/stb.c",
+        "sha256": "7857633abab0e0f115e4fdb036bfc7b0af8cd0bc827e7ebdcc5375b8f7aebbef",
+        "bytes": 410,
+        "gitBlobSHA1": "68c4c225880f541e54ed99860e6ba0a1a6dd1f27",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/.github/workflows/build.yml",
+      "sha256": "1a5bc6a4b6f3829dab729b8c8a6a535afb9ae9a91cdacfc7f3354a13fdbd7ede",
+      "bytes": 7133,
+      "source": {
+        "path": "source/.github/workflows/build.yml",
+        "originalPath": ".github/workflows/build.yml",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/.github/workflows/build.yml",
+        "bytes": 7133,
+        "sha256": "1a5bc6a4b6f3829dab729b8c8a6a535afb9ae9a91cdacfc7f3354a13fdbd7ede",
+        "gitBlob": "d5412978a8f54dbd16f98dd2dcc935033439cf38",
+        "expectedGitBlob": "d5412978a8f54dbd16f98dd2dcc935033439cf38",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "d5412978a8f54dbd16f98dd2dcc935033439cf38",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/.github/workflows/release.yml",
+      "sha256": "a5804af54ee8defea3474a6001fb12eba8147a8b35550ca3709d6512aea75824",
+      "bytes": 7196,
+      "source": {
+        "path": "source/.github/workflows/release.yml",
+        "originalPath": ".github/workflows/release.yml",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/.github/workflows/release.yml",
+        "bytes": 7196,
+        "sha256": "a5804af54ee8defea3474a6001fb12eba8147a8b35550ca3709d6512aea75824",
+        "gitBlob": "f141f13977c631998b689bccfa9d70910b616a51",
+        "expectedGitBlob": "f141f13977c631998b689bccfa9d70910b616a51",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "f141f13977c631998b689bccfa9d70910b616a51",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Ghostty.ref",
+      "sha256": "58e2637c45012bd781dc5ae71356a1f69216388d193a262ddf50581ba23f7750",
+      "bytes": 41,
+      "source": {
+        "path": "source/Ghostty.ref",
+        "originalPath": "Ghostty.ref",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Ghostty.ref",
+        "bytes": 41,
+        "sha256": "58e2637c45012bd781dc5ae71356a1f69216388d193a262ddf50581ba23f7750",
+        "gitBlob": "a5598655aa372a3c0582fd26487e04d18f5043bc",
+        "expectedGitBlob": "a5598655aa372a3c0582fd26487e04d18f5043bc",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "a5598655aa372a3c0582fd26487e04d18f5043bc",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0001-darwin-libghostty-install.sh",
+      "sha256": "6a55e5cf2062565becfa5bdbadf0bc310f21f662b33c74da827d818a169eb3a1",
+      "bytes": 2055,
+      "source": {
+        "path": "source/Patches/ghostty/0001-darwin-libghostty-install.sh",
+        "originalPath": "Patches/ghostty/0001-darwin-libghostty-install.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0001-darwin-libghostty-install.sh",
+        "bytes": 2055,
+        "sha256": "6a55e5cf2062565becfa5bdbadf0bc310f21f662b33c74da827d818a169eb3a1",
+        "gitBlob": "c7b6c63e8f3d3e14aea7cca8513180db0edd803a",
+        "expectedGitBlob": "c7b6c63e8f3d3e14aea7cca8513180db0edd803a",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "c7b6c63e8f3d3e14aea7cca8513180db0edd803a",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0002-host-managed-io.patch",
+      "sha256": "5c6442c8da366988f60b76fa2942b8544f1b363e89b7245fa8d255a25a4d2f2e",
+      "bytes": 18432,
+      "source": {
+        "path": "source/Patches/ghostty/0002-host-managed-io.patch",
+        "originalPath": "Patches/ghostty/0002-host-managed-io.patch",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0002-host-managed-io.patch",
+        "bytes": 18432,
+        "sha256": "5c6442c8da366988f60b76fa2942b8544f1b363e89b7245fa8d255a25a4d2f2e",
+        "gitBlob": "866c7b3a29ebb4d31c8734bcacddc7cafe0717e6",
+        "expectedGitBlob": "866c7b3a29ebb4d31c8734bcacddc7cafe0717e6",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "866c7b3a29ebb4d31c8734bcacddc7cafe0717e6",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0003-prebuilt-framedata.patch",
+      "sha256": "59eb41dd8b66ccc5f13f35ca12429fec054a0f7922ee2f5a361ee920a393487a",
+      "bytes": 113188,
+      "source": {
+        "path": "source/Patches/ghostty/0003-prebuilt-framedata.patch",
+        "originalPath": "Patches/ghostty/0003-prebuilt-framedata.patch",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0003-prebuilt-framedata.patch",
+        "bytes": 113188,
+        "sha256": "59eb41dd8b66ccc5f13f35ca12429fec054a0f7922ee2f5a361ee920a393487a",
+        "gitBlob": "a949fbac7a587f9c5cff9dbe0a7181189913a992",
+        "expectedGitBlob": "a949fbac7a587f9c5cff9dbe0a7181189913a992",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "a949fbac7a587f9c5cff9dbe0a7181189913a992",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0004-ios-fixes.sh",
+      "sha256": "cb5cc8ed1518d0efd4d385c532a3c6916a9b68790118d4af551cadf114d4e646",
+      "bytes": 8107,
+      "source": {
+        "path": "source/Patches/ghostty/0004-ios-fixes.sh",
+        "originalPath": "Patches/ghostty/0004-ios-fixes.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0004-ios-fixes.sh",
+        "bytes": 8107,
+        "sha256": "cb5cc8ed1518d0efd4d385c532a3c6916a9b68790118d4af551cadf114d4e646",
+        "gitBlob": "5b2e7fa1c0bd20d3180b1038f5e030061fa0044a",
+        "expectedGitBlob": "5b2e7fa1c0bd20d3180b1038f5e030061fa0044a",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "5b2e7fa1c0bd20d3180b1038f5e030061fa0044a",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0005-ios-metal-rendering.sh",
+      "sha256": "842e9ed52cea56e85e3f1860d867971fe589f8c1055a5d93492b61225aa3c6e2",
+      "bytes": 18929,
+      "source": {
+        "path": "source/Patches/ghostty/0005-ios-metal-rendering.sh",
+        "originalPath": "Patches/ghostty/0005-ios-metal-rendering.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0005-ios-metal-rendering.sh",
+        "bytes": 18929,
+        "sha256": "842e9ed52cea56e85e3f1860d867971fe589f8c1055a5d93492b61225aa3c6e2",
+        "gitBlob": "0629fe71c96af9666e700af7f58ca3e551e55e1f",
+        "expectedGitBlob": "0629fe71c96af9666e700af7f58ca3e551e55e1f",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "0629fe71c96af9666e700af7f58ca3e551e55e1f",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0006-disable-custom-shaders.sh",
+      "sha256": "0791d405d77b7d8c9abd8eb705179726ccfae063bfbe0c9441b4b54cbcfb797a",
+      "bytes": 8073,
+      "source": {
+        "path": "source/Patches/ghostty/0006-disable-custom-shaders.sh",
+        "originalPath": "Patches/ghostty/0006-disable-custom-shaders.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0006-disable-custom-shaders.sh",
+        "bytes": 8073,
+        "sha256": "0791d405d77b7d8c9abd8eb705179726ccfae063bfbe0c9441b4b54cbcfb797a",
+        "gitBlob": "2223b9cbb9887fb46a6733551ae485b9a9e98f04",
+        "expectedGitBlob": "2223b9cbb9887fb46a6733551ae485b9a9e98f04",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "2223b9cbb9887fb46a6733551ae485b9a9e98f04",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0007-disable-inspector.sh",
+      "sha256": "41c4c9c61695323ab0c34521de939cc4a55ee332e36578741a202ed3fcb93a0a",
+      "bytes": 15552,
+      "source": {
+        "path": "source/Patches/ghostty/0007-disable-inspector.sh",
+        "originalPath": "Patches/ghostty/0007-disable-inspector.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0007-disable-inspector.sh",
+        "bytes": 15552,
+        "sha256": "41c4c9c61695323ab0c34521de939cc4a55ee332e36578741a202ed3fcb93a0a",
+        "gitBlob": "12bdc367c8ff9d35360ec628eebf6c3b04ef91de",
+        "expectedGitBlob": "12bdc367c8ff9d35360ec628eebf6c3b04ef91de",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "12bdc367c8ff9d35360ec628eebf6c3b04ef91de",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0008-macos-metal-texture-storage.sh",
+      "sha256": "aed2feb34f402c2f254b544881b26ca5893bb03bdef04c3d7819e278ac6e79d7",
+      "bytes": 3817,
+      "source": {
+        "path": "source/Patches/ghostty/0008-macos-metal-texture-storage.sh",
+        "originalPath": "Patches/ghostty/0008-macos-metal-texture-storage.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0008-macos-metal-texture-storage.sh",
+        "bytes": 3817,
+        "sha256": "aed2feb34f402c2f254b544881b26ca5893bb03bdef04c3d7819e278ac6e79d7",
+        "gitBlob": "56b6af555e2628c040d2ad47650b8979e334a6ab",
+        "expectedGitBlob": "56b6af555e2628c040d2ad47650b8979e334a6ab",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "56b6af555e2628c040d2ad47650b8979e334a6ab",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0009-libcxx-apple-availability.sh",
+      "sha256": "640457845f739df678896d8e4ab55263da10fc3a0c3dc24348c9d793f5bf7aff",
+      "bytes": 3298,
+      "source": {
+        "path": "source/Patches/ghostty/0009-libcxx-apple-availability.sh",
+        "originalPath": "Patches/ghostty/0009-libcxx-apple-availability.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0009-libcxx-apple-availability.sh",
+        "bytes": 3298,
+        "sha256": "640457845f739df678896d8e4ab55263da10fc3a0c3dc24348c9d793f5bf7aff",
+        "gitBlob": "17694e6134a96edfbab6dfd2f01f054a2184855c",
+        "expectedGitBlob": "17694e6134a96edfbab6dfd2f01f054a2184855c",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "17694e6134a96edfbab6dfd2f01f054a2184855c",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+      "sha256": "6823217a05d53461e335cb46b10cd4f904894c01143cf1ed1dbae65661fbd66e",
+      "bytes": 800,
+      "source": {
+        "path": "source/Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+        "originalPath": "Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+        "bytes": 800,
+        "sha256": "6823217a05d53461e335cb46b10cd4f904894c01143cf1ed1dbae65661fbd66e",
+        "gitBlob": "31685b19ff96c6f58e67b0117766edf373b01312",
+        "expectedGitBlob": "31685b19ff96c6f58e67b0117766edf373b01312",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "31685b19ff96c6f58e67b0117766edf373b01312",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0011-replay-response-suppression.sh",
+      "sha256": "b8e935536cd99831ffd34392e5509a01db7e338e783174269377892d3214da06",
+      "bytes": 10743,
+      "source": {
+        "path": "source/Patches/ghostty/0011-replay-response-suppression.sh",
+        "originalPath": "Patches/ghostty/0011-replay-response-suppression.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0011-replay-response-suppression.sh",
+        "bytes": 10743,
+        "sha256": "b8e935536cd99831ffd34392e5509a01db7e338e783174269377892d3214da06",
+        "gitBlob": "823719db6a75b9ac5b6a00a2f382540eced221c8",
+        "expectedGitBlob": "823719db6a75b9ac5b6a00a2f382540eced221c8",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "823719db6a75b9ac5b6a00a2f382540eced221c8",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0012-visionos.sh",
+      "sha256": "f0eca4e24ed11b3c96f0ef08787a6a8de0b7fd9d034c0d1ec114138e250bd136",
+      "bytes": 6913,
+      "source": {
+        "path": "source/Patches/ghostty/0012-visionos.sh",
+        "originalPath": "Patches/ghostty/0012-visionos.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0012-visionos.sh",
+        "bytes": 6913,
+        "sha256": "f0eca4e24ed11b3c96f0ef08787a6a8de0b7fd9d034c0d1ec114138e250bd136",
+        "gitBlob": "7f15c7cd80347b8ae99ab99b158d02009ca07bf8",
+        "expectedGitBlob": "7f15c7cd80347b8ae99ab99b158d02009ca07bf8",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "7f15c7cd80347b8ae99ab99b158d02009ca07bf8",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0013-host-toolchain.sh",
+      "sha256": "5fa70a940f85433fbe279d97f18d614286e0243ab835df54c941d60fd5c586f6",
+      "bytes": 2483,
+      "source": {
+        "path": "source/Patches/ghostty/0013-host-toolchain.sh",
+        "originalPath": "Patches/ghostty/0013-host-toolchain.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0013-host-toolchain.sh",
+        "bytes": 2483,
+        "sha256": "5fa70a940f85433fbe279d97f18d614286e0243ab835df54c941d60fd5c586f6",
+        "gitBlob": "8f9e67de79fccc1d338bc8b0ea1347e594767744",
+        "expectedGitBlob": "8f9e67de79fccc1d338bc8b0ea1347e594767744",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "8f9e67de79fccc1d338bc8b0ea1347e594767744",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0014-preserve-sync-on-resize.sh",
+      "sha256": "c698018c8d04ffd23be49bf2f470d2bbf0e6dfb2ac6c30d4062fcf6b51795b92",
+      "bytes": 5834,
+      "source": {
+        "path": "source/Patches/ghostty/0014-preserve-sync-on-resize.sh",
+        "originalPath": "Patches/ghostty/0014-preserve-sync-on-resize.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0014-preserve-sync-on-resize.sh",
+        "bytes": 5834,
+        "sha256": "c698018c8d04ffd23be49bf2f470d2bbf0e6dfb2ac6c30d4062fcf6b51795b92",
+        "gitBlob": "920e261f8003a512c9bd29236b67089a8c2e521c",
+        "expectedGitBlob": "920e261f8003a512c9bd29236b67089a8c2e521c",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "920e261f8003a512c9bd29236b67089a8c2e521c",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+      "sha256": "eb3a26033cfdbed590f3f8c2ca9088f72d3927782abf8221edf1c6dbec3190c5",
+      "bytes": 31514,
+      "source": {
+        "path": "source/Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+        "originalPath": "Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+        "bytes": 31514,
+        "sha256": "eb3a26033cfdbed590f3f8c2ca9088f72d3927782abf8221edf1c6dbec3190c5",
+        "gitBlob": "b77fc6a7ac592b829e29fdf403694487240d6293",
+        "expectedGitBlob": "b77fc6a7ac592b829e29fdf403694487240d6293",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "b77fc6a7ac592b829e29fdf403694487240d6293",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0016-maccatalyst.sh",
+      "sha256": "1b3a217db2851c024bb167d5868f96498cf11b0bdda0101f662a638eb7c3912a",
+      "bytes": 4188,
+      "source": {
+        "path": "source/Patches/ghostty/0016-maccatalyst.sh",
+        "originalPath": "Patches/ghostty/0016-maccatalyst.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0016-maccatalyst.sh",
+        "bytes": 4188,
+        "sha256": "1b3a217db2851c024bb167d5868f96498cf11b0bdda0101f662a638eb7c3912a",
+        "gitBlob": "ac0731d6ae737dafc97806efbd2f562b5ea69c7d",
+        "expectedGitBlob": "ac0731d6ae737dafc97806efbd2f562b5ea69c7d",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "ac0731d6ae737dafc97806efbd2f562b5ea69c7d",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+      "sha256": "d0a5cadc692d4fffc2efc6101d31bf120a5102a3092a16b6072aff8ec1a09c55",
+      "bytes": 6745,
+      "source": {
+        "path": "source/Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+        "originalPath": "Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+        "bytes": 6745,
+        "sha256": "d0a5cadc692d4fffc2efc6101d31bf120a5102a3092a16b6072aff8ec1a09c55",
+        "gitBlob": "1696b958795034decd982623a66bc8e6d285fe89",
+        "expectedGitBlob": "1696b958795034decd982623a66bc8e6d285fe89",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "1696b958795034decd982623a66bc8e6d285fe89",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/0018-screen-text-history.sh",
+      "sha256": "24c44fff0df62cf46c829a1bffc5d65dd6c7c8562568194d04d806655fa14d86",
+      "bytes": 857,
+      "source": {
+        "path": "source/Patches/ghostty/0018-screen-text-history.sh",
+        "originalPath": "Patches/ghostty/0018-screen-text-history.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/0018-screen-text-history.sh",
+        "bytes": 857,
+        "sha256": "24c44fff0df62cf46c829a1bffc5d65dd6c7c8562568194d04d806655fa14d86",
+        "gitBlob": "3c09425a358b220e71771a552cea0b727a590baa",
+        "expectedGitBlob": "3c09425a358b220e71771a552cea0b727a590baa",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "3c09425a358b220e71771a552cea0b727a590baa",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/ghostty/README.md",
+      "sha256": "05a8bc84504c7fd5c2bd8c302397343b06f62153f9c8a7595bb41d091217fe84",
+      "bytes": 16409,
+      "source": {
+        "path": "source/Patches/ghostty/README.md",
+        "originalPath": "Patches/ghostty/README.md",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/ghostty/README.md",
+        "bytes": 16409,
+        "sha256": "05a8bc84504c7fd5c2bd8c302397343b06f62153f9c8a7595bb41d091217fe84",
+        "gitBlob": "c69a85fc186d87f0fe75492509df9871f1c8d96b",
+        "expectedGitBlob": "c69a85fc186d87f0fe75492509df9871f1c8d96b",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "c69a85fc186d87f0fe75492509df9871f1c8d96b",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Patches/zig/README.md",
+      "sha256": "f853b9b5a6d3e39a4167d5c9659f91126738ed0139f835e1d04ea842f96a6a46",
+      "bytes": 1088,
+      "source": {
+        "path": "source/Patches/zig/README.md",
+        "originalPath": "Patches/zig/README.md",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Patches/zig/README.md",
+        "bytes": 1088,
+        "sha256": "f853b9b5a6d3e39a4167d5c9659f91126738ed0139f835e1d04ea842f96a6a46",
+        "gitBlob": "73e59434a378d4ae6b7e2e86e98fedb9f865dabd",
+        "expectedGitBlob": "73e59434a378d4ae6b7e2e86e98fedb9f865dabd",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "73e59434a378d4ae6b7e2e86e98fedb9f865dabd",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/README.md",
+      "sha256": "bc2df599e9f528886dff8c6519baf85aa017057583fac3b1685674f4775afb21",
+      "bytes": 18804,
+      "source": {
+        "path": "source/README.md",
+        "originalPath": "README.md",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/README.md",
+        "bytes": 18804,
+        "sha256": "bc2df599e9f528886dff8c6519baf85aa017057583fac3b1685674f4775afb21",
+        "gitBlob": "abdb818203098e6bb6a5ab46e1f1e573b2bb516f",
+        "expectedGitBlob": "abdb818203098e6bb6a5ab46e1f1e573b2bb516f",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "abdb818203098e6bb6a5ab46e1f1e573b2bb516f",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/apply-patches.sh",
+      "sha256": "faa6882eaac90f94971c4a58253ffea77a12f2edc22ffb463e041386a26278cb",
+      "bytes": 2653,
+      "source": {
+        "path": "source/Script/apply-patches.sh",
+        "originalPath": "Script/apply-patches.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/apply-patches.sh",
+        "bytes": 2653,
+        "sha256": "faa6882eaac90f94971c4a58253ffea77a12f2edc22ffb463e041386a26278cb",
+        "gitBlob": "364f68e4f95b904f08b99d3ca989dbbb2ea31bb6",
+        "expectedGitBlob": "364f68e4f95b904f08b99d3ca989dbbb2ea31bb6",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "364f68e4f95b904f08b99d3ca989dbbb2ea31bb6",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-ghostty.sh",
+      "sha256": "82b0722920e5b425b5f75ff37197060f6721e7e7b9c61325654264bdca74664b",
+      "bytes": 7129,
+      "source": {
+        "path": "source/Script/build-ghostty.sh",
+        "originalPath": "Script/build-ghostty.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build-ghostty.sh",
+        "bytes": 7129,
+        "sha256": "82b0722920e5b425b5f75ff37197060f6721e7e7b9c61325654264bdca74664b",
+        "gitBlob": "07657033b333ae32df66de64dbb72d8425d48245",
+        "expectedGitBlob": "07657033b333ae32df66de64dbb72d8425d48245",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "07657033b333ae32df66de64dbb72d8425d48245",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-manifest.sh",
+      "sha256": "02870fb3dbe4029c755a7b2b0d538d92e902657b8dd8c123740021f6667f6cb4",
+      "bytes": 809,
+      "source": {
+        "path": "source/Script/build-manifest.sh",
+        "originalPath": "Script/build-manifest.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build-manifest.sh",
+        "bytes": 809,
+        "sha256": "02870fb3dbe4029c755a7b2b0d538d92e902657b8dd8c123740021f6667f6cb4",
+        "gitBlob": "0219870bff2b43e8b176b953d5d9bd33cb7b74a2",
+        "expectedGitBlob": "0219870bff2b43e8b176b953d5d9bd33cb7b74a2",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "0219870bff2b43e8b176b953d5d9bd33cb7b74a2",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build-platform.sh",
+      "sha256": "9432c445b10f4db450b6aa7f962ba34b23b952190b3cd87bf81d8b91c89a580f",
+      "bytes": 3346,
+      "source": {
+        "path": "source/Script/build-platform.sh",
+        "originalPath": "Script/build-platform.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build-platform.sh",
+        "bytes": 3346,
+        "sha256": "9432c445b10f4db450b6aa7f962ba34b23b952190b3cd87bf81d8b91c89a580f",
+        "gitBlob": "3404533741c2b04a2d3ded421e10e3f384e525c8",
+        "expectedGitBlob": "3404533741c2b04a2d3ded421e10e3f384e525c8",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "3404533741c2b04a2d3ded421e10e3f384e525c8",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/build.sh",
+      "sha256": "4570c3c063dfbc6f49dc99f690dc699e6b42a6b31b82e0e79570ae8e1522aa58",
+      "bytes": 4142,
+      "source": {
+        "path": "source/Script/build.sh",
+        "originalPath": "Script/build.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build.sh",
+        "bytes": 4142,
+        "sha256": "4570c3c063dfbc6f49dc99f690dc699e6b42a6b31b82e0e79570ae8e1522aa58",
+        "gitBlob": "06aba6f86426a9ca3d1621d056d15e71299cf2ef",
+        "expectedGitBlob": "06aba6f86426a9ca3d1621d056d15e71299cf2ef",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "06aba6f86426a9ca3d1621d056d15e71299cf2ef",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/check-licenses.sh",
+      "sha256": "03e290b716acfe5157e02a0015784f94a420e5ea0a5c9f8103682ba8b661336b",
+      "bytes": 2560,
+      "source": {
+        "path": "source/Script/check-licenses.sh",
+        "originalPath": "Script/check-licenses.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/check-licenses.sh",
+        "bytes": 2560,
+        "sha256": "03e290b716acfe5157e02a0015784f94a420e5ea0a5c9f8103682ba8b661336b",
+        "gitBlob": "f064264efe6f36f259c93c04231b1bb324ca4c54",
+        "expectedGitBlob": "f064264efe6f36f259c93c04231b1bb324ca4c54",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "f064264efe6f36f259c93c04231b1bb324ca4c54",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/merge-xcframework.sh",
+      "sha256": "2e95c9bd815a09c8eb692650729cdd4f83cf1e1e582665e5a5884b645d29ada6",
+      "bytes": 2478,
+      "source": {
+        "path": "source/Script/merge-xcframework.sh",
+        "originalPath": "Script/merge-xcframework.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/merge-xcframework.sh",
+        "bytes": 2478,
+        "sha256": "2e95c9bd815a09c8eb692650729cdd4f83cf1e1e582665e5a5884b645d29ada6",
+        "gitBlob": "1e4d6f782229b942d7cadf0467ea7d86378dccaf",
+        "expectedGitBlob": "1e4d6f782229b942d7cadf0467ea7d86378dccaf",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "1e4d6f782229b942d7cadf0467ea7d86378dccaf",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/prepare-zig-lib.sh",
+      "sha256": "6ee17d0820ce8eb39d01cb989a5021e5a5212100863308c0cef30e1b4121db10",
+      "bytes": 2641,
+      "source": {
+        "path": "source/Script/prepare-zig-lib.sh",
+        "originalPath": "Script/prepare-zig-lib.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/prepare-zig-lib.sh",
+        "bytes": 2641,
+        "sha256": "6ee17d0820ce8eb39d01cb989a5021e5a5212100863308c0cef30e1b4121db10",
+        "gitBlob": "761778f3c2f39cb4351977ad009f4053ca36ea7d",
+        "expectedGitBlob": "761778f3c2f39cb4351977ad009f4053ca36ea7d",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "761778f3c2f39cb4351977ad009f4053ca36ea7d",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/storage-tag.sh",
+      "sha256": "9f5f6e32ba665e1295a13eb9037c555f7bac4565c7961042a39276a995a4916c",
+      "bytes": 1318,
+      "source": {
+        "path": "source/Script/storage-tag.sh",
+        "originalPath": "Script/storage-tag.sh",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/storage-tag.sh",
+        "bytes": 1318,
+        "sha256": "9f5f6e32ba665e1295a13eb9037c555f7bac4565c7961042a39276a995a4916c",
+        "gitBlob": "1ab5552e7796282378064b87d674d6d33d61201b",
+        "expectedGitBlob": "1ab5552e7796282378064b87d674d6d33d61201b",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "1ab5552e7796282378064b87d674d6d33d61201b",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/support/anchored_edit.py",
+      "sha256": "9e748f3d7fe38f39ad20eac227bc1912437e9de8d57a3e14699a2e77d1230c9b",
+      "bytes": 4316,
+      "source": {
+        "path": "source/Script/support/anchored_edit.py",
+        "originalPath": "Script/support/anchored_edit.py",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/support/anchored_edit.py",
+        "bytes": 4316,
+        "sha256": "9e748f3d7fe38f39ad20eac227bc1912437e9de8d57a3e14699a2e77d1230c9b",
+        "gitBlob": "2adc9ebd7c8ace0fdcab8b29a43c332231fea0aa",
+        "expectedGitBlob": "2adc9ebd7c8ace0fdcab8b29a43c332231fea0aa",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "2adc9ebd7c8ace0fdcab8b29a43c332231fea0aa",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/source/Script/support/libcxx-verbose-abort-compat.c",
+      "sha256": "72925a0b2b9188b9b2a62de439e97aed544c9871ce9f1582898a4f85fdd28845",
+      "bytes": 811,
+      "source": {
+        "path": "source/Script/support/libcxx-verbose-abort-compat.c",
+        "originalPath": "Script/support/libcxx-verbose-abort-compat.c",
+        "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/support/libcxx-verbose-abort-compat.c",
+        "bytes": 811,
+        "sha256": "72925a0b2b9188b9b2a62de439e97aed544c9871ce9f1582898a4f85fdd28845",
+        "gitBlob": "372e777552d305ef7acbaa49bec3de78a04ef2d7",
+        "expectedGitBlob": "372e777552d305ef7acbaa49bec3de78a04ef2d7",
+        "gitBlobVerified": true,
+        "assetTagRevisionGitBlob": "372e777552d305ef7acbaa49bec3de78a04ef2d7",
+        "sameAtAssetTagRevision": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt.zig",
+      "sha256": "8f518ff1a2d8de659d847c1e366d301d52fbc07cb60c4fb20129cb45a9c6a15e",
+      "bytes": 25527,
+      "source": {
+        "path": "lib/compiler_rt.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/tag/0.16.0/lib/compiler_rt.zig",
+        "bytes": 25527,
+        "sha256": "8f518ff1a2d8de659d847c1e366d301d52fbc07cb60c4fb20129cb45a9c6a15e",
+        "gitBlob": "501d35f0a280b79d96ebf0fd7ed993cbeaecdb9c",
+        "expectedGitBlob": "501d35f0a280b79d96ebf0fd7ed993cbeaecdb9c",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/addf3.zig",
+      "sha256": "21c91cf72cb255e6ec7c41e257682669ffb213cf4a704dafdb1ea34ad96598b6",
+      "bytes": 6364,
+      "source": {
+        "path": "lib/compiler_rt/addf3.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/addf3.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 6364,
+        "sha256": "21c91cf72cb255e6ec7c41e257682669ffb213cf4a704dafdb1ea34ad96598b6",
+        "gitBlob": "91152735f445bbaa8abf459b17f9d597a1a030af",
+        "expectedGitBlob": "91152735f445bbaa8abf459b17f9d597a1a030af",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/cos.zig",
+      "sha256": "390d99cbbef36e84db6ba193a8fc06185fdefce89503746dd20f074e82ff7d63",
+      "bytes": 8401,
+      "source": {
+        "path": "lib/compiler_rt/cos.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/cos.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 8401,
+        "sha256": "390d99cbbef36e84db6ba193a8fc06185fdefce89503746dd20f074e82ff7d63",
+        "gitBlob": "3620e31835b20461f80a096c4ccc7a59365fd812",
+        "expectedGitBlob": "3620e31835b20461f80a096c4ccc7a59365fd812",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/log.zig",
+      "sha256": "ae3d6e4700a583a76e9a089555e1b8d6e7f86e50a11028aa24995f882b31065d",
+      "bytes": 27755,
+      "source": {
+        "path": "lib/compiler_rt/log.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/log.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 27755,
+        "sha256": "ae3d6e4700a583a76e9a089555e1b8d6e7f86e50a11028aa24995f882b31065d",
+        "gitBlob": "926018f03d71a30ecd88052cbe3d456afb99926d",
+        "expectedGitBlob": "926018f03d71a30ecd88052cbe3d456afb99926d",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/udivmod.zig",
+      "sha256": "f7389862a77d191d9d799426ea31b1e23255c66eb05e73a020277d74cafc446c",
+      "bytes": 10004,
+      "source": {
+        "path": "lib/compiler_rt/udivmod.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/udivmod.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 10004,
+        "sha256": "f7389862a77d191d9d799426ea31b1e23255c66eb05e73a020277d74cafc446c",
+        "gitBlob": "fdb338c21ac012c786f2fba1c54f9dfc119f0c88",
+        "expectedGitBlob": "fdb338c21ac012c786f2fba1c54f9dfc119f0c88",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/ubsan_rt.zig",
+      "sha256": "eb264da5bb3de29c5ada63f3e4ed239df4f3753175fd4f1eb48faa951fabe79b",
+      "bytes": 21780,
+      "source": {
+        "path": "lib/ubsan_rt.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/ubsan_rt.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 21780,
+        "sha256": "eb264da5bb3de29c5ada63f3e4ed239df4f3753175fd4f1eb48faa951fabe79b",
+        "gitBlob": "59278a91161d4ef780539de147c94d54a67aa320",
+        "expectedGitBlob": "59278a91161d4ef780539de147c94d54a67aa320",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/trig.zig",
+      "sha256": "1380cd41d9fa7a5ecd7d213f01ed007c98db2e7ab894ec87e552e2b2f0edb9dc",
+      "bytes": 20510,
+      "source": {
+        "path": "lib/compiler_rt/trig.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/trig.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 20510,
+        "sha256": "1380cd41d9fa7a5ecd7d213f01ed007c98db2e7ab894ec87e552e2b2f0edb9dc",
+        "gitBlob": "e357613948625ca83779ddaa51a6754cc5870218",
+        "expectedGitBlob": "e357613948625ca83779ddaa51a6754cc5870218",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2.zig",
+      "sha256": "908c7ee93fc246ce3405fa3a4303b8dbbc9a6c527f5e792fd59d6ab3cff79f27",
+      "bytes": 6045,
+      "source": {
+        "path": "lib/compiler_rt/rem_pio2.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 6045,
+        "sha256": "908c7ee93fc246ce3405fa3a4303b8dbbc9a6c527f5e792fd59d6ab3cff79f27",
+        "gitBlob": "33575b7f65a05df3fb77b2058cc0da711f54ba21",
+        "expectedGitBlob": "33575b7f65a05df3fb77b2058cc0da711f54ba21",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2f.zig",
+      "sha256": "a41741ff67bf8def1d237d62ef07bb0ec7d5198459958eb1420028052727a17a",
+      "bytes": 2247,
+      "source": {
+        "path": "lib/compiler_rt/rem_pio2f.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2f.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 2247,
+        "sha256": "a41741ff67bf8def1d237d62ef07bb0ec7d5198459958eb1420028052727a17a",
+        "gitBlob": "c17ebbd39df4bf0911e8ce9f0bbff7442cebd627",
+        "expectedGitBlob": "c17ebbd39df4bf0911e8ce9f0bbff7442cebd627",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/rem_pio2l.zig",
+      "sha256": "67a3a31c123d46e5acd123e60b88cb151003958bb8a5fcdd588c45bd9f25783c",
+      "bytes": 5829,
+      "source": {
+        "path": "lib/compiler_rt/rem_pio2l.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2l.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 5829,
+        "sha256": "67a3a31c123d46e5acd123e60b88cb151003958bb8a5fcdd588c45bd9f25783c",
+        "gitBlob": "fe878f116d91204b000f6fba1d2e5280b15723da",
+        "expectedGitBlob": "fe878f116d91204b000f6fba1d2e5280b15723da",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/sincos.zig",
+      "sha256": "1f0efd70411fb6cfd5e9e320ef77275fb077548d0d7ffac1c40d426bedc5fe71",
+      "bytes": 14726,
+      "source": {
+        "path": "lib/compiler_rt/sincos.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/sincos.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 14726,
+        "sha256": "1f0efd70411fb6cfd5e9e320ef77275fb077548d0d7ffac1c40d426bedc5fe71",
+        "gitBlob": "7208325c2b86f65dd6736437572eea3c09235ff3",
+        "expectedGitBlob": "7208325c2b86f65dd6736437572eea3c09235ff3",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/exp.zig",
+      "sha256": "d1d1b0f564531fc1c7d845493e3ab412a58e5ca0fd3d629baca3aa18fec510cd",
+      "bytes": 11191,
+      "source": {
+        "path": "lib/compiler_rt/exp.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/exp.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 11191,
+        "sha256": "d1d1b0f564531fc1c7d845493e3ab412a58e5ca0fd3d629baca3aa18fec510cd",
+        "gitBlob": "c5a980ac72f46b5bd945e1accee32e869e546212",
+        "expectedGitBlob": "c5a980ac72f46b5bd945e1accee32e869e546212",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/exp2.zig",
+      "sha256": "9dcb2c06afbf9d76812b08e51874e27bc67b0426ef1484d4cae69ca9bc0ce300",
+      "bytes": 20463,
+      "source": {
+        "path": "lib/compiler_rt/exp2.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/exp2.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 20463,
+        "sha256": "9dcb2c06afbf9d76812b08e51874e27bc67b0426ef1484d4cae69ca9bc0ce300",
+        "gitBlob": "4e41db2f2d37813a83ae8b38e46f3c805e601e95",
+        "expectedGitBlob": "4e41db2f2d37813a83ae8b38e46f3c805e601e95",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/log2.zig",
+      "sha256": "f63274b36b3ac26df42b6ec5fc9b5842153b1d0ccf6714ef27576e6aa7fa6091",
+      "bytes": 8667,
+      "source": {
+        "path": "lib/compiler_rt/log2.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/log2.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 8667,
+        "sha256": "f63274b36b3ac26df42b6ec5fc9b5842153b1d0ccf6714ef27576e6aa7fa6091",
+        "gitBlob": "ad17df7f653dbff49570203f79307049926dae74",
+        "expectedGitBlob": "ad17df7f653dbff49570203f79307049926dae74",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/sqrt.zig",
+      "sha256": "1ba7e39f8583d552257b9d37362e9653d4f8f772df5ef4303d91a7f11959de28",
+      "bytes": 29204,
+      "source": {
+        "path": "lib/compiler_rt/sqrt.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/sqrt.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 29204,
+        "sha256": "1ba7e39f8583d552257b9d37362e9653d4f8f772df5ef4303d91a7f11959de28",
+        "gitBlob": "e765414fb0f418ea9f6d1d71e03c4fa73ff36ca9",
+        "expectedGitBlob": "e765414fb0f418ea9f6d1d71e03c4fa73ff36ca9",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/zig-0.16.0/lib/compiler_rt/fma.zig",
+      "sha256": "d1a541207efc31f4f073138be3698679941bcc541e54c103c38505fd095559eb",
+      "bytes": 11101,
+      "source": {
+        "path": "lib/compiler_rt/fma.zig",
+        "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/fma.zig",
+        "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+        "bytes": 11101,
+        "sha256": "d1a541207efc31f4f073138be3698679941bcc541e54c103c38505fd095559eb",
+        "gitBlob": "10926e9bde05d36d8cdf16661542df9821621e0c",
+        "expectedGitBlob": "10926e9bde05d36d8cdf16661542df9821621e0c",
+        "gitBlobVerified": true,
+        "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/GhosttyLib.zig",
+      "sha256": "66dbcc07a01d31803e5c45105f59a2bb95c2adc81f971dfffb50779b6c634da8",
+      "bytes": 10101,
+      "source": {
+        "sourceURL": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyLib.zig",
+        "bytes": 10101,
+        "sha256": "66dbcc07a01d31803e5c45105f59a2bb95c2adc81f971dfffb50779b6c634da8",
+        "gitBlob": "529bb2821da592aa80edab2ed616d4ea9bdcc932",
+        "expectedGitBlob": "529bb2821da592aa80edab2ed616d4ea9bdcc932",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/LibsystemOverrideStep.zig",
+      "sha256": "fc95a42f30190c779d24d72fa2de0cbc8f1bf117dcb90a33e1c423740052f07a",
+      "bytes": 2146,
+      "source": {
+        "sourceURL": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LibsystemOverrideStep.zig",
+        "bytes": 2146,
+        "sha256": "fc95a42f30190c779d24d72fa2de0cbc8f1bf117dcb90a33e1c423740052f07a",
+        "gitBlob": "3e1cafa5e4da65a48bd210704788e9c0bf8c6b78",
+        "expectedGitBlob": "3e1cafa5e4da65a48bd210704788e9c0bf8c6b78",
+        "gitBlobVerified": true
+      }
+    },
+    {
+      "path": "release/dependency-sources/clients/runtime/ghostty-native/recipes/wrapper/upstream/src/build/libsystem_override.sh",
+      "sha256": "59f0a4100e1229e6b19f154af4b17363cfae94086a75faa7758bde18ca797f25",
+      "bytes": 2739,
+      "source": {
+        "sourceURL": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/libsystem_override.sh",
+        "bytes": 2739,
+        "sha256": "59f0a4100e1229e6b19f154af4b17363cfae94086a75faa7758bde18ca797f25",
+        "gitBlob": "14ed191b8dfaf0a732c801946de38872fbd13bef",
+        "expectedGitBlob": "14ed191b8dfaf0a732c801946de38872fbd13bef",
+        "gitBlobVerified": true
+      }
+    }
+  ],
+  "sourceAcquisitions": [
+    {
+      "package": "freetype",
+      "url": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAKLKpwC4H27Ps_0iL3bPkQb-z6ZVSrB-x_3EEkub",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "freetype-VER-2-13-2/LICENSE.TXT",
+          "path": "sources/freetype/legal/LICENSE.TXT",
+          "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
+          "bytes": 2074
+        },
+        {
+          "sourcePath": "freetype-VER-2-13-2/docs/FTL.TXT",
+          "path": "sources/freetype/legal/docs/FTL.TXT",
+          "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+          "bytes": 6743
+        },
+        {
+          "sourcePath": "freetype-VER-2-13-2/docs/GPLv2.TXT",
+          "path": "sources/freetype/legal/docs/GPLv2.TXT",
+          "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+          "bytes": 17994
+        }
+      ],
+      "archiveBytes": 2480637,
+      "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c"
+    },
+    {
+      "package": "libpng",
+      "url": "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAJrvXQCqAT8Mg9o_tk6m0yf5Fz-gCNEOKLyTSerD",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "libpng-1.6.43/AUTHORS",
+          "path": "sources/libpng/legal/AUTHORS",
+          "sha256": "980af1d09d9a1092e35c463776757c90becb07f9879f6549d46e90e22629f4e1",
+          "bytes": 1450
+        },
+        {
+          "sourcePath": "libpng-1.6.43/LICENSE",
+          "path": "sources/libpng/legal/LICENSE",
+          "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+          "bytes": 5345
+        },
+        {
+          "sourcePath": "libpng-1.6.43/ci/LICENSE_MIT.txt",
+          "path": "sources/libpng/legal/ci/LICENSE_MIT.txt",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "bytes": 1036
+        },
+        {
+          "sourcePath": "libpng-1.6.43/contrib/gregbook/COPYING",
+          "path": "sources/libpng/legal/contrib/gregbook/COPYING",
+          "sha256": "d6cb0e9e560f51085556949a84af12b79a00f10ab8b66c752537faf7cd665572",
+          "bytes": 18097
+        },
+        {
+          "sourcePath": "libpng-1.6.43/contrib/gregbook/LICENSE",
+          "path": "sources/libpng/legal/contrib/gregbook/LICENSE",
+          "sha256": "b6a03c1803eb58ffb1f1278d5c7d4096c4c116e66dce8a7553e8c77d163c3438",
+          "bytes": 2373
+        },
+        {
+          "sourcePath": "libpng-1.6.43/contrib/pngexif/LICENSE_MIT.txt",
+          "path": "sources/libpng/legal/contrib/pngexif/LICENSE_MIT.txt",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "bytes": 1036
+        },
+        {
+          "sourcePath": "libpng-1.6.43/contrib/pngminus/LICENSE.txt",
+          "path": "sources/libpng/legal/contrib/pngminus/LICENSE.txt",
+          "sha256": "eeb50cca0bf0537aeeef00874e1e22f0de50cb035f5db37e36036dc9b8218e8d",
+          "bytes": 1165
+        },
+        {
+          "sourcePath": "libpng-1.6.43/scripts/cmake/AUTHORS.md",
+          "path": "sources/libpng/legal/scripts/cmake/AUTHORS.md",
+          "sha256": "c7cc03f49a26c66803ccbe51964ed7df3ce6faed8cc8648c9534b9138bfe80f9",
+          "bytes": 791
+        }
+      ],
+      "archiveBytes": 1554715,
+      "archiveSHA256": "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a"
+    },
+    {
+      "package": "zlib",
+      "url": "https://deps.files.ghostty.org/zlib-1220fed0c74e1019b3ee29edae2051788b080cd96e90d56836eea857b0b966742efb.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAB0eQwD-0MdOEBmz7intriBReIsIDNlukNVoNu6o",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "zlib-1.3.1/LICENSE",
+          "path": "sources/zlib/legal/LICENSE",
+          "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+          "bytes": 1002
+        },
+        {
+          "sourcePath": "zlib-1.3.1/contrib/dotzlib/LICENSE_1_0.txt",
+          "path": "sources/zlib/legal/contrib/dotzlib/LICENSE_1_0.txt",
+          "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+          "bytes": 1359
+        }
+      ],
+      "archiveBytes": 1572744,
+      "archiveSHA256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c"
+    },
+    {
+      "package": "oniguruma",
+      "url": "https://deps.files.ghostty.org/oniguruma-1220c15e72eadd0d9085a8af134904d9a0f5dfcbed5f606ad60edc60ebeccd9706bb.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAHjwMQDBXnLq3Q2QhaivE0kE2aD138vtX2Bq1g7c",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "oniguruma-6.9.9/AUTHORS",
+          "path": "sources/oniguruma/legal/AUTHORS",
+          "sha256": "172a2a72c080d3067969599308c91385af86fdeb2419f8ad687883ca5a8ff912",
+          "bytes": 32
+        },
+        {
+          "sourcePath": "oniguruma-6.9.9/COPYING",
+          "path": "sources/oniguruma/legal/COPYING",
+          "sha256": "70ba5469ea0bab6e18a32d7009068f996503168d27be57747e08da34337ff26f",
+          "bytes": 1340
+        }
+      ],
+      "archiveBytes": 645616,
+      "archiveSHA256": "001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0"
+    },
+    {
+      "package": "highway",
+      "url": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAGmZhABbsPJLfbqrh6JTHsXhY6qCaLAQyx25e0XE",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE",
+          "path": "sources/highway/legal/LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+          "bytes": 11356
+        },
+        {
+          "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/LICENSE-BSD3",
+          "path": "sources/highway/legal/LICENSE-BSD3",
+          "sha256": "d25e82e26acd42ca3ccc9993622631163425b869b9e16284226d534cff6470f2",
+          "bytes": 1515
+        },
+        {
+          "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/debian/copyright",
+          "path": "sources/highway/legal/debian/copyright",
+          "sha256": "6e4ecf1cae052b678ea3178dd4b3652d581ee66a82d58db8800dd7d80dd6de76",
+          "bytes": 825
+        }
+      ],
+      "archiveBytes": 3563730,
+      "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212"
+    },
+    {
+      "package": "libintl",
+      "url": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AADcZkgn4cMhTUpIz6mShCKyqqB-NBtf_S2bHaTC-",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "gettext-0.24/AUTHORS",
+          "path": "sources/libintl/legal/AUTHORS",
+          "sha256": "b0a47f17ae2fbe64475d144d03076fe3893f7c2a7bb93af357db41beae4b7bda",
+          "bytes": 2572
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/AUTHORS",
+          "path": "sources/libintl/legal/gettext-runtime/intl/AUTHORS",
+          "sha256": "4bd9e2cd15ab6d68b30965512b63a1d4aae95f4c1dd040657a4d1300252a695f",
+          "bytes": 96
+        },
+        {
+          "sourcePath": "gettext-0.24/COPYING",
+          "path": "sources/libintl/legal/COPYING",
+          "sha256": "e79e9c8a0c85d735ff98185918ec94ed7d175efc377012787aebcf3b80f0d90b",
+          "bytes": 35151
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/COPYING.LIB",
+          "path": "sources/libintl/legal/gettext-runtime/intl/COPYING.LIB",
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
+          "bytes": 26419
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/bindtextdom.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/bindtextdom.c.header.txt",
+          "sourceFileSHA256": "7b28ce5c913896f77056a3cc7d39de0aed621bce68cdcbf2ab504f450ec7ab0b",
+          "sha256": "9bdb2271fdd879ddc09005d889cfd130be740787d8b41f3327eb07597b9e0549",
+          "bytes": 780
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcgettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcgettext.c.header.txt",
+          "sourceFileSHA256": "75cf5f57b14d83a992beb17b05fc762b0b7dc87c271ac1070edea77c9bb96c05",
+          "sha256": "5dac99dbf81d70a2e55d82bab49d252d0a168b19e113b8aeb14e8c2f4d85f41d",
+          "bytes": 776
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcigettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcigettext.c.header.txt",
+          "sourceFileSHA256": "dbeddd3cdbcc81a3c20401cf0feec4944169d2a64ea6e36393d8866f2df66b1c",
+          "sha256": "e9d63953719c37d3808e823046f52b2c916729344cbc0eec3dadae57fe4347ed",
+          "bytes": 783
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dcngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dcngettext.c.header.txt",
+          "sourceFileSHA256": "66a5e9bcc4ef4aaf0a820974030c2d2b6489a8aabb56acef07a1277cbe9d63d8",
+          "sha256": "848c681776e99d3eef691118fa2a729ce219cec16423dab0c60683975d3a6c99",
+          "bytes": 777
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dgettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dgettext.c.header.txt",
+          "sourceFileSHA256": "b3570c73b07320da8cba439e01a3f4a5d0c1070c1e83bc599d72dbe0f0bde154",
+          "sha256": "d0ae2520dd2f357af6e2fcf04aaa3b81afbbc557bd0a6512c69bb31450f89fe3",
+          "bytes": 775
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/dngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/dngettext.c.header.txt",
+          "sourceFileSHA256": "f4771cf69ea3830226e8a226a264dcb9bc3d6c87f6bcec1ae71a5e383e7dfa00",
+          "sha256": "d0491fa69b904082a91d125f566d26c0588e529df58f3e9dfe5ade0441ac4b7b",
+          "bytes": 776
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/explodename.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/explodename.c.header.txt",
+          "sourceFileSHA256": "2cca5dcb0bf1f997dfc615f017b13e0e62f205a73001045d8541e0925677bbdc",
+          "sha256": "a0a0ed116848b1f965e333684373d286de4696fab1fbc7f93953dfd6c05c40d9",
+          "bytes": 799
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/finddomain.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/finddomain.c.header.txt",
+          "sourceFileSHA256": "0f0cadf37f9179ded97b1a0dce5ac9d14d46772af29810c11cd2a2382e727472",
+          "sha256": "ed9f023084350a4dc7ddccbc3aaf4fe1dd3fcb30342eeb8849ea1957898e05da",
+          "bytes": 824
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gettext.c.header.txt",
+          "sourceFileSHA256": "0525bd632a5156617fe10c03417f1b11263a3d69969ba44923b8f3d5220a3e7a",
+          "sha256": "1e9b8cbff80d1c1878752016101e6aab2f9b2b1c5d00613e11c91e2fb803783c",
+          "bytes": 770
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/hash-string.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/hash-string.c.header.txt",
+          "sourceFileSHA256": "72bbd26b5e73bfa058e0955d2f506316c50d39c284005ac7455e0905ce35c433",
+          "sha256": "228c8c64a73b83f3797ba7308f9b277526343acc797ec9dc6745f8ef4340c183",
+          "bytes": 829
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/intl-compat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/intl-compat.c.header.txt",
+          "sourceFileSHA256": "eba2e4e12781e43a8cb367ed3f2e3885f9e0cfb73745db405c80220d953d9037",
+          "sha256": "c102c91165ff86c996bee7202b17ad6f494649bccc49212d8b36cdf462d9e8a0",
+          "bytes": 815
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/l10nflist.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/l10nflist.c.header.txt",
+          "sourceFileSHA256": "0178fff39ffddca535d346d3e22a65b4573779c0860bba1862b906d172107632",
+          "sha256": "dbe643b3917855bc73ddff545da7a98b90ad92bfdcefec918ac9b0502aae966e",
+          "bytes": 793
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/langprefs.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/langprefs.c.header.txt",
+          "sourceFileSHA256": "4a7d2c969726496c35431f1da43036f432b6cf8c6564c9fcf26a5e9c1f805709",
+          "sha256": "1740ec6ab2cee6fab510094d50518ad8f6fa9e5f319288bbcbf599baf6fa22b5",
+          "bytes": 785
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/loadmsgcat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/loadmsgcat.c.header.txt",
+          "sourceFileSHA256": "698c9150d816c3c499a0e25d93bdcecad4559c512179ff4d7dcf33e27395ef2c",
+          "sha256": "3dc2eebc9d6c1cf60017967d91168c1bac91cd8d8077bb8a25c64e3ddb781c45",
+          "bytes": 761
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/localealias.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/localealias.c.header.txt",
+          "sourceFileSHA256": "4a4ef4fb14f972b377abc02d3d4948a6132613754746e402c19bb51ccf6b7cd5",
+          "sha256": "f956cb95e48f1e2629335e57f63b0524c383cc7d164c77180903c43e32c6a493",
+          "bytes": 764
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/log.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/log.c.header.txt",
+          "sourceFileSHA256": "49f04ca3f9a198b64faf09ac1acdf7f87057e87ed2ee725fdb2cbd64ab74dc66",
+          "sha256": "71ff65b0c0d7572fff6c7960c83ff33872db7465f53f9a11c01272c0c0996a40",
+          "bytes": 748
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/ngettext.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/ngettext.c.header.txt",
+          "sourceFileSHA256": "b4428dc18bbbc00984090eaa9861d0e9648fc8e1f165e538422d303b5477b945",
+          "sha256": "4ac46e9f11fc899d97f8fcbb848b91c8a191c0ebf347d61ee96e7e2991bde4c9",
+          "bytes": 771
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/plural-exp.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/plural-exp.c.header.txt",
+          "sourceFileSHA256": "60edfffa12e4a3a3d5b50d8333a9814472df66670007971e17143bef7c542cf1",
+          "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+          "bytes": 834
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/plural.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/plural.c.header.txt",
+          "sourceFileSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+          "sha256": "fb0c571b39270dcb9117ed21197e8ca812a2048e9f45d2867d0ceb9eb356a0f2",
+          "bytes": 47
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/setlocale.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/setlocale.c.header.txt",
+          "sourceFileSHA256": "126bbce12481947a5f62bc257f871d8e6ddfdff341b55492f17793ee75414d55",
+          "sha256": "1592cc21b2d7148f98c611990ef6d7e411c2c760f645ecf8dc74ec96caa627c7",
+          "bytes": 855
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/textdomain.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/textdomain.c.header.txt",
+          "sourceFileSHA256": "75bd5033bf8a81417c457ae44c18d57a08a8d1471567d08686295691e893b285",
+          "sha256": "2b0562532dc7a93b02b3bae2e1eed43baeded7b8ab04d8ccad428d75592b104f",
+          "bytes": 777
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/version.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/version.c.header.txt",
+          "sourceFileSHA256": "5ed86e0d31f85a0606d6a1b72edb758914a1bf2e02022c0b0de5a8ef331802af",
+          "sha256": "2790a6a7aaf5a5f8f1eaa4fe2f4bc7f05359cdf7acd43ba60ad0fb66bb8f372e",
+          "bytes": 751
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/compat.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/compat.c.header.txt",
+          "sourceFileSHA256": "04b3f4237b2005d482ffd15f895e30a0d19639a765b825b479cb173b312a4720",
+          "sha256": "c39a27b502b50dbad9cdf4a66f02a997636deb6c3a7dc62d97b5856218bad210",
+          "bytes": 762
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/getlocalename_l-unsafe.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/getlocalename_l-unsafe.c.header.txt",
+          "sourceFileSHA256": "4aa01a79077a7fd7e7a15b89993423e4079b797185a20fbda4e12d2084c964f1",
+          "sha256": "f90e4ffecb8148658c0e145d994c9843b922a8b78a626e2412cf5df1401c5d20",
+          "bytes": 766
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename.c.header.txt",
+          "sourceFileSHA256": "218e678aae71d0b6129fe6b5248657440d0a4cc37028df68553a697d7f0e9302",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-environ.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-environ.c.header.txt",
+          "sourceFileSHA256": "c801b16cc7c78dca704aa6211344abacdff0df9637cb52cf712a9d2f1d436a2f",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/localename-unsafe.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/localename-unsafe.c.header.txt",
+          "sourceFileSHA256": "eb224cf2396911f144e3922a46710f48a47a60bde28d5cd87fe6d2a6fc78cb3a",
+          "sha256": "de890101fe483e004baaa45915f1b8b7e741e5bd5094de09083c8e98dab7abd0",
+          "bytes": 774
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale-lock.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale-lock.c.header.txt",
+          "sourceFileSHA256": "1802ddbe8017f8624e46a5d32ee991940c7165de4198028783a40325dbc1cc04",
+          "sha256": "75ab29a83067fc921dbe96ca2054aff493e9a688a4e8e908c976e815f4f15626",
+          "bytes": 776
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null.c.header.txt",
+          "sourceFileSHA256": "0b01ba097b1086593251fa108d55269ce935f7bdfbab3cca19a15e853a6770c3",
+          "sha256": "977e8a5b8c774c4f1ab5feeb4c679a299ffe0551f5d6e2d84680ef16356c9a71",
+          "bytes": 770
+        },
+        {
+          "sourcePath": "gettext-0.24/gettext-runtime/intl/gnulib-lib/setlocale_null-unlocked.c",
+          "extraction": "exact leading block comment",
+          "path": "sources/libintl/compiled-source-headers/gnulib-lib/setlocale_null-unlocked.c.header.txt",
+          "sourceFileSHA256": "d845f754a738e05540a3980d4898225fd8589d2bb67ea616651bca441d455ae4",
+          "sha256": "e33b1bafd3e0b08f6894d895adfb4d13c10dabf3b2365aa0405da74dd831093f",
+          "bytes": 787
+        }
+      ],
+      "archiveBytes": 27367136,
+      "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7"
+    },
+    {
+      "package": "wuffs",
+      "url": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+      "declaredZigPackageHash": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI",
+      "declaredZigHashIndependentlyVerified": false,
+      "files": [
+        {
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE",
+          "path": "sources/wuffs/legal/LICENSE",
+          "sha256": "f8ac2c75e7f629a87565c80d61ff9fe5aa15cdea0bda997d52a4dc13fdbd19cb",
+          "bytes": 11372
+        },
+        {
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-APACHE",
+          "path": "sources/wuffs/legal/LICENSE-APACHE",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "bytes": 10174
+        },
+        {
+          "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/LICENSE-MIT",
+          "path": "sources/wuffs/legal/LICENSE-MIT",
+          "sha256": "bb811a4b485eac3caeb8bdc58bbafb355fbcb6116010a7ea9179e5c70b0bc878",
+          "bytes": 1057
+        }
+      ],
+      "archiveBytes": 771698,
+      "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c"
+    }
+  ]
+}

@@ -24,5 +24,9 @@ def main(directory):
  record={'schema':'polaris-upstream-candidate-files-v1','repository':repo,'repositoryId':int(rid),'sourceCommit':git('rev-parse','HEAD'),'sourceTree':git('rev-parse','HEAD^{tree}'),'workflowRunId':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':job,'matrixKey':suffix,'signatureState':'unsigned-candidate','releasePublication':False,'runtimeAcceptance':False,'files':files}
  from client_source import JOBS, collect
  if job in JOBS:record['clientSource']=collect(JOBS[job],True)
+ if job == 'build_android':
+  from android_runtime_materials import validate
+  evidence=Path(os.environ['POLARIS_ANDROID_RUNTIME_OUTPUT'])
+  record['androidRuntimeMaterials']=validate(json.loads(evidence.read_text()),os.environ['POLARIS_ANDROID_RUNTIME_CONFIGURATION'])
  (root/f'polaris-candidate-manifest-{job}-{suffix}.json').write_text(json.dumps(record,indent=2)+'\n')
 if __name__=='__main__':main(sys.argv[1])

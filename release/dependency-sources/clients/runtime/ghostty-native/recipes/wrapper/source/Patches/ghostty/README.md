@@ -1,0 +1,252 @@
+# Ghostty Patches
+
+This directory is the single place for local upstream Ghostty patches used by
+the `libghostty-spm` build pipeline. They target the pinned upstream commit
+(`Ghostty.ref` at the repository root), not whatever upstream main is today.
+
+## How they apply
+
+`Script/build-ghostty.sh` runs `Script/apply-patches.sh <source_dir>` before
+every Zig build, and `Script/build-platform.sh` calls it once per target, so
+macOS, iOS, iOS Simulator, Mac Catalyst, visionOS, and visionOS Simulator all
+build from the same patched tree. (Patches to Zig's own std live in
+`../zig/`; they are staged by `Script/prepare-zig-lib.sh`, not by this
+pipeline.) The script walks this directory in name order and dispatches on the
+extension:
+
+- `.patch` is a unified diff applied with `git -C <source> apply`; `git` must
+  be installed (0003 carries a binary hunk `patch(1)` cannot apply), but the
+  source may be a clone, a worktree or an extracted tarball. A patch that
+  already reverse-applies is reported as applied and skipped; one that fails
+  `--check` is retried with `git apply --3way`, which merges the hunks
+  against the blobs named in the patch's `index` lines (so cut every patch
+  with `git diff`, which writes them, and regenerate a patch the log says
+  needed the 3-way merge); one that conflicts even then aborts the build.
+- `.sh` is executed as `<script> <source_dir>`; each script checks for its
+  own changes (a marker or the edited text) and skips whatever is already
+  applied, so re-running it is a no-op. The newer scripts (0005's
+  IOSurfaceLayer edit, 0011, 0014, 0015) make every edit through
+  `Script/support/anchored_edit.py`: an edit names only the upstream text it
+  depends on, that text must occur in the file exactly once, byte for byte,
+  and anything else — moved is fine, changed, gone or ambiguous is not —
+  stops the run with a `[-]` line naming the file and the anchor. There is
+  no fuzz and no reduced context: a diff hunk breaks when unrelated code
+  next to it moves, and a fuzzy match at a mutex-release site or a mode
+  handler is exactly the wrong fix for that. `expect_count` tripwires guard
+  the edits that have to cover every occurrence of something (0011's
+  writers that release the terminal-state mutex). An edit whose own text a
+  later patch rewrites (0012 and 0016 widen the `.ios` checks 0005 adds)
+  names a `marker` line those leave alone, which is then what proves it is
+  in place; a tree carrying an older variant of an edit has neither the
+  pristine text nor the marker and is refused, never quietly kept.
+- `.md` is ignored. Any other file aborts the build.
+
+`0002-host-managed-io.patch` is skipped when upstream's header already
+carries `GHOSTTY_SURFACE_IO_BACKEND_HOST_MANAGED`; every other patch here
+applies unconditionally.
+
+There are no `-vN` variants in the tree today. The pin carried four for a
+while — pre-`ghostty_surface_foreground_pid` and pre-`global.environMap()`
+spellings of 0002, and the pre-Zig-0.16 spellings of 0003, 0005 and 0006 —
+selected by upstream API markers in `apply-patches.sh`. `Ghostty.ref` only
+ever moves forward, so once the pin passed all four markers the older
+spellings could not be chosen again and were dropped along with the
+selection logic. `git log -- Patches/ghostty/` has them if a pin ever needs
+to move back.
+
+## Rules
+
+- Keep patches numbered so they apply in a stable order (`0007` edits lines
+  `0006` added).
+- Prefer standard unified diff files (`.patch`) when the upstream context is
+  stable.
+- Use executable patch scripts (`.sh`) when upstream context is too unstable
+  for a reliable diff — and write them with `anchored_edit.py`, not with
+  bare `str.replace` calls that silently do nothing when the text moved.
+- When upstream context moves under a patch, add a `-vN` variant beside it
+  and select it in `Script/apply-patches.sh` with an upstream API marker — a
+  grep for the code the patch touches, never a version string: a version
+  test picks the wrong variant the moment the next version lands, a code
+  test keeps picking the right one until that code moves again. Drop the
+  superseded variant, and its marker, once the pin is past it for good.
+- Preserve newer Ghostty's renamed internal-library outputs
+  (`ghostty-internal.*`) when extending its Darwin static-library build path.
+- Every patch in this directory must be safe to re-run: the pipeline applies
+  the whole directory once per build target.
+- Patches here are applied automatically by `Script/build-ghostty.sh`, so they
+  affect macOS, iOS, Mac Catalyst, and visionOS builds equally.
+
+## Patches
+
+- `0001-darwin-libghostty-install.sh` — `build.zig`: install the header and
+  static `libghostty.a` on Darwin, which upstream only wires for other OSes;
+  handles both the `libghostty_*` and the renamed `lib_*` /
+  `ghostty-internal` outputs.
+- `0002-host-managed-io.patch` — the host-managed IO backend
+  (`GHOSTTY_SURFACE_IO_BACKEND_HOST_MANAGED`, receive-buffer and resize
+  callbacks, `ghostty_surface_write_buffer` / `_process_exit`,
+  `src/termio/HostManaged.zig`), against a source that declares
+  `ghostty_surface_foreground_pid` itself and has upstream's
+  `global.environMap()` / `global.resourcesDir()` rename.
+- `0003-prebuilt-framedata.patch` — commit
+  `src/build/framegen/framedata.compressed` and use it instead of building and
+  running the `framegen` host tool, against Zig 0.16's build API
+  (`addCSourceFile` / `linkSystemLibrary` on `root_module`).
+- `0004-ios-fixes.sh` — ignore cf_release_thread loop errors, stub the private
+  `CGSSetWindowBackgroundBlurRadius` call (App Store), link Metal and MetalKit
+  in `pkg/macos`, iOS deployment target 15.0, and turn upstream's "iOS is
+  not a supported target for the full Ghostty build" refusal in
+  `Config.zig` into a comptime-false branch (marker
+  `LIBGHOSTTY_SPM_IOS_FULL_BUILD`; skipped on a source without the guard).
+- `0005-ios-metal-rendering.sh` — iOS rendering: IOSurfaceLayer on
+  `CAIOSurfaceLayer` with a ±1 px tolerance for UIKit's point-to-pixel
+  rounding and a rejection of anything further off — a frame sized for an
+  earlier resize, which an older variant of this patch rescaled through
+  `contentsScale` and thereby shifted the grid by a row on every resize —
+  first-frame display and synchronous present in `Metal.zig`, no CF release
+  thread in coretext on iOS, 64-byte-aligned IOSurface rows, libxev update
+  for the kqueue mach-port panic. The IOSurfaceLayer edits are anchored (a
+  tree carrying the older variant is refused); the rest still test for
+  their own added text.
+- `0006-disable-custom-shaders.sh` — `custom_shaders` build option gating
+  glslang and spirv-cross (marker `LIBGHOSTTY_SPM_TRIM_PATCH`).
+- `0007-disable-inspector.sh` — `inspector` build option gating dcimgui
+  (marker `LIBGHOSTTY_SPM_INSPECTOR_DISABLE`).
+- `0008-macos-metal-texture-storage.sh` — choose MTLTexture storage by GPU
+  family: shared on Apple GPUs, managed on Intel and AMD. The field lives in
+  `renderer/metal/Device.zig` (upstream `40d5b860d2` moved device selection
+  there, shared by every renderer); `Metal.zig`'s four texture sites read it,
+  its one buffer site keeps `default_storage_mode`. Anchored edits plus a
+  count tripwire on those sites (marker `LIBGHOSTTY_SPM_TEXTURE_STORAGE_PATCH`).
+- `0009-libcxx-apple-availability.sh` — force libc++ Apple availability
+  annotations in highway, simdutf, and `src/simd`, so a symbol newer than the
+  deployment floor (`__libcpp_verbose_abort`) fails at compile time instead of
+  in dyld at launch on iOS 15 / macOS 13.0–13.2.
+- `0010-fix-scroll-remainder-zeroing.patch` — `Surface.zig`: truncate the
+  scrolled row amount so the pending scroll remainder is not always zero.
+- `0011-replay-response-suppression.sh` —
+  `ghostty_surface_write_buffer_replay`: feed reconstructed history through
+  the parser with terminal protocol responses discarded at their origin.
+  Anchored edits; the two `expect_count` tripwires in `stream_handler.zig`
+  pin the number of places the parser releases the terminal-state mutex
+  (each must clear the suppression flag for that window), so an upstream
+  that adds one fails the build instead of dropping another thread's
+  message as replay.
+  `apprt.surface.Message.discardIfTerminalResponse` does not cover
+  `kitty_clipboard_read`/`kitty_clipboard_write` (added after this patch was
+  authored) — the receiver takes ownership of a boxed request it must
+  destroy, which the classifier has no way to do. Replaying reconstructed
+  history containing a Kitty clipboard protocol sequence can still leak a
+  confirmation to the host; low risk today (no on-disk scrollback replay uses
+  this path yet) but worth closing if that changes.
+- `0012-visionos.sh` — the `visionos` OS tag takes the iOS arm everywhere
+  the build system and the Darwin runtime switch on it: `MetallibStep`
+  learns the `xros` / `xrsimulator` SDKs and the Metal compiler's
+  `-mtargetos=xros<ver>[-simulator]` flag (there is no
+  `-mxros-version-min`), `Config.zig` gets a 1.0 minimum OS version, and
+  `Metal.zig`, `metal/Device.zig` (the storage-mode and `chooseDevice`
+  arms), `IOSurfaceLayer.zig`, `coretext.zig`, `pty.zig` (NullPty),
+  `os/{desktop,homedir,open}.zig`, `config/theme.zig`, `input/keycodes.zig`,
+  `cli/tui.zig`, `Command.zig`, and `pkg/apple-sdk` each get `.visionos`
+  beside `.ios` (marker `LIBGHOSTTY_SPM_VISIONOS_PATCH`). Needs the Zig std
+  patch in `../zig/` as well.
+- `0013-host-toolchain.sh` — two host-side fixes that hold for every target:
+  `LibtoolStep` merges archives with `zig ar --format=darwin` (Xcode 27's
+  libtool silently drops Zig's 2-byte-aligned members — oniguruma, libintl,
+  freetype, simd — and only the consuming app's link notices; marker
+  `LIBGHOSTTY_SPM_ZIG_AR_PATCH`), and `libghostty-vt.dylib` is no longer
+  installed (nothing ships it, and its libc++ sub-compile is what fails
+  under Xcode 27 and on visionOS everywhere; marker
+  `LIBGHOSTTY_SPM_NO_VT_DYLIB`).
+- `0014-preserve-sync-on-resize.sh` — keep DEC 2026 synchronized output
+  active across a resize. A TUI that clears and repaints inside one sync
+  transaction must not expose its empty intermediate grid when the resize
+  arrives. The existing termio timer still ends a transaction after one
+  second if the program fails to do so. Two anchored edits: `Terminal.resize`
+  no longer clears the mode, and libghostty-vt's stream `Handler.resize`,
+  which upstream wrote assuming a resize ends the mode, reports the end of
+  its render hold only when the mode is actually off afterwards. Exact edits
+  also update the upstream tests and comments that expected resize to end the
+  hold; the geometry and callback assertions remain in place.
+- `0015-hold-frame-for-prompt-redraw.sh` — a resize erases the prompt the
+  cursor is on so the shell can redraw it (`clearPromptForRedraw`), and the
+  renderer used to present that erased grid for the frames it took the shell
+  to answer SIGWINCH: the last line blinked on every resize. The screen now
+  records that a *visible* prompt was erased (`Screen.prompt_redraw`, with
+  the number of non-empty input cells on the whole prompt before erasure), and the renderer
+  keeps its last frame while that is set, as it does for synchronized
+  output. OSC 133 B says the shell's prompt is drawn — and nothing about the
+  input after it, which the shell draws next, possibly in another write —
+  so the hold then continues until at least the erased input cells are back
+  on that prompt or a 50 ms grace passes (a shell may legitimately draw
+  less: zsh drops RPROMPT from a line it no longer fits). Each visible erase
+  advances a terminal-owned generation, so a new redraw restarts that grace
+  even if resize and B both arrive between frames; the overall deadline stays.
+  For `redraw=last`, a line containing only input can complete as soon as the
+  input count is restored, without another B. Retained input rows count on
+  both sides of the comparison, so they cannot stand in for erased input.
+  An incomplete continuation remains bounded by the overall deadline.
+  OSC 133 C and a
+  full reset end it outright. The renderer bounds the wait itself, in
+  `updateFrame`: 500 ms from the first frame it held, never extended by the
+  resizes that keep arriving during a drag, and released whichever path set
+  the flag — termio's coalesced resize, DECCOLM, mode 3 — since all of them
+  reach `Screen.resize`. It schedules its own wake for the deadline through
+  `animationWake`, the hook the render thread already polls after every
+  frame; there is no termio timer to arm and nothing to forget. The
+  terminal state is untouched — the erase still happens, so reflow leaves
+  no stale prompt behind; `redraw=0` was the alternative and gives that up.
+- `0016-maccatalyst.sh` — Zig 0.16 made Mac Catalyst its own OS tag
+  (`aarch64-maccatalyst`; 0.15 spelled it `aarch64-ios-macabi`, os `.ios`
+  + abi `.macabi`), so the `.ios` arms stopped covering it. `.maccatalyst`
+  takes the iOS arm wherever 0012 gives `.visionos` one, `osVersionMin`
+  gets a 15.0 arm (Catalyst versions follow iOS), `MetallibStep` compiles
+  the shaders as for device iOS (what the 0.15 fall-through shipped), and
+  `apple-sdk/native_link.zig` learns the macOS SDK + `-macabi` triple
+  (marker `LIBGHOSTTY_SPM_MACCATALYST_PATCH`; runs after 0012).
+- `0017-zig-pkg-apple-targets.sh` — libxev (the event loop Ghostty pulls in)
+  gets `.maccatalyst` beside its Darwin arms; without it a Catalyst build
+  stops at "no default backend for this target". Packages are unpacked by
+  0.16 under `<source>/zig-pkg/`, so the script runs `zig build --fetch=all`
+  when libxev is missing (a fresh clone; it is a lazy dependency, which the
+  default `needed` mode skips) and edits the unpacked copy, which later
+  builds leave alone; `build-ghostty.sh` hands `apply-patches.sh` the
+  build's `ZIG_GLOBAL_CACHE_DIR` so the fetch reuses its cache. It also
+  fixes two of aro's Apple `TARGET_OS_*` conditionals, which must match what
+  the SDK's own `TargetConditionals.h` defines: `TARGET_OS_IPHONE` gets
+  `.maccatalyst` and `.visionos` (Apple sets it for both), `TARGET_OS_IOS`
+  gets `.maccatalyst`. With them 0, CoreFoundation never declares
+  `CFTypeRef` / `CFAttributedStringRef`, every CoreText prototype fails to
+  parse, and aro panics on the invalid type (`TypeStore.zig`
+  `.invalid => unreachable`) — maccatalyst, xros and xrsimulator all died at
+  `CTLine.h:140` that way while macos, ios and the ios simulator built. Both
+  edits are anchored to the macro name and skipped when the arm is already
+  present, so an aro that grows its own gets no duplicate. It also carried a
+  `.visionos` arm for aro's Apple version macro until aro `f97cdfc3` grew
+  its own — a bare insert with no such guard, which is how it once produced
+  `duplicate switch value` on all ten targets. Since the pin at `3c47ca15`
+  (the first built by the vancluever translate-c) it also fixes aro's
+  `isBlocksSupported`: Zig 0.16's `Os.isAtLeast` answers `false`, not
+  `null`, for another OS tag, so aro's macOS-version question returned
+  "unsupported" for ios, the simulator, maccatalyst and visionos, and every
+  one of those slices died translating CoreGraphics (`CGPath.h:392: error:
+  blocks are not enabled`) — the 2026-09-14 and 09-21 build failures.
+
+- `0018-screen-text-history.sh` — preserve the full scrollback row range for
+  screen-relative text reads; viewport-relative reads retain grid bounds.
+
+Dropped once upstream carried them: `0014-free-text-signature.patch`
+(`ghostty_surface_free_text` taking the surface, upstream `4803d58b`). A
+patch that only "already applies" is a liability — the day its context
+moves, both the forward and the reverse check fail on a change we no
+longer need — so delete one as soon as the pin includes it.
+
+## Current goal
+
+This patch workflow exists so we can carry the host-managed IO work required
+for sandboxed iOS, macOS, and Mac Catalyst integration without hiding upstream
+modifications inside ad-hoc build script edits. The pin (`Ghostty.ref`)
+moves to upstream main's head every week (weekly.yml), so the stack is
+exercised against a fresh tree each time: a variant that stops validating
+fails that week's build, and the fix is a new `-vN` variant selected by an
+upstream marker in `apply-patches.sh`, never an edit to the older one.

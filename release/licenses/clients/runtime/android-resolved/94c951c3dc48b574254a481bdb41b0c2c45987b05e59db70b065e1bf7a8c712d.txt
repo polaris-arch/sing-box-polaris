@@ -1,0 +1,28 @@
+/**
+     *  <p>Copyright information. In this standard the tag is used to indicate both the photographer
+     *  and editor copyrights. It is the copyright notice of the person or organization claiming
+     *  rights to the image. The Interoperability copyright statement including date and rights
+     *  should be written in this field; e.g., "Copyright, John Smith, 19xx. All rights reserved."
+     *  In this standard the field records both the photographer and editor copyrights, with each
+     *  recorded in a separate part of the statement. When there is a clear distinction between
+     *  the photographer and editor copyrights, these are to be written in the order of photographer
+     *  followed by editor copyright, separated by NULL (in this case, since the statement also ends
+     *  with a NULL, there are two NULL codes) (see example 1). When only the photographer copyright
+     *  is given, it is terminated by one NULL code (see example 2). When only the editor copyright
+     *  is given, the photographer copyright part consists of one space followed by a terminating
+     *  NULL code, then the editor copyright is given (see example 3). When the field is left blank,
+     *  it is treated as unknown.</p>
+     *
+     *  <p>Ex. 1) When both the photographer copyright and editor copyright are given.
+     *  <ul><li>Photographer copyright + NULL + editor copyright + NULL</li></ul></p>
+     *  <p>Ex. 2) When only the photographer copyright is given.
+     *  <ul><li>Photographer copyright + NULL</li></ul></p>
+     *  <p>Ex. 3) When only the editor copyright is given.
+     *  <ul><li>Space ({@code 0x20}) + NULL + editor copyright + NULL</li></ul></p>
+     *
+     *  <ul>
+     *      <li>Tag = 315</li>
+     *      <li>Type = String</li>
+     *      <li>Default = None</li>
+     *  </ul>
+     */

@@ -1,0 +1,29 @@
+[
+  {
+    "name": "CodeLanguagesContainer",
+    "url": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/CodeLanguagesContainer.xcframework.zip",
+    "full": true,
+    "noticeFiles": [],
+    "archiveBytes": 34388755,
+    "archiveSHA256": "c6ee69d9d373a9c3cf93d239e05369d9b941275d31cd7956d0dc83b5a5c3e152",
+    "fullGetVerified": true,
+    "gitBlob": "8d8d776f0eed618f4693efcb6be1387a1713ad22",
+    "fixedTreeBlobVerified": true,
+    "entryCount": 24
+  },
+  {
+    "name": "GhosttyKit",
+    "url": "https://github.com/Lakr233/libghostty-spm/releases/download/upstream.35a81a980bb9/GhosttyKit.xcframework.zip",
+    "expectedSHA256": "80e9bbfc89f5bd23ee028cff03024e3a788509f87812ab0bc9d697bf22a9472b",
+    "full": false,
+    "noticeFiles": [],
+    "probe": {
+      "status": 206,
+      "contentRange": "bytes 0-0/77203207",
+      "contentLength": "1"
+    },
+    "archiveBytes": 77203207,
+    "verification": "Range and ZIP CRC only; no full archive SHA verification claim",
+    "entryCount": 38
+  }
+]

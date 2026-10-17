@@ -1,0 +1,106 @@
+{
+  "scope": "Finite full-text/header/LICENSE/SPDX scan of every nonbinary file in the fixed three sources, plus exact npm package. Includes SVG text resources. Binary images/prebuilt archive are explicitly excluded. Findings are source observations, not a conclusion that permission is absent or an automatic publication blocker.",
+  "components": [
+    {
+      "component": "CodeEditLanguages",
+      "revision": "331d5dbc5fc8513be5848fce8a2a312908f36a11",
+      "examined": [
+        "fixed full Git tree path metadata",
+        "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/README.md",
+        "fixed CodeLanguagesContainer.xcframework.zip directory"
+      ],
+      "fullSourceFileHeaderScan": true,
+      "runtimeEvidence": {
+        "sourceImport": "clients/sing-box-for-apple/MacLibrary/CodeEditTextView.swift:2 imports CodeEditLanguages; lines 109/116 use CodeLanguage and default .json",
+        "scope": "macOS runtime source path, not a build tool",
+        "actualFinalProductEvidence": "No final macOS Mach-O symbol or link-map inspection performed"
+      },
+      "scanEvidence": "header-scan/ACQUISITION.json; header-scan/SCAN-HITS.json",
+      "scannedTextFiles": 120,
+      "excludedBinaryFiles": 7,
+      "recoveredOriginalNotices": [
+        {
+          "path": "release/licenses/clients/runtime/header-scan/09d3092eca1ba1e7-CodeEditLanguages-haskell-original-header.txt",
+          "sha256": "09d3092eca1ba1e7a6176360f75a9462dcbb7c3821e8044f6bb913dea514f91c",
+          "bytes": 592,
+          "component": "CodeEditLanguages resource/tree-sitter-haskell",
+          "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+          "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+          "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1",
+          "sourceGitBlobSHA1": "3ab843e8337d939907497ce48a8315e742cf4a36",
+          "sourceGitBlobVerified": true,
+          "lineStart": 1,
+          "lineEnd": 13,
+          "byteStart": 0,
+          "byteEnd": 592,
+          "extraction": "Exact original leading comment lines, no rewritten grant",
+          "scope": "applies to this resource source, not a repository-wide license grant"
+        },
+        {
+          "path": "release/licenses/clients/runtime/header-scan/212bd68c4844aa21-CodeEditLanguages-kotlin-original-header.txt",
+          "sha256": "212bd68c4844aa2186447ee21caeb8d4d1079238eb546f65076d0cd98801092a",
+          "bytes": 81,
+          "component": "CodeEditLanguages resource/tree-sitter-kotlin",
+          "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+          "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+          "sourceSHA256": "0dda9e2b7d1192a5c8f08a057e98c29fd42bea610f1b9d49f8f4ca8f7d97ff3f",
+          "sourceGitBlobSHA1": "6f1c9687ccd6556f33e448aca11224929d154c02",
+          "sourceGitBlobVerified": true,
+          "lineStart": 1,
+          "lineEnd": 1,
+          "byteStart": 0,
+          "byteEnd": 81,
+          "extraction": "Exact original leading comment lines, no rewritten grant",
+          "scope": "applies to this resource source, not a repository-wide license grant"
+        }
+      ],
+      "repositoryWideGrantObserved": false,
+      "observation": "Two resource-specific original Apache license statements recovered. No standalone license, SPDX identifier or repository-wide grant text was observed in wrapper/source/documentation text. Empty copyright build fields and an illustrative LICENSE filename were reviewed as non-grants. Created-by authorship is not relabelled as a copyright or license grant."
+    },
+    {
+      "component": "CodeEditSymbols",
+      "revision": "ae69712b08571c4469c2ed5cd38ad9f19439793e",
+      "examined": [
+        "fixed full Git tree path metadata",
+        "https://raw.githubusercontent.com/CodeEditApp/CodeEditSymbols/ae69712b08571c4469c2ed5cd38ad9f19439793e/README.md"
+      ],
+      "fullSourceFileHeaderScan": true,
+      "runtimeEvidence": {
+        "sourceImport": "CodeEditSourceEditor@0478fd4b8d45f191b6c400d2c7bf6cc648485593/Sources/CodeEditSourceEditor/Find/PanelView/FindPanelView.swift:10 imports CodeEditSymbols",
+        "productionTargetReachability": "Client MacLibrary CodeEditTextView constructs TextViewController and calls loadView; SourceEditor production library target includes FindPanelView and declares CodeEditSymbols dependency. See header-scan/symbols-REACHABILITY-REPORT.md.",
+        "classification": "Actual source import in reachable production-target source, not merely a build tool",
+        "verificationLimit": "No Symbols API/asset use was observed in the bounded source scan; final binary retention was not tested and is not required for this source-use finding or made a publication gate."
+      },
+      "scanEvidence": "header-scan/ACQUISITION.json; header-scan/SCAN-HITS.json",
+      "scannedTextFiles": 44,
+      "svgTextAssetsScanned": 16,
+      "excludedBinaryFiles": 16,
+      "repositoryWideGrantObserved": false,
+      "observation": "No standalone license, inline license/grant, SPDX identifier or substantive copyright statement observed in all44 fixed text files. Created-by Lukas Pistrol and Xcode author metadata are authorship/tool metadata only."
+    },
+    {
+      "component": "codemirror-json5@1.0.3",
+      "revision": "cad94e0b097dadbe04946e274645366b7d4c4f72",
+      "examined": [
+        "exact npm tarball file paths",
+        "fixed source archive file paths",
+        "https://raw.githubusercontent.com/dimfeld/codemirror-json5/cad94e0b097dadbe04946e274645366b7d4c4f72/package.json",
+        "https://raw.githubusercontent.com/dimfeld/codemirror-json5/cad94e0b097dadbe04946e274645366b7d4c4f72/README.md"
+      ],
+      "fullSourceFileHeaderScan": true,
+      "manifestLicense": "MIT",
+      "replacementTextInvented": false,
+      "runtimeEvidence": {
+        "sourceImport": "clients/sing-box-dashboard/src/components/JsonEditor.tsx:31 imports json5Language; lines 169-175 use it in LanguageSupport and language data",
+        "actualArtifact": "real SFL arm64 ASAR contains out/renderer/assets/JsonEditor-BoZekTH3.js",
+        "scope": "Direct runtime source import plus actual editor chunk presence",
+        "limit": "Exact codemirror-json5 emitted-code identity was not separately matched; no generic MIT substitute was invented"
+      },
+      "scanEvidence": "header-scan/ACQUISITION.json; header-scan/SCAN-HITS.json",
+      "scannedFixedSourceFiles": 5,
+      "scannedExactNpmPackageFiles": 7,
+      "inlineGrantTextRecovered": false,
+      "observation": "Exact source and npm package contain MIT license declaration in package.json plus Daniel Imfeld author metadata, but no standalone MIT license, inline full grant, SPDX header or copyright text. Original package.json is retained; no substitute MIT text or invented copyright was generated."
+    }
+  ]
+}

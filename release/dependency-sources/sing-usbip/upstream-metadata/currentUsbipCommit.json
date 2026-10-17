@@ -1,0 +1,269 @@
+{
+  "sha": "28bd42667ecac597d3e19492b9e81ee04e22792f",
+  "node_id": "C_kwDOS2_N9NoAKDI4YmQ0MjY2N2VjYWM1OTdkM2UxOTQ5MmI5ZTgxZWUwNGUyMjc5MmY",
+  "commit": {
+    "author": {
+      "name": "\u4e16\u754c",
+      "email": "i@sekai.icu",
+      "date": "2026-08-17T04:06:17Z"
+    },
+    "committer": {
+      "name": "\u4e16\u754c",
+      "email": "i@sekai.icu",
+      "date": "2026-08-17T04:06:17Z"
+    },
+    "message": "Support loading drivers from the executable directory",
+    "tree": {
+      "sha": "215555a04df9a8cd4453267e08d20ada23ad8727",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/215555a04df9a8cd4453267e08d20ada23ad8727"
+    },
+    "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/commits/28bd42667ecac597d3e19492b9e81ee04e22792f",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCaoKIuRsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8R0ogEA0M1FWd98o1yV9OEc64sB\nHGGudI+SDihUG6UGos7ROFMA/0UtodifWXOnwBXv79CqRcoLfVm9FRqH8qR+e7Oq\na9gP\n=DGor\n-----END PGP SIGNATURE-----",
+      "payload": "tree 215555a04df9a8cd4453267e08d20ada23ad8727\nparent 26729fb43913bcdb3ff8b9ebaba7e00799533ede\nauthor \u4e16\u754c <i@sekai.icu> 1786939577 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1786939577 +0800\n\nSupport loading drivers from the executable directory\n",
+      "verified_at": "2026-08-17T05:11:02Z"
+    }
+  },
+  "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/28bd42667ecac597d3e19492b9e81ee04e22792f",
+  "html_url": "https://github.com/SagerNet/sing-usbip/commit/28bd42667ecac597d3e19492b9e81ee04e22792f",
+  "comments_url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/28bd42667ecac597d3e19492b9e81ee04e22792f/comments",
+  "author": {
+    "login": "nekohasekai",
+    "id": 56506714,
+    "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/nekohasekai",
+    "html_url": "https://github.com/nekohasekai",
+    "followers_url": "https://api.github.com/users/nekohasekai/followers",
+    "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+    "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+    "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+    "repos_url": "https://api.github.com/users/nekohasekai/repos",
+    "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "nekohasekai",
+    "id": 56506714,
+    "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/nekohasekai",
+    "html_url": "https://github.com/nekohasekai",
+    "followers_url": "https://api.github.com/users/nekohasekai/followers",
+    "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+    "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+    "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+    "repos_url": "https://api.github.com/users/nekohasekai/repos",
+    "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "26729fb43913bcdb3ff8b9ebaba7e00799533ede",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/26729fb43913bcdb3ff8b9ebaba7e00799533ede",
+      "html_url": "https://github.com/SagerNet/sing-usbip/commit/26729fb43913bcdb3ff8b9ebaba7e00799533ede"
+    }
+  ],
+  "stats": {
+    "total": 279,
+    "additions": 250,
+    "deletions": 29
+  },
+  "files": [
+    {
+      "sha": "0fe677f7670bbc781860e2f961b8515f638ccabb",
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 1,
+      "changes": 7,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/README.md",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/README.md",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/README.md?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -8,7 +8,12 @@ Backends:\n |----------|----------------------------------|---------------------------------------|\n | Linux    | `usbip-host` kernel driver       | `vhci_hcd` kernel driver              |\n | macOS    | IOUSBHost (disable SIP required) | IOUSBHostControllerInterface          |\n-| Windows  | VBoxUSB drivers (embedded)       | usbip-win2 UDE vhci driver (embedded) |\n+| Windows  | VBoxUSB drivers (bundled)        | usbip-win2 UDE vhci driver (bundled)  |\n+\n+The Windows drivers are embedded in the binary by default. Builds with the\n+`with_external_usbip_drivers` tag instead load them from the executable\n+directory, verified against the digests in `driverassets`; regenerate the\n+digests with `go generate ./driverassets` after replacing driver files.\n \n ## Control extension\n "
+    },
+    {
+      "sha": "cf19d286fbabad368da5c0fce14f53f8f507b71b",
+      "filename": "driverassets/digests.go",
+      "status": "added",
+      "additions": 49,
+      "deletions": 0,
+      "changes": 49,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fdigests.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fdigests.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/driverassets%2Fdigests.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -0,0 +1,49 @@\n+// Code generated by driverassets/generate. DO NOT EDIT.\n+\n+package driverassets\n+\n+var VBoxUSB = map[string]Package{\n+\t\"amd64\": {\n+\t\tVersion: VBoxUSBVersion,\n+\t\tFiles: []File{\n+\t\t\t{\"VBoxUSB.cat\", \"bb74edb4ae22b1923ad85e89b119deeb0103cf124f3c0aeaebf91d21d16712ba\"},\n+\t\t\t{\"VBoxUSB.inf\", \"21137c65e8856c77414c928d776cc01baedd4b7919dd6224a5b715f85a76df06\"},\n+\t\t\t{\"VBoxUSB.sys\", \"4e60921286307172fd42888cc4855f01cdb5b7bd7a71eebba2636093d8742732\"},\n+\t\t\t{\"VBoxUSBMon.sys\", \"9eb9d512e13c8747cee74057aa6491cb22550f46a7917f03b8eddfa8b0d78307\"},\n+\t\t},\n+\t},\n+\t\"arm64\": {\n+\t\tVersion: VBoxUSBVersion,\n+\t\tFiles: []File{\n+\t\t\t{\"VBoxUSB.cat\", \"65ac620f6828ea8d638dad012a62f4356fcb7979867bea67614dc9b7a8d226ae\"},\n+\t\t\t{\"VBoxUSB.inf\", \"d1986bd897143b110855ca14c9034708f3a1e5e0cfe6e172c526a565ab150faa\"},\n+\t\t\t{\"VBoxUSB.sys\", \"b26dffe401bbaf5a9856078476314f596e2491051a729880a946e968b05f1059\"},\n+\t\t\t{\"VBoxUSBMon.sys\", \"9dc58c98c4007438f917ca3b5c6ac531a3ee696b3e5b0ee157ec7f54c8d9b6d2\"},\n+\t\t},\n+\t},\n+}\n+\n+var VHCI = map[string]Package{\n+\t\"amd64\": {\n+\t\tVersion: VHCIAMD64Version,\n+\t\tFiles: []File{\n+\t\t\t{\"usbip2_filter.cat\", \"02a95969ba033ded3bf9a8c136551697d097da076c8886630145ef8d39a1dd33\"},\n+\t\t\t{\"usbip2_filter.inf\", \"a149b941d124b9e2f4c503d8af0c1fdb6907480d372d34b4f76d7452648466a2\"},\n+\t\t\t{\"usbip2_filter.sys\", \"c290299ff4d0f6a597db5ce03e15b29a5349cdce7c587ebfbd9ecaeca04f73ed\"},\n+\t\t\t{\"usbip2_ude.cat\", \"a1fdd6612242e14c71d33a3693f3010b1f1accb9f6922f0b12543dc5c0217e87\"},\n+\t\t\t{\"usbip2_ude.inf\", \"00a1dbfe02c0bbbed38b6e1c81ef0a6dcfe23fe39b07628592167383f7656256\"},\n+\t\t\t{\"usbip2_ude.sys\", \"51db440065393e588a6b2585508c50eb3e1510b7b06d9afa6c5bde583751ea7d\"},\n+\t\t},\n+\t},\n+\t\"arm64\": {\n+\t\tVersion: VHCIARM64Version,\n+\t\tFiles: []File{\n+\t\t\t{\"usbip2_filter.cat\", \"6884994c06682051d12b836d0cd801a998f2d8f8798721935e2af5f4d08b0a82\"},\n+\t\t\t{\"usbip2_filter.inf\", \"d09d25dbe3129e4b2180e12ea11076d0953dbd52196de5867bcc7da4a6aea417\"},\n+\t\t\t{\"usbip2_filter.sys\", \"23cc8246d71541ad2540370a3b34684bb534621e5aa0f2408e448f21b2d2fd40\"},\n+\t\t\t{\"usbip2_ude.cat\", \"49c6570d479379b7db5c19fe0c9ae31804f1b4964321c5b14f8bcad1c044614c\"},\n+\t\t\t{\"usbip2_ude.inf\", \"4ebaa77c54dba2fa27ea4aae5d4a3f288720623ace52742c99d0a0020494c604\"},\n+\t\t\t{\"usbip2_ude.sys\", \"2a969ba59b3ffe33227ca1de17759a189d085d51c4f4e0f34df0b244ee558ab8\"},\n+\t\t},\n+\t},\n+}"
+    },
+    {
+      "sha": "69319a0267cb2134971f7f97685153af40178291",
+      "filename": "driverassets/driverassets.go",
+      "status": "added",
+      "additions": 22,
+      "deletions": 0,
+      "changes": 22,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fdriverassets.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fdriverassets.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/driverassets%2Fdriverassets.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -0,0 +1,22 @@\n+// Package driverassets is also consumed by the sing-box daemon build, which\n+// stages the asset files next to the daemon executable and builds with the\n+// with_external_usbip_drivers tag.\n+package driverassets\n+\n+//go:generate go run ./generate\n+\n+const (\n+\tVBoxUSBVersion   = \"7.2.14.24565\"\n+\tVHCIAMD64Version = \"0.9.7.7\"\n+\tVHCIARM64Version = \"0.9.7.5\"\n+)\n+\n+type File struct {\n+\tName   string\n+\tSHA256 string\n+}\n+\n+type Package struct {\n+\tVersion string\n+\tFiles   []File\n+}"
+    },
+    {
+      "sha": "e5ec417a38c1797d4b799591aa3f2c07846ffc5e",
+      "filename": "driverassets/generate/main.go",
+      "status": "added",
+      "additions": 65,
+      "deletions": 0,
+      "changes": 65,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fgenerate%2Fmain.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/driverassets%2Fgenerate%2Fmain.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/driverassets%2Fgenerate%2Fmain.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -0,0 +1,65 @@\n+package main\n+\n+import (\n+\t\"crypto/sha256\"\n+\t\"encoding/hex\"\n+\t\"log\"\n+\t\"maps\"\n+\t\"os\"\n+\t\"path/filepath\"\n+\t\"slices\"\n+\t\"strings\"\n+)\n+\n+type packageSpec struct {\n+\tvariableName    string\n+\tassetDirectory  string\n+\tversionConstant map[string]string\n+}\n+\n+func main() {\n+\tspecs := []packageSpec{\n+\t\t{\n+\t\t\tvariableName:    \"VBoxUSB\",\n+\t\t\tassetDirectory:  filepath.Join(\"..\", \"internal\", \"vboxusb\", \"assets\"),\n+\t\t\tversionConstant: map[string]string{\"amd64\": \"VBoxUSBVersion\", \"arm64\": \"VBoxUSBVersion\"},\n+\t\t},\n+\t\t{\n+\t\t\tvariableName:    \"VHCI\",\n+\t\t\tassetDirectory:  filepath.Join(\"..\", \"internal\", \"usbipvhci\", \"assets\"),\n+\t\t\tversionConstant: map[string]string{\"amd64\": \"VHCIAMD64Version\", \"arm64\": \"VHCIARM64Version\"},\n+\t\t},\n+\t}\n+\tvar builder strings.Builder\n+\tbuilder.WriteString(\"// Code generated by driverassets/generate. DO NOT EDIT.\\n\\npackage driverassets\\n\")\n+\tfor _, spec := range specs {\n+\t\tbuilder.WriteString(\"\\nvar \" + spec.variableName + \" = map[string]Package{\\n\")\n+\t\tarchitectures := slices.Sorted(maps.Keys(spec.versionConstant))\n+\t\tfor _, architecture := range architectures {\n+\t\t\tbuilder.WriteString(\"\\t\\\"\" + architecture + \"\\\": {\\n\")\n+\t\t\tbuilder.WriteString(\"\\t\\tVersion: \" + spec.versionConstant[architecture] + \",\\n\")\n+\t\t\tbuilder.WriteString(\"\\t\\tFiles: []File{\\n\")\n+\t\t\tentries, err := os.ReadDir(filepath.Join(spec.assetDirectory, architecture))\n+\t\t\tif err != nil {\n+\t\t\t\tlog.Fatal(err)\n+\t\t\t}\n+\t\t\tfor _, entry := range entries {\n+\t\t\t\tif entry.IsDir() || strings.HasSuffix(entry.Name(), \".license\") {\n+\t\t\t\t\tcontinue\n+\t\t\t\t}\n+\t\t\t\tcontent, readErr := os.ReadFile(filepath.Join(spec.assetDirectory, architecture, entry.Name()))\n+\t\t\t\tif readErr != nil {\n+\t\t\t\t\tlog.Fatal(readErr)\n+\t\t\t\t}\n+\t\t\t\tdigest := sha256.Sum256(content)\n+\t\t\t\tbuilder.WriteString(\"\\t\\t\\t{\\\"\" + entry.Name() + \"\\\", \\\"\" + hex.EncodeToString(digest[:]) + \"\\\"},\\n\")\n+\t\t\t}\n+\t\t\tbuilder.WriteString(\"\\t\\t},\\n\\t},\\n\")\n+\t\t}\n+\t\tbuilder.WriteString(\"}\\n\")\n+\t}\n+\terr := os.WriteFile(\"digests.go\", []byte(builder.String()), 0o644)\n+\tif err != nil {\n+\t\tlog.Fatal(err)\n+\t}\n+}"
+    },
+    {
+      "sha": "2760122529616672df3fd4f681581f7d6abc161e",
+      "filename": "internal/usbipvhci/assets_external_windows.go",
+      "status": "added",
+      "additions": 40,
+      "deletions": 0,
+      "changes": 40,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_external_windows.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_external_windows.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fusbipvhci%2Fassets_external_windows.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -0,0 +1,40 @@\n+//go:build windows && with_external_usbip_drivers\n+\n+package usbipvhci\n+\n+import (\n+\t\"crypto/sha256\"\n+\t\"encoding/hex\"\n+\t\"os\"\n+\t\"path/filepath\"\n+\t\"runtime\"\n+\n+\t\"github.com/sagernet/sing-usbip/driverassets\"\n+\tE \"github.com/sagernet/sing/common/exceptions\"\n+)\n+\n+func assetFiles() ([]assetFile, error) {\n+\tdriverPackage, supported := driverassets.VHCI[runtime.GOARCH]\n+\tif !supported {\n+\t\treturn nil, nil\n+\t}\n+\texecutablePath, err := os.Executable()\n+\tif err != nil {\n+\t\treturn nil, E.Cause(err, \"usbipvhci: locate executable\")\n+\t}\n+\tdirectory := filepath.Dir(executablePath)\n+\tfiles := make([]assetFile, 0, len(driverPackage.Files))\n+\tfor _, file := range driverPackage.Files {\n+\t\tassetPath := filepath.Join(directory, file.Name)\n+\t\tcontent, readErr := os.ReadFile(assetPath)\n+\t\tif readErr != nil {\n+\t\t\treturn nil, E.Cause(readErr, \"usbipvhci: read \", assetPath)\n+\t\t}\n+\t\tdigest := sha256.Sum256(content)\n+\t\tif hex.EncodeToString(digest[:]) != file.SHA256 {\n+\t\t\treturn nil, E.New(\"usbipvhci: \", assetPath, \" does not match the usbip-win2 \", driverPackage.Version, \" digest\")\n+\t\t}\n+\t\tfiles = append(files, assetFile{file.Name, content})\n+\t}\n+\treturn files, nil\n+}"
+    },
+    {
+      "sha": "4643bb71b73aea9e94708e253431b6b37f059328",
+      "filename": "internal/usbipvhci/assets_windows_amd64.go",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 5,
+      "changes": 8,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_amd64.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_amd64.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fusbipvhci%2Fassets_windows_amd64.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,4 +1,4 @@\n-//go:build windows && amd64\n+//go:build windows && amd64 && !with_external_usbip_drivers\n \n package usbipvhci\n \n@@ -22,15 +22,13 @@ var filterInf []byte\n //go:embed assets/amd64/usbip2_filter.cat\n var filterCat []byte\n \n-func assetVersion() string { return \"0.9.7.7\" }\n-\n-func assetFiles() []assetFile {\n+func assetFiles() ([]assetFile, error) {\n \treturn []assetFile{\n \t\t{\"usbip2_ude.sys\", udeSys},\n \t\t{\"usbip2_ude.inf\", udeInf},\n \t\t{\"usbip2_ude.cat\", udeCat},\n \t\t{\"usbip2_filter.sys\", filterSys},\n \t\t{\"usbip2_filter.inf\", filterInf},\n \t\t{\"usbip2_filter.cat\", filterCat},\n-\t}\n+\t}, nil\n }"
+    },
+    {
+      "sha": "03f9a2239fb6130d5cb73ec2345828f41ff0b8fa",
+      "filename": "internal/usbipvhci/assets_windows_arm64.go",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 5,
+      "changes": 8,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_arm64.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_arm64.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fusbipvhci%2Fassets_windows_arm64.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,4 +1,4 @@\n-//go:build windows && arm64\n+//go:build windows && arm64 && !with_external_usbip_drivers\n \n package usbipvhci\n \n@@ -22,15 +22,13 @@ var filterInf []byte\n //go:embed assets/arm64/usbip2_filter.cat\n var filterCat []byte\n \n-func assetVersion() string { return \"0.9.7.5\" }\n-\n-func assetFiles() []assetFile {\n+func assetFiles() ([]assetFile, error) {\n \treturn []assetFile{\n \t\t{\"usbip2_ude.sys\", udeSys},\n \t\t{\"usbip2_ude.inf\", udeInf},\n \t\t{\"usbip2_ude.cat\", udeCat},\n \t\t{\"usbip2_filter.sys\", filterSys},\n \t\t{\"usbip2_filter.inf\", filterInf},\n \t\t{\"usbip2_filter.cat\", filterCat},\n-\t}\n+\t}, nil\n }"
+    },
+    {
+      "sha": "98e938c9b3285e625b4d64d6ab2060e508f79975",
+      "filename": "internal/usbipvhci/assets_windows_unsupported.go",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 4,
+      "changes": 6,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_unsupported.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fassets_windows_unsupported.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fusbipvhci%2Fassets_windows_unsupported.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,7 +1,5 @@\n-//go:build windows && !amd64 && !arm64\n+//go:build windows && !amd64 && !arm64 && !with_external_usbip_drivers\n \n package usbipvhci\n \n-func assetVersion() string { return \"\" }\n-\n-func assetFiles() []assetFile { return nil }\n+func assetFiles() ([]assetFile, error) { return nil, nil }"
+    },
+    {
+      "sha": "164cdd28239229051b09664405ebd0b375f2e355",
+      "filename": "internal/usbipvhci/driver_windows.go",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 2,
+      "changes": 8,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fdriver_windows.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fusbipvhci%2Fdriver_windows.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fusbipvhci%2Fdriver_windows.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -14,6 +14,7 @@ import (\n \t\"time\"\n \t\"unsafe\"\n \n+\t\"github.com/sagernet/sing-usbip/driverassets\"\n \t\"github.com/sagernet/sing-usbip/internal/winsetupapi\"\n \tE \"github.com/sagernet/sing/common/exceptions\"\n \n@@ -221,15 +222,18 @@ func ensureExtracted() (string, error) {\n }\n \n func extractImpl() (string, error) {\n-\tfiles := assetFiles()\n+\tfiles, err := assetFiles()\n+\tif err != nil {\n+\t\treturn \"\", err\n+\t}\n \tif len(files) == 0 {\n \t\treturn \"\", E.New(\"usbipvhci: no bundled driver for \", runtime.GOARCH)\n \t}\n \tbase, err := os.UserCacheDir()\n \tif err != nil {\n \t\treturn \"\", E.Cause(err, \"usbipvhci: locate user cache dir\")\n \t}\n-\tdir := filepath.Join(base, \"sing-usbip\", \"usbipvhci\", \"v\"+assetVersion())\n+\tdir := filepath.Join(base, \"sing-usbip\", \"usbipvhci\", \"v\"+driverassets.VHCI[runtime.GOARCH].Version)\n \terr = os.MkdirAll(dir, 0o755)\n \tif err != nil {\n \t\treturn \"\", E.Cause(err, \"usbipvhci: mkdir \", dir)"
+    },
+    {
+      "sha": "f4ca075bd0eb1263bed400204fc27d59190dd32f",
+      "filename": "internal/vboxusb/assets_external_windows.go",
+      "status": "added",
+      "additions": 40,
+      "deletions": 0,
+      "changes": 40,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_external_windows.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_external_windows.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets_external_windows.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -0,0 +1,40 @@\n+//go:build windows && with_external_usbip_drivers\n+\n+package vboxusb\n+\n+import (\n+\t\"crypto/sha256\"\n+\t\"encoding/hex\"\n+\t\"os\"\n+\t\"path/filepath\"\n+\t\"runtime\"\n+\n+\t\"github.com/sagernet/sing-usbip/driverassets\"\n+\tE \"github.com/sagernet/sing/common/exceptions\"\n+)\n+\n+func assetFiles() ([]assetFile, error) {\n+\tdriverPackage, supported := driverassets.VBoxUSB[runtime.GOARCH]\n+\tif !supported {\n+\t\treturn nil, nil\n+\t}\n+\texecutablePath, err := os.Executable()\n+\tif err != nil {\n+\t\treturn nil, E.Cause(err, \"vboxusb: locate executable\")\n+\t}\n+\tdirectory := filepath.Dir(executablePath)\n+\tfiles := make([]assetFile, 0, len(driverPackage.Files))\n+\tfor _, file := range driverPackage.Files {\n+\t\tassetPath := filepath.Join(directory, file.Name)\n+\t\tcontent, readErr := os.ReadFile(assetPath)\n+\t\tif readErr != nil {\n+\t\t\treturn nil, E.Cause(readErr, \"vboxusb: read \", assetPath)\n+\t\t}\n+\t\tdigest := sha256.Sum256(content)\n+\t\tif hex.EncodeToString(digest[:]) != file.SHA256 {\n+\t\t\treturn nil, E.New(\"vboxusb: \", assetPath, \" does not match the VBoxUSB \", driverPackage.Version, \" digest\")\n+\t\t}\n+\t\tfiles = append(files, assetFile{file.Name, content})\n+\t}\n+\treturn files, nil\n+}"
+    },
+    {
+      "sha": "0addc15b37691bc7c8b0aede64545907a858813c",
+      "filename": "internal/vboxusb/assets_windows_amd64.go",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 3,
+      "changes": 6,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_amd64.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_amd64.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets_windows_amd64.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,4 +1,4 @@\n-//go:build windows && amd64\n+//go:build windows && amd64 && !with_external_usbip_drivers\n \n package vboxusb\n \n@@ -16,11 +16,11 @@ var vboxUSBCat []byte\n //go:embed assets/amd64/VBoxUSBMon.sys\n var vboxUSBMonSys []byte\n \n-func assetFiles() []assetFile {\n+func assetFiles() ([]assetFile, error) {\n \treturn []assetFile{\n \t\t{\"VBoxUSB.sys\", vboxUSBSys},\n \t\t{\"VBoxUSB.inf\", vboxUSBInf},\n \t\t{\"VBoxUSB.cat\", vboxUSBCat},\n \t\t{\"VBoxUSBMon.sys\", vboxUSBMonSys},\n-\t}\n+\t}, nil\n }"
+    },
+    {
+      "sha": "4c00d7dbdc292defd3e785370e2b8c21a56c4023",
+      "filename": "internal/vboxusb/assets_windows_arm64.go",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 3,
+      "changes": 6,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_arm64.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_arm64.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets_windows_arm64.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,4 +1,4 @@\n-//go:build windows && arm64\n+//go:build windows && arm64 && !with_external_usbip_drivers\n \n package vboxusb\n \n@@ -16,11 +16,11 @@ var vboxUSBCat []byte\n //go:embed assets/arm64/VBoxUSBMon.sys\n var vboxUSBMonSys []byte\n \n-func assetFiles() []assetFile {\n+func assetFiles() ([]assetFile, error) {\n \treturn []assetFile{\n \t\t{\"VBoxUSB.sys\", vboxUSBSys},\n \t\t{\"VBoxUSB.inf\", vboxUSBInf},\n \t\t{\"VBoxUSB.cat\", vboxUSBCat},\n \t\t{\"VBoxUSBMon.sys\", vboxUSBMonSys},\n-\t}\n+\t}, nil\n }"
+    },
+    {
+      "sha": "9828e727a5e282a769adee5b3cc680e0113490eb",
+      "filename": "internal/vboxusb/assets_windows_unsupported.go",
+      "status": "modified",
+      "additions": 2,
+      "deletions": 2,
+      "changes": 4,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_unsupported.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fassets_windows_unsupported.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets_windows_unsupported.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,5 +1,5 @@\n-//go:build windows && !amd64 && !arm64\n+//go:build windows && !amd64 && !arm64 && !with_external_usbip_drivers\n \n package vboxusb\n \n-func assetFiles() []assetFile { return nil }\n+func assetFiles() ([]assetFile, error) { return nil, nil }"
+    },
+    {
+      "sha": "cd6b919cd630cb3a7f33b4757eb524e5823fdcc9",
+      "filename": "internal/vboxusb/driver_windows.go",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 2,
+      "changes": 8,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fdriver_windows.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fdriver_windows.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fdriver_windows.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -13,6 +13,7 @@ import (\n \t\"sync\"\n \t\"unsafe\"\n \n+\t\"github.com/sagernet/sing-usbip/driverassets\"\n \t\"github.com/sagernet/sing-usbip/internal/winsetupapi\"\n \tE \"github.com/sagernet/sing/common/exceptions\"\n \n@@ -222,15 +223,18 @@ func ensureExtracted() (string, error) {\n }\n \n func extractImpl() (string, error) {\n-\tfiles := assetFiles()\n+\tfiles, err := assetFiles()\n+\tif err != nil {\n+\t\treturn \"\", err\n+\t}\n \tif len(files) == 0 {\n \t\treturn \"\", E.New(\"vboxusb: unsupported architecture \", runtime.GOARCH)\n \t}\n \tbase, err := os.UserCacheDir()\n \tif err != nil {\n \t\treturn \"\", E.Cause(err, \"vboxusb: locate user cache dir\")\n \t}\n-\tdir := filepath.Join(base, \"sing-usbip\", \"vboxusb\", \"v\"+AssetVersion)\n+\tdir := filepath.Join(base, \"sing-usbip\", \"vboxusb\", \"v\"+driverassets.VBoxUSB[runtime.GOARCH].Version)\n \terr = os.MkdirAll(dir, 0o755)\n \tif err != nil {\n \t\treturn \"\", E.Cause(err, \"vboxusb: mkdir \", dir)"
+    },
+    {
+      "sha": "2b50eb7209e75923a77bc63ed22c3aa8d6abc938",
+      "filename": "internal/vboxusb/vboxusb.go",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 2,
+      "changes": 2,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fvboxusb.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/28bd42667ecac597d3e19492b9e81ee04e22792f/internal%2Fvboxusb%2Fvboxusb.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fvboxusb.go?ref=28bd42667ecac597d3e19492b9e81ee04e22792f",
+      "patch": "@@ -1,7 +1,5 @@\n package vboxusb\n \n-const AssetVersion = \"7.2.14.24565\"\n-\n const (\n \tDriverMajorVersion = 5\n \tDriverMinorVersion = 0"
+    }
+  ]
+}

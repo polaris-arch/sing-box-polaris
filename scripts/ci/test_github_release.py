@@ -217,7 +217,7 @@ class GateTests(unittest.TestCase):
         expected=expected_native(p.VERSION);source='a'*40;tree='b'*40;rows=[]
         for ident,v in expected.items():
             rows.append({'schema':'polaris-upstream-native-receipt-v1','id':ident,'target':v['target'],'variant':v['variant'],
-                         'version':p.VERSION,'tag':p.TAG,'sourceCommit':source,'sourceTree':tree,'goVersion':'go1.26.8',
+                         'version':p.VERSION,'tag':p.TAG,'sourceCommit':source,'sourceTree':tree,'goVersion':'go1.27.2',
                          'tags':'fixture','buildID':'','rawBuildInfo':'private test fixture',
                          'buildGraph':{'settings':{},'normalModules':[],'prebuiltAcquisitionModules':[],'localReplacements':[]},
                          'sourceIdentity':{'sourceOverlay':0,'goModSha256':'0'*64,'goSumSha256':'1'*64,'replacements':[]},
@@ -225,13 +225,16 @@ class GateTests(unittest.TestCase):
                                     'bytes':1,'sha256':'2'*64,'root':ident,'members':{ident+'/sing-box':'3'*64}},
                          'core':{'member':'sing-box','bytes':1,'sha256':'3'*64},'sidecar':None,
                          'signatureObservation':None,'finalPackageCronetSmoke':None})
-        return {'schema':'polaris-upstream-native-assets-v1','repository':p.REPO,'repositoryId':p.RID,'version':p.VERSION,
+        index = {'schema':'polaris-upstream-native-assets-v1','repository':p.REPO,'repositoryId':p.RID,'version':p.VERSION,
                 'tag':p.TAG,'tagObject':'c'*40,'sourceCommit':source,'sourceTree':tree,
                 'producer':{'repository':p.REPO,'repositoryId':p.RID,'workflow':'.github/workflows/build.yml',
                             'workflowCommit':source,'runId':42,'runAttempt':1,
                             'nativeJobs':{k:{'id':i+1,'name':'private test fixture'} for i,k in enumerate(['linux','win','mac-x64','mac-arm64'])}},
                 'legalFiles':[{'path':'licenses/LICENSE','content':'x','bytes':1,'sha256':'4'*64}],
                 'sourceArchive':{'name':'sing-box-polaris-source-'+source+'.tar.gz','bytes':1,'sha256':'5'*64},'platforms':rows}
+        from native_release_index import distribution_materials
+        index['distributionMaterials'] = distribution_materials(index, p.ROOT)
+        return index
 
     def check_index(self,index):
         p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
@@ -260,4 +263,57 @@ class GateTests(unittest.TestCase):
                 cfg['runs']['all']['artifacts']['a']['files'][basename]=dict(f,releaseName=p.VERSION+'-renamed-'+basename)
                 with self.assertRaises(ValueError):p.assemble(actual,cfg,work,root/'out')
 
-if __name__=='__main__':unittest.main()
+
+class DistributionMaterialsTests(unittest.TestCase):
+    final_index = GateTests.final_index
+    check_index = GateTests.check_index
+    def test_current_scope_materials_tampering_fails(self):
+        index=self.final_index()
+        for field,value in [('sourceCommit','d'*40),('modules',{}),('legalFiles',{})]:
+            candidate=copy.deepcopy(index)
+            if field=='modules':candidate['distributionMaterials'][field]={'injected':{}}
+            else:candidate['distributionMaterials'][field]=value
+            with self.subTest(field=field),self.assertRaises(ValueError):self.check_index(candidate)
+
+    def test_remote_replacement_uses_actual_source_and_go_escape(self):
+        from native_release_index import distribution_materials
+        index=self.final_index()
+        index['platforms'][0]['buildGraph']['localReplacements']=[{
+            'module':'old/module','version':'v1.0.0','h1':'',
+            'replacement':{'module':'github.com/SomeOwner/fork','version':'v2.0.0','h1':'h1:test'}}]
+        material=distribution_materials(index,p.ROOT)
+        record=next(iter(material['modules'].values()))
+        self.assertEqual(record['sourceURL'],'https://proxy.golang.org/github.com/!some!owner/fork/@v/v2.0.0.zip')
+        self.assertEqual(record['replaces']['module'],'old/module')
+        self.assertFalse(record['availabilityVerified'])
+        self.assertFalse(material['publicationEligible'])
+        self.assertTrue(material['unmappedMaterialIdentities'])
+        with mock.patch('native_release_index.validate_distribution_assessment', return_value=True):
+            self.assertFalse(distribution_materials(index,p.ROOT)['publicationEligible'])
+
+    def test_shared_materials_associate_every_public_file_and_keep_metadata_private(self):
+        index=self.final_index()
+        result={'sourceCommit':index['sourceCommit'],'sourceTree':index['sourceTree'],
+                'runs':{'all':{'artifacts':{'test':{'files':{
+                    'binary':{'releaseName':'binary'},'metadata':{'releaseName':None}}}}}}}
+        p.associate_distribution_materials(result,index,'9'*64)
+        files=result['runs']['all']['artifacts']['test']['files']
+        self.assertEqual(files['binary']['distributionMaterials'],result['distributionMaterials'])
+        self.assertNotIn('distributionMaterials',files['metadata'])
+        wrong=copy.deepcopy(index);wrong['sourceCommit']='d'*40
+        self.assertRaises(ValueError,p.associate_distribution_materials,result,wrong,'9'*64)
+
+    def test_assessment_requires_explicit_valid_empty_open_items(self):
+        from native_release_index import validate_distribution_assessment
+        valid={'schema':1,'status':'reviewed-current-scope','openItems':[]}
+        self.assertTrue(validate_distribution_assessment(valid))
+        for value in [None,False,'',{},0]:
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                validate_distribution_assessment(dict(valid,openItems=value))
+        del valid['openItems']
+        self.assertRaises(ValueError,validate_distribution_assessment,valid)
+        self.assertRaises(ValueError,validate_distribution_assessment,{'schema':1,'status':'anything','openItems':[]})
+        self.assertFalse(validate_distribution_assessment({'schema':1,'status':'current-scope-review-required','openItems':[]}))
+
+if __name__=='__main__':
+    unittest.main()

@@ -1,0 +1,407 @@
+[
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.pbxproj",
+    "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.pbxproj",
+    "line": 443,
+    "kind": "copyright",
+    "text": "\t\t\t\tINFOPLIST_KEY_NSHumanReadableCopyright = \"\";",
+    "sourceSHA256": "f62e0c55c4747c2f2f222b6a575b98a8808c21e835267e8434bd5851a8401fb4"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.pbxproj",
+    "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.pbxproj",
+    "line": 480,
+    "kind": "copyright",
+    "text": "\t\t\t\tINFOPLIST_KEY_NSHumanReadableCopyright = \"\";",
+    "sourceSHA256": "f62e0c55c4747c2f2f222b6a575b98a8808c21e835267e8434bd5851a8401fb4"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "CodeLanguages-Container/CodeLanguages-Container/CodeLanguages_Container.h",
+    "path": "texts/CodeEditLanguages/CodeLanguages-Container/CodeLanguages-Container/CodeLanguages_Container.h",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 28.10.22.",
+    "sourceSHA256": "b0fc6aef1ecb585ff4e95bc803a51ee54e26b8c4d5cf0b3c5b47e8c5e91e6d6f"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/CodeLanguage+Definitions.swift",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage+Definitions.swift",
+    "line": 7,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 15.01.23.",
+    "sourceSHA256": "b3a4b462f87939018e1dc21824c236b890213f6ea4b180952faebfdfa48c3e06"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/CodeLanguage+DetectLanguage.swift",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage+DetectLanguage.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Khan Winter on 6/17/23.",
+    "sourceSHA256": "dc508f17ce4b1cf2ae5739ed0e714eae07e7f3dc410639cf1977349ec30c68f6"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/CodeLanguage.swift",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/CodeLanguage.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 25.05.22.",
+    "sourceSHA256": "f3aecb1e50daecb7f1e34e61f22d6c0ec283d53fd5b56a3e204a9dfed7d0e78c"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Documentation.docc/Add-Languages.md",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Documentation.docc/Add-Languages.md",
+    "line": 48,
+    "kind": "licensing",
+    "text": "                    \"LICENSE\",",
+    "sourceSHA256": "1de8ca3b37dd4ca4420af17405ad772c689edaac32fe7fa0265d40f144f6486f"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 1,
+    "kind": "copyright",
+    "text": ";; Copyright 2022 nvim-treesitter",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 3,
+    "kind": "licensing",
+    "text": ";; Licensed under the Apache License, Version 2.0 (the \"License\");",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 4,
+    "kind": "licensing",
+    "text": ";; you may not use this file except in compliance with the License.",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 5,
+    "kind": "licensing",
+    "text": ";; You may obtain a copy of the License at",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 7,
+    "kind": "licensing",
+    "text": ";;     http://www.apache.org/licenses/LICENSE-2.0",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 10,
+    "kind": "licensing",
+    "text": ";; distributed under the License is distributed on an \"AS IS\" BASIS,",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 12,
+    "kind": "licensing",
+    "text": ";; See the License for the specific language governing permissions and",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-haskell/highlights.scm",
+    "line": 13,
+    "kind": "licensing",
+    "text": ";; limitations under the License.",
+    "sourceSHA256": "6fb72af4cda70dc18a3ec832f38c8f585f2c6e6daf83806be841ff1b30eb07b1"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-kotlin/highlights.scm",
+    "line": 1,
+    "kind": "licensing",
+    "text": ";; Based on the nvim-treesitter highlighting, which is under the Apache license.",
+    "sourceSHA256": "0dda9e2b7d1192a5c8f08a057e98c29fd42bea610f1b9d49f8f4ca8f7d97ff3f"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/Resources/tree-sitter-sql/highlights.scm",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/Resources/tree-sitter-sql/highlights.scm",
+    "line": 174,
+    "kind": "authorship",
+    "text": "  (keyword_authorization)",
+    "sourceSHA256": "b3200c889939e89f78b2607c57ea5016b1a5a3a4420c97eb38e853ba5abf9572"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/TreeSitterLanguage.swift",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/TreeSitterLanguage.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 25.05.22.",
+    "sourceSHA256": "3fc0673e6aadbf07ee090aac34a20dd9ef8b0b5f559347200051879164bffad0"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Sources/CodeEditLanguages/TreeSitterModel.swift",
+    "path": "texts/CodeEditLanguages/Sources/CodeEditLanguages/TreeSitterModel.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 25.05.22.",
+    "sourceSHA256": "b2c63861ecdbaad92947ecc25b8c86127ed8b038a17e1eaad277dfaad4654cd2"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Tests/CodeEditLanguagesTests/CodeEditLanguagesTests.swift",
+    "path": "texts/CodeEditLanguages/Tests/CodeEditLanguagesTests/CodeEditLanguagesTests.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Lukas Pistrol on 28.10.22.",
+    "sourceSHA256": "9c3c9a153f618ab532ac78ef3db7ecc793a4e200b1437108c3dfcffc74a6c7c8"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "Tests/CodeEditLanguagesTests/LanguageDetectionTests.swift",
+    "path": "texts/CodeEditLanguages/Tests/CodeEditLanguagesTests/LanguageDetectionTests.swift",
+    "line": 5,
+    "kind": "authorship",
+    "text": "//  Created by Khan Winter on 6/17/23.",
+    "sourceSHA256": "20770815ff20e01c05908b82ba1566d7db90bdb90ad42e049482bdbc3f24465c"
+  },
+  {
+    "component": "CodeEditLanguages",
+    "sourcePath": "build_framework.sh",
+    "path": "texts/CodeEditLanguages/build_framework.sh",
+    "line": 11,
+    "kind": "authorship",
+    "text": "# Created by: Lukas Pistrol on 29.10.2022",
+    "sourceSHA256": "ae62cb57cbd80bf71624f29e7e3d121c7769d906fcac01796b468ae4a7a94e6e"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": ".gitignore",
+    "path": "texts/CodeEditSymbols/.gitignore",
+    "line": 3,
+    "kind": "authorship",
+    "text": "# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore",
+    "sourceSHA256": "9af57d9b01e3664f84c67fd8ba43785e09dc9854c7bf20fb67fb328a4fb3e95a"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/CodeEditSymbols.swift",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/CodeEditSymbols.swift",
+    "line": 4,
+    "kind": "authorship",
+    "text": "// Created by Lukas Pistrol on 18.04.22.",
+    "sourceSHA256": "c485c03203d96aa4ac75576202f1a676ec911d90b21531f9689f536e48947d4e"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "0fd49ba3c3585c709678e0046a821c3c60685ec7063720d30d3a3448be3a208b"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/branch.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/branch.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "af6adc831df5aa7e7154e466b295a4416595d85524be8261b2a6a910d6c5f252"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.fill.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.fill.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "41aa29ff3613ffd0865b0e065ce3a98934a3b4ca37d28fd7ce05131209681c40"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/breakpoint.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "020be37219678351a39c260151375e6487e494a0368b07b667332a84ce7f03e7"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/checkout.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/checkout.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "c7b249089d6fa2780e67fbf7ae481137fdcdfe3b5ef7c687bf514bac821404a2"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/chevron.up.chevron.down.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/chevron.up.chevron.down.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "9fe9df50b8c768ee1fd1623cd0700e426deda6ba63d7527d95097c7375223248"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/commit.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/commit.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "f73b9b92ea7f518c4c422b0efe80e8d03c734a268467a15a0539ea9936273cd4"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/doc.java.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.java.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "10756a53f4306612b5f383a5bd864324d6e43adb52cb25d5fda10a7907201fcb"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/doc.javascript.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.javascript.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "71e085fd1397ecc3693a297d3f735baa7bda120e42cca5ac49d305008ce647be"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/doc.json.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.json.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "5b6aec88cae69cb60ea8664f5b525ae95c99441f3b968506faf2d639ca6a31aa"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/doc.python.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.python.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "735693a26bd14b67a6788d3994dc504ed5347ffcc170a21e63779688f9e39c67"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/doc.ruby.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/doc.ruby.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "7a793ca77594c3062a46a1b5e21177d149163d881af6ae78016f4ffb188913a3"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/github.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/github.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "a6acedf2b1042fb324e897ee6610d0488381a219f39a640980a8bcd3761e5967"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/square.split.horizontal.plus.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.horizontal.plus.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "0666a9fdc7af918d8826ceb7f70db896861cccab77d9e6fa447e2b7f0b5e39ac"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/square.split.vertical.plus.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/square.split.vertical.plus.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\": \"xcode\",",
+    "sourceSHA256": "021417e018127937a2dd824e7f3c537411132e19b02ac98590c49d9540fcd94b"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/vault.fill.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.fill.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "523a0b9a5b0e92342c18922b6cd2d631499d63112b6694b20335d8f9f207f3e7"
+  },
+  {
+    "component": "CodeEditSymbols",
+    "sourcePath": "Sources/CodeEditSymbols/Symbols.xcassets/vault.symbolset/Contents.json",
+    "path": "texts/CodeEditSymbols/Sources/CodeEditSymbols/Symbols.xcassets/vault.symbolset/Contents.json",
+    "line": 3,
+    "kind": "authorship",
+    "text": "    \"author\" : \"xcode\",",
+    "sourceSHA256": "3e16a5f5c8f1bdcc73b4561f4b27b34de6e3bf7e8e75839b8f4cd48eef7dcc6f"
+  },
+  {
+    "component": "codemirror-json5-source",
+    "sourcePath": "codemirror-json5-cad94e0b097dadbe04946e274645366b7d4c4f72/package.json",
+    "path": "texts/codemirror-json5-source/package.json",
+    "line": 23,
+    "kind": "authorship",
+    "text": "  \"author\": \"Daniel Imfeld <dimfeld>\",",
+    "sourceSHA256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb"
+  },
+  {
+    "component": "codemirror-json5-source",
+    "sourcePath": "codemirror-json5-cad94e0b097dadbe04946e274645366b7d4c4f72/package.json",
+    "path": "texts/codemirror-json5-source/package.json",
+    "line": 24,
+    "kind": "licensing",
+    "text": "  \"license\": \"MIT\",",
+    "sourceSHA256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb"
+  },
+  {
+    "component": "codemirror-json5-npm",
+    "sourcePath": "package/package.json",
+    "path": "texts/codemirror-json5-npm/package.json",
+    "line": 23,
+    "kind": "authorship",
+    "text": "  \"author\": \"Daniel Imfeld <dimfeld>\",",
+    "sourceSHA256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb"
+  },
+  {
+    "component": "codemirror-json5-npm",
+    "sourcePath": "package/package.json",
+    "path": "texts/codemirror-json5-npm/package.json",
+    "line": 24,
+    "kind": "licensing",
+    "text": "  \"license\": \"MIT\",",
+    "sourceSHA256": "da8e2c8cb2daca4f24542bc79c2c2ff098324e79ca0b54e6c4696aee31bdd2bb"
+  }
+]

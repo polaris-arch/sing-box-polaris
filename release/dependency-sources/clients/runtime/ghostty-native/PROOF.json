@@ -1,0 +1,15 @@
+{
+  "name": "GhosttyKit",
+  "url": "https://github.com/Lakr233/libghostty-spm/releases/download/upstream.35a81a980bb9/GhosttyKit.xcframework.zip",
+  "expectedSHA256": "80e9bbfc89f5bd23ee028cff03024e3a788509f87812ab0bc9d697bf22a9472b",
+  "full": false,
+  "noticeFiles": [],
+  "probe": {
+    "status": 206,
+    "contentRange": "bytes 0-0/77203207",
+    "contentLength": "1"
+  },
+  "archiveBytes": 77203207,
+  "verification": "Range and ZIP CRC only; no full archive SHA verification claim",
+  "entryCount": 38
+}

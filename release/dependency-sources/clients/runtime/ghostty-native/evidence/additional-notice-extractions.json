@@ -1,0 +1,178 @@
+[
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/include/freetype/internal/fthash.h",
+    "sourceSHA256": "351299f86d56190d44c829deb70256c3343b9da416f0451c6aabd4586b174dbe",
+    "path": "source-license-evidence/freetype/fthash.h.block1.txt",
+    "sha256": "fa04727dc6e4a77fd2e7cf3980ac6a3690103a1712679b28664c15ec491bcbc3",
+    "bytes": 1231,
+    "byteStart": 144,
+    "byteEnd": 1375,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/pcf/README",
+    "sourceSHA256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+    "path": "source-license-evidence/freetype/README.pcf-full.txt",
+    "sha256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+    "bytes": 3311,
+    "byteStart": 0,
+    "byteEnd": 3311,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/base/fthash.c",
+    "sourceSHA256": "73fca7e875ea7bfc7496dc9eb84abe9f16844ebd7589f0e4eafd9b1d1df137e3",
+    "path": "source-license-evidence/freetype/fthash.c.block1.txt",
+    "sha256": "fa04727dc6e4a77fd2e7cf3980ac6a3690103a1712679b28664c15ec491bcbc3",
+    "bytes": 1231,
+    "byteStart": 135,
+    "byteEnd": 1366,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/autofit/ft-hb.c",
+    "sourceSHA256": "65c23597427a2954bed2145191d2f129fe26b6f290d371b900628ac0c6b5af37",
+    "path": "source-license-evidence/freetype/ft-hb.c.block0.txt",
+    "sha256": "02538fb019fe962c58be4863a2fc6d21e5b072f4681ca3ea96bf813f31487e43",
+    "bytes": 1147,
+    "byteStart": 0,
+    "byteEnd": 1147,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/autofit/ft-hb.h",
+    "sourceSHA256": "6f21bd19ea7d53accc407a3dbd18648de36940cfabf235e4970f009f7a4def04",
+    "path": "source-license-evidence/freetype/ft-hb.h.block0.txt",
+    "sha256": "02538fb019fe962c58be4863a2fc6d21e5b072f4681ca3ea96bf813f31487e43",
+    "bytes": 1147,
+    "byteStart": 0,
+    "byteEnd": 1147,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/gzip/zlib.h",
+    "sourceSHA256": "b3bff4c483860d26cec9587c3b287b79b0d40b5f5fe6bb6000deb663b03955bb",
+    "path": "source-license-evidence/freetype/zlib.h.block0.txt",
+    "sha256": "4ce814c61160ae6c1aa3feb2e09924106741b66ade821c19a910677018ab3742",
+    "bytes": 1328,
+    "byteStart": 0,
+    "byteEnd": 1328,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "freetype",
+    "sourcePath": "sources/freetype/source-context/src/bdf/README",
+    "sourceSHA256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+    "path": "source-license-evidence/freetype/README.bdf-full.txt",
+    "sha256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+    "bytes": 5972,
+    "byteStart": 0,
+    "byteEnd": 5972,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "libintl",
+    "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+    "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+    "path": "source-license-evidence/libintl/plural.c.block1.txt",
+    "sha256": "3f832ebe1d7741df20fe4cb988c52366076fc460348540934a0567488633412b",
+    "bytes": 788,
+    "byteStart": 49,
+    "byteEnd": 837,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "libintl",
+    "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+    "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+    "path": "source-license-evidence/libintl/plural.c.block2.txt",
+    "sha256": "c80564db958dedc5c8a19ccf6e761a3465291fa7b26306dd91a5c1010ba8329a",
+    "bytes": 693,
+    "byteStart": 839,
+    "byteEnd": 1532,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "libintl",
+    "sourcePath": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+    "sourceSHA256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+    "path": "source-license-evidence/libintl/plural.c.block14.txt",
+    "sha256": "354ae38322779166f5720a471c743dc8a7eece73a24b352144c2054bd2545e0a",
+    "bytes": 834,
+    "byteStart": 2832,
+    "byteEnd": 3666,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "highway",
+    "sourcePath": "upstream/pkg/highway/src/cpp/abort.cc",
+    "sourceSHA256": "a649c742c96e6985343f376b41af3de16d3c3d6bf98e5b37dc85d87a637a1d2c",
+    "path": "source-license-evidence/highway/abort.cc.original-prefix-with-modifications.txt",
+    "sha256": "f8af142d317947aec1366b0e89b91aaef3aaba8264f40e053627e12e718c61b6",
+    "bytes": 1011,
+    "byteStart": 0,
+    "byteEnd": 1011,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "highway",
+    "sourcePath": "upstream/pkg/highway/src/cpp/targets.cpp",
+    "sourceSHA256": "9c12932cec47755fa60100e338198e56b0998157e8c8d934e4223db1a3e909b4",
+    "path": "source-license-evidence/highway/targets.cpp.original-prefix-with-modifications.txt",
+    "sha256": "a988ca976b669c4ae7677b21c057a4b33a2316381a29156d29531133c255d3c8",
+    "bytes": 944,
+    "byteStart": 0,
+    "byteEnd": 944,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "highway",
+    "sourcePath": "upstream/pkg/highway/src/cpp/per_target.cc",
+    "sourceSHA256": "5d3063e332cbbc28b44c5f44c12b3fbcd6b687549edabff65ffabcb5db9692e6",
+    "path": "source-license-evidence/highway/per_target.cc.original-prefix-with-modifications.txt",
+    "sha256": "603a133ed0f86da578130f6ebb7fba666854b2e127e80f33e7fb147b30bb4aca",
+    "bytes": 1444,
+    "byteStart": 0,
+    "byteEnd": 1444,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "highway",
+    "sourcePath": "sources/highway/version-source/hwy/targets.cc",
+    "sourceSHA256": "9c1ab7e9ea4854ce0d3b40664fef1910c54c1a58b13cd30c4146eec4106c3235",
+    "path": "source-license-evidence/highway/targets.cc.original-license.txt",
+    "sha256": "aebb50198a5675842379f7290b7a93c0bf1fb554f21f1cf0a7c067ad48ee35fb",
+    "bytes": 628,
+    "byteStart": 0,
+    "byteEnd": 628,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "libintl",
+    "sourcePath": "upstream/pkg/libintl/libintl.h",
+    "sourceSHA256": "311c1dc1e6727196f575e9eae44f440b45c955af2f8fe48b2c665820fa0d9393",
+    "path": "source-license-evidence/libintl/libintl.h.original-license.txt",
+    "sha256": "eb4cdf9ca0039167ba223c54aea734db9f4a9bab6ee6fdbb6538df1fa2a8c6b5",
+    "bytes": 774,
+    "byteStart": 0,
+    "byteEnd": 774,
+    "extraction": "exact original source text byte range"
+  },
+  {
+    "component": "wuffs",
+    "sourcePath": "sources/wuffs/version-source/release/c/wuffs-v0.4.c",
+    "sourceSHA256": "1f8039ef82911604c063f6ac2ed57254bdb17d742aebdeae06356530d4a0fde7",
+    "path": "source-license-evidence/wuffs/wuffs-v0.4.c.original-license.txt",
+    "sha256": "6cbb3cfd5baf82d1e882bfa82705bb9aa0b9072df7e5cba13ddf2b6d957ce0ce",
+    "bytes": 390,
+    "byteStart": 1056,
+    "byteEnd": 1446,
+    "extraction": "exact original source text byte range"
+  }
+]

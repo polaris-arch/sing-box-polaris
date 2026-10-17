@@ -1,0 +1,19 @@
+{
+  "repository": "polaris-arch/sing-box-polaris",
+  "baselineCommit": "68ffb209ded1f9337f9115741cba24f9f4c63421",
+  "records": [
+    {
+      "sourcePath": "common/ja3/LICENSE",
+      "noticePath": "JA3-LICENSE",
+      "sha256": "31cbb9419e5fbd3fe353eb5b5efb2667d5969f42e44f976e8c0b3a28893b3c09",
+      "applicability": "Conservative retained BSD notice for the in-tree JA3 parser; shared documentation for all kernel payloads."
+    },
+    {
+      "sourcePath": "common/windivert/assets/LICENSE.txt",
+      "noticePath": "WINDIVERT-LICENSE.txt",
+      "sha256": "14a0cb5214d536e4fdae6aa3f5696f981eeda106cd026e9794bba489ee79d628",
+      "applicability": "Windows 386/amd64 native archives without with_external_windivert embed the corresponding driver; client embedding separately requires confirmation."
+    }
+  ],
+  "WinDivertSourceClosure": "Exact source archive and official driver bytes verified; see release/dependency-sources/windivert. Distribution applicability remains explicitly reviewed separately."
+}

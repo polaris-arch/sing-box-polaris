@@ -1,0 +1,63 @@
+[
+  {
+    "component": "compiler runtime",
+    "sourcePath": "wrapper/musl-port/log.c",
+    "sourceSHA256": "a0694d8587a0d145d0f8ae87cbffba014d7988bc2ebcbfad94cea73b394c9ecc",
+    "path": "source-license-evidence/compiler-runtime/log.c.original-header.txt",
+    "sha256": "7d44f8a20ce2b9ab074ce883201b78815c98e669108b1dbdf3a699098444c326",
+    "bytes": 114,
+    "byteStart": 0,
+    "byteEnd": 114,
+    "extraction": "exact original source text byte range",
+    "sourceProvenance": {
+      "path": "log.c",
+      "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/log.c?id=1b76ff0767d01df72f692806ee5adee13c67ef88",
+      "bytes": 3030,
+      "sha256": "a0694d8587a0d145d0f8ae87cbffba014d7988bc2ebcbfad94cea73b394c9ecc",
+      "gitBlob": "cc52585a949886be2788a80f46af23f0784fde7f",
+      "gitBlobVerified": false,
+      "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+    }
+  },
+  {
+    "component": "compiler runtime",
+    "sourcePath": "wrapper/musl-port/logf.c",
+    "sourceSHA256": "9d054cebcf07ad0aa0f63c397dd10d115cc6c76ac706c4425219dd796202db08",
+    "path": "release/licenses/clients/runtime/ghostty-native/8321493840d6ffec-logf.c.original-header.txt",
+    "sha256": "8321493840d6ffec09121148a782785c0591b42a3a270dfda01b4ce4d5c7aa6b",
+    "bytes": 515,
+    "byteStart": 0,
+    "byteEnd": 515,
+    "extraction": "exact original source text byte range",
+    "sourceProvenance": {
+      "path": "logf.c",
+      "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/logf.c?id=2d7d05f031e014068a61d3076c6178513395d2ae",
+      "bytes": 1740,
+      "sha256": "9d054cebcf07ad0aa0f63c397dd10d115cc6c76ac706c4425219dd796202db08",
+      "gitBlob": "52230a1bd4dd6776fc55163729763766b589010e",
+      "gitBlobVerified": false,
+      "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+    }
+  },
+  {
+    "component": "compiler runtime",
+    "sourcePath": "wrapper/llvm-port/compiler-rt/lib/builtins/fp_add_impl.inc",
+    "sourceSHA256": "e74e28c8c70ff65962cf08aa7ebb0f53e7a749c4db73e1112b6ed2e8cde07642",
+    "path": "source-license-evidence/compiler-runtime/fp_add_impl.inc.original-header.txt",
+    "sha256": "8e483126930e4dda5411d47c311bb109bb688719f41342797c104779ca1b0f00",
+    "bytes": 567,
+    "byteStart": 0,
+    "byteEnd": 567,
+    "extraction": "exact original source text byte range",
+    "sourceProvenance": {
+      "sourceURL": "https://raw.githubusercontent.com/llvm/llvm-project/02d85149a05cb1f6dc49f0ba7a2ceca53718ae17/compiler-rt/lib/builtins/fp_add_impl.inc",
+      "revision": "02d85149a05cb1f6dc49f0ba7a2ceca53718ae17",
+      "bytes": 5405,
+      "sha256": "e74e28c8c70ff65962cf08aa7ebb0f53e7a749c4db73e1112b6ed2e8cde07642",
+      "gitBlob": "f9a32ce67336b46d6f52144382723a855f59b942",
+      "expectedGitBlob": "f9a32ce67336b46d6f52144382723a855f59b942",
+      "gitBlobVerified": true,
+      "metadataURL": "https://api.github.com/repos/llvm/llvm-project/contents/compiler-rt/lib/builtins/fp_add_impl.inc?ref=02d85149a05cb1f6dc49f0ba7a2ceca53718ae17"
+    }
+  }
+]

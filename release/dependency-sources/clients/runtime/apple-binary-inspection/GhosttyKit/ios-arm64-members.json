@@ -1,0 +1,677 @@
+{
+  "sourceURL": "https://github.com/Lakr233/libghostty-spm/releases/download/upstream.35a81a980bb9/GhosttyKit.xcframework.zip",
+  "zipEntry": "GhosttyKit.xcframework/ios-arm64/libghostty.a",
+  "entrySHA256": "0fd53ae56ac9b02d8fad9033c47cf7cf64674536eef2ba0af031b438fedeadd6",
+  "entryBytes": 19551440,
+  "verification": "Exact ZIP entry CRC; archive checksum remains pinned by Package.swift, not independently full-GET verified",
+  "members": [
+    {
+      "name": "__.SYMDEF SORTED",
+      "bytes": 85924
+    },
+    {
+      "name": "autofit.o",
+      "bytes": 282236
+    },
+    {
+      "name": "ftbase.o",
+      "bytes": 440948
+    },
+    {
+      "name": "ftbbox.o",
+      "bytes": 15884
+    },
+    {
+      "name": "ftbdf.o",
+      "bytes": 27068
+    },
+    {
+      "name": "ftbitmap.o",
+      "bytes": 56596
+    },
+    {
+      "name": "ftcid.o",
+      "bytes": 28212
+    },
+    {
+      "name": "ftfstype.o",
+      "bytes": 26460
+    },
+    {
+      "name": "ftgasp.o",
+      "bytes": 32284
+    },
+    {
+      "name": "ftglyph.o",
+      "bytes": 51188
+    },
+    {
+      "name": "ftgxval.o",
+      "bytes": 27884
+    },
+    {
+      "name": "ftinit.o",
+      "bytes": 29628
+    },
+    {
+      "name": "ftmm.o",
+      "bytes": 55596
+    },
+    {
+      "name": "ftotval.o",
+      "bytes": 26548
+    },
+    {
+      "name": "ftpatent.o",
+      "bytes": 20652
+    },
+    {
+      "name": "ftpfr.o",
+      "bytes": 29868
+    },
+    {
+      "name": "ftstroke.o",
+      "bytes": 91820
+    },
+    {
+      "name": "ftsynth.o",
+      "bytes": 24292
+    },
+    {
+      "name": "fttype1.o",
+      "bytes": 30844
+    },
+    {
+      "name": "ftwinfnt.o",
+      "bytes": 26380
+    },
+    {
+      "name": "bdf.o",
+      "bytes": 122900
+    },
+    {
+      "name": "ftbzip2.o",
+      "bytes": 7100
+    },
+    {
+      "name": "ftcache.o",
+      "bytes": 139292
+    },
+    {
+      "name": "cff.o",
+      "bytes": 267972
+    },
+    {
+      "name": "type1cid.o",
+      "bytes": 128956
+    },
+    {
+      "name": "ftgzip.o",
+      "bytes": 27500
+    },
+    {
+      "name": "ftlzw.o",
+      "bytes": 30556
+    },
+    {
+      "name": "pcf.o",
+      "bytes": 92220
+    },
+    {
+      "name": "pfr.o",
+      "bytes": 117444
+    },
+    {
+      "name": "psaux.o",
+      "bytes": 390148
+    },
+    {
+      "name": "pshinter.o",
+      "bytes": 135692
+    },
+    {
+      "name": "psnames.o",
+      "bytes": 111676
+    },
+    {
+      "name": "raster.o",
+      "bytes": 85540
+    },
+    {
+      "name": "sdf.o",
+      "bytes": 113572
+    },
+    {
+      "name": "sfnt.o",
+      "bytes": 391732
+    },
+    {
+      "name": "smooth.o",
+      "bytes": 68836
+    },
+    {
+      "name": "svg.o",
+      "bytes": 35180
+    },
+    {
+      "name": "truetype.o",
+      "bytes": 386652
+    },
+    {
+      "name": "type1.o",
+      "bytes": 204756
+    },
+    {
+      "name": "type42.o",
+      "bytes": 118604
+    },
+    {
+      "name": "winfnt.o",
+      "bytes": 59436
+    },
+    {
+      "name": "ftsystem.o",
+      "bytes": 13460
+    },
+    {
+      "name": "ftdebug.o",
+      "bytes": 4164
+    },
+    {
+      "name": "png.o",
+      "bytes": 134308
+    },
+    {
+      "name": "pngerror.o",
+      "bytes": 43964
+    },
+    {
+      "name": "pngget.o",
+      "bytes": 45548
+    },
+    {
+      "name": "pngmem.o",
+      "bytes": 25988
+    },
+    {
+      "name": "pngpread.o",
+      "bytes": 55364
+    },
+    {
+      "name": "pngread.o",
+      "bytes": 123772
+    },
+    {
+      "name": "pngrio.o",
+      "bytes": 18100
+    },
+    {
+      "name": "pngrtran.o",
+      "bytes": 121436
+    },
+    {
+      "name": "pngrutil.o",
+      "bytes": 142036
+    },
+    {
+      "name": "pngset.o",
+      "bytes": 70308
+    },
+    {
+      "name": "pngtrans.o",
+      "bytes": 31436
+    },
+    {
+      "name": "pngwio.o",
+      "bytes": 18764
+    },
+    {
+      "name": "pngwrite.o",
+      "bytes": 81732
+    },
+    {
+      "name": "pngwtran.o",
+      "bytes": 29932
+    },
+    {
+      "name": "pngwutil.o",
+      "bytes": 116060
+    },
+    {
+      "name": "adler32.o",
+      "bytes": 7300
+    },
+    {
+      "name": "compress.o",
+      "bytes": 6972
+    },
+    {
+      "name": "crc32.o",
+      "bytes": 26820
+    },
+    {
+      "name": "deflate.o",
+      "bytes": 63436
+    },
+    {
+      "name": "gzclose.o",
+      "bytes": 4836
+    },
+    {
+      "name": "gzlib.o",
+      "bytes": 19700
+    },
+    {
+      "name": "gzread.o",
+      "bytes": 24900
+    },
+    {
+      "name": "gzwrite.o",
+      "bytes": 22404
+    },
+    {
+      "name": "inflate.o",
+      "bytes": 53900
+    },
+    {
+      "name": "infback.o",
+      "bytes": 25748
+    },
+    {
+      "name": "inftrees.o",
+      "bytes": 10676
+    },
+    {
+      "name": "inffast.o",
+      "bytes": 15052
+    },
+    {
+      "name": "trees.o",
+      "bytes": 39828
+    },
+    {
+      "name": "uncompr.o",
+      "bytes": 6180
+    },
+    {
+      "name": "zutil.o",
+      "bytes": 5396
+    },
+    {
+      "name": "regerror.o",
+      "bytes": 27452
+    },
+    {
+      "name": "regparse.o",
+      "bytes": 359540
+    },
+    {
+      "name": "regext.o",
+      "bytes": 14692
+    },
+    {
+      "name": "regcomp.o",
+      "bytes": 284828
+    },
+    {
+      "name": "regexec.o",
+      "bytes": 214268
+    },
+    {
+      "name": "reggnu.o",
+      "bytes": 19716
+    },
+    {
+      "name": "regenc.o",
+      "bytes": 43532
+    },
+    {
+      "name": "regsyntax.o",
+      "bytes": 7020
+    },
+    {
+      "name": "regtrav.o",
+      "bytes": 4412
+    },
+    {
+      "name": "regversion.o",
+      "bytes": 3388
+    },
+    {
+      "name": "st.o",
+      "bytes": 26212
+    },
+    {
+      "name": "onig_init.o",
+      "bytes": 4028
+    },
+    {
+      "name": "unicode.o",
+      "bytes": 442596
+    },
+    {
+      "name": "ascii.o",
+      "bytes": 10900
+    },
+    {
+      "name": "utf8.o",
+      "bytes": 11348
+    },
+    {
+      "name": "utf16_be.o",
+      "bytes": 16340
+    },
+    {
+      "name": "utf16_le.o",
+      "bytes": 16380
+    },
+    {
+      "name": "utf32_be.o",
+      "bytes": 8860
+    },
+    {
+      "name": "utf32_le.o",
+      "bytes": 8868
+    },
+    {
+      "name": "euc_jp.o",
+      "bytes": 15892
+    },
+    {
+      "name": "sjis.o",
+      "bytes": 15444
+    },
+    {
+      "name": "iso8859_1.o",
+      "bytes": 10516
+    },
+    {
+      "name": "iso8859_2.o",
+      "bytes": 9108
+    },
+    {
+      "name": "iso8859_3.o",
+      "bytes": 9068
+    },
+    {
+      "name": "iso8859_4.o",
+      "bytes": 9100
+    },
+    {
+      "name": "iso8859_5.o",
+      "bytes": 9028
+    },
+    {
+      "name": "iso8859_6.o",
+      "bytes": 6356
+    },
+    {
+      "name": "iso8859_7.o",
+      "bytes": 8932
+    },
+    {
+      "name": "iso8859_8.o",
+      "bytes": 6356
+    },
+    {
+      "name": "iso8859_9.o",
+      "bytes": 9028
+    },
+    {
+      "name": "iso8859_10.o",
+      "bytes": 9156
+    },
+    {
+      "name": "iso8859_11.o",
+      "bytes": 6356
+    },
+    {
+      "name": "iso8859_13.o",
+      "bytes": 9036
+    },
+    {
+      "name": "iso8859_14.o",
+      "bytes": 9156
+    },
+    {
+      "name": "iso8859_15.o",
+      "bytes": 9076
+    },
+    {
+      "name": "iso8859_16.o",
+      "bytes": 9132
+    },
+    {
+      "name": "euc_tw.o",
+      "bytes": 11164
+    },
+    {
+      "name": "euc_kr.o",
+      "bytes": 11252
+    },
+    {
+      "name": "big5.o",
+      "bytes": 11212
+    },
+    {
+      "name": "gb18030.o",
+      "bytes": 12804
+    },
+    {
+      "name": "koi8_r.o",
+      "bytes": 9012
+    },
+    {
+      "name": "cp1251.o",
+      "bytes": 9012
+    },
+    {
+      "name": "euc_jp_prop.o",
+      "bytes": 7452
+    },
+    {
+      "name": "sjis_prop.o",
+      "bytes": 7444
+    },
+    {
+      "name": "unicode_unfold_key.o",
+      "bytes": 20348
+    },
+    {
+      "name": "unicode_fold1_key.o",
+      "bytes": 8708
+    },
+    {
+      "name": "unicode_fold2_key.o",
+      "bytes": 4452
+    },
+    {
+      "name": "unicode_fold3_key.o",
+      "bytes": 4540
+    },
+    {
+      "name": "simdutf.o",
+      "bytes": 783764
+    },
+    {
+      "name": "abort.o",
+      "bytes": 5236
+    },
+    {
+      "name": "per_target.o",
+      "bytes": 23188
+    },
+    {
+      "name": "targets.o",
+      "bytes": 7396
+    },
+    {
+      "name": "libhighway_zcu.o",
+      "bytes": 14884
+    },
+    {
+      "name": "zig_macos.o",
+      "bytes": 4716
+    },
+    {
+      "name": "ext.o",
+      "bytes": 3652
+    },
+    {
+      "name": "bindtextdom.o",
+      "bytes": 10252
+    },
+    {
+      "name": "dcgettext.o",
+      "bytes": 2596
+    },
+    {
+      "name": "dcigettext.o",
+      "bytes": 33516
+    },
+    {
+      "name": "dcngettext.o",
+      "bytes": 2692
+    },
+    {
+      "name": "dgettext.o",
+      "bytes": 2340
+    },
+    {
+      "name": "dngettext.o",
+      "bytes": 2452
+    },
+    {
+      "name": "explodename.o",
+      "bytes": 5084
+    },
+    {
+      "name": "finddomain.o",
+      "bytes": 9612
+    },
+    {
+      "name": "gettext.o",
+      "bytes": 2452
+    },
+    {
+      "name": "hash-string.o",
+      "bytes": 2804
+    },
+    {
+      "name": "intl-compat.o",
+      "bytes": 4836
+    },
+    {
+      "name": "l10nflist.o",
+      "bytes": 11180
+    },
+    {
+      "name": "langprefs.o",
+      "bytes": 8852
+    },
+    {
+      "name": "loadmsgcat.o",
+      "bytes": 35636
+    },
+    {
+      "name": "localealias.o",
+      "bytes": 2228
+    },
+    {
+      "name": "log.o",
+      "bytes": 10796
+    },
+    {
+      "name": "ngettext.o",
+      "bytes": 2692
+    },
+    {
+      "name": "plural-exp.o",
+      "bytes": 7012
+    },
+    {
+      "name": "plural.o",
+      "bytes": 18852
+    },
+    {
+      "name": "setlocale.o",
+      "bytes": 27996
+    },
+    {
+      "name": "textdomain.o",
+      "bytes": 5132
+    },
+    {
+      "name": "version.o",
+      "bytes": 1868
+    },
+    {
+      "name": "compat.o",
+      "bytes": 2092
+    },
+    {
+      "name": "getlocalename_l-unsafe.o",
+      "bytes": 4828
+    },
+    {
+      "name": "localename.o",
+      "bytes": 10236
+    },
+    {
+      "name": "localename-environ.o",
+      "bytes": 3812
+    },
+    {
+      "name": "localename-unsafe.o",
+      "bytes": 17452
+    },
+    {
+      "name": "setlocale-lock.o",
+      "bytes": 2964
+    },
+    {
+      "name": "setlocale_null.o",
+      "bytes": 7468
+    },
+    {
+      "name": "setlocale_null-unlocked.o",
+      "bytes": 4388
+    },
+    {
+      "name": "base64.o",
+      "bytes": 676
+    },
+    {
+      "name": "codepoint_width.o",
+      "bytes": 12708
+    },
+    {
+      "name": "index_of.o",
+      "bytes": 2052
+    },
+    {
+      "name": "vt.o",
+      "bytes": 5724
+    },
+    {
+      "name": "stb.o",
+      "bytes": 76900
+    },
+    {
+      "name": "wuffs-v0.4.o",
+      "bytes": 369036
+    },
+    {
+      "name": "libghostty_zcu.o",
+      "bytes": 10095508
+    },
+    {
+      "name": "compiler_rt.o",
+      "bytes": 212948
+    },
+    {
+      "name": "libcxx-verbose-abort-compat.o",
+      "bytes": 788
+    }
+  ]
+}

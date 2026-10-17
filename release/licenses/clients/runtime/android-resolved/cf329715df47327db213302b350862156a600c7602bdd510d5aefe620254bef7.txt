@@ -1,0 +1,6 @@
+/**
+   * Wraps content into a box, prefixing it with a length and a box type.
+   *
+   * <p>Use this method for box types with special characters. For example location box, which has a
+   * copyright symbol in the beginning.
+   */

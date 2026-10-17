@@ -1,0 +1,173 @@
+{
+  "module": "com.android.tools:desugar_jdk_libs:2.1.5",
+  "sourceRepository": "google/desugar_jdk_libs",
+  "sourceCommit": "73170c345e6a762fc6a1f0301bb15218850023ef",
+  "sourceTree": "a1405d773ff0bb771128842cc87b890f5da593a7",
+  "commitMessage": "Prepare for jdk-11 based desugared library version 2.1.5\n\nThis ads support for `Stream.toList()`.\n\nPiperOrigin-RevId: 726809943",
+  "versionFile": "VERSION_JDK11.txt",
+  "sourceURL": "https://codeload.github.com/google/desugar_jdk_libs/tar.gz/73170c345e6a762fc6a1f0301bb15218850023ef",
+  "sourceArchiveBytes": 18251068,
+  "sourceArchiveSHA256": "4cd2faa88ecb2450522fd4f0dcd11d6df878d7197b2276fb35532c50267f7a64",
+  "gitBlobsVerified": 9124,
+  "retainedInputs": [
+    {
+      "path": "ADDITIONAL_LICENSE_INFO",
+      "bytes": 2114,
+      "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916",
+      "gitBlob": "ff700cd09f6ea0cc497f68169fd5c210bdaa7c2b",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/ADDITIONAL_LICENSE_INFO"
+    },
+    {
+      "path": "ASSEMBLY_EXCEPTION",
+      "bytes": 1522,
+      "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb",
+      "gitBlob": "065b8d90239f30b7de3eba350f6446a932d4d131",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/ASSEMBLY_EXCEPTION"
+    },
+    {
+      "path": "BUILD",
+      "bytes": 3233,
+      "sha256": "99c8335ca28573be56250c956ced929c3125194382be5d4105b7ed294bdce35d",
+      "gitBlob": "630fa4aedc78ed588a93ebe25fbedae63f809ef3",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/BUILD"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 7539,
+      "sha256": "9ed42eb6bb57d2cab4faeb2e4cfd389269a2fbf7809e664d7345eb2983eb1744",
+      "gitBlob": "d60089cded90a7c1f007374561a04d1c4d37938f",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/CHANGELOG.md"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 969,
+      "sha256": "a8cf9af75c89c31372be3c69613533e0a98379b81bed84ed0f5abb5677678c30",
+      "gitBlob": "c980350f8fc35cbde435c83412fb225335af7638",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/CONTRIBUTING.md"
+    },
+    {
+      "path": "DEPENDENCIES_JDK11.txt",
+      "bytes": 124,
+      "sha256": "3c16222f316a4e6bbb4298a79524cb2e0425a18a021c61d62eb3b162faddb1c3",
+      "gitBlob": "dd341e6f28641dd2d9cc5ec019af6d7d817cbb2b",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11.txt"
+    },
+    {
+      "path": "DEPENDENCIES_JDK11_LEGACY.txt",
+      "bytes": 124,
+      "sha256": "3215eac5ff8af19f32473793c3773bdb06b22703a38cabf8df3a109b94a94992",
+      "gitBlob": "e2b7a480bba7ad27361c191b9b2b387aa7471408",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_LEGACY.txt"
+    },
+    {
+      "path": "DEPENDENCIES_JDK11_MINIMAL.txt",
+      "bytes": 132,
+      "sha256": "2e53fa198eee29561e367c0b094777bd6cc4d5c79437a1a251e2e53c33c969b1",
+      "gitBlob": "22644654d41c20f2aa406d878bb5a7cbb78af165",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_MINIMAL.txt"
+    },
+    {
+      "path": "DEPENDENCIES_JDK11_NIO.txt",
+      "bytes": 128,
+      "sha256": "b6abb1044c269b6cc2c10c6740deb0d6080c0a9eda284deb48cd7116f6b46853",
+      "gitBlob": "93319ea3f26208d368208edda1a58d2f8c625a8c",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_NIO.txt"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 19274,
+      "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726",
+      "gitBlob": "8b400c7ab81b7b18baff3f81d597f5e511883134",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/LICENSE"
+    },
+    {
+      "path": "README",
+      "bytes": 341,
+      "sha256": "3742dea69b89d0b35a250fa372bc0624e53529e338aa9e3a4b8ceedbb37e71e4",
+      "gitBlob": "2edd174f391f134619acdccffec27e9a269a2248",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/README"
+    },
+    {
+      "path": "README.md",
+      "bytes": 373,
+      "sha256": "346c7ffdc8b6352c263f02a34ab680f18eec4e909fae2d19de97313aed8b3ced",
+      "gitBlob": "f09a01b7cb13ffe2b37a60b296c7c26886aaf3ad",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/README.md"
+    },
+    {
+      "path": "UPDATING.md",
+      "bytes": 626,
+      "sha256": "266d782b7677891b398b51c07656ff34a13d42c366398176ef0f4d15b20a2933",
+      "gitBlob": "d292a6d9e45c7309d0d663c783f6117959584e88",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/UPDATING.md"
+    },
+    {
+      "path": "VERSION_JDK11.txt",
+      "bytes": 59,
+      "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+      "gitBlob": "509527bfa07a606421d5773a03aaafaba1cb6b5b",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11.txt"
+    },
+    {
+      "path": "VERSION_JDK11_LEGACY.txt",
+      "bytes": 59,
+      "sha256": "8fe0f9a60357f39dae10a79d7c3020ea8c990bd00d043ae0a79ca69bc4a4bfdf",
+      "gitBlob": "c0c4082efe4f0d3da2d00c78fb9b61f901320798",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_LEGACY.txt"
+    },
+    {
+      "path": "VERSION_JDK11_MINIMAL.txt",
+      "bytes": 59,
+      "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+      "gitBlob": "509527bfa07a606421d5773a03aaafaba1cb6b5b",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_MINIMAL.txt"
+    },
+    {
+      "path": "VERSION_JDK11_NIO.txt",
+      "bytes": 59,
+      "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+      "gitBlob": "509527bfa07a606421d5773a03aaafaba1cb6b5b",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_NIO.txt"
+    },
+    {
+      "path": "WORKSPACE",
+      "bytes": 304,
+      "sha256": "30e61d17877d1b7ba7f23857137327dc9dc50cc1254bc3a62489c879894a9433",
+      "gitBlob": "8f749c7b1b17ec9e26ab31a469b1b49ebe0159ce",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/WORKSPACE"
+    },
+    {
+      "path": "jdk11/desugarconfig/BUILD",
+      "bytes": 235,
+      "sha256": "054c4c719e927d9a110a44173d75337c7fda3aa50fd106ddb00f86bf9d93efe6",
+      "gitBlob": "708d657138aa4237327269d08bcb08d2f0222254",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/jdk11/desugarconfig/BUILD"
+    },
+    {
+      "path": "jdk11/src/BUILD",
+      "bytes": 1828,
+      "sha256": "1ad19a3c5fa0b4eea64e402e90b5c8e2112a54e4649a7fc175f0106c4a82b22f",
+      "gitBlob": "a025958db481126a2399eb8511354948bc08b48f",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/jdk11/src/BUILD"
+    },
+    {
+      "path": "repos.bzl",
+      "bytes": 2937,
+      "sha256": "860c66c3f681194435f1c85b17b0f25b7909d683fbf37cb17ad2544765e767bb",
+      "gitBlob": "b2eec59874e74a688b57ef485ad003267fe83800",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/repos.bzl"
+    },
+    {
+      "path": "setup.bzl",
+      "bytes": 1743,
+      "sha256": "ec31fefae29d5567828d34d795322bfe390fc6b66ef5a90504b0a07a4febd38c",
+      "gitBlob": "e39cfc79553c675e1b87d0ef6bba616a08488f30",
+      "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/setup.bzl"
+    }
+  ],
+  "artifactURL": "https://dl.google.com/dl/android/maven2/com/android/tools/desugar_jdk_libs/2.1.5/desugar_jdk_libs-2.1.5.jar",
+  "artifactBytes": 6113073,
+  "artifactSHA256": "d8044befae095781b9a80bf1faa92edc30382d75d437476784c1bf991598a976",
+  "sourceToArtifactEvidence": "Official source release-preparation commit explicitly declares JDK11 version2.1.5. Artifact exact version is fully acquired; no byte-for-byte reproduction or embedded Git revision is assumed.",
+  "matchesPreviouslyAcquiredArtifactSHA256": true
+}

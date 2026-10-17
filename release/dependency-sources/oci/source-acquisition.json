@@ -1,0 +1,438 @@
+[
+  {
+    "name": "ca-certificates-20260611.tar.bz2",
+    "sha512": "f473a1111eb508ef5d1096489479dba07db6b0d76ef2b900b3473933d57419429061d83e9c1e881ab61c4b0f17c64859ec74d670da6fc1d83d9b0fa73e1b7d8d",
+    "recipes": [
+      "release/dependency-sources/oci/aports/5f8337afea8674524d360be5fdb513e7e57fcc29/main/ca-certificates/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20260611.tar.bz2",
+    "bytes": 226096,
+    "sha256": "32ca73f2e81e2b88dc614f12e1ee04a82b1ec5a8e29d9f359ddf8905a0afcbb0",
+    "verified": true
+  },
+  {
+    "name": "apk-tools-v3.0.8.tar.gz",
+    "sha512": "3616435508dead5240f8d9fe74e87e2aa93262f9e466f50af8f60100e166403393b1e491c115395864d4179b219699831ecb61dc60960b5dfb1f10816d75f95f",
+    "recipes": [
+      "release/dependency-sources/oci/aports/4588b452722bd4800efdc6cce4f6e980e02a997f/main/apk-tools/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/apk-tools-v3.0.8.tar.gz",
+    "bytes": 390114,
+    "sha256": "e81c64a6e7c3806d45d4622c253e757aee970be84048554fa0eed79310e9453e",
+    "verified": true
+  },
+  {
+    "name": "bash-5.3-1.tar.gz",
+    "sha512": "426702c8b0fb9e0c9956259973ce5b657890fd47f4f807a64febf20077bb48d0b91474ed6e843d2ef277186b46c5fffa79b808da9b48d4ec027d5e2de1b28ed8",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash-5.3-1.tar.gz",
+    "bytes": 11355854,
+    "sha256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "verified": true
+  },
+  {
+    "name": "bash53-001",
+    "sha512": "66d0987f1a8951974c3a707a1980ef391a1f2a2938f0fa46adb77fcdcef6a3ca49e67182b9640ece3e59bb289e5b4a17eb870aa2a525a03e829a7be158d020a6",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-001",
+    "bytes": 1531,
+    "sha256": "1f608434364af86b9b45c8b0ea3fb3b165fb830d27697e6cdfc7ac17dee3287f",
+    "verified": true
+  },
+  {
+    "name": "bash53-002",
+    "sha512": "05caea1c1f5a3d27f2aa351c24f324f9d544ded89db4183ae2872e0283dde62dd6166ca4e780304398935b4aa3fb4db77ecf57acd0f0e295d279ffe40b772158",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-002",
+    "bytes": 2635,
+    "sha256": "e385548a00130765ec7938a56fbdca52447ab41fabc95a25f19ade527e282001",
+    "verified": true
+  },
+  {
+    "name": "bash53-003",
+    "sha512": "3d4004653cb3f2cba984e67b8e7ae54c19351e176b62bb415f88fdd482ae04be063dacf6303c8343ab6c8bf4f2388026c1742ac603a5cd5c330db22a4b76f4cb",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-003",
+    "bytes": 2683,
+    "sha256": "f245d9c7dc3f5a20d84b53d249334747940936f09dc97e1dcb89fc3ab37d60ed",
+    "verified": true
+  },
+  {
+    "name": "bash53-004",
+    "sha512": "d3c7c83ae0742f2a4e1bc96e8fdb3f05c8c0a7e631d3473922ac245f83194925ae443e761269fa6a519298b1123ee4008bcbcdaf9180dff0a0df7fbe5e029bbb",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-004",
+    "bytes": 1266,
+    "sha256": "9591d245045529f32f0812f94180b9d9ce9023f5a765c039b852e5dfc99747d0",
+    "verified": true
+  },
+  {
+    "name": "bash53-005",
+    "sha512": "e81b43b084c1e9d59acd174d0792a93053780bdef61e7f4072d90b425d99a3fb7d35ef4c0ab79c4fb24bb6b38a8d9e99aad2fceac6efddf723a2cd123b32f0ea",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-005",
+    "bytes": 1072,
+    "sha256": "cca1ef52dbbf433bc98e33269b64b2c814028efe2538be1e2c9a377da90bc99d",
+    "verified": true
+  },
+  {
+    "name": "bash53-006",
+    "sha512": "f7e303405571635e20c26507c46f9ae0a61ea1328fa0492f2eba2095d398f799e62c1dbf0c07b440c290244f2c54186691ef4aaa2d65f2de101f9888386e2391",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-006",
+    "bytes": 1346,
+    "sha256": "29119addefed8eff91ae37fd51822c31780ee30d4a28376e96002706c995ff10",
+    "verified": true
+  },
+  {
+    "name": "bash53-007",
+    "sha512": "5f9419b34c759b92a29f25d97e5da3f02603b3138afc11523c7bd304139db0cd02ff82a093cf78a338a7f9d88cb50a880fa6a105be83f8ca85ea8ff7d5c5d80b",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-007",
+    "bytes": 1437,
+    "sha256": "c0976bbfffa1453c7cfdd62058f206a318568ff2d690f5d4fa048793fa3eb299",
+    "verified": true
+  },
+  {
+    "name": "bash53-008",
+    "sha512": "094b7dc2abe6fc41c62494c6b69640fbd8c6bd93e7cde0618504bb8589fc51fec2fb1686b2729c37e430d336d93ec174233d78f23c82026aca49a240a00477c1",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-008",
+    "bytes": 5717,
+    "sha256": "097cd723cbfb8907674ac32214063a3fd85282657ec5b4e544d2c0f719653fb4",
+    "verified": true
+  },
+  {
+    "name": "bash53-009",
+    "sha512": "07f37cee118e510ae58ea408f9d97b942017e1378532d4e3cd5a4d7405994ddadaba5d3ddb4bbda6b375760967faa51add7f46914ba919a27c14e7036f64f3be",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1522c3193610902d8493f9790a2755c11f21f26d/main/bash/APKBUILD",
+      "release/dependency-sources/oci/aports/052899da729dfcd14a202ddd63e5d5cc5e2fb533/main/bash/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/bash53-009",
+    "bytes": 2468,
+    "sha256": "eee30fe78a4b0cb2fe20e010e00308899cfc613e0774ebb3c8557a1552f24f8c",
+    "verified": true
+  },
+  {
+    "name": "musl-1.2.6.tar.gz",
+    "sha512": "1adad96eddb3a2eb0cacb3e363b0046568925fcdd75cf8b0503f2139df1f693d64730779ca0ce8131b7624ab2d37f4247bb1d3393c523de6e30d2b1d7732555c",
+    "recipes": [
+      "release/dependency-sources/oci/aports/d72a964d7f68bb113225a61d9425ba48005a99e0/main/musl/APKBUILD",
+      "release/dependency-sources/oci/aports/f5640d3a10f664c9119720c60515265d3d6f6d01/main/musl/APKBUILD",
+      "release/dependency-sources/oci/aports/b0c8ea10e8f29cabe336b2e5d864124940e126ab/main/musl/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/musl-1.2.6.tar.gz",
+    "bytes": 1082499,
+    "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "verified": true
+  },
+  {
+    "name": "ca-certificates-20260909.tar.bz2",
+    "sha512": "d235529da679f14e2e8df4175bc8189507add1382fe0ef8493824b07a49763a2a3af8201f43d30a0260eb8357a10bb0d7054d9b012abf3b74ecf889551cf0dd7",
+    "recipes": [
+      "release/dependency-sources/oci/aports/eb7078df3a16d666e8f7723f94bb92e00d4b9236/main/ca-certificates/APKBUILD",
+      "release/dependency-sources/oci/aports/a3c0689895e115d2910ab915de99a85bc11afe42/main/ca-certificates/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20260909.tar.bz2",
+    "bytes": 232735,
+    "sha256": "dc460c535f3833432be4e561d214a5fe816b05ede5a2ade64787e501671cd082",
+    "verified": true
+  },
+  {
+    "name": "busybox-1.38.0.tar.bz2",
+    "sha512": "ba3866f0a9ceabafe8c4d43afaf031bc5554742903b3d08e59a8592351dc09c6e091bb0cd2852b3ed1e79e841de871bac4dc48d9bb1cef9309c3f8495aba0d00",
+    "recipes": [
+      "release/dependency-sources/oci/aports/9ac9bf5318a9ccc8af34b1389eba3df432488673/main/busybox/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/edge/busybox-1.38.0.tar.bz2",
+    "bytes": 2695723,
+    "sha256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+    "verified": true
+  },
+  {
+    "name": "protocols-6.4",
+    "sha512": "3a00083bcdf5a9e884c9d07877d52311e3d99e79cbee656e236ba06e08ba0dddb7ba76494fdc9dd1a826c48e197a790a69e6bb458e9df64832d6b5e904e9fd15",
+    "recipes": [
+      "release/dependency-sources/oci/aports/60a7585bbab2fa0f762504eb617dbca90216e31f/main/alpine-baselayout/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/protocols-6.4",
+    "bytes": 3144,
+    "sha256": "4959498abbadaa1e50894a266f8d0d94500101cfe5b5f09dcad82e9d5bdfab46",
+    "verified": true
+  },
+  {
+    "name": "services-6.4",
+    "sha512": "47b0f3ee73af2d259bd206a026204be0ea25531a895a0b035a904b38fe5407bc3dd2beab7f8fcb3d760587e6159702ebdb9cbc4f508942befdf7f10c10c87888",
+    "recipes": [
+      "release/dependency-sources/oci/aports/60a7585bbab2fa0f762504eb617dbca90216e31f/main/alpine-baselayout/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/services-6.4",
+    "bytes": 12813,
+    "sha256": "f6183055fd949f9c53d49ee620f85d0150123ea691d25ed1bba0c641b4ee2f48",
+    "verified": true
+  },
+  {
+    "name": "nftables-1.1.6.tar.xz",
+    "sha512": "8d0a833d0ae2b6ac82e0da8bb74ffb69679e49a938b86a75d4ee3d81343400a95fe064cf95d60d22df30370779e524b31497a9c89a516d9bff645f3f83bb6bb1",
+    "recipes": [
+      "release/dependency-sources/oci/aports/e0326a8ae770e02742daadffe8a8e64d8290ce06/main/nftables/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/nftables-1.1.6.tar.xz",
+    "bytes": 1025092,
+    "sha256": "372931bda8556b310636a2f9020adc710f9bab66f47efe0ce90bff800ac2530c",
+    "verified": true
+  },
+  {
+    "name": "ncurses-6.6-20260516.tgz",
+    "sha512": "20ffc27f3266b078b410f712422db00d77f5fd497e398b7be252fd207ab70ebd72a2bdf8fd6c94e2a9e41bd2b64d1c6502240c0b8423c99add073bd1226f5859",
+    "recipes": [
+      "release/dependency-sources/oci/aports/2cee8a7328d061418336ad327b512d96bcd7bc5e/main/ncurses/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/ncurses-6.6-20260516.tgz",
+    "bytes": 3803559,
+    "sha256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "verified": true
+  },
+  {
+    "name": "tzcode2026e.tar.gz",
+    "sha512": "623af2d5c611ce5d9f6d07ceeb09721db03ed90e8e74e027f96fc402eb948fc8a7e9aecac2611e41fb501bdc2592a78020375ad677d887beaacb2fd5da9b9815",
+    "recipes": [
+      "release/dependency-sources/oci/aports/cda14c83f09d51b5e04129ba528c3273621c2d78/main/tzdata/APKBUILD",
+      "release/dependency-sources/oci/aports/faa135a1a22c90309bf381766a7cc47490dea786/main/tzdata/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/tzcode2026e.tar.gz",
+    "bytes": 329138,
+    "sha256": "cc3d27ca2a0d8399504551b920970d80af83bfb9c216e8082a15491921935d54",
+    "verified": true
+  },
+  {
+    "name": "tzdata2026e.tar.gz",
+    "sha512": "5be2f875f73b75e5783c474bf7a6c768e433cc90283f8fc6a75e3d05bd92aec97936e8a55ccca5e880b5dacc18ba65932bab0e783e1ed5d2af4a3a4df95512be",
+    "recipes": [
+      "release/dependency-sources/oci/aports/cda14c83f09d51b5e04129ba528c3273621c2d78/main/tzdata/APKBUILD",
+      "release/dependency-sources/oci/aports/faa135a1a22c90309bf381766a7cc47490dea786/main/tzdata/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/tzdata2026e.tar.gz",
+    "bytes": 481989,
+    "sha256": "b26882805f26aac59d5b222978e6580484b834ccdc98be89df2f05a6dc53a652",
+    "verified": true
+  },
+  {
+    "name": "posixtz-0.5.tar.xz",
+    "sha512": "68dbaab9f4aef166ac2f2d40b49366527b840bebe17a47599fe38345835e4adb8a767910745ece9c384b57af815a871243c3e261a29f41d71f8054df3061b3fd",
+    "recipes": [
+      "release/dependency-sources/oci/aports/cda14c83f09d51b5e04129ba528c3273621c2d78/main/tzdata/APKBUILD",
+      "release/dependency-sources/oci/aports/faa135a1a22c90309bf381766a7cc47490dea786/main/tzdata/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/posixtz-0.5.tar.xz",
+    "bytes": 3976,
+    "sha256": "e0a79e0922be2da686a1888d79cd253baaf81c2f30b4378fbbcf9ff9d632aab5",
+    "verified": true
+  },
+  {
+    "name": "gmp-6.3.0.tar.xz",
+    "sha512": "e85a0dab5195889948a3462189f0e0598d331d3457612e2d3350799dba2e244316d256f8161df5219538eb003e4b5343f989aaa00f96321559063ed8c8f29fd2",
+    "recipes": [
+      "release/dependency-sources/oci/aports/206e7b39f7884d62a174aba4d33a42454518c1c2/main/gmp/APKBUILD",
+      "release/dependency-sources/oci/aports/8bfc27fafbf6c27761b150c571c3075a5a3db0de/main/gmp/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/gmp-6.3.0.tar.xz",
+    "bytes": 2094196,
+    "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "verified": true
+  },
+  {
+    "name": "libnftnl-1.3.2.tar.xz",
+    "sha512": "ee60231f25c51ce45a8117e5a255265964ed024184c6b5ff4a883e6bbab6b0a66a73b6ca31be1c7055d778c5e7d780f483437eb9d27028dd9fcb6cc69af676ca",
+    "recipes": [
+      "release/dependency-sources/oci/aports/3f568d5532084c2124867f5ef64ca09d8c473698/main/libnftnl/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/edge/libnftnl-1.3.2.tar.xz",
+    "bytes": 349268,
+    "sha256": "c97abc3409f8fa396b4462b2bb7f147a3a47a4ddc97cfa0b2f18890c9cfde8b0",
+    "verified": true
+  },
+  {
+    "name": "pax-utils-1.3.9.tar.xz",
+    "sha512": "96caf7f2087bedc7949db828d966835f7d691e29ef8177dee00605c10d433d4c5b5770a3d7f2e25e3c0218f5b9a6c6967669a3dea18cf138d6f0111d2bb5288b",
+    "recipes": [
+      "release/dependency-sources/oci/aports/c61801eeacb3ffcd9c2025b09e402153bb93fb39/main/pax-utils/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/pax-utils-1.3.9.tar.xz",
+    "bytes": 123560,
+    "sha256": "7409f246b3c59b3e2d459d2232a6f7374469637ae6cf616c115b8d5830cab840",
+    "verified": true
+  },
+  {
+    "name": "readline-8.3.tar.gz",
+    "sha512": "513002753dcf5db9213dbbb61d51217245f6a40d33b1dd45238e8062dfa8eef0c890b87a5548e11db959e842724fb572c4d3d7fb433773762a63c30efe808344",
+    "recipes": [
+      "release/dependency-sources/oci/aports/a854c03acdac188901fb012f7acbee70a36e8041/main/readline/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/readline-8.3.tar.gz",
+    "bytes": 3419642,
+    "sha256": "fe5383204467828cd495ee8d1d3c037a7eba1389c22bc6a041f627976f9061cc",
+    "verified": true
+  },
+  {
+    "name": "readline83-001.patch",
+    "sha512": "ced50af353ed527f6ec0eac5f65261f2ed208825ec72fe2acf5f0217f34f84f33dcbf01b895325f6b33664b5a426bac99506193e2ddb6eea8c79ccad37364b89",
+    "recipes": [
+      "release/dependency-sources/oci/aports/a854c03acdac188901fb012f7acbee70a36e8041/main/readline/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/readline83-001.patch",
+    "bytes": 1846,
+    "sha256": "21f0a03106dbe697337cd25c70eb0edbaa2bdb6d595b45f83285cdd35bac84de",
+    "verified": true
+  },
+  {
+    "name": "readline83-002.patch",
+    "sha512": "e45ad6443bd4e271ec8e8ab883de561b6420aec362b0b7f0256086cb5a023d946df55994ed99c76ceb191e8a25e8059ae9b553ef1d546626d671b80af292f04d",
+    "recipes": [
+      "release/dependency-sources/oci/aports/a854c03acdac188901fb012f7acbee70a36e8041/main/readline/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/readline83-002.patch",
+    "bytes": 1613,
+    "sha256": "e27364396ba9f6debf7cbaaf1a669e2b2854241ae07f7eca74ca8a8ba0c97472",
+    "verified": true
+  },
+  {
+    "name": "readline83-003.patch",
+    "sha512": "6b3ebffe994d0cd4d3466b15e3aee9a73613109283a4442f3bf10e28edcd1204df824c71356d66d01ac21014a806023a101fedf94526a19f6f590d9ffdc864cd",
+    "recipes": [
+      "release/dependency-sources/oci/aports/a854c03acdac188901fb012f7acbee70a36e8041/main/readline/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/readline83-003.patch",
+    "bytes": 2284,
+    "sha256": "72dee13601ce38f6746eb15239999a7c56f8e1ff5eb1ec8153a1f213e4acdb29",
+    "verified": true
+  },
+  {
+    "name": "openssl-3.5.9.tar.gz",
+    "sha512": "c4c8136fd2c98d13bb85a57bfb0def25c906f47f1fe97675cd114594944eab957b5b81a3e0f48826e1a0f093afff5e83766b539d49768f6db68310fd678d7de6",
+    "recipes": [
+      "release/dependency-sources/oci/aports/29b9ec24b1b5b39aeef51fa2a044210e2ec5258e/main/openssl/APKBUILD",
+      "release/dependency-sources/oci/aports/5ebc3527f96ca84caf382abd7f37d4009110e57d/main/openssl/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/openssl-3.5.9.tar.gz",
+    "bytes": 53279637,
+    "sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+    "verified": true
+  },
+  {
+    "name": "busybox-1.37.0.tar.bz2",
+    "sha512": "ad8fd06f082699774f990a53d7a73b189ed404fe0a2166aff13eae4d9d8ee5c9239493befe949c98801fe7897520dbff3ed0224faa7205854ce4fa975e18467e",
+    "recipes": [
+      "release/dependency-sources/oci/aports/c3ef5d10e6ef6528852c51f0564963e2f8c1be19/main/busybox/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/busybox-1.37.0.tar.bz2",
+    "bytes": 2565764,
+    "sha256": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+    "verified": true
+  },
+  {
+    "name": "jansson-2.15.0.tar.gz",
+    "sha512": "6c3d74acdf33f0c7940173e1a058c838af87f9de69f70896d246e54bbcf7e2734218b1b53bf4ddbf6b5d4b324184788f20853cc953b8397fa2c43e563ea57b1e",
+    "recipes": [
+      "release/dependency-sources/oci/aports/88919740865a31680e7f1c4cb568dfd7a87e9f08/main/jansson/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/jansson-2.15.0.tar.gz",
+    "bytes": 620331,
+    "sha256": "070a629590723228dc3b744ae90e965a569efb9c535b3309b52e80e75d8eb3be",
+    "verified": true
+  },
+  {
+    "name": "nftables-1.1.7.tar.xz",
+    "sha512": "4dc900ad6e74c4ce532df974287bd3d5382ccabcee9e61b7639071abae70c215a8dea04d1f5af6f0f431e5717bd98db12dc858b00b51f284a17b488ef648b73d",
+    "recipes": [
+      "release/dependency-sources/oci/aports/201b2e1d027107008e20e9beb2a4b3e0769018fc/main/nftables/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/edge/nftables-1.1.7.tar.xz",
+    "bytes": 1062488,
+    "sha256": "a6fbf060d8d4fff001517a2b94f356bb4366bfbf0ba366366f9d27cc38caa58f",
+    "verified": true
+  },
+  {
+    "name": "libnftnl-1.3.1.tar.xz",
+    "sha512": "a4e689b003cc2ae2ecf203335265f337d6de7a50af5410d649a567535c109d08ee9dbae9e8572b1af8c67f09ea27877ca059e04ed3b1c12183ef7b4185bdd10f",
+    "recipes": [
+      "release/dependency-sources/oci/aports/80fae26950fd406b1645cfa15aa6eba0b850ecef/main/libnftnl/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/libnftnl-1.3.1.tar.xz",
+    "bytes": 349096,
+    "sha256": "607da28dba66fbdeccf8ef1395dded9077e8d19f2995f9a4d45a9c2f0bcffba8",
+    "verified": true
+  },
+  {
+    "name": "apk-tools-v3.0.7.tar.gz",
+    "sha512": "4dfeea50e931808c7301f3353a26599defe1a8daaa3fa5551c781bbf6cc72cdd702428ff6ec9880aa4b87f0b2345395e0837fda84ad2bc49ea1d4b3866461035",
+    "recipes": [
+      "release/dependency-sources/oci/aports/1397144f807abac6f9df704d21a1f71827df13b6/main/apk-tools/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/apk-tools-v3.0.7.tar.gz",
+    "bytes": 386537,
+    "sha256": "97f6169715a8dac1cce056fb5bcaf5416694972674b2460fe56fea928ca876d0",
+    "verified": true
+  },
+  {
+    "name": "ncurses-6.6-20260822.tgz",
+    "sha512": "797e9e587bb106ef904e5ecf7593ea988952a6243751d4c05a1a10c692eec8636786ad1233c9505300958468d0e452eccd3e21eed209268622d96698fe903991",
+    "recipes": [
+      "release/dependency-sources/oci/aports/6e2a3aef9dfb4a7d82e29b9418cf7d3a68835b52/main/ncurses/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/edge/ncurses-6.6-20260822.tgz",
+    "bytes": 3821740,
+    "sha256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "verified": true
+  },
+  {
+    "name": "libmnl-1.0.5.tar.bz2",
+    "sha512": "16fa48e74c9da7724a85c655dfb0abd8369392627934639d65de951543e1447ac3e048d231248f1ce8861443c2ef62654a85a81feeedbbffaf2e5744f6cf4c9f",
+    "recipes": [
+      "release/dependency-sources/oci/aports/fc95c59998285564fbcb0bfb2443898c62e10171/main/libmnl/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/libmnl-1.0.5.tar.bz2",
+    "bytes": 314791,
+    "sha256": "274b9b919ef3152bfb3da3a13c950dd60d6e2bcd54230ffeca298d03b40d0525",
+    "verified": true
+  },
+  {
+    "name": "zlib-1.3.2.tar.gz",
+    "sha512": "70963771ea5d763614278a69b474f09b7d237ef8f53b675a10fe31d9923aeef601504b35d7ebd1b1e7f347e9ebb048e6b3b47fffdf137e7bdc7e8d5eb4ec4692",
+    "recipes": [
+      "release/dependency-sources/oci/aports/f248b33b5943c7dc69bf691031d7612ab2e8ed93/main/zlib/APKBUILD"
+    ],
+    "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/zlib-1.3.2.tar.gz",
+    "bytes": 1502830,
+    "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "verified": true
+  }
+]
