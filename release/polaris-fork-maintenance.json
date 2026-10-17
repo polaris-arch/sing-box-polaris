@@ -305,9 +305,9 @@
       "sha256": "95402f4b5a3ec40b38614c5476d1ac70f70ad36d3bfeaadf31ec41685834396e"
     },
     "box.go": {
-      "gitBlob": "9db84ccaff8a40b74547ac565eff47f30fd35ecf",
-      "bytes": 27116,
-      "sha256": "43dd30f785bef29af5774b835d11922399b9ca4acf5fae3677f6712b613ef468"
+      "gitBlob": "937bf7767f2cb08dbccbe19a10ca481f72eb9574",
+      "bytes": 27119,
+      "sha256": "9ad951fdcefeb192c069891c3b2d4d4cfae9706d5e4449923a6f8e1239a3d173"
     },
     "box_close_result_test.go": {
       "gitBlob": "90cb5b46948b70d10f038415bce66140d169f2c6",

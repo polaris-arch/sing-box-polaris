@@ -2,4 +2,4 @@
 
 package tailscale
 
-func prepareDirectoryLeaseClose(_ *directoryLease,_ error)error{return nil}
+func prepareDirectoryLeaseClose(_ *directoryLease, _ error) error { return nil }

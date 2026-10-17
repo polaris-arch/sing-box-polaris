@@ -1353,14 +1353,14 @@ func headlessLogicalRule(mode string, invert bool, rules ...adapter.HeadlessRule
 
 func newLocalRuleSetForTest(tag string, rules ...adapter.HeadlessRule) *LocalRuleSet {
 	s := &LocalRuleSet{tag: tag}
- s.snapshot.Store(&ruleSetSnapshot{rules: rules})
- return s
+	s.snapshot.Store(&ruleSetSnapshot{rules: rules})
+	return s
 }
 
 func newRemoteRuleSetForTest(tag string, rules ...adapter.HeadlessRule) *RemoteRuleSet {
 	s := &RemoteRuleSet{tag: tag}
- s.snapshot.Store(&ruleSetSnapshot{rules: rules})
- return s
+	s.snapshot.Store(&ruleSetSnapshot{rules: rules})
+	return s
 }
 
 func mustAdGuardRule(t *testing.T, content string) adapter.HeadlessRule {

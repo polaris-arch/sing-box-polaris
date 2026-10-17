@@ -16,28 +16,28 @@
       "path": "adapter/rule_set_status.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "6c328c3581e4c79049aaefb63dab4e0824759eb5",
-      "newSHA256": "d884e21e6b923e4a6b8117cbdbbfdbba80f15dcc8403d0ea70c6ee4e6eb64c21",
+      "newBlob": "ac719e96bd9f0416d4a53a373e39e029fc0b758c",
+      "newSHA256": "5b1b7d9f2b99cde98274bad66bd1c1e8545c4e3d77fbd26bd7a9cdfacb53cda7",
       "mode": "100644",
-      "bytes": 367
+      "bytes": 379
     },
     {
       "path": "adapter/tailscale_directory_domain_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "e67b989d0ae5153e4c0d16af32e9645f979f9f71",
-      "newSHA256": "e3a13671f75d88e6126dd6d1b6e7b966d986c880e06c07a96f2b892fdab3bbf8",
+      "newBlob": "e5ccc11122b425b2db39d16310268cbbd52f264c",
+      "newSHA256": "b9af2efa78a8fb8a12adf6f632468523e3b1bd5fc97e295908f4573550aeef51",
       "mode": "100644",
-      "bytes": 329
+      "bytes": 352
     },
     {
       "path": "box.go",
       "owner": "windows-kernel",
       "baseBlob": "00bf7e243968fee62e40639164c89b65475b4c31",
-      "newBlob": "9db84ccaff8a40b74547ac565eff47f30fd35ecf",
-      "newSHA256": "43dd30f785bef29af5774b835d11922399b9ca4acf5fae3677f6712b613ef468",
+      "newBlob": "937bf7767f2cb08dbccbe19a10ca481f72eb9574",
+      "newSHA256": "9ad951fdcefeb192c069891c3b2d4d4cfae9706d5e4449923a6f8e1239a3d173",
       "mode": "100644",
-      "bytes": 27116
+      "bytes": 27119
     },
     {
       "path": "daemon/started_service.pb.go",
@@ -61,55 +61,55 @@
       "path": "daemon/started_service_rule_sets.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "13ab1f47cf30f071f1b1356ff2c86fec9d5b8657",
-      "newSHA256": "58de414e6219f5ac7f676afdbc4ce96b0d163950a7710aa9ca64358dcd7a8c53",
+      "newBlob": "43003b5459b15ced6df7964e6dc7cba0cf36a9b2",
+      "newSHA256": "d04efa0664800c43403bab331574f9d71218ca5915766b0b578f7f3902fb7a99",
       "mode": "100644",
-      "bytes": 2817
+      "bytes": 2839
     },
     {
       "path": "daemon/started_service_rule_sets_test.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "bbc3fa4d1ba7e5f44393a58b97594c8d340cfab3",
-      "newSHA256": "797d13b45d61658d55665505f33c452cff13640c1fa67f13b65679adabcb2bdd",
+      "newBlob": "a0baf24a9a1681d1c6159d769dc3b2ead39731f1",
+      "newSHA256": "8d7db77d66f1cd361a00684af8c90e8ac3956ea69048bd42434c7647e1b74118",
       "mode": "100644",
-      "bytes": 3689
+      "bytes": 3808
     },
     {
       "path": "directory_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "45691099e2f769b55d7da0b8347d6f52a00eb8b8",
-      "newSHA256": "431a2a5dfc77386afda6c2d803b5d94b40e7670089f40ac7ddb1ff5adee120ef",
+      "newBlob": "9a9bcddaf06940a879f3c1475af16f1a44e5429f",
+      "newSHA256": "074830f6c5386b41ab6ec0d9ff5b7713ba462e9a60faafc1b2317df318749750",
       "mode": "100644",
-      "bytes": 489
+      "bytes": 497
     },
     {
       "path": "directory_windows_other.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "c5feab676ea8a776bbef6ed296d199939ea1ea98",
-      "newSHA256": "69ad7fc54c78d4e13803ade335df47e587b1002d4a950421b09a83c04b7a6b6d",
+      "newBlob": "939fd872dbf71680274c860616e1db311013b38f",
+      "newSHA256": "39f251c1d27466c0c68d64cf46429c4b4f57b8f80f935ed4215276ac71d6e18f",
       "mode": "100644",
-      "bytes": 371
+      "bytes": 388
     },
     {
       "path": "directory_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "2bfe14d8b59e0d5416942aed22e30c87216cb61f",
-      "newSHA256": "1884bf98fc20237b57d268ebdbe1d6e5cc537033dfe15ef9bbcc7e8d29488a4e",
+      "newBlob": "ca921d3a22d88e793defd9247fca807645cf3d4c",
+      "newSHA256": "fddcc3c6234bb79a8b7fc3e19c7d356871b395ab61bccb915c654222c79fbefd",
       "mode": "100644",
-      "bytes": 4713
+      "bytes": 5119
     },
     {
       "path": "experimental/directorywindows/activation_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "d6fc38bf394ce582bbe1955d6c0e1bfe4a2087d6",
-      "newSHA256": "d39ba1961bda09a22e7d7f48df350fd9f8921fdb35f314f115871a681885b226",
+      "newBlob": "e4a3dd2319b227a0d9475f4cf8113e15281966be",
+      "newSHA256": "cc05281fd463d333bd4a95d9cd296222bc2ec20c31f530912168d136386de156",
       "mode": "100644",
-      "bytes": 5646
+      "bytes": 6259
     },
     {
       "path": "go.mod",
@@ -133,37 +133,37 @@
       "path": "option/options.go",
       "owner": "windows-kernel",
       "baseBlob": "b2116d3488104a55012fceb79accf10cee4fa8a4",
-      "newBlob": "90ee36717220a218541bf14b22bfb9403f06e87d",
-      "newSHA256": "2a783981f0893e36a75c661351283d52ccc795dc6ac11c113c8fddbb99575dcf",
+      "newBlob": "d46a04d495d6270a89528b958ef37b9ae03bec28",
+      "newSHA256": "261ef44c88e4173a98059d75deb4f9ccdc380c8c043cb158952a08dbb138cf1f",
       "mode": "100644",
-      "bytes": 4697
+      "bytes": 4793
     },
     {
       "path": "option/windows_directory.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "2cc69d23713424a1d68d1e20af25762c23185ab4",
-      "newSHA256": "6d63f31aeeae61fcae6c75f8f6d3a55c19343ca816652f732d8f5b76d2475bee",
+      "newBlob": "b086dd239f8d96b76923be852b66f167f519986f",
+      "newSHA256": "8ed6fbc4ad5e7f907c2f706f6240eed921d175559d04a50adee47a8cee0c2e45",
       "mode": "100644",
-      "bytes": 442
+      "bytes": 468
     },
     {
       "path": "protocol/tailscale/directory_close_other.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "703be9392ff46d354a051ac17d9b67f5e458852a",
-      "newSHA256": "1068f0765b5ac47428fc8f4da65e91f216a2773634f5bd35c44cd92a6455723c",
+      "newBlob": "e2e74da46a7f8253e3ab664d650e8cb69956a985",
+      "newSHA256": "0d1615c6773c9ee75f2173eee6f87cc706fbe0948f48bd496d0f65ed41488f1d",
       "mode": "100644",
-      "bytes": 134
+      "bytes": 139
     },
     {
       "path": "protocol/tailscale/directory_close_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "83290bbb0452c7bcb08834b098fbee08acf61702",
-      "newSHA256": "886f0977b8f012340b518b4878974cadb106aa3ca95edc6ca811bf0da7d5d014",
+      "newBlob": "d3dbe5206b19d3cc2a819c6a55a4ff322ca28fda",
+      "newSHA256": "5e0839b1580841580bf21a1704f4f02f67a9220c74cafd846d55ab6b764f3cea",
       "mode": "100644",
-      "bytes": 503
+      "bytes": 534
     },
     {
       "path": "protocol/tailscale/directory_lease_other.go",
@@ -178,37 +178,37 @@
       "path": "protocol/tailscale/directory_lease_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "033cc110e32421ba349e7a6a5dcd25f9ae736a45",
-      "newSHA256": "6b1f1e9f5c3eceb0811eaf55b49f690e742efffc2a2115850da522aecf8af267",
+      "newBlob": "461709c65fe27284e869c4520c639d172dd57c10",
+      "newSHA256": "68e008460dfab646406cdf419bf7c488f8431e39fee85b500b884789e6121fe6",
       "mode": "100644",
-      "bytes": 23137
+      "bytes": 26810
     },
     {
       "path": "protocol/tailscale/directory_lease_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "43e985c584fa51b98302a926ad0c0a0eaf5612fd",
-      "newSHA256": "2bc47ddebe7a9b972f5adac350fa26090fdde44c414b130afbd1b036b266c11e",
+      "newBlob": "ff3e71af67acf90cc4601585bca0877d788143f4",
+      "newSHA256": "b3f29acbb4cc37e8031b5322435681e8c2a9f1d599c0240e7ae4a81ec2c39b28",
       "mode": "100644",
-      "bytes": 5599
+      "bytes": 6214
     },
     {
       "path": "protocol/tailscale/directory_lifecycle.go",
       "owner": "windows-kernel",
       "baseBlob": "c4df35fc6bb6a251d43fed3bec6ea5ec393c53af",
-      "newBlob": "12aa5babb60a6e2f1f4d4d9abfb55b713099f59f",
-      "newSHA256": "4a683086a8916acc232971e73145c13866a3dfb47458e595b597fcf10e634c7b",
+      "newBlob": "beb6ccf308dea6a0f9b6bff599bba10fe03d9ef1",
+      "newSHA256": "0ce6da30df04cc2a2edaf6adaafe73ef378e668c41e899ddaa21301c4ff81360",
       "mode": "100644",
-      "bytes": 7882
+      "bytes": 7897
     },
     {
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "76c465f1eb613adedcd7ed4d783e8a40be7fe024",
-      "newSHA256": "28af98dcdb912e69b5435dfdec0488271ff02db268082c15a43aa5b2a18f0d7f",
+      "newBlob": "5367a0013450a0de8a6dde606266f39476e56a94",
+      "newSHA256": "bbbee1531d48746a1ac35bbc970acd84dd76cbd9d93b93050ab9958d275b252b",
       "mode": "100644",
-      "bytes": 19210
+      "bytes": 21617
     },
     {
       "path": "protocol/tailscale/directory_taildrop_other.go",
@@ -223,37 +223,37 @@
       "path": "protocol/tailscale/directory_taildrop_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "4da326b4ea67816b462af45d50840e774815c715",
-      "newSHA256": "cac874cd1b9ece9fd3b341c219e9611281e74b3ffa632d25c3cfb14ff7e13581",
+      "newBlob": "2c4a2903c4815d7d7a60f25980d8caebd79eece4",
+      "newSHA256": "19a89f0554d6148143bbcb818793c7d50f8d22821eb9bf241c387e3f7e577e84",
       "mode": "100644",
-      "bytes": 747
+      "bytes": 835
     },
     {
       "path": "protocol/tailscale/directory_windows_native.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "3d01665f56660a6e36be4f3dd7dbe8b240dada5d",
-      "newSHA256": "4e945d607070937e0824b35c332b21a9d00e13a202caf2a7ba5c3d5855dbabe2",
+      "newBlob": "c5a01b0f5778424e0a18bb316a24a72eadc492d0",
+      "newSHA256": "50b3cbe76c3716eb57c4a5c024cefa7f44fc06e0783ea2f8e4ea01541d7e5fb6",
       "mode": "100644",
-      "bytes": 11073
+      "bytes": 12261
     },
     {
       "path": "protocol/tailscale/directory_windows_owner.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "48e7871281ce74bf21969cad3ac7ed841e607a53",
-      "newSHA256": "de5a53fccf62133891a6685cb16ff0663308079f0f653545d307bf5e6d1fff05",
+      "newBlob": "31d8e622bb2fefe7879548fe03f00b63c49e807b",
+      "newSHA256": "224cdfa7c99a69ac5f364d4ab9dc5a28dcdf9bce9bb2e769b9503861a41409d9",
       "mode": "100644",
-      "bytes": 7117
+      "bytes": 7924
     },
     {
       "path": "protocol/tailscale/directory_windows_owner_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "abda007cf96f63e7e92d2f89a54233170c064f4f",
-      "newSHA256": "35833dd0746067d00500157a95ef51ff77e5f1102a4311c77f8418f6eb562758",
+      "newBlob": "4e46dca307b0dd1f9ea0f4942be8941f4def231b",
+      "newSHA256": "92c06ce2ce74db1cb72616bf81b73cd8ad4c88744f077336f2c20b1e1f25bcac",
       "mode": "100644",
-      "bytes": 11551
+      "bytes": 12908
     },
     {
       "path": "release/dependency-sources/sing-tun-baseline.json",
@@ -277,35 +277,35 @@
       "path": "route/rule/rule_item_rule_set.go",
       "owner": "hot-kernel",
       "baseBlob": "256183e2c26ca3408c107404b75bd6a3d6407b0a",
-      "newBlob": "a2e4e68c7ef9d005be200a2059f735fe178e860d",
-      "newSHA256": "5be878bb9ee21cc07bf5851c979b8324ebc02939ebdf30345badbeacbe4cc313",
+      "newBlob": "3eed7e6994494aca4da5cf5ee338a5696df25fee",
+      "newSHA256": "a33072959ac46c9c3ea6264f63af955dd4d3e3dca8ff67bf701bacf2174c0954",
       "mode": "100644",
-      "bytes": 4735
+      "bytes": 4697
     },
     {
       "path": "route/rule/rule_set_local.go",
       "owner": "hot-kernel",
       "baseBlob": "76699015ee6caf86585a1758172086fc113a7844",
-      "newBlob": "481eb22d3b3690003d5e5a2ecb7258319e104dde",
-      "newSHA256": "aedb90245a6e3ece1f921d5813e2dbac5e87c5f227ef6eab8c916356c85cbdb0",
+      "newBlob": "f8317db980c7783b58ba23c7e2da0fcc40478748",
+      "newSHA256": "5b5df4e0679ff94c392b7a56f831129ab2f5ba46dd485dd70f8ccd53dbdd0244",
       "mode": "100644",
-      "bytes": 6214
+      "bytes": 6268
     },
     {
       "path": "route/rule/rule_set_remote.go",
       "owner": "hot-kernel",
       "baseBlob": "5d694d81fa29d4de47ebe366f98e87764fa1ef82",
-      "newBlob": "274e823e5b1eeef2adfa414186f9656d33eec28a",
-      "newSHA256": "03a6c9939a522840733f8b8860e0192c8d0d2dc705098b9b6e978aff350424c0",
+      "newBlob": "35e05ff1c52b84a17a41f36997718e0bfae3184f",
+      "newSHA256": "4d2f17e92b2243bef00a04dba9793b2eaca0141b5788593fcb9c21bf8859614e",
       "mode": "100644",
-      "bytes": 9635
+      "bytes": 9682
     },
     {
       "path": "route/rule/rule_set_semantics_test.go",
       "owner": "hot-kernel",
       "baseBlob": "b6e2af0abd1fa68baf3035dd31b9a6b3936640ac",
-      "newBlob": "5e267972466fafa11f3f1bf8c04ea433d9c38d22",
-      "newSHA256": "a45eb8c57d4fb0e35e63915d27e6109c34d11b3e5864dcf3cf896ac5f0119b90",
+      "newBlob": "ed9c38630bb59b51290fa9d625dd1cfccbb33598",
+      "newSHA256": "6b523038ee54f3b320a562ebfda14935cd023fc2ccf5a9e289e5d703af189b52",
       "mode": "100644",
       "bytes": 56350
     },
@@ -313,19 +313,19 @@
       "path": "route/rule/rule_set_snapshot.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "a2a1c908b2b42c157d1d410ad0e8a99879a720cc",
-      "newSHA256": "74b122edaf752a438c0efeeea0b14f221c29d48f0d7fae14c556874a87d4eedc",
+      "newBlob": "bbc957af47086a0edccc366affbb46714af5f2e7",
+      "newSHA256": "c9cc8160334e7d61c02467a5f457400bf49417c60a9e7a9ffa1e0ab49b6104df",
       "mode": "100644",
-      "bytes": 2480
+      "bytes": 2530
     },
     {
       "path": "route/rule/rule_set_snapshot_test.go",
       "owner": "hot-kernel",
       "baseBlob": null,
-      "newBlob": "a39686da7fe9f01b092e989d11656e24c64cc1c8",
-      "newSHA256": "e7b0b3fa3606b215d9ddce9f2e9a65b5123d010f24cd2df4e1ebd9953468896b",
+      "newBlob": "9b86558930d4009f4fcb9061d694249104f5d365",
+      "newSHA256": "6418f69b3b1427be4e9eed5453c923de8604401d8c9b81c9fe8ce8c1dbe3eb35",
       "mode": "100644",
-      "bytes": 2712
+      "bytes": 2905
     },
     {
       "path": "route/rule/rule_set_update_validation_test.go",

@@ -33,8 +33,10 @@ type directoryOwner struct {
 }
 
 func newDirectoryOwner(ctx context.Context, tag, directory string) *directoryOwner {
-	node := adapter.TailscaleDirectoryNode{Tag: tag, StateDirectory: directory,
-		WriterState: "Unknown", CensusVersion: 1}
+	node := adapter.TailscaleDirectoryNode{
+		Tag: tag, StateDirectory: directory,
+		WriterState: "Unknown", CensusVersion: 1,
+	}
 	if binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](ctx); binding != nil {
 		node.RunNonce, node.ConfigDigest = binding.RunNonce, binding.ConfigDigest
 	}
@@ -172,7 +174,9 @@ func (t *Endpoint) beginDirectoryRetirement() {
 			if lease != nil {
 				failure := d.scope.Wait(context.Background())
 				d.mu.Lock()
-				if d.node.Failure != "" { failure = errors.Join(failure, errors.New(d.node.Failure)) }
+				if d.node.Failure != "" {
+					failure = errors.Join(failure, errors.New(d.node.Failure))
+				}
 				d.mu.Unlock()
 				if err := prepareDirectoryLeaseClose(lease, failure); err != nil {
 					// Failed durable revocation retains the original handles. A

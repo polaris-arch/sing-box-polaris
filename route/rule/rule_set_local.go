@@ -2,9 +2,9 @@ package rule
 
 import (
 	"context"
- "crypto/sha256"
- "encoding/hex"
- "io"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -29,14 +29,14 @@ import (
 var _ adapter.RuleSet = (*LocalRuleSet)(nil)
 
 type LocalRuleSet struct {
-	ctx        context.Context
-	logger     logger.Logger
-	tag        string
+	ctx    context.Context
+	logger logger.Logger
+	tag    string
 	ruleSetPublication
-	fileFormat string
-	watcher    *fswatch.Watcher
- lifecycleAccess sync.Mutex
-	refs       atomic.Int32
+	fileFormat      string
+	watcher         *fswatch.Watcher
+	lifecycleAccess sync.Mutex
+	refs            atomic.Int32
 }
 
 func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, options option.RuleSet) (*LocalRuleSet, error) {
@@ -47,8 +47,8 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 		fileFormat: options.Format,
 	}
 	ruleSet.watcherState = "not-started"
- if options.Type == C.RuleSetTypeInline {
- ruleSet.watcherState = "inline"
+	if options.Type == C.RuleSetTypeInline {
+		ruleSet.watcherState = "inline"
 		if len(options.InlineOptions.Rules) == 0 {
 			return nil, E.New("empty inline rule-set")
 		}
@@ -89,31 +89,44 @@ func (s *LocalRuleSet) String() string {
 }
 
 func (s *LocalRuleSet) StartContext(ctx context.Context, startContext *adapter.HTTPStartContext) error {
- s.lifecycleAccess.Lock()
- defer s.lifecycleAccess.Unlock()
- s.access.RLock()
- closed := s.closed
- s.access.RUnlock()
- if closed { return E.New("rule-set is closed") }
- if s.watcher != nil {
-  err := s.watcher.Start()
-  s.access.Lock()
-  if err != nil { s.watcherState = "failed"; s.lastError = err.Error() } else { s.watcherState = "watching" }
-  s.access.Unlock()
-  if err != nil { s.logger.Error(E.Cause(err, "watch rule-set file")) }
- }
+	s.lifecycleAccess.Lock()
+	defer s.lifecycleAccess.Unlock()
+	s.access.RLock()
+	closed := s.closed
+	s.access.RUnlock()
+	if closed {
+		return E.New("rule-set is closed")
+	}
+	if s.watcher != nil {
+		err := s.watcher.Start()
+		s.access.Lock()
+		if err != nil {
+			s.watcherState = "failed"
+			s.lastError = err.Error()
+		} else {
+			s.watcherState = "watching"
+		}
+		s.access.Unlock()
+		if err != nil {
+			s.logger.Error(E.Cause(err, "watch rule-set file"))
+		}
+	}
 	return nil
 }
 
 func (s *LocalRuleSet) reloadFile(path string) (result error) {
- s.reloadAccess.Lock()
- var callbacks []adapter.RuleSetUpdateCallback
- defer func() {
-  s.recordError(result)
-  s.reloadAccess.Unlock()
-  if result == nil { for _, callback := range callbacks { callback(s) } }
- }()
- var digest string
+	s.reloadAccess.Lock()
+	var callbacks []adapter.RuleSetUpdateCallback
+	defer func() {
+		s.recordError(result)
+		s.reloadAccess.Unlock()
+		if result == nil {
+			for _, callback := range callbacks {
+				callback(s)
+			}
+		}
+	}()
+	var digest string
 	var ruleSet option.PlainRuleSetCompat
 	switch s.fileFormat {
 	case C.RuleSetFormatSource, "":
@@ -122,7 +135,7 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 			return err
 		}
 		sum := sha256.Sum256(content)
- digest = hex.EncodeToString(sum[:])
+		digest = hex.EncodeToString(sum[:])
 		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
 		if err != nil {
 			return err
@@ -134,10 +147,12 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 		}
 		defer setFile.Close()
 		h := sha256.New()
- reader := io.TeeReader(setFile, h)
- ruleSet, err = srs.Read(reader, false)
- if err == nil { _, err = io.Copy(io.Discard, reader) }
- digest = hex.EncodeToString(h.Sum(nil))
+		reader := io.TeeReader(setFile, h)
+		ruleSet, err = srs.Read(reader, false)
+		if err == nil {
+			_, err = io.Copy(io.Discard, reader)
+		}
+		digest = hex.EncodeToString(h.Sum(nil))
 		if err != nil {
 			return err
 		}
@@ -149,16 +164,20 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 		return err
 	}
 	callbacks, result = s.prepareRules(plainRuleSet.Rules, digest)
- return result
+	return result
 }
 
 func (s *LocalRuleSet) reloadRules(headlessRules []option.HeadlessRule) error {
- s.reloadAccess.Lock()
- callbacks, err := s.prepareRules(headlessRules, "")
- s.recordError(err)
- s.reloadAccess.Unlock()
- if err == nil { for _, callback := range callbacks { callback(s) } }
- return err
+	s.reloadAccess.Lock()
+	callbacks, err := s.prepareRules(headlessRules, "")
+	s.recordError(err)
+	s.reloadAccess.Unlock()
+	if err == nil {
+		for _, callback := range callbacks {
+			callback(s)
+		}
+	}
+	return err
 }
 
 func (s *LocalRuleSet) prepareRules(headlessRules []option.HeadlessRule, digest string) ([]adapter.RuleSetUpdateCallback, error) {
@@ -216,8 +235,8 @@ func (s *LocalRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSetU
 
 func (s *LocalRuleSet) Close() error {
 	s.lifecycleAccess.Lock()
- defer s.lifecycleAccess.Unlock()
- s.closePublication()
+	defer s.lifecycleAccess.Unlock()
+	s.closePublication()
 	return common.Close(common.PtrOrNil(s.watcher))
 }
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
- "encoding/hex"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -45,11 +45,11 @@ type RemoteRuleSet struct {
 	updateInterval time.Duration
 	httpClient     *http.Client
 	ruleSetPublication
-	lastUpdated    time.Time
-	lastEtag       string
-	cacheFile      adapter.CacheFile
-	pauseManager   pause.Manager
-	refs           atomic.Int32
+	lastUpdated  time.Time
+	lastEtag     string
+	cacheFile    adapter.CacheFile
+	pauseManager pause.Manager
+	refs         atomic.Int32
 }
 
 func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag string, options option.RuleSet) (*RemoteRuleSet, error) {
@@ -67,18 +67,18 @@ func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag stri
 	}
 	url := strings.ReplaceAll(options.RemoteOptions.URL, C.RuleSetTagPlaceholder, tag)
 	return &RemoteRuleSet{
- ruleSetPublication: ruleSetPublication{watcherState: "remote"},
-		ctx:            ctx,
-		cancel:         cancel,
-		outbound:       service.FromContext[adapter.OutboundManager](ctx),
-		logger:         logger,
-		tag:            tag,
-		url:            url,
-		urlHash:        sha256.Sum256([]byte(url)),
-		initialPath:    initialPath,
-		options:        options,
-		updateInterval: updateInterval,
-		pauseManager:   service.FromContext[pause.Manager](ctx),
+		ruleSetPublication: ruleSetPublication{watcherState: "remote"},
+		ctx:                ctx,
+		cancel:             cancel,
+		outbound:           service.FromContext[adapter.OutboundManager](ctx),
+		logger:             logger,
+		tag:                tag,
+		url:                url,
+		urlHash:            sha256.Sum256([]byte(url)),
+		initialPath:        initialPath,
+		options:            options,
+		updateInterval:     updateInterval,
+		pauseManager:       service.FromContext[pause.Manager](ctx),
 	}, nil
 }
 
@@ -173,13 +173,17 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
 }
 
 func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
- s.reloadAccess.Lock()
- var callbacks []adapter.RuleSetUpdateCallback
- defer func() {
-  s.recordError(result)
-  s.reloadAccess.Unlock()
-  if result == nil { for _, callback := range callbacks { callback(s) } }
- }()
+	s.reloadAccess.Lock()
+	var callbacks []adapter.RuleSetUpdateCallback
+	defer func() {
+		s.recordError(result)
+		s.reloadAccess.Unlock()
+		if result == nil {
+			for _, callback := range callbacks {
+				callback(s)
+			}
+		}
+	}()
 	var (
 		ruleSet option.PlainRuleSetCompat
 		err     error
@@ -214,9 +218,9 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 	if err != nil {
 		return err
 	}
- sum := sha256.Sum256(content)
- callbacks, result = s.publish(rules, metadata, hex.EncodeToString(sum[:]))
- return result
+	sum := sha256.Sum256(content)
+	callbacks, result = s.publish(rules, metadata, hex.EncodeToString(sum[:]))
+	return result
 }
 
 func (s *RemoteRuleSet) updateOnce() {
