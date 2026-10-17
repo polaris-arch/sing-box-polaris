@@ -49,7 +49,11 @@ func (o MASQUEClientEndpointOptions) ResolvedVersion() int {
 }
 
 func (o MASQUEClientEndpointOptions) MarshalJSON() ([]byte, error) {
-	return badjson.MarshallObjects(_MASQUEClientEndpointOptions(o), httpVersionVariant(o.ResolvedVersion(), o.HTTP2Options, o.HTTP3Options))
+	variant := httpVersionVariant(o.ResolvedVersion(), o.HTTP2Options, o.HTTP3Options)
+	if variant == nil {
+		return json.Marshal(_MASQUEClientEndpointOptions(o))
+	}
+	return badjson.MarshallObjects(_MASQUEClientEndpointOptions(o), variant)
 }
 
 func (o *MASQUEClientEndpointOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
@@ -96,7 +100,11 @@ func (o MASQUEServerEndpointOptions) Versions() []int {
 }
 
 func (o MASQUEServerEndpointOptions) MarshalJSON() ([]byte, error) {
-	return badjson.MarshallObjects(_MASQUEServerEndpointOptions(o), httpVersionsVariant(o.Versions(), o.HTTP2Options, o.HTTP3Options))
+	variant := httpVersionsVariant(o.Versions(), o.HTTP2Options, o.HTTP3Options)
+	if variant == nil {
+		return json.Marshal(_MASQUEServerEndpointOptions(o))
+	}
+	return badjson.MarshallObjects(_MASQUEServerEndpointOptions(o), variant)
 }
 
 func (o *MASQUEServerEndpointOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {

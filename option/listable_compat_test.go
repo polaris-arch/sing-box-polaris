@@ -121,3 +121,32 @@ func TestMASQUEAdvertiseRoutesListableJSON(t *testing.T) {
 		require.Empty(t, routes)
 	}
 }
+
+// HTTP/1 has no additional version-options object; HTTP/2 and HTTP/3 do.
+// All supported variants must retain the routes through the public JSON methods.
+func TestMASQUEVersionRoutesRoundTrip(t *testing.T) {
+	for _, version := range []string{"0", "1", "2", "3"} {
+		t.Run("client/"+version, func(t *testing.T) {
+			var options MASQUEClientEndpointOptions
+			require.NoError(t, json.UnmarshalContext(context.Background(), []byte(`{"version":`+version+`,"advertise_routes":"192.0.2.0/24"}`), &options))
+			encoded, err := json.Marshal(options)
+			require.NoError(t, err)
+			var roundTrip MASQUEClientEndpointOptions
+			require.NoError(t, json.UnmarshalContext(context.Background(), encoded, &roundTrip))
+			require.Equal(t, options.Version, roundTrip.Version)
+			require.Equal(t, options.AdvertiseRoutes, roundTrip.AdvertiseRoutes)
+		})
+	}
+	for _, version := range []string{"[]", "[1]", "[2]", "[3]", "[1,2]", "[1,3]", "[1,2,3]"} {
+		t.Run("server/"+version, func(t *testing.T) {
+			var options MASQUEServerEndpointOptions
+			require.NoError(t, json.UnmarshalContext(context.Background(), []byte(`{"version":`+version+`,"advertise_routes":"2001:db8::/32"}`), &options))
+			encoded, err := json.Marshal(options)
+			require.NoError(t, err)
+			var roundTrip MASQUEServerEndpointOptions
+			require.NoError(t, json.UnmarshalContext(context.Background(), encoded, &roundTrip))
+			require.Equal(t, options.Versions(), roundTrip.Versions())
+			require.Equal(t, options.AdvertiseRoutes, roundTrip.AdvertiseRoutes)
+		})
+	}
+}
