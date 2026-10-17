@@ -43,7 +43,7 @@ func windowsEnvelopePath(path string) bool {
 // desktop ldflag can drift from the release asset/index source identity.
 func ValidateSource(expected, actual string, info *debug.BuildInfo) error {
 	if !windowsEnvelopeHex(expected, 40) || !windowsEnvelopeHex(actual, 40) || expected != actual {
-		//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return fmt.Errorf("Windows directory source identity mismatch or missing clean-source ldflag")
 	}
 	vcs := map[string]string{}
@@ -101,7 +101,7 @@ func Prepare(ctx context.Context, options option.Options, poisonRoot func(string
 		return nil, fmt.Errorf("invalid Windows directory activation envelope")
 	}
 	if len(options.RawMessage) == 0 {
-		//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory activation requires original parsed config bytes")
 	}
 	info, _ := debug.ReadBuildInfo()
@@ -109,7 +109,7 @@ func Prepare(ctx context.Context, options option.Options, poisonRoot func(string
 		return nil, err
 	}
 	if adapter.TailscaleDirectoryDomainFromContext(ctx) != nil || adapter.TailscaleDirectoryMappingFromContext(ctx) != nil {
-		//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory domain already supplied")
 	}
 	binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](ctx)
@@ -136,20 +136,20 @@ func Prepare(ctx context.Context, options option.Options, poisonRoot func(string
 			return nil, fmt.Errorf("missing decoded Tailscale endpoint options")
 		}
 		if ts.SSHServer != nil && ts.SSHServer.Enabled {
-			//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+			//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 			return nil, fmt.Errorf("Windows managed directory cannot admit unbounded SSH filesystem writers")
 		}
 		state, taildrop := os.ExpandEnv(ts.StateDirectory), os.ExpandEnv(ts.TaildropDirectory)
 		relative, err := filepath.Rel(state, taildrop)
 		if !windowsEnvelopePath(state) || !windowsEnvelopePath(taildrop) || filepath.Dir(state) != filepath.Join(envelope.Root, "tailscale") || err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) || seen[state] {
-			//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+			//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 			return nil, fmt.Errorf("Tailscale configuration is outside Windows managed domain")
 		}
 		seen[state] = true
 		inputs = append(inputs, adapter.TailscaleDirectoryMappingInput{StateDirectory: state, TaildropDirectory: taildrop})
 	}
 	if len(inputs) == 0 {
-		//lint:ignore ST1005 Windows is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Windows is a proper noun; preserve the stable error contract.
 		return nil, fmt.Errorf("Windows directory envelope has no Tailscale endpoints")
 	}
 	if poisonRoot == nil {

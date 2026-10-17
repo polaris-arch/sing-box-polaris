@@ -875,8 +875,64 @@ jobs:
             go.sum
             third_party/sing-tun/go.mod
             third_party/sing-tun/go.sum
+      - name: Authorize only the fixed remediation PR netns binary
+        id: netns_batch_authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_REPOSITORY: ${{ github.repository }}
+        shell: python
+        run: |
+          import json, os, subprocess, urllib.request
+          from pathlib import Path
+          repo = 'polaris-arch/sing-box-polaris'
+          repo_id = 1421657509
+          branch = 'collab/dots-audit-remediation-20261017'
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          kind = os.environ['EVENT_NAME']
+          ref = os.environ['EVENT_REF']
+          allowed_event = ((kind == 'pull_request' and event.get('number') == 2) or
+                           (kind == 'push' and ref == 'refs/heads/polaris-main'))
+          allowed = False
+          if allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
+              def get(path):
+                  request = urllib.request.Request('https://api.github.com/repos/' + repo + path,
+                      headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                               'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
+                  try:
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          return json.load(response)
+                  except Exception:
+                      raise SystemExit('Fixed PR #2 authorization read failed; no elevated test was started') from None
+              pr = get('/pulls/2')
+              same_repo = all(pr[side]['repo']['id'] == repo_id and
+                              pr[side]['repo']['full_name'] == repo for side in ['base', 'head'])
+              identity = same_repo and pr['number'] == 2 and pr['head']['ref'] == branch and pr['base']['ref'] == 'polaris-main'
+              if identity:
+                  head = pr['head']['sha']
+                  actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+                  if actual != os.environ['SOURCE_COMMIT']:
+                      raise SystemExit('Checkout HEAD differs from SOURCE_COMMIT; no elevation')
+                  allowed = actual == head
+                  # PR checkouts use a synthetic merge commit. Accept only the exact event merge,
+                  # with the current PR head as a parent and an identical tree; never any same-tree commit.
+                  if not allowed and kind == 'pull_request' and actual == event['pull_request'].get('merge_commit_sha'):
+                      headers = subprocess.check_output(['git', 'cat-file', '-p', 'HEAD'], text=True).split('\n\n', 1)[0].splitlines()
+                      parents = [line[7:] for line in headers if line.startswith('parent ')]
+                      current_tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+                      head_commit = get('/git/commits/' + head)
+                      allowed = head in parents and head_commit['sha'] == head and current_tree == head_commit['tree']['sha']
+                  if kind == 'push':
+                      allowed = allowed and actual == head
+          print('Batch netns binary elevation authorized' if allowed else
+                'No matching batch authorization; netns gate retains its original unprivileged execution')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('authorized=' + str(allowed).lower() + '\n')
       - name: Test packages changed by the queue
         timeout-minutes: 77
+        env:
+          NETNS_BATCH_ELEVATION: ${{ steps.netns_batch_authorization.outputs.authorized }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-0.sh" <<'POLARIS_COMMAND'
@@ -897,10 +953,40 @@ jobs:
             echo "no root Go package changed since $BASE_REF"
           else
             printf '%s\n' "${packages[@]}"
-            go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
-              -tags "$(cat release/DEFAULT_BUILD_TAGS),with_purego" \
-              -ldflags "$(cat release/LDFLAGS)" "${packages[@]}" | tee test.log
-            grep -q '^ok' test.log
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            # Resolve ./... before partitioning; go list failure must not lose packages.
+            go list -tags "$tags" "${packages[@]}" > "$selection_dir/resolved-root-packages.txt"
+            mapfile -t resolved_packages < "$selection_dir/resolved-root-packages.txt"
+            test "${#resolved_packages[@]}" -gt 0
+            ordinary_packages=()
+            netns_selected=false
+            for package in "${resolved_packages[@]}"; do
+              if [ "$package" = github.com/sagernet/sing-box/common/netns ]; then
+                netns_selected=true
+              else
+                ordinary_packages+=("$package")
+              fi
+            done
+            if [ "${#ordinary_packages[@]}" -gt 0 ]; then
+              go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
+                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+                "${ordinary_packages[@]}" | tee test.log
+              grep -q '^ok' test.log
+            fi
+            if [ "$netns_selected" = true ]; then
+              # Only the selected netns test binary is elevated; compilation remains unprivileged.
+              netns_exec=()
+              if [ "$NETNS_BATCH_ELEVATION" = true ]; then
+                netns_exec=(-exec 'sudo -n --')
+              else
+                echo 'No batch elevation approval; running required netns gate unprivileged'
+              fi
+              go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
+                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+                github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
+              grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
+              grep -q '^ok' "$selection_dir/netns-test.log"
+            fi
           fi
           if [ -f "$selection_dir/sing-tun-selected" ]; then
             grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod

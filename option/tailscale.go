@@ -167,10 +167,10 @@ type _DERPSTUNListenOptions struct {
 type DERPSTUNListenOptions _DERPSTUNListenOptions
 
 func (d DERPSTUNListenOptions) MarshalJSON() ([]byte, error) {
-	portOptions := _DERPSTUNListenOptions{
-		Enabled:    d.Enabled,
-		ListenPort: d.ListenPort,
-	}
+	// Project only enabled and port; any other listen option requires object form.
+	var portOptions _DERPSTUNListenOptions
+	portOptions.Enabled = d.Enabled
+	portOptions.ListenPort = d.ListenPort
 	if _DERPSTUNListenOptions(d) == portOptions {
 		return json.Marshal(d.Enabled)
 	} else {

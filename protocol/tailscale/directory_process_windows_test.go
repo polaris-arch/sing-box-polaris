@@ -571,14 +571,23 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := windows.CreateFile(wide, windows.READ_CONTROL|windows.WRITE_DAC, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	const requestedAccess = windows.READ_CONTROL | windows.WRITE_DAC
+	h, err := windows.CreateFile(wide, requestedAccess, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("open DACL mutation handle (requested access %#x): %v", requestedAccess, err)
 	}
 	defer windows.CloseHandle(h)
 	original, err := windows.GetSecurityInfo(h, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("read original DACL (requested access %#x): %v", requestedAccess, err)
+	}
+	originalControl, _, err := original.Control()
+	if err != nil {
+		t.Fatalf("read original DACL control: %v", err)
+	}
+	originalDACL := original.String()
+	if originalDACL == "" {
+		t.Fatal("cannot encode original DACL")
 	}
 	owner, err := windowsCurrentSID()
 	if err != nil {
@@ -594,24 +603,38 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 	}
 	flags := windows.SECURITY_INFORMATION(windows.DACL_SECURITY_INFORMATION | windows.PROTECTED_DACL_SECURITY_INFORMATION)
 	if err := windows.SetSecurityInfo(h, windows.SE_FILE_OBJECT, flags, nil, nil, acl, nil); err != nil {
-		t.Fatal(err)
+		t.Fatalf("broaden DACL (requested access %#x, original control %#x, security info %#x): %v", requestedAccess, originalControl, flags, err)
 	}
 	t.Cleanup(func() {
 		acl, _, err := original.DACL()
 		if err != nil {
-			t.Error(err)
+			t.Errorf("extract original DACL for restore (original control %#x): %v", originalControl, err)
 			return
 		}
-		h, err := windows.CreateFile(wide, windows.WRITE_DAC, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+		// Match the mutation handle's rights and retain READ_CONTROL for the
+		// read-back check: cleanup must restore the exact protected DACL.
+		h, err := windows.CreateFile(wide, requestedAccess, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("open DACL restore handle (requested access %#x, original control %#x): %v", requestedAccess, originalControl, err)
 			return
 		}
 		if err := windows.SetSecurityInfo(h, windows.SE_FILE_OBJECT, flags, nil, nil, acl, nil); err != nil {
-			t.Error(err)
+			t.Errorf("restore original DACL (requested access %#x, original control %#x, security info %#x): %v", requestedAccess, originalControl, flags, err)
+		} else {
+			restored, err := windows.GetSecurityInfo(h, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+			if err != nil {
+				t.Errorf("read restored DACL (requested access %#x, original control %#x): %v", requestedAccess, originalControl, err)
+			} else {
+				restoredControl, _, err := restored.Control()
+				if err != nil {
+					t.Errorf("read restored DACL control: %v", err)
+				} else if restored.String() != originalDACL {
+					t.Errorf("restored DACL mismatch (original control %#x, restored control %#x)", originalControl, restoredControl)
+				}
+			}
 		}
 		if err := windows.CloseHandle(h); err != nil {
-			t.Error(err)
+			t.Errorf("close DACL restore handle: %v", err)
 		}
 	})
 }

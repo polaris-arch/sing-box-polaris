@@ -289,7 +289,7 @@ func (s *guardedStateStore) retire(deadline time.Time, profile func() (string, s
 func readStateFile(directory, path string, failures ...func(error)) (data []byte, state string, resultErr error) {
 	canonical, err := canonicalStateDirectory(directory)
 	if err != nil || canonical != directory {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state scope changed")
 	}
 	before, err := os.Lstat(path)
@@ -300,7 +300,7 @@ func readStateFile(directory, path string, failures ...func(error)) (data []byte
 		return nil, "Unknown", err
 	}
 	if !before.Mode().IsRegular() || before.Size() > maxStateStoreBytes {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file is not bounded regular data")
 	}
 	file, err := os.Open(path)
@@ -319,18 +319,18 @@ func readStateFile(directory, path string, failures ...func(error)) (data []byte
 	}()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file changed")
 	}
 	content, err := io.ReadAll(io.LimitReader(file, maxStateStoreBytes+1))
 	if err != nil || len(content) > maxStateStoreBytes {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file read failed")
 	}
 	after, err := os.Lstat(path)
 	canonicalAfter, canonicalErr := canonicalStateDirectory(directory)
 	if err != nil || canonicalErr != nil || canonicalAfter != directory || !os.SameFile(before, after) || before.Size() != after.Size() || before.ModTime() != after.ModTime() {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return nil, "Unknown", errors.New("Tailscale state file changed")
 	}
 	return content, "Regular", nil
@@ -395,7 +395,7 @@ func (t *Endpoint) RetireTailscaleStateStore(deadline time.Time) adapter.Tailsca
 func (t *Endpoint) retireStateStore() error {
 	result := t.RetireTailscaleStateStore(time.Now().Add(stateStoreDrainTimeout))
 	if result.WriterState == "Unknown" {
-		//lint:ignore ST1005 Tailscale is a proper noun; preserve the stable error contract.
+		//nolint:staticcheck // ST1005: Tailscale is a proper noun; preserve the stable error contract.
 		return errors.New("Tailscale state writer retirement unknown")
 	}
 	return nil

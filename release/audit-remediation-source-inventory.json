@@ -1,16 +1,16 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "K1 CI failures remediated in source; independent static review closed; official formatter fixed point recorded with environment caveats; fresh unified CI pending",
+  "status": "K2 remaining CI failures remediated in source; explicit batch-only netns execution guard implemented; fresh independent review and unified CI pending",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
       "owner": "validation",
       "baseBlob": "c85bd8ce5ddcaffcb5a459c89dc78854ce3d9e41",
-      "newBlob": "1e7f51c21b1dbca75bba8ed9feed1f397fa12fa5",
-      "newSHA256": "09ee8410520c8885d8630f9a5d362f1d78b20ce21bd1afb2480e8ec2da7dce41",
+      "newBlob": "db8e188ab437e5db2db3d09098a7719275a45d3b",
+      "newSHA256": "170e5d544592ba9f235735bbd67814a0251c1d7731be517174179e35608e59be",
       "mode": "100644",
-      "bytes": 48797
+      "bytes": 54112
     },
     {
       "path": "adapter/inbound_test.go",
@@ -232,10 +232,10 @@
       "path": "directory_windows_other.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "27973bc9558bd312dd6babc8750f98804c06662a",
-      "newSHA256": "10e64d25f5a645633f8963963e0fc0b5c3241a0b9514892d2c5b4cc36d62a9be",
+      "newBlob": "ffacd4c36e29462b6c61d2879c1ed9e6a86b5da6",
+      "newSHA256": "1c13369cabb21322a2c872d34d802c1135e84fa6425d188534910a3b33d9d52f",
       "mode": "100644",
-      "bytes": 473
+      "bytes": 484
     },
     {
       "path": "directory_windows_test.go",
@@ -331,10 +331,10 @@
       "path": "experimental/directorywindows/activation_windows.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "3f44c0e047a627a012d7906fd4bd37538420daca",
-      "newSHA256": "fd77a5feb3254aa0ec562da6d830a413ba3d2adbad8d73a325e76f5de181c87c",
+      "newBlob": "5007c641aae5aa762537908d0ce20eb47da3493e",
+      "newSHA256": "067e1d2e54c88817406778610c62e4c496a163abe2627d092d503d053446d158",
       "mode": "100644",
-      "bytes": 6771
+      "bytes": 6837
     },
     {
       "path": "experimental/libbox/command_client.go",
@@ -466,10 +466,19 @@
       "path": "option/tailscale.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "4b1a3747e69eb6e33d4b2390d8c6fedaecbe1ed5",
-      "newBlob": "27634f67cef44957a86a07a5f943b2ad5e33bfcb",
-      "newSHA256": "080df7b919150f03c963d78ce49a974d99b5a2faca133f6e252599d04b9a0dbf",
+      "newBlob": "cea869c9bc68dbcc618bf95f4dd11226e8fe1059",
+      "newSHA256": "a5e97778d5ec4f1b8046c321bfc1515d7285d2963288a5750d948c47ed4928e8",
       "mode": "100644",
-      "bytes": 7457
+      "bytes": 7554
+    },
+    {
+      "path": "option/tailscale_stun_test.go",
+      "owner": "kernel-ci-remediation",
+      "baseBlob": null,
+      "newBlob": "182a6941eae495ed55afc92e6fcfe676c00a873e",
+      "newSHA256": "90143b816a8a4d5ba22406b3a1da086f03e25dfac1cdeb541005d5e332ba76ba",
+      "mode": "100644",
+      "bytes": 2087
     },
     {
       "path": "option/windows_directory.go",
@@ -592,10 +601,10 @@
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "aba9dbbd7e3bb74f017eff49f9f32dec931f4953",
-      "newSHA256": "a35fced97a46aaadf0fa348aaae4d2d408c2b6567253156ceea1513b4eb28555",
+      "newBlob": "d3805fa5192c1c847d7d0a17372ff44fa9b9ffa8",
+      "newSHA256": "f2be2118b4e3bc7f8fcdc4436686c3aa0b6feaaf5976f3199e53fc7ae7e10e44",
       "mode": "100644",
-      "bytes": 21619
+      "bytes": 23226
     },
     {
       "path": "protocol/tailscale/directory_store_admission_test.go",
@@ -691,10 +700,10 @@
       "path": "protocol/tailscale/state_store.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "f8399dbccd60a674ae603aef7b5ad4ae6c70ba31",
-      "newBlob": "d9254ea9f4424f2debfa44bc45713d044084885f",
-      "newSHA256": "fe3e002085c49953548a05aac08506ee5be78e39ef5e8f0f87defe2f5db611c3",
+      "newBlob": "3620ab7cca25cb350b8e490c97f3321a935003ae",
+      "newSHA256": "b81ec99a5ac1a785fa49c677ec5ec85e1e2754ef9cf853929c728fb36ec28247",
       "mode": "100644",
-      "bytes": 12903
+      "bytes": 12969
     },
     {
       "path": "protocol/tailscale/state_store_test.go",
@@ -924,13 +933,14 @@
   ],
   "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes.",
   "validationBoundary": {
-    "lastTestedCommit": "918198714a6ef8a7661e0c566761a0c0892fb53a",
-    "lastTestedTree": "40e4fbc23ae827f3e001d84610ce95b2cb4a7981",
-    "lint": "all 10 platforms failed; 149 unique findings addressed in current source, pending rerun",
-    "tests": "K1 Linux/macOS passed, Windows failed; current Windows fixes await rerun",
-    "selfcheck": "K1 format gate failed; current formatter fixed point and diagnostic fix do not certify CI",
-    "contract": "K1 passed; fresh current-tree run required",
-    "formatter": "golangci-lint2.15.0 official binary built Go1.27.0; current CI Go1.27.2; gci module discovery unavailable locally; write and --diff exited0 with empty diff",
-    "sourceReview": "71 source/helper paths statically reviewed; metadata reviewed separately; no final commit embedded"
+    "lastTestedCommit": "e4df75e43c76c83aa35a9b9fe9f8eb8eeafe61a4",
+    "lastTestedTree": "f923292171fe1d9354d4c47fed8cc322652728fc",
+    "lint": "all 10 K2 platforms failed on 14 unique staticcheck findings; corrected directive integration and STUN projection await rerun",
+    "tests": "K2 Linux/macOS passed; Windows only two DACL cleanup restoration failures remain; fixture restoration and diagnostics await rerun",
+    "selfcheck": "K2 formatter and all other nine selfcheck jobs passed; Patch tests failed on missing CLONE_NEWNET runner capability. Current guarded netns-only sudo-n binary execution is explicitly authorized for this batch, not executed yet.",
+    "contract": "K2 contract passed; current changed tree still needs fresh unified CI",
+    "formatter": "current 92 owned Go files fmt --diff exit0 empty; official golangci2.15.0 binary built Go1.27.0, CI1.27.2; local gci module discovery warning retained",
+    "sourceReview": "current batch requires independent static review; no final commit embedded",
+    "netnsAuthorization": "Only the common/netns test binary on this batch disposable GitHub Linux runner. Fixed same-repository PR2 identity plus exact current head or verified same-tree event merge; polaris-main only exact same head. Read-only API failure forbids elevation, unrelated sources retain original unprivileged gate. No host sysctl/AppArmor change; other packages and compilation remain unprivileged."
   }
 }

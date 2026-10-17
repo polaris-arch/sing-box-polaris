@@ -560,9 +560,9 @@
       "sha256": "0c354536aaed7e737992e9584c71fd241552a43c71839eb0c8a282c6c0f1d321"
     },
     "protocol/tailscale/state_store.go": {
-      "gitBlob": "d9254ea9f4424f2debfa44bc45713d044084885f",
-      "bytes": 12903,
-      "sha256": "fe3e002085c49953548a05aac08506ee5be78e39ef5e8f0f87defe2f5db611c3"
+      "gitBlob": "3620ab7cca25cb350b8e490c97f3321a935003ae",
+      "bytes": 12969,
+      "sha256": "b81ec99a5ac1a785fa49c677ec5ec85e1e2754ef9cf853929c728fb36ec28247"
     },
     "protocol/tailscale/state_store_test.go": {
       "gitBlob": "2fac14c42613cf042c17c1df741561c3757bdf31",
