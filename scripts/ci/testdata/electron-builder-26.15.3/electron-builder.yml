@@ -1,0 +1,185 @@
+productName: sing-box
+copyright: nekohasekai
+publish: null
+afterPack: scripts/afterPack.cjs
+afterSign: scripts/afterSign.cjs
+artifactBuildStarted: scripts/artifactBuildStarted.cjs
+artifactBuildCompleted: scripts/artifactBuildCompleted.cjs
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  loadBrowserProcessSpecificV8Snapshot: false
+  grantFileProtocolExtraPrivileges: true
+toolsets:
+  nsis: "1.2.1"
+directories:
+  buildResources: build
+  output: release
+files:
+  - out/**
+  - "!**/*.map"
+electronLanguages:
+  - en-US
+  - zh-CN
+  - zh-TW
+  - fa
+  - ru
+extraResources:
+  - from: resources/trayTemplate.png
+    to: trayTemplate.png
+  - from: resources/trayTemplate@2x.png
+    to: trayTemplate@2x.png
+  - from: resources/trayStoppedTemplate.png
+    to: trayStoppedTemplate.png
+  - from: resources/trayStoppedTemplate@2x.png
+    to: trayStoppedTemplate@2x.png
+  - from: dashboard/public/licenses/NotoColorEmoji-OFL.txt
+    to: licenses/NotoColorEmoji-OFL.txt
+  - from: resources/icons/512x512.png
+    to: icons/512x512.png
+fileAssociations:
+  - ext: bpf
+    name: sing-box profile
+    description: sing-box profile
+    mimeType: application/x-sing-box-profile
+win:
+  appId: io.nekohasekai.sfw
+  forceCodeSigning: true
+  icon: resources/icon.ico
+  signtoolOptions:
+    signingHashAlgorithms:
+      - sha256
+  extraResources:
+    - from: resources/tray.ico
+      to: tray.ico
+    - from: resources/trayStopped.ico
+      to: trayStopped.ico
+    - from: bin/windows/${arch}/sing-box-daemon.exe
+      to: daemon/sing-box-daemon.exe
+    - from: bin/windows/${arch}
+      to: daemon
+      filter:
+        - libcronet.dll
+        - WinDivert64.sys
+        - WinDivert32.sys
+        - VBoxUSB.sys
+        - VBoxUSB.inf
+        - VBoxUSB.cat
+        - VBoxUSBMon.sys
+        - usbip2_ude.sys
+        - usbip2_ude.inf
+        - usbip2_ude.cat
+        - usbip2_filter.sys
+        - usbip2_filter.inf
+        - usbip2_filter.cat
+    - from: bin/windows/${arch}/windows_share.node
+      to: native/windows_share.node
+  target:
+    - nsis
+  artifactName: SFW-${version}-${env.SFW_ARCHITECTURE}.${ext}
+nsis:
+  oneClick: false
+  buildUniversalInstaller: false
+  differentialPackage: false
+  installerLanguages:
+    - en_US
+    - zh_CN
+    - zh_TW
+    - ru_RU
+  license: LICENSE
+  perMachine: true
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
+  artifactName: SFW-${version}-${env.SFW_ARCHITECTURE}.${ext}
+linux:
+  appId: io.nekohasekai.sfl
+  syncDesktopName: true
+  executableName: sing-box
+  icon: resources/icons
+  synopsis: The universal proxy platform
+  category: Network
+  maintainer: 世界 <i@sekai.icu>
+  vendor: SagerNet
+  protocols:
+    - name: sing-box
+      schemes:
+        - sing-box
+  extraResources:
+    - from: resources/tray.png
+      to: tray.png
+    - from: resources/tray@2x.png
+      to: tray@2x.png
+    - from: resources/trayStopped.png
+      to: trayStopped.png
+    - from: resources/trayStopped@2x.png
+      to: trayStopped@2x.png
+    - from: bin/sing-box-daemon
+      to: daemon/sing-box-daemon
+  desktop:
+    entry:
+      StartupWMClass: sing-box
+  target:
+    - deb
+    - rpm
+    - pacman
+  artifactName: SFL-${version}-${arch}.${ext}
+deb:
+  packageCategory: net
+  afterInstall: build/linux-after-install.sh
+  afterRemove: build/linux-after-remove.sh
+  compression: xz
+  fpm:
+    - --depends=pkexec
+    - --deb-compression-level=9
+    - --before-remove=build/linux-before-remove.sh
+    - build/sing-box-daemon.service=/usr/lib/systemd/system/sing-box-daemon.service
+    - build/io.nekohasekai.sfl.policy=/usr/share/polkit-1/actions/io.nekohasekai.sfl.policy
+    - build/io.nekohasekai.sfl.metainfo.xml=/usr/share/metainfo/io.nekohasekai.sfl.metainfo.xml
+rpm:
+  packageCategory: Applications/Internet
+  afterInstall: build/linux-after-install.sh
+  afterRemove: build/linux-after-remove.sh
+  compression: xzmt
+  fpm:
+    - --depends=polkit
+    - --rpm-compression-level=9
+    - --rpm-rpmbuild-define=_buildhost reproducible
+    - --rpm-rpmbuild-define=use_source_date_epoch_as_buildtime 1
+    - --rpm-rpmbuild-define=clamp_mtime_to_source_date_epoch 1
+    - --before-remove=build/linux-before-remove.sh
+    - build/sing-box-daemon.service=/usr/lib/systemd/system/sing-box-daemon.service
+    - build/io.nekohasekai.sfl.policy=/usr/share/polkit-1/actions/io.nekohasekai.sfl.policy
+    - build/io.nekohasekai.sfl.metainfo.xml=/usr/share/metainfo/io.nekohasekai.sfl.metainfo.xml
+pacman:
+  artifactName: SFL-${version}-${arch}.pkg.tar.zst
+  packageCategory: network
+  afterInstall: build/linux-after-install-pacman.sh
+  afterRemove: build/linux-after-remove-pacman.sh
+  compression: zstd
+  depends:
+    - c-ares
+    - ffmpeg
+    - gtk3
+    - libevent
+    - libvpx
+    - libxslt
+    - libxss
+    - minizip
+    - nss
+    - re2
+    - snappy
+    - libnotify
+    - libappindicator-gtk3
+    - polkit
+  fpm:
+    - --description=Linux client for sing-box, The universal proxy platform
+    - --before-remove=build/linux-before-remove-pacman.sh
+    - --after-upgrade=build/linux-after-install-pacman.sh
+    - build/sing-box-daemon.service=/usr/lib/systemd/system/sing-box-daemon.service
+    - build/io.nekohasekai.sfl.policy=/usr/share/polkit-1/actions/io.nekohasekai.sfl.policy
+    - build/io.nekohasekai.sfl.metainfo.xml=/usr/share/metainfo/io.nekohasekai.sfl.metainfo.xml

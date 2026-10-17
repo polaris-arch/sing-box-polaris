@@ -746,11 +746,11 @@
           "kind": "branding",
           "beforeGitBlob": "295ccd9cfe7b000796944b770b9e1f3704535710",
           "beforeSHA256": "2ce5f537f252a93a336d2dd20bf3689d60a281fed62d3998ffe8a3c8e2506f35",
-          "afterSHA256": "4f5815c8460e6df32b5b755a0e0fa472b1e76b55c58466966cb1fa3970f53c5e",
+          "afterSHA256": "6a054022c815314b3828541dd96a79df4483abe386951a13b10fcd608535c445",
           "edits": [
             {
-              "old": "    StartupWMClass: sing-box",
-              "new": "    Name: sing-box-polaris\n    StartupWMClass: sing-box",
+              "old": "      StartupWMClass: sing-box",
+              "new": "      Name: sing-box-polaris\n      StartupWMClass: sing-box",
               "count": 1
             },
             {
@@ -988,11 +988,11 @@
           "kind": "branding",
           "beforeGitBlob": "295ccd9cfe7b000796944b770b9e1f3704535710",
           "beforeSHA256": "2ce5f537f252a93a336d2dd20bf3689d60a281fed62d3998ffe8a3c8e2506f35",
-          "afterSHA256": "4f5815c8460e6df32b5b755a0e0fa472b1e76b55c58466966cb1fa3970f53c5e",
+          "afterSHA256": "6a054022c815314b3828541dd96a79df4483abe386951a13b10fcd608535c445",
           "edits": [
             {
-              "old": "    StartupWMClass: sing-box",
-              "new": "    Name: sing-box-polaris\n    StartupWMClass: sing-box",
+              "old": "      StartupWMClass: sing-box",
+              "new": "      Name: sing-box-polaris\n      StartupWMClass: sing-box",
               "count": 1
             },
             {
