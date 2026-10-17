@@ -154,7 +154,7 @@ func NewDNSRuleAction(logger logger.ContextLogger, action option.DNSRuleAction) 
 			RemoveClientSubnet:     action.EvaluateOptions.RemoveClientSubnet,
 		}
 	case C.RuleActionTypeRespond:
-		return &RuleActionRespond{}
+		return &RuleActionRespond{Mode: action.RespondOptions.Mode, FallbackRcode: action.RespondOptions.FallbackRcode}
 	case C.RuleActionTypeRouteOptions:
 		return &RuleActionDNSRouteOptions{
 			Strategy:               C.DomainStrategy(action.RouteOptionsOptions.Strategy),
@@ -317,7 +317,10 @@ func (r *RuleActionEvaluate) String() string {
 	return formatDNSRouteAction("evaluate", r.Server, r.Speculative, r.RuleActionDNSRouteOptions)
 }
 
-type RuleActionRespond struct{}
+type RuleActionRespond struct {
+	Mode          string
+	FallbackRcode *option.DNSRCode
+}
 
 func (r *RuleActionRespond) Type() string {
 	return C.RuleActionTypeRespond

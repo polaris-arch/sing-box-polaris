@@ -115,6 +115,7 @@ const DomainResolverModeRules = "rules"
 
 type _DomainResolveOptions struct {
 	Mode                   string                `json:"mode,omitempty"`
+	Policy                 *string               `json:"policy,omitempty"`
 	Server                 string                `json:"server,omitempty" reference:"dns_server"`
 	Timeout                badoption.Duration    `json:"timeout,omitempty"`
 	Strategy               DomainStrategy        `json:"strategy,omitempty"`
@@ -130,8 +131,14 @@ type DomainResolveOptions _DomainResolveOptions
 func (o DomainResolveOptions) Validate() error {
 	switch o.Mode {
 	case "":
+		if o.Policy != nil {
+			return E.New("domain_resolver.policy requires rules mode")
+		}
 		return nil
 	case DomainResolverModeRules:
+		if o.Policy != nil && *o.Policy == "" {
+			return E.New("empty domain_resolver.policy")
+		}
 		if o.Server != "" {
 			return E.New("domain_resolver.server conflicts with rules mode")
 		}
@@ -196,6 +203,7 @@ func (o DomainResolveOptions) DescribeSchema(builder schema.Builder) (*schema.No
 			return nil, err
 		}
 		objectForm.Properties.Put("mode", schema.StringConst(""))
+		objectForm.Properties.Remove("policy")
 		objectForm.Required = []string{"server"}
 		rulesForm := schema.StrictObject()
 		err = builder.FlattenStruct(rulesForm, reflect.TypeFor[DomainResolveOptions]())

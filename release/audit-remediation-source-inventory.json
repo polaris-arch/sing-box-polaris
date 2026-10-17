@@ -1,7 +1,7 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "K5 diagnostics identified regular-file directory-inheritance flags; object-type ACL construction fixed in source; fresh unified CI required before merge",
+  "status": "Native node DNS policy v2 review corrections implemented; independent differential review and unified platform CI remain required before release adoption.",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
@@ -11,6 +11,24 @@
       "newSHA256": "13596f32d7fd422aad200c1881458cc97cf84632e9b7bc7aca17faf165150307",
       "mode": "100644",
       "bytes": 54623
+    },
+    {
+      "path": "adapter/dns.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "7fba8a77d5be8fc50bd40946b255c1e6f97e8487",
+      "newBlob": "a039b648715e578b56cb29ea843fcf6b5653121e",
+      "newSHA256": "c61d8f81e14101c9fc98f6c0006c33bd50f434ff4d3c75863976c44da776006d",
+      "mode": "100644",
+      "bytes": 3645
+    },
+    {
+      "path": "adapter/inbound.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "938c5f84ff52816e7962603397699dff919acb4d",
+      "newBlob": "7800c94bb57a90fa22a3802d4379345466526165",
+      "newSHA256": "32d4c47289f49662b40c7d8dd3730f8ac96f6ba7a7a369dadab07485b6706c49",
+      "mode": "100644",
+      "bytes": 5954
     },
     {
       "path": "adapter/inbound_test.go",
@@ -92,6 +110,15 @@
       "newSHA256": "8db7fc686ab34c3bc5eef9409d5e698573c2f1166d4138848ff12a910831faa9",
       "mode": "100644",
       "bytes": 2666
+    },
+    {
+      "path": "common/dialer/dialer.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "eeceaaf485a28a0c76e15755d7d6b9497a6de21f",
+      "newBlob": "8abeb54fa43fef9918972eaa250ec36aed2912a6",
+      "newSHA256": "e094b8e873a58e0d4e0d4e7a64bdb470d8e63ae0f0ff2ff185b35d20c9d6608d",
+      "mode": "100644",
+      "bytes": 7778
     },
     {
       "path": "common/dialer/domain_resolver_rules_test.go",
@@ -248,21 +275,57 @@
     },
     {
       "path": "dns/client.go",
-      "owner": "kernel-ci-remediation",
-      "baseBlob": "50edeb09b09440534c4e07551573027cc9697b87",
-      "newBlob": "b612f8f95b12dcd68b03212ed0e5e9ee02397001",
-      "newSHA256": "ce6196e3312236b81702263c5012f9e433ebcfd52429e4ef9e68ba552a1a103b",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "b612f8f95b12dcd68b03212ed0e5e9ee02397001",
+      "newBlob": "4fc049454d254fc44764af7e011880763037b3a6",
+      "newSHA256": "02d8f35ceafa1890c540992dfdbfe76ee9b10d49923d00128e359b5ea4c1430f",
       "mode": "100644",
-      "bytes": 26845
+      "bytes": 27228
     },
     {
       "path": "dns/router.go",
-      "owner": "kernel-ci-remediation",
-      "baseBlob": "011c0bc9067ff0a3f2ce579b9ba0ca007d990200",
-      "newBlob": "43852286892b60225cf85d07e585d9f733a49905",
-      "newSHA256": "1724264ab0509cfd48b0671b2a6008933fc9523b3e2688f8554d329a6e24976d",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "43852286892b60225cf85d07e585d9f733a49905",
+      "newBlob": "fb5d862b8957d0bb36aa78c86ed830247c22955d",
+      "newSHA256": "22714c608817690e42545e6625f399c01e082bc295031358cd508b2d11fd7d19",
       "mode": "100644",
-      "bytes": 58813
+      "bytes": 62298
+    },
+    {
+      "path": "dns/router_policy.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "eec939f7872964f72f7073f9e95cb5ce8a8506eb",
+      "newSHA256": "329da623ecf01b89123d4dfa550712c34bedb704ede6ea07bf182a2741c2022d",
+      "mode": "100644",
+      "bytes": 17506
+    },
+    {
+      "path": "dns/router_policy_app_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "98e7fd71f97f82c3ffe7e1096f152c8416057a80",
+      "newSHA256": "656714c73c8391bc2a0357bb4f225d7c578640de18bd51b69befa364c04d2546",
+      "mode": "100644",
+      "bytes": 5190
+    },
+    {
+      "path": "dns/router_policy_review_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "7ae0c994968948b79ea4befdc21ee19914a3283f",
+      "newSHA256": "5554a42470ed1d5bad06caeffe3e5d0a22ad0d8997c80c5a81108df50d81fc7e",
+      "mode": "100644",
+      "bytes": 10960
+    },
+    {
+      "path": "dns/router_policy_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "99de76fe372b437c8f2304f0d729d96e6c3e4506",
+      "newSHA256": "6bc366e41562100a55d9f745b4c47e8c86fd1c8b9204152065c2131fdb514204",
+      "mode": "100644",
+      "bytes": 24056
     },
     {
       "path": "dns/router_race_test.go",
@@ -281,6 +344,69 @@
       "newSHA256": "f65ded9c62ff0750a789318bcf1b5ade678460ceb8ff8b470023bd7551b04e0e",
       "mode": "100644",
       "bytes": 10882
+    },
+    {
+      "path": "dns/testdata/node-policy/android.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "b49bed4e9a93f57b9452fbf58af7aa45dd18e4ea",
+      "newSHA256": "61994b3cee8bf8f6f6bffa2c5c11dfc1e363c3ee15a355425fea9acd882a5358",
+      "mode": "100644",
+      "bytes": 14384
+    },
+    {
+      "path": "dns/testdata/node-policy/ios.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "b49bed4e9a93f57b9452fbf58af7aa45dd18e4ea",
+      "newSHA256": "61994b3cee8bf8f6f6bffa2c5c11dfc1e363c3ee15a355425fea9acd882a5358",
+      "mode": "100644",
+      "bytes": 14384
+    },
+    {
+      "path": "dns/testdata/node-policy/linux.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "f15c4f27b201245b80de07cf70180c209e833127",
+      "newSHA256": "6adb975df2aa65508c015c32ccc843ee35dea25462800a72ed4842a2f7b70685",
+      "mode": "100644",
+      "bytes": 15392
+    },
+    {
+      "path": "dns/testdata/node-policy/naive-android.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "b09124cf9725f8ee450f08905bb7cc363405843e",
+      "newSHA256": "26139de71ec05fc9cc9331814c7c566bb7f58eebbb570866910329b80174d045",
+      "mode": "100644",
+      "bytes": 14460
+    },
+    {
+      "path": "dns/testdata/node-policy/naive-ios.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "b09124cf9725f8ee450f08905bb7cc363405843e",
+      "newSHA256": "26139de71ec05fc9cc9331814c7c566bb7f58eebbb570866910329b80174d045",
+      "mode": "100644",
+      "bytes": 14460
+    },
+    {
+      "path": "dns/testdata/node-policy/naive-linux.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "aa2f2d78c4e162c81526f64fe4167a3cce36c9ae",
+      "newSHA256": "450cdf16956ffe9f5de94adb6d63d130dac66b5aace550db0137e6f482faf1ee",
+      "mode": "100644",
+      "bytes": 15468
+    },
+    {
+      "path": "dns/testdata/node-policy/provenance.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "65861014aa1c36aa8916e21c3d0e27106598c594",
+      "newSHA256": "f384562035d6a2062172ba21e923e3f6b8e8548d51ec52ec86988d092905013a",
+      "mode": "100644",
+      "bytes": 1744
     },
     {
       "path": "dns/transport/exchange_strategy.go",
@@ -308,6 +434,15 @@
       "newSHA256": "2df76ef50a2abb7ad0bbe795555fb4c1755ead2bda0e03593a8f08a7f0a4ca45",
       "mode": "100644",
       "bytes": 25518
+    },
+    {
+      "path": "docs/schema.json",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "4e0f7eab782315a7e1dc9973f6c45215d7c61f7d",
+      "newBlob": "11d94d85eff149a333b182625f0a516145340177",
+      "newSHA256": "a5e978e6f441e3eb0efbf950bc6c0934c599db65256781fcd951f30d4c85a2f3",
+      "mode": "100644",
+      "bytes": 486521
     },
     {
       "path": "experimental/boxdd/peer_linux.go",
@@ -436,6 +571,15 @@
       "bytes": 62093
     },
     {
+      "path": "option/domain_resolver_policy_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "e9831514ce9af847953dd1285cfdd9317bdd8338",
+      "newSHA256": "8e19d7111ee469b8dc069831bc3b792712990fd006516fc11c9fa310303375bc",
+      "mode": "100644",
+      "bytes": 2354
+    },
+    {
       "path": "option/domain_resolver_rules_test.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "c855c9b7e63c7eb2123ce308bb2ce6beeac1de3d",
@@ -454,6 +598,15 @@
       "bytes": 4793
     },
     {
+      "path": "option/outbound.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "1fb168ae41f226077841ac2386c528c5aaa8873a",
+      "newBlob": "95eb6b0b6c9c0f2ae6b98a6713522dc0dee1a562",
+      "newSHA256": "af76e6c93f2d1db43dccd8564aa2f38d61a21cf418bfffe8b7f6bf09ae7286f6",
+      "mode": "100644",
+      "bytes": 9132
+    },
+    {
       "path": "option/resolved.go",
       "owner": "kernel-ci-remediation",
       "baseBlob": "60981da30db95fa1db26a41830570b7fe90119f8",
@@ -461,6 +614,24 @@
       "newSHA256": "73a3c7bdd11478c051556193c9577e934e7d66158b4da3c676835f6c638622df",
       "mode": "100644",
       "bytes": 1723
+    },
+    {
+      "path": "option/rule_action.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "ae05200430bfaca77a436ef28f38316f149006b7",
+      "newBlob": "89fc4ffd5bfb4930431bb1ad12feede755554ccc",
+      "newSHA256": "6ad55f48d81317c2e2a2539be3841bc777ff8d1e0ca2a1baad801d027b81311b",
+      "mode": "100644",
+      "bytes": 14573
+    },
+    {
+      "path": "option/rule_dns.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "841c82d9ef808849df7d29e254ed117248658446",
+      "newBlob": "04095fc6f7d643436e4d7efd8557f4f5a6764cf3",
+      "newSHA256": "ac957cee3db39e53fd6ce0f2dbe44e1cea4895739340c7c2375f1b1075fcdcb9",
+      "mode": "100644",
+      "bytes": 14540
     },
     {
       "path": "option/tailscale.go",
@@ -488,6 +659,33 @@
       "newSHA256": "8ed6fbc4ad5e7f907c2f706f6240eed921d175559d04a50adee47a8cee0c2e45",
       "mode": "100644",
       "bytes": 468
+    },
+    {
+      "path": "protocol/naive/dns_resolver.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "30661b48654cf5f632ffc49428e3d3b04c563446",
+      "newSHA256": "3df25b597115f2342fa65b2135588413afa0198a55333eb72720677d3823426d",
+      "mode": "100644",
+      "bytes": 774
+    },
+    {
+      "path": "protocol/naive/dns_resolver_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "927e6630c7914db1b19bf0d8fe02e1ce91703fb3",
+      "newSHA256": "054d4b162fdfa63568e19162b5b25ea31e9c1f1d52f806f1a7c5831ba6d5c080",
+      "mode": "100644",
+      "bytes": 5514
+    },
+    {
+      "path": "protocol/naive/outbound.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "c892aa7aa27b367e7f653af4d6d4f7150f64712e",
+      "newBlob": "2106b24aff69eb2a3ec16ea1d3a807ccc6fc79c4",
+      "newSHA256": "8b8108b2ed93533779248fcdbff87dc1623febddc97d7d7de1396141e8f17808",
+      "mode": "100644",
+      "bytes": 8541
     },
     {
       "path": "protocol/openconnect/client.go",
@@ -724,6 +922,15 @@
       "bytes": 17956
     },
     {
+      "path": "release/POLARIS_NODE_DNS_POLICY.md",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "01f36476240c63b812d0965aa4fe5265b96eacb0",
+      "newSHA256": "2c83264b4ddb9fc56eca376e9cfad8a400bfd4c6d9df4b9f3da81e54b1bc4366",
+      "mode": "100644",
+      "bytes": 5056
+    },
+    {
       "path": "release/dependency-sources/sing-tun-baseline.json",
       "owner": "testing",
       "baseBlob": "21897876b2967cdbcffa0d98c86005c50efedaa3",
@@ -770,21 +977,39 @@
     },
     {
       "path": "route/rule/rule_action.go",
-      "owner": "kernel-ci-remediation",
-      "baseBlob": "cb6561181b2da67dbb33790af47065c79b05e0aa",
-      "newBlob": "4944a4fcf4a6a57c8d21394f91634b8f1fb6d9d4",
-      "newSHA256": "8b29151fd4cac90b9d3200a3f1d3876246357b0dcdfbc01ca4e94b97ac4036ea",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "4944a4fcf4a6a57c8d21394f91634b8f1fb6d9d4",
+      "newBlob": "f94bea3e204129971e5dc4313daf3d525408f37f",
+      "newSHA256": "8a1693eb42d5c2fed78238c1f88ade2104b7a7d459dc5ac229e5465fa5b4eefa",
       "mode": "100644",
-      "bytes": 20529
+      "bytes": 20669
     },
     {
       "path": "route/rule/rule_dns.go",
-      "owner": "kernel-ci-remediation",
-      "baseBlob": "c7a8c216fb6e16d25b5aefeb2272c6d084d5c2db",
-      "newBlob": "04ec0cfcde454da4b3287ace1f7bde82c32c7c89",
-      "newSHA256": "b498c2ad5027817b3a21743d8db62b142e6f73f6ed461f1e175586debeba43fe",
+      "owner": "native-node-dns-policy",
+      "baseBlob": "04ec0cfcde454da4b3287ace1f7bde82c32c7c89",
+      "newBlob": "4241857941edc773fe72dc1b86007dc02e202806",
+      "newSHA256": "42353a4f4a9a53e29be3e9674c378b2116039ff15f146afedf1f2686c572db41",
       "mode": "100644",
-      "bytes": 19693
+      "bytes": 20390
+    },
+    {
+      "path": "route/rule/rule_item_response_class.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "0ae5717251a53e3de351764504fa1887ba1252ea",
+      "newSHA256": "af427302279a9efa5c15354490f076ea976abe0fd7fb288466235535d820c4e9",
+      "mode": "100644",
+      "bytes": 4589
+    },
+    {
+      "path": "route/rule/rule_item_response_class_test.go",
+      "owner": "native-node-dns-policy",
+      "baseBlob": null,
+      "newBlob": "cc8744fd74b4117e4529b15bddf95ce4016e6d7c",
+      "newSHA256": "a014cad4a2026f70af4fb3206ae7c0be50b768cc3ff4c97eb2a53321ef1a065f",
+      "mode": "100644",
+      "bytes": 5278
     },
     {
       "path": "route/rule/rule_item_rule_set.go",

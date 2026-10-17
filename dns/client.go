@@ -358,6 +358,11 @@ func (c *Client) beginExchange(ctx context.Context, transport adapter.DNSTranspo
 
 func (c *Client) finishExchange(transport adapter.DNSTransport, operation *exchangeOperation, response *dns.Msg) (*dns.Msg, error) {
 	ctx := operation.ctx
+	if _, policy := transport.(*dnsPolicyTransport); policy {
+		if budget := dnsPolicyBudgetFrom(ctx); budget != nil && budget.parent.Err() != nil {
+			return nil, budget.parent.Err()
+		}
+	}
 	question := operation.question
 	disableCache := operation.disableCache || (response.Rcode != dns.RcodeSuccess && response.Rcode != dns.RcodeNameError)
 	if operation.responseChecker != nil {
@@ -401,8 +406,11 @@ func (c *Client) Exchange(ctx context.Context, transport adapter.DNSTransport, m
 	if options.Timeout == 0 {
 		options.Timeout = c.timeout
 	}
-	ctx, cancel := context.WithTimeout(ctx, options.Timeout)
-	defer cancel()
+	if _, policy := transport.(*dnsPolicyTransport); !policy {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, options.Timeout)
+		defer cancel()
+	}
 	operation, earlyResponse, status, err := c.beginExchange(ctx, transport, message, options, responseChecker, true)
 	if status != exchangeReady {
 		return earlyResponse, err
@@ -679,8 +687,11 @@ func (c *Client) backgroundRefreshDNS(transport adapter.DNSTransport, key dnsCac
 			timeout = c.timeout
 		}
 		ctx := adapter.ContextWithDNSTransportTag(c.ctx, transport.Tag())
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
+		if _, policy := transport.(*dnsPolicyTransport); !policy {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
+		}
 		response, err := c.exchangeToTransport(ctx, transport, message)
 		if err != nil {
 			if c.logger != nil {

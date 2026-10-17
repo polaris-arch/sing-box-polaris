@@ -34,6 +34,7 @@ type DNSClient interface {
 type DNSQueryOptions struct {
 	// UseRules selects dial-side DNS rules with one timeout for the entire lookup.
 	UseRules               bool
+	Policy                 string
 	Transport              DNSTransport
 	Strategy               C.DomainStrategy
 	LookupStrategy         C.DomainStrategy

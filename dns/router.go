@@ -5,8 +5,10 @@ import (
 	"errors"
 	"maps"
 	"net/netip"
+	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -20,6 +22,7 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
+	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/task"
@@ -51,6 +54,7 @@ type Router struct {
 	rulesAccess           sync.RWMutex
 	started               bool
 	closing               bool
+	policyConfigIdentity  string
 }
 
 func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOptions) (*Router, error) {
@@ -64,6 +68,11 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 		rules:                 make([]adapter.DNSRule, 0, len(options.Rules)),
 		defaultDomainStrategy: C.DomainStrategy(options.Strategy),
 	}
+	encodedPolicyConfig, err := json.Marshal(options.Servers)
+	if err != nil {
+		return nil, err
+	}
+	router.policyConfigIdentity = string(encodedPolicyConfig)
 	if options.DNSClientOptions.IndependentCache {
 		deprecated.Report(ctx, deprecated.OptionIndependentDNSCache)
 	}
@@ -173,6 +182,9 @@ func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (r *Router) buildRules(startRules bool) ([]adapter.DNSRule, bool, dnsRuleModeFlags, error) {
+	if err := r.validateDNSPolicies(); err != nil {
+		return nil, false, dnsRuleModeFlags{}, err
+	}
 	for i, ruleOptions := range r.rawRules {
 		err := R.ValidateNoNestedDNSRuleActions(ruleOptions)
 		if err != nil {
@@ -180,13 +192,13 @@ func (r *Router) buildRules(startRules bool) ([]adapter.DNSRule, bool, dnsRuleMo
 		}
 	}
 	router := service.FromContext[adapter.Router](r.ctx)
-	legacyDNSMode, modeFlags, err := resolveLegacyDNSMode(router, r.rawRules, nil)
+	legacyDNSMode, modeFlags, err := resolveLegacyDNSMode(router, unscopedDNSRules(r.rawRules), nil)
 	if err != nil {
 		return nil, false, dnsRuleModeFlags{}, err
 	}
 	if !legacyDNSMode {
 		var validationWarnings []string
-		validationWarnings, err = validateLegacyDNSModeDisabledRules(router, r.rawRules, nil)
+		validationWarnings, err = validateLegacyDNSModeDisabledRules(router, unscopedDNSRules(r.rawRules), nil)
 		if err != nil {
 			return nil, false, dnsRuleModeFlags{}, err
 		}
@@ -201,7 +213,7 @@ func (r *Router) buildRules(startRules bool) ([]adapter.DNSRule, bool, dnsRuleMo
 	newRules := make([]adapter.DNSRule, 0, len(r.rawRules))
 	for i, ruleOptions := range r.rawRules {
 		var dnsRule adapter.DNSRule
-		dnsRule, err = R.NewDNSRule(r.ctx, r.logger, ruleOptions, true, legacyDNSMode)
+		dnsRule, err = R.NewDNSRule(r.ctx, r.logger, ruleOptions, true, legacyDNSMode && dnsPolicyID(ruleOptions) == "")
 		if err != nil {
 			closeRules(newRules)
 			return nil, false, dnsRuleModeFlags{}, E.Cause(err, "parse dns rule[", i, "]")
@@ -246,23 +258,23 @@ func (r *Router) ValidateRuleSetMetadataUpdate(tag string, metadata adapter.Rule
 		return nil
 	}
 	if !started {
-		candidateLegacyDNSMode, _, err := resolveLegacyDNSMode(router, r.rawRules, overrides)
+		candidateLegacyDNSMode, _, err := resolveLegacyDNSMode(router, unscopedDNSRules(r.rawRules), overrides)
 		if err != nil {
 			return err
 		}
 		if !candidateLegacyDNSMode {
-			_, err = validateLegacyDNSModeDisabledRules(router, r.rawRules, overrides)
+			_, err = validateLegacyDNSModeDisabledRules(router, unscopedDNSRules(r.rawRules), overrides)
 			return err
 		}
 		return nil
 	}
-	candidateLegacyDNSMode, flags, err := resolveLegacyDNSMode(router, r.rawRules, overrides)
+	candidateLegacyDNSMode, flags, err := resolveLegacyDNSMode(router, unscopedDNSRules(r.rawRules), overrides)
 	if err != nil {
 		return err
 	}
 	if legacyDNSMode {
 		if !candidateLegacyDNSMode && flags.disabled {
-			_, err = validateLegacyDNSModeDisabledRules(router, r.rawRules, overrides)
+			_, err = validateLegacyDNSModeDisabledRules(router, unscopedDNSRules(r.rawRules), overrides)
 			if err != nil {
 				return err
 			}
@@ -273,7 +285,7 @@ func (r *Router) ValidateRuleSetMetadataUpdate(tag string, metadata adapter.Rule
 	if candidateLegacyDNSMode {
 		return E.New(deprecated.OptionLegacyDNSAddressFilter.MessageWithLink())
 	}
-	_, err = validateLegacyDNSModeDisabledRules(router, r.rawRules, overrides)
+	_, err = validateLegacyDNSModeDisabledRules(router, unscopedDNSRules(r.rawRules), overrides)
 	return err
 }
 
@@ -443,6 +455,10 @@ type dnsRuleWalkState struct {
 	terminalFuture   *dnsEvaluatedFuture
 	terminalIndex    int
 	wake             chan struct{}
+	policy           bool
+	completion       atomic.Uint64
+	publication      sync.Mutex
+	deferred         *dnsEvaluatedFuture
 }
 
 func (s *dnsRuleWalkState) anonymousResponse() *mDNS.Msg {
@@ -453,14 +469,16 @@ func (s *dnsRuleWalkState) anonymousResponse() *mDNS.Msg {
 }
 
 type dnsEvaluatedFuture struct {
-	tag       string
-	terminal  bool
-	transport adapter.DNSTransport
-	cancel    context.CancelFunc
-	done      chan struct{}
-	response  *mDNS.Msg
-	err       error
-	settled   bool
+	tag         string
+	terminal    bool
+	transport   adapter.DNSTransport
+	cancel      context.CancelFunc
+	done        chan struct{}
+	response    *mDNS.Msg
+	err         error
+	settled     bool
+	sequence    uint64
+	completedAt time.Time
 }
 
 func (f *dnsEvaluatedFuture) resolved() bool {
@@ -513,10 +531,26 @@ func (r *Router) launchDNSEvaluate(ctx context.Context, state *dnsRuleWalkState,
 		done:      make(chan struct{}),
 	}
 	state.futures = append(state.futures, future)
+	if state.policy && (ctx.Err() != nil || dnsPolicyDeadlineExpired(ctx)) {
+		future.err = context.DeadlineExceeded
+		if ctx.Err() != nil {
+			future.err = ctx.Err()
+		}
+		close(future.done)
+		return future
+	}
 	r.client.ExchangeAsync(exchangeCtx, transport, message, r.finalizeExchangeOptions(options), nil, func(response *mDNS.Msg, err error) {
+		if state.policy {
+			state.publication.Lock()
+		}
 		future.response = response
 		future.err = err
+		future.completedAt = time.Now()
+		future.sequence = state.completion.Add(1)
 		close(future.done)
+		if state.policy {
+			state.publication.Unlock()
+		}
 		select {
 		case wake <- struct{}{}:
 		default:
@@ -576,6 +610,9 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 		panic("no context")
 	}
 	for ; state.ruleIndex < len(rules); state.ruleIndex++ {
+		if state.policy && (ctx.Err() != nil || dnsPolicyDeadlineExpired(ctx)) {
+			return r.finishDNSPolicyDeadline(ctx, rules, message, state), nil
+		}
 		currentRule := rules[state.ruleIndex]
 		hasBindings := len(currentRule.MatchResponseTags()) > 0 || currentRule.MatchResponseAnonymous()
 		if hasBindings {
@@ -676,6 +713,12 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 				state.namedFutures[action.Tag] = future
 			}
 		case *R.RuleActionRespond:
+			if action.Mode == "fallback" {
+				if len(state.armedRules) > 0 {
+					return exchangeWithRulesResult{}, &dnsWalkSuspension{drain: true}
+				}
+				return dnsPolicyFallback(message, state), nil
+			}
 			if len(state.armedRules) > 0 {
 				return exchangeWithRulesResult{}, &dnsWalkSuspension{drain: true}
 			}
@@ -761,7 +804,7 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 }
 
 func (r *Router) exchangeWithRules(ctx context.Context, rules []adapter.DNSRule, message *mDNS.Msg, options adapter.DNSQueryOptions, allowFakeIP bool) exchangeWithRulesResult {
-	state := dnsRuleWalkState{effectiveOptions: options, lastLoggedIndex: -1}
+	state := dnsRuleWalkState{effectiveOptions: options, lastLoggedIndex: -1, policy: options.Policy != ""}
 	result, suspension := r.walkDNSRules(ctx, rules, message, &state, allowFakeIP)
 	if suspension == nil {
 		cancelDNSFutures(&state)
@@ -789,6 +832,9 @@ func (r *Router) resumeExchangeWithRules(ctx context.Context, rules []adapter.DN
 				select {
 				case <-state.wake:
 				case <-ctx.Done():
+					if state.policy {
+						return r.finishDNSPolicyDeadline(ctx, rules, message, state)
+					}
 					return exchangeWithRulesResult{err: ctx.Err()}
 				}
 				continue
@@ -804,8 +850,41 @@ func (r *Router) resumeExchangeWithRules(ctx context.Context, rules []adapter.DN
 
 func (r *Router) sweepArmedDNSRules(ctx context.Context, message *mDNS.Msg, state *dnsRuleWalkState, allowFakeIP bool) (exchangeWithRulesResult, *dnsPendingExchange, bool) {
 	metadata := adapter.ContextFrom(ctx)
+	var policyReady map[*dnsArmedRule]uint64
+	if state.policy {
+		// A single publication boundary covers metadata settlement and the
+		// ready snapshot. No earlier published completion can be skipped just
+		// because the preceding unlocked settlement scan visited it too early.
+		state.publication.Lock()
+		r.settleDNSFutures(ctx, message, state)
+		order := make(map[*dnsArmedRule]uint64, len(state.armedRules))
+		policyReady = order
+		for _, armed := range state.armedRules {
+			future := policyArmedFuture(state, armed)
+			order[armed] = ^uint64(0)
+			if future == nil {
+				order[armed] = 0
+			} // A-only candidates have no AAAA future.
+			if future != nil && future.settled && policyFutureInBudget(ctx, future) {
+				order[armed] = future.sequence
+			}
+		}
+		sort.SliceStable(state.armedRules, func(i, j int) bool { return order[state.armedRules[i]] < order[state.armedRules[j]] })
+		state.publication.Unlock()
+	}
 	for index := 0; index < len(state.armedRules); {
 		armed := state.armedRules[index]
+		if state.policy && policyReady[armed] == ^uint64(0) {
+			index++
+			continue
+		}
+		if state.policy {
+			future := policyArmedFuture(state, armed)
+			if future != nil && future.resolved() && !policyFutureInBudget(ctx, future) {
+				state.armedRules = append(state.armedRules[:index], state.armedRules[index+1:]...)
+				continue
+			}
+		}
 		ready := true
 		for _, future := range armed.futures {
 			if !future.resolved() {
@@ -836,6 +915,13 @@ func (r *Router) sweepArmedDNSRules(ctx context.Context, message *mDNS.Msg, stat
 		r.logRuleMatch(ctx, armed.ruleIndex, armed.rule)
 		switch action := armed.rule.Action().(type) {
 		case *R.RuleActionRespond:
+			if action.Mode == "defer" {
+				future := policyArmedFuture(state, armed)
+				if future != nil && future.view() != nil && (state.deferred == nil || future.sequence < state.deferred.sequence) {
+					state.deferred = future
+				}
+				continue
+			}
 			var (
 				response  *mDNS.Msg
 				transport adapter.DNSTransport
@@ -1082,11 +1168,12 @@ func (r *Router) prepareExchange(ctx context.Context, message *mDNS.Msg) (*dnsEx
 		r.rulesAccess.RUnlock()
 		return nil, nil, E.New("dns router closed")
 	}
-	rules := r.rules
+	rules := r.ordinaryDNSRules()
 	legacyDNSMode := r.legacyDNSMode
 	r.rulesAccess.RUnlock()
 	r.logger.DebugContext(ctx, "exchange ", FormatQuestion(message.Question[0].String()))
 	ctx, metadata := adapter.ExtendContext(ctx)
+	metadata.DNSResolverPolicy = ""
 	metadata.Destination = M.Socksaddr{}
 	metadata.QueryType = message.Question[0].Qtype
 	metadata.DNSResponse = nil
@@ -1178,6 +1265,9 @@ func (r *Router) exchangeLegacy(ctx context.Context, exchangeCtx *dnsExchangeCon
 }
 
 func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions) (*mDNS.Msg, error) {
+	if options.Policy != "" {
+		return r.exchangePolicy(ctx, message, options)
+	}
 	exchangeCtx, earlyResponse, err := r.prepareExchange(ctx, message)
 	if exchangeCtx == nil {
 		return earlyResponse, err
@@ -1204,6 +1294,10 @@ func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapte
 }
 
 func (r *Router) ExchangeAsync(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions, callback func(response *mDNS.Msg, err error)) {
+	if options.Policy != "" {
+		go func() { callback(r.exchangePolicy(ctx, message, options)) }()
+		return
+	}
 	exchangeCtx, earlyResponse, err := r.prepareExchange(ctx, message)
 	if exchangeCtx == nil {
 		callback(earlyResponse, err)
@@ -1237,6 +1331,9 @@ func (r *Router) finishExchangeAsync(message *mDNS.Msg, transport adapter.DNSTra
 }
 
 func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQueryOptions) ([]netip.Addr, error) {
+	if options.Policy != "" {
+		return r.lookupPolicy(ctx, domain, options)
+	}
 	if options.UseRules {
 		if options.Transport != nil {
 			return nil, E.New("rules lookup cannot specify a DNS transport")
@@ -1256,7 +1353,7 @@ func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQ
 		r.rulesAccess.RUnlock()
 		return nil, E.New("dns router closed")
 	}
-	rules := r.rules
+	rules := r.ordinaryDNSRules()
 	legacyDNSMode := r.legacyDNSMode
 	r.rulesAccess.RUnlock()
 	var (
@@ -1286,6 +1383,7 @@ func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQ
 	}
 	r.logger.DebugContext(ctx, "lookup domain ", domain)
 	ctx, metadata := adapter.ExtendContext(ctx)
+	metadata.DNSResolverPolicy = ""
 	metadata.Destination = M.Socksaddr{}
 	metadata.Domain = FqdnToDomain(domain)
 	metadata.DNSResponse = nil
@@ -1407,7 +1505,7 @@ func defaultRuleNeedsLegacyDNSModeFromAddressFilter(rule option.DefaultDNSRule) 
 }
 
 func hasResponseMatchFields(rule option.DefaultDNSRule) bool {
-	return rule.ResponseRcode != nil ||
+	return rule.ResponseClass != "" || rule.ResponseRcode != nil ||
 		len(rule.ResponseAnswer) > 0 ||
 		len(rule.ResponseNs) > 0 ||
 		len(rule.ResponseExtra) > 0
@@ -1669,7 +1767,7 @@ func validateLegacyDNSModeDisabledDefaultRule(router adapter.Router, rule option
 			use.needsAnonymous = true
 		}
 	}
-	if rule.Action == C.RuleActionTypeRespond && rule.MatchResponse.ResponseTag() == "" {
+	if rule.Action == C.RuleActionTypeRespond && rule.RespondOptions.Mode != "fallback" && rule.MatchResponse.ResponseTag() == "" {
 		use.needsAnonymous = true
 	}
 	return use, nil

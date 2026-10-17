@@ -103,6 +103,7 @@ type _DNSRuleAction struct {
 	Race                bool                         `json:"race,omitempty"`
 	RouteOptions        DNSRouteActionOptions        `json:"-"`
 	EvaluateOptions     DNSEvaluateActionOptions     `json:"-"`
+	RespondOptions      DNSRespondActionOptions      `json:"-"`
 	RouteOptionsOptions DNSRouteOptionsActionOptions `json:"-"`
 	RejectOptions       RejectActionOptions          `json:"-"`
 	PredefinedOptions   DNSRouteActionPredefined     `json:"-"`
@@ -122,7 +123,7 @@ func (r DNSRuleAction) MarshalJSON() ([]byte, error) {
 	case C.RuleActionTypeEvaluate:
 		v = r.EvaluateOptions
 	case C.RuleActionTypeRespond:
-		v = nil
+		v = r.RespondOptions
 	case C.RuleActionTypeRouteOptions:
 		v = r.RouteOptionsOptions
 	case C.RuleActionTypeReject:
@@ -151,7 +152,7 @@ func (r *DNSRuleAction) UnmarshalJSONContext(ctx context.Context, data []byte) e
 	case C.RuleActionTypeEvaluate:
 		v = &r.EvaluateOptions
 	case C.RuleActionTypeRespond:
-		v = nil
+		v = &r.RespondOptions
 	case C.RuleActionTypeRouteOptions:
 		v = &r.RouteOptionsOptions
 	case C.RuleActionTypeReject:
@@ -214,6 +215,11 @@ type DNSRouteActionOptions struct {
 	Server      string `json:"server,omitempty" reference:"dns_server"`
 	Speculative bool   `json:"speculative,omitempty"`
 	AbstractDNSRouteActionOptions
+}
+
+type DNSRespondActionOptions struct {
+	Mode          string    `json:"mode,omitempty" enum:"immediate,defer,fallback"`
+	FallbackRcode *DNSRCode `json:"fallback_rcode,omitempty"`
 }
 
 type DNSEvaluateActionOptions struct {
@@ -415,7 +421,7 @@ func dnsActionUnion(builder schema.Builder) (*schema.Node, error) {
 	return actionUnion(builder, []actionVariant{
 		{action: C.RuleActionTypeRoute, actionOptional: true, structType: reflect.TypeFor[DNSRouteActionOptions](), build: raceProperty},
 		{action: C.RuleActionTypeEvaluate, structType: reflect.TypeFor[DNSEvaluateActionOptions](), build: raceProperty},
-		{action: C.RuleActionTypeRespond, build: raceProperty},
+		{action: C.RuleActionTypeRespond, structType: reflect.TypeFor[DNSRespondActionOptions](), build: raceProperty},
 		{action: C.RuleActionTypeRouteOptions, structType: reflect.TypeFor[DNSRouteOptionsActionOptions](), build: raceProperty},
 		{action: C.RuleActionTypeReject, build: rejectWithRace},
 		{action: C.RuleActionTypePredefined, structType: reflect.TypeFor[DNSRouteActionPredefined](), build: raceProperty},

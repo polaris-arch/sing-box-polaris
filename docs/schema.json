@@ -1037,6 +1037,29 @@
                     ""
                   ]
                 },
+                "resolver_policy": {
+                  "type": "string"
+                },
+                "response_class": {
+                  "type": "string",
+                  "enum": [
+                    "hit",
+                    "empty"
+                  ]
+                },
+                "response_reject_ip_cidr": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/IPAddressOrPrefix"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/IPAddressOrPrefix"
+                      }
+                    }
+                  ]
+                },
                 "inbound": {
                   "anyOf": [
                     {
@@ -1678,7 +1701,7 @@
               ]
             },
             {
-              "$ref": "#/$defs/DNSRuleAction"
+              "$ref": "#/$defs/DNSLogicalRuleAction"
             }
           ]
         }
@@ -1776,6 +1799,17 @@
             },
             "race": {
               "type": "boolean"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "immediate",
+                "defer",
+                "fallback"
+              ]
+            },
+            "fallback_rcode": {
+              "$ref": "#/$defs/DNSRCode"
             }
           },
           "required": [
@@ -3388,6 +3422,9 @@
         {
           "type": "object",
           "properties": {
+            "mode": {
+              "const": ""
+            },
             "server": {
               "type": "string",
               "x-tag-reference": "dns_server"
@@ -3417,6 +3454,44 @@
             "server"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "rules"
+            },
+            "policy": {
+              "type": "string"
+            },
+            "server": {
+              "const": ""
+            },
+            "timeout": {
+              "$ref": "#/$defs/Duration"
+            },
+            "strategy": {
+              "$ref": "#/$defs/DomainStrategy"
+            },
+            "disable_cache": {
+              "type": "boolean"
+            },
+            "disable_optimistic_cache": {
+              "type": "boolean"
+            },
+            "rewrite_ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "client_subnet": {
+              "$ref": "#/$defs/IPAddressOrPrefix"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -3433,7 +3508,7 @@
     },
     "Duration": {
       "type": "string",
-      "pattern": "^[-+]?(((\\d+(\\.\\d*)?|\\.\\d+)(ns|us|µs|μs|ms|s|m|h|d))+|0)$"
+      "pattern": "^[-+]?(((\\d+(\\.\\d*)?|\\.\\d+)(ns|us|\u00b5s|\u03bcs|ms|s|m|h|d))+|0)$"
     },
     "Endpoint": {
       "oneOf": [
@@ -18063,7 +18138,7 @@
         },
         {
           "type": "string",
-          "pattern": "^[-+]?(((\\d+(\\.\\d*)?|\\.\\d+)(ns|us|µs|μs|ms|s|m|h|d))+|0)$"
+          "pattern": "^[-+]?(((\\d+(\\.\\d*)?|\\.\\d+)(ns|us|\u00b5s|\u03bcs|ms|s|m|h|d))+|0)$"
         }
       ]
     },
@@ -18342,6 +18417,222 @@
         }
       },
       "additionalProperties": false
+    },
+    "DNSLogicalRuleAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "route"
+            },
+            "race": {
+              "type": "boolean"
+            },
+            "server": {
+              "type": "string",
+              "x-tag-reference": "dns_server"
+            },
+            "speculative": {
+              "type": "boolean"
+            },
+            "timeout": {
+              "$ref": "#/$defs/Duration"
+            },
+            "disable_cache": {
+              "type": "boolean"
+            },
+            "disable_optimistic_cache": {
+              "type": "boolean"
+            },
+            "rewrite_ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "client_subnet": {
+              "$ref": "#/$defs/IPAddressOrPrefix"
+            },
+            "remove_client_subnet": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "evaluate"
+            },
+            "race": {
+              "type": "boolean"
+            },
+            "server": {
+              "type": "string",
+              "x-tag-reference": "dns_server"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "speculative": {
+              "type": "boolean"
+            },
+            "timeout": {
+              "$ref": "#/$defs/Duration"
+            },
+            "disable_cache": {
+              "type": "boolean"
+            },
+            "disable_optimistic_cache": {
+              "type": "boolean"
+            },
+            "rewrite_ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "client_subnet": {
+              "$ref": "#/$defs/IPAddressOrPrefix"
+            },
+            "remove_client_subnet": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "respond"
+            },
+            "race": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "route-options"
+            },
+            "race": {
+              "type": "boolean"
+            },
+            "timeout": {
+              "$ref": "#/$defs/Duration"
+            },
+            "disable_cache": {
+              "type": "boolean"
+            },
+            "disable_optimistic_cache": {
+              "type": "boolean"
+            },
+            "rewrite_ttl": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "client_subnet": {
+              "$ref": "#/$defs/IPAddressOrPrefix"
+            },
+            "remove_client_subnet": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "reject"
+            },
+            "race": {
+              "type": "boolean"
+            },
+            "method": {
+              "type": "string",
+              "enum": [
+                "",
+                "default",
+                "drop",
+                "reply"
+              ]
+            },
+            "no_drop": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "const": "predefined"
+            },
+            "race": {
+              "type": "boolean"
+            },
+            "rcode": {
+              "$ref": "#/$defs/DNSRCode"
+            },
+            "answer": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "ns": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "extra": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "action"
+          ]
+        }
+      ]
     }
   }
 }

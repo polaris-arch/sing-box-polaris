@@ -10,6 +10,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/experimental/deprecated"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -117,6 +118,12 @@ func NewDNSQueryOptions(ctx context.Context, domainResolver *option.DomainResolv
 			return adapter.DNSQueryOptions{}, err
 		}
 		if domainResolver.Mode == option.DomainResolverModeRules {
+			if domainResolver.Policy != nil {
+				policyRouter, ok := service.FromContext[adapter.DNSRouter](ctx).(interface{ HasResolverPolicy(string) bool })
+				if !ok || !policyRouter.HasResolverPolicy(*domainResolver.Policy) {
+					return adapter.DNSQueryOptions{}, E.New("unknown DNS resolver policy: ", *domainResolver.Policy)
+				}
+			}
 			return domainResolveQueryOptions(domainResolver), nil
 		}
 	}
@@ -156,6 +163,7 @@ func NewDNSQueryOptions(ctx context.Context, domainResolver *option.DomainResolv
 func domainResolveQueryOptions(domainResolver *option.DomainResolveOptions) adapter.DNSQueryOptions {
 	return adapter.DNSQueryOptions{
 		UseRules:               domainResolver.Mode == option.DomainResolverModeRules,
+		Policy:                 common.PtrValueOrDefault(domainResolver.Policy),
 		Strategy:               C.DomainStrategy(domainResolver.Strategy),
 		Timeout:                time.Duration(domainResolver.Timeout),
 		DisableCache:           domainResolver.DisableCache,

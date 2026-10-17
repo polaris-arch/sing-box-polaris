@@ -1,0 +1,46 @@
+{
+  "schema": "polaris-app-generated-node-policy-fixtures-v1",
+  "appBaseCommit": "060b0027e7084a38703c4782a14b94c6fd9e8e07",
+  "appChanges": "isolated native node DNS retirement batch; not yet committed",
+  "generator": "crates/config-engine/examples/native-node-dns-fixture.rs",
+  "generatorSha256": "45b18b62d6f14d9b34c16b5974cf24ac122d1088805bbe9bc28a21e5dad3f511",
+  "rustVersion": "1.99.1",
+  "command": "cargo run --locked -p polaris-config-engine --example native-node-dns-fixture -- <platform>",
+  "fixtures": [
+    {
+      "platform": "android",
+      "path": "android.json",
+      "sha256": "61994b3cee8bf8f6f6bffa2c5c11dfc1e363c3ee15a355425fea9acd882a5358"
+    },
+    {
+      "platform": "ios",
+      "path": "ios.json",
+      "sha256": "61994b3cee8bf8f6f6bffa2c5c11dfc1e363c3ee15a355425fea9acd882a5358"
+    },
+    {
+      "platform": "linux",
+      "path": "linux.json",
+      "sha256": "6adb975df2aa65508c015c32ccc843ee35dea25462800a72ed4842a2f7b70685"
+    },
+    {
+      "platform": "android",
+      "protocol": "naive",
+      "path": "naive-android.json",
+      "sha256": "26139de71ec05fc9cc9331814c7c566bb7f58eebbb570866910329b80174d045"
+    },
+    {
+      "platform": "ios",
+      "protocol": "naive",
+      "path": "naive-ios.json",
+      "sha256": "26139de71ec05fc9cc9331814c7c566bb7f58eebbb570866910329b80174d045"
+    },
+    {
+      "platform": "linux",
+      "protocol": "naive",
+      "path": "naive-linux.json",
+      "sha256": "450cdf16956ffe9f5de94adb6d63d130dac66b5aace550db0137e6f482faf1ee"
+    }
+  ],
+  "naiveGeneratorSha256": "2e8396f36836b7a16906dabdd6edf542b3df5780256c63193a15f8a1a5a76b60",
+  "naiveCommand": "cargo run --locked -p polaris-config-engine --example native-node-dns-fixture -- <platform> naive"
+}
