@@ -1,7 +1,7 @@
 {
   "schema": "audit-remediation-source-inventory-v1",
   "repository": "polaris-arch/sing-box-polaris",
-  "status": "K3 remaining three CI failures remediated in source; all 112 lightweight Python tests passed; independent final identity review and fresh unified CI pending",
+  "status": "DIAGNOSTIC ONLY: K4 Windows cleanup ACE mismatch remains unresolved; strict restoration gate retained; do not merge to polaris-main",
   "files": [
     {
       "path": ".github/workflows/polaris-selfcheck.yml",
@@ -601,10 +601,10 @@
       "path": "protocol/tailscale/directory_process_windows_test.go",
       "owner": "windows-kernel",
       "baseBlob": null,
-      "newBlob": "36f2288b084ce94f9d63f41faf31a5c67dae11ee",
-      "newSHA256": "2f5bd04cb2ff9c7dab1ffa7f096f107b5dc88300cb8951c4afb8c9bd6c184dae",
+      "newBlob": "e8d53805b9202c623ec1cc23fee8027396fbca9a",
+      "newSHA256": "35fa013407d8fe872c769f322193b88c2de11174027f02ae4ab24755c157d935",
       "mode": "100644",
-      "bytes": 27083
+      "bytes": 33206
     },
     {
       "path": "protocol/tailscale/directory_store_admission_test.go",
@@ -942,13 +942,13 @@
   ],
   "identityBoundary": "No final commit SHA is embedded. Inventory excludes itself and generated governance documentation to avoid self-reference. Historical receipts do not certify these bytes.",
   "validationBoundary": {
-    "lastTestedCommit": "846406cb04529cd942c6c12829c83fd99d6e878e",
-    "lastTestedTree": "d5cbf3a6b0e07fb355971cd476f868e5e33b1625",
-    "lint": "all 10 K3 platforms passed; no unrelated lint changes",
-    "tests": "K3 Linux/macOS passed; Windows only two DACL restored-control mismatches remain (0x9004 -> 0x9404); new exact-ACE comparison awaits real Windows validation",
-    "selfcheck": "K3 nine other jobs passed; Patch tests ran unprivileged because authorization was false, then netns EPERM; guard step success did not mean elevation; actual approved netns execution remains unverified",
-    "contract": "K3 had one stale package-pipeline assertion; candidate all 10 Python suites / 112 tests passed in isolated cloud with exact source dependencies, without product compilation or real sudo",
-    "formatter": "current 92 owned Go files fmt --diff exit0 empty; official golangci2.15.0 built Go1.27.0 versus CI1.27.2 and local module-discovery warning retained",
-    "sourceReview": "three-source semantic static review found no blocker; final metadata/identity review pending; no final commit embedded"
+    "lastTestedCommit": "90becdbed62ea3602ed2744784d574341f754db6",
+    "lastTestedTree": "abc204de1a42cf78cd488b40087bbf093fc50f7a",
+    "lint": "K4 all 10 platforms passed; diagnostic source requires fresh gate",
+    "tests": "K4 Linux/macOS passed; Windows two cleanup failures now identify ACE 0 mismatch; actual type/flags/mask/SID/order difference still unknown",
+    "selfcheck": "K4 actual netns authorization true and TestUnshareNamespace passed; wiring unchanged in this diagnostic candidate",
+    "contract": "K4 contract passed; diagnostic candidate does not change Python/workflow source",
+    "formatter": "diagnostic sole Go file formatter write made zero changes; all 92 owned Go files --diff exit0/empty; official tool Go1.27.0 versus CI1.27.2 and GOMOD probe warning retained",
+    "sourceReview": "diagnostic-only independent review required; comparator and ACL operations must remain unchanged; no SID/SDDL logging"
   }
 }

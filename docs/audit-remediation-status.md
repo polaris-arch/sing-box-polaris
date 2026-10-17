@@ -1,6 +1,20 @@
 # Audit remediation status
 
-## Current K3 remaining CI remediation
+## Current K4 diagnostic candidate: not merge-ready
+
+Last tested source is `90becdbed62ea3602ed2744784d574341f754db6`, tree `abc204de1a42cf78cd488b40087bbf093fc50f7a`. All ten lint platforms and the contract workflow passed. Linux/macOS ordinary tests passed. Windows still reports two cleanup failures: original control `0x9004`, restored `0x9404`, and ordered ACE 0 differs. The logs do not identify which ACE fields changed. K4 netns logs now show actual authorization true and a real TestUnshareNamespace PASS; the earlier successful guard-step-only claim is not reused.
+
+This candidate is deliberately diagnostic only and must not be merged to polaris-main as completed remediation. It changes one test file plus this status and its source inventory. The strict restoration comparator, existing negative-control bodies, real ACL API calls, flags, payloads and privilege scope are unchanged. No permissions are granted by this diagnostic change.
+
+Before mutation, a private immutable copy of the complete self-relative security descriptor and each ACE is retained solely for comparison, never as an API pointer. Cleanup checks the original live bytes before and after restoration to identify mutation or aliasing. After restoration, diagnostics enumerate all original/restored ACE slots rather than stopping at ACE 0: type, flags, mask, declared size, byte length, same-index SID-equality boolean and exact original-index matches. Added/missing/malformed entries and reordered entries are distinguishable. No SID bytes, SDDL, stable identity digest or credentials are logged. Synthetic diagnostic tests verify completeness and privacy. Any ACL mismatch still fails.
+
+The possible noncontainer OICI normalization and memory-lifetime hypotheses remain unproven. x/sys copies GetSecurityInfo results onto the Go heap and the closure retains the original descriptor; this alone does not establish corruption. No underlying API is swapped to evade normalization. One existing branch/PR CI campaign will gather evidence for the next actual fix; no new workflow or branch is introduced. The netns authorization wiring is untouched.
+
+The official formatter made no changes to the diagnostic Go file; all 92 owned Go files passed --diff with empty output. The official tool-build Go1.27.0 versus CI Go1.27.2 difference and module-discovery warning remain documented. This is not a product-test result.
+
+Earlier sections below are historical snapshots and do not certify this diagnostic source.
+
+## Historical K3 remaining CI remediation
 
 Last tested commit `846406cb04529cd942c6c12829c83fd99d6e878e`, tree `d5cbf3a6b0e07fb355971cd476f868e5e33b1625`: all ten lint platforms, Linux/macOS ordinary tests, and the nine non-Patch selfcheck jobs passed. Exactly three failure classes remained: the contract's obsolete package-pipeline assertion; two Windows cleanup DACL comparisons; and netns EPERM after the authorization output was false. A successful authorization step did not mean sudo ran. These historical passes do not certify current changed bytes.
 

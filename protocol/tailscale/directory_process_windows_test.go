@@ -5,12 +5,14 @@ package tailscale
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -660,6 +662,117 @@ func TestWindowsDirectoryDACLRestorationComparison(t *testing.T) {
 	}
 }
 
+// Copy ACE storage before mutation so later diagnostics never depend on an
+// aliased security descriptor. Raw bytes stay in memory and are never logged.
+func windowsTestCopyACEs(sd *windows.SECURITY_DESCRIPTOR) ([][]byte, error) {
+	if sd == nil || !sd.IsValid() {
+		return nil, fmt.Errorf("invalid diagnostic security descriptor")
+	}
+	acl, _, err := sd.DACL()
+	if err != nil || acl == nil {
+		return nil, fmt.Errorf("unavailable diagnostic DACL: %v", err)
+	}
+	aces := make([][]byte, acl.AceCount)
+	var resultErr error
+	for i := range uint32(acl.AceCount) {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(acl, i, &ace); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("read diagnostic ACE %d: %w", i, err))
+			continue
+		}
+		if ace == nil || ace.Header.AceSize < uint16(unsafe.Sizeof(ace.Header)) || uint32(ace.Header.AceSize) > sd.Length() {
+			resultErr = errors.Join(resultErr, fmt.Errorf("invalid diagnostic ACE %d size", i))
+			continue
+		}
+		aces[i] = bytes.Clone(unsafe.Slice((*byte)(unsafe.Pointer(ace)), ace.Header.AceSize))
+	}
+	runtime.KeepAlive(sd)
+	return aces, resultErr
+}
+
+func windowsTestACEDifferences(phase string, original, current [][]byte) []string {
+	describe := func(ace []byte, present bool) string {
+		if !present {
+			return "missing"
+		}
+		if len(ace) < 8 {
+			return fmt.Sprintf("truncated bytes=%d", len(ace))
+		}
+		return fmt.Sprintf("type=%#x flags=%#x mask=%#x size=%d bytes=%d", ace[0], ace[1], binary.LittleEndian.Uint32(ace[4:8]), binary.LittleEndian.Uint16(ace[2:4]), len(ace))
+	}
+	messages := []string{fmt.Sprintf("DACL %s: original ACE count=%d, current ACE count=%d", phase, len(original), len(current))}
+	for i := range max(len(original), len(current)) {
+		var a, b []byte
+		hasOriginal, hasCurrent := i < len(original), i < len(current)
+		if hasOriginal {
+			a = original[i]
+		}
+		if hasCurrent {
+			b = current[i]
+		}
+		// Simple allow/deny ACEs put the SID after the header and access mask.
+		// Compare it without logging an SID, SDDL, digest or raw payload.
+		simple := func(ace []byte) bool {
+			return len(ace) >= 16 && int(binary.LittleEndian.Uint16(ace[2:4])) == len(ace) && (ace[0] == windows.ACCESS_ALLOWED_ACE_TYPE || ace[0] == windows.ACCESS_DENIED_ACE_TYPE)
+		}
+		sidComparable := simple(a) && simple(b)
+		matchedOriginal := -1
+		if hasCurrent {
+			for j, candidate := range original {
+				if bytes.Equal(candidate, b) {
+					matchedOriginal = j
+					break
+				}
+			}
+		}
+		messages = append(messages, fmt.Sprintf("DACL %s ACE %d: original %s; current %s; SID comparable=%v equal=%v; full bytes equal=%v; exact original index=%d", phase, i, describe(a, hasOriginal), describe(b, hasCurrent), sidComparable, sidComparable && bytes.Equal(a[8:], b[8:]), hasOriginal && hasCurrent && bytes.Equal(a, b), matchedOriginal))
+	}
+	return messages
+}
+
+func TestWindowsDirectoryDACLDiagnostics(t *testing.T) {
+	privatePayload := "PRIVATE-SID-BYTES"
+	ace := append([]byte{windows.ACCESS_ALLOWED_ACE_TYPE, 3, 0, 0, 0xff, 1, 0x1f, 0}, []byte(privatePayload)...)
+	binary.LittleEndian.PutUint16(ace[2:4], uint16(len(ace)))
+	changed := bytes.Clone(ace)
+	changed[1] = 0
+	changed[len(changed)-1] ^= 1
+	for _, tc := range []struct {
+		name     string
+		original [][]byte
+		current  [][]byte
+		count    int
+	}{
+		{"all-aces", [][]byte{ace, ace, ace}, [][]byte{changed, ace, changed}, 3},
+		{"reordered", [][]byte{ace, changed}, [][]byte{changed, ace}, 2},
+		{"added", [][]byte{ace}, [][]byte{ace, changed}, 2},
+		{"missing", [][]byte{ace, changed}, [][]byte{ace}, 2},
+		{"truncated", [][]byte{nil, {0}, {0, 0, 0, 0}}, [][]byte{{}, {}, {}}, 3},
+		{"invalid-size", [][]byte{{0, 0, 0, 0, 0, 0, 0, 0}}, [][]byte{ace}, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			messages := windowsTestACEDifferences("probe", tc.original, tc.current)
+			if len(messages) != tc.count+1 {
+				t.Fatalf("diagnostics omitted ACEs: got %d messages", len(messages))
+			}
+			for i := range tc.count {
+				if !strings.Contains(messages[i+1], fmt.Sprintf("ACE %d:", i)) {
+					t.Fatalf("diagnostics omitted ACE index %d", i)
+				}
+			}
+			for _, message := range messages {
+				if strings.Contains(message, privatePayload) || strings.Contains(message, "S-1-") || strings.Contains(message, "D:P") {
+					t.Fatal("diagnostics exposed private payload or identity")
+				}
+			}
+		})
+	}
+	messages := windowsTestACEDifferences("probe", [][]byte{ace, ace}, [][]byte{changed, ace})
+	if !strings.Contains(messages[1], "SID comparable=true equal=false") || !strings.Contains(messages[1], "full bytes equal=false") || !strings.Contains(messages[2], "full bytes equal=true") {
+		t.Fatal("diagnostics lost SID equality or later-ACE evidence")
+	}
+}
+
 func windowsTestBroadenDACL(t *testing.T, path string) {
 	t.Helper()
 	wide, err := windows.UTF16PtrFromString(path)
@@ -683,6 +796,14 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 	if err := windowsTestRestoredDACL(original, original); err != nil {
 		t.Fatalf("validate original DACL: %v", err)
 	}
+	if originalControl&windows.SE_SELF_RELATIVE == 0 {
+		t.Fatal("original DACL snapshot must be self-relative")
+	}
+	originalStorage := bytes.Clone(unsafe.Slice((*byte)(unsafe.Pointer(original)), original.Length()))
+	originalACEs, err := windowsTestCopyACEs(original)
+	if err != nil {
+		t.Fatal(err)
+	}
 	owner, err := windowsCurrentSID()
 	if err != nil {
 		t.Fatal(err)
@@ -700,6 +821,13 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 		t.Fatalf("broaden DACL (requested access %#x, original control %#x, security info %#x): %v", requestedAccess, originalControl, flags, err)
 	}
 	t.Cleanup(func() {
+		defer runtime.KeepAlive(original)
+		defer runtime.KeepAlive(originalStorage)
+		originalUnchanged := bytes.Equal(originalStorage, unsafe.Slice((*byte)(unsafe.Pointer(original)), len(originalStorage)))
+		t.Logf("DACL before restore: original storage unchanged=%v, original control=%#x", originalUnchanged, originalControl)
+		if !originalUnchanged {
+			t.Error("original DACL storage changed before restoration")
+		}
 		acl, _, err := original.DACL()
 		if err != nil {
 			t.Errorf("extract original DACL for restore (original control %#x): %v", originalControl, err)
@@ -719,11 +847,26 @@ func windowsTestBroadenDACL(t *testing.T, path string) {
 			if err != nil {
 				t.Errorf("read restored DACL (requested access %#x, original control %#x): %v", requestedAccess, originalControl, err)
 			} else {
+				originalUnchanged := bytes.Equal(originalStorage, unsafe.Slice((*byte)(unsafe.Pointer(original)), len(originalStorage)))
+				t.Logf("DACL after restore: original storage unchanged=%v", originalUnchanged)
+				if !originalUnchanged {
+					t.Error("original DACL storage changed during restoration")
+				}
+				restoredACEs, copyErr := windowsTestCopyACEs(restored)
+				if copyErr != nil {
+					t.Errorf("snapshot restored ACEs: %v", copyErr)
+				}
+				for _, message := range windowsTestACEDifferences("after restore", originalACEs, restoredACEs) {
+					t.Log(message)
+				}
 				restoredControl, _, err := restored.Control()
 				if err != nil {
 					t.Errorf("read restored DACL control: %v", err)
-				} else if err := windowsTestRestoredDACL(original, restored); err != nil {
-					t.Errorf("restored DACL mismatch (original control %#x, restored control %#x): %v", originalControl, restoredControl, err)
+				} else {
+					t.Logf("DACL after restore: original control=%#x, restored control=%#x", originalControl, restoredControl)
+					if err := windowsTestRestoredDACL(original, restored); err != nil {
+						t.Errorf("restored DACL mismatch (original control %#x, restored control %#x): %v", originalControl, restoredControl, err)
+					}
 				}
 			}
 		}
