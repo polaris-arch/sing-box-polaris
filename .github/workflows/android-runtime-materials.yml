@@ -1,6 +1,14 @@
 name: Inspect Android runtime materials
 on:
   workflow_dispatch:
+  push:
+    branches:
+    - collab/distribution-materials-20261017
+    paths:
+    - .github/workflows/android-runtime-materials.yml
+    - scripts/ci/android_runtime_materials.init.gradle
+    - scripts/ci/android_runtime_materials.py
+    - scripts/ci/test_android_runtime_materials.py
 permissions:
   contents: read
 jobs:
