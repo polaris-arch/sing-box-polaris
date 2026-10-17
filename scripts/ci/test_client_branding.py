@@ -7,6 +7,40 @@ import client_source as c
 import github_release as p
 
 class ClientBrandingTests(unittest.TestCase):
+    def test_all_unsigned_and_signed_client_producers_apply_before_version_and_build(self):
+        import yaml
+        jobs={'build_android':'android','build_windows_client':'windows','build_linux_client':'linux',
+              'build_apple':'apple','build_apple_app_store':'apple'}
+        for filename in ['build.yml','signed-release.yml']:
+            workflow=yaml.safe_load((p.ROOT/'.github/workflows'/filename).read_bytes())
+            checks=dict(jobs)
+            if filename=='signed-release.yml':checks['publish_android']='android'
+            for job,platform in checks.items():
+                steps=workflow['jobs'][job]['steps']
+                command=('unsigned_clients.py '+platform if filename=='build.yml' else
+                         'owned_distribution.py apply '+('desktop' if platform in ('windows','linux') else platform))
+                indices=[i for i,step in enumerate(steps) if command in step.get('run','')]
+                self.assertEqual(len(indices),1,(filename,job))
+                index=indices[0]
+                self.assertTrue(any('submodule update' in step.get('run','') for step in steps[:index]),(filename,job))
+                for i,step in enumerate(steps):
+                    run=step.get('run','')
+                    if any(marker in run for marker in ['cmd/internal/update_', 'pnpm -C clients/desktop package:', './gradlew', 'xcodebuild archive', 'make -C clients/apple build_', 'scripts/ci/record_candidate.py', 'client_source.py record-signed']):
+                        self.assertLess(index,i,(filename,job,step.get('name')))
+
+    def test_linux_producer_applies_declared_overlay_before_build_and_receipt(self):
+        import yaml
+        workflow=yaml.safe_load((p.ROOT/'.github/workflows/build.yml').read_bytes())
+        steps=workflow['jobs']['build_linux_client']['steps']
+        apply=[i for i,step in enumerate(steps) if step.get('run')=='python3 scripts/ci/unsigned_clients.py linux']
+        self.assertEqual(len(apply),1)
+        index=apply[0]
+        self.assertNotIn('if',steps[index])
+        self.assertLess(next(i for i,s in enumerate(steps) if s.get('name')=='Checkout desktop submodules'),index)
+        for name in ['Update version','Install dependencies','Build','Record actual unsigned candidate files']:
+            self.assertLess(index,next(i for i,s in enumerate(steps) if s.get('name')==name))
+        self.assertEqual(c.definition('linux')['versionMetadata'],['version.json'])
+
     def test_name_mapping_idempotent_and_no_duplicate_product_prefix(self):
         for old,new in [('SFA-V.apk','sing-box-polaris-SFA-V.apk'),('SFW-V.exe','sing-box-polaris-SFW-V.exe'),('SFL-V.deb','sing-box-polaris-SFL-V.deb'),('SFM-V.pkg','sing-box-polaris-SFM-V.pkg'),('sing-box-V.ipa','sing-box-polaris-V.ipa'),('unsigned-V-ios.xcarchive.tar','sing-box-polaris-unsigned-V-ios.xcarchive.tar')]:
             self.assertEqual(p.branded_client_name(old),new)

@@ -22,7 +22,7 @@ RID = 1421657509
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = ROOT / 'release/ci/publisher-upstream-scope.json'
 CONFIG = ROOT / 'release/ci/github-release.json'
-VERSION = validate_version(json.loads(CONFIG.read_text())['version'])
+VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
 TAG = 'v' + VERSION
 RECEIPT = 'polaris-github-release-receipt-' + VERSION + '.json'
 BLOCKED = [
@@ -122,7 +122,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     # A staging index is useful evidence, but never a production publication input.
     require(index.get('schema') == 'polaris-upstream-native-assets-v1', 'final native index schema required; staging forbidden')
     import jsonschema
-    jsonschema.Draft202012Validator(json.loads((ROOT / 'release/ci/native-release-index.schema.json').read_text())).validate(index)
+    jsonschema.Draft202012Validator(json.loads((ROOT / 'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
     for key, value in [('repository', REPO), ('repositoryId', RID), ('version', VERSION), ('tag', TAG),
                        ('tagObject', tag_object), ('sourceCommit', source), ('sourceTree', tree)]:
         require(index[key] == value, 'final native index binding mismatch: ' + key)
@@ -183,7 +183,7 @@ def release_scope(version):
     # Only the current source-owned release contract selects a version. Escape
     # it as regex data; never guess it from artifact names or accept old mixes.
     require(validate_version(version) == VERSION, 'scope version differs from reviewed release version')
-    scope = json.loads(SCOPE.read_text())
+    scope = json.loads(SCOPE.read_text(encoding='utf-8'))
     for role in scope.values():
         for rules in role['payloadRules'].values():
             for rule in rules:
@@ -256,7 +256,7 @@ def associate_distribution_materials(result, index, index_sha):
                 if clients:
                     c = clients[0]
                     require(c['coreSourceCommit'] == result['sourceCommit'], 'mixed client material source')
-                    sources = json.loads((ROOT / 'release/dependency-sources/clients/current-client-sources.json').read_text())['clients']
+                    sources = json.loads((ROOT / 'release/dependency-sources/clients/current-client-sources.json').read_text(encoding='utf-8'))['clients']
                     acquired = [x for x in sources if x['repository'] == c['repository'] and x['baseCommit'] == c['baseCommit']]
                     require(len(acquired) == 1 and acquired[0]['fullSourceGetVerified'] is True, 'actual client base differs from acquired shared source')
                     record['distributionMaterials']['clientSource'] = {
@@ -276,11 +276,11 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     root = Path(root)
     directory = root / 'release/dependency-sources/clients/runtime/android-resolved'
     reference_path = directory / 'reuse-reference.json'
-    reference = json.loads(reference_path.read_text())
+    reference = json.loads(reference_path.read_text(encoding='utf-8'))
     require(reference.get('schema') == 'polaris-android-material-reuse-v1', 'invalid Android material reference schema')
     material_map = directory / 'source-notice-map.json'
     require(sha(material_map) == reference.get('materialMapSHA256'), 'Android source/notice map changed')
-    materials = json.loads(material_map.read_text())
+    materials = json.loads(material_map.read_text(encoding='utf-8'))
     require(materials.get('concreteUnresolvedMaterials') == [], 'Android source/notice materials remain unresolved')
     identity_keys = ('repository', 'baseCommit', 'baseTree', 'overlayManifestSHA256', 'platform', 'unsigned')
     require(isinstance(client_source, dict) and all(key in client_source for key in identity_keys), 'missing Android client material identity')
@@ -312,7 +312,7 @@ def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=RO
     import io
     import tarfile
     reference_path = root / 'release/dependency-sources/oci/reuse-reference.json'
-    reference = json.loads(reference_path.read_text())
+    reference = json.loads(reference_path.read_text(encoding='utf-8'))
     require(reference['materialMapSHA256'] == sha(root / 'release/dependency-sources/oci/oci-source-notice-map.json'), 'OCI source material map changed')
     require(artifact in reference['artifacts'], 'OCI material reference lacks expected artifact')
     expected = reference['artifacts'][artifact]
@@ -492,7 +492,7 @@ def inventory(runs, source, work, source_tree, tag_object):
                         files[relative]['ociMaterialReuse'] = validate_oci_material_reuse(p, a['name'], source, rid, run['run_attempt'])
                     if p.name.startswith('polaris-candidate-manifest-'):
                         require(not client_platform(a['name']) or p.stat().st_size <= 3 * 1024**2, 'client source evidence exceeds its 3MiB serialized budget')
-                        provenance = json.loads(p.read_text())
+                        provenance = json.loads(p.read_text(encoding='utf-8'))
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
                         measured = validate_client_source(provenance, a['name'], role, source)
                         if measured is not None:
@@ -509,14 +509,14 @@ def inventory(runs, source, work, source_tree, tag_object):
             require(files, 'empty artifact')
             verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveSha256': digest, 'files': files}
-        receipt = json.loads((work / role / 'publisher-run-receipt' / 'publisher-run-receipt.json').read_text())
+        receipt = json.loads((work / role / 'publisher-run-receipt' / 'publisher-run-receipt.json').read_text(encoding='utf-8'))
         require(receipt == {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
                             'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role,
                             'publishStores': False, 'publishRegistry': False}, 'explicit All/version/run-attempt receipt mismatch')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
         if role in ('all', 'signed'):
-            index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text())
+            index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
             validate_final_index(index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'])
             indexed_names = set()
             for record in [x['archive'] for x in index['platforms']] + [index['sourceArchive']]:
@@ -525,7 +525,7 @@ def inventory(runs, source, work, source_tree, tag_object):
                 matches = [f for a in entry['artifacts'].values() for name, f in a['files'].items() if name == record['name']]
                 require(len(matches) == 1 and matches[0]['sha256'] == record['sha256'] and matches[0]['bytes'] == record['bytes'], 'native index actual hash mismatch')
     shared_index_path = work / 'all' / 'binary-native-index' / 'polaris-upstream-native-assets.json'
-    return associate_distribution_materials(result, json.loads(shared_index_path.read_text()), sha(shared_index_path))
+    return associate_distribution_materials(result, json.loads(shared_index_path.read_text(encoding='utf-8')), sha(shared_index_path))
 
 
 def assemble(actual, config, work, output):
@@ -572,13 +572,13 @@ def assemble(actual, config, work, output):
                 receipt['assets'].append(dict(f, releaseName=name, role=role, artifact=artifact, artifactPath=relative,
                     signatureState='unverified-signed-build' if role == 'signed' else 'unsigned-candidate'))
     require(receipt['assets'], 'empty release')
-    (output / RECEIPT).write_text(json.dumps(receipt, indent=2)+'\n')
+    (output / RECEIPT).write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8', newline='\n')
     return receipt
 
 
 def publish(output, source):
     before = tag_identity(source)
-    index = json.loads((output / 'polaris-upstream-native-assets.json').read_text())
+    index = json.loads((output / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
     require(index['schema'] == 'polaris-upstream-native-assets-v1' and index['tag'] == TAG
             and index['tagObject'] == before and index['sourceCommit'] == source, 'assembled final index no longer matches source tag')
     require(index['distributionMaterials']['publicationEligible'] is True, 'current source/notice review remains unresolved')
@@ -622,7 +622,7 @@ def reviewed_contract(run_id, digest, source):
         extract(archive, Path(temp)/'extracted')
         proposal = Path(temp)/'extracted/release-inventory-proposal.json'
         require(sha(proposal) == digest, 'inventory differs from explicitly reviewed hash')
-        contract = json.loads(proposal.read_text())
+        contract = json.loads(proposal.read_text(encoding='utf-8'))
         require(contract['sourceCommit'] == source, 'inventory source mismatch')
         contract['reviewed'] = True
         return contract
@@ -639,7 +639,7 @@ def main():
     p.add_argument('--inventory-sha256')
     p.add_argument('--output', type=Path, default=Path('github-release-dist'))
     args = p.parse_args()
-    public = json.loads(CONFIG.read_text())
+    public = json.loads(CONFIG.read_text(encoding='utf-8'))
     require(public == {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'tag': TAG, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
     identity(args.source, args.source_dir)
     runs = {role: getattr(args, role+'_run') for role in ['all', 'linux', 'docker', 'signed'] if getattr(args, role+'_run')}
@@ -651,7 +651,7 @@ def main():
         require(tag_identity(args.source) == tag_object, 'tag changed while collecting release inventory')
         if args.mode == 'inventory':
             require(not args.output.exists(), 'inventory output already exists')
-            args.output.write_text(json.dumps(actual, indent=2)+'\n')
+            args.output.write_text(json.dumps(actual, indent=2)+'\n', encoding='utf-8', newline='\n')
             print('Inventory SHA-256: '+sha(args.output))
             return
         tag_identity(args.source)

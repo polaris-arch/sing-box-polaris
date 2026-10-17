@@ -209,7 +209,8 @@ class ClientSourceControls(unittest.TestCase):
         self.assertIn('-c core.autocrlf=false -c core.eol=lf submodule update',first['run'])
         build=next(s for s in steps if s.get('name')=='Build')
         self.assertEqual(build['env']['POLARIS_UNSIGNED_CLIENT'],'1')
-        self.assertIn('unsigned_clients.py windows\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',build['run'])
+        overlay=next(s for s in steps if 'unsigned_clients.py windows' in s.get('run',''))
+        self.assertIn('unsigned_clients.py windows\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',overlay['run'])
         signed=yaml.safe_load((REAL_ROOT/'.github/workflows/signed-release.yml').read_text())
         self.assertNotIn('POLARIS_UNSIGNED_CLIENT',json.dumps(signed))
 

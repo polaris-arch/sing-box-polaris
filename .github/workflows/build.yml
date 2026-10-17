@@ -63,6 +63,8 @@ jobs:
         python-version: '3.12'
     - name: Install capability schema validator
       run: python -m pip install jsonschema==4.23.0
+    - name: Verify client Unicode entrypoints on the actual runner
+      run: python -m unittest discover -s scripts/ci -p 'test_client_encoding.py'
     - name: Run raced protocol, crypto and actual selected-core gates
       run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
     - name: Measure whole-migration binary and idle RSS costs
@@ -1023,6 +1025,8 @@ jobs:
       uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
       with:
         cache-provider: basic
+    - name: Apply exact unsigned android client source overlays
+      run: python3 scripts/ci/unsigned_clients.py android
     - name: Update version
       if: github.event_name == 'workflow_dispatch'
       run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update
@@ -1031,7 +1035,6 @@ jobs:
       run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update --nightly
     - name: Build
       run: |-
-        python3 scripts/ci/unsigned_clients.py android
         mkdir -p clients/android/app/libs
         cp *.aar clients/android/app/libs
         cd clients/android
@@ -1144,6 +1147,10 @@ jobs:
           "PUBLISHED=false" >> $env:GITHUB_ENV
         }
         git tag v${{ needs.calculate_version.outputs.version }} -f
+    - name: Apply exact unsigned windows client source overlays
+      run: |-
+        python scripts/ci/unsigned_clients.py windows
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     - name: Update version
       if: github.event_name == 'workflow_dispatch'
       run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update
@@ -1159,8 +1166,6 @@ jobs:
         VERSION: ${{ needs.calculate_version.outputs.version }}
     - name: Build
       run: |-
-        python scripts/ci/unsigned_clients.py windows
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         pnpm -C clients/desktop package:win -- ${{ matrix.desktop_arch }}
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       env:
@@ -1224,6 +1229,8 @@ jobs:
       run: |
         set -euo pipefail
         git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
+    - name: Apply exact unsigned Linux client source overlays
+      run: python3 scripts/ci/unsigned_clients.py linux
     - name: Setup Go
       uses: actions/setup-go@v5
       with:

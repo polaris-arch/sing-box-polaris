@@ -75,7 +75,7 @@ def write_diagnostic(root, metadata, client_source=None):
         errors['clientSource'] = 'unavailable'
     receipt = dict(metadata, schema='polaris-android-resolution-diagnostic-v2',
                    publicationEligible=False, clientSource=client_source, variants=records)
-    (root / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
-    (root / 'diagnostics.json').write_text(json.dumps({'success': not errors, 'errors': errors}, indent=2) + '\n')
+    (root / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8', newline='\n')
+    (root / 'diagnostics.json').write_text(json.dumps({'success': not errors, 'errors': errors}, indent=2) + '\n', encoding='utf-8', newline='\n')
     return not errors
 

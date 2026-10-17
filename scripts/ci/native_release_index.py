@@ -92,7 +92,7 @@ def source_identity():
 
 def expected_native(version):
  validate_version(version)
- matrices=json.loads(Path('release/ci/upstream-matrices.json').read_text())['matrices']['build.yml']
+ matrices=json.loads(Path('release/ci/upstream-matrices.json').read_text(encoding='utf-8'))['matrices']['build.yml']
  result={}
  for job in ['build','build_darwin','build_windows']:
   for matrix in matrices[job]['include']:
@@ -137,7 +137,7 @@ def collect(directory,matrix):
    if value is not None and settings.get(key,'').split(',')[0]!=str(value):raise ValueError('binary setting differs from matrix: '+key)
   def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
   row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':commit,'sourceTree':tree,'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source_identity(),'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
-  (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n');row_count+=1
+  (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n');row_count+=1
  if row_count!=1:raise ValueError(f'expected one native archive, got {row_count}')
  for glob,expected in [('*.deb',int('debian' in matrix)),('*.rpm',int('rpm' in matrix)),('*.pkg.tar.zst',int('pacman' in matrix)),('*_linux_*.apk',int('alpine' in matrix)),('*.ipk',len(matrix.get('openwrt','').split())),('*_openwrt_*.apk',len(matrix.get('openwrt','').split()))]:
   if len(list(d.glob(glob)))!=expected:raise ValueError('package inventory mismatch '+glob)
@@ -145,10 +145,10 @@ def collect(directory,matrix):
 def smoke(directory):
  d=Path(directory);rows=list(d.glob('native-row-*.json'))
  if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
- row=json.loads(rows[0].read_text());p=d/row['archive']['name'];root,members=read_archive(p)
+ row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name'];root,members=read_archive(p)
  if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
- pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text())
- if Path('.github/CRONET_GO_VERSION').read_text().strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
+ pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
+ if Path('.github/CRONET_GO_VERSION').read_text(encoding='utf-8').strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
  with tempfile.TemporaryDirectory() as td:
   if root!=row['archive']['root'] or {root+'/'+k for k in members}!=set(row['archive']['members']):raise ValueError('archive member inventory changed')
   for name,data in members.items():
@@ -167,7 +167,7 @@ def smoke(directory):
   if row['sidecar'] and observed.get('sha256')!=row['sidecar']['sha256']:raise ValueError('Cronet sidecar mismatch')
   if 'with_naive_outbound' not in row['tags'].split(','):raise ValueError('Naive tag missing')
   row['finalPackageCronetSmoke']={'status':'passed','os':expected_os,'arch':expected_arch,'go':observed['go'],'gvisorCompiled':True,'naiveOutbound':True,'linkage':observed['linkage'],'version':observed['version'],'librarySha256':row['sidecar']['sha256'] if row['sidecar'] else None,'coreSha256':row['core']['sha256']}
- rows[0].write_text(json.dumps(row,indent=2)+'\n')
+ rows[0].write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n')
 
 def validate_distribution_assessment(catalog):
  if not isinstance(catalog,dict) or catalog.get('schema')!=1:
@@ -216,20 +216,20 @@ def distribution_materials(index, root=Path('.')):
          'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
          'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
          '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
- toolchain=json.loads((root/'.github/go-toolchains.json').read_text())
+ toolchain=json.loads((root/'.github/go-toolchains.json').read_text(encoding='utf-8'))
  inputs += [x['patch'] for x in toolchain['legacy'].values()]+[toolchain['iosCPU']['patch']]
- catalog=json.loads((root/'release/ci/distribution-materials.json').read_text())
+ catalog=json.loads((root/'release/ci/distribution-materials.json').read_text(encoding='utf-8'))
  eligible=validate_distribution_assessment(catalog)
- selection=json.loads((root/'release/ci/current44-notice-mappings.json').read_text())
+ selection=json.loads((root/'release/ci/current44-notice-mappings.json').read_text(encoding='utf-8'))
  notice_bytes=(root/selection['noticeBundle']['path']).read_bytes()
  if sha(notice_bytes)!=selection['noticeBundle']['sha256']:raise ValueError('current notice bundle hash mismatch')
  for notice in selection['noticeRecords']:
   data=notice_bytes[notice['byteOffset']:notice['byteOffset']+notice['bytes']]
   if len(data)!=notice['bytes'] or sha(data)!=notice['sha256']:raise ValueError('current notice slice hash mismatch')
- runtime=json.loads((root/'release/dependency-sources/clients/runtime/index.json').read_text())
- recipes=json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text())
- ghostty=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text())
- android=json.loads((root/'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json').read_text())
+ runtime=json.loads((root/'release/dependency-sources/clients/runtime/index.json').read_text(encoding='utf-8'))
+ recipes=json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text(encoding='utf-8'))
+ ghostty=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text(encoding='utf-8'))
+ android=json.loads((root/'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json').read_text(encoding='utf-8'))
  if android.get('concreteUnresolvedMaterials')!=[]:raise ValueError('unresolved actual Android source/notice materials')
  for record in runtime['noticeTexts']+recipes+ghostty['noticeFiles']+ghostty['recipeFiles']+android['noticeFiles']+android['materialFiles']:
   name=record['path']
@@ -238,8 +238,8 @@ def distribution_materials(index, root=Path('.')):
   data=(root/name).read_bytes()
   if ('bytes' in record and len(data)!=record['bytes']) or sha(data)!=record['sha256']:
    raise ValueError('shared client runtime material identity mismatch')
- old_sources=json.loads((root/'release/polaris-public-source-inputs.json').read_text())['modules']
- current_sources=json.loads((root/'release/ci/current-module-sources.json').read_text())['delta']
+ old_sources=json.loads((root/'release/polaris-public-source-inputs.json').read_text(encoding='utf-8'))['modules']
+ current_sources=json.loads((root/'release/ci/current-module-sources.json').read_text(encoding='utf-8'))['delta']
  source_key=lambda x:(x['module'],x['version'],x.get('h1',''))
  pinned_sources={source_key(x):x for x in old_sources}
  current_sources={source_key(x):x for x in current_sources}
@@ -319,7 +319,7 @@ def assemble(directory):
   tag_object=verify_checkout(tag,commit,expected_object)
  rows={}
  for p in d.rglob('native-row-*.json'):
-  r=json.loads(p.read_text());old=rows.get(r['id'])
+  r=json.loads(p.read_text(encoding='utf-8'));old=rows.get(r['id'])
   if old:
    copy=dict(r);copy['finalPackageCronetSmoke']=old['finalPackageCronetSmoke']
    if copy!=old:raise ValueError('conflicting native receipt')
@@ -367,8 +367,8 @@ def assemble(directory):
  if final:
   verify_checkout(tag,commit,tag_object)
   import jsonschema
-  jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text())).validate(index)
- (d/'polaris-upstream-native-assets.json').write_text(json.dumps(index,indent=2)+'\n')
+  jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
+ (d/'polaris-upstream-native-assets.json').write_text(json.dumps(index,indent=2)+'\n', encoding='utf-8', newline='\n')
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('mode',choices=['collect','smoke','assemble']);p.add_argument('directory');a=p.parse_args()
  if a.mode=='collect':collect(a.directory,json.loads(os.environ['NATIVE_MATRIX']))

@@ -25,7 +25,7 @@ MAX_SOURCE_FILES = 64
 def sha(raw): return hashlib.sha256(raw).hexdigest()
 def blob(raw): return hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
 def git(directory,*args): return subprocess.check_output(['git','-C',str(directory),*args])
-def definition(platform): return json.loads(MANIFEST.read_text())['platforms'][platform]
+def definition(platform): return json.loads(MANIFEST.read_text(encoding='utf-8'))['platforms'][platform]
 def selected(spec,unsigned): return [e for e in spec['files'] if e['kind']!='unsigned' or unsigned]
 
 
@@ -72,7 +72,7 @@ def identity_definition(platform,unsigned):
     if unsigned:return None
     path=ROOT/'release/ci/owned-distribution.json'
     if path.is_symlink() or not path.is_file():raise ValueError('reviewed owned client identity is not configured')
-    config=json.loads(path.read_text())
+    config=json.loads(path.read_text(encoding='utf-8'))
     if config.get('reviewed') is not True or config.get('repository')!='polaris-arch/sing-box-polaris' or config.get('repositoryId')!=1421657509:
         raise ValueError('owned client identity configuration is not reviewed')
     key='desktop' if platform in ('windows','linux') else platform
@@ -277,7 +277,7 @@ def record_signed(platform,directory):
     record={'schema':'polaris-client-source-evidence-v1','sourceCommit':git(ROOT,'rev-parse','HEAD').decode().strip(),
             'workflowRunId':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'clientSource':collect(platform,False)}
     root=Path(directory);root.mkdir(exist_ok=True)
-    (root/('polaris-candidate-manifest-client-source-'+os.environ['GITHUB_JOB']+'.json')).write_text(json.dumps(record,indent=2)+'\n')
+    (root/('polaris-candidate-manifest-client-source-'+os.environ['GITHUB_JOB']+'.json')).write_text(json.dumps(record,indent=2)+'\n', encoding='utf-8', newline='\n')
 
 if __name__=='__main__':
     if sys.argv[1]=='apply':apply(sys.argv[2],unsigned='--unsigned' in sys.argv[3:])

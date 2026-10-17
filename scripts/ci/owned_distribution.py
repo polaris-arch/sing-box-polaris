@@ -8,7 +8,7 @@ def config():
  if os.environ.get('GITHUB_REPOSITORY')!=REPO or os.environ.get('GITHUB_REPOSITORY_ID')!=REPO_ID:raise SystemExit('wrong repository identity')
  p=Path('release/ci/owned-distribution.json')
  if not p.exists():raise SystemExit('BLOCKED: reviewed owned-distribution.json and owned signing identities have not been configured')
- d=json.loads(p.read_text())
+ d=json.loads(p.read_text(encoding='utf-8'))
  if d.get('repository')!=REPO or d.get('repositoryId')!=int(REPO_ID) or d.get('reviewed') is not True:raise SystemExit('owned distribution identity configuration is not reviewed')
  return d
 
