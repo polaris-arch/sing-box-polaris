@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "current-scope-review-required",
+  "status": "reviewed-current-scope",
   "historicalEvidence": "release/desktop-source-candidate is frozen prior-scope evidence; do not relabel it.",
   "sharedDelivery": "Existing immutable source archive and final native index; publisher receipt associates every payload with both.",
   "scope": [
@@ -93,6 +93,10 @@
       "id": "client-derivative-identity",
       "evidence": "release/ci/client-overlays.json; release/ci/CLIENT-DERIVATIVE-NAMING.md",
       "scope": "User confirmed sing-box-polaris. Exact display-only source transforms and existing publisher public-name mapping preserve upstream scope, author/license texts, identifiers and permissions. Awaiting independent implementation review and actual new producer validation is not evidence of upstream consent or an additional license grant."
+    },
+    {
+      "id": "full-client-distribution-scope-confirmed",
+      "scope": "The project owner confirmed normal distribution of the complete planned macOS GUI scope, including CodeEditLanguages and CodeEditSymbols. Retain all 227 planned public payloads, including SFM/SFM.System. This records the project distribution decision, not a newly located third-party permission grant; existing source-specific notice observations and legalConclusion:false remain unchanged."
     }
   ],
   "noticeTextObservations": [
