@@ -10,6 +10,161 @@
       ],
       "files": [
         {
+          "path": "app/src/main/res/values/strings.xml",
+          "kind": "branding",
+          "beforeGitBlob": "fa247138fea56a947fafc6807f6d36bb886379c3",
+          "beforeSHA256": "ab0690b6a5188c8b3748da12355cb350d58f4cbd07155485d3890387638c9b47",
+          "afterSHA256": "e09dd6802dd432eefeca3faba0e545c1a7909da9bff5d145ebe329ac40925f41",
+          "edits": [
+            {
+              "old": "<string name=\"app_name\" translatable=\"false\">sing-box</string>",
+              "new": "<string name=\"app_name\" translatable=\"false\">sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"taildrop_open_app\">Open sing-box</string>",
+              "new": "<string name=\"taildrop_open_app\">Open sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"xposed_description\">Privileged Enhancement for sing-box</string>",
+              "new": "<string name=\"xposed_description\">Privileged Enhancement for sing-box-polaris</string>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/res/values-fa/strings.xml",
+          "kind": "branding",
+          "beforeGitBlob": "d2aeb5bfc3b3f2f0e83af0de3db1d2e18f05ee04",
+          "beforeSHA256": "2d71f031fb75d298d33526bfcdd08a7a3267b2c1a5f5bf09912247f5af7f5ea1",
+          "afterSHA256": "d0a65cef2962110a0c079b28f1083dffe8eefe4d52f9a1231a0116efa3a1112e",
+          "edits": [
+            {
+              "old": "<string name=\"app_name\" translatable=\"false\">sing-box</string>",
+              "new": "<string name=\"app_name\" translatable=\"false\">sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"taildrop_open_app\">باز کردن sing-box</string>",
+              "new": "<string name=\"taildrop_open_app\">باز کردن sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"xposed_description\">بهبود دسترسی ویژه برای sing-box</string>",
+              "new": "<string name=\"xposed_description\">بهبود دسترسی ویژه برای sing-box-polaris</string>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/res/values-ru-rRU/strings.xml",
+          "kind": "branding",
+          "beforeGitBlob": "652e50935517768cd0fbb708ea08955b7b5d1cab",
+          "beforeSHA256": "a2cd747b8633f79f3ff3e28554d410e972363bb7626b5c8085415635aab243dc",
+          "afterSHA256": "052da1448132254bca305efa879a49fc933ed00bae5a2cb122f01c79a0013acc",
+          "edits": [
+            {
+              "old": "<string name=\"app_name\" translatable=\"false\">sing-box</string>",
+              "new": "<string name=\"app_name\" translatable=\"false\">sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"taildrop_open_app\">Открыть sing-box</string>",
+              "new": "<string name=\"taildrop_open_app\">Открыть sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"xposed_description\">Привилегированное расширение для sing-box</string>",
+              "new": "<string name=\"xposed_description\">Привилегированное расширение для sing-box-polaris</string>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/res/values-zh-rCN/strings.xml",
+          "kind": "branding",
+          "beforeGitBlob": "88ee5dfd1256bad44024ebc0068100f60a5f56cb",
+          "beforeSHA256": "ad0862895a2546a3436774768fa7b036c42896ff64516a5440845d29d8d91fcc",
+          "afterSHA256": "e36ca0388b958d128ee0118ffe135c323b86e530bdda150bb88fc30394d40c2f",
+          "edits": [
+            {
+              "old": "<string name=\"app_name\" translatable=\"false\">sing-box</string>",
+              "new": "<string name=\"app_name\" translatable=\"false\">sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"taildrop_open_app\">打开 sing-box</string>",
+              "new": "<string name=\"taildrop_open_app\">打开 sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"xposed_description\">sing-box 的特权增强</string>",
+              "new": "<string name=\"xposed_description\">sing-box-polaris 的特权增强</string>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/res/values-zh-rTW/strings.xml",
+          "kind": "branding",
+          "beforeGitBlob": "d656b2e4764209f90ac0df90c93998eb62da4add",
+          "beforeSHA256": "8de2bb3e5fad476a82b198e16e368f8b797295a79e820c9fef5d145b65408653",
+          "afterSHA256": "aae354989eed20dc89a3d3fa6a2db3eeea67436b7d656f7dffab70be2ae9bf6d",
+          "edits": [
+            {
+              "old": "<string name=\"app_name\" translatable=\"false\">sing-box</string>",
+              "new": "<string name=\"app_name\" translatable=\"false\">sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"taildrop_open_app\">開啟 sing-box</string>",
+              "new": "<string name=\"taildrop_open_app\">開啟 sing-box-polaris</string>",
+              "count": 1
+            },
+            {
+              "old": "<string name=\"xposed_description\">sing-box 的特權強化</string>",
+              "new": "<string name=\"xposed_description\">sing-box-polaris 的特權強化</string>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/java/io/nekohasekai/sfa/bg/ServiceNotification.kt",
+          "kind": "branding",
+          "beforeGitBlob": "c111d639f925ae9d76e1ec1cffcbde1de58a7a6c",
+          "beforeSHA256": "b10254e708cbd1108f44d2fc3870c766a79392172aaa5758352b59bf312cc20a",
+          "afterSHA256": "9ce45f439534b2602eb2ab021dae414b7a7d065266a48341da088ca388dc4564",
+          "edits": [
+            {
+              "old": "\"sing-box\"",
+              "new": "\"sing-box-polaris\"",
+              "count": 2
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "app/src/main/java/io/nekohasekai/sfa/bg/VPNService.kt",
+          "kind": "branding",
+          "beforeGitBlob": "fad2b8f729cea6a8b3d573a306e2e3fa1bc5a3a4",
+          "beforeSHA256": "2cf97b5a47c5cf9d3470fdd7a274b768eb54477aa3326641be368b9f2700cec1",
+          "afterSHA256": "a6c2f3f7a6a11178c84870fcc8c2eb2ab370119e8cfab622a0b896a36e55547e",
+          "edits": [
+            {
+              "old": ".setSession(\"sing-box\")",
+              "new": ".setSession(\"sing-box-polaris\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
           "path": "app/src/main/java/io/nekohasekai/sfa/bg/PlatformInterfaceWrapper.kt",
           "kind": "compatibility",
           "beforeGitBlob": "8956a84e41d44741de2a0d76ec64f908d30cbdc4",
@@ -120,6 +275,216 @@
       ],
       "files": [
         {
+          "path": "sing-box.xcodeproj/project.pbxproj",
+          "kind": "branding",
+          "beforeGitBlob": "36d0bcb36f89795aa6342c760106edd14df2ddf3",
+          "beforeSHA256": "1b60d177932a67fe9cf2e0703fcf53b928e4e25677e77ae3a9232834e4fe5fcd",
+          "afterSHA256": "d25d4e51165e5c9fc08625b23d79e88cdbd54d554560b14ff50cc6e0ca279976",
+          "edits": [
+            {
+              "old": "INFOPLIST_KEY_CFBundleDisplayName = \"sing-box\";",
+              "new": "INFOPLIST_KEY_CFBundleDisplayName = \"sing-box-polaris\";",
+              "count": 12
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "MacLibrary/MacApplication.swift",
+          "kind": "branding",
+          "beforeGitBlob": "422141629129922f412cac32ddfee0ad762a9321",
+          "beforeSHA256": "3f30703aa3616ccd0b9891fed493e9fcf1e6b05e199e1a39b3743ddcec337b2c",
+          "afterSHA256": "7898729b249ddb33b7f79598041fc1f6ad130aba504107c6597e68d70993d073",
+          "edits": [
+            {
+              "old": "Window(\"sing-box\",",
+              "new": "Window(\"sing-box-polaris\",",
+              "count": 1
+            },
+            {
+              "old": "Button(\"Quit sing-box\")",
+              "new": "Button(\"Quit sing-box-polaris\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "MacLibrary/StatusBarController.swift",
+          "kind": "branding",
+          "beforeGitBlob": "3d28633bc008bde133487bbec9093fad2620d1ab",
+          "beforeSHA256": "fe002333fb8b85f02ac50011166853089ed448be0055faa95d8434465bbe7db9",
+          "afterSHA256": "6e98400537d434a7afd2207f323f5b6cba609f35f9680e744308a1a294876758",
+          "edits": [
+            {
+              "old": "labelWithString: \"sing-box\"",
+              "new": "labelWithString: \"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "WidgetExtension/ServiceToggleControl.swift",
+          "kind": "branding",
+          "beforeGitBlob": "b69bdefac90b8e6f5a717caae0008d848d19aa10",
+          "beforeSHA256": "c4f7b2308474bafeddf37519d0f1193e00b8f253a9cd09de167bc4ade9002fd7",
+          "afterSHA256": "60b7d732be8bd12b277a93d7ba812b3894336d2a5ccec969efca6354d4c8a3ad",
+          "edits": [
+            {
+              "old": "\"sing-box\",",
+              "new": "\"sing-box-polaris\",",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "SFI/ApplicationDelegate.swift",
+          "kind": "branding",
+          "beforeGitBlob": "6522528582e3cd2eba803b268456cf5f7e5e6550",
+          "beforeSHA256": "f9a658a526c5aad58484bcc1372e3281ca7c45cf62a568454c40345ab0344804",
+          "afterSHA256": "9c2eb87d4bdf0c73f56f92f25757e902a58a2e13da157cb70c30ff437937bd12",
+          "edits": [
+            {
+              "old": "displayName: \"sing-box\"",
+              "new": "displayName: \"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "FileProviderExtension/FileProviderItem.swift",
+          "kind": "branding",
+          "beforeGitBlob": "8c2a72630eb41f9d0e09b3123e70146b4f1e5b46",
+          "beforeSHA256": "a6fbab5cf1312f1507a7147f19d133853cd9235a0c0e4ba411b94d85015ebab9",
+          "afterSHA256": "8f859fa9865889a4e550c6394be095bfd098f73fa9d539a5ade4788473b74f51",
+          "edits": [
+            {
+              "old": "return \"sing-box\"",
+              "new": "return \"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "Localizable.xcstrings",
+          "kind": "branding",
+          "beforeGitBlob": "6035a6d64bae6dfa5681fb74c5e96f2b7dab680f",
+          "beforeSHA256": "41fe45477d63aba140a253624d3124371e916209b90dbe4a013fd063d6719f80",
+          "afterSHA256": "c8a779435024b3f00aa02816f2bd2902f6f2cb0bf8150871347453f2df44cb1b",
+          "edits": [
+            {
+              "old": "    \"sing-box\" : {\n      \"localizations\" : {\n        \"fa\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box\"\n          }\n        },\n        \"ru\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box\"\n          }\n        },\n        \"zh-Hant\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box\"\n          }\n        }\n      },\n      \"shouldTranslate\" : false\n    },\n",
+              "new": "    \"sing-box-polaris\" : {\n      \"localizations\" : {\n        \"fa\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box-polaris\"\n          }\n        },\n        \"ru\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box-polaris\"\n          }\n        },\n        \"zh-Hant\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"sing-box-polaris\"\n          }\n        }\n      },\n      \"shouldTranslate\" : false\n    },\n",
+              "count": 1
+            },
+            {
+              "old": "    \"Quit sing-box\" : {\n      \"localizations\" : {\n        \"fa\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"خروج از sing-box\"\n          }\n        },\n        \"ru\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"Выйти из sing-box\"\n          }\n        },\n        \"zh-Hans\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"退出 sing-box\"\n          }\n        },\n        \"zh-Hant\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"退出 sing-box\"\n          }\n        }\n      }\n    },\n",
+              "new": "    \"Quit sing-box-polaris\" : {\n      \"localizations\" : {\n        \"fa\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"خروج از sing-box-polaris\"\n          }\n        },\n        \"ru\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"Выйти из sing-box-polaris\"\n          }\n        },\n        \"zh-Hans\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"退出 sing-box-polaris\"\n          }\n        },\n        \"zh-Hant\" : {\n          \"stringUnit\" : {\n            \"state\" : \"translated\",\n            \"value\" : \"退出 sing-box-polaris\"\n          }\n        }\n      }\n    },\n",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "SFM.System/distribution-arm64.xml",
+          "kind": "branding",
+          "beforeGitBlob": "6fe31f3b2861ada6dd22d50302495b7ba5ace2b7",
+          "beforeSHA256": "9dcf200242bfb30dd168c2b3e01b76f6c22adcdc6d4176b4ad16aabf7e8fda5f",
+          "afterSHA256": "a367e16533c448b2fb2b1478274967a3e24bb8fd41e3812542771440c6523a87",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            },
+            {
+              "old": "title=\"sing-box\"",
+              "new": "title=\"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "SFM.System/distribution-x86_64.xml",
+          "kind": "branding",
+          "beforeGitBlob": "dfbe56e1c036a645daebfed078d9915cd072a67a",
+          "beforeSHA256": "0eda418dfd41080785d2fab6f8fa9ea7722c0ef6b92e57dfaca026df21f085d6",
+          "afterSHA256": "8d9bd4470ced88fcbee01a036b6864f5658aed6e86423440aec74614bd9c2686",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            },
+            {
+              "old": "title=\"sing-box\"",
+              "new": "title=\"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "SFM.System/distribution-universal.xml",
+          "kind": "branding",
+          "beforeGitBlob": "578e1772771aa2f1efe6d480a6c0dcbc8a7754ac",
+          "beforeSHA256": "aaa82263af9725c05f6ad331174cf5123da5c58be47842bdb9411abe6317bc52",
+          "afterSHA256": "a9f409364f6be2f3894be6d67315a18cf3df14e7eaa0ee5493bea159d2d4c57f",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            },
+            {
+              "old": "title=\"sing-box\"",
+              "new": "title=\"sing-box-polaris\"",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "Jailbreak/package.sh",
+          "kind": "branding",
+          "beforeGitBlob": "417a29d02dcff29b8a156aee161fd6e53bc749c0",
+          "beforeSHA256": "0aac83ea17ee10855411522f79947a17b1e48a3b7e59f0cb62b27ef2acd2b1aa",
+          "afterSHA256": "fee23b4df4492f8c75e94719f391fd1f624e17265ed15aa1e3acb10f772924d6",
+          "edits": [
+            {
+              "old": "APP_DISPLAY_NAME=\"sing-box JB\"",
+              "new": "APP_DISPLAY_NAME=\"sing-box-polaris JB\"",
+              "count": 1
+            },
+            {
+              "old": "Name: sing-box JB",
+              "new": "Name: sing-box-polaris JB",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100755"
+        },
+        {
+          "path": "Makefile",
+          "kind": "branding",
+          "beforeGitBlob": "274323492752448d66f96edffe6374f518ae1782",
+          "beforeSHA256": "acd8def858ad2143bdc3bda662ba70bf72e5b27c8c355d268696708c098d2fa2",
+          "afterSHA256": "7eca99405f390258fbd513c5911c0a1bd290999fc9191395e3ea55c259efb755",
+          "edits": [
+            {
+              "old": "--volname \"sing-box\"",
+              "new": "--volname \"sing-box-polaris\"",
+              "count": 3
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
           "path": "Library/Network/ExtensionPlatformInterface.swift",
           "kind": "compatibility",
           "beforeGitBlob": "3ef2cbbe9a5e6d786e5b78b40baee7de891be578",
@@ -142,9 +507,9 @@
         {
           "path": "Jailbreak/package.sh",
           "kind": "compatibility",
-          "beforeGitBlob": "417a29d02dcff29b8a156aee161fd6e53bc749c0",
-          "beforeSHA256": "0aac83ea17ee10855411522f79947a17b1e48a3b7e59f0cb62b27ef2acd2b1aa",
-          "afterSHA256": "b2354b1ed39d45c8f73ebf967d5a93be2ff30968332e536473f0ff632a632961",
+          "beforeGitBlob": "1985f32becc0a18596e606dbcbb2d8765f74bcb1",
+          "beforeSHA256": "fee23b4df4492f8c75e94719f391fd1f624e17265ed15aa1e3acb10f772924d6",
+          "afterSHA256": "7d0bd6ace2df0d7656e7bd5a67cf1894c6d1b6e0c518d8d87b26a4f6c2155ab5",
           "edits": [
             {
               "old": "set -euo pipefail\n",
@@ -187,9 +552,9 @@
         {
           "path": "Makefile",
           "kind": "unsigned",
-          "beforeGitBlob": "274323492752448d66f96edffe6374f518ae1782",
-          "beforeSHA256": "acd8def858ad2143bdc3bda662ba70bf72e5b27c8c355d268696708c098d2fa2",
-          "afterSHA256": "f87c687dcb0cd968be5236222519b75ce66d91c9e1f4b6bc9214753b0d9252f7",
+          "beforeGitBlob": "772e377071cc419ce6c59ebd4c2408a37a06fd84",
+          "beforeSHA256": "7eca99405f390258fbd513c5911c0a1bd290999fc9191395e3ea55c259efb755",
+          "afterSHA256": "9779fb1d730eb2347ea527fed244a45a13aa143c390a8245fdc3f448c0c8e102",
           "edits": [
             {
               "old": "xcodebuild -exportArchive -archivePath build/SFM.System-universal.xcarchive -exportOptionsPlist SFM.System/Export.plist -exportPath build/SFM.System-universal",
@@ -242,11 +607,206 @@
       ],
       "files": [
         {
+          "path": "scripts/afterSign.cjs",
+          "kind": "branding",
+          "beforeMode": "100644",
+          "beforeGitBlob": "b96d3170436036a854347ae7f53a8a6951159472",
+          "beforeSHA256": "43c0047050b63452a9ca71e013bba1cf9ddf9e95e73522fc65278f45879af2e4",
+          "afterSHA256": "a057631d3ec6f68bc4e5ac51f0542b4b1cae9cfe238217056aa1bb9b6e393687",
+          "edits": [
+            {
+              "old": "`${context.packager.appInfo.productFilename}${context.electronPlatformName === \"win32\" ? \".exe\" : \"\"}`",
+              "new": "context.electronPlatformName === \"win32\" ? \"sing-box.exe\" : context.packager.appInfo.productFilename",
+              "count": 1
+            }
+          ]
+        },
+        {
+          "path": "src/renderer/index.html",
+          "kind": "branding",
+          "beforeGitBlob": "3ee2499bd022b0a963a566d3aa164f95382ca049",
+          "beforeSHA256": "76fa942e1e95091e5b5deabe34f07c04c4d7c4cada18a0e5faa412d9076224fe",
+          "afterSHA256": "2d90445a82605bdf82bd38363a17f94d7a5300cf817e751028d35070045cb465",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/renderer/tray.html",
+          "kind": "branding",
+          "beforeGitBlob": "f595bb3993eda56224157c98e530f19ec422558f",
+          "beforeSHA256": "ee467b95b1f928f4bd489fc142f6a3be605be23562119f3756929f72595b3cda",
+          "afterSHA256": "1237ee084d1a4201e405a0dc370ea3f74dfe0753680974f4ea4c468044f0d05b",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/tray.ts",
+          "kind": "branding",
+          "beforeGitBlob": "e3cf78ab28ea16052b69f2d50fa053a3f92aa396",
+          "beforeSHA256": "98f86664dd67d7077b4e11340daf256166e7ec5c71292cd0ff47005670e68411",
+          "afterSHA256": "b8427db219ea0d7f1a4de8c4dad969a316826df42bbf3e4f01547fec1173b749",
+          "edits": [
+            {
+              "old": "label: \"sing-box\"",
+              "new": "label: \"sing-box-polaris\"",
+              "count": 1
+            },
+            {
+              "old": "setToolTip(\"sing-box\")",
+              "new": "setToolTip(\"sing-box-polaris\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/x11Tray.ts",
+          "kind": "branding",
+          "beforeGitBlob": "f32cafefa17e19e3ade6d880dd455768971df549",
+          "beforeSHA256": "58ed8244130f8831eb1f39dd64fa308a962b629669d39b2e5e003a6e05e1c54d",
+          "afterSHA256": "b359aeb1f460cff15fadfa511c649d57538730830ad99ced33080d928c3161e5",
+          "edits": [
+            {
+              "old": "readonly Title = \"sing-box\"",
+              "new": "readonly Title = \"sing-box-polaris\"",
+              "count": 1
+            },
+            {
+              "old": "[\"\", [], \"sing-box\", \"\"]",
+              "new": "[\"\", [], \"sing-box-polaris\", \"\"]",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/index.ts",
+          "kind": "branding",
+          "beforeGitBlob": "27455704045d5d662358d4a63a5c1a3e9c31c07a",
+          "beforeSHA256": "9d2a02f78b01a15f45e9bb41535fbc3c5df3607c367400946b54e1f2ad5525e9",
+          "afterSHA256": "d0b05a1efe8e83923e0ced9f483d3103891e1408fcd4a23c46108638cd86ed50",
+          "edits": [
+            {
+              "old": "sing-box stopped unexpectedly",
+              "new": "sing-box-polaris stopped unexpectedly",
+              "count": 2
+            },
+            {
+              "old": "showErrorBox(\"sing-box\",",
+              "new": "showErrorBox(\"sing-box-polaris\",",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/loginItem.ts",
+          "kind": "branding",
+          "beforeGitBlob": "68ffac8820f64c956facaeecc0bcfcabb5eb5303",
+          "beforeSHA256": "618fdd05626a62970f6984a081dbca52871408c5935978b5f1b13435cb2dfb4e",
+          "afterSHA256": "0ebf401c3f5ec8b9b6e5eebcb3a47c2d33bfb72185629fbd9c02c2440f18b6ce",
+          "edits": [
+            {
+              "old": "Name=sing-box",
+              "new": "Name=sing-box-polaris",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "build/io.nekohasekai.sfl.metainfo.xml",
+          "kind": "branding",
+          "beforeGitBlob": "60a2588ef197fcccef17f50d82e2762ac88a91c9",
+          "beforeSHA256": "faf9084ffea777e4b4e37ce11b081e311577cfdd559115d156ddb0333c3118b3",
+          "afterSHA256": "c01907d8811632b307f08b429b42285baf2af7a6e94dd8b9be687c4a409e99cc",
+          "edits": [
+            {
+              "old": "<name>sing-box</name>",
+              "new": "<name>sing-box-polaris</name>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "electron-builder.yml",
+          "kind": "branding",
+          "beforeGitBlob": "295ccd9cfe7b000796944b770b9e1f3704535710",
+          "beforeSHA256": "2ce5f537f252a93a336d2dd20bf3689d60a281fed62d3998ffe8a3c8e2506f35",
+          "afterSHA256": "4f5815c8460e6df32b5b755a0e0fa472b1e76b55c58466966cb1fa3970f53c5e",
+          "edits": [
+            {
+              "old": "    StartupWMClass: sing-box",
+              "new": "    Name: sing-box-polaris\n    StartupWMClass: sing-box",
+              "count": 1
+            },
+            {
+              "old": "nsis:\n",
+              "new": "nsis:\n  shortcutName: sing-box-polaris\n  uninstallDisplayName: sing-box-polaris\n",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
           "path": "scripts/package.ts",
-          "kind": "unsigned",
+          "kind": "branding",
           "beforeGitBlob": "3b322c70581f02f12015010ba07c866d62eaa368",
           "beforeSHA256": "14928df1da195cb8f3273aa8cb0f9f333655ae640cf376f4d63a2a01fe0d58d7",
-          "afterSHA256": "b19e08c8270bc2a66e945dbd5211d6bfd24ae64e5420171997baaf4fedc5190a",
+          "afterSHA256": "5652df88d78756eeff2eca94f2aeaf965c5f39f65658556f650c82b72ecbd751",
+          "edits": [
+            {
+              "old": "config: {\n        compression:",
+              "new": "config: {\n        productName: \"sing-box-polaris\",\n        compression:",
+              "count": 1
+            },
+            {
+              "old": "win: {\n          artifactName,",
+              "new": "win: {\n          executableName: \"sing-box\",\n          artifactName,",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "electron.vite.config.ts",
+          "kind": "branding",
+          "beforeGitBlob": "a716e87920c656dade0357566716e0ab932a2f0c",
+          "beforeSHA256": "d747e3e99d777160285fdd23ba89401b4e9796169a494152f442daf2f1f17318",
+          "afterSHA256": "46a34a128b9c39925811572dce81d99f4032bcfcfad299a81e4bae586c013234",
+          "edits": [
+            {
+              "old": "export default defineConfig({",
+              "new": "// Display-only derivative branding of fixed dashboard f231354bc786dfcffcf09f6ec771bc5683050194.\n// Keep original sources, copyright and licensing intact; do not rewrite the submodule.\nfunction polarisDashboardBranding(): Plugin {\n  const rules = [\n  {\n    \"path\": \"dashboard/src/App.tsx\",\n    \"sha256\": \"721269898effb961912247144e5b50c97c9c6132d86eb018b36f7623f9c3f352\",\n    \"edits\": [\n      {\n        \"old\": \"name: \\\"sing-box\\\", url:\",\n        \"new\": \"name: \\\"sing-box-polaris\\\", url:\"\n      },\n      {\n        \"old\": \"{host !== null ? (\\n          <nav className={styles.sidebar}>\\n            <div className={styles.sidebarTitlebar} />\\n            <div className={styles.sidebarBrand}>\\n              sing-box\",\n        \"new\": \"{host !== null ? (\\n          <nav className={styles.sidebar}>\\n            <div className={styles.sidebarTitlebar} />\\n            <div className={styles.sidebarBrand}>\\n              sing-box-polaris\"\n      }\n    ]\n  },\n  {\n    \"path\": \"dashboard/src/components/ui.tsx\",\n    \"sha256\": \"d1a8d9ebb870b061d389fce65f6a81f59f19ff027bd345a0d1a54a2481da24f6\",\n    \"edits\": [\n      {\n        \"old\": \"      sing-box\\n\",\n        \"new\": \"      sing-box-polaris\\n\"\n      }\n    ]\n  }\n];\n  return {\n    name: \"polaris-dashboard-branding\",\n    enforce: \"pre\",\n    transform(code, id) {\n      const rule = rules.find((item) => resolve(import.meta.dirname, item.path) === id.split(\"?\")[0]);\n      if (!rule) return null;\n      if (createHash(\"sha256\").update(code).digest(\"hex\") !== rule.sha256) {\n        throw new Error(\"Polaris dashboard source identity mismatch: \" + rule.path);\n      }\n      for (const edit of rule.edits) {\n        if (code.split(edit.old).length !== 2) throw new Error(\"Polaris dashboard branding anchor mismatch\");\n        code = code.replace(edit.old, edit.new);\n      }\n      return { code, map: null };\n    },\n  };\n}\n\nexport default defineConfig({",
+              "count": 1
+            },
+            {
+              "old": "plugins: [react(), contentSecurityPolicy()]",
+              "new": "plugins: [polarisDashboardBranding(), react(), contentSecurityPolicy()]",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "scripts/package.ts",
+          "kind": "unsigned",
+          "beforeGitBlob": "082ba4754b415eba7458405ca052b828dfcdf65f",
+          "beforeSHA256": "5652df88d78756eeff2eca94f2aeaf965c5f39f65658556f650c82b72ecbd751",
+          "afterSHA256": "831b0e344ff73e952c7873787c393e64d12fc8c390d76aa03709e804d37d5fde",
           "edits": [
             {
               "old": "signingConfiguration: WindowsSigningConfiguration,",
@@ -302,7 +862,168 @@
       "versionMetadata": [
         "version.json"
       ],
-      "files": [],
+      "files": [
+        {
+          "path": "src/renderer/index.html",
+          "kind": "branding",
+          "beforeGitBlob": "3ee2499bd022b0a963a566d3aa164f95382ca049",
+          "beforeSHA256": "76fa942e1e95091e5b5deabe34f07c04c4d7c4cada18a0e5faa412d9076224fe",
+          "afterSHA256": "2d90445a82605bdf82bd38363a17f94d7a5300cf817e751028d35070045cb465",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/renderer/tray.html",
+          "kind": "branding",
+          "beforeGitBlob": "f595bb3993eda56224157c98e530f19ec422558f",
+          "beforeSHA256": "ee467b95b1f928f4bd489fc142f6a3be605be23562119f3756929f72595b3cda",
+          "afterSHA256": "1237ee084d1a4201e405a0dc370ea3f74dfe0753680974f4ea4c468044f0d05b",
+          "edits": [
+            {
+              "old": "<title>sing-box</title>",
+              "new": "<title>sing-box-polaris</title>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/tray.ts",
+          "kind": "branding",
+          "beforeGitBlob": "e3cf78ab28ea16052b69f2d50fa053a3f92aa396",
+          "beforeSHA256": "98f86664dd67d7077b4e11340daf256166e7ec5c71292cd0ff47005670e68411",
+          "afterSHA256": "b8427db219ea0d7f1a4de8c4dad969a316826df42bbf3e4f01547fec1173b749",
+          "edits": [
+            {
+              "old": "label: \"sing-box\"",
+              "new": "label: \"sing-box-polaris\"",
+              "count": 1
+            },
+            {
+              "old": "setToolTip(\"sing-box\")",
+              "new": "setToolTip(\"sing-box-polaris\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/x11Tray.ts",
+          "kind": "branding",
+          "beforeGitBlob": "f32cafefa17e19e3ade6d880dd455768971df549",
+          "beforeSHA256": "58ed8244130f8831eb1f39dd64fa308a962b629669d39b2e5e003a6e05e1c54d",
+          "afterSHA256": "b359aeb1f460cff15fadfa511c649d57538730830ad99ced33080d928c3161e5",
+          "edits": [
+            {
+              "old": "readonly Title = \"sing-box\"",
+              "new": "readonly Title = \"sing-box-polaris\"",
+              "count": 1
+            },
+            {
+              "old": "[\"\", [], \"sing-box\", \"\"]",
+              "new": "[\"\", [], \"sing-box-polaris\", \"\"]",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/index.ts",
+          "kind": "branding",
+          "beforeGitBlob": "27455704045d5d662358d4a63a5c1a3e9c31c07a",
+          "beforeSHA256": "9d2a02f78b01a15f45e9bb41535fbc3c5df3607c367400946b54e1f2ad5525e9",
+          "afterSHA256": "d0b05a1efe8e83923e0ced9f483d3103891e1408fcd4a23c46108638cd86ed50",
+          "edits": [
+            {
+              "old": "sing-box stopped unexpectedly",
+              "new": "sing-box-polaris stopped unexpectedly",
+              "count": 2
+            },
+            {
+              "old": "showErrorBox(\"sing-box\",",
+              "new": "showErrorBox(\"sing-box-polaris\",",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "src/main/loginItem.ts",
+          "kind": "branding",
+          "beforeGitBlob": "68ffac8820f64c956facaeecc0bcfcabb5eb5303",
+          "beforeSHA256": "618fdd05626a62970f6984a081dbca52871408c5935978b5f1b13435cb2dfb4e",
+          "afterSHA256": "0ebf401c3f5ec8b9b6e5eebcb3a47c2d33bfb72185629fbd9c02c2440f18b6ce",
+          "edits": [
+            {
+              "old": "Name=sing-box",
+              "new": "Name=sing-box-polaris",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "build/io.nekohasekai.sfl.metainfo.xml",
+          "kind": "branding",
+          "beforeGitBlob": "60a2588ef197fcccef17f50d82e2762ac88a91c9",
+          "beforeSHA256": "faf9084ffea777e4b4e37ce11b081e311577cfdd559115d156ddb0333c3118b3",
+          "afterSHA256": "c01907d8811632b307f08b429b42285baf2af7a6e94dd8b9be687c4a409e99cc",
+          "edits": [
+            {
+              "old": "<name>sing-box</name>",
+              "new": "<name>sing-box-polaris</name>",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "electron-builder.yml",
+          "kind": "branding",
+          "beforeGitBlob": "295ccd9cfe7b000796944b770b9e1f3704535710",
+          "beforeSHA256": "2ce5f537f252a93a336d2dd20bf3689d60a281fed62d3998ffe8a3c8e2506f35",
+          "afterSHA256": "4f5815c8460e6df32b5b755a0e0fa472b1e76b55c58466966cb1fa3970f53c5e",
+          "edits": [
+            {
+              "old": "    StartupWMClass: sing-box",
+              "new": "    Name: sing-box-polaris\n    StartupWMClass: sing-box",
+              "count": 1
+            },
+            {
+              "old": "nsis:\n",
+              "new": "nsis:\n  shortcutName: sing-box-polaris\n  uninstallDisplayName: sing-box-polaris\n",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        },
+        {
+          "path": "electron.vite.config.ts",
+          "kind": "branding",
+          "beforeGitBlob": "a716e87920c656dade0357566716e0ab932a2f0c",
+          "beforeSHA256": "d747e3e99d777160285fdd23ba89401b4e9796169a494152f442daf2f1f17318",
+          "afterSHA256": "46a34a128b9c39925811572dce81d99f4032bcfcfad299a81e4bae586c013234",
+          "edits": [
+            {
+              "old": "export default defineConfig({",
+              "new": "// Display-only derivative branding of fixed dashboard f231354bc786dfcffcf09f6ec771bc5683050194.\n// Keep original sources, copyright and licensing intact; do not rewrite the submodule.\nfunction polarisDashboardBranding(): Plugin {\n  const rules = [\n  {\n    \"path\": \"dashboard/src/App.tsx\",\n    \"sha256\": \"721269898effb961912247144e5b50c97c9c6132d86eb018b36f7623f9c3f352\",\n    \"edits\": [\n      {\n        \"old\": \"name: \\\"sing-box\\\", url:\",\n        \"new\": \"name: \\\"sing-box-polaris\\\", url:\"\n      },\n      {\n        \"old\": \"{host !== null ? (\\n          <nav className={styles.sidebar}>\\n            <div className={styles.sidebarTitlebar} />\\n            <div className={styles.sidebarBrand}>\\n              sing-box\",\n        \"new\": \"{host !== null ? (\\n          <nav className={styles.sidebar}>\\n            <div className={styles.sidebarTitlebar} />\\n            <div className={styles.sidebarBrand}>\\n              sing-box-polaris\"\n      }\n    ]\n  },\n  {\n    \"path\": \"dashboard/src/components/ui.tsx\",\n    \"sha256\": \"d1a8d9ebb870b061d389fce65f6a81f59f19ff027bd345a0d1a54a2481da24f6\",\n    \"edits\": [\n      {\n        \"old\": \"      sing-box\\n\",\n        \"new\": \"      sing-box-polaris\\n\"\n      }\n    ]\n  }\n];\n  return {\n    name: \"polaris-dashboard-branding\",\n    enforce: \"pre\",\n    transform(code, id) {\n      const rule = rules.find((item) => resolve(import.meta.dirname, item.path) === id.split(\"?\")[0]);\n      if (!rule) return null;\n      if (createHash(\"sha256\").update(code).digest(\"hex\") !== rule.sha256) {\n        throw new Error(\"Polaris dashboard source identity mismatch: \" + rule.path);\n      }\n      for (const edit of rule.edits) {\n        if (code.split(edit.old).length !== 2) throw new Error(\"Polaris dashboard branding anchor mismatch\");\n        code = code.replace(edit.old, edit.new);\n      }\n      return { code, map: null };\n    },\n  };\n}\n\nexport default defineConfig({",
+              "count": 1
+            },
+            {
+              "old": "plugins: [react(), contentSecurityPolicy()]",
+              "new": "plugins: [polarisDashboardBranding(), react(), contentSecurityPolicy()]",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100644"
+        }
+      ],
       "tree": "47c32033031524608c5ffb16cdf0188bbc0d6559",
       "baselineFiles": {
         "version.json": {

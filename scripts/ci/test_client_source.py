@@ -179,17 +179,19 @@ class ClientSourceControls(unittest.TestCase):
         with self.fixture(unsigned=False,owned_mode='100755') as record:self.check(record)
 
     def test_windows_unsigned_flag_covers_builder_and_nested_payloads_signed_stays_strict(self):
-        spec=client.definition('windows');entries=spec['files']
+        spec=client.definition('windows');entries=[e for e in spec['files'] if e['kind']=='unsigned']
         self.assertEqual(spec['commit'],'50f503849148dd73fa4f4bc231119acf5b2f3d7a')
         self.assertEqual({e['path'] for e in entries},{'scripts/package.ts','scripts/afterPack.cjs'})
-        self.assertEqual(client.selected(spec,False),[])  # Signed uses the original strict sources.
+        self.assertTrue(all(e['kind']=='branding' for e in client.selected(spec,False)))  # Signed retains strict signing, with reviewed display names.
         result={}
         original={}
         for entry in entries:
             raw=(REAL_ROOT/'scripts/ci/testdata/desktop-50f50384'/Path(entry['path']).name).read_bytes()
+            original[entry['path']]=raw.decode()
+            for brand in spec['files']:
+                if brand['path']==entry['path'] and brand['kind']=='branding':raw=client.edits(raw,brand)
             self.assertEqual(client.blob(raw),entry['beforeGitBlob'])
             self.assertEqual(client.sha(raw),entry['beforeSHA256'])
-            original[entry['path']]=raw.decode()
             result[entry['path']]=client.edits(raw,entry).decode()
         package=result['scripts/package.ts'];nested=result['scripts/afterPack.cjs']
         for fragment in ['unsignedWindowsPackage ? undefined : readWindowsSigningConfiguration()',
@@ -255,13 +257,14 @@ class ClientSourceControls(unittest.TestCase):
 
     def test_jailbreak_full_package_and_numeric_marketing_versions_use_complete_source(self):
         spec=client.definition('apple')
-        entry=next(e for e in spec['files'] if e['path']=='Jailbreak/package.sh')
+        entries=[e for e in spec['files'] if e['path']=='Jailbreak/package.sh'];entry=entries[0]
         raw=(REAL_ROOT/'scripts/ci/testdata/apple-e232aaf2/package.sh').read_bytes()
         self.assertEqual(client.blob(raw),entry['beforeGitBlob'])
         self.assertEqual(client.sha(raw),entry['beforeSHA256'])
         self.assertEqual(entry['beforeMode'],'100755')
-        self.assertEqual(entry['kind'],'compatibility')
-        script=client.edits(raw,entry).decode()
+        self.assertEqual(entry['kind'],'branding')
+        for transform in entries:raw=client.edits(raw,transform)
+        script=raw.decode()
         self.assertNotRegex(script,r'(?m)^VERSION=')
         self.assertIn('MARKETING_VERSION="$MARKETING_VERSION"',script)
         self.assertIn('Set :CFBundleShortVersionString $MARKETING_VERSION',script)

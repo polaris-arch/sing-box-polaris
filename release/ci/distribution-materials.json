@@ -11,12 +11,7 @@
     "distro packages",
     "OCI archives"
   ],
-  "openItems": [
-    {
-      "id": "client-derivative-identity",
-      "detail": "Android/Desktop derivative naming clause awaits the user decision. No identity rename or upstream consent is assumed; original authors and license texts remain intact."
-    }
-  ],
+  "openItems": [],
   "legalConclusion": false,
   "resolvedItems": [
     {
@@ -93,6 +88,11 @@
       "id": "android-actual-resolved-source-notices",
       "evidence": "release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json; reuse-reference.json; scripts/ci/github_release.py validate_android_material_reuse",
       "scope": "Successful diagnostic39031988065 measured other181/legacy164 unique artifacts,254 actual modules. Exact254 POM and253 sources.jar acquired;1 hash-verified empty Guava artifact has no class/native code.303 original texts,281 metadata/native recipe inputs;camera-core andgraphics-path JNI fixed-source/notice supplements included. Existing inventory requires actual full artifact identity/bytes/SHA and client base/overlay identity to match reviewed source-owned mapping; no root project/version injection or prior core hash reused."
+    },
+    {
+      "id": "client-derivative-identity",
+      "evidence": "release/ci/client-overlays.json; release/ci/CLIENT-DERIVATIVE-NAMING.md",
+      "scope": "User confirmed sing-box-polaris. Exact display-only source transforms and existing publisher public-name mapping preserve upstream scope, author/license texts, identifiers and permissions. Awaiting independent implementation review and actual new producer validation is not evidence of upstream consent or an additional license grant."
     }
   ],
   "noticeTextObservations": [

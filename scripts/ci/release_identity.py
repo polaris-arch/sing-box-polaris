@@ -21,6 +21,19 @@ def api(path):
     return json.loads(subprocess.check_output(['gh', 'api', path]))
 
 
+def public_product_name(name):
+    """Rename only the public product prefix; candidate/internal identities stay exact."""
+    require(isinstance(name, str) and re.fullmatch(r'[A-Za-z0-9_.+ -]+', name) and name not in ('.', '..'),
+            'public product filename must be a safe basename')
+    if name.startswith(('sing-box-polaris-', 'sing-box-polaris_')):
+        return name
+    for separator in ('-', '_'):
+        prefix = 'sing-box' + separator
+        if name.startswith(prefix):
+            return 'sing-box-polaris' + separator + name[len(prefix):]
+    return name
+
+
 def remote_tag_identity(tag, source, expected_object=None):
     require(isinstance(tag, str) and tag.startswith('v'), 'versioned source tag required')
     validate_version(tag[1:])

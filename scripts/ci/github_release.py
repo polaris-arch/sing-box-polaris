@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from release_identity import remote_tag_identity
+from release_identity import remote_tag_identity, public_product_name
 from polaris_version import validate as validate_version
 import json
 import os
@@ -136,6 +136,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     for row in index['platforms']:
         require((row['sourceCommit'], row['sourceTree'], row['version'], row['tag']) == (source, tree, VERSION, TAG), 'mixed source native row')
         require((row['target'], row['variant']) == (expected[row['id']]['target'], expected[row['id']]['variant']), 'native row matrix mismatch')
+        require(row['archive'].get('releaseName') == public_product_name(row['archive']['name']), 'native public archive name mismatch')
         suffix = '.zip' if row['target'].startswith('windows/') else '.tar.gz'
         require(row['archive']['root'] == row['id'] and row['archive']['name'] == row['id'] + suffix, 'native archive identity mismatch')
     require(index['sourceArchive']['name'] == 'sing-box-polaris-source-' + source + '.tar.gz', 'immutable source archive basename required')
@@ -152,13 +153,30 @@ def default_name(role, artifact, relative):
     if artifact.startswith('libbox-apple-') and p.name.startswith('Libbox-'):
         return 'Libbox-' + VERSION + '-' + artifact.removeprefix('libbox-apple-') + '.tar'
     if role == 'docker' and artifact.startswith('oci-') and p.name == 'image.tar':
-        return 'sing-box-' + VERSION + '-' + artifact + '.tar'
+        return public_product_name('sing-box-' + VERSION + '-' + artifact + '.tar')
     if role == 'docker' and artifact.startswith('binary-'):
-        return 'sing-box-' + VERSION + '-container-' + artifact.removeprefix('binary-')
+        return public_product_name('sing-box-' + VERSION + '-container-' + artifact.removeprefix('binary-'))
     # Provenance remains in the aggregate receipt; do not flatten repeated metadata.
     if p.name.startswith(('polaris-candidate-manifest-', 'native-row-')):
         return None
-    return p.name
+    if artifact.startswith(('binary-android-apks-', 'binary-windows-client-',
+                            'binary-linux-client-', 'binary-apple-',
+                            'unsigned-apple-', 'signed-apple-store-')):
+        return branded_client_name(p.name)
+    # build.yml and linux.yml intentionally deliver distinct distro package bytes.
+    # Preserve both original outputs without a branding-induced basename collision.
+    if role == 'all' and p.name.startswith('sing-box_') and p.suffix in ('.deb', '.rpm'):
+        return public_product_name(p.stem) + '-build' + p.suffix
+    return public_product_name(p.name)
+
+
+def branded_client_name(name):
+    """Public derivative name only; exact upstream candidate paths stay in the receipt."""
+    if name.startswith('sing-box-polaris-'):
+        return name
+    if name.startswith(('sing-box-', 'sing-box_')):
+        return public_product_name(name)
+    return 'sing-box-polaris-' + name
 
 
 def release_scope(version):
@@ -547,9 +565,8 @@ def assemble(actual, config, work, output):
                 basename = PurePosixPath(relative).name
                 if basename in ('polaris-upstream-native-assets.json', 'sing-box-polaris-source-'+actual['sourceCommit']+'.tar.gz'):
                     require(name == basename, 'native index/source rename forbidden')
-                # CLI archive names referenced by the native index cannot be changed.
-                if PurePosixPath(relative).name.startswith('sing-box-'+VERSION) and relative.endswith(('.tar.gz', '.zip')):
-                    require(name == PurePosixPath(relative).name, 'native archive rename forbidden')
+                # Public names are the exact source-owned mapping, never arbitrary reviewed redirects.
+                require(name == default_name(role, artifact, relative), 'public filename differs from source-owned mapping')
                 destinations.add(name.casefold())
                 shutil.copyfile(work / role / artifact / relative, output / name)
                 receipt['assets'].append(dict(f, releaseName=name, role=role, artifact=artifact, artifactPath=relative,
@@ -568,7 +585,7 @@ def publish(output, source):
     # Listing includes drafts visible to the token; no 404-as-absence shortcut.
     require(not any(r['tag_name'] == TAG for r in pages(f'repos/{REPO}/releases')), 'existing Release (including draft) will never be changed')
     expected = {p.name: {'size': p.stat().st_size, 'digest': 'sha256:'+sha(p)} for p in output.iterdir() if p.is_file()}
-    notes = 'GitHub-only unsigned build/package prerelease from '+source+'. Not a complete signed installable release.\n\n'+'\n'.join('- '+x for x in BLOCKED)+'\n\nSee '+RECEIPT+' for actual hashes, run IDs, scope and signature states.'
+    notes = 'GitHub-only unsigned build/package prerelease from '+source+'. Not a complete signed installable release.\n\nClients are sing-box-polaris derivatives of the fixed SagerNet upstream clients, not official SagerNet releases. Original authors and license texts are retained. Candidate paths and renamed public assets are mapped in the receipt.\n\n'+'\n'.join('- '+x for x in BLOCKED)+'\n\nSee '+RECEIPT+' for actual hashes, run IDs, scope and signature states.'
     release = api(f'repos/{REPO}/releases', 'POST', {'tag_name': TAG, 'target_commitish': source, 'name': TAG, 'body': notes, 'draft': True, 'prerelease': True})
     release_id = release['id']
     # No --clobber. Any upload/validation error leaves this newly created draft intact.

@@ -3,7 +3,7 @@
 import argparse,gzip,hashlib,io,json,os,platform,re,shlex,subprocess,tarfile,tempfile,zipfile
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
-from release_identity import verify_checkout
+from release_identity import verify_checkout, public_product_name
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -360,6 +360,8 @@ def assemble(directory):
   matches=[j for j in jobs if j['name']==name and j.get('conclusion')=='success' and j.get('status')=='completed' and j.get('head_sha')==commit and str(j.get('run_id'))==run_id and str(j.get('run_attempt'))==attempt]
   if len(matches)!=1:raise ValueError('missing unique successful native smoke API evidence: '+name)
   native_jobs[key]={'id':matches[0]['id'],'name':name}
+ # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
+ for row in rows.values():row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
  index['distributionMaterials']=distribution_materials(index)
  if final:

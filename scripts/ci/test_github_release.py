@@ -167,14 +167,14 @@ class GateTests(unittest.TestCase):
 
     def test_library_mapping(self):
         self.assertEqual(p.default_name('all','libbox-android-arm64','arm64/libbox.aar'),f'libbox-{p.VERSION}-android-arm64.aar')
-        self.assertEqual(p.default_name('docker','oci-linux-arm64','image.tar'),f'sing-box-{p.VERSION}-oci-linux-arm64.tar')
+        self.assertEqual(p.default_name('docker','oci-linux-arm64','image.tar'),f'sing-box-polaris-{p.VERSION}-oci-linux-arm64.tar')
         self.assertIsNone(p.default_name('signed','binary-darwin_arm64','x.tar.gz'))
 
     def fixture(self, root):
         work=root/'work';work.mkdir()
         art=work/'all'/'a';art.mkdir(parents=True)
         name='sing-box-'+p.VERSION+'-linux-amd64.tar.gz';(art/name).write_bytes(b'actual bytes')
-        f={'bytes':12,'sha256':p.sha(art/name),'releaseName':name}
+        f={'bytes':12,'sha256':p.sha(art/name),'releaseName':p.public_product_name(name)}
         run={'id':'42','attempt':1,'artifacts':{'a':{'id':3,'archiveSha256':'a'*64,'files':{name:f}}}}
         actual={'repository':p.REPO,'repositoryId':p.RID,'version':p.VERSION,'sourceCommit':'a'*40,'scopeSha256':'b'*64,'sourceTree':'b'*40,'tag':p.TAG,'tagObject':'c'*40,'runs':{'all':run},'reviewed':False}
         config=json.loads(json.dumps(actual));config['reviewed']=True
@@ -184,7 +184,7 @@ class GateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);work,actual,cfg,name=self.fixture(root)
             receipt=p.assemble(actual,cfg,work,root/'out')
-            self.assertEqual(receipt['assets'][0]['sha256'],p.sha(root/'out'/name))
+            self.assertEqual(receipt['assets'][0]['sha256'],p.sha(root/'out'/p.public_product_name(name)))
             self.assertFalse(receipt['fullSignedRelease'])
 
     def test_collision_and_omission(self):
@@ -222,6 +222,7 @@ class GateTests(unittest.TestCase):
                          'buildGraph':{'settings':{},'normalModules':[],'prebuiltAcquisitionModules':[],'localReplacements':[]},
                          'sourceIdentity':{'sourceOverlay':0,'goModSha256':'0'*64,'goSumSha256':'1'*64,'replacements':[]},
                          'archive':{'name':ident+('.zip' if v['target'].startswith('windows/') else '.tar.gz'),
+                                    'releaseName':p.public_product_name(ident+('.zip' if v['target'].startswith('windows/') else '.tar.gz')),
                                     'bytes':1,'sha256':'2'*64,'root':ident,'members':{ident+'/sing-box':'3'*64}},
                          'core':{'member':'sing-box','bytes':1,'sha256':'3'*64},'sidecar':None,
                          'signatureObservation':None,'finalPackageCronetSmoke':None})

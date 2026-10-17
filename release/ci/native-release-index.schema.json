@@ -467,6 +467,10 @@
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
                 }
+              },
+              "releaseName": {
+                "type": "string",
+                "pattern": "^sing-box-polaris-[A-Za-z0-9._+-]+$"
               }
             },
             "required": [
@@ -474,7 +478,8 @@
               "bytes",
               "sha256",
               "root",
-              "members"
+              "members",
+              "releaseName"
             ],
             "additionalProperties": false
           },

@@ -6,13 +6,14 @@
     "sourceTree": "8b7f3582cea77d456609a9ca6fea27a0a36beba9",
     "runId": "39031988065",
     "attempt": "1",
-    "artifactZIP_SHA256": "18ab6e9fbe1d07f74110a19ad93b78e4ddf3270581899ad8beabcbffd25b582d"
+    "artifactZIP_SHA256": "18ab6e9fbe1d07f74110a19ad93b78e4ddf3270581899ad8beabcbffd25b582d",
+    "clientSourceOverlayManifestSHA256": "7c3bbefd45f4f6d3d4f1ac66ce0a263c27c8eb0ab1c6e8565b8ab688d53d66c7"
   },
   "clientSource": {
     "repository": "SagerNet/sing-box-for-android",
     "baseCommit": "ae93152f21457723af77d144f28c1f7be7362aec",
     "baseTree": "be0859307908afb7e8870b05af9b7c65797a1491",
-    "overlayManifestSHA256": "7c3bbefd45f4f6d3d4f1ac66ce0a263c27c8eb0ab1c6e8565b8ab688d53d66c7",
+    "overlayManifestSHA256": "fe7e7aa354f95ff9ae7275bfda1a15062486016151a3461431f23b7bce890f62",
     "platform": "android",
     "unsigned": true
   },
@@ -9372,5 +9373,20 @@
       ]
     }
   },
-  "materialMapSHA256": "5b880c43a422a82026e70fddaa068296630c209eb31170b625e6f44ef88feeaa"
+  "materialMapSHA256": "5b880c43a422a82026e70fddaa068296630c209eb31170b625e6f44ef88feeaa",
+  "reviewedOverlayChange": {
+    "reason": "Display-only derivative name sing-box-polaris; no dependency declarations or resolved runtime bytes changed by this source transform. This is not a new diagnostic run. New producers must still submit actual runtime graphs and pass exact artifact/byte comparison.",
+    "previousOverlayManifestSHA256": "7c3bbefd45f4f6d3d4f1ac66ce0a263c27c8eb0ab1c6e8565b8ab688d53d66c7",
+    "currentOverlayManifestSHA256": "fe7e7aa354f95ff9ae7275bfda1a15062486016151a3461431f23b7bce890f62",
+    "androidPaths": [
+      "app/src/main/res/values/strings.xml",
+      "app/src/main/res/values-fa/strings.xml",
+      "app/src/main/res/values-ru-rRU/strings.xml",
+      "app/src/main/res/values-zh-rCN/strings.xml",
+      "app/src/main/res/values-zh-rTW/strings.xml",
+      "app/src/main/java/io/nekohasekai/sfa/bg/ServiceNotification.kt",
+      "app/src/main/java/io/nekohasekai/sfa/bg/VPNService.kt"
+    ],
+    "historicalDiagnosticPreserved": true
+  }
 }
