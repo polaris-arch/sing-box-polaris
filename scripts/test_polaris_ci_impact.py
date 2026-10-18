@@ -146,6 +146,40 @@ class ImpactTests(unittest.TestCase):
             self.assertIn('ref: ' + pin, (ROOT / '.github/workflows' / name).read_text())
 
 
+    def assert_github_publisher_security(self, publisher):
+        # Check the actual job fields, not a matching string in a comment/step.
+        # Keep this stdlib-only: this contract runs before dependency setup.
+        self.assertEqual(publisher.count('\njobs:\n'), 1)
+        header, jobs_text = publisher.split('\njobs:\n')
+        self.assertEqual(len(re.findall(r'^permissions:', header, re.M)), 1)
+        self.assertEqual(re.findall(r'^permissions:\n((?:  [^\n]+\n)+)', header, re.M),
+                         ['  contents: read\n'])
+        jobs = re.findall(r'^  ([A-Za-z_][A-Za-z0-9_-]*):\n(.*?)(?=^  [A-Za-z_][A-Za-z0-9_-]*:\n|\Z)',
+                          jobs_text, re.M | re.S)
+        self.assertEqual([name for name, _ in jobs], ['validate', 'publish'])
+        jobs = dict(jobs)
+
+        def field(job, name, expected):
+            self.assertEqual(re.findall(r'^    ' + re.escape(name) + r': ([^\n]+)$',
+                                        jobs[job], re.M), [expected], (job, name))
+
+        field('validate', 'if', "github.repository == 'polaris-arch/sing-box-polaris' && "
+              "github.repository_id == '1421657509'")
+        self.assertEqual(re.findall(r'^    continue-on-error:', jobs['validate'], re.M), [])
+        field('publish', 'needs', 'validate')
+        # All four explicit write modes share both the opt-in and environment.
+        field('publish', 'if', "(inputs.mode == 'publish' || inputs.mode == 'reconcile' || "
+              "inputs.mode == 'stage-replacement' || inputs.mode == 'replace') && "
+              "vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'")
+        field('publish', 'environment', 'polaris-github-release')
+        for name, contents in [('validate', 'read'), ('publish', 'write')]:
+            self.assertEqual(len(re.findall(r'^    permissions:', jobs[name], re.M)), 1)
+            self.assertEqual(re.findall(r'^    permissions:\n((?:      [^\n]+\n)+)',
+                                        jobs[name], re.M),
+                             [f'      contents: {contents}\n      actions: read\n'])
+        self.assertIn('--inventory-sha256 "$INVENTORY_SHA256"', jobs['validate'])
+        self.assertIn('--inventory-sha256 "$INVENTORY_SHA256"', jobs['publish'])
+
     def test_migrated_and_new_workflows_keep_owned_security_boundaries(self):
         def events(text):
             match = re.search(r"^(?:'on'|on):\n((?:[ \t].*\n|\n)+)", text, re.M)
@@ -169,10 +203,39 @@ class ImpactTests(unittest.TestCase):
                     self.assertIn("vars.POLARIS_DISTRIBUTION_ENABLED == 'true'", text)
                     self.assertIn('environment: polaris-distribution', text)
         publisher = (ROOT / '.github/workflows/publish-github.yml').read_text()
-        self.assertIn("github.repository_id == '1421657509'", publisher)
-        self.assertIn("inputs.mode == 'publish' && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'", publisher)
-        self.assertIn('environment: polaris-github-release', publisher)
-        self.assertIn('--inventory-sha256 "$INVENTORY_SHA256"', publisher)
+        self.assert_github_publisher_security(publisher)
+        # Negative fixtures must fail even though the original guard remains in
+        # a comment. This prevents a future return to whole-file substring checks.
+        gate = ("(inputs.mode == 'publish' || inputs.mode == 'reconcile' || "
+                "inputs.mode == 'stage-replacement' || inputs.mode == 'replace') && "
+                "vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'")
+        mutations = {
+            'missing opt-in': (gate, gate.split(' && ')[0]),
+            'opt-in OR bypass': (gate, gate.replace(' && ', ' || ')),
+            'ungrouped modes': (gate, gate.replace('(', '').replace(')', '')),
+            'read-only inventory promoted': (gate, gate.replace("'publish'", "'inventory'")),
+            'unknown write mode': (gate, gate.replace(") &&", " || inputs.mode == 'unreviewed') &&")),
+            'missing repository name': ("github.repository == 'polaris-arch/sing-box-polaris' && ", ''),
+            'missing repository ID': (" && github.repository_id == '1421657509'", ''),
+            'missing validation dependency': ('    needs: validate\n', ''),
+            'ignored validation failure': ('  validate:\n', '  validate:\n    continue-on-error: true\n'),
+            'wrong environment': ('    environment: polaris-github-release', '    environment: unprotected'),
+            'elevated validation token': ('      contents: read\n', '      contents: write\n'),
+            'elevated default token': ('  contents: read\n', '  contents: write\n'),
+            'extra writer job': ('  publish:\n', '  unguarded:\n    permissions:\n      contents: write\n  publish:\n'),
+            'uppercase writer job': ('  publish:\n', '  Writer:\n    permissions: write-all\n  publish:\n'),
+            'underscore writer job': ('  publish:\n', '  _writer:\n    permissions: write-all\n  publish:\n'),
+            'duplicate default scalar permissions': ('permissions:\n', 'permissions: write-all\npermissions:\n'),
+            'duplicate job scalar permissions': ('    permissions:\n', '    permissions: write-all\n    permissions:\n'),
+            'scalar default permissions': ('permissions:\n  contents: read\n', 'permissions: write-all\n'),
+            'scalar job permissions': ('    permissions:\n      contents: read\n      actions: read\n', '    permissions: write-all\n'),
+        }
+        for label, (before, after) in mutations.items():
+            with self.subTest(publisher_regression=label):
+                self.assertIn(before, publisher)
+                broken = publisher.replace(before, after, 1) + '\n# Original guard: ' + gate + '\n'
+                with self.assertRaises(AssertionError):
+                    self.assert_github_publisher_security(broken)
 
     def test_state_store_fixture_checkout_keeps_exact_revision_bytes(self):
         path = 'protocol/tailscale/testdata/synthetic-sealed-state.json'

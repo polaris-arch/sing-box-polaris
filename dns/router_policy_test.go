@@ -60,10 +60,11 @@ func policyTestRules(t *testing.T, tiers ...[]string) []option.DNSRule {
 }
 
 type policyTestTransport struct {
-	tag      string
-	calls    atomic.Int32
-	epoch    atomic.Uint64
-	exchange func(context.Context, *mDNS.Msg) (*mDNS.Msg, error)
+	tag           string
+	calls         atomic.Int32
+	epoch         atomic.Uint64
+	exchange      func(context.Context, *mDNS.Msg) (*mDNS.Msg, error)
+	afterCallback func()
 }
 
 func (t *policyTestTransport) Type() string                                   { return "test" }
@@ -79,7 +80,12 @@ func (t *policyTestTransport) Exchange(ctx context.Context, msg *mDNS.Msg) (*mDN
 }
 
 func (t *policyTestTransport) ExchangeAsync(ctx context.Context, msg *mDNS.Msg, callback func(*mDNS.Msg, error)) {
-	go func() { callback(t.Exchange(ctx, msg)) }()
+	go func() {
+		callback(t.Exchange(ctx, msg))
+		if t.afterCallback != nil {
+			t.afterCallback()
+		}
+	}()
 }
 
 func policyReply(tag string, delay time.Duration, rcode int, addresses ...string) *policyTestTransport {
@@ -150,9 +156,23 @@ func TestResolverPolicyFastEmptyDoesNotBeatSlowHitOrStartTier2(t *testing.T) {
 }
 
 func TestResolverPolicyFirstEmptyAcrossTiersAndFinalNegativeCache(t *testing.T) {
-	slower := policyReply("slower", 25*time.Millisecond, mDNS.RcodeSuccess)
-	first := policyReply("first", time.Millisecond, mDNS.RcodeNameError)
-	second := policyReply("second", time.Millisecond, mDNS.RcodeSuccess)
+	firstPublished := make(chan struct{})
+	slower := policyReply("slower", 0, mDNS.RcodeSuccess)
+	slowerExchange := slower.exchange
+	slower.exchange = func(ctx context.Context, msg *mDNS.Msg) (*mDNS.Msg, error) {
+		select {
+		case <-firstPublished:
+			return slowerExchange(ctx, msg)
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	first := policyReply("first", 0, mDNS.RcodeNameError)
+	// Wait for the complete callback chain, including the router's sequence
+	// publication. Timer delays or signalling before Exchange returns do not
+	// establish the completion order required by this test.
+	first.afterCallback = sync.OnceFunc(func() { close(firstPublished) })
+	second := policyReply("second", 0, mDNS.RcodeSuccess)
 	router := policyRouter(t, policyTestRules(t, []string{"slower", "first"}, []string{"second"}), slower, first, second)
 	for range 2 {
 		response, err := policyExchange(t, router, context.Background(), time.Second)
@@ -160,6 +180,7 @@ func TestResolverPolicyFirstEmptyAcrossTiersAndFinalNegativeCache(t *testing.T) 
 		require.Equal(t, mDNS.RcodeNameError, response.Rcode)
 		require.EqualValues(t, 42, response.Id)
 	}
+	require.EqualValues(t, 1, slower.calls.Load())
 	require.EqualValues(t, 1, first.calls.Load())
 	require.EqualValues(t, 1, second.calls.Load())
 }
