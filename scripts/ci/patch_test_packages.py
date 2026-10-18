@@ -163,12 +163,12 @@ def write_plan(directory, plan):
 
 
 def changed_paths(root, base, head):
-    """Compare full snapshots, retaining exact identities and a common-history proof."""
-    merge_base = subprocess.check_output(['git', 'merge-base', base, head], cwd=root, text=True).strip()
+    """Require the official baseline ancestor, then compare the exact snapshots."""
+    subprocess.run(['git', 'merge-base', '--is-ancestor', base, head], cwd=root, check=True)
     raw = subprocess.check_output(['git', 'diff', '--name-only', '--no-renames', '-z',
                                    base + '..' + head], cwd=root)
     paths = [p.decode('utf-8', errors='strict') for p in raw.split(b'\0') if p]
-    return paths, merge_base
+    return paths, base
 
 
 def main():
@@ -180,9 +180,7 @@ def main():
         parser.error('base must be a full lowercase commit SHA')
     root = Path(__file__).resolve().parents[2]
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-    # A source-owned history rewrite can change the tag's ancestry without
-    # changing the Go inputs. The caller still verifies the exact official tag;
-    # compare every changed path across the common history, never a guessed tip.
+    # Preserve the verified release baseline's ancestry during history cleanup.
     paths, merge_base = changed_paths(root, args.base, head)
     plan = selection(root, paths)
     plan.update({'baseCommit': args.base, 'sourceCommit': head, 'mergeBaseCommit': merge_base,

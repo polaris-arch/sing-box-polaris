@@ -19,6 +19,9 @@ class EfficiencyTests(unittest.TestCase):
             jobs = workflow(name)['jobs']
             self.assertEqual(jobs['build']['needs'], ['calculate_version'])
             self.assertEqual(jobs['build_windows7']['needs'], ['calculate_version', 'prepare_windows7'])
+            if role == 'signed':
+                for job in ['build', 'prepare_windows7', 'build_windows7']:
+                    self.assertEqual(jobs[job]['environment'], 'polaris-distribution')
             regular = jobs['build']['strategy']['matrix']['include']
             legacy = jobs['build_windows7']['strategy']['matrix']['include']
             self.assertEqual(len(legacy), 2)

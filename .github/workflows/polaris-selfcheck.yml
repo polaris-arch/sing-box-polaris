@@ -971,10 +971,7 @@ jobs:
           git fetch --no-tags https://github.com/SagerNet/sing-box.git "refs/tags/$BASE_REF:refs/polaris/upstream-baseline"
           actual_baseline=$(git rev-parse --verify "refs/polaris/upstream-baseline^{commit}")
           test "$actual_baseline" = "$BASE_COMMIT"
-          # Historical message/tree cleanup reauthored the version boundary.
-          # Keep the verified official tag; compare complete snapshots across a
-          # proven common history, rather than pretending it is an ancestor.
-          git merge-base "$BASE_COMMIT" HEAD
+          git merge-base --is-ancestor "$BASE_COMMIT" HEAD
           # Partition every changed Go/input path by its actual go.mod owner.
           # Unknown modules fail closed instead of silently losing coverage.
           python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'

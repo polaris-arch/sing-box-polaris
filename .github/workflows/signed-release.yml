@@ -67,6 +67,7 @@ jobs:
     if: github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true' && (success())
   prepare_windows7:
     name: Prepare one verified Windows 7 Go toolchain
+    environment: polaris-distribution
     if: github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')
     runs-on: ubuntu-26.04
     needs: [calculate_version]
@@ -624,6 +625,7 @@ jobs:
     environment: polaris-distribution
   build_windows7:
     name: Build Windows 7 binaries
+    environment: polaris-distribution
     if: github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true' && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')
     runs-on: ubuntu-26.04
     needs: [calculate_version, prepare_windows7]

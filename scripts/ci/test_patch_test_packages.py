@@ -8,7 +8,7 @@ from patch_test_packages import MODULES, selection, write_plan, changed_paths
 
 
 class PatchModuleSelectionTests(unittest.TestCase):
-    def test_divergent_rewritten_history_still_selects_every_snapshot_change(self):
+    def test_divergent_history_is_rejected_until_the_baseline_is_merged(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             def git(*args):
@@ -25,10 +25,20 @@ class PatchModuleSelectionTests(unittest.TestCase):
             (root / 'changed.go').write_text('package fixture\n')
             git('add', '.'); git('commit', '-qm', 'rewritten')
             head = git('rev-parse', 'HEAD')
-            paths, ancestor = changed_paths(root, official, head)
-            self.assertEqual(ancestor, common)
-            self.assertCountEqual(paths, ['official.go', 'changed.go'])
+            with self.assertRaises(subprocess.CalledProcessError) as failure:
+                changed_paths(root, official, head)
+            self.assertEqual(failure.exception.returncode, 1)
+            self.assertEqual(failure.exception.cmd,
+                             ['git', 'merge-base', '--is-ancestor', official, head])
             self.assertEqual(changed_paths(root, common, head), (['changed.go'], common))
+            git('merge', '--no-ff', '--no-edit', official)
+            merged = git('rev-parse', 'HEAD')
+            self.assertEqual(changed_paths(root, official, merged), (['changed.go'], official))
+
+    def test_workflow_requires_the_verified_baseline_ancestor(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/polaris-selfcheck.yml').read_text()
+        self.assertIn('git merge-base --is-ancestor "$BASE_COMMIT" HEAD', workflow)
 
     def fixture(self, directory):
         root = Path(directory)
