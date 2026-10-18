@@ -1,0 +1,15 @@
+{
+  "repository": "mbadolato/iTerm2-Color-Schemes",
+  "revision": "8c84dd1a859f36ec8601b082bd97b4ec888f0f4d",
+  "sourceURL": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/8c84dd1a859f36ec8601b082bd97b4ec888f0f4d/LICENSE",
+  "bytes": 1246,
+  "sha256": "2373168614b527494dff99eb393024608216db79f687d58bad420f6c1e0ad192",
+  "gitlinkEvidenceURL": "https://github.com/SagerNet/sing-box-dashboard/tree/f231354bc786dfcffcf09f6ec771bc5683050194/vendor",
+  "gitlinkEvidenceSHA256": "1a144720b71c03ba652d86fcc2ef481cf437163ff1bfaf0fb766db9718c2567d",
+  "sourceBuildEvidence": [
+    "clients/sing-box-dashboard/scripts/gen-terminal-themes.mjs",
+    "clients/sing-box-dashboard/src/lib/terminalThemes.generated.ts"
+  ],
+  "actualArtifactEvidence": "actual-asar-bundles/out/renderer/assets/terminalThemes-DaljFpjF.js",
+  "inclusionStatement": "Actual SFL arm64 bundle contains generated terminal themes; source generator identifies this fixed gitlink as input; no full bundle reproducibility proof."
+}

@@ -1,0 +1,716 @@
+{
+  "schema": "polaris-dns-desktop-publication-contract-v1",
+  "status": "prepared contract for whole-batch review; no activation or publication",
+  "sourceURL": "https://github.com/polaris-arch/polaris-box",
+  "sourceCommit": "aafc521b745e0d1a8f50a6a3f41169433f1c2194",
+  "sourceTree": "4ae424d8a99b16a02442d7b2eac1d5e24e938d8e",
+  "sourceOverlay": 0,
+  "goVersion": "1.25.5",
+  "upstreamTag": "v1.15.0-alpha.11",
+  "upstreamCommit": "6afeff4c0f7123b5782f888812e96b8c82c7b699",
+  "plannedRoleTag": "polaris-v1.15.0-alpha.11-2",
+  "plannedFinalVersion": "1.15.0-alpha.11.polaris.2",
+  "roleTagAnnotationRequiredLines": [
+    "Role: desktop",
+    "Upstream-Tag: v1.15.0-alpha.11",
+    "Upstream-Commit: 6afeff4c0f7123b5782f888812e96b8c82c7b699"
+  ],
+  "sourceOwnedReplacement": {
+    "schemaVersion": 1,
+    "module": "github.com/sagernet/sing-tun",
+    "version": "v0.9.7-0.20261009022811-5c2edb183cc9",
+    "replacementPath": "./third_party/sing-tun",
+    "replacementTree": "18492017863a3bf41df92fe528c2bbe38fe97ab2",
+    "replacementFileCount": 256,
+    "baselineOriginCommit": "5c2edb183cc92eb190d41c04dedfa5519ca3e78c",
+    "baselineZipSha256": "d30c485149d53a88d3d31dd2312b5e4ca97649169ac4d0ed81a918fa80c9bcaf",
+    "baselineModuleSum": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+    "baselineFiles": 253,
+    "changedBaselineFiles": [
+      "tun_windows.go"
+    ],
+    "addedFiles": [
+      "windows_dns_configuration.go",
+      "windows_dns_configuration_test.go",
+      "windows_lifecycle_guard_windows_test.go"
+    ],
+    "other252BaselineFilesByteExact": true,
+    "windowsAfterDNSSuffixUnchanged": true,
+    "patchSha256": "812956b42cfbb5d302343998b898b9c6489a93f633b1f446c367c5c24681ecd1",
+    "fingerprintSchema": "fork-source-fingerprint-v1",
+    "fourKernelPolicy": "Collect same schema from each actual new kernel source/build input; existing a01 and mobilealpha8 fingerprints remain historical and unchanged.",
+    "bindingSha256": "fff7ce2035d71e37fc02d06ef22f1e643c147f6adfbde34f69b69d6d9351773b"
+  },
+  "mainGoModSha256": "a2d3d373d50a5d1d8a98fac6c3a0393885eeabc8404dfd3435eab41d6426324b",
+  "mainGoSumSha256": "6904f2adc151e575c3751e7bc0734ac40f3ac039b2640b6ceff4293825f68edb",
+  "portableSourceFingerprint": "bd8b6d0b4d0829b23d3606a37d5cc048f9958fd9c0affdf93e376319941f4383",
+  "technicalInputManifestSha256": "49ad7a307716c784ed7d04921635b257c766cd18f568502199ee7578713f79fb",
+  "sourceIndexSha256": "19469db887aa315b96d1a393d09506706677717167cb034b15bdbe1645bcef6e",
+  "replacementFileIndexSha256": "0396e9e88a27046c860284afbd89a183c7bc9521f3a1cbeac2ec28791fa43537",
+  "transportPins": {
+    "github.com/mdlayher/netlink": "v1.11.2",
+    "github.com/mdlayher/socket": "v0.6.0",
+    "github.com/sagernet/netlink": "v0.0.0-20260814022025-64455d367bbf",
+    "golang.org/x/sys": "v0.47.0",
+    "golang.org/x/net": "v0.57.0",
+    "golang.org/x/sync": "v0.22.0"
+  },
+  "platformPolicy": {
+    "mac-x64": {
+      "goos": "darwin",
+      "goarch": "amd64",
+      "cgo": "1",
+      "tags": [
+        "badlinkname",
+        "tfogo_checklinkname0",
+        "with_acme",
+        "with_ccm",
+        "with_clash_api",
+        "with_cloudflared",
+        "with_dhcp",
+        "with_gvisor",
+        "with_naive_outbound",
+        "with_ocm",
+        "with_openconnect",
+        "with_openvpn",
+        "with_quic",
+        "with_tailscale",
+        "with_usbip",
+        "with_utls",
+        "with_wireguard"
+      ],
+      "transportModules": {
+        "requiredLinked": [
+          "golang.org/x/sys",
+          "golang.org/x/net",
+          "golang.org/x/sync"
+        ],
+        "confirmedAbsent": [
+          "github.com/mdlayher/netlink",
+          "github.com/mdlayher/socket",
+          "github.com/sagernet/netlink"
+        ]
+      },
+      "sourceOwnedModules": {
+        "requiredLinked": [
+          "github.com/sagernet/sing-tun"
+        ],
+        "allowedAbsent": []
+      }
+    },
+    "mac-arm64": {
+      "goos": "darwin",
+      "goarch": "arm64",
+      "cgo": "1",
+      "tags": [
+        "badlinkname",
+        "tfogo_checklinkname0",
+        "with_acme",
+        "with_ccm",
+        "with_clash_api",
+        "with_cloudflared",
+        "with_dhcp",
+        "with_gvisor",
+        "with_naive_outbound",
+        "with_ocm",
+        "with_openconnect",
+        "with_openvpn",
+        "with_quic",
+        "with_tailscale",
+        "with_usbip",
+        "with_utls",
+        "with_wireguard"
+      ],
+      "transportModules": {
+        "requiredLinked": [
+          "golang.org/x/sys",
+          "golang.org/x/net",
+          "golang.org/x/sync"
+        ],
+        "confirmedAbsent": [
+          "github.com/mdlayher/netlink",
+          "github.com/mdlayher/socket",
+          "github.com/sagernet/netlink"
+        ]
+      },
+      "sourceOwnedModules": {
+        "requiredLinked": [
+          "github.com/sagernet/sing-tun"
+        ],
+        "allowedAbsent": []
+      }
+    },
+    "linux": {
+      "goos": "linux",
+      "goarch": "amd64",
+      "cgo": "0",
+      "tags": [
+        "badlinkname",
+        "tfogo_checklinkname0",
+        "with_acme",
+        "with_ccm",
+        "with_clash_api",
+        "with_cloudflared",
+        "with_dhcp",
+        "with_gvisor",
+        "with_naive_outbound",
+        "with_ocm",
+        "with_openconnect",
+        "with_openvpn",
+        "with_purego",
+        "with_quic",
+        "with_tailscale",
+        "with_usbip",
+        "with_utls",
+        "with_wireguard"
+      ],
+      "transportModules": {
+        "requiredLinked": [
+          "github.com/mdlayher/netlink",
+          "github.com/mdlayher/socket",
+          "github.com/sagernet/netlink",
+          "golang.org/x/sys",
+          "golang.org/x/net",
+          "golang.org/x/sync"
+        ],
+        "confirmedAbsent": []
+      },
+      "sourceOwnedModules": {
+        "requiredLinked": [
+          "github.com/sagernet/sing-tun"
+        ],
+        "allowedAbsent": []
+      }
+    },
+    "win": {
+      "goos": "windows",
+      "goarch": "amd64",
+      "cgo": "0",
+      "tags": [
+        "badlinkname",
+        "tfogo_checklinkname0",
+        "with_acme",
+        "with_ccm",
+        "with_clash_api",
+        "with_cloudflared",
+        "with_dhcp",
+        "with_gvisor",
+        "with_naive_outbound",
+        "with_ocm",
+        "with_openconnect",
+        "with_openvpn",
+        "with_purego",
+        "with_quic",
+        "with_tailscale",
+        "with_usbip",
+        "with_utls",
+        "with_wireguard"
+      ],
+      "transportModules": {
+        "requiredLinked": [
+          "golang.org/x/sys",
+          "golang.org/x/net",
+          "golang.org/x/sync"
+        ],
+        "confirmedAbsent": [
+          "github.com/mdlayher/netlink",
+          "github.com/mdlayher/socket",
+          "github.com/sagernet/netlink"
+        ]
+      },
+      "sourceOwnedModules": {
+        "requiredLinked": [
+          "github.com/sagernet/sing-tun"
+        ],
+        "allowedAbsent": []
+      }
+    }
+  },
+  "buildIDContract": {
+    "prefix": "polaris-desktop-source-v1-",
+    "algorithm": "sha256(canonical(platformFacts))",
+    "implementation": "scripts/polaris_dns_publication.py:final_platform_identity",
+    "existingAppFacts": [
+      "sourceReceiptFingerprint",
+      "buildTree",
+      "overlays",
+      "version",
+      "goVersion",
+      "platform",
+      "transportPins",
+      "patchedModules",
+      "transportModules",
+      "goos",
+      "goarch",
+      "cgo",
+      "tags"
+    ],
+    "addedFacts": [
+      "portableSourceFingerprint",
+      "sourceOwnedReplacements"
+    ],
+    "cycleExclusions": [
+      "binarySha256",
+      "macCodeSignature",
+      "distributionSignature",
+      "carrierSha256"
+    ],
+    "requiresActualSourceReceipt": true
+  },
+  "signatures": {
+    "linux": {
+      "state": "not-applicable"
+    },
+    "win": {
+      "state": "not-applicable"
+    },
+    "mac-x64": {
+      "allowedStates": [
+        "signed",
+        "unsigned"
+      ],
+      "unsignedRequires": "thin x86_64 Mach-O and exact codesign unsigned error"
+    },
+    "mac-arm64": {
+      "allowedStates": [
+        "signed"
+      ]
+    }
+  },
+  "sourceCollection": {
+    "sharedProviderUnchanged": true,
+    "sharedProviderSha256": "a2d1379d13b6c1efe28bb07d9f470111d0f5e83eb17439c76da180cac546f63d",
+    "sourceReceiptSchema": "polaris-core-source-v1",
+    "graphScope": "core-source-only",
+    "AppDependencyPatches": [],
+    "sourceOwnedReplacementsField": "sourceOwnedReplacements",
+    "portableFingerprintField": "portableSourceFingerprint",
+    "isolatedGoSettings": {
+      "GOENV": "off",
+      "GOWORK": "off",
+      "GOFLAGS": "",
+      "GOTOOLCHAIN": "local"
+    },
+    "buildVCS": true,
+    "requiredVCS": {
+      "vcs": "git",
+      "vcs.revision": "aafc521b745e0d1a8f50a6a3f41169433f1c2194",
+      "vcs.time": "2026-10-10T20:06:56Z",
+      "vcs.modified": "false"
+    },
+    "allowedRootModuleVersions": [
+      "v0.0.0-20261010200656-aafc521b745e",
+      "v1.15.0-alpha.11.0.20261010200656-aafc521b745e"
+    ]
+  },
+  "formalReceipts": {
+    "schema": "polaris-desktop-core-v1",
+    "freshFourTargets": [
+      "linux",
+      "win",
+      "mac-x64",
+      "mac-arm64"
+    ],
+    "singleCandidateRunAttempt": true,
+    "technicalReceiptAdmissible": false,
+    "oldDOrA01OriginsAdmissibleForDNS": false,
+    "contextFieldsBoundBeforeFingerprint": [
+      "repository",
+      "runId",
+      "runAttempt"
+    ],
+    "repository": "polaris-arch/Polaris",
+    "producerOutputsRequired": false,
+    "envelopeBindsFourMeasuredOutputs": true,
+    "producerContextHelper": "scripts/polaris_dns_publication.py:bind_final_receipt_context",
+    "consumerContextHelper": "scripts/polaris_dns_publication.py:validate_final_receipt_context",
+    "legacyDReceiptShape": "unchanged; do not add empty arrays/null/context fields",
+    "sourceOwnedModulePolicyField": "sourceOwnedModules",
+    "actualSourceFingerprintSchema": "fork-source-fingerprint-v1"
+  },
+  "cronetReuse": {
+    "version": "154.0.8037.49",
+    "wrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+    "libraryOriginCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+    "libraries": [
+      {
+        "target": "linux_amd64",
+        "module": "github.com/sagernet/cronet-go/lib/linux_amd64",
+        "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+        "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+        "moduleSum": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+        "file": "libcronet.so",
+        "bytes": 12370520,
+        "sha256": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+        "gitBlob": "d6bb81f26828e7abb6e3a103e3f14f9fd91a64ac",
+        "observedNative": {
+          "format": "ELF",
+          "class": 64,
+          "machine": 62,
+          "needed": [
+            "libdl.so.2",
+            "libpthread.so.0",
+            "libm.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6",
+            "ld-linux-x86-64.so.2"
+          ],
+          "soname": [
+            "libcronet.so"
+          ],
+          "rpaths": [],
+          "requiredSymbolsMissing": [],
+          "requiredGlibcVersions": [
+            "GLIBC_2.12",
+            "GLIBC_2.14",
+            "GLIBC_2.16",
+            "GLIBC_2.17",
+            "GLIBC_2.2.5",
+            "GLIBC_2.3",
+            "GLIBC_2.3.2",
+            "GLIBC_2.3.3",
+            "GLIBC_2.3.4",
+            "GLIBC_2.4",
+            "GLIBC_2.6",
+            "GLIBC_2.7",
+            "GLIBC_2.9"
+          ]
+        }
+      },
+      {
+        "target": "windows_amd64",
+        "module": "github.com/sagernet/cronet-go/lib/windows_amd64",
+        "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+        "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+        "moduleSum": "h1:0Z4FyS1oD2Cl/Shp10UYHki8x/2VxCRGbYJi09pWGPU=",
+        "file": "libcronet.dll",
+        "bytes": 9889280,
+        "sha256": "8b005a933ac0d0899c047617a9cd18418810d9426d0919c824520094a2c893f5",
+        "gitBlob": "8c28531fa686b0f70625fbf75cfb7b6c68af114b",
+        "observedNative": {
+          "format": "PE",
+          "machine": 34404,
+          "optionalMagic": "0x20b",
+          "imports": [
+            "KERNEL32.dll",
+            "ADVAPI32.dll",
+            "dbghelp.dll",
+            "WS2_32.dll",
+            "SHELL32.dll",
+            "IPHLPAPI.DLL",
+            "WINMM.dll",
+            "SHLWAPI.dll",
+            "ole32.dll",
+            "WINHTTP.dll",
+            "USER32.dll",
+            "Secur32.dll",
+            "CRYPT32.dll",
+            "api-ms-win-core-winrt-l1-1-0.dll",
+            "ntdll.dll"
+          ],
+          "exportCount": 273,
+          "requiredSymbolsMissing": [],
+          "authenticodeCertificateTablePresent": false,
+          "authenticodeTrustValidated": false,
+          "delayImports": [],
+          "delayImportDirectoryChecked": true
+        }
+      },
+      {
+        "target": "darwin_amd64",
+        "module": "github.com/sagernet/cronet-go/lib/darwin_amd64",
+        "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+        "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+        "moduleSum": "h1:xenAxIaoocXqtaNECC1iNOqtdzYRYxhXyE+o+m2ExSw=",
+        "file": "libcronet.a",
+        "bytes": 50784080,
+        "sha256": "4bf67c6b1b3f629a582e0f6ac897fb2faaf58551b08244af29091c7068c13ad1",
+        "gitBlob": "d8ce6f0b70a549a0383897e66018379275ea0c71",
+        "observedNative": {
+          "format": "ar static archive",
+          "objectMembers": 2787,
+          "sampleObject": {
+            "member": "cronet_global_state_stubs.o",
+            "format": "Mach-O",
+            "cpuType": "0x1000007",
+            "fileType": 1,
+            "platformLoadCommands": [
+              {
+                "platform": 1,
+                "minos": "0xd0000",
+                "sdk": "0x1a0500"
+              }
+            ]
+          },
+          "allObjectFormats": [
+            {
+              "metadata": {
+                "format": "other",
+                "magic": "f0310b0000000000"
+              },
+              "count": 1
+            },
+            {
+              "metadata": {
+                "cpuType": "0x1000007",
+                "fileType": 1,
+                "format": "Mach-O",
+                "platformLoadCommands": [
+                  {
+                    "minos": "0xd0000",
+                    "platform": 1,
+                    "sdk": "0x1a0500"
+                  }
+                ]
+              },
+              "count": 2661
+            },
+            {
+              "metadata": {
+                "cpuType": "0x1000007",
+                "fileType": 1,
+                "format": "Mach-O",
+                "platformLoadCommands": [
+                  {
+                    "minos": "0xd0000",
+                    "platform": 1,
+                    "sdk": "0x0"
+                  }
+                ]
+              },
+              "count": 125
+            }
+          ]
+        }
+      },
+      {
+        "target": "darwin_arm64",
+        "module": "github.com/sagernet/cronet-go/lib/darwin_arm64",
+        "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+        "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+        "moduleSum": "h1:SpLjX7QCXhKInRzT0hiYCpt+kOmcCVsrJvUV9RRUy2c=",
+        "file": "libcronet.a",
+        "bytes": 48112080,
+        "sha256": "9e2d603eb6c99855fe1528888a70080834728d00793e465a39c77548434a20d0",
+        "gitBlob": "e588a66271dc6b35b874323c89abc4d0e3a20973",
+        "observedNative": {
+          "format": "ar static archive",
+          "objectMembers": 2785,
+          "sampleObject": {
+            "member": "cronet_global_state_stubs.o",
+            "format": "Mach-O",
+            "cpuType": "0x100000c",
+            "fileType": 1,
+            "platformLoadCommands": [
+              {
+                "platform": 1,
+                "minos": "0xd0000",
+                "sdk": "0x1a0500"
+              }
+            ]
+          },
+          "allObjectFormats": [
+            {
+              "metadata": {
+                "format": "other",
+                "magic": "f03d0b0000000000"
+              },
+              "count": 1
+            },
+            {
+              "metadata": {
+                "cpuType": "0x100000c",
+                "fileType": 1,
+                "format": "Mach-O",
+                "platformLoadCommands": [
+                  {
+                    "minos": "0xd0000",
+                    "platform": 1,
+                    "sdk": "0x1a0500"
+                  }
+                ]
+              },
+              "count": 2660
+            },
+            {
+              "metadata": {
+                "cpuType": "0x100000c",
+                "fileType": 1,
+                "format": "Mach-O",
+                "platformLoadCommands": [
+                  {
+                    "minos": "0xd0000",
+                    "platform": 1,
+                    "sdk": "0x0"
+                  }
+                ]
+              },
+              "count": 124
+            }
+          ]
+        }
+      }
+    ],
+    "linuxWindows": "Reuse exact downloaded .so/.dll; verify sidecar bytes/ABI/native smoke.",
+    "macOS": "Reuse exact downloaded .a and link it while building Go core; do not rebuild Cronet/Chromium."
+  },
+  "consumerBase": "35a496b839456a90c01be793ca661fcd36e64d40",
+  "consumerWriteSet": [
+    {
+      "path": "src-tauri/core-manifest.json",
+      "baseSha256": "3709002b5ed4d250f06d3ee5feea8df9e3f480828e30ab62a61359deee768747",
+      "change": "desktopSourceBuild exact source-owned replacement/portable fingerprint and all-four linked policy; retain mobile sourceBuild",
+      "mustPreserve": "Final source/tag/version/receipt/binary/signature pins wait for actual final accepted inputs",
+      "stage": "data-after-final-inputs"
+    },
+    {
+      "path": "scripts/desktop-core/source-manifest.json",
+      "baseSha256": "9a51f7d9ab2bd0741b9bce31d4743354d4425f17a22cf6bd48631c21a3d36a46",
+      "change": "Explicit exact in-fork sing-tun module/version/path/tree/binding/patch declaration distinct from App dependencyPatches; no replayed overlay",
+      "mustPreserve": "Keep source URL polaris-arch/polaris-box, exact annotated desktop role/tag target; missing tagObject rejects",
+      "stage": "schema-plus-final-inputs"
+    },
+    {
+      "path": "scripts/desktop-core/source-graph.mjs",
+      "baseSha256": "517751835900c4af44c21cef1b8ccf273dcdfd8fa2b0734c37ca693c05b2b433",
+      "change": "Validate source-owned replacement and portable source fingerprint; full BuildInfo root module/VCS/clean and unique replacement; final version/tag grammar",
+      "mustPreserve": "Reject arbitrary/duplicate/unbound =>, extra Main modules, path escape/tree mutation and technical receipts; four outputs remain mandatory",
+      "stage": "schema-ready"
+    },
+    {
+      "path": "scripts/desktop-core/build-core.mjs",
+      "baseSha256": "f546c9608679c626a0baf13ca7efce161c4bbb018e21ee25088d226a212f0f8c",
+      "change": "Inspect fresh tracked fork replacement with existing provider; freeze normalized module identity, source-owned subtree/full files and clean Go settings before/after build",
+      "mustPreserve": "GOENV/GOWORK off, GOFLAGS empty, pinned Go local; retain original platform host/SDK/mac signature/BuildID checks",
+      "stage": "schema-ready"
+    },
+    {
+      "path": "scripts/desktop-core/fork-source.test.mjs",
+      "baseSha256": "a6c9b8c2ed3d8153c905ff07f270b7e7e4d0ea4e90adacb43f67cc1a13c566c6",
+      "change": "Expand existing exact fork fixtures and negative tag/role/source-owned replacement cases",
+      "mustPreserve": "No synthetic fixture presented as actual kernel or new approval",
+      "stage": "existing-tests"
+    },
+    {
+      "path": "scripts/build-desktop-core.test.mjs",
+      "baseSha256": "2a0d73f8c312cea6602003b46f7948cf1629de1383c259177c68b540f77cac14",
+      "change": "Existing producer/consumer stub gates plus stable-vs-host metadata, wrong/missing four inputs, BuildID/version/source identity negatives",
+      "mustPreserve": "Tiny local Go opt-in remains explicitly opt-in; no a01/D receipt relabel",
+      "stage": "existing-tests"
+    },
+    {
+      "path": "crates/config-engine/tests/core_dep_fingerprint.rs",
+      "baseSha256": "b51182221a3d324f9ff38ec379c49f5c9ee20de33cb6ee2c6cc0d3697f6e45b8",
+      "change": "Retain mobile alpha8 exact old pin; desktop exact source-owned sing-tun replacement + production identity/carrier checks",
+      "mustPreserve": "Use binary embedded facts; Rust CI has no Go; present/all-four forced gates remain; release pins are not yet available",
+      "stage": "schema-plus-final-inputs"
+    },
+    {
+      "path": "scripts/desktop-core/validation-origin.mjs",
+      "baseSha256": "9eb344d31ddbea3e2c09bcc25d3ba4bc68375395de5c43eeca59cf937971a432",
+      "change": "Add exact new-input all-current four-native validation envelope; preserve historical D reuse policy as its own immutable case",
+      "mustPreserve": "Never reuse unchanged-D/a01 origins for aafc; each actual four core is same candidate/run/attempt",
+      "stage": "schema-ready"
+    },
+    {
+      "path": ".github/workflows/desktop-core.yml",
+      "baseSha256": "b2538a353fd5b19a71b121284b56e7307fcc9ec642331831fafdc93f6731524e",
+      "change": "Choose four fresh native producers for the changed DNS source; assembler consumes exact current-run four artifacts",
+      "mustPreserve": "Preserve known unchanged-input D narrow mode separately; no fallback or unconditional Windows-only DNS mode",
+      "stage": "wiring-ready"
+    },
+    {
+      "path": "scripts/desktop-core-ci-wiring.test.mjs",
+      "baseSha256": "d8f8e7515b608b47ef18c89027936e04037972a541dba485e4a7296686c7d4fe",
+      "change": "Existing workflow contract validates explicit new-source all-four mode and exact candidate/artifact transport",
+      "mustPreserve": "No production matrix dispatch during preparation",
+      "stage": "existing-tests"
+    },
+    {
+      "path": "scripts/native-payload-input.mjs",
+      "baseSha256": "ea1a27e9ba92894beb58f7bad220fbbc542b64a46a570d0e0abcc5dae3956e13",
+      "change": "Carry explicit verified source-owned replacement/shared fingerprint alongside actual BuildInfo/BuildID and colocated Cronet proof",
+      "mustPreserve": "Keep exact manual Risk context, actual binary hash/mode/native library checks and source graph delegation",
+      "stage": "schema-ready"
+    },
+    {
+      "path": "scripts/native-payload-proof.test.mjs",
+      "baseSha256": "882f4490907e2b26d888725279353396c01104f949cae1079861089e40cf5906",
+      "change": "Current payload proof tests cover new replacement identity plus wrong source/module/tree/BuildID negatives",
+      "mustPreserve": "Mock/metadata proof only; actual native platform claim requires actual platform runs",
+      "stage": "existing-tests"
+    },
+    {
+      "path": "scripts/assert-pc-runtime-release.mjs",
+      "baseSha256": "c5e016d5ddfa6af789105fe85420f9347c7c95bf46b73471b871822ddb4a24a2",
+      "change": "Renew complete exact DNS release input closure once parent signs final source/consumer contract; distinguish source-owned DNS replacement from retired ownership overlays",
+      "mustPreserve": "Current fail-closed policy intentionally rejects unapproved desktop fork; preserve mobile exact digest and retired ownership-chain exclusion",
+      "stage": "schema-plus-final-inputs"
+    },
+    {
+      "path": "scripts/assert-pc-runtime-release.test.mjs",
+      "baseSha256": "d50786900e6cc30ca5df3b785fde1f8cca84fc88228e7e96c8ba1df673f09451",
+      "change": "Existing source-first policy fixtures/negatives for explicit reviewed new closure and unchanged mobile; incomplete new pins remain blocked",
+      "mustPreserve": "Do not blanket allow dependency overlays or declare technical publication eligible",
+      "stage": "existing-tests"
+    },
+    {
+      "path": "NOTICE",
+      "baseSha256": "63b3cea73131c85b2a3045322f045cb3fdc56fab9aab84dba3b4a85d57fc2ed1",
+      "change": "Update current desktop source/replacement correspondence only from actual approved final source fields",
+      "mustPreserve": "Preserve historical log/receipt records, old source-only release, mobile sections and full corresponding-source closure requirements",
+      "stage": "data-after-final-inputs"
+    }
+  ],
+  "consumerConditionalPaths": [
+    {
+      "paths": [
+        "scripts/desktop-core/bundle.mjs",
+        "scripts/fetch-core.mjs",
+        ".github/workflows/release-risk.yml"
+      ],
+      "when": "Only if new all-current validation envelope or workflow input cannot be propagated by existing delegated calls; verify exact consumer schema, do not edit automatically"
+    },
+    {
+      "paths": [
+        "scripts/classify-ci-impact.mjs"
+      ],
+      "when": "Only if actual selected paths are unregistered; current desktop-core/provisioner/workflow/Rust paths already enter core/preflight impact sets"
+    }
+  ],
+  "mustPreserve": [
+    "shared provider and mobile alpha8 source manifests",
+    "old D origin policy/logs/receipts",
+    "a01 public release/tag/assets",
+    "original technical a451 receipts and binaries",
+    "strict present/all-four App and Rust gates",
+    "original 202-file Polaris dirty tree"
+  ],
+  "requiredFinalValidation": [
+    "Whole-batch independent parent review of fork contract/tools and complete App consumer diff.",
+    "Create/verify approved annotated desktop source tag only in a separately authorized publication window.",
+    "Freeze actual tag object/source-manifest/provider receipt; derive all four final platform BuildIDs using the shared formula.",
+    "Generate all four outputs once with outputsRequired=false on the same final App candidate/run/attempt; bind measured binary hashes in the envelope afterward, without pre-filling outputs or a second build round.",
+    "Bind actual repository/runId/runAttempt before each new DNS producer receipt fingerprint; compare against actual current App context, never relabel old technical/current-native origins.",
+    "One necessary fresh native four-target App validation on the final combined candidate/run/attempt; low concurrency, no repeated technical matrix.",
+    "Rebuild Go cores with final version/BuildID and VCS stamping; reuse the fixed Cronet libraries and warm dependency inputs.",
+    "Measure actual BuildInfo, full local replacement/module identity, BuildID, native byte hashes and Mac signature state/CDHash after link and after any signing.",
+    "Preserve native mock/engine/gvisor/sidecar-negative/package reload gates; these do not establish real-device DNS acceptance.",
+    "Final package/source-index/notice/signature/carrier correspondence and anonymous byte verification before any distribution-complete claim."
+  ],
+  "notYetProduced": {
+    "sourceTag": null,
+    "sourceTagObject": null,
+    "sourceManifestSha256": null,
+    "sourceReceiptFingerprint": null,
+    "finalPlatformBuildIDs": null,
+    "finalFourCoreHashes": null,
+    "finalFourReceipts": null,
+    "finalMacSignatures": null,
+    "finalCarrierHashes": null,
+    "finalSourcePackageHash": null,
+    "finalPublicationTag": null
+  },
+  "AppAdmissible": false,
+  "publicationEligible": false
+}

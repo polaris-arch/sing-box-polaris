@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+[ "${1:-}" != upgrade ] && [ "${PKG_UPGRADE:-0}" != 1 ] || exit 0
+root=${IPKG_INSTROOT:-}
+backup="$root/etc/polaris-box/retained-config"
+# Restore only absent paths; never overwrite a manager-retained/user config.
+if [ ! -e "$root/etc/config/sing-box" ] && [ -f "$backup/uci" ]; then
+	mkdir -p "$root/etc/config"
+	cp -p "$backup/uci" "$root/etc/config/sing-box"
+fi
+if [ ! -e "$root/etc/sing-box/config.json" ] && [ -f "$backup/config.json" ]; then
+	mkdir -p "$root/etc/sing-box"
+	cp -p "$backup/config.json" "$root/etc/sing-box/config.json"
+fi

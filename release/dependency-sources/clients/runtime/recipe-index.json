@@ -1,0 +1,1147 @@
+[
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-desktop/package.json",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-desktop/50f503849148dd73fa4f4bc231119acf5b2f3d7a/package.json",
+    "sha256": "af0a3872639cab803eebf9193ad29da93672626dbdcda319a413dbb15bcc4da0",
+    "bytes": 2583,
+    "repository": "SagerNet/sing-box-for-desktop",
+    "revision": "50f503849148dd73fa4f4bc231119acf5b2f3d7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-desktop/pnpm-lock.yaml",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-desktop/50f503849148dd73fa4f4bc231119acf5b2f3d7a/pnpm-lock.yaml",
+    "sha256": "950b1b6b304fc7f8c47a5ce624ff739412a62e165278fbaad52f3a7b42da988d",
+    "bytes": 129001,
+    "repository": "SagerNet/sing-box-for-desktop",
+    "revision": "50f503849148dd73fa4f4bc231119acf5b2f3d7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-desktop/electron.vite.config.ts",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-desktop/50f503849148dd73fa4f4bc231119acf5b2f3d7a/electron.vite.config.ts",
+    "sha256": "d747e3e99d777160285fdd23ba89401b4e9796169a494152f442daf2f1f17318",
+    "bytes": 2426,
+    "repository": "SagerNet/sing-box-for-desktop",
+    "revision": "50f503849148dd73fa4f4bc231119acf5b2f3d7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-desktop/scripts/package.ts",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-desktop/50f503849148dd73fa4f4bc231119acf5b2f3d7a/scripts/package.ts",
+    "sha256": "14928df1da195cb8f3273aa8cb0f9f333655ae640cf376f4d63a2a01fe0d58d7",
+    "bytes": 18547,
+    "repository": "SagerNet/sing-box-for-desktop",
+    "revision": "50f503849148dd73fa4f4bc231119acf5b2f3d7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-dashboard/package.json",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-dashboard/f231354bc786dfcffcf09f6ec771bc5683050194/package.json",
+    "sha256": "3c9ba98a5446a7f1bc3d546504f1c5fe5fe5dc242e0a2c00fed893973f4205db",
+    "bytes": 2404,
+    "repository": "SagerNet/sing-box-dashboard",
+    "revision": "f231354bc786dfcffcf09f6ec771bc5683050194"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-dashboard/pnpm-lock.yaml",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-dashboard/f231354bc786dfcffcf09f6ec771bc5683050194/pnpm-lock.yaml",
+    "sha256": "4f18292602a189a761311c5962ae9c7742b6541ed3b5279f9b4d2211ad31a8c8",
+    "bytes": 259744,
+    "repository": "SagerNet/sing-box-dashboard",
+    "revision": "f231354bc786dfcffcf09f6ec771bc5683050194"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-dashboard/scripts/gen-icons.mjs",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-dashboard/f231354bc786dfcffcf09f6ec771bc5683050194/scripts/gen-icons.mjs",
+    "sha256": "27198867b152e9659621de272de9334c313d7aea29233500923a1718666312c3",
+    "bytes": 2734,
+    "repository": "SagerNet/sing-box-dashboard",
+    "revision": "f231354bc786dfcffcf09f6ec771bc5683050194"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-dashboard/scripts/gen-terminal-themes.mjs",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-dashboard/f231354bc786dfcffcf09f6ec771bc5683050194/scripts/gen-terminal-themes.mjs",
+    "sha256": "e926d45c676aadfbd7eb89990254190b16cac77768f99c1c6a153e96aac57955",
+    "bytes": 2634,
+    "repository": "SagerNet/sing-box-dashboard",
+    "revision": "f231354bc786dfcffcf09f6ec771bc5683050194"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-android/app/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-android/ae93152f21457723af77d144f28c1f7be7362aec/app/build.gradle.kts",
+    "sha256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69",
+    "bytes": 17243,
+    "repository": "SagerNet/sing-box-for-android",
+    "revision": "ae93152f21457723af77d144f28c1f7be7362aec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-android/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-android/ae93152f21457723af77d144f28c1f7be7362aec/build.gradle.kts",
+    "sha256": "7dade69367b80004c72bde18d974b313fce1cec22deda8ced878296104adfb85",
+    "bytes": 1007,
+    "repository": "SagerNet/sing-box-for-android",
+    "revision": "ae93152f21457723af77d144f28c1f7be7362aec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-android/settings.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-android/ae93152f21457723af77d144f28c1f7be7362aec/settings.gradle.kts",
+    "sha256": "e833ea9137fd8f256c279c41b984ce8a3fa06cabd0de910c52cafcc1debe4e1f",
+    "bytes": 531,
+    "repository": "SagerNet/sing-box-for-android",
+    "revision": "ae93152f21457723af77d144f28c1f7be7362aec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-android/gradle/libs.versions.toml",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-android/ae93152f21457723af77d144f28c1f7be7362aec/gradle/libs.versions.toml",
+    "sha256": "7c745d1b4129c370b0824be5894ded3ad90af3320bb02ba5cc23da901ce6aab4",
+    "bytes": 128,
+    "repository": "SagerNet/sing-box-for-android",
+    "revision": "ae93152f21457723af77d144f28c1f7be7362aec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-apple/e232aaf22d6d68773196ffc8e6e79684a6be717c/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    "sha256": "ecf4c6fc36511d2542be625ba2a44aea9710c4561313e11576def9b1351e1654",
+    "bytes": 6730,
+    "repository": "SagerNet/sing-box-for-apple",
+    "revision": "e232aaf22d6d68773196ffc8e6e79684a6be717c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-apple/sing-box.xcodeproj/project.pbxproj",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-apple/e232aaf22d6d68773196ffc8e6e79684a6be717c/sing-box.xcodeproj/project.pbxproj",
+    "sha256": "1b60d177932a67fe9cf2e0703fcf53b928e4e25677e77ae3a9232834e4fe5fcd",
+    "bytes": 176803,
+    "repository": "SagerNet/sing-box-for-apple",
+    "revision": "e232aaf22d6d68773196ffc8e6e79684a6be717c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-apple/Frameworks/TreeSitterJSON5/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-apple/e232aaf22d6d68773196ffc8e6e79684a6be717c/Frameworks/TreeSitterJSON5/Package.swift",
+    "sha256": "fdf85a0e34afd8d5314ddf1ab148caa6f673c99753cc9f0c4a3d1a3cec54eb1e",
+    "bytes": 853,
+    "repository": "SagerNet/sing-box-for-apple",
+    "revision": "e232aaf22d6d68773196ffc8e6e79684a6be717c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/sing-box-for-apple/Frameworks/TreeSitterJSON5/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/SagerNet/sing-box-for-apple/e232aaf22d6d68773196ffc8e6e79684a6be717c/Frameworks/TreeSitterJSON5/README.md",
+    "sha256": "1f0e9a125dbee5cb0490010d991514298e57e97f3b14e01a27d8da142a56a842",
+    "bytes": 67,
+    "repository": "SagerNet/sing-box-for-apple",
+    "revision": "e232aaf22d6d68773196ffc8e6e79684a6be717c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/Runestone/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/nekohasekai/Runestone/baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f/Package.swift",
+    "sha256": "24c8ef04d82354f42ef06b2db0fbd68e83e4292e0ad31182e0588731a377303d",
+    "bytes": 1001,
+    "repository": "nekohasekai/Runestone",
+    "revision": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/Runestone/Package.resolved",
+    "sourceURL": "https://raw.githubusercontent.com/nekohasekai/Runestone/baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f/Package.resolved",
+    "sha256": "e85da1018f368dc86af11acc7fbb2dead6136cf6f439f364d6f1d8b695c1c6ea",
+    "bytes": 330,
+    "repository": "nekohasekai/Runestone",
+    "revision": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/binarycodable/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/christophhagen/BinaryCodable/9e5ef6ca38f18d0bdfbe134dadbe1517f7468293/Package.swift",
+    "sha256": "8a2292fa84d8855497183f52b7dceb6947e7744e95a26e5b47ca96dfa8738bc4",
+    "bytes": 651,
+    "revision": "9e5ef6ca38f18d0bdfbe134dadbe1517f7468293"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeeditlanguages/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/Package.swift",
+    "sha256": "0774e9442110393492f8cf38d4256c63657e9dda1bcf0036f0d7278b587bf39f",
+    "bytes": 1074,
+    "revision": "331d5dbc5fc8513be5848fce8a2a312908f36a11"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeeditsourceeditor/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/nekohasekai/CodeEditSourceEditor/0478fd4b8d45f191b6c400d2c7bf6cc648485593/Package.swift",
+    "sha256": "7738e6758a24b442a6c101695f65b2dfc3a6c1fe747c4403298a2673e13d788e",
+    "bytes": 2250,
+    "revision": "0478fd4b8d45f191b6c400d2c7bf6cc648485593"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeeditsymbols/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditSymbols/ae69712b08571c4469c2ed5cd38ad9f19439793e/Package.swift",
+    "sha256": "1b3e68130112845afcc30d46712960f4c3af28b0866a74cdcf4b60e634fc784d",
+    "bytes": 892,
+    "revision": "ae69712b08571c4469c2ed5cd38ad9f19439793e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeedittextview/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditTextView/d7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec/Package.swift",
+    "sha256": "a5b2835bbbdb3e3e016ff0f3caf7e25c2978ed7c795cee5ac349d9a11e9cf312",
+    "bytes": 1769,
+    "revision": "d7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/devicekit/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/devicekit/DeviceKit/56b997e8a61707218f9af09f32b2a1d1806fd792/Package.swift",
+    "sha256": "1580aa47d198763ad67758bf981ac531d15ba5dc93c502acc13dcb9f001128a9",
+    "bytes": 1664,
+    "revision": "56b997e8a61707218f9af09f32b2a1d1806fd792"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/displaylink/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/DisplayLink/41bea2661e04bebcb1c4f15fc0b6197850100fdd/Package.swift",
+    "sha256": "4b02f74154651ce127ebbee29e02b12481d9cc46e14252462b8e903cc3cca88a",
+    "bytes": 471,
+    "revision": "41bea2661e04bebcb1c4f15fc0b6197850100fdd"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/grdb.swift/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/groue/GRDB.swift/b83108d10f42680d78f23fe4d4d80fc88dab3212/.gitmodules",
+    "sha256": "d576d4114644088000fd37db439305d3ec265ed3ab30bc9aac3156420fb0bccd",
+    "bytes": 111,
+    "revision": "b83108d10f42680d78f23fe4d4d80fc88dab3212"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/grdb.swift/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/groue/GRDB.swift/b83108d10f42680d78f23fe4d4d80fc88dab3212/Package.swift",
+    "sha256": "4118b6c48dcb87f91d95fe40420371b8a474a44b0b0be2bf0417e0be1ebf7853",
+    "bytes": 4510,
+    "revision": "b83108d10f42680d78f23fe4d4d80fc88dab3212"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/legacybinarycodable/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/christophhagen/LegacyBinaryCodable/bf13e2bc2aa27d8b119738054357dd6ab7eb0a95/Package.swift",
+    "sha256": "ec865b35c2905e19ef0cee902e486fa8f80217dc41705f3dad0bc3f297f40aaf",
+    "bytes": 590,
+    "revision": "bf13e2bc2aa27d8b119738054357dd6ab7eb0a95"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/libghostty-spm/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Package.swift",
+    "sha256": "e627806604ef3789068055567def098545ae641c43c39fda078e46dcb45acded",
+    "bytes": 2735,
+    "revision": "cffef22c16dd61d22ebef539ae2ff1624db77363"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/networkimage/Demo/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/gonzalezreal/NetworkImage/2849f5323265386e200484b0d0f896e73c3411b9/Demo/Package.swift",
+    "sha256": "b7bb6b79cf0c3583dab68a56ab37300bd043061527896b02e41e9e1a5a795aee",
+    "bytes": 195,
+    "revision": "2849f5323265386e200484b0d0f896e73c3411b9"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/networkimage/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/gonzalezreal/NetworkImage/2849f5323265386e200484b0d0f896e73c3411b9/Package.swift",
+    "sha256": "44baf12c0c0fa16087fc18ddeb4a9b25920b12d98ba9d4bb28de23f284483f22",
+    "bytes": 441,
+    "revision": "2849f5323265386e200484b0d0f896e73c3411b9"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/plcrashreporter/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/microsoft/plcrashreporter/0254f941c646b1ed17b243654723d0f071e990d0/Package.swift",
+    "sha256": "0ac5fd3ab50cafd24a52c003395e4c7bbfb82ff97c1fe2418e8537dbb3c6269c",
+    "bytes": 1736,
+    "revision": "0254f941c646b1ed17b243654723d0f071e990d0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/qrcode/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/dagronf/qrcode/a8b8a5166e072156baf66ec2fff0850aa14b5297/Package.swift",
+    "sha256": "2a4535bf137ace975518090395b577b7c4eb8f0390fa4e9ddc78965d60890a7b",
+    "bytes": 2057,
+    "revision": "a8b8a5166e072156baf66ec2fff0850aa14b5297"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/rearrange/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/Rearrange/4de8be41dba304192e87dc0a11e0aa39e72aa2e8/.gitmodules",
+    "sha256": "685cc992b67aa56886b602ed96fc55c132517db9cef2cb251fad039188d32346",
+    "bytes": 97,
+    "revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/rearrange/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/Rearrange/4de8be41dba304192e87dc0a11e0aa39e72aa2e8/Package.swift",
+    "sha256": "5b2eaba11e460ae0433ee0938c70e039178a65d8ffad48b6e76ee44023a15a93",
+    "bytes": 673,
+    "revision": "4de8be41dba304192e87dc0a11e0aa39e72aa2e8"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-cmark/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/swiftlang/swift-cmark/5d9bdaa4228b381639fff09403e39a04926e2dbe/Package.swift",
+    "sha256": "60c2250cbae9160395168d8eb3a11aa8b49177b8fd12d8f69bc0b71a83665ee4",
+    "bytes": 2221,
+    "revision": "5d9bdaa4228b381639fff09403e39a04926e2dbe"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-collections/Benchmarks/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/apple/swift-collections/a0cb0954ecb21e4e31b0070e6ed5674e8556685a/Benchmarks/Package.swift",
+    "sha256": "8e8348c71cd00a4f43f64064987695675b0fbecd94ff358189cc534072b12d1d",
+    "bytes": 5042,
+    "revision": "a0cb0954ecb21e4e31b0070e6ed5674e8556685a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-collections/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/apple/swift-collections/a0cb0954ecb21e4e31b0070e6ed5674e8556685a/Package.swift",
+    "sha256": "a4853db28f2e773357b41a14a0f0eda28e9de75e3d0ffdaaa04f222b7566693d",
+    "bytes": 12145,
+    "revision": "a0cb0954ecb21e4e31b0070e6ed5674e8556685a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-collections/Utils/Debugger/FormatterFixtures/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/apple/swift-collections/a0cb0954ecb21e4e31b0070e6ed5674e8556685a/Utils/Debugger/FormatterFixtures/Package.swift",
+    "sha256": "527b73743da30b0a0e2b16674cf5ab54245feb70887cd564348231243501257b",
+    "bytes": 2114,
+    "revision": "a0cb0954ecb21e4e31b0070e6ed5674e8556685a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-markdown-ui/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/gonzalezreal/swift-markdown-ui/5f613358148239d0292c0cef674a3c2314737f9e/Package.swift",
+    "sha256": "e9b91c7361e2258157445289b9cc5eabd0f83b11b6c371574d6868485a8a2b9a",
+    "bytes": 1103,
+    "revision": "5f613358148239d0292c0cef674a3c2314737f9e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swift-qrcode-generator/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/dagronf/swift-qrcode-generator/2b1980b825f08a81ccc762b0c4d17fcde9d5e953/Package.swift",
+    "sha256": "cb912dfe68ad850395e65763848b5069b70730bac79408afd397a94870970d42",
+    "bytes": 1093,
+    "revision": "2b1980b825f08a81ccc762b0c4d17fcde9d5e953"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swiftimagereadwrite/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/dagronf/SwiftImageReadWrite/42ace2412279f18bc264bc306e96b51c36e12a33/Package.swift",
+    "sha256": "17abb3f108acd54cde18076d2367a04d9fbb2f0fa57b523a84fdb1f1cd5251c8",
+    "bytes": 579,
+    "revision": "42ace2412279f18bc264bc306e96b51c36e12a33"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/textformation/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextFormation/b1ce9a14bd86042bba4de62236028dc4ce9db6a1/Package.swift",
+    "sha256": "65fa7d995be38866f9780f2596f37e669e4d7b04f4ec7c2e55d751caa94ceaa2",
+    "bytes": 806,
+    "revision": "b1ce9a14bd86042bba4de62236028dc4ce9db6a1"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-agda/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-agda/b9b32fa042c2952a7bfca86847ea325e44ccc897/Package.swift",
+    "sha256": "066370c917d8c5684ab3af1bd0d8a7482b2fd3d2b4b3fb749009503267d965b3",
+    "bytes": 993,
+    "revision": "b9b32fa042c2952a7bfca86847ea325e44ccc897"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-bash/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-bash/49c31006d8307dcb12bc5770f35b6d5b9e2be68e/Package.swift",
+    "sha256": "7606bd4b643a3232d33941a7a9c6c72841a4a44bfc3263d0810243a98fcfa8ce",
+    "bytes": 993,
+    "revision": "49c31006d8307dcb12bc5770f35b6d5b9e2be68e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-c/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c/212a80f86452bb1316324fa0db730cf52f29e05a/Package.swift",
+    "sha256": "a71859ce4f0c2e64b2f4f0eb2721899f88fdb4d4b7a2d79261791d6cc8145454",
+    "bytes": 1048,
+    "revision": "212a80f86452bb1316324fa0db730cf52f29e05a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-c-sharp/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c-sharp/dd5e59721a5f8dae34604060833902b882023aaf/Package.swift",
+    "sha256": "4416f6146d50ee78700f5ad7b73189cfe12961e0ca6ed35cbe4aebc0afaf6e8c",
+    "bytes": 1118,
+    "revision": "dd5e59721a5f8dae34604060833902b882023aaf"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-cpp/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-cpp/a71474021410973b29bfe99440d57bcd750246b1/Package.swift",
+    "sha256": "182a72aa38fcfcc03ac8c1528e127cea6aba261b1f6104e4db61a1c5a4b754f4",
+    "bytes": 1123,
+    "revision": "a71474021410973b29bfe99440d57bcd750246b1"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-css/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-css/98c7b3dceb24f1ee17f1322f3947e55638251c37/Package.swift",
+    "sha256": "bc8e815a1b79d8b628953c0eef1213a4ec91e3c78322a10bab70dcc9966d1b64",
+    "bytes": 930,
+    "revision": "98c7b3dceb24f1ee17f1322f3947e55638251c37"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-dart/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/.gitmodules",
+    "sha256": "9bf4768683abc6b06312439c07a6162d1a4b39b302dd45349cab13206d4b8742",
+    "bytes": 104,
+    "revision": "e81af6ab94a728ed99c30083be72d88e6d56cf9e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-dart/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/Package.swift",
+    "sha256": "f5ba2170668c87f6f10bf600621b92a41679d8c176610d1c23edba08f6b1d4d0",
+    "bytes": 1429,
+    "revision": "e81af6ab94a728ed99c30083be72d88e6d56cf9e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-dockerfile/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-dockerfile/33e22c33bcdbfc33d42806ee84cfd0b1248cc392/Package.swift",
+    "sha256": "2eb9180e439701191d9be32de8d60b526a428c91baebd2b4995e16ed077c6e5f",
+    "bytes": 1115,
+    "revision": "33e22c33bcdbfc33d42806ee84cfd0b1248cc392"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-elixir/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/Package.swift",
+    "sha256": "55ca46193c1fceb009f5827db3d864d79cc4f24edd4674e5b4c951f2ed60a4c8",
+    "bytes": 1191,
+    "revision": "11426c5fd20eef360d5ecaf10729191f6bc5d715"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-go/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-go/ff86c7f1734873c8c4874ca4dd95603695686d7a/Package.swift",
+    "sha256": "7b2f780e10da99ef13ec10efec758e1e6d5250e43165915d0eafe96f5d5f57d9",
+    "bytes": 1113,
+    "revision": "ff86c7f1734873c8c4874ca4dd95603695686d7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-go-mod/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-go-mod/bbe2fe3be4b87e06a613e685250f473d2267f430/Package.swift",
+    "sha256": "3c3b00cb1cb8183460a5d7f11126dacd1cd3ef218f80156142ed2f1369ff29af",
+    "bytes": 1063,
+    "revision": "bbe2fe3be4b87e06a613e685250f473d2267f430"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-haskell/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/Package.swift",
+    "sha256": "1d66f4a20646e00ef6a43e5c3eb0e1ec765ede830004e1eaf40b7dd034b56843",
+    "bytes": 1270,
+    "revision": "dd924b8df1eb76261f009e149fc6f3291c5081c2"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-html/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-html/d742025fa2d8e6100f134a6ea990443aa1f074b3/Package.swift",
+    "sha256": "d6524a0d3d7a6c17b2ca32341e571cd45c3acceca8059de76bf7d3cb77f6c367",
+    "bytes": 935,
+    "revision": "d742025fa2d8e6100f134a6ea990443aa1f074b3"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-java/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-java/2b57cd9541f9fd3a89207d054ce8fbe72657c444/Package.swift",
+    "sha256": "2643fed8b90ef1d6613c0fddf276e7e28a73efadb008db0073eb3b3aabf9c585",
+    "bytes": 1041,
+    "revision": "2b57cd9541f9fd3a89207d054ce8fbe72657c444"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-javascript/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-javascript/f1e5a09b8d02f8209a68249c93f0ad647b228e6e/Package.swift",
+    "sha256": "436bd26d014a31684e672799072796e11345a4160af7e889e3fbb313fc8ddedc",
+    "bytes": 1100,
+    "revision": "f1e5a09b8d02f8209a68249c93f0ad647b228e6e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-jsdoc/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-jsdoc/d01984de49927c979b46ea5c01b78c8ddd79baf9/Package.swift",
+    "sha256": "7bb9a675f80700152aca32265597f37b1fa5d19f473025d016d31a2f62ce12fa",
+    "bytes": 1030,
+    "revision": "d01984de49927c979b46ea5c01b78c8ddd79baf9"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-json/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3fef30de8aee74600f25ec2e319b62a1a870d51e/Package.swift",
+    "sha256": "14cfe39ca55e7fa2cacaccd40215d63090af51614198f2f2ad564a2e79b074f0",
+    "bytes": 1027,
+    "revision": "3fef30de8aee74600f25ec2e319b62a1a870d51e"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-julia/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-julia/0c088d1ad270f02c4e84189247ac7001e86fe342/Package.swift",
+    "sha256": "e111740107a2fef0543917298834a62c696180e195cb0729e157211ec5ea26c6",
+    "bytes": 984,
+    "revision": "0c088d1ad270f02c4e84189247ac7001e86fe342"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-kotlin/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/fwcd/tree-sitter-kotlin/76f53c48d29e8588934fb55b0240d7bdfe00bfe5/Package.swift",
+    "sha256": "951530b98684e2e94d8120f2db130789a6177bdb232679d56032dedb835318c0",
+    "bytes": 1438,
+    "revision": "76f53c48d29e8588934fb55b0240d7bdfe00bfe5"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-lua/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-lua/34e60e7f45fc313463c68090d88d742a55d1bd7a/Package.swift",
+    "sha256": "48823af818211b547b7604abcd235cd58e0049bdefce58b3574fe8ac3f740b85",
+    "bytes": 986,
+    "revision": "34e60e7f45fc313463c68090d88d742a55d1bd7a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-markdown/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-markdown/5cdc549ab8f461aff876c5be9741027189299cec/Package.swift",
+    "sha256": "c9852bbfc3561242c84c92a727e0b00f870cca177f72fb48b97b4ff43ed681fa",
+    "bytes": 1618,
+    "revision": "5cdc549ab8f461aff876c5be9741027189299cec"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-objc/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-objc/62e61b6f5c0289c376d61a8c91faf6435cde9012/Package.swift",
+    "sha256": "dd4faaf2d33faa0ff4c72ffa66c82dc88f68f7b20f2d3f106870b282945669b3",
+    "bytes": 1086,
+    "revision": "62e61b6f5c0289c376d61a8c91faf6435cde9012"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-ocaml/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ocaml/4abfdc1c7af2c6c77a370aee974627be1c285b3b/Package.swift",
+    "sha256": "8d2a8e492e4188e136ed43b1f0d6824297697e0a5415ec42d5e85843b7a1c2ed",
+    "bytes": 1090,
+    "revision": "4abfdc1c7af2c6c77a370aee974627be1c285b3b"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-perl/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/ganezdragon/tree-sitter-perl/15a6914b9b891974c888ba7bf6c432665b920a3f/Package.swift",
+    "sha256": "a37d9fa47e07d7fec8b2ff13c8e514e13fe50be2f95627e2af5947a64e5e6b10",
+    "bytes": 1023,
+    "revision": "15a6914b9b891974c888ba7bf6c432665b920a3f"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-php/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-php/b569a5f2c0d592e67430520d1a0e1f765d83ceb0/Package.swift",
+    "sha256": "5c8c1d4d7a1345505f2844419390ef99d6e9ad10082c5e2923bf675a136a2c09",
+    "bytes": 768,
+    "revision": "b569a5f2c0d592e67430520d1a0e1f765d83ceb0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-python/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-python/4bfdd9033a2225cc95032ce77066b7aeca9e2efc/Package.swift",
+    "sha256": "d1fabe177e817e5f3215cd9a94b838ef14b767b4a46f52b0ca6584b1a885b51d",
+    "bytes": 942,
+    "revision": "4bfdd9033a2225cc95032ce77066b7aeca9e2efc"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-regex/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-regex/4470c59041416e8a2a9fa343595ca28ed91f38b8/Package.swift",
+    "sha256": "713e257b8e68ea7f7cd9a336c0e35dd0aa070dd14fda5f93fb9ea9aa75fb495f",
+    "bytes": 1047,
+    "revision": "4470c59041416e8a2a9fa343595ca28ed91f38b8"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-ruby/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/.gitmodules",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "revision": "4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-ruby/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/Package.swift",
+    "sha256": "21f88314e68e34449fc02622e648e58bd36c772c99210151a146393d7e341135",
+    "bytes": 1125,
+    "revision": "4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-rust/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/.gitmodules",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "revision": "79456e6080f50fc1ca7c21845794308fa5d35a51"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-rust/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/Package.swift",
+    "sha256": "75abe94ded1c856080f413ec07458e3ce26faf318b57044407a24618cbfb7099",
+    "bytes": 1156,
+    "revision": "79456e6080f50fc1ca7c21845794308fa5d35a51"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-scala/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-scala/45b5ba0e749a8477a8fd2666f082f352859bdc3c/Package.swift",
+    "sha256": "b8a590d43f751a2fb3a4c46be9a812683dfd66ba7369cc7bb5dc532f80807932",
+    "bytes": 659,
+    "revision": "45b5ba0e749a8477a8fd2666f082f352859bdc3c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-sql/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/DerekStride/tree-sitter-sql/fd70fb358d164cd93fbe2674a9cca276dc5203f7/Package.swift",
+    "sha256": "2b9451338c630dd6ece20ce25048fcf0cbb6c018f93731cb1ee81ed24f938c01",
+    "bytes": 977,
+    "revision": "fd70fb358d164cd93fbe2674a9cca276dc5203f7"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-swift/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/alex-pinkus/tree-sitter-swift/eda05af7ac41adb4eb19c346883c0fa32fe3bdd8/Package.swift",
+    "sha256": "43852d8133a539f01ba3d0b91c621ef662ad544f5e13f511b7e7a2af3c7795ab",
+    "bytes": 662,
+    "revision": "eda05af7ac41adb4eb19c346883c0fa32fe3bdd8"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-toml/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/.gitmodules",
+    "sha256": "bd0de83836a8b84a2800dd9ae9dc1ef8529f37f01d6276de9ea08cd4a4f4ae0c",
+    "bytes": 118,
+    "revision": "28db724e8e30920638b46d408c0fbac007ac6a62"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-toml/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/Package.swift",
+    "sha256": "0f62809177dcdca1f39fccb57ef8b9137d411b83b85bf6ec1e9f067fe6ca9cd6",
+    "bytes": 1061,
+    "revision": "28db724e8e30920638b46d408c0fbac007ac6a62"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-typescript/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-typescript/d847898fec3fe596798c9fda55cb8c05a799001a/Package.swift",
+    "sha256": "ba1c4ec68de7c81fef7b35976d288d98dd5ce484ddefa52b0c1a13804aec74cc",
+    "bytes": 785,
+    "revision": "d847898fec3fe596798c9fda55cb8c05a799001a"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-verilog/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-verilog/902031343056bc0b11f3e47b33f036a9cf59f58d/Package.swift",
+    "sha256": "6e240f9757a4745759ae3949be4bdd96e476dfcb9d8aa5bc64ac8e24acf646e1",
+    "bytes": 985,
+    "revision": "902031343056bc0b11f3e47b33f036a9cf59f58d"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-yaml/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/.gitmodules",
+    "sha256": "bf19106e4aad7fba0365d6a6f97474a6bfe6c7e451faf08da6110d1f350e208a",
+    "bytes": 141,
+    "revision": "7b03feefd36b5f155465ca736c6304aca983b267"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-yaml/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/Package.swift",
+    "sha256": "af56fddc99010b9b379402b150aac73125445e73866cdcb5aa56c61ebe9bc303",
+    "bytes": 1430,
+    "revision": "7b03feefd36b5f155465ca736c6304aca983b267"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter-zig/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-zig/eb7d58c2dc4fbeea4745019dee8df013034ae66b/Package.swift",
+    "sha256": "5801fd5ab78461352f56aaf11c3405b12e466d7117275427c89633d4047c5025",
+    "bytes": 1389,
+    "revision": "eb7d58c2dc4fbeea4745019dee8df013034ae66b"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swifttreesitter/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/.gitmodules",
+    "sha256": "99aaa8d9457db22915504e8ccee90555cae7904fe682cb62d49835742eb669c4",
+    "bytes": 145,
+    "revision": "08ef81eb8620617b55b08868126707ad72bf754f"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/swifttreesitter/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/Package.swift",
+    "sha256": "7fa322bc8dcc44444ba8ec29052e1857e012bf231747a002c13f5724dd42a9ee",
+    "bytes": 1371,
+    "revision": "08ef81eb8620617b55b08868126707ad72bf754f"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/textstory/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextStory/a52db1a2eca74d37c8c19bf3165416941632ed45/Package.swift",
+    "sha256": "eb92856ed0a8df7914a06155586149067cb0f147fab4d156fc456529ae8af833",
+    "bytes": 734,
+    "revision": "a52db1a2eca74d37c8c19bf3165416941632ed45"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/tree-sitter/Package.swift",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/Package.swift",
+    "sha256": "674895421bbe1c6d06c3007015a5f833d3700b3adeed82d3ba8de0cd564b9c96",
+    "bytes": 1178,
+    "revision": "da6fe9beb4f7f67beb75914ca8e0d48ae48d6406"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/CodeLanguagesContainer/Package.resolved",
+    "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditLanguages/331d5dbc5fc8513be5848fce8a2a312908f36a11/CodeLanguages-Container/CodeLanguages-Container.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    "sha256": "6c21a8437cd38b3346bbf509c53c601b16ef43cbe22de224c8e224b4ab127460",
+    "bytes": 10702
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/README.md",
+    "sha256": "fee705f489016a6fe177adc6067de3a5d90df8c2f14aaa2b4d136e9355a3f5c3",
+    "bytes": 3925,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/bom/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/bom/build.gradle.kts",
+    "sha256": "0ab0a892ab38d46bf530b3c62fdb2d0f340c5c05391417bb9010c2e99e213cc5",
+    "bytes": 1632,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/build-logic/convention/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/convention/build.gradle.kts",
+    "sha256": "0c874303751a84a0f3d4e0fb9b7479cdd06fc56d192b0272963ad8c50d09accd",
+    "bytes": 1466,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/build-logic/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/gradle.properties",
+    "sha256": "cc216d74183ddee2e3ff0f61a367445c72a803a247d7e3b3afd3a322a8bdfc2d",
+    "bytes": 1382,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/build-logic/gradle/wrapper/gradle-wrapper.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/gradle/wrapper/gradle-wrapper.properties",
+    "sha256": "019b00ec5b99b698462be222d67b2f9e8e10d2c44205e635e25f4445bf717b54",
+    "bytes": 1403,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/build-logic/settings.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/settings.gradle.kts",
+    "sha256": "1ee6a94a34ec9ebd46555a1b897f93c386fb362bed91b854064149d3ac84f102",
+    "bytes": 1549,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build.gradle.kts",
+    "sha256": "e002feb677e81c7909252074f6abf64f87f1654b64a85c6252d8de3158ae4aa5",
+    "bytes": 4078,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/editor-lsp/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor-lsp/README.md",
+    "sha256": "7d8a412f64d7389604e2259c0e7f9801db4e7d0abf3ba4f32a1e15f81c8ad0e7",
+    "bytes": 889,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/editor-lsp/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor-lsp/build.gradle.kts",
+    "sha256": "01c9e1acfd65801ebdeff36290387b2104d18cf09ff10199d7d659ba753b62fb",
+    "bytes": 1875,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/editor/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor/build.gradle.kts",
+    "sha256": "e8c3d581620c8a0aebb85346e1d2a2c4710bbcde11e4461e3f7dddce0359bcb2",
+    "bytes": 2189,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/editor/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor/gradle.properties",
+    "sha256": "983434c260f6e555082910292cf691f6173135b56d30bf7af52e5136e3784a33",
+    "bytes": 1315,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle.properties",
+    "sha256": "774da2966847f0d2cec80f8d49ff1b64d051dd9191921e4c69091135612c68d6",
+    "bytes": 3051,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/gradle/libs.versions.toml",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle/libs.versions.toml",
+    "sha256": "4109b87a2d2fe9cd4761e6735cf605f17033cff7fcb8f471ad2932a66baf5d66",
+    "bytes": 3064,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/gradle/wrapper/gradle-wrapper.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle/wrapper/gradle-wrapper.properties",
+    "sha256": "4734f84218fe3f8f4cad02ab6e4404749dae3861cc2606e7886201965e764359",
+    "bytes": 283,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-java/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-java/build.gradle.kts",
+    "sha256": "8abfae4acbd378948e8951f9d0112a12e73dc6384d6f8cd7f7d053d2c5aaf1b4",
+    "bytes": 2030,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-java/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-java/gradle.properties",
+    "sha256": "ce098ecb2c6c9316fff071a16d0caade9455f38577965c4a11b5fa4d846e6b30",
+    "bytes": 1329,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-monarch/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/README.md",
+    "sha256": "ff92a9b013ff0f6f9a72585260408e8514015b0c080b1deaaed482b0c9e30331",
+    "bytes": 2163,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-monarch/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/build.gradle.kts",
+    "sha256": "c25f5b5aa4edeba9f00a42ea0eba9284fc25874f40fbf58372e1dfb12d40e59f",
+    "bytes": 2211,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-monarch/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/gradle.properties",
+    "sha256": "f3b0557333f18aff631154574a2a0d80863c74a849ff69db5f391158157f0ab4",
+    "bytes": 1335,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-textmate/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/README.md",
+    "sha256": "b6fb87aaf0beb35418c3b9e96d01404b3385d1a96ebcaa388e25192ced039585",
+    "bytes": 1053,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-textmate/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/build.gradle.kts",
+    "sha256": "feeca94b7b0452e5ae53de3cf5c9b73966b39a0f4e3d01e56878c24f1c89d88b",
+    "bytes": 2454,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-textmate/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/gradle.properties",
+    "sha256": "caee1b1273ae51ac2132475cfedc10656872c7457f708784e14360d51929a7ff",
+    "bytes": 1337,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/language-treesitter/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-treesitter/build.gradle.kts",
+    "sha256": "427503f1015f1bdb33cb17401b92d52c277a81978773cce75442c485b722e942",
+    "bytes": 2038,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/Rosemoe__sora-editor/settings.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/settings.gradle.kts",
+    "sha256": "51223ac8d7f104d3611d21091ca98c1b89288db471cf485d0852f291e3f835fc",
+    "bytes": 1960,
+    "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/.gitmodules",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/.gitmodules",
+    "sha256": "71b9bc3805bbd87b2e4033e6dbf5e296cdfbfed8e74488db19678691574a0497",
+    "bytes": 1220,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/README.md",
+    "sha256": "4020b2cdb2d68f00d97d3c24671964b2f4756188f90e0ab12099ac8f25fce4a2",
+    "bytes": 9474,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/android-tree-sitter/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/android-tree-sitter/build.gradle.kts",
+    "sha256": "126b2146354bc4c8a6237b74cb910ccc8a21ec42b087afd7c3ec1f3388e2be24",
+    "bytes": 1605,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/android-tree-sitter/src/main/cpp/CMakeLists.txt",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/android-tree-sitter/src/main/cpp/CMakeLists.txt",
+    "sha256": "abcc651945113b5f353958cebb07aec4b73056b99a2e50ac6a5659fa9f4e4ad8",
+    "bytes": 2067,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/annotation-processors/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/annotation-processors/build.gradle.kts",
+    "sha256": "7259575df8696705362b22411378e706c80c642720de0e8292062f6ee0f56059",
+    "bytes": 1221,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/annotations/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/annotations/build.gradle.kts",
+    "sha256": "8457e8e13abd90d97fffc6f8769dbe885b45f212f2aacd0d94a712b1a4e0fe6d",
+    "bytes": 970,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/build-logic/ats/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/ats/build.gradle.kts",
+    "sha256": "48923d76b479c6ee0ede7e087f2eb83d343e8daa420008237c115eeab3699b7c",
+    "bytes": 1979,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/build-logic/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/gradle.properties",
+    "sha256": "308e353782a58420931c9c99f282301bec9a0915e4446cd588aa74c9fdaf945b",
+    "bytes": 834,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/build-logic/gradle/wrapper/gradle-wrapper.properties",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/gradle/wrapper/gradle-wrapper.properties",
+    "sha256": "55fbb41e499214b5efbabf03bcdb440d93296665570bf6688f4cd44c320d9e5e",
+    "bytes": 200,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/build-logic/settings.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/settings.gradle.kts",
+    "sha256": "fb5431c44bfb098a70358a6eb8d84eef95f8a17674e6b654471c553456a4a3fb",
+    "bytes": 1095,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/build.gradle.kts",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build.gradle.kts",
+    "sha256": "23b9d1e68f47d8b6a6927a7c2f5a08671aa26b964c3d563129fd32027dca8c5e",
+    "bytes": 6016,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/gradle.properties",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle.properties",
+    "sha256": "a042b7a4e1306263d9f8c21986928ce3c245563b11f9da96708617b53e6bff3b",
+    "bytes": 109,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/gradle/libs.versions.toml",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle/libs.versions.toml",
+    "sha256": "a865e045480638cc45a3f5855d7c8e07c6be5d5ea04838272ef615353201972d",
+    "bytes": 2214,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/gradle/wrapper/gradle-wrapper.properties",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle/wrapper/gradle-wrapper.properties",
+    "sha256": "cdab1ffb439219b1db125e3c99a86cf2424f8762b9b3faa404ed061e3635ecde",
+    "bytes": 251,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/grammars/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/grammars/README.md",
+    "sha256": "7a384a3dd63b1ea5530b87844137fae6551a0dcea2750be672d4e77ebe8f0d54",
+    "bytes": 870,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-copyleft/itsaky__android-tree-sitter/settings.gradle",
+    "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/settings.gradle",
+    "sha256": "b3e9bc0a39d0f0f30e5f621843b15997ae091334f3fd83c7d404feebaa3c025b",
+    "bytes": 1619,
+    "revision": "797150222de664181e31be53e9a5b253056ba9b0"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-native/tree-sitter-lib/Makefile",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/Makefile",
+    "sha256": "c2b358f164f2b16359fe626c4efac63464c6985e20c08838f3d07adab1b60992",
+    "bytes": 3333,
+    "revision": "ca7d15add61bf77391d387d26441599b96c0eb9c"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/android-native/grammars/json/Makefile",
+    "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3b129203f4b72d532f58e72c5310c0a7db3b8e6d/Makefile",
+    "sha256": "10c6cf81904734707c2f2bbfb84b7f46601d9c3e8fdc9bb09cef617b971a0211",
+    "bytes": 3966,
+    "revision": "3b129203f4b72d532f58e72c5310c0a7db3b8e6d"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/libghostty-spm/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/README.md",
+    "revision": "cffef22c16dd61d22ebef539ae2ff1624db77363",
+    "sha256": "bc2df599e9f528886dff8c6519baf85aa017057583fac3b1685674f4775afb21",
+    "bytes": 18804
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/libghostty-spm/Script/check-licenses.sh",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/check-licenses.sh",
+    "revision": "cffef22c16dd61d22ebef539ae2ff1624db77363",
+    "sha256": "03e290b716acfe5157e02a0015784f94a420e5ea0a5c9f8103682ba8b661336b",
+    "bytes": 2560
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/libghostty-spm/Script/build-manifest.sh",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build-manifest.sh",
+    "revision": "cffef22c16dd61d22ebef539ae2ff1624db77363",
+    "sha256": "02870fb3dbe4029c755a7b2b0d538d92e902657b8dd8c123740021f6667f6cb4",
+    "bytes": 809
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/swift-packages/libghostty-spm/Script/build-ghostty.sh",
+    "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Script/build-ghostty.sh",
+    "revision": "cffef22c16dd61d22ebef539ae2ff1624db77363",
+    "sha256": "82b0722920e5b425b5f75ff37197060f6721e7e7b9c61325654264bdca74664b",
+    "bytes": 7129
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/ADDITIONAL_LICENSE_INFO",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/ADDITIONAL_LICENSE_INFO",
+    "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916",
+    "bytes": 2114,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/ASSEMBLY_EXCEPTION",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/ASSEMBLY_EXCEPTION",
+    "sha256": "a44eb7b5caf5534c6ef536b21edb40b4d6babf91bf97d9d45596868618b2c6fb",
+    "bytes": 1522,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/BUILD",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/BUILD",
+    "sha256": "99c8335ca28573be56250c956ced929c3125194382be5d4105b7ed294bdce35d",
+    "bytes": 3233,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/CHANGELOG.md",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/CHANGELOG.md",
+    "sha256": "9ed42eb6bb57d2cab4faeb2e4cfd389269a2fbf7809e664d7345eb2983eb1744",
+    "bytes": 7539,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/CONTRIBUTING.md",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/CONTRIBUTING.md",
+    "sha256": "a8cf9af75c89c31372be3c69613533e0a98379b81bed84ed0f5abb5677678c30",
+    "bytes": 969,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/DEPENDENCIES_JDK11.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11.txt",
+    "sha256": "3c16222f316a4e6bbb4298a79524cb2e0425a18a021c61d62eb3b162faddb1c3",
+    "bytes": 124,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/DEPENDENCIES_JDK11_LEGACY.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_LEGACY.txt",
+    "sha256": "3215eac5ff8af19f32473793c3773bdb06b22703a38cabf8df3a109b94a94992",
+    "bytes": 124,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/DEPENDENCIES_JDK11_MINIMAL.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_MINIMAL.txt",
+    "sha256": "2e53fa198eee29561e367c0b094777bd6cc4d5c79437a1a251e2e53c33c969b1",
+    "bytes": 132,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/DEPENDENCIES_JDK11_NIO.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/DEPENDENCIES_JDK11_NIO.txt",
+    "sha256": "b6abb1044c269b6cc2c10c6740deb0d6080c0a9eda284deb48cd7116f6b46853",
+    "bytes": 128,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/LICENSE",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/LICENSE",
+    "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726",
+    "bytes": 19274,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/README",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/README",
+    "sha256": "3742dea69b89d0b35a250fa372bc0624e53529e338aa9e3a4b8ceedbb37e71e4",
+    "bytes": 341,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/README.md",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/README.md",
+    "sha256": "346c7ffdc8b6352c263f02a34ab680f18eec4e909fae2d19de97313aed8b3ced",
+    "bytes": 373,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/UPDATING.md",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/UPDATING.md",
+    "sha256": "266d782b7677891b398b51c07656ff34a13d42c366398176ef0f4d15b20a2933",
+    "bytes": 626,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/VERSION_JDK11.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11.txt",
+    "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+    "bytes": 59,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/VERSION_JDK11_LEGACY.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_LEGACY.txt",
+    "sha256": "8fe0f9a60357f39dae10a79d7c3020ea8c990bd00d043ae0a79ca69bc4a4bfdf",
+    "bytes": 59,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/VERSION_JDK11_MINIMAL.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_MINIMAL.txt",
+    "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+    "bytes": 59,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/VERSION_JDK11_NIO.txt",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/VERSION_JDK11_NIO.txt",
+    "sha256": "b7a8eda0fbec0ddb0559f399347247da67dc8d36424c946e355b758813563cfc",
+    "bytes": 59,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/WORKSPACE",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/WORKSPACE",
+    "sha256": "30e61d17877d1b7ba7f23857137327dc9dc50cc1254bc3a62489c879894a9433",
+    "bytes": 304,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/jdk11/desugarconfig/BUILD",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/jdk11/desugarconfig/BUILD",
+    "sha256": "054c4c719e927d9a110a44173d75337c7fda3aa50fd106ddb00f86bf9d93efe6",
+    "bytes": 235,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/jdk11/src/BUILD",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/jdk11/src/BUILD",
+    "sha256": "1ad19a3c5fa0b4eea64e402e90b5c8e2112a54e4649a7fc175f0106c4a82b22f",
+    "bytes": 1828,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/repos.bzl",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/repos.bzl",
+    "sha256": "860c66c3f681194435f1c85b17b0f25b7909d683fbf37cb17ad2544765e767bb",
+    "bytes": 2937,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  },
+  {
+    "path": "release/dependency-sources/clients/runtime/recipes/desugar-jdk-libs-2.1.5/setup.bzl",
+    "sourceURL": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/setup.bzl",
+    "sha256": "ec31fefae29d5567828d34d795322bfe390fc6b66ef5a90504b0a07a4febd38c",
+    "bytes": 1743,
+    "repository": "google/desugar_jdk_libs",
+    "revision": "73170c345e6a762fc6a1f0301bb15218850023ef"
+  }
+]

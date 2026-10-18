@@ -1,0 +1,38 @@
+{
+  "repository": "SagerNet/sing-box-for-android",
+  "commit": "ae93152f21457723af77d144f28c1f7be7362aec",
+  "sourceURL": "https://github.com/SagerNet/sing-box-for-android/archive/ae93152f21457723af77d144f28c1f7be7362aec.tar.gz",
+  "bytes": 760475,
+  "sha256": "536628016d037717f332c857cd3e110f3643378b67967725199303df6a3918ed",
+  "fullGetVerified": true,
+  "trackedFiles": 449,
+  "noticeAndBuildInputs": [
+    {
+      "path": "LICENSE",
+      "bytes": 791,
+      "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+    },
+    {
+      "path": "app/build.gradle.kts",
+      "bytes": 17243,
+      "sha256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69"
+    },
+    {
+      "path": "build.gradle.kts",
+      "bytes": 1007,
+      "sha256": "7dade69367b80004c72bde18d974b313fce1cec22deda8ced878296104adfb85"
+    },
+    {
+      "path": "third_party/libxposed-api/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "third_party/libxposed-api/build.gradle.kts",
+      "bytes": 460,
+      "sha256": "293505e0b14eac7e1273a6a10d0406a765a82c11c317348345f668f0c8b82660"
+    }
+  ],
+  "verifiedTrackedGitBlobs": 449,
+  "gitlinks": []
+}

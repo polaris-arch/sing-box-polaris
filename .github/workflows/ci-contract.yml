@@ -1,0 +1,32 @@
+name: CI contract static checks
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
+    - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
+'on':
+  push:
+    branches:
+    - polaris-main
+    paths:
+    - .github/workflows/**
+    - scripts/ci/**
+    - release/ci/**
+  pull_request:
+    branches:
+    - polaris-main
+    paths:
+    - .github/workflows/**
+    - scripts/ci/**
+    - release/ci/**
+  workflow_dispatch: null

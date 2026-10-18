@@ -1,0 +1,25 @@
+{
+  "base": {
+    "path": "CURRENT44-NOTICE-CANDIDATE.txt",
+    "bytes": 1058405,
+    "sha256": "930bf6ec9d1d9f25355d59e237ad564241c7162638b9b39966ff7c1b95602b0d",
+    "noticeRecords": 271
+  },
+  "current": {
+    "path": "CURRENT44-NOTICE-CANDIDATE.txt",
+    "bytes": 1059985,
+    "sha256": "9b6dc31aff97a2cc6a4041672207a3b26d3a6ee2bef40bdc79d160df2a40d7ce"
+  },
+  "addedRecordIndexes": [
+    271,
+    272,
+    273,
+    274,
+    275,
+    276,
+    277,
+    278
+  ],
+  "noticeRecords": 279,
+  "allByteSlicesVerified": true
+}

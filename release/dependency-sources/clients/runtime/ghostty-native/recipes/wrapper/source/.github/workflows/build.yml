@@ -1,0 +1,209 @@
+name: Build Upstream XCFramework
+
+# Builds the GhosttyKit XCFramework from the pinned upstream Ghostty commit
+# (Ghostty.ref) and publishes it on the `upstream.<sha12>` release tag —
+# `upstream.<sha12>-<Ghostty.build>` for a rebuild of the same commit with a
+# changed patch stack or target set (Script/storage-tag.sh). Swift package
+# releases (bare semver tags, 1.4.0+) are cut separately by release.yml and
+# reference the asset published here — a Swift-only change never rebuilds
+# the Zig core.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-upstream
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: macos-15
+    outputs:
+      build_needed: ${{ steps.release.outputs.build_needed }}
+      ghostty_ref: ${{ steps.release.outputs.ghostty_ref }}
+      storage_tag: ${{ steps.release.outputs.storage_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Upstream Commit
+        id: release
+        run: |
+          GHOSTTY_REF=$(tr -d '[:space:]' < Ghostty.ref)
+          STORAGE_TAG=$(./Script/storage-tag.sh)
+
+          gh api "repos/ghostty-org/ghostty/commits/$GHOSTTY_REF" --jq '.sha' >/dev/null
+
+          git fetch --tags origin
+          if git rev-parse "refs/tags/$STORAGE_TAG" >/dev/null 2>&1; then
+            echo "[*] $STORAGE_TAG already published, nothing to build"
+            echo "build_needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "[*] building $GHOSTTY_REF -> $STORAGE_TAG"
+          echo "build_needed=true" >> "$GITHUB_OUTPUT"
+          echo "ghostty_ref=$GHOSTTY_REF" >> "$GITHUB_OUTPUT"
+          echo "storage_tag=$STORAGE_TAG" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-target:
+    needs: prepare
+    if: needs.prepare.outputs.build_needed == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-macos
+            variant: macosx
+          - target: x86_64-macos
+            variant: macosx
+          - target: aarch64-ios
+            variant: iphoneos
+          - target: aarch64-ios-simulator
+            variant: iphonesimulator
+            cpu: apple_a17
+          - target: x86_64-ios-simulator
+            variant: iphonesimulator
+          - target: aarch64-maccatalyst
+            variant: maccatalyst
+            cpu: apple_a17
+          - target: x86_64-maccatalyst
+            variant: maccatalyst
+          - target: aarch64-visionos
+            variant: xros
+          - target: aarch64-visionos-simulator
+            variant: xrsimulator
+            cpu: apple_a17
+          - target: x86_64-visionos-simulator
+            variant: xrsimulator
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Zig
+        # Keep in sync with minimum_zig_version in the pinned upstream's
+        # build.zig.zon; a version drift fails every target at once.
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: Clone Ghostty
+        run: |
+          git clone https://github.com/ghostty-org/ghostty ./References/ghostty-upstream
+          git -C ./References/ghostty-upstream checkout "${{ needs.prepare.outputs.ghostty_ref }}"
+
+      - name: Build Target
+        run: |
+          export ZIG_CPU="${{ matrix.cpu }}"
+          ./Script/build-ghostty.sh \
+            "$PWD/References/ghostty-upstream" \
+            "${{ matrix.target }}" \
+            "$PWD/build/out"
+
+      - name: Pack Artifact
+        run: tar -czf "target--${{ matrix.variant }}--${{ matrix.target }}.tar.gz" -C ./build/out .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: target--${{ matrix.variant }}--${{ matrix.target }}
+          path: target--${{ matrix.variant }}--${{ matrix.target }}.tar.gz
+          compression-level: 0
+          retention-days: 1
+
+  merge-release:
+    needs: [prepare, build-target]
+    if: needs.prepare.outputs.build_needed == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: target-*
+          path: ./build/tarballs
+          merge-multiple: true
+
+      - name: Assemble Variants
+        run: |
+          mkdir -p ./build/targets ./build/dest
+
+          for tarball in ./build/tarballs/target--*.tar.gz; do
+            BASENAME=$(basename "$tarball" .tar.gz)
+            VARIANT=$(echo "$BASENAME" | awk -F'--' '{print $2}')
+            TARGET=$(echo "$BASENAME" | awk -F'--' '{print $3}')
+            echo "[*] unpacking $BASENAME → variant=$VARIANT target=$TARGET"
+            mkdir -p "./build/targets/$VARIANT/$TARGET"
+            tar -xzf "$tarball" -C "./build/targets/$VARIANT/$TARGET"
+          done
+
+          for variant_dir in ./build/targets/*/; do
+            VARIANT=$(basename "$variant_dir")
+            mkdir -p "./build/dest/$VARIANT/lib" "./build/dest/$VARIANT/include"
+
+            LIBS=()
+            FIRST_HEADERS=
+            for target_dir in "$variant_dir"*/; do
+              LIBS+=("$target_dir/lib/libghostty.a")
+              if [ -z "$FIRST_HEADERS" ]; then
+                FIRST_HEADERS="$target_dir/include"
+              fi
+            done
+
+            cp -R "$FIRST_HEADERS/." "./build/dest/$VARIANT/include/"
+
+            if [ "${#LIBS[@]}" -eq 1 ]; then
+              cp "${LIBS[0]}" "./build/dest/$VARIANT/lib/libghostty.a"
+              echo "[*] $VARIANT: single arch"
+            else
+              lipo -create "${LIBS[@]}" -output "./build/dest/$VARIANT/lib/libghostty.a"
+              echo "[*] $VARIANT: lipo ${#LIBS[@]} archs"
+            fi
+          done
+
+      - name: Merge XCFramework
+        run: |
+          ./Script/merge-xcframework.sh \
+            "$PWD/build/dest" \
+            "$PWD/BinaryTarget/GhosttyKit.xcframework" \
+            "$PWD/build/GhosttyKit.xcframework.zip"
+
+      - name: Test XCFramework Consumer
+        run: ./Script/test-xcframework-consumer.sh "$PWD/BinaryTarget/GhosttyKit.xcframework"
+
+      - name: Stage Asset
+        run: mv ./build/GhosttyKit.xcframework.zip ./GhosttyKit.xcframework.zip
+
+      - name: Create Upstream Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.storage_tag }}
+          target_commitish: ${{ github.ref_name }}
+          body: |
+            GhosttyKit XCFramework
+
+            Ghostty commit: https://github.com/ghostty-org/ghostty/commit/${{ needs.prepare.outputs.ghostty_ref }}
+            Slices: macOS, iOS, iOS Simulator, Mac Catalyst, visionOS, visionOS Simulator
+          draft: false
+          prerelease: false
+          files: |
+            GhosttyKit.xcframework.zip

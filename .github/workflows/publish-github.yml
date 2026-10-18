@@ -1,0 +1,185 @@
+name: GitHub-only reviewed release
+'on':
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options:
+        - inventory
+        - validate
+        - publish
+        - prepare-reconcile
+        - reconcile
+        - prepare-replacement
+        - stage-replacement
+        - replace
+        default: inventory
+        required: true
+        description: Inventory, validate and preparation are read-only; all write modes require the existing protected environment and enabled variable
+      source_sha:
+        type: string
+        required: true
+        description: Exact 40-character producer source SHA
+      all_run:
+        type: string
+        required: false
+        description: all exact successful run ID; required except for replacement preparation/staging
+      linux_run:
+        type: string
+        required: false
+        description: linux exact successful run ID; required except for replacement preparation/staging
+      docker_run:
+        type: string
+        required: false
+        description: docker exact successful run ID; required except for replacement preparation/staging
+      signed_run:
+        type: string
+        required: false
+        description: signed exact successful run ID
+      recovery_run:
+        type: string
+        required: false
+        description: 'Successful matching preparation run on this exact publisher revision; required for reconcile and replacement staging/writes'
+      inventory_run:
+        type: string
+        required: false
+        description: 'Required for validate/publish/reconciliation/replace: successful inventory run ID; replacement preparation uses its fixed original inventory'
+      inventory_sha256:
+        type: string
+        required: false
+        description: 'Explicitly reviewed proposal SHA-256 from inventory log; replace requires the fresh rebuilt inventory'
+permissions:
+  contents: read
+concurrency:
+  group: polaris-github-release-v1.15.0-polaris-alpha.12
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    if: github.repository == 'polaris-arch/sing-box-polaris' && github.repository_id == '1421657509'
+    permissions:
+      contents: read
+      actions: read
+    steps:
+    - name: Checkout reviewed publisher revision
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        persist-credentials: false
+    - name: Install final native index validator
+      run: python3 -m pip install jsonschema==4.23.0
+    - name: Checkout exact build source separately
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: reviewed-source
+        persist-credentials: false
+    - name: Fetch exact runs and validate scope without remote writes
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE: ${{ inputs.source_sha }}
+        ALL_RUN: ${{ inputs.all_run }}
+        LINUX_RUN: ${{ inputs.linux_run }}
+        DOCKER_RUN: ${{ inputs.docker_run }}
+        SIGNED_RUN: ${{ inputs.signed_run }}
+        MODE: ${{ inputs.mode }}
+        RECOVERY_RUN: ${{ inputs.recovery_run }}
+        INVENTORY_RUN: ${{ inputs.inventory_run }}
+        INVENTORY_SHA256: ${{ inputs.inventory_sha256 }}
+      run: |
+        args=(--source "$SOURCE")
+        if [[ -n "$ALL_RUN" ]]; then args+=(--all-run "$ALL_RUN"); fi
+        if [[ -n "$LINUX_RUN" ]]; then args+=(--linux-run "$LINUX_RUN"); fi
+        if [[ -n "$DOCKER_RUN" ]]; then args+=(--docker-run "$DOCKER_RUN"); fi
+        if [[ -n "$SIGNED_RUN" ]]; then args+=(--signed-run "$SIGNED_RUN"); fi
+        if [[ "$MODE" == inventory ]]; then
+          python3 scripts/ci/github_release.py inventory "${args[@]}" --output release-inventory-proposal.json
+        elif [[ "$MODE" == prepare-replacement ]]; then
+          python3 scripts/ci/github_release.py prepare-replacement "${args[@]}"
+        elif [[ "$MODE" == stage-replacement ]]; then
+          python3 scripts/ci/github_release.py check-stage-replacement "${args[@]}" --recovery-run "$RECOVERY_RUN"
+        elif [[ "$MODE" == replace ]]; then
+          python3 scripts/ci/github_release.py check-replacement "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256" --recovery-run "$RECOVERY_RUN"
+        elif [[ "$MODE" == prepare-reconcile ]]; then
+          python3 scripts/ci/github_release.py prepare-reconcile "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+        elif [[ "$MODE" == reconcile ]]; then
+          python3 scripts/ci/github_release.py check-reconcile "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256" --recovery-run "$RECOVERY_RUN"
+        else
+          python3 scripts/ci/github_release.py validate "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+        fi
+    - name: Retain actual validation output
+      uses: actions/upload-artifact@v4
+      with:
+        name: github-release-validation
+        path: |-
+          release-inventory-proposal.json
+          github-release-dist
+          github-release-audit
+        if-no-files-found: error
+    - name: Retain original receipt and existing producer recovery references before any writes
+      if: inputs.mode == 'prepare-reconcile' || inputs.mode == 'prepare-replacement'
+      uses: actions/upload-artifact@v4
+      with:
+        name: github-release-recovery
+        path: |-
+          github-release-audit/original-public-receipt.json
+          github-release-audit/reconciliation-recovery.json
+        if-no-files-found: error
+        retention-days: 90
+  publish:
+    needs: validate
+    if: (inputs.mode == 'publish' || inputs.mode == 'reconcile' || inputs.mode == 'stage-replacement' || inputs.mode == 'replace') && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: polaris-github-release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+    - name: Checkout reviewed publisher revision
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        persist-credentials: false
+    - name: Install final native index validator
+      run: python3 -m pip install jsonschema==4.23.0
+    - name: Checkout exact build source separately
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ inputs.source_sha }}
+        path: reviewed-source
+        persist-credentials: false
+    - name: Revalidate actual bytes and perform the explicitly selected protected publication
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE: ${{ inputs.source_sha }}
+        ALL_RUN: ${{ inputs.all_run }}
+        LINUX_RUN: ${{ inputs.linux_run }}
+        DOCKER_RUN: ${{ inputs.docker_run }}
+        SIGNED_RUN: ${{ inputs.signed_run }}
+        MODE: ${{ inputs.mode }}
+        POLARIS_GITHUB_PUBLISH_ENABLED: ${{ vars.POLARIS_GITHUB_PUBLISH_ENABLED }}
+        RECOVERY_RUN: ${{ inputs.recovery_run }}
+        INVENTORY_RUN: ${{ inputs.inventory_run }}
+        INVENTORY_SHA256: ${{ inputs.inventory_sha256 }}
+      run: |
+        args=(--source "$SOURCE")
+        if [[ -n "$ALL_RUN" ]]; then args+=(--all-run "$ALL_RUN"); fi
+        if [[ -n "$LINUX_RUN" ]]; then args+=(--linux-run "$LINUX_RUN"); fi
+        if [[ -n "$DOCKER_RUN" ]]; then args+=(--docker-run "$DOCKER_RUN"); fi
+        if [[ -n "$SIGNED_RUN" ]]; then args+=(--signed-run "$SIGNED_RUN"); fi
+        if [[ "$MODE" == stage-replacement ]]; then
+          python3 scripts/ci/github_release.py stage-replacement "${args[@]}" --recovery-run "$RECOVERY_RUN"
+        elif [[ "$MODE" == replace ]]; then
+          python3 scripts/ci/github_release.py replace "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256" --recovery-run "$RECOVERY_RUN"
+        elif [[ "$MODE" == reconcile ]]; then
+          python3 scripts/ci/github_release.py reconcile "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256" --recovery-run "$RECOVERY_RUN"
+        else
+          python3 scripts/ci/github_release.py publish "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
+        fi
+    - name: Retain publication result and source materials
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: github-release-publication-audit
+        path: github-release-audit
+        if-no-files-found: warn

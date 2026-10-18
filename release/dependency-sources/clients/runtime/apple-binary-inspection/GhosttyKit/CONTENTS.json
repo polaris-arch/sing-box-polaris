@@ -1,0 +1,230 @@
+[
+  {
+    "path": "GhosttyKit.xcframework/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/macos-arm64_x86_64/libghostty.a",
+    "bytes": 41083600,
+    "compressedBytes": 15957931,
+    "crc32": 2469685131
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-simulator/libghostty.a",
+    "bytes": 39327120,
+    "compressedBytes": 15305389,
+    "crc32": 1219239946
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64_x86_64-maccatalyst/libghostty.a",
+    "bytes": 39341168,
+    "compressedBytes": 15305136,
+    "crc32": 1815046277
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64/libghostty.a",
+    "bytes": 19430272,
+    "compressedBytes": 7609602,
+    "crc32": 79861579
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/xros-arm64_x86_64-simulator/libghostty.a",
+    "bytes": 39340616,
+    "compressedBytes": 15314194,
+    "crc32": 3586223601
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/Headers/libghostty/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/Headers/libghostty/ghostty.h",
+    "bytes": 39433,
+    "compressedBytes": 8466,
+    "crc32": 2612070693
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/Headers/libghostty/module.modulemap",
+    "bytes": 67,
+    "compressedBytes": 59,
+    "crc32": 1426218499
+  },
+  {
+    "path": "GhosttyKit.xcframework/ios-arm64/libghostty.a",
+    "bytes": 19551440,
+    "compressedBytes": 7650584,
+    "crc32": 3870385757
+  },
+  {
+    "path": "GhosttyKit.xcframework/Info.plist",
+    "bytes": 3111,
+    "compressedBytes": 463,
+    "crc32": 458804297
+  }
+]

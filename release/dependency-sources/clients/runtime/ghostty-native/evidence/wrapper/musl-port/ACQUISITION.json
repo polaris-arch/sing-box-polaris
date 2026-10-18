@@ -1,0 +1,20 @@
+[
+  {
+    "path": "log.c",
+    "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/log.c?id=1b76ff0767d01df72f692806ee5adee13c67ef88",
+    "bytes": 3030,
+    "sha256": "a0694d8587a0d145d0f8ae87cbffba014d7988bc2ebcbfad94cea73b394c9ecc",
+    "gitBlob": "cc52585a949886be2788a80f46af23f0784fde7f",
+    "gitBlobVerified": false,
+    "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+  },
+  {
+    "path": "logf.c",
+    "sourceURL": "https://git.musl-libc.org/cgit/musl/plain/src/math/logf.c?id=2d7d05f031e014068a61d3076c6178513395d2ae",
+    "bytes": 1740,
+    "sha256": "9d054cebcf07ad0aa0f63c397dd10d115cc6c76ac706c4425219dd796202db08",
+    "gitBlob": "52230a1bd4dd6776fc55163729763766b589010e",
+    "gitBlobVerified": false,
+    "verificationNote": "Raw bytes from exact official cgit source referenced by Zig; independent Git tree blob metadata not retained."
+  }
+]

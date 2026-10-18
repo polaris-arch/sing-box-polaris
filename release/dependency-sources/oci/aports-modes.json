@@ -1,0 +1,2592 @@
+[
+  {
+    "origin": "alpine-base",
+    "commit": "5aad27a98146f1557e9e3408f615c59d44a41acb",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "92cf395b95702cce4ab0962714c7a513df89b7d8",
+        "size": 1540,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/92cf395b95702cce4ab0962714c7a513df89b7d8"
+      }
+    ]
+  },
+  {
+    "origin": "alpine-base",
+    "commit": "d9d560d5de74ff9a7a73f3c903d6f126a0bf3142",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e63c4c38fd02ceeb3bea466139b601706dd299e4",
+        "size": 1507,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e63c4c38fd02ceeb3bea466139b601706dd299e4"
+      }
+    ]
+  },
+  {
+    "origin": "alpine-baselayout",
+    "commit": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+    "entries": [
+      {
+        "path": "20locale.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9b9fde51f510e8d4ddb79f3ea0423ec75efb9297",
+        "size": 97,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9b9fde51f510e8d4ddb79f3ea0423ec75efb9297"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d79c198a0a923f2781242b9553afaecd65d95afc",
+        "size": 8670,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d79c198a0a923f2781242b9553afaecd65d95afc"
+      },
+      {
+        "path": "aliases.conf",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "b1790179608c46f117fd36073e2316546ca08acd",
+        "size": 1545,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/b1790179608c46f117fd36073e2316546ca08acd"
+      },
+      {
+        "path": "alpine-baselayout.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "88966d35c3327efc03e5d383fa577782ea256c5d",
+        "size": 453,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/88966d35c3327efc03e5d383fa577782ea256c5d"
+      },
+      {
+        "path": "alpine-baselayout.post-upgrade",
+        "mode": "120000",
+        "type": "blob",
+        "sha": "0e73fc07f3bfd966d5ed2e4be2a4838422dab0ed",
+        "size": 30,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0e73fc07f3bfd966d5ed2e4be2a4838422dab0ed"
+      },
+      {
+        "path": "alpine-baselayout.pre-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fc0d0b9f5dab5ce07189ead013e0fb8a6fbc0bc8",
+        "size": 56,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fc0d0b9f5dab5ce07189ead013e0fb8a6fbc0bc8"
+      },
+      {
+        "path": "alpine-baselayout.pre-upgrade",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "b89ad05a74debf8a6f6001b05526770feb40ee88",
+        "size": 944,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/b89ad05a74debf8a6f6001b05526770feb40ee88"
+      },
+      {
+        "path": "blacklist.conf",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f14a1233af1c6160f3ed507283b09853ee8ad5ca",
+        "size": 2247,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f14a1233af1c6160f3ed507283b09853ee8ad5ca"
+      },
+      {
+        "path": "color_prompt.sh.disabled",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "96e47891b31f72ed8f4073061ff48288a4d3cb7b",
+        "size": 447,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/96e47891b31f72ed8f4073061ff48288a4d3cb7b"
+      },
+      {
+        "path": "crontab",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fd8acd8b9a27203f33bd213e9a38d975cbef8dcc",
+        "size": 283,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fd8acd8b9a27203f33bd213e9a38d975cbef8dcc"
+      },
+      {
+        "path": "group",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4a0d291366667f110e5f4d890c585f929fba517e",
+        "size": 510,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4a0d291366667f110e5f4d890c585f929fba517e"
+      },
+      {
+        "path": "hier.7",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7faad97aaf042a21cdf44b33d7aba1d60b512fb4",
+        "size": 6855,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7faad97aaf042a21cdf44b33d7aba1d60b512fb4"
+      },
+      {
+        "path": "i386.conf",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "b89459f1ef675fced8b3fcf97cca1a4ed0e55f01",
+        "size": 122,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/b89459f1ef675fced8b3fcf97cca1a4ed0e55f01"
+      },
+      {
+        "path": "inittab",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5294b8f53b1c9946e66bf75b37644af6cd94cfb1",
+        "size": 570,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5294b8f53b1c9946e66bf75b37644af6cd94cfb1"
+      },
+      {
+        "path": "passwd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1130fa0b21cc1bf66f41206ffad4748ffe457af1",
+        "size": 702,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1130fa0b21cc1bf66f41206ffad4748ffe457af1"
+      },
+      {
+        "path": "profile",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fbc3ba0cd506424c1b67b1a2397aa1097803ad25",
+        "size": 547,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fbc3ba0cd506424c1b67b1a2397aa1097803ad25"
+      },
+      {
+        "path": "usr_merge_nag.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "83ad6e5d9b869d17b7ac98f5b4d753fc6fa6d584",
+        "size": 677,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/83ad6e5d9b869d17b7ac98f5b4d753fc6fa6d584"
+      }
+    ]
+  },
+  {
+    "origin": "alpine-keys",
+    "commit": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ce73c58e12d1687ca50e27c962c159aaf99e6180",
+        "size": 5259,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ce73c58e12d1687ca50e27c962c159aaf99e6180"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-4a6a0840.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bb4bdc80fd10d0609f67076f05e17aafdff75415",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bb4bdc80fd10d0609f67076f05e17aafdff75415"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-5243ef4b.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6cbfad7441d0193d6f2f64dfb47797975bcc54b1",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6cbfad7441d0193d6f2f64dfb47797975bcc54b1"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-524d27bb.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1d34c93e37843fc494ae8d685d08665e844fecba",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1d34c93e37843fc494ae8d685d08665e844fecba"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-5261cecb.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "83f0658e9ca16c4bad20a219318497313a45b7bb",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/83f0658e9ca16c4bad20a219318497313a45b7bb"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-58199dcc.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b99a0d195116f2c7ba081747da873f9b74b07d4",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b99a0d195116f2c7ba081747da873f9b74b07d4"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-58cbb476.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a9ead55ed05182378d50e40ff94f15eac1b40419",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/a9ead55ed05182378d50e40ff94f15eac1b40419"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-58e4f17d.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8f990949b9e70dd3be886664e5c4a41dc67c1ecb",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8f990949b9e70dd3be886664e5c4a41dc67c1ecb"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-5e69ca50.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "097740ebd32935ed9b6b2f9e7bd227320fb4dabd",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/097740ebd32935ed9b6b2f9e7bd227320fb4dabd"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-60ac2099.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b8a4a93e060a3c03a2e482a0dc959aa06542282",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b8a4a93e060a3c03a2e482a0dc959aa06542282"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-6165ee59.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f2165aebadab1c1e43798f1278c3897d85f16da1",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f2165aebadab1c1e43798f1278c3897d85f16da1"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-61666e3f.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "aa63d81d6625e3b16d87db1946b69466f3bd2095",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/aa63d81d6625e3b16d87db1946b69466f3bd2095"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616a9724.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "59c330e9f73cc10ae21bf94062711637141cf81b",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/59c330e9f73cc10ae21bf94062711637141cf81b"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616abc23.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "915bc566b7429b7ee6ca06b0947163c49d496dda",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/915bc566b7429b7ee6ca06b0947163c49d496dda"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616ac3bc.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1e49d246902b76996e4eefb52c7ae61cc09f45f9",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1e49d246902b76996e4eefb52c7ae61cc09f45f9"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616adfeb.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bb15efe96d7c95a0602b243ce0848aa42cf80020",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bb15efe96d7c95a0602b243ce0848aa42cf80020"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616ae350.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0ecbccc2e4aea1d7394ace8f9a896b061a821453",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0ecbccc2e4aea1d7394ace8f9a896b061a821453"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-616db30d.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ceffa3ace9c4454c8cde399732ecee535a13efac",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ceffa3ace9c4454c8cde399732ecee535a13efac"
+      },
+      {
+        "path": "alpine-devel@lists.alpinelinux.org-66ba20fe.rsa.pub",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e8bb47600fed4bdace8a3c366cd3762aec119933",
+        "size": 800,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e8bb47600fed4bdace8a3c366cd3762aec119933"
+      }
+    ]
+  },
+  {
+    "origin": "apk-tools",
+    "commit": "1397144f807abac6f9df704d21a1f71827df13b6",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5a0f94709e1eccbb843e5d1603953e3b46440012",
+        "size": 3962,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5a0f94709e1eccbb843e5d1603953e3b46440012"
+      },
+      {
+        "path": "repo-hash-sha1.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "33ad944259835f90e0f7dd6b28f78f0f2daa1c89",
+        "size": 1245,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/33ad944259835f90e0f7dd6b28f78f0f2daa1c89"
+      }
+    ]
+  },
+  {
+    "origin": "apk-tools",
+    "commit": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "384798fd6db41f33430d07ae7f6959aad6304323",
+        "size": 3962,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/384798fd6db41f33430d07ae7f6959aad6304323"
+      },
+      {
+        "path": "repo-hash-sha1.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "33ad944259835f90e0f7dd6b28f78f0f2daa1c89",
+        "size": 1245,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/33ad944259835f90e0f7dd6b28f78f0f2daa1c89"
+      }
+    ]
+  },
+  {
+    "origin": "bash",
+    "commit": "052899da729dfcd14a202ddd63e5d5cc5e2fb533",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4ddab566d6429d00afa2a10a8c9204e3b8977a4",
+        "size": 4832,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4ddab566d6429d00afa2a10a8c9204e3b8977a4"
+      },
+      {
+        "path": "bash-noinfo.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bf4f0956a4717d40dc6751bc04fb17e0b3fbb4ba",
+        "size": 393,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bf4f0956a4717d40dc6751bc04fb17e0b3fbb4ba"
+      },
+      {
+        "path": "bash.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "92ea8d928dafc6b0bc6f96cc22e2566038fbabf1",
+        "size": 39,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/92ea8d928dafc6b0bc6f96cc22e2566038fbabf1"
+      },
+      {
+        "path": "bash.post-upgrade",
+        "mode": "120000",
+        "type": "blob",
+        "sha": "85d6a8aac6bcf550f4e66ae65dc9884588d05e24",
+        "size": 17,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/85d6a8aac6bcf550f4e66ae65dc9884588d05e24"
+      },
+      {
+        "path": "bash.pre-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d110afedd5267e5cf2c42eece9574a4d7fafe349",
+        "size": 42,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d110afedd5267e5cf2c42eece9574a4d7fafe349"
+      },
+      {
+        "path": "bashrc",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c880a4ba850a4438f1d427b5cc72fb57995f2d2b",
+        "size": 265,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c880a4ba850a4438f1d427b5cc72fb57995f2d2b"
+      },
+      {
+        "path": "profile-bashrc.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f4bd6f76d59fbbbec2ac859c37f1756fe0294b28",
+        "size": 402,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f4bd6f76d59fbbbec2ac859c37f1756fe0294b28"
+      }
+    ]
+  },
+  {
+    "origin": "bash",
+    "commit": "1522c3193610902d8493f9790a2755c11f21f26d",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0701eaa64e72f252cb63afe2898911e8e0a4d627",
+        "size": 4518,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0701eaa64e72f252cb63afe2898911e8e0a4d627"
+      },
+      {
+        "path": "bash-noinfo.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bf4f0956a4717d40dc6751bc04fb17e0b3fbb4ba",
+        "size": 393,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bf4f0956a4717d40dc6751bc04fb17e0b3fbb4ba"
+      },
+      {
+        "path": "bash.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "92ea8d928dafc6b0bc6f96cc22e2566038fbabf1",
+        "size": 39,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/92ea8d928dafc6b0bc6f96cc22e2566038fbabf1"
+      },
+      {
+        "path": "bash.post-upgrade",
+        "mode": "120000",
+        "type": "blob",
+        "sha": "85d6a8aac6bcf550f4e66ae65dc9884588d05e24",
+        "size": 17,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/85d6a8aac6bcf550f4e66ae65dc9884588d05e24"
+      },
+      {
+        "path": "bash.pre-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d110afedd5267e5cf2c42eece9574a4d7fafe349",
+        "size": 42,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d110afedd5267e5cf2c42eece9574a4d7fafe349"
+      },
+      {
+        "path": "bashrc",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c880a4ba850a4438f1d427b5cc72fb57995f2d2b",
+        "size": 265,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c880a4ba850a4438f1d427b5cc72fb57995f2d2b"
+      },
+      {
+        "path": "profile-bashrc.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f4bd6f76d59fbbbec2ac859c37f1756fe0294b28",
+        "size": 402,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f4bd6f76d59fbbbec2ac859c37f1756fe0294b28"
+      }
+    ]
+  },
+  {
+    "origin": "busybox",
+    "commit": "9ac9bf5318a9ccc8af34b1389eba3df432488673",
+    "entries": [
+      {
+        "path": "0001-ash-exec-busybox.static.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "cdbc70b43e92e84b375f739793426c9ff8b37326",
+        "size": 731,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/cdbc70b43e92e84b375f739793426c9ff8b37326"
+      },
+      {
+        "path": "0002-awk-fix-handling-of-literal-backslashes-in-replaceme.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ebdaa8d2ccfccf53b9d1e11d65e819bf2401a769",
+        "size": 2175,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ebdaa8d2ccfccf53b9d1e11d65e819bf2401a769"
+      },
+      {
+        "path": "0003-blkdiscard-ship-link-to-sbin-instead-of-usr-bin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "63aad2c3b9614b4148fa0ba6f77c5548a3a79be7",
+        "size": 1088,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/63aad2c3b9614b4148fa0ba6f77c5548a3a79be7"
+      },
+      {
+        "path": "0004-hexdump-fix-regression-with-n4-e-u.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "07dcebe7a00d8fb51f357d0fcc772ff9e127ec18",
+        "size": 907,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/07dcebe7a00d8fb51f357d0fcc772ff9e127ec18"
+      },
+      {
+        "path": "0005-init-add-support-for-separate-reboot-action.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "be332be9a92c2e3abaaf6c19a0101ad10f651b15",
+        "size": 7353,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/be332be9a92c2e3abaaf6c19a0101ad10f651b15"
+      },
+      {
+        "path": "0006-mount-fix-parsing-proc-mounts-with-long-lines.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9cf5a83e467f78463adf5d4a9b85cb4cea0b81ba",
+        "size": 2086,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9cf5a83e467f78463adf5d4a9b85cb4cea0b81ba"
+      },
+      {
+        "path": "0007-tar-fix-TOCTOU-symlink-race-condition.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f862f9e0bb7abec897b156dc97a399e0a74f3222",
+        "size": 1091,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f862f9e0bb7abec897b156dc97a399e0a74f3222"
+      },
+      {
+        "path": "0008-tunctl-fix-segfault-on-ioctl-failure.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "33bde846023ef559096a705d192e04fa252ceac8",
+        "size": 1375,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/33bde846023ef559096a705d192e04fa252ceac8"
+      },
+      {
+        "path": "0009-wget-add-header-Accept.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9da15a67e15655c2f6c47422d92fc58f48e6ebdd",
+        "size": 3068,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9da15a67e15655c2f6c47422d92fc58f48e6ebdd"
+      },
+      {
+        "path": "0010-adduser-default-to-sbin-nologin-as-shell-for-system-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "26f30bbcdae345875c904b47eb471fca95405bc0",
+        "size": 789,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/26f30bbcdae345875c904b47eb471fca95405bc0"
+      },
+      {
+        "path": "0011-ash-add-built-in-BB_ASH_VERSION-variable.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c9bf36798e6cbdaf9e4634ad4f4f8585d86f955b",
+        "size": 3333,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c9bf36798e6cbdaf9e4634ad4f4f8585d86f955b"
+      },
+      {
+        "path": "0012-Avoid-redefined-warnings-when-buiding-with-utmps.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6a07cb09c5aaab8aaa1f01e193100f1d1de93ac2",
+        "size": 3136,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6a07cb09c5aaab8aaa1f01e193100f1d1de93ac2"
+      },
+      {
+        "path": "0013-libbb-sockaddr2str-ensure-only-printable-characters-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "dafdbd2099a19cc4b787e53392a0ceb55ee7cd30",
+        "size": 1313,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/dafdbd2099a19cc4b787e53392a0ceb55ee7cd30"
+      },
+      {
+        "path": "0014-modinfo-add-k-option-for-kernel-version.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d4a14d5c520bdf3e5cb302ce0b25a80628e32df1",
+        "size": 4906,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d4a14d5c520bdf3e5cb302ce0b25a80628e32df1"
+      },
+      {
+        "path": "0015-nologin-Install-applet-to-sbin-instead-of-usr-sbin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e33a2085c3862a9e568b19459772a9d247b0f453",
+        "size": 1063,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e33a2085c3862a9e568b19459772a9d247b0f453"
+      },
+      {
+        "path": "0016-pgrep-add-support-for-matching-against-UID-and-RUID.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4c80fa902a757832547c81f3bd2ac8b9f0ab14ac",
+        "size": 4614,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4c80fa902a757832547c81f3bd2ac8b9f0ab14ac"
+      },
+      {
+        "path": "0017-properly-fix-wget-https-support.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e153cbb598d7a46d570559867e1da996fc2ad975",
+        "size": 2470,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e153cbb598d7a46d570559867e1da996fc2ad975"
+      },
+      {
+        "path": "0018-fsck-resolve-LABEL-.-UUID-.-spec-to-device.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fdf0f01fe6e49d8903a8c638ee55a2196e094278",
+        "size": 1896,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fdf0f01fe6e49d8903a8c638ee55a2196e094278"
+      },
+      {
+        "path": "0019-nslookup-sanitize-all-printed-strings-with-printable.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "47ad7c97aabeb8d55b30738898cb963f8d8b218b",
+        "size": 2322,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/47ad7c97aabeb8d55b30738898cb963f8d8b218b"
+      },
+      {
+        "path": "0020-app-location-for-cpio-vi-and-lspci.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "aa71ef66658cfbc564e1660aeb5d90e7cb00c5bb",
+        "size": 1639,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/aa71ef66658cfbc564e1660aeb5d90e7cb00c5bb"
+      },
+      {
+        "path": "0021-udhcpc-set-default-discover-retries-to-5.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "430e60b8a094a7806b3277aa0b543b8137a18c24",
+        "size": 2362,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/430e60b8a094a7806b3277aa0b543b8137a18c24"
+      },
+      {
+        "path": "0022-ping-make-ping-work-without-root-privileges.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a817ea27ea8201a2a6563b5c7eaefc2476ec2e82",
+        "size": 6299,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/a817ea27ea8201a2a6563b5c7eaefc2476ec2e82"
+      },
+      {
+        "path": "0023-fbsplash-support-console-switching.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4fffa3d34ef1e24c215a5abadde0da1b70cd74d8",
+        "size": 5465,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4fffa3d34ef1e24c215a5abadde0da1b70cd74d8"
+      },
+      {
+        "path": "0024-fbsplash-support-image-and-bar-alignment-and-positio.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "701ddb798064f4209a85d14bfb6621f38d91eaba",
+        "size": 5654,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/701ddb798064f4209a85d14bfb6621f38d91eaba"
+      },
+      {
+        "path": "0025-depmod-support-generating-kmod-binary-index-files.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "253585d08b2b13dcc5bc424c28c269e342dcdcb9",
+        "size": 13859,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/253585d08b2b13dcc5bc424c28c269e342dcdcb9"
+      },
+      {
+        "path": "0026-Add-flag-for-not-following-symlinks-when-recursing.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "91688df533971e227fa5a172efa41eccb359eede",
+        "size": 2470,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/91688df533971e227fa5a172efa41eccb359eede"
+      },
+      {
+        "path": "0027-udhcpc-Don-t-background-if-n-is-given.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "cb319e76511d9f90275c7c8098018b6b70450533",
+        "size": 3487,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/cb319e76511d9f90275c7c8098018b6b70450533"
+      },
+      {
+        "path": "0028-tests-fix-tarball-creation.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f0c9d7a40257b0dcb04b599e1d8dd66bbaf0c3f4",
+        "size": 1011,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f0c9d7a40257b0dcb04b599e1d8dd66bbaf0c3f4"
+      },
+      {
+        "path": "0029-tests-musl-doesn-t-seem-to-recognize-UTC0-as-a-timez.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9192186f113827ed19527d16a423c73d4f8d4c7b",
+        "size": 1258,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9192186f113827ed19527d16a423c73d4f8d4c7b"
+      },
+      {
+        "path": "0030-Hackfix-to-disable-HW-acceleration-for-MD5-SHA1-on-x.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "08981e178d1489666369de4f9273e288d2922ca8",
+        "size": 1661,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/08981e178d1489666369de4f9273e288d2922ca8"
+      },
+      {
+        "path": "0031-umount-Implement-O-option-to-unmount-by-mount-option.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7e21831c17a05d2fe4312acd8802cc97e8ffc400",
+        "size": 6560,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7e21831c17a05d2fe4312acd8802cc97e8ffc400"
+      },
+      {
+        "path": "0032-find-fix-xdev-depth-and-delete.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e0015a9c284362ee15c9a1bf5d07db75f16f905b",
+        "size": 8082,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e0015a9c284362ee15c9a1bf5d07db75f16f905b"
+      },
+      {
+        "path": "0033-awk.c-fix-CVE-2023-42366-bug-15874.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "76c2c365684ce2c34c4db5b1d29d30b1ba81c3e5",
+        "size": 926,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/76c2c365684ce2c34c4db5b1d29d30b1ba81c3e5"
+      },
+      {
+        "path": "0034-awk-Mark-test-for-handling-of-start-of-word-pattern-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "575714647db39044c22a99acefbca5d03bf84643",
+        "size": 1646,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/575714647db39044c22a99acefbca5d03bf84643"
+      },
+      {
+        "path": "0035-syslogd-fix-wrong-OPT_locallog-flag-detection.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ff639172114743ebf352fcbe0c21b719693c37c4",
+        "size": 1225,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ff639172114743ebf352fcbe0c21b719693c37c4"
+      },
+      {
+        "path": "0036-Fix-CVE-2024-58251-sanitize-process-names-when-calli.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "95cd39fbac7b3f3afc93c501642878dee512a32c",
+        "size": 1642,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/95cd39fbac7b3f3afc93c501642878dee512a32c"
+      },
+      {
+        "path": "0037-Skip-additional-hexdump-test-on-big-endian-systems.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "de034f18c4d2cd42a650e857f42275d597d9d227",
+        "size": 708,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/de034f18c4d2cd42a650e857f42275d597d9d227"
+      },
+      {
+        "path": "0038-ash-clear-bb_got_signal-for-non-interactive-shell.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "953203ef5985d19d95e2f61b68a4b2bf48d8eb98",
+        "size": 1237,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/953203ef5985d19d95e2f61b68a4b2bf48d8eb98"
+      },
+      {
+        "path": "0039-Install-lsblk-to-bin-instead-of-usr-bin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8302c6f659cdcb19aee613cbde4d9f7f3a4da3e5",
+        "size": 1136,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8302c6f659cdcb19aee613cbde4d9f7f3a4da3e5"
+      },
+      {
+        "path": "0040-ash-fix-out-of-bounds-read-in-ifsbreakup.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "758d39d6eaa836eef67bc2ab0ab6a98fc0238dce",
+        "size": 5333,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/758d39d6eaa836eef67bc2ab0ab6a98fc0238dce"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6eac1b720fbe6a18b7a2089789155fcdc5e08420",
+        "size": 23679,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6eac1b720fbe6a18b7a2089789155fcdc5e08420"
+      },
+      {
+        "path": "acpid-poweroff.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7836c5a609795cfd99e7181416be5cf5c7f6b6fc",
+        "size": 19,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7836c5a609795cfd99e7181416be5cf5c7f6b6fc"
+      },
+      {
+        "path": "acpid.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ec31833ad7fa3e81591061d9062c4f160f439e68",
+        "size": 267,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ec31833ad7fa3e81591061d9062c4f160f439e68"
+      },
+      {
+        "path": "acpid.logrotate",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4cf5fdda97e154c56e55a1d75925fe361a35b2b9",
+        "size": 140,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4cf5fdda97e154c56e55a1d75925fe361a35b2b9"
+      },
+      {
+        "path": "bbsuid.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "24d0d7d3e3abe077b4cdc0615df066f7ca3b6462",
+        "size": 2182,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/24d0d7d3e3abe077b4cdc0615df066f7ca3b6462"
+      },
+      {
+        "path": "busybox-extras.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "dc663a554fd7a8fc1a3c1e15477fae249a399dee",
+        "size": 79,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/dc663a554fd7a8fc1a3c1e15477fae249a399dee"
+      },
+      {
+        "path": "busybox-extras.pre-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2634c6a31cb022233b8e111d3884e9a768c1f9b9",
+        "size": 195,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2634c6a31cb022233b8e111d3884e9a768c1f9b9"
+      },
+      {
+        "path": "busybox.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f575396bb1a66c0a4f07c838ee908fc08201cc2d",
+        "size": 335,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f575396bb1a66c0a4f07c838ee908fc08201cc2d"
+      },
+      {
+        "path": "busybox.post-upgrade",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5e3263c7cb6d1b9c32ce2e00a35efc488c922349",
+        "size": 1640,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5e3263c7cb6d1b9c32ce2e00a35efc488c922349"
+      },
+      {
+        "path": "busybox.trigger",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4f80847e37adacf84a2ab7f6087fec4656e94647",
+        "size": 576,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4f80847e37adacf84a2ab7f6087fec4656e94647"
+      },
+      {
+        "path": "busyboxconfig",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f5606105cca0458d4d3b1397912f12fa2fbe50cc",
+        "size": 32029,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f5606105cca0458d4d3b1397912f12fa2fbe50cc"
+      },
+      {
+        "path": "busyboxconfig-extras",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "210bd8afbf747b6b0b7a826c14769f3851cb6b37",
+        "size": 38346,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/210bd8afbf747b6b0b7a826c14769f3851cb6b37"
+      },
+      {
+        "path": "crond.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "542af1ed1d75d417aafbe2b14741ef2ce0b3d645",
+        "size": 54,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/542af1ed1d75d417aafbe2b14741ef2ce0b3d645"
+      },
+      {
+        "path": "crond.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "992037210b694e3dd6a849fc2b97fd6351b4c61c",
+        "size": 204,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/992037210b694e3dd6a849fc2b97fd6351b4c61c"
+      },
+      {
+        "path": "dad.if-up",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7903822c8fd25941ea82c12b30ec7a90bf5b710b",
+        "size": 285,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7903822c8fd25941ea82c12b30ec7a90bf5b710b"
+      },
+      {
+        "path": "default.script",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9395587148be2bf89e0fc29cd882de485d7c6531",
+        "size": 4010,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9395587148be2bf89e0fc29cd882de485d7c6531"
+      },
+      {
+        "path": "dnsd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "42e4a34c13a96091c62ea81f6124125a08bddfb1",
+        "size": 198,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/42e4a34c13a96091c62ea81f6124125a08bddfb1"
+      },
+      {
+        "path": "httpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bf9573052134f1aa6763fb7cb2c04325c4fb5496",
+        "size": 210,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bf9573052134f1aa6763fb7cb2c04325c4fb5496"
+      },
+      {
+        "path": "inetd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5ef7b395ff9b2b406ea3f081258bbe9b52251d43",
+        "size": 216,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5ef7b395ff9b2b406ea3f081258bbe9b52251d43"
+      },
+      {
+        "path": "klogd.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "100deedaac53882975ef8f037f91abd5ab44b0b2",
+        "size": 14,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/100deedaac53882975ef8f037f91abd5ab44b0b2"
+      },
+      {
+        "path": "klogd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "274b7d969131d6c6ccc2282d9048d92c8a77a18e",
+        "size": 280,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/274b7d969131d6c6ccc2282d9048d92c8a77a18e"
+      },
+      {
+        "path": "loadkmap.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2bdbc0608c2a843dff2c498854b7095e1c4269dc",
+        "size": 111,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2bdbc0608c2a843dff2c498854b7095e1c4269dc"
+      },
+      {
+        "path": "loadkmap.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8c6746e896230fddd427820a3977d1a592197155",
+        "size": 293,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8c6746e896230fddd427820a3977d1a592197155"
+      },
+      {
+        "path": "mdev.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "630d83777d61314f47cf2ecdf33c02cc54b23551",
+        "size": 745,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/630d83777d61314f47cf2ecdf33c02cc54b23551"
+      },
+      {
+        "path": "ntpd.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c5b4c1c1d435f7c360bc047dac623e3469912a13",
+        "size": 106,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c5b4c1c1d435f7c360bc047dac623e3469912a13"
+      },
+      {
+        "path": "ntpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "17ca150e9e91db826f0080ed507357d307b67d3b",
+        "size": 305,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/17ca150e9e91db826f0080ed507357d307b67d3b"
+      },
+      {
+        "path": "rdate.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "03eadfdb1fbcba276898135d23b6d2da492038fa",
+        "size": 48,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/03eadfdb1fbcba276898135d23b6d2da492038fa"
+      },
+      {
+        "path": "rdate.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "708429f17bb025adc6eba9638f182011f6867d71",
+        "size": 253,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/708429f17bb025adc6eba9638f182011f6867d71"
+      },
+      {
+        "path": "securetty",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f33a1c15c821d17233d2813606d69b6f3b523fa7",
+        "size": 156,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f33a1c15c821d17233d2813606d69b6f3b523fa7"
+      },
+      {
+        "path": "ssl_client.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "45c62a5c80b64f3ef212d76d7cdd11a14b3013b1",
+        "size": 3418,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/45c62a5c80b64f3ef212d76d7cdd11a14b3013b1"
+      },
+      {
+        "path": "syslog.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2f00667118c696126cdc6266f0a98c9dbd19e6ad",
+        "size": 18,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2f00667118c696126cdc6266f0a98c9dbd19e6ad"
+      },
+      {
+        "path": "syslog.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3b20345d7065a89aeca61212f0c9d8f9d5357d59",
+        "size": 292,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3b20345d7065a89aeca61212f0c9d8f9d5357d59"
+      },
+      {
+        "path": "udhcpc.conf",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0407c553ffb5ab4ac52f9a14a4c2bddd1b4365c1",
+        "size": 287,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0407c553ffb5ab4ac52f9a14a4c2bddd1b4365c1"
+      },
+      {
+        "path": "udhcpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e4dabd5b343f0fc717990a8d9372dec4d6846765",
+        "size": 202,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e4dabd5b343f0fc717990a8d9372dec4d6846765"
+      },
+      {
+        "path": "watchdog.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5cfd2c2cc40ae9a6d0cd96ac7d993d000b6a8564",
+        "size": 40,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5cfd2c2cc40ae9a6d0cd96ac7d993d000b6a8564"
+      },
+      {
+        "path": "watchdog.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d87210044a0d1c73908dc06ee34acc6613bb84a3",
+        "size": 315,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d87210044a0d1c73908dc06ee34acc6613bb84a3"
+      }
+    ]
+  },
+  {
+    "origin": "busybox",
+    "commit": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+    "entries": [
+      {
+        "path": "0001-awk-fix-handling-of-literal-backslashes-in-replaceme.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3ff61ace0646523576ff583ebdcece18c4563c38",
+        "size": 2187,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3ff61ace0646523576ff583ebdcece18c4563c38"
+      },
+      {
+        "path": "0001-blkdiscard-ship-link-to-sbin-instead-of-usr-bin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a89dd69b39f0e08c9820b84e1d797c1123674d70",
+        "size": 1100,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/a89dd69b39f0e08c9820b84e1d797c1123674d70"
+      },
+      {
+        "path": "0001-hexdump-fix-regression-with-n4-e-u.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8b714b2eb4858232ab8e3460d03e534f606ec723",
+        "size": 1619,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8b714b2eb4858232ab8e3460d03e534f606ec723"
+      },
+      {
+        "path": "0001-init-add-support-for-separate-reboot-action.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fccb39f4927f579a93fe340267a17d4ab50de92a",
+        "size": 7263,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fccb39f4927f579a93fe340267a17d4ab50de92a"
+      },
+      {
+        "path": "0001-mount-fix-parsing-proc-mounts-with-long-lines.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "85e65967f3c6df4655cbe43faf04a523a21757f9",
+        "size": 2098,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/85e65967f3c6df4655cbe43faf04a523a21757f9"
+      },
+      {
+        "path": "0001-netstat-sanitize-process-names.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4d7adaf3410747cd0c624ebee46a71cc906d405d",
+        "size": 970,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4d7adaf3410747cd0c624ebee46a71cc906d405d"
+      },
+      {
+        "path": "0001-tar-fix-16018-masking-of-potentially-malicious-tar-cpio-content.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9ff81d3fb282e737022f2017b576b635b7ab085b",
+        "size": 3442,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9ff81d3fb282e737022f2017b576b635b7ab085b"
+      },
+      {
+        "path": "0001-tar-fix-TOCTOU-symlink-race-condition.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4514d6df2a6d4a9762f312865dd6f2e7c66155c4",
+        "size": 1103,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4514d6df2a6d4a9762f312865dd6f2e7c66155c4"
+      },
+      {
+        "path": "0001-tunctl-fix-segfault-on-ioctl-failure.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d2b9e307eacdbc7a7a92e33c73d06e3d8e6ffc07",
+        "size": 1387,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d2b9e307eacdbc7a7a92e33c73d06e3d8e6ffc07"
+      },
+      {
+        "path": "0001-wget-add-header-Accept.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b2ee3780a3ee8601581cec8762f60faf0b8e69e",
+        "size": 3158,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b2ee3780a3ee8601581cec8762f60faf0b8e69e"
+      },
+      {
+        "path": "0002-adduser-default-to-sbin-nologin-as-shell-for-system-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e6d8f6ace28b4305c85d97f76949f04299d2491f",
+        "size": 789,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e6d8f6ace28b4305c85d97f76949f04299d2491f"
+      },
+      {
+        "path": "0003-ash-add-built-in-BB_ASH_VERSION-variable.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5e397b2401ad2542d46017844159f095412fd1e1",
+        "size": 3423,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5e397b2401ad2542d46017844159f095412fd1e1"
+      },
+      {
+        "path": "0004-Avoid-redefined-warnings-when-buiding-with-utmps.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c17164c85164405a24995096d7d2d6a42a972fea",
+        "size": 3226,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c17164c85164405a24995096d7d2d6a42a972fea"
+      },
+      {
+        "path": "0005-libbb-sockaddr2str-ensure-only-printable-characters-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1d37b08e2ebec463f338a31e984190f6823a643d",
+        "size": 1313,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1d37b08e2ebec463f338a31e984190f6823a643d"
+      },
+      {
+        "path": "0006-modinfo-add-k-option-for-kernel-version.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "30f342cfdfb48c68504be1148cc4cb701610098d",
+        "size": 4906,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/30f342cfdfb48c68504be1148cc4cb701610098d"
+      },
+      {
+        "path": "0007-nologin-Install-applet-to-sbin-instead-of-usr-sbin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c0a1cb5bb43779455c1a07c3fb5551a0aee54e50",
+        "size": 1064,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c0a1cb5bb43779455c1a07c3fb5551a0aee54e50"
+      },
+      {
+        "path": "0008-pgrep-add-support-for-matching-against-UID-and-RUID.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bb362304b4bb8c245a48eb7a6b66386d1b60c8e9",
+        "size": 4704,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bb362304b4bb8c245a48eb7a6b66386d1b60c8e9"
+      },
+      {
+        "path": "0009-properly-fix-wget-https-support.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "849bd15b01fce9004397b03e311ebc0b5b53ba41",
+        "size": 2560,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/849bd15b01fce9004397b03e311ebc0b5b53ba41"
+      },
+      {
+        "path": "0010-fsck-resolve-LABEL-.-UUID-.-spec-to-device.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d5dc8b2e44463fddeddf147cf745abca875053a7",
+        "size": 1986,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d5dc8b2e44463fddeddf147cf745abca875053a7"
+      },
+      {
+        "path": "0011-nslookup-sanitize-all-printed-strings-with-printable.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3263d61f2a3630875f4a66ee873da4a85edf7df1",
+        "size": 2412,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3263d61f2a3630875f4a66ee873da4a85edf7df1"
+      },
+      {
+        "path": "0012-ash-exec-busybox.static.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7d49daee94b5b757d1b13cff06a869d8b5bf7329",
+        "size": 841,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7d49daee94b5b757d1b13cff06a869d8b5bf7329"
+      },
+      {
+        "path": "0013-app-location-for-cpio-vi-and-lspci.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "b3ee65f19cf1682152bb7009f44cb91510c1edc4",
+        "size": 1730,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/b3ee65f19cf1682152bb7009f44cb91510c1edc4"
+      },
+      {
+        "path": "0014-udhcpc-set-default-discover-retries-to-5.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bab8bcd15f2c5b3e912974bddbb9e8be274f9b87",
+        "size": 2459,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bab8bcd15f2c5b3e912974bddbb9e8be274f9b87"
+      },
+      {
+        "path": "0015-ping-make-ping-work-without-root-privileges.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fc75470021d48c5ad7f723acaf6bef446887fd48",
+        "size": 6389,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/fc75470021d48c5ad7f723acaf6bef446887fd48"
+      },
+      {
+        "path": "0016-fbsplash-support-console-switching.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8bba26a6d8379bf9198a5dc9a493ad75bf1ff35b",
+        "size": 5465,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8bba26a6d8379bf9198a5dc9a493ad75bf1ff35b"
+      },
+      {
+        "path": "0017-fbsplash-support-image-and-bar-alignment-and-positio.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bec3e08dd5509eabb974a60a33b1d871169f8149",
+        "size": 5655,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bec3e08dd5509eabb974a60a33b1d871169f8149"
+      },
+      {
+        "path": "0018-depmod-support-generating-kmod-binary-index-files.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f37b637af3d94a784c6e1de3d60dd223ef11f59c",
+        "size": 14161,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f37b637af3d94a784c6e1de3d60dd223ef11f59c"
+      },
+      {
+        "path": "0019-Add-flag-for-not-following-symlinks-when-recursing.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "466bd5646750d677f028356bf0d59b78d4459c3b",
+        "size": 2471,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/466bd5646750d677f028356bf0d59b78d4459c3b"
+      },
+      {
+        "path": "0020-udhcpc-Don-t-background-if-n-is-given.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "eb76936fa85c891a7cfa02f6004112641915f25c",
+        "size": 3578,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/eb76936fa85c891a7cfa02f6004112641915f25c"
+      },
+      {
+        "path": "0021-tests-fix-tarball-creation.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "57a89693ae9e0c1e1f37dd7c2ea5ab572f0f730b",
+        "size": 1012,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/57a89693ae9e0c1e1f37dd7c2ea5ab572f0f730b"
+      },
+      {
+        "path": "0022-tests-musl-doesn-t-seem-to-recognize-UTC0-as-a-timez.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ee49449e7f362e3955e455c1f282e4af216ef218",
+        "size": 1258,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ee49449e7f362e3955e455c1f282e4af216ef218"
+      },
+      {
+        "path": "0023-Hackfix-to-disable-HW-acceleration-for-MD5-SHA1-on-x.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5bf2387d9352cd6ab3e340a57caa1daa9b652d78",
+        "size": 1731,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5bf2387d9352cd6ab3e340a57caa1daa9b652d78"
+      },
+      {
+        "path": "0024-umount-Implement-O-option-to-unmount-by-mount-option.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6110c04b29d7468abe4624acfab823a180ed626f",
+        "size": 6560,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6110c04b29d7468abe4624acfab823a180ed626f"
+      },
+      {
+        "path": "0025-find-fix-xdev-depth-and-delete.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7363ea6df521e46b454018a7ac8027adf13a630f",
+        "size": 8172,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7363ea6df521e46b454018a7ac8027adf13a630f"
+      },
+      {
+        "path": "0026-awk.c-fix-CVE-2023-42366-bug-15874.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1e2bce7c2b142617e8f9c04684f03e1229599d44",
+        "size": 926,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1e2bce7c2b142617e8f9c04684f03e1229599d44"
+      },
+      {
+        "path": "0027-awk-Mark-test-for-handling-of-start-of-word-pattern-.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2c2931587f947d3c9d9afbd8a6294f90990adbfc",
+        "size": 1572,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2c2931587f947d3c9d9afbd8a6294f90990adbfc"
+      },
+      {
+        "path": "0028-od-Skip-od-B-on-big-endian.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e2747465cc1bc2a4ce8c4b57225f9694f03e4559",
+        "size": 785,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e2747465cc1bc2a4ce8c4b57225f9694f03e4559"
+      },
+      {
+        "path": "0029-ash-reject-unknown-long-options.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "49b8171bad19780b45bf1b9f66a815e015b04596",
+        "size": 1500,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/49b8171bad19780b45bf1b9f66a815e015b04596"
+      },
+      {
+        "path": "0030-hexdump-Skip-a-single-test-on-big-endian-systems.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f1ba3bd7cc859f1fd4a3d66764a450b177531495",
+        "size": 1101,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f1ba3bd7cc859f1fd4a3d66764a450b177531495"
+      },
+      {
+        "path": "0031-syslogd-fix-wrong-OPT_locallog-flag-detection.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "efb1410b2280b68f6d39578d1ba9dd18b853bd7a",
+        "size": 1225,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/efb1410b2280b68f6d39578d1ba9dd18b853bd7a"
+      },
+      {
+        "path": "0032-lineedit-fix-some-tab-completions-written-to-stdout.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c78be1d03cf9d1f1f1082dc328409c46d2ba767b",
+        "size": 1551,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c78be1d03cf9d1f1f1082dc328409c46d2ba767b"
+      },
+      {
+        "path": "0033-lineedit-use-stdout-for-shell-history-builtin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e5238e3e8773c183f34e7126b583c35be6f2e214",
+        "size": 1499,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e5238e3e8773c183f34e7126b583c35be6f2e214"
+      },
+      {
+        "path": "0034-adduser-remove-preconfigured-GECOS-full-name-field.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "aeb47b83e248a27fd8450be5517331d525f246f8",
+        "size": 1602,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/aeb47b83e248a27fd8450be5517331d525f246f8"
+      },
+      {
+        "path": "0035-cpio-map-F-to-file-long-option.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "49e6ed2796c5b511595efa0ab57a5eae029385d2",
+        "size": 998,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/49e6ed2796c5b511595efa0ab57a5eae029385d2"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8b0ce27e089dcabb2b16b78c556ecc65a7c292cb",
+        "size": 24569,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8b0ce27e089dcabb2b16b78c556ecc65a7c292cb"
+      },
+      {
+        "path": "acpid-poweroff.sh",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7836c5a609795cfd99e7181416be5cf5c7f6b6fc",
+        "size": 19,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7836c5a609795cfd99e7181416be5cf5c7f6b6fc"
+      },
+      {
+        "path": "acpid.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ec31833ad7fa3e81591061d9062c4f160f439e68",
+        "size": 267,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ec31833ad7fa3e81591061d9062c4f160f439e68"
+      },
+      {
+        "path": "acpid.logrotate",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4cf5fdda97e154c56e55a1d75925fe361a35b2b9",
+        "size": 140,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4cf5fdda97e154c56e55a1d75925fe361a35b2b9"
+      },
+      {
+        "path": "bbsuid.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "24d0d7d3e3abe077b4cdc0615df066f7ca3b6462",
+        "size": 2182,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/24d0d7d3e3abe077b4cdc0615df066f7ca3b6462"
+      },
+      {
+        "path": "busybox-extras.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "dc663a554fd7a8fc1a3c1e15477fae249a399dee",
+        "size": 79,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/dc663a554fd7a8fc1a3c1e15477fae249a399dee"
+      },
+      {
+        "path": "busybox-extras.pre-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2634c6a31cb022233b8e111d3884e9a768c1f9b9",
+        "size": 195,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2634c6a31cb022233b8e111d3884e9a768c1f9b9"
+      },
+      {
+        "path": "busybox.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f575396bb1a66c0a4f07c838ee908fc08201cc2d",
+        "size": 335,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f575396bb1a66c0a4f07c838ee908fc08201cc2d"
+      },
+      {
+        "path": "busybox.post-upgrade",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5e3263c7cb6d1b9c32ce2e00a35efc488c922349",
+        "size": 1640,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5e3263c7cb6d1b9c32ce2e00a35efc488c922349"
+      },
+      {
+        "path": "busybox.trigger",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4f80847e37adacf84a2ab7f6087fec4656e94647",
+        "size": 576,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4f80847e37adacf84a2ab7f6087fec4656e94647"
+      },
+      {
+        "path": "busyboxconfig",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f94784573735b83ad7129c92ef37c170a676bf8e",
+        "size": 31637,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f94784573735b83ad7129c92ef37c170a676bf8e"
+      },
+      {
+        "path": "busyboxconfig-extras",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2345ed1f3d651132d13c7b5b0df7008d0e5583ec",
+        "size": 37893,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2345ed1f3d651132d13c7b5b0df7008d0e5583ec"
+      },
+      {
+        "path": "crond.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "542af1ed1d75d417aafbe2b14741ef2ce0b3d645",
+        "size": 54,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/542af1ed1d75d417aafbe2b14741ef2ce0b3d645"
+      },
+      {
+        "path": "crond.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "992037210b694e3dd6a849fc2b97fd6351b4c61c",
+        "size": 204,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/992037210b694e3dd6a849fc2b97fd6351b4c61c"
+      },
+      {
+        "path": "dad.if-up",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7903822c8fd25941ea82c12b30ec7a90bf5b710b",
+        "size": 285,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7903822c8fd25941ea82c12b30ec7a90bf5b710b"
+      },
+      {
+        "path": "default.script",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9395587148be2bf89e0fc29cd882de485d7c6531",
+        "size": 4010,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9395587148be2bf89e0fc29cd882de485d7c6531"
+      },
+      {
+        "path": "dnsd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "42e4a34c13a96091c62ea81f6124125a08bddfb1",
+        "size": 198,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/42e4a34c13a96091c62ea81f6124125a08bddfb1"
+      },
+      {
+        "path": "httpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bf9573052134f1aa6763fb7cb2c04325c4fb5496",
+        "size": 210,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bf9573052134f1aa6763fb7cb2c04325c4fb5496"
+      },
+      {
+        "path": "inetd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5ef7b395ff9b2b406ea3f081258bbe9b52251d43",
+        "size": 216,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5ef7b395ff9b2b406ea3f081258bbe9b52251d43"
+      },
+      {
+        "path": "klogd.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "100deedaac53882975ef8f037f91abd5ab44b0b2",
+        "size": 14,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/100deedaac53882975ef8f037f91abd5ab44b0b2"
+      },
+      {
+        "path": "klogd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "274b7d969131d6c6ccc2282d9048d92c8a77a18e",
+        "size": 280,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/274b7d969131d6c6ccc2282d9048d92c8a77a18e"
+      },
+      {
+        "path": "loadkmap.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2bdbc0608c2a843dff2c498854b7095e1c4269dc",
+        "size": 111,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2bdbc0608c2a843dff2c498854b7095e1c4269dc"
+      },
+      {
+        "path": "loadkmap.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8c6746e896230fddd427820a3977d1a592197155",
+        "size": 293,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8c6746e896230fddd427820a3977d1a592197155"
+      },
+      {
+        "path": "mdev.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "630d83777d61314f47cf2ecdf33c02cc54b23551",
+        "size": 745,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/630d83777d61314f47cf2ecdf33c02cc54b23551"
+      },
+      {
+        "path": "ntpd.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c5b4c1c1d435f7c360bc047dac623e3469912a13",
+        "size": 106,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c5b4c1c1d435f7c360bc047dac623e3469912a13"
+      },
+      {
+        "path": "ntpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "17ca150e9e91db826f0080ed507357d307b67d3b",
+        "size": 305,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/17ca150e9e91db826f0080ed507357d307b67d3b"
+      },
+      {
+        "path": "rdate.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "03eadfdb1fbcba276898135d23b6d2da492038fa",
+        "size": 48,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/03eadfdb1fbcba276898135d23b6d2da492038fa"
+      },
+      {
+        "path": "rdate.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "708429f17bb025adc6eba9638f182011f6867d71",
+        "size": 253,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/708429f17bb025adc6eba9638f182011f6867d71"
+      },
+      {
+        "path": "securetty",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f33a1c15c821d17233d2813606d69b6f3b523fa7",
+        "size": 156,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f33a1c15c821d17233d2813606d69b6f3b523fa7"
+      },
+      {
+        "path": "ssl_client.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "45c62a5c80b64f3ef212d76d7cdd11a14b3013b1",
+        "size": 3418,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/45c62a5c80b64f3ef212d76d7cdd11a14b3013b1"
+      },
+      {
+        "path": "syslog.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2f00667118c696126cdc6266f0a98c9dbd19e6ad",
+        "size": 18,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2f00667118c696126cdc6266f0a98c9dbd19e6ad"
+      },
+      {
+        "path": "syslog.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3b20345d7065a89aeca61212f0c9d8f9d5357d59",
+        "size": 292,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3b20345d7065a89aeca61212f0c9d8f9d5357d59"
+      },
+      {
+        "path": "udhcpc.conf",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0407c553ffb5ab4ac52f9a14a4c2bddd1b4365c1",
+        "size": 287,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0407c553ffb5ab4ac52f9a14a4c2bddd1b4365c1"
+      },
+      {
+        "path": "udhcpd.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "e4dabd5b343f0fc717990a8d9372dec4d6846765",
+        "size": 202,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/e4dabd5b343f0fc717990a8d9372dec4d6846765"
+      },
+      {
+        "path": "watchdog.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5cfd2c2cc40ae9a6d0cd96ac7d993d000b6a8564",
+        "size": 40,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5cfd2c2cc40ae9a6d0cd96ac7d993d000b6a8564"
+      },
+      {
+        "path": "watchdog.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d87210044a0d1c73908dc06ee34acc6613bb84a3",
+        "size": 315,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d87210044a0d1c73908dc06ee34acc6613bb84a3"
+      }
+    ]
+  },
+  {
+    "origin": "ca-certificates",
+    "commit": "5f8337afea8674524d360be5fdb513e7e57fcc29",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3d7cba6056b58a3fbce01f7c81e20fa6c085684c",
+        "size": 2520,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3d7cba6056b58a3fbce01f7c81e20fa6c085684c"
+      },
+      {
+        "path": "ca-certificates.post-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "10d219f03f526641af8a366db975b010b3c260e1",
+        "size": 137,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/10d219f03f526641af8a366db975b010b3c260e1"
+      },
+      {
+        "path": "ca-certificates.trigger",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0ed2ac4980c97739fb6addfbf41a5700c6d286a1",
+        "size": 67,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0ed2ac4980c97739fb6addfbf41a5700c6d286a1"
+      }
+    ]
+  },
+  {
+    "origin": "ca-certificates",
+    "commit": "a3c0689895e115d2910ab915de99a85bc11afe42",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1dc886bc363ca5418211781ef0c946ea805ccfe0",
+        "size": 2520,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1dc886bc363ca5418211781ef0c946ea805ccfe0"
+      },
+      {
+        "path": "ca-certificates.post-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "10d219f03f526641af8a366db975b010b3c260e1",
+        "size": 137,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/10d219f03f526641af8a366db975b010b3c260e1"
+      },
+      {
+        "path": "ca-certificates.trigger",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0ed2ac4980c97739fb6addfbf41a5700c6d286a1",
+        "size": 67,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0ed2ac4980c97739fb6addfbf41a5700c6d286a1"
+      }
+    ]
+  },
+  {
+    "origin": "ca-certificates",
+    "commit": "eb7078df3a16d666e8f7723f94bb92e00d4b9236",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1dc886bc363ca5418211781ef0c946ea805ccfe0",
+        "size": 2520,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1dc886bc363ca5418211781ef0c946ea805ccfe0"
+      },
+      {
+        "path": "ca-certificates.post-deinstall",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "10d219f03f526641af8a366db975b010b3c260e1",
+        "size": 137,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/10d219f03f526641af8a366db975b010b3c260e1"
+      },
+      {
+        "path": "ca-certificates.trigger",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0ed2ac4980c97739fb6addfbf41a5700c6d286a1",
+        "size": 67,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0ed2ac4980c97739fb6addfbf41a5700c6d286a1"
+      }
+    ]
+  },
+  {
+    "origin": "gmp",
+    "commit": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5bfcaca9d59679f65077cf0557c182174293ab19",
+        "size": 1455,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5bfcaca9d59679f65077cf0557c182174293ab19"
+      },
+      {
+        "path": "gcc15.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2434da5fa77274dd788dcd0d00b8ab3ac89969a3",
+        "size": 725,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2434da5fa77274dd788dcd0d00b8ab3ac89969a3"
+      }
+    ]
+  },
+  {
+    "origin": "gmp",
+    "commit": "8bfc27fafbf6c27761b150c571c3075a5a3db0de",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "442ddc5d9d0b42703cb57cd3893f4e1982c2d61a",
+        "size": 1556,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/442ddc5d9d0b42703cb57cd3893f4e1982c2d61a"
+      },
+      {
+        "path": "gcc15.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2434da5fa77274dd788dcd0d00b8ab3ac89969a3",
+        "size": 725,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2434da5fa77274dd788dcd0d00b8ab3ac89969a3"
+      }
+    ]
+  },
+  {
+    "origin": "jansson",
+    "commit": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "06755d69afefaadb9e157d8c70552ebf36e45a35",
+        "size": 820,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/06755d69afefaadb9e157d8c70552ebf36e45a35"
+      }
+    ]
+  },
+  {
+    "origin": "libmnl",
+    "commit": "fc95c59998285564fbcb0bfb2443898c62e10171",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4e1c5f4f5bb4fb7ab0f0c19003ed15b9c58b3d09",
+        "size": 1054,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4e1c5f4f5bb4fb7ab0f0c19003ed15b9c58b3d09"
+      },
+      {
+        "path": "musl-fix-headers.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f3338b10354b94592c119671d8da89afd0ec7e3a",
+        "size": 377,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f3338b10354b94592c119671d8da89afd0ec7e3a"
+      }
+    ]
+  },
+  {
+    "origin": "libnftnl",
+    "commit": "3f568d5532084c2124867f5ef64ca09d8c473698",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "24c82f0942eccb37cba99e41f19625e10c945761",
+        "size": 1105,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/24c82f0942eccb37cba99e41f19625e10c945761"
+      }
+    ]
+  },
+  {
+    "origin": "libnftnl",
+    "commit": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8d94e1fbcb6889ed16d544629f3d53ac0ab141c4",
+        "size": 1105,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8d94e1fbcb6889ed16d544629f3d53ac0ab141c4"
+      }
+    ]
+  },
+  {
+    "origin": "musl",
+    "commit": "b0c8ea10e8f29cabe336b2e5d864124940e126ab",
+    "entries": [
+      {
+        "path": "0001-add-stub-for-pthread_mutexattr_setprioceiling.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0afb1fbc2e96c3f6a41d02635d64115184b8e614",
+        "size": 896,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0afb1fbc2e96c3f6a41d02635d64115184b8e614"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6d80ede63445dc16d4993e764be2f22ace58335d",
+        "size": 6254,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6d80ede63445dc16d4993e764be2f22ace58335d"
+      },
+      {
+        "path": "CVE-2026-40200.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "88298ca471d38b2c8861f817caf394a591fcdc26",
+        "size": 5594,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/88298ca471d38b2c8861f817caf394a591fcdc26"
+      },
+      {
+        "path": "__stack_chk_fail_local.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b403a6e046fb288af4b3d16eda76980a599aea4",
+        "size": 133,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b403a6e046fb288af4b3d16eda76980a599aea4"
+      },
+      {
+        "path": "fix-loongarch64-zero-len-extcontext.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7955bddd4db379bdf668d80666a141cbf175c986",
+        "size": 738,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7955bddd4db379bdf668d80666a141cbf175c986"
+      },
+      {
+        "path": "getconf.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4235242b0ef70bb7a99cb210a134d19c15dc0b9",
+        "size": 11614,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4235242b0ef70bb7a99cb210a134d19c15dc0b9"
+      },
+      {
+        "path": "getent.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bcc8b81c10bef1de5af8db7053dac48547c8e14d",
+        "size": 11656,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bcc8b81c10bef1de5af8db7053dac48547c8e14d"
+      },
+      {
+        "path": "handle-aux-at_base.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7c9f2dc5fc05abaf82f2e7b59704862b325c0aab",
+        "size": 1214,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7c9f2dc5fc05abaf82f2e7b59704862b325c0aab"
+      },
+      {
+        "path": "iconv-gb18030-fix.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4c52c0a3211ec70c5010bc6bce0446c183914380",
+        "size": 7506,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4c52c0a3211ec70c5010bc6bce0446c183914380"
+      },
+      {
+        "path": "iconv.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f5d5ce2aa730461df126cdf8bc8b084b4ebb881c",
+        "size": 2577,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f5d5ce2aa730461df126cdf8bc8b084b4ebb881c"
+      },
+      {
+        "path": "ldconfig",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9a6c05978d1bfae6871fb96a862dfd3e7bb9c326",
+        "size": 393,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9a6c05978d1bfae6871fb96a862dfd3e7bb9c326"
+      }
+    ]
+  },
+  {
+    "origin": "musl",
+    "commit": "d72a964d7f68bb113225a61d9425ba48005a99e0",
+    "entries": [
+      {
+        "path": "0001-add-stub-for-pthread_mutexattr_setprioceiling.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0afb1fbc2e96c3f6a41d02635d64115184b8e614",
+        "size": 896,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0afb1fbc2e96c3f6a41d02635d64115184b8e614"
+      },
+      {
+        "path": "0001-fix-toctou-race-in-popen-children-s-closing-of-other.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8f62213836c6cfeb6c21bac3fd4323caea231965",
+        "size": 2819,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8f62213836c6cfeb6c21bac3fd4323caea231965"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "73a07675e752e91bed52a5d298c6c865ae3095bd",
+        "size": 6879,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/73a07675e752e91bed52a5d298c6c865ae3095bd"
+      },
+      {
+        "path": "CVE-2026-40200.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "88298ca471d38b2c8861f817caf394a591fcdc26",
+        "size": 5594,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/88298ca471d38b2c8861f817caf394a591fcdc26"
+      },
+      {
+        "path": "CVE-2026-6042.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4c52c0a3211ec70c5010bc6bce0446c183914380",
+        "size": 7506,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4c52c0a3211ec70c5010bc6bce0446c183914380"
+      },
+      {
+        "path": "__stack_chk_fail_local.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b403a6e046fb288af4b3d16eda76980a599aea4",
+        "size": 133,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b403a6e046fb288af4b3d16eda76980a599aea4"
+      },
+      {
+        "path": "adjust-paths.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "45668d5988a928637e59a7cf875bb0a8b1b1d630",
+        "size": 1578,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/45668d5988a928637e59a7cf875bb0a8b1b1d630"
+      },
+      {
+        "path": "fix-loongarch64-zero-len-extcontext.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7955bddd4db379bdf668d80666a141cbf175c986",
+        "size": 738,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7955bddd4db379bdf668d80666a141cbf175c986"
+      },
+      {
+        "path": "fstatat-null.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ec2dc1f4bf708a987246e7384493c89e085046d1",
+        "size": 451,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/ec2dc1f4bf708a987246e7384493c89e085046d1"
+      },
+      {
+        "path": "getconf.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4235242b0ef70bb7a99cb210a134d19c15dc0b9",
+        "size": 11614,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4235242b0ef70bb7a99cb210a134d19c15dc0b9"
+      },
+      {
+        "path": "getent.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bcc8b81c10bef1de5af8db7053dac48547c8e14d",
+        "size": 11656,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bcc8b81c10bef1de5af8db7053dac48547c8e14d"
+      },
+      {
+        "path": "handle-aux-at_base.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7c9f2dc5fc05abaf82f2e7b59704862b325c0aab",
+        "size": 1214,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7c9f2dc5fc05abaf82f2e7b59704862b325c0aab"
+      },
+      {
+        "path": "iconv.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f5d5ce2aa730461df126cdf8bc8b084b4ebb881c",
+        "size": 2577,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f5d5ce2aa730461df126cdf8bc8b084b4ebb881c"
+      },
+      {
+        "path": "ldconfig",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9a6c05978d1bfae6871fb96a862dfd3e7bb9c326",
+        "size": 393,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9a6c05978d1bfae6871fb96a862dfd3e7bb9c326"
+      }
+    ]
+  },
+  {
+    "origin": "musl",
+    "commit": "f5640d3a10f664c9119720c60515265d3d6f6d01",
+    "entries": [
+      {
+        "path": "0001-add-stub-for-pthread_mutexattr_setprioceiling.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0afb1fbc2e96c3f6a41d02635d64115184b8e614",
+        "size": 896,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/0afb1fbc2e96c3f6a41d02635d64115184b8e614"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "dd843d37816a760badde8280e4d338c132159db6",
+        "size": 6282,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/dd843d37816a760badde8280e4d338c132159db6"
+      },
+      {
+        "path": "CVE-2026-40200.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "88298ca471d38b2c8861f817caf394a591fcdc26",
+        "size": 5594,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/88298ca471d38b2c8861f817caf394a591fcdc26"
+      },
+      {
+        "path": "CVE-2026-6042.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4c52c0a3211ec70c5010bc6bce0446c183914380",
+        "size": 7506,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4c52c0a3211ec70c5010bc6bce0446c183914380"
+      },
+      {
+        "path": "__stack_chk_fail_local.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "2b403a6e046fb288af4b3d16eda76980a599aea4",
+        "size": 133,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/2b403a6e046fb288af4b3d16eda76980a599aea4"
+      },
+      {
+        "path": "fix-loongarch64-zero-len-extcontext.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7955bddd4db379bdf668d80666a141cbf175c986",
+        "size": 738,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7955bddd4db379bdf668d80666a141cbf175c986"
+      },
+      {
+        "path": "getconf.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4235242b0ef70bb7a99cb210a134d19c15dc0b9",
+        "size": 11614,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4235242b0ef70bb7a99cb210a134d19c15dc0b9"
+      },
+      {
+        "path": "getent.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bcc8b81c10bef1de5af8db7053dac48547c8e14d",
+        "size": 11656,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/bcc8b81c10bef1de5af8db7053dac48547c8e14d"
+      },
+      {
+        "path": "handle-aux-at_base.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7c9f2dc5fc05abaf82f2e7b59704862b325c0aab",
+        "size": 1214,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7c9f2dc5fc05abaf82f2e7b59704862b325c0aab"
+      },
+      {
+        "path": "iconv.c",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f5d5ce2aa730461df126cdf8bc8b084b4ebb881c",
+        "size": 2577,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f5d5ce2aa730461df126cdf8bc8b084b4ebb881c"
+      },
+      {
+        "path": "ldconfig",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9a6c05978d1bfae6871fb96a862dfd3e7bb9c326",
+        "size": 393,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/9a6c05978d1bfae6871fb96a862dfd3e7bb9c326"
+      }
+    ]
+  },
+  {
+    "origin": "ncurses",
+    "commit": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "53b403e3af9628225c186eb39f70f5c251c89172",
+        "size": 4624,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/53b403e3af9628225c186eb39f70f5c251c89172"
+      },
+      {
+        "path": "cleanup-pkgconfig-ldflags.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "64f4ccfaa7580a961096fed96a30245c51b7f29b",
+        "size": 1025,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/64f4ccfaa7580a961096fed96a30245c51b7f29b"
+      }
+    ]
+  },
+  {
+    "origin": "ncurses",
+    "commit": "6e2a3aef9dfb4a7d82e29b9418cf7d3a68835b52",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "1e15c46bd52bc76d76545451b213fe9251812a0c",
+        "size": 4624,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/1e15c46bd52bc76d76545451b213fe9251812a0c"
+      },
+      {
+        "path": "cleanup-pkgconfig-ldflags.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "64f4ccfaa7580a961096fed96a30245c51b7f29b",
+        "size": 1025,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/64f4ccfaa7580a961096fed96a30245c51b7f29b"
+      }
+    ]
+  },
+  {
+    "origin": "nftables",
+    "commit": "201b2e1d027107008e20e9beb2a4b3e0769018fc",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "65e7f7ff07386aa50d3ce0a627bf86d46bb2b015",
+        "size": 2888,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/65e7f7ff07386aa50d3ce0a627bf86d46bb2b015"
+      },
+      {
+        "path": "nftables.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "767ea8b3d693ccc00327897e26207e12e72dd5d0",
+        "size": 1517,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/767ea8b3d693ccc00327897e26207e12e72dd5d0"
+      },
+      {
+        "path": "nftables.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "da71a3aa9376133b0e0bae77ce493630ee96de3c",
+        "size": 3638,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/da71a3aa9376133b0e0bae77ce493630ee96de3c"
+      },
+      {
+        "path": "nftables.nft",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "391e800eae9d74805e66ea4f9017732d502f3982",
+        "size": 1998,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/391e800eae9d74805e66ea4f9017732d502f3982"
+      },
+      {
+        "path": "nftables.post-upgrade",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8ab77c096d12765d1e9f92a081084e5cf26acc4b",
+        "size": 1114,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8ab77c096d12765d1e9f92a081084e5cf26acc4b"
+      },
+      {
+        "path": "systemd-service-etc-nftables-nft.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f4921c76cd1c9e48a0e45e7b844e84c1a5d132ae",
+        "size": 1443,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f4921c76cd1c9e48a0e45e7b844e84c1a5d132ae"
+      }
+    ]
+  },
+  {
+    "origin": "nftables",
+    "commit": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "72decc391afbc85835985c05a35be221bb400cb8",
+        "size": 2888,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/72decc391afbc85835985c05a35be221bb400cb8"
+      },
+      {
+        "path": "nftables.confd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "767ea8b3d693ccc00327897e26207e12e72dd5d0",
+        "size": 1517,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/767ea8b3d693ccc00327897e26207e12e72dd5d0"
+      },
+      {
+        "path": "nftables.initd",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "da71a3aa9376133b0e0bae77ce493630ee96de3c",
+        "size": 3638,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/da71a3aa9376133b0e0bae77ce493630ee96de3c"
+      },
+      {
+        "path": "nftables.nft",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "391e800eae9d74805e66ea4f9017732d502f3982",
+        "size": 1998,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/391e800eae9d74805e66ea4f9017732d502f3982"
+      },
+      {
+        "path": "nftables.post-upgrade",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8ab77c096d12765d1e9f92a081084e5cf26acc4b",
+        "size": 1114,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/8ab77c096d12765d1e9f92a081084e5cf26acc4b"
+      },
+      {
+        "path": "systemd-service-etc-nftables-nft.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f4921c76cd1c9e48a0e45e7b844e84c1a5d132ae",
+        "size": 1443,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/f4921c76cd1c9e48a0e45e7b844e84c1a5d132ae"
+      }
+    ]
+  },
+  {
+    "origin": "openssl",
+    "commit": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6c7ac59fec9063a925a6ecac2b61d45cbe659f5b",
+        "size": 7297,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6c7ac59fec9063a925a6ecac2b61d45cbe659f5b"
+      },
+      {
+        "path": "auxv.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7803ef811cc802650a1a3b3808899fb8202c7b34",
+        "size": 2013,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7803ef811cc802650a1a3b3808899fb8202c7b34"
+      },
+      {
+        "path": "openssl-fips.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "463f0efbb085bea4fe893e7826f1a0fbf1da90b3",
+        "size": 231,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/463f0efbb085bea4fe893e7826f1a0fbf1da90b3"
+      }
+    ]
+  },
+  {
+    "origin": "openssl",
+    "commit": "5ebc3527f96ca84caf382abd7f37d4009110e57d",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "88445629382b113da595dd9f8787db03064d16b1",
+        "size": 7419,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/88445629382b113da595dd9f8787db03064d16b1"
+      },
+      {
+        "path": "auxv.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7803ef811cc802650a1a3b3808899fb8202c7b34",
+        "size": 2013,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/7803ef811cc802650a1a3b3808899fb8202c7b34"
+      },
+      {
+        "path": "openssl-fips.post-install",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "463f0efbb085bea4fe893e7826f1a0fbf1da90b3",
+        "size": 231,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/463f0efbb085bea4fe893e7826f1a0fbf1da90b3"
+      }
+    ]
+  },
+  {
+    "origin": "pax-utils",
+    "commit": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "5834ca11b5e341ffd4940624e7be1e9e6822ace7",
+        "size": 1568,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/5834ca11b5e341ffd4940624e7be1e9e6822ace7"
+      }
+    ]
+  },
+  {
+    "origin": "readline",
+    "commit": "a854c03acdac188901fb012f7acbee70a36e8041",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4e3e8299678264484b5650e7fd2fc18d0f83e2de",
+        "size": 2415,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/4e3e8299678264484b5650e7fd2fc18d0f83e2de"
+      },
+      {
+        "path": "fix-ncurses-underlinking.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "582e08f858de7b7125f3c4f119d80474c5afab33",
+        "size": 300,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/582e08f858de7b7125f3c4f119d80474c5afab33"
+      },
+      {
+        "path": "inputrc",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "d3da98595c90bfe8ef9fc3e4f3c3556f6b181f23",
+        "size": 1748,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/d3da98595c90bfe8ef9fc3e4f3c3556f6b181f23"
+      }
+    ]
+  },
+  {
+    "origin": "tzdata",
+    "commit": "cda14c83f09d51b5e04129ba528c3273621c2d78",
+    "entries": [
+      {
+        "path": "0001-posixtz-ensure-the-file-offset-we-pass-to-lseek-is-o.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4ae70b0755cfa062e3fa22c793a4e43ffc2d9bd",
+        "size": 810,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4ae70b0755cfa062e3fa22c793a4e43ffc2d9bd"
+      },
+      {
+        "path": "0002-fix-implicit-declaration-warnings-by-including-strin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6f61b25b2d2cb7a75e8bb7d8088af2dcc72411d6",
+        "size": 699,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6f61b25b2d2cb7a75e8bb7d8088af2dcc72411d6"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3b9758351e18b1881d99fd76859f5d71dac1b80e",
+        "size": 2933,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3b9758351e18b1881d99fd76859f5d71dac1b80e"
+      }
+    ]
+  },
+  {
+    "origin": "tzdata",
+    "commit": "faa135a1a22c90309bf381766a7cc47490dea786",
+    "entries": [
+      {
+        "path": "0001-posixtz-ensure-the-file-offset-we-pass-to-lseek-is-o.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "c4ae70b0755cfa062e3fa22c793a4e43ffc2d9bd",
+        "size": 810,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/c4ae70b0755cfa062e3fa22c793a4e43ffc2d9bd"
+      },
+      {
+        "path": "0002-fix-implicit-declaration-warnings-by-including-strin.patch",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6f61b25b2d2cb7a75e8bb7d8088af2dcc72411d6",
+        "size": 699,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/6f61b25b2d2cb7a75e8bb7d8088af2dcc72411d6"
+      },
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "3b9758351e18b1881d99fd76859f5d71dac1b80e",
+        "size": 2933,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/3b9758351e18b1881d99fd76859f5d71dac1b80e"
+      }
+    ]
+  },
+  {
+    "origin": "zlib",
+    "commit": "f248b33b5943c7dc69bf691031d7612ab2e8ed93",
+    "entries": [
+      {
+        "path": "APKBUILD",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "927a1b7a2e6516bbee255f092e6cb1ad5df27fe8",
+        "size": 924,
+        "url": "https://api.github.com/repos/alpinelinux/aports/git/blobs/927a1b7a2e6516bbee255f092e6cb1ad5df27fe8"
+      }
+    ]
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "package": "app-builder-lib@26.15.3",
+  "packageSource": {
+    "package": "app-builder-lib@26.15.3",
+    "url": "https://registry.npmjs.org/app-builder-lib/-/app-builder-lib-26.15.3.tgz",
+    "integrity": "sha512-2VnyWkqsP5v5XbBhL3tD5Syx8iNPBYsoU7kY4S2fz7wg8Rj/nztWKCUzGKaFRTv0Xwf3/H058CR1Kvtd/3lRow==",
+    "sha256": "6dac5ca3c9b5d4437889fd70575254e7bee6ad13b91c89a7f7874e9ccdd08308"
+  },
+  "schemaSHA256": "5d0f9887f93a5ec9994c0c0ee86fbeb59fe63042e30051a94f4b0ce2a0835f9f",
+  "desktopConfigGitBlob": "295ccd9cfe7b000796944b770b9e1f3704535710",
+  "desktopConfigSHA256": "2ce5f537f252a93a336d2dd20bf3689d60a281fed62d3998ffe8a3c8e2506f35",
+  "upstreamPatch": "patches/app-builder-lib@26.15.3.patch",
+  "upstreamPatchAffectsSchema": false,
+  "validator": "Original app-builder-lib out/util/config/schemaValidator.js with locked ajv8.20.0; all6npm tarballs verified against fixed client pnpm-lock SHA512. No npm install/lifecycle scripts used.",
+  "licenseSource": {
+    "url": "https://raw.githubusercontent.com/electron-userland/electron-builder/a4ff5db6261c8370d6041fd597437443ca5d3bb8/LICENSE",
+    "sha256": "bed8d0ab3e6031817f775a641ff37313b0f5591bc8ba0ed79b978dafbd4231ce",
+    "scope": "Official project MIT license retained with schema test fixture; schema identity itself is pinned by the locked npm tarball, not this later repository snapshot."
+  }
+}

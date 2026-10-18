@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "repository": "polaris-arch/polaris-box",
+  "proposedTag": "polaris-box-v1.15.0-alpha.11-2",
+  "sourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "sourceTree": "0bd19d8461347887c884f10250a402aa85decfe6",
+  "materialCommit": "62910d2605f1cc397e70abec9fe6881c6febbd50",
+  "compiledVersion": "1.15.0-alpha.11.polaris.candidate-a01da7a9",
+  "sourceAsset": {
+    "name": "polaris-box-a01-desktop-source-candidate-six-platforms-v4.tar.gz",
+    "bytes": 271716261,
+    "sha256": "70ff6e51660cc8ea140a30513c42c7b842b4fdb62ba41d863b08405db63ea5ed"
+  },
+  "indexSha256": "b9127a5c25821cca2bce26b24a63b7c114902d36421e131b3e1d9568270f8e97",
+  "noticeSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2",
+  "noticeBytes": 976474,
+  "noticeRecords": 268,
+  "platforms": [
+    {
+      "platform": "darwin/amd64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64.tar.gz",
+        "bytes": 32213029,
+        "sha256": "f948095265c7c49d13653d06c6fa199f6915130a07e6bd4d6d3f28c79c31e8ec",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/SHA256SUMS": "ace10dd0736937190f761ec3cec53a5315fc4008f336fdb6923818f7644fdbba",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/provenance.json": "6870d3ede15a1718331d8a3a7e5cc6a0c9739a6595a63bfac59d7df7815aadf9",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/sing-box": "9243ada45cda39c103592790797fbafeebff0ebfb908fc6cebeb18070d5a0704"
+        }
+      },
+      "producerCommit": "226e88cab62b8818620668a28b496d833c01c953",
+      "run": 38074825396,
+      "attempt": 1,
+      "artifactId": 11679195554,
+      "artifactDigest": "sha256:4c83279f272687c16c8183639f5cf231aadb856121cb80f5deee9a14f5286f87",
+      "coreSha256": "9243ada45cda39c103592790797fbafeebff0ebfb908fc6cebeb18070d5a0704",
+      "signatureObservation": {
+        "codeSignatureInspection": "/Users/runner/work/_temp/polaris-native-candidate/polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64/sing-box: code object is not signed at all\n",
+        "signatureTrustValidated": false
+      },
+      "distributionSigningPerformed": false
+    },
+    {
+      "platform": "darwin/arm64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64.tar.gz",
+        "bytes": 29983445,
+        "sha256": "7c8c547681113b380ec21721e0d2ef279eb40015d72a7633d8664d3c6523a3f2",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/SHA256SUMS": "c9105c4d9d2361e811028f4dc260f587f1d4633db544bc1d9544abf060c8e614",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/provenance.json": "95f5b97a5de958cbcdc881f712fedc882af581be870a788c5cb4a438729a304d",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/sing-box": "d42d07775f28563cd056143e42402562ba07a1f91abeb4f06149ae9424a3a589"
+        }
+      },
+      "producerCommit": "226e88cab62b8818620668a28b496d833c01c953",
+      "run": 38074825396,
+      "attempt": 1,
+      "artifactId": 11678506116,
+      "artifactDigest": "sha256:03ae618af91bf549a89687007cbc2c87832ed67042bbd09aa15c34c3a82e128c",
+      "coreSha256": "d42d07775f28563cd056143e42402562ba07a1f91abeb4f06149ae9424a3a589",
+      "signatureObservation": {
+        "codeSignatureInspection": "Executable=/Users/runner/work/_temp/polaris-native-candidate/polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64/sing-box\nIdentifier=a.out\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20400 size=673598 flags=0x20002(adhoc,linker-signed) hashes=21047+0 location=embedded\nVersionPlatform=1\nVersionMin=851968\nVersionSDK=984320\nHash type=sha256 size=32\nCandidateCDHash sha256=8cba8d24c78a46f7e5386847266b9ba9f3f1e6ba\nCandidateCDHashFull sha256=8cba8d24c78a46f7e5386847266b9ba9f3f1e6bad0e6c22d8f1d8380b6ec41b6\nHash choices=sha256\nCMSDigest=8cba8d24c78a46f7e5386847266b9ba9f3f1e6bad0e6c22d8f1d8380b6ec41b6\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=47448064\nExecutable Segment flags=0x1\nPage size=4096\nCDHash=8cba8d24c78a46f7e5386847266b9ba9f3f1e6ba\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nSealed Resources=none\nInternal requirements=none\n",
+        "signatureTrustValidated": false
+      },
+      "distributionSigningPerformed": false
+    },
+    {
+      "platform": "linux/amd64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64.tar.gz",
+        "bytes": 32220985,
+        "sha256": "342e6fbd396b95fc4183344ea0c259b6dd9eeb5359c92735af5929f4fed40058",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/SHA256SUMS": "9661d3257c875174cac898609cfbcb64807a6d322b6fe0453c9b639f3422bd49",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/libcronet.so": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/provenance.json": "2f332eb292f77a99e7426275a001efd9cd3915fbce0abe8df9a9b064f0ecd70f",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64/sing-box": "c01b1574a242b64c92cb58c5bcc1e1b6f0f1832dd36df8a409df3da0171d8be4"
+        }
+      },
+      "producerCommit": "720ead161c71415e23f38a82c29d314a4754ab9c",
+      "run": 38072592310,
+      "attempt": 1,
+      "artifactId": 11677249133,
+      "artifactDigest": "sha256:837ab4f6d00d790a295d7b4eed872b3701842c4f8cf7d139620c118b7a50ad76",
+      "coreSha256": "c01b1574a242b64c92cb58c5bcc1e1b6f0f1832dd36df8a409df3da0171d8be4",
+      "signatureObservation": {},
+      "distributionSigningPerformed": false
+    },
+    {
+      "platform": "linux/arm64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64.tar.gz",
+        "bytes": 29715193,
+        "sha256": "f9a7f6b24640be34b1b4a87f1600abca1257cf89e3c5417b76f7455b9f330718",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/SHA256SUMS": "cad905fdc0fbbd4d0594f28fea40d7a61eb0186e663e103df8123ff22d354b26",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/libcronet.so": "598e4c45370c684f1a5c6fa00032e07326392b882127357753288acc30e66826",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/provenance.json": "2fd2ace62b42943fe2b6df9d5e0acabb9884533457edb7ef161355b6830c07c8",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64/sing-box": "1beb0cf0de25b14c791dfa17bf44d8eb68beefd4ebab6947d47a7273f5d0e1ba"
+        }
+      },
+      "producerCommit": "720ead161c71415e23f38a82c29d314a4754ab9c",
+      "run": 38072592310,
+      "attempt": 1,
+      "artifactId": 11677706239,
+      "artifactDigest": "sha256:c74578c3503aac9c0ea4060eb6e8640d54f95ada9915d088443adda97209e550",
+      "coreSha256": "1beb0cf0de25b14c791dfa17bf44d8eb68beefd4ebab6947d47a7273f5d0e1ba",
+      "signatureObservation": {},
+      "distributionSigningPerformed": false
+    },
+    {
+      "platform": "windows/amd64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64.zip",
+        "bytes": 32895750,
+        "sha256": "beb2ec91af62e53482b06a6e0956cd051b935349a02356793642944838203c79",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/libcronet.dll": "8b005a933ac0d0899c047617a9cd18418810d9426d0919c824520094a2c893f5",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/provenance.json": "e029429c4e8335bc834e0ce70740a372947ea76297c42ad87bf5a8f2174ccfa8",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/SHA256SUMS": "232ca74132a88fad5b57c3662ec13a9da758ec60608a164078ab478dfd1b5e14",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64/sing-box.exe": "4f005152bf5ceeb63aeee7d38e1b7d1634046f0afec98eb9ae82a9e94f00a78a"
+        }
+      },
+      "producerCommit": "720ead161c71415e23f38a82c29d314a4754ab9c",
+      "run": 38072592310,
+      "attempt": 1,
+      "artifactId": 11677776919,
+      "artifactDigest": "sha256:a1d4a8aac65d9900c70d8b8e20c6b77633e32453ed3898f729b2d08774868011",
+      "coreSha256": "4f005152bf5ceeb63aeee7d38e1b7d1634046f0afec98eb9ae82a9e94f00a78a",
+      "signatureObservation": {
+        "certificateTablePresent": false,
+        "signatureTrustValidated": false
+      },
+      "distributionSigningPerformed": false
+    },
+    {
+      "platform": "windows/arm64",
+      "archive": {
+        "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64.zip",
+        "bytes": 29315110,
+        "sha256": "2d6eca13c5fb6b63f95dacf0500f3ca412fec1a8ec5aa4c08cbc149bd462ac12",
+        "members": {
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/libcronet.dll": "b840b9e23bb71be434722cadf47feed45f364fd33c180d827c70500022b81077",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/NOTICE": "4aa3fcfae2f06bebef926b0611b04ffb337d8e1d0fe7acd602f9933d6548a395",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/licenses/SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/provenance.json": "43b6fc39dcad012b76a292c2f88db3474108be59371d26f5e3bf54241dd03139",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/SHA256SUMS": "441a021bfbec3e5c490288911b8fb353892d5a7c99cbed79841e3420d5498670",
+          "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64/sing-box.exe": "b65a397055ffbb2758b8a450a18227671cc3e2f431c4c1158c02bc1460c918a4"
+        }
+      },
+      "producerCommit": "226e88cab62b8818620668a28b496d833c01c953",
+      "run": 38074825396,
+      "attempt": 1,
+      "artifactId": 11678124686,
+      "artifactDigest": "sha256:bb38a6936c8f946f25b77937501a9c70729c1a5fea82a436b94aca656cb9637f",
+      "coreSha256": "b65a397055ffbb2758b8a450a18227671cc3e2f431c4c1158c02bc1460c918a4",
+      "signatureObservation": {
+        "certificateTablePresent": false,
+        "signatureTrustValidated": false
+      },
+      "distributionSigningPerformed": false
+    }
+  ],
+  "publicUploadPerformed": false
+}

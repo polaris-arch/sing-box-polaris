@@ -1,0 +1,767 @@
+[
+  {
+    "path": "upstream/build.zig",
+    "originalPath": "build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/build.zig",
+    "sha256": "47e682da2d758a01cbe448841a18014c5d9fc68f8a918a9ffdc71ad80bf1453e",
+    "bytes": 15899,
+    "gitBlobSHA1": "d09cc177d3248ae0a7fd1728b902390d46e44078",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/LICENSE",
+    "originalPath": "LICENSE",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/LICENSE",
+    "sha256": "386211873e5b7a02f663ae4d7adf96285999f91608f8f9f31fecfd0f4095e6f1",
+    "bytes": 1097,
+    "gitBlobSHA1": "0a07a66cd1ad6ea35cc3b8150e2c37702fe5989d",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/build.zig.zon",
+    "originalPath": "build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/build.zig.zon",
+    "sha256": "1b2fe95088af49a4e3b4c25162ca7f9e9198629c029f8ef79d344dce7516bcb8",
+    "bytes": 5808,
+    "gitBlobSHA1": "b1b6d7ebc24b3f6c4d59791c2dccf2dec9e141cc",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/oniguruma/build.zig",
+    "originalPath": "pkg/oniguruma/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/oniguruma/build.zig",
+    "sha256": "d9eb9902968d21b6047abe0f27380eca09e3e7da22428f7e909a43b5d749a187",
+    "bytes": 5469,
+    "gitBlobSHA1": "58182553cdf8ed18aa41bc74790e161c56b8582d",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/oniguruma/build.zig.zon",
+    "originalPath": "pkg/oniguruma/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/oniguruma/build.zig.zon",
+    "sha256": "bc851cd6de7c55484822ee8eb45651885717940bc66c5d1a7a3150f0803f91af",
+    "bytes": 545,
+    "gitBlobSHA1": "f90caa5fa7414cdb2245656e64687d6170fd7dac",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/wuffs/build.zig",
+    "originalPath": "pkg/wuffs/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/wuffs/build.zig",
+    "sha256": "e9a4a14099a87ae063a84f7d903535dc4d9977d2554775f561db4320436fce69",
+    "bytes": 4429,
+    "gitBlobSHA1": "82cfec3b0c7c7086ad4df8afc874c68640858c2a",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/wuffs/build.zig.zon",
+    "originalPath": "pkg/wuffs/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/wuffs/build.zig.zon",
+    "sha256": "fc90571cbef7acefb618bfef0cf9e301d8609ecfd229f17cfce8a935be6efa28",
+    "bytes": 852,
+    "gitBlobSHA1": "89156e9b042c9e3e957971afe2c8666cbf326133",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libintl/build.zig",
+    "originalPath": "pkg/libintl/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/build.zig",
+    "sha256": "06a041149c20696b44a6a5256f5dbbc95d5e79a7ee5fd8a3e66b1d13674f03db",
+    "bytes": 3319,
+    "gitBlobSHA1": "8ef26c7a4915c321ea57d2586e50caaa7abf4381",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libintl/config.h",
+    "originalPath": "pkg/libintl/config.h",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/config.h",
+    "sha256": "00ec8d3fdd1b65c88739a1fbbfcd1d8dfbbf4b81c525cdcf51c16388004e01d3",
+    "bytes": 87293,
+    "gitBlobSHA1": "93d4e02467d6b78bf94bb114bd69c1f41fab8e53",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libintl/build.zig.zon",
+    "originalPath": "pkg/libintl/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/build.zig.zon",
+    "sha256": "63c216f3e46c96a41f791f59ab86194acf270d758aec4cc2248e8d604f7e1084",
+    "bytes": 396,
+    "gitBlobSHA1": "a32e200981b5df4d49b6174f9372f6d27c67921b",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libintl/libintl.h",
+    "originalPath": "pkg/libintl/libintl.h",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libintl/libintl.h",
+    "sha256": "311c1dc1e6727196f575e9eae44f440b45c955af2f8fe48b2c665820fa0d9393",
+    "bytes": 42693,
+    "gitBlobSHA1": "f49301816df61b77230f16ff098ab5a89a4a4d7e",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/build.zig",
+    "originalPath": "pkg/highway/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/build.zig",
+    "sha256": "055f1018030cd39282db11b420daad35d346d52250a08ff35a00a33707df5d1a",
+    "bytes": 4447,
+    "gitBlobSHA1": "af3300eb356744488e86e4038dd66326d536288c",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/build.zig.zon",
+    "originalPath": "pkg/highway/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/build.zig.zon",
+    "sha256": "57103e0424e9ca660756bb2cd0475ca3057e61e7f2d4038aba2a90eae890b932",
+    "bytes": 511,
+    "gitBlobSHA1": "e6863630968cc5e54f3418c6fbaca24e7eee6eda",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libpng/build.zig",
+    "originalPath": "pkg/libpng/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libpng/build.zig",
+    "sha256": "0590437cc1710fe4b3a75071c826cfae5679ce0e18b6d012012ed2e2c935e3d0",
+    "bytes": 2807,
+    "gitBlobSHA1": "559f42a065ee8afc8bee2335119c50021bfc0387",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/libpng/build.zig.zon",
+    "originalPath": "pkg/libpng/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/libpng/build.zig.zon",
+    "sha256": "4546494e09ee5459dca7caf363521545d96aaff65d07d84ab22b74ee80a9e4de",
+    "bytes": 537,
+    "gitBlobSHA1": "b5153ff740a5413d670959888f3c0bf546c5764d",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/simdutf/build.zig",
+    "originalPath": "pkg/simdutf/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/build.zig",
+    "sha256": "0a1e4fdfc6225192cc143b1e9d281c2dcaa4c36719dc1278a1e7012c6ba66668",
+    "bytes": 4044,
+    "gitBlobSHA1": "3efc0826344c30e406b6801f669852fcec500fab",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/simdutf/build.zig.zon",
+    "originalPath": "pkg/simdutf/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/build.zig.zon",
+    "sha256": "686d11ef1912a877be38cfe3fbf4b1d52c523c3f84c131070b82b142bac45266",
+    "bytes": 243,
+    "gitBlobSHA1": "afbef54182136f3a74db8c8a57b4dd68ebc6bb21",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/freetype/build.zig",
+    "originalPath": "pkg/freetype/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/freetype/build.zig",
+    "sha256": "985d79c516089b027a80159edf504361990ff6ad798d067b75df4c7d61e46337",
+    "bytes": 6724,
+    "gitBlobSHA1": "8272700408f83ace99f8644f459debddfb4d6e9a",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/freetype/build.zig.zon",
+    "originalPath": "pkg/freetype/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/freetype/build.zig.zon",
+    "sha256": "46ce4eb4a795e07ac2b89fd2a648fa23e651aedf940e28c9c4e57f9e0afce325",
+    "bytes": 630,
+    "gitBlobSHA1": "b0244365ddde37401d80920671e8748cf31d23f9",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/zlib/build.zig",
+    "originalPath": "pkg/zlib/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/zlib/build.zig",
+    "sha256": "69846b6b17251936d69f08391d33929e00666cd46f8fdf7d85f1f73059bc57c0",
+    "bytes": 2074,
+    "gitBlobSHA1": "3fa9e6bd2f14917340f3e99d3e716e75508d0237",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/zlib/build.zig.zon",
+    "originalPath": "pkg/zlib/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/zlib/build.zig.zon",
+    "sha256": "ec984b740c5bc72bdb6e4afe45130bd3fe1d5a83eada1c36ece319b48883b69b",
+    "bytes": 473,
+    "gitBlobSHA1": "0f75bca75d245c92668b755f6348e46bcad6bb86",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/macos/build.zig",
+    "originalPath": "pkg/macos/build.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/build.zig",
+    "sha256": "2dd0771763791353aad37d49855f615fbda8b02d6fe875863a0d57b672f70f9d",
+    "bytes": 4117,
+    "gitBlobSHA1": "f6b6f2e52bd698780dda58e052f8f034f10935e4",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/macos/build.zig.zon",
+    "originalPath": "pkg/macos/build.zig.zon",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/build.zig.zon",
+    "sha256": "d9d9f1c74b7ddfdd40a4dfa1cf797e95b1e994bb1d21886d9e4535c03ddf5905",
+    "bytes": 242,
+    "gitBlobSHA1": "b29f41bf57bb54f9e831867dd328f4a7d1dc0d70",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect.zig",
+    "originalPath": "pkg/highway/src/detect.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect.zig",
+    "sha256": "682139ac52fc671d75a9ec8c718dacb84a166707dd13c465b4c839d18affd4fe",
+    "bytes": 1808,
+    "gitBlobSHA1": "471314d946d1961c98925d94df680428f36b2c72",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/targets.zig",
+    "originalPath": "pkg/highway/src/targets.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/targets.zig",
+    "sha256": "585d0cb44b85eba346ebb2edb8139b6327ed7a3ab1c04fcd0786fd9bea0d7611",
+    "bytes": 2830,
+    "gitBlobSHA1": "5ae77bcad014a6a1c6f4e0120907320837acba56",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/main.zig",
+    "originalPath": "pkg/highway/src/main.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/main.zig",
+    "sha256": "13b93a0bdef12f3126738f2240e5862ffdfa7d8b99838344b1b053e7f7356b37",
+    "bytes": 260,
+    "gitBlobSHA1": "614fd14af3919e4de866bece0c7ea40b8a8b556a",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/cpp/abort.cc",
+    "originalPath": "pkg/highway/src/cpp/abort.cc",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/abort.cc",
+    "sha256": "a649c742c96e6985343f376b41af3de16d3c3d6bf98e5b37dc85d87a637a1d2c",
+    "bytes": 2088,
+    "gitBlobSHA1": "152619b0dc31b511bb4c5dba3fae6d8033270074",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/cpp/targets.cpp",
+    "originalPath": "pkg/highway/src/cpp/targets.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/targets.cpp",
+    "sha256": "9c12932cec47755fa60100e338198e56b0998157e8c8d934e4223db1a3e909b4",
+    "bytes": 2630,
+    "gitBlobSHA1": "7977cd5736c29504f6a23a903a46f859fae795c8",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/cpp/per_target.cc",
+    "originalPath": "pkg/highway/src/cpp/per_target.cc",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/cpp/per_target.cc",
+    "sha256": "5d3063e332cbbc28b44c5f44c12b3fbcd6b687549edabff65ffabcb5db9692e6",
+    "bytes": 2849,
+    "gitBlobSHA1": "44973ad3fd2a6a9a7aba11c4892543f887438b9f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/s390x.zig",
+    "originalPath": "pkg/highway/src/detect/s390x.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/s390x.zig",
+    "sha256": "4bc53623629ffeda23c19aef91c39b851c2b3460936525259a9eba102bd941f4",
+    "bytes": 724,
+    "gitBlobSHA1": "90d2ae3d57538eeb8dc3f35eb892aac2dfba8214",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/aarch64_linux.zig",
+    "originalPath": "pkg/highway/src/detect/aarch64_linux.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/aarch64_linux.zig",
+    "sha256": "cc761ef41d5bce1571ff65ab0067e0c4b71b5888a5acf645227bb70a78d4dc23",
+    "bytes": 1828,
+    "gitBlobSHA1": "a4e74e674213d89193c1358f2ae7d3d66ef502f6",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/aarch64_darwin.zig",
+    "originalPath": "pkg/highway/src/detect/aarch64_darwin.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/aarch64_darwin.zig",
+    "sha256": "f89a33bfd7b5774f8c207fb64b1f974aa8feb7af14f3266238c8f792dc36e736",
+    "bytes": 976,
+    "gitBlobSHA1": "f69edb441274d606ad0a39580ef3ffdc5cb44610",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/x86.zig",
+    "originalPath": "pkg/highway/src/detect/x86.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/x86.zig",
+    "sha256": "351d231fc4206083b22fb3c84fa7a23d29d7891cc4b259ec06694738b5dd968a",
+    "bytes": 5446,
+    "gitBlobSHA1": "bdfd3f5d29855a3e73c2c520fe66f1a4801d0a62",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/loongarch.zig",
+    "originalPath": "pkg/highway/src/detect/loongarch.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/loongarch.zig",
+    "sha256": "9632f04aa86b691cd17dc84df46c6b11c17556d01317a8feae57f29bd48ad2c4",
+    "bytes": 621,
+    "gitBlobSHA1": "686d11e622da5d6fb711f765d876153ad0f34219",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/ppc.zig",
+    "originalPath": "pkg/highway/src/detect/ppc.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/ppc.zig",
+    "sha256": "5a66f25b2dc9803f3a3bdab42548ca78cff9950b96daee9b9d642ba187139196",
+    "bytes": 1369,
+    "gitBlobSHA1": "587965ce88063f2c2dafe5c552a1325c0b15beb5",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/linux.zig",
+    "originalPath": "pkg/highway/src/detect/linux.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/linux.zig",
+    "sha256": "d9df0f976369e7f8f8247fa940c573e7aadf7c55e211a09cd03ad60ca0f2a82d",
+    "bytes": 399,
+    "gitBlobSHA1": "951cf3e6b950ff0c23d9674405dd0500ae027097",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/highway/src/detect/riscv.zig",
+    "originalPath": "pkg/highway/src/detect/riscv.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/highway/src/detect/riscv.zig",
+    "sha256": "0e6398131c1c76edd9f86f310cd069add74d9cf27b6b1404e84e26e7c539cf52",
+    "bytes": 552,
+    "gitBlobSHA1": "619d12faa6c16b38b092a9c28d0dc9ce8f77d1cb",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/simdutf/vendor/simdutf.cpp",
+    "originalPath": "pkg/simdutf/vendor/simdutf.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/vendor/simdutf.cpp",
+    "sha256": "38dc5481dc4b7eef95cea8056b84d940419288100f317ecaff683bd89f163263",
+    "bytes": 1751101,
+    "gitBlobSHA1": "82f9c26d8ffd2eee3b5b938c6ecf4cf608c7304f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/simdutf/vendor/simdutf.h",
+    "originalPath": "pkg/simdutf/vendor/simdutf.h",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/simdutf/vendor/simdutf.h",
+    "sha256": "d3501fc2143f0edc5c84e6bb013a7fdb8ccd95514f7fd0816669248e62676301",
+    "bytes": 396216,
+    "gitBlobSHA1": "ff4bf6a83aa466a73384ba018e6480fac22eb3fe",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/macos/os/zig_macos.c",
+    "originalPath": "pkg/macos/os/zig_macos.c",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/os/zig_macos.c",
+    "sha256": "b0c70f38190ac54ca1fc2c1523cb8536859ad6c5d6fa70adf73e2e3cc238da6c",
+    "bytes": 256,
+    "gitBlobSHA1": "1c4f069827fbd68dd4d80d0fa6755dda80e366e2",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/pkg/macos/text/ext.c",
+    "originalPath": "pkg/macos/text/ext.c",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/pkg/macos/text/ext.c",
+    "sha256": "ec694f620c6982ed76fc83fe15ead5ad2bab04d3f300d3d3691c5d92c2da2874",
+    "bytes": 248,
+    "gitBlobSHA1": "55bff8a612c9307831cc6fd98e5f89dc6948d604",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/simd/base64.cpp",
+    "originalPath": "src/simd/base64.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/base64.cpp",
+    "sha256": "ea0653b21ca866948806bd2bb4c3ae0bd544d32d145a92fa1d60298195ce6c99",
+    "bytes": 480,
+    "gitBlobSHA1": "63f26b50554ffc5923d7d0e54cd421c016c219f7",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/simd/index_of.cpp",
+    "originalPath": "src/simd/index_of.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/index_of.cpp",
+    "sha256": "5f74a282f35cb204fb8a6d3cfd8b60605c41255206f7bcd9a030be23caa687a1",
+    "bytes": 1307,
+    "gitBlobSHA1": "8dad4bc47edb6f3ad40a13dcba2d0aa71005eafd",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/simd/vt.cpp",
+    "originalPath": "src/simd/vt.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/vt.cpp",
+    "sha256": "6b85e1814bb4485a6d7f3ffa20ef4dd22bb6e1548ec278c98f1933b95574a7e0",
+    "bytes": 14660,
+    "gitBlobSHA1": "15d46966a7d5f3e7b1d8906ee447945199e0da7f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/simd/codepoint_width.cpp",
+    "originalPath": "src/simd/codepoint_width.cpp",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/simd/codepoint_width.cpp",
+    "sha256": "c77e6adadfc556d3b985665d485d3bf743cd022bcc2550d77855dc96e3118154",
+    "bytes": 23037,
+    "gitBlobSHA1": "7f0dfd87cdaf9f602f1abf530586818c42df3818",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/xcframework.zig",
+    "originalPath": "src/build/xcframework.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/xcframework.zig",
+    "sha256": "e16f8edd547b2f09cf5771781f578a66a73cee70b4a7ad8d45a04d4648b7f123",
+    "bytes": 170,
+    "gitBlobSHA1": "8713a1c9acf18ae856c085854640199a93a90dbc",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyLib.zig",
+    "originalPath": "src/build/GhosttyLib.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyLib.zig",
+    "sha256": "66dbcc07a01d31803e5c45105f59a2bb95c2adc81f971dfffb50779b6c634da8",
+    "bytes": 10101,
+    "gitBlobSHA1": "529bb2821da592aa80edab2ed616d4ea9bdcc932",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyDist.zig",
+    "originalPath": "src/build/GhosttyDist.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyDist.zig",
+    "sha256": "b446c1fa9a4964837457fd0a9da2e2977019a4e47d9b6b01ddda52483df6a6e5",
+    "bytes": 9572,
+    "gitBlobSHA1": "fe8b863fb7714050d4f26ac77409726bcf1126fd",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/uucode_config.zig",
+    "originalPath": "src/build/uucode_config.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/uucode_config.zig",
+    "sha256": "6f8f2458d29d63944606fb6fdd3c390c62470f911d24fa731e9aecd8e9329e1a",
+    "bytes": 5942,
+    "gitBlobSHA1": "20c4255192d41897a81d373c7c58a2456a25667f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/XCFrameworkStep.zig",
+    "originalPath": "src/build/XCFrameworkStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/XCFrameworkStep.zig",
+    "sha256": "3a3c85ba09e3fdfdef284390175fae4810828ebe649bfef40c3b92948b4c0553",
+    "bytes": 2311,
+    "gitBlobSHA1": "5f1b676fb7320eef55e518e6ec73929574e703e7",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/zig.zig",
+    "originalPath": "src/build/zig.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/zig.zig",
+    "sha256": "7bee503f3daaf9ac48cc57b2366d2b333e915bf7264f33c72c9b51a4ff77568b",
+    "bytes": 744,
+    "gitBlobSHA1": "3ee8ffe74656d837d406470620df21ace8baffd0",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyBench.zig",
+    "originalPath": "src/build/GhosttyBench.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyBench.zig",
+    "sha256": "8676ec1abd53e8851a8dfa2fd005ce154c1ed82df664c7b15022aba91117bfdc",
+    "bytes": 1681,
+    "gitBlobSHA1": "fbf8029d28a08e2f0fe6d2d448fdfbe008d26b88",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyXcodebuild.zig",
+    "originalPath": "src/build/GhosttyXcodebuild.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyXcodebuild.zig",
+    "sha256": "c07f55fe2a47f988d0aa78ae559452fc2cd9da166c7f11fcbf9b5c7a6c5ff4e3",
+    "bytes": 6284,
+    "gitBlobSHA1": "6f7e18dc3abc1832057e66815d47330e03aeb868",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/SharedDeps.zig",
+    "originalPath": "src/build/SharedDeps.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/SharedDeps.zig",
+    "sha256": "257fa7f4782dea68190d214b885d9fe9e5398e3585de7d223805e7239e643d03",
+    "bytes": 44392,
+    "gitBlobSHA1": "7f777faa16ebad5146e20f3ffadc33d9ee00d99b",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/Config.zig",
+    "originalPath": "src/build/Config.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/Config.zig",
+    "sha256": "e15abd51f767a70c92faac2bc8bf86fbb096db6680bca3de7388b9a4568fd739",
+    "bytes": 31073,
+    "gitBlobSHA1": "71fa4d289ec8dbffb0b1e26573ee01b5dd7cf4c5",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/HelpStrings.zig",
+    "originalPath": "src/build/HelpStrings.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/HelpStrings.zig",
+    "sha256": "b2a0da596538ed591dfd8c4d32a68f1d8d4a3d05f5b9a7ea3d9e711bc2340b1c",
+    "bytes": 1559,
+    "gitBlobSHA1": "24ae82e2a217120361dbac4803b3c1630639fb0b",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyI18n.zig",
+    "originalPath": "src/build/GhosttyI18n.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyI18n.zig",
+    "sha256": "411579d6c444de52f16b01921513a3ddcf2ffdbd97bbfe4cd51066e763280f24",
+    "bytes": 6844,
+    "gitBlobSHA1": "eb6ee5ee2df831cd8f9f6dcddefd92433a60e8c7",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/MetallibStep.zig",
+    "originalPath": "src/build/MetallibStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/MetallibStep.zig",
+    "sha256": "231861faa7759fda638f62f1ba0addaabe85ba86a54021b82967721d8ab9409e",
+    "bytes": 2043,
+    "gitBlobSHA1": "81c7a4a9f11112c4e4b62fa960b9e9efae77a6bc",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/gtk.zig",
+    "originalPath": "src/build/gtk.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/gtk.zig",
+    "sha256": "37af1ad6d6e41861c8c32e9fad22e0ae42a19c7527ef69c84d8d329427c7e266",
+    "bytes": 762,
+    "gitBlobSHA1": "1035367e1227bce50f7c51504687836f957a6cca",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyExe.zig",
+    "originalPath": "src/build/GhosttyExe.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyExe.zig",
+    "sha256": "242c78f6dab4e448055414242c813a7f415320c9e6256b3290cd29cec7c94ea8",
+    "bytes": 4082,
+    "gitBlobSHA1": "22f39b7b3afa51358d1d95d25150e2de38b9e49a",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyLibVt.zig",
+    "originalPath": "src/build/GhosttyLibVt.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyLibVt.zig",
+    "sha256": "cfaa8ecc23407128fab02c87ef67d9d36ec4c0e43274b359600014a38eb8c89f",
+    "bytes": 22236,
+    "gitBlobSHA1": "690f864c53c41d590d3c357c1084fb13dcf5abfb",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/combine_archives.zig",
+    "originalPath": "src/build/combine_archives.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/combine_archives.zig",
+    "sha256": "fa00981b44ced538b3471ead3c1af9b1bb6ed482ba19d524a0285d8e9232a817",
+    "bytes": 1879,
+    "gitBlobSHA1": "3df5ed0e426f5c226c02b1bf0fa09587ff37ec6f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyDocs.zig",
+    "originalPath": "src/build/GhosttyDocs.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyDocs.zig",
+    "sha256": "707a6bf80f0ba3b70b7377f164dc630330a83444daf6302d17bfc77d43630ac8",
+    "bytes": 3981,
+    "gitBlobSHA1": "2b207f23742a8ff89fc1d83648d4f6fe8c98f483",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/LibtoolStep.zig",
+    "originalPath": "src/build/LibtoolStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LibtoolStep.zig",
+    "sha256": "0236983b8c58c7e4f354acb871c0a8615eaf38bef951bdc50e96a006e8784f68",
+    "bytes": 2302,
+    "gitBlobSHA1": "856a33aa85337241ad78361b28c5ad01d6d3d43f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyWebdata.zig",
+    "originalPath": "src/build/GhosttyWebdata.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyWebdata.zig",
+    "sha256": "64d3cc17e4348d71085c7530baeb750525c9f46d3700a120d14270b2346d1168",
+    "bytes": 3784,
+    "gitBlobSHA1": "7057ad034ffce1e6f6c25e23f9fdb7414634a03d",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/LipoStep.zig",
+    "originalPath": "src/build/LipoStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LipoStep.zig",
+    "sha256": "ed7565d9548ace72aa31ded21f065f8ebb5c59d7365dd600e33885f711fe4ec3",
+    "bytes": 1077,
+    "gitBlobSHA1": "c9c1530efa3a86993ce551c449d77082224c1cc7",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/wasm_patch_growable_table.zig",
+    "originalPath": "src/build/wasm_patch_growable_table.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/wasm_patch_growable_table.zig",
+    "sha256": "0b28288a15e61b83f2f592a30a52b13a0be0bab0f1c68a2b06ed2a2f4394ae7c",
+    "bytes": 8838,
+    "gitBlobSHA1": "555734aba8c7459441419ce3e4633616dd214579",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GitVersion.zig",
+    "originalPath": "src/build/GitVersion.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GitVersion.zig",
+    "sha256": "d8f0d32a0a337720f2aa313571ae11279e8687719b27949cbb0b827e35a6fe79",
+    "bytes": 2964,
+    "gitBlobSHA1": "de205049f1199d5ffebcc0233cce79ae9d18cb09",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/CombineArchivesStep.zig",
+    "originalPath": "src/build/CombineArchivesStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/CombineArchivesStep.zig",
+    "sha256": "31be7eee49915ea374e808982c0eb1d1c1bea972a313fb06a55286c3c0abcba0",
+    "bytes": 1937,
+    "gitBlobSHA1": "cebd8e9fcd4518c2d92d714f5d0d8adde13a2186",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyZig.zig",
+    "originalPath": "src/build/GhosttyZig.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyZig.zig",
+    "sha256": "447c5e414458a29d38e260621e584118e77e02e692e05ffab08107e5ab4f03da",
+    "bytes": 4856,
+    "gitBlobSHA1": "46ab05d56f7ebc52adc898f5e07fe17173d47c2d",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/LibsystemOverrideStep.zig",
+    "originalPath": "src/build/LibsystemOverrideStep.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/LibsystemOverrideStep.zig",
+    "sha256": "fc95a42f30190c779d24d72fa2de0cbc8f1bf117dcb90a33e1c423740052f07a",
+    "bytes": 2146,
+    "gitBlobSHA1": "3e1cafa5e4da65a48bd210704788e9c0bf8c6b78",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/UnicodeTables.zig",
+    "originalPath": "src/build/UnicodeTables.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/UnicodeTables.zig",
+    "sha256": "6b5bd041bc11ace2ed9e69c6574ca28c431c70edee57e8496aa1dd76ec90a142",
+    "bytes": 2869,
+    "gitBlobSHA1": "843ada51f7dcc0cbc0813e915481e2c519935d63",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/main.zig",
+    "originalPath": "src/build/main.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/main.zig",
+    "sha256": "90b9ce6bfece16a049f151fb77a9036d91b92079492f7e67f3af5684baf5c3c3",
+    "bytes": 1495,
+    "gitBlobSHA1": "1f36d375c3b79737fea521a217649f6c92087965",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyXCFramework.zig",
+    "originalPath": "src/build/GhosttyXCFramework.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyXCFramework.zig",
+    "sha256": "a664c054aa3e5ef0ada2f94f47ac1fe308f485aac0d9256342554c55b590fca6",
+    "bytes": 2353,
+    "gitBlobSHA1": "3f3b97eb2c87590ffeeeb7a899ceefcb3da27738",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyResources.zig",
+    "originalPath": "src/build/GhosttyResources.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyResources.zig",
+    "sha256": "7b2bf11b237dfbad391cce70a3a7d917f0840667e608f50f1779a77d10dc233a",
+    "bytes": 16358,
+    "gitBlobSHA1": "673c7e56a22305c097e1f99e7a1181bbdbddedc5",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/GhosttyFrameData.zig",
+    "originalPath": "src/build/GhosttyFrameData.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/GhosttyFrameData.zig",
+    "sha256": "b355dff57bb743bf71eaec33097c179e9684766fe68d966aa49aeeb14142d504",
+    "bytes": 2378,
+    "gitBlobSHA1": "be61f029f5b756c445c4d6215b6fc997ece7816f",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/stb/stb.c",
+    "originalPath": "src/stb/stb.c",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/stb/stb.c",
+    "sha256": "7857633abab0e0f115e4fdb036bfc7b0af8cd0bc827e7ebdcc5375b8f7aebbef",
+    "bytes": 410,
+    "gitBlobSHA1": "68c4c225880f541e54ed99860e6ba0a1a6dd1f27",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/stb/stb_image_resize.h",
+    "originalPath": "src/stb/stb_image_resize.h",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/stb/stb_image_resize.h",
+    "sha256": "6a0e75adbabb48df9031c2e39ccd97437bb226fe31e7d4a01c7bf70a18d32ec6",
+    "bytes": 116516,
+    "gitBlobSHA1": "ef9e6fe87049f96b8bf9cc1f63fce03effa6c899",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/stb/stb_image.h",
+    "originalPath": "src/stb/stb_image.h",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/stb/stb_image.h",
+    "sha256": "7fb1521970dc268639ed95ab9808ef3b47aa0800fd2d0e9250b1b90be03ee75b",
+    "bytes": 284733,
+    "gitBlobSHA1": "ed7791dff723deffe3c709925efe913f019428b5",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/webgen/main_config.zig",
+    "originalPath": "src/build/webgen/main_config.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/webgen/main_config.zig",
+    "sha256": "4a1b480994dc8193fdec5acae69153b7c802949804bed1be760dd505d6eb7904",
+    "bytes": 4672,
+    "gitBlobSHA1": "82ecc950fceff217e510783a28f9cdb2ec863868",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/webgen/main_commands.zig",
+    "originalPath": "src/build/webgen/main_commands.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/webgen/main_commands.zig",
+    "sha256": "66f1745678e37bef75b54f58ee3881b01b00c7f115e3f515444a9345f8b51f9e",
+    "bytes": 2075,
+    "gitBlobSHA1": "c895948d48c2360697976a0ac0824fee5a0a3018",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/webgen/main_actions.zig",
+    "originalPath": "src/build/webgen/main_actions.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/webgen/main_actions.zig",
+    "sha256": "ca9e0bbdfc1ce601fd76f40766fee7eed3ed40b5c7721aa744d38cdd15415133",
+    "bytes": 381,
+    "gitBlobSHA1": "38cda3f7a2c696dd343e8a9a7035d0a1fd2e7a05",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/mdgen/mdgen.zig",
+    "originalPath": "src/build/mdgen/mdgen.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/mdgen/mdgen.zig",
+    "sha256": "2f8cfa6997cb4c95935a1e6a05d06ab4ee8c70a66c525b4ad7b2562283058ff3",
+    "bytes": 3714,
+    "gitBlobSHA1": "530c8964f01b876be4a09557301bddeee52e84cd",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/mdgen/main_ghostty_5.zig",
+    "originalPath": "src/build/mdgen/main_ghostty_5.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/mdgen/main_ghostty_5.zig",
+    "sha256": "46c221a334ac08548e4781d9c6a2d12153205571a707f527065a3cacb2539da8",
+    "bytes": 555,
+    "gitBlobSHA1": "4f7c4882a4f2caa0d2f0317571bce53932f54537",
+    "gitBlobVerified": true
+  },
+  {
+    "path": "upstream/src/build/mdgen/main_ghostty_1.zig",
+    "originalPath": "src/build/mdgen/main_ghostty_1.zig",
+    "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/35a81a980bb9fce09a1ea762a68b55f8eb3477ed/src/build/mdgen/main_ghostty_1.zig",
+    "sha256": "e6679eb52ee41ef56e9da54e1d2314a05a71b396d6cf7aeef533d344c0616a0b",
+    "bytes": 547,
+    "gitBlobSHA1": "e511768c9162ef1cf7a58c129a0e9490a5a7f80e",
+    "gitBlobVerified": true
+  }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "path": "CodeLanguagesContainer.xcframework/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/CodeLanguages_Container",
+    "bytes": 40,
+    "compressedBytes": 40,
+    "crc32": 4199757706
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Resources",
+    "bytes": 26,
+    "compressedBytes": 26,
+    "crc32": 2265073452
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/CodeResources",
+    "bytes": 2959,
+    "compressedBytes": 787,
+    "crc32": 331728544
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/CodeDirectory",
+    "bytes": 237,
+    "compressedBytes": 163,
+    "crc32": 1151740886
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/CodeRequirements-1",
+    "bytes": 297,
+    "compressedBytes": 213,
+    "crc32": 1757833091
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/CodeSignature",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/_CodeSignature/CodeRequirements",
+    "bytes": 12,
+    "compressedBytes": 12,
+    "crc32": 1089542763
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/CodeLanguages_Container",
+    "bytes": 392757416,
+    "compressedBytes": 34377905,
+    "crc32": 2610098714
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Resources/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Resources/Info.plist",
+    "bytes": 1326,
+    "compressedBytes": 469,
+    "crc32": 3727791413
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Headers/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Headers/CodeLanguages_Container.h",
+    "bytes": 2244,
+    "compressedBytes": 536,
+    "crc32": 3888985888
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Modules/",
+    "bytes": 0,
+    "compressedBytes": 0,
+    "crc32": 0
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/A/Modules/module.modulemap",
+    "bytes": 127,
+    "compressedBytes": 92,
+    "crc32": 2014268573
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Versions/Current",
+    "bytes": 1,
+    "compressedBytes": 1,
+    "crc32": 3554254475
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Headers",
+    "bytes": 24,
+    "compressedBytes": 24,
+    "crc32": 2393740531
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/macos-arm64_x86_64/CodeLanguages_Container.framework/Modules",
+    "bytes": 24,
+    "compressedBytes": 24,
+    "crc32": 1461295265
+  },
+  {
+    "path": "CodeLanguagesContainer.xcframework/Info.plist",
+    "bytes": 809,
+    "compressedBytes": 377,
+    "crc32": 1817045100
+  }
+]

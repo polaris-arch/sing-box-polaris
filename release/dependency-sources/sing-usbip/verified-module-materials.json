@@ -1,0 +1,294 @@
+{
+  "sourceInput": {
+    "h1": "h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=",
+    "module": "github.com/sagernet/sing-usbip",
+    "role": "source-module",
+    "version": "v0.0.0-20260817040617-28bd42667eca",
+    "zipBytes": 825692,
+    "zipSha256": "c3cb3fe1d9999fda98a232f813425d7376541f498b1c98e0fd2fe717b19aa7da",
+    "zipUrl": "https://proxy.golang.org/github.com/sagernet/sing-usbip/@v/v0.0.0-20260817040617-28bd42667eca.zip"
+  },
+  "fullZipAndH1Verified": true,
+  "files": [
+    {
+      "path": ".github/workflows/lint.yml",
+      "bytes": 487,
+      "sha256": "f7a788a6c88238d46d892533da53e3ccbdc95fbc514e93cb7987cd329e5c95c1"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "bytes": 5724,
+      "sha256": "9267176b6a01a8866fe8fa4ef98d4033c9708a504b7eaf0e73dc10f1c63b9f4a"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 674,
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1689,
+      "sha256": "26cf88bd8056d8516f312a69cd92049cc345341e1f48e7f1c38841786e734184"
+    },
+    {
+      "path": "driverassets/digests.go",
+      "bytes": 2234,
+      "sha256": "4254fecd1c854cda735a35581342343c32f06c2759dcfa1c2dd9757bb9413e86"
+    },
+    {
+      "path": "driverassets/driverassets.go",
+      "bytes": 458,
+      "sha256": "5ba27ea3412bd6234802b4440e31a63900e3951e234444ef5e17bd200e26edca"
+    },
+    {
+      "path": "driverassets/generate/main.go",
+      "bytes": 1973,
+      "sha256": "194de305fad644d36c58875cf17f36a984720952a051680126193de3ef9b6b52"
+    },
+    {
+      "path": "go.mod",
+      "bytes": 393,
+      "sha256": "abe6f7f14d0ea699b418899a332455e7d11b8eba376815a22089554767089adf"
+    },
+    {
+      "path": "internal/usbipvhci/assets/LICENSE.txt",
+      "bytes": 1356,
+      "sha256": "4a4d332cbf1c623639df7ffc756243d86462beb4c79c8b11081cb44a4792eda2"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.cat",
+      "bytes": 11938,
+      "sha256": "02a95969ba033ded3bf9a8c136551697d097da076c8886630145ef8d39a1dd33"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.inf",
+      "bytes": 2052,
+      "sha256": "a149b941d124b9e2f4c503d8af0c1fdb6907480d372d34b4f76d7452648466a2"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.sys",
+      "bytes": 54352,
+      "sha256": "c290299ff4d0f6a597db5ce03e15b29a5349cdce7c587ebfbd9ecaeca04f73ed"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.cat",
+      "bytes": 11915,
+      "sha256": "a1fdd6612242e14c71d33a3693f3010b1f1accb9f6922f0b12543dc5c0217e87"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.inf",
+      "bytes": 3041,
+      "sha256": "00a1dbfe02c0bbbed38b6e1c81ef0a6dcfe23fe39b07628592167383f7656256"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.sys",
+      "bytes": 137752,
+      "sha256": "51db440065393e588a6b2585508c50eb3e1510b7b06d9afa6c5bde583751ea7d"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.cat",
+      "bytes": 11985,
+      "sha256": "6884994c06682051d12b836d0cd801a998f2d8f8798721935e2af5f4d08b0a82"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.inf",
+      "bytes": 2051,
+      "sha256": "d09d25dbe3129e4b2180e12ea11076d0953dbd52196de5867bcc7da4a6aea417"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.sys",
+      "bytes": 59504,
+      "sha256": "23cc8246d71541ad2540370a3b34684bb534621e5aa0f2408e448f21b2d2fd40"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.cat",
+      "bytes": 11967,
+      "sha256": "49c6570d479379b7db5c19fe0c9ae31804f1b4964321c5b14f8bcad1c044614c"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.inf",
+      "bytes": 2891,
+      "sha256": "4ebaa77c54dba2fa27ea4aae5d4a3f288720623ace52742c99d0a0020494c604"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.sys",
+      "bytes": 136224,
+      "sha256": "2a969ba59b3ffe33227ca1de17759a189d085d51c4f4e0f34df0b244ee558ab8"
+    },
+    {
+      "path": "internal/usbipvhci/assets_external_windows.go",
+      "bytes": 1121,
+      "sha256": "ea447ba6d5b7c92406136b1a2d716c7779828f47306beee4c37655805265aacc"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_amd64.go",
+      "bytes": 734,
+      "sha256": "31d0194a5057c75bee09d28f98e717a3dfb4210a09bb019a2f52b3aa69068742"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_arm64.go",
+      "bytes": 734,
+      "sha256": "e724affbe22e4e061243ee06836a8a241b8f8ec8990ef58a3cc2e56b596d08d7"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_unsupported.go",
+      "bytes": 150,
+      "sha256": "5fc1de8971a0b67c376bd93007dbfb922ca1060b47a5643d410450f4eebf7594"
+    },
+    {
+      "path": "internal/usbipvhci/controller_windows.go",
+      "bytes": 6694,
+      "sha256": "5fae8535a27458d9a0a6cde0a52e44ad115d91ba4d1da8f6975579b0c5b6b97b"
+    },
+    {
+      "path": "internal/usbipvhci/driver_windows.go",
+      "bytes": 7928,
+      "sha256": "48170782f78c924e017798f8d1188a690d8d53e6c4093e2ce4184da0c246c8ee"
+    },
+    {
+      "path": "internal/usbipvhci/usbipvhci.go",
+      "bytes": 1958,
+      "sha256": "2eebb3db3bd1a1a58dd6a52f72bc9a0790a682a75f056890d96e0093def80342"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.cat",
+      "bytes": 12014,
+      "sha256": "bb74edb4ae22b1923ad85e89b119deeb0103cf124f3c0aeaebf91d21d16712ba"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.cat.license",
+      "bytes": 85,
+      "sha256": "c4d67d09bc00aaf8f703323e74bbf9042715a12ae2b215718faaaece3c2a8237"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.inf",
+      "bytes": 2944,
+      "sha256": "21137c65e8856c77414c928d776cc01baedd4b7919dd6224a5b715f85a76df06"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.inf.license",
+      "bytes": 102,
+      "sha256": "c8a90f51ac8d8af51c961268fbad0228861e67f26efe480bc843d12648e94d66"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.sys",
+      "bytes": 182792,
+      "sha256": "4e60921286307172fd42888cc4855f01cdb5b7bd7a71eebba2636093d8742732"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys",
+      "bytes": 197232,
+      "sha256": "9eb9d512e13c8747cee74057aa6491cb22550f46a7917f03b8eddfa8b0d78307"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.cat",
+      "bytes": 11927,
+      "sha256": "65ac620f6828ea8d638dad012a62f4356fcb7979867bea67614dc9b7a8d226ae"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.cat.license",
+      "bytes": 85,
+      "sha256": "c4d67d09bc00aaf8f703323e74bbf9042715a12ae2b215718faaaece3c2a8237"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.inf",
+      "bytes": 2944,
+      "sha256": "d1986bd897143b110855ca14c9034708f3a1e5e0cfe6e172c526a565ab150faa"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.inf.license",
+      "bytes": 102,
+      "sha256": "c8a90f51ac8d8af51c961268fbad0228861e67f26efe480bc843d12648e94d66"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.sys",
+      "bytes": 180704,
+      "sha256": "b26dffe401bbaf5a9856078476314f596e2491051a729880a946e968b05f1059"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSBMon.sys",
+      "bytes": 195696,
+      "sha256": "9dc58c98c4007438f917ca3b5c6ac531a3ee696b3e5b0ee157ec7f54c8d9b6d2"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSBMon.sys.license",
+      "bytes": 102,
+      "sha256": "6b866880ff9722e993a7c1bbc9714a03d5e0a3f582c5307e7d73295f24b787b4"
+    },
+    {
+      "path": "internal/vboxusb/assets_external_windows.go",
+      "bytes": 1113,
+      "sha256": "382806a7bed5ffdcd4d022aa5ff21430fdaff3922dcfd17cac628f6f00544b75"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_amd64.go",
+      "bytes": 540,
+      "sha256": "b3c7e67a9c79339fc45d45bc4918891b2985d52714314265bd545d0e3c93f9d8"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_arm64.go",
+      "bytes": 540,
+      "sha256": "37831da4e01f8a99023ac1354e623dc7651f7961f424b3e02a162dd1e272a892"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_unsupported.go",
+      "bytes": 148,
+      "sha256": "88cc3aae8b9c753b3b33201bf7ad36a6063acb51e1a7cb9831db192ba0990511"
+    },
+    {
+      "path": "internal/vboxusb/device_windows.go",
+      "bytes": 8252,
+      "sha256": "28d1d3b0be2da580688fd47ee0c2e93140d774b19b65179a27ad9b0110879dad"
+    },
+    {
+      "path": "internal/vboxusb/driver_windows.go",
+      "bytes": 7316,
+      "sha256": "5c12f24ab9d49cd6bc9f04e8f917114628613181dcdc2a447bf9d7bb8b3da93e"
+    },
+    {
+      "path": "internal/vboxusb/monitor_windows.go",
+      "bytes": 4871,
+      "sha256": "4ff6e6af6973f6421f6c1ac8239b388e7aa8cff7c67204ba9b71e16a3b0c9a5e"
+    },
+    {
+      "path": "internal/vboxusb/pnp_windows.go",
+      "bytes": 8466,
+      "sha256": "0f85882b5268bfba14deabf4214716a69ac7dd2fc94b511e8290c25ba54bd5ad"
+    },
+    {
+      "path": "internal/vboxusb/privilege_windows.go",
+      "bytes": 2349,
+      "sha256": "369872d6a1c6b09b4e3f3a55693e93d5345b0a849005198a6ea1156c38b885b4"
+    },
+    {
+      "path": "internal/vboxusb/restart_windows.go",
+      "bytes": 4559,
+      "sha256": "ed48645127039f8f8b803d9f265808192f729f0ed002d8f2a7b32b889d479e01"
+    },
+    {
+      "path": "internal/vboxusb/speed_windows.go",
+      "bytes": 7210,
+      "sha256": "f3092d7bbf9d0f92c0a38d79731135b12472fff8e17000cfac4d34c462293e82"
+    },
+    {
+      "path": "internal/vboxusb/vboxusb.go",
+      "bytes": 2681,
+      "sha256": "26748bda4125e0302332a5642083a50d45d471d487f81cd0fb308b22d8301eef"
+    }
+  ]
+}

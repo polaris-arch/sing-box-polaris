@@ -1,0 +1,228 @@
+{
+  "schema": "polaris-openwrt-release-plan-v1",
+  "repository": "polaris-arch/polaris-box",
+  "version": "1.15.0-alpha.12",
+  "tag": "v1.15.0-alpha.12",
+  "go": "1.25.5",
+  "sourceBaseCommit": "797d1d1a50bb99acc2542c45c7a889b3f143ecaf",
+  "sdkInputs": [
+    {
+      "key": "ipk-x64",
+      "release": "24.10.8",
+      "target": "x86/64",
+      "file": "openwrt-sdk-24.10.8-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst",
+      "sha256": "ac4a0405d2eea821b06f93c14ba13ffa90ad0457648903df7dde02570027ab21",
+      "compiler": "x86_64-openwrt-linux-musl-gcc",
+      "url": "https://downloads.openwrt.org/releases/24.10.8/targets/x86/64/openwrt-sdk-24.10.8-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+    },
+    {
+      "key": "ipk-arm64",
+      "release": "24.10.8",
+      "target": "armsr/armv8",
+      "file": "openwrt-sdk-24.10.8-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst",
+      "sha256": "5f430f5b30c9ea6dc472710356c139abf916b7ebd5de14e108e9cc204f40a2a4",
+      "compiler": "aarch64-openwrt-linux-musl-gcc",
+      "url": "https://downloads.openwrt.org/releases/24.10.8/targets/armsr/armv8/openwrt-sdk-24.10.8-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+    },
+    {
+      "key": "apk-host",
+      "release": "25.12.5",
+      "target": "x86/64",
+      "file": "openwrt-sdk-25.12.5-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst",
+      "sha256": "0c8df0151a1e88feb7c03d694d61f6a18d51872815b7c811d76e2b77504d5e9c",
+      "compiler": "x86_64-openwrt-linux-musl-gcc",
+      "url": "https://downloads.openwrt.org/releases/25.12.5/targets/x86/64/openwrt-sdk-25.12.5-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst"
+    }
+  ],
+  "package": {
+    "name": "polaris-box",
+    "conflicts": [
+      "sing-box"
+    ],
+    "provides": [],
+    "binary": "/usr/bin/sing-box",
+    "service": "/etc/init.d/sing-box",
+    "configs": [
+      "/etc/config/sing-box",
+      "/etc/sing-box/config.json"
+    ],
+    "autostartOnInstall": false,
+    "retainConfigurationOnRemoval": true,
+    "replacementPolicy": "explicit removal after independent configuration backup; never implicit overwrite",
+    "archiveOwnership": "all payload/control filesystem entries explicit root:root (0:0), final IPK tar/APK ADB metadata and installed paths audited",
+    "apkTrustPolicy": "unsigned local APK only after frozen published byte-pin validation; allow-untrusted for that single local archive; no global/repository trust change",
+    "ownershipStrategy": {
+      "ipk": "host fakeroot virtual numeric 0:0; audit all final tar entries",
+      "apk": "SDK native identity database maps actual private staging UID/GID to root account names; no host GLIBC preload; audit all final ADB ACLs and installed numeric 0:0"
+    }
+  },
+  "dependencies": [
+    "ca-bundle",
+    "kmod-inet-diag",
+    "kmod-tun",
+    "firewall4",
+    "kmod-nft-queue"
+  ],
+  "formats": {
+    "ipk": {
+      "series": "24.10",
+      "sdkRelease": "24.10.8",
+      "packageVersion": "1.15.0-alpha.12-1",
+      "manager": "opkg"
+    },
+    "apk": {
+      "series": "25.12",
+      "sdkRelease": "25.12.5",
+      "packageVersion": "1.15.0_alpha12-r1",
+      "manager": "apk3"
+    }
+  },
+  "targets": [
+    {
+      "architecture": "x86_64",
+      "goarch": "amd64",
+      "GOAMD64": "v1",
+      "compilerSdk": "ipk-x64",
+      "cronetModule": "github.com/sagernet/cronet-go/lib/linux_amd64_musl",
+      "cronetModuleSum": "h1:PAK8bwbOxhTdyjnAX/UNLEtbwtN9Hyry4N7RRG8lq30=",
+      "cronetBytes": 60011842,
+      "cronetSha256": "95944c74503766dd001db019f7c2e900cc0450862f6cc8686858259a4db56e86"
+    },
+    {
+      "architecture": "aarch64_generic",
+      "goarch": "arm64",
+      "GOARM64": "v8.0",
+      "compilerSdk": "ipk-arm64",
+      "cronetModule": "github.com/sagernet/cronet-go/lib/linux_arm64_musl",
+      "cronetModuleSum": "h1:+ZJPetIdQY6gSB3oEXcFuN803z7hsochw63LUVNbAAw=",
+      "cronetBytes": 62624410,
+      "cronetSha256": "ff2137b5e96bee230727e231b979be4bb7c5f2b428102c1f46ee7337ea73f95d"
+    }
+  ],
+  "cronetModuleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+  "cronetVersion": "154.0.8037.49",
+  "cronetWrapperVersion": "v0.0.0-20260929213745-4d18a60dc3a8",
+  "linkage": "musl-static-cgo",
+  "requiredTags": [
+    "with_gvisor",
+    "with_naive_outbound",
+    "with_musl"
+  ],
+  "forbiddenTags": [
+    "with_purego"
+  ],
+  "toolchainCorrespondingSources": {
+    "openwrtTag": "v24.10.8",
+    "musl": {
+      "version": "1.2.5",
+      "url": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+      "sha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4"
+    },
+    "gcc": {
+      "version": "13.3.0",
+      "url": "https://ftp.gnu.org/gnu/gcc/gcc-13.3.0/gcc-13.3.0.tar.xz",
+      "sha256": "0845e9621c9543a13f484e94584a49ffc0129970e9914624235fc1d061a0c083"
+    },
+    "patches": [
+      "toolchain/gcc",
+      "toolchain/musl"
+    ],
+    "openwrt": {
+      "tag": "v24.10.8",
+      "tagObject": "d3f7bf9cd2cfda083a81923893b673e45a285bcd",
+      "commit": "0b795ce79e23b553aa184080c390f9ce92a2b6d4",
+      "tree": "c1fd34c921809c663424a6c6d5f7bcc0c636b56d",
+      "archiveUrl": "https://github.com/openwrt/openwrt/archive/0b795ce79e23b553aa184080c390f9ce92a2b6d4.tar.gz"
+    },
+    "runtimePolicy": "GCC libgcc/static runtime with GCC Runtime Library Exception3.1; musl MIT; fixed OpenWrt build and patch paths accompany source references; independent applicability review required"
+  },
+  "validationRequirements": [
+    "ELF machine/ISA and static musl no glibc/interpreter/dynamic dependencies",
+    "actual Cronet/Naive loopback TLS-H2 verification",
+    "gvisor compiled and isolated guest TUN/mixed validation",
+    "APK/IPK install/upgrade/config-preserve/uninstall/procd in both family roots",
+    "SDK and native same-source final CI; no real-device acceptance implied",
+    "fail-fast guest commands; SSH stderr excluded from protocol stdout; bounded APK/IPK repository I/O preparation retries logged; portable numeric ls ownership checks without assuming stat; explicit uhttpd test fixture",
+    "TLS fixture uses private non-localhost SNI/SAN with wrapper address redirect; exact phase PID/config readiness, client diagnostics and certificate-specific wrong-CA rejection"
+  ],
+  "realDeviceAcceptance": false,
+  "publicationEligible": false,
+  "clangInput": {
+    "url": "https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/clang-llvmorg-24-init-3796-g20e97c4b-27.tar.xz",
+    "bytes": 56889948,
+    "sha256": "968195fa0b49958e066695df2c7c985d169a20fa06eedb8fcef900a6030edcb0",
+    "revision": "llvmorg-24-init-3796-g20e97c4b-27",
+    "upstreamScriptSha256": "65e72af541dc1f789e2ff416c1cf4ddd6a5f3cb01b3059a811e969b394f03266",
+    "sourceCommit": "be1be963131154ba82761a7ed85ba426b2027319"
+  },
+  "toolchainPolicy": "upstream musl Clang CC/CXX --target --sysroot with fixed OpenWrt SDK and -fuse-ld=lld; prebuilt Cronet archive unchanged; no Chromium compilation",
+  "apkToolSource": {
+    "tag": "v25.12.5",
+    "tagObject": "e20bc3ec9eb9e3dbd0519ddc18f81f3eedc0f45e",
+    "commit": "f0a60eee2fe051741c643ea6118718aae1ef17fb",
+    "tree": "4ac64a90c5cd190209b4a9428fc34f12e6c87d4b",
+    "paths": [
+      "package/system/apk",
+      "include/package-pack.mk"
+    ]
+  },
+  "publicationScope": "six desktop CLI archives and four OpenWrt packages; source references + automatic GitHub code archives, no extra source asset",
+  "guestInputs": [
+    {
+      "release": "24.10.8",
+      "architecture": "x86_64",
+      "rootfs": {
+        "url": "https://downloads.openwrt.org/releases/24.10.8/targets/x86/64/openwrt-24.10.8-x86-64-generic-ext4-rootfs.img.gz",
+        "sha256": "cf39cd1043fbff86ad2936c951fd6afe607437acf3531082cf11b20febc95b03"
+      },
+      "kernel": {
+        "url": "https://downloads.openwrt.org/releases/24.10.8/targets/x86/64/openwrt-24.10.8-x86-64-generic-kernel.bin",
+        "sha256": "75e5ec1a12c6e253173cf51a2ae5ab13380931849ab4588407e72c51cac562f3"
+      },
+      "cpu": "qemu64",
+      "scope": "CI isolated OpenWrt VM; not physical device"
+    },
+    {
+      "release": "24.10.8",
+      "architecture": "aarch64_generic",
+      "rootfs": {
+        "url": "https://downloads.openwrt.org/releases/24.10.8/targets/armsr/armv8/openwrt-24.10.8-armsr-armv8-generic-ext4-rootfs.img.gz",
+        "sha256": "1d829b6087d561f9e278679a5525ae4fdd68716d8d2a4e1525500b247d99aada"
+      },
+      "kernel": {
+        "url": "https://downloads.openwrt.org/releases/24.10.8/targets/armsr/armv8/openwrt-24.10.8-armsr-armv8-generic-kernel.bin",
+        "sha256": "ccc97f1598224e73a5f75fb1612c284db037f02fa050d1a18b5b2ee93631e37e"
+      },
+      "cpu": "cortex-a53",
+      "scope": "CI isolated OpenWrt VM; not physical device"
+    },
+    {
+      "release": "25.12.5",
+      "architecture": "x86_64",
+      "rootfs": {
+        "url": "https://downloads.openwrt.org/releases/25.12.5/targets/x86/64/openwrt-25.12.5-x86-64-generic-ext4-rootfs.img.gz",
+        "sha256": "a1cb366a0af03d0f4afbce90aed9b4db35b07140629eabf7ae21c45dc08eeb23"
+      },
+      "kernel": {
+        "url": "https://downloads.openwrt.org/releases/25.12.5/targets/x86/64/openwrt-25.12.5-x86-64-generic-kernel.bin",
+        "sha256": "e440f082d59550072b1421f10d1a83449c6a4cf356eea5bfa9ac1306978d649b"
+      },
+      "cpu": "qemu64",
+      "scope": "CI isolated OpenWrt VM; not physical device"
+    },
+    {
+      "release": "25.12.5",
+      "architecture": "aarch64_generic",
+      "rootfs": {
+        "url": "https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-25.12.5-armsr-armv8-generic-ext4-rootfs.img.gz",
+        "sha256": "03172dd9a91e7cb477ab73bcb5de544bfe19f42698d7f66d9b2bb80ca692eaa6"
+      },
+      "kernel": {
+        "url": "https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-25.12.5-armsr-armv8-generic-kernel.bin",
+        "sha256": "8cf43c4901efae72b0a04bb655158e03335067e8757926bca4c81d5c952aca51"
+      },
+      "cpu": "cortex-a53",
+      "scope": "CI isolated OpenWrt VM; not physical device"
+    }
+  ]
+}

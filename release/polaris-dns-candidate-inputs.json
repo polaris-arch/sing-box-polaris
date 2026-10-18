@@ -1,0 +1,393 @@
+{
+  "schema": 1,
+  "candidateOnly": true,
+  "publicationEligible": false,
+  "sourceCommit": "aafc521b745e0d1a8f50a6a3f41169433f1c2194",
+  "sourceTree": "4ae424d8a99b16a02442d7b2eac1d5e24e938d8e",
+  "upstreamBaselineCommit": "6afeff4c0f7123b5782f888812e96b8c82c7b699",
+  "upstreamBaselineTag": "v1.15.0-alpha.11",
+  "sourceRole": "desktop-windows-dns-compat-technical",
+  "sourceOverlay": 0,
+  "Go": "1.25.5",
+  "cronetVersion": "154.0.8037.49",
+  "wrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+  "wrapperVersion": "v0.0.0-20260929213745-4d18a60dc3a8",
+  "naiveproxyCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+  "candidateVersion": "1.15.0-alpha.11.polaris.candidate-aafc521b",
+  "libraries": [
+    {
+      "target": "linux_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/linux_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+      "file": "libcronet.so",
+      "bytes": 12370520,
+      "sha256": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+      "gitBlob": "d6bb81f26828e7abb6e3a103e3f14f9fd91a64ac",
+      "observedNative": {
+        "format": "ELF",
+        "class": 64,
+        "machine": 62,
+        "needed": [
+          "libdl.so.2",
+          "libpthread.so.0",
+          "libm.so.6",
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "soname": [
+          "libcronet.so"
+        ],
+        "rpaths": [],
+        "requiredSymbolsMissing": [],
+        "requiredGlibcVersions": [
+          "GLIBC_2.12",
+          "GLIBC_2.14",
+          "GLIBC_2.16",
+          "GLIBC_2.17",
+          "GLIBC_2.2.5",
+          "GLIBC_2.3",
+          "GLIBC_2.3.2",
+          "GLIBC_2.3.3",
+          "GLIBC_2.3.4",
+          "GLIBC_2.4",
+          "GLIBC_2.6",
+          "GLIBC_2.7",
+          "GLIBC_2.9"
+        ]
+      }
+    },
+    {
+      "target": "linux_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:ka6fV7nmcXuxxxViMv3lcO1VZQ7og9BWDTsChbdOs5o=",
+      "file": "libcronet.so",
+      "bytes": 12870832,
+      "sha256": "598e4c45370c684f1a5c6fa00032e07326392b882127357753288acc30e66826",
+      "gitBlob": "2b80981fcb5e20cb1bc2b02ee94462b8855fbe87",
+      "observedNative": {
+        "format": "ELF",
+        "class": 64,
+        "machine": 183,
+        "needed": [
+          "libdl.so.2",
+          "libpthread.so.0",
+          "libm.so.6",
+          "libgcc_s.so.1",
+          "libc.so.6",
+          "ld-linux-aarch64.so.1"
+        ],
+        "soname": [
+          "libcronet.so"
+        ],
+        "rpaths": [],
+        "requiredSymbolsMissing": [],
+        "requiredGlibcVersions": [
+          "GLIBC_2.17"
+        ]
+      }
+    },
+    {
+      "target": "windows_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/windows_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:0Z4FyS1oD2Cl/Shp10UYHki8x/2VxCRGbYJi09pWGPU=",
+      "file": "libcronet.dll",
+      "bytes": 9889280,
+      "sha256": "8b005a933ac0d0899c047617a9cd18418810d9426d0919c824520094a2c893f5",
+      "gitBlob": "8c28531fa686b0f70625fbf75cfb7b6c68af114b",
+      "observedNative": {
+        "format": "PE",
+        "machine": 34404,
+        "optionalMagic": "0x20b",
+        "imports": [
+          "KERNEL32.dll",
+          "ADVAPI32.dll",
+          "dbghelp.dll",
+          "WS2_32.dll",
+          "SHELL32.dll",
+          "IPHLPAPI.DLL",
+          "WINMM.dll",
+          "SHLWAPI.dll",
+          "ole32.dll",
+          "WINHTTP.dll",
+          "USER32.dll",
+          "Secur32.dll",
+          "CRYPT32.dll",
+          "api-ms-win-core-winrt-l1-1-0.dll",
+          "ntdll.dll"
+        ],
+        "exportCount": 273,
+        "requiredSymbolsMissing": [],
+        "authenticodeCertificateTablePresent": false,
+        "authenticodeTrustValidated": false,
+        "delayImports": [],
+        "delayImportDirectoryChecked": true
+      }
+    },
+    {
+      "target": "windows_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/windows_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:AswvqGrtVC1XfOPbzGjWLgoy9huASLRcheKTrD/l31E=",
+      "file": "libcronet.dll",
+      "bytes": 8756224,
+      "sha256": "b840b9e23bb71be434722cadf47feed45f364fd33c180d827c70500022b81077",
+      "gitBlob": "6e675510ba18661db9fd009bfc492d6163cc9651",
+      "observedNative": {
+        "format": "PE",
+        "machine": 43620,
+        "optionalMagic": "0x20b",
+        "imports": [
+          "KERNEL32.dll",
+          "ADVAPI32.dll",
+          "dbghelp.dll",
+          "WS2_32.dll",
+          "SHELL32.dll",
+          "IPHLPAPI.DLL",
+          "WINMM.dll",
+          "SHLWAPI.dll",
+          "ole32.dll",
+          "WINHTTP.dll",
+          "USER32.dll",
+          "Secur32.dll",
+          "CRYPT32.dll",
+          "api-ms-win-core-winrt-l1-1-0.dll",
+          "ntdll.dll"
+        ],
+        "exportCount": 273,
+        "requiredSymbolsMissing": [],
+        "authenticodeCertificateTablePresent": false,
+        "authenticodeTrustValidated": false,
+        "delayImports": [],
+        "delayImportDirectoryChecked": true
+      }
+    },
+    {
+      "target": "darwin_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/darwin_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:xenAxIaoocXqtaNECC1iNOqtdzYRYxhXyE+o+m2ExSw=",
+      "file": "libcronet.a",
+      "bytes": 50784080,
+      "sha256": "4bf67c6b1b3f629a582e0f6ac897fb2faaf58551b08244af29091c7068c13ad1",
+      "gitBlob": "d8ce6f0b70a549a0383897e66018379275ea0c71",
+      "observedNative": {
+        "format": "ar static archive",
+        "objectMembers": 2787,
+        "sampleObject": {
+          "member": "cronet_global_state_stubs.o",
+          "format": "Mach-O",
+          "cpuType": "0x1000007",
+          "fileType": 1,
+          "platformLoadCommands": [
+            {
+              "platform": 1,
+              "minos": "0xd0000",
+              "sdk": "0x1a0500"
+            }
+          ]
+        },
+        "allObjectFormats": [
+          {
+            "metadata": {
+              "format": "other",
+              "magic": "f0310b0000000000"
+            },
+            "count": 1
+          },
+          {
+            "metadata": {
+              "cpuType": "0x1000007",
+              "fileType": 1,
+              "format": "Mach-O",
+              "platformLoadCommands": [
+                {
+                  "minos": "0xd0000",
+                  "platform": 1,
+                  "sdk": "0x1a0500"
+                }
+              ]
+            },
+            "count": 2661
+          },
+          {
+            "metadata": {
+              "cpuType": "0x1000007",
+              "fileType": 1,
+              "format": "Mach-O",
+              "platformLoadCommands": [
+                {
+                  "minos": "0xd0000",
+                  "platform": 1,
+                  "sdk": "0x0"
+                }
+              ]
+            },
+            "count": 125
+          }
+        ]
+      }
+    },
+    {
+      "target": "darwin_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/darwin_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:SpLjX7QCXhKInRzT0hiYCpt+kOmcCVsrJvUV9RRUy2c=",
+      "file": "libcronet.a",
+      "bytes": 48112080,
+      "sha256": "9e2d603eb6c99855fe1528888a70080834728d00793e465a39c77548434a20d0",
+      "gitBlob": "e588a66271dc6b35b874323c89abc4d0e3a20973",
+      "observedNative": {
+        "format": "ar static archive",
+        "objectMembers": 2785,
+        "sampleObject": {
+          "member": "cronet_global_state_stubs.o",
+          "format": "Mach-O",
+          "cpuType": "0x100000c",
+          "fileType": 1,
+          "platformLoadCommands": [
+            {
+              "platform": 1,
+              "minos": "0xd0000",
+              "sdk": "0x1a0500"
+            }
+          ]
+        },
+        "allObjectFormats": [
+          {
+            "metadata": {
+              "format": "other",
+              "magic": "f03d0b0000000000"
+            },
+            "count": 1
+          },
+          {
+            "metadata": {
+              "cpuType": "0x100000c",
+              "fileType": 1,
+              "format": "Mach-O",
+              "platformLoadCommands": [
+                {
+                  "minos": "0xd0000",
+                  "platform": 1,
+                  "sdk": "0x1a0500"
+                }
+              ]
+            },
+            "count": 2660
+          },
+          {
+            "metadata": {
+              "cpuType": "0x100000c",
+              "fileType": 1,
+              "format": "Mach-O",
+              "platformLoadCommands": [
+                {
+                  "minos": "0xd0000",
+                  "platform": 1,
+                  "sdk": "0x0"
+                }
+              ]
+            },
+            "count": 124
+          }
+        ]
+      }
+    }
+  ],
+  "licenseFiles": {
+    "SING-BOX-COPYING": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+    "CRONET-GO-COPYING": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+    "NAIVEPROXY-LICENSE": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+    "CHROMIUM-LICENSE": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+    "GPL-3.0.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "NOTICE": "36aadd00fb759881e75967df1b7d829975546055d02fb37ce505e31974833db7"
+  },
+  "licenseClosure": {
+    "completeThirdPartyNotices": false,
+    "completeCorrespondingSource": false,
+    "blockedReason": "Prebuilt Cronet modules do not ship a complete per-library third-party notice/build dependency inventory; primary license/source files alone are insufficient."
+  },
+  "nativeCLI": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "cronetLinkage": "shared-purego",
+      "cgo": 0
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "cronetLinkage": "shared-purego",
+      "cgo": 0
+    },
+    {
+      "os": "darwin",
+      "arch": "amd64",
+      "cronetLinkage": "static-cgo",
+      "cgo": 1
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "cronetLinkage": "static-cgo",
+      "cgo": 1
+    }
+  ],
+  "deferredMobile": [],
+  "notProven": [
+    "App consumer admission/full config gates",
+    "Real OS DNS/TUN changes",
+    "Android/Apple carrier alignment",
+    "Distribution/signature trust"
+  ],
+  "replacementBinding": {
+    "schemaVersion": 1,
+    "module": "github.com/sagernet/sing-tun",
+    "version": "v0.9.7-0.20261009022811-5c2edb183cc9",
+    "replacementPath": "./third_party/sing-tun",
+    "replacementTree": "18492017863a3bf41df92fe528c2bbe38fe97ab2",
+    "replacementFileCount": 256,
+    "baselineOriginCommit": "5c2edb183cc92eb190d41c04dedfa5519ca3e78c",
+    "baselineZipSha256": "d30c485149d53a88d3d31dd2312b5e4ca97649169ac4d0ed81a918fa80c9bcaf",
+    "baselineModuleSum": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+    "baselineFiles": 253,
+    "changedBaselineFiles": [
+      "tun_windows.go"
+    ],
+    "addedFiles": [
+      "windows_dns_configuration.go",
+      "windows_dns_configuration_test.go",
+      "windows_lifecycle_guard_windows_test.go"
+    ],
+    "other252BaselineFilesByteExact": true,
+    "windowsAfterDNSSuffixUnchanged": true,
+    "patchSha256": "812956b42cfbb5d302343998b898b9c6489a93f633b1f446c367c5c24681ecd1",
+    "fingerprintSchema": "fork-source-fingerprint-v1",
+    "fourKernelPolicy": "Collect same schema from each actual new kernel source/build input; existing a01 and mobilealpha8 fingerprints remain historical and unchanged."
+  },
+  "sourceFileSha256": {
+    "go.mod": "a2d3d373d50a5d1d8a98fac6c3a0393885eeabc8404dfd3435eab41d6426324b",
+    "go.sum": "6904f2adc151e575c3751e7bc0734ac40f3ac039b2640b6ceff4293825f68edb",
+    "scripts/polaris_go_environment.py": "40a059618bdaf4222d2e89586947c4df431043bd00df22b4927d78728b030416",
+    "scripts/polaris_source_fingerprint.py": "453b02b0724dfcb2a4986aa2923bdac1e5409063b60ca435a94f5040cf38c1a2",
+    "release/dependency-sources/sing-tun-replacement.json": "fff7ce2035d71e37fc02d06ef22f1e643c147f6adfbde34f69b69d6d9351773b",
+    "release/dependency-sources/sing-tun-windows-auto-route.patch": "812956b42cfbb5d302343998b898b9c6489a93f633b1f446c367c5c24681ecd1"
+  },
+  "consumerAdmission": {
+    "AppAdmissible": false,
+    "sourceTag": null,
+    "sourceTagObject": null,
+    "contract": "technical-native-v1; not polaris-desktop-core-v1",
+    "reason": "Consumer source/replacement allowlist, role-annotated source tag and final App manifests/BuildID/signature contracts still require owner integration. Never relabel old a01/052 cores."
+  }
+}

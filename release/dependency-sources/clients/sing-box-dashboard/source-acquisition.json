@@ -1,0 +1,26 @@
+{
+  "repository": "SagerNet/sing-box-dashboard",
+  "commit": "f231354bc786dfcffcf09f6ec771bc5683050194",
+  "sourceURL": "https://github.com/SagerNet/sing-box-dashboard/archive/f231354bc786dfcffcf09f6ec771bc5683050194.tar.gz",
+  "bytes": 288218,
+  "sha256": "d3eb0e50697306b994e44c62715807dcef9b8d4fdce64f612bb50e050eae0aee",
+  "fullGetVerified": true,
+  "trackedFiles": 132,
+  "noticeAndBuildInputs": [
+    {
+      "path": "LICENSE",
+      "bytes": 791,
+      "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2404,
+      "sha256": "3c9ba98a5446a7f1bc3d546504f1c5fe5fe5dc242e0a2c00fed893973f4205db"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 259744,
+      "sha256": "4f18292602a189a761311c5962ae9c7742b6541ed3b5279f9b4d2211ad31a8c8"
+    }
+  ]
+}

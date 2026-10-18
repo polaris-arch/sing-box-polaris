@@ -1,0 +1,68 @@
+[
+  {
+    "platform": "linux/amd64",
+    "run": 38072592310,
+    "producer": "720ead161c71415e23f38a82c29d314a4754ab9c",
+    "archiveSha256": "342e6fbd396b95fc4183344ea0c259b6dd9eeb5359c92735af5929f4fed40058",
+    "coreSha256": "c01b1574a242b64c92cb58c5bcc1e1b6f0f1832dd36df8a409df3da0171d8be4",
+    "parsedHeaderFormat": "ELF",
+    "parsedMachineNumber": 62,
+    "parsedArchitecture": "amd64",
+    "deviceExecution": false
+  },
+  {
+    "platform": "linux/arm64",
+    "run": 38072592310,
+    "producer": "720ead161c71415e23f38a82c29d314a4754ab9c",
+    "archiveSha256": "f9a7f6b24640be34b1b4a87f1600abca1257cf89e3c5417b76f7455b9f330718",
+    "coreSha256": "1beb0cf0de25b14c791dfa17bf44d8eb68beefd4ebab6947d47a7273f5d0e1ba",
+    "parsedHeaderFormat": "ELF",
+    "parsedMachineNumber": 183,
+    "parsedArchitecture": "arm64",
+    "deviceExecution": false
+  },
+  {
+    "platform": "windows/amd64",
+    "run": 38072592310,
+    "producer": "720ead161c71415e23f38a82c29d314a4754ab9c",
+    "archiveSha256": "beb2ec91af62e53482b06a6e0956cd051b935349a02356793642944838203c79",
+    "coreSha256": "4f005152bf5ceeb63aeee7d38e1b7d1634046f0afec98eb9ae82a9e94f00a78a",
+    "parsedHeaderFormat": "PE",
+    "parsedMachineNumber": 34404,
+    "parsedArchitecture": "amd64",
+    "deviceExecution": false
+  },
+  {
+    "platform": "darwin/arm64",
+    "run": 38074825396,
+    "producer": "226e88cab62b8818620668a28b496d833c01c953",
+    "archiveSha256": "7c8c547681113b380ec21721e0d2ef279eb40015d72a7633d8664d3c6523a3f2",
+    "coreSha256": "d42d07775f28563cd056143e42402562ba07a1f91abeb4f06149ae9424a3a589",
+    "parsedHeaderFormat": "Mach-O",
+    "parsedMachineNumber": 16777228,
+    "parsedArchitecture": "arm64",
+    "deviceExecution": false
+  },
+  {
+    "platform": "darwin/amd64",
+    "run": 38074825396,
+    "producer": "226e88cab62b8818620668a28b496d833c01c953",
+    "archiveSha256": "f948095265c7c49d13653d06c6fa199f6915130a07e6bd4d6d3f28c79c31e8ec",
+    "coreSha256": "9243ada45cda39c103592790797fbafeebff0ebfb908fc6cebeb18070d5a0704",
+    "parsedHeaderFormat": "Mach-O",
+    "parsedMachineNumber": 16777223,
+    "parsedArchitecture": "amd64",
+    "deviceExecution": false
+  },
+  {
+    "platform": "windows/arm64",
+    "run": 38074825396,
+    "producer": "226e88cab62b8818620668a28b496d833c01c953",
+    "archiveSha256": "2d6eca13c5fb6b63f95dacf0500f3ca412fec1a8ec5aa4c08cbc149bd462ac12",
+    "coreSha256": "b65a397055ffbb2758b8a450a18227671cc3e2f431c4c1158c02bc1460c918a4",
+    "parsedHeaderFormat": "PE",
+    "parsedMachineNumber": 43620,
+    "parsedArchitecture": "arm64",
+    "deviceExecution": false
+  }
+]

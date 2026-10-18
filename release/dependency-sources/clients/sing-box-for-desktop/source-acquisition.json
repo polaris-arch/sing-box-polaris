@@ -1,0 +1,50 @@
+{
+  "repository": "SagerNet/sing-box-for-desktop",
+  "commit": "50f503849148dd73fa4f4bc231119acf5b2f3d7a",
+  "sourceURL": "https://github.com/SagerNet/sing-box-for-desktop/archive/50f503849148dd73fa4f4bc231119acf5b2f3d7a.tar.gz",
+  "bytes": 1402590,
+  "sha256": "8bf8fa0ccd22fb36063a0a6741b2357e6736952abfab9278b03110a168b6f8fd",
+  "fullGetVerified": true,
+  "trackedFiles": 112,
+  "noticeAndBuildInputs": [
+    {
+      "path": "LICENSE",
+      "bytes": 791,
+      "sha256": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c"
+    },
+    {
+      "path": "native/windows-share/Cargo.lock",
+      "bytes": 10425,
+      "sha256": "6994fef64666be29b1dfee9f9b3031616dca9ec658addee74dcd0fd93de1e1c6"
+    },
+    {
+      "path": "native/windows-share/Cargo.toml",
+      "bytes": 684,
+      "sha256": "2c8fafe043cf370a87e5d04166ae655678d6704139aaae396dd6ca0f4ab4a29c"
+    },
+    {
+      "path": "native/windows-share/package.json",
+      "bytes": 146,
+      "sha256": "0e31dafab71b95d069e47cd4a6fa7032307fddb5c9071cc8fad095eccc0360af"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2583,
+      "sha256": "af0a3872639cab803eebf9193ad29da93672626dbdcda319a413dbb15bcc4da0"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 129001,
+      "sha256": "950b1b6b304fc7f8c47a5ce624ff739412a62e165278fbaad52f3a7b42da988d"
+    }
+  ],
+  "verifiedTrackedGitBlobs": 112,
+  "gitlinks": [
+    {
+      "path": "dashboard",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "f231354bc786dfcffcf09f6ec771bc5683050194"
+    }
+  ]
+}

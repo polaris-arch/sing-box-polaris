@@ -1,0 +1,160 @@
+[
+  {
+    "sha": "990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+    "node_id": "C_kwDOS2_N9NoAKDk5MGM1YzVhNTUwNGZjYzJjN2VjNTgwZTU1MWIyMGI1MDM5Y2IwOTc",
+    "commit": {
+      "author": {
+        "name": "\u4e16\u754c",
+        "email": "i@sekai.icu",
+        "date": "2026-08-17T04:04:06Z"
+      },
+      "committer": {
+        "name": "\u4e16\u754c",
+        "email": "i@sekai.icu",
+        "date": "2026-08-17T04:04:06Z"
+      },
+      "message": "Update VBoxUSB drivers to VirtualBox 7.2.14",
+      "tree": {
+        "sha": "ae606253647a10a4353e406a087650c7cbc7a41d",
+        "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/ae606253647a10a4353e406a087650c7cbc7a41d"
+      },
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCaoKINhsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8RtLQD/ZBXTI3xrURD5s1YN7jca\nqHnppceWhSR8PQ1etcUFb+cA/2le0+fAUzab8q9wAppBInfWeJ6fGhpdUns5YkEL\nlpEH\n=wYZV\n-----END PGP SIGNATURE-----",
+        "payload": "tree ae606253647a10a4353e406a087650c7cbc7a41d\nparent 0c1d97decfe259fa5b148d13d57deb8b2b1836c1\nauthor \u4e16\u754c <i@sekai.icu> 1786939446 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1786939446 +0800\n\nUpdate VBoxUSB drivers to VirtualBox 7.2.14\n",
+        "verified_at": "2026-08-17T05:11:02Z"
+      }
+    },
+    "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+    "html_url": "https://github.com/SagerNet/sing-usbip/commit/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+    "comments_url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097/comments",
+    "author": {
+      "login": "nekohasekai",
+      "id": 56506714,
+      "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/nekohasekai",
+      "html_url": "https://github.com/nekohasekai",
+      "followers_url": "https://api.github.com/users/nekohasekai/followers",
+      "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+      "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+      "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+      "repos_url": "https://api.github.com/users/nekohasekai/repos",
+      "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "nekohasekai",
+      "id": 56506714,
+      "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/nekohasekai",
+      "html_url": "https://github.com/nekohasekai",
+      "followers_url": "https://api.github.com/users/nekohasekai/followers",
+      "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+      "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+      "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+      "repos_url": "https://api.github.com/users/nekohasekai/repos",
+      "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "0c1d97decfe259fa5b148d13d57deb8b2b1836c1",
+        "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/0c1d97decfe259fa5b148d13d57deb8b2b1836c1",
+        "html_url": "https://github.com/SagerNet/sing-usbip/commit/0c1d97decfe259fa5b148d13d57deb8b2b1836c1"
+      }
+    ]
+  },
+  {
+    "sha": "bf4ec4dec84a67a0db3e58d9bfdd7ff3a91bf30c",
+    "node_id": "C_kwDOS2_N9NoAKGJmNGVjNGRlYzg0YTY3YTBkYjNlNThkOWJmZGQ3ZmYzYTkxYmYzMGM",
+    "commit": {
+      "author": {
+        "name": "\u4e16\u754c",
+        "email": "i@sekai.icu",
+        "date": "2026-06-10T14:07:16Z"
+      },
+      "committer": {
+        "name": "\u4e16\u754c",
+        "email": "i@sekai.icu",
+        "date": "2026-06-12T06:48:24Z"
+      },
+      "message": "Init commit",
+      "tree": {
+        "sha": "4225546d31df9c5350840680d31d29ade62c2b35",
+        "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/4225546d31df9c5350840680d31d29ade62c2b35"
+      },
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/commits/bf4ec4dec84a67a0db3e58d9bfdd7ff3a91bf30c",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCaiuruBsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8S6kgD+PWp7dd7QNBrPUoCDLNnG\nwuBpiAkc0h0qYs3dc+48zK4A/jWLvWeGMZNAnFDi1FqShDh+U5+MF7R0H839BmPy\n2sgH\n=l9vf\n-----END PGP SIGNATURE-----",
+        "payload": "tree 4225546d31df9c5350840680d31d29ade62c2b35\nauthor \u4e16\u754c <i@sekai.icu> 1781100436 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1781246904 +0800\n\nInit commit\n",
+        "verified_at": "2026-06-12T06:48:31Z"
+      }
+    },
+    "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/bf4ec4dec84a67a0db3e58d9bfdd7ff3a91bf30c",
+    "html_url": "https://github.com/SagerNet/sing-usbip/commit/bf4ec4dec84a67a0db3e58d9bfdd7ff3a91bf30c",
+    "comments_url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/bf4ec4dec84a67a0db3e58d9bfdd7ff3a91bf30c/comments",
+    "author": {
+      "login": "nekohasekai",
+      "id": 56506714,
+      "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/nekohasekai",
+      "html_url": "https://github.com/nekohasekai",
+      "followers_url": "https://api.github.com/users/nekohasekai/followers",
+      "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+      "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+      "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+      "repos_url": "https://api.github.com/users/nekohasekai/repos",
+      "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "nekohasekai",
+      "id": 56506714,
+      "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/nekohasekai",
+      "html_url": "https://github.com/nekohasekai",
+      "followers_url": "https://api.github.com/users/nekohasekai/followers",
+      "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+      "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+      "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+      "repos_url": "https://api.github.com/users/nekohasekai/repos",
+      "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": []
+  }
+]

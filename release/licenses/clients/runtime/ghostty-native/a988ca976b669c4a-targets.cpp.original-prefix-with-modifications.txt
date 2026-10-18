@@ -1,0 +1,19 @@
+// Vendored from google/highway hwy/targets.cc at commit:
+// 66486a10623fa0d72fe91260f96c892e41aceb06
+//
+// Local modifications:
+// - Dropped upstream CPU feature probing and platform-specific detection code
+//   in favor of Ghostty's Zig-provided ghostty_hwy_detect_targets().
+// - Removed the HWY_WARN baseline-mismatch diagnostic path so this file does
+//   not depend on libc-backed formatting/logging.
+// - Kept only the chosen-target bookkeeping and runtime dispatch state that
+//   Highway's HWY_DYNAMIC_DISPATCH machinery needs.
+// - Added hwy_supported_targets() as a small C shim for Zig to query the final
+//   supported target mask.
+//
+// Why:
+// - Ghostty wants a minimal vendored Highway runtime that avoids direct libc
+//   usage and lets Zig own target detection policy.
+// - Narrowing this file to dispatch state makes the local fork easier to audit
+//   and maintain than carrying upstream's full platform detection surface.
+

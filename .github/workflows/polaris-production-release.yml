@@ -1,0 +1,358 @@
+name: Polaris whole-batch desktop and OpenWrt candidates
+on:
+  workflow_dispatch:
+    inputs:
+      attest:
+        description: Generate provenance after approved main integration; does not publish a release
+        type: boolean
+        default: false
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+  SOURCE_COMMIT: ${{ github.sha }}
+permissions:
+  contents: read
+concurrency:
+  group: polaris-production-release-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  plan:
+    if: github.repository == 'polaris-arch/polaris-box'
+    runs-on: ubuntu-24.04
+    outputs:
+      desktop: ${{ steps.plan.outputs.desktop }}
+      openwrt: ${{ steps.plan.outputs.openwrt }}
+    timeout-minutes: 120
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        timeout-minutes: 5
+        with:
+          ref: ${{ github.sha }}
+          path: producer
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        timeout-minutes: 5
+        with:
+          go-version: '1.25.5'
+          cache: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+      - name: Admit contract compilation on this runner
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B producer/scripts/polaris_runner_resources.py \
+            --kind contracts --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/contract-runner-budget.json" --github-env "$GITHUB_ENV"
+      - name: Whole-batch source contracts and regressions
+        timeout-minutes: 62
+        shell: bash
+        env:
+          GOENV: 'off'
+          GOWORK: 'off'
+          GOFLAGS: ''
+          GOTOOLCHAIN: local
+          GOMODCACHE: ${{ runner.temp }}/batch-test-gomod
+          GOCACHE: ${{ runner.temp }}/batch-test-gocache
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-production-contracts.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          python3 -B producer/scripts/polaris_fork_maintenance.py --source "$GITHUB_SHA" > "$RUNNER_TEMP/fork-maintenance-audit.json"
+          python3 -B -m unittest discover -s producer/scripts -p 'test_polaris_*.py' -v 2>&1 | tee "$RUNNER_TEMP/whole-batch-contracts.log"
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase production-contracts \
+            --output "$RUNNER_TEMP/polaris-ci/production-contracts" --timeout-seconds 3600 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-production-contracts.sh"
+      - name: Preserve batch contract results
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-batch-contracts-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/whole-batch-contracts.log
+            ${{ runner.temp }}/fork-maintenance-audit.json
+            ${{ runner.temp }}/contract-runner-budget.json
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+          if-no-files-found: warn
+      - id: plan
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B producer/scripts/polaris_production_release.py plan > "$RUNNER_TEMP/polaris-plan.json"
+          python3 -B - <<'PY'
+          import json, os
+          from pathlib import Path
+          plan = json.loads((Path(os.environ['RUNNER_TEMP']) / 'polaris-plan.json').read_bytes())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for kind in ('desktop', 'openwrt'):
+                  rows = [row for row in plan['matrix'] if row['kind'] == kind]
+                  output.write(kind + '=' + json.dumps(rows, separators=(',', ':')) + '\n')
+          PY
+  native:
+    needs: plan
+    name: Production ${{ matrix.kind }} ${{ matrix.os }}/${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      # Separate hosted machines; GitHub account/runner capacity schedules jobs.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.desktop) }}
+    uses: ./.github/workflows/polaris-production-native.yml
+    with:
+      kind: desktop
+      os: ${{ matrix.os }}
+      arch: ${{ matrix.arch }}
+      tool_arch: ${{ matrix.tool_arch }}
+      runner: ${{ matrix.runner }}
+      expected_head: ${{ github.sha }}
+  native-openwrt:
+    needs: plan
+    name: Production ${{ matrix.kind }} ${{ matrix.os }}/${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      # Separate hosted machines; GitHub account/runner capacity schedules jobs.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.openwrt) }}
+    uses: ./.github/workflows/polaris-production-native.yml
+    with:
+      kind: openwrt
+      os: ${{ matrix.os }}
+      arch: ${{ matrix.arch }}
+      tool_arch: ${{ matrix.tool_arch }}
+      runner: ${{ matrix.runner }}
+      expected_head: ${{ github.sha }}
+  openwrt-guests:
+    needs: [plan, native-openwrt]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x86_64, aarch64_generic]
+        format: [ipk, apk]
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':3600,'evidenceReserveSeconds':600,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        timeout-minutes: 5
+        with:
+          ref: ${{ github.sha }}
+          path: producer
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        timeout-minutes: 5
+        with:
+          name: polaris-box-production-openwrt-openwrt-${{ matrix.architecture }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/openwrt-inputs
+      - name: Ephemeral isolated VM tools
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-system-arm qemu-user e2fsprogs openssh-client openssl
+      - name: Actual official guest package and runtime gates
+        timeout-minutes: 47
+        shell: bash
+        env:
+          OPENWRT_ARCH: ${{ matrix.architecture }}
+          PACKAGE_FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-production-guest.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          python3 -B producer/scripts/polaris_openwrt_guest.py \
+            --expected-head "$GITHUB_SHA" --architecture "$OPENWRT_ARCH" --format "$PACKAGE_FORMAT" \
+            --inputs "$RUNNER_TEMP/openwrt-inputs" --output "$RUNNER_TEMP/openwrt-guest"
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase production-guest \
+            --output "$RUNNER_TEMP/polaris-ci/production-guest" --timeout-seconds 2700 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-production-guest.sh"
+      - name: Preserve guest receipts and failures
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-openwrt-guest-${{ matrix.architecture }}-${{ matrix.format }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/openwrt-guest/guest-receipt.json
+            ${{ runner.temp }}/openwrt-guest/GUEST-FAILURE.json
+            ${{ runner.temp }}/openwrt-guest/REPOSITORY-PREPARATION.json
+            ${{ runner.temp }}/openwrt-guest/*.log
+            ${{ runner.temp }}/openwrt-guest/*-observation.json
+            ${{ runner.temp }}/openwrt-guest/naive-tls-h2/*.json
+            ${{ runner.temp }}/openwrt-guest/naive-tls-h2/*.log
+            ${{ runner.temp }}/openwrt-guest/naive-tls-h2/*.crt
+            ${{ runner.temp }}/openwrt-guest/naive-tls-h2/*-response.bin
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Preserve separate command observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-guest-${{ matrix.architecture }}-${{ matrix.format }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-ci
+          if-no-files-found: warn
+          retention-days: 14
+  assemble:
+    needs: [plan, native, native-openwrt, openwrt-guests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        timeout-minutes: 5
+        with:
+          ref: ${{ github.sha }}
+          path: producer
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        timeout-minutes: 5
+        with:
+          go-version: '1.25.5'
+          cache: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        timeout-minutes: 5
+        with:
+          pattern: polaris-box-production-desktop-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/native-inputs
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        timeout-minutes: 5
+        with:
+          pattern: polaris-box-production-openwrt-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/openwrt-inputs
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        timeout-minutes: 5
+        with:
+          pattern: polaris-box-openwrt-guest-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/guest-inputs
+      - name: Assemble same-run twelve assets and fixed public source references
+        timeout-minutes: 92
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-production-assemble.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          python3 -B producer/scripts/polaris_production_release.py assemble \
+            --expected-head "$GITHUB_SHA" --inputs "$RUNNER_TEMP/native-inputs" \
+            --openwrt-inputs "$RUNNER_TEMP/openwrt-inputs" --guest-inputs "$RUNNER_TEMP/guest-inputs" \
+            --output "$RUNNER_TEMP/polaris-production-final"
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase production-assemble \
+            --output "$RUNNER_TEMP/polaris-ci/production-assemble" --timeout-seconds 5400 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-production-assemble.sh"
+      - name: Preserve full-byte source availability checks and failures
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-public-source-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/public-source-check/*.json
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        timeout-minutes: 5
+        with:
+          name: polaris-box-production-final-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-production-final
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+  provenance:
+    if: inputs.attest && github.ref == 'refs/heads/polaris-main'
+    needs: assemble
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: polaris-box-production-final-${{ github.run_id }}
+          path: final
+      - id: attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
+        with:
+          subject-path: final/*
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-production-provenance-${{ github.run_id }}
+          path: ${{ steps.attest.outputs.bundle-path }}
+          if-no-files-found: error
+          retention-days: 14

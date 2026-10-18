@@ -1,0 +1,25 @@
+{
+  "schema": "polaris-fixed-go-notices-v1",
+  "version": "go1.27.2",
+  "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+  "sourceBinding": ".github/go-toolchains.json",
+  "retrieval": "GitHub connector fixed-commit contents; base64 decoded; SHA256 and length checked",
+  "checkedAtUtc": "2026-10-17T11:10:00Z",
+  "files": [
+    {
+      "path": "LICENSE",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/LICENSE",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+    },
+    {
+      "path": "PATENTS",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/PATENTS",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+    }
+  ],
+  "scope": "Root Go notices rebound to exact current official source; does not claim all nested notices or platform-specific modified runtime source coverage."
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Makefile.kmk",
+    "path": "src/VBox/HostDrivers/VBoxUSB/Makefile.kmk",
+    "sha": "0f75804aa2f3ea18e971091fc41ef90620943762",
+    "size": 2585,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/Makefile.kmk?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/Makefile.kmk",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/0f75804aa2f3ea18e971091fc41ef90620943762",
+    "download_url": "https://raw.githubusercontent.com/VirtualBox/virtualbox/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/Makefile.kmk",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/Makefile.kmk?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/0f75804aa2f3ea18e971091fc41ef90620943762",
+      "html": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/Makefile.kmk"
+    }
+  },
+  {
+    "name": "USBFilter.cpp",
+    "path": "src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp",
+    "sha": "141ea63dca1b8f7a18e96e6e28b4707ac488cade",
+    "size": 64433,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/141ea63dca1b8f7a18e96e6e28b4707ac488cade",
+    "download_url": "https://raw.githubusercontent.com/VirtualBox/virtualbox/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/141ea63dca1b8f7a18e96e6e28b4707ac488cade",
+      "html": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBFilter.cpp"
+    }
+  },
+  {
+    "name": "USBLib.cpp",
+    "path": "src/VBox/HostDrivers/VBoxUSB/USBLib.cpp",
+    "sha": "57cb80f1e0335f9a76a80885ba5fb069f70003fc",
+    "size": 2517,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/USBLib.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBLib.cpp",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/57cb80f1e0335f9a76a80885ba5fb069f70003fc",
+    "download_url": "https://raw.githubusercontent.com/VirtualBox/virtualbox/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBLib.cpp",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/USBLib.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/57cb80f1e0335f9a76a80885ba5fb069f70003fc",
+      "html": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/USBLib.cpp"
+    }
+  },
+  {
+    "name": "VBoxUSBFilterMgr.cpp",
+    "path": "src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp",
+    "sha": "76a4007690a928061ac64b60ec750f8e822e3605",
+    "size": 17303,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/76a4007690a928061ac64b60ec750f8e822e3605",
+    "download_url": "https://raw.githubusercontent.com/VirtualBox/virtualbox/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/76a4007690a928061ac64b60ec750f8e822e3605",
+      "html": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.cpp"
+    }
+  },
+  {
+    "name": "VBoxUSBFilterMgr.h",
+    "path": "src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h",
+    "sha": "dfc4f19d8069f34cb45a525d79b877cbe516f97e",
+    "size": 2668,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/dfc4f19d8069f34cb45a525d79b877cbe516f97e",
+    "download_url": "https://raw.githubusercontent.com/VirtualBox/virtualbox/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/dfc4f19d8069f34cb45a525d79b877cbe516f97e",
+      "html": "https://github.com/VirtualBox/virtualbox/blob/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/VBoxUSBFilterMgr.h"
+    }
+  },
+  {
+    "name": "os2",
+    "path": "src/VBox/HostDrivers/VBoxUSB/os2",
+    "sha": "7078a6447639c159adcf24c190530107308894bd",
+    "size": 0,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/os2?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/os2",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/7078a6447639c159adcf24c190530107308894bd",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/os2?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/7078a6447639c159adcf24c190530107308894bd",
+      "html": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/os2"
+    }
+  },
+  {
+    "name": "solaris",
+    "path": "src/VBox/HostDrivers/VBoxUSB/solaris",
+    "sha": "abcb63144050260e0778f0fa93cfd6b1c5de1ddb",
+    "size": 0,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/solaris?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/solaris",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/abcb63144050260e0778f0fa93cfd6b1c5de1ddb",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/solaris?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/abcb63144050260e0778f0fa93cfd6b1c5de1ddb",
+      "html": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/solaris"
+    }
+  },
+  {
+    "name": "testcase",
+    "path": "src/VBox/HostDrivers/VBoxUSB/testcase",
+    "sha": "694dde08efffbcef0e2fb653adfb848e4639ef76",
+    "size": 0,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/testcase?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/testcase",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/694dde08efffbcef0e2fb653adfb848e4639ef76",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/testcase?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/694dde08efffbcef0e2fb653adfb848e4639ef76",
+      "html": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/testcase"
+    }
+  },
+  {
+    "name": "win",
+    "path": "src/VBox/HostDrivers/VBoxUSB/win",
+    "sha": "eff406d646754c779fa1327fb5f2051c6b491dc7",
+    "size": 0,
+    "url": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/win?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+    "html_url": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/win",
+    "git_url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/eff406d646754c779fa1327fb5f2051c6b491dc7",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/VirtualBox/virtualbox/contents/src/VBox/HostDrivers/VBoxUSB/win?ref=51d188f0a2a40015663041baa29f7aa0c10af5e5",
+      "git": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/eff406d646754c779fa1327fb5f2051c6b491dc7",
+      "html": "https://github.com/VirtualBox/virtualbox/tree/51d188f0a2a40015663041baa29f7aa0c10af5e5/src/VBox/HostDrivers/VBoxUSB/win"
+    }
+  }
+]

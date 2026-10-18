@@ -1,0 +1,21 @@
+Polaris candidate includes sing-box, SagerNet Cronet Go bindings, and the matching
+Cronet library identified by module version, Git blob and byte SHA256 in provenance.
+
+sing-box: GPL-3.0-or-later; COPYING and full GPL text accompany this candidate.
+Source: https://github.com/polaris-arch/polaris-box/tree/a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932
+Go dependency versions/checksums: same source go.mod and go.sum.
+Cronet Go wrapper/module: GPL-3.0-or-later.
+Source: https://github.com/SagerNet/cronet-go/tree/4d18a60dc3a8d327065b058f92fbbfc9391b84bc
+Library module origin: a1cafd93eb1f748f354378309f84de3e2d4a71e4
+Library blobs: https://github.com/SagerNet/cronet-go/tree/4d18a60dc3a8d327065b058f92fbbfc9391b84bc/lib
+Naiveproxy fork: BSD; its exact fixed gitlink, not a moving branch:
+https://github.com/SagerNet/naiveproxy/tree/be1be963131154ba82761a7ed85ba426b2027319
+Chromium source snapshot within that gitlink:
+https://github.com/SagerNet/naiveproxy/tree/be1be963131154ba82761a7ed85ba426b2027319/src
+Top-level BSD texts are NAIVEPROXY-LICENSE and CHROMIUM-LICENSE.
+
+DISTRIBUTION BLOCKER: complete per-library Chromium third-party notice and
+Corresponding Source/build-input closure has not been attested for these prebuilt
+bytes. Top-level license texts and source addresses do not establish that closure.
+This is an unsigned CI/local review candidate, not a distributable release.
+No old source-only tag is used as proof that these binary assets are complete.

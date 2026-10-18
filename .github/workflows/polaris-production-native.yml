@@ -1,0 +1,328 @@
+# Internal producer shared by two independent same-source scheduling lanes.
+name: Polaris production native runner
+on:
+  workflow_call:
+    inputs:
+      kind:
+        type: string
+        required: true
+      os:
+        type: string
+        required: true
+      arch:
+        type: string
+        required: true
+      tool_arch:
+        type: string
+        required: true
+      runner:
+        type: string
+        required: true
+      expected_head:
+        type: string
+        required: true
+permissions:
+  contents: read
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  build:
+    if: github.repository == 'polaris-arch/polaris-box'
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    env:
+      SOURCE_COMMIT: ${{ inputs.expected_head }}
+      GOTOOLCHAIN: local
+      GOENV: 'off'
+      GOWORK: 'off'
+      GOFLAGS: ''
+      GIT_CONFIG_COUNT: '2'
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: core.eol
+      GIT_CONFIG_VALUE_1: lf
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':1800,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        timeout-minutes: 5
+        with:
+          ref: ${{ inputs.expected_head }}
+          path: producer
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        timeout-minutes: 5
+        with:
+          ref: ${{ inputs.expected_head }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        timeout-minutes: 5
+        with:
+          go-version: '1.25.5'
+          architecture: ${{ inputs.tool_arch }}
+          cache: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+          architecture: ${{ inputs.os == 'windows' && 'x64' || inputs.tool_arch == 'amd64' && 'x64' || inputs.tool_arch }}
+      - name: Admit compilation on this runner with measured system reserves
+        timeout-minutes: 5
+        shell: bash
+        env:
+          RESOURCE_KIND: ${{ inputs.kind }}
+        run: |
+          set -euo pipefail
+          test "$SOURCE_COMMIT" = "$GITHUB_SHA"
+          python -B producer/scripts/polaris_runner_resources.py \
+            --kind "$RESOURCE_KIND" --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - name: Plan fixed OpenWrt archive cache identity
+        timeout-minutes: 5
+        id: archive_plan
+        if: inputs.kind == 'openwrt'
+        shell: bash
+        env:
+          ARCHITECTURE: ${{ inputs.arch }}
+        run: |
+          python -B producer/scripts/polaris_ci_downloads.py openwrt-plan --repo producer             --root "$RUNNER_TEMP/openwrt-cache/downloads" --architecture "$ARCHITECTURE"             --output "$RUNNER_TEMP/polaris-ci/archive-plan.json" --github-output "$GITHUB_OUTPUT"
+      - name: Admit optional cache within remaining job work time
+        id: sdk_restore_budget
+        if: inputs.kind == 'openwrt'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Restore byte-pinned sdk archive
+        id: sdk_restore
+        if: inputs.kind == 'openwrt' && steps.sdk_restore_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.sdk_restore_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.sdk_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.sdk_digest }}
+      - name: Admit optional cache within remaining job work time
+        id: apk_restore_budget
+        if: inputs.kind == 'openwrt'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Restore byte-pinned apk archive
+        id: apk_restore
+        if: inputs.kind == 'openwrt' && steps.apk_restore_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.apk_restore_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.apk_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.apk_digest }}
+      - name: Admit optional cache within remaining job work time
+        id: clang_restore_budget
+        if: inputs.kind == 'openwrt'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Restore byte-pinned clang archive
+        id: clang_restore
+        if: inputs.kind == 'openwrt' && steps.clang_restore_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.clang_restore_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.clang_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.clang_digest }}
+      - name: Check restored archive bytes before any consumer
+        timeout-minutes: 5
+        if: inputs.kind == 'openwrt'
+        shell: bash
+        env:
+          ARCHITECTURE: ${{ inputs.arch }}
+        run: |
+          python -B producer/scripts/polaris_ci_downloads.py openwrt-check --repo producer             --root "$RUNNER_TEMP/openwrt-cache/downloads" --architecture "$ARCHITECTURE"             --output "$RUNNER_TEMP/polaris-ci/archive-before.json"
+      - name: OpenWrt package tools on the ephemeral runner
+        timeout-minutes: 5
+        if: inputs.kind == 'openwrt'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y zstd qemu-user fakeroot
+      - name: Build actual version, verify patched source, native capabilities and final archive
+        timeout-minutes: 92
+        shell: bash
+        env:
+          PRODUCTION_TARGET: ${{ inputs.os }}/${{ inputs.arch }}
+          PRODUCTION_KIND: ${{ inputs.kind }}
+          OPENWRT_ARCH: ${{ inputs.arch }}
+          GOMODCACHE: ${{ runner.temp }}/polaris-production-gomod
+          GOCACHE: ${{ runner.temp }}/polaris-production-gocache
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-production-native.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          measured() {
+            if [[ "$RUNNER_OS" == macOS ]]; then
+              /usr/bin/time -l "$@"
+            else
+              "$@"
+            fi
+          }
+          if [[ "$PRODUCTION_KIND" == desktop ]]; then
+            measured python -B producer/scripts/polaris_production_release.py native \
+              --source "$GITHUB_WORKSPACE/source" --expected-head "$GITHUB_SHA" \
+              --target "$PRODUCTION_TARGET" --output "$RUNNER_TEMP/polaris-production"
+          else
+            measured python -B producer/scripts/polaris_openwrt.py native \
+              --source "$GITHUB_WORKSPACE/source" --expected-head "$GITHUB_SHA" \
+              --architecture "$OPENWRT_ARCH" --cache "$RUNNER_TEMP/openwrt-cache" \
+              --output "$RUNNER_TEMP/polaris-production"
+          fi
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase production-native \
+            --output "$RUNNER_TEMP/polaris-ci/production-native" --timeout-seconds 5400 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-production-native.sh"
+      - name: Recheck immutable acquisitions after consumer, including failure
+        timeout-minutes: 5
+        id: archive_after
+        if: always() && inputs.kind == 'openwrt' && steps.archive_plan.outcome == 'success'
+        shell: bash
+        env:
+          ARCHITECTURE: ${{ inputs.arch }}
+        run: |
+          python -B producer/scripts/polaris_ci_downloads.py openwrt-check --repo producer             --root "$RUNNER_TEMP/openwrt-cache/downloads" --architecture "$ARCHITECTURE"             --output "$RUNNER_TEMP/polaris-ci/archive-after.json" --github-output "$GITHUB_OUTPUT"
+      - name: Preserve failed archive inputs without copying valid tool caches
+        timeout-minutes: 5
+        if: always() && inputs.kind == 'openwrt' && steps.archive_plan.outcome == 'success'
+        shell: bash
+        env:
+          ARCHITECTURE: ${{ inputs.arch }}
+        run: |
+          python -B producer/scripts/polaris_ci_downloads.py preserve-openwrt --repo producer             --root "$RUNNER_TEMP/openwrt-cache/downloads" --architecture "$ARCHITECTURE"             --output "$RUNNER_TEMP/polaris-ci/invalid-inputs"
+      - name: Freeze bounded CI handoff layout
+        timeout-minutes: 5
+        if: always()
+        shell: bash
+        run: |
+          python -B - <<'PYHANDOFF'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          source=Path(os.environ['RUNNER_TEMP'])/'polaris-production'
+          output=Path(os.environ['RUNNER_TEMP'])/'polaris-handoff'
+          output.mkdir(exist_ok=False)
+          budget=Path(os.environ['RUNNER_TEMP'])/'polaris-runner-budget.json'
+          if budget.exists():shutil.copyfile(budget,output/budget.name)
+          clock=Path(os.environ['POLARIS_JOB_BUDGET'])
+          if clock.exists():shutil.copyfile(clock,output/clock.name)
+          if source.exists():
+              for path in source.iterdir():
+                  if path.name.startswith('work-') or path.name=='technical' and (source/'final').exists():
+                      continue
+                  dest=output/path.name
+                  if path.name=='test-inputs':
+                      dest.mkdir()
+                      for file in path.iterdir():
+                          if file.is_file() and file.suffix in ('.apk','.ipk'):
+                              shutil.copyfile(file,dest/file.name)
+                  elif path.is_dir():shutil.copytree(path,dest)
+                  elif path.is_file():shutil.copyfile(path,dest)
+          observations=Path(os.environ['RUNNER_TEMP'])/'polaris-ci'
+          if observations.exists():shutil.copytree(observations,output/'ci-observations')
+          def digest(path):
+              with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+          rows={str(p.relative_to(output)):{'bytes':p.stat().st_size,'sha256':digest(p)} for p in output.rglob('*') if p.is_file()}
+          (output/'HANDOFF-IDENTITY.json').write_text(json.dumps({'sourceCommit':os.environ['GITHUB_SHA'],'workflowRun':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'files':rows},indent=2)+'\n')
+          PYHANDOFF
+      - name: Preserve actual output and failures
+        id: ci_evidence_upload
+        timeout-minutes: 10
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-production-${{ inputs.kind }}-${{ inputs.os }}-${{ inputs.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-handoff
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Admit optional cache within remaining job work time
+        id: sdk_save_budget
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.sdk_valid == 'true' && steps.sdk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Save verified sdk acquisition only
+        id: sdk_save
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.sdk_valid == 'true' && steps.sdk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success' && steps.sdk_save_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.sdk_save_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.sdk_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.sdk_digest }}
+      - name: Admit optional cache within remaining job work time
+        id: apk_save_budget
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.apk_valid == 'true' && steps.apk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Save verified apk acquisition only
+        id: apk_save
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.apk_valid == 'true' && steps.apk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success' && steps.apk_save_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.apk_save_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.apk_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.apk_digest }}
+      - name: Admit optional cache within remaining job work time
+        id: clang_save_budget
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.clang_valid == 'true' && steps.clang_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B producer/scripts/polaris_ci_observe.py --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Save verified clang acquisition only
+        id: clang_save
+        if: always() && inputs.kind == 'openwrt' && steps.archive_after.outputs.clang_valid == 'true' && steps.clang_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success' && steps.clang_save_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.clang_save_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ steps.archive_plan.outputs.clang_path }}
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.archive_plan.outputs.clang_digest }}

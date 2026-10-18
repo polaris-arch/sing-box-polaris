@@ -1,0 +1,2 @@
+// Inverse hyperbolic function implementations derived from boost special math functions,
+// Copyright Eric Ford & Hubert Holin 2001.

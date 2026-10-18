@@ -1,0 +1,118 @@
+name: Polaris DNS four-core technical candidate (no publication)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: polaris-dns-native-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  native_cli:
+    timeout-minutes: 120
+    name: DNS native ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {os: linux, arch: amd64, tool_arch: x64, runner: ubuntu-24.04}
+          - {os: windows, arch: amd64, tool_arch: x64, runner: windows-2025}
+          - {os: darwin, arch: amd64, tool_arch: x64, runner: macos-15-intel}
+          - {os: darwin, arch: arm64, tool_arch: arm64, runner: macos-15}
+    env:
+      SOURCE_COMMIT: 'aafc521b745e0d1a8f50a6a3f41169433f1c2194'
+      PYTHONDONTWRITEBYTECODE: '1'
+      GOMAXPROCS: '2'
+      GOENV: 'off'
+      GOWORK: 'off'
+      GOFLAGS: ''
+      GOTOOLCHAIN: local
+      GIT_CONFIG_COUNT: '2'
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: core.eol
+      GIT_CONFIG_VALUE_1: lf
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - name: Checkout frozen producer revision
+        timeout-minutes: 5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          path: producer
+          persist-credentials: false
+      - name: Checkout immutable DNS product source
+        timeout-minutes: 5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: aafc521b745e0d1a8f50a6a3f41169433f1c2194
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        timeout-minutes: 5
+        with:
+          go-version: '1.25.5'
+          architecture: ${{ matrix.tool_arch }}
+          cache: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.tool_arch }}
+      - name: Build fixed source; native mocks, BuildInfo, Cronet and package readback
+        timeout-minutes: 92
+        shell: bash
+        env:
+          CANDIDATE_OS: ${{ matrix.os }}
+          CANDIDATE_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-historical-native.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          python producer/scripts/polaris_dns_native_candidate.py \
+            --source "$GITHUB_WORKSPACE/source" \
+            --output "$RUNNER_TEMP/polaris-dns-native" \
+            --expected-producer-head "$GITHUB_SHA" \
+            --os "$CANDIDATE_OS" --arch "$CANDIDATE_ARCH"
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase historical-native \
+            --output "$RUNNER_TEMP/polaris-ci/historical-native" --timeout-seconds 5400 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-historical-native.sh"
+      - name: Preserve actual binaries and evidence; never publish
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-dns-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-dns-native
+          if-no-files-found: warn
+          retention-days: 3
+      - name: Preserve separate command observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-history-dns-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-ci
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,89 @@
+{
+  "state": "frozen_partial_evidence",
+  "completeRuntimeBOM": false,
+  "legalComplianceCertified": false,
+  "noAutomaticBlockForAbsentStandaloneLicense": true,
+  "Android": {
+    "confirmedEvidenceLimit": "No resolved per-flavor transitive Gradle component/artifact graph was run or available in this research pass. The 70 coordinates are direct declarations only.",
+    "parentImplementationStatus": "Parent reports a separate init.gradle component/artifact-SHA receipt and resolve-only diagnostic workflow implemented with fixtures; execution is not asserted here.",
+    "specificRemainingCorrespondence": "For desugar_jdk_libs 2.1.5, the exact runtime JAR was fetched and hashed, but zero standalone original notices were recovered. The POM declares GPL-2.0 with Classpath exception. Original license/source revision and emitted-code correspondence remain unestablished by this pass."
+  },
+  "AppleGhostty": {
+    "fixedWrapperRevision": "cffef22c16dd61d22ebef539ae2ff1624db77363",
+    "binaryRelease": "upstream.35a81a980bb9",
+    "entry": "GhosttyKit.xcframework/ios-arm64/libghostty.a",
+    "entrySHA256": "0fd53ae56ac9b02d8fad9033c47cf7cf64674536eef2ba0af031b438fedeadd6",
+    "members": 167,
+    "observedArchiveMemberFamilies": {
+      "FreeType": [
+        "autofit.o",
+        "ftbase.o",
+        "ftglyph.o"
+      ],
+      "libpng": [
+        "png.o",
+        "pngread.o",
+        "pngwrite.o"
+      ],
+      "zlib": [
+        "adler32.o",
+        "deflate.o",
+        "inflate.o"
+      ],
+      "Oniguruma": [
+        "onig_init.o",
+        "regcomp.o",
+        "regexec.o"
+      ],
+      "simdutf": [
+        "simdutf.o"
+      ],
+      "Highway": [
+        "libhighway_zcu.o",
+        "per_target.o",
+        "targets.o"
+      ],
+      "gettext/libintl": [
+        "gettext.o",
+        "dcgettext.o",
+        "dcigettext.o",
+        "bindtextdom.o",
+        "textdomain.o"
+      ],
+      "stb": [
+        "stb.o"
+      ],
+      "Wuffs": [
+        "wuffs-v0.4.o"
+      ],
+      "Ghostty": [
+        "libghostty_zcu.o"
+      ],
+      "compiler runtime": [
+        "compiler_rt.o"
+      ],
+      "libc++ compatibility": [
+        "libcxx-verbose-abort-compat.o"
+      ]
+    },
+    "exactRemainingTask": "Map these member families to the fixed Ghostty build dependency revisions and applicable original texts, particularly the gettext/libintl source license. Upstream Ghostty native-core original license text itself was not acquired in this frozen pass. Wrapper MIT/README alone is not a complete native dependency notice inventory.",
+    "inclusionBoundary": "Members exist in the actual shared prebuilt static archive. This does not prove every member survives final-app static linking/dead stripping. No full product build or all-platform repeated inspection is requested."
+  },
+  "CodeLanguagesContainer": {
+    "fixedArchiveSHA256": "c6ee69d9d373a9c3cf93d239e05369d9b941275d31cd7956d0dc83b5a5c3e152",
+    "fixedTreeBlobVerified": true,
+    "zipEntries": 24,
+    "standaloneNoticeEntries": 0,
+    "sourceNoticeSet": "37 grammar source candidates at nested locked revisions acquired. No assertion of per-grammar final Mach-O retention."
+  },
+  "StandaloneNoticeObservations": {
+    "components": [
+      "CodeEditLanguages",
+      "CodeEditSymbols",
+      "codemirror-json5@1.0.3"
+    ],
+    "evidence": "notice-observation-scope.json",
+    "meaning": "No standalone notice found in inspected paths and manifests; full source-file header scan not performed. This is not proof of missing permission and is not itself a confirmed release blocker."
+  },
+  "correction": "27 OfLong.class binary false positives removed; preliminary 193-text/27-desugar-notice claims withdrawn. Corrected 166 UTF-8 texts / 305 mappings."
+}

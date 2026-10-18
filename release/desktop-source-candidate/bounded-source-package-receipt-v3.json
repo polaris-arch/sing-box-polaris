@@ -1,0 +1,13 @@
+{
+  "filename": "polaris-box-a01-desktop-source-candidate-three-platforms-v3.tar.gz",
+  "bytes": 269294848,
+  "sha256": "4f73718d3dd4e5f8ce11e1d5a541a1f6098a36492f49033be645420f377883a6",
+  "verifiedMemberCount": 170,
+  "sourceModuleZipCount": 147,
+  "productSourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "actualAcceptedPlatformCount": 3,
+  "completeSixTargetSource": false,
+  "noticeInputsAdoptedByNativeProducer": false,
+  "publicSourceDeliveryPerformed": false,
+  "publicationEligible": false
+}
