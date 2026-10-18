@@ -9,7 +9,12 @@ class TestCIContract(unittest.TestCase):
   for filename,up in [('build.yml','build.yml'),('signed-release.yml','build.yml'),('linux.yml','linux.yml'),('signed-linux.yml','linux.yml'),('docker.yml','docker.yml'),('publish-container.yml','docker.yml')]:
    w=yaml.safe_load((ROOT/'.github/workflows'/filename).read_text())
    self.assertEqual(set(w['on']),{'workflow_dispatch'},filename)
-   for job,matrix in baseline[up].items():self.assertEqual(w['jobs'][job]['strategy']['matrix'],matrix,(filename,job))
+   for job,matrix in baseline[up].items():
+    actual=copy.deepcopy(w['jobs'][job]['strategy']['matrix'])
+    if job=='build' and filename in ('build.yml','signed-release.yml'):
+     actual['include']+=w['jobs']['build_windows7']['strategy']['matrix']['include']
+     self.assertCountEqual(actual['include'],matrix['include'],(filename,job))
+    else:self.assertEqual(actual,matrix,(filename,job))
  def test_every_workflow_has_actions_trigger(self):
   for p in (ROOT/'.github/workflows').glob('*.yml'):
    # BaseLoader prevents YAML 1.1 silently accepting the invalid boolean true key as on.
@@ -601,7 +606,7 @@ class TestNetnsBatchAuthorization(unittest.TestCase):
 
     def authorize(self, kind='pull_request', actual=None, source=None, change_pr=None,
                   event_number=2, ref=None, repository=None, tree=None, parents=None,
-                  merge=..., commit_sha=None, fail_api=None, message='message\n'):
+                  merge=..., commit_sha=None, fail_api=None, message='message\n', extra_env=None, dirty=False):
         workflow = ROOT / '.github/workflows/polaris-selfcheck.yml'
         document = yaml.safe_load(workflow.read_text())
         code = next(s['run'] for s in document['jobs']['patch_tests']['steps']
@@ -631,6 +636,8 @@ class TestNetnsBatchAuthorization(unittest.TestCase):
             self.assertEqual(kwargs, {'text': True})
             if args == ['git', 'rev-parse', 'HEAD']:
                 return actual + '\n'
+            if args == ['git', 'status', '--porcelain', '--untracked-files=no']:
+                return ' M go.mod\n' if dirty else ''
             if args == ['git', 'rev-parse', 'HEAD^{tree}']:
                 return self.TREE + '\n'
             if args == ['git', 'cat-file', '-p', 'HEAD']:
@@ -646,6 +653,7 @@ class TestNetnsBatchAuthorization(unittest.TestCase):
                    'EVENT_NAME': kind, 'EVENT_REF': ref or ('refs/heads/polaris-main' if kind == 'push' else 'refs/pull/2/merge'),
                    'EVENT_REPOSITORY': repository or self.REPO['full_name'],
                    'SOURCE_COMMIT': source or actual, 'GH_TOKEN': 'fixture-token-never-network'}
+            env.update(extra_env or {})
             log, failure = io.StringIO(), None
             with mock.patch.dict(os.environ, env, clear=True), \
                  mock.patch('urllib.request.urlopen', side_effect=urlopen), \
@@ -660,6 +668,28 @@ class TestNetnsBatchAuthorization(unittest.TestCase):
         self.assertNotIn('fixture-token', log.getvalue())
         self.assertNotIn('fixture-token', failure or '')
         return result, failure, urls, git
+
+    def test_governance_window_requires_exact_approved_hosted_source_and_never_widens_the_binary(self):
+        sha = self.OTHER
+        env = {'GOVERNANCE_NETNS_SHA': sha, 'GITHUB_SHA': sha, 'GITHUB_REPOSITORY_ID': str(self.REPO['id']),
+               'RUNNER_ENVIRONMENT': 'github-hosted', 'RUNNER_OS': 'Linux'}
+        for kind in ['push', 'workflow_dispatch']:
+            for ref in ['refs/heads/polaris-main', 'refs/heads/ci/governance']:
+                result, failure, urls, git = self.authorize(kind=kind, ref=ref, actual=sha, extra_env=env)
+                self.assertEqual(result,b'authorized=true\n');self.assertIsNone(failure);self.assertEqual(urls,[])
+                self.assertEqual(git,[['git','rev-parse','HEAD'],['git','status','--porcelain','--untracked-files=no']])
+        for change in [{'GOVERNANCE_NETNS_SHA': ''}, {'GOVERNANCE_NETNS_SHA': sha.upper()},
+                       {'GOVERNANCE_NETNS_SHA': self.BASE}, {'GITHUB_SHA': self.BASE},
+                       {'GITHUB_REPOSITORY_ID': '1'}, {'RUNNER_ENVIRONMENT': 'self-hosted'}, {'RUNNER_OS': 'Windows'}]:
+            result,failure,_,_=self.authorize(kind='workflow_dispatch',ref='refs/heads/ci/governance',actual=sha,extra_env={**env,**change})
+            self.assertEqual(result,b'authorized=false\n');self.assertIsNone(failure)
+        for options in [{'kind':'pull_request','event_number':3}, {'ref':'refs/heads/unapproved'}, {'ref':'refs/tags/v1.0.0'},
+                        {'repository':'other/sing-box-polaris'}, {'source':self.BASE}, {'actual':self.BASE}]:
+            args={'kind':'workflow_dispatch','ref':'refs/heads/ci/governance','actual':sha,'extra_env':env,**options}
+            result,failure,_,_=self.authorize(**args)
+            self.assertEqual(result,b'authorized=false\n');self.assertIsNone(failure)
+        result,failure,_,_=self.authorize(kind='workflow_dispatch',ref='refs/heads/ci/governance',actual=sha,extra_env=env,dirty=True)
+        self.assertEqual(result,b'');self.assertIn('source is dirty',failure)
 
     def test_current_head_exact_merge_and_main_fast_forward_are_authorized(self):
         for options in [{}, {'actual': self.MERGE}, {'kind': 'push'}]:

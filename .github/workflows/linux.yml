@@ -1,4 +1,7 @@
 name: Linux repository packages (unsigned candidate)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-audit-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   calculate_version:
     name: Calculate version
@@ -11,6 +14,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Setup Go
+      if: github.event_name != 'workflow_dispatch'
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
@@ -197,11 +201,13 @@ jobs:
         PKG_VERSION="${{ needs.calculate_version.outputs.version }}"
         PKG_VERSION="${PKG_VERSION//-/\~}"
         echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
+    - name: Install shared package tool
+      if: matrix.debian != '' || matrix.rpm != '' || matrix.pacman != ''
+      run: sudo gem install fpm
     - name: Package DEB
       if: matrix.debian != ''
       run: |
         set -xeuo pipefail
-        sudo gem install fpm
         sudo apt-get install -y debsigs
         cp .fpm_systemd .fpm
         fpm -t deb \
@@ -214,7 +220,6 @@ jobs:
       if: matrix.rpm != ''
       run: |
         set -xeuo pipefail
-        sudo gem install fpm
         echo '%_rpmformat 4' > "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \

@@ -1,7 +1,7 @@
 name: Full upstream artifacts (unsigned candidate)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-audit-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   source_gate:
     name: Concentrated G4 and CI source gates (${{ matrix.os }})
@@ -113,17 +113,20 @@ jobs:
       with:
         fetch-depth: 0
     - name: Setup Go
+      if: github.event_name != 'workflow_dispatch'
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
         cache: false
     - name: Cache Go modules
+      if: github.event_name != 'workflow_dispatch'
       uses: actions/cache/restore@v4
       with:
         path: ~/go/pkg/mod
         key: go-mod-linux-${{ hashFiles('go.sum') }}
         restore-keys: go-mod-linux-
     - name: Cache Go tool builds
+      if: github.event_name != 'workflow_dispatch'
       uses: actions/cache/restore@v4
       with:
         path: ~/.cache/go-build
@@ -149,6 +152,33 @@ jobs:
     - name: Set outputs
       id: outputs
       run: echo "version=$version" >> "$GITHUB_OUTPUT"
+  prepare_windows7:
+    name: Prepare one verified Windows 7 Go toolchain
+    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary'
+    runs-on: ubuntu-26.04
+    needs: [calculate_version]
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - name: Restore source-owned compatibility toolchain
+      uses: actions/cache@v4
+      with:
+        path: ~/go/go_win7
+        key: go_win7_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
+    - name: Build or fully verify this host and pin once
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: .github/setup_go_for_windows7.sh
+    - name: Preserve file modes for the two exact consumers
+      run: tar -czf "$RUNNER_TEMP/go-win7-toolchain.tar.gz" -C "$HOME/go" go_win7
+    - uses: actions/upload-artifact@v4
+      with:
+        name: go-win7-toolchain
+        path: ${{ runner.temp }}/go-win7-toolchain.tar.gz
+        if-no-files-found: error
+        retention-days: 7
   build:
     name: Build binary
     if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary'
@@ -321,14 +351,6 @@ jobs:
           arch: riscv64
         - os: linux
           arch: loong64
-        - os: windows
-          arch: amd64
-          legacy_win7: true
-          legacy_name: windows-7
-        - os: windows
-          arch: '386'
-          legacy_win7: true
-          legacy_name: windows-7
         - os: android
           arch: arm64
           ndk: aarch64-linux-android23
@@ -341,13 +363,14 @@ jobs:
         - os: android
           arch: '386'
           ndk: i686-linux-android23
-    steps:
+    # Optional matrix keys stay absent; the JSON view lets both partitions share these steps.
+    steps: &native_archive_steps
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         fetch-depth: 1
     - name: Setup Go
-      if: ${{ ! matrix.legacy_win7 }}
+      if: ${{ ! fromJSON(toJSON(matrix)).legacy_win7 }}
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
@@ -358,21 +381,26 @@ jobs:
         path: ~/go/pkg/mod
         key: go-mod-linux-${{ hashFiles('go.sum') }}
         restore-keys: go-mod-linux-
-    - name: Cache Go for Windows 7
-      if: matrix.legacy_win7
-      id: cache-go-for-windows7
-      uses: actions/cache@v4
+    - name: Consume this run's verified Windows 7 toolchain
+      if: fromJSON(toJSON(matrix)).legacy_win7
+      uses: actions/download-artifact@v4
       with:
-        path: |
-          ~/go/go_win7
-        key: go_win7_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
+        name: go-win7-toolchain
+        path: ${{ runner.temp }}/go-win7-toolchain
+    - name: Restore complete toolchain files and modes
+      if: fromJSON(toJSON(matrix)).legacy_win7
+      run: |
+        test ! -e "$HOME/go/go_win7"
+        mkdir -p "$HOME/go"
+        tar -xzf "$RUNNER_TEMP/go-win7-toolchain/go-win7-toolchain.tar.gz" -C "$HOME/go"
+        test -f "$HOME/go/go_win7/polaris-toolchain.json"
     - name: Setup Go for Windows 7
-      if: matrix.legacy_win7
+      if: fromJSON(toJSON(matrix)).legacy_win7
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: .github/setup_go_for_windows7.sh
     - name: Setup Go for Windows 7
-      if: matrix.legacy_win7
+      if: fromJSON(toJSON(matrix)).legacy_win7
       run: |-
         echo "PATH=$HOME/go/go_win7/bin:$PATH" >> $GITHUB_ENV
         echo "GOROOT=$HOME/go/go_win7" >> $GITHUB_ENV
@@ -382,7 +410,7 @@ jobs:
       with:
         ndk-version: r28
     - name: Clone cronet-go
-      if: matrix.naive && matrix.variant != 'purego'
+      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -393,28 +421,28 @@ jobs:
         git -C ~/cronet-go checkout FETCH_HEAD
         git -C ~/cronet-go submodule update --init --recursive --depth=1
     - name: Regenerate Debian keyring
-      if: matrix.naive && matrix.variant != 'purego'
+      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
         set -xeuo pipefail
         rm -f ~/cronet-go/naiveproxy/src/build/linux/sysroot_scripts/keyring.gpg
         cd ~/cronet-go
         GPG_TTY=/dev/null ./naiveproxy/src/build/linux/sysroot_scripts/generate_keyring.sh
     - name: Download Chromium toolchain
-      if: matrix.naive && matrix.variant != 'purego'
+      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
         set -xeuo pipefail
         cd ~/cronet-go
-        if [[ "${{ matrix.variant }}" == "musl" ]]; then
+        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
         else
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} download-toolchain
         fi
     - name: Set Chromium toolchain environment
-      if: matrix.naive && matrix.variant != 'purego'
+      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
         set -xeuo pipefail
         cd ~/cronet-go
-        if [[ "${{ matrix.variant }}" == "musl" ]]; then
+        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl env >> $GITHUB_ENV
         else
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} env >> $GITHUB_ENV
@@ -426,14 +454,14 @@ jobs:
     - name: Set build tags
       run: |
         set -xeuo pipefail
-        if [[ "${{ matrix.naive }}" == "true" ]]; then
+        if [[ "${{ fromJSON(toJSON(matrix)).naive }}" == "true" ]]; then
           TAGS=$(cat release/DEFAULT_BUILD_TAGS)
         else
           TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)
         fi
-        if [[ "${{ matrix.variant }}" == "purego" ]]; then
+        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "purego" ]]; then
           TAGS="${TAGS},with_purego"
-        elif [[ "${{ matrix.variant }}" == "musl" ]]; then
+        elif [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
           TAGS="${TAGS},with_musl"
         fi
         echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
@@ -441,7 +469,7 @@ jobs:
       run: |
         echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
     - name: Build (purego)
-      if: matrix.variant == 'purego'
+      if: fromJSON(toJSON(matrix)).variant == 'purego'
       run: |
         set -xeuo pipefail
         mkdir -p dist
@@ -452,13 +480,13 @@ jobs:
         CGO_ENABLED: '0'
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-        GO386: ${{ matrix.go386 }}
-        GOARM: ${{ matrix.goarm }}
-        GOMIPS: ${{ matrix.gomips }}
-        GOMIPS64: ${{ matrix.gomips }}
+        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
+        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
+        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
+        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Extract libcronet.so
-      if: matrix.variant == 'purego' && matrix.naive
+      if: fromJSON(toJSON(matrix)).variant == 'purego' && fromJSON(toJSON(matrix)).naive
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -470,7 +498,7 @@ jobs:
         git -C "$RUNNER_TEMP/cronet-go-lib" checkout FETCH_HEAD
         cp "$RUNNER_TEMP/cronet-go-lib/$LIBRARY_PATH" dist/
     - name: Build (glibc)
-      if: matrix.variant == 'glibc'
+      if: fromJSON(toJSON(matrix)).variant == 'glibc'
       run: |
         set -xeuo pipefail
         mkdir -p dist
@@ -481,13 +509,13 @@ jobs:
         CGO_ENABLED: '1'
         GOOS: linux
         GOARCH: ${{ matrix.arch }}
-        GO386: ${{ matrix.go386 }}
-        GOARM: ${{ matrix.goarm }}
-        GOMIPS: ${{ matrix.gomips }}
-        GOMIPS64: ${{ matrix.gomips }}
+        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
+        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
+        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
+        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Build (musl)
-      if: matrix.variant == 'musl'
+      if: fromJSON(toJSON(matrix)).variant == 'musl'
       run: |
         set -xeuo pipefail
         mkdir -p dist
@@ -498,13 +526,13 @@ jobs:
         CGO_ENABLED: '1'
         GOOS: linux
         GOARCH: ${{ matrix.arch }}
-        GO386: ${{ matrix.go386 }}
-        GOARM: ${{ matrix.goarm }}
-        GOMIPS: ${{ matrix.gomips }}
-        GOMIPS64: ${{ matrix.gomips }}
+        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
+        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
+        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
+        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Build (non-variant)
-      if: matrix.os != 'android' && matrix.variant == ''
+      if: matrix.os != 'android' && fromJSON(toJSON(matrix)).variant == ''
       run: |
         set -xeuo pipefail
         mkdir -p dist
@@ -515,17 +543,17 @@ jobs:
         CGO_ENABLED: '0'
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-        GO386: ${{ matrix.go386 }}
-        GOARM: ${{ matrix.goarm }}
-        GOMIPS: ${{ matrix.gomips }}
-        GOMIPS64: ${{ matrix.gomips }}
+        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
+        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
+        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
+        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Build Android
       if: matrix.os == 'android'
       run: |
         set -xeuo pipefail
         go install -v ./cmd/internal/build
-        export CC='${{ matrix.ndk }}-clang'
+        export CC='${{ fromJSON(toJSON(matrix)).ndk }}-clang'
         export CXX="${CC}++"
         mkdir -p dist
         GOOS=$BUILD_GOOS GOARCH=$BUILD_GOARCH build go build -v -trimpath -o dist/sing-box -tags "${BUILD_TAGS}" \
@@ -539,85 +567,84 @@ jobs:
     - name: Set name
       run: |-
         DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
-        if [[ -n "${{ matrix.goarm }}" ]]; then
-          DIR_NAME="${DIR_NAME}v${{ matrix.goarm }}"
-        elif [[ -n "${{ matrix.go386 }}" && "${{ matrix.go386 }}" != 'sse2' ]]; then
-          DIR_NAME="${DIR_NAME}-${{ matrix.go386 }}"
-        elif [[ -n "${{ matrix.gomips }}" && "${{ matrix.gomips }}" != 'hardfloat' ]]; then
-          DIR_NAME="${DIR_NAME}-${{ matrix.gomips }}"
-        elif [[ -n "${{ matrix.legacy_name }}" ]]; then
-          DIR_NAME="${DIR_NAME}-legacy-${{ matrix.legacy_name }}"
+        if [[ -n "${{ fromJSON(toJSON(matrix)).goarm }}" ]]; then
+          DIR_NAME="${DIR_NAME}v${{ fromJSON(toJSON(matrix)).goarm }}"
+        elif [[ -n "${{ fromJSON(toJSON(matrix)).go386 }}" && "${{ fromJSON(toJSON(matrix)).go386 }}" != 'sse2' ]]; then
+          DIR_NAME="${DIR_NAME}-${{ fromJSON(toJSON(matrix)).go386 }}"
+        elif [[ -n "${{ fromJSON(toJSON(matrix)).gomips }}" && "${{ fromJSON(toJSON(matrix)).gomips }}" != 'hardfloat' ]]; then
+          DIR_NAME="${DIR_NAME}-${{ fromJSON(toJSON(matrix)).gomips }}"
+        elif [[ -n "${{ fromJSON(toJSON(matrix)).legacy_name }}" ]]; then
+          DIR_NAME="${DIR_NAME}-legacy-${{ fromJSON(toJSON(matrix)).legacy_name }}"
         fi
-        if [[ "${{ matrix.variant }}" == "glibc" ]]; then
+        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "glibc" ]]; then
           DIR_NAME="${DIR_NAME}-glibc"
-        elif [[ "${{ matrix.variant }}" == "musl" ]]; then
+        elif [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
           DIR_NAME="${DIR_NAME}-musl"
         fi
         echo "DIR_NAME=${DIR_NAME}" >> "${GITHUB_ENV}"
         PKG_VERSION="${{ needs.calculate_version.outputs.version }}"
         PKG_VERSION="${PKG_VERSION//-/\~}"
         echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
+    - name: Install shared package tool
+      if: fromJSON(toJSON(matrix)).debian != '' || fromJSON(toJSON(matrix)).rpm != '' || fromJSON(toJSON(matrix)).pacman != '' || fromJSON(toJSON(matrix)).openwrt != ''
+      run: sudo gem install fpm
     - name: Package DEB
-      if: matrix.debian != ''
+      if: fromJSON(toJSON(matrix)).debian != ''
       run: |
         set -xeuo pipefail
-        sudo gem install fpm
         sudo apt-get install -y debsigs
         cp .fpm_systemd .fpm
         fpm -t deb \
           -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ matrix.debian }}.deb" \
-          --architecture ${{ matrix.debian }} \
+          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).debian }}.deb" \
+          --architecture ${{ fromJSON(toJSON(matrix)).debian }} \
           dist/sing-box=/usr/bin/sing-box
     - name: Package RPM
-      if: matrix.rpm != ''
+      if: fromJSON(toJSON(matrix)).rpm != ''
       run: |
         set -xeuo pipefail
-        sudo gem install fpm
         echo '%_rpmformat 4' > "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \
           -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ matrix.rpm }}.rpm" \
-          --architecture ${{ matrix.rpm }} \
+          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).rpm }}.rpm" \
+          --architecture ${{ fromJSON(toJSON(matrix)).rpm }} \
           dist/sing-box=/usr/bin/sing-box
     - name: Package Pacman
-      if: matrix.pacman != ''
+      if: fromJSON(toJSON(matrix)).pacman != ''
       run: |-
         set -xeuo pipefail
-        sudo gem install fpm
         sudo apt-get update || true
         sudo apt-get install -y libarchive-tools
         cp .fpm_pacman .fpm
         fpm -t pacman \
           -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ matrix.pacman }}.pkg.tar.zst" \
-          --architecture ${{ matrix.pacman }} \
+          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).pacman }}.pkg.tar.zst" \
+          --architecture ${{ fromJSON(toJSON(matrix)).pacman }} \
           dist/sing-box=/usr/bin/sing-box
     - name: Package OpenWrt
-      if: matrix.openwrt != ''
+      if: fromJSON(toJSON(matrix)).openwrt != ''
       run: |-
         set -xeuo pipefail
-        sudo gem install fpm
         cp .fpm_openwrt .fpm
         fpm -t deb \
           -v "$PKG_VERSION" \
           -p "dist/openwrt.deb" \
           --architecture all \
           dist/sing-box=/usr/bin/sing-box
-        for architecture in ${{ matrix.openwrt }}; do
+        for architecture in ${{ fromJSON(toJSON(matrix)).openwrt }}; do
           .github/deb2ipk.sh "$architecture" "dist/openwrt.deb" "dist/sing-box_${{ needs.calculate_version.outputs.version }}_openwrt_${architecture}.ipk"
         done
         rm "dist/openwrt.deb"
     - name: Install apk-tools
-      if: matrix.openwrt != '' || matrix.alpine != ''
+      if: fromJSON(toJSON(matrix)).openwrt != '' || fromJSON(toJSON(matrix)).alpine != ''
       run: docker run --rm -v /usr/local/bin:/mnt alpine:edge sh -c "apk add --no-cache apk-tools-static && cp /sbin/apk.static
         /mnt/apk && chmod +x /mnt/apk"
     - name: Package OpenWrt APK
-      if: matrix.openwrt != ''
+      if: fromJSON(toJSON(matrix)).openwrt != ''
       run: |-
         set -xeuo pipefail
-        for architecture in ${{ matrix.openwrt }}; do
+        for architecture in ${{ fromJSON(toJSON(matrix)).openwrt }}; do
           .github/build_openwrt_apk.sh \
             "$architecture" \
             "${{ needs.calculate_version.outputs.version }}" \
@@ -625,14 +652,14 @@ jobs:
             "dist/sing-box_${{ needs.calculate_version.outputs.version }}_openwrt_${architecture}.apk"
         done
     - name: Package Alpine APK
-      if: matrix.alpine != ''
+      if: fromJSON(toJSON(matrix)).alpine != ''
       run: |-
         set -xeuo pipefail
         .github/build_alpine_apk.sh \
-          "${{ matrix.alpine }}" \
+          "${{ fromJSON(toJSON(matrix)).alpine }}" \
           "${{ needs.calculate_version.outputs.version }}" \
           "dist/sing-box" \
-          "dist/sing-box_${{ needs.calculate_version.outputs.version }}_linux_${{ matrix.alpine }}.apk"
+          "dist/sing-box_${{ needs.calculate_version.outputs.version }}_linux_${{ fromJSON(toJSON(matrix)).alpine }}.apk"
     - name: Archive
       run: |
         set -xeuo pipefail
@@ -667,11 +694,28 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: binary-${{ matrix.os }}_${{ matrix.arch }}${{ matrix.goarm && format('v{0}', matrix.goarm) }}${{ matrix.go386
-          && format('_{0}', matrix.go386) }}${{ matrix.gomips && format('_{0}', matrix.gomips) }}${{ matrix.legacy_name &&
-          format('-legacy-{0}', matrix.legacy_name) }}${{ matrix.variant && format('-{0}', matrix.variant) }}
+        name: binary-${{ matrix.os }}_${{ matrix.arch }}${{ fromJSON(toJSON(matrix)).goarm && format('v{0}', fromJSON(toJSON(matrix)).goarm) }}${{ fromJSON(toJSON(matrix)).go386
+          && format('_{0}', fromJSON(toJSON(matrix)).go386) }}${{ fromJSON(toJSON(matrix)).gomips && format('_{0}', fromJSON(toJSON(matrix)).gomips) }}${{ fromJSON(toJSON(matrix)).legacy_name &&
+          format('-legacy-{0}', fromJSON(toJSON(matrix)).legacy_name) }}${{ fromJSON(toJSON(matrix)).variant && format('-{0}', fromJSON(toJSON(matrix)).variant) }}
         path: dist
         if-no-files-found: error
+  build_windows7:
+    name: Build Windows 7 binaries
+    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary'
+    runs-on: ubuntu-26.04
+    needs: [calculate_version, prepare_windows7]
+    strategy:
+      matrix:
+        include:
+        - os: windows
+          arch: amd64
+          legacy_win7: true
+          legacy_name: windows-7
+        - os: windows
+          arch: '386'
+          legacy_win7: true
+          legacy_name: windows-7
+    steps: *native_archive_steps
   build_darwin:
     name: Build Darwin binaries
     if: ${{ !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build
@@ -679,7 +723,6 @@ jobs:
     runs-on: macos-latest
     needs:
     - calculate_version
-    - build_apple_library
     strategy:
       matrix:
         include:
@@ -1875,6 +1918,7 @@ jobs:
     needs:
     - calculate_version
     - build
+    - build_windows7
     - build_darwin
     - build_windows
     runs-on: ${{ matrix.runner }}
@@ -1921,6 +1965,7 @@ jobs:
     needs:
     - calculate_version
     - build
+    - build_windows7
     - build_darwin
     - build_windows
     - native_smoke
@@ -1980,6 +2025,7 @@ jobs:
     needs:
     - calculate_version
     - build
+    - build_windows7
     - build_darwin
     - build_windows
     - build_android_library

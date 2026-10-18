@@ -1,4 +1,7 @@
 name: Signed Linux packages and explicit owned repository upload
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-audit-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   calculate_version:
     name: Calculate version
@@ -13,6 +16,7 @@ jobs:
     - name: Verify owned distribution configuration
       run: python3 scripts/ci/owned_distribution.py verify
     - name: Setup Go
+      if: github.event_name != 'workflow_dispatch'
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
@@ -22,7 +26,7 @@ jobs:
         python3 scripts/ci/polaris_version.py "$CANDIDATE_VERSION"
         printf "version=%s\n" "$CANDIDATE_VERSION" >> "$GITHUB_ENV"
       env:
-        VERSION: ${{ inputs.version }}
+        CANDIDATE_VERSION: ${{ inputs.version }}
     - name: Calculate version
       if: github.event_name != 'workflow_dispatch'
       run: go run -v ./cmd/internal/read_tag --ci --nightly
@@ -201,11 +205,13 @@ jobs:
         PKG_VERSION="${{ needs.calculate_version.outputs.version }}"
         PKG_VERSION="${PKG_VERSION//-/\~}"
         echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
+    - name: Install shared package tool
+      if: matrix.debian != '' || matrix.rpm != '' || matrix.pacman != ''
+      run: sudo gem install fpm
     - name: Package DEB
       if: matrix.debian != ''
       run: |
         set -xeuo pipefail
-        sudo gem install fpm
         sudo apt-get install -y debsigs
         cp .fpm_systemd .fpm
         fpm -t deb \
@@ -223,7 +229,6 @@ jobs:
       if: matrix.rpm != ''
       run: |-
         set -xeuo pipefail
-        sudo gem install fpm
         echo '%_rpmformat 4' > "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \

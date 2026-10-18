@@ -48,7 +48,9 @@ class ClientBrandingTests(unittest.TestCase):
             self.assertEqual(Path(old).suffixes,Path(new).suffixes)
             self.assertNotIn('sing-box-polaris-sing-box-',new)
         # Non-client paths and provenance behavior stay unchanged.
-        self.assertEqual(p.default_name('all','binary-linux_amd64','sing-box-V.tar.gz'),'sing-box-polaris-V.tar.gz')
+        self.assertEqual(p.default_name('all','binary-linux_amd64',f'sing-box-{p.VERSION}.tar.gz'),f'sing-box-polaris-{p.PUBLIC_VERSION}.tar.gz')
+        with self.assertRaises(ValueError):
+            p.default_name('all','binary-linux_amd64','sing-box-V.tar.gz')
         self.assertIsNone(p.default_name('all','binary-android-apks-other','polaris-candidate-manifest-x.json'))
         self.assertIsNone(p.default_name('signed','binary-windows-client-x64','SFW-V.exe'))
 
@@ -59,8 +61,14 @@ class ClientBrandingTests(unittest.TestCase):
         import re
         for artifact,old in examples:
             self.assertTrue(any(re.fullmatch(r['pattern'],old) for r in s['all']['payloadRules'][artifact]))
-            new=p.default_name('all',artifact,old);names.append(new)
-            self.assertTrue(new.startswith('sing-box-polaris-'))
+            new=p.default_name('all',artifact,old)
+            if artifact.startswith('unsigned-apple-'):
+                self.assertIsNone(new)
+                self.assertEqual(p.producer_publication('all',artifact,old)[1],'internal-unsigned-archive')
+                continue
+            names.append(new)
+            self.assertTrue(new.startswith(('SFA-','SFW-','SFL-','SFM-')))
+            self.assertIn(p.PUBLIC_VERSION,new)
             self.assertFalse(any(re.fullmatch(r['pattern'],new) for r in s['all']['payloadRules'][artifact]))
         self.assertEqual(len(names),len({x.casefold() for x in names}))
 
@@ -86,15 +94,18 @@ class ClientBrandingTests(unittest.TestCase):
         del index['platforms'][0]['archive']['releaseName']
         with self.assertRaises((ValueError,jsonschema.ValidationError)):fixture.check_index(index)
 
-    def test_parallel_distro_producers_remain_distinct_public_payloads(self):
+    def test_parallel_distro_producers_keep_separate_channels_and_exact_source_names(self):
         for ext in ['deb','rpm']:
             original=f'sing-box_{p.VERSION}_linux_amd64.{ext}'
             existing=original.replace('sing-box_','sing-box-polaris_')
             build=p.default_name('all','binary-linux_amd64-musl',original)
             linux=p.default_name('linux','binary-linux_amd64',existing)
-            self.assertEqual(build,f'sing-box-polaris_{p.VERSION}_linux_amd64-build.{ext}')
-            self.assertEqual(linux,existing)
-            self.assertNotEqual(build.casefold(),linux.casefold())
+            self.assertEqual(build,f'sing-box-polaris_{p.PUBLIC_VERSION}_linux_amd64.{ext}')
+            self.assertIsNone(linux)
+            self.assertEqual(p.producer_publication('all','binary-linux_amd64-musl',original),
+                             (existing,'upstream-public-product'))
+            self.assertEqual(p.producer_publication('linux','binary-linux_amd64',existing),
+                             (None,'separate-distribution-channel'))
 
     def test_branding_does_not_rewrite_author_license_permissions_or_ids(self):
         for platform in ['android','apple','windows','linux']:

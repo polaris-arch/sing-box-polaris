@@ -2,11 +2,34 @@
 from pathlib import Path
 import tempfile
 import unittest
+import subprocess
 
-from patch_test_packages import MODULES, selection, write_plan
+from patch_test_packages import MODULES, selection, write_plan, changed_paths
 
 
 class PatchModuleSelectionTests(unittest.TestCase):
+    def test_divergent_rewritten_history_still_selects_every_snapshot_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.check_output(['git', '-c', 'user.name=Fixture', '-c',
+                                                'user.email=fixture@example.invalid', *args], cwd=root, text=True).strip()
+            git('init', '-q')
+            (root / 'base.go').write_text('package fixture\n')
+            git('add', '.'); git('commit', '-qm', 'common')
+            common = git('rev-parse', 'HEAD')
+            (root / 'official.go').write_text('package fixture\n')
+            git('add', '.'); git('commit', '-qm', 'official')
+            official = git('rev-parse', 'HEAD')
+            git('checkout', '-q', '--detach', common)
+            (root / 'changed.go').write_text('package fixture\n')
+            git('add', '.'); git('commit', '-qm', 'rewritten')
+            head = git('rev-parse', 'HEAD')
+            paths, ancestor = changed_paths(root, official, head)
+            self.assertEqual(ancestor, common)
+            self.assertCountEqual(paths, ['official.go', 'changed.go'])
+            self.assertEqual(changed_paths(root, common, head), (['changed.go'], common))
+
     def fixture(self, directory):
         root = Path(directory)
         for name, identity in MODULES.items():

@@ -14,7 +14,9 @@
       "build_apple",
       "build_apple_app_store",
       "native_smoke",
-      "native_index"
+      "native_index",
+      "prepare_windows7",
+      "build_windows7"
     ],
     "matrices": {
       "build": {
@@ -243,18 +245,6 @@
           {
             "os": "linux",
             "arch": "loong64"
-          },
-          {
-            "os": "windows",
-            "arch": "amd64",
-            "legacy_win7": true,
-            "legacy_name": "windows-7"
-          },
-          {
-            "os": "windows",
-            "arch": "386",
-            "legacy_win7": true,
-            "legacy_name": "windows-7"
           },
           {
             "os": "android",
@@ -491,6 +481,22 @@
             "artifact": "binary-darwin_arm64"
           }
         ]
+      },
+      "build_windows7": {
+        "include": [
+          {
+            "os": "windows",
+            "arch": "amd64",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          },
+          {
+            "os": "windows",
+            "arch": "386",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          }
+        ]
       }
     },
     "requiredArtifacts": [
@@ -564,7 +570,8 @@
       "smoke-windows-amd64",
       "unsigned-apple-ios-archive",
       "unsigned-apple-macos-archive",
-      "unsigned-apple-tvos-archive"
+      "unsigned-apple-tvos-archive",
+      "go-win7-toolchain"
     ],
     "payloadRules": {
       "binary-android-apks-other": [
@@ -1420,6 +1427,12 @@
           "pattern": "unsigned\\-{version}\\-tvos\\.xcarchive\\.tar",
           "count": 1
         }
+      ],
+      "go-win7-toolchain": [
+        {
+          "pattern": "^go-win7-toolchain\\.tar\\.gz$",
+          "count": 1
+        }
       ]
     }
   },
@@ -1903,7 +1916,9 @@
       "build_apple_app_store",
       "upload",
       "native_smoke",
-      "native_index"
+      "native_index",
+      "prepare_windows7",
+      "build_windows7"
     ],
     "matrices": {
       "build": {
@@ -2132,18 +2147,6 @@
           {
             "os": "linux",
             "arch": "loong64"
-          },
-          {
-            "os": "windows",
-            "arch": "amd64",
-            "legacy_win7": true,
-            "legacy_name": "windows-7"
-          },
-          {
-            "os": "windows",
-            "arch": "386",
-            "legacy_win7": true,
-            "legacy_name": "windows-7"
           },
           {
             "os": "android",
@@ -2380,6 +2383,22 @@
             "artifact": "binary-darwin_arm64"
           }
         ]
+      },
+      "build_windows7": {
+        "include": [
+          {
+            "os": "windows",
+            "arch": "amd64",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          },
+          {
+            "os": "windows",
+            "arch": "386",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          }
+        ]
       }
     },
     "requiredArtifacts": [
@@ -2453,7 +2472,8 @@
       "smoke-darwin-amd64",
       "smoke-darwin-arm64",
       "smoke-linux-amd64-purego",
-      "smoke-windows-amd64"
+      "smoke-windows-amd64",
+      "go-win7-toolchain"
     ],
     "payloadRules": {
       "binary-android-apks-other": [
@@ -3309,7 +3329,13 @@
       "smoke-darwin-amd64": [],
       "smoke-darwin-arm64": [],
       "smoke-linux-amd64-purego": [],
-      "smoke-windows-amd64": []
+      "smoke-windows-amd64": [],
+      "go-win7-toolchain": [
+        {
+          "pattern": "^go-win7-toolchain\\.tar\\.gz$",
+          "count": 1
+        }
+      ]
     }
   }
 }

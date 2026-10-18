@@ -18,7 +18,7 @@ p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 class GateTests(unittest.TestCase):
     def test_scope_preserved(self):
         s=json.loads(p.SCOPE.read_text())
-        self.assertEqual(len(s['all']['matrices']['build']['include']),38)
+        self.assertEqual(len(s['all']['matrices']['build']['include'])+len(s['all']['matrices']['build_windows7']['include']),38)
         for role,scope in s.items():
             self.assertEqual(set(scope['requiredArtifacts']),set(scope['payloadRules']))
             self.assertEqual(len(scope['requiredArtifacts']),len(set(scope['requiredArtifacts'])))

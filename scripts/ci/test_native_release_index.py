@@ -190,3 +190,36 @@ class TestSmokeCleanup(unittest.TestCase):
    self.assertEqual(row_path.read_text(),original)
 
 if __name__=='__main__':unittest.main()
+
+class TestWin7ReceiptMatrix(unittest.TestCase):
+ def test_actual_legacy_rows_keep_absent_settings_and_package_inventory(self):
+  import os,yaml
+  from contextlib import ExitStack
+  root=R.parents[1];version=json.loads((root/'release/ci/github-release.json').read_text())['version']
+  for workflow in ['build','signed-release']:
+   rows=yaml.safe_load((root/'.github/workflows'/f'{workflow}.yml').read_text())['jobs']['build_windows7']['strategy']['matrix']['include']
+   for matrix in rows:
+    with self.subTest(workflow=workflow,arch=matrix['arch']):
+     self.assertEqual(set(matrix),{'os','arch','legacy_win7','legacy_name'})
+     name=f"sing-box-{version}-windows-{matrix['arch']}-legacy-windows-7"
+     settings={'GOOS':'windows','GOARCH':matrix['arch'],'CGO_ENABLED':'0'}
+     if matrix['arch']=='386':settings['GO386']='sse2'
+     with tempfile.TemporaryDirectory() as td,ExitStack() as stack:
+      with zipfile.ZipFile(Path(td)/(name+'.zip'),'w') as archive:
+       archive.writestr(name+'/sing-box.exe',b'fixture-core');archive.writestr(name+'/LICENSE',b'fixture-license')
+      stack.enter_context(patch.dict(os.environ,{'VERSION':version,'NATIVE_OS':'windows'}))
+      stack.enter_context(patch.object(n,'identity',return_value=('a'*40,'b'*40)))
+      stack.enter_context(patch.object(n,'buildinfo',return_value=('go1.27.2','fixture-buildinfo',{'settings':settings})))
+      stack.enter_context(patch.object(n,'run',return_value='fixture-buildid'))
+      stack.enter_context(patch.object(n,'source_identity',return_value={}))
+      stack.enter_context(patch('legacy_binary_version.minimum_version',return_value={'fixture':True}))
+      n.collect(td,matrix)
+      receipt=json.loads((Path(td)/('native-row-'+name+'.json')).read_text())
+      self.assertEqual(receipt['target'],'windows/'+matrix['arch']);self.assertTrue(receipt['variant']['legacy'])
+      # These are the exact old failure modes. Exercise the collector, without Go.
+      for key in ['debian','rpm','pacman','alpine']:
+       with self.assertRaisesRegex(ValueError,'package inventory mismatch'):
+        n.collect(td,{**matrix,key:''})
+      if matrix['arch']=='386':
+       with self.assertRaisesRegex(ValueError,'binary setting differs from matrix: GO386'):
+        n.collect(td,{**matrix,'go386':''})

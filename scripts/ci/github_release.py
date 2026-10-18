@@ -154,7 +154,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
 def producer_publication(role, artifact, relative):
     """Producer scope remains exhaustive; only upstream All binary products are public."""
     basename = PurePosixPath(relative).name
-    if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact == 'publisher-run-receipt':
+    if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact in ('publisher-run-receipt', 'go-win7-toolchain'):
         return None, 'producer-evidence'
     if role in ('linux', 'docker'):
         return None, 'separate-distribution-channel'
@@ -774,7 +774,7 @@ def prepare_reconciliation(actual, audit):
             'original public receipt backup mismatch')
     record = {'planSHA256': sha(RECONCILIATION), 'sourceCommit': plan['sourceCommit'],
               'publisherCommit': os.environ['GITHUB_SHA'], 'assets': references}
-    (audit / 'reconciliation-recovery.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
+    (audit / 'reconciliation-recovery.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8', newline='\n')
     return record
 
 
@@ -948,7 +948,7 @@ def replacement_recovery(audit, run_id=None):
         with destination.open('xb') as stream:
             subprocess.run(['gh', 'api', f'repos/{REPO}/releases/assets/{receipt["id"]}',
                             '-H', 'Accept: application/octet-stream'], stdout=stream, check=True)
-        (audit / 'reconciliation-recovery.json').write_text(json.dumps(expected, indent=2) + '\n', encoding='utf-8')
+        (audit / 'reconciliation-recovery.json').write_text(json.dumps(expected, indent=2) + '\n', encoding='utf-8', newline='\n')
     else:
         load_recovery(run_id, audit)
         require(json.loads((audit / 'reconciliation-recovery.json').read_text(encoding='utf-8')) == expected,
@@ -1275,7 +1275,7 @@ def main():
             require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
         result = rename_public_assets(plan, execute=args.mode == 'rename-names')
         args.audit.mkdir(parents=True, exist_ok=True)
-        (args.audit / 'public-name-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+        (args.audit / 'public-name-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
         print(json.dumps(result))
         return
     identity(args.source, args.source_dir)
@@ -1304,7 +1304,7 @@ def main():
                 if args.mode == 'stage-replacement':
                     require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
                     result = stage_replacement(plan, args.source)
-                    (args.audit / 'replacement-stage.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+                    (args.audit / 'replacement-stage.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
         return
     # Reconciliation consumes the already reviewed same-revision inventory. Its existing
     # producer artifacts and exact remote Release hashes are rechecked, not re-downloaded.
@@ -1325,7 +1325,7 @@ def main():
             if args.mode == 'reconcile':
                 require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
                 result = reconcile(plan)
-                (args.audit / 'reconciliation-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+                (args.audit / 'reconciliation-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
                 print(json.dumps(result))
         return
     with tempfile.TemporaryDirectory() as temp:
@@ -1351,7 +1351,7 @@ def main():
             plan = replacement_recovery(args.audit, args.recovery_run)
             actual['reviewed'] = True
             result = replace_release(plan, actual, args.inventory_sha256, args.output, args.audit)
-            (args.audit / 'replacement-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+            (args.audit / 'replacement-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
             print(json.dumps(result))
         if args.mode == 'publish':
             require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')

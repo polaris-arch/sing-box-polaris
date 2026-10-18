@@ -162,6 +162,15 @@ def write_plan(directory, plan):
             (directory / name).write_text(MODULES[owner] + '\n')
 
 
+def changed_paths(root, base, head):
+    """Compare full snapshots, retaining exact identities and a common-history proof."""
+    merge_base = subprocess.check_output(['git', 'merge-base', base, head], cwd=root, text=True).strip()
+    raw = subprocess.check_output(['git', 'diff', '--name-only', '--no-renames', '-z',
+                                   base + '..' + head], cwd=root)
+    paths = [p.decode('utf-8', errors='strict') for p in raw.split(b'\0') if p]
+    return paths, merge_base
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base', required=True)
@@ -171,12 +180,13 @@ def main():
         parser.error('base must be a full lowercase commit SHA')
     root = Path(__file__).resolve().parents[2]
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
-    subprocess.run(['git', 'merge-base', '--is-ancestor', args.base, head], cwd=root, check=True)
-    raw = subprocess.check_output(['git', 'diff', '--name-only', '--no-renames', '-z',
-                                   args.base + '..' + head], cwd=root)
-    paths = [p.decode('utf-8', errors='strict') for p in raw.split(b'\0') if p]
+    # A source-owned history rewrite can change the tag's ancestry without
+    # changing the Go inputs. The caller still verifies the exact official tag;
+    # compare every changed path across the common history, never a guessed tip.
+    paths, merge_base = changed_paths(root, args.base, head)
     plan = selection(root, paths)
-    plan.update({'baseCommit': args.base, 'sourceCommit': head})
+    plan.update({'baseCommit': args.base, 'sourceCommit': head, 'mergeBaseCommit': merge_base,
+                 'baseIsAncestor': merge_base == args.base})
     write_plan(args.output_directory, plan)
     print(json.dumps(plan, sort_keys=True))
 

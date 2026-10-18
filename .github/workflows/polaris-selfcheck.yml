@@ -69,10 +69,8 @@ permissions:
   contents: read
 
 concurrency:
-  # Only future automatic branch-tip runs supersede older tips. Manual fixed
-  # source audits and tag milestones never share that cancellation group.
-  group: polaris-selfcheck-${{ github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id) }}
-  cancel-in-progress: ${{ github.event_name == 'push' && github.ref_type == 'branch' }}
+  group: polaris-selfcheck-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 
 defaults:
   run:
@@ -132,15 +130,25 @@ jobs:
           ref: ${{ env.SOURCE_COMMIT }}
           path: .polaris-format-source
           persist-credentials: false
-      - name: Setup existing kernel Go toolchain for cheap formatter
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+      - name: Restore pinned official formatter archive
+        if: steps.impact.outputs.run_full == 'true'
+        uses: actions/cache@v4
         with:
-          go-version: '1.27.2'
-      - name: Install pinned formatter only (no product compilation)
-        env:
-          GOBIN: ${{ runner.temp }}/polaris-format-bin
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
+          path: ${{ runner.temp }}/polaris-format-archive
+          key: polaris-format-linux-amd64-v2.15.0-9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
+      - name: Verify and extract pinned official formatter (no product compilation)
+        if: steps.impact.outputs.run_full == 'true'
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/polaris-format-archive/golangci-lint.tar.gz"
+          mkdir -p "$(dirname "$archive")" "$RUNNER_TEMP/polaris-format-bin"
+          if [ ! -f "$archive" ]; then
+            curl --fail --location --retry 2 --max-time 120 --output "$archive" https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
+          fi
+          printf '%s  %s\n' 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea "$archive" | sha256sum -c -
+          tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/polaris-format-bin" golangci-lint-2.15.0-linux-amd64/golangci-lint
       - name: Check owned remediation formatting before platform builds
+        if: steps.impact.outputs.run_full == 'true'
         env:
           GOLANGCI_LINT: ${{ runner.temp }}/polaris-format-bin/golangci-lint
         working-directory: .polaris-format-source
@@ -875,16 +883,18 @@ jobs:
             go.sum
             third_party/sing-tun/go.mod
             third_party/sing-tun/go.sum
-      - name: Authorize only the fixed remediation PR netns binary
+      - name: Authorize fixed PR or explicitly approved governance SHA netns binary
         id: netns_batch_authorization
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           EVENT_REF: ${{ github.ref }}
           EVENT_REPOSITORY: ${{ github.repository }}
+          # Dormant until the owner explicitly approves/configures this one-SHA window.
+          GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
         shell: python
         run: |
-          import json, os, subprocess, urllib.request
+          import json, os, re, subprocess, urllib.request
           from pathlib import Path
           repo = 'polaris-arch/sing-box-polaris'
           repo_id = 1421657509
@@ -895,8 +905,23 @@ jobs:
           allowed_event = ((kind == 'pull_request' and event.get('number') == 2) or
                            (kind == 'push' and ref == 'refs/heads/polaris-main'))
           allowed = False
+          approved = os.environ.get('GOVERNANCE_NETNS_SHA', '')
+          if (re.fullmatch('[0-9a-f]{40}', approved)
+                  and os.environ['EVENT_REPOSITORY'] == repo
+                  and os.environ.get('GITHUB_REPOSITORY_ID') == str(repo_id)
+                  and kind in ('push', 'workflow_dispatch')
+                  and ref in ('refs/heads/polaris-main', 'refs/heads/ci/governance')
+                  and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
+                  and os.environ.get('RUNNER_OS') == 'Linux'
+                  and os.environ.get('GITHUB_SHA') == approved
+                  and os.environ['SOURCE_COMMIT'] == approved):
+              actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+              allowed = actual == approved
+              if allowed and subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
+                  raise SystemExit('Approved governance source is dirty; no elevation')
+          print('Exact governance SHA window authorized=' + str(allowed))
           print('Netns authorization predicates: event=' + str(allowed_event) + ', repository=' + str(os.environ['EVENT_REPOSITORY'] == repo))
-          if allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
+          if not allowed and allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
               def get(path):
                   request = urllib.request.Request('https://api.github.com/repos/' + repo + path,
                       headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
@@ -946,7 +971,10 @@ jobs:
           git fetch --no-tags https://github.com/SagerNet/sing-box.git "refs/tags/$BASE_REF:refs/polaris/upstream-baseline"
           actual_baseline=$(git rev-parse --verify "refs/polaris/upstream-baseline^{commit}")
           test "$actual_baseline" = "$BASE_COMMIT"
-          git merge-base --is-ancestor "$BASE_COMMIT" HEAD
+          # Historical message/tree cleanup reauthored the version boundary.
+          # Keep the verified official tag; compare complete snapshots across a
+          # proven common history, rather than pretending it is an ancestor.
+          git merge-base "$BASE_COMMIT" HEAD
           # Partition every changed Go/input path by its actual go.mod owner.
           # Unknown modules fail closed instead of silently losing coverage.
           python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'

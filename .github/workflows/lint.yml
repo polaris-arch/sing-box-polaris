@@ -1,7 +1,7 @@
 name: Lint
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 jobs:
   build:
     name: Lint ${{ matrix.goos }}/${{ matrix.goarch }}
@@ -39,12 +39,13 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
-    - name: Cache go module
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/go/pkg/mod
-        key: go-${{ hashFiles('**/go.sum') }}
+        cache-dependency-path: |
+          go.mod
+          go.sum
+          third_party/sing-tun/go.mod
+          third_party/sing-tun/go.sum
+          third_party/metacubex-utls/go.mod
+          third_party/metacubex-utls/go.sum
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v8
       env:

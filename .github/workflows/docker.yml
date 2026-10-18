@@ -1,6 +1,9 @@
 name: Docker OCI artifacts (candidate)
 env:
   REGISTRY_IMAGE: ghcr.io/polaris-arch/sing-box-polaris
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-audit-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   source:
     name: Bind Docker dispatch source and annotated tag
