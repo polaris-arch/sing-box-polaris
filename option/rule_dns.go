@@ -77,12 +77,45 @@ func (r DNSRule) DescribeSchema(builder schema.Builder) (*schema.Node, error) {
 			return nil, err
 		}
 		nestedRef, err := builder.Define("NestedDNSRule", func() (*schema.Node, error) {
-			return nestedRuleUnion(builder, reflect.TypeFor[RawDefaultDNSRule](), "NestedDNSRule")
+			nested, err := nestedRuleUnion(builder, reflect.TypeFor[RawDefaultDNSRule](), "NestedDNSRule")
+			if err != nil {
+				return nil, err
+			}
+			for _, field := range []string{"resolver_policy", "response_class", "response_reject_ip_cidr"} {
+				nested.OneOf[0].Properties.Remove(field)
+			}
+			return nested, nil
 		})
 		if err != nil {
 			return nil, err
 		}
-		return ruleUnion(builder, reflect.TypeFor[RawDefaultDNSRule](), nestedRef, actionRef)
+		result, err := ruleUnion(builder, reflect.TypeFor[RawDefaultDNSRule](), nestedRef, actionRef)
+		if err != nil {
+			return nil, err
+		}
+		// Logical rules already own `mode` (and/or). They cannot opt into a
+		// resolver policy, so retain their original respond action schema.
+		logicalActions, err := builder.Define("DNSLogicalRuleAction", func() (*schema.Node, error) {
+			actions, err := dnsActionUnion(builder)
+			if err != nil {
+				return nil, err
+			}
+			for _, variant := range actions.OneOf {
+				for _, entry := range variant.Properties.Entries() {
+					if entry.Key == "action" && entry.Value.Const == C.RuleActionTypeRespond {
+						variant.Properties.Remove("mode")
+						variant.Properties.Remove("fallback_rcode")
+						break
+					}
+				}
+			}
+			return actions, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		result.OneOf[1].AllOf[1] = logicalActions
+		return result, nil
 	})
 }
 
@@ -135,6 +168,9 @@ func (m DNSRuleMatchResponse) DescribeSchema(builder schema.Builder) (*schema.No
 }
 
 type RawDefaultDNSRule struct {
+	ResolverPolicy           *string                                                                     `json:"resolver_policy,omitempty"`
+	ResponseClass            string                                                                      `json:"response_class,omitempty" enum:"hit,empty"`
+	ResponseRejectIPCIDR     badoption.Listable[*badoption.Prefixable]                                   `json:"response_reject_ip_cidr,omitempty"`
 	Inbound                  badoption.Listable[string]                                                  `json:"inbound,omitempty" reference:"inbound"`
 	IPVersion                int                                                                         `json:"ip_version,omitempty" enum:"4,6"`
 	QueryType                badoption.Listable[DNSQueryType]                                            `json:"query_type,omitempty"`

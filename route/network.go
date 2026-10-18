@@ -72,6 +72,9 @@ type NetworkManager struct {
 
 func NewNetworkManager(ctx context.Context, logger logger.ContextLogger, options option.RouteOptions, dnsOptions option.DNSOptions) (*NetworkManager, error) {
 	defaultDomainResolver := common.PtrValueOrDefault(options.DefaultDomainResolver)
+	if err := defaultDomainResolver.Validate(); err != nil {
+		return nil, err
+	}
 	if options.AutoDetectInterface && !(C.IsLinux || C.IsDarwin || C.IsWindows) {
 		return nil, E.New("`auto_detect_interface` is only supported on Linux, Windows and macOS")
 	} else if options.OverrideAndroidVPN && !C.IsAndroid {
@@ -91,6 +94,7 @@ func NewNetworkManager(ctx context.Context, logger logger.ContextLogger, options
 			RoutingMark:    uint32(options.DefaultMark),
 			DomainResolver: defaultDomainResolver.Server,
 			DomainResolveOptions: adapter.DNSQueryOptions{
+				UseRules:               defaultDomainResolver.Mode == option.DomainResolverModeRules,
 				Strategy:               C.DomainStrategy(defaultDomainResolver.Strategy),
 				Timeout:                time.Duration(defaultDomainResolver.Timeout),
 				DisableCache:           defaultDomainResolver.DisableCache,

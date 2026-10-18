@@ -22,10 +22,15 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// DNS-only changes do not necessarily trigger an interface update. Bound the
+// cached configuration lifetime without resetting active network connections.
+const configRefreshInterval = time.Second
+
 type Source struct {
 	interfaceMonitor tun.DefaultInterfaceMonitor
 	access           sync.Mutex
 	updateCallback   *list.Element[tun.DefaultInterfaceUpdateCallback]
+	lastChecked      time.Time
 	stale            bool
 	config           *Config
 }
@@ -41,13 +46,18 @@ func NewSource(ctx context.Context) *Source {
 }
 
 func (s *Source) Configuration() *Config {
+	return s.configuration(time.Now(), s.readConfig)
+}
+
+func (s *Source) configuration(now time.Time, readConfig func() *Config) *Config {
 	s.access.Lock()
 	defer s.access.Unlock()
-	if s.config != nil && !s.stale && s.updateCallback != nil {
+	if s.config != nil && !s.stale && s.updateCallback != nil && now.Sub(s.lastChecked) < configRefreshInterval {
 		return s.config
 	}
 	s.stale = false
-	config := s.readConfig()
+	s.lastChecked = now
+	config := readConfig()
 	if s.config != nil && config.Equal(s.config) {
 		return s.config
 	}

@@ -111,8 +111,12 @@ type AbstractDialerOptions struct {
 	DomainStrategy DomainStrategy `json:"domain_strategy,omitempty" schema:"omit"`
 }
 
+const DomainResolverModeRules = "rules"
+
 type _DomainResolveOptions struct {
-	Server                 string                `json:"server" reference:"dns_server"`
+	Mode                   string                `json:"mode,omitempty"`
+	Policy                 *string               `json:"policy,omitempty"`
+	Server                 string                `json:"server,omitempty" reference:"dns_server"`
 	Timeout                badoption.Duration    `json:"timeout,omitempty"`
 	Strategy               DomainStrategy        `json:"strategy,omitempty"`
 	DisableCache           bool                  `json:"disable_cache,omitempty"`
@@ -123,7 +127,37 @@ type _DomainResolveOptions struct {
 
 type DomainResolveOptions _DomainResolveOptions
 
+// Validate also covers options constructed directly by callers instead of JSON.
+func (o DomainResolveOptions) Validate() error {
+	switch o.Mode {
+	case "":
+		if o.Policy != nil {
+			return E.New("domain_resolver.policy requires rules mode")
+		}
+		return nil
+	case DomainResolverModeRules:
+		if o.Policy != nil && *o.Policy == "" {
+			return E.New("empty domain_resolver.policy")
+		}
+		if o.Server != "" {
+			return E.New("domain_resolver.server conflicts with rules mode")
+		}
+		if o.Timeout < 0 {
+			return E.New("domain_resolver.timeout must not be negative in rules mode")
+		}
+		return nil
+	default:
+		return E.New("unknown domain_resolver.mode: ", o.Mode)
+	}
+}
+
 func (o DomainResolveOptions) MarshalJSON() ([]byte, error) {
+	if err := o.Validate(); err != nil {
+		return nil, err
+	}
+	if o.Mode == DomainResolverModeRules {
+		return json.Marshal(_DomainResolveOptions(o))
+	}
 	if o.Server == "" {
 		return []byte("{}"), nil
 	} else if o.Strategy == DomainStrategy(C.DomainStrategyAsIS) &&
@@ -142,16 +176,22 @@ func (o *DomainResolveOptions) UnmarshalJSON(bytes []byte) error {
 	var stringValue string
 	err := json.Unmarshal(bytes, &stringValue)
 	if err == nil {
-		o.Server = stringValue
+		*o = DomainResolveOptions{Server: stringValue}
 		return nil
 	}
-	err = json.Unmarshal(bytes, (*_DomainResolveOptions)(o))
+	var value _DomainResolveOptions
+	err = json.Unmarshal(bytes, &value)
 	if err != nil {
 		return err
 	}
-	if o.Server == "" {
+	result := DomainResolveOptions(value)
+	if err = result.Validate(); err != nil {
+		return err
+	}
+	if result.Mode == "" && result.Server == "" {
 		return E.New("empty domain_resolver.server")
 	}
+	*o = result
 	return nil
 }
 
@@ -162,8 +202,18 @@ func (o DomainResolveOptions) DescribeSchema(builder schema.Builder) (*schema.No
 		if err != nil {
 			return nil, err
 		}
+		objectForm.Properties.Put("mode", schema.StringConst(""))
+		objectForm.Properties.Remove("policy")
 		objectForm.Required = []string{"server"}
-		return schema.AnyOf(schema.TagReferenceNode("dns_server"), objectForm), nil
+		rulesForm := schema.StrictObject()
+		err = builder.FlattenStruct(rulesForm, reflect.TypeFor[DomainResolveOptions]())
+		if err != nil {
+			return nil, err
+		}
+		rulesForm.Properties.Put("mode", schema.StringConst(DomainResolverModeRules))
+		rulesForm.Properties.Put("server", schema.StringConst(""))
+		rulesForm.Required = []string{"mode"}
+		return schema.AnyOf(schema.TagReferenceNode("dns_server"), objectForm, rulesForm), nil
 	})
 }
 

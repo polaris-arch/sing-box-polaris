@@ -73,14 +73,26 @@ type Transport struct {
 	configSource   *systemconfig.Source
 }
 
+// closeConfigSource is replaced by tests.
+var closeConfigSource = (*systemconfig.Source).Close
+
 func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, options option.MDNSDNSServerOptions) (adapter.DNSTransport, error) {
+	configSource := systemconfig.NewSource(ctx)
+	// The source may hold a system registration from now on, so release it
+	// even if the transport is never started.
+	err := adapter.DeferConstructionCleanup(ctx, func() error {
+		return closeConfigSource(configSource)
+	})
+	if err != nil {
+		return nil, err
+	}
 	return &Transport{
 		TransportAdapter: dns.NewTransportAdapterWithLocalOptions(C.DNSTypeMDNS, tag, options.LocalDNSServerOptions),
 		ctx:              ctx,
 		logger:           logger,
 		networkManager:   service.FromContext[adapter.NetworkManager](ctx),
 		interfaceNames:   options.Interface,
-		configSource:     systemconfig.NewSource(ctx),
+		configSource:     configSource,
 	}, nil
 }
 
@@ -366,12 +378,10 @@ func newResponse(message *mDNS.Msg) *mDNS.Msg {
 func newResponseFromQuestion(question mDNS.Question) *mDNS.Msg {
 	stripQuestionClass(&question)
 	return &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Response:      true,
-			Authoritative: true,
-			Rcode:         mDNS.RcodeSuccess,
-		},
-		Question: []mDNS.Question{question},
+		Response:      true,
+		Authoritative: true,
+		Rcode:         mDNS.RcodeSuccess,
+		Question:      []mDNS.Question{question},
 	}
 }
 

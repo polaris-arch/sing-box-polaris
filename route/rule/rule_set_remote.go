@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -44,15 +44,12 @@ type RemoteRuleSet struct {
 	options        option.RuleSet
 	updateInterval time.Duration
 	httpClient     *http.Client
-	access         sync.RWMutex
-	rules          []adapter.HeadlessRule
-	metadata       adapter.RuleSetMetadata
-	lastUpdated    time.Time
-	lastEtag       string
-	cacheFile      adapter.CacheFile
-	pauseManager   pause.Manager
-	callbacks      list.List[adapter.RuleSetUpdateCallback]
-	refs           atomic.Int32
+	ruleSetPublication
+	lastUpdated  time.Time
+	lastEtag     string
+	cacheFile    adapter.CacheFile
+	pauseManager pause.Manager
+	refs         atomic.Int32
 }
 
 func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag string, options option.RuleSet) (*RemoteRuleSet, error) {
@@ -70,6 +67,7 @@ func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag stri
 	}
 	url := strings.ReplaceAll(options.RemoteOptions.URL, C.RuleSetTagPlaceholder, tag)
 	return &RemoteRuleSet{
+		watcherState:   "remote",
 		ctx:            ctx,
 		cancel:         cancel,
 		outbound:       service.FromContext[adapter.OutboundManager](ctx),
@@ -89,7 +87,7 @@ func (s *RemoteRuleSet) Name() string {
 }
 
 func (s *RemoteRuleSet) String() string {
-	return strings.Join(F.MapToString(s.rules), " ")
+	return strings.Join(F.MapToString(s.loadSnapshot().rules), " ")
 }
 
 func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.HTTPStartContext) error {
@@ -139,15 +137,11 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
 }
 
 func (s *RemoteRuleSet) Metadata() adapter.RuleSetMetadata {
-	s.access.RLock()
-	defer s.access.RUnlock()
-	return s.metadata
+	return s.loadSnapshot().metadata
 }
 
 func (s *RemoteRuleSet) ExtractIPSet() []*netipx.IPSet {
-	s.access.RLock()
-	defer s.access.RUnlock()
-	return common.FlatMap(s.rules, extractIPSetFromRule)
+	return common.FlatMap(s.loadSnapshot().rules, extractIPSetFromRule)
 }
 
 func (s *RemoteRuleSet) IncRef() {
@@ -162,7 +156,7 @@ func (s *RemoteRuleSet) DecRef() {
 
 func (s *RemoteRuleSet) Cleanup() {
 	if s.refs.Load() == 0 {
-		s.rules = nil
+		s.cleanupPublication()
 	}
 }
 
@@ -178,7 +172,18 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
 	s.callbacks.Remove(element)
 }
 
-func (s *RemoteRuleSet) loadBytes(content []byte) error {
+func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
+	s.reloadAccess.Lock()
+	var callbacks []adapter.RuleSetUpdateCallback
+	defer func() {
+		s.recordError(result)
+		s.reloadAccess.Unlock()
+		if result == nil {
+			for _, callback := range callbacks {
+				callback(s)
+			}
+		}
+	}()
 	var (
 		ruleSet option.PlainRuleSetCompat
 		err     error
@@ -213,15 +218,9 @@ func (s *RemoteRuleSet) loadBytes(content []byte) error {
 	if err != nil {
 		return err
 	}
-	s.access.Lock()
-	s.metadata = metadata
-	s.rules = rules
-	callbacks := s.callbacks.Array()
-	s.access.Unlock()
-	for _, callback := range callbacks {
-		callback(s)
-	}
-	return nil
+	sum := sha256.Sum256(content)
+	callbacks, result = s.publish(rules, metadata, hex.EncodeToString(sum[:]))
+	return result
 }
 
 func (s *RemoteRuleSet) updateOnce() {
@@ -229,7 +228,7 @@ func (s *RemoteRuleSet) updateOnce() {
 	if err != nil {
 		s.logger.Error("fetch rule-set ", s.tag, ": ", err)
 	} else if s.refs.Load() == 0 {
-		s.rules = nil
+		s.cleanupPublication()
 	}
 }
 
@@ -324,15 +323,15 @@ func (s *RemoteRuleSet) resolveTransport() (adapter.HTTPTransport, error) {
 }
 
 func (s *RemoteRuleSet) Close() error {
-	s.rules = nil
+	s.closePublication()
 	s.cancel()
 	return nil
 }
 
 func (s *RemoteRuleSet) Match(metadata *adapter.InboundContext) bool {
-	return matchAnyHeadlessRule(s.rules, metadata)
+	return matchAnyHeadlessRule(s.loadSnapshot().rules, metadata)
 }
 
 func (s *RemoteRuleSet) mergeableRule() *DefaultHeadlessRule {
-	return mergeableRuleIn(s.rules)
+	return mergeableRuleIn(s.loadSnapshot().rules)
 }

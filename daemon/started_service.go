@@ -22,6 +22,7 @@ import (
 	"github.com/sagernet/sing-box/protocol/group"
 	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing/common"
+	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/memory"
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/observable"
@@ -47,6 +48,7 @@ type StartedService struct {
 	ctx context.Context
 	// platform adapter.PlatformInterface
 	handler           PlatformHandler
+	keepDefaultLogger bool
 	debug             bool
 	oomKillerEnabled  bool
 	oomKillerDisabled bool
@@ -59,6 +61,10 @@ type StartedService struct {
 	lifecycleAccess         sync.Mutex
 	serviceAccess           sync.RWMutex
 	closed                  bool
+	strictCleanup           bool
+	shutdownRequested       bool
+	cleanupErr              error                     // protected by lifecycleAccess; sticky for strict transient hosts
+	tailscaleRetirementRuns []*tailscaleRetirementRun // original instances, protected by lifecycleAccess
 	startInterrupted        bool
 	serviceStatus           *ServiceStatus
 	serviceStatusSubscriber *observable.Subscriber[*ServiceStatus]
@@ -81,6 +87,8 @@ type ServiceOptions struct {
 	Context context.Context
 	// Platform           adapter.PlatformInterface
 	Handler           PlatformHandler
+	KeepDefaultLogger bool
+	StrictCleanup     bool
 	Debug             bool
 	LogMaxLines       int
 	OOMKillerEnabled  bool
@@ -98,6 +106,8 @@ func NewStartedService(options ServiceOptions) *StartedService {
 		ctx: options.Context,
 		// platform:                options.Platform,
 		handler:           options.Handler,
+		keepDefaultLogger: options.KeepDefaultLogger,
+		strictCleanup:     options.StrictCleanup,
 		debug:             options.Debug,
 		logLines:          logRing{maxLines: options.LogMaxLines},
 		oomKillerEnabled:  options.OOMKillerEnabled,
@@ -247,12 +257,47 @@ func (s *StartedService) followInstance(ctx context.Context, run func(ctx contex
 	}
 }
 
+// closeInstance runs under lifecycleAccess. Strict transient hosts retain any
+// ambiguous cleanup result; an IDLE status or a second close cannot clear it.
+func (s *StartedService) closeInstance(instance *Instance) error {
+	var err error
+	if s.strictCleanup {
+		err = instance.CloseWithResult()
+		if err != nil && s.cleanupErr == nil {
+			s.cleanupErr = err
+		}
+	} else {
+		err = instance.Close()
+	}
+	return err
+}
+
 func (s *StartedService) StartOrReloadService(ctx context.Context, profileContent string, options *OverrideOptions) error {
+	return s.StartOrReloadServiceWithBeforeStart(ctx, profileContent, options, nil)
+}
+
+// StartOrReloadServiceWithBeforeStart runs the caller's snapshot preparation
+// under the same lifecycle lock as the terminal check. A closed old host must
+// never write shared configuration after its CloseService acknowledged.
+func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func()) error {
 	s.interruptStart()
 	s.lifecycleAccess.Lock()
 	defer s.lifecycleAccess.Unlock()
 	s.serviceAccess.Lock()
-	if s.closed {
+	if s.closed || (s.strictCleanup && s.shutdownRequested) {
+		s.serviceAccess.Unlock()
+		return os.ErrClosed
+	}
+	if s.strictCleanup && s.cleanupErr != nil {
+		s.serviceAccess.Unlock()
+		return s.cleanupErr
+	}
+	s.serviceAccess.Unlock()
+	if beforeStart != nil {
+		beforeStart()
+	}
+	s.serviceAccess.Lock()
+	if s.closed || (s.strictCleanup && s.shutdownRequested) {
 		s.serviceAccess.Unlock()
 		return os.ErrClosed
 	}
@@ -266,8 +311,14 @@ func (s *StartedService) StartOrReloadService(ctx context.Context, profileConten
 			oomRecorder.BeginReload()
 			defer oomRecorder.EndReload()
 		}
-		_ = oldInstance.Close()
+		closeErr := s.closeInstance(oldInstance)
 		runtimeDebug.FreeOSMemory()
+		if s.strictCleanup && closeErr != nil {
+			s.serviceAccess.Lock()
+			s.updateStatusError(closeErr)
+			s.serviceAccess.Unlock()
+			return closeErr
+		}
 		s.serviceAccess.Lock()
 	}
 	s.startInterrupted = false
@@ -296,16 +347,24 @@ func (s *StartedService) StartOrReloadService(ctx context.Context, profileConten
 		s.startInterrupted = false
 		s.instance = nil
 		s.serviceAccess.Unlock()
-		_ = instance.Close()
+		closeErr := s.closeInstance(instance)
 		runtimeDebug.FreeOSMemory()
+		if s.strictCleanup && closeErr != nil {
+			return closeErr
+		}
 		return nil
 	}
 	if err != nil {
 		s.instance = nil
 		s.updateStatusError(err)
 		s.serviceAccess.Unlock()
-		_ = instance.Close()
+		closeErr := s.closeInstance(instance)
 		runtimeDebug.FreeOSMemory()
+		if s.strictCleanup && closeErr != nil {
+			return E.Append(err, closeErr, func(closeErr error) error {
+				return E.Cause(closeErr, "cleanup after failed start")
+			})
+		}
 		return err
 	}
 	s.startedAt = time.Now()
@@ -327,6 +386,13 @@ func (s *StartedService) Close() {
 }
 
 func (s *StartedService) CloseService() error {
+	if s.strictCleanup {
+		// Close may beat Start into the Go lifecycle lock. Mark the host terminal
+		// first so a late Start cannot initialize it after Close returned.
+		s.serviceAccess.Lock()
+		s.shutdownRequested = true
+		s.serviceAccess.Unlock()
+	}
 	s.interruptStart()
 	s.lifecycleAccess.Lock()
 	defer s.lifecycleAccess.Unlock()
@@ -334,19 +400,25 @@ func (s *StartedService) CloseService() error {
 	instance := s.instance
 	if instance == nil && s.serviceStatus.Status != ServiceStatus_STARTING && s.serviceStatus.Status != ServiceStatus_STARTED {
 		s.serviceAccess.Unlock()
+		if s.strictCleanup {
+			return s.cleanupErr
+		}
 		return nil
 	}
 	s.instance = nil
 	s.updateStatus(ServiceStatus_STOPPING)
 	s.serviceAccess.Unlock()
 	if instance != nil {
-		_ = instance.Close()
+		_ = s.closeInstance(instance)
 	}
 	s.serviceAccess.Lock()
 	s.startedAt = time.Time{}
 	s.updateStatus(ServiceStatus_IDLE)
 	s.serviceAccess.Unlock()
 	runtimeDebug.FreeOSMemory()
+	if s.strictCleanup {
+		return s.cleanupErr
+	}
 	return nil
 }
 

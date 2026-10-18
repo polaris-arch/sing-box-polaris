@@ -208,13 +208,11 @@ func NewFanOutRequest(message *mDNS.Msg, fqdn string, authenticatedData bool) *m
 	question := message.Question[0]
 	question.Name = fqdn
 	request := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Id:                message.Id,
-			RecursionDesired:  true,
-			AuthenticatedData: authenticatedData,
-		},
-		Question: []mDNS.Question{question},
-		Compress: true,
+		Id:                message.Id,
+		RecursionDesired:  true,
+		AuthenticatedData: authenticatedData,
+		Question:          []mDNS.Question{question},
+		Compress:          true,
 	}
 	request.SetEdns0(buf.UDPBufferSize, false)
 	return request

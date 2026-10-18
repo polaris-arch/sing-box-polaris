@@ -275,6 +275,21 @@ TLS 版本值：
 
 参阅 [Application-Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation)。
 
+
+REALITY 客户端显式 ALPN 列表会保留在经过认证的 ClientHello 中。本 fork 的
+REALITY 服务端按自己的 `alpn` 列表选择协议，无共同项时明确拒绝，与伪装站的
+ALPN 策略独立。实际加密扩展放得下时仍按伪装记录大小填充；独立 ALPN 使扩展
+更长时发送自身最小合法 TLS 记录，不负填充或截断，因此不承诺不同 ALPN 策略
+下仍保持完全相同的伪装记录长度；其他握手记录预算维持原检查。只有实际完成连接的 `NegotiatedProtocol` 能证明协商结果；
+ClientHello offer 或伪装站配置不能代签。旧远端 REALITY 服务端可能不返回 ALPN，
+HTTP/2 调用方仍须核实真实 `h2`。
+
+本 fork 将 Meta v1.8.8 的最小 REALITY ALPN 修正保存在
+`third_party/metacubex-utls`，沿用仓库源码 replacement 模式。运行时模块查询如实
+返回本地 replacement 与空 sum，不冒用原上游 h1；完整基线、两处生产差异（`reality.go`/`conn.go`）及摘要
+见 `release/dependency-sources/metacubex-utls-replacement.json`，与准确核源码
+commit/tree、producer 的 local replacement tree 及实际加载字节绑定。
+
 #### min_version
 
 可接受的最低 TLS 版本。
@@ -579,6 +594,61 @@ uTLS 是 "crypto/tls" 的一个分支，它提供了 ClientHello 指纹识别阻
 * randomized
 
 默认使用 chrome 指纹。
+
+### 运行核指纹能力
+
+桌面应对实际选用的核执行 `sing-box tools tls-fingerprints`；移动端调用当前进程
+实际加载的 `libbox.TLSFingerprintCapabilities()`。两者返回同一
+`polaris-tls-fingerprint-capabilities-v1` JSON。安装包版本不能证明 helper 副本或
+已加载移动库的能力。
+
+`profiles` 逐项给出可序列化的 `id`、`displayName`、实际模板 `client` 与
+`templateVersion`、`selection` 和可空的 `templateOffersX25519MLKEM768`。
+本版 `chrome`/`chrome_155` 对应 Chrome 155，`firefox`/`firefox_148` 对应
+Firefox 148，`safari`/`safari_26_3` 对应 Safari 26.3；另保留 `chrome_133`、
+`firefox_120`、`safari_16_0`，以及 edge/360/qq/ios/android 原有家族。
+模板标签不保证完整复现浏览器行为；Auto 未来可随核更新，应读取实际核的返回值。
+五个 `legacyChromeAliases` 仍退到 Chrome Auto，没有 Safari 15.3/15.5 ID。
+`random` 在进程内仅抽取一次浏览器 Auto 模板，返回实际选中版本；同进程重启
+libbox 服务不会重抽。`randomized` 使用进程级种子的加权生成器，不是浏览器抽样，
+不保证每条连接不同。
+
+指纹留空选择 `defaultFingerprint`（chrome）。`default`、`disabled`、`none`、
+`follow` 不是核 JSON 指纹 ID，调用方须先解析偏好。禁用应写 `utls.enabled=false`，
+启用默认则写 `enabled=true` 并省略 fingerprint。未带 `with_utls` 的核返回
+`enabled=false` 和空 profiles。
+
+响应还包含 `coreVersion`、`sourceCommit`、可空 `sourceModified`、实际
+`goVersion`、说明性的 `requiredGoVersion`、`buildTags`、`os`、`arch`、以及已链接
+uTLS `modules` 的版本/h1/replacement。干净 producer 为 trimpath/buildvcs=false
+构建写入源码身份；冲突报错。缺失元数据保持空/null，不由版本猜测；移动链接器
+可能不保留 module 元数据。这不是签名或自身文件哈希。App 必须将结果绑定实际
+核字节 SHA-256（移动端绑定实际加载产物）、已核 producer 源码/构建收据和实际
+BuildID，缓存随 helper、源码、库或构建身份变化失效。纯上游 testing/自定义旧核
+查询缺失时，不能据此宣称支持本 fork 的选项。
+
+模板提供不等于连接已协商。Chrome 155 提供 ML-DSA 签名算法与 Trust Anchors，
+不能证明实际用了 ML-DSA 证书或完成 PQ 认证。普通 TLS 可在对端支持时协商
+X25519MLKEM768；REALITY 认证仍使用经典 X25519，两处混合组过滤均保留。
+接口只陈述边界，不代签握手。uTLS 的 `curve_preferences` 会明确拒绝，由所选
+模板管理组。ShadowTLS v3 session-ID 认证与真实 ECH 组合明确拒绝；普通 ECH
+是单独路径，仍需要实际对端支持。
+
+能力 JSON 的机器 schema 位于 `release/ci/tls-fingerprint-capabilities.schema.json`。
+进程重启后应重新查询；不可跨进程缓存 random 的具体抽取结果。
+
+固定 gomobile v0.1.13 将接口映射为 Java
+`Libbox.tlsFingerprintCapabilities()`（返回 String，抛 Exception），以及 ObjC
+`LibboxTLSFingerprintCapabilities(NSError **error)`（返回 NSString 指针）。
+生成器标注 `_Nonnull`，但错误路径会返回 nil；须同时检查 NSError 和返回对象。
+生成声明不能证明旧的 loaded libbox 有该符号，应安全解析/查询实际加载库，缺符号
+即能力不可用，不按版本猜测。producer 检查真实生成头、静态导出与 Java 声明，
+最终 App 的链接、符号保留和加载仍需单独观察。
+
+
+本次迁移的受控回归覆盖 std TLS、Meta、refraction 的普通 TLS record 与各自所属库的
+TLS 1.3 traffic-secret/key 派生；不证明真实 peer KeyUpdate 交换、内核 offload 密钥重装
+或完整 kTLS 运行验收。这些路径需要对应平台的实际观测，不能用上述回归代签。
 
 ### ECH 字段
 

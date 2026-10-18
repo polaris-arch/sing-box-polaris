@@ -60,10 +60,10 @@ func init() {
 	if err != nil {
 		currentTag = "unknown"
 	}
-	sharedFlags = append(sharedFlags, "-ldflags", build_shared.LinkerFlags(currentTag, false))
-	debugFlags = append(debugFlags, "-ldflags", build_shared.LinkerFlags(currentTag, true))
+	sharedFlags = append(sharedFlags, "-ldflags", build_shared.LinkerFlags(currentTag, false)+directoryIdentityLinkerFlag())
+	debugFlags = append(debugFlags, "-ldflags", build_shared.LinkerFlags(currentTag, true)+directoryIdentityLinkerFlag())
 
-	sharedTags = append(sharedTags, "with_quic", "with_wireguard", "with_utls", "with_naive_outbound", "with_clash_api", "with_usbip", "with_openvpn", "with_openconnect", "badlinkname", "tfogo_checklinkname0")
+	sharedTags = append(sharedTags, "with_gvisor", "with_quic", "with_wireguard", "with_utls", "with_naive_outbound", "with_clash_api", "with_usbip", "with_openvpn", "with_openconnect", "badlinkname", "tfogo_checklinkname0")
 	darwinTags = append(darwinTags, "with_dhcp", "grpcnotrace")
 	// memcTags = append(memcTags, "with_tailscale")
 	sharedTags = append(sharedTags, "with_tailscale", "ts_omit_logtail", "ts_omit_ssh", "ts_omit_drive", "ts_omit_taildrop", "ts_omit_webclient", "ts_omit_doctor", "ts_omit_capture", "ts_omit_kube", "ts_omit_aws", "ts_omit_synology", "ts_omit_bird")
@@ -245,4 +245,27 @@ func buildApple() {
 		os.Rename("Libbox.xcframework", targetDir)
 		log.Info("copied to ", targetDir)
 	}
+}
+
+// Only a clean producer source tree can participate in the native source gate.
+// Empty identity keeps ordinary builds usable without issuing directory proof.
+func directoryIdentityLinkerFlag() string {
+	status, err := exec.Command("git", "status", "--porcelain").Output()
+	if err != nil || len(strings.TrimSpace(string(status))) != 0 {
+		return ""
+	}
+	head, err := exec.Command("git", "rev-parse", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	identity := strings.TrimSpace(string(head))
+	if len(identity) != 40 {
+		return ""
+	}
+	for _, c := range identity {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return ""
+		}
+	}
+	return " -X github.com/sagernet/sing-box/constant.DirectoryRetirementSourceIdentity=" + identity
 }

@@ -23,8 +23,7 @@ func (t *Transport) systemExchangeAsync(ctx context.Context, message *mDNS.Msg, 
 	question := message.Question[0]
 	t.system.exchangeAsync(ctx, question.Name, question.Qtype, question.Qclass, func(response *mDNS.Msg, err error) {
 		if err != nil {
-			var rcodeError dns.RcodeError
-			if errors.As(err, &rcodeError) {
+			if rcodeError, ok := errors.AsType[dns.RcodeError](err); ok {
 				callback(dns.FixedResponseStatus(message, int(rcodeError)), nil)
 				return
 			}

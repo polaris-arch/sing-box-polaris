@@ -73,8 +73,17 @@ func (r *RuleSetItem) matchWithOuterGroups(metadata *adapter.InboundContext, out
 	snapshot := snapshotRuleMatch(metadata)
 	for _, ruleSet := range r.setList {
 		r.prepareNestedMatch(metadata)
-		if provider, isProvider := ruleSet.(mergeableRuleProvider); isProvider {
-			branch := provider.mergeableRule()
+		var pinned *ruleSetSnapshot
+		if provider, ok := ruleSet.(ruleSetSnapshotProvider); ok {
+			pinned = provider.loadSnapshot()
+		}
+		var branch *DefaultHeadlessRule
+		if pinned != nil {
+			branch = mergeableRuleIn(pinned.rules)
+		} else if provider, ok := ruleSet.(mergeableRuleProvider); ok {
+			branch = provider.mergeableRule()
+		}
+		{
 			if branch != nil {
 				branchGroups, branchMatched := branch.evaluateForMerge(metadata)
 				if branchMatched {
@@ -93,7 +102,13 @@ func (r *RuleSetItem) matchWithOuterGroups(metadata *adapter.InboundContext, out
 				continue
 			}
 		}
-		if outerDone && ruleSet.Match(metadata) {
+		fallbackMatch := func() bool {
+			if pinned != nil {
+				return matchAnyHeadlessRule(pinned.rules, metadata)
+			}
+			return ruleSet.Match(metadata)
+		}
+		if outerDone && fallbackMatch() {
 			if metadata.DeferredIPCIDRMatchGroups == 0 {
 				snapshot.restore(metadata)
 				return true

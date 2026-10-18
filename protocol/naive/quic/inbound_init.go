@@ -23,6 +23,19 @@ import (
 	"github.com/sagernet/sing/common/ntp"
 )
 
+// keepAlivePeriod keeps idle HTTP/3 connections open; without it quic-go
+// closes a connection after its default 30 seconds idle timeout.
+const keepAlivePeriod = 10 * time.Second
+
+func newQUICConfig() *quic.Config {
+	return &quic.Config{
+		MaxIncomingStreams: 1 << 60,
+		KeepAlivePeriod:    keepAlivePeriod,
+		Allow0RTT:          true,
+		DisablePathManager: true,
+	}
+}
+
 func init() {
 	naive.ConfigureHTTP3ListenerFunc = func(ctx context.Context, logger logger.Logger, listener *listener.Listener, handler http.Handler, tlsConfig tls.ServerConfig, options option.NaiveInboundOptions) (io.Closer, error) {
 		err := qtls.ConfigureHTTP3(tlsConfig)
@@ -68,11 +81,7 @@ func init() {
 			return nil, E.New("unknown quic congestion control: ", options.QUICCongestionControl)
 		}
 
-		quicListener, err := qtls.ListenEarly(udpConn, tlsConfig, &quic.Config{
-			MaxIncomingStreams: 1 << 60,
-			Allow0RTT:          true,
-			DisablePathManager: true,
-		})
+		quicListener, err := qtls.ListenEarly(udpConn, tlsConfig, newQUICConfig())
 		if err != nil {
 			udpConn.Close()
 			return nil, err

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
@@ -31,7 +32,7 @@ type CertificateProvider struct {
 	endpointTag string
 	endpoint    *Endpoint
 	dialer      N.Dialer
-	localClient *local.Client
+	localClient atomic.Pointer[local.Client]
 }
 
 func NewCertificateProvider(ctx context.Context, _ log.ContextLogger, tag string, options option.TailscaleCertificateProviderOptions) (adapter.CertificateProviderService, error) {
@@ -67,7 +68,7 @@ func (p *CertificateProvider) Start(stage adapter.StartStage, scope *adapter.Sco
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	localClient, err := p.endpoint.Server().LocalClient()
+	localClient, err := p.endpoint.NewLocalClient()
 	if err != nil {
 		return E.Cause(err, "initialize tailscale local client for endpoint ", p.endpointTag)
 	}
@@ -78,14 +79,20 @@ func (p *CertificateProvider) Start(stage adapter.StartStage, scope *adapter.Sco
 		}
 		return p.dialer.DialContext(ctx, network, M.ParseSocksaddr(addr))
 	}
-	p.localClient = localClient
+	p.localClient.Store(localClient)
 	return nil
 }
 
 func (p *CertificateProvider) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	localClient := p.localClient
+	localClient := p.localClient.Load()
 	if localClient == nil {
 		return nil, E.New("Tailscale is not ready yet")
 	}
-	return localClient.GetCertificate(clientHello)
+	var certificate *tls.Certificate
+	err := p.endpoint.WithDirectoryAccess(func() error {
+		var err error
+		certificate, err = localClient.GetCertificate(clientHello)
+		return err
+	})
+	return certificate, err
 }

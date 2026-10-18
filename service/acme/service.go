@@ -235,24 +235,20 @@ func newDNSSolver(dnsOptions *option.ACMEProviderDNS01ChallengeOptions, logger *
 		return nil, E.New("invalid ACME DNS01 propagation_timeout: ", dnsOptions.PropagationTimeout.Build())
 	}
 	solver := &certmagic.DNS01Solver{
-		DNSManager: certmagic.DNSManager{
-			TTL:                time.Duration(dnsOptions.TTL),
-			PropagationDelay:   time.Duration(dnsOptions.PropagationDelay),
-			PropagationTimeout: time.Duration(dnsOptions.PropagationTimeout),
-			Resolvers:          dnsOptions.Resolvers,
-			OverrideDomain:     dnsOptions.OverrideDomain,
-			Logger:             logger.Named("dns_manager"),
-		},
+		TTL:                time.Duration(dnsOptions.TTL),
+		PropagationDelay:   time.Duration(dnsOptions.PropagationDelay),
+		PropagationTimeout: time.Duration(dnsOptions.PropagationTimeout),
+		Resolvers:          dnsOptions.Resolvers,
+		OverrideDomain:     dnsOptions.OverrideDomain,
+		Logger:             logger.Named("dns_manager"),
 	}
 	switch dnsOptions.Provider {
 	case C.DNSProviderAliDNS:
 		solver.DNSProvider = &alidns.Provider{
-			CredentialInfo: alidns.CredentialInfo{
-				AccessKeyID:     dnsOptions.AliDNSOptions.AccessKeyID,
-				AccessKeySecret: dnsOptions.AliDNSOptions.AccessKeySecret,
-				RegionID:        dnsOptions.AliDNSOptions.RegionID,
-				SecurityToken:   dnsOptions.AliDNSOptions.SecurityToken,
-			},
+			AccessKeyID:     dnsOptions.AliDNSOptions.AccessKeyID,
+			AccessKeySecret: dnsOptions.AliDNSOptions.AccessKeySecret,
+			RegionID:        dnsOptions.AliDNSOptions.RegionID,
+			SecurityToken:   dnsOptions.AliDNSOptions.SecurityToken,
 		}
 	case C.DNSProviderCloudflare:
 		solver.DNSProvider = &cloudflare.Provider{

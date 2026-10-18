@@ -3,7 +3,6 @@
 package tls
 
 import (
-	"bytes"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -22,10 +21,8 @@ import (
 	mRand "math/rand"
 	"net"
 	"net/http"
-	"reflect"
 	"strings"
 	"time"
-	"unsafe"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -37,7 +34,7 @@ import (
 	"github.com/sagernet/sing/common/ntp"
 	aTLS "github.com/sagernet/sing/common/tls"
 
-	utls "github.com/metacubex/utls"
+	utls "github.com/refraction-networking/utls"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/net/http2"
 )
@@ -136,6 +133,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 		serverName: e.uClient.ServerName(),
 	}
 	uConfig := e.uClient.config.Clone()
+	// The first preset build overwrites Config.NextProtos from its ALPN extension.
+	// Preserve the user request before that build, including Clone/SetNextProtos.
+	nextProtos := append([]string(nil), uConfig.NextProtos...)
 	uConfig.InsecureSkipVerify = true
 	uConfig.SessionTicketsDisabled = true
 	uConfig.VerifyPeerCertificate = verifier.VerifyPeerCertificate
@@ -145,35 +145,30 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	if err != nil {
 		return nil, err
 	}
-	for _, extension := range uConn.Extensions {
-		if ce, ok := extension.(*utls.SupportedCurvesExtension); ok {
-			ce.Curves = common.Filter(ce.Curves, func(curveID utls.CurveID) bool {
-				return curveID != utls.X25519MLKEM768
-			})
-		}
-		if ks, ok := extension.(*utls.KeyShareExtension); ok {
-			ks.KeyShares = common.Filter(ks.KeyShares, func(share utls.KeyShare) bool {
-				return share.Group != utls.X25519MLKEM768
-			})
-		}
-	}
-	err = uConn.BuildHandshakeState()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(uConfig.NextProtos) > 0 {
+	filterRealityKeyShares(uConn)
+	if len(nextProtos) > 0 {
+		found := false
 		for _, extension := range uConn.Extensions {
-			if alpnExtension, isALPN := extension.(*utls.ALPNExtension); isALPN {
-				alpnExtension.AlpnProtocols = uConfig.NextProtos
+			if alpn, ok := extension.(*utls.ALPNExtension); ok {
+				alpn.AlpnProtocols = nextProtos
+				found = true
 				break
 			}
 		}
+		if !found {
+			uConn.Extensions = append(uConn.Extensions, &utls.ALPNExtension{AlpnProtocols: nextProtos})
+		}
 	}
-
+	// Finalize PQ/ALPN before serializing the zeroed session ID used as AAD.
+	// Neither template rebuild nor serialization is allowed after authentication.
+	if err := uConn.BuildHandshakeState(); err != nil {
+		return nil, err
+	}
 	hello := uConn.HandshakeState.Hello
 	hello.SessionId = make([]byte, 32)
-	copy(hello.Raw[39:], hello.SessionId)
+	if err := uConn.MarshalClientHello(); err != nil {
+		return nil, err
+	}
 
 	var nowTime time.Time
 	if uConfig.Time != nil {
@@ -224,7 +219,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 		fmt.Printf("REALITY uConn.AuthKey: %v\n", authKey)
 	}
 
-	err = uConn.HandshakeContext(ctx)
+	// Authenticate exactly the prepared raw ClientHello. Rebuilding it after
+	// sealing the session ID can change GREASE/ECH bytes covered by the AAD.
+	err = uConn.Conn.HandshakeContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +236,23 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	}
 
 	return &realityClientConnWrapper{uConn}, nil
+}
+
+// REALITY authentication remains classical X25519; template PQ offers are not
+// authentication capability. Both advertised groups and key shares must agree.
+func filterRealityKeyShares(uConn *utls.UConn) {
+	for _, extension := range uConn.Extensions {
+		if ce, ok := extension.(*utls.SupportedCurvesExtension); ok {
+			ce.Curves = common.Filter(ce.Curves, func(curveID utls.CurveID) bool {
+				return curveID != utls.X25519MLKEM768
+			})
+		}
+		if ks, ok := extension.(*utls.KeyShareExtension); ok {
+			ks.KeyShares = common.Filter(ks.KeyShares, func(share utls.KeyShare) bool {
+				return share.Group != utls.X25519MLKEM768
+			})
+		}
+	}
 }
 
 func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) {
@@ -282,12 +296,21 @@ type realityVerifier struct {
 }
 
 func (c *realityVerifier) VerifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-	p, _ := reflect.TypeFor[utls.Conn]().FieldByName("peerCertificates")
-	certs := *(*([]*x509.Certificate))(unsafe.Add(unsafe.Pointer(c.Conn), p.Offset))
+	if len(rawCerts) == 0 {
+		return E.New("REALITY peer sent no certificate")
+	}
+	certs := make([]*x509.Certificate, 0, len(rawCerts))
+	for _, raw := range rawCerts {
+		cert, err := x509.ParseCertificate(raw)
+		if err != nil {
+			return E.Cause(err, "parse REALITY peer certificate")
+		}
+		certs = append(certs, cert)
+	}
 	if pub, ok := certs[0].PublicKey.(ed25519.PublicKey); ok {
 		h := hmac.New(sha512.New, c.authKey)
 		h.Write(pub)
-		if bytes.Equal(h.Sum(nil), certs[0].Signature) {
+		if hmac.Equal(h.Sum(nil), certs[0].Signature) {
 			c.verified = true
 			return nil
 		}
@@ -317,6 +340,7 @@ func (c *realityClientConnWrapper) ConnectionState() tls.ConnectionState {
 		HandshakeComplete:           state.HandshakeComplete,
 		DidResume:                   state.DidResume,
 		CipherSuite:                 state.CipherSuite,
+		CurveID:                     tls.CurveID(state.CurveID),
 		NegotiatedProtocol:          state.NegotiatedProtocol,
 		NegotiatedProtocolIsMutual:  state.NegotiatedProtocolIsMutual,
 		ServerName:                  state.ServerName,

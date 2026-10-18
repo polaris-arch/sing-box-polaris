@@ -18,6 +18,12 @@ import (
 func NewDNSRule(ctx context.Context, logger log.ContextLogger, options option.DNSRule, checkServer bool, legacyDNSMode bool) (adapter.DNSRule, error) {
 	switch options.Type {
 	case "", C.RuleTypeDefault:
+		if err := validateDNSPolicyRule(options.DefaultOptions); err != nil {
+			return nil, err
+		}
+		if !checkServer && options.DefaultOptions.ResolverPolicy != nil {
+			return nil, E.New("resolver_policy is only allowed on top-level default rules")
+		}
 		if !options.DefaultOptions.IsValid() {
 			return nil, E.New("missing conditions")
 		}
@@ -109,13 +115,24 @@ type DefaultDNSRule struct {
 
 func NewDefaultDNSRule(ctx context.Context, logger log.ContextLogger, options option.DefaultDNSRule, legacyDNSMode bool) (*DefaultDNSRule, error) {
 	rule := &DefaultDNSRule{
-		abstractDefaultRule: abstractDefaultRule{
-			invert: options.Invert,
-			action: NewDNSRuleAction(logger, options.DNSRuleAction),
-		},
+		invert:           options.Invert,
+		action:           NewDNSRuleAction(logger, options.DNSRuleAction),
 		matchResponse:    options.MatchResponse.IsEnabled(),
 		matchResponseTag: options.MatchResponse.ResponseTag(),
 		race:             options.Race,
+	}
+	if options.ResolverPolicy != nil {
+		item := &dnsResolverPolicyItem{policy: *options.ResolverPolicy}
+		rule.items = append(rule.items, item)
+		rule.allItems = append(rule.allItems, item)
+	}
+	if options.ResponseClass != "" {
+		item, err := NewDNSResponseClassItem(options.ResponseClass, options.ResponseRejectIPCIDR)
+		if err != nil {
+			return nil, err
+		}
+		rule.items = append(rule.items, item)
+		rule.allItems = append(rule.allItems, item)
 	}
 	if len(options.Inbound) > 0 {
 		item := NewInboundRule(options.Inbound)
@@ -505,12 +522,10 @@ func (r *LogicalDNSRule) Race() bool {
 
 func NewLogicalDNSRule(ctx context.Context, logger log.ContextLogger, options option.LogicalDNSRule, legacyDNSMode bool) (*LogicalDNSRule, error) {
 	r := &LogicalDNSRule{
-		abstractLogicalRule: abstractLogicalRule{
-			rules:  make([]adapter.HeadlessRule, len(options.Rules)),
-			invert: options.Invert,
-			action: NewDNSRuleAction(logger, options.DNSRuleAction),
-		},
-		race: options.Race,
+		rules:  make([]adapter.HeadlessRule, len(options.Rules)),
+		invert: options.Invert,
+		action: NewDNSRuleAction(logger, options.DNSRuleAction),
+		race:   options.Race,
 	}
 	switch options.Mode {
 	case C.LogicalTypeAnd:

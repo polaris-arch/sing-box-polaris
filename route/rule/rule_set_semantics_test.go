@@ -976,10 +976,8 @@ func TestDNSMatchResponseMissingResponseUsesBooleanSemantics(t *testing.T) {
 		nestedRule.matchResponse = true
 
 		logicalRule := &LogicalDNSRule{
-			abstractLogicalRule: abstractLogicalRule{
-				rules: []adapter.HeadlessRule{nestedRule},
-				mode:  C.LogicalTypeAnd,
-			},
+			rules: []adapter.HeadlessRule{nestedRule},
+			mode:  C.LogicalTypeAnd,
 		}
 
 		metadata := testMetadata("lookup.example")
@@ -1126,10 +1124,8 @@ func TestDNSLegacyLogicalAddressLimitPreLookupDefersNestedRules(t *testing.T) {
 		addDestinationIPIsPrivateItem(rule)
 	})
 	logicalRule := &LogicalDNSRule{
-		abstractLogicalRule: abstractLogicalRule{
-			rules: []adapter.HeadlessRule{nestedRule},
-			mode:  C.LogicalTypeAnd,
-		},
+		rules: []adapter.HeadlessRule{nestedRule},
+		mode:  C.LogicalTypeAnd,
 	}
 
 	preLookupMetadata := testMetadata("lookup.example")
@@ -1206,15 +1202,13 @@ func TestDNSLegacyInvertLogicalAddressLimitPreLookupRegression(t *testing.T) {
 		t.Parallel()
 
 		logicalRule := &LogicalDNSRule{
-			abstractLogicalRule: abstractLogicalRule{
-				rules: []adapter.HeadlessRule{
-					dnsRuleForTest(func(rule *abstractDefaultRule) {
-						rule.invert = true
-						addDestinationIPIsPrivateItem(rule)
-					}),
-				},
-				mode: C.LogicalTypeAnd,
+			rules: []adapter.HeadlessRule{
+				dnsRuleForTest(func(rule *abstractDefaultRule) {
+					rule.invert = true
+					addDestinationIPIsPrivateItem(rule)
+				}),
 			},
+			mode: C.LogicalTypeAnd,
 		}
 
 		preLookupMetadata := testMetadata("lookup.example")
@@ -1343,26 +1337,22 @@ func headlessDefaultRule(t *testing.T, build func(*abstractDefaultRule)) *Defaul
 
 func headlessLogicalRule(mode string, invert bool, rules ...adapter.HeadlessRule) *LogicalHeadlessRule {
 	return &LogicalHeadlessRule{
-		abstractLogicalRule: abstractLogicalRule{
-			rules:  rules,
-			mode:   mode,
-			invert: invert,
-		},
+		rules:  rules,
+		mode:   mode,
+		invert: invert,
 	}
 }
 
 func newLocalRuleSetForTest(tag string, rules ...adapter.HeadlessRule) *LocalRuleSet {
-	return &LocalRuleSet{
-		tag:   tag,
-		rules: rules,
-	}
+	s := &LocalRuleSet{tag: tag}
+	s.snapshot.Store(&ruleSetSnapshot{rules: rules})
+	return s
 }
 
 func newRemoteRuleSetForTest(tag string, rules ...adapter.HeadlessRule) *RemoteRuleSet {
-	return &RemoteRuleSet{
-		tag:   tag,
-		rules: rules,
-	}
+	s := &RemoteRuleSet{tag: tag}
+	s.snapshot.Store(&ruleSetSnapshot{rules: rules})
+	return s
 }
 
 func mustAdGuardRule(t *testing.T, content string) adapter.HeadlessRule {
@@ -1391,10 +1381,8 @@ func testMetadata(domain string) adapter.InboundContext {
 
 func dnsResponseForTest(addresses ...netip.Addr) *mDNS.Msg {
 	response := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Response: true,
-			Rcode:    mDNS.RcodeSuccess,
-		},
+		Response: true,
+		Rcode:    mDNS.RcodeSuccess,
 	}
 	for _, address := range addresses {
 		if address.Is4() {
@@ -1512,6 +1500,6 @@ func addDestinationPortRangeItem(t *testing.T, rule *abstractDefaultRule, ranges
 
 func parsePrefixables(cidrs []string) []*badoption.Prefixable {
 	return common.Map(cidrs, func(it string) *badoption.Prefixable {
-		return common.Ptr(badoption.Prefixable(netip.MustParsePrefix(it)))
+		return new(badoption.Prefixable(netip.MustParsePrefix(it)))
 	})
 }

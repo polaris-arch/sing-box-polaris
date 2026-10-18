@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
@@ -17,26 +18,30 @@ type Manager struct {
 	ctx          context.Context
 	logger       log.Logger
 	dnsRouter    adapter.DNSRouter
-	mode         string
+	mode         atomic.Value
 	modeList     []string
+	useCacheMode bool
 	updateAccess sync.Mutex
 	updateHooks  []*observable.Subscriber[struct{}]
 }
 
 func NewManager(ctx context.Context, logger log.Logger, defaultMode string, modeList []string) *Manager {
+	useCacheMode := defaultMode == ""
 	if defaultMode == "" {
 		defaultMode = "Rule"
 	}
 	if !common.Contains(modeList, defaultMode) {
 		modeList = append([]string{defaultMode}, modeList...)
 	}
-	return &Manager{
-		ctx:       ctx,
-		logger:    logger,
-		dnsRouter: service.FromContext[adapter.DNSRouter](ctx),
-		mode:      defaultMode,
-		modeList:  modeList,
+	m := &Manager{
+		ctx:          ctx,
+		logger:       logger,
+		dnsRouter:    service.FromContext[adapter.DNSRouter](ctx),
+		modeList:     modeList,
+		useCacheMode: useCacheMode,
 	}
+	m.mode.Store(defaultMode)
+	return m
 }
 
 func (m *Manager) Name() string {
@@ -44,7 +49,7 @@ func (m *Manager) Name() string {
 }
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateStart {
+	if stage != adapter.StartStateStart || !m.useCacheMode {
 		return nil
 	}
 	cacheFile := service.FromContext[adapter.CacheFile](m.ctx)
@@ -53,14 +58,14 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if common.Any(m.modeList, func(it string) bool {
 			return strings.EqualFold(it, mode)
 		}) {
-			m.mode = mode
+			m.mode.Store(mode)
 		}
 	}
 	return nil
 }
 
 func (m *Manager) Mode() string {
-	return m.mode
+	return m.mode.Load().(string)
 }
 
 func (m *Manager) ModeList() []string {
@@ -82,15 +87,15 @@ func (m *Manager) SetMode(newMode string) {
 	if !common.Contains(m.modeList, newMode) {
 		return
 	}
-	if newMode == m.mode {
+	m.updateAccess.Lock()
+	defer m.updateAccess.Unlock()
+	if newMode == m.Mode() {
 		return
 	}
-	m.mode = newMode
-	m.updateAccess.Lock()
+	m.mode.Store(newMode)
 	for _, hook := range m.updateHooks {
 		hook.Emit(struct{}{})
 	}
-	m.updateAccess.Unlock()
 	m.dnsRouter.ClearCache()
 	cacheFile := service.FromContext[adapter.CacheFile](m.ctx)
 	if cacheFile != nil {

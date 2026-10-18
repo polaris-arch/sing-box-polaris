@@ -73,21 +73,17 @@ func newRuleSetOnlyRule(ruleSetMatched bool, invert bool) *DefaultRule {
 		setList: []adapter.RuleSet{&fakeRuleSet{matched: ruleSetMatched}},
 	}
 	return &DefaultRule{
-		abstractDefaultRule: abstractDefaultRule{
-			ruleSetItem: ruleSetItem,
-			allItems:    []RuleItem{ruleSetItem},
-			invert:      invert,
-		},
+		ruleSetItem: ruleSetItem,
+		allItems:    []RuleItem{ruleSetItem},
+		invert:      invert,
 	}
 }
 
 func newSingleItemRule(matched bool) *DefaultRule {
 	item := &fakeRuleItem{matched: matched}
 	return &DefaultRule{
-		abstractDefaultRule: abstractDefaultRule{
-			items:    []RuleItem{item},
-			allItems: []RuleItem{item},
-		},
+		items:    []RuleItem{item},
+		allItems: []RuleItem{item},
 	}
 }
 

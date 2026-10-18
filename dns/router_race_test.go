@@ -143,10 +143,8 @@ func raceTestRules(t *testing.T, rawRules []option.DNSRule) []adapter.DNSRule {
 
 func raceTestExchange(router *Router, rules []adapter.DNSRule) exchangeWithRulesResult {
 	message := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			Id:               1,
-			RecursionDesired: true,
-		},
+		Id:               1,
+		RecursionDesired: true,
 		Question: []mDNS.Question{{
 			Name:   "race.example.org.",
 			Qtype:  mDNS.TypeA,

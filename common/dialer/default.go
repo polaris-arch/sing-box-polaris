@@ -81,7 +81,10 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 		if !(C.IsLinux || C.IsDarwin || C.IsWindows) {
 			return nil, E.New("`bind_interface` is only supported on Linux, macOS and Windows")
 		}
-		bindFunc := control.BindToInterface(interfaceFinder, options.BindInterface, -1)
+		bindFunc, err := bindInterfaceControl(platformInterface, interfaceFinder, options.BindInterface)
+		if err != nil {
+			return nil, err
+		}
 		dialer.Control = control.Append(dialer.Control, bindFunc)
 		listenConfig.Control = control.Append(listenConfig.Control, bindFunc)
 	}
@@ -102,7 +105,10 @@ func NewDefault(ctx context.Context, options option.DialerOptions) (*DefaultDial
 	if networkManager != nil {
 		defaultOptions := networkManager.DefaultOptions()
 		if defaultOptions.BindInterface != "" && !disableDefaultBind {
-			bindFunc := control.BindToInterface(networkManager.InterfaceFinder(), defaultOptions.BindInterface, -1)
+			bindFunc, err := bindInterfaceControl(platformInterface, networkManager.InterfaceFinder(), defaultOptions.BindInterface)
+			if err != nil {
+				return nil, err
+			}
 			dialer.Control = control.Append(dialer.Control, bindFunc)
 			listenConfig.Control = control.Append(listenConfig.Control, bindFunc)
 		} else if networkManager.AutoDetectInterface() && !disableDefaultBind {

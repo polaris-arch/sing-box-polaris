@@ -24,6 +24,7 @@ type internalTransport struct {
 
 // net/http/internal/http2.clientConnPool
 type clientConnPool struct {
+	//nolint:unused // ABI layout: the first pointer slot keeps mu/conns aligned with Go 1.27 clientConnPool.
 	t     *internalTransport
 	mu    sync.Mutex
 	conns map[string][]unsafe.Pointer // key is host:port, value is []*ClientConn

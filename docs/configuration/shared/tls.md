@@ -276,6 +276,20 @@ no mutually supported protocol.
 
 See [Application-Layer Protocol Negotiation](https://en.wikipedia.org/wiki/Application-Layer_Protocol_Negotiation).
 
+With REALITY, an explicit client list is preserved in the authenticated
+ClientHello. This fork's REALITY server selects from its own `alpn` list and
+rejects disjoint lists, independently of the camouflage server's ALPN policy.
+Camouflage record sizes remain padding targets when the actual encrypted
+extensions fit. A larger negotiated extension uses its own minimum valid TLS
+record rather than negative padding or truncation; exact camouflage record
+length is therefore not promised for a different ALPN policy. Other handshake
+record budgets retain their existing checks.
+Use the completed connection's `NegotiatedProtocol` as evidence; a ClientHello
+offer or the camouflage site's configuration is not a negotiated protocol.
+Older remote REALITY servers may omit ALPN even when the client offers it. HTTP/2
+callers must continue to require an actual `h2` negotiation.
+
+
 #### min_version
 
 The minimum TLS version that is acceptable.
@@ -581,6 +595,93 @@ Available fingerprint values:
 * randomized
 
 Chrome fingerprint will be used if empty.
+
+### Runtime fingerprint capabilities
+
+Query the exact selected executable with `sing-box tools tls-fingerprints`.
+Mobile callers use `libbox.TLSFingerprintCapabilities()` on the library actually
+loaded by the process. Both return `polaris-tls-fingerprint-capabilities-v1` JSON.
+A packaged version string does not identify the running helper or loaded library.
+
+The `profiles` array supplies accepted JSON `id`, `displayName`, actual template
+`client` and `templateVersion`, `selection`, and nullable
+`templateOffersX25519MLKEM768`. In this source revision the browser mappings are:
+
+| JSON ID | Template |
+| --- | --- |
+| `chrome`, `chrome_155` | Chrome 155 |
+| `chrome_133` | Chrome 133 |
+| `firefox`, `firefox_148` | Firefox 148 |
+| `firefox_120` | Firefox 120 |
+| `safari`, `safari_26_3` | Safari 26.3 |
+| `safari_16_0` | Safari 16.0 |
+| `edge` | Edge 85 |
+| `360` | 360 7.5 |
+| `qq` | QQ 11.1 |
+| `ios` | iOS 14 |
+| `android` | Android 11 OkHttp |
+
+These version labels identify the pinned library templates, not a guarantee that
+all browser behavior is reproduced. Auto aliases can change with a future core;
+read the selected core's response rather than assuming this table applies to it.
+The five `legacyChromeAliases` still select Chrome Auto. Explicit Safari 15.3/15.5
+IDs do not exist. `random` selects one browser Auto template per process; restarting
+a libbox service within that process does not reselect it. Query again after a
+process restart; do not persist the concrete random draw across processes. Its response records
+the selected template. `randomized` uses a process-scoped seeded generator, not
+a browser draw, and does not guarantee a different fingerprint per connection.
+
+An empty fingerprint selects `defaultFingerprint` (`chrome`). `default`,
+`disabled`, `none`, and `follow` are not fingerprint IDs: a caller implementing
+those preferences must resolve them before serialization. Disable uTLS with
+`utls.enabled=false`; default uTLS uses `enabled=true` and an omitted fingerprint.
+Without the `with_utls` build tag, `enabled=false` and `profiles` is empty.
+
+The same response includes `coreVersion`, `sourceCommit`, nullable
+`sourceModified`, actual runtime `goVersion`, informational `requiredGoVersion`,
+`buildTags`, `os`, `arch`, and linked uTLS `modules` with version, h1 sum and any
+replacement. The Meta v1.8.8 REALITY ALPN compatibility code is a source-owned
+`./third_party/metacubex-utls` replacement. Its linked `sum` is empty and the
+replacement is reported as `(devel)`; the original upstream h1 describes only
+the immutable baseline, not these modified bytes. Bind the replacement to the
+producer's exact source commit/tree and local replacement tree, with baseline
+and explicit two-file production delta (`reality.go`/`conn.go`) in `release/dependency-sources/metacubex-utls-replacement.json`.
+Clean producers stamp the source commit even with `-trimpath` or
+`-buildvcs=false`; conflicting stamps are errors. Unavailable build metadata stays
+empty/null rather than being inferred from the version. Some mobile linkers omit
+module metadata. The response is a capability description, not a signature or a
+hash of its own executable. Bind it to the actual core file SHA-256 (or loaded
+mobile artifact identity), checked producer source/build receipts and actual
+BuildID. Cache by that selected artifact identity, and invalidate on a helper,
+source, library, or build change. Missing or unsupported queries on upstream,
+testing or custom old cores do not prove this fork's capabilities.
+
+A template offer is distinct from a negotiated connection. Chrome 155 advertises
+ML-DSA signature algorithms and Trust Anchors; this is not proof of an ML-DSA
+certificate or successful PQ authentication. Ordinary TLS may negotiate
+X25519MLKEM768 with a supporting peer. REALITY authentication remains classical:
+X25519MLKEM768 is removed from both supported groups and key shares. The response
+reports these boundaries; it does not claim a successful handshake.
+`curve_preferences` with uTLS is rejected because the selected template owns its
+groups. ShadowTLS v3 session-ID authentication together with real ECH is explicitly
+rejected; ordinary ECH remains a separate supported path requiring peer support.
+
+The pinned gomobile v0.1.13 generator maps the mobile query to Java
+`Libbox.tlsFingerprintCapabilities()` (String, throws Exception) and the ObjC
+function `LibboxTLSFingerprintCapabilities(NSError **error)` (NSString pointer).
+The generator annotates the string `_Nonnull` but its error path returns nil;
+check the error and returned object. A generated declaration is not proof that
+an old loaded library contains the symbol. Resolve/query the loaded library
+without inferring availability from a version; missing symbols mean unavailable
+capabilities. The producer checks the actual generated headers, static exports
+and Java declaration, while final App linkage/loading is a separate observation.
+
+
+This migration's controlled regression covers ordinary TLS records and the
+owning-library TLS 1.3 traffic-secret/key derivation for std TLS, Meta and
+refraction. It does not establish a peer KeyUpdate exchange, kernel offload key
+reinstallation or complete kTLS runtime acceptance. Those paths need their actual
+platform observations before such an acceptance claim.
 
 ### ECH Fields
 

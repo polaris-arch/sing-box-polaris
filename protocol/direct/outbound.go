@@ -73,7 +73,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		fallbackDelay:  time.Duration(options.FallbackDelay),
 		dialer:         outboundDialer.(dialer.ParallelInterfaceDialer),
 		isEmpty: reflect.DeepEqual(options.DialerOptions, option.DialerOptions{
-			AbstractDialerOptions: option.AbstractDialerOptions{UDPFragmentDefault: true},
+			UDPFragmentDefault: true,
 		}),
 	}
 	//nolint:staticcheck
