@@ -10,6 +10,7 @@ from unittest.mock import patch
 import polaris_ci_impact as impact
 
 ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL_WORKFLOWS = ROOT / 'scripts/testdata/historical-workflows'
 BASE = 'a635e5345b0f44e716c20ddf95e5d2eba9db3159'
 # Only stale.yml is still an immutable upstream workflow. The other five were
 # migrated to owned, guarded workflows and are checked structurally below.
@@ -17,9 +18,7 @@ INHERITED_SHA256 = {'stale.yml': 'bc7400aff64735578e663d255ac576185dd35599d9e571
 INHERITED = ('stale.yml',)
 MIGRATED = {'build.yml', 'docker.yml', 'linux.yml', 'lint.yml', 'test.yml'}
 SOURCE_OWNED = MIGRATED | {
-    'polaris-selfcheck.yml', 'polaris-production-native.yml',
-    'polaris-production-release.yml', 'polaris-native-candidate.yml',
-    'polaris-dns-native-candidate.yml', 'ci-contract.yml', 'g4-candidate.yml',
+    'polaris-selfcheck.yml', 'ci-contract.yml', 'g4-candidate.yml',
     'publish-container.yml', 'publish-github.yml', 'signed-linux.yml',
     'signed-release.yml', 'android-runtime-materials.yml',
 }
@@ -33,17 +32,78 @@ class ImpactTests(unittest.TestCase):
             return {'path': name, 'oldMode': old, 'newMode': new, 'status': status}
         self.assertTrue(impact.classify_changes([row(guide)]))
         self.assertFalse(impact.classify_changes([]))
+        for path in impact.CI_ONLY:
+            self.assertTrue(impact.classify_changes([row(path)]))
+            self.assertFalse(impact.classify_changes([row(path, new='120000')]))
         for name in ('README.md', 'LICENSE', 'NOTICE', 'docs/configuration/dns/index.md',
             'docs/schema.json', 'docs/install.sh', 'release/POLARIS_ASSETS.md',
             'release/POLARIS_OPENWRT.md', 'release/licenses/license.md', 'release/NOTICE.md',
             'release/polaris-production-release.json', 'go.mod', 'go.sum',
-            'third_party/sing-tun/go.sum', 'scripts/polaris_ci_impact.py',
+            'third_party/sing-tun/go.sum',
             '.github/workflows/polaris-selfcheck.yml', 'unexpected.md', 'box.go'):
             with self.subTest(path=name):
                 self.assertFalse(impact.classify_changes([row(guide), row(name)]))
         for mode in ('100755', '120000', '160000'):
             self.assertFalse(impact.classify_changes([row(guide, new=mode)]))
         self.assertFalse(impact.classify_changes([row(guide, status='T')]))
+
+    def test_active_workflows_classifier_and_unknown_paths_always_keep_full(self):
+        protected = ['scripts/polaris_ci_impact.py', 'scripts/polaris_runner_resources.py',
+                     'scripts/ci/patch_test_packages.py', 'go.mod', 'go.sum', '.golangci.yml',
+                     'release/DEFAULT_BUILD_TAGS', 'release/LDFLAGS',
+                     'third_party/sing-tun/go.mod', 'third_party/metacubex-utls/go.sum',
+                     'scripts/testdata/historical-workflows/unknown.yml',
+                     'scripts/testdata/historical-workflows/unknown.go']
+        protected += ['.github/workflows/' + name for name in WORKFLOWS]
+        protected += ['.github/workflows/' + name for name in (
+            'polaris-dns-native-candidate.yml', 'polaris-native-candidate.yml',
+            'polaris-production-native.yml', 'polaris-production-release.yml')]
+        for path in protected:
+            for status, old, new in [('M', '100644', '100644'), ('A', '000000', '100644'), ('D', '100644', '000000')]:
+                with self.subTest(path=path, status=status):
+                    self.assertFalse(impact.classify_changes([
+                        {'path': path, 'status': status, 'oldMode': old, 'newMode': new}]))
+
+    def test_real_git_ci_changes_full_runtime_fallback_and_fixed_audits(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(repo), *args], stderr=subprocess.PIPE).decode().strip()
+            git('init', '-q'); git('config', 'user.name', 'fixture'); git('config', 'user.email', 'fixture@example.invalid')
+            (repo / 'box.go').write_text('package box\n')
+            legacy = '.github/workflows/polaris-production-native.yml'
+            old = repo / legacy; old.parent.mkdir(parents=True); old.write_text('retired\n')
+            git('add', '.'); git('commit', '-qm', 'base'); before = git('rev-parse', 'HEAD')
+            for path in impact.CI_ONLY:
+                p = repo / path; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('contract fixture\n')
+            git('add', '.'); git('commit', '-qm', 'ci'); head = git('rev-parse', 'HEAD')
+            event = {'repository': {'full_name': 'polaris-arch/sing-box-polaris', 'id': 1421657509},
+                     'before': before, 'after': head, 'deleted': False, 'forced': False}
+            def run(event=event, kind='push', ref='refs/heads/polaris-main', head=head):
+                return impact.classify(repo, event, kind, ref, head)
+            self.assertFalse(run()['runFull'])
+            for kind in ('workflow_dispatch', 'pull_request', 'merge_group', 'pull_request_target', 'schedule'):
+                self.assertTrue(run(kind=kind)['runFull'])
+            for ref in ('refs/tags/polaris-fixed', 'refs/heads/other'):
+                self.assertTrue(run(ref=ref)['runFull'])
+            for changes in ({'forced': True}, {'deleted': True}, {'before': '0' * 40}, {'after': 'a' * 40}):
+                self.assertTrue(run(event={**event, **changes})['runFull'])
+            for path in ('box.go', 'go.mod', 'release/DEFAULT_BUILD_TAGS', 'scripts/ci/patch_test_packages.py',
+                         'third_party/sing-tun/go.sum', 'scripts/polaris_ci_impact.py',
+                         '.github/workflows/test.yml', '.github/workflows/ci-contract.yml', 'unknown.file', legacy):
+                p = repo / path; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('runtime change\n')
+                git('add', '.'); git('commit', '-qm', 'runtime'); tip = git('rev-parse', 'HEAD')
+                self.assertTrue(run(event={**event, 'after': tip}, head=tip)['runFull'], path)
+                git('reset', '--hard', head)
+            old.unlink()
+            git('add', '.'); git('commit', '-qm', 'retirement'); tip = git('rev-parse', 'HEAD')
+            self.assertTrue(run(event={**event, 'after': tip}, head=tip)['runFull'])
+            git('reset', '--hard', head)
+            (repo / 'box.go').write_text('package box\n//go:embed scripts/*\n')
+            git('add', '.'); git('commit', '-qm', 'embed'); base = git('rev-parse', 'HEAD')
+            (repo / 'scripts/test_polaris_ci_impact.py').write_text('changed embedded input\n')
+            git('add', '.'); git('commit', '-qm', 'embedded ci'); tip = git('rev-parse', 'HEAD')
+            self.assertTrue(run(event={**event, 'before': base, 'after': tip}, head=tip)['runFull'])
 
     def test_raw_diff_control_unicode_and_malformed(self):
         sha = 'a' * 40
@@ -133,8 +193,9 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(SOURCE_OWNED, WORKFLOWS - set(INHERITED))
         for name in INHERITED:
             self.assertEqual(hashlib.sha256((ROOT / '.github/workflows' / name).read_bytes()).hexdigest(), INHERITED_SHA256[name])
+        # Retired producer lanes are fixtures, never current Actions entries.
         for name in ('polaris-production-release.yml', 'polaris-native-candidate.yml', 'polaris-dns-native-candidate.yml'):
-            text = (ROOT / '.github/workflows' / name).read_text()
+            text = (HISTORICAL_WORKFLOWS / name).read_text()
             self.assertIn('  queue: max\n', text)
             self.assertIn('  cancel-in-progress: false\n', text)
         text = (ROOT / '.github/workflows/polaris-selfcheck.yml').read_text()
@@ -143,7 +204,7 @@ class ImpactTests(unittest.TestCase):
         self.assertIn("needs.classify.outputs.run_full == 'true'", text)
         for name, pin in [('polaris-native-candidate.yml', 'a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932'),
                           ('polaris-dns-native-candidate.yml', 'aafc521b745e0d1a8f50a6a3f41169433f1c2194')]:
-            self.assertIn('ref: ' + pin, (ROOT / '.github/workflows' / name).read_text())
+            self.assertIn('ref: ' + pin, (HISTORICAL_WORKFLOWS / name).read_text())
 
 
     def assert_github_publisher_security(self, publisher):

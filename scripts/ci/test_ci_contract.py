@@ -784,19 +784,39 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
         'TestAutoRedirectNFTCloseWithoutSetupDoesNotEnterCleanup',
     }
 
-    def test_manual_test_and_lint_keep_unconditional_complete_jobs(self):
+    def test_manual_test_and_lint_keep_complete_jobs_behind_full_classifier(self):
         for filename, count in [('test.yml', 3), ('lint.yml', 10)]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             self.assertEqual(set(workflow['on']), {'push', 'pull_request', 'workflow_dispatch'})
             self.assertEqual(workflow['on']['workflow_dispatch'], {})
             self.assertEqual(workflow['permissions'], {'contents': 'read'})
-            self.assertEqual(len(workflow['jobs']), 1)
-            job = next(iter(workflow['jobs'].values()))
-            self.assertNotIn('if', job)
+            self.assertEqual(set(workflow['jobs']), {'classify', 'test' if filename == 'test.yml' else 'build'})
+            job = workflow['jobs']['test' if filename == 'test.yml' else 'build']
+            self.assertEqual(job['needs'], 'classify')
+            self.assertEqual(job['if'], "${{ needs.classify.outputs.run_full == 'true' }}")
+            self.assertNotIn('paths-ignore', workflow['on']['push'])
             matrix = job['strategy']['matrix']
             self.assertEqual(len(matrix.get('include', matrix.get('os', []))), count)
             for step in job['steps']:
                 self.assertNotIn('github.event_name', step.get('if', ''))
+
+    def test_test_and_lint_reuse_original_classifier_and_contract_checks_cover_lightweight_paths(self):
+        selfcheck = yaml.safe_load((ROOT / '.github/workflows/polaris-selfcheck.yml').read_text())
+        expected = copy.deepcopy(selfcheck['jobs']['classify'])
+        expected['steps'] = expected['steps'][:3]
+        for filename in ('test.yml', 'lint.yml'):
+            workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
+            self.assertEqual(workflow['jobs']['classify'], expected)
+        contract = yaml.safe_load((ROOT / '.github/workflows/ci-contract.yml').read_text())
+        for event in ('push', 'pull_request'):
+            for path in ('scripts/polaris_ci_impact.py', 'scripts/test_polaris_ci_impact.py',
+                         'scripts/test_polaris_runner_resources.py', 'scripts/test_polaris_production_release.py',
+                         'scripts/testdata/historical-workflows/**', 'scripts/ci/**'):
+                self.assertIn(path, contract['on'][event]['paths'])
+        commands = '\n'.join(step.get('run', '') for step in contract['jobs']['contract']['steps'])
+        for name in ('test_polaris_ci_impact.py', 'test_polaris_runner_resources.py',
+                     'test_polaris_production_release.ProductionTests.test_historical_workflow'):
+            self.assertIn(name, commands)
 
     def test_linux_exact_package_partition_and_elevation_scope(self):
         workflow = yaml.safe_load((ROOT / '.github/workflows/test.yml').read_text())

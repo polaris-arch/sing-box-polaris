@@ -17,6 +17,9 @@ jobs:
     - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
+    - run: python -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py'
+    - run: python -B -m unittest discover -s scripts -p 'test_polaris_runner_resources.py'
+    - run: PYTHONPATH=scripts python -B -m unittest test_polaris_production_release.ProductionTests.test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes
 'on':
   push:
     branches:
@@ -24,6 +27,11 @@ jobs:
     paths:
     - .github/workflows/**
     - scripts/ci/**
+    - scripts/polaris_ci_impact.py
+    - scripts/test_polaris_ci_impact.py
+    - scripts/test_polaris_runner_resources.py
+    - scripts/test_polaris_production_release.py
+    - scripts/testdata/historical-workflows/**
     - release/ci/**
   pull_request:
     branches:
@@ -31,5 +39,10 @@ jobs:
     paths:
     - .github/workflows/**
     - scripts/ci/**
+    - scripts/polaris_ci_impact.py
+    - scripts/test_polaris_ci_impact.py
+    - scripts/test_polaris_runner_resources.py
+    - scripts/test_polaris_production_release.py
+    - scripts/testdata/historical-workflows/**
     - release/ci/**
   workflow_dispatch: null

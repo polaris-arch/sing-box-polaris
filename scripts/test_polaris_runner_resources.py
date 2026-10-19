@@ -166,21 +166,21 @@ class RunnerResourceTests(unittest.TestCase):
             self.assertEqual(env.read_bytes(), before)
             self.assertEqual(json.loads(report.read_text())['status'], 'rejected')
 
-    def test_workflow_keeps_full_assembly_barrier_but_guests_have_no_desktop_dependency(self):
+    def test_historical_assembly_barrier_and_active_selfcheck_resources(self):
         repo = Path(__file__).resolve().parents[1]
-        workflow = (repo / '.github/workflows/polaris-production-release.yml').read_text()
+        workflow = (repo / 'scripts/testdata/historical-workflows/polaris-production-release.yml').read_text()
         self.assertIn('needs: [plan, native-openwrt]', workflow)
         self.assertIn('needs: [plan, native, native-openwrt, openwrt-guests]', workflow)
         self.assertNotIn('max-parallel:', workflow)
         self.assertIn('cancel-in-progress: false', workflow)
-        native = (repo / '.github/workflows/polaris-production-native.yml').read_text()
+        native = (repo / 'scripts/testdata/historical-workflows/polaris-production-native.yml').read_text()
         self.assertIn("if: github.repository == 'polaris-arch/polaris-box'", native)
         self.assertIn('--kind \"$RESOURCE_KIND\" --scratch', native)
         self.assertNotIn("--kind '${{ inputs.kind }}'", native)
         self.assertIn("inputs.attest && github.ref == 'refs/heads/polaris-main'", workflow)
         selfcheck = (repo / '.github/workflows/polaris-selfcheck.yml').read_text()
         self.assertIn("format('audit-{0}', github.run_id)", selfcheck)
-        self.assertIn("cancel-in-progress: ${{ github.event_name == 'push' && github.ref_type == 'branch' }}", selfcheck)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}", selfcheck)
         self.assertEqual(selfcheck.count('Bound runner work using the fixed workflow-owned resource tool'), 7)
         self.assertIn('git show "$GITHUB_SHA:scripts/polaris_runner_resources.py"', selfcheck)
         self.assertIn('if: ${{ inputs.run_instance_tests }}', selfcheck)

@@ -3,7 +3,31 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 jobs:
+  classify:
+    name: Audit CI impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      run_full: ${{ steps.impact.outputs.run_full }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prove conservative impact policy
+        run: python3 -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py' -v
+      - id: impact
+        name: Classify exact automatic tip or keep fixed audit full
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+        run: |
+          python3 -B scripts/polaris_ci_impact.py --repo "$GITHUB_WORKSPACE" \
+            --event-file "$GITHUB_EVENT_PATH" --event-name "$EVENT_NAME" --ref "$EVENT_REF" \
+            --workflow-sha "$GITHUB_SHA" --output "$RUNNER_TEMP/ci-impact.json" --github-output "$GITHUB_OUTPUT"
   build:
+    needs: classify
+    if: ${{ needs.classify.outputs.run_full == 'true' }}
     name: Lint ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ubuntu-latest
     strategy:
@@ -61,10 +85,6 @@ jobs:
   push:
     branches:
     - polaris-main
-    paths-ignore:
-    - '**.md'
-    - .github/**
-    - '!.github/workflows/lint.yml'
   pull_request:
     branches:
     - polaris-main
