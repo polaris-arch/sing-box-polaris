@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,8 +92,28 @@ func windowsTestSignal(path, nonce string) error {
 	return os.Rename(temporary, path)
 }
 
+// Read only test IPC files, which are published by temp-close-rename. A renamed
+// name can become visible before MoveFileEx closes its DELETE handle. Sharing
+// DELETE here permits that overlap; production directory custody must not do so.
+func windowsTestReadSignal(path string) ([]byte, error) {
+	wide, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	h, err := windows.CreateFile(wide, windows.GENERIC_READ, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	f := os.NewFile(uintptr(h), path)
+	if f == nil {
+		return nil, errors.Join(fmt.Errorf("wrap test signal handle: %s", path), windows.CloseHandle(h))
+	}
+	data, readErr := io.ReadAll(f)
+	return data, errors.Join(readErr, f.Close())
+}
+
 func windowsTestHasSignal(path, nonce string) (bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := windowsTestReadSignal(path)
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -136,6 +157,20 @@ type windowsTestProcess struct {
 	ready       windowsProcessReady
 }
 
+func windowsTestDecodeReady(data []byte, nonce, mode string) (windowsProcessReady, error) {
+	var ready windowsProcessReady
+	if err := json.Unmarshal(data, &ready); err != nil {
+		return ready, err
+	}
+	if ready.Nonce != nonce || ready.Mode != mode {
+		return ready, fmt.Errorf("child ready did not bind request")
+	}
+	if mode != "reject" && (ready.Identity == "" || !validDirectoryNonce(ready.Incarnation) || !validDirectoryNonce(ready.Epoch)) {
+		return ready, fmt.Errorf("child ready lacked physical generation")
+	}
+	return ready, nil
+}
+
 func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *windowsTestProcess {
 	t.Helper()
 	nonce, err := newDirectoryNonce()
@@ -176,16 +211,11 @@ func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		data, err := os.ReadFile(windowsProcessFile(root, nonce, "ready"))
+		data, err := windowsTestReadSignal(windowsProcessFile(root, nonce, "ready"))
 		if err == nil {
-			if err := json.Unmarshal(data, &p.ready); err != nil {
+			p.ready, err = windowsTestDecodeReady(data, nonce, mode)
+			if err != nil {
 				t.Fatal(err)
-			}
-			if p.ready.Nonce != nonce || p.ready.Mode != mode {
-				t.Fatal("child ready did not bind request")
-			}
-			if mode != "reject" && (p.ready.Identity == "" || !validDirectoryNonce(p.ready.Incarnation) || !validDirectoryNonce(p.ready.Epoch)) {
-				t.Fatal("child ready lacked physical generation")
 			}
 			return p
 		}
@@ -202,6 +232,119 @@ func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *
 			t.Fatalf("child ready timeout\n%s", output.text())
 		case <-ticker.C:
 		}
+	}
+}
+
+// Hold the DELETE access used during rename without relying on scheduler
+// timing. The ordinary reader must fail while the IPC reader reads all bytes.
+func TestWindowsDirectorySignalReadDuringRename(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ready")
+	nonce := strings.Repeat("1", 32)
+	ready := windowsProcessReady{Nonce: nonce, Mode: "writer", Identity: "fixture", Incarnation: strings.Repeat("2", 32), Epoch: strings.Repeat("3", 32)}
+	data, err := json.Marshal(ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windowsTestSignal(path, string(data)); err != nil {
+		t.Fatal(err)
+	}
+	wide, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := windows.CreateFile(wide, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := windows.CloseHandle(h); err != nil {
+			t.Error(err)
+		}
+	}()
+	if _, err := os.ReadFile(path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+		t.Fatalf("ordinary reader error = %v, want sharing violation", err)
+	}
+	got, err := windowsTestReadSignal(path)
+	if err != nil || !bytes.Equal(got, data) {
+		t.Fatalf("IPC reader did not read complete published bytes: %v", err)
+	}
+	decoded, err := windowsTestDecodeReady(got, nonce, "writer")
+	if err != nil || decoded != ready {
+		t.Fatalf("IPC reader lost ready binding: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(path, string(data)); err != nil || !ok {
+		t.Fatalf("signal reader did not share rename handle: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(path, nonce); err != nil || ok {
+		t.Fatalf("signal reader accepted wrong payload: %v", err)
+	}
+}
+
+func TestWindowsDirectorySignalValidation(t *testing.T) {
+	root := t.TempDir()
+	missing := filepath.Join(root, "missing")
+	if _, err := windowsTestReadSignal(missing); !os.IsNotExist(err) {
+		t.Fatalf("missing signal error = %v, want not exist", err)
+	}
+	if ok, err := windowsTestHasSignal(missing, "nonce"); err != nil || ok {
+		t.Fatalf("missing signal was accepted: %v", err)
+	}
+	nonce := strings.Repeat("1", 32)
+	signal := filepath.Join(root, "signal")
+	if err := windowsTestSignal(signal, nonce); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := windowsTestHasSignal(signal, nonce); err != nil || !ok {
+		t.Fatalf("valid signal rejected: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(signal, "invalid"); err != nil || ok {
+		t.Fatalf("wrong nonce accepted: %v", err)
+	}
+	if ok, err := windowsTestHasSignal("invalid\x00path", nonce); err == nil || ok {
+		t.Fatal("non-missing open error was suppressed")
+	}
+	rejected := []byte(`{"Nonce":"` + nonce + `","Mode":"reject"}`)
+	if _, err := windowsTestDecodeReady(rejected, nonce, "reject"); err != nil {
+		t.Fatalf("native rejection ready requires no generation: %v", err)
+	}
+	valid := windowsProcessReady{Nonce: nonce, Mode: "writer", Identity: "fixture", Incarnation: strings.Repeat("2", 32), Epoch: strings.Repeat("3", 32)}
+	for _, field := range []string{"json", "nonce", "mode", "identity", "incarnation", "epoch"} {
+		t.Run(field, func(t *testing.T) {
+			ready := valid
+			switch field {
+			case "nonce":
+				ready.Nonce = "invalid"
+			case "mode":
+				ready.Mode = "retirement"
+			case "identity":
+				ready.Identity = ""
+			case "incarnation":
+				ready.Incarnation = "invalid"
+			case "epoch":
+				ready.Epoch = "invalid"
+			}
+			data, err := json.Marshal(ready)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field == "json" {
+				data = []byte("{")
+			}
+			path := filepath.Join(root, field)
+			if err := windowsTestSignal(path, string(data)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := windowsTestReadSignal(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := windowsTestDecodeReady(got, nonce, "writer"); err == nil {
+				t.Fatal("invalid ready accepted")
+			}
+			if ok, err := windowsTestHasSignal(path, nonce); err != nil || ok {
+				t.Fatalf("invalid signal accepted: %v", err)
+			}
+		})
 	}
 }
 
