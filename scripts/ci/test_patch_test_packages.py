@@ -299,6 +299,176 @@ class ReadOnlyEvidenceBoundaryTests(unittest.TestCase):
             self.assertGreater(result['verifiedFiles'], 0)
 
 
+class PatchWorkflowNetnsOrderTests(unittest.TestCase):
+    """Run the real workflow shell with stubbed git, Python entrypoints and Go."""
+
+    def command(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/polaris-selfcheck.yml').read_text()
+        step = workflow.split('      - name: Test packages changed by the queue\n', 1)[1]
+        command = step.split("<<'POLARIS_COMMAND'\n", 1)[1].split('\n          POLARIS_COMMAND', 1)[0]
+        return '\n'.join(line[10:] if line.startswith('          ') else line
+                         for line in command.splitlines()) + '\n'
+
+    def run_workflow(self, *, authorized=False, root_selected=True,
+                     netns_selected=True, netns_pass=True):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for owner, identity in MODULES.items():
+                directory = root / owner
+                directory.mkdir(parents=True, exist_ok=True)
+                (directory / 'go.mod').write_text('module ' + identity + '\n\ngo 1.27.0\n')
+            release = root / 'release'
+            release.mkdir()
+            (release / 'DEFAULT_BUILD_TAGS').write_text('with_quic\n')
+            (release / 'LDFLAGS').write_text('-X fixture.version=mock\n')
+            # Use the real owner/marker selection. Only external command execution
+            # is stubbed; no Go binary, elevated command, or remote git runs.
+            selected = [owner + '/go.mod' for owner in MARKERS]
+            if root_selected:
+                selected.append('go.mod')
+            plan = selection(root, selected)
+            write_plan(root / 'runner/polaris-ci/patch-test-packages', plan)
+            trace = root / 'trace.tsv'
+            trace.touch()
+            resolved = ['github.com/sagernet/sing-box/fixture']
+            if netns_selected:
+                resolved.append('github.com/sagernet/sing-box/common/netns')
+            env = dict(os.environ, RUNNER_TEMP=str(root / 'runner'), BASE_REF='v1.13.0',
+                       BASE_COMMIT='a' * 40, INSTANCE_TESTS='FixtureInstance',
+                       SING_TUN_INSTANCE_TESTS='FixtureTunInstance',
+                       NETNS_BATCH_ELEVATION=str(authorized).lower(),
+                       MOCK_TRACE=str(trace), MOCK_RESOLVED='\n'.join(resolved),
+                       MOCK_NETNS_PASS=str(netns_pass).lower())
+            stubs = r'''
+git() {
+  case "$1" in
+    fetch) return 0 ;;
+    rev-parse) printf '%s\n' "$BASE_COMMIT" ;;
+    merge-base) return 0 ;;
+    *) return 99 ;;
+  esac
+}
+python3() {
+  test "$1" = -B || return 99
+  case "$2" in
+    -m) test "$3" = unittest ;;
+    scripts/ci/patch_test_packages.py) test "$3" = --base ;;
+    -) cat >/dev/null ;;
+    *) return 99 ;;
+  esac
+}
+sudo() { return 99; }
+go() {
+  printf '%s\t' "$PWD" "$@" >> "$MOCK_TRACE"
+  printf '\n' >> "$MOCK_TRACE"
+  if [ "$1" = list ]; then
+    if [ "$2" = -mod=readonly ]; then
+      printf '{}\n'
+    else
+      printf '%s\n' "$MOCK_RESOLVED"
+    fi
+    return 0
+  fi
+  test "$1" = test || return 99
+  if [ "${!#}" = github.com/sagernet/sing-box/common/netns ]; then
+    if [ "$NETNS_BATCH_ELEVATION" != true ]; then
+      echo 'mock netns: operation not permitted' >&2
+      return 47
+    fi
+    if [ "$MOCK_NETNS_PASS" = true ]; then
+      echo '--- PASS: TestUnshareNamespace (0.00s)'
+    fi
+  else
+    for name in TestNaiveAdmissionSealsBeforeJoin TestNaiveDialCreationBarrierAndTerminalOwnership \
+      TestFailedAddClosesUnpublishedWatcher TestSuccessfulAddTransfersWithoutClosing \
+      TestFailedAddPreservesCleanupFailure TestRuntimePacketContextRetainsBeforeLaunchAndJoinsTerminalTail \
+      TestRuntimePacketContextFailureDoesNotPublishSession TestServerRuntimeLegacyContextIsUnchanged \
+      TestServerRuntimeRejectsBeforeTaskLaunch TestServerRuntimeSuppliesOwnedTaskContext \
+      TestRejectedRuntimePacketSessionClosesAndRemovesExactEntry TestSealRequiresActualRelease \
+      TestClosedQueueWaitIsNotJoin TestRuntimeInterfaceHooksAreMonitorLocal \
+      TestRuntimeInterfaceHookErrorsDoNotFallback TestRuntimeCGNATUsesOnlyOwnerInterfaces \
+      TestRuntimeTimerDelSyncJoinsOriginalCallback TestRuntimeWorkerAdmissionClosesBeforeWait \
+      TestRuntimeFinalJoinHoldsNoStateOrNetLocks TestRuntimeSourceGenerationInvalidatesBeforeSend \
+      TestRuntimeRouteCancellationWithContinuouslyReadyInput TestRuntimeCloseJoinsOriginalCollector \
+      TestRuntimeWriteCancellationJoinsActualDeadlineMutation \
+      TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback; do
+      printf '%s\n' "--- PASS: $name (0.00s)"
+    done
+  fi
+  printf 'ok\tfixture\t0.01s\n'
+}
+'''
+            result = subprocess.run(['bash', '--noprofile', '--norc', '-e', '-u', '-o',
+                                     'pipefail', '-c', stubs + self.command()],
+                                    cwd=root, env=env, text=True, capture_output=True, timeout=15)
+            calls = []
+            for line in trace.read_text().splitlines():
+                directory, *args = line.rstrip('\t').split('\t')
+                calls.append((str(Path(directory).relative_to(root)), args))
+            return result, calls
+
+    def assert_all_modules_before_netns(self, calls, *, root_selected=True, netns_selected=True):
+        tests = [(owner, args) for owner, args in calls if args[0] == 'test']
+        expected = (['.'] if root_selected else []) + [
+            'third_party/sing-tun', 'third_party/sing-tun',
+            'third_party/metacubex-utls', 'third_party/cronet-go', 'third_party/fswatch',
+            'third_party/sing', 'third_party/sing-quic', '.',
+            'third_party/wireguard-go', 'third_party/tfo-go']
+        if root_selected and netns_selected:
+            expected.append('.')
+            self.assertEqual(tests[-1][1][-1], 'github.com/sagernet/sing-box/common/netns')
+        self.assertEqual([owner for owner, _ in tests], expected)
+        sdk = next(args for owner, args in tests if SDK + '/' + SDK_PACKAGES[0] in args)
+        self.assertEqual(sdk[-len(SDK_PACKAGES):], [SDK + '/' + p for p in SDK_PACKAGES])
+        for _, args in tests:
+            self.assertIn('-race', args)
+            self.assertIn('-count=1', args)
+        return tests
+
+    def test_all_ordinary_and_nested_tests_precede_unprivileged_netns_failure(self):
+        result, calls = self.run_workflow()
+        self.assertEqual(result.returncode, 47, result.stdout + result.stderr)
+        tests = self.assert_all_modules_before_netns(calls)
+        self.assertEqual(tests[0][1][-1], 'github.com/sagernet/sing-box/fixture')
+        self.assertFalse(any('-exec' in args for _, args in calls))
+        self.assertIn('running required netns gate unprivileged', result.stdout)
+
+    def test_authorization_only_adds_sudo_exec_to_selected_netns(self):
+        result, calls = self.run_workflow(authorized=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        tests = self.assert_all_modules_before_netns(calls)
+        elevated = [(owner, args) for owner, args in calls if '-exec' in args]
+        self.assertEqual(elevated, [tests[-1]])
+        args = elevated[0][1]
+        self.assertEqual(args[args.index('-exec') + 1], 'sudo -n --')
+        denied, denied_calls = self.run_workflow()
+        self.assertEqual(denied.returncode, 47)
+        stripped = [(owner, [arg for arg in args if arg not in ('-exec', 'sudo -n --')])
+                    for owner, args in calls]
+        self.assertEqual(stripped, denied_calls)
+
+    def test_empty_root_still_runs_nested_modules_without_netns_or_unbound_state(self):
+        result, calls = self.run_workflow(root_selected=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assert_all_modules_before_netns(calls, root_selected=False)
+        self.assertFalse(any('-exec' in args or 'github.com/sagernet/sing-box/common/netns' in args
+                             for _, args in calls))
+
+    def test_authorization_cannot_add_unselected_netns(self):
+        result, calls = self.run_workflow(authorized=True, netns_selected=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assert_all_modules_before_netns(calls, netns_selected=False)
+        self.assertFalse(any('-exec' in args or 'github.com/sagernet/sing-box/common/netns' in args
+                             for _, args in calls))
+
+    def test_success_status_without_required_netns_pass_still_fails(self):
+        result, calls = self.run_workflow(authorized=True, netns_pass=False)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assert_all_modules_before_netns(calls)
+
+
 if __name__ == '__main__':
     unittest.main()
 

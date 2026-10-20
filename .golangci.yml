@@ -68,6 +68,12 @@ linters:
         path: '^protocol/naive/inbound_runtime_tcp\.go$'
         text: '^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $'
         source: '^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'
+      # The pinned h2c handler also requires this concrete Server type.
+      # Retire it with the same reviewed h2c engine migration above.
+      - linters: [staticcheck]
+        path: '^protocol/naive/inbound_runtime_tcp\.go$'
+        text: '^SA1019: golang\.org/x/net/http2\.Server is deprecated: Use \[http\.Server\] instead\. $'
+        source: '^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'
       - linters: [staticcheck]
         path: '^protocol/shadowsocks/inbound_runtime_packet\.go$'
         text: '^SA1019: github\.com/sagernet/sing/common/metadata\.Metadata is deprecated: wtf is this\? $'

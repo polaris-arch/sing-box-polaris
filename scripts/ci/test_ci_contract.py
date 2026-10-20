@@ -246,7 +246,7 @@ class TestCIContract(unittest.TestCase):
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
  def expected_lint_rules(self):
-  # Keep each reviewed boundary explicit: five SA1019 rules have distinct
+  # Keep each reviewed boundary explicit: six SA1019 rules have distinct
   # path/diagnostic identities, so the diagnostic code alone is not a key.
   return {
    'http2':{
@@ -268,6 +268,11 @@ class TestCIContract(unittest.TestCase):
     'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
     'text':r'^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $',
     'source':r'^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'},
+   'h2c-server':{
+    'linters':['staticcheck'],
+    'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2\.Server is deprecated: Use \[http\.Server\] instead\. $',
+    'source':r'^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'},
    'shadowsocks-metadata':{
     'linters':['staticcheck'],
     'path':r'^protocol/shadowsocks/inbound_runtime_packet\.go$',
@@ -284,7 +289,7 @@ class TestCIContract(unittest.TestCase):
   checks=config['linters']['settings']['staticcheck']['checks']
   self.assertIn('all',checks)
   for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),6)
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),7)
   expected=self.expected_lint_rules()
   self.assertCountEqual(rules,list(expected.values()))
   by_scope={(rule['path'],rule['text']):rule for rule in rules}
@@ -345,7 +350,7 @@ class TestCIContract(unittest.TestCase):
                  signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
                  'return instance, err, report',signature+' // another line']:
    self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
- def test_reviewed_compatibility_exclusions_match_only_seven_exact_diagnostics(self):
+ def test_reviewed_compatibility_exclusions_match_only_eight_exact_diagnostics(self):
   rules=self.lint_rules()
   fixtures=[
    ('tls-rand','common/httpclient/runtime_quic_tls.go',
@@ -356,6 +361,9 @@ class TestCIContract(unittest.TestCase):
     ['"golang.org/x/net/http2/h2c"']),
    ('h2c-handler','protocol/naive/inbound_runtime_tcp.go',
     'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.',
+    ['Handler:     h2c.NewHandler(n, &http2.Server{}),']),
+   ('h2c-server','protocol/naive/inbound_runtime_tcp.go',
+    'SA1019: golang.org/x/net/http2.Server is deprecated: Use [http.Server] instead.',
     ['Handler:     h2c.NewHandler(n, &http2.Server{}),']),
    ('shadowsocks-metadata','protocol/shadowsocks/inbound_runtime_packet.go',
     'SA1019: github.com/sagernet/sing/common/metadata.Metadata is deprecated: wtf is this?',
@@ -371,14 +379,14 @@ class TestCIContract(unittest.TestCase):
     rendered=message
     message+=' '
     self.assertEqual(message.strip(),rendered)
-    actual=[line for line in (ROOT/path).read_text().splitlines() if re.search(rule['source'],line)]
-    self.assertEqual([line.strip() for line in actual],statements)
-    for source in actual:
+    actual=[(number,line) for number,line in enumerate((ROOT/path).read_text().splitlines(),1) if re.search(rule['source'],line)]
+    self.assertEqual([line.strip() for _,line in actual],statements)
+    for line_number,source in actual:
      # Every approved diagnostic has exactly one matching rule, even when two
      # rules share a path or several diagnostics share a code and statement.
      self.assertEqual([key for key,value in rules.items()
                        if self.rule_matches(value,'staticcheck',path,message,source)],[name])
-     matched.append((name,path,message,source))
+     matched.append((name,path,line_number,message,source))
      for linter in ['unused','modernize']:
       self.assertFalse(self.rule_matches(rule,linter,path,message,source))
      for other_path in ['other/'+path,path+'.backup',path.replace('.go','_test.go')]:
@@ -389,11 +397,36 @@ class TestCIContract(unittest.TestCase):
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,other_message,source))
      for other_source in ['',source+' // another statement','prefix '+source,'unrelated()']:
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,message,other_source))
-  self.assertEqual(len(matched),7)
+  self.assertEqual(len(matched),8)
+  self.assertEqual(len({(row[1],row[2]) for row in matched}),7)
   # The rejected server-only field must not inherit the client Rand exception.
   message='SA1019: (crypto/tls.Config).NameToCertificate has been deprecated since Go 1.14: NameToCertificate only allows associating a single certificate with a given name. Leave this field nil to let the library select the first compatible chain from Certificates.'
   self.assertFalse(any(self.rule_matches(rule,'staticcheck','common/httpclient/runtime_quic_tls.go',
                                        message,'if config.NameToCertificate != nil {') for rule in rules.values()))
+ def test_same_line_deprecations_are_filtered_before_line_deduplication(self):
+  # v2.15.0 runs exclusion_rules before uniq_by_line, whose key omits text
+  # and column. Review the complete symbol inventory, not only displayed rows.
+  rules=self.lint_rules()
+  path='protocol/naive/inbound_runtime_tcp.go'
+  source='\t\tHandler:     h2c.NewHandler(n, &http2.Server{}),'
+  messages=[
+   'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead. ',
+   'SA1019: golang.org/x/net/http2.Server is deprecated: Use [http.Server] instead. ']
+  def exclude(rows,selected):
+   return [row for row in rows if not any(self.rule_matches(rule,'staticcheck',path,row[2],source) for rule in selected)]
+  def unique(rows):
+   seen=set();result=[]
+   for row in rows:
+    key=(path,row[0])
+    if key not in seen:result.append(row);seen.add(key)
+   return result
+  rows=[(45,16,messages[0]),(45,35,messages[1])]
+  for ordered in [rows,list(reversed(rows))]:
+   with self.subTest(order=[row[1] for row in ordered]):
+    self.assertEqual(len(unique(ordered)),1)
+    old=[rule for name,rule in rules.items() if name!='h2c-server']
+    self.assertEqual(unique(exclude(ordered,old)),[rows[1]])
+    self.assertEqual(unique(exclude(ordered,rules.values())),[])
  def test_lint_rule_inventory_rejects_missing_duplicate_or_widened_boundaries(self):
   original=yaml.safe_load((ROOT/'.golangci.yml').read_text())
   rules=original['linters']['exclusions']['rules']
@@ -834,13 +867,21 @@ raise SystemExit(config['statuses'].get(group, 0))
                 self.assertEqual(calls[0]['args'][0], 'list')
 
     def test_test_failures_survive_tee_and_stop_later_groups(self):
-        for group, approved, count in [('ordinary', 'true', 2), ('netns', 'true', 4), ('netns', 'false', 3)]:
+        for group, approved, count in [('ordinary', 'true', 2), ('netns', 'true', 7), ('netns', 'false', 6)]:
             with self.subTest(group=group, authorized=approved):
                 result, calls = self.run_queue(authorized=approved, statuses={group: 23},
                                                modules=['sing-tun', 'metacubex-utls'])
                 self.assertEqual(result.returncode, 23, result.stderr)
                 self.assertEqual(len(calls), count)
-                self.assertTrue(all(c['cwd'] == '.' for c in calls))
+                owners = ['.', '.']
+                if group == 'netns':
+                    owners += ['third_party/sing-tun', 'third_party/sing-tun',
+                               'third_party/metacubex-utls', '.']
+                    if approved == 'true':
+                        owners.append('.')
+                    self.assertTrue(all(c['tool'] == 'go' and '-exec' not in c['args']
+                                        for c in calls[2:5]))
+                self.assertEqual([c['cwd'] for c in calls], owners)
 
     def test_success_requires_ordinary_ok_and_real_named_netns_pass(self):
         cases = [('ordinary', '? fixture [no test files]\n'),
@@ -852,7 +893,13 @@ raise SystemExit(config['statuses'].get(group, 0))
                 result, calls = self.run_queue(authorized='true', outputs={group: output},
                                                modules=['sing-tun', 'metacubex-utls'])
                 self.assertNotEqual(result.returncode, 0)
-                self.assertTrue(all(c['cwd'] == '.' for c in calls))
+                owners = ['.', '.']
+                if group == 'netns':
+                    owners += ['third_party/sing-tun', 'third_party/sing-tun',
+                               'third_party/metacubex-utls', '.', '.']
+                    self.assertTrue(all(c['tool'] == 'go' and '-exec' not in c['args']
+                                        for c in calls[2:5]))
+                self.assertEqual([c['cwd'] for c in calls], owners)
 
     def test_selected_owned_modules_keep_separate_unprivileged_coverage(self):
         expected = [
@@ -863,15 +910,19 @@ raise SystemExit(config['statuses'].get(group, 0))
                       '-run', '^TestPing$/^(ipv4|ipv6)$/^unprivileged$', './ping']},
             {'tool': 'go', 'cwd': 'third_party/metacubex-utls',
              'args': ['test', '-race', '-count=1', '-tags', self.TAGS, './...']}]
-        # Check nested owners both alone and after netns configured its wrapper:
-        # reusing netns_exec in a later module must never inherit elevation.
+        # Nested owners run unprivileged before the separately guarded netns
+        # binary, including when root selection also contains netns.
         for selected in [[], ['./...']]:
             with self.subTest(root_selection=selected):
                 result, calls = self.run_queue(selected=selected, authorized='true',
                                                modules=['sing-tun', 'metacubex-utls'])
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(len(calls), 7 if selected else 3)
-                self.assertEqual(calls[-3:], expected)
+                self.assertEqual(calls[2:5] if selected else calls, expected)
+                if selected:
+                    self.assert_root_test(calls[1], self.ORDINARY)
+                    self.assert_root_test(calls[-2], [self.NETNS], elevated=True)
+                    self.assertEqual(calls[-1], {'tool': 'sudo', 'args': ['-n', '--', 'fixture-netns.test'], 'cwd': '.'})
                 self.assertEqual(sum(c['tool'] == 'sudo' for c in calls), 1 if selected else 0)
         for module in ['sing-tun', 'sing-tun-ping', 'metacubex-utls']:
             with self.subTest(failing_module=module):

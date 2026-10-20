@@ -50,7 +50,20 @@ func TestGoHandlerLaunchPinsAcceptedGraphWithNilTracker(t *testing.T) {
 		if err!=nil{device.Close();t.Fatal(err)}
 		t.Cleanup(func(){unblock();stack.Close();device.Close()})
 		if err=stack.Start();err!=nil{t.Fatal(err)}
-		raw,_:=ownershipPacket(protocol);if _,err=device.Write(raw);err!=nil{t.Fatal(err)}
+		raw,parsed:=ownershipPacket(protocol)
+		// The dispatcher-only fixture omits TCP checksums. MemoryTun ingress
+		// validates both the IPv4 header and the complete transport segment.
+		if protocol == uint8(header.TCPProtocolNumber) {
+			ip := header.IPv4(raw)
+			ip.SetChecksum(^ip.CalculateChecksum())
+			tcp := header.TCP(ip.Payload())
+			pseudo := header.PseudoHeaderChecksum(header.TCPProtocolNumber, ip.SourceAddressSlice(), ip.DestinationAddressSlice(), uint16(len(tcp)))
+			tcp.SetChecksum(^tcp.CalculateChecksum(pseudo))
+		}
+		if !header.IPv4(raw).IsChecksumValid() || !goValidateTransportChecksum(&parsed) {
+			t.Fatalf("invalid ingress fixture checksum for protocol %d", protocol)
+		}
+		if _,err=device.Write(raw);err!=nil{t.Fatal(err)}
 		var received FlowOwnership
 		select{case received=<-h.entered:case <-time.After(5*time.Second):t.Fatal("handler admission watchdog")}
 		if received==nil{t.Fatal("handler lost accepted graph context")}

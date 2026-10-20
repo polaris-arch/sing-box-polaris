@@ -984,6 +984,7 @@ jobs:
           selection_dir="$RUNNER_TEMP/polaris-ci/patch-test-packages"
           python3 -B scripts/ci/patch_test_packages.py --base "$BASE_COMMIT" --output-directory "$selection_dir"
           mapfile -t packages < "$selection_dir/root-packages.txt"
+          netns_selected=false
           if [ "${#packages[@]}" -eq 0 ]; then
             echo "no root Go package changed since $BASE_REF"
           else
@@ -994,7 +995,6 @@ jobs:
             mapfile -t resolved_packages < "$selection_dir/resolved-root-packages.txt"
             test "${#resolved_packages[@]}" -gt 0
             ordinary_packages=()
-            netns_selected=false
             for package in "${resolved_packages[@]}"; do
               if [ "$package" = github.com/sagernet/sing-box/common/netns ]; then
                 netns_selected=true
@@ -1007,20 +1007,6 @@ jobs:
                 -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
                 "${ordinary_packages[@]}" | tee test.log
               grep -q '^ok' test.log
-            fi
-            if [ "$netns_selected" = true ]; then
-              # Only the selected netns test binary is elevated; compilation remains unprivileged.
-              netns_exec=()
-              if [ "$NETNS_BATCH_ELEVATION" = true ]; then
-                netns_exec=(-exec 'sudo -n --')
-              else
-                echo 'No batch elevation approval; running required netns gate unprivileged'
-              fi
-              go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
-                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
-                github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
-              grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
-              grep -q '^ok' "$selection_dir/netns-test.log"
             fi
           fi
           if [ -f "$selection_dir/sing-tun-selected" ]; then
@@ -1126,6 +1112,20 @@ jobs:
               -tags "$tags" -ldflags "$ldflags" ./...) | tee "$selection_dir/tfo-go-test.log"
             grep -q '^--- PASS: TestRuntimeWriteCancellationJoinsActualDeadlineMutation ' "$selection_dir/tfo-go-test.log"
             grep -q '^--- PASS: TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback ' "$selection_dir/tfo-go-test.log"
+          fi
+          if [ "$netns_selected" = true ]; then
+            # Only the selected netns test binary is elevated; compilation remains unprivileged.
+            netns_exec=()
+            if [ "$NETNS_BATCH_ELEVATION" = true ]; then
+              netns_exec=(-exec 'sudo -n --')
+            else
+              echo 'No batch elevation approval; running required netns gate unprivileged'
+            fi
+            go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
+              -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+              github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
+            grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
+            grep -q '^ok' "$selection_dir/netns-test.log"
           fi
           POLARIS_COMMAND
           python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-patch-tests-0 \
