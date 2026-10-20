@@ -234,7 +234,7 @@ func (b *backendDarwin) WritePackets(packets [][]byte) error {
 func (b *backendDarwin) batchReadLoop() {
 	var (
 		batch       [][]byte
-		returnPaths []tun.Return
+		returnPaths []*runtimeReturn
 	)
 	for {
 		headroom := 0

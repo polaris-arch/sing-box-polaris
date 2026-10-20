@@ -76,9 +76,10 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		options.HTTP3Options.InitialPacketSize = min(int(options.MTU)+masque.QUICPacketOverhead, math.MaxUint16)
 	}
 	serverEndpoint := &ServerEndpoint{
-		Adapter:        endpoint.NewAdapter(C.TypeMASQUEServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
+		endpointBase: endpointBase{Adapter:        endpoint.NewAdapter(C.TypeMASQUEServer, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 		router:         router,
 		logger:         logger,
+  },
 		ctx:            ctx,
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
 		http3:          serveHTTP3,
@@ -149,7 +150,7 @@ func (s *ServerEndpoint) Start(stage adapter.StartStage, scope *adapter.Scope) e
 		if err != nil {
 			return err
 		}
-		scope.Add(tunnelDevice.Close)
+		scope.Add(func() error { return device.CloseAndWait(tunnelDevice) })
 		tunnelDevice.SetPacketWriter(s.writePacketBuffers)
 		s.device = tunnelDevice
 		s.deviceOptions = nil
@@ -245,7 +246,13 @@ func (s *ServerEndpoint) JudgeFlow(network uint8, source netip.AddrPort, destina
 }
 
 func (s *ServerEndpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
-	s.newDNSPacket(log.ContextWithNewID(s.ctx), s, payload, source, destination, writer)
+	s.NewDNSPacketEx(s.ctx, payload, source, destination, writer)
+}
+
+// NewDNSPacketEx forwards the borrowed packet admission synchronously.
+// HijackDNSPacket owns the fork before asynchronous DNS work is published.
+func (s *ServerEndpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
+	s.newDNSPacket(log.ContextWithNewID(ctx), s, payload, source, destination, writer)
 }
 
 func (s *ServerEndpoint) WritePackets(packets [][]byte) error {
@@ -339,3 +346,5 @@ func (s *ServerEndpoint) PreferredDomain(metadata *adapter.InboundContext, domai
 func (s *ServerEndpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
 	return s.started.Load() && s.server.Contains(address)
 }
+
+var _ tun.DNSPacketHandlerEx = (*ServerEndpoint)(nil)

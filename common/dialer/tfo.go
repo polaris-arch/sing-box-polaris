@@ -2,6 +2,8 @@ package dialer
 
 import (
 	"context"
+ "errors"
+ "fmt"
 	"io"
 	"net"
 	"os"
@@ -29,6 +31,13 @@ type slowOpenConn struct {
 	access      sync.Mutex
 	closeOnce   sync.Once
 	err         error
+ lifecycleAccess sync.Mutex
+ creating bool
+ creationDone chan struct{}
+ closed bool
+ lateCloseErr error
+ closeErr error
+ dial func(context.Context,string,string,[]byte)(net.Conn,error)
 }
 
 func DialSlowContext(dialer *tfo.Dialer, ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -49,6 +58,8 @@ func DialSlowContext(dialer *tfo.Dialer, ctx context.Context, network string, de
 		destination: destination,
 		create:      make(chan struct{}),
 		done:        make(chan struct{}),
+  creationDone: make(chan struct{}),
+  dial: dialer.DialContext,
 	}, nil
 }
 
@@ -85,34 +96,76 @@ func (c *slowOpenConn) Write(b []byte) (n int, err error) {
 		return 0, os.ErrClosed
 	default:
 	}
-	conn, err := c.dialer.DialContext(c.ctx, c.network, c.destination.String(), b)
+ c.lifecycleAccess.Lock()
+ if c.closed { c.lifecycleAccess.Unlock(); return 0,os.ErrClosed }
+ c.creating = true
+ c.lifecycleAccess.Unlock()
+ defer func(){
+  if value:=recover();value!=nil{
+   err=fmt.Errorf("TFO creation completion unknown after panic: %v",value)
+   c.err=err
+   c.lifecycleAccess.Lock();c.lateCloseErr=err;c.lifecycleAccess.Unlock()
+  }
+  close(c.create)
+  c.lifecycleAccess.Lock()
+  c.creating = false
+  close(c.creationDone)
+  c.lifecycleAccess.Unlock()
+ }()
+ conn, err := c.dial(c.ctx, c.network, c.destination.String(), b)
 	if err != nil {
+  // A failed dial can still transfer a partially created socket. Its actual
+  // Close belongs to this writer and is included in creationDone below.
+  var cleanupErr error
+  if conn != nil { cleanupErr = closeSlowOpenConnection(conn) }
+  var incomplete interface { RuntimeCleanupIncomplete() bool }
+  if errors.As(err, &incomplete) && incomplete.RuntimeCleanupIncomplete() {
+   // Keep cleanup failure separate from cancellation/operational dial errors.
+   // %v deliberately prevents cancellation filtering from erasing uncertainty.
+   cleanupErr = errors.Join(cleanupErr,fmt.Errorf("TFO dependency cleanup incomplete: %v",err))
+  }
+  c.lifecycleAccess.Lock()
+  c.lateCloseErr = errors.Join(c.lateCloseErr,cleanupErr)
+  c.lifecycleAccess.Unlock()
+  err = errors.Join(err,cleanupErr)
 		c.err = err
 	} else {
-		select {
-		case <-c.done:
-			conn.Close()
-			err = os.ErrClosed
-			c.err = err
-		default:
-			c.conn.Store(conn.(*net.TCPConn))
-		}
+  tcpConn, validTCP := conn.(*net.TCPConn)
+  c.lifecycleAccess.Lock()
+  closed := c.closed
+  if !closed && validTCP { c.conn.Store(tcpConn) }
+  c.lifecycleAccess.Unlock()
+  if closed || !validTCP {
+   closeErr := closeSlowOpenConnection(conn)
+   c.lifecycleAccess.Lock()
+   c.lateCloseErr = closeErr
+   c.lifecycleAccess.Unlock()
+   err = errors.Join(os.ErrClosed,closeErr)
+   c.err = err
+  }
 	}
 	n = len(b)
-	close(c.create)
 	return
 }
 
 func (c *slowOpenConn) Close() error {
-	c.closeOnce.Do(func() {
-		close(c.done)
-		c.cancel()
-		conn := c.conn.Load()
-		if conn != nil {
-			conn.Close()
-		}
-	})
-	return nil
+ c.closeOnce.Do(func() {
+  c.lifecycleAccess.Lock()
+  c.closed = true
+  close(c.done)
+  conn := c.conn.Load()
+  creating := c.creating
+  c.lifecycleAccess.Unlock()
+  c.cancel()
+  if conn != nil { c.closeErr = closeSlowOpenConnection(conn) }
+  // The first writer owns any connection created after close admission. Its
+  // actual late-close tail must finish before terminal success can be reported.
+  if creating { <-c.creationDone }
+  c.lifecycleAccess.Lock()
+  c.closeErr = errors.Join(c.closeErr,c.lateCloseErr)
+  c.lifecycleAccess.Unlock()
+ })
+ return c.closeErr
 }
 
 func (c *slowOpenConn) LocalAddr() net.Addr {
@@ -184,4 +237,12 @@ func (c *slowOpenConn) WriteTo(w io.Writer) (n int64, err error) {
 		}
 	}
 	return bufio.Copy(w, c.conn.Load())
+}
+
+// A panic or failed raw close is not cancellation evidence and must remain
+// visible to the receiving resource's terminal cleanup.
+func closeSlowOpenConnection(conn net.Conn) (err error) {
+ defer func(){if value:=recover();value!=nil{err=fmt.Errorf("TFO connection cleanup unknown after panic: %v",value)}}()
+ if closeErr:=conn.Close();closeErr!=nil{return fmt.Errorf("TFO connection cleanup incomplete: %v",closeErr)}
+ return nil
 }

@@ -228,12 +228,16 @@ func (b *backendLinux) startPlatform(scope *adapter.Scope) error {
 	}
 	monitor := b.networkManager.InterfaceMonitor()
 	if monitor != nil {
-		element := monitor.RegisterCallback(func(_ *control.Interface, _ int) { b.syncSessionEgress() })
+		element := monitor.RegisterCallback(func(_ *control.Interface, _ int) {
+			release, err := b.callbackFence.Acquire(); if err != nil { return }
+			b.syncSessionEgress(); release()
+		})
 		scope.Add(func() error {
 			monitor.UnregisterCallback(element)
 			return nil
 		})
 	}
+	scope.Add(b.callbackFence.RuntimeCloseAndWait)
 	b.syncSessionEgress()
 	egress := "auto"
 	if b.boundInterface != "" {
@@ -297,7 +301,7 @@ func (b *backendLinux) batchReadLoop() {
 	headroom := -1
 	var (
 		buffers     [][]byte
-		returnPaths []tun.Return
+		returnPaths []*runtimeReturn
 		readRetry   tun.ReadRetry
 	)
 	for {

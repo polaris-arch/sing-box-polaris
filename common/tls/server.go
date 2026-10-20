@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sagernet/sing-box/common/badtls"
+ "github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -51,6 +52,7 @@ func ServerHandshake(ctx context.Context, conn net.Conn, config ServerConfig) (C
 		ctx, cancel = context.WithTimeout(ctx, C.TCPTimeout)
 		defer cancel()
 	}
+ if _, owned := adapter.RuntimeLeaseFromContext(ctx); owned { return serverHandshakeOwned(ctx, conn, config) }
 	tlsConn, err := aTLS.ServerHandshake(ctx, conn, config)
 	if err != nil {
 		return nil, err

@@ -26,6 +26,7 @@ import (
 )
 
 type acmeWrapper struct {
+ runtime *RuntimeACME
 	ctx           context.Context
 	cfg           *certmagic.Config
 	cache         *certmagic.Cache
@@ -35,6 +36,10 @@ type acmeWrapper struct {
 }
 
 func (w *acmeWrapper) Start() error {
+ if w.runtime != nil {
+  for _, stage := range adapter.ListStartStages { if err := w.runtime.PrepareRuntime(stage,nil); err != nil { return err } }
+  return nil
+ }
 	if w.dataDirectory != "" {
 		err := filemanager.MkdirAll(w.ctx, w.dataDirectory, 0o700)
 		if err != nil {
@@ -60,6 +65,7 @@ func (w *acmeWrapper) Start() error {
 }
 
 func (w *acmeWrapper) Close() error {
+ if w.runtime != nil { return w.runtime.RuntimeCloseAndWait() }
 	if w.cache != nil {
 		w.cache.Stop()
 	}
@@ -67,7 +73,7 @@ func (w *acmeWrapper) Close() error {
 }
 
 func (w *acmeWrapper) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return w.cfg.GetCertificate(hello)
+	if w.runtime != nil { return w.runtime.GetCertificate(hello) }; return w.cfg.GetCertificate(hello)
 }
 
 func startACME(ctx context.Context, logger logger.Logger, options option.InboundACMEOptions) (*tls.Config, adapter.SimpleLifecycle, error) {
@@ -159,6 +165,11 @@ func startACME(ctx context.Context, logger logger.Logger, options option.Inbound
 		dataDirectory: dataDirectory,
 		domain:        options.Domain,
 	}
+ if adapter.IsRuntimePreparation(ctx) {
+  var err error
+  wrapper.runtime, err = NewRuntimeACME(ctx, logger, *config, acmeConfig, nil, options.Domain, dataDirectory, true)
+  if err != nil { return nil, nil, err }
+ }
 	var tlsConfig *tls.Config
 	if acmeConfig.DisableTLSALPNChallenge || acmeConfig.DNS01Solver != nil {
 		tlsConfig = &tls.Config{
@@ -172,3 +183,14 @@ func startACME(ctx context.Context, logger logger.Logger, options option.Inbound
 	}
 	return tlsConfig, wrapper, nil
 }
+
+func (w *acmeWrapper) RuntimeValidate() error { if w.runtime == nil { return E.New("inline ACME was not privately constructed") }; return w.runtime.RuntimeValidate() }
+func (w *acmeWrapper) RuntimeResourceID() adapter.RuntimeResourceID { if w.runtime == nil { return adapter.RuntimeResourceID{} }; return w.runtime.RuntimeResourceID() }
+func (w *acmeWrapper) StageRuntime(ctx context.Context) error { return w.runtime.StageRuntime(ctx) }
+func (w *acmeWrapper) CompensateRuntime() error { return w.runtime.CompensateRuntime() }
+func (w *acmeWrapper) RuntimeActivate() { w.runtime.RuntimeActivate() }
+func (w *acmeWrapper) RuntimeStop() { w.runtime.RuntimeStop() }
+func (w *acmeWrapper) RuntimeCloseAndWait() error { return w.Close() }
+func (w *acmeWrapper) GetCertificateWithContext(ctx context.Context, hello *tls.ClientHelloInfo) (*tls.Certificate,error) { if w.runtime != nil { return w.runtime.GetCertificateWithContext(ctx,hello) }; return w.cfg.GetCertificateWithContext(ctx,hello) }
+
+func (w *acmeWrapper) RuntimeExternalEffects() bool { return true }

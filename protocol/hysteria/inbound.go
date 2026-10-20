@@ -24,6 +24,8 @@ func RegisterInbound(registry *inbound.Registry) {
 }
 
 type Inbound struct {
+ runtime *inboundRuntime
+ protocolTLS *inboundRuntimeTLS
 	inbound.Adapter
 	router       adapter.Router
 	logger       log.ContextLogger
@@ -37,21 +39,27 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
-	tlsConfig, err := tls.NewServer(ctx, logger, common.PtrValueOrDefault(options.TLS))
-	if err != nil {
-		return nil, err
-	}
-	inbound := &Inbound{
-		Adapter: inbound.NewAdapter(C.TypeHysteria, tag),
-		router:  router,
-		logger:  logger,
-		listener: listener.New(listener.Options{
-			Context: ctx,
-			Logger:  logger,
-			Listen:  options.ListenOptions,
-		}),
-		tlsConfig: tlsConfig,
-	}
+ udpFragmentDefault:=options.UDPFragmentDefault
+ options, err := cloneInboundOptions(ctx, options)
+ options.UDPFragmentDefault=udpFragmentDefault
+ if err != nil { return nil,err }
+ inbound := &Inbound{Adapter:inbound.NewAdapter(C.TypeHysteria,tag),router:router,logger:logger}
+ runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, inbound.closeRuntimeProtocol)
+ defer finishRuntimeConstruction()
+ if runtimeErr != nil { return nil,runtimeErr }
+ inbound.runtime = runtime
+ if runtime != nil { logger=runtime.wrapLogger(logger);inbound.logger=logger;ctx=runtime.bindContext(ctx) }
+ tlsConfig, err := tls.NewServer(ctx, logger, common.PtrValueOrDefault(options.TLS))
+ if err != nil { return nil,err }
+ inbound.tlsConfig=tlsConfig
+ inbound.listener=listener.New(listener.Options{Context:ctx,Logger:logger,Network:[]string{N.NetworkUDP},Listen:options.ListenOptions})
+ if runtime != nil {
+  if err:=inbound.listener.DeclareRuntimePacketTransport();err!=nil{return nil,err}
+  inbound.protocolTLS=&inboundRuntimeTLS{ServerConfig:tlsConfig,runtime:runtime,listener:inbound.listener}
+  tlsConfig=inbound.protocolTLS
+ }
+
+
 	var sendBps, receiveBps uint64
 	if options.Up.Value() > 0 {
 		sendBps = options.Up.Value()
@@ -104,6 +112,14 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+ ctx,release,err:=h.runtime.enter(ctx)
+ if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
+ defer release()
+ if h.runtime!=nil {
+  conn,onClose,err=h.runtime.wrapConnection(ctx,conn,onClose)
+  if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
+ }
+
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = h.Tag()
@@ -115,7 +131,8 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 	metadata.Source = source
 	metadata.Destination = destination
 	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
-	userID, _ := auth.UserFromContext[int](ctx)
+	userID, validUser := auth.UserFromContext[int](ctx)
+ if !validUser || userID<0 || userID>=len(h.userNameList) { N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return }
 	if userName := h.userNameList[userID]; userName != "" {
 		metadata.User = userName
 		h.logger.InfoContext(ctx, "[", userName, "] inbound connection to ", metadata.Destination)
@@ -126,6 +143,14 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 }
 
 func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+ ctx,release,err:=h.runtime.enter(ctx)
+ if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
+ defer release()
+ if h.runtime!=nil {
+  conn,onClose,err=h.runtime.wrapPacketConnection(ctx,conn,onClose)
+  if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
+ }
+
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = h.Tag()
@@ -137,7 +162,8 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 	metadata.Source = source
 	metadata.Destination = destination
 	h.logger.InfoContext(ctx, "inbound packet connection from ", metadata.Source)
-	userID, _ := auth.UserFromContext[int](ctx)
+	userID, validUser := auth.UserFromContext[int](ctx)
+ if !validUser || userID<0 || userID>=len(h.userNameList) { N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return }
 	if userName := h.userNameList[userID]; userName != "" {
 		metadata.User = userName
 		h.logger.InfoContext(ctx, "[", userName, "] inbound packet connection to ", metadata.Destination)
@@ -148,6 +174,7 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+ if h.runtime!=nil{return h.PrepareRuntime(stage,scope)}
 	if stage != adapter.StartStateStart {
 		return nil
 	}

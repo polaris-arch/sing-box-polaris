@@ -235,15 +235,19 @@ alpha.120, wrong architectures, missing APKs and mixed old versions are rejected
 one branch-name normalization for this relationship. It otherwise retains the
 upstream priority `stable`, then `testing`, then `oldstable`. Only a commit on
 `stable` with an exact tag containing a hyphen becomes `beta`; an alpha string
-in a workflow version input does not select a track. The emitted package name
-changes only the product prefix to `sing-box-polaris`, preserving the upstream
-`-beta`, `-testing` and `-oldstable` suffixes and `latest-*` container track tags.
+in a workflow version input does not select a track. The emitted `PACKAGE_NAME` retains the upstream package identity `sing-box`
+and its `-beta`, `-testing` and `-oldstable` suffixes. `NAME` changes only the
+external asset prefix to `sing-box-polaris`, retaining those same suffixes.
+Container `latest-*` track tags are unchanged.
 
 Unsigned Linux, signed Linux and the owned container publication path call this
 same helper instead of hardcoding a Polaris-only track. Their existing full
 history checkouts, matrices, signatures, environment/enable gates and owned
 publication destinations are unchanged. Current `polaris-main` Linux repository
-packages therefore have the `sing-box-polaris-testing_` prefix; the current
+package filenames therefore have the `sing-box-polaris-testing_` prefix, while
+the DEB/RPM package identity remains `sing-box-testing`. Both Linux workflows
+pass `PACKAGE_NAME` to fpm and use `NAME` only for output filenames; binary,
+service, configuration and installation paths remain `sing-box`. The current
 publisher scope pins all 22 exact testing DEB/RPM names rather than accepting
 arbitrary/mixed tracks. These are internal/separate-channel products, not the
 168 All products selected for GitHub Release. A future release from another

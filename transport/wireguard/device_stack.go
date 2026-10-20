@@ -19,12 +19,14 @@ import (
 var _ Device = (*stackDevice)(nil)
 
 type stackDevice struct {
-	stack        *tun.Go
+	stack        deviceIPStack
 	router       *peerRouter
 	mtu          uint32
 	events       chan wgTun.Event
 	closed       chan struct{}
 	closeOnce    sync.Once
+	closeDone chan struct{}
+	closeErr error
 	inet4Address netip.Addr
 	inet6Address netip.Addr
 }
@@ -38,6 +40,7 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 	}
 	inet4Address, inet6Address := deviceAddresses(options.Address)
 	return &stackDevice{
+		closeDone: make(chan struct{}),
 		stack:        stack,
 		router:       router,
 		mtu:          options.MTU,
@@ -158,15 +161,21 @@ func (w *stackDevice) Events() <-chan wgTun.Event {
 }
 
 func (w *stackDevice) Close() error {
-	var err error
 	w.closeOnce.Do(func() {
+		w.closeErr = E.New("device shutdown did not complete")
+		defer close(w.closeDone)
 		close(w.events)
 		close(w.closed)
-		err = E.Errors(w.stack.Close(), w.router.close())
+		w.closeErr = E.Errors(w.stack.Close(), w.router.close())
 	})
-	return err
+	return w.closeErr
 }
 
 func (w *stackDevice) BatchSize() int {
 	return 1
+}
+
+// Uses the actual embedded stack, never the UpstreamPort capability chain.
+func (w *stackDevice) WaitDetached(ctx context.Context) error {
+	return waitStackDetached(ctx, w.closeDone, &w.closeErr, w.stack)
 }

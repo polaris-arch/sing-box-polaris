@@ -20,6 +20,8 @@ func NewServer(startedService *StartedService, secret string) *grpc.Server {
 	)
 	healthServer := health.NewServer()
 	RegisterStartedServiceServer(server, startedService)
+	RegisterRuntimeConfigServiceServer(server, startedService)
+	healthServer.SetServingStatus(RuntimeConfigService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	healthServer.SetServingStatus(StartedService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(server, healthServer)
 	reflection.Register(server)
@@ -32,7 +34,9 @@ func newUnaryAuthInterceptor(secret string) grpc.UnaryServerInterceptor {
 		if err != nil {
 			return nil, err
 		}
-		return handler(ctx, request)
+		scope := "daemon:shared-credential"
+		if secret == "" { scope = "daemon:trusted-local" }
+		return handler(ContextWithRuntimeActor(ctx, scope), request)
 	}
 }
 

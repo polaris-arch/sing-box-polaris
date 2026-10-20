@@ -2,12 +2,14 @@ package local
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/dns/transport/local/systemconfig"
 	E "github.com/sagernet/sing/common/exceptions"
 
@@ -31,7 +33,14 @@ func (t *Transport) serverSetFor(systemConfig *systemconfig.Config) (*localServe
 	if serverSet != nil && serverSet.config == systemConfig {
 		return serverSet, nil
 	}
-	serverScope := adapter.NewScope(t.ctx, t.logger)
+	serverScope, err := t.serverScopes.New(t.ctx, t.logger)
+	if err != nil {
+		if errors.Is(err, lifecycle.ErrSocketCohortBusy) && serverSet != nil {
+			t.requestServerRefresh()
+			return serverSet, nil
+		}
+		return nil, err
+	}
 	transports := make([]adapter.DNSTransport, 0, len(systemConfig.Servers))
 	for _, serverAddr := range systemConfig.Servers {
 		var serverTransport adapter.DNSTransport
@@ -42,7 +51,8 @@ func (t *Transport) serverSetFor(systemConfig *systemconfig.Config) (*localServe
 		}
 		err := serverTransport.Start(adapter.StartStateStart, serverScope)
 		if err != nil {
-			return nil, E.Errors(E.Cause(err, "initialize transport for ", serverAddr), serverScope.Close())
+			t.serverScopes.Retire(serverScope)
+			return nil, E.Cause(err, "initialize transport for ", serverAddr)
 		}
 		transports = append(transports, serverTransport)
 	}
@@ -51,9 +61,14 @@ func (t *Transport) serverSetFor(systemConfig *systemconfig.Config) (*localServe
 		transports:  transports,
 		serverScope: serverScope,
 	}
-	oldServerSet := t.serverSet.Swap(newServerSet)
+	oldServerSet := t.swapServerSet(newServerSet)
+	if t.producersStopped.Load() {
+		for _, server := range newServerSet.transports {
+			if producer, ok := server.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+		}
+	}
 	if oldServerSet != nil {
-		oldServerSet.serverScope.Close()
+		t.serverScopes.Retire(oldServerSet.serverScope)
 	}
 	return newServerSet, nil
 }
@@ -80,6 +95,9 @@ func (t *Transport) exchangeAsync(ctx context.Context, message *mDNS.Msg, domain
 		callback(nil, err)
 		return
 	}
+	// Backpressure may retain the current set; keep its resolver options and
+	// search list consistent with its actual sockets.
+	systemConfig = serverSet.config
 	names := systemConfig.NameList(domain)
 	if len(names) == 0 {
 		callback(nil, E.New("invalid domain: ", domain))
@@ -114,4 +132,12 @@ func newNameExchanger(systemConfig *systemconfig.Config, serverSet *localServerS
 			callback(response, err)
 		})
 	}
+}
+
+func (t *Transport) requestServerRefresh() {
+	t.refresh.Request(&t.producers, t.producerCtx, 0, t.serverScopes.WaitReady, func(ctx context.Context) bool {
+		if ctx.Err() != nil { return false }
+		_, err := t.serverSetFor(loadConfiguration(t.configSource))
+		return errors.Is(err, lifecycle.ErrSocketCohortBusy)
+	})
 }

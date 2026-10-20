@@ -95,6 +95,7 @@ func getACMENextProtos(provider adapter.CertificateProvider) []string {
 }
 
 type STDServerConfig struct {
+ runtime *runtimeServerLifecycle
 	ctx                   context.Context
 	access                sync.RWMutex
 	config                *tls.Config
@@ -171,6 +172,7 @@ func (c *STDServerConfig) hasACMEALPN() bool {
 }
 
 func (c *STDServerConfig) STDConfig() (*STDConfig, error) {
+ c.access.RLock();defer c.access.RUnlock()
 	return c.config, nil
 }
 
@@ -179,17 +181,24 @@ func (c *STDServerConfig) Client(conn net.Conn) (Conn, error) {
 }
 
 func (c *STDServerConfig) Server(conn net.Conn) (Conn, error) {
-	return tls.Server(conn, c.config), nil
+	c.access.RLock(); config := c.config; c.access.RUnlock()
+ return tls.Server(conn, config), nil
 }
 
 func (c *STDServerConfig) Clone() Config {
+ c.access.RLock(); defer c.access.RUnlock()
 	return &STDServerConfig{
+  ctx:c.ctx, runtime:c.runtime,
 		config:           c.config.Clone(),
 		handshakeTimeout: c.handshakeTimeout,
 	}
 }
 
 func (c *STDServerConfig) Start() error {
+ if c.runtime != nil { return c.runtime.start(c.startUnfenced) }; return c.startUnfenced()
+}
+
+func (c *STDServerConfig) startUnfenced() error {
 	if c.certificateProvider != nil {
 		err := c.certificateProvider.Start()
 		if err != nil {
@@ -220,6 +229,7 @@ func (c *STDServerConfig) Start() error {
 	}
 	err := c.startWatcher()
 	if err != nil {
+  if c.runtime != nil { return err }
 		c.logger.Warn("create fsnotify watcher: ", err)
 	}
 	return nil
@@ -245,6 +255,7 @@ func (c *STDServerConfig) startWatcher() error {
 	watcher, err := fswatch.NewWatcher(fswatch.Options{
 		Path: watchPath,
 		Callback: func(path string) {
+   if c.runtime != nil { leave,err:=c.runtime.fence.Acquire();if err!=nil{return};defer leave() }
 			err := c.certificateUpdated(path)
 			if err != nil {
 				c.logger.Error(E.Cause(err, "reload certificate"))
@@ -254,6 +265,7 @@ func (c *STDServerConfig) startWatcher() error {
 	if err != nil {
 		return err
 	}
+ if c.runtime != nil { c.watcher = watcher }
 	err = watcher.Start()
 	if err != nil {
 		return err
@@ -327,6 +339,9 @@ func (c *STDServerConfig) certificateUpdated(path string) error {
 }
 
 func (c *STDServerConfig) Close() error {
+ if c.runtime != nil { return c.runtime.fence.RuntimeCloseAndWait() }; return c.closeUnfenced()
+}
+func (c *STDServerConfig) closeUnfenced() error {
 	return common.Close(c.certificateProvider, c.acmeService, common.PtrOrNil(c.watcher))
 }
 
@@ -519,10 +534,16 @@ func NewSTDServer(ctx context.Context, logger log.ContextLogger, options option.
 		echKeyPath:            echKeyPath,
 	}
 	serverConfig.config.GetConfigForClient = func(info *tls.ClientHelloInfo) (*tls.Config, error) {
+  if serverConfig.runtime != nil { leave,err:=serverConfig.runtime.fence.Acquire();if err!=nil{return nil,err};defer leave() }
 		serverConfig.access.RLock()
 		defer serverConfig.access.RUnlock()
 		return serverConfig.config, nil
 	}
+ if err := serverConfig.initializeRuntimeServer(); err != nil { return nil, err }
+ if adapter.IsRuntimePreparation(ctx)&&acmeService!=nil {
+  effect,ok:=acmeService.(adapter.RuntimeStagedEffect);if !ok{return nil,E.New("inline ACME has no staged effect adapter")}
+  if err:=adapter.RegisterRuntimeEffect(ctx,effect);err!=nil{return nil,err}
+ }
 	var config ServerConfig = serverConfig
 	if options.KernelTx || options.KernelRx {
 		if !C.IsLinux {
@@ -539,6 +560,7 @@ func NewSTDServer(ctx context.Context, logger log.ContextLogger, options option.
 }
 
 func newCertificateProvider(ctx context.Context, logger log.ContextLogger, options *option.CertificateProviderOptions) (managedCertificateProvider, error) {
+ if adapter.IsRuntimePreparation(ctx){return newRuntimeCertificateProvider(ctx,logger,options)}
 	if options.IsShared() {
 		manager := service.FromContext[adapter.CertificateProviderManager](ctx)
 		if manager == nil {

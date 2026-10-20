@@ -1,0 +1,39 @@
+{
+  "repository": "https://github.com/cretz/bine",
+  "tag": "v0.2.0",
+  "commit": "2d69661a2441f449d2d9ec15ab033252b82af08f",
+  "scope": "only tor package copied; process/control/torutil remain original pinned dependency",
+  "upstream": [
+    {
+      "upstream_path": "LICENSE",
+      "blob": "6a6444d0ecaf397e03f295dd161999137edaf3ae",
+      "sha256": "9808ceffe450ef163ae04ba0d42149c3742a55ddd8da580c2471f23a7f79a405"
+    },
+    {
+      "upstream_path": "tor/dialer.go",
+      "blob": "9ef211e92f646d21a135b92fe1561629ec644520",
+      "sha256": "14341222381cca4aabd0f0b009b68af878d48042dfa47b3e172db7c973c03d21"
+    },
+    {
+      "upstream_path": "tor/doc.go",
+      "blob": "a58086af6dffca0ebf86474072229affde5d9dee",
+      "sha256": "182c5138d831752723335c1cf4c2caa09b6a1fa923f1c18f8448634d39131b41"
+    },
+    {
+      "upstream_path": "tor/listen.go",
+      "blob": "6b142d2a835c08fef63d9a462af12ccb00fdd406",
+      "sha256": "d46dc12e30d89e17a3deb345827f3e29e358d6ce1f85fe4e22d6b714dedab3d1"
+    },
+    {
+      "upstream_path": "tor/log.go",
+      "blob": "b53f318eda552984b406a48bd6857451065846c5",
+      "sha256": "4cdaba5703456ee52c8c10ec17eedb2299d3cf05e734a9b8933fa53481c264ad"
+    },
+    {
+      "upstream_path": "tor/tor.go",
+      "blob": "0edd2415686c2ddd5898c37657c530e24a5f472d",
+      "sha256": "a6697197f94856800ea3425d2ccdc3207bef97c5770e5edb1d9bb01360a6d608"
+    }
+  ],
+  "patched_tor_sha256": "944eadaeb2ffd886553f41746888fd4f69d533f2516d2a818557cefe63227995"
+}

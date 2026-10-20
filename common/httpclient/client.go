@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/common/dialer"
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -15,6 +17,16 @@ import (
 )
 
 func NewTransport(ctx context.Context, logger logger.ContextLogger, tag string, options option.HTTPClientOptions) (*ManagedTransport, error) {
+	return newManagedTransport(ctx,logger,tag,options,nil)
+}
+
+// A manager binds its owned callback fence once during construction. Children
+// created after publication belong to that manager; they never append cleanup
+// to the candidate's already-published construction scope.
+func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag string, options option.HTTPClientOptions, ownerAdmission func(context.Context)(context.Context,func(),error)) (*ManagedTransport, error) {
+	if ownerAdmission!=nil{ctx=adapter.ContextWithConstructionScope(ctx,nil)}
+	options,cloneErr:=cloneHTTPClientOptions(ctx,options)
+	if cloneErr!=nil{return nil,cloneErr}
 	rawDialer, err := dialer.NewWithOptions(dialer.Options{
 		Context:                 ctx,
 		Options:                 options.DialerOptions,
@@ -39,7 +51,15 @@ func NewTransport(ctx context.Context, logger logger.ContextLogger, tag string, 
 		if err != nil {
 			return nil, err
 		}
-		return &ManagedTransport{
+		var ownedFence *outbound.RuntimeIOFence
+		admitOwned:=ownerAdmission
+		if admitOwned==nil{
+			ownedFence=outbound.NewRuntimeIOFence(nil)
+			admitOwned,err=outbound.RegisterRuntimeOwnedFence(ctx,ownedFence)
+			if err!=nil{return nil,err}
+		}
+		managed:=&ManagedTransport{
+			ownedCallbacks:ownedFence,
 			dialer:          rawDialer,
 			headers:         headers,
 			host:            host,
@@ -47,9 +67,11 @@ func NewTransport(ctx context.Context, logger logger.ContextLogger, tag string, 
 			detour:          options.Detour,
 			defaultOutbound: options.DefaultOutbound,
 			factory: func() (innerTransport, error) {
-				return newAppleTransport(ctx, logger, rawDialer, options)
+				return newAppleTransportWithRuntime(ctx, logger, rawDialer, options,admitOwned)
 			},
-		}, nil
+		}
+		if err:=managed.initializeRuntime(ctx);err!=nil{return nil,err}
+		return managed,nil
 	case "", C.TLSEngineGo:
 		cheapRebuild = true
 	default:
@@ -83,6 +105,7 @@ func NewTransport(ctx context.Context, logger logger.ContextLogger, tag string, 
 		},
 	}
 	managedTransport.epoch.Store(&transportEpoch{transport: inner})
+	if err:=managedTransport.initializeRuntime(ctx);err!=nil{return nil,err}
 	return managedTransport, nil
 }
 

@@ -34,6 +34,10 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
+	runtimeContext context.Context
+	runtimeCleanup func() error
+	constructionCleanup bool
 	logger          logger.ContextLogger
 	dialer          N.Dialer
 	method          shadowsocks.Method
@@ -61,6 +65,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		method:     method,
 		serverAddr: options.ServerOptions.Build(),
 	}
+	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	constructed := false
+	defer func() {
+		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+	}()
 	if options.Plugin != "" {
 		outbound.plugin, err = sip003.CreatePlugin(ctx, options.Plugin, options.PluginOptions, router, outbound.dialer, outbound.serverAddr)
 		if err != nil {
@@ -69,7 +78,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
 	if !uotOptions.Enabled {
-		outbound.multiplexDialer, err = mux.NewClientWithOptions((*shadowsocksDialer)(outbound), logger, common.PtrValueOrDefault(options.Multiplex))
+		outbound.multiplexDialer, err = mux.NewClientWithContext(ctx, (*shadowsocksDialer)(outbound), logger, common.PtrValueOrDefault(options.Multiplex))
 		if err != nil {
 			return nil, err
 		}
@@ -80,10 +89,20 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			Version: uotOptions.Version,
 		}
 	}
+	if err := ctx.Err(); err != nil { return nil, err }
+	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	constructed = true
 	return outbound, nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -112,6 +131,12 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -135,34 +160,36 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.Reset()
 	}
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.SetKeepIdleConnections(keep)
 	}
 }
 
 func (h *Outbound) CloseIdleConnections() {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.CloseIdleConnections()
 	}
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize {
-		return nil
-	}
-	if h.multiplexDialer != nil {
-		scope.Add(h.multiplexDialer.Close)
-	}
-	return nil
+	if stage != adapter.StartStateInitialize { return nil }
+	return h.registerRuntimeStart(scope)
 }
-
-var _ N.Dialer = (*shadowsocksDialer)(nil)
 
 type shadowsocksDialer Outbound
 

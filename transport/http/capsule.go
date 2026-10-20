@@ -291,6 +291,8 @@ type http3PacketConn struct {
 	cancel      context.CancelFunc
 	closeOnce   sync.Once
 	waitGroup   sync.WaitGroup
+	cleanupDone chan struct{}
+	closeErr error
 	writeAccess sync.Mutex
 	err         error
 }
@@ -303,6 +305,7 @@ func newHTTP3PacketConn(stream DatagramStream, destination M.Socksaddr, localAdd
 		destination: destination,
 		localAddr:   localAddr,
 		packets:     make(chan *buf.Buffer, 64),
+		cleanupDone: make(chan struct{}),
 		ctx:         ctx,
 		cancel:      cancel,
 	}
@@ -391,8 +394,9 @@ func (c *http3PacketConn) closeWithError(err error) {
 	c.closeOnce.Do(func() {
 		c.err = err
 		c.cancel()
-		c.stream.Close()
+		c.closeErr = c.stream.Close()
 		go func() {
+			defer close(c.cleanupDone)
 			c.waitGroup.Wait()
 			for {
 				select {
@@ -408,7 +412,8 @@ func (c *http3PacketConn) closeWithError(err error) {
 
 func (c *http3PacketConn) Close() error {
 	c.closeWithError(net.ErrClosed)
-	return nil
+	<-c.cleanupDone
+	return c.closeErr
 }
 
 func (c *http3PacketConn) wait(ctx context.Context) {

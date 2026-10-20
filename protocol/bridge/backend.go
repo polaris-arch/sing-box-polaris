@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/control"
@@ -39,7 +40,8 @@ type backendBase struct {
 	tunInterface tun.Tun
 
 	returnAccess sync.Mutex
-	returnPaths  []tun.Return
+	returnPaths  []*runtimeReturn
+	callbackFence *outbound.RuntimeIOFence
 
 	egressAccess sync.Mutex
 
@@ -51,6 +53,7 @@ type backendBase struct {
 }
 
 func (b *backendBase) init(ctx context.Context, logger logger.ContextLogger, networkManager adapter.NetworkManager, tag string, options option.BridgeOutboundOptions) {
+	b.callbackFence = outbound.NewRuntimeIOFence(nil)
 	b.ctx = ctx
 	b.logger = logger
 	b.networkManager = networkManager
@@ -82,29 +85,48 @@ func (b *backendBase) PortAddresses() (netip.Addr, netip.Addr) {
 }
 
 func (b *backendBase) AttachReturn(returnPath tun.Return) error {
-	b.returnAccess.Lock()
-	defer b.returnAccess.Unlock()
-	if slices.Contains(b.returnPaths, returnPath) {
-		return nil
-	}
-	b.returnPaths = append(slices.Clip(b.returnPaths), returnPath)
+	b.returnAccess.Lock(); defer b.returnAccess.Unlock()
+	for _, existing := range b.returnPaths { if existing.original == returnPath { return nil } }
+	b.returnPaths = append(slices.Clip(b.returnPaths), &runtimeReturn{original: returnPath, fence: outbound.NewRuntimeIOFence(nil)})
 	return nil
 }
 
 func (b *backendBase) DetachReturn(returnPath tun.Return) error {
 	b.returnAccess.Lock()
-	defer b.returnAccess.Unlock()
-	returnPaths := make([]tun.Return, 0, len(b.returnPaths))
+	var detached *runtimeReturn
+	returnPaths := make([]*runtimeReturn, 0, len(b.returnPaths))
 	for _, existing := range b.returnPaths {
-		if existing != returnPath {
-			returnPaths = append(returnPaths, existing)
-		}
+		if existing.original == returnPath { detached = existing } else { returnPaths = append(returnPaths, existing) }
 	}
 	b.returnPaths = returnPaths
+	b.returnAccess.Unlock()
+	if detached != nil { return detached.fence.RuntimeCloseAndWait() }
 	return nil
 }
 
+func (b *backendBase) closeRuntimeReturns() error {
+	b.returnAccess.Lock(); paths := b.returnPaths; b.returnPaths = nil; b.returnAccess.Unlock()
+	for _, path := range paths { _ = path.fence.Close() }
+	for _, path := range paths { if err := path.fence.Wait(); err != nil { return err } }
+	return nil
+}
+
+type runtimeReturn struct { original tun.Return; fence *outbound.RuntimeIOFence }
+func (r *runtimeReturn) ReturnHeadroom() int {
+	release, err := r.fence.Acquire(); if err != nil { return 0 }
+	headroom := r.original.ReturnHeadroom(); release(); return headroom
+}
+func (r *runtimeReturn) ReturnPackets(packets [][]byte) [][]byte {
+	release, err := r.fence.Acquire(); if err != nil { return packets }
+	remaining := r.original.ReturnPackets(packets); release(); return remaining
+}
+
 func (b *backendBase) registerMonitors(scope *adapter.Scope, syncFunc func()) {
+	callback := syncFunc
+	syncFunc = func() {
+		release, err := b.callbackFence.Acquire(); if err != nil { return }
+		callback(); release()
+	}
 	networkMonitor := b.networkManager.NetworkMonitor()
 	if networkMonitor != nil {
 		networkElement := networkMonitor.RegisterCallback(syncFunc)
@@ -125,6 +147,7 @@ func (b *backendBase) registerMonitors(scope *adapter.Scope, syncFunc func()) {
 			})
 		}
 	}
+	scope.Add(b.callbackFence.RuntimeCloseAndWait)
 }
 
 func (b *backendBase) syncSessionEgress() {

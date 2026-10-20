@@ -36,6 +36,8 @@ type TCPTransport struct {
 	dialer      N.Dialer
 	serverAddr  M.Socksaddr
 	multiplexer *queryMultiplexer
+	runtimeResource adapter.RuntimeResourceSource
+	constructionOwned bool
 }
 
 func NewTCP(ctx context.Context, logger log.ContextLogger, tag string, options option.RemoteDNSServerOptions) (adapter.DNSTransport, error) {
@@ -50,16 +52,30 @@ func NewTCP(ctx context.Context, logger log.ContextLogger, tag string, options o
 	if !serverAddr.IsValid() {
 		return nil, E.New("invalid server address: ", serverAddr)
 	}
-	return NewTCPRaw(dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeTCP, tag, options), transportDialer, serverAddr), nil
+	transport := newTCPRaw(ctx, dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeTCP, tag, options), transportDialer, serverAddr)
+	if transport.runtimeResource != nil {
+		if err := adapter.DeferConstructionCleanup(ctx, transport.multiplexer.Close); err != nil { return nil, err }
+		transport.constructionOwned = true
+		transport.multiplexer.queryAccess.Lock(); stopped := transport.multiplexer.workSealed; transport.multiplexer.queryAccess.Unlock()
+		if stopped { return nil, net.ErrClosed }
+	}
+	return transport, nil
 }
 
-func NewTCPRaw(adapter dns.TransportAdapter, dialer N.Dialer, serverAddr M.Socksaddr) *TCPTransport {
+func NewTCPRaw(transportAdapter dns.TransportAdapter, dialer N.Dialer, serverAddr M.Socksaddr) *TCPTransport {
+	return newTCPRaw(context.Background(), transportAdapter, dialer, serverAddr)
+}
+
+func newTCPRaw(ctx context.Context, transportAdapter dns.TransportAdapter, dialer N.Dialer, serverAddr M.Socksaddr) *TCPTransport {
+	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	t := &TCPTransport{
-		TransportAdapter: adapter,
+		runtimeResource: runtimeResource,
+		TransportAdapter: transportAdapter,
 		dialer:           dialer,
 		serverAddr:       serverAddr,
 	}
 	t.multiplexer = newQueryMultiplexer(queryMultiplexerOptions{
+		context: ctx,
 		dial: func(ctx context.Context) (net.Conn, error) {
 			conn, err := t.dialer.DialContext(ctx, N.NetworkTCP, t.serverAddr)
 			if err != nil {
@@ -83,7 +99,7 @@ func (t *TCPTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	scope.Add(t.multiplexer.Close)
+	if !t.constructionOwned { scope.Add(t.multiplexer.Close) }
 	return dialer.InitializeDetour(t.dialer)
 }
 
@@ -100,16 +116,27 @@ func (t *TCPTransport) CloseIdleConnections() {
 }
 
 func (t *TCPTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { return nil, runtimeErr }
+	defer releaseRuntime()
 	return t.multiplexer.Exchange(ctx, message)
 }
 
 func (t *TCPTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
+	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	defer releaseCall()
+	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	originalCallback := callback
+	callback = func(response *mDNS.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
+
 	t.multiplexer.ExchangeAsync(ctx, message, callback)
 }
 
 func setConnDeadline(ctx context.Context, conn net.Conn, needClose bool) func() {
 	if needClose {
-		stop := context.AfterFunc(ctx, func() {
+		stop := afterFuncJoined(ctx, func() {
 			conn.Close()
 		})
 		return func() { stop() }
@@ -156,3 +183,9 @@ func WriteMessage(writer io.Writer, messageId uint16, message *mDNS.Msg) error {
 	buffer.Truncate(2 + len(rawMessage))
 	return common.Error(writer.Write(buffer.Bytes()))
 }
+
+// Ordinary retirement stops optional producers while admitted exchanges remain.
+func (t *TCPTransport) StopRuntimeProducers() { t.multiplexer.StopProbes() }
+// Final stop may cancel sockets before external users drain. This never joins
+// the calling callback; the resource cleanup's Close performs the actual join.
+func (t *TCPTransport) StopRuntimeOperations() { t.multiplexer.Stop() }

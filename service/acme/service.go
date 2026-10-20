@@ -10,11 +10,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"slices"
 	"strings"
 	"time"
-	"unsafe"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
@@ -47,6 +45,7 @@ var (
 )
 
 type Service struct {
+ runtime *boxtls.RuntimeACME
 	certificate.Adapter
 	ctx           context.Context
 	config        *certmagic.Config
@@ -162,19 +161,15 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 		}
 	}
 
-	certmagicIssuer := certmagic.NewACMEIssuer(config, acmeIssuer)
-	httpClientField := reflect.ValueOf(certmagicIssuer).Elem().FieldByName("httpClient")
-	if !httpClientField.IsValid() || !httpClientField.CanAddr() {
-		return nil, E.New("certmagic ACME issuer HTTP client field is unavailable")
-	}
-	reflect.NewAt(httpClientField.Type(), unsafe.Pointer(httpClientField.UnsafeAddr())).Elem().Set(reflect.ValueOf(acmeHTTPClient))
+ certmagicIssuer, err := boxtls.NewACMEIssuerWithHTTPClient(config, acmeIssuer, acmeHTTPClient)
+ if err != nil { return nil, err }
 	config.Issuers = []certmagic.Issuer{certmagicIssuer}
 
 	var nextProtos []string
 	if !acmeIssuer.DisableTLSALPNChallenge && acmeIssuer.DNS01Solver == nil {
 		nextProtos = []string{C.ACMETLS1Protocol}
 	}
-	return &Service{
+	result := &Service{
 		Adapter:       certificate.NewAdapter(C.TypeACME, tag),
 		ctx:           ctx,
 		config:        config,
@@ -182,10 +177,22 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 		dataDirectory: dataDirectory,
 		domain:        options.Domain,
 		nextProtos:    nextProtos,
-	}, nil
+ }
+ if adapter.IsRuntimePreparation(ctx) {
+  result.runtime, err = boxtls.NewRuntimeACME(ctx, logger, *config, acmeIssuer, acmeHTTPClient, options.Domain, dataDirectory, false)
+  if err != nil { return nil, err }
+  if dnsSolver != nil {
+   switch provider := dnsSolver.DNSProvider.(type) {
+   case *cloudflare.Provider: provider.HTTPClient = result.runtime.HTTPClient()
+   case *acmeDNSProvider: provider.httpClient = result.runtime.HTTPClient()
+   }
+  }
+ }
+ return result, nil
 }
 
 func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+ if s.runtime != nil { return s.PrepareRuntime(stage, scope) }
 	switch stage {
 	case adapter.StartStateInitialize:
 		if s.dataDirectory != "" {
@@ -214,11 +221,11 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (s *Service) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return s.config.GetCertificate(hello)
+	if s.runtime != nil { return s.runtime.GetCertificate(hello) }; return s.config.GetCertificate(hello)
 }
 
 func (s *Service) GetACMENextProtos() []string {
-	return s.nextProtos
+	return slices.Clone(s.nextProtos)
 }
 
 func newDNSSolver(dnsOptions *option.ACMEProviderDNS01ChallengeOptions, logger *zap.Logger, httpClient *http.Client) (*certmagic.DNS01Solver, error) {
@@ -234,14 +241,14 @@ func newDNSSolver(dnsOptions *option.ACMEProviderDNS01ChallengeOptions, logger *
 	if dnsOptions.PropagationTimeout < -1 {
 		return nil, E.New("invalid ACME DNS01 propagation_timeout: ", dnsOptions.PropagationTimeout.Build())
 	}
-	solver := &certmagic.DNS01Solver{
+	solver := &certmagic.DNS01Solver{DNSManager: certmagic.DNSManager{
 		TTL:                time.Duration(dnsOptions.TTL),
 		PropagationDelay:   time.Duration(dnsOptions.PropagationDelay),
 		PropagationTimeout: time.Duration(dnsOptions.PropagationTimeout),
 		Resolvers:          dnsOptions.Resolvers,
 		OverrideDomain:     dnsOptions.OverrideDomain,
 		Logger:             logger.Named("dns_manager"),
-	}
+	}}
 	switch dnsOptions.Provider {
 	case C.DNSProviderAliDNS:
 		solver.DNSProvider = &alidns.Provider{

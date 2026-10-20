@@ -60,8 +60,7 @@ func (c *WebsocketConn) Close() error {
 		frame = ws.MaskFrameInPlace(frame)
 	}
 	ws.WriteFrame(c.Conn, frame)
-	c.Conn.Close()
-	return nil
+	return c.Conn.Close()
 }
 
 func (c *WebsocketConn) Read(b []byte) (n int, err error) {
@@ -243,15 +242,16 @@ func (c *EarlyWebsocketConn) Close() error {
 	if conn != nil {
 		return conn.Close()
 	}
-	c.rawConn.Close()
+	closeErr:=c.rawConn.Close()
 	c.access.Lock()
 	defer c.access.Unlock()
-	if c.conn.Load() != nil || c.err != nil {
-		return nil
+	if conn:=c.conn.Load();conn!=nil{return errors.Join(closeErr,conn.Close())}
+	if c.err != nil {
+		return closeErr
 	}
 	c.err = net.ErrClosed
 	close(c.create)
-	return nil
+	return closeErr
 }
 
 func (c *EarlyWebsocketConn) LocalAddr() net.Addr {

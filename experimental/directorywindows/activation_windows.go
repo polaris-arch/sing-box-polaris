@@ -81,7 +81,20 @@ func RejectReservedPaths(data []byte) error {
 	}
 }
 
+// Prepare consumes only a privately minted prepared activation. All callers
+// without that token retain the ordinary activation checks below unchanged.
 func Prepare(ctx context.Context, options option.Options, poisonRoot func(string) error) (context.Context, error) {
+	if HasPreparedActivation(ctx) {
+		info, _ := debug.ReadBuildInfo()
+		if err := validatePreparedActivation(ctx, options, C.SourceRevision, info, true); err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	}
+	return prepareUnprepared(ctx, options, poisonRoot)
+}
+
+func prepareUnprepared(ctx context.Context, options option.Options, poisonRoot func(string) error) (context.Context, error) {
 	raw := []byte(options.RawMessage)
 	if len(raw) == 0 {
 		var err error

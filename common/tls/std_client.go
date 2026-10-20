@@ -299,3 +299,5 @@ func VerifyPinnedCertificate(certificateHashes [][]byte, publicKeyHashes [][]byt
 	return E.New("unrecognized peer certificate: sha256 ", base64.StdEncoding.EncodeToString(certificateHash[:]),
 		", public key sha256 ", base64.StdEncoding.EncodeToString(publicKeyHash[:]))
 }
+
+func(c *STDClientConfig)withRuntimeContext(ctx context.Context)Config{copy:=c.Clone().(*STDClientConfig);copy.ctx=ctx;return copy}

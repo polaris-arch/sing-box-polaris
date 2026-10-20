@@ -21,7 +21,7 @@ import (
 )
 
 type http3Transport struct {
-	h3Transport *http3.Transport
+	h3Transport *runtimeHTTP3RoundTripper
 }
 
 type http3BrokenEntry struct {
@@ -30,7 +30,7 @@ type http3BrokenEntry struct {
 }
 
 type http3FallbackTransport struct {
-	h3Transport   *http3.Transport
+	h3Transport   *runtimeHTTP3RoundTripper
 	h2Fallback    innerTransport
 	fallbackDelay time.Duration
 	brokenAccess  sync.Mutex
@@ -41,7 +41,7 @@ func newHTTP3RoundTripper(
 	rawDialer N.Dialer,
 	baseTLSConfig tls.Config,
 	options option.QUICOptions,
-) *http3.Transport {
+) *runtimeHTTP3RoundTripper {
 	var handshakeTimeout time.Duration
 	if baseTLSConfig != nil {
 		handshakeTimeout = baseTLSConfig.HandshakeTimeout()
@@ -50,10 +50,13 @@ func newHTTP3RoundTripper(
 	if handshakeTimeout > 0 {
 		quicConfig.HandshakeIdleTimeout = handshakeTimeout
 	}
-	h3Transport := &http3.Transport{
+	var h3Transport *http3.Transport
+	boundary:=NewRuntimeTransportBoundary(func()error{return h3Transport.Close()})
+	h3Transport = &http3.Transport{
 		TLSClientConfig: &stdTLS.Config{},
 		QUICConfig:      quicConfig,
 		Dial: func(ctx context.Context, addr string, tlsConfig *stdTLS.Config, quicConfig *quic.Config) (*quic.Conn, error) {
+			ctx,release,err:=boundary.BeginDial(ctx);if err!=nil{return nil,err};defer release()
 			if handshakeTimeout > 0 && quicConfig.HandshakeIdleTimeout == 0 {
 				quicConfig = quicConfig.Clone()
 				quicConfig.HandshakeIdleTimeout = handshakeTimeout
@@ -72,19 +75,13 @@ func newHTTP3RoundTripper(
 			if err != nil {
 				return nil, err
 			}
-			quicConn, err := quic.DialEarlyConn(ctx, conn, tlsConfig, quicConfig)
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-			go func() {
-				<-quicConn.Context().Done()
-				conn.Close()
-			}()
-			return quicConn, nil
+			session, err := DialRuntimeQUIC(ctx,conn,tlsConfig,quicConfig,boundary.RecordClose)
+			if err!=nil{return nil,err}
+			if err=boundary.RegisterResource(session);err!=nil{return nil,err}
+			return session.Conn,nil
 		},
 	}
-	return h3Transport
+	return &runtimeHTTP3RoundTripper{transport:h3Transport,boundary:boundary}
 }
 
 func newHTTP3Transport(
@@ -121,7 +118,6 @@ func (t *http3Transport) CloseIdleConnections() {
 }
 
 func (t *http3Transport) Close() error {
-	t.CloseIdleConnections()
 	return t.h3Transport.Close()
 }
 
@@ -193,12 +189,8 @@ func (t *http3FallbackTransport) roundTripHTTP3Race(request *http.Request, autho
 			}
 		}
 		for range len(cancels) - received {
-			go func() {
-				loser := <-results
-				if loser.response != nil {
-					loser.response.Body.Close()
-				}
-			}()
+			loser := <-results
+			if loser.response != nil { loser.response.Body.Close() }
 		}
 	}
 	startRoundTrip(true)
@@ -281,8 +273,7 @@ func (t *http3FallbackTransport) CloseIdleConnections() {
 }
 
 func (t *http3FallbackTransport) Close() error {
-	t.CloseIdleConnections()
-	return t.h3Transport.Close()
+	t.StopRuntimeOperations();return errors.Join(t.h3Transport.Close(),t.h2Fallback.Close())
 }
 
 func (t *http3FallbackTransport) h3Broken(authority string) bool {
@@ -347,4 +338,18 @@ func NewQUICConfig(options option.QUICOptions) *quic.Config {
 		quicConfig.MaxIncomingStreams = int64(options.MaxConcurrentStreams)
 	}
 	return quicConfig
+}
+
+// The dependency remains unchanged; every callback/body/socket edge is owned
+// by this local boundary, including cached-only requests and losing races.
+type runtimeHTTP3RoundTripper struct { transport *http3.Transport; boundary *RuntimeTransportBoundary }
+func(t *runtimeHTTP3RoundTripper)RoundTrip(r *http.Request)(*http.Response,error){return t.boundary.RoundTrip(r,t.transport.RoundTrip)}
+func(t *runtimeHTTP3RoundTripper)RoundTripOpt(r *http.Request,o http3.RoundTripOpt)(*http.Response,error){return t.boundary.RoundTrip(r,func(r *http.Request)(*http.Response,error){return t.transport.RoundTripOpt(r,o)})}
+func(t *runtimeHTTP3RoundTripper)CloseIdleConnections(){t.transport.CloseIdleConnections()}
+func(t *runtimeHTTP3RoundTripper)Close()error{return t.boundary.Close()}
+
+func(t *http3Transport)StopRuntimeOperations(){t.h3Transport.boundary.StopRuntimeOperations()}
+func(t *http3FallbackTransport)StopRuntimeOperations(){
+	t.h3Transport.boundary.StopRuntimeOperations()
+	if stopper,ok:=t.h2Fallback.(interface{StopRuntimeOperations()});ok{stopper.StopRuntimeOperations()}
 }

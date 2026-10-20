@@ -352,14 +352,34 @@ func (s *UDPNat) getOrCreate(key udpNatSessionKey, source M.Socksaddr, destinati
 	var (
 		newContext context.Context
 		newOnClose N.CloseHandlerFunc
+		launchOwner FlowOwnership
 	)
+	defer func() { releaseFlow(launchOwner) }()
 	conn, loaded, ok := s.cache.GetAndRefreshOrAdd(key, func() (*UDPNatConn, bool) {
 		ok, ctx, writer, onClose := s.prepare(source, destination, userData)
 		if !ok {
 			return nil, false
 		}
+		if owned, ok := writer.(interface { retainFlowOwnership() (FlowOwnership, error) }); ok {
+			var err error
+			launchOwner, err = owned.retainFlowOwnership()
+			if err != nil { common.Close(writer); if onClose != nil { onClose(err) }; return nil, false }
+			ctx = bindFlow(ctx, launchOwner)
+		}
+		if onClose != nil {
+			callbackOwner, err := retainFlow(launchOwner)
+			if err != nil { common.Close(writer); return nil, false }
+			originalClose := onClose
+			var called atomic.Bool
+			onClose = func(err error) {
+				if !called.CompareAndSwap(false, true) { return }
+				defer releaseFlow(callbackOwner)
+				originalClose(err)
+			}
+		}
 		newConn := &UDPNatConn{
 			service:       s,
+			onClose: onClose,
 			key:           key,
 			writer:        writer,
 			localAddr:     source,
@@ -416,7 +436,12 @@ func (s *UDPNat) getOrCreate(key udpNatSessionKey, source M.Socksaddr, destinati
 			}
 			return nil, false
 		}
-		go s.handler.NewPacketConnectionEx(newContext, conn, source, destination, newOnClose)
+		owner := launchOwner
+		launchOwner = nil
+		go func() {
+			defer releaseFlow(owner)
+			s.handler.NewPacketConnectionEx(newContext, conn, source, destination, newOnClose)
+		}()
 	}
 	conn.addFilterPeer(destination)
 	return conn, true
@@ -486,6 +511,7 @@ var (
 )
 
 type UDPNatConn struct {
+	onClose N.CloseHandlerFunc
 	service         *UDPNat
 	key             udpNatSessionKey
 	interfaceIndex  uint32
@@ -799,6 +825,8 @@ func (c *UDPNatConn) close() {
 		}
 		common.Close(c.writer)
 	})
+	// Invoke outside closeOnce and packet locks: callbacks may close again.
+	if c.onClose != nil { c.onClose(nil) }
 }
 
 func (c *UDPNatConn) closeFromCache() {

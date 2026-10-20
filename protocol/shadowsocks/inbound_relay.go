@@ -28,6 +28,7 @@ import (
 var _ adapter.TCPInjectableInbound = (*RelayInbound)(nil)
 
 type RelayInbound struct {
+	runtime *inboundRuntime
 	inbound.Adapter
 	ctx          context.Context
 	router       adapter.ConnectionRouterEx
@@ -41,12 +42,19 @@ func newRelayInbound(ctx context.Context, router adapter.Router, logger log.Cont
 	inbound := &RelayInbound{
 		Adapter:      inbound.NewAdapter(C.TypeShadowsocks, tag),
 		ctx:          ctx,
-		router:       uot.NewRouter(router, logger),
+		router:       router,
 		logger:       logger,
-		destinations: options.Destinations,
+		destinations: append([]option.ShadowsocksDestination(nil), options.Destinations...),
 	}
+
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil { return nil, runtimeErr }
+	inbound.runtime = runtime
+	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	inbound.router = uot.NewRouter(router, logger)
 	var err error
-	inbound.router, err = mux.NewRouterWithOptions(inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
+	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +68,7 @@ func newRelayInbound(ctx context.Context, router adapter.Router, logger log.Cont
 		options.Method,
 		options.Password,
 		int64(udpTimeout.Seconds()),
-		adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound),
+		newRuntimeUpstreamHandler(inbound.runtime, adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound)),
 	)
 	if err != nil {
 		return nil, err
@@ -87,6 +95,7 @@ func newRelayInbound(ctx context.Context, router adapter.Router, logger log.Cont
 }
 
 func (h *RelayInbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -100,7 +109,10 @@ func (h *RelayInbound) Start(stage adapter.StartStage, scope *adapter.Scope) err
 
 //nolint:staticcheck
 func (h *RelayInbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	err := h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	defer release()
+	err = h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
 	N.CloseOnHandshakeFailure(conn, onClose, err)
 	if err != nil {
 		if E.IsClosedOrCanceled(err) {
@@ -120,6 +132,9 @@ func (h *RelayInbound) NewPacket(buffer *buf.Buffer, source M.Socksaddr) {
 }
 
 func (h *RelayInbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { return err }
+	defer release()
 	destinationIndex, loaded := auth.UserFromContext[int](ctx)
 	if !loaded {
 		return os.ErrInvalid
@@ -140,6 +155,9 @@ func (h *RelayInbound) newConnection(ctx context.Context, conn net.Conn, metadat
 }
 
 func (h *RelayInbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) error {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { return err }
+	defer release()
 	destinationIndex, loaded := auth.UserFromContext[int](ctx)
 	if !loaded {
 		return os.ErrInvalid

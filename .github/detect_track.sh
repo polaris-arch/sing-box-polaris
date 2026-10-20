@@ -29,10 +29,12 @@ case "$track" in
   oldstable) name=sing-box-oldstable; docker_tag=latest-oldstable ;;
 esac
 
-# Keep upstream track suffixes; change only the owned product prefix.
+# Package identity retains the upstream track; only asset names use Polaris.
+package_name="$name"
 name="sing-box-polaris${name#sing-box}"
 
 echo "track=${track} name=${name} docker_tag=${docker_tag}" >&2
 echo "TRACK=${track}" >> "$GITHUB_ENV"
 echo "NAME=${name}" >> "$GITHUB_ENV"
+echo "PACKAGE_NAME=${package_name}" >> "$GITHUB_ENV"
 echo "DOCKER_TAG=${docker_tag}" >> "$GITHUB_ENV"

@@ -36,6 +36,11 @@ type Outbound struct {
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SOCKSOutboundOptions) (adapter.Outbound, error) {
+	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
+	// Validate before constructing any dialer or acquiring a flow carrier.
+	if uotOptions.Enabled && uotOptions.Version != 0 && uotOptions.Version != uot.Version && uotOptions.Version != uot.LegacyVersion {
+		return nil, E.New("unknown UDP over TCP protocol version: ", uotOptions.Version)
+	}
 	var version socks.Version
 	var err error
 	if options.Version != "" {
@@ -57,7 +62,6 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		client:    socks.NewClient(outboundDialer, options.ServerOptions.Build(), version, options.Username, options.Password),
 		resolve:   version == socks.Version4,
 	}
-	uotOptions := common.PtrValueOrDefault(options.UDPOverTCP)
 	if uotOptions.Enabled {
 		outbound.uotClient = &uot.Client{
 			Dialer:  outbound.client,

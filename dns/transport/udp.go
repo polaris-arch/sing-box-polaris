@@ -40,6 +40,8 @@ type UDPTransport struct {
 	udpSize    atomic.Int32
 
 	multiplexer *queryMultiplexer
+	runtimeResource adapter.RuntimeResourceSource
+	constructionOwned bool
 }
 
 func NewUDP(ctx context.Context, logger log.ContextLogger, tag string, options option.RemoteDNSServerOptions) (adapter.DNSTransport, error) {
@@ -54,18 +56,32 @@ func NewUDP(ctx context.Context, logger log.ContextLogger, tag string, options o
 	if !serverAddr.IsValid() {
 		return nil, E.New("invalid server address: ", serverAddr)
 	}
-	return NewUDPRaw(logger, dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeUDP, tag, options), transportDialer, serverAddr), nil
+	transport := newUDPRaw(ctx, logger, dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeUDP, tag, options), transportDialer, serverAddr)
+	if transport.runtimeResource != nil {
+		if err := adapter.DeferConstructionCleanup(ctx, transport.multiplexer.Close); err != nil { return nil, err }
+		transport.constructionOwned = true
+		transport.multiplexer.queryAccess.Lock(); stopped := transport.multiplexer.workSealed; transport.multiplexer.queryAccess.Unlock()
+		if stopped { return nil, net.ErrClosed }
+	}
+	return transport, nil
 }
 
-func NewUDPRaw(logger logger.ContextLogger, adapter dns.TransportAdapter, dialerInstance N.Dialer, serverAddr M.Socksaddr) *UDPTransport {
+func NewUDPRaw(logger logger.ContextLogger, transportAdapter dns.TransportAdapter, dialerInstance N.Dialer, serverAddr M.Socksaddr) *UDPTransport {
+	return newUDPRaw(context.Background(), logger, transportAdapter, dialerInstance, serverAddr)
+}
+
+func newUDPRaw(ctx context.Context, logger logger.ContextLogger, transportAdapter dns.TransportAdapter, dialerInstance N.Dialer, serverAddr M.Socksaddr) *UDPTransport {
+	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	t := &UDPTransport{
-		TransportAdapter: adapter,
+		runtimeResource: runtimeResource,
+		TransportAdapter: transportAdapter,
 		logger:           logger,
 		dialer:           dialerInstance,
 		serverAddr:       serverAddr,
 	}
 	t.udpSize.Store(2048)
 	t.multiplexer = newQueryMultiplexer(queryMultiplexerOptions{
+		context: ctx,
 		dial: func(ctx context.Context) (net.Conn, error) {
 			conn, err := t.dialer.DialContext(ctx, N.NetworkUDP, t.serverAddr)
 			if err != nil {
@@ -83,7 +99,7 @@ func (t *UDPTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	scope.Add(t.multiplexer.Close)
+	if !t.constructionOwned { scope.Add(t.multiplexer.Close) }
 	return dialer.InitializeDetour(t.dialer)
 }
 
@@ -100,6 +116,9 @@ func (t *UDPTransport) CloseIdleConnections() {
 }
 
 func (t *UDPTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { return nil, runtimeErr }
+	defer releaseRuntime()
 	t.updateUDPSize(message)
 	response, err := t.multiplexer.Exchange(ctx, message)
 	if err != nil {
@@ -113,13 +132,19 @@ func (t *UDPTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.M
 }
 
 func (t *UDPTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
+	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	defer releaseCall()
+	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	originalCallback := callback
+	callback = func(response *mDNS.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
+
 	t.updateUDPSize(message)
 	t.multiplexer.ExchangeAsync(ctx, message, func(response *mDNS.Msg, err error) {
 		if err == nil && response.Truncated {
 			t.logger.InfoContext(ctx, "response truncated, retrying with TCP")
-			go func() {
-				callback(t.exchangeTCP(ctx, message))
-			}()
+			if !t.multiplexer.goWorker(func() { callback(t.exchangeTCP(ctx, message)) }) { callback(nil, net.ErrClosed) }
 			return
 		}
 		callback(response, err)
@@ -174,11 +199,22 @@ func (t *UDPTransport) readResponse(conn net.Conn) (*mDNS.Msg, error) {
 }
 
 func (t *UDPTransport) exchangeTCP(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	if !t.multiplexer.reserveWorker() { return nil, net.ErrClosed }
+	defer t.multiplexer.workers.Done()
+	ctx, releaseContext, ok := t.multiplexer.linkWorkerContext(ctx)
+	if !ok { return nil, net.ErrClosed }
+	defer releaseContext()
 	conn, err := t.dialer.DialContext(ctx, N.NetworkTCP, t.serverAddr)
+ if conn != nil { conn = t.multiplexer.trackClose(conn) }
+ if runtimeDNSCleanupIncomplete(err) { t.multiplexer.recordCleanup(err) }
 	if err != nil {
+		if conn != nil { _ = conn.Close() }
 		return nil, E.Cause(err, "dial TCP connection")
 	}
 	defer conn.Close()
+	stopClose, admitted := t.multiplexer.afterFunc(ctx, func() { conn.Close() })
+	if !admitted { return nil, net.ErrClosed }
+	defer stopClose()
 	defer setConnDeadline(ctx, conn, deadline.NeedAdditionalReadDeadline(conn))()
 	err = WriteMessage(conn, message.Id, message)
 	if err != nil {
@@ -190,3 +226,9 @@ func (t *UDPTransport) exchangeTCP(ctx context.Context, message *mDNS.Msg) (*mDN
 	}
 	return response, nil
 }
+
+// Ordinary retirement stops optional producers while admitted exchanges remain.
+func (t *UDPTransport) StopRuntimeProducers() { t.multiplexer.StopProbes() }
+// Final stop may cancel sockets before external users drain. This never joins
+// the calling callback; the resource cleanup's Close performs the actual join.
+func (t *UDPTransport) StopRuntimeOperations() { t.multiplexer.Stop() }

@@ -26,7 +26,7 @@ type defaultFactory struct {
 	platformWriters   atomic.Pointer[[]PlatformWriter]
 	needConsole       bool
 	needObservable    bool
-	level             Level
+	level             atomic.Int32
 	subscriber        *observable.Subscriber[Entry]
 	observer          *observable.Observer[Entry]
 	startAccess       sync.Mutex
@@ -61,9 +61,9 @@ func NewDefaultFactory(
 		filePath:       filePath,
 		needConsole:    writer != io.Discard || filePath != "",
 		needObservable: needObservable,
-		level:          LevelTrace,
 		subscriber:     observable.NewSubscriber[Entry](128),
 	}
+	factory.SetLevel(LevelTrace)
 	if platformWriter != nil {
 		factory.platformWriters.Store(&[]PlatformWriter{platformWriter})
 	}
@@ -123,11 +123,11 @@ func (f *defaultFactory) loadPlatformWriters() []PlatformWriter {
 }
 
 func (f *defaultFactory) Level() Level {
-	return f.level
+	return Level(f.level.Load())
 }
 
 func (f *defaultFactory) SetLevel(level Level) {
-	f.level = level
+	f.level.Store(int32(level))
 }
 
 func (f *defaultFactory) Logger() ContextLogger {
@@ -147,7 +147,7 @@ func (f *defaultFactory) UnSubscribe(sub observable.Subscription[Entry]) {
 }
 
 func (f *defaultFactory) output(ctx context.Context, level Level, tag string, message string, timestamp time.Time) {
-	if level <= f.level && (f.needConsole || level == LevelPanic || level == LevelFatal) {
+	if level <= f.Level() && (f.needConsole || level == LevelPanic || level == LevelFatal) {
 		formatted := f.formatter.Format(ctx, level, tag, message, timestamp)
 		if level == LevelPanic {
 			panic(formatted)
@@ -179,7 +179,7 @@ type observableLogger struct {
 func (l *observableLogger) Log(ctx context.Context, level Level, args []any) {
 	level = OverrideLevelFromContext(level, ctx)
 	platformWriters := l.loadPlatformWriters()
-	if level > l.level && len(platformWriters) == 0 && !l.needObservable {
+	if level > l.Level() && len(platformWriters) == 0 && !l.needObservable {
 		return
 	}
 	nowTime := time.Now()

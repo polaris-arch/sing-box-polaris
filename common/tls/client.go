@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sagernet/sing-box/common/badtls"
 	"github.com/sagernet/sing-box/common/tlsspoof"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -16,7 +15,6 @@ import (
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
-	aTLS "github.com/sagernet/sing/common/tls"
 )
 
 var errMissingServerName = E.New("missing server_name or insecure=true")
@@ -109,16 +107,11 @@ func NewClientWithOptions(options ClientOptions) (Config, error) {
 }
 
 func ClientHandshake(ctx context.Context, conn net.Conn, config Config) (Conn, error) {
-	tlsConn, err := aTLS.ClientHandshake(ctx, conn, config)
+	tlsConn, err := clientHandshakeOwned(ctx, conn, config)
 	if err != nil {
 		return nil, err
 	}
-	readWaitConn, err := badtls.NewReadWaitConn(tlsConn)
-	if err == nil {
-		return readWaitConn, nil
-	} else if err != os.ErrInvalid {
-		return nil, err
-	}
+
 	return tlsConn, nil
 }
 
@@ -148,22 +141,21 @@ func (d *defaultDialer) ListenPacket(ctx context.Context, destination M.Socksadd
 }
 
 func (d *defaultDialer) DialTLSContext(ctx context.Context, destination M.Socksaddr) (Conn, error) {
-	return d.dialContext(ctx, destination, true)
+	return d.dialContext(ctx, destination, d.config.Clone(), true)
 }
 
-func (d *defaultDialer) dialContext(ctx context.Context, destination M.Socksaddr, echRetry bool) (Conn, error) {
+func (d *defaultDialer) dialContext(ctx context.Context, destination M.Socksaddr, config Config, echRetry bool) (Conn, error) {
 	conn, err := d.dialer.DialContext(ctx, N.NetworkTCP, destination)
 	if err != nil {
 		return nil, err
 	}
-	tlsConn, err := aTLS.ClientHandshake(ctx, conn, d.config)
+	tlsConn, err := clientHandshakeOwned(ctx, conn, config)
 	if err != nil {
-		conn.Close()
 		var echErr *tls.ECHRejectionError
 		if echRetry && errors.As(err, &echErr) && len(echErr.RetryConfigList) > 0 {
-			if echConfig, isECH := d.config.(ECHCapableConfig); isECH {
+			if echConfig, isECH := config.(ECHCapableConfig); isECH {
 				echConfig.SetECHConfigList(echErr.RetryConfigList)
-				return d.dialContext(ctx, destination, false)
+				return d.dialContext(ctx, destination, config, false)
 			}
 		}
 		return nil, err

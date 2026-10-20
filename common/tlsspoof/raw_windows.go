@@ -86,7 +86,7 @@ func (s *windowsSpoofer) Close() error {
 		case <-s.done:
 		case <-time.After(closeGracePeriod):
 			// Force Recv() to return by closing the divert handle.
-			s.divertH.Close()
+			if err:=s.divertH.Close();err!=nil{s.recordErr(err)}
 			<-s.done
 		}
 	})
@@ -100,7 +100,7 @@ func (s *windowsSpoofer) recordErr(err error) { s.runErr.Store(&err) }
 
 func (s *windowsSpoofer) run() {
 	defer close(s.done)
-	defer s.divertH.Close()
+	defer func(){if err:=s.divertH.Close();err!=nil{s.recordErr(err)}}()
 
 	buf := make([]byte, windivert.MTUMax)
 	for {

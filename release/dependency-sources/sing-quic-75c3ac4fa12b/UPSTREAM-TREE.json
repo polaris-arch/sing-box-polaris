@@ -1,0 +1,659 @@
+{
+  "sha": "cd7ca728a96a2a5c73df5525130996dbda52e0ee",
+  "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876",
+  "tree": [
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "54383737e6bf9217dd3ddb148b31f62dd618f40a",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/54383737e6bf9217dd3ddb148b31f62dd618f40a"
+    },
+    {
+      "path": ".github/update_dependencies.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "4702ddfe01847d03f84468a3f64a2b69c0e8deef",
+      "size": 135,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/4702ddfe01847d03f84468a3f64a2b69c0e8deef"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7f73c27a0505d7fabd99d3c2129c3d614577d5e8",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/7f73c27a0505d7fabd99d3c2129c3d614577d5e8"
+    },
+    {
+      "path": ".github/workflows/debug.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d51514b54230e1e9342f7a248661bd6de8715b0c",
+      "size": 1655,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/d51514b54230e1e9342f7a248661bd6de8715b0c"
+    },
+    {
+      "path": ".github/workflows/lint.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d78f368c4612705dfa1503040b56ba4d7d43859b",
+      "size": 718,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/d78f368c4612705dfa1503040b56ba4d7d43859b"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa706b29380d64e2c9893d6d99ffa331dd804ff8",
+      "size": 47,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/aa706b29380d64e2c9893d6d99ffa331dd804ff8"
+    },
+    {
+      "path": ".golangci.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01e19cb80d4fd364e3bf4c9a2fd607034aab87de",
+      "size": 800,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/01e19cb80d4fd364e3bf4c9a2fd607034aab87de"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "size": 674,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/3e3e29e359d205307555aa41f19fb2a8415de885"
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e47456ed76538fc0fcb1b1a93f387eeae9a1fb66",
+      "size": 531,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/e47456ed76538fc0fcb1b1a93f387eeae9a1fb66"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40df7740e6e3209bbbe362a93ebb1daf6fb5985d",
+      "size": 74,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/40df7740e6e3209bbbe362a93ebb1daf6fb5985d"
+    },
+    {
+      "path": "congestion_meta1",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6cece9dcd40e1ba0f4798f8e3ec29e2e99ee569f",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/6cece9dcd40e1ba0f4798f8e3ec29e2e99ee569f"
+    },
+    {
+      "path": "congestion_meta1/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6aa0309d7e3472e504495992ff42dd882f3eaefb",
+      "size": 134,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/6aa0309d7e3472e504495992ff42dd882f3eaefb"
+    },
+    {
+      "path": "congestion_meta1/bandwidth.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "23393bad117d76247249ea1edc8a6f779036acd2",
+      "size": 604,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/23393bad117d76247249ea1edc8a6f779036acd2"
+    },
+    {
+      "path": "congestion_meta1/clock.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a90770f6c8446149f6914868cf3a0bdb63b10371",
+      "size": 372,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/a90770f6c8446149f6914868cf3a0bdb63b10371"
+    },
+    {
+      "path": "congestion_meta1/cubic.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c1bf239c06578f2890b314c1e105b2b53d6f9f7b",
+      "size": 8619,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/c1bf239c06578f2890b314c1e105b2b53d6f9f7b"
+    },
+    {
+      "path": "congestion_meta1/cubic_sender.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43b846b04b29c11af4ba071da742463aeabe82ea",
+      "size": 9055,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/43b846b04b29c11af4ba071da742463aeabe82ea"
+    },
+    {
+      "path": "congestion_meta1/hybrid_slow_start.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eba8f7dfa0a75bf129250bc0bd52bd4f706667c8",
+      "size": 4020,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/eba8f7dfa0a75bf129250bc0bd52bd4f706667c8"
+    },
+    {
+      "path": "congestion_meta1/minmax.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "748475f41b696887e6362006230d6534aed89920",
+      "size": 1234,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/748475f41b696887e6362006230d6534aed89920"
+    },
+    {
+      "path": "congestion_meta1/pacer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "98c4b6ddbfb0e75a0b2da1d4c1f93611c3277a05",
+      "size": 3487,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/98c4b6ddbfb0e75a0b2da1d4c1f93611c3277a05"
+    },
+    {
+      "path": "congestion_meta2",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c295fcbc595b6a1a89c89fa0ce60d28209980dc2",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/c295fcbc595b6a1a89c89fa0ce60d28209980dc2"
+    },
+    {
+      "path": "congestion_meta2/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22dc40954c8d56b5fbb9f3919959da35333a63ad",
+      "size": 137,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/22dc40954c8d56b5fbb9f3919959da35333a63ad"
+    },
+    {
+      "path": "congestion_meta2/bandwidth.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0040db19e08d5553f39b1824d78b3e40d9e3501",
+      "size": 610,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/b0040db19e08d5553f39b1824d78b3e40d9e3501"
+    },
+    {
+      "path": "congestion_meta2/bandwidth_sampler.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a5f00a0f0a4dc930223b61795a7398492855e33",
+      "size": 31682,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/6a5f00a0f0a4dc930223b61795a7398492855e33"
+    },
+    {
+      "path": "congestion_meta2/bbr_sender.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f5c7d83ca3d0867be0832e2312e86260a4a31269",
+      "size": 35975,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/f5c7d83ca3d0867be0832e2312e86260a4a31269"
+    },
+    {
+      "path": "congestion_meta2/minmax_go120.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1266edbc48e12c42892784e681c8f677e57d26f4",
+      "size": 244,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/1266edbc48e12c42892784e681c8f677e57d26f4"
+    },
+    {
+      "path": "congestion_meta2/minmax_go121.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65b067265aeb927770e9514c342c0733ffc7037d",
+      "size": 166,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/65b067265aeb927770e9514c342c0733ffc7037d"
+    },
+    {
+      "path": "congestion_meta2/pacer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34ec0f7381c30dfb35aef372092fcd75befa0ffc",
+      "size": 2055,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/34ec0f7381c30dfb35aef372092fcd75befa0ffc"
+    },
+    {
+      "path": "congestion_meta2/packet_number_indexed_queue.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b67a6ca8e0dd451e9bc3e9e71d4283ac60c1fe5e",
+      "size": 5683,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/b67a6ca8e0dd451e9bc3e9e71d4283ac60c1fe5e"
+    },
+    {
+      "path": "congestion_meta2/ringbuffer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e110c00f7790666fc6b8951a963e1071003a12e4",
+      "size": 3232,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/e110c00f7790666fc6b8951a963e1071003a12e4"
+    },
+    {
+      "path": "congestion_meta2/windowed_filter.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8606a24538679a20d60c4585ce84c6fb8ce5edbc",
+      "size": 5602,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/8606a24538679a20d60c4585ce84c6fb8ce5edbc"
+    },
+    {
+      "path": "go.mod",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6327be22d0b2e7b2f69e54102380cbf125be85c",
+      "size": 914,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/c6327be22d0b2e7b2f69e54102380cbf125be85c"
+    },
+    {
+      "path": "go.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b606b8a00af27d04f832121d2cff3f3eb376c5da",
+      "size": 5366,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/b606b8a00af27d04f832121d2cff3f3eb376c5da"
+    },
+    {
+      "path": "hysteria",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f84f2697b106e39dc5e513fd2c3bcb506b71b4ff",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/f84f2697b106e39dc5e513fd2c3bcb506b71b4ff"
+    },
+    {
+      "path": "hysteria/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0801062d5bc94bf26b01eb85c49567c34d3ec7e1",
+      "size": 15219,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/0801062d5bc94bf26b01eb85c49567c34d3ec7e1"
+    },
+    {
+      "path": "hysteria/client_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d48a9a81829817d72987bef1ae6fe813763cca01",
+      "size": 1051,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/d48a9a81829817d72987bef1ae6fe813763cca01"
+    },
+    {
+      "path": "hysteria/congestion",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c6548005dc40a9b5675a495de6d37ed21354aabc",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/c6548005dc40a9b5675a495de6d37ed21354aabc"
+    },
+    {
+      "path": "hysteria/congestion/brutal.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ffea78097db35d266370fd14b983e35123aa2d83",
+      "size": 5768,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/ffea78097db35d266370fd14b983e35123aa2d83"
+    },
+    {
+      "path": "hysteria/congestion/pacer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f97a7f1ce15f0b68679488dece136249ed2a0b60",
+      "size": 2641,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/f97a7f1ce15f0b68679488dece136249ed2a0b60"
+    },
+    {
+      "path": "hysteria/hop.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01af48dc4b0628f4663562dc234bccba59b68756",
+      "size": 5858,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/01af48dc4b0628f4663562dc234bccba59b68756"
+    },
+    {
+      "path": "hysteria/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d26e14615a556f4c3c493a065036b510591158e",
+      "size": 11295,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/3d26e14615a556f4c3c493a065036b510591158e"
+    },
+    {
+      "path": "hysteria/packet_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4580213b89968a29a15b61e55955c7cf71c67d9d",
+      "size": 984,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/4580213b89968a29a15b61e55955c7cf71c67d9d"
+    },
+    {
+      "path": "hysteria/protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b189a1b8af8c615a921a032db71ea2a0a34de3df",
+      "size": 6860,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/b189a1b8af8c615a921a032db71ea2a0a34de3df"
+    },
+    {
+      "path": "hysteria/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c36d055249d723f5022a14b4fd9958b6638b0422",
+      "size": 9860,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/c36d055249d723f5022a14b4fd9958b6638b0422"
+    },
+    {
+      "path": "hysteria/service_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67ff61abea56b728334084edfdfcf3613cc0777c",
+      "size": 1055,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/67ff61abea56b728334084edfdfcf3613cc0777c"
+    },
+    {
+      "path": "hysteria/xplus.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fd175367deb7c03fd308227cbd14ce0ca12fdf0",
+      "size": 5096,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/4fd175367deb7c03fd308227cbd14ce0ca12fdf0"
+    },
+    {
+      "path": "hysteria2",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "78103ecd786595000c1903c150edddf19258bb0f",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/78103ecd786595000c1903c150edddf19258bb0f"
+    },
+    {
+      "path": "hysteria2/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "deac83500a43d459f804f102ceb1d14bf761522e",
+      "size": 23853,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/deac83500a43d459f804f102ceb1d14bf761522e"
+    },
+    {
+      "path": "hysteria2/client_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5793c17eb25838d8e56fc197c06a4f4afcaf976d",
+      "size": 1052,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/5793c17eb25838d8e56fc197c06a4f4afcaf976d"
+    },
+    {
+      "path": "hysteria2/gecko.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7578b395a66b4c7833cf2b7227e371b001baec48",
+      "size": 9892,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/7578b395a66b4c7833cf2b7227e371b001baec48"
+    },
+    {
+      "path": "hysteria2/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "84afd94fcd38b1ec2d2336da108b257937b1ed0e",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/84afd94fcd38b1ec2d2336da108b257937b1ed0e"
+    },
+    {
+      "path": "hysteria2/internal/protocol",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e64d1c2c8ff11d8ee9aa1bd1777c027438be6933",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/e64d1c2c8ff11d8ee9aa1bd1777c027438be6933"
+    },
+    {
+      "path": "hysteria2/internal/protocol/http.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "abcc1a4f4611996191b68b5c5e4d7f2e04147529",
+      "size": 1826,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/abcc1a4f4611996191b68b5c5e4d7f2e04147529"
+    },
+    {
+      "path": "hysteria2/internal/protocol/padding.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9895cdccea5c5ac8cb0852a25b9a248a0b451913",
+      "size": 637,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/9895cdccea5c5ac8cb0852a25b9a248a0b451913"
+    },
+    {
+      "path": "hysteria2/internal/protocol/proxy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e89916e025c57e0136853541e2257c1534a2b9d8",
+      "size": 5002,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/e89916e025c57e0136853541e2257c1534a2b9d8"
+    },
+    {
+      "path": "hysteria2/internal/stun",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a54e9aa198343050e44798fdcebb89773dc8e288",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/a54e9aa198343050e44798fdcebb89773dc8e288"
+    },
+    {
+      "path": "hysteria2/internal/stun/stun.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04aca6ceb332611cdbaf27b6b3ec729f2bc26d15",
+      "size": 3204,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/04aca6ceb332611cdbaf27b6b3ec729f2bc26d15"
+    },
+    {
+      "path": "hysteria2/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "17420267dbfef26254aa9b774560d3db34951b24",
+      "size": 10958,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/17420267dbfef26254aa9b774560d3db34951b24"
+    },
+    {
+      "path": "hysteria2/packet_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc0aa391d8f77e1b559117a9cb8f5b693602b0cb",
+      "size": 976,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/bc0aa391d8f77e1b559117a9cb8f5b693602b0cb"
+    },
+    {
+      "path": "hysteria2/realm",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2c0e95afa1ec05077f41a8db5a4c054c44748219",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/2c0e95afa1ec05077f41a8db5a4c054c44748219"
+    },
+    {
+      "path": "hysteria2/realm/control.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9741c43a1063c1c41be07f8f67b57f5501842c37",
+      "size": 8158,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/9741c43a1063c1c41be07f8f67b57f5501842c37"
+    },
+    {
+      "path": "hysteria2/realm/portmap.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "acb2ff99177abfa545c73f46e29f665cb628af28",
+      "size": 3501,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/acb2ff99177abfa545c73f46e29f665cb628af28"
+    },
+    {
+      "path": "hysteria2/realm/punch.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcfbc9e5944527173707a490f46871c0f12e2edb",
+      "size": 2769,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/dcfbc9e5944527173707a490f46871c0f12e2edb"
+    },
+    {
+      "path": "hysteria2/realm/punch_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e71320291cb44d90c237e6bb90f8039ca42fc9a3",
+      "size": 2789,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/e71320291cb44d90c237e6bb90f8039ca42fc9a3"
+    },
+    {
+      "path": "hysteria2/realm/punch_engine.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61fa77e8b8c9ab1f5b88f914f060847c8c01a5d8",
+      "size": 6063,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/61fa77e8b8c9ab1f5b88f914f060847c8c01a5d8"
+    },
+    {
+      "path": "hysteria2/realm/server.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e9a6ace45b164d4922682f7e6e8bf6ca2ad0591",
+      "size": 11920,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/0e9a6ace45b164d4922682f7e6e8bf6ca2ad0591"
+    },
+    {
+      "path": "hysteria2/realm/stun.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ba1708d7a1c6a5293a5138a16345f7fb262719c",
+      "size": 6868,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/5ba1708d7a1c6a5293a5138a16345f7fb262719c"
+    },
+    {
+      "path": "hysteria2/salamander.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "21cd60896712596e23d38f205c41fceb4b35b2b8",
+      "size": 4784,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/21cd60896712596e23d38f205c41fceb4b35b2b8"
+    },
+    {
+      "path": "hysteria2/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf453d214192bbfc38d22e37483394cf5a1b5e40",
+      "size": 13416,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/cf453d214192bbfc38d22e37483394cf5a1b5e40"
+    },
+    {
+      "path": "hysteria2/service_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "347c73acb49affaf7d17ab7eddda584427eed68c",
+      "size": 1617,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/347c73acb49affaf7d17ab7eddda584427eed68c"
+    },
+    {
+      "path": "quic.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b91a8c3aa2b6f772922c3811322c596d3456470",
+      "size": 10449,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/2b91a8c3aa2b6f772922c3811322c596d3456470"
+    },
+    {
+      "path": "quic_error.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba03b42f825d08d7e81ebc144c90b0ecd870ae75",
+      "size": 1210,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/ba03b42f825d08d7e81ebc144c90b0ecd870ae75"
+    },
+    {
+      "path": "tuic",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9f94b03a442d4856009ab256f89468d6aaf0ed0f",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/9f94b03a442d4856009ab256f89468d6aaf0ed0f"
+    },
+    {
+      "path": "tuic/address.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2feb029b10bef68c6fdea9bc01234a7054dbe3f",
+      "size": 307,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/a2feb029b10bef68c6fdea9bc01234a7054dbe3f"
+    },
+    {
+      "path": "tuic/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c97bb636d192ad3e55d654f4fb97d206ec9d682",
+      "size": 11602,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/4c97bb636d192ad3e55d654f4fb97d206ec9d682"
+    },
+    {
+      "path": "tuic/client_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "28cebe3efa34d7bdcf3ca93a0f91f0263e70cfbc",
+      "size": 2497,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/28cebe3efa34d7bdcf3ca93a0f91f0263e70cfbc"
+    },
+    {
+      "path": "tuic/congestion.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e98cb173ab46d9c1e04ae4d83c8eb9fd9c6f65bd",
+      "size": 1024,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/e98cb173ab46d9c1e04ae4d83c8eb9fd9c6f65bd"
+    },
+    {
+      "path": "tuic/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7bdbc233440903053bdd5d1b6e61a179eb6ed918",
+      "size": 12704,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/7bdbc233440903053bdd5d1b6e61a179eb6ed918"
+    },
+    {
+      "path": "tuic/packet_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d3393e31ff4494cabd5336b1c72d2fbfe6c28a6",
+      "size": 944,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/2d3393e31ff4494cabd5336b1c72d2fbfe6c28a6"
+    },
+    {
+      "path": "tuic/protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1247516b8fd370a6151f6d7ad42e4c70b619a380",
+      "size": 181,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/1247516b8fd370a6151f6d7ad42e4c70b619a380"
+    },
+    {
+      "path": "tuic/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4535e73db732573d7e1e872204bcfaa1b917675",
+      "size": 11103,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/d4535e73db732573d7e1e872204bcfaa1b917675"
+    },
+    {
+      "path": "tuic/service_packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ec9112d05b4b96121dc414d41064ffc5e2ebb023",
+      "size": 1961,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/ec9112d05b4b96121dc414d41064ffc5e2ebb023"
+    },
+    {
+      "path": "workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "44baec9d4efce0efaa17a54028180af15d655747",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/44baec9d4efce0efaa17a54028180af15d655747"
+    },
+    {
+      "path": "workflows/debug.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ae30fa511d99ecd83f6803035f5b3d0062ca451",
+      "size": 2028,
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/blobs/7ae30fa511d99ecd83f6803035f5b3d0062ca451"
+    }
+  ],
+  "truncated": false,
+  "requested_commit": "75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876"
+}

@@ -3,6 +3,7 @@ package ping
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 	"os"
 	"runtime"
@@ -41,6 +42,8 @@ type Destination struct {
 	requestHead   int
 	requestTail   int
 	requestFree   int
+	readDone      chan struct{}
+	readErr       error // published by readDone
 }
 
 type pingRequest struct {
@@ -94,12 +97,25 @@ func ConnectDestination(
 		requestFree: -1,
 	}
 	d.lastActive.Store(time.Now())
-	go d.loopRead()
+	d.startReader()
 	return d, nil
 }
 
+func (d *Destination) startReader() {
+	d.readDone = make(chan struct{})
+	go func() {
+		defer close(d.readDone)
+		defer func() {
+			if value := recover(); value != nil {
+				d.readErr = &cleanupFailure{message: fmt.Sprintf("ping reader panic: %v", value)}
+			}
+			d.readErr = E.Errors(d.readErr, d.Close())
+		}()
+		d.loopRead()
+	}()
+}
+
 func (d *Destination) loopRead() {
-	defer d.Close()
 	for {
 		deadline := d.lastActive.Load().Add(d.timeout)
 		if !time.Now().Before(deadline) {
@@ -339,6 +355,18 @@ func (d *Destination) removeRequestAt(requestIndex int) {
 
 func (d *Destination) Close() error {
 	return d.conn.Close()
+}
+
+// Wait joins the real loopRead tail, including writer callbacks and cleanup,
+// then any socket-owned fetch workers. It never cancels either worker.
+func (d *Destination) Wait(ctx context.Context) error {
+	if err := waitCompletion(ctx, d.readDone); err != nil {
+		return err
+	}
+	if err := d.conn.Wait(ctx); err != nil {
+		return E.Errors(d.readErr, err)
+	}
+	return d.readErr
 }
 
 func (d *Destination) IsClosed() bool {

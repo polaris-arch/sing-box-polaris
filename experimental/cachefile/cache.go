@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/bbolt"
@@ -45,6 +46,11 @@ var (
 var _ adapter.CacheFile = (*CacheFile)(nil)
 
 type CacheFile struct {
+	runtimeClients sync.Mutex
+	runtimeClientsClosing bool
+	runtimeClientsReserved bool
+	runtimeClientRefs sync.WaitGroup
+	cleanupWorkers sync.WaitGroup
 	ctx               context.Context
 	logger            logger.Logger
 	path              string
@@ -60,6 +66,8 @@ type CacheFile struct {
 	flushInterval     time.Duration
 	DB                *bbolt.DB
 	dbAccess          sync.RWMutex
+	runtimeFileInfo os.FileInfo // identity observed around the actual open; dbAccess
+	runtimeStrict atomic.Bool // promotion permanently disables destructive legacy reset
 	pendingAccess     sync.RWMutex
 	pending           *pendingWrites
 	writing           *pendingWrites
@@ -153,7 +161,7 @@ func (c *CacheFile) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			return err
 		}
 		scope.Add(func() error {
-			return c.database().Close()
+			return c.closeRuntimeDatabase()
 		})
 		scope.Add(func() error {
 			c.flushTimer.Stop()
@@ -163,6 +171,7 @@ func (c *CacheFile) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 		var flushGroup sync.WaitGroup
 		scope.Add(func() error {
 			flushGroup.Wait()
+			c.cleanupWorkers.Wait()
 			return nil
 		})
 		flushGroup.Go(func() {
@@ -176,24 +185,30 @@ func (c *CacheFile) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 
 func (c *CacheFile) startCacheCleanup(ctx context.Context) {
 	if c.storeDNS {
-		c.clearRDRC()
+		// A retained HOT view owns its namespace; initial setup must not
+		// destructively clear another graph's persistent entries.
+		c.runtimeClients.Lock(); runtimeViews := c.runtimeClientsReserved; c.runtimeClients.Unlock()
+		if !runtimeViews { c.clearRDRC() }
 		c.cleanupDNSCache()
 		interval := c.optimisticTimeout / 2
 		if interval <= 0 {
 			interval = time.Hour
 		}
-		go c.loopCacheCleanup(ctx, interval, c.cleanupDNSCache)
+		c.cleanupWorkers.Add(1)
+		go func() { defer c.cleanupWorkers.Done(); c.loopCacheCleanup(ctx, interval, c.cleanupDNSCache) }()
 	} else if c.storeRDRC {
 		c.cleanupRDRC()
 		interval := c.rdrcTimeout / 2
 		if interval <= 0 {
 			interval = time.Hour
 		}
-		go c.loopCacheCleanup(ctx, interval, c.cleanupRDRC)
+		c.cleanupWorkers.Add(1)
+		go func() { defer c.cleanupWorkers.Done(); c.loopCacheCleanup(ctx, interval, c.cleanupRDRC) }()
 	}
 }
 
 func (c *CacheFile) start() error {
+	if request, strict := fakeIPRuntimeOpenFromContext(c.ctx); strict || c.runtimeStrict.Load() { return c.startFakeIPRuntime(request) }
 	const fileMode = 0o666
 	cacheFile, err := filemanager.OpenFile(c.ctx, c.path, os.O_RDWR|os.O_CREATE, fileMode)
 	if err != nil {
@@ -201,7 +216,9 @@ func (c *CacheFile) start() error {
 	}
 	cacheFile.Close()
 	var db *bbolt.DB
+	var runtimeFileInfo os.FileInfo
 	for range 10 {
+		before, _ := os.Lstat(c.path)
 		db, err = bbolt.Open(c.path, fileMode, &databaseOptions)
 		if err != nil {
 			if errors.Is(err, bboltErrors.ErrTimeout) {
@@ -218,6 +235,8 @@ func (c *CacheFile) start() error {
 		}
 		err = checkDatabase(db)
 		if err == nil {
+			after, _ := os.Lstat(c.path)
+			if before != nil && after != nil && os.SameFile(before, after) && after.Mode().IsRegular() && after.Mode()&os.ModeSymlink == 0 { runtimeFileInfo = after }
 			break
 		}
 		c.logger.Error("database corrupted: ", err, ": resetting")
@@ -259,6 +278,7 @@ func (c *CacheFile) start() error {
 		return err
 	}
 	c.DB = db
+	c.runtimeFileInfo = runtimeFileInfo
 	return nil
 }
 
@@ -327,6 +347,7 @@ func (c *CacheFile) resetDB(failedDB *bbolt.DB, reason any) {
 	if c.DB != failedDB {
 		return
 	}
+	if c.runtimeStrict.Load() { c.logger.Error("database corrupted; retained for fake-IP recovery: ", reason); return }
 	c.logger.Error("database corrupted: ", reason, ": resetting")
 	failedDB.Close()
 	filemanager.Remove(c.ctx, c.path)
@@ -334,6 +355,7 @@ func (c *CacheFile) resetDB(failedDB *bbolt.DB, reason any) {
 	if err == nil {
 		_ = filemanager.Chown(c.ctx, c.path)
 		c.DB = db
+		c.runtimeFileInfo = nil // legacy reset is not a trusted durable-migration open
 	}
 }
 

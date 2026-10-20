@@ -54,8 +54,8 @@ func (m *Registry) OptionTypes() []string {
 
 func (m *Registry) CreateOptions(outboundType string) (any, bool) {
 	m.access.Lock()
-	defer m.access.Unlock()
 	optionsConstructor, loaded := m.optionsType[outboundType]
+	m.access.Unlock()
 	if !loaded {
 		return nil, false
 	}
@@ -64,8 +64,8 @@ func (m *Registry) CreateOptions(outboundType string) (any, bool) {
 
 func (m *Registry) Create(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, outboundType string, options any) (adapter.Inbound, error) {
 	m.access.Lock()
-	defer m.access.Unlock()
 	constructor, loaded := m.constructor[outboundType]
+	m.access.Unlock()
 	if !loaded {
 		return nil, E.New("outbound type not found: " + outboundType)
 	}

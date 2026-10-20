@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -18,15 +19,17 @@ import (
 )
 
 func (r *Router) hijackDNSStream(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
+	conn = dnsOutbound.NewDNSStreamConn(conn)
 	r.searchProcessInfo(ctx, &metadata)
 	metadata.Destination = M.Socksaddr{}
 	err := N.ReportConnHandshakeSuccess(conn, conn)
 	if err != nil {
 		return E.Cause(err, "report handshake success")
 	}
+	ctx, queryRouter := adapter.RuntimeDNSCarrierContext(ctx, r.dns)
 	for {
 		conn.SetReadDeadline(time.Now().Add(C.DNSTimeout))
-		err = dnsOutbound.HandleStreamDNSRequest(ctx, r.dns, conn, metadata)
+		err = dnsOutbound.HandleStreamDNSRequest(ctx, queryRouter, conn, metadata)
 		if err != nil {
 			if !E.IsClosedOrCanceled(err) {
 				return err
@@ -44,7 +47,8 @@ func (r *Router) hijackDNSPacket(ctx context.Context, conn N.PacketConn, packetB
 		N.ReleaseMultiPacketBuffer(packetBuffers)
 		err = E.Cause(err, "report handshake success")
 	} else {
-		err = dnsOutbound.NewDNSPacketConnection(ctx, r.dns, conn, packetBuffers, metadata)
+		ctx, queryRouter := adapter.RuntimeDNSCarrierContext(ctx, r.dns)
+		err = dnsOutbound.NewDNSPacketConnection(ctx, queryRouter, conn, packetBuffers, metadata)
 	}
 	N.CloseOnHandshakeFailure(conn, onClose, err)
 	if err != nil && !E.IsClosedOrCanceled(err) {
@@ -63,9 +67,27 @@ func (r *Router) HijackDNSPacket(ctx context.Context, payload []byte, writer N.P
 	r.searchProcessInfo(ctx, &metadata)
 	destination := metadata.Destination
 	metadata.Destination = M.Socksaddr{}
-	r.dns.ExchangeAsync(adapter.WithContext(ctx, &metadata), &message, adapter.DNSQueryOptions{}, func(response *mDNS.Msg, exchangeErr error) {
+	var operation adapter.RuntimeLease
+	if borrowed, ok := adapter.RuntimeLeaseFromContext(ctx); ok {
+		operation, err = borrowed.Fork()
+		if err != nil { return }
+		ctx = adapter.ContextWithRuntimeLease(ctx, operation)
+	}
+	// A core-owned packet carrier admits current DNS policy for every query,
+	// even if its writer/port still belongs to a retained older flow. The old
+	// operation reservation above remains through the actual response write.
+	queryRouter := r.dns
+	if ingress, ok := adapter.RuntimeDNSIngressFromContext(ctx); ok { queryRouter = ingress }
+	answers:=&adapter.FakeIPAnswerBatch{}
+	ctx=adapter.ContextWithFakeIPAnswerSink(ctx,answers)
+	var completed sync.Once
+	releaseOperation := func() { if operation != nil { completed.Do(operation.Release) } }
+	defer func() { if recovered := recover(); recovered != nil { answers.Abort(); releaseOperation(); panic(recovered) } }()
+	queryRouter.ExchangeAsync(adapter.WithContext(ctx, &metadata), &message, adapter.DNSQueryOptions{}, func(response *mDNS.Msg, exchangeErr error) {
+		defer releaseOperation()
+  defer answers.Abort()
 		if exchangeErr == nil {
-			exchangeErr = r.writeDNSPacketResponse(&message, response, writer, destination)
+			exchangeErr = r.writeDNSPacketResponse(&message, response, writer, destination, answers)
 		}
 		if exchangeErr != nil && !R.IsRejected(exchangeErr) && !E.IsClosedOrCanceled(exchangeErr) {
 			r.logger.ErrorContext(ctx, E.Cause(exchangeErr, "process DNS packet"))
@@ -73,10 +95,11 @@ func (r *Router) HijackDNSPacket(ctx context.Context, payload []byte, writer N.P
 	})
 }
 
-func (r *Router) writeDNSPacketResponse(message *mDNS.Msg, response *mDNS.Msg, writer N.PacketWriter, destination M.Socksaddr) error {
+func (r *Router) writeDNSPacketResponse(message *mDNS.Msg, response *mDNS.Msg, writer N.PacketWriter, destination M.Socksaddr, answers *adapter.FakeIPAnswerBatch) error {
 	responseBuffer, err := dns.TruncateDNSMessage(message, response, N.CalculateFrontHeadroom(writer), N.CalculateRearHeadroom(writer))
 	if err != nil {
 		return err
 	}
+	defer func(){answers.Delivered(time.Now())}()
 	return writer.WritePacket(responseBuffer, destination)
 }

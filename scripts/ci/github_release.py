@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from release_identity import remote_tag_identity, public_product_name
+from release_identity import remote_tag_identity, public_product_name, validate_publication_index
 from polaris_version import validate as validate_version
 import json
 import os
@@ -631,9 +631,7 @@ def publish(output, source, audit=None):
     before = tag_identity(source)
     audit = audit or output.with_name(output.name + '-audit')
     index = json.loads((audit / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
-    require(index['schema'] == 'polaris-upstream-native-assets-v1' and index['tag'] == TAG
-            and index['tagObject'] == before and index['sourceCommit'] == source, 'assembled final index no longer matches source tag')
-    require(index['distributionMaterials']['publicationEligible'] is True, 'current source/notice review remains unresolved')
+    validate_publication_index(index, source, TAG, before)
     # Listing includes drafts visible to the token; no 404-as-absence shortcut.
     require(not any(r['tag_name'] == TAG for r in pages(f'repos/{REPO}/releases')), 'existing Release (including draft) will never be changed')
     expected = {p.name: {'size': p.stat().st_size, 'digest': 'sha256:'+sha(p)} for p in output.iterdir() if p.is_file()}
@@ -1085,10 +1083,7 @@ def replace_release(plan, actual, digest, output, audit=None):
             sha(index_path) == actual['distributionMaterials']['noticeIndex']['sha256'],
             'assembled replacement native index differs from reviewed inventory')
     index = json.loads(index_path.read_text(encoding='utf-8'))
-    require((index.get('sourceCommit'), index.get('sourceTree'), index.get('tag'), index.get('tagObject')) ==
-            (source, actual['sourceTree'], TAG, tag_object), 'assembled replacement native index source/tag differs')
-    require(index.get('distributionMaterials', {}).get('publicationEligible') is True,
-            'rebuilt source/notice review unresolved')
+    validate_publication_index(index, source, TAG, tag_object, actual['sourceTree'])
     require({p.name for p in output.iterdir()} == set(expected), 'assembled replacement file set differs')
     for name, row in expected.items():
         require(((output / name).stat().st_size, 'sha256:' + sha(output / name)) == (row['size'], row['digest']),

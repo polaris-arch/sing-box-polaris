@@ -47,6 +47,7 @@ type goUDPUserData struct {
 	meta      ForwardFrameMeta
 	ipVersion uint8
 	created   *GoPacketConn
+	verdict *FlowVerdict
 }
 
 func (e *goEngine) processUDPSegments(frame *goFrame) {
@@ -84,7 +85,9 @@ func (e *goEngine) processUDPSegments(frame *goFrame) {
 		buffer := e.gsoSlots.slot(index)
 		buffer.Truncate(e.gsoSizes[index])
 		options.PostReturn(buffer)
-		e.gsoFrame = goFrame{buffer: buffer}
+		delivery, retainErr := frame.verdict.CloneForDelivery()
+		if retainErr != nil { continue }
+		e.gsoFrame = goFrame{buffer: buffer, verdict: delivery}
 		e.processFrame(&e.gsoFrame)
 	}
 	e.flushPacketUploads()
@@ -134,6 +137,7 @@ func (e *goEngine) demuxUDP(packetBuffer *buf.Buffer, meta ForwardFrameMeta, par
 		packet:    packet,
 		meta:      meta,
 		ipVersion: parsed.ipVersion,
+		verdict: &parsed.verdict,
 	}
 	conn, ok := e.udpNat.getOrCreate(key, source, destination, userData, func(conn *UDPNatConn) {
 		e.attachUDPSession(conn, userData.created, &parsed.verdict)
@@ -141,13 +145,16 @@ func (e *goEngine) demuxUDP(packetBuffer *buf.Buffer, meta ForwardFrameMeta, par
 	})
 	if !ok {
 		if userData.owner != nil {
-			userData.owner.inject(packet, meta)
+			userData.owner.injectOwned(packet, meta, &parsed.verdict)
 		}
 		return
 	}
 	if writer, isGoPacketConn := conn.writer.(*GoPacketConn); isGoPacketConn {
+		sessionOwner, retainErr := writer.ownership.retain()
+		if retainErr != nil { return }
+		defer releaseFlow(sessionOwner)
 		if writer.engine != e {
-			writer.engine.inject(packet, meta)
+			writer.engine.injectOwned(packet, meta, &parsed.verdict)
 			return
 		}
 		if writer.splice != nil {
@@ -171,6 +178,9 @@ func (e *goEngine) demuxUDP(packetBuffer *buf.Buffer, meta ForwardFrameMeta, par
 }
 
 func (e *goEngine) packetSpliceInput(writer *GoPacketConn, packetBuffer *buf.Buffer, parsed *forwardPacket) {
+	owner, err := writer.ownership.retain()
+	if err != nil { return }
+	defer releaseFlow(owner)
 	trackerPointer := writer.tracker.Load()
 	if trackerPointer != nil {
 		(*trackerPointer).CountForward(packetBuffer.Len())
@@ -187,6 +197,8 @@ func (e *goEngine) packetSpliceInput(writer *GoPacketConn, packetBuffer *buf.Buf
 
 func (e *goEngine) attachUDPSession(conn *UDPNatConn, writer *GoPacketConn, verdict *FlowVerdict) {
 	writer.conn.Store(conn)
+	verdict = &writer.preparedVerdict
+	defer verdict.Release()
 	if verdict.UDPTimeout > 0 {
 		conn.SetTimeout(verdict.UDPTimeout)
 	}
@@ -197,6 +209,7 @@ func (e *goEngine) attachUDPSession(conn *UDPNatConn, writer *GoPacketConn, verd
 			tracker.AttachFlow(writer)
 		}
 	}
+	if conn.isClosed() { writer.handleSessionClose(io.ErrClosedPipe) }
 }
 
 func (s *Go) prepareUDPConnection(source M.Socksaddr, destination M.Socksaddr, userData any) (bool, context.Context, N.PacketWriter, N.CloseHandlerFunc) {
@@ -221,6 +234,11 @@ func (s *Go) prepareUDPConnection(source M.Socksaddr, destination M.Socksaddr, u
 		snapshot:        slices.Clone(data.packet),
 		snapshotMeta:    data.meta,
 	}
+	if data.verdict != nil {
+		writer.preparedVerdict = data.verdict.Take()
+		writer.ownership.owner = writer.preparedVerdict.Ownership
+		writer.preparedVerdict.Ownership = nil
+	}
 	writer.spliceMessage = goMessage{kind: goMessagePacketSplice, packet: writer}
 	writer.closeMessage = goMessage{kind: goMessagePacketClose, packet: writer}
 	writer.buildTemplate(data.ipVersion, source)
@@ -228,7 +246,7 @@ func (s *Go) prepareUDPConnection(source M.Socksaddr, destination M.Socksaddr, u
 	if directory.udpFlows != nil {
 		directory.udpFlows[data.key] = writer
 	}
-	return true, s.ctx, writer, writer.handleSessionClose
+	return true, bindFlow(s.ctx, writer.ownership.owner), writer, writer.handleSessionClose
 }
 
 type goPacketCloseError struct {
@@ -236,6 +254,8 @@ type goPacketCloseError struct {
 }
 
 type GoPacketConn struct {
+	ownership flowOwnershipSlot
+	preparedVerdict FlowVerdict
 	engine           *goEngine
 	key              udpNatSessionKey
 	platformIO       goPlatformIO
@@ -350,6 +370,9 @@ func (w *GoPacketConn) FrontHeadroom() int {
 
 func (w *GoPacketConn) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
 	defer buffer.Release()
+	owner, err := w.ownership.retain()
+	if err != nil { return err }
+	defer releaseFlow(owner)
 	return w.transmit(buffer, destination)
 }
 
@@ -362,6 +385,9 @@ func (w *GoPacketConn) CreatePacketBatchWriter() (N.PacketBatchWriter, bool) {
 
 func (w *GoPacketConn) WritePacketBatch(buffers []*buf.Buffer, destinations []M.Socksaddr) error {
 	defer buf.ReleaseMulti(buffers)
+	owner, err := w.ownership.retain()
+	if err != nil { return err }
+	defer releaseFlow(owner)
 	if len(buffers) == 0 || len(buffers) != len(destinations) {
 		return os.ErrInvalid
 	}
@@ -493,6 +519,8 @@ func (w *GoPacketConn) Close() error {
 	}
 	if w.splicePending.Load() != nil || w.spliceActive.Load() {
 		w.closeSplice(io.ErrClosedPipe)
+	} else {
+		w.ownership.release()
 	}
 	return nil
 }
@@ -525,3 +553,5 @@ var (
 	_ N.HandshakeFailure        = (*GoPacketConn)(nil)
 	_ N.PacketBatchWriteCreator = (*GoPacketConn)(nil)
 )
+
+func (w *GoPacketConn) retainFlowOwnership() (FlowOwnership, error) { return w.ownership.retain() }

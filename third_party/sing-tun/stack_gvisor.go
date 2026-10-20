@@ -116,15 +116,15 @@ func (t *GVisor) Start() error {
 	if err != nil {
 		return err
 	}
-	ipStack.SetTransportProtocolHandler(tcp.ProtocolNumber, NewTCPForwarderWithLoopback(t.ctx, ipStack, t.handler, t.inet4LoopbackAddress, t.inet6LoopbackAddress, t.tun).HandlePacket)
-	udpForwarder := NewUDPForwarder(t.ctx, ipStack, t.handler, t.udpNATOptions)
+	ipStack.SetTransportProtocolHandler(tcp.ProtocolNumber, NewTCPForwarderWithLoopback(t.ctx, ipStack, t.dispatcher.fallbackHandler(), t.inet4LoopbackAddress, t.inet6LoopbackAddress, t.tun).HandlePacket)
+	udpForwarder := NewUDPForwarder(t.ctx, ipStack, t.dispatcher.fallbackHandler(), t.udpNATOptions)
 	err = udpForwarder.Start()
 	if err != nil {
 		return err
 	}
 	ipStack.SetTransportProtocolHandler(udp.ProtocolNumber, udpForwarder.HandlePacket)
 	t.udpForwarder = udpForwarder
-	icmpForwarder := NewICMPForwarder(ipStack, t.handler, t.logger)
+	icmpForwarder := NewICMPForwarder(ipStack, t.dispatcher.fallbackHandler(), t.logger)
 	ipStack.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpForwarder.HandlePacket)
 	ipStack.SetTransportProtocolHandler(icmp.ProtocolNumber6, icmpForwarder.HandlePacket)
 	t.icmpForwarder = icmpForwarder
@@ -301,3 +301,11 @@ func newGVisorStack(ep stack.LinkEndpoint, opts stack.NICOptions, allowRawEndpoi
 	}
 	return ipStack, nil
 }
+
+func (t *GVisor) WaitDetached(ctx context.Context) error {
+	if err := t.dispatcher.WaitDetached(ctx); err != nil { return err }
+	if t.icmpForwarder != nil { return t.icmpForwarder.WaitDetached(ctx) }
+	return nil
+}
+
+var _ StackWithDetachWaiter = (*GVisor)(nil)

@@ -65,3 +65,9 @@ func (w *KTlSServerConfig) Clone() Config {
 		w.kernelRx,
 	}
 }
+
+func(w *KTLSClientConfig)withRuntimeContext(ctx context.Context)Config{
+	copy:=w.Clone().(*KTLSClientConfig)
+	if contextual,ok:=copy.Config.(interface{withRuntimeContext(context.Context)Config});ok{copy.Config=contextual.withRuntimeContext(ctx)}
+	return copy
+}

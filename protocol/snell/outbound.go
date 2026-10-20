@@ -2,6 +2,7 @@ package snell
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -26,6 +27,11 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
+	runtimeContext context.Context
+	runtimeCleanup func() error
+	constructionCleanup bool
+	runtimeDialer *runtimeDialer
 	logger     logger.ContextLogger
 	dialer     N.Dialer
 	client     snellClient
@@ -53,6 +59,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
+	ownedDialer := newRuntimeDialer(ctx, outboundDialer)
 	serverAddr := options.ServerOptions.Build()
 	var client snellClient
 	switch options.Version {
@@ -68,7 +75,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			Reuse:    options.Reuse,
 			ObfsMode: obfsMode,
 			ObfsHost: options.ObfsOptions.ObfsHost,
-			Dialer:   outboundDialer,
+			Dialer:   ownedDialer,
 			Server:   serverAddr,
 		})
 	case 6:
@@ -82,7 +89,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			UserKey: []byte(options.UserKey),
 			Mode:    mode,
 			Reuse:   options.Reuse,
-			Dialer:  outboundDialer,
+			Dialer:  ownedDialer,
 			Server:  serverAddr,
 		})
 	case 0:
@@ -97,14 +104,30 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		Adapter:    outbound.NewAdapterWithDialerOptions(C.TypeSnell, tag, options.Network.Build(), options.DialerOptions),
 		logger:     logger,
 		dialer:     outboundDialer,
+		runtimeDialer: ownedDialer,
 		client:     client,
 		serverAddr: serverAddr,
 		reuse:      options.Reuse,
 	}
+	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	constructed := false
+	defer func() {
+		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+	}()
+	if err := ctx.Err(); err != nil { return nil, err }
+	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	constructed = true
 	return outbound, nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -121,8 +144,7 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 		}
 		packetConn, err := h.client.DialPacketConn(conn)
 		if err != nil {
-			conn.Close()
-			return nil, err
+			return nil, errors.Join(err, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 		}
 		return bufio.NewBindPacketConn(packetConn, destination), nil
 	default:
@@ -131,6 +153,12 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -141,13 +169,15 @@ func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 	}
 	packetConn, err := h.client.DialPacketConn(conn)
 	if err != nil {
-		conn.Close()
-		return nil, err
+		return nil, errors.Join(err, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 	}
 	return packetConn, nil
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.Reset()
 }
 
@@ -156,17 +186,20 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.CloseIdleConnections()
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize {
-		return nil
-	}
-	scope.Add(h.client.Close)
-	return nil
+	if stage != adapter.StartStateInitialize { return nil }
+	return h.registerRuntimeStart(scope)
 }

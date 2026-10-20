@@ -4,6 +4,83 @@ import contextlib,copy,io,os,shlex,shutil,subprocess,sys,tempfile,urllib.error
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
 class TestCIContract(unittest.TestCase):
+ def test_signed_all_receipt_has_satisfiable_fail_closed_dependencies(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
+  jobs=w['jobs'];receipt=jobs['publisher_receipt']
+  expected={'calculate_version','build','build_windows7','build_darwin','build_windows',
+            'build_android_library','build_android','build_windows_client','build_linux_client',
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index'}
+  self.assertEqual(set(receipt['needs']),expected)
+  self.assertEqual(receipt['if'],"success() && inputs.build == 'All'")
+  self.assertIn("inputs.build == 'publish-android'",jobs['publish_android']['if'])
+  scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())['signed']
+  self.assertNotIn('publish_android',scope['requiredJobs'])
+  self.assertEqual(set(scope['requiredJobs']),expected|{'prepare_windows7','upload'})
+  self.assertIn('publisher-run-receipt',scope['requiredArtifacts'])
+  # Evaluate only this exact conjunction against inert terminal job outcomes.
+  # An optional store-only job may be skipped; every actual All producer must succeed.
+  def admitted(build,outcomes):
+   return build=='All' and all(outcomes[name]=='success' for name in receipt['needs'])
+  outcomes={name:'success' for name in expected};outcomes['publish_android']='skipped'
+  self.assertTrue(admitted('All',outcomes))
+  self.assertFalse(admitted('publish-android',outcomes))
+  for name in expected:
+   for result in ('failure','skipped','cancelled'):
+    with self.subTest(job=name,result=result):
+     self.assertFalse(admitted('All',dict(outcomes,**{name:result})))
+ def test_signed_apple_identity_skips_inactive_matrix_rows(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
+  for job_name in ('build_apple','build_apple_app_store'):
+   job=w['jobs'][job_name]
+   identity=[s for s in job['steps'] if s.get('name')=='Apply reviewed owned client identity']
+   self.assertEqual(len(identity),1)
+   self.assertEqual(identity[0].get('if'),'matrix.if')
+   self.assertIn('verify-apple',identity[0]['run'])
+   self.assertIn('apply apple',identity[0]['run'])
+   checkout=next(s for s in job['steps'] if s.get('name')=='Checkout')
+   self.assertEqual(checkout['if'],identity[0]['if'])
+   for active in (False,True):
+    with self.subTest(job=job_name,matrix_if=active):
+     # Inert evaluation of the exact single-variable condition; no source or signing runs.
+     step_admitted={'matrix.if':active}[identity[0]['if']]
+     self.assertEqual(step_admitted,active)
+   # Each partial selector leaves another row inactive; all rows stay available for All.
+   for row in job['strategy']['matrix']['include']:
+    self.assertIn('inputs.build',row['if'])
+    self.assertIn("inputs.build == 'All'",row['if'])
+ def test_native_package_signing_secret_inputs_remain_literal_environment_data(self):
+  for filename,condition in [('signed-linux.yml',"matrix.debian != '' || matrix.rpm != ''"),
+                             ('signed-release.yml',"fromJSON(toJSON(matrix)).debian != '' || fromJSON(toJSON(matrix)).rpm != ''")]:
+   w=yaml.safe_load((ROOT/'.github/workflows'/filename).read_text())
+   steps=w['jobs']['build']['steps'];by_name={s.get('name'):s for s in steps}
+   setup=by_name['Setup package signing'];body=setup['run']
+   self.assertLess(steps.index(setup),steps.index(by_name['Package DEB']))
+   self.assertLess(steps.index(setup),steps.index(by_name['Package RPM']))
+   self.assertEqual(setup['if'],condition)
+   self.assertEqual(setup['env'],{name:'${{ secrets.'+name+' }}' for name in ('GPG_KEY','GPG_KEY_ID','GPG_PASSPHRASE')})
+   self.assertIn('umask 077',body)
+   self.assertIn('mkdir -m 700 "$SIGNING_GNUPG_HOME"',body)
+   self.assertIn('chmod 600 "$SIGNING_PASSPHRASE_FILE"',body)
+   self.assertIn("printf '%s' \"$GPG_PASSPHRASE\" > \"$SIGNING_PASSPHRASE_FILE\"",body)
+   self.assertIn("printf '%s' \"$GPG_KEY\" | gpg",body)
+   self.assertIn('--passphrase-file "$SIGNING_PASSPHRASE_FILE"',body)
+   self.assertNotIn('set -x',body);self.assertNotIn('set -ex',body);self.assertNotIn('set -xe',body)
+   for step in steps:
+    self.assertNotRegex(step.get('run',''),r'\$\{\{\s*secrets\.GPG_')
+   deb=by_name['Package DEB'];rpm=by_name['Package RPM']
+   self.assertIn('-k "$GPG_KEY_ID"',deb['run'])
+   self.assertIn('--passphrase-file $SIGNING_PASSPHRASE_FILE',deb['run'])
+   self.assertEqual(deb['env']['GPG_KEY_ID'],'${{ secrets.GPG_KEY_ID }}')
+   self.assertIn("echo '%_rpmformat 4' >> \"$HOME/.rpmmacros\"",rpm['run'])
+   self.assertNotIn(' > "$HOME/.rpmmacros"',rpm['run'])
+   self.assertNotIn('gpg --',rpm['run'])
+   # Inert runner-binding model: values populate env only; no shell or GPG executes.
+   for literal in ["single'quote",'double"quote','$HOME','$(printf synthetic)', '`printf synthetic`', 'space and \\ slash']:
+    with self.subTest(literal=literal):
+     bound=copy.deepcopy(setup)
+     bound['env']={name:literal for name in setup['env']}
+     self.assertEqual(bound['run'],body)
+     self.assertEqual(bound['env']['GPG_PASSPHRASE'].encode('utf-8'),literal.encode('utf-8'))
  def test_complete_upstream_matrices(self):
   baseline=json.loads((ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']
   for filename,up in [('build.yml','build.yml'),('signed-release.yml','build.yml'),('linux.yml','linux.yml'),('signed-linux.yml','linux.yml'),('docker.yml','docker.yml'),('publish-container.yml','docker.yml')]:
@@ -54,8 +131,37 @@ class TestCIContract(unittest.TestCase):
    self.assertIn('needs.calculate_version.outputs.tag_object',assembly['env']['EXPECTED_RELEASE_TAG_OBJECT'])
   signed=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   self.assertIn("inputs.evidence_mode == 'final'",signed['jobs']['upload']['if'])
-  self.assertTrue(any(s.get('if')=='inputs.publish_github' and s.get('run')=='test \"$EVIDENCE_MODE\" = final' for s in signed['jobs']['calculate_version']['steps']))
+  self.assertTrue(any(s.get('if')=='inputs.publish_github || inputs.publish_stores' and s.get('run')=='test \"$EVIDENCE_MODE\" = final' for s in signed['jobs']['calculate_version']['steps']))
   self.assertNotIn('inputs.publish_github',(ROOT/'.github/workflows/build.yml').read_text())
+ def test_staging_never_admits_store_publication(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
+  pre=workflow['jobs']['calculate_version']
+  gate=next(step for step in pre['steps'] if step.get('name')=='Reject publication of staging evidence')
+  self.assertEqual(gate['if'],'inputs.publish_github || inputs.publish_stores')
+  self.assertEqual(gate['run'],'test "$EVIDENCE_MODE" = final')
+  self.assertEqual(gate['env']['EVIDENCE_MODE'],'${{ inputs.evidence_mode }}')
+  operations=('publishPlayReleaseBundle','--upload-app','publish_testflight')
+  observed=[]
+  for name,job in workflow['jobs'].items():
+   for step in job.get('steps',[]):
+    if any(operation in step.get('run','') for operation in operations):
+     self.assertIn('calculate_version',job['needs'])
+     condition=step.get('if','')
+     self.assertTrue(condition.startswith("inputs.evidence_mode == 'final' && ("),(name,condition))
+     self.assertIn('inputs.publish_stores',condition)
+     observed.append((name,step['name']))
+  self.assertEqual(len(observed),4)
+  # Pure contract truth table. No shell, workflow execution, credentials or
+  # remote operation is invoked by this fixture.
+  for mode in ['staging','final']:
+   for github in [False,True]:
+    for stores in [False,True]:
+     rejected=(github or stores) and mode!='final'
+     writes=[]
+     if not rejected and mode=='final' and stores:
+      writes.extend(observed)
+     if mode=='staging' or not stores:self.assertEqual(writes,[])
+     else:self.assertEqual(writes,observed)
  def test_docker_actual_builds_bind_dispatch_and_recheck_before_upload(self):
   w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
   self.assertIn('source',w['jobs'])
@@ -83,16 +189,47 @@ class TestCIContract(unittest.TestCase):
  def test_existing_build_entry_can_run_pretag_source_gates_without_products(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
-  self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source'")
-  self.assertEqual(w['jobs']['calculate_version']['if'],"inputs.build != 'Source'")
+  self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
+  self.assertEqual(w['jobs']['calculate_version']['if'],"inputs.build != 'Source' && !inputs.source_generate_only")
   gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
   self.assertEqual(w['permissions']['contents'],'read')
+ def test_runtime_protobuf_bootstrap_is_isolated_from_native_products(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  option=w['on']['workflow_dispatch']['inputs']['source_generate_only']
+  self.assertEqual(option['type'],'boolean');self.assertIs(option['default'],False)
+  bootstrap=w['jobs']['source_proto']
+  self.assertEqual(bootstrap['if'],"inputs.build == 'Source' && inputs.source_generate_only")
+  self.assertEqual(bootstrap['runs-on'],'ubuntu-24.04')
+  self.assertEqual(bootstrap['env']['PYTHONDONTWRITEBYTECODE'],'1')
+  for name,job in w['jobs'].items():
+   if name!='source_proto':
+    self.assertIn('!inputs.source_generate_only',job['if'],name)
+  runs='\n'.join(step.get('run','') for step in bootstrap['steps'])
+  self.assertIn('runtime_proto.py generate',runs)
+  self.assertNotIn('make proto',runs);self.assertNotIn('go test',runs)
+  artifact=next(step for step in bootstrap['steps'] if step.get('uses','').startswith('actions/upload-artifact@'))
+  self.assertEqual(artifact['with']['path'].splitlines(),[
+   '${{ runner.temp }}/runtime-protobuf/daemon/runtime_config.pb.go',
+   '${{ runner.temp }}/runtime-protobuf/daemon/runtime_config_grpc.pb.go',
+   '${{ runner.temp }}/runtime-protobuf/receipt.json'])
+  self.assertEqual(artifact['with']['if-no-files-found'],'error')
+  checks=[step for step in w['jobs']['source_gate']['steps'] if 'runtime_proto.py check' in step.get('run','')]
+  self.assertEqual(len(checks),1);self.assertEqual(checks[0]['if'],"matrix.os == 'ubuntu-24.04'")
+ def test_runtime_graph_fixtures_execute_in_existing_native_matrix(self):
+  w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  steps=w['jobs']['utls_gate']['steps']
+  step=next(step for step in steps if step.get('name')=='Execute focused runtime coordinator and resource regressions natively')
+  run=step['run']
+  for fragment in ['go test -json -race','-count=1','./internal/runtimegraph','./daemon','./experimental/cachefile','./route','./dns/transport/...','./protocol/openconnect','./protocol/openvpn','./protocol/tailscale','with_purego','-X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA','test "$(git rev-parse HEAD)" = "$GITHUB_SHA"','required native runtime tests or package PASS missing']:
+   self.assertIn(fragment,run)
+  self.assertNotIn('-run ',run)
+  self.assertIn(' . ',run.replace('\n',' '))
  def test_go_utls_gate_is_part_of_one_existing_source_dispatch(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   gate=w['jobs']['utls_gate']
-  self.assertEqual(gate['if'],"inputs.build == 'Source'")
+  self.assertEqual(gate['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
   self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15'])
   self.assertFalse(gate['strategy']['fail-fast'])
   self.assertTrue(any(s.get('with',{}).get('go-version-file')=='release/GO_VERSION' for s in gate['steps']))
@@ -246,7 +383,7 @@ class TestUpstreamReleaseTrack(unittest.TestCase):
         suffix = '' if track == 'stable' else '-' + track
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(contents, 'TRACK=' + track + '\nNAME=sing-box-polaris' + suffix +
-                         '\nDOCKER_TAG=latest' + suffix + '\n')
+                         '\nPACKAGE_NAME=sing-box' + suffix + '\nDOCKER_TAG=latest' + suffix + '\n')
 
     def test_stable_requires_exact_hyphenated_tag_to_be_beta(self):
         for tag in [None, 'v1.15.0', 'alpha']:
@@ -315,10 +452,25 @@ class TestUpstreamReleaseTrack(unittest.TestCase):
                 self.assertEqual(calls[0][1]['name'], 'Detect track')
                 for job in workflow['jobs'].values():
                     for step in job['steps']:
-                        self.assertNotRegex(step.get('run', ''), r'(?<![A-Z_])(TRACK|NAME|DOCKER_TAG)=')
+                        self.assertNotRegex(step.get('run', ''), r'(?<![A-Z_])(TRACK|NAME|PACKAGE_NAME|DOCKER_TAG)=')
                 checkout = next(step for step in workflow['jobs'][job_name]['steps']
                                 if step.get('uses', '').startswith('actions/checkout@'))
                 self.assertEqual(checkout['with']['fetch-depth'], 0)
+
+    def test_linux_package_identity_is_separate_from_asset_name(self):
+        for filename in ['linux.yml', 'signed-linux.yml']:
+            workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
+            steps = workflow['jobs']['build']['steps']
+            packages = [step for step in steps if step['name'] in ['Package DEB', 'Package RPM']]
+            with self.subTest(workflow=filename):
+                self.assertEqual(len(packages), 2)
+                for step in packages:
+                    script = step['run']
+                    self.assertEqual(script.count('--name "${PACKAGE_NAME}"'), 1)
+                    self.assertNotIn('--name "${NAME}"', script)
+                    self.assertIn('-p "dist/${NAME}_', script)
+                    self.assertIn('dist/sing-box=/usr/bin/sing-box', script)
+                    self.assertIn('cp .fpm_systemd .fpm', script)
 
     def test_track_change_keeps_owned_distribution_opt_in_and_unsigned_docker(self):
         guard = "github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true'"
@@ -401,7 +553,7 @@ class TestPatchQueueNetnsContract(unittest.TestCase):
             (selection / 'root-packages.txt').write_text(''.join(p + '\n' for p in selected))
             for module in modules:
                 (selection / (module + '-selected')).touch()
-            for module, owner in [('sing-tun', 'sagernet/sing-tun'), ('metacubex-utls', 'metacubex/utls')]:
+            for module, owner in [('sing-tun', 'sagernet/sing-tun'), ('metacubex-utls', 'metacubex/utls'), ('cronet-go', 'sagernet/cronet-go'), ('fswatch', 'sagernet/fswatch'), ('sing', 'sagernet/sing')]:
                 path = root / 'third_party' / module
                 path.mkdir(parents=True)
                 (path / 'go.mod').write_text('module github.com/' + owner + '\n')
@@ -443,7 +595,10 @@ elif args and args[0] == 'test':
 else:
     raise SystemExit(93)
 output = ('--- PASS: TestUnshareNamespace (0.00s)\\nok fixture/netns\\n'
-          if group == 'netns' else 'ok fixture/' + group + '\\n')
+          if group == 'netns' else '--- PASS: TestNaiveAdmissionSealsBeforeJoin (0.00s)\\n--- PASS: TestNaiveDialCreationBarrierAndTerminalOwnership (0.00s)\\nok fixture/cronet-go\\n'
+          if group == 'cronet-go' else '--- PASS: TestFailedAddClosesUnpublishedWatcher (0.00s)\\n--- PASS: TestSuccessfulAddTransfersWithoutClosing (0.00s)\\n--- PASS: TestFailedAddPreservesCleanupFailure (0.00s)\\nok fixture/fswatch\\n'
+          if group == 'fswatch' else '--- PASS: TestRuntimePacketContextRetainsBeforeLaunchAndJoinsTerminalTail (0.00s)\\n--- PASS: TestRuntimePacketContextFailureDoesNotPublishSession (0.00s)\\nok fixture/sing\\n'
+          if group == 'sing' else 'ok fixture/' + group + '\\n')
 sys.stdout.write(config['outputs'].get(group, output))
 raise SystemExit(config['statuses'].get(group, 0))
 '''
@@ -466,6 +621,42 @@ raise SystemExit(config['statuses'].get(group, 0))
                                     cwd=root, env=env, capture_output=True, text=True, timeout=15)
             calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
             return result, calls
+
+    def test_cronet_selected_module_runs_fake_native_barriers_without_root_scope(self):
+        result, calls = self.run_queue(selected=[], resolved=[], modules=['cronet-go'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [{'tool': 'go', 'cwd': 'third_party/cronet-go',
+                                 'args': ['test', '-race', '-count=1', '-v', '-tags', 'with_purego', './...']}])
+        for kwargs in [{'statuses': {'cronet-go': 29}},
+                       {'outputs': {'cronet-go': 'ok fixture/no-tests\n'}}]:
+            with self.subTest(kwargs=kwargs):
+                result, calls = self.run_queue(selected=[], resolved=[], modules=['cronet-go'], **kwargs)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(calls), 1)
+
+    def test_fswatch_selected_module_requires_cleanup_regressions(self):
+        result, calls = self.run_queue(selected=[], resolved=[], modules=['fswatch'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [{'tool': 'go', 'cwd': 'third_party/fswatch',
+                                 'args': ['test', '-race', '-count=1', '-v', './...']}])
+        for kwargs in [{'statuses': {'fswatch': 29}},
+                       {'outputs': {'fswatch': 'ok fixture/no-tests\n'}}]:
+            with self.subTest(kwargs=kwargs):
+                result, calls = self.run_queue(selected=[], resolved=[], modules=['fswatch'], **kwargs)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(calls), 1)
+
+    def test_sing_selected_module_requires_owned_session_regressions(self):
+        result, calls = self.run_queue(selected=[], resolved=[], modules=['sing'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [{'tool': 'go', 'cwd': 'third_party/sing',
+                                 'args': ['test', '-race', '-count=1', '-v', './...']}])
+        for kwargs in [{'statuses': {'sing': 29}},
+                       {'outputs': {'sing': 'ok fixture/no-tests\n'}}]:
+            with self.subTest(kwargs=kwargs):
+                result, calls = self.run_queue(selected=[], resolved=[], modules=['sing'], **kwargs)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(calls), 1)
 
     def assert_root_test(self, call, packages, elevated=False):
         args = ['test', '-race', '-count=1']
@@ -870,7 +1061,7 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
     def nested_step(self):
         workflow = yaml.safe_load((ROOT / '.github/workflows/build.yml').read_text())
         job = workflow['jobs']['source_gate']
-        self.assertEqual(job['if'], "inputs.build == 'Source'")
+        self.assertEqual(job['if'], "inputs.build == 'Source' && !inputs.source_generate_only")
         self.assertEqual(job['env']['GOFLAGS'], '-mod=readonly')
         self.assertEqual(job['env']['GOTOOLCHAIN'], 'local')
         step = next(s for s in job['steps'] if s.get('name') == 'Verify nested sing-tun cleanup regressions through the root replacement')
@@ -917,3 +1108,4 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+

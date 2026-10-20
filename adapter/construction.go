@@ -33,3 +33,19 @@ func DeferConstructionCleanup(ctx context.Context, cleanup func() error) error {
 	scope.access.Unlock()
 	return nil
 }
+
+// HasConstructionScope lets constructors retain legacy standalone lifecycle
+// behavior while registering immediately when a resource owner is supplied.
+func HasConstructionScope(ctx context.Context) bool {
+	scope, _ := ctx.Value(constructionScopeKey{}).(*Scope)
+	return scope != nil
+}
+
+// ConstructionScopeErr observes the lifetime owning constructor cleanup. The
+// passed context may be a live wrapper around a scope whose own parent was
+// canceled. This is an observation, not a lock that prevents later retirement.
+func ConstructionScopeErr(ctx context.Context) error {
+	scope, _ := ctx.Value(constructionScopeKey{}).(*Scope)
+	if scope == nil { return nil }
+	return scope.ctx.Err()
+}

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sagernet/sing/common/logger"
+ "github.com/sagernet/sing-box/adapter/outbound"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -11,9 +12,11 @@ import (
 
 type ACMELogWriter struct {
 	Logger logger.Logger
+ Fence *outbound.RuntimeIOFence
 }
 
 func (w *ACMELogWriter) Write(p []byte) (n int, err error) {
+ if w.Fence != nil { leave, err := w.Fence.Acquire(); if err != nil { return len(p), nil }; defer leave() }
 	logLine := strings.ReplaceAll(string(p), "	", ": ")
 	switch {
 	case strings.HasPrefix(logLine, "error: "):

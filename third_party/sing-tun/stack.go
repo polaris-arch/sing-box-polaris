@@ -85,3 +85,10 @@ func BroadcastAddr(inet4Address []netip.Prefix) netip.Addr {
 	binary.BigEndian.PutUint32(broadcastAddr[:], binary.BigEndian.Uint32(prefix.Masked().Addr().AsSlice())|^binary.BigEndian.Uint32(net.CIDRMask(prefix.Bits(), 32)))
 	return netip.AddrFrom4(broadcastAddr)
 }
+
+// StackWithDetachWaiter separates a nonjoining shutdown request from actual
+// return-path completion. Lifecycle owners call this after Close, outside all
+// storage/admission guards and outside callbacks being joined.
+type StackWithDetachWaiter interface {
+	WaitDetached(context.Context) error
+}

@@ -127,6 +127,8 @@ func (s *System) Close() error {
 		s.udpNat.Close()
 	}
 	return common.Close(
+		s.tcpNat4,
+		s.tcpNat6,
 		s.tcpListener,
 		s.tcpListener6,
 	)
@@ -395,12 +397,20 @@ func (s *System) acceptLoop(listener net.Listener, tcpNat *TCPNat) {
 			return
 		}
 		connPort := M.SocksaddrFromNet(conn.RemoteAddr()).Port
-		session := tcpNat.LookupBack(connPort)
-		if session == nil {
+		session, verdict, found := tcpNat.lookupBackOwned(connPort)
+		if !found {
+			conn.Close()
 			s.logger.Trace(E.New("unknown session with port ", connPort))
 			continue
 		}
-		go s.handler.NewConnectionEx(s.ctx, conn, M.SocksaddrFromNetIP(session.Source), M.SocksaddrFromNetIP(session.Destination), nil)
+		launch, err := verdict.CloneForDelivery()
+		if err != nil { verdict.Release(); conn.Close(); continue }
+		owned := &ownedSystemConn{Conn: conn, ownership: verdict.Ownership}
+		ctx := launch.BindContext(s.ctx)
+		go func() {
+			defer launch.Release()
+			s.handler.NewConnectionEx(ctx, owned, M.SocksaddrFromNetIP(session.Source), M.SocksaddrFromNetIP(session.Destination), nil)
+		}()
 	}
 }
 
@@ -533,7 +543,9 @@ func (s *System) processIPv4TCP(ipHdr header.IPv4, tcpHdr header.TCP) (bool, err
 			}
 		}
 		if !loopback {
-			natPort := s.tcpNat4.Lookup(source, destination)
+			verdict, _ := s.dispatcher.cachedVerdict(uint8(header.TCPProtocolNumber), source, destination)
+			if verdict.Action == ActionDrop { verdict.Release(); return false, nil }
+			natPort := s.tcpNat4.lookupOwned(source, destination, &verdict)
 			if natPort == 0 {
 				return false, E.New("ipv4: tcp: NAT port space exhausted")
 			}
@@ -576,7 +588,9 @@ func (s *System) processIPv6TCP(ipHdr header.IPv6, tcpHdr header.TCP) (bool, err
 			}
 		}
 		if !loopback {
-			natPort := s.tcpNat6.Lookup(source, destination)
+			verdict, _ := s.dispatcher.cachedVerdict(uint8(header.TCPProtocolNumber), source, destination)
+			if verdict.Action == ActionDrop { verdict.Release(); return false, nil }
+			natPort := s.tcpNat6.lookupOwned(source, destination, &verdict)
 			if natPort == 0 {
 				return false, E.New("ipv6: tcp: NAT port space exhausted")
 			}
@@ -720,7 +734,11 @@ func (s *System) preparePacketConnection(source M.Socksaddr, destination M.Socks
 			s.txChecksumOffload,
 		}
 	}
-	return true, s.ctx, writer, nil
+	verdict, _ := s.dispatcher.cachedVerdict(uint8(header.UDPProtocolNumber), source.AddrPort(), destination.AddrPort())
+	if verdict.Action == ActionDrop || verdict.Action == ActionReject { verdict.Release(); return false, nil, nil, nil }
+	owned := &ownedPacketWriter{PacketWriter: writer}
+	owned.ownership.owner = verdict.Ownership
+	return true, verdict.BindContext(s.ctx), owned, nil
 }
 
 func (s *System) processIPv4ICMP(ipHdr header.IPv4, icmpHdr header.ICMPv4) (bool, error) {
@@ -1009,3 +1027,14 @@ func (w *systemWriteback) WriteReturnPackets(packets [][]byte) error {
 	}
 	return E.Errors(writeErrors...)
 }
+
+func (s *System) WaitDetached(ctx context.Context) error {
+	if err := s.dispatcher.WaitDetached(ctx); err != nil { return err }
+	for _, nat := range []*TCPNat{s.tcpNat4, s.tcpNat6} {
+		if nat == nil { continue }
+		select { case <-nat.done: case <-ctx.Done(): return ctx.Err() }
+	}
+	return nil
+}
+
+var _ StackWithDetachWaiter = (*System)(nil)

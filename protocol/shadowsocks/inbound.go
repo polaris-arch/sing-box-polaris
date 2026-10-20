@@ -47,6 +47,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 var _ adapter.TCPInjectableInbound = (*Inbound)(nil)
 
 type Inbound struct {
+	runtime *inboundRuntime
 	inbound.Adapter
 	ctx      context.Context
 	router   adapter.ConnectionRouterEx
@@ -59,11 +60,18 @@ func newInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	inbound := &Inbound{
 		Adapter: inbound.NewAdapter(C.TypeShadowsocks, tag),
 		ctx:     ctx,
-		router:  uot.NewRouter(router, logger),
+		router:  router,
 		logger:  logger,
 	}
+
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil { return nil, runtimeErr }
+	inbound.runtime = runtime
+	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	inbound.router = uot.NewRouter(router, logger)
 	var err error
-	inbound.router, err = mux.NewRouterWithOptions(inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
+	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +83,11 @@ func newInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	}
 	switch {
 	case options.Method == shadowsocks.MethodNone:
-		inbound.service = shadowsocks.NewNoneService(int64(udpTimeout.Seconds()), adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound))
+		inbound.service = shadowsocks.NewNoneService(int64(udpTimeout.Seconds()), newRuntimeUpstreamHandler(inbound.runtime, adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound)))
 	case common.Contains(shadowaead.List, options.Method):
-		inbound.service, err = shadowaead.NewService(options.Method, nil, options.Password, int64(udpTimeout.Seconds()), adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound))
+		inbound.service, err = shadowaead.NewService(options.Method, nil, options.Password, int64(udpTimeout.Seconds()), newRuntimeUpstreamHandler(inbound.runtime, adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound)))
 	case common.Contains(shadowaead_2022.List, options.Method):
-		inbound.service, err = shadowaead_2022.NewServiceWithPassword(options.Method, options.Password, int64(udpTimeout.Seconds()), adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound), ntp.TimeFuncFromContext(ctx))
+		inbound.service, err = shadowaead_2022.NewServiceWithPassword(options.Method, options.Password, int64(udpTimeout.Seconds()), newRuntimeUpstreamHandler(inbound.runtime, adapter.NewLegacyUpstreamHandler(adapter.InboundContext{}, inbound.newConnection, inbound.newPacketConnection, inbound)), ntp.TimeFuncFromContext(ctx))
 	default:
 		err = E.New("unsupported method: ", options.Method)
 	}
@@ -96,6 +104,7 @@ func newInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -109,7 +118,10 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 
 //nolint:staticcheck
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	err := h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	defer release()
+	err = h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
 	N.CloseOnHandshakeFailure(conn, onClose, err)
 	if err != nil {
 		if E.IsClosedOrCanceled(err) {
@@ -129,6 +141,9 @@ func (h *Inbound) NewPacket(buffer *buf.Buffer, source M.Socksaddr) {
 }
 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { return err }
+	defer release()
 	h.logger.InfoContext(ctx, "inbound connection to ", metadata.Destination)
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
@@ -136,6 +151,9 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 }
 
 func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) error {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil { return err }
+	defer release()
 	ctx = log.ContextWithNewID(ctx)
 	h.logger.InfoContext(ctx, "inbound packet connection from ", metadata.Source)
 	h.logger.InfoContext(ctx, "inbound packet connection to ", metadata.Destination)

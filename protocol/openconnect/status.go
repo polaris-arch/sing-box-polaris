@@ -14,6 +14,7 @@ import (
 var _ adapter.OpenConnectEndpoint = (*Endpoint)(nil)
 
 func (e *Endpoint) OpenConnectStatus() adapter.OpenConnectStatus {
+ if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return adapter.OpenConnectStatus{}};defer leave()}
 	var status adapter.OpenConnectStatus
 	clientState := e.state.Load()
 	authChallenge := e.client.PendingAuthChallenge()
@@ -89,6 +90,7 @@ func (e *Endpoint) StatusUpdated() <-chan struct{} {
 }
 
 func (e *Endpoint) CompleteAuthChallenge(challengeID string, response adapter.OpenConnectAuthResponse) error {
+ if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return err};defer leave()}
 	var authResponse openconnect.AuthResponse
 	if response.Form != nil {
 		authResponse.Form = &openconnect.AuthFormResponse{Values: response.Form.Values}
@@ -112,6 +114,7 @@ func (e *Endpoint) CompleteAuthChallenge(challengeID string, response adapter.Op
 }
 
 func (e *Endpoint) CancelAuthChallenge(challengeID string) error {
+ if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return err};defer leave()}
 	return e.client.CancelAuthChallenge(challengeID)
 }
 

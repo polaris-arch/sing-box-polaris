@@ -32,6 +32,7 @@ type ParallelInterfaceResolveDialer interface {
 }
 
 type resolveDialer struct {
+	runtimeSource adapter.RuntimeResourceSource
 	transport     adapter.DNSTransportManager
 	router        adapter.DNSRouter
 	dialer        N.Dialer
@@ -44,9 +45,11 @@ type resolveDialer struct {
 }
 
 func NewResolveDialer(ctx context.Context, dialer N.Dialer, parallel bool, server string, queryOptions adapter.DNSQueryOptions, fallbackDelay time.Duration) ResolveDialer {
+	runtimeSource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	if parallelDialer, isParallel := dialer.(ParallelInterfaceDialer); isParallel {
 		return &resolveParallelNetworkDialer{
 			resolveDialer{
+				runtimeSource: runtimeSource,
 				transport:     service.FromContext[adapter.DNSTransportManager](ctx),
 				router:        service.FromContext[adapter.DNSRouter](ctx),
 				dialer:        dialer,
@@ -59,6 +62,7 @@ func NewResolveDialer(ctx context.Context, dialer N.Dialer, parallel bool, serve
 		}
 	}
 	return &resolveDialer{
+		runtimeSource: runtimeSource,
 		transport:     service.FromContext[adapter.DNSTransportManager](ctx),
 		router:        service.FromContext[adapter.DNSRouter](ctx),
 		dialer:        dialer,
@@ -92,6 +96,12 @@ func (d *resolveDialer) initServer() {
 }
 
 func (d *resolveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if d.runtimeSource != nil {
+		owned, release, err := adapter.AcquireRuntimeOperation(ctx,d.runtimeSource)
+		if err != nil { return nil,err }
+		defer release()
+		ctx = owned
+	}
 	err := d.initialize()
 	if err != nil {
 		return nil, err
@@ -105,7 +115,12 @@ func (d *resolveDialer) DialContext(ctx context.Context, network string, destina
 		return nil, err
 	}
 	if d.parallel {
-		return N.DialParallel(ctx, d.dialer, network, destination, addresses, d.queryOptions.Strategy == C.DomainStrategyPreferIPv6, d.fallbackDelay)
+		if d.runtimeSource == nil {
+			if _, bound := adapter.RuntimeLeaseFromContext(ctx); !bound {
+				return N.DialParallel(ctx,d.dialer,network,destination,addresses,d.queryOptions.Strategy == C.DomainStrategyPreferIPv6,d.fallbackDelay)
+			}
+		}
+		return DialParallelNetwork(ctx, runtimeSerialInterfaceDialer{d.dialer}, network, destination, addresses, d.queryOptions.Strategy == C.DomainStrategyPreferIPv6, nil, nil, nil, d.fallbackDelay)
 	} else {
 		return N.DialSerial(ctx, d.dialer, network, destination, addresses)
 	}

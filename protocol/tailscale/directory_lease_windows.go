@@ -56,6 +56,7 @@ type directoryLease struct {
 	rootID, controlID, admissionID, targetID, lifetimeID              windowsDirectoryID
 	domain                                                            windowsDirectoryDomainRecord
 	admissionHeld, lifetimeHeld                                       bool
+	checkpointExclusive                                            bool
 	closeOnce                                                         sync.Once
 	closeErr                                                          error
 }
@@ -453,6 +454,9 @@ func (l *directoryLease) appendMarker(m *directoryLeaseMarker, previous *directo
 	if err != nil {
 		return err
 	}
+	fits, reserveErr := windowsMarkerAdmissionFits(size, *m)
+	if reserveErr != nil { return reserveErr }
+	if !fits { return fmt.Errorf("directory lease: marker log lacks deletion reserve") }
 	if len(line) > 16<<10 || size+len(line)+1 > windowsMarkerLimit {
 		return fmt.Errorf("directory lease: marker log full")
 	}
@@ -563,6 +567,17 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 	if l.targetID.Volume != l.rootID.Volume {
 		return nil, fmt.Errorf("directory lease: cross-volume target")
 	}
+	// Decide cold maintenance under root admission before choosing the lifetime
+	// lock. Never upgrade a shared lease or publish a candidate before EX succeeds.
+	var existingMarker *directoryLeaseMarker
+	checkpoint := false
+	if !missing {
+		existingMarker, err = l.findMarker(true, nil)
+		if err != nil { return nil, err }
+		if existingMarker == nil { return nil, fmt.Errorf("directory lease: existing unmarked physical target") }
+		checkpoint, err = l.markerNeedsCheckpoint(existingMarker)
+		if err != nil { return nil, err }
+	}
 	l.lockName = "directory-" + l.targetID.key() + ".lock"
 	disposition := uint32(windows.FILE_OPEN)
 	if missing {
@@ -576,10 +591,11 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 	if err != nil {
 		return nil, err
 	}
-	if err := windowsLock(l.lifetime, missing); err != nil {
+	if err := windowsLock(l.lifetime, missing || checkpoint); err != nil {
 		return nil, fmt.Errorf("directory lease: lifetime busy: %w", err)
 	}
 	l.lifetimeHeld = true
+	l.checkpointExclusive = checkpoint
 	var marker *directoryLeaseMarker
 	if missing {
 		// A previous generation lock is permanent. EX blocks any stale path writer;
@@ -624,19 +640,16 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 			return nil, err
 		}
 	} else {
-		marker, err = l.findMarker(true, nil)
-		if err != nil {
-			return nil, err
-		}
-		if marker == nil {
-			return nil, fmt.Errorf("directory lease: existing unmarked physical target")
-		}
+		marker = existingMarker
 		stamp, err := l.readPrivate(l.target, directoryIncarnationStamp, 34)
 		if err != nil {
 			return nil, err
 		}
 		if string(stamp) != marker.Incarnation+"\n" {
 			return nil, fmt.Errorf("directory lease: incarnation mismatch")
+		}
+		if checkpoint {
+			if err := l.checkpointOpenJournal(marker); err != nil { return nil, err }
 		}
 		next := *marker
 		next.DirectoryEpoch, err = windowsNextNonce(marker.DirectoryEpoch)
@@ -652,7 +665,7 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 	l.Identity = windowsDirectoryIdentity(l.rootID, l.targetID)
 	l.Incarnation, l.Epoch = marker.Incarnation, marker.DirectoryEpoch
 	l.Managed = marker.ServerID == l.targetName
-	if missing {
+	if missing || checkpoint {
 		if err := windowsUnlock(l.lifetime); err != nil {
 			return nil, err
 		}
@@ -661,6 +674,7 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 			return nil, err
 		}
 		l.lifetimeHeld = true
+		l.checkpointExclusive = false
 	}
 	if err := l.checkAnchors(); err != nil {
 		return nil, err
@@ -834,7 +848,7 @@ func (l *directoryLease) releaseHandles() error {
 	}
 	result = errors.Join(result, l.chain.close())
 	l.chain = nil
-	l.admissionHeld, l.lifetimeHeld = false, false
+	l.admissionHeld, l.lifetimeHeld, l.checkpointExclusive = false, false, false
 	return result
 }
 

@@ -22,6 +22,7 @@ type fragmentKey struct {
 }
 
 type fragmentEntry struct {
+	use *forwardUse
 	flow     *forwardFlow
 	rule     *rewriteRule
 	deadline int64
@@ -35,51 +36,75 @@ type fragmentTable struct {
 	lastSweep int64
 }
 
-func (t *fragmentTable) insert(key fragmentKey, flow *forwardFlow, rule *rewriteRule, received int, now int64) {
+func (t *fragmentTable) insert(key fragmentKey, use *forwardUse, rule *rewriteRule, received int, now int64) {
+	owned, err := use.retain()
+	if err != nil { return }
 	t.access.Lock()
-	defer t.access.Unlock()
+	var removed []*fragmentEntry
+	if previous := t.entries[key]; previous != nil { delete(t.entries, key); removed = append(removed, previous) }
 	if len(t.entries) >= fragmentTableCapacity {
-		if now-t.lastSweep < int64(fragmentSweepInterval) {
-			return
-		}
-		t.lastSweep = now
 		for existingKey, entry := range t.entries {
-			if entry.deadline < now {
-				delete(t.entries, existingKey)
-			}
-		}
-		if len(t.entries) >= fragmentTableCapacity {
-			return
+			if entry.deadline < now { delete(t.entries, existingKey); removed = append(removed, entry) }
 		}
 	}
-	t.entries[key] = &fragmentEntry{flow: flow, rule: rule, deadline: now + int64(fragmentTimeout), received: received, total: -1}
+	if len(t.entries) < fragmentTableCapacity {
+		// Copy the rewrite rule: a NAT mapping can disappear independently.
+		copiedRule := *rule
+		t.entries[key] = &fragmentEntry{use: owned, flow: use.flow, rule: &copiedRule, deadline: now+int64(fragmentTimeout), received: received, total: -1}
+		owned = nil
+	}
+	t.access.Unlock()
+	for _, entry := range removed { entry.use.release() }
+	owned.release()
 }
 
 func (t *fragmentTable) remove(key fragmentKey) {
 	t.access.Lock()
+	entry := t.entries[key]
 	delete(t.entries, key)
 	t.access.Unlock()
+	if entry != nil { entry.use.release() }
+}
+
+func (t *fragmentTable) expire(now int64) {
+	t.access.Lock()
+	var removed []*fragmentEntry
+	for key, entry := range t.entries {
+		if entry.deadline < now { delete(t.entries, key); removed = append(removed, entry) }
+	}
+	t.access.Unlock()
+	for _, entry := range removed { entry.use.release() }
+}
+
+func (t *fragmentTable) clear() {
+	t.access.Lock()
+	entries := t.entries
+	t.entries = make(map[fragmentKey]*fragmentEntry)
+	t.access.Unlock()
+	for _, entry := range entries { entry.use.release() }
 }
 
 func (t *fragmentTable) lookup(key fragmentKey, info fragmentInfo, now int64) *fragmentEntry {
 	t.access.Lock()
-	defer t.access.Unlock()
 	entry := t.entries[key]
-	if entry == nil {
-		return nil
-	}
+	if entry == nil { t.access.Unlock(); return nil }
 	if entry.deadline < now {
 		delete(t.entries, key)
+		t.access.Unlock()
+		entry.use.release()
 		return nil
 	}
+	use, err := entry.use.retain() // Must precede removal/release under this lock.
+	if err != nil { t.access.Unlock(); return nil }
 	entry.received += len(info.payload)
-	if !info.more {
-		entry.total = info.offset + len(info.payload)
-	}
-	if entry.total >= 0 && entry.received >= entry.total {
-		delete(t.entries, key)
-	}
-	return entry
+	if !info.more { entry.total = info.offset+len(info.payload) }
+	remove := entry.total >= 0 && entry.received >= entry.total
+	if remove { delete(t.entries, key) }
+	copyEntry := *entry
+	copyEntry.use = use
+	t.access.Unlock()
+	if remove { entry.use.release() }
+	return &copyEntry
 }
 
 type fragmentInfo struct {
@@ -114,55 +139,45 @@ func parseFragment(parsed *forwardPacket) (fragmentInfo, bool) {
 	}, true
 }
 
-func (r *portReturn) classifyFragment(parsed *forwardPacket, size int, now int64) (returnDecision, ForwardWriteback) {
+func (r *portReturn) classifyFragment(parsed *forwardPacket, size int, now int64) (returnDecision, ForwardWriteback, *forwardUse) {
 	info, ok := parseFragment(parsed)
-	if !ok {
-		return returnPass, nil
-	}
-	key := fragmentKey{
-		source:      parsed.source.Addr(),
-		destination: parsed.destination.Addr(),
-		protocol:    info.protocol,
-		id:          info.id,
-	}
+	if !ok { return returnPass, nil, nil }
+	key := fragmentKey{source: parsed.source.Addr(), destination: parsed.destination.Addr(), protocol: info.protocol, id: info.id}
 	if info.offset == 0 {
 		parsed.protocol = info.protocol
 		parsed.parseTransport(info.payload)
-		var (
-			flow *forwardFlow
-			rule *rewriteRule
-		)
-		if parsed.hasFlow {
-			flow, rule = r.matchReverse(parsed)
-		}
-		if flow == nil {
-			r.fragments.remove(key)
-			return returnPass, nil
-		}
-		if info.more {
-			r.fragments.insert(key, flow, rule, len(info.payload), now)
-		}
-		if flow.closed.Load() {
-			return returnDrop, nil
-		}
-		if flow.tracker != nil {
-			flow.tracker.CountReverse(size)
-		}
+		var use *forwardUse
+		var rule *rewriteRule
+		if parsed.hasFlow { use, rule = r.matchReverse(parsed) }
+		if use == nil { r.fragments.remove(key); return returnPass, nil, nil }
+		flow := use.flow
+		if info.more { r.fragments.insert(key, use, rule, len(info.payload), now) }
+		if flow.closed.Load() { return returnDrop, nil, use }
+		if flow.tracker != nil { flow.tracker.CountReverse(size) }
 		flow.observeReverse(parsed, now)
 		applyRewrite(parsed, rule)
-		return returnWrite, flow.owner.writeback
+		return returnWrite, flow.owner.writeback, use
 	}
 	entry := r.fragments.lookup(key, info, now)
-	if entry == nil {
-		return returnPass, nil
-	}
-	if entry.flow.closed.Load() {
-		return returnDrop, nil
-	}
-	if entry.flow.tracker != nil {
-		entry.flow.tracker.CountReverse(size)
-	}
+	if entry == nil { return returnPass, nil, nil }
+	if entry.flow.closed.Load() { return returnDrop, nil, entry.use }
+	if entry.flow.tracker != nil { entry.flow.tracker.CountReverse(size) }
 	entry.flow.lastReverse.Store(now)
 	applyRewriteAddresses(parsed, entry.rule)
-	return returnWrite, entry.flow.owner.writeback
+	return returnWrite, entry.flow.owner.writeback, entry.use
+}
+
+func (r *portReturn) expireFragments() {
+	defer close(r.fragmentDone)
+	ticker := time.NewTicker(fragmentSweepInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			now := r.dispatcher.now()
+			r.fragments.expire(now)
+			r.dispatcher.sweepIdle(now)
+		case <-r.fragmentStop: return
+		}
+	}
 }

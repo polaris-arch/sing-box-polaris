@@ -42,6 +42,7 @@ import (
 var _ adapter.SimpleLifecycle = (*Box)(nil)
 
 type Box struct {
+	runtime             *runtimeCoordinator
 	createdAt           time.Time
 	debugOptions        option.DebugOptions
 	logFactory          log.Factory
@@ -249,6 +250,10 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 	*constructionScope = scope
 	ctx = adapter.ContextWithConstructionScope(ctx, scope)
 
+	if !isConstructionValidation(ctx) && runtimeInitialEligible(ctx, options) {
+		return newRuntimeBox(options, ctx, scope, logFactory, createdAt, nil)
+	}
+
 	var internalServices []adapter.LifecycleService
 	routeOptions := common.PtrValueOrDefault(options.Route)
 	certificateOptions := common.PtrValueOrDefault(options.Certificate)
@@ -294,7 +299,11 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 	if err != nil {
 		return nil, E.Cause(err, "initialize network manager")
 	}
-	service.MustRegister[adapter.NetworkManager](ctx, networkManager)
+	networkView, err := route.NewNetworkOptionsView(networkManager, networkManager.DefaultOptions())
+	if err != nil {
+		return nil, E.Cause(err, "initialize network options view")
+	}
+	service.MustRegister[adapter.NetworkManager](ctx, networkView)
 	// Must register after ConnectionManager: the Apple HTTP engine's proxy bridge reads it from the context when Manager.Start resolves the default client.
 	httpClientManager := httpclient.NewManager(ctx, logFactory.NewLogger("httpclient"), options.HTTPClients, routeOptions.DefaultHTTPClient)
 	service.MustRegister[adapter.HTTPClientManager](ctx, httpClientManager)
@@ -599,6 +608,7 @@ func (s *Box) startInternalServices(stage adapter.StartStage) error {
 }
 
 func (s *Box) preStart() error {
+	if s.runtime != nil { return s.preStartRuntime() }
 	monitor := taskmonitor.New(s.logger, C.StartTimeout)
 	monitor.Start("start logger")
 	err := s.logFactory.Start()
@@ -651,6 +661,7 @@ func (s *Box) preStart() error {
 }
 
 func (s *Box) start() error {
+	if s.runtime != nil { return s.startRuntime() }
 	err := s.preStart()
 	if err != nil {
 		return err
@@ -774,6 +785,7 @@ func (s *Box) Network() adapter.NetworkManager {
 }
 
 func (s *Box) Router() adapter.Router {
+	if s.runtime != nil { return s.runtime.gateway }
 	return s.router
 }
 
@@ -782,6 +794,7 @@ func (s *Box) Inbound() adapter.InboundManager {
 }
 
 func (s *Box) Outbound() adapter.OutboundManager {
+	if s.runtime != nil { return &runtimeOutboundManager{s.runtime} }
 	return s.outbound
 }
 
@@ -794,6 +807,14 @@ func (s *Box) CreatedAt() time.Time {
 }
 
 func (s *Box) CloseIdleConnections() {
+	if s.runtime != nil {
+		if s.runtime.reference != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), C.StopTimeout)
+			defer cancel()
+			if err := s.runtime.reference.CloseIdleConnections(ctx); err != nil { s.logger.Warn("runtime idle close incomplete: ", err) }
+		}
+		return
+	}
 	s.referenceManager.CloseIdleConnections()
 }
 

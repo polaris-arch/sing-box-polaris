@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/netip"
@@ -24,6 +25,12 @@ type Handler interface {
 	NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter)
 	N.TCPConnectionHandlerEx
 	N.UDPConnectionHandlerEx
+}
+
+// DNSPacketHandlerEx preserves the borrowed admission through immediate handoff.
+// An asynchronous implementation must fork its runtime lease before returning.
+type DNSPacketHandlerEx interface {
+	NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter)
 }
 
 type Tun interface {

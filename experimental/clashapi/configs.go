@@ -67,5 +67,6 @@ func patchConfigs(server *Server) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateConfigs(w http.ResponseWriter, r *http.Request) {
-	render.NoContent(w, r)
+	render.Status(r, http.StatusNotImplemented)
+	render.JSON(w, r, newError("Configuration replacement is not implemented"))
 }

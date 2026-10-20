@@ -43,6 +43,23 @@ func dnsPolicyBudgetFrom(ctx context.Context) *dnsPolicyBudget {
 	return budget
 }
 
+// dnsPolicyCompletionError checks the recorded policy budget at logical admission.
+// Operation-local cancellation is deliberately ignored: ExchangeAsync cancels its
+// operation before finishExchange, including on an otherwise successful result.
+func dnsPolicyCompletionError(ctx context.Context, completedAt time.Time) error {
+	budget := dnsPolicyBudgetFrom(ctx)
+	if budget == nil {
+		return nil
+	}
+	if err := budget.parent.Err(); err != nil {
+		return err
+	}
+	if completedAt.After(budget.deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
 func dnsPolicyID(raw option.DNSRule) string {
 	if raw.Type != "" && raw.Type != C.RuleTypeDefault {
 		return ""
@@ -85,7 +102,7 @@ func validateDNSPolicyCondition(raw option.RawDefaultDNSRule) error {
 
 func (r *Router) validateDNSPolicies() error {
 	groups := make(map[string][]option.DNSRule)
-	for _, raw := range r.rawRules {
+	for ruleIndex, raw := range r.rawRules {
 		if raw.Type == C.RuleTypeLogical {
 			if raw.LogicalOptions.RespondOptions.Mode != "" && raw.LogicalOptions.RespondOptions.Mode != "immediate" {
 				return E.New("scoped respond is not supported on logical rules")
@@ -97,6 +114,9 @@ func (r *Router) validateDNSPolicies() error {
 			return E.New("empty resolver_policy")
 		}
 		if id := dnsPolicyID(raw); id != "" {
+			if dnsRuleActionHasStrategy(opts.DNSRuleAction) {
+				return E.New("policy ", id, " rule[", ruleIndex, "]: deprecated action strategy is not supported in resolver_policy")
+			}
 			if err := validateDNSPolicyCondition(opts.RawDefaultDNSRule); err != nil {
 				return E.Cause(err, "policy ", id)
 			}
@@ -299,6 +319,8 @@ func (r *Router) lookupPolicy(parent context.Context, domain string, options ada
 	if options.Timeout == 0 {
 		options.Timeout = C.DNSTimeout
 	}
+	strategy := r.resolveLookupStrategy(options)
+	options.Strategy = strategy
 	policy, err := r.policyTransport(options.Policy, domain, options)
 	if err != nil {
 		return nil, err
@@ -308,7 +330,6 @@ func (r *Router) lookupPolicy(parent context.Context, domain string, options ada
 	}
 	ctx, cancel := withDNSPolicyBudget(parent, options.Timeout)
 	defer cancel()
-	strategy := r.resolveLookupStrategy(options)
 	// Keep outer options immutable: candidate DisableCache is never propagated.
 	outer := options
 	outer.Strategy = strategy
@@ -476,6 +497,7 @@ func (r *Router) exchangePolicy(parent context.Context, message *mDNS.Msg, optio
 	if options.Timeout == 0 {
 		options.Timeout = C.DNSTimeout
 	}
+	options = r.finalizeExchangeOptions(options)
 	policy, err := r.policyTransport(options.Policy, FqdnToDomain(message.Question[0].Name), options)
 	if err != nil {
 		return nil, err

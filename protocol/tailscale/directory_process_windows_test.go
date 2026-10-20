@@ -497,6 +497,10 @@ func TestWindowsDirectoryProcessChild(t *testing.T) {
 		t.Fatal("invalid process nonce")
 	}
 	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	if mode == "checkpoint-before-rename" || mode == "checkpoint-after-rename" {
+		windowsTestCheckpointCrashChild(t, root, nonce, mode, path)
+		return
+	}
 	var lease *directoryLease
 	var err error
 	switch mode {
@@ -1096,4 +1100,183 @@ func TestWindowsDirectoryInteropChild(t *testing.T) {
 		case <-ticker.C:
 		}
 	}
+}
+
+// Native checkpoint fixtures author real private marker histories under both
+// custody locks. They do not start tsnet or assert full power-loss durability.
+func windowsTestCheckpointCustody(t *testing.T, path string) *directoryLease {
+	t.Helper()
+	l, err := windowsTestRetirementCustody(path)
+	if err != nil { t.Fatal(err) }
+	t.Cleanup(func() { _ = l.releaseHandles() })
+	// Retirement uses DELETE on the target directory. Maintenance uses the
+	// ordinary retained target handle, allowing checkAnchors' normal reopen.
+	if err := windows.CloseHandle(l.target); err != nil { l.target = 0; t.Fatal(err) }
+	l.target = 0
+	l.target, err = l.openPrivate(l.root, l.targetName, true, windows.FILE_OPEN, false)
+	if err != nil { t.Fatal(err) }
+	l.markerName = directoryControlStem(l.targetName)+".jsonl"
+	l.checkpointExclusive = true
+	return l
+}
+
+func windowsTestFillCheckpointJournal(t *testing.T, path string, partialScratch bool) ([]byte, string) {
+	t.Helper()
+	l := windowsTestCheckpointCustody(t, path)
+	marker, err := l.readMarker(l.markerName)
+	if err != nil { t.Fatal(err) }
+	var data []byte
+	for i := 1; ; i++ {
+		marker.DirectoryEpoch = fmt.Sprintf("%032x", i)
+		line := windowsTestMarkerLine(t, *marker)
+		if len(data)+len(line) > windowsMarkerLimit { break }
+		data = append(data, line...)
+	}
+	last, err := windowsDecodeMarkerLog(data)
+	if err != nil { t.Fatal(err) }
+	if fits, err := windowsMarkerAdmissionFits(len(data), *last); err != nil || fits { t.Fatalf("fixture not saturated: %v", err) }
+	h, err := l.openPrivate(l.control, l.markerName, false, windows.FILE_OPEN, true)
+	if err != nil { t.Fatal(err) }
+	if err := errors.Join(windowsWriteAll(h, data), windows.CloseHandle(h)); err != nil { t.Fatal(err) }
+	if partialScratch {
+		h, err := windowsCreatePrivateAt(l.control, windowsCheckpointName(l.targetName), false, windows.FILE_CREATE, true, l.ownerSID)
+		if err != nil { t.Fatal(err) }
+		if err := errors.Join(windowsWriteAll(h, []byte("{partial")), windows.CloseHandle(h)); err != nil { t.Fatal(err) }
+	}
+	markerPath := filepath.Join(filepath.Dir(filepath.Dir(path)), l.controlName, l.markerName)
+	if err := l.releaseHandles(); err != nil { t.Fatal(err) }
+	return data, markerPath
+}
+
+func TestWindowsCheckpointColdRepeatedAndScratchRecovery(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil { t.Fatal(err) }
+	incarnation, identity := l.Incarnation, l.Identity
+	if err := l.Close(); err != nil { t.Fatal(err) }
+	for round := 0; round < 2; round++ {
+		old, markerPath := windowsTestFillCheckpointJournal(t, path, true)
+		previous, err := windowsDecodeMarkerLog(old)
+		if err != nil { t.Fatal(err) }
+		l, err := acquireDirectoryLease(path)
+		if err != nil { t.Fatal(err) }
+		if l.Incarnation != incarnation || l.Identity != identity || l.Epoch == previous.DirectoryEpoch { t.Fatal("checkpoint changed identity or reused epoch") }
+		data, err := os.ReadFile(markerPath)
+		if err != nil { t.Fatal(err) }
+		if bytes.Count(data, []byte{'\n'}) != 2 { t.Fatal("expected exact old terminal plus fresh Open") }
+		if !bytes.HasPrefix(data, windowsTestMarkerLine(t, *previous)) { t.Fatal("checkpoint did not retain exact terminal") }
+		if _, err := os.Stat(filepath.Join(filepath.Dir(markerPath), windowsCheckpointName("node"))); !os.IsNotExist(err) { t.Fatalf("scratch still exists: %v", err) }
+		if err := l.Close(); err != nil { t.Fatal(err) }
+	}
+}
+
+func TestWindowsCheckpointBusyLifetimeDoesNotChangeJournal(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil { t.Fatal(err) }
+	if err := l.Close(); err != nil { t.Fatal(err) }
+	before, markerPath := windowsTestFillCheckpointJournal(t, path, false)
+	// Hold only the lifetime SH, with root admission released, as a live owner
+	// would. The candidate must select EX directly and fail without publication.
+	owner := windowsTestCheckpointCustody(t, path)
+	if err := windowsUnlock(owner.lifetime); err != nil { t.Fatal(err) }
+	owner.lifetimeHeld = false
+	if err := windowsLock(owner.lifetime, false); err != nil { t.Fatal(err) }
+	owner.lifetimeHeld = true
+	owner.checkpointExclusive = false
+	if err := windowsUnlock(owner.admission); err != nil { t.Fatal(err) }
+	owner.admissionHeld = false
+	candidate, err := acquireDirectoryLease(path)
+	if err == nil { _ = candidate.Close(); t.Fatal("checkpoint ignored live owner") }
+	if !strings.Contains(err.Error(), "lifetime busy") { t.Fatalf("wrong rejection: %v", err) }
+	after, err := os.ReadFile(markerPath)
+	if err != nil || !bytes.Equal(before, after) { t.Fatalf("busy admission mutated journal: %v", err) }
+	if err := owner.releaseHandles(); err != nil { t.Fatal(err) }
+	candidate, err = acquireDirectoryLease(path)
+	if err != nil { t.Fatal(err) }
+	if err := candidate.Close(); err != nil { t.Fatal(err) }
+}
+
+func windowsTestCheckpointCrashChild(t *testing.T, root, nonce, mode, path string) {
+	l := windowsTestCheckpointCustody(t, path)
+	data, err := l.readPrivate(l.control, l.markerName, windowsMarkerLimit)
+	if err != nil { t.Fatal(err) }
+	last, compact, err := windowsCheckpointOpenJournal(data)
+	if err != nil { t.Fatal(err) }
+	h, err := windowsCreatePrivateAt(l.control, windowsCheckpointName("node"), false, windows.FILE_CREATE, true, l.ownerSID)
+	if err != nil { t.Fatal(err) }
+	if mode == "checkpoint-before-rename" {
+		if err := errors.Join(windowsWriteAll(h, []byte("{partial")), windows.CloseHandle(h)); err != nil { t.Fatal(err) }
+	} else {
+		if err := errors.Join(windowsWriteAll(h, compact), windows.CloseHandle(h)); err != nil { t.Fatal(err) }
+		h, err = l.openCheckpointScratch(windowsCheckpointName("node"))
+		if err != nil { t.Fatal(err) }
+		defer windows.CloseHandle(h)
+		if err := windowsReplacePrivateFile(h, l.control, l.markerName); err != nil { t.Fatal(err) }
+		if err := windows.FlushFileBuffers(h); err != nil { t.Fatal(err) }
+		// The DELETE handle is intentionally still live when the parent kills
+		// this child. A normal marker reopen must fail until that handle closes.
+		opened, err := l.openPrivate(l.control, l.markerName, false, windows.FILE_OPEN, false)
+		if err == nil { _ = windows.CloseHandle(opened); t.Fatal("normal reopen unexpectedly bypassed DELETE sharing") }
+	}
+	ready := windowsProcessReady{Nonce: nonce, Mode: mode, Identity: l.Identity, Incarnation: last.Incarnation, Epoch: last.DirectoryEpoch, ControlName: l.controlName, LockName: l.lockName}
+	encoded, err := json.Marshal(ready)
+	if err != nil { t.Fatal(err) }
+	if err := windowsTestSignal(windowsProcessFile(root, nonce, "ready"), string(encoded)); err != nil { t.Fatal(err) }
+	// Parent kills and joins this process. This timer is only a failure bound.
+	<-time.After(windowsProcessTimeout)
+	t.Fatal("checkpoint child was not killed")
+}
+
+func TestWindowsCheckpointProcessCrashBeforeAndAfterRename(t *testing.T) {
+	for _, mode := range []string{"checkpoint-before-rename", "checkpoint-after-rename"} {
+		t.Run(mode, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "tailscale-windows-v1", "node")
+			l, err := acquireDirectoryLease(path)
+			if err != nil { t.Fatal(err) }
+			if err := l.Close(); err != nil { t.Fatal(err) }
+			before, markerPath := windowsTestFillCheckpointJournal(t, path, false)
+			_, compact, err := windowsCheckpointOpenJournal(before)
+			if err != nil { t.Fatal(err) }
+			child := windowsTestStartProcess(t, root, mode)
+			child.kill(t)
+			after, err := os.ReadFile(markerPath)
+			if err != nil { t.Fatal(err) }
+			want := before
+			if mode == "checkpoint-after-rename" { want = compact }
+			if !bytes.Equal(after, want) { t.Fatal("checkpoint crash altered authoritative state") }
+			l, err = acquireDirectoryLease(path)
+			if err != nil { t.Fatal(err) }
+			if err := l.Close(); err != nil { t.Fatal(err) }
+		})
+	}
+}
+
+func TestWindowsCheckpointOpenMarkerConflictPreservesAuthority(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil { t.Fatal(err) }
+	if err := l.Close(); err != nil { t.Fatal(err) }
+	before, _ := windowsTestFillCheckpointJournal(t, path, false)
+	owner := windowsTestCheckpointCustody(t, path)
+	previous, err := windowsDecodeMarkerLog(before)
+	if err != nil { t.Fatal(err) }
+	reader, err := owner.openPrivate(owner.control, owner.markerName, false, windows.FILE_OPEN, false)
+	if err != nil { t.Fatal(err) }
+	// A non-sharing reader blocks replacement. Rename failure must not truncate
+	// the active journal or blindly dispose the possibly authoritative source.
+	checkpointErr := owner.checkpointOpenJournal(previous)
+	after, readErr := windowsReadBounded(reader, windowsMarkerLimit)
+	closeErr := windows.CloseHandle(reader)
+	if checkpointErr == nil || readErr != nil || closeErr != nil || !bytes.Equal(before, after) {
+		t.Fatalf("conflict lost authority: checkpoint=%v read=%v close=%v", checkpointErr, readErr, closeErr)
+	}
+	if err := owner.checkpointOpenJournal(previous); err != nil { t.Fatal(err) }
+	after, err = owner.readPrivate(owner.control, owner.markerName, windowsMarkerLimit)
+	if err != nil || !bytes.Equal(after, windowsTestMarkerLine(t, *previous)) { t.Fatalf("recovery mismatch: %v", err) }
+	if err := owner.releaseHandles(); err != nil { t.Fatal(err) }
 }

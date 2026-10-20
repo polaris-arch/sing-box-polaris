@@ -2,45 +2,59 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/pipe"
+	"github.com/sagernet/sing-box/common/tls"
 
 	"golang.org/x/net/http2"
 )
 
 func (c *Client) acquireHTTP2(ctx context.Context) (*http2ClientConn, net.Conn, error) {
 	c.http2Access.Lock()
-	defer c.http2Access.Unlock()
-	c.http2Conns = slices.DeleteFunc(c.http2Conns, func(it *http2ClientConn) bool { return it.isClosed() })
 	for _, clientConn := range c.http2Conns {
-		if clientConn.reserveNewRequest() {
+		if !clientConn.isClosed() && clientConn.reserveNewRequest() {
+			c.http2Access.Unlock()
 			return clientConn, nil, nil
 		}
 	}
-	conn, err := c.tlsDialer.DialTLSContext(ctx, c.server)
-	if err != nil {
-		return nil, nil, err
+	epoch := c.http2Epoch
+	c.http2Access.Unlock()
+	// TLS/network creation is deliberately outside the pool's short lock.
+	dialCtx,err:=c.ownedDialContext(ctx)
+	if err!=nil{return nil,nil,err}
+	conn, err := c.tlsDialer.DialTLSContext(dialCtx, c.server)
+	if err != nil {if tls.IsRuntimeCleanupIncomplete(err){c.recordCloseError(err)};return nil, nil, err }
+	if c.isClosed() || ctx.Err() != nil {
+		c.recordCloseError(closeHTTPResource(conn.Close))
+		return nil, nil, errors.Join(net.ErrClosed, ctx.Err())
 	}
 	if conn.ConnectionState().NegotiatedProtocol != http2.NextProtoTLS {
-		if !c.disableVersionFallback {
-			c.http2Unsupported.Store(true)
-		}
+		if !c.disableVersionFallback { c.http2Unsupported.Store(true) }
 		return nil, conn, nil
 	}
+	stop := c.closeOnCancel(ctx, conn)
 	clientConn, err := newHTTP2ClientConn(c.http2Transport, conn)
+	stopped := stop()
 	if err != nil {
-		conn.Close()
+		c.recordCloseError(closeHTTPResource(conn.Close))
 		return nil, nil, E.Cause(err, "create HTTP/2 connection")
+	}
+	c.http2Access.Lock()
+	if !stopped || c.http2Epoch != epoch || c.isClosed() || ctx.Err() != nil {
+		c.http2Access.Unlock()
+		c.recordCloseError(closeHTTPResource(clientConn.Close))
+		return nil, nil, errors.Join(net.ErrClosed, ctx.Err())
 	}
 	clientConn.reserveNewRequest()
 	c.http2Conns = append(c.http2Conns, clientConn)
+	c.http2Access.Unlock()
 	return clientConn, nil, nil
 }
 
@@ -55,7 +69,7 @@ func (c *Client) connectHTTP2(ctx context.Context, clientConn *http2ClientConn, 
 	if err != nil {
 		return nil, err
 	}
-	return newClientTunnelConn(streamConn), nil
+	return c.ownConnection(ctx, newClientTunnelConn(streamConn))
 }
 
 func (c *Client) roundTripHTTP2(ctx context.Context, clientConn *http2ClientConn, request *http.Request, destination M.Socksaddr) (*clientStreamConn, error) {
@@ -63,7 +77,7 @@ func (c *Client) roundTripHTTP2(ctx context.Context, clientConn *http2ClientConn
 	streamCtx, cancel := context.WithCancel(context.Background())
 	request.Body = pipeReader
 	request = request.WithContext(streamCtx)
-	stop := context.AfterFunc(ctx, cancel)
+	stop := joinedAfterFunc(ctx, cancel)
 	response, err := clientConn.roundTrip(request)
 	stopped := stop()
 	if err == nil && !stopped {
@@ -102,11 +116,11 @@ func (c *Client) roundTripHTTP2(ctx context.Context, clientConn *http2ClientConn
 func (c *Client) connectAndClose(ctx context.Context, conn net.Conn, destination M.Socksaddr) (net.Conn, error) {
 	result, err := c.connect(ctx, conn, destination)
 	if err != nil {
-		conn.Close()
+		c.recordCloseError(closeHTTPResource(conn.Close))
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		return nil, err
 	}
-	return result, nil
+	return c.ownConnection(ctx, result)
 }

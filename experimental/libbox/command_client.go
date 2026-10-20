@@ -26,6 +26,7 @@ type CommandClient struct {
 	handler           CommandClientHandler
 	grpcConn          *grpc.ClientConn
 	grpcClient        daemon.StartedServiceClient
+	grpcRuntimeClient daemon.RuntimeConfigServiceClient
 	grpcManagedClient daemon.ManagedServiceClient
 	options           CommandClientOptions
 	remote            *remoteConnection
@@ -284,6 +285,7 @@ func (c *CommandClient) connect(dial func(context.Context) (*grpc.ClientConn, da
 	previousConnection := c.grpcConn
 	c.grpcConn = nil
 	c.grpcClient = nil
+	c.grpcRuntimeClient = nil
 	c.grpcManagedClient = nil
 	c.ctx = ctx
 	c.cancel = cancel
@@ -310,6 +312,7 @@ func (c *CommandClient) connect(dial func(context.Context) (*grpc.ClientConn, da
 	}
 	c.grpcConn = connection
 	c.grpcClient = client
+	c.grpcRuntimeClient = daemon.NewRuntimeConfigServiceClient(connection)
 	c.grpcManagedClient = daemon.NewManagedServiceClient(connection)
 	c.clientAccess.Unlock()
 	c.connectAccess.Unlock()
@@ -346,6 +349,7 @@ func (c *CommandClient) Disconnect() error {
 	connection := c.grpcConn
 	c.grpcConn = nil
 	c.grpcClient = nil
+	c.grpcRuntimeClient = nil
 	c.grpcManagedClient = nil
 	c.clientAccess.Unlock()
 	return common.Close(common.PtrOrNil(connection))
@@ -386,6 +390,7 @@ func (c *CommandClient) getClientForCall() (daemon.StartedServiceClient, context
 	}
 	c.grpcConn = connection
 	c.grpcClient = client
+	c.grpcRuntimeClient = daemon.NewRuntimeConfigServiceClient(connection)
 	c.grpcManagedClient = daemon.NewManagedServiceClient(connection)
 	c.clientAccess.Unlock()
 	return client, ctx, nil
@@ -396,6 +401,7 @@ func (c *CommandClient) closeConnection() {
 	connection := c.grpcConn
 	c.grpcConn = nil
 	c.grpcClient = nil
+	c.grpcRuntimeClient = nil
 	c.grpcManagedClient = nil
 	c.clientAccess.Unlock()
 	common.Close(common.PtrOrNil(connection))

@@ -2,6 +2,7 @@ package trojan
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -34,6 +35,10 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
+	runtimeContext context.Context
+	runtimeCleanup func() error
+	constructionCleanup bool
 	logger          logger.ContextLogger
 	dialer          N.Dialer
 	serverAddr      M.Socksaddr
@@ -56,6 +61,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		serverAddr: options.ServerOptions.Build(),
 		key:        trojan.Key(options.Password),
 	}
+	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	constructed := false
+	defer func() {
+		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+	}()
 	if options.TLS != nil {
 		outbound.tlsConfig, err = tls.NewClientWithOptions(tls.ClientOptions{
 			Context:       ctx,
@@ -76,14 +86,24 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return nil, E.Cause(err, "create client transport: ", options.Transport.Type)
 		}
 	}
-	outbound.multiplexDialer, err = mux.NewClientWithOptions((*trojanDialer)(outbound), logger, common.PtrValueOrDefault(options.Multiplex))
+	outbound.multiplexDialer, err = mux.NewClientWithContext(ctx, (*trojanDialer)(outbound), logger, common.PtrValueOrDefault(options.Multiplex))
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil { return nil, err }
+	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	constructed = true
 	return outbound, nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	if h.multiplexDialer == nil {
 		switch N.NetworkName(network) {
 		case N.NetworkTCP:
@@ -104,6 +124,12 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	if h.multiplexDialer == nil {
 		h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 		return (*trojanDialer)(h).ListenPacket(ctx, destination)
@@ -122,6 +148,9 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	if h.transport != nil {
 		h.transport.Close()
 	}
@@ -131,6 +160,9 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
 		transportKeeper.SetKeepIdleConnections(keep)
@@ -141,6 +173,9 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 }
 
 func (h *Outbound) CloseIdleConnections() {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
 		transportKeeper.CloseIdleConnections()
@@ -151,25 +186,23 @@ func (h *Outbound) CloseIdleConnections() {
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize {
-		return nil
-	}
-	if h.transport != nil {
-		scope.Add(h.transport.Close)
-	}
-	if h.multiplexDialer != nil {
-		scope.Add(h.multiplexDialer.Close)
-	}
-	return nil
+	if stage != adapter.StartStateInitialize { return nil }
+	return h.registerRuntimeStart(scope)
 }
 
 type trojanDialer Outbound
 
-func (h *trojanDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+func (h *trojanDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (result net.Conn, resultErr error) {
+	if name := N.NetworkName(network); name != N.NetworkTCP && name != N.NetworkUDP { return nil, E.Extend(N.ErrUnknownNetwork, network) }
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
 	var conn net.Conn
+	defer func() {
+		if resultErr != nil && conn != nil {
+			resultErr = errors.Join(resultErr, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
+		}
+	}()
 	var err error
 	if h.transport != nil {
 		conn, err = h.transport.DialContext(ctx)
@@ -179,7 +212,6 @@ func (h *trojanDialer) DialContext(ctx context.Context, network string, destinat
 		conn, err = h.dialer.DialContext(ctx, N.NetworkTCP, h.serverAddr)
 	}
 	if err != nil {
-		common.Close(conn)
 		return nil, err
 	}
 	switch N.NetworkName(network) {

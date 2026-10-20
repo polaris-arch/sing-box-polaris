@@ -42,6 +42,8 @@ const (
 )
 
 type PreMatchResult struct {
+	// Ownership is moved into the verdict, including ordinary accept fallback.
+	Ownership RuntimeLease
 	Action      PreMatchAction
 	Outbound    Outbound
 	Destination netip.AddrPort
@@ -69,13 +71,14 @@ func JudgeFlow(router Router, metadata InboundContext, network uint8, source net
 		metadata.Destination.Port = 0
 	}
 	result := router.PreMatch(metadata, firstPacket)
+	ownership := RuntimeFlowOwnership(result.Ownership)
 	switch result.Action {
 	case PreMatchFlow:
 		port, isPort := result.Outbound.(tun.Port)
 		if !isPort {
-			return tun.FlowVerdict{Action: tun.ActionAccept}
+			return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionAccept}
 		}
-		verdict := tun.FlowVerdict{Action: tun.ActionFlow, Port: port, UDPTimeout: result.UDPTimeout, NewTracker: result.NewTracker}
+		verdict := tun.FlowVerdict{Ownership: ownership, Action: tun.ActionFlow, Port: port, UDPTimeout: result.UDPTimeout, NewTracker: result.NewTracker}
 		if result.Destination.IsValid() {
 			destinationPort := result.Destination.Port()
 			if networkName == N.NetworkICMP {
@@ -85,19 +88,19 @@ func JudgeFlow(router Router, metadata InboundContext, network uint8, source net
 		}
 		return verdict
 	case PreMatchReject:
-		return tun.FlowVerdict{Action: tun.ActionReject}
+		return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionReject}
 	case PreMatchDrop:
-		return tun.FlowVerdict{Action: tun.ActionDrop}
+		return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionDrop}
 	case PreMatchBypass:
 		port, isPort := result.Outbound.(tun.Port)
 		if !isPort {
-			return tun.FlowVerdict{Action: tun.ActionBypass}
+			return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionBypass}
 		}
-		return tun.FlowVerdict{Action: tun.ActionBypass, Port: port, UDPTimeout: result.UDPTimeout, NewTracker: result.NewTracker}
+		return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionBypass, Port: port, UDPTimeout: result.UDPTimeout, NewTracker: result.NewTracker}
 	case PreMatchHijackDNS:
-		return tun.FlowVerdict{Action: tun.ActionHijackDNS}
+		return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionHijackDNS}
 	default:
-		return tun.FlowVerdict{Action: tun.ActionAccept}
+		return tun.FlowVerdict{Ownership: ownership, Action: tun.ActionAccept}
 	}
 }
 

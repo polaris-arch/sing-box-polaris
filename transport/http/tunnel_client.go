@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sagernet/sing/common/buf"
-	"github.com/sagernet/sing/common/bufio"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -25,6 +23,9 @@ type tunnelRequest struct {
 }
 
 func (c *Client) OpenTunnel(ctx context.Context, protocol string, path string) (io.ReadWriteCloser, error) {
+	ctx, finish, err := c.beginOperation(ctx)
+	if err != nil { return nil, err }
+	defer finish()
 	requestURL, err := url.ParseRequestURI(path)
 	if err != nil {
 		return nil, E.Cause(err, "parse tunnel path")
@@ -46,10 +47,12 @@ func (c *Client) OpenTunnel(ctx context.Context, protocol string, path string) (
 
 func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Conn, DatagramStream, error) {
 	if c.http3Available() {
-		stream, err := c.http3.OpenTunnel(ctx, request)
+		dialCtx,err:=c.ownedDialContext(ctx);if err!=nil{return nil,nil,err}
+		stream, err := c.http3.OpenTunnel(dialCtx, request)
 		if err == nil {
 			c.clearHTTP3Broken()
-			return nil, stream, nil
+			owned, ownErr := c.ownDatagramStream(ctx, stream)
+			return nil, owned, ownErr
 		}
 		if c.disableVersionFallback || !errors.Is(err, ErrHTTP3Unavailable) {
 			return nil, nil, err
@@ -74,7 +77,7 @@ func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Con
 			}
 			c.http2ExtendedConnectUnsupported.Store(true)
 		} else if c.disableVersionFallback {
-			conn.Close()
+			c.recordCloseError(closeHTTPResource(conn.Close))
 			return nil, nil, ErrHTTP2Unsupported
 		} else {
 			return c.openTunnelHTTP1AndClose(ctx, conn, request)
@@ -90,19 +93,18 @@ func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Con
 func (c *Client) openTunnelHTTP1AndClose(ctx context.Context, conn net.Conn, request tunnelRequest) (net.Conn, DatagramStream, error) {
 	tunnelConn, err := c.openTunnelHTTP1(ctx, conn, request)
 	if err != nil {
-		conn.Close()
+		c.recordCloseError(closeHTTPResource(conn.Close))
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()
 		}
 		return nil, nil, err
 	}
-	return tunnelConn, nil, nil
+	owned, err := c.ownConnection(ctx, tunnelConn)
+	return owned, nil, err
 }
 
 func (c *Client) openTunnelHTTP1(ctx context.Context, conn net.Conn, request tunnelRequest) (net.Conn, error) {
-	stop := context.AfterFunc(ctx, func() {
-		conn.Close()
-	})
+	stop := c.closeOnCancel(ctx, conn)
 	defer stop()
 	httpRequest := &http.Request{
 		Method: http.MethodGet,
@@ -132,13 +134,7 @@ func (c *Client) openTunnelHTTP1(ctx context.Context, conn net.Conn, request tun
 		return nil, ctx.Err()
 	}
 	if reader.Buffered() > 0 {
-		buffer := buf.NewSize(reader.Buffered())
-		_, err = buffer.ReadFullFrom(reader, buffer.FreeLen())
-		if err != nil {
-			buffer.Release()
-			return nil, err
-		}
-		return bufio.NewCachedConn(conn, buffer), nil
+		return &clientBufferedConn{Conn: conn, reader: reader}, nil
 	}
 	return conn, nil
 }
@@ -159,7 +155,7 @@ func (c *Client) openTunnelHTTP2(ctx context.Context, clientConn *http2ClientCon
 	if err != nil {
 		return nil, err
 	}
-	return streamConn, nil
+	return c.ownConnection(ctx, streamConn)
 }
 
 func (c *Client) authority() string {

@@ -389,3 +389,64 @@ func windowsReadNames(h windows.Handle) (_ []string, resultErr error) {
 	defer func() { resultErr = errors.Join(resultErr, file.Close()) }()
 	return file.Readdirnames(-1)
 }
+
+// This opener is deliberately separate from windowsOpenAt: only the reserved
+// unpublished checkpoint object receives DELETE. Permanent anchors and ordinary
+// marker opens retain their existing access and no-FILE_SHARE_DELETE policy.
+func windowsOpenCheckpointAt(parent windows.Handle, name string) (windows.Handle, error) {
+	const prefix = ".checkpoint-sha256-"
+	if len(name) != len(prefix)+64+4 || !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, ".tmp") || !windowsValidHex(name[len(prefix):len(prefix)+64], 64) {
+		return 0, fmt.Errorf("directory lease: invalid checkpoint scratch name")
+	}
+	u, err := windows.NewNTUnicodeString(name)
+	if err != nil { return 0, err }
+	oa := windows.OBJECT_ATTRIBUTES{RootDirectory: parent, ObjectName: u, Attributes: windows.OBJ_CASE_INSENSITIVE | windows.OBJ_DONT_REPARSE}
+	oa.Length = uint32(unsafe.Sizeof(oa))
+	var h windows.Handle
+	var status windows.IO_STATUS_BLOCK
+	err = windows.NtCreateFile(&h, windows.GENERIC_READ|windows.GENERIC_WRITE|windows.DELETE|windows.READ_CONTROL|windows.SYNCHRONIZE, &oa, &status, nil, windows.FILE_ATTRIBUTE_NORMAL, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, windows.FILE_OPEN, windows.FILE_NON_DIRECTORY_FILE|windows.FILE_SYNCHRONOUS_IO_NONALERT|windows.FILE_OPEN_REPARSE_POINT|windows.FILE_WRITE_THROUGH, 0, 0)
+	runtime.KeepAlive(u)
+	if err != nil { return 0, windowsNormalizeError(err) }
+	if _, err := windowsInspect(h, false); err != nil { return 0, errors.Join(err, windows.CloseHandle(h)) }
+	return h, nil
+}
+
+// Legacy FileRenameInformation uses a BOOLEAN, pointer-aligned root handle and
+// UTF-16 byte count. Do not use newer POSIX flags that weaken open-handle checks.
+func windowsCheckpointRenameBuffer(directory windows.Handle, name string) ([]byte, error) {
+	if !strings.HasPrefix(name, "sha256-") || len(name) != 77 || !strings.HasSuffix(name, ".jsonl") || !windowsValidHex(name[7:71], 64) {
+		return nil, fmt.Errorf("directory lease: invalid checkpoint destination")
+	}
+	wide, err := windows.UTF16FromString(name)
+	if err != nil { return nil, err }
+	wide = wide[:len(wide)-1]
+	type renameInformation struct {
+		ReplaceIfExists byte
+		RootDirectory windows.Handle
+		FileNameLength uint32
+		FileName [1]uint16
+	}
+	var header renameInformation
+	buffer := make([]byte, int(unsafe.Sizeof(header))+len(wide)*2)
+	info := (*renameInformation)(unsafe.Pointer(&buffer[0]))
+	info.ReplaceIfExists = 1
+	info.RootDirectory = directory
+	info.FileNameLength = uint32(len(wide)*2)
+	copy(unsafe.Slice((*uint16)(unsafe.Pointer(&buffer[unsafe.Offsetof(header.FileName)])), len(wide)), wide)
+	return buffer, nil
+}
+
+func windowsReplacePrivateFile(source windows.Handle, directory windows.Handle, name string) error {
+	buffer, err := windowsCheckpointRenameBuffer(directory, name)
+	if err != nil { return err }
+	var status windows.IO_STATUS_BLOCK
+	err = windows.NtSetInformationFile(source, &status, &buffer[0], uint32(len(buffer)), windows.FileRenameInformation)
+	runtime.KeepAlive(buffer)
+	return windowsNormalizeError(err)
+}
+
+func windowsDisposeCheckpointFile(source windows.Handle) error {
+	deleteFile := byte(1)
+	var status windows.IO_STATUS_BLOCK
+	return windowsNormalizeError(windows.NtSetInformationFile(source, &status, &deleteFile, 1, windows.FileDispositionInformation))
+}

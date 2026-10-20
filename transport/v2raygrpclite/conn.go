@@ -3,11 +3,13 @@ package v2raygrpclite
 import (
 	std_bufio "bufio"
 	"context"
+	"errors"
 	"encoding/binary"
 	"io"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing/common"
@@ -31,6 +33,8 @@ type GunConn struct {
 	cancel        context.CancelFunc
 	readRemaining uint64
 	onClose       func()
+	closeOnce sync.Once
+	closeErr error
 }
 
 func newGunConn(reader io.Reader, writer io.Writer, flusher http.Flusher) *GunConn {
@@ -144,24 +148,16 @@ func (c *GunConn) FrontHeadroom() int {
 }
 
 func (c *GunConn) Close() error {
-	var reader io.Reader
-	if c.create != nil {
-		select {
-		case <-c.create:
-			reader = c.rawReader
-		default:
-		}
-	} else {
-		reader = c.rawReader
-	}
-	err := common.Close(reader, c.writer)
-	if c.cancel != nil {
-		c.cancel()
-	}
-	if c.onClose != nil {
-		c.onClose()
-	}
-	return err
+	c.closeOnce.Do(func(){
+		if c.cancel!=nil{c.cancel()}
+		// Interrupt the request pipe before joining setup. A setup response
+		// racing cancellation must be observed and closed, never abandoned.
+		c.closeErr=common.Close(c.writer)
+		if c.create!=nil{<-c.create}
+		c.closeErr=errors.Join(c.closeErr,common.Close(c.rawReader))
+		if c.onClose!=nil{c.onClose()}
+	})
+	return c.closeErr
 }
 
 func (c *GunConn) LocalAddr() net.Addr {

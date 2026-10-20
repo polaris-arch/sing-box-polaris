@@ -1,0 +1,44 @@
+{
+  "repository": "SagerNet/sing-quic",
+  "commit": "75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876",
+  "root_tree": "cd7ca728a96a2a5c73df5525130996dbda52e0ee",
+  "pinned_version": "v0.7.2-0.20261002084117-75c3ac4fa12b",
+  "validation": "source-only; all Git blobs and recursive tree verified with Python; no native/compiler/formatter/tests/CI execution",
+  "pristine_files": 70,
+  "pristine_bytes": 364807,
+  "carrier_files": 74,
+  "carrier_bytes": 374550,
+  "unchanged_files": 65,
+  "unchanged_bytes": 326850,
+  "owned_patch_files": [
+    "hysteria/service.go",
+    "hysteria2/service.go",
+    "hysteria2/service_packet.go",
+    "hysteria2/service_runtime_test.go",
+    "server_runtime.go",
+    "server_runtime_test.go",
+    "tuic/service.go",
+    "tuic/service_packet.go",
+    "tuic/service_runtime_test.go"
+  ],
+  "production_existing_modified": 5,
+  "production_added": 1,
+  "test_added": 3,
+  "negative_controls": 38,
+  "license_unchanged_sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+  "module_metadata_unchanged": [
+    "go.mod",
+    "go.sum"
+  ],
+  "patch_sha256": "316038fd811add98514b50a7eaf9e74ccd2de3bc06e020e58a3cbcb045952c55",
+  "proposal_manifest_sha256": "93ebed816980d86bce00868f69400e9a46bbf7050251df474cfcf0ccf11fa2f7",
+  "manifest_sha256": {
+    "PRE-MANIFEST.json": "6684131f6c698c6315e8659c1ce8e0604ef174ccfd4dd6558b309e3f38121275",
+    "POST-MANIFEST.json": "aa753f563e5ae6ec83e77f2b3f57df4bf6dc1b34b9c53cb07ad6222e7dfd8c27",
+    "UNCHANGED-MANIFEST.json": "e8f5a700a7836c25f6a77acf674e15b1df581ffe802c6c4b817ddadd800eda8f",
+    "NEGATIVE-CONTROLS.json": "0ba0134939a1e0a74cb932b54f85f495d3f5032722d635a8e6bb60a1ed694e7a",
+    "UPSTREAM-TREE.json": "8f853284022cd018a2e05532f1c49749cd325d6c3ebf36fbcb6f34b333582536",
+    "UPSTREAM-COMMIT.json": "22ea8a3919cbf5ebcb03240d3690ffc1733e92d7155ef7ff2e9529a836b98d04"
+  },
+  "provenance_note": "The earlier frozen narrow proposal manifest upstream_tree field repeats the requested commit identifier from the GitHub recursive-tree response. The verified actual Git tree is cd7ca728a96a2a5c73df5525130996dbda52e0ee, confirmed by git/commits and recursive reconstruction here. The proposal bytes remain unchanged."
+}

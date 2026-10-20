@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/networkquality"
@@ -45,6 +46,8 @@ const (
 var _ StartedServiceServer = (*StartedService)(nil)
 
 type StartedService struct {
+	runtimePersistence func(box.RuntimeIdentity, []byte) error
+	UnimplementedRuntimeConfigServiceServer
 	ctx context.Context
 	// platform adapter.PlatformInterface
 	handler           PlatformHandler
@@ -64,7 +67,8 @@ type StartedService struct {
 	strictCleanup           bool
 	shutdownRequested       bool
 	cleanupErr              error                     // protected by lifecycleAccess; sticky for strict transient hosts
-	tailscaleRetirementRuns []*tailscaleRetirementRun // original instances, protected by lifecycleAccess
+	tailscaleRetirementAccess sync.Mutex // registry only; no native callbacks under this guard
+ tailscaleRetirementRuns []*tailscaleRetirementRun // immutable original births; registry guard
 	startInterrupted        bool
 	serviceStatus           *ServiceStatus
 	serviceStatusSubscriber *observable.Subscriber[*ServiceStatus]
@@ -84,6 +88,9 @@ type StartedService struct {
 }
 
 type ServiceOptions struct {
+	// RuntimePersistence receives a detached committed effective configuration.
+	// Returning nil certifies that the owner completed its durable write.
+	RuntimePersistence func(box.RuntimeIdentity, []byte) error
 	Context context.Context
 	// Platform           adapter.PlatformInterface
 	Handler           PlatformHandler
@@ -104,6 +111,7 @@ type ServiceOptions struct {
 func NewStartedService(options ServiceOptions) *StartedService {
 	s := &StartedService{
 		ctx: options.Context,
+		runtimePersistence: options.RuntimePersistence,
 		// platform:                options.Platform,
 		handler:           options.Handler,
 		keepDefaultLogger: options.KeepDefaultLogger,
@@ -176,11 +184,11 @@ func (s *StartedService) interruptStart() {
 	s.serviceAccess.Unlock()
 }
 
+// waitForStarted is an admission wait, not an instance lifetime reservation.
 func (s *StartedService) waitForStarted(ctx context.Context) error {
 	s.serviceAccess.RLock()
 	currentStatus := s.serviceStatus.Status
 	s.serviceAccess.RUnlock()
-
 	switch currentStatus {
 	case ServiceStatus_STARTED:
 		return nil
@@ -188,32 +196,70 @@ func (s *StartedService) waitForStarted(ctx context.Context) error {
 	default:
 		return os.ErrInvalid
 	}
+	return s.waitForStartedAfterStarting(ctx)
+}
 
+func (s *StartedService) waitForStartedAfterStarting(ctx context.Context) error {
 	subscription, done, err := s.serviceStatusObserver.Subscribe()
 	if err != nil {
 		return err
 	}
 	defer s.serviceStatusObserver.UnSubscribe(subscription)
-
 	for {
+		// Subscribe before rechecking: STARTED may already have been emitted
+		// and drained between the first snapshot and subscription. Notifications
+		// are wakeups only; queued older status values cannot admit stale state.
+		s.serviceAccess.RLock()
+		current := s.serviceStatus
+		s.serviceAccess.RUnlock()
+		switch current.Status {
+		case ServiceStatus_STARTED:
+			return nil
+		case ServiceStatus_FATAL:
+			return status.Error(codes.FailedPrecondition, current.ErrorMessage)
+		case ServiceStatus_IDLE, ServiceStatus_STOPPING:
+			return os.ErrInvalid
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-s.ctx.Done():
 			return s.ctx.Err()
-		case statusUpdate := <-subscription:
-			switch statusUpdate.Status {
-			case ServiceStatus_STARTED:
-				return nil
-			case ServiceStatus_FATAL:
-				return status.Error(codes.FailedPrecondition, statusUpdate.ErrorMessage)
-			case ServiceStatus_IDLE, ServiceStatus_STOPPING:
-				return os.ErrInvalid
-			}
+		case <-subscription:
 		case <-done:
 			return os.ErrClosed
 		}
 	}
+}
+
+// startedInstance captures status and pointer in one lock epoch after the wait.
+// Once returned, it is never retargeted to another run. The pointer keeps the Go
+// object alive, not its sockets: normal stop cancellation and resource-specific
+// admission/close contracts still apply. No lock is held across caller I/O.
+func (s *StartedService) startedInstance(ctx context.Context) (*Instance, error) {
+	if err := s.waitForStarted(ctx); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return s.readStartedInstance()
+}
+
+func (s *StartedService) readStartedInstance() (*Instance, error) {
+	s.serviceAccess.RLock()
+	defer s.serviceAccess.RUnlock()
+	if s.serviceStatus == nil || s.serviceStatus.Status != ServiceStatus_STARTED || s.instance == nil || s.instance.closeStarted.Load() {
+		return nil, status.Error(codes.Unavailable, "no active instance")
+	}
+	return s.instance, nil
+}
+
+func (s *StartedService) serviceStatusSnapshot() *ServiceStatus {
+	s.serviceAccess.RLock()
+	defer s.serviceAccess.RUnlock()
+	// Status messages are immutable after publication under serviceAccess.
+	return s.serviceStatus
 }
 
 func (s *StartedService) followInstance(ctx context.Context, run func(ctx context.Context, instance *Instance) error) error {
@@ -293,9 +339,34 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		return s.cleanupErr
 	}
 	s.serviceAccess.Unlock()
-	if beforeStart != nil {
-		beforeStart()
+	// Existing STARTING interruption above is preserved. For a stable STARTED
+	// service, predictable admission failures must not stop the old runtime.
+	prepared, err := s.prepareInstance(ctx, profileContent, options)
+	if err != nil {
+		// Preserve failed first-start diagnostics without overwriting the
+		// snapshot or status of a runtime that survived a rejected reload.
+		s.serviceAccess.Lock()
+		if s.closed || (s.strictCleanup && s.shutdownRequested) {
+			s.serviceAccess.Unlock()
+			return os.ErrClosed
+		}
+		initialStart := s.instance == nil
+		s.serviceAccess.Unlock()
+		if initialStart {
+			if beforeStart != nil {
+				beforeStart()
+			}
+			s.serviceAccess.Lock()
+			s.updateStatusError(err)
+			s.serviceAccess.Unlock()
+		}
+		return err
 	}
+	if err := s.admitTailscaleRetirementRun(); err != nil {
+		return err
+	}
+	if err := s.prepareReloadAdmission(ctx,prepared,beforeStart,s.prepareManagedDirectories); err != nil { return err }
+	defer prepared.abortDirectories()
 	s.serviceAccess.Lock()
 	if s.closed || (s.strictCleanup && s.shutdownRequested) {
 		s.serviceAccess.Unlock()
@@ -327,7 +398,7 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		s.resetLogs()
 	}
 	s.serviceAccess.Unlock()
-	instance, err := s.newInstance(ctx, profileContent, options, oldInstance != nil)
+	instance, err := s.newPreparedInstance(prepared, oldInstance != nil)
 	if err != nil {
 		s.serviceAccess.Lock()
 		s.updateStatusError(err)
@@ -435,7 +506,7 @@ func (s *StartedService) SubscribeServiceStatus(empty *emptypb.Empty, server grp
 		return err
 	}
 	defer s.serviceStatusObserver.UnSubscribe(subscription)
-	err = server.Send(s.serviceStatus)
+	err = server.Send(s.serviceStatusSnapshot())
 	if err != nil {
 		return err
 	}
@@ -445,8 +516,10 @@ func (s *StartedService) SubscribeServiceStatus(empty *emptypb.Empty, server grp
 			return s.ctx.Err()
 		case <-server.Context().Done():
 			return server.Context().Err()
-		case newStatus := <-subscription:
-			err = server.Send(newStatus)
+		case <-subscription:
+			// Coalesce notifications to the current protected snapshot, so an
+			// older queued event cannot follow a newer initial snapshot.
+			err = server.Send(s.serviceStatusSnapshot())
 			if err != nil {
 				return err
 			}
@@ -673,7 +746,7 @@ func (s *StartedService) readGroups() *Groups {
 		var g Group
 		g.Tag = iGroup.Tag()
 		g.Type = iGroup.Type()
-		_, g.Selectable = iGroup.(*group.Selector)
+		_, g.Selectable = iGroup.(interface{ SelectOutbound(string) bool })
 		if selected := iGroup.Selected(N.NetworkTCP); selected != nil {
 			g.Selected = selected.Tag()
 		}
@@ -787,6 +860,8 @@ func (s *StartedService) SetClashMode(ctx context.Context, request *ClashMode) (
 }
 
 func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (*emptypb.Empty, error) {
+	if request == nil { return nil, status.Error(codes.InvalidArgument, "missing URL test request") }
+	if err := ctx.Err(); err != nil { return nil, err }
 	s.serviceAccess.RLock()
 	if s.serviceStatus.Status != ServiceStatus_STARTED {
 		s.serviceAccess.RUnlock()
@@ -795,34 +870,75 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 	boxService := s.instance
 	s.serviceAccess.RUnlock()
 	outboundTag := request.OutboundTag
+	// This RPC schedules work owned by the host. Admission and the actual
+	// graph/receiver handles are acquired before publication of the goroutine.
+	probe, connected, probeErr := boxService.instance.AcquireRuntimeURLTest(boxService.ctx, outboundTag)
+	if connected {
+		if probeErr != nil { return nil, status.Error(codes.FailedPrecondition, probeErr.Error()) }
+		go func() {
+			defer probe.Release()
+			actual := probe.Outbound()
+			if native, ok := actual.(adapter.URLTestGroup); ok {
+				// Native requestCheck transfers another continuation to its real
+				// worker, including when its waiter returns before raw probes.
+				_, _ = native.URLTest(probe.Context())
+				return
+			}
+			if selectedGroup, ok := actual.(adapter.OutboundGroup); ok {
+				members := common.FilterNotNil(common.Map(selectedGroup.All(), func(tag string) adapter.Outbound {
+					member, _ := probe.OutboundManager().Outbound(tag); return member
+				}))
+				group.URLTestOutboundsEpoch(probe.Context(), probe.OutboundManager(), probe.History(), boxService.logFactory.Logger(), members, "", 0, true, probe.Epoch())
+				return
+			}
+			target, realTag := group.URLTestTarget(actual, N.NetworkTCP)
+			if target == nil { return }
+			delay, err := urltest.URLTest(probe.Context(), "", target)
+			if probe.Context().Err() != nil { return }
+			var history *adapter.URLTestHistory
+			if err == nil { history = &adapter.URLTestHistory{Time: time.Now(), Delay: delay} }
+			if urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), realTag, history) { group.PerformRuntimeUpdateChecks(probe.Context(), probe.Epoch(), realTag) }
+		}()
+		return &emptypb.Empty{}, nil
+	}
 	outbound, isLoaded := boxService.outboundManager.Outbound(outboundTag)
 	if !isLoaded {
 		return nil, status.Error(codes.NotFound, "outbound not found: "+outboundTag)
 	}
 	historyStorage := boxService.urlTestHistoryStorage
-	urlTest, isURLTest := outbound.(*group.URLTest)
+	urlTest, isURLTest := outbound.(interface{ CheckOutbounds() })
 	outboundGroup, isOutboundGroup := outbound.(adapter.OutboundGroup)
 	if isURLTest {
-		go urlTest.CheckOutbounds()
+		urlTest.CheckOutbounds()
 	} else if isOutboundGroup {
 		outbounds := common.FilterNotNil(common.Map(outboundGroup.All(), func(it string) adapter.Outbound {
 			itOutbound, _ := boxService.outboundManager.Outbound(it)
 			return itOutbound
 		}))
-		go group.URLTestOutbounds(boxService.ctx, boxService.outboundManager, historyStorage, boxService.logFactory.Logger(), outbounds, "", 0, true)
+		epoch := historyStorage.Epoch()
+        probeCtx, stopProbe, err := historyStorage.ProbeContext(boxService.ctx, epoch)
+        if err != nil { return nil, err }
+        go func() {
+            defer stopProbe()
+            group.URLTestOutboundsEpoch(probeCtx, boxService.outboundManager, historyStorage, boxService.logFactory.Logger(), outbounds, "", 0, true, epoch)
+        }()
 	} else {
-		go func() {
-			t, err := urltest.URLTest(boxService.ctx, "", outbound)
-			if err != nil {
-				historyStorage.DeleteURLTestHistory(outboundTag)
-			} else {
-				historyStorage.StoreURLTestHistory(outboundTag, &adapter.URLTestHistory{
-					Time:  time.Now(),
-					Delay: t,
-				})
-			}
-		}()
-	}
+        target, realTag := group.URLTestTarget(outbound, N.NetworkTCP)
+        if target == nil { return nil, status.Error(codes.NotFound, "missing probe target") }
+        epoch := historyStorage.Epoch()
+        probeCtx, cancel, err := historyStorage.ProbeContext(boxService.ctx, epoch)
+        if err != nil { return nil, err }
+        go func() {
+            defer cancel()
+            t, err := urltest.URLTest(probeCtx, "", target)
+            if probeCtx.Err() != nil { return }
+            if err != nil {
+                historyStorage.DeleteIfCurrent(epoch, realTag)
+            } else {
+                historyStorage.StoreIfCurrent(epoch, realTag, &adapter.URLTestHistory{Time: time.Now(), Delay: t})
+            }
+        }()
+    }
 	return &emptypb.Empty{}, nil
 }
 
@@ -837,7 +953,7 @@ func (s *StartedService) SelectOutbound(ctx context.Context, request *SelectOutb
 	if !isLoaded {
 		return nil, status.Error(codes.NotFound, "selector not found: "+request.GroupTag)
 	}
-	selector, isSelector := outboundGroup.(*group.Selector)
+	selector, isSelector := outboundGroup.(interface{ SelectOutbound(string) bool })
 	if !isSelector {
 		return nil, status.Error(codes.InvalidArgument, "outbound is not a selector: "+request.GroupTag)
 	}
@@ -864,13 +980,10 @@ func (s *StartedService) SetGroupExpand(ctx context.Context, request *SetGroupEx
 }
 
 func (s *StartedService) SubscribeConnections(request *SubscribeConnectionsRequest, server grpc.ServerStreamingServer[ConnectionEvents]) error {
-	err := s.waitForStarted(server.Context())
+	boxService, err := s.startedInstance(server.Context())
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	trafficManager := boxService.trafficManager
 	if trafficManager == nil {
@@ -1563,13 +1676,10 @@ func (s *StartedService) StartNetworkQualityTest(
 	request *NetworkQualityTestRequest,
 	server grpc.ServerStreamingServer[NetworkQualityTestProgress],
 ) error {
-	err := s.waitForStarted(server.Context())
+	boxService, err := s.startedInstance(server.Context())
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	outbound, err := resolveOutbound(boxService, request.OutboundTag)
 	if err != nil {
@@ -1609,13 +1719,10 @@ func (s *StartedService) StartSTUNTest(
 	request *STUNTestRequest,
 	server grpc.ServerStreamingServer[STUNTestProgress],
 ) error {
-	err := s.waitForStarted(server.Context())
+	boxService, err := s.startedInstance(server.Context())
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	outbound, err := resolveOutbound(boxService, request.OutboundTag)
 	if err != nil {
@@ -1760,13 +1867,10 @@ func (s *StartedService) StartTailscalePing(
 	request *TailscalePingRequest,
 	server grpc.ServerStreamingServer[TailscalePingResponse],
 ) error {
-	err := s.waitForStarted(server.Context())
+	boxService, err := s.startedInstance(server.Context())
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
@@ -1787,13 +1891,10 @@ func (s *StartedService) StartTailscalePing(
 }
 
 func (s *StartedService) SetTailscaleExitNode(ctx context.Context, request *SetTailscaleExitNodeRequest) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -1811,13 +1912,10 @@ func (s *StartedService) SetTailscaleExitNode(ctx context.Context, request *SetT
 }
 
 func (s *StartedService) TailscaleLogout(ctx context.Context, request *TailscaleLogoutRequest) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -1835,13 +1933,10 @@ func (s *StartedService) TailscaleLogout(ctx context.Context, request *Tailscale
 }
 
 func (s *StartedService) GetTailscaleCertificate(ctx context.Context, request *TailscaleCertificateRequest) (*TailscaleCertificate, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -1930,13 +2025,10 @@ func openConnectEndpointStatusToProto(tag string, endpointStatus adapter.OpenCon
 }
 
 func (s *StartedService) SubmitOpenConnectAuthResponse(ctx context.Context, request *OpenConnectAuthResponseSubmission) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveEndpoint[adapter.OpenConnectEndpoint](boxService, request.EndpointTag, C.TypeOpenConnect, "OpenConnect client")
 	if err != nil {
@@ -1967,13 +2059,10 @@ func (s *StartedService) SubmitOpenConnectAuthResponse(ctx context.Context, requ
 }
 
 func (s *StartedService) CancelOpenConnectAuthChallenge(ctx context.Context, request *OpenConnectAuthChallengeCancel) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveEndpoint[adapter.OpenConnectEndpoint](boxService, request.EndpointTag, C.TypeOpenConnect, "OpenConnect client")
 	if err != nil {
@@ -2070,13 +2159,10 @@ func openVPNTunnelInfoToProto(tunnelInfo *adapter.OpenVPNTunnelInfo) *OpenVPNTun
 }
 
 func (s *StartedService) SubmitOpenVPNChallengeResponse(ctx context.Context, request *OpenVPNChallengeSubmission) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveEndpoint[adapter.OpenVPNEndpoint](boxService, request.EndpointTag, C.TypeOpenVPNClient, "OpenVPN client")
 	if err != nil {
@@ -2094,13 +2180,10 @@ func (s *StartedService) SubmitOpenVPNChallengeResponse(ctx context.Context, req
 }
 
 func (s *StartedService) CancelOpenVPNChallenge(ctx context.Context, request *OpenVPNChallengeCancel) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	endpoint, err := resolveEndpoint[adapter.OpenVPNEndpoint](boxService, request.EndpointTag, C.TypeOpenVPNClient, "OpenVPN client")
 	if err != nil {

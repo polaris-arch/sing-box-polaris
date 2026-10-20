@@ -209,8 +209,9 @@ func (d *Daemon) configureWorkingDirectoryLocked(directory string) error {
 }
 
 func (d *Daemon) startServiceLocked(ctx context.Context, ownerUserID string, configContent string, options startOptions) error {
-	directory := userWorkingDirectory(ownerUserID)
-	err := d.configureWorkingDirectoryLocked(directory)
+ directory, err := filepath.Abs(userWorkingDirectory(ownerUserID))
+ if err != nil { return err }
+ err = d.configureWorkingDirectoryLocked(directory)
 	if err != nil {
 		return err
 	}
@@ -237,6 +238,11 @@ func (d *Daemon) startServiceLocked(ctx context.Context, ownerUserID string, con
 			return err
 		}
 	}
+ // Capture the authenticated owner's exact existing restart file per instance.
+ persist, err := daemon.NewRuntimeFilePersistence(filepath.Join(directory, serviceConfigFileName), []byte(configContent))
+ if err != nil { return err }
+ ctx, err = daemon.ContextWithRuntimePersistenceMode(ctx, persist, "exact_configuration_file")
+ if err != nil { return err }
 	err = d.startedService.StartOrReloadService(ctx, configContent, nil)
 	if err != nil && d.platform != nil {
 		return E.Errors(err, d.platform.ResetPlatformOptions())

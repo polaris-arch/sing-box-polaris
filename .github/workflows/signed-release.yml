@@ -15,7 +15,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Reject publication of staging evidence
-      if: inputs.publish_github
+      if: inputs.publish_github || inputs.publish_stores
       env:
         EVIDENCE_MODE: ${{ inputs.evidence_mode }}
       run: test "$EVIDENCE_MODE" = final
@@ -503,6 +503,34 @@ jobs:
     - name: Install shared package tool
       if: fromJSON(toJSON(matrix)).debian != '' || fromJSON(toJSON(matrix)).rpm != '' || fromJSON(toJSON(matrix)).pacman != '' || fromJSON(toJSON(matrix)).openwrt != ''
       run: sudo gem install fpm
+    - name: Setup package signing
+      if: fromJSON(toJSON(matrix)).debian != '' || fromJSON(toJSON(matrix)).rpm != ''
+      run: |-
+        set -euo pipefail
+        umask 077
+        SIGNING_GNUPG_HOME="$RUNNER_TEMP/package-signing-gnupg"
+        SIGNING_PASSPHRASE_FILE="$RUNNER_TEMP/package-signing-passphrase"
+        mkdir -m 700 "$SIGNING_GNUPG_HOME"
+        printf '%s' "$GPG_PASSPHRASE" > "$SIGNING_PASSPHRASE_FILE"
+        chmod 600 "$SIGNING_PASSPHRASE_FILE"
+        {
+          echo "GNUPGHOME=$SIGNING_GNUPG_HOME"
+          echo "SIGNING_PASSPHRASE_FILE=$SIGNING_PASSPHRASE_FILE"
+        } >> "$GITHUB_ENV"
+        printf '%s' "$GPG_KEY" | gpg \
+          --homedir "$SIGNING_GNUPG_HOME" \
+          --batch \
+          --pinentry-mode loopback \
+          --passphrase-file "$SIGNING_PASSPHRASE_FILE" \
+          --import
+        cat > "$HOME/.rpmmacros" <<EOF
+        %_gpg_name $GPG_KEY_ID
+        %_gpg_sign_cmd_extra_args --pinentry-mode loopback --passphrase-file $SIGNING_PASSPHRASE_FILE
+        EOF
+      env:
+        GPG_KEY: ${{ secrets.GPG_KEY }}
+        GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     - name: Package DEB
       if: fromJSON(toJSON(matrix)).debian != ''
       run: |
@@ -514,29 +542,21 @@ jobs:
           -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).debian }}.deb" \
           --architecture ${{ fromJSON(toJSON(matrix)).debian }} \
           dist/sing-box=/usr/bin/sing-box
-        rm -rf $HOME/.gnupg
-        gpg --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" --import <<EOF
-        ${{ secrets.GPG_KEY }}
-        EOF
-        debsigs --sign=origin -k ${{ secrets.GPG_KEY_ID }} --gpgopts '--pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}"' dist/*.deb
+        debsigs --sign=origin -k "$GPG_KEY_ID" \
+          --gpgopts "--batch --pinentry-mode loopback --passphrase-file $SIGNING_PASSPHRASE_FILE" dist/*.deb
+      env:
+        GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
     - name: Package RPM
       if: fromJSON(toJSON(matrix)).rpm != ''
       run: |-
         set -xeuo pipefail
-        echo '%_rpmformat 4' > "$HOME/.rpmmacros"
+        echo '%_rpmformat 4' >> "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \
           -v "$PKG_VERSION" \
           -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).rpm }}.rpm" \
           --architecture ${{ fromJSON(toJSON(matrix)).rpm }} \
           dist/sing-box=/usr/bin/sing-box
-        cat > $HOME/.rpmmacros <<EOF
-        %_gpg_name ${{ secrets.GPG_KEY_ID }}
-        %_gpg_sign_cmd_extra_args --pinentry-mode loopback --passphrase ${{ secrets.GPG_PASSPHRASE }}
-        EOF
-        gpg --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" --import <<EOF
-        ${{ secrets.GPG_KEY }}
-        EOF
         rpmsign --addsign dist/*.rpm
     - name: Package Pacman
       if: fromJSON(toJSON(matrix)).pacman != ''
@@ -1135,7 +1155,7 @@ jobs:
       env:
         ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
-      if: inputs.publish_stores && (success())
+      if: inputs.evidence_mode == 'final' && (inputs.publish_stores && (success()))
     environment: polaris-distribution
   build_windows_client:
     name: Build Windows client (${{ matrix.desktop_arch }})
@@ -1605,6 +1625,7 @@ jobs:
         git tag v${{ needs.calculate_version.outputs.version }} -f
         echo "VERSION=${{ needs.calculate_version.outputs.version }}" >> "$GITHUB_ENV"
     - name: Apply reviewed owned client identity
+      if: matrix.if
       run: |-
         python scripts/ci/owned_distribution.py verify-apple
         python scripts/ci/owned_distribution.py apply apple
@@ -1786,7 +1807,7 @@ jobs:
         cd clients/apple
         xcodebuild -exportArchive -archivePath "${{ matrix.archive }}" -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist ${{ matrix.upload }}
     - name: Publish to TestFlight
-      if: inputs.publish_stores && (matrix.if && matrix.type == 'app-store' && github.event_name == 'workflow_dispatch')
+      if: inputs.evidence_mode == 'final' && (inputs.publish_stores && (matrix.if && matrix.type == 'app-store' && github.event_name == 'workflow_dispatch'))
       run: |-
         arguments=(publish_testflight "${{ matrix.platform }}")
         if [[ -n "$TEST_MESSAGE" ]]; then
@@ -1933,6 +1954,7 @@ jobs:
         git tag v${{ needs.calculate_version.outputs.version }} -f
         echo "VERSION=${{ needs.calculate_version.outputs.version }}" >> "$GITHUB_ENV"
     - name: Apply reviewed owned client identity
+      if: matrix.if
       run: |-
         python scripts/ci/owned_distribution.py verify-apple
         python scripts/ci/owned_distribution.py apply apple
@@ -2114,11 +2136,11 @@ jobs:
         cd clients/apple
         xcodebuild -exportArchive -archivePath "${{ matrix.archive }}" -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist ${{ matrix.upload }}
     - name: Upload owned App Store package
-      if: matrix.if && matrix.type == 'app-store' && inputs.publish_stores
+      if: inputs.evidence_mode == 'final' && (matrix.if && matrix.type == 'app-store' && inputs.publish_stores)
       run: |
         xcrun altool --upload-app -f "$RUNNER_TEMP"/export/*.${{ matrix.upload_extension }} -t "${{ matrix.altool_platform }}" --api-key "$ASC_KEY_ID" --api-issuer "$POLARIS_ASC_ISSUER_ID"
     - name: Publish to TestFlight
-      if: inputs.publish_stores && (matrix.if && matrix.type == 'app-store' && github.event_name == 'workflow_dispatch')
+      if: inputs.evidence_mode == 'final' && (inputs.publish_stores && (matrix.if && matrix.type == 'app-store' && github.event_name == 'workflow_dispatch'))
       run: |-
         arguments=(publish_testflight "${{ matrix.platform }}")
         if [[ -n "$TEST_MESSAGE" ]]; then
@@ -2366,7 +2388,6 @@ jobs:
     - build_windows
     - build_android_library
     - build_android
-    - publish_android
     - build_windows_client
     - build_linux_client
     - build_apple_library

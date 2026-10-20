@@ -1,0 +1,35 @@
+{
+  "sha": "6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "node_id": "C_kwDOGyJT3doAKDZmMjFmMjQyNWE5NTk5MTJjMzdkMmVmNDNkNjFlMmE2NjMzMTVkZWE",
+  "url": "https://api.github.com/repos/SagerNet/sing/git/commits/6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "html_url": "https://github.com/SagerNet/sing/commit/6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "author": {
+    "name": "\u4e16\u754c",
+    "email": "i@sekai.icu",
+    "date": "2026-09-17T15:33:56Z"
+  },
+  "committer": {
+    "name": "\u4e16\u754c",
+    "email": "i@sekai.icu",
+    "date": "2026-09-29T15:05:44Z"
+  },
+  "tree": {
+    "sha": "911a1eac17720546561224688ead8aa301a6d9b4",
+    "url": "https://api.github.com/repos/SagerNet/sing/git/trees/911a1eac17720546561224688ead8aa301a6d9b4"
+  },
+  "message": "winiphlpapi: Look up TCP socket owners by connection key\n\nCo-authored-by: Nova <mahdi.zrei@gmail.com>",
+  "parents": [
+    {
+      "sha": "6a86639507fb887ac34543ec2e4e37e1f293558c",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/commits/6a86639507fb887ac34543ec2e4e37e1f293558c",
+      "html_url": "https://github.com/SagerNet/sing/commit/6a86639507fb887ac34543ec2e4e37e1f293558c"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCarvTyBsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8R9RwEAxvszdXZdmAU+dZER47Rq\nZDl173Rs5R/hKIkXO9/ZoAkBAJ9tKP1gqDzwCZ8+8oS8wuXjOsidIr7hIXO39wS1\nBXAH\n=SfTA\n-----END PGP SIGNATURE-----",
+    "payload": "tree 911a1eac17720546561224688ead8aa301a6d9b4\nparent 6a86639507fb887ac34543ec2e4e37e1f293558c\nauthor \u4e16\u754c <i@sekai.icu> 1789659236 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1790694344 +0800\n\nwiniphlpapi: Look up TCP socket owners by connection key\n\nCo-authored-by: Nova <mahdi.zrei@gmail.com>\n",
+    "verified_at": "2026-09-29T15:05:53Z"
+  }
+}

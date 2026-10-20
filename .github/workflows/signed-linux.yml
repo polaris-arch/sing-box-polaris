@@ -208,6 +208,34 @@ jobs:
     - name: Install shared package tool
       if: matrix.debian != '' || matrix.rpm != '' || matrix.pacman != ''
       run: sudo gem install fpm
+    - name: Setup package signing
+      if: matrix.debian != '' || matrix.rpm != ''
+      run: |-
+        set -euo pipefail
+        umask 077
+        SIGNING_GNUPG_HOME="$RUNNER_TEMP/package-signing-gnupg"
+        SIGNING_PASSPHRASE_FILE="$RUNNER_TEMP/package-signing-passphrase"
+        mkdir -m 700 "$SIGNING_GNUPG_HOME"
+        printf '%s' "$GPG_PASSPHRASE" > "$SIGNING_PASSPHRASE_FILE"
+        chmod 600 "$SIGNING_PASSPHRASE_FILE"
+        {
+          echo "GNUPGHOME=$SIGNING_GNUPG_HOME"
+          echo "SIGNING_PASSPHRASE_FILE=$SIGNING_PASSPHRASE_FILE"
+        } >> "$GITHUB_ENV"
+        printf '%s' "$GPG_KEY" | gpg \
+          --homedir "$SIGNING_GNUPG_HOME" \
+          --batch \
+          --pinentry-mode loopback \
+          --passphrase-file "$SIGNING_PASSPHRASE_FILE" \
+          --import
+        cat > "$HOME/.rpmmacros" <<EOF
+        %_gpg_name $GPG_KEY_ID
+        %_gpg_sign_cmd_extra_args --pinentry-mode loopback --passphrase-file $SIGNING_PASSPHRASE_FILE
+        EOF
+      env:
+        GPG_KEY: ${{ secrets.GPG_KEY }}
+        GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     - name: Package DEB
       if: matrix.debian != ''
       run: |
@@ -215,35 +243,27 @@ jobs:
         sudo apt-get install -y debsigs
         cp .fpm_systemd .fpm
         fpm -t deb \
-          --name "${NAME}" \
+          --name "${PACKAGE_NAME}" \
           -v "$PKG_VERSION" \
           -p "dist/${NAME}_${{ needs.calculate_version.outputs.version }}_linux_${{ matrix.debian }}.deb" \
           --architecture ${{ matrix.debian }} \
           dist/sing-box=/usr/bin/sing-box
-        rm -rf $HOME/.gnupg
-        gpg --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" --import <<EOF
-        ${{ secrets.GPG_KEY }}
-        EOF
-        debsigs --sign=origin -k ${{ secrets.GPG_KEY_ID }} --gpgopts '--pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}"' dist/*.deb
+        debsigs --sign=origin -k "$GPG_KEY_ID" \
+          --gpgopts "--batch --pinentry-mode loopback --passphrase-file $SIGNING_PASSPHRASE_FILE" dist/*.deb
+      env:
+        GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
     - name: Package RPM
       if: matrix.rpm != ''
       run: |-
         set -xeuo pipefail
-        echo '%_rpmformat 4' > "$HOME/.rpmmacros"
+        echo '%_rpmformat 4' >> "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \
-          --name "${NAME}" \
+          --name "${PACKAGE_NAME}" \
           -v "$PKG_VERSION" \
           -p "dist/${NAME}_${{ needs.calculate_version.outputs.version }}_linux_${{ matrix.rpm }}.rpm" \
           --architecture ${{ matrix.rpm }} \
           dist/sing-box=/usr/bin/sing-box
-        cat > $HOME/.rpmmacros <<EOF
-        %_gpg_name ${{ secrets.GPG_KEY_ID }}
-        %_gpg_sign_cmd_extra_args --pinentry-mode loopback --passphrase ${{ secrets.GPG_PASSPHRASE }}
-        EOF
-        gpg --pinentry-mode loopback --passphrase "${{ secrets.GPG_PASSPHRASE }}" --import <<EOF
-        ${{ secrets.GPG_KEY }}
-        EOF
         rpmsign --addsign dist/*.rpm
     - name: Cleanup
       run: rm dist/sing-box

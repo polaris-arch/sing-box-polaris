@@ -360,3 +360,9 @@ func (s *Go) Close() error {
 	}
 	return err
 }
+
+func (s *Go) WaitDetached(ctx context.Context) error {
+	return s.dispatcher.WaitDetached(ctx)
+}
+
+var _ StackWithDetachWaiter = (*Go)(nil)

@@ -25,6 +25,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport/local"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/service"
 )
 
@@ -59,7 +60,9 @@ func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoi
 	dnsRegistry := dns.NewTransportRegistry()
 	local.RegisterTransport(dnsRegistry)
 	endpoints := endpoint.NewRegistry()
-	ctx := box.Context(context.Background(), inbound.NewRegistry(), outbound.NewRegistry(), endpoints, dnsRegistry, boxService.NewRegistry(), boxCertificate.NewRegistry())
+	outbounds := outbound.NewRegistry()
+	direct.RegisterOutbound(outbounds)
+	ctx := box.Context(context.Background(), inbound.NewRegistry(), outbounds, endpoints, dnsRegistry, boxService.NewRegistry(), boxCertificate.NewRegistry())
 	created := new([]*retirementTestEndpoint)
 	endpoint.Register[struct{}](endpoints, C.TypeTailscale, func(ctx context.Context, _ adapter.Router, _ log.ContextLogger, tag string, _ struct{}) (adapter.Endpoint, error) {
 		binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](ctx)
@@ -86,7 +89,8 @@ func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoi
 
 func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T) {
 	host, created := retirementPureHost(t)
-	content := `{"endpoints":[{"type":"tailscale","tag":"a"},{"type":"tailscale","tag":"b"}]}`
+	// Keep the synthetic physical store owner on the existing legacy path.
+	content := `{"certificate":{},"endpoints":[{"type":"tailscale","tag":"a"},{"type":"tailscale","tag":"b"}]}`
 	for range 2 {
 		host.lifecycleAccess.Lock()
 		instance, err := host.newInstance(context.Background(), content, nil, false)

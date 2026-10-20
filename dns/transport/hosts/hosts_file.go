@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/netip"
 	"strings"
+	"slices"
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service/filemanager"
 
@@ -19,6 +21,7 @@ import (
 const cacheMaxAge = 5 * time.Second
 
 type File struct {
+	work lifecycle.Work
 	ctx     context.Context
 	path    string
 	access  sync.Mutex
@@ -35,19 +38,26 @@ func NewFile(ctx context.Context, path string) *File {
 	}
 }
 
-func NewDefault() (*File, error) {
+func NewDefault() (*File, error) { return NewDefaultContext(context.Background()) }
+
+func NewDefaultContext(ctx context.Context) (*File, error) {
 	defaultPathResolved, err := defaultPath()
 	if err != nil {
 		return nil, E.Cause(err, "resolve default hosts path")
 	}
-	return NewFile(context.Background(), defaultPathResolved), nil
+	return NewFile(ctx, defaultPathResolved), nil
 }
 
+func (f *File) Close() error { f.work.Seal(); f.work.Wait(); return nil }
+
 func (f *File) Lookup(name string) []netip.Addr {
+	done, ok := f.work.Reserve()
+	if !ok { return nil }
+	defer done()
 	f.access.Lock()
 	defer f.access.Unlock()
 	f.update()
-	return f.byName[dns.CanonicalName(name)]
+	return slices.Clone(f.byName[dns.CanonicalName(name)])
 }
 
 func (f *File) update() {

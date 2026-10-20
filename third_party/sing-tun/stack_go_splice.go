@@ -671,6 +671,7 @@ func (e *goEngine) packetSpliceRelease(splice *goSplicePacket, err error) {
 }
 
 func (e *goEngine) handlePacketSpliceClose(w *GoPacketConn) {
+	defer w.ownership.release()
 	var err error
 	closeError := w.spliceCloseError.Load()
 	if closeError != nil {
@@ -697,6 +698,7 @@ func (e *goEngine) packetSpliceClose(w *GoPacketConn, err error) {
 		natConn.Close()
 	}
 	e.packetSpliceRelease(splice, err)
+	w.ownership.release()
 }
 
 func (e *goEngine) releasePending(message *goMessage) {

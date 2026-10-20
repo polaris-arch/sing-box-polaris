@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/redir"
 	"github.com/sagernet/sing/common/buf"
 	sBufio "github.com/sagernet/sing/common/bufio"
@@ -26,6 +27,10 @@ func (l *Listener) ListenUDP() (net.PacketConn, error) {
 }
 
 func (l *Listener) ListenUDPWithConfig(listenConfig net.ListenConfig) (net.PacketConn, error) {
+	if l.runtime != nil { return nil, ErrRuntimeRawTransport }
+	return l.listenUDPWithConfig(listenConfig)
+}
+func (l *Listener) listenUDPWithConfig(listenConfig net.ListenConfig) (net.PacketConn, error) {
 	bindAddr := M.SocksaddrFrom(l.listenOptions.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1})), l.listenOptions.ListenPort)
 	if l.listenOptions.BindInterface != "" {
 		listenConfig.Control = control.Append(listenConfig.Control, control.BindToInterface(service.FromContext[adapter.NetworkManager](l.ctx).InterfaceFinder(), l.listenOptions.BindInterface, -1))
@@ -61,12 +66,17 @@ func (l *Listener) ListenUDPWithConfig(listenConfig net.ListenConfig) (net.Packe
 		return nil, err
 	}
 	l.udpConn = udpConn.(*net.UDPConn)
+	if l.runtime != nil { l.runtime.mu.Lock(); l.runtime.ownsUDP = true; l.runtime.udpLocal.Store(udpConn.LocalAddr().(*net.UDPAddr)); l.runtime.mu.Unlock() }
 	l.udpAddr = bindAddr
-	l.logger.Info("udp server started at ", udpConn.LocalAddr())
+	if l.runtime == nil { l.logger.Info("udp server started at ", udpConn.LocalAddr()) } else { l.logger.Debug("candidate udp socket bound at ", udpConn.LocalAddr()) }
 	return udpConn, err
 }
 
 func (l *Listener) DialContext(dialer net.Dialer, ctx context.Context, network string, address string) (net.Conn, error) {
+	if l.runtime != nil { return outbound.DialRuntimeConn(ctx, l.runtime.gateway.source, func(owned context.Context) (net.Conn, error) { return l.dialContext(dialer, owned, network, address) }) }
+	return l.dialContext(dialer, ctx, network, address)
+}
+func (l *Listener) dialContext(dialer net.Dialer, ctx context.Context, network string, address string) (net.Conn, error) {
 	return ListenNetworkNamespace[net.Conn](l.ctx, l.listenOptions.NetNs, func() (net.Conn, error) {
 		if l.listenOptions.BindInterface != "" {
 			dialer.Control = control.Append(dialer.Control, control.BindToInterface(service.FromContext[adapter.NetworkManager](l.ctx).InterfaceFinder(), l.listenOptions.BindInterface, -1))
@@ -82,6 +92,10 @@ func (l *Listener) DialContext(dialer net.Dialer, ctx context.Context, network s
 }
 
 func (l *Listener) ListenPacket(listenConfig net.ListenConfig, ctx context.Context, network string, address string) (net.PacketConn, error) {
+	if l.runtime != nil { return outbound.ListenRuntimePacket(ctx, l.runtime.gateway.source, func(owned context.Context) (net.PacketConn, error) { return l.listenPacket(listenConfig, owned, network, address) }) }
+	return l.listenPacket(listenConfig, ctx, network, address)
+}
+func (l *Listener) listenPacket(listenConfig net.ListenConfig, ctx context.Context, network string, address string) (net.PacketConn, error) {
 	return ListenNetworkNamespace[net.PacketConn](l.ctx, l.listenOptions.NetNs, func() (net.PacketConn, error) {
 		listenConfig.Control = control.Append(listenConfig.Control, control.UDPSocketBuffer(UDPSocketBufferSize()))
 		if l.listenOptions.BindInterface != "" {
@@ -106,9 +120,9 @@ func (l *Listener) PacketWriter() N.PacketWriter {
 }
 
 func (l *Listener) loopUDPIn() {
-	defer close(l.packetOutboundClosed)
+	if l.runtime == nil { defer close(l.packetOutboundClosed) }
 	if l.oobPacketHandler == nil {
-		if batchHandler, isBatchHandler := l.packetHandler.(adapter.PacketBatchHandler); isBatchHandler {
+		if batchHandler, isBatchHandler := l.packetHandler.(adapter.PacketBatchHandler); isBatchHandler && l.runtimeBatchSupported() {
 			packetConn := sBufio.NewPacketConn(l.udpConn)
 			if readWaiter, created := sBufio.CreatePacketBatchReadWaiter(packetConn); created {
 				l.loopUDPInBatch(batchHandler, readWaiter)
@@ -126,6 +140,7 @@ func (l *Listener) loopUDPIn() {
 	if l.oobPacketHandler != nil {
 		oob := make([]byte, 1024)
 		for {
+			if !l.runtimeWaitPacketIngress() { return }
 			if l.threadUnsafePacketWriter {
 				buffer = buf.NewPacket()
 			} else {
@@ -136,18 +151,20 @@ func (l *Listener) loopUDPIn() {
 				if l.threadUnsafePacketWriter {
 					buffer.Release()
 				}
+				if l.runtimeIngressStopped() { return }
 				if l.shutdown.Load() && E.IsClosed(err) {
 					return
 				}
-				l.udpConn.Close()
+				if l.runtime == nil { l.udpConn.Close() } else { l.recordRuntimeIngressError(err) }
 				l.logger.Error("udp listener closed: ", err)
 				return
 			}
 			buffer.Truncate(n)
-			l.oobPacketHandler.NewPacket(buffer, oob[:oobN], M.SocksaddrFromNetIP(addr).Unwrap())
+			if l.runtime != nil { l.dispatchRuntimeOOBPacket(buffer, oob[:oobN], M.SocksaddrFromNetIP(addr).Unwrap()) } else { l.oobPacketHandler.NewPacket(buffer, oob[:oobN], M.SocksaddrFromNetIP(addr).Unwrap()) }
 		}
 	} else {
 		for {
+			if !l.runtimeWaitPacketIngress() { return }
 			if l.threadUnsafePacketWriter {
 				buffer = buf.NewPacket()
 			} else {
@@ -158,15 +175,16 @@ func (l *Listener) loopUDPIn() {
 				if l.threadUnsafePacketWriter {
 					buffer.Release()
 				}
+				if l.runtimeIngressStopped() { return }
 				if l.shutdown.Load() && E.IsClosed(err) {
 					return
 				}
-				l.udpConn.Close()
+				if l.runtime == nil { l.udpConn.Close() } else { l.recordRuntimeIngressError(err) }
 				l.logger.Error("udp listener closed: ", err)
 				return
 			}
 			buffer.Truncate(n)
-			l.packetHandler.NewPacket(buffer, M.SocksaddrFromNetIP(addr).Unwrap())
+			if l.runtime != nil { l.dispatchRuntimePacket(buffer, M.SocksaddrFromNetIP(addr).Unwrap()) } else { l.packetHandler.NewPacket(buffer, M.SocksaddrFromNetIP(addr).Unwrap()) }
 		}
 	}
 }
@@ -177,17 +195,19 @@ func (l *Listener) loopUDPInBatch(handler adapter.PacketBatchHandler, readWaiter
 	}
 	readWaiter.InitializeReadWaiter(readWaitOptions)
 	for {
+		if !l.runtimeWaitPacketIngress() { return }
 		buffers, sources, err := readWaiter.WaitReadPackets()
 		if err != nil {
 			buf.ReleaseMulti(buffers)
+			if l.runtimeIngressStopped() { return }
 			if l.shutdown.Load() && E.IsClosed(err) {
 				return
 			}
-			l.udpConn.Close()
+			if l.runtime == nil { l.udpConn.Close() } else { l.recordRuntimeIngressError(err) }
 			l.logger.Error("udp listener closed: ", err)
 			return
 		}
-		handler.NewPacketBatch(buffers, sources)
+		if l.runtime != nil { l.dispatchRuntimePacketBatch(buffers, sources) } else { handler.NewPacketBatch(buffers, sources) }
 	}
 }
 
@@ -249,6 +269,7 @@ func (l *Listener) releasePacketOutbound() {
 type packetWriter Listener
 
 func (w *packetWriter) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) error {
+	if w.runtime != nil { return (*Listener)(w).writeRuntimePacket(buffer, destination) }
 	packet := N.NewPacketBuffer()
 	packet.Buffer = buffer
 	packet.Destination = destination
@@ -267,6 +288,7 @@ func (w *packetWriter) WritePacket(buffer *buf.Buffer, destination M.Socksaddr) 
 }
 
 func (w *packetWriter) WritePacketBatch(buffers []*buf.Buffer, destinations []M.Socksaddr) error {
+	if w.runtime != nil { return (*Listener)(w).writeRuntimePacketBatch(buffers, destinations) }
 	if len(buffers) == 0 || len(buffers) != len(destinations) {
 		buf.ReleaseMulti(buffers)
 		return os.ErrInvalid

@@ -38,7 +38,7 @@ func NewPreferredDomainResolver(ctx context.Context, contextLogger logger.Contex
 func (r *PreferredDomainResolver) Start(stage adapter.StartStage) {
 	switch stage {
 	case adapter.StartStateInitialize:
-		defaultHosts, err := hosts.NewDefault()
+		defaultHosts, err := hosts.NewDefaultContext(r.ctx)
 		if err != nil {
 			r.logger.Warn(err)
 		} else {

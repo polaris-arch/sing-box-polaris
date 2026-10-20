@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"context"
 	"math"
 	"net/netip"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
+	N "github.com/sagernet/sing/common/network"
 )
 
 func (d *ForwardDispatcher) hijackDNSPacket(packet *forwardPacket) {
@@ -16,7 +18,7 @@ func (d *ForwardDispatcher) hijackDNSPacket(packet *forwardPacket) {
 		writeback: d.writeback,
 		source:    packet.source,
 	}
-	d.handler.NewDNSPacket(header.UDP(packet.transport).Payload(), M.SocksaddrFromNetIP(packet.source), M.SocksaddrFromNetIP(packet.destination), writer)
+	deliverDNSPacket(d.handler, context.Background(), &packet.verdict, header.UDP(packet.transport).Payload(), M.SocksaddrFromNetIP(packet.source), M.SocksaddrFromNetIP(packet.destination), writer)
 }
 
 type dnsResponseWriter struct {
@@ -94,4 +96,14 @@ func (w *dnsResponseWriter) WritePacket(buffer *buf.Buffer, destination M.Socksa
 		inet4Hdr.SetChecksum(^inet4Hdr.CalculateChecksum())
 	}
 	return w.writeback.WriteReturnPackets([][]byte{packet})
+}
+
+func deliverDNSPacket(handler Handler, ctx context.Context, verdict *FlowVerdict, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
+	defer verdict.Release()
+	if extended, ok := handler.(DNSPacketHandlerEx); ok {
+		extended.NewDNSPacketEx(verdict.BindContext(ctx), payload, source, destination, writer)
+	} else if verdict.Ownership == nil {
+		handler.NewDNSPacket(payload, source, destination, writer)
+	}
+	// A graph admission must never silently fall back to the context-free ABI.
 }

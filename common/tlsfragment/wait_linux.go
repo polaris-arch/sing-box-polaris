@@ -2,7 +2,7 @@ package tf
 
 import (
 	"context"
-	"net"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"time"
 
 	"github.com/sagernet/sing/common/control"
@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func writeAndWaitAck(ctx context.Context, conn *net.TCPConn, payload []byte, fallbackDelay time.Duration) error {
+func writeAndWaitAck(ctx context.Context, conn outbound.RuntimeTCPControlConn, payload []byte, fallbackDelay time.Duration) error {
 	_, err := conn.Write(payload)
 	if err != nil {
 		return err

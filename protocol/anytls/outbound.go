@@ -32,6 +32,14 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
+	runtimeContext context.Context
+	runtimeCleanup func() error
+	constructionCleanup bool
+	runtimeFences *outbound.RuntimeIOFenceSet
+	runtimeCallbacks *outbound.RuntimeIOFence
+	runtimeStop context.Context
+	runtimeCancel context.CancelFunc
 	dialer        tls.Dialer
 	server        M.Socksaddr
 	tlsConfig     tls.Config
@@ -47,6 +55,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		server:  options.ServerOptions.Build(),
 		logger:  logger,
 	}
+	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	constructed := false
+	defer func() {
+		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+	}()
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
@@ -71,6 +84,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 
 	outbound.dialer = tls.NewDialer(outboundDialer, tlsConfig)
 
+	outbound.initRuntimePool()
 	outbound.clientOptions = anytls.ClientOptions{
 		Password:                 options.Password,
 		ClientMetadata:           options.ClientMetadata,
@@ -78,26 +92,21 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		IdleSessionCheckInterval: options.IdleSessionCheckInterval.Build(),
 		IdleSessionTimeout:       options.IdleSessionTimeout.Build(),
 		MinIdleSession:           options.MinIdleSession,
-		Logger:                   logger,
+		Logger:                   outbound.runtimeLogger(logger),
 	}
+	outbound.client, err = anytls.NewClient(outbound.clientOptions)
+	if err != nil { return nil, err }
+	outbound.uotClient = &uot.Client{Dialer: anytlsDialer(outbound.client.DialContext), Version: uot.Version}
+	if err := ctx.Err(); err != nil { return nil, err }
+	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	constructed = true
 	return outbound, nil
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize {
-		return nil
-	}
-	client, err := anytls.NewClient(h.clientOptions)
-	if err != nil {
-		return err
-	}
-	h.client = client
-	scope.Add(client.Close)
-	h.uotClient = &uot.Client{
-		Dialer:  anytlsDialer(client.DialContext),
-		Version: uot.Version,
-	}
-	return nil
+	if stage != adapter.StartStateInitialize { return nil }
+	return h.registerRuntimeStart(scope)
 }
 
 type anytlsDialer func(ctx context.Context, destination M.Socksaddr) (net.Conn, error)
@@ -111,7 +120,7 @@ func (d anytlsDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 }
 
 func (h *Outbound) dialOut(ctx context.Context) (net.Conn, error) {
-	return h.dialer.DialTLSContext(adapter.ContextForMultiplexSession(ctx), h.server)
+	return h.dialRuntimeSession(ctx)
 }
 
 func (h *Outbound) MultiplexEnabled() bool {
@@ -119,18 +128,33 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.Reset()
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
+	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
+	if err != nil { return }
+	defer release()
 	h.client.CloseIdleConnections()
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -146,6 +170,12 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination

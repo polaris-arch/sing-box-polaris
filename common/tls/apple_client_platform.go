@@ -27,6 +27,7 @@ import (
 	"unsafe"
 
 	"github.com/sagernet/sing/common/buf"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	E "github.com/sagernet/sing/common/exceptions"
 	N "github.com/sagernet/sing/common/network"
 
@@ -34,25 +35,11 @@ import (
 )
 
 func (c *appleClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) (Conn, error) {
-	tcpConn, ok := N.UnwrapReader(conn).(*net.TCPConn)
-	if !ok {
-		return nil, E.New("apple TLS: requires fd-backed TCP connection")
-	}
-	syscallConn, err := tcpConn.SyscallConn()
+	syscallConn, err := outbound.RuntimeSyscallConn(conn)
 	if err != nil {
 		return nil, E.Cause(err, "access raw connection")
 	}
 
-	var dupFD int
-	controlErr := syscallConn.Control(func(fd uintptr) {
-		dupFD, err = unix.Dup(int(fd))
-	})
-	if controlErr != nil {
-		return nil, E.Cause(controlErr, "access raw connection")
-	}
-	if err != nil {
-		return nil, E.Cause(err, "duplicate raw connection")
-	}
 
 	serverName := c.serverName
 	serverNamePtr := cStringOrNil(serverName)
@@ -68,6 +55,7 @@ func (c *appleClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) 
 	}
 	var anchorsRef unsafe.Pointer
 	if anchors != nil {
+		defer anchors.Release()
 		anchorsRef = anchors.Ref()
 	}
 
@@ -78,6 +66,17 @@ func (c *appleClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) 
 	if c.timeFunc != nil {
 		hasVerifyTime = true
 		verifyTimeUnixMilli = c.timeFunc().UnixMilli()
+	}
+
+	var dupFD int
+	controlErr := syscallConn.Control(func(fd uintptr) {
+		dupFD, err = unix.Dup(int(fd))
+	})
+	if controlErr != nil {
+		return nil, E.Cause(controlErr, "access raw connection")
+	}
+	if err != nil {
+		return nil, E.Cause(err, "duplicate raw connection")
 	}
 
 	var errorPtr *C.char
@@ -95,9 +94,6 @@ func (c *appleClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) 
 		C.int64_t(verifyTimeUnixMilli),
 		&errorPtr,
 	)
-	if anchors != nil {
-		anchors.Release()
-	}
 	if client == nil {
 		if errorPtr != nil {
 			defer C.free(unsafe.Pointer(errorPtr))
@@ -197,6 +193,7 @@ func waitAppleTLSClientReady(ctx context.Context, client *C.box_apple_tls_client
 }
 
 type appleTLSConn struct {
+	closeErr error
 	rawConn net.Conn
 	client  *C.box_apple_tls_client_t
 	state   tls.ConnectionState
@@ -351,18 +348,17 @@ func (c *appleTLSConn) CreateReadWaiter() (N.ReadWaiter, bool) {
 }
 
 func (c *appleTLSConn) Close() error {
-	var closeErr error
 	c.closeOnce.Do(func() {
 		close(c.closed)
 		C.box_apple_tls_client_cancel(c.client)
-		closeErr = c.rawConn.Close()
+		c.closeErr = c.rawConn.Close()
 		c.ioAccess.Lock()
 		c.ioGroup.Wait()
 		C.box_apple_tls_client_free(c.client)
 		c.client = nil
 		c.ioAccess.Unlock()
 	})
-	return closeErr
+	return c.closeErr
 }
 
 func (c *appleTLSConn) LocalAddr() net.Addr {

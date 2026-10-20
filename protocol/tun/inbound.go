@@ -38,6 +38,8 @@ func RegisterInbound(registry *inbound.Registry) {
 }
 
 type Inbound struct {
+ runtime *runtimeTunState
+ runtimePhysical *runtimeTunPhysical
 	tag                     string
 	ctx                     context.Context
 	router                  adapter.Router
@@ -53,12 +55,14 @@ type Inbound struct {
 	stack                   string
 	tunIf                   tun.Tun
 	tunStack                tun.Stack
+	stackShutdown           *stackShutdown
 	platformInterface       adapter.PlatformInterface
 	platformOptions         option.TunPlatformOptions
 	enableAutoRedirect      bool
 	usePlatformAutoRedirect bool
 	disableNFTables         bool
 	autoRedirect            tun.AutoRedirect
+ autoRedirectClose func()error
 	routeRuleSet            []adapter.RuleSet
 	routeExcludeRuleSet     []adapter.RuleSet
 	routeAddressSetAccess   sync.RWMutex
@@ -286,6 +290,10 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			}
 		}
 	}
+ if adapter.IsRuntimePreparation(ctx) {
+  physical,_:=ctx.Value(runtimePhysicalTunKey{}).(bool)
+  if !physical { if err:=inbound.initializeRuntimeTun(options);err!=nil{return nil,err} }
+ }
 	return inbound, nil
 }
 
@@ -330,6 +338,7 @@ func (t *Inbound) Tag() string {
 }
 
 func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+ if t.runtime!=nil{return t.PrepareRuntime(stage,scope)}
 	switch stage {
 	case adapter.StartStateInitialize:
 		if t.tunOptions.DNSModeOrDefault() != tun.DNSModeDisabled && len(t.tunOptions.DNSAddress) == 0 {
@@ -394,8 +403,12 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			}
 			if err != nil {
 				return E.Cause(err, "initialize auto-redirect")
-			}
-		}
+   }
+   var closeOnce sync.Once
+   var closeErr error
+   t.autoRedirectClose=func()error{closeOnce.Do(func(){closeErr=E.New("auto-redirect cleanup did not complete");closeErr=t.autoRedirect.Close()});return closeErr}
+   scope.Add(t.autoRedirectClose)
+  }
 		var (
 			routeAddressSet        []*netipx.IPSet
 			routeExcludeAddressSet []*netipx.IPSet
@@ -407,6 +420,7 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 					t.logger.Warn("route_address_set: no destination IP CIDR rules found in rule-set: ", routeRuleSet.Name())
 				}
 				routeRuleSet.IncRef()
+    scope.Add(func()error{routeRuleSet.DecRef();return nil})
 				routeAddressSet = append(routeAddressSet, ipSets...)
 			}
 			for _, routeExcludeRuleSet := range t.routeExcludeRuleSet {
@@ -415,6 +429,7 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 					t.logger.Warn("route_exclude_address_set: no destination IP CIDR rules found in rule-set: ", routeExcludeRuleSet.Name())
 				}
 				routeExcludeRuleSet.IncRef()
+    scope.Add(func()error{routeExcludeRuleSet.DecRef();return nil})
 				routeExcludeAddressSet = append(routeExcludeAddressSet, ipSets...)
 			}
 			if t.autoRedirect != nil {
@@ -472,7 +487,12 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if err != nil {
 			return E.Cause(err, "configure tun interface")
 		}
-		scope.Add(tunInterface.Close)
+		scope.Add(func() error {
+			if t.stackShutdown != nil {
+				if err := t.stackShutdown.WaitDetached(context.Background()); err != nil { return err }
+			}
+			return tunInterface.Close()
+		})
 		t.logger.Trace("creating stack")
 		t.tunIf = tunInterface
 		if t.platformInterface != nil {
@@ -509,7 +529,8 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if err != nil {
 			return err
 		}
-		scope.Add(tunStack.Close)
+		t.stackShutdown = newStackShutdown(tunStack)
+		scope.Add(t.stackShutdown.Close)
 		t.tunStack = tunStack
 		t.logger.Info("started at ", t.tunOptions.Name)
 	case adapter.StartStatePostStart:
@@ -527,7 +548,7 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return E.Cause(err, "starting TUN interface")
 		}
 		if t.autoRedirect != nil {
-			scope.Add(t.autoRedirect.Close)
+			scope.Add(t.autoRedirectClose)
 			monitor.Start("initialize auto-redirect")
 			err = t.autoRedirect.Start()
 			monitor.Finish()
@@ -540,6 +561,7 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (t *Inbound) updateRouteAddressSet(it adapter.RuleSet) {
+ if t.runtimePhysical!=nil{leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{return};defer leave()}
 	routeAddressSet := common.FlatMap(t.routeRuleSet, adapter.RuleSet.ExtractIPSet)
 	routeExcludeAddressSet := common.FlatMap(t.routeExcludeRuleSet, adapter.RuleSet.ExtractIPSet)
 	t.routeAddressSetAccess.Lock()
@@ -565,6 +587,12 @@ func (t *Inbound) routeAddressSetPrefixes() (include []netip.Prefix, exclude []n
 }
 
 func (t *Inbound) InterfaceUpdated(ctx context.Context) {
+ if t.runtime!=nil {
+  t.runtime.mu.Lock();physical:=t.runtime.physical;var child *Inbound;if physical!=nil{child=physical.inbound};t.runtime.mu.Unlock()
+  if physical!=nil&&physical.gate.Load()&&child!=nil{child.InterfaceUpdated(ctx)}
+  return
+ }
+ if t.runtimePhysical!=nil{leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{return};defer leave()}
 	tunStack := t.tunStack
 	if tunStack != nil {
 		tunStack.ResetNetwork()
@@ -572,6 +600,10 @@ func (t *Inbound) InterfaceUpdated(ctx context.Context) {
 }
 
 func (t *Inbound) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
+ if t.runtimePhysical!=nil{
+  if !t.runtimePhysical.gate.Load(){return tun.FlowVerdict{Action:tun.ActionDrop}}
+  leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{return tun.FlowVerdict{Action:tun.ActionDrop}};defer leave()
+ }
 	if slices.Contains(t.dnsHijackAddress, destination.Addr()) {
 		if network == uint8(header.UDPProtocolNumber) {
 			return tun.FlowVerdict{Action: tun.ActionHijackDNS}
@@ -608,7 +640,17 @@ func (t *Inbound) isDNSHijackDestination(destination M.Socksaddr) bool {
 }
 
 func (t *Inbound) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
-	ctx := log.ContextWithNewID(t.ctx)
+	t.NewDNSPacketEx(t.ctx, payload, source, destination, writer)
+}
+
+// NewDNSPacketEx forwards the borrowed packet admission synchronously.
+// HijackDNSPacket owns the fork before asynchronous DNS work is published.
+func (t *Inbound) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
+ if t.runtimePhysical!=nil{
+  if !t.runtimePhysical.gate.Load(){return}
+  leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{return};defer leave()
+ }
+	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = t.tag
 	metadata.InboundType = C.TypeTun
@@ -621,6 +663,10 @@ func (t *Inbound) NewDNSPacket(payload []byte, source M.Socksaddr, destination M
 }
 
 func (t *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+ if t.runtimePhysical!=nil{
+  if !t.runtimePhysical.gate.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return}
+  leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()
+ }
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = t.tag
@@ -640,6 +686,10 @@ func (t *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 }
 
 func (t *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+ if t.runtimePhysical!=nil{
+  if !t.runtimePhysical.gate.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return}
+  leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()
+ }
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = t.tag
@@ -665,6 +715,10 @@ func (t *autoRedirectHandler) JudgeFlow(network uint8, source netip.AddrPort, de
 }
 
 func (t *autoRedirectHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+ if t.runtimePhysical!=nil{
+  if !t.runtimePhysical.gate.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return}
+  leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()
+ }
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = t.tag
@@ -684,3 +738,5 @@ func (t *autoRedirectHandler) NewConnectionEx(ctx context.Context, conn net.Conn
 }
 
 var _ tun.AutoRedirectHandler = (*autoRedirectHandler)(nil)
+
+var _ tun.DNSPacketHandlerEx = (*Inbound)(nil)

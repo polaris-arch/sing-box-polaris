@@ -18,6 +18,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	dnsTransport "github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -53,6 +54,19 @@ func isSystemdResolvedManaged() bool {
 }
 
 type DBusResolvedResolver struct {
+	work lifecycle.Work
+	producers lifecycle.Work
+	serverScopes lifecycle.Scopes
+	producersStopped atomic.Bool
+	runtimeResource adapter.RuntimeResourceSource
+	operationCtx context.Context
+	operationCancel context.CancelFunc
+	producerCtx context.Context
+	producerCancel context.CancelFunc
+	closeOnce sync.Once
+	closeDone chan struct{}
+	closeErr error
+
 	ctx               context.Context
 	logger            logger.ContextLogger
 	interfaceFinder   control.InterfaceFinder
@@ -62,10 +76,11 @@ type DBusResolvedResolver struct {
 	networkCallback   *list.Element[tun.NetworkUpdateCallback]
 	systemBus         *dbus.Conn
 	savedServerSet    atomic.Pointer[resolvedServerSet]
-	updateAccess      sync.Mutex
-	updateCancel      context.CancelFunc
+	refresh           lifecycle.CoalescedRefresh
 	updateRunAccess   sync.Mutex
 	closed            bool
+	idleAccess        sync.Mutex
+	idleDisabled      bool
 }
 
 type resolvedServerSet struct {
@@ -156,11 +171,19 @@ func NewResolvedResolver(ctx context.Context, logger logger.ContextLogger) (Reso
 	if interfaceMonitor == nil {
 		return nil, os.ErrInvalid
 	}
-	systemBus, err := dbus.SystemBus()
+	operationCtx, operationCancel := context.WithCancel(ctx)
+	producerCtx, producerCancel := context.WithCancel(operationCtx)
+	systemBus, err := dbus.ConnectSystemBus(dbus.WithContext(operationCtx))
 	if err != nil {
+		producerCancel(); operationCancel()
 		return nil, err
 	}
+	resource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	return &DBusResolvedResolver{
+		runtimeResource: resource,
+		operationCtx: operationCtx, operationCancel: operationCancel,
+		producerCtx: producerCtx, producerCancel: producerCancel,
+		closeDone: make(chan struct{}),
 		ctx:              ctx,
 		logger:           logger,
 		interfaceFinder:  networkManager.InterfaceFinder(),
@@ -171,58 +194,77 @@ func NewResolvedResolver(ctx context.Context, logger logger.ContextLogger) (Reso
 }
 
 func (t *DBusResolvedResolver) Start() error {
-	t.updateStatus(t.ctx)
+	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
+	t.updateStatus(t.operationCtx)
 	t.interfaceCallback = t.interfaceMonitor.RegisterCallback(t.updateDefaultInterface)
 	if t.networkMonitor != nil {
 		t.networkCallback = t.networkMonitor.RegisterCallback(t.postUpdateStatus)
 	}
-	err := t.systemBus.BusObject().AddMatchSignal(
-		"org.freedesktop.DBus",
-		"NameOwnerChanged",
+	err := t.systemBus.AddMatchSignalContext(t.operationCtx,
+		dbus.WithMatchInterface("org.freedesktop.DBus"),
+		dbus.WithMatchMember("NameOwnerChanged"),
 		dbus.WithMatchSender("org.freedesktop.DBus"),
 		dbus.WithMatchArg(0, "org.freedesktop.resolve1"),
-	).Err
+	)
 	if err != nil {
 		return E.Cause(err, "configure resolved restart listener")
 	}
-	err = t.systemBus.BusObject().AddMatchSignal(
-		"org.freedesktop.DBus.Properties",
-		"PropertiesChanged",
+	err = t.systemBus.AddMatchSignalContext(t.operationCtx,
+		dbus.WithMatchInterface("org.freedesktop.DBus.Properties"),
+		dbus.WithMatchMember("PropertiesChanged"),
 		dbus.WithMatchSender("org.freedesktop.resolve1"),
 		dbus.WithMatchArg(0, "org.freedesktop.resolve1.Manager"),
-	).Err
+	)
 	if err != nil {
 		return E.Cause(err, "configure resolved properties listener")
 	}
-	go t.loopUpdateStatus()
+	if !t.producers.Go(t.loopUpdateStatus) { return lifecycle.ErrStopped }
 	return nil
 }
 
+// The private bus exports no user methods or interceptors. Its only path back
+// into this resolver is our signal channel and synchronous CallWithContext
+// stacks. Close terminates the default signal handler (including deferred
+// channel deliveries), and our Work/producer joins drain those receiving paths.
+// A remaining godbus reader/cancellation tail touches only the private Conn and
+// its call/channel state; it has no callable path to a retired graph dependency.
+func (t *DBusResolvedResolver) StopRuntimeProducers() {
+	t.producersStopped.Store(true)
+	stopResolvedProducers(t.savedServerSet.Load())
+	t.producers.Seal()
+	t.producerCancel()
+}
+
+func (t *DBusResolvedResolver) StopRuntimeOperations() {
+	t.closeOnce.Do(func() {
+		t.work.Seal()
+		t.operationCancel()
+		t.StopRuntimeProducers()
+		go func() {
+			defer close(t.closeDone)
+			t.closeErr = lifecycle.CleanupResult("resolved resolver", func() error {
+			closeErr := lifecycle.Uncertain("private resolved DBus connection", t.systemBus.Close())
+			t.work.Wait()
+			if t.interfaceCallback != nil { t.interfaceMonitor.UnregisterCallback(t.interfaceCallback) }
+			if t.networkCallback != nil { t.networkMonitor.UnregisterCallback(t.networkCallback) }
+			t.producers.Wait()
+			t.updateRunAccess.Lock(); t.closed = true; t.savedServerSet.Store(nil); t.updateRunAccess.Unlock()
+			closeErr = E.Errors(closeErr, t.serverScopes.Close())
+			return closeErr
+			})
+		}()
+	})
+}
+
 func (t *DBusResolvedResolver) Close() error {
-	t.updateAccess.Lock()
-	updateCancel := t.updateCancel
-	t.updateCancel = nil
-	t.updateAccess.Unlock()
-	if updateCancel != nil {
-		updateCancel()
-	}
-	t.updateRunAccess.Lock()
-	t.closed = true
-	serverSet := t.savedServerSet.Swap(nil)
-	t.updateRunAccess.Unlock()
-	var closeErr error
-	if serverSet != nil {
-		closeErr = serverSet.serverScope.Close()
-	}
-	t.interfaceMonitor.UnregisterCallback(t.interfaceCallback)
-	if t.networkCallback != nil {
-		t.networkMonitor.UnregisterCallback(t.networkCallback)
-	}
-	_ = t.systemBus.Close()
-	return closeErr
+	t.StopRuntimeOperations()
+	<-t.closeDone
+	return t.closeErr
 }
 
 func (t *DBusResolvedResolver) Reset() {
+	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
+	if err != nil { return }; defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return
@@ -238,6 +280,8 @@ func (t *DBusResolvedResolver) Reset() {
 }
 
 func (t *DBusResolvedResolver) Environment() []string {
+	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
+	if err != nil { return nil }; defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return nil
@@ -246,6 +290,8 @@ func (t *DBusResolvedResolver) Environment() []string {
 }
 
 func (t *DBusResolvedResolver) ServerAddresses() []netip.Addr {
+	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
+	if err != nil { return nil }; defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return nil
@@ -254,16 +300,28 @@ func (t *DBusResolvedResolver) ServerAddresses() []netip.Addr {
 }
 
 func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
+	ctx, callDone, err := t.work.Operation(ctx, t.runtimeResource)
+	if err != nil { callback(nil, err); return }; defer callDone()
+	ctx, callbackDone, err := t.work.Operation(ctx, t.runtimeResource)
+	if err != nil { callback(nil, err); return }
+	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
+	originalCallback := callback
+	var called atomic.Bool
+	callback = func(response *mDNS.Msg, err error) {
+		if !called.CompareAndSwap(false, true) { return }
+		defer callbackDone(); defer unlink()
+		originalCallback(response, err)
+	}
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
-		go func() {
-			err := t.updateStatus(t.ctx)
+		if !t.work.Go(func() {
+			err := t.updateStatus(ctx)
 			if err != nil {
 				callback(nil, err)
 				return
 			}
 			t.exchangeServerSet(ctx, message, t.savedServerSet.Load(), callback)
-		}()
+		}) { callback(nil, lifecycle.ErrStopped) }
 		return
 	}
 	t.exchangeServerSet(ctx, message, serverSet, func(response *mDNS.Msg, err error) {
@@ -271,15 +329,15 @@ func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.
 			callback(response, nil)
 			return
 		}
-		go func() {
-			t.updateStatus(t.ctx)
+		if !t.work.Go(func() {
+			t.updateStatus(ctx)
 			refreshedServerSet := t.savedServerSet.Load()
 			if refreshedServerSet == nil || refreshedServerSet == serverSet {
 				callback(nil, err)
 				return
 			}
 			t.exchangeServerSet(ctx, message, refreshedServerSet, callback)
-		}()
+		}) { callback(nil, lifecycle.ErrStopped) }
 	})
 }
 
@@ -391,7 +449,13 @@ func (s *resolvedScope) match(name string) int {
 func (t *DBusResolvedResolver) loopUpdateStatus() {
 	signalChan := make(chan *dbus.Signal, 1)
 	t.systemBus.Signal(signalChan)
-	for signal := range signalChan {
+	defer t.systemBus.RemoveSignal(signalChan)
+	for {
+		var signal *dbus.Signal
+		select {
+		case <-t.producerCtx.Done(): return
+		case next, ok := <-signalChan: if !ok { return }; signal = next
+		}
 		switch signal.Name {
 		case "org.freedesktop.DBus.NameOwnerChanged":
 			if len(signal.Body) != 3 {
@@ -412,25 +476,9 @@ func (t *DBusResolvedResolver) loopUpdateStatus() {
 }
 
 func (t *DBusResolvedResolver) postUpdateStatus() {
-	updateContext, updateCancel := context.WithCancel(t.ctx)
-	t.updateAccess.Lock()
-	previousCancel := t.updateCancel
-	t.updateCancel = updateCancel
-	t.updateAccess.Unlock()
-	if previousCancel != nil {
-		previousCancel()
-	}
-	go func() {
-		defer updateCancel()
-		timer := time.NewTimer(resolvedUpdateDelay)
-		defer timer.Stop()
-		select {
-		case <-timer.C:
-		case <-updateContext.Done():
-			return
-		}
-		t.updateStatus(updateContext)
-	}()
+	t.refresh.Request(&t.producers, t.producerCtx, resolvedUpdateDelay, t.serverScopes.WaitReady, func(ctx context.Context) bool {
+		return errors.Is(t.updateStatus(ctx), lifecycle.ErrSocketCohortBusy)
+	})
 }
 
 func (t *DBusResolvedResolver) updateStatus(ctx context.Context) error {
@@ -445,16 +493,29 @@ func (t *DBusResolvedResolver) updateStatus(ctx context.Context) error {
 	serverSet, err := t.checkResolved(ctx)
 	if t.closed || ctx.Err() != nil {
 		if serverSet != nil {
-			_ = serverSet.serverScope.Close()
+			t.serverScopes.Retire(serverSet.serverScope)
 		}
 		if t.closed {
 			return os.ErrClosed
 		}
 		return ctx.Err()
 	}
-	oldServerSet := t.savedServerSet.Swap(serverSet)
+	if err != nil {
+		var dbusErr dbus.Error
+		if !errors.As(err, &dbusErr) || dbusErr.Name != "org.freedesktop.DBus.Error.NameHasNoOwner" {
+			// A failed candidate (including a full retirement cohort queue)
+			// must not discard the working resolver. Only an authoritative
+			// service disappearance retires it without a replacement.
+			if serverSet != nil { t.serverScopes.Retire(serverSet.serverScope) }
+			if errors.Is(err, lifecycle.ErrSocketCohortBusy) { t.postUpdateStatus() }
+			t.logger.Debug(E.Cause(err, "systemd-resolved refresh failed; retaining current servers"))
+			return err
+		}
+	}
+	oldServerSet := t.swapIdleServerSet(serverSet)
+	if t.producersStopped.Load() { stopResolvedProducers(serverSet) }
 	if oldServerSet != nil {
-		_ = oldServerSet.serverScope.Close()
+		t.serverScopes.Retire(oldServerSet.serverScope)
 	}
 	if err != nil {
 		var dbusErr dbus.Error
@@ -567,13 +628,13 @@ func (t *DBusResolvedResolver) checkResolved(ctx context.Context) (*resolvedServ
 	if len(scopeSpecifications) == 0 {
 		return nil, E.New("no DNS servers configured")
 	}
-	serverSet := &resolvedServerSet{
-		serverScope: adapter.NewScope(t.ctx, t.logger),
-	}
+	serverScope, err := t.serverScopes.New(t.operationCtx, t.logger)
+	if err != nil { return nil, err }
+	serverSet := &resolvedServerSet{serverScope: serverScope}
 	for _, scopeSpecification := range scopeSpecifications {
 		scope, createErr := t.createResolvedScope(serverSet.serverScope, scopeSpecification)
 		if createErr != nil {
-			_ = serverSet.serverScope.Close()
+			t.serverScopes.Retire(serverSet.serverScope)
 			return nil, createErr
 		}
 		serverSet.scopes = append(serverSet.scopes, scope)
@@ -688,7 +749,7 @@ func (t *DBusResolvedResolver) createResolvedTransport(serverScope *adapter.Scop
 		if serverName == "" {
 			serverName = tlsAddress.String()
 		}
-		tlsConfig, err := tls.NewClient(t.ctx, t.logger, tlsAddress.String(), option.OutboundTLSOptions{
+		tlsConfig, err := tls.NewClient(adapter.ContextWithConstructionScope(t.operationCtx, serverScope), t.logger, tlsAddress.String(), option.OutboundTLSOptions{
 			Enabled:    true,
 			ServerName: serverName,
 		})
@@ -815,4 +876,14 @@ func shouldUpdateResolvedServerSet(signal *dbus.Signal) bool {
 
 func (t *DBusResolvedResolver) updateDefaultInterface(defaultInterface *control.Interface, flags int) {
 	t.postUpdateStatus()
+}
+
+func stopResolvedProducers(set *resolvedServerSet) {
+	if set == nil { return }
+	for _, scope := range set.scopes {
+		for _, server := range scope.servers {
+			if producer, ok := server.primaryTransport.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+			if producer, ok := server.fallbackTransport.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+		}
+	}
 }

@@ -152,3 +152,63 @@ func TestDomainResolverRulesLazyInitializationPreservesMode(t *testing.T) {
 	require.Nil(t, router.options.Transport)
 	require.Equal(t, netip.MustParseAddr("2001:db8::1"), base.destination.Addr)
 }
+
+// HasResolverPolicy models the policy inventory exposed after DNS initialization.
+type resolverPolicyTestRouter struct {
+	resolverTestRouter
+	policies map[string]bool
+}
+
+func (r *resolverPolicyTestRouter) HasResolverPolicy(policy string) bool {
+	return r.policies[policy]
+}
+
+func TestInheritedDomainResolverPolicy(t *testing.T) {
+	policy := "bootstrap-policy"
+	transport := &struct{ adapter.DNSTransport }{}
+	manager := &resolverTestManager{transport: transport}
+	router := &resolverPolicyTestRouter{policies: map[string]bool{policy: true}}
+	ctx := service.ContextWith[adapter.DNSTransportManager](context.Background(), manager)
+	ctx = service.ContextWith[adapter.DNSRouter](ctx, router)
+	defaults := adapter.DNSQueryOptions{UseRules: true, Policy: policy, Timeout: time.Second}
+	ctx = service.ContextWith[adapter.NetworkManager](ctx, resolverTestNetwork{options: adapter.NetworkOptions{DomainResolveOptions: defaults}})
+	inherited, err := NewDNSQueryOptions(ctx, nil, true)
+	require.NoError(t, err)
+	require.Equal(t, defaults, inherited)
+	require.Zero(t, manager.lookups)
+
+	// The inherited policy survives lazy resolver initialization and reaches Lookup.
+	base := &resolverTestDialer{}
+	resolved := NewResolveDialer(ctx, base, false, "", inherited, 0)
+	_, err = resolved.DialContext(ctx, "tcp", M.ParseSocksaddr("node.example:443"))
+	require.NoError(t, err)
+	require.Equal(t, policy, router.options.Policy)
+	require.True(t, router.options.UseRules)
+
+	// Unknown inherited policies fail at dialer construction, without fallback.
+	delete(router.policies, policy)
+	_, err = NewDNSQueryOptions(ctx, nil, true)
+	require.ErrorContains(t, err, "unknown DNS resolver policy: "+policy)
+	_, err = NewDNSQueryOptions(ctx, &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &policy}, true)
+	require.ErrorContains(t, err, "unknown DNS resolver policy: "+policy)
+
+	// An explicit transport bypasses even an unknown default policy.
+	direct, err := NewDNSQueryOptions(ctx, &option.DomainResolveOptions{Server: "bootstrap"}, true)
+	require.NoError(t, err)
+	require.Same(t, transport, direct.Transport)
+	require.False(t, direct.UseRules)
+	require.Empty(t, direct.Policy)
+
+	// Ordinary rule evaluation has no named-policy dependency.
+	defaults.Policy = ""
+	ctx = service.ContextWith[adapter.NetworkManager](ctx, resolverTestNetwork{options: adapter.NetworkOptions{DomainResolveOptions: defaults}})
+	ordinary, err := NewDNSQueryOptions(ctx, nil, true)
+	require.NoError(t, err)
+	require.Equal(t, defaults, ordinary)
+
+	// A missing router cannot silently accept an inherited named policy.
+	defaults.Policy = policy
+	missing := service.ContextWith[adapter.NetworkManager](context.Background(), resolverTestNetwork{options: adapter.NetworkOptions{DomainResolveOptions: defaults}})
+	_, err = NewDNSQueryOptions(missing, nil, true)
+	require.ErrorContains(t, err, "unknown DNS resolver policy: "+policy)
+}

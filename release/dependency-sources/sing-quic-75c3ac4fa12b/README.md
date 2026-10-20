@@ -1,0 +1,1 @@
+Pinned SagerNet/sing-quic 75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876. Same-version local module carrier; 65 unchanged files, five changed server files, one optional helper and three authored test files. License and module metadata unchanged. Exact pre/post/negative-control manifests and original Git tree retained. Source-only; joint review and execution pending.

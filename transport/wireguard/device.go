@@ -22,6 +22,7 @@ type Device interface {
 	Inet4Address() netip.Addr
 	Inet6Address() netip.Addr
 	UpstreamPort() any
+	WaitDetached(context.Context) error
 }
 
 type DeviceOptions struct {

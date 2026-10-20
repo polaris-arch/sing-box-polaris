@@ -211,7 +211,7 @@ jobs:
         sudo apt-get install -y debsigs
         cp .fpm_systemd .fpm
         fpm -t deb \
-          --name "${NAME}" \
+          --name "${PACKAGE_NAME}" \
           -v "$PKG_VERSION" \
           -p "dist/${NAME}_${{ needs.calculate_version.outputs.version }}_linux_${{ matrix.debian }}.deb" \
           --architecture ${{ matrix.debian }} \
@@ -223,7 +223,7 @@ jobs:
         echo '%_rpmformat 4' > "$HOME/.rpmmacros"
         cp .fpm_systemd .fpm
         fpm -t rpm \
-          --name "${NAME}" \
+          --name "${PACKAGE_NAME}" \
           -v "$PKG_VERSION" \
           -p "dist/${NAME}_${{ needs.calculate_version.outputs.version }}_linux_${{ matrix.rpm }}.rpm" \
           --architecture ${{ matrix.rpm }} \

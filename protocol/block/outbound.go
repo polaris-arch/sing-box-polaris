@@ -21,22 +21,37 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
 	logger logger.ContextLogger
 }
 
 func New(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, _ option.StubOptions) (adapter.Outbound, error) {
-	return &Outbound{
+	instance := &Outbound{
 		Adapter: outbound.NewAdapter(C.TypeBlock, tag, []string{N.NetworkTCP, N.NetworkUDP}, nil),
 		logger:  logger,
-	}, nil
+	}
+	instance.runtimeSource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	return instance, nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	h.logger.InfoContext(ctx, "blocked connection to ", destination)
 	return nil, syscall.EPERM
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	h.logger.InfoContext(ctx, "blocked packet connection to ", destination)
 	return nil, syscall.EPERM
 }

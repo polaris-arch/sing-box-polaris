@@ -23,9 +23,8 @@ type Rule struct {
 
 func getRules(router adapter.Router) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rawRules := router.Rules()
-
 		var rules []Rule
+		consume := func(rawRules []adapter.Rule) {
 		for _, rule := range rawRules {
 			rules = append(rules, Rule{
 				Type:    rule.Type(),
@@ -33,6 +32,10 @@ func getRules(router adapter.Router) func(w http.ResponseWriter, r *http.Request
 				Proxy:   rule.Action().String(),
 			})
 		}
+		}
+		if runtime, ok := router.(interface { WithRuntimeRules(func([]adapter.Rule)) }); ok {
+			runtime.WithRuntimeRules(consume)
+		} else { consume(router.Rules()) }
 		render.JSON(w, r, render.M{
 			"rules": rules,
 		})

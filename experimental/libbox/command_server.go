@@ -105,6 +105,8 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 		commandCloseDone:  make(chan struct{}),
 		commandClosing:    make(chan struct{}),
 	}
+ // configuration.json is a diagnostic snapshot, not an established App
+ // restart source. Durability remains pending without an App owner contract.
 	server.StartedService = daemon.NewStartedService(daemon.ServiceOptions{
 		Context: ctx,
 		// Platform:         platformWrapper,
@@ -144,7 +146,7 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 
 func unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	if sCommandServerSecret == "" {
-		return handler(ctx, req)
+		return handler(daemon.ContextWithRuntimeActor(ctx, "libbox:command-owner"), req)
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -157,7 +159,7 @@ func unaryAuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 	if values[0] != sCommandServerSecret {
 		return nil, status.Error(codes.Unauthenticated, "invalid authentication secret")
 	}
-	return handler(ctx, req)
+	return handler(daemon.ContextWithRuntimeActor(ctx, "libbox:command-owner"), req)
 }
 
 func streamAuthInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
@@ -247,8 +249,10 @@ func (s *CommandServer) Start() error {
 	}
 	grpcServer := grpc.NewServer(serverOptions...)
 	daemon.RegisterStartedServiceServer(grpcServer, s.StartedService)
+	daemon.RegisterRuntimeConfigServiceServer(grpcServer, s.StartedService)
 	daemon.RegisterManagedServiceServer(grpcServer, s.managedService)
 	healthServer := health.NewServer()
+	healthServer.SetServingStatus(daemon.RuntimeConfigService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	healthServer.SetServingStatus(daemon.StartedService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	healthServer.SetServingStatus(daemon.ManagedService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
@@ -304,6 +308,16 @@ type OverrideOptions struct {
 }
 
 func (s *CommandServer) StartOrReloadService(configContent string, options *OverrideOptions) error {
+ return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil)
+}
+
+// StartOrReloadServiceWithRuntimePersistence captures this host owner for the
+// new instance. A fresh handler must be supplied for each full start/reload.
+func (s *CommandServer) StartOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
+ return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler)
+}
+
+func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
 	if s.directoryDomain != nil && !s.directoryDomain.Activated() {
 		return errors.New("managed directory bootstrap has not been activated")
 	}
@@ -318,7 +332,15 @@ func (s *CommandServer) StartOrReloadService(configContent string, options *Over
 			}
 		}
 	}
-	err := s.StartedService.StartOrReloadServiceWithBeforeStart(s.ctx, configContent, &daemon.OverrideOptions{
+ startContext := s.ctx
+ if handler != nil {
+  mode := handler.RuntimePersistenceMode()
+  var err error
+  startContext, err = daemon.ContextWithRuntimePersistenceMode(startContext, runtimeHostPersistence(handler, mode), mode)
+  if err != nil { return err }
+ }
+ if options == nil { options = new(OverrideOptions) }
+ err := s.StartedService.StartOrReloadServiceWithBeforeStart(startContext, configContent, &daemon.OverrideOptions{
 		AutoRedirect:   options.AutoRedirect,
 		IncludePackage: iteratorToArray(options.IncludePackage),
 		ExcludePackage: iteratorToArray(options.ExcludePackage),

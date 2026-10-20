@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/common/dialer"
+ "github.com/sagernet/sing-box/adapter"
+ "github.com/sagernet/sing-box/adapter/outbound"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -28,6 +30,7 @@ import (
 var _ ServerConfigCompat = (*RealityServerConfig)(nil)
 
 type RealityServerConfig struct {
+ runtime *outbound.RuntimeIOFence
 	config           *utls.RealityConfig
 	handshakeTimeout time.Duration
 }
@@ -139,10 +142,23 @@ func NewRealityServer(ctx context.Context, logger log.ContextLogger, options opt
 	} else {
 		handshakeTimeout = C.TCPTimeout
 	}
-	var config ServerConfig = &RealityServerConfig{
+	concrete := &RealityServerConfig{
 		config:           &tlsConfig,
 		handshakeTimeout: handshakeTimeout,
 	}
+ if adapter.IsRuntimePreparation(ctx){
+  fence:=outbound.NewRuntimeIOFence(func()error{return nil})
+  concrete.runtime=fence
+  dial:=tlsConfig.DialContext
+  tlsConfig.DialContext=func(ctx context.Context,network,address string)(net.Conn,error){leave,err:=fence.Acquire();if err!=nil{return nil,err};defer leave();return dial(ctx,network,address)}
+  logCallback:=tlsConfig.Log
+  tlsConfig.Log=func(format string,args ...any){leave,err:=fence.Acquire();if err!=nil{return};defer leave();if logCallback!=nil{logCallback(format,args...)}}
+  clock:=tlsConfig.Time
+  tlsConfig.Time=func()time.Time{leave,err:=fence.Acquire();if err!=nil{return time.Now()};defer leave();if clock!=nil{return clock()};return time.Now()}
+  if err:=adapter.DeferConstructionCleanup(ctx,fence.RuntimeCloseAndWait);err!=nil{return nil,err}
+  if err:=adapter.ConstructionScopeErr(ctx);err!=nil{return nil,err}
+ }
+ var config ServerConfig=concrete
 	if options.KernelTx || options.KernelRx {
 		if !C.IsLinux {
 			return nil, E.New("kTLS is only supported on Linux")
@@ -194,6 +210,7 @@ func (c *RealityServerConfig) Start() error {
 }
 
 func (c *RealityServerConfig) Close() error {
+ if c.runtime!=nil{return c.runtime.RuntimeCloseAndWait()}
 	return nil
 }
 
@@ -202,6 +219,7 @@ func (c *RealityServerConfig) Server(conn net.Conn) (Conn, error) {
 }
 
 func (c *RealityServerConfig) ServerHandshake(ctx context.Context, conn net.Conn) (Conn, error) {
+ if c.runtime!=nil{leave,err:=c.runtime.Acquire();if err!=nil{return nil,err};defer leave()}
 	tlsConn, err := utls.RealityServer(ctx, conn, c.config)
 	if err != nil {
 		return nil, err
@@ -211,6 +229,7 @@ func (c *RealityServerConfig) ServerHandshake(ctx context.Context, conn net.Conn
 
 func (c *RealityServerConfig) Clone() Config {
 	return &RealityServerConfig{
+ runtime:c.runtime,
 		config:           c.config.Clone(),
 		handshakeTimeout: c.handshakeTimeout,
 	}
@@ -258,3 +277,6 @@ func (c *realityConnWrapper) ReaderReplaceable() bool {
 func (c *realityConnWrapper) WriterReplaceable() bool {
 	return false
 }
+
+func(c *RealityServerConfig)RuntimeValidate()error{if c.runtime==nil{return E.New("Reality server lacks staged callback ownership")};return nil}
+func(c *RealityServerConfig)RuntimeCloseAndWait()error{return c.Close()}

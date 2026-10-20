@@ -42,6 +42,8 @@ type Listener struct {
 	packetOutbound       chan *N.PacketBuffer
 	packetOutboundClosed chan struct{}
 	shutdown             atomic.Bool
+	runtime              *runtimeListener
+	runtimeOutputStarted atomic.Bool
 }
 
 type Options struct {
@@ -62,11 +64,11 @@ type Options struct {
 func New(
 	options Options,
 ) *Listener {
-	return &Listener{
+	l := &Listener{
 		ctx:                      options.Context,
 		logger:                   options.Logger,
-		network:                  options.Network,
-		listenOptions:            options.Listen,
+		network:                  append([]string(nil), options.Network...),
+		listenOptions:            freezeListenOptions(options.Listen),
 		connHandler:              options.ConnectionHandler,
 		packetHandler:            options.PacketHandler,
 		oobPacketHandler:         options.OOBPacketHandler,
@@ -76,9 +78,12 @@ func New(
 		systemProxySOCKS:         options.SystemProxySOCKS,
 		tproxy:                   options.TProxy,
 	}
+	l.initializeRuntime()
+	return l
 }
 
 func (l *Listener) Start() error {
+	if l.runtime != nil { return l.Prepare() }
 	if common.Contains(l.network, N.NetworkTCP) {
 		_, err := l.ListenTCP()
 		if err != nil {
@@ -121,6 +126,7 @@ func (l *Listener) Start() error {
 }
 
 func (l *Listener) Close() error {
+	if l.runtime != nil { return l.RuntimeCloseAndWait() }
 	l.shutdown.Store(true)
 	var err error
 	if l.systemProxy != nil {
@@ -135,16 +141,21 @@ func (l *Listener) Close() error {
 	))
 }
 
+// TCPListener is a legacy raw descriptor accessor. Runtime callers must use
+// their staged transport adapter; exposing the descriptor would bypass ingress.
 func (l *Listener) TCPListener() net.Listener {
+	if l.runtime != nil { return nil }
 	return l.tcpListener
 }
 
+// UDPConn is legacy-only for the same reason as TCPListener.
 func (l *Listener) UDPConn() *net.UDPConn {
+	if l.runtime != nil { return nil }
 	return l.udpConn
 }
 
 func (l *Listener) ListenOptions() option.ListenOptions {
-	return l.listenOptions
+	return freezeListenOptions(l.listenOptions)
 }
 
 func ListenNetworkNamespace[T any](ctx context.Context, nameOrPath string, block func() (T, error)) (T, error) {

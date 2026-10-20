@@ -2,6 +2,7 @@
 """Fail-closed owned distribution gate; configuration contains public identities only."""
 import hashlib,json,os,re,subprocess,sys
 from pathlib import Path
+from release_identity import validate_publication_index, require
 REPO='polaris-arch/sing-box-polaris'; REPO_ID='1421657509'
 def run(*a):return subprocess.check_output(a,text=True).strip()
 def config():
@@ -60,8 +61,20 @@ def publish_packages():
   if p.suffix not in ('.deb','.rpm'):raise SystemExit('unexpected package type')
   subprocess.run(['curl','--fail-with-body','--silent','--show-error','--user',token+':','-F','package=@'+str(p),'https://push.fury.io/'+account+'/'],check=True)
 
+def verify_publication_materials(tag):
+ source=run('git','rev-parse','HEAD');tree=run('git','rev-parse','HEAD^{tree}')
+ tag_object=run('git','rev-parse','refs/tags/'+tag)
+ index=json.loads(Path('dist/polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
+ validate_publication_index(index,source,tag,tag_object,tree)
+ require((index.get('repository'),index.get('repositoryId'),index.get('version'))==(REPO,int(REPO_ID),tag.removeprefix('v')),'final index repository/version differs')
+ materials=index['distributionMaterials'];archive=index.get('sourceArchive')
+ require(isinstance(archive,dict) and archive.get('name')=='sing-box-polaris-source-'+source+'.tar.gz','immutable source archive basename required')
+ require((materials.get('sourceCommit'),materials.get('sourceTree'),materials.get('sourceArchive'))==(source,tree,archive),'source material binding differs')
+ content=(Path('dist')/archive['name']).read_bytes()
+ require(archive.get('bytes')==len(content) and archive.get('sha256')==hashlib.sha256(content).hexdigest(),'source archive bytes differ from final index')
+
 def publish():
- tag=verify_tag();env=dict(os.environ,GH_REPO=REPO)
+ tag=verify_tag();verify_publication_materials(tag);env=dict(os.environ,GH_REPO=REPO)
  # An existing release is never changed, including draft releases. A network error also blocks.
  existing=subprocess.run(['gh','api',f'repos/{REPO}/releases/tags/{tag}'],capture_output=True,text=True,env=env)
  if existing.returncode==0:raise SystemExit('release already exists; replacement is forbidden')

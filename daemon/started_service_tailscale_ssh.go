@@ -32,13 +32,10 @@ func (s *StartedService) StartTailscaleSSHSession(
 	server grpc.BidiStreamingServer[TailscaleSSHClientMessage, TailscaleSSHServerMessage],
 ) error {
 	ctx := server.Context()
-	err := s.waitForStarted(ctx)
+	boxService, err := s.startedInstance(ctx)
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
 
 	firstMessage, err := server.Recv()
 	if err != nil {

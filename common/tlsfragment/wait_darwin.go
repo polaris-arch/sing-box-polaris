@@ -2,7 +2,7 @@ package tf
 
 import (
 	"context"
-	"net"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"time"
 
 	"github.com/sagernet/sing/common/control"
@@ -33,7 +33,7 @@ var sizeOfTCPNotifyAckComplete = int(unsafe.Sizeof(tcpNotifyAckComplete{}))
 //go:linkname getsockopt golang.org/x/sys/unix.getsockopt
 func getsockopt(s int, level int, name int, val unsafe.Pointer, vallen *uint32) error
 
-	func waitAck(ctx context.Context, conn *net.TCPConn, _ time.Duration) error {
+	func waitAck(ctx context.Context, conn outbound.RuntimeTCPControlConn, _ time.Duration) error {
 		const TCP_NOTIFY_ACKNOWLEDGEMENT = 0x212
 		return control.Conn(conn, func(fd uintptr) error {
 			err := unix.SetsockoptInt(int(fd), unix.IPPROTO_TCP, TCP_NOTIFY_ACKNOWLEDGEMENT, 1)
@@ -63,7 +63,7 @@ func getsockopt(s int, level int, name int, val unsafe.Pointer, vallen *uint32) 
 	}
 */
 
-func writeAndWaitAck(ctx context.Context, conn *net.TCPConn, payload []byte, fallbackDelay time.Duration) error {
+func writeAndWaitAck(ctx context.Context, conn outbound.RuntimeTCPControlConn, payload []byte, fallbackDelay time.Duration) error {
 	_, err := conn.Write(payload)
 	if err != nil {
 		return err

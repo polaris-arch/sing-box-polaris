@@ -25,6 +25,8 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
+	runtimeSource adapter.RuntimeResourceSource
+	runtimeDialer *runtimeDialer
 	client *shadowtls.Client
 }
 
@@ -44,11 +46,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, E.New("ShadowTLS session ID authentication cannot be combined with real ECH")
 	}
 
+	tlsOptions := *options.TLS
 	if options.Version == 1 {
-		options.TLS.MinVersion = "1.2"
-		options.TLS.MaxVersion = "1.2"
+		tlsOptions.MinVersion = "1.2"
+		tlsOptions.MaxVersion = "1.2"
 	}
-	tlsConfig, err := tls.NewClient(ctx, logger, options.Server, common.PtrValueOrDefault(options.TLS))
+	tlsConfig, err := tls.NewClient(ctx, logger, options.Server, tlsOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +72,13 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
+	ownedDialer := newRuntimeDialer(ctx, outboundDialer)
+	outbound.runtimeDialer = ownedDialer
 	client, err := shadowtls.NewClient(shadowtls.ClientConfig{
 		Version:      options.Version,
 		Password:     options.Password,
 		Server:       options.ServerOptions.Build(),
-		Dialer:       outboundDialer,
+		Dialer:       ownedDialer,
 		TLSHandshake: tlsHandshakeFunc,
 		Logger:       logger,
 	})
@@ -81,6 +86,8 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	outbound.client = client
+	outbound.runtimeSource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	if err := finishRuntimeConstruction(ctx, ownedDialer); err != nil { return nil, err }
 	return outbound, nil
 }
 
@@ -106,6 +113,12 @@ func newV3TLSHandshake(config tls.Config, password string) (shadowtls.TLSHandsha
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtimeSource, func(ctx context.Context) (net.Conn, error) {
+		return h.dialContext(ctx, network, destination)
+	})
+}
+
+func (h *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	switch N.NetworkName(network) {
@@ -117,5 +130,11 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtimeSource, func(ctx context.Context) (net.PacketConn, error) {
+		return h.listenPacket(ctx, destination)
+	})
+}
+
+func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	return nil, os.ErrInvalid
 }

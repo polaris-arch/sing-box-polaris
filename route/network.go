@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"net/netip"
 	"os"
 	"runtime"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/settings"
 	"github.com/sagernet/sing-box/common/taskmonitor"
+ "github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-tun"
@@ -34,6 +34,8 @@ import (
 var _ adapter.NetworkManager = (*NetworkManager)(nil)
 
 type NetworkManager struct {
+ runtimeInventory RuntimeNetworkInventory
+ urlTestHistory *urltest.HistoryStorage
 	ctx                     context.Context
 	logger                  logger.ContextLogger
 	router                  adapter.Router
@@ -71,42 +73,17 @@ type NetworkManager struct {
 }
 
 func NewNetworkManager(ctx context.Context, logger logger.ContextLogger, options option.RouteOptions, dnsOptions option.DNSOptions) (*NetworkManager, error) {
-	defaultDomainResolver := common.PtrValueOrDefault(options.DefaultDomainResolver)
-	if err := defaultDomainResolver.Validate(); err != nil {
+	defaultOptions, err := BuildNetworkOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	if options.AutoDetectInterface && !(C.IsLinux || C.IsDarwin || C.IsWindows) {
-		return nil, E.New("`auto_detect_interface` is only supported on Linux, Windows and macOS")
-	} else if options.OverrideAndroidVPN && !C.IsAndroid {
-		return nil, E.New("`override_android_vpn` is only supported on Android")
-	} else if options.DefaultInterface != "" && !(C.IsLinux || C.IsDarwin || C.IsWindows) {
-		return nil, E.New("`default_interface` is only supported on Linux, Windows and macOS")
-	} else if options.DefaultMark != 0 && !C.IsLinux {
-		return nil, E.New("`default_mark` is only supported on linux")
-	}
 	nm := &NetworkManager{
+ urlTestHistory: service.PtrFromContext[urltest.HistoryStorage](ctx),
 		ctx:                 ctx,
 		logger:              logger,
 		interfaceFinder:     control.NewDefaultInterfaceFinder(),
 		autoDetectInterface: options.AutoDetectInterface,
-		defaultOptions: adapter.NetworkOptions{
-			BindInterface:  options.DefaultInterface,
-			RoutingMark:    uint32(options.DefaultMark),
-			DomainResolver: defaultDomainResolver.Server,
-			DomainResolveOptions: adapter.DNSQueryOptions{
-				UseRules:               defaultDomainResolver.Mode == option.DomainResolverModeRules,
-				Strategy:               C.DomainStrategy(defaultDomainResolver.Strategy),
-				Timeout:                time.Duration(defaultDomainResolver.Timeout),
-				DisableCache:           defaultDomainResolver.DisableCache,
-				DisableOptimisticCache: defaultDomainResolver.DisableOptimisticCache,
-				RewriteTTL:             defaultDomainResolver.RewriteTTL,
-				ClientSubnet:           defaultDomainResolver.ClientSubnet.Build(netip.Prefix{}),
-			},
-			NetworkStrategy:     (*C.NetworkStrategy)(options.DefaultNetworkStrategy),
-			NetworkType:         common.Map(options.DefaultNetworkType, option.InterfaceType.Build),
-			FallbackNetworkType: common.Map(options.DefaultFallbackNetworkType, option.InterfaceType.Build),
-			FallbackDelay:       time.Duration(options.DefaultFallbackDelay),
-		},
+		defaultOptions: defaultOptions,
 		pauseManager:      service.FromContext[pause.Manager](ctx),
 		platformInterface: service.FromContext[adapter.PlatformInterface](ctx),
 		connectionManager: service.FromContext[adapter.ConnectionManager](ctx),
@@ -114,14 +91,6 @@ func NewNetworkManager(ctx context.Context, logger logger.ContextLogger, options
 		inbound:           service.FromContext[adapter.InboundManager](ctx),
 		outbound:          service.FromContext[adapter.OutboundManager](ctx),
 		needWIFIState:     hasRule(options.Rules, isWIFIRule) || hasDNSRule(dnsOptions.Rules, isWIFIDNSRule),
-	}
-	if options.DefaultNetworkStrategy != nil {
-		if options.DefaultInterface != "" {
-			return nil, E.New("`default_network_strategy` is conflict with `default_interface`")
-		}
-		if !options.AutoDetectInterface {
-			return nil, E.New("`auto_detect_interface` is required by `default_network_strategy`")
-		}
 	}
 	usePlatformDefaultInterfaceMonitor := nm.platformInterface != nil && nm.platformInterface.UsePlatformDefaultInterfaceMonitor()
 	enforceInterfaceMonitor := options.AutoDetectInterface
@@ -383,7 +352,7 @@ func (r *NetworkManager) ProtectFunc() control.Func {
 }
 
 func (r *NetworkManager) DefaultOptions() adapter.NetworkOptions {
-	return r.defaultOptions
+	return cloneNetworkOptions(r.defaultOptions)
 }
 
 func (r *NetworkManager) RegisterAutoRedirectOutputMark(mark uint32) error {
@@ -491,6 +460,13 @@ func (r *NetworkManager) ResetNetwork(ctx context.Context) {
 		}
 	}
 
+	if r.runtimeInventory != nil {
+		r.runtimeInventory.VisitRuntimeNetwork(ctx, func(bound context.Context, outbound adapter.Outbound, router adapter.Router) {
+			if listener, ok := outbound.(adapter.InterfaceUpdateListener); ok { listener.InterfaceUpdated(bound) }
+			if router != nil { router.ResetNetwork() }
+		})
+		return
+	}
 	for _, outbound := range r.outbound.Outbounds() {
 		listener, isListener := outbound.(adapter.InterfaceUpdateListener)
 		if isListener {
@@ -503,6 +479,12 @@ func (r *NetworkManager) ResetNetwork(ctx context.Context) {
 
 func (r *NetworkManager) ReleaseMemory(ctx context.Context) {
 	r.ResetNetwork(ctx)
+	if r.runtimeInventory != nil {
+		r.runtimeInventory.VisitRuntimeNetwork(ctx, func(_ context.Context, outbound adapter.Outbound, _ adapter.Router) {
+			if keeper, ok := outbound.(adapter.IdleConnectionKeeper); ok { keeper.CloseIdleConnections() }
+		})
+		return
+	}
 	for _, outbound := range r.outbound.Outbounds() {
 		keeper, isKeeper := outbound.(adapter.IdleConnectionKeeper)
 		if isKeeper {
@@ -515,7 +497,11 @@ func (r *NetworkManager) notifyInterfaceUpdate(_ *control.Interface, _ int) {
 	r.interfaceUpdateAccess.Lock()
 	defer r.interfaceUpdateAccess.Unlock()
 	r.networkResetPending = true
-	if r.startedCtx != nil {
+ // Invalidate before any early offline/not-started return. Only this transition
+ // owner advances history; ResetNetwork has unrelated callers.
+ r.urlTestHistory.AdvanceNetworkEpoch()
+ if r.interfaceUpdateCancel != nil { r.interfaceUpdateCancel() }
+ if r.startedCtx != nil {
 		r.dispatchInterfaceUpdateLocked()
 	}
 }
@@ -527,16 +513,15 @@ func (r *NetworkManager) dispatchInterfaceUpdateLocked() {
 		r.logger.Error("missing default interface")
 		return
 	}
-	r.pauseManager.NetworkWake()
 	if r.interfaceUpdateCancel != nil {
 		r.interfaceUpdateCancel()
 	}
 	updateContext, updateCancel := context.WithCancel(r.startedCtx)
 	r.interfaceUpdateCancel = updateCancel
-	go r.updateInterface(updateContext, defaultInterface)
+	go r.updateInterface(updateContext, defaultInterface, r.urlTestHistory.Epoch())
 }
 
-func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *control.Interface) {
+func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *control.Interface, epoch *urltest.HistoryEpoch) {
 	r.resetRunAccess.Lock()
 	defer r.resetRunAccess.Unlock()
 	if ctx.Err() != nil {
@@ -556,17 +541,17 @@ func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *
 		networkInterface := common.Find(r.networkInterfaces.Load(), func(it adapter.NetworkInterface) bool {
 			return it.Interface.Index == defaultInterface.Index
 		})
-		if networkInterface.Name == "" {
-			// race
-			return
-		}
-		options = append(options, F.ToString("type ", networkInterface.Type))
+		// Platform metadata can lag the monitor. Prepare using the existing
+        // DefaultNetworkInterface fallback, without inventing metadata.
+        if networkInterface.Name != "" {
+        options = append(options, F.ToString("type ", networkInterface.Type))
 		if networkInterface.Expensive {
 			options = append(options, "expensive")
 		}
 		if networkInterface.Constrained {
 			options = append(options, "constrained")
 		}
+        }
 	}
 	r.logger.Info("updated default interface ", defaultInterface.Name, ", ", strings.Join(options, ", "))
 	r.UpdateWIFIState(ctx)
@@ -575,7 +560,12 @@ func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *
 	}
 	r.updateNetworkEnvironment()
 	r.interfaceUpdateAccess.Lock()
-	resetNetwork := ctx.Err() == nil && r.networkResetPending
+	if ctx.Err() != nil { r.interfaceUpdateAccess.Unlock(); return }
+    // Readiness follows environment preparation. Holding the interface guard
+    // through Wake prevents an old update waking a newer offline transition.
+    if r.urlTestHistory != nil && !r.urlTestHistory.MarkReady(epoch) { r.interfaceUpdateAccess.Unlock(); return }
+    r.pauseManager.NetworkWake()
+    resetNetwork := r.networkResetPending
 	if resetNetwork {
 		r.networkResetPending = false
 	}

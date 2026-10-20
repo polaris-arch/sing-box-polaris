@@ -20,6 +20,8 @@ type pendingWrites struct {
 	fakeIPAddress4 map[string]netip.Addr
 	fakeIPAddress6 map[string]netip.Addr
 	fakeIPMetadata *adapter.FakeIPMetadata
+	fakeIPRuntime map[string]*runtimePending
+	fakeIPFailure error
 	count          int
 	size           int
 }
@@ -27,6 +29,7 @@ type pendingWrites struct {
 func newPendingWrites() *pendingWrites {
 	return &pendingWrites{
 		dnsCache:       make(map[saveCacheKey]saveDNSCacheEntry),
+		fakeIPRuntime: make(map[string]*runtimePending),
 		rdrc:           make(map[saveCacheKey]struct{}),
 		fakeIPDomain:   make(map[netip.Addr]string),
 		fakeIPAddress4: make(map[string]netip.Addr),
@@ -63,26 +66,40 @@ func (c *CacheFile) loopFlush(ctx context.Context) {
 }
 
 func (c *CacheFile) Flush() {
+	if err := c.FlushFakeIP(context.Background()); err != nil {
+		c.logger.Warn("save cache: ", err)
+	}
+}
+
+// FlushFakeIP preserves failed fake-IP writes and exposes the real transaction
+// result. Cancellation is observed before I/O; a started transaction is joined.
+func (c *CacheFile) FlushFakeIP(ctx context.Context) error {
 	c.flushAccess.Lock()
 	defer c.flushAccess.Unlock()
+	if err := ctx.Err(); err != nil { return err }
+	return c.flushPendingLocked()
+}
+
+func (c *CacheFile) flushPendingLocked() error {
 	c.pendingAccess.Lock()
 	if c.pending.count == 0 {
+		c.pending.fakeIPFailure = nil
 		c.pendingAccess.Unlock()
-		return
+		return nil
 	}
 	writing := c.pending
 	c.writing = writing
 	c.pending = newPendingWrites()
 	c.pendingAccess.Unlock()
-	err := c.update(func(tx *bbolt.Tx) error {
-		return c.writePending(tx, writing)
-	})
-	if err != nil {
-		c.logger.Warn("save cache: ", err)
-	}
+	// Runtime journals must not take the legacy corruption-reset path. A
+	// damaged identity is an explicit failure, never permission to replace it.
+	var err error
+	if c.runtimeStrict.Load() || len(writing.fakeIPRuntime) != 0 { err = c.runtimeUpdate(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) }) } else { err = c.update(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) }) }
 	c.pendingAccess.Lock()
+	if err != nil { c.restoreFakeIPLocked(writing); c.pending.fakeIPFailure = err }
 	c.writing = nil
 	c.pendingAccess.Unlock()
+	return err
 }
 
 func (c *CacheFile) writePending(tx *bbolt.Tx, pending *pendingWrites) error {
@@ -112,6 +129,7 @@ func (c *CacheFile) writePending(tx *bbolt.Tx, pending *pendingWrites) error {
 			}
 		}
 	}
+	if err := writeRuntimePending(tx, pending.fakeIPRuntime); err != nil { return err }
 	for address, domain := range pending.fakeIPDomain {
 		err := putFakeIP(tx, address, domain)
 		if err != nil {

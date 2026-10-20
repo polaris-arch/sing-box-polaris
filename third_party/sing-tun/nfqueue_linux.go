@@ -280,7 +280,7 @@ func (h *nfqueueHandler) handlePacket(attr nfqueue.Attribute) int {
 		packet.firstPacket,
 	)
 
-	switch verdict.Action {
+	switch verdict.ClassifyAndRelease() {
 	case ActionBypass:
 		h.setVerdict(attr, nfqueue.NfRepeat, h.outputMark)
 	case ActionReject:

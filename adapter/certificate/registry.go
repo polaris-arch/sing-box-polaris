@@ -64,8 +64,8 @@ func (m *Registry) CreateOptions(providerType string) (any, bool) {
 
 func (m *Registry) Create(ctx context.Context, logger log.ContextLogger, tag string, providerType string, options any) (adapter.CertificateProviderService, error) {
 	m.access.Lock()
-	defer m.access.Unlock()
 	constructor, loaded := m.constructor[providerType]
+ m.access.Unlock()
 	if !loaded {
 		return nil, E.New("certificate provider type not found: " + providerType)
 	}

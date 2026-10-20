@@ -2,7 +2,6 @@ package tun
 
 import (
 	"encoding/binary"
-	"maps"
 	"net/netip"
 	"slices"
 	"sync"
@@ -74,6 +73,8 @@ type flowEntry struct {
 }
 
 type forwardFlow struct {
+	ownership FlowOwnership
+	attachment *attachmentUse
 	nat          *portNAT
 	mapping      *natMapping
 	selectorKey  natSelectorKey
@@ -154,6 +155,7 @@ type ForwardDispatcher struct {
 	closed          atomic.Bool
 	portsAccess     sync.Mutex
 	ports           map[Port]*portReturn
+	returnTarget Return
 	stagesAccess    sync.Mutex
 	stages          []*ForwardStage
 	stageCount      atomic.Int32
@@ -161,7 +163,7 @@ type ForwardDispatcher struct {
 }
 
 type stagedPort struct {
-	nat     *portNAT
+	attachment *attachmentUse
 	packets [][]byte
 }
 
@@ -172,13 +174,11 @@ type ForwardStage struct {
 	table      map[flowKey]*flowEntry
 	lastSweep  int64
 	resetSeen  uint32
+	retired []retiredFlowEntry
 
 	exhaustedLogAt int64
 	ports          []stagedPort
 	writebackBatch [][]byte
-	segmentBuffers [][]byte
-	segmentSizes   []int
-	segmentUsed    int
 }
 
 func addrToTCPIP(addr netip.Addr) tcpip.Address {
@@ -234,26 +234,27 @@ func (d *ForwardDispatcher) now() int64 {
 }
 
 func (d *ForwardDispatcher) Close() {
-	if d == nil {
-		return
-	}
-	d.closed.Store(true)
+	if d == nil || !d.closed.CompareAndSwap(false, true) { return }
 	d.stagesAccess.Lock()
-	stages := d.stages
+	stages := slices.Clone(d.stages)
 	d.stagesAccess.Unlock()
 	for _, stage := range stages {
 		stage.access.Lock()
-		for key, entry := range stage.table {
-			stage.removeEntry(key, entry, FlowCloseReset)
-		}
+		for key, entry := range stage.table { stage.removeEntry(key, entry, FlowCloseReset) }
+		queued := stage.ports
+		stage.ports = nil
+		stage.writebackBatch = nil
 		stage.access.Unlock()
+		for _, port := range queued { port.attachment.release() }
+		stage.drainRetired()
 	}
 	d.portsAccess.Lock()
-	returnPaths := slices.Collect(maps.Values(d.ports))
+	paths := make([]*portReturn, 0, len(d.ports))
+	for _, path := range d.ports { paths = append(paths, path); path.gate.seal() }
 	d.portsAccess.Unlock()
-	for _, returnPath := range returnPaths {
-		returnPath.nat.port.DetachReturn(returnPath)
-		releasePortNAT(returnPath.nat)
+	for _, path := range paths {
+		path.fragments.clear()
+		d.detachIdle(path)
 	}
 }
 
@@ -265,6 +266,7 @@ func (s *ForwardStage) Dispatch(packet []byte) bool {
 	if !ok {
 		return false
 	}
+	defer parsed.verdict.Release()
 	return s.dispatch(packet, &parsed, nil)
 }
 
@@ -276,30 +278,11 @@ func (s *ForwardStage) DispatchParsed(packet []byte, meta ForwardFrameMeta, pars
 }
 
 func (s *ForwardStage) dispatch(packet []byte, parsed *forwardPacket, meta *ForwardFrameMeta) bool {
-	if parsed.fragment || !parsed.hasFlow {
-		return false
-	}
+	if parsed.fragment || !parsed.hasFlow { return false }
 	key := parsed.flowKey()
-	now := s.dispatcher.now()
-	s.access.Lock()
-	entry, loaded := s.table[key]
-	if loaded {
-		if entryExpired(entry, now) {
-			s.removeEntry(key, entry, FlowCloseTimeout)
-		} else {
-			handled, remove := s.handleHit(entry, parsed, packet, now, meta)
-			if remove {
-				s.removeEntry(key, entry, FlowCloseReset)
-			}
-			s.access.Unlock()
-			return handled
-		}
-	}
-	s.access.Unlock()
+	if handled, found := s.handleCached(key, parsed, packet, s.dispatcher.now(), meta); found { return handled }
 	if parsed.protocol == uint8(header.TCPProtocolNumber) &&
-		(parsed.tcpFlags&header.TCPFlagSyn == 0 || parsed.tcpFlags&header.TCPFlagAck != 0) {
-		return false
-	}
+		(parsed.tcpFlags&header.TCPFlagSyn == 0 || parsed.tcpFlags&header.TCPFlagAck != 0) { return false }
 	return s.judgeAndInstall(key, parsed, packet, meta)
 }
 
@@ -313,129 +296,112 @@ func (s *ForwardStage) teardownFlow(key flowKey, reason FlowCloseReason) {
 		s.removeEntry(key, entry, reason)
 	}
 	s.access.Unlock()
+	s.drainRetired()
 }
 
-func (s *ForwardStage) handleHit(entry *flowEntry, packet *forwardPacket, raw []byte, now int64, meta *ForwardFrameMeta) (handled bool, remove bool) {
-	switch entry.action {
-	case ActionFlow:
-		flow := entry.flow
-		if flow.closed.Load() {
-			tombstoneEntry(entry, now)
-			return true, false
-		}
-		var flowFinished bool
-		if packet.protocol == uint8(header.TCPProtocolNumber) {
-			if packet.tcpFlags&header.TCPFlagRst != 0 {
-				s.forwardToPort(flow, packet, raw, meta)
-				flow.close(FlowCloseReset)
-				tombstoneEntry(entry, now)
-				return true, false
-			}
-			if packet.tcpFlags&header.TCPFlagFin != 0 {
-				flow.finForward.Store(true)
-			} else if flow.finForward.Load() && flow.finReverse.Load() {
-				flowFinished = true
-			}
-		}
-		entry.idle = s.dispatcher.flowIdle(flow)
-		entry.deadline = now + int64(entry.idle)
-		s.forwardToPort(flow, packet, raw, meta)
-		if flowFinished {
-			flow.report(FlowCloseFinished)
-		}
-		return true, false
-	case ActionAccept:
-		if packet.protocol == uint8(header.TCPProtocolNumber) {
-			if packet.tcpFlags&header.TCPFlagRst != 0 {
-				return false, true
-			}
-			if packet.tcpFlags&header.TCPFlagSyn == 0 {
-				entry.idle = tcpEstablishedTimeout
-			}
-		} else if packet.protocol == uint8(header.UDPProtocolNumber) {
-			packet.verdict = entry.verdict
-		}
-		entry.deadline = now + int64(entry.idle)
+func (s *ForwardStage) handleCached(key flowKey, packet *forwardPacket, raw []byte, now int64, meta *ForwardFrameMeta) (bool, bool) {
+	s.access.Lock()
+	entry := s.table[key]
+	if entry == nil { s.access.Unlock(); return false, false }
+	if entryExpired(entry, now) {
+		s.removeEntry(key, entry, FlowCloseTimeout)
+		s.access.Unlock()
+		s.drainRetired()
 		return false, false
-	case ActionReject:
-		entry.deadline = now + int64(entry.idle)
-		s.stageReject(packet, raw, meta)
-		return true, false
-	default:
-		entry.deadline = now + int64(entry.idle)
-		return true, false
+	}
+	action := entry.action
+	var flow *forwardFlow
+	var owned *forwardUse
+	var err error
+	if action == ActionFlow {
+		flow = entry.flow
+		owned, err = retainForward(flow)
+	} else if action == ActionAccept {
+		packet.verdict.Release()
+		packet.verdict, err = entry.verdict.CloneForDelivery()
+	}
+	if err != nil { s.access.Unlock(); return true, true }
+	if action == ActionFlow && flow.closed.Load() {
+		tombstoneEntry(entry, now)
+		s.access.Unlock()
+		owned.release()
+		return true, true
+	}
+	if action == ActionAccept && packet.protocol == uint8(header.TCPProtocolNumber) {
+		if packet.tcpFlags&header.TCPFlagRst != 0 { s.removeEntry(key, entry, FlowCloseReset) }
+		if packet.tcpFlags&header.TCPFlagSyn == 0 { entry.idle = tcpEstablishedTimeout }
+	}
+	if action == ActionFlow { entry.idle = s.dispatcher.flowIdle(flow) }
+	entry.deadline = now + int64(entry.idle)
+	s.access.Unlock()
+	defer s.drainRetired()
+	defer owned.release()
+	switch action {
+	case ActionFlow:
+		s.forwardToPort(flow, packet, raw, meta)
+		if packet.protocol == uint8(header.TCPProtocolNumber) {
+			if packet.tcpFlags&header.TCPFlagRst != 0 { flow.close(FlowCloseReset) }
+			if packet.tcpFlags&header.TCPFlagFin != 0 { flow.finForward.Store(true) } else if flow.finForward.Load() && flow.finReverse.Load() { flow.report(FlowCloseFinished) }
+		}
+		return true, true
+	case ActionAccept: return false, true
+	case ActionReject: s.stageReject(packet, raw, meta); return true, true
+	default: return true, true
 	}
 }
 
 func (s *ForwardStage) judgeAndInstall(key flowKey, packet *forwardPacket, raw []byte, meta *ForwardFrameMeta) bool {
 	d := s.dispatcher
 	var firstPacket []byte
-	if packet.protocol == uint8(header.UDPProtocolNumber) {
-		firstPacket = header.UDP(packet.transport).Payload()
-	}
+	if packet.protocol == uint8(header.UDPProtocolNumber) { firstPacket = header.UDP(packet.transport).Payload() }
 	verdict := d.handler.JudgeFlow(packet.protocol, packet.source, packet.destination, firstPacket)
-	if verdict.Action == ActionBypass && verdict.Port != nil {
-		verdict.Action = ActionFlow
+	defer verdict.Release()
+	if verdict.Action == ActionBypass && verdict.Port != nil { verdict.Action = ActionFlow }
+	if d.closed.Load() { return true }
+	if handled, found := s.handleCached(key, packet, raw, d.now(), meta); found { return handled }
+	var flow *forwardFlow
+	var result createFlowResult
+	if verdict.Action == ActionFlow && verdict.Port != nil {
+		flow, result = s.createFlow(packet, verdict)
 	}
+	// Port calls and tracker construction above run without the table lock.
+	// The winner is rechecked before publishing; a loser rolls back everything.
 	s.access.Lock()
-	defer s.access.Unlock()
-	if d.closed.Load() {
-		return false
-	}
 	now := d.now()
-	existing, loaded := s.table[key]
-	if loaded {
-		if entryExpired(existing, now) {
-			s.removeEntry(key, existing, FlowCloseTimeout)
-		} else {
-			handled, remove := s.handleHit(existing, packet, raw, now, meta)
-			if remove {
-				s.removeEntry(key, existing, FlowCloseReset)
-			}
-			return handled
-		}
+	if existing := s.table[key]; existing != nil && entryExpired(existing, now) { s.removeEntry(key, existing, FlowCloseTimeout) }
+	if d.closed.Load() || s.table[key] != nil {
+		s.access.Unlock()
+		if flow != nil { s.releaseFlow(flow, FlowCloseReset) }
+		s.drainRetired()
+		if d.closed.Load() { return true }
+		handled, _ := s.handleCached(key, packet, raw, now, meta)
+		return handled
 	}
-	switch verdict.Action {
-	case ActionFlow:
-		if verdict.Port != nil {
-			flow, result := s.createFlow(packet, verdict)
-			if result == createFlowOK {
-				entry := &flowEntry{action: ActionFlow, flow: flow, idle: d.flowIdle(flow)}
-				entry.deadline = now + int64(entry.idle)
-				s.insertEntry(key, entry, now)
-				s.forwardToPort(flow, packet, raw, meta)
-				return true
-			}
-			if result == createFlowExhausted {
-				if now-s.exhaustedLogAt >= int64(exhaustedLogInterval) {
-					s.exhaustedLogAt = now
-					d.logger.Warn("port selector range exhausted, rejecting flow to ", packet.destination)
-				}
-				s.installSimple(key, ActionReject, packet.protocol, now)
-				s.stageReject(packet, raw, meta)
-				return true
-			}
-		}
-		s.installAccept(key, packet, verdict, now)
-		return false
-	case ActionReject:
-		s.installSimple(key, ActionReject, packet.protocol, now)
-		s.stageReject(packet, raw, meta)
+	if flow != nil {
+		entry := &flowEntry{action: ActionFlow, flow: flow, idle: d.flowIdle(flow)}
+		entry.deadline = now + int64(entry.idle)
+		s.insertEntry(key, entry, now)
+		owned, err := retainForward(flow)
+		s.access.Unlock()
+		s.drainRetired()
+		if err == nil { s.forwardToPort(flow, packet, raw, meta); owned.release() }
 		return true
-	case ActionDrop:
-		s.installSimple(key, ActionDrop, packet.protocol, now)
-		return true
+	}
+	action := verdict.Action
+	if action == ActionFlow && result == createFlowExhausted { action = ActionReject }
+	switch action {
+	case ActionReject, ActionDrop:
+		s.installSimple(key, action, packet.protocol, now)
 	case ActionHijackDNS:
-		if packet.protocol == uint8(header.UDPProtocolNumber) {
-			d.hijackDNSPacket(packet)
-			return true
-		}
-		s.installAccept(key, packet, verdict, now)
-		return false
-	default:
-		s.installAccept(key, packet, verdict, now)
-		return false
+		if packet.protocol == uint8(header.UDPProtocolNumber) { packet.verdict = verdict.Take() } else { s.installAccept(key, packet, &verdict, now) }
+	default: s.installAccept(key, packet, &verdict, now)
 	}
+	s.access.Unlock()
+	s.drainRetired()
+	if action == ActionReject { s.stageReject(packet, raw, meta); return true }
+	if action == ActionDrop { return true }
+	if action == ActionHijackDNS && packet.protocol == uint8(header.UDPProtocolNumber) { d.hijackDNSPacket(packet); return true }
+	return false
 }
 
 func (s *ForwardStage) installSimple(key flowKey, action FlowAction, protocol uint8, now int64) *flowEntry {
@@ -445,12 +411,12 @@ func (s *ForwardStage) installSimple(key flowKey, action FlowAction, protocol ui
 	return entry
 }
 
-func (s *ForwardStage) installAccept(key flowKey, packet *forwardPacket, verdict FlowVerdict, now int64) {
+func (s *ForwardStage) installAccept(key flowKey, packet *forwardPacket, verdict *FlowVerdict, now int64) {
 	entry := s.installSimple(key, ActionAccept, packet.protocol, now)
-	if packet.protocol == uint8(header.UDPProtocolNumber) {
-		entry.verdict = verdict
-		packet.verdict = verdict
-	}
+	entry.verdict = verdict.Take()
+	var err error
+	packet.verdict, err = entry.verdict.CloneForDelivery()
+	if err != nil { packet.verdict.Action = ActionDrop }
 }
 
 func (d *ForwardDispatcher) idleTimeout(protocol uint8, established bool) time.Duration {
@@ -489,6 +455,9 @@ const (
 const exhaustedLogInterval = 5 * time.Second
 
 func (s *ForwardStage) createFlow(packet *forwardPacket, verdict FlowVerdict) (*forwardFlow, createFlowResult) {
+	owned, err := verdict.CloneForDelivery()
+	if err != nil { return nil, createFlowUnsupported }
+	defer owned.Release()
 	var portAddress netip.Addr
 	inet4Address, inet6Address := verdict.Port.PortAddresses()
 	if packet.ipVersion == 6 {
@@ -517,26 +486,33 @@ func (s *ForwardStage) createFlow(packet *forwardPacket, verdict FlowVerdict) (*
 	if verdict.Destination.Port() != 0 && !isICMP {
 		serverPort = verdict.Destination.Port()
 	}
-	nat := s.dispatcher.natFor(verdict.Port)
-	if nat == nil {
-		return nil, createFlowUnsupported
-	}
+	attachment := s.dispatcher.natFor(verdict.Port, owned.Ownership)
+	if attachment == nil { return nil, createFlowUnsupported }
+	keepAttachment := false
+	defer func() { if !keepAttachment { attachment.release() } }()
+	nat := attachment.returnPath.nat
 	server := netip.AddrPortFrom(serverAddress, serverPort)
-	reservation, reserved := nat.reserve(s.dispatcher, packet.protocol, portAddress, packet.source, server)
+	reservation, reserved := nat.reserveForPort(s.dispatcher, verdict.Port, packet.protocol, portAddress, packet.source, server)
 	if !reserved {
 		rangedPort, isRanged := portCapability[PortWithSelectorRange](verdict.Port)
 		if isRanged && rangedPort.ExpandSelectorRanges(packet.protocol) {
-			reservation, reserved = nat.reserve(s.dispatcher, packet.protocol, portAddress, packet.source, server)
+			reservation, reserved = nat.reserveForPort(s.dispatcher, verdict.Port, packet.protocol, portAddress, packet.source, server)
 		}
 		if !reserved {
 			return nil, createFlowExhausted
 		}
 	}
+	published := false
+	defer func() {
+		if !published { nat.cancelReservation(packet.protocol, reservation) }
+	}()
 	var udpTimeout time.Duration
 	if packet.protocol == uint8(header.UDPProtocolNumber) {
 		udpTimeout = verdict.UDPTimeout
 	}
 	flow := &forwardFlow{
+		ownership: owned.Ownership,
+		attachment: attachment,
 		nat:                      nat,
 		owner:                    s,
 		effectiveMTU:             effectiveMTU,
@@ -580,29 +556,84 @@ func (s *ForwardStage) createFlow(packet *forwardPacket, verdict FlowVerdict) (*
 		}
 	}
 	nat.publish(flow, reservation)
+	published = true
+	owned.Ownership = nil
+	keepAttachment = true
 	return flow, createFlowOK
 }
 
-func (d *ForwardDispatcher) natFor(port Port) *portNAT {
-	d.portsAccess.Lock()
-	defer d.portsAccess.Unlock()
-	returnPath, loaded := d.ports[port]
-	if loaded {
-		return returnPath.nat
+func (d *ForwardDispatcher) natFor(port Port, ownership FlowOwnership) *attachmentUse {
+	for {
+		d.portsAccess.Lock()
+		if d.closed.Load() { d.portsAccess.Unlock(); return nil }
+		if existing := d.ports[port]; existing != nil {
+			ready := existing.ready
+			detaching := existing.detaching
+			d.portsAccess.Unlock()
+			if detaching {
+				<-existing.completion
+				if existing.detachErr != nil { return nil }
+				continue
+			}
+			<-ready
+			if !existing.attached || existing.failed { return nil }
+			use, err := existing.retainUse()
+			if err != nil { return nil }
+			return use
+		}
+		// Reserve identity only; never call a Port under this lock.
+		r := &portReturn{port: port, dispatcher: d, ready: make(chan struct{}), detached: make(chan struct{}), completion: make(chan struct{}), fragmentStop: make(chan struct{}), fragmentDone: make(chan struct{}), fragments: fragmentTable{entries: make(map[fragmentKey]*fragmentEntry)}}
+		d.ports[port] = r
+		d.portsAccess.Unlock()
+		var err error
+		panicked := false
+		func() {
+			defer func() { if recover() != nil { panicked = true } }()
+			if ownership != nil { r.ownership, err = ownership.RetainPort(port) }
+			if err == nil {
+				r.nat = acquirePortNAT(port)
+				r.gate.owner, r.gate.target = r.ownership, r
+				if d.returnTarget != nil { r.gate.target = d.returnTarget }
+				err = port.AttachReturn(&r.gate)
+			}
+		}()
+		if panicked {
+			// Attach may have copied the callback before panicking. Seal it and
+			// retain every known lease/NAT reservation; neither retry native
+			// detach nor infer that an unreturned ownership token never existed.
+			r.gate.seal()
+			d.portsAccess.Lock()
+			r.failed, r.detaching = true, true
+			r.attached = r.nat != nil
+			r.detachErr = errAttachmentPanic
+			close(r.ready)
+			close(r.fragmentDone) // no fragment worker was started
+			d.portsAccess.Unlock()
+			go func() { r.gate.join(); close(r.completion) }()
+			return nil
+		}
+		d.portsAccess.Lock()
+		if err != nil && r.nat == nil {
+			delete(d.ports, port)
+		} else { r.attached = true; r.failed = err != nil }
+		close(r.ready)
+		d.portsAccess.Unlock()
+		if err != nil {
+			if r.nat != nil { close(r.fragmentDone); d.detachIdle(r) } else if r.ownership != nil { r.ownership.Release() }
+			d.logger.Trace(E.Cause(err, "attach return path"))
+			return nil
+		}
+		go r.expireFragments()
+		if d.closed.Load() { d.detachIdle(r); return nil }
+		use, err := r.retainUse()
+		if err != nil { d.detachIdle(r); return nil }
+		if r.ownership != nil {
+			go func() {
+				select { case <-r.ownership.Retiring(): d.detachIdle(r); case <-r.detached: }
+			}()
+		}
+		return use
 	}
-	returnPath = &portReturn{
-		dispatcher: d,
-		nat:        acquirePortNAT(port),
-		fragments:  fragmentTable{entries: make(map[fragmentKey]*fragmentEntry)},
-	}
-	err := port.AttachReturn(returnPath)
-	if err != nil {
-		releasePortNAT(returnPath.nat)
-		d.logger.Trace(E.Cause(err, "attach return path"))
-		return nil
-	}
-	d.ports[port] = returnPath
-	return returnPath.nat
 }
 
 func (s *ForwardStage) forwardToPort(flow *forwardFlow, packet *forwardPacket, raw []byte, meta *ForwardFrameMeta) {
@@ -636,13 +667,16 @@ func (s *ForwardStage) forwardToPort(flow *forwardFlow, packet *forwardPacket, r
 				fragments, ok := fragmentIPv4Packet(ipHdr, flow.effectiveMTU)
 				if ok {
 					for _, fragment := range fragments {
-						s.stagePort(flow.nat, fragment)
+						s.stagePort(flow, fragment)
 					}
 				}
 				return
 			}
 		}
-		s.writebackBatch = append(s.writebackBatch, buildICMPError(packet, ICMPErrorPacketTooBig, flow.effectiveMTU, s.writeback.ReturnHeadroom()))
+		reply := buildICMPError(packet, ICMPErrorPacketTooBig, flow.effectiveMTU, s.writeback.ReturnHeadroom())
+		s.access.Lock()
+		s.writebackBatch = append(s.writebackBatch, reply)
+		s.access.Unlock()
 		return
 	}
 	if flow.tracker != nil {
@@ -652,7 +686,7 @@ func (s *ForwardStage) forwardToPort(flow *forwardFlow, packet *forwardPacket, r
 	if meta != nil {
 		raw = s.copyForStage(raw)
 	}
-	s.stagePort(flow.nat, raw)
+	s.stagePort(flow, raw)
 }
 
 func (s *ForwardStage) copyForStage(raw []byte) []byte {
@@ -671,14 +705,16 @@ func rewriteForward(flow *forwardFlow, packet *forwardPacket) {
 	}
 }
 
-func (s *ForwardStage) stagePort(nat *portNAT, packet []byte) {
+func (s *ForwardStage) stagePort(flow *forwardFlow, packet []byte) {
+	s.access.Lock()
+	defer s.access.Unlock()
+	if s.dispatcher.closed.Load() { return }
 	for index := range s.ports {
-		if s.ports[index].nat == nat {
-			s.ports[index].packets = append(s.ports[index].packets, packet)
-			return
-		}
+		if s.ports[index].attachment.returnPath == flow.attachment.returnPath { s.ports[index].packets = append(s.ports[index].packets, slices.Clone(packet)); return }
 	}
-	s.ports = append(s.ports, stagedPort{nat: nat, packets: [][]byte{packet}})
+	use, err := flow.attachment.returnPath.retainUse()
+	if err != nil { return }
+	s.ports = append(s.ports, stagedPort{attachment: use, packets: [][]byte{slices.Clone(packet)}})
 }
 
 func (s *ForwardStage) stageReject(packet *forwardPacket, raw []byte, meta *ForwardFrameMeta) {
@@ -687,7 +723,9 @@ func (s *ForwardStage) stageReject(packet *forwardPacket, raw []byte, meta *Forw
 	}
 	reply, ok := buildReject(packet, s.writeback.ReturnHeadroom())
 	if ok {
+		s.access.Lock()
 		s.writebackBatch = append(s.writebackBatch, reply)
+		s.access.Unlock()
 	}
 }
 
@@ -699,55 +737,32 @@ func (d *ForwardDispatcher) ResetNetwork() {
 }
 
 func (s *ForwardStage) Flush() {
-	if s == nil {
-		return
-	}
+	if s == nil { return }
 	d := s.dispatcher
-	if d.closed.Load() {
-		return
-	}
 	now := d.now()
+	s.access.Lock()
 	generation := d.resetGeneration.Load()
 	if s.resetSeen != generation {
 		s.resetSeen = generation
-		s.access.Lock()
-		for key, entry := range s.table {
-			s.removeEntry(key, entry, FlowCloseReset)
+		for key, entry := range s.table { s.removeEntry(key, entry, FlowCloseReset) }
+	}
+	queued := s.ports
+	s.ports = nil // No reusable empty raw-NAT entries survive retirement.
+	writeback := s.writebackBatch
+	s.writebackBatch = nil
+	if now-s.lastSweep >= int64(flowSweepInterval) { s.lastSweep = now; s.sweep(now) }
+	s.access.Unlock()
+	s.drainRetired()
+	for _, staged := range queued {
+		if !d.closed.Load() {
+			if err := staged.attachment.returnPath.port.WritePackets(staged.packets); err != nil { d.logger.Trace(E.Cause(err, "forward packets")) }
 		}
-		s.access.Unlock()
+		staged.attachment.release() // Also after an in-flight WritePackets returns.
 	}
-	for index := range s.ports {
-		staged := &s.ports[index]
-		if len(staged.packets) == 0 {
-			continue
-		}
-		err := staged.nat.port.WritePackets(staged.packets)
-		if err != nil {
-			d.logger.Trace(E.Cause(err, "forward packets"))
-		}
-		clear(staged.packets)
-		staged.packets = staged.packets[:0]
+	if !d.closed.Load() && len(writeback) > 0 {
+		if err := s.writeback.WriteReturnPackets(writeback); err != nil { d.logger.Trace(E.Cause(err, "write back packets")) }
 	}
-	if retain := max(s.segmentUsed, segmentRetainCount); len(s.segmentBuffers) > retain {
-		clear(s.segmentBuffers[retain:])
-		s.segmentBuffers = s.segmentBuffers[:retain]
-		s.segmentSizes = s.segmentSizes[:retain]
-	}
-	s.segmentUsed = 0
-	if len(s.writebackBatch) > 0 {
-		err := s.writeback.WriteReturnPackets(s.writebackBatch)
-		if err != nil {
-			d.logger.Trace(E.Cause(err, "write back packets"))
-		}
-		clear(s.writebackBatch)
-		s.writebackBatch = s.writebackBatch[:0]
-	}
-	if now-s.lastSweep >= int64(flowSweepInterval) {
-		s.lastSweep = now
-		s.access.Lock()
-		s.sweep(now)
-		s.access.Unlock()
-	}
+
 }
 
 func (s *ForwardStage) sweepDue() (time.Duration, bool) {
@@ -784,18 +799,34 @@ func tombstoneEntry(entry *flowEntry, now int64) {
 	entry.deadline = now + int64(entry.idle)
 }
 
+type retiredFlowEntry struct { entry *flowEntry; reason FlowCloseReason }
+
 func (s *ForwardStage) removeEntry(key flowKey, entry *flowEntry, reason FlowCloseReason) {
 	delete(s.table, key)
-	if entry.flow != nil {
-		if reason == FlowCloseTimeout && entry.flow.finForward.Load() && entry.flow.finReverse.Load() {
-			reason = FlowCloseFinished
-		}
-		entry.flow.close(reason)
-		entry.flow.nat.release(entry.flow)
+	s.retired = append(s.retired, retiredFlowEntry{entry, reason})
+}
+
+func (s *ForwardStage) releaseFlow(flow *forwardFlow, reason FlowCloseReason) {
+	if reason == FlowCloseTimeout && flow.finForward.Load() && flow.finReverse.Load() { reason = FlowCloseFinished }
+	flow.close(reason)
+	flow.nat.release(flow)
+	releaseFlow(flow.ownership)
+	flow.attachment.release()
+}
+
+func (s *ForwardStage) drainRetired() {
+	s.access.Lock()
+	retired := s.retired
+	s.retired = nil
+	s.access.Unlock()
+	for _, item := range retired {
+		item.entry.verdict.Release()
+		if item.entry.flow != nil { s.releaseFlow(item.entry.flow, item.reason) }
 	}
 }
 
 func (s *ForwardStage) insertEntry(key flowKey, entry *flowEntry, now int64) {
+	if previous := s.table[key]; previous != nil && previous != entry { s.removeEntry(key, previous, FlowCloseReset) }
 	if len(s.table) >= max(flowTableCapacity/int(s.dispatcher.stageCount.Load()), flowStageCapacity) {
 		s.evictEntries(now)
 	}
@@ -847,6 +878,19 @@ func isICMPProtocol(protocol uint8) bool {
 }
 
 type portReturn struct {
+ port Port // exact logical attachment, independent of the physical NAT key
+	ownership PortOwnership
+	gate sealedReturn
+	ready chan struct{}
+	detached chan struct{}
+	completion chan struct{}
+	detachErr error
+	attached bool
+	failed bool
+	detaching bool
+	fragmentStop chan struct{}
+	fragmentDone chan struct{}
+	uses int
 	dispatcher *ForwardDispatcher
 	nat        *portNAT
 	fragments  fragmentTable
@@ -877,8 +921,11 @@ func (r *portReturn) ReturnPackets(packets [][]byte) [][]byte {
 	now := r.dispatcher.now()
 	unconsumed := packets[:0]
 	var batches []returnBatch
+	var uses []*forwardUse
+	defer func() { for _, use := range uses { use.release() } }()
 	for _, raw := range packets {
-		decision, writeback := r.classifyReturn(raw, headroom, now)
+		decision, writeback, use := r.classifyReturn(raw, headroom, now)
+		if use != nil { uses = append(uses, use) }
 		switch decision {
 		case returnWrite:
 			index := slices.IndexFunc(batches, func(batch returnBatch) bool { return batch.writeback == writeback })
@@ -901,67 +948,50 @@ func (r *portReturn) ReturnPackets(packets [][]byte) [][]byte {
 	return unconsumed
 }
 
-func (r *portReturn) classifyReturn(raw []byte, headroom int, now int64) (returnDecision, ForwardWriteback) {
-	if len(raw) < headroom+header.IPv4MinimumSize {
-		return returnPass, nil
-	}
+func (r *portReturn) classifyReturn(raw []byte, headroom int, now int64) (returnDecision, ForwardWriteback, *forwardUse) {
+	if len(raw) < headroom+header.IPv4MinimumSize { return returnPass, nil, nil }
 	parsed, ok := parseForwardPacket(raw[headroom:])
-	if !ok {
-		return returnPass, nil
-	}
-	if parsed.fragment {
-		return r.classifyFragment(&parsed, len(raw)-headroom, now)
-	}
+	if !ok { return returnPass, nil, nil }
+	if parsed.fragment { return r.classifyFragment(&parsed, len(raw)-headroom, now) }
 	if !parsed.hasFlow {
 		if parsed.isICMPError() {
-			flow := r.returnICMPError(&parsed)
-			if flow != nil {
-				return returnWrite, flow.owner.writeback
-			}
+			use := r.returnICMPError(&parsed)
+			if use != nil { return returnWrite, use.flow.owner.writeback, use }
 		}
-		return returnPass, nil
+		return returnPass, nil, nil
 	}
-	flow, rule := r.matchReverse(&parsed)
-	if flow == nil {
-		return returnPass, nil
-	}
-	if flow.closed.Load() {
-		return returnDrop, nil
-	}
-	if flow.tracker != nil {
-		flow.tracker.CountReverse(len(raw) - headroom)
-	}
+	use, rule := r.matchReverse(&parsed)
+	if use == nil { return returnPass, nil, nil }
+	flow := use.flow
+	if flow.closed.Load() { return returnDrop, nil, use }
+	if flow.tracker != nil { flow.tracker.CountReverse(len(raw)-headroom) }
 	flow.observeReverse(&parsed, now)
-	if parsed.isTCPSyn() {
-		applyRewriteRaw(&parsed, rule)
-		clampTCPMSS(&parsed, flow.effectiveMTU)
-		recomputeChecksums(&parsed)
-	} else {
-		applyRewrite(&parsed, rule)
-	}
-	return returnWrite, flow.owner.writeback
+	if parsed.isTCPSyn() { applyRewriteRaw(&parsed, rule); clampTCPMSS(&parsed, flow.effectiveMTU); recomputeChecksums(&parsed) } else { applyRewrite(&parsed, rule) }
+	return returnWrite, flow.owner.writeback, use
 }
 
-func (r *portReturn) matchReverse(parsed *forwardPacket) (*forwardFlow, *rewriteRule) {
+// A shared physical namespace must deliver through the exact logical attachment.
+// In particular, the fragment entry retains this same attachment's forwardUse,
+// preventing its callback and fragment table from retiring before continuation.
+func (r *portReturn) ownsReturnUse(use *forwardUse) bool {
+ return use != nil && use.flow != nil && use.flow.attachment != nil && use.flow.attachment.returnPath == r
+}
+
+func (r *portReturn) matchReverse(parsed *forwardPacket) (*forwardUse, *rewriteRule) {
 	key := parsed.flowKey()
-	flow := r.nat.lookup(key)
-	if flow != nil {
-		if flow.owner.dispatcher != r.dispatcher {
-			return nil, nil
-		}
-		return flow, &flow.reverseRule
+	use := r.nat.lookupOwned(key)
+	if use != nil {
+		if use.flow.owner.dispatcher != r.dispatcher || !r.ownsReturnUse(use) { use.release(); return nil, nil }
+		return use, &use.flow.reverseRule
 	}
-	if parsed.protocol != uint8(header.UDPProtocolNumber) {
-		return nil, nil
-	}
-	mapping, anchor := r.nat.lookupMapping(key.destination.Addr(), key.destination.Port(), key.source.Addr())
-	if mapping == nil || mapping.key.dispatcher != r.dispatcher {
-		return nil, nil
-	}
-	return anchor, &mapping.reverseRule
+	if parsed.protocol != uint8(header.UDPProtocolNumber) { return nil, nil }
+	mapping, use := r.nat.lookupMappingOwned(key.destination.Addr(), key.destination.Port(), key.source.Addr())
+	if mapping == nil { return nil, nil }
+	if mapping.key.dispatcher != r.dispatcher || !r.ownsReturnUse(use) { use.release(); return nil, nil }
+	return use, &mapping.reverseRule
 }
 
-func (r *portReturn) returnICMPError(parsed *forwardPacket) *forwardFlow {
+func (r *portReturn) returnICMPError(parsed *forwardPacket) *forwardUse {
 	inner, ok := parsed.icmpErrorInner()
 	if !ok {
 		return nil
@@ -970,8 +1000,11 @@ func (r *portReturn) returnICMPError(parsed *forwardPacket) *forwardFlow {
 	if !parsedInner {
 		return nil
 	}
-	flow := r.nat.lookup(embedded.flowKey().reversed())
-	if flow == nil || flow.owner.dispatcher != r.dispatcher || flow.closed.Load() {
+	use := r.nat.lookupOwned(embedded.flowKey().reversed())
+	if use == nil { return nil }
+	flow := use.flow
+	if flow.owner.dispatcher != r.dispatcher || !r.ownsReturnUse(use) || flow.closed.Load() {
+		use.release()
 		return nil
 	}
 	rewriteEmbeddedSource(&embedded, addrToTCPIP(flow.clientAddress), flow.clientSelector, true)
@@ -984,5 +1017,17 @@ func (r *portReturn) returnICMPError(parsed *forwardPacket) *forwardFlow {
 		copy(sourceAddress, flow.clientDestinationAddress.AsSlice())
 	}
 	recomputeChecksums(parsed)
-	return flow
+	return use
+}
+
+func (d *ForwardDispatcher) sweepIdle(now int64) {
+	d.stagesAccess.Lock()
+	stages := slices.Clone(d.stages)
+	d.stagesAccess.Unlock()
+	for _, stage := range stages {
+		stage.access.Lock()
+		stage.sweep(now)
+		stage.access.Unlock()
+		stage.drainRetired()
+	}
 }

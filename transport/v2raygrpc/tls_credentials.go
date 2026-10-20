@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/sagernet/sing-box/common/tls"
+ "github.com/sagernet/sing-box/transport/runtimeingress"
+	"github.com/sagernet/sing-box/common/httpclient"
 	internal_credentials "github.com/sagernet/sing-box/transport/v2raygrpc/credentials"
 
 	"google.golang.org/grpc/credentials"
@@ -13,10 +15,11 @@ import (
 
 type TLSTransportCredentials struct {
 	config tls.Config
+	boundary *httpclient.RuntimeTransportBoundary
 }
 
 func NewTLSTransportCredentials(config tls.Config) credentials.TransportCredentials {
-	return &TLSTransportCredentials{config}
+	return &TLSTransportCredentials{config:config}
 }
 
 func (c *TLSTransportCredentials) Info() credentials.ProtocolInfo {
@@ -26,6 +29,7 @@ func (c *TLSTransportCredentials) Info() credentials.ProtocolInfo {
 }
 
 func (c *TLSTransportCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	if c.boundary!=nil{leave,err:=c.boundary.Acquire();if err!=nil{return nil,nil,err};defer leave()}
 	cfg := c.config.Clone()
 	if cfg.ServerName() == "" {
 		serverName, _, err := net.SplitHostPort(authority)
@@ -36,6 +40,7 @@ func (c *TLSTransportCredentials) ClientHandshake(ctx context.Context, authority
 	}
 	conn, err := tls.ClientHandshake(ctx, rawConn, cfg)
 	if err != nil {
+		if c.boundary!=nil&&tls.IsRuntimeCleanupIncomplete(err){c.boundary.RecordClose(err)}
 		return nil, nil, err
 	}
 	tlsInfo := credentials.TLSInfo{
@@ -46,7 +51,8 @@ func (c *TLSTransportCredentials) ClientHandshake(ctx context.Context, authority
 	if id != nil {
 		tlsInfo.SPIFFEID = id
 	}
-	return internal_credentials.WrapSyscallConn(rawConn, conn), tlsInfo, nil
+	if c.boundary!=nil{guarded,err:=c.boundary.GuardConnection(conn);return guarded,tlsInfo,err}
+	return conn,tlsInfo,nil
 }
 
 func (c *TLSTransportCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
@@ -54,7 +60,7 @@ func (c *TLSTransportCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, c
 	if !isServer {
 		return nil, nil, os.ErrInvalid
 	}
-	conn, err := tls.ServerHandshake(context.Background(), rawConn, serverConfig)
+	conn, err := tls.ServerHandshake(runtimeingress.Context(context.Background(),rawConn), rawConn, serverConfig)
 	if err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -71,7 +77,7 @@ func (c *TLSTransportCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, c
 }
 
 func (c *TLSTransportCredentials) Clone() credentials.TransportCredentials {
-	return NewTLSTransportCredentials(c.config)
+	return &TLSTransportCredentials{config:c.config.Clone(),boundary:c.boundary}
 }
 
 func (c *TLSTransportCredentials) OverrideServerName(serverNameOverride string) error {

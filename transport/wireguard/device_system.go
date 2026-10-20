@@ -32,6 +32,8 @@ type systemDevice struct {
 	batchDevice  tun.LinuxTUN
 	events       chan wgTun.Event
 	closeOnce    sync.Once
+	closeDone chan struct{}
+	closeErr error
 	inet4Address netip.Addr
 	inet6Address netip.Addr
 }
@@ -42,6 +44,7 @@ func newSystemDevice(options DeviceOptions) (*systemDevice, error) {
 	}
 	inet4Address, inet6Address := deviceAddresses(options.Address)
 	return &systemDevice{
+		closeDone: make(chan struct{}),
 		options:      options,
 		dialer:       options.CreateDialer(options.Name),
 		events:       make(chan wgTun.Event, 1),
@@ -182,18 +185,21 @@ func (w *systemDevice) Events() <-chan wgTun.Event {
 }
 
 func (w *systemDevice) Close() error {
-	var err error
 	w.closeOnce.Do(func() {
+		w.closeErr = E.New("device shutdown did not complete")
+		defer close(w.closeDone)
 		close(w.events)
+		var closeErr error
 		if w.device != nil {
-			err = w.device.Close()
+			closeErr = w.device.Close()
 		}
 		ports := w.ports.Load()
 		if ports != nil {
-			err = E.Errors(err, ports.Close())
+			closeErr = E.Errors(closeErr, ports.Close())
 		}
+		w.closeErr = closeErr
 	})
-	return err
+	return w.closeErr
 }
 
 func (w *systemDevice) BatchSize() int {
@@ -201,4 +207,10 @@ func (w *systemDevice) BatchSize() int {
 		return w.batchDevice.BatchSize()
 	}
 	return 1
+}
+
+// A plain system device has no embedded TUN flow dispatcher. Its existing
+// synchronous Close result is observable; this does not certify native callbacks.
+func (w *systemDevice) WaitDetached(ctx context.Context) error {
+	select { case <-w.closeDone: return w.closeErr; case <-ctx.Done(): return ctx.Err() }
 }

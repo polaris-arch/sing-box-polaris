@@ -1,0 +1,203 @@
+--- a/third_party/fswatch/watcher.go
++++ b/third_party/fswatch/watcher.go
+@@ -22,6 +22,7 @@
+ 	watchDirect bool
+ 	watchTarget []string
+ 	watchPath   []string
++ watchDirectory []string
+ 	callback    func(path string)
+ 	waitTimeout time.Duration
+ 	logger      logger.Logger
+@@ -40,7 +41,12 @@
+ type Options struct {
+ 	// Path is the list of files or directories to watch
+ 	// It is the caller's responsibility to ensure that paths are absolute.
+-	Path []string
++ Path []string
++
++ // Directory watches immediate children as well as deletion/recreation of
++ // each directory itself. Paths must be absolute. This is not recursive.
++ // Missing directories are allowed when their required parent exists.
++ Directory []string
+ 
+ 	// Direct is the flag to watch the file directly if file will never be removed
+ 	Direct bool
+@@ -58,7 +64,7 @@
+ }
+ 
+ func NewWatcher(options Options) (*Watcher, error) {
+-	if len(options.Path) == 0 || options.Callback == nil {
++	if (len(options.Path) == 0 && len(options.Directory) == 0) || options.Callback == nil {
+ 		return nil, os.ErrInvalid
+ 	}
+ 	waitTimeout := options.WaitTimeout
+@@ -77,10 +83,15 @@
+ 			})
+ 		})
+ 	}
+-	return &Watcher{
++ directories := common.Uniq(common.Map(options.Directory,filepath.Clean))
++ // Parents detect a configured directory's deletion/recreation. Explicit
++ // directories are added separately after parents, allowing a missing target.
++ watchTarget = common.Uniq(append(watchTarget,common.Map(directories,filepath.Dir)...))
++ return &Watcher{
+ 		watchDirect: options.Direct,
+ 		watchTarget: watchTarget,
+ 		watchPath:   options.Path,
++  watchDirectory: directories,
+ 		callback:    options.Callback,
+ 		waitTimeout: waitTimeout,
+ 		logger:      options.Logger,
+@@ -94,6 +105,7 @@
+ 		return E.Cause(err, "fswatch: create fsnotify watcher")
+ 	}
+ 	if err = addWatchTargets(watcher, w.watchTarget); err != nil { return err }
++ if err = addWatchDirectories(watcher,w.watchDirectory); err != nil { return err }
+ 	w.watcher = watcher
+ 	go w.loopUpdate()
+ 	return nil
+@@ -128,7 +140,8 @@
+ 			if !loaded {
+ 				return
+ 			}
+-			if common.Contains(w.watchTarget, event.Name) && (event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove)) {
++   if w.handleDirectoryEvent(event,w.watcher.Add) { continue }
++   if common.Contains(w.watchTarget, event.Name) && (event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove)) {
+ 				if w.logger != nil {
+ 					w.logger.Error("fswatch: watcher removed: ", event.Name)
+ 				}
+@@ -204,3 +217,45 @@
+ func(e *startCleanupError) Error() string { return e.cause.Error() }
+ func(e *startCleanupError) Unwrap() error { return e.cause }
+ func(*startCleanupError) RuntimeCleanupIncomplete() bool { return true }
++
++// matchesDirectoryEvent never uses string prefixes: sibling names and
++// grandchildren are not immediate children, even when their prefixes match.
++func(w *Watcher)matchesDirectoryEvent(event fsnotify.Event)bool{
++ if !event.Has(fsnotify.Create)&&!event.Has(fsnotify.Write)&&!event.Has(fsnotify.Remove)&&!event.Has(fsnotify.Rename){return false}
++ path:=filepath.Clean(event.Name)
++ return common.Contains(w.watchDirectory,path)||common.Contains(w.watchDirectory,filepath.Dir(path))
++}
++func addWatchDirectories(watcher interface{Add(string)error;Close()error},directories []string)error{
++ for _,path:=range directories{
++  if err:=watcher.Add(path);err!=nil&&!os.IsNotExist(err){
++   cause:=E.Cause(err,"fswatch: watch directory ",path)
++   if closeErr:=watcher.Close();closeErr!=nil{return &startCleanupError{cause:errors.Join(cause,E.Cause(closeErr,"fswatch: failed-directory-start cleanup"))}}
++   return cause
++  }
++ }
++ return nil
++}
++
++func(w *Watcher)handleDirectoryEvent(event fsnotify.Event,add func(string)error)bool{
++ if !w.matchesDirectoryEvent(event){return false}
++ path:=filepath.Clean(event.Name)
++ if common.Contains(w.watchDirectory,path)&&event.Has(fsnotify.Create){
++  // Only the exact original backend is passed here; this path never creates
++  // a replacement watcher. A close race therefore cannot resurrect native IO.
++  if err:=w.addDirectoryIfOpen(path,add);err!=nil&&!os.IsNotExist(err)&&!errors.Is(err,os.ErrClosed)&&w.logger!=nil{
++   w.logger.Error("fswatch: rewatch directory: ",path,": ",err)
++  }
++ }
++ // scheduleCallback rechecks closed under stateAccess. Late backend Add
++ // completion cannot schedule an unfenced callback after Close.
++ w.scheduleCallback(path)
++ return true
++}
++func(w *Watcher)addDirectoryIfOpen(path string,add func(string)error)error{
++ w.stateAccess.Lock();closed:=w.closed;w.stateAccess.Unlock()
++ if closed{return os.ErrClosed}
++ err:=add(path)
++ w.stateAccess.Lock();closed=w.closed;w.stateAccess.Unlock()
++ if closed{return os.ErrClosed}
++ return err
++}
+--- /dev/null
++++ b/third_party/fswatch/directory_watch_test.go
+@@ -0,0 +1,86 @@
++package fswatch
++
++import (
++ "errors"
++ "os"
++ "path/filepath"
++ "testing"
++ "sync"
++ "time"
++
++ "github.com/fsnotify/fsnotify"
++)
++
++func TestDirectoryEventMatchingIsImmediateAndBoundaryExact(t *testing.T){
++ root:=filepath.Join(string(filepath.Separator),"certificates")
++ watcher:=&Watcher{watchDirectory:[]string{root}}
++ for _,op:=range []fsnotify.Op{fsnotify.Create,fsnotify.Write,fsnotify.Remove,fsnotify.Rename}{
++  for _,path:=range []string{root,filepath.Join(root,"root.pem")} {
++   if !watcher.matchesDirectoryEvent(fsnotify.Event{Name:path,Op:op}){t.Fatalf("directory event omitted: %q %v",path,op)}
++  }
++  for _,path:=range []string{root+"-unrelated",filepath.Join(root+"-unrelated","root.pem"),filepath.Join(root,"subdirectory","root.pem")} {
++   if watcher.matchesDirectoryEvent(fsnotify.Event{Name:path,Op:op}){t.Fatalf("unrelated/nonrecursive event accepted: %q %v",path,op)}
++  }
++ }
++ if watcher.matchesDirectoryEvent(fsnotify.Event{Name:filepath.Join(root,"root.pem"),Op:fsnotify.Chmod}){t.Fatal("unrequested metadata event accepted")}
++}
++func TestDirectoryOnlyConfigurationKeepsRequiredParent(t *testing.T){
++ directory:=filepath.Join(string(filepath.Separator),"trust","roots")
++ watcher,err:=NewWatcher(Options{Directory:[]string{directory,directory},Callback:func(string){}})
++ if err!=nil{t.Fatal(err)}
++ if len(watcher.watchDirectory)!=1||len(watcher.watchTarget)!=1||watcher.watchTarget[0]!=filepath.Dir(directory){t.Fatal("directory targets not exact and deduplicated")}
++}
++type directoryStartFixture struct{adds,closes int;errors map[int]error;closeErr error}
++func(f *directoryStartFixture)Add(string)error{f.adds++;return f.errors[f.adds]}
++func(f *directoryStartFixture)Close()error{f.closes++;return f.closeErr}
++func TestMissingDirectoryDoesNotDiscardRequiredParentWatcher(t *testing.T){
++ fixture:=&directoryStartFixture{errors:map[int]error{1:os.ErrNotExist}}
++ if err:=addWatchDirectories(fixture,[]string{"missing","present"});err!=nil{t.Fatal(err)}
++ if fixture.adds!=2||fixture.closes!=0{t.Fatal("missing directory destroyed parent watch")}
++}
++func TestDirectoryAddFailureRetainsNativeCloseUncertainty(t *testing.T){
++ failure,cleanup:=errors.New("directory permission failure"),errors.New("native close failure")
++ fixture:=&directoryStartFixture{errors:map[int]error{2:failure},closeErr:cleanup}
++ err:=addWatchDirectories(fixture,[]string{"first","failed","never"})
++ var marker interface{RuntimeCleanupIncomplete()bool}
++ if fixture.adds!=2||fixture.closes!=1||!errors.Is(err,failure)||!errors.Is(err,cleanup)||!errors.As(err,&marker)||!marker.RuntimeCleanupIncomplete(){t.Fatal("partial directory watcher failure lost cleanup ownership",err)}
++}
++
++func flushDirectoryFixture(t *testing.T,w *Watcher,path string){
++ t.Helper();w.stateAccess.Lock();pending,ok:=w.timerMap[path];w.stateAccess.Unlock()
++ if !ok{t.Fatal("directory callback was not scheduled")};pending.timer.Stop();w.fireCallback(path,pending.generation)
++}
++func TestDirectoryDeletionAndRecreationReattachesExactBackend(t *testing.T){
++ directory:=filepath.Join(string(filepath.Separator),"trust","roots")
++ calls,adds:=0,0
++ w,err:=NewWatcher(Options{Directory:[]string{directory},WaitTimeout:time.Hour,Callback:func(path string){if path!=directory{t.Error("wrong directory callback",path)};calls++}});if err!=nil{t.Fatal(err)};defer w.Close()
++ add:=func(path string)error{if path!=directory{t.Error("unrelated directory reattached",path)};adds++;return nil}
++ if !w.handleDirectoryEvent(fsnotify.Event{Name:directory,Op:fsnotify.Remove},add){t.Fatal("directory removal not handled")}
++ flushDirectoryFixture(t,w,directory)
++ if adds!=0||calls!=1{t.Fatal("removal reattached backend or lost reload")}
++ if !w.handleDirectoryEvent(fsnotify.Event{Name:directory,Op:fsnotify.Create},add){t.Fatal("directory recreation not handled")}
++ flushDirectoryFixture(t,w,directory)
++ if adds!=1||calls!=2{t.Fatal("recreation did not reattach and reload exactly once")}
++}
++func TestCloseRacingDirectoryReAddCannotScheduleLateCallback(t *testing.T){
++ directory:=filepath.Join(string(filepath.Separator),"trust","roots")
++ callbacks:=make(chan struct{},1)
++ w,err:=NewWatcher(Options{Directory:[]string{directory},WaitTimeout:time.Hour,Callback:func(string){callbacks<-struct{}{}}});if err!=nil{t.Fatal(err)}
++ entered,finish,done:=make(chan struct{}),make(chan struct{}),make(chan struct{})
++ var releaseOnce sync.Once
++ releaseFinish:=func(){releaseOnce.Do(func(){close(finish)})}
++ t.Cleanup(func(){
++  releaseFinish()
++  if err:=w.Close();err!=nil{t.Error(err)}
++  select{case <-done:case <-time.After(5*time.Second):t.Error("dynamic add fixture did not unwind")}
++ })
++ go func(){w.handleDirectoryEvent(fsnotify.Event{Name:directory,Op:fsnotify.Create},func(string)error{close(entered);<-finish;return nil});close(done)}()
++ select{case <-entered:case <-time.After(5*time.Second):t.Fatal("dynamic add not entered")}
++ if err:=w.Close();err!=nil{t.Fatal(err)}
++ releaseFinish()
++ select{case <-done:case <-time.After(5*time.Second):t.Fatal("dynamic add did not return")}
++ w.stateAccess.Lock();pending:=len(w.timerMap);w.stateAccess.Unlock()
++ if pending!=0{t.Fatal("close race scheduled a late directory callback")}
++ select{case <-callbacks:t.Fatal("late directory callback executed");default:}
++ if err:=w.addDirectoryIfOpen(directory,func(string)error{t.Fatal("closed watcher re-added native directory");return nil});!errors.Is(err,os.ErrClosed){t.Fatal("closed add did not fail",err)}
++}

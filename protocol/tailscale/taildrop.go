@@ -1061,6 +1061,8 @@ func (m *taildropManager) writePartialChecksums(w http.ResponseWriter, senderID 
 }
 
 func (t *Endpoint) SubscribeTaildropInbox(ctx context.Context, fn func(*adapter.TaildropInbox)) error {
+ if t.runtime!=nil{child,ctx,leave,err:=t.runtimeOperation(ctx);if err!=nil{return err};defer leave();return child.SubscribeTaildropInbox(ctx,fn)}
+
 	manager := t.taildrop
 	signal := make(chan struct{}, 1)
 	err := manager.watch(manager.inboxWatchers, signal)
@@ -1085,6 +1087,8 @@ func (t *Endpoint) SubscribeTaildropInbox(ctx context.Context, fn func(*adapter.
 }
 
 func (t *Endpoint) MarkTaildropInboxRead() error {
+ if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.MarkTaildropInboxRead()}
+
 	if !t.taildrop.beginIO() {
 		return os.ErrClosed
 	}
@@ -1095,14 +1099,20 @@ func (t *Endpoint) MarkTaildropInboxRead() error {
 }
 
 func (t *Endpoint) OpenTaildropFile(fileName string) (io.ReadCloser, int64, error) {
+ if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return nil,0,err};defer leave();return child.OpenTaildropFile(fileName)}
+
 	return t.taildrop.openFile(fileName)
 }
 
 func (t *Endpoint) DeleteTaildropFile(fileName string) error {
+ if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.DeleteTaildropFile(fileName)}
+
 	return t.taildrop.deleteFile(fileName)
 }
 
 func (t *Endpoint) CancelTaildropReceiving(senderID string, fileName string) error {
+ if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.CancelTaildropReceiving(senderID,fileName)}
+
 	if !t.taildrop.beginIO() {
 		return os.ErrClosed
 	}

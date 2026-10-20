@@ -31,6 +31,8 @@ type Device interface {
 	FrontHeadroom() int
 	NewOutboundQueue(handler func(packetBuffers []*buf.Buffer)) *tun.OutboundQueue
 	Close() error
+	// WaitDetached is valid after Close and observes actual embedded-stack completion.
+	WaitDetached(context.Context) error
 }
 
 type Options struct {

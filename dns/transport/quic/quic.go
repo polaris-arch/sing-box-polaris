@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
@@ -15,7 +18,6 @@ import (
 	"github.com/sagernet/sing-box/dns/transport"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
-	sQUIC "github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
@@ -37,7 +39,13 @@ type Transport struct {
 	serverAddr M.Socksaddr
 	tlsConfig  tls.Config
 
-	connection *transport.ConnPool[*quic.Conn]
+	connection *transport.ConnPool[*httpclient.RuntimeQUICSession]
+	runtimeResource adapter.RuntimeResourceSource
+	fence *outbound.RuntimeIOFence
+	constructionOwned bool
+	stopOnce sync.Once
+	closeAccess sync.Mutex
+	closeErr error
 }
 
 func NewQUIC(ctx context.Context, logger log.ContextLogger, tag string, options option.RemoteTLSDNSServerOptions) (adapter.DNSTransport, error) {
@@ -62,69 +70,61 @@ func NewQUIC(ctx context.Context, logger log.ContextLogger, tag string, options 
 		return nil, E.New("invalid server address: ", serverAddr)
 	}
 
-	return &Transport{
-		TransportAdapter: dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeQUIC, tag, options.RemoteDNSServerOptions),
-		dialer:           transportDialer,
-		serverAddr:       serverAddr,
-		tlsConfig:        tlsConfig,
-		connection: transport.NewConnPool(transport.ConnPoolOptions[*quic.Conn]{
-			Mode: transport.ConnPoolSingle,
-			IsAlive: func(conn *quic.Conn) bool {
-				return conn != nil && !common.Done(conn.Context())
-			},
-			Close: func(conn *quic.Conn, _ error) {
-				conn.CloseWithError(0, "")
-			},
-		}),
-	}, nil
+	t:=&Transport{
+		TransportAdapter:dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeQUIC,tag,options.RemoteDNSServerOptions),
+		dialer:transportDialer,serverAddr:serverAddr,tlsConfig:tlsConfig,
+	}
+	t.runtimeResource,_=adapter.RuntimeResourceSourceFromContext(ctx)
+	t.connection=transport.NewConnPool(transport.ConnPoolOptions[*httpclient.RuntimeQUICSession]{
+		Mode:transport.ConnPoolSingle,
+		IsAlive:func(session *httpclient.RuntimeQUICSession)bool{return session!=nil&&!common.Done(session.Conn.Context())},
+		Close:func(session *httpclient.RuntimeQUICSession,_ error){t.recordClose(session.RuntimeCloseAndWait())},
+	})
+	t.fence=outbound.NewRuntimeIOFence(t.connection.Close)
+	if adapter.HasConstructionScope(ctx){t.constructionOwned=true;if err=adapter.DeferConstructionCleanup(ctx,t.RuntimeCloseAndWait);err!=nil{return nil,err}}
+	if err=adapter.ConstructionScopeErr(ctx);err!=nil{return nil,err};if err=ctx.Err();err!=nil{return nil,err}
+	return t,nil
 }
 
 func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	scope.Add(t.connection.Close)
+	if !t.constructionOwned{scope.Add(t.RuntimeCloseAndWait)}
 	return dialer.InitializeDetour(t.dialer)
 }
 
 func (t *Transport) Reset() {
-	t.connection.Reset()
+	leave,err:=t.fence.Acquire();if err!=nil{return};defer leave();t.connection.Reset()
 }
 
-func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+func(t *Transport)begin(ctx context.Context)(context.Context,func(),error){
+	ctx,release,err:=adapter.AcquireRuntimeOperation(ctx,t.runtimeResource);if err!=nil{return nil,nil,err}
+	leave,err:=t.fence.Acquire();if err!=nil{release();return nil,nil,err}
+	return ctx,func(){leave();release()},nil
+}
+func(t *Transport)Exchange(ctx context.Context,message *mDNS.Msg)(*mDNS.Msg,error){
+	ctx,release,err:=t.begin(ctx);if err!=nil{return nil,err};defer release();return t.exchangeOwned(ctx,message)
+}
+func (t *Transport) exchangeOwned(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	var (
-		conn     *quic.Conn
+		conn     *httpclient.RuntimeQUICSession
 		err      error
 		response *mDNS.Msg
 	)
 	for range 2 {
-		conn, _, err = t.connection.Acquire(ctx, func(ctx context.Context) (*quic.Conn, error) {
-			rawConn, err := t.dialer.DialContext(ctx, N.NetworkUDP, t.serverAddr)
-			if err != nil {
-				return nil, E.Cause(err, "dial UDP connection")
-			}
-			earlyConnection, err := sQUIC.DialEarly(
-				ctx,
-				rawConn,
-				t.tlsConfig,
-				nil,
-			)
-			if err != nil {
-				rawConn.Close()
-				return nil, E.Cause(err, "establish QUIC connection")
-			}
-			// quic-go does not take ownership of the packet conn passed to
-			// DialEarly: when the connection ends it only stops reading.
-			go func() {
-				<-earlyConnection.Context().Done()
-				rawConn.Close()
-			}()
-			return earlyConnection, nil
+		conn, _, err = t.connection.Acquire(ctx, func(ctx context.Context) (*httpclient.RuntimeQUICSession, error) {
+			// ConnPool retains its creation reservation until installation or
+			// late-result close. Only this interval borrows the exact owner.
+			if t.runtimeResource!=nil{var err error;ctx,err=outbound.ContextForRuntimeOwnedSession(ctx,t.runtimeResource);if err!=nil{return nil,err}}
+			config,err:=t.tlsConfig.STDConfig();if err!=nil{return nil,err}
+			raw,err:=t.dialer.DialContext(ctx,N.NetworkUDP,t.serverAddr);if err!=nil{return nil,E.Cause(err,"dial UDP connection")}
+			return httpclient.DialRuntimeQUIC(ctx,raw,config,nil,t.recordClose)
 		})
 		if err != nil {
 			return nil, err
 		}
-		response, err = t.exchange(ctx, message, conn)
+		response, err = t.exchange(ctx, message, conn.Conn)
 		if err == nil {
 			t.connection.Release(conn, true)
 			return response, nil
@@ -140,10 +140,14 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 	return nil, err
 }
 
-func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	go func() {
-		callback(t.Exchange(ctx, message))
-	}()
+func(t *Transport)ExchangeAsync(ctx context.Context,message *mDNS.Msg,callback func(*mDNS.Msg,error)){
+	ctx,release,err:=t.begin(ctx);if err!=nil{callback(nil,err);return}
+	go func(){defer release();callback(t.exchangeOwned(ctx,message))}()
+}
+func(t *Transport)recordClose(err error){if err!=nil{t.closeAccess.Lock();t.closeErr=errors.Join(t.closeErr,err);t.closeAccess.Unlock()}}
+func(t *Transport)RuntimeCloseAndWait()error{
+	err:=t.fence.RuntimeCloseAndWait();t.closeAccess.Lock();defer t.closeAccess.Unlock()
+	if t.closeErr!=nil{return E.New("DNS QUIC cleanup incomplete: ",errors.Join(err,t.closeErr))};return err
 }
 
 func (t *Transport) exchange(ctx context.Context, message *mDNS.Msg, conn *quic.Conn) (*mDNS.Msg, error) {
@@ -152,11 +156,13 @@ func (t *Transport) exchange(ctx context.Context, message *mDNS.Msg, conn *quic.
 		return nil, E.Cause(err, "open stream")
 	}
 	defer stream.CancelRead(0)
+	watchDone:=make(chan struct{})
 	stopWatch := context.AfterFunc(ctx, func() {
+		defer close(watchDone)
 		stream.CancelRead(0)
 		_ = stream.SetWriteDeadline(time.Now())
 	})
-	defer stopWatch()
+	defer func(){if !stopWatch(){<-watchDone}}()
 	err = transport.WriteMessage(stream, 0, message)
 	if err != nil {
 		stream.Close()
@@ -200,3 +206,5 @@ func isQUICRetryError(err error) (ok bool) {
 
 	return false
 }
+
+func(t *Transport)StopRuntimeOperations(){t.stopOnce.Do(func(){go func(){_ = t.fence.Close()}()})}

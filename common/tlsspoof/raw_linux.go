@@ -5,6 +5,7 @@ import (
 	"net/netip"
 
 	"github.com/sagernet/sing/common/control"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	E "github.com/sagernet/sing/common/exceptions"
 
 	"golang.org/x/sys/unix"
@@ -82,7 +83,7 @@ func openLinuxRawSocket(dst netip.AddrPort) (int, unix.Sockaddr, error) {
 // If the TCP_REPAIR_OFF revert fails, the socket would stay in TCP_REPAIR
 // state and subsequent Write() calls would silently buffer instead of sending.
 // Surface that error so callers can abort.
-func (s *linuxSpoofer) loadSequenceNumbers(tcpConn *net.TCPConn) error {
+func (s *linuxSpoofer) loadSequenceNumbers(tcpConn outbound.RuntimeTCPControlConn) error {
 	return control.Conn(tcpConn, func(raw uintptr) (err error) {
 		fd := int(raw)
 

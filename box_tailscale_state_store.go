@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+ runtimeEndpoint "github.com/sagernet/sing-box/adapter/endpoint"
 	C "github.com/sagernet/sing-box/constant"
 )
 
@@ -18,6 +19,7 @@ func (s *Box) CaptureTailscaleStateStores() []adapter.Endpoint {
 		if s.endpoint != nil {
 			for _, endpoint := range s.endpoint.Endpoints() {
 				if endpoint.Type() == C.TypeTailscale {
+     if _,logical:=endpoint.(runtimeEndpoint.RuntimePreparedEndpoint);logical{continue}
 					s.tsStores = append(s.tsStores, endpoint)
 				}
 			}
@@ -46,7 +48,8 @@ func (s *Box) retireTailscaleStateStores() {
 	// the original daemon census incomplete rather than silently losing it.
 	if s.endpoint != nil {
 		for _, current := range s.endpoint.Endpoints() {
-			if current.Type() != C.TypeTailscale {
+			if _,logical:=current.(runtimeEndpoint.RuntimePreparedEndpoint);logical{continue}
+   if current.Type() != C.TypeTailscale {
 				continue
 			}
 			if !slices.Contains(endpoints, current) {

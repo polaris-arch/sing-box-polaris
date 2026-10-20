@@ -1,0 +1,547 @@
+--- a/hysteria/service.go
++++ b/hysteria/service.go
+@@ -114,7 +114,10 @@
+ 		return err
+ 	}
+ 	s.quicListener = listener
+-	go s.loopConnections(listener)
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopConnections(listener) }) {
++		_ = listener.Close()
++		return net.ErrClosed
++	}
+ 	return nil
+ }
+ 
+@@ -135,14 +138,18 @@
+ 			}
+ 			return
+ 		}
++		ctx, contextErr := qtls.ServerConnectionContext(s.tlsConfig, s.ctx, connection)
++		if contextErr != nil { _ = connection.CloseWithError(0, ""); continue }
+ 		session := &serverSession[U]{
+ 			Service:    s,
+-			ctx:        s.ctx,
++			ctx:        ctx,
+ 			quicConn:   connection,
+ 			connDone:   make(chan struct{}),
+ 			udpConnMap: make(map[uint32]*udpPacketConn),
+ 		}
+-		go session.handleConnection()
++		if !qtls.RunServerTask(s.tlsConfig, ctx, func(context.Context) { session.handleConnection() }) {
++			_ = connection.CloseWithError(0, "")
++		}
+ 	}
+ }
+ 
+@@ -195,7 +202,7 @@
+ 	s.authUser = user
+ 	s.quicConn.SetCongestionControl(hyCC.NewBrutalSender(min(s.sendBPS, clientHello.RecvBPS), s.quicConn.InitialPacketSize(), s.brutalDebug, s.logger))
+ 	if !s.udpDisabled {
+-		go s.loopMessages()
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopMessages() }) { s.closeWithError(net.ErrClosed); return }
+ 	}
+ 	s.loopStreams()
+ }
+@@ -206,18 +213,18 @@
+ 		if err != nil {
+ 			return
+ 		}
+-		go func() {
+-			err = s.handleStream(stream)
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(ctx context.Context) {
++			err := s.handleStream(ctx, stream)
+ 			if err != nil {
+ 				stream.CancelRead(0)
+ 				stream.Close()
+ 				s.logger.Error(E.Cause(err, "handle stream request"))
+ 			}
+-		}()
+-	}
+-}
+-
+-func (s *serverSession[U]) handleStream(stream *quic.Stream) error {
++		}) { stream.CancelRead(0); stream.CancelWrite(0); return }
++	}
++}
++
++func (s *serverSession[U]) handleStream(ctx context.Context, stream *quic.Stream) error {
+ 	request, err := ReadClientRequest(stream)
+ 	if err != nil {
+ 		return E.New("read TCP request")
+@@ -226,7 +233,7 @@
+ 	if len(destination.Fqdn) > 255 {
+ 		return E.New("fqdn too long")
+ 	}
+-	ctx := auth.ContextWithUser(s.ctx, s.authUser)
++	ctx = auth.ContextWithUser(ctx, s.authUser)
+ 	if !request.UDP {
+ 		s.handler.NewConnectionEx(ctx, &serverConn{Stream: stream}, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
+ 	} else {
+@@ -259,7 +266,9 @@
+ 			return err
+ 		}
+ 		newCtx, newConn := canceler.NewPacketConn(udpConn.ctx, udpConn, s.udpTimeout)
+-		go s.handler.NewPacketConnectionEx(newCtx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++		if !qtls.RunServerTask(s.tlsConfig, newCtx, func(ctx context.Context) {
++			s.handler.NewPacketConnectionEx(ctx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++		}) { _ = newConn.Close(); return net.ErrClosed }
+ 		holdBuffer := make([]byte, 1024)
+ 		for {
+ 			_, hErr := stream.Read(holdBuffer)
+--- a/hysteria2/service.go
++++ b/hysteria2/service.go
+@@ -178,7 +178,10 @@
+ 		return err
+ 	}
+ 	s.quicListener = listener
+-	go s.loopConnections(listener)
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopConnections(listener) }) {
++		_ = listener.Close()
++		return net.ErrClosed
++	}
+ 	return nil
+ }
+ 
+@@ -206,7 +209,10 @@
+ 		return E.Errors(err, s.realmServer.Close())
+ 	}
+ 	s.quicListener = listener
+-	go s.loopConnections(listener)
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopConnections(listener) }) {
++		_ = listener.Close()
++		return net.ErrClosed
++	}
+ 	return nil
+ }
+ 
+@@ -235,20 +241,25 @@
+ 			}
+ 			return
+ 		}
+-		go s.handleConnection(connection)
+-	}
+-}
+-
+-func (s *Service[U]) handleConnection(connection *quic.Conn) {
++		ctx, contextErr := qtls.ServerConnectionContext(s.tlsConfig, s.ctx, connection)
++		if contextErr != nil { _ = connection.CloseWithError(0, ""); continue }
++		if !qtls.RunServerTask(s.tlsConfig, ctx, func(context.Context) { s.handleConnection(ctx, connection) }) {
++			_ = connection.CloseWithError(0, "")
++		}
++	}
++}
++
++func (s *Service[U]) handleConnection(ctx context.Context, connection *quic.Conn) {
+ 	session := &serverSession[U]{
+ 		Service:    s,
+-		ctx:        s.ctx,
++		ctx:        ctx,
+ 		quicConn:   connection,
+ 		connDone:   make(chan struct{}),
+ 		udpConnMap: make(map[uint32]*udpPacketConn),
+ 	}
+ 	httpServer := http3.Server{
+ 		Handler:          session,
++		ConnContext: func(context.Context, *quic.Conn) context.Context { return ctx },
+ 		StreamDispatcher: session.dispatchStream,
+ 	}
+ 	_ = httpServer.ServeQUICConn(connection)
+@@ -312,16 +323,16 @@
+ 		})
+ 		w.WriteHeader(protocol.StatusAuthOK)
+ 		if s.ctx.Done() != nil {
+-			go func() {
++			if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) {
+ 				select {
+ 				case <-s.ctx.Done():
+ 					s.closeWithError(s.ctx.Err())
+ 				case <-s.connDone:
+ 				}
+-			}()
++			}) { s.closeWithError(net.ErrClosed); return }
+ 		}
+ 		if !s.udpDisabled {
+-			go s.loopMessages()
++			if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopMessages() }) { s.closeWithError(net.ErrClosed); return }
+ 		}
+ 	} else {
+ 		s.masqueradeHandler.ServeHTTP(w, r)
+@@ -340,18 +351,18 @@
+ 		s.logger.Error(E.Cause(err, "seek frame type"))
+ 		return true, nil
+ 	}
+-	go func() {
+-		hErr := s.handleStream(stream)
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(ctx context.Context) {
++		hErr := s.handleStream(ctx, stream)
+ 		if hErr != nil {
+ 			stream.CancelRead(0)
+ 			stream.Close()
+ 			s.logger.Error(E.Cause(hErr, "handle stream request"))
+ 		}
+-	}()
++	}) { stream.CancelRead(0); stream.CancelWrite(0) }
+ 	return true, nil
+ }
+ 
+-func (s *serverSession[U]) handleStream(stream *quic.Stream) error {
++func (s *serverSession[U]) handleStream(ctx context.Context, stream *quic.Stream) error {
+ 	destinationString, err := protocol.ReadTCPRequest(stream)
+ 	if err != nil {
+ 		return E.New("read TCP request")
+@@ -360,7 +371,7 @@
+ 	if len(destination.Fqdn) > 255 {
+ 		return E.New("fqdn too long")
+ 	}
+-	s.handler.NewConnectionEx(auth.ContextWithUser(s.ctx, s.authUser), &serverConn{Stream: stream}, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++	s.handler.NewConnectionEx(auth.ContextWithUser(ctx, s.authUser), &serverConn{Stream: stream}, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
+ 	return nil
+ }
+ 
+--- a/hysteria2/service_packet.go
++++ b/hysteria2/service_packet.go
+@@ -1,6 +1,8 @@
+ package hysteria2
+ 
+ import (
++ "context"
++ qtls "github.com/sagernet/sing-quic"
+ 	"github.com/sagernet/sing/common"
+ 	"github.com/sagernet/sing/common/auth"
+ 	"github.com/sagernet/sing/common/canceler"
+@@ -42,7 +44,7 @@
+ 	if !loaded || common.Done(udpConn.ctx) {
+ 		udpConn = newUDPPacketConn(auth.ContextWithUser(s.ctx, s.authUser), s.quicConn, func() {
+ 			s.udpAccess.Lock()
+-			delete(s.udpConnMap, sessionID)
++			if s.udpConnMap[sessionID] == udpConn { delete(s.udpConnMap, sessionID) }
+ 			s.udpAccess.Unlock()
+ 		})
+ 		udpConn.sessionID = sessionID
+@@ -50,7 +52,14 @@
+ 		s.udpConnMap[sessionID] = udpConn
+ 		s.udpAccess.Unlock()
+ 		newCtx, newConn := canceler.NewPacketConn(udpConn.ctx, udpConn, s.udpTimeout)
+-		go s.handler.NewPacketConnectionEx(newCtx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), M.ParseSocksaddr(message.destination).Unwrap(), nil)
++		destination := M.ParseSocksaddr(message.destination).Unwrap()
++		if !qtls.RunServerTask(s.tlsConfig, newCtx, func(ctx context.Context) {
++			s.handler.NewPacketConnectionEx(ctx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++		}) {
++			_ = newConn.Close()
++			message.releaseMessage()
++			return
++		}
+ 	}
+ 	udpConn.inputPacket(message)
+ }
+--- /dev/null
++++ b/hysteria2/service_runtime_test.go
+@@ -0,0 +1,22 @@
++package hysteria2
++
++import (
++ "context"
++ "testing"
++ "github.com/sagernet/quic-go"
++ "github.com/sagernet/sing/common/buf"
++ aTLS "github.com/sagernet/sing/common/tls"
++)
++type rejectedRuntimeConfig struct{aTLS.ServerConfig;calls int}
++func(c *rejectedRuntimeConfig)RuntimeServerContext(ctx context.Context,_ *quic.Conn)(context.Context,error){return ctx,nil}
++func(c *rejectedRuntimeConfig)RuntimeServerTask(context.Context,func(context.Context))bool{c.calls++;return false}
++func TestRejectedRuntimePacketSessionClosesAndRemovesExactEntry(t *testing.T){
++ config:=new(rejectedRuntimeConfig)
++ session:=&serverSession[int]{Service:&Service[int]{tlsConfig:config},ctx:context.Background(),udpConnMap:make(map[uint32]*udpPacketConn)}
++ message:=allocMessage();message.sessionID=7;message.data=buf.NewSize(1);message.data.WriteByte(1)
++ session.handleUDPMessage(message)
++ if config.calls!=1{t.Fatal("new session did not attempt prelaunch acquisition")}
++ if len(session.udpConnMap)!=0{t.Fatal("failed acquisition left private session published")}
++ // A nil physical QUIC connection is intentional: neither RemoteAddr nor the
++ // graph-facing handler may execute after denied prelaunch acquisition.
++}
+--- /dev/null
++++ b/server_runtime.go
+@@ -0,0 +1,30 @@
++package qtls
++
++import (
++ "context"
++ "github.com/sagernet/quic-go"
++ aTLS "github.com/sagernet/sing/common/tls"
++)
++
++// ServerRuntime is optional. Context comes from the accepted physical QUIC
++// connection, never a new lookup of the current routing graph. Task must reserve
++// synchronously before launching, return false without invoking task on denial,
++// and join admitted work before its owner reports cleanup complete.
++// The constructor context is valid only for the private accept-loop worker.
++type ServerRuntime interface {
++ RuntimeServerContext(context.Context, *quic.Conn) (context.Context, error)
++ RuntimeServerTask(context.Context, func(context.Context)) bool
++}
++
++func RuntimeServerSupported() bool { return true }
++
++func ServerConnectionContext(config aTLS.ServerConfig, fallback context.Context, connection *quic.Conn) (context.Context, error) {
++ if runtime, ok := config.(ServerRuntime); ok { return runtime.RuntimeServerContext(fallback, connection) }
++ return fallback, nil
++}
++
++func RunServerTask(config aTLS.ServerConfig, ctx context.Context, task func(context.Context)) bool {
++ if runtime, ok := config.(ServerRuntime); ok { return runtime.RuntimeServerTask(ctx, task) }
++ go task(ctx)
++ return true
++}
+--- /dev/null
++++ b/server_runtime_test.go
+@@ -0,0 +1,42 @@
++package qtls
++
++import (
++ "context"
++ "errors"
++ "testing"
++ "time"
++ "github.com/sagernet/quic-go"
++ aTLS "github.com/sagernet/sing/common/tls"
++)
++type runtimeConfigFixture struct {
++ aTLS.ServerConfig
++ context func(context.Context,*quic.Conn)(context.Context,error)
++ task func(context.Context,func(context.Context))bool
++}
++func(f *runtimeConfigFixture)RuntimeServerContext(ctx context.Context,c *quic.Conn)(context.Context,error){return f.context(ctx,c)}
++func(f *runtimeConfigFixture)RuntimeServerTask(ctx context.Context,task func(context.Context))bool{return f.task(ctx,task)}
++func TestServerRuntimeLegacyContextIsUnchanged(t *testing.T){
++ ctx:=context.WithValue(context.Background(),struct{}{},"legacy")
++ actual,err:=ServerConnectionContext(nil,ctx,nil)
++ if err!=nil||actual!=ctx{t.Fatal("legacy context changed")}
++ done:=make(chan context.Context,1)
++ if !RunServerTask(nil,ctx,func(c context.Context){done<-c}){t.Fatal("legacy launch rejected")}
++ select{case got:=<-done:if got!=ctx{t.Fatal("legacy context changed")};case <-time.After(5*time.Second):t.Fatal("legacy launch watchdog")}
++}
++func TestServerRuntimeRejectsBeforeTaskLaunch(t *testing.T){
++ fixture:=&runtimeConfigFixture{task:func(context.Context,func(context.Context))bool{return false}}
++ if RunServerTask(fixture,context.Background(),func(context.Context){t.Fatal("rejected task invoked")}){t.Fatal("rejected task accepted")}
++}
++func TestServerRuntimeSuppliesOwnedTaskContext(t *testing.T){
++ borrowed:=context.Background();owned:=context.WithValue(borrowed,struct{}{},"owned")
++ fixture:=&runtimeConfigFixture{task:func(ctx context.Context,task func(context.Context))bool{
++  if ctx!=borrowed{t.Fatal("input context replaced before admission")};task(owned);return true
++ }}
++ called:=false
++ if !RunServerTask(fixture,borrowed,func(ctx context.Context){called=true;if ctx!=owned{t.Fatal("task lost acquired context")}})||!called{t.Fatal("task was not invoked")}
++}
++func TestServerRuntimeContextFailureIsPropagated(t *testing.T){
++ sentinel:=errors.New("connection context unavailable")
++ fixture:=&runtimeConfigFixture{context:func(context.Context,*quic.Conn)(context.Context,error){return nil,sentinel}}
++ if ctx,err:=ServerConnectionContext(fixture,context.Background(),nil);ctx!=nil||!errors.Is(err,sentinel){t.Fatal(ctx,err)}
++}
+--- a/tuic/service.go
++++ b/tuic/service.go
+@@ -115,7 +115,7 @@
+ 			return err
+ 		}
+ 		s.quicListener = listener
+-		go func() {
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) {
+ 			for {
+ 				connection, hErr := listener.Accept(s.ctx)
+ 				if hErr != nil {
+@@ -126,16 +126,20 @@
+ 					}
+ 					return
+ 				}
+-				go s.handleConnection(connection)
+-			}
+-		}()
++				ctx, contextErr := qtls.ServerConnectionContext(s.tlsConfig, s.ctx, connection)
++				if contextErr != nil { _ = connection.CloseWithError(0, ""); continue }
++				if !qtls.RunServerTask(s.tlsConfig, ctx, func(context.Context) { s.handleConnection(ctx, connection) }) {
++					_ = connection.CloseWithError(0, "")
++				}
++			}
++		}) { _ = listener.Close(); return net.ErrClosed }
+ 	} else {
+ 		listener, err := qtls.ListenEarly(conn, s.tlsConfig, s.quicConfig)
+ 		if err != nil {
+ 			return err
+ 		}
+ 		s.quicListener = listener
+-		go func() {
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) {
+ 			for {
+ 				connection, hErr := listener.Accept(s.ctx)
+ 				if hErr != nil {
+@@ -146,9 +150,13 @@
+ 					}
+ 					return
+ 				}
+-				go s.handleConnection(connection)
+-			}
+-		}()
++				ctx, contextErr := qtls.ServerConnectionContext(s.tlsConfig, s.ctx, connection)
++				if contextErr != nil { _ = connection.CloseWithError(0, ""); continue }
++				if !qtls.RunServerTask(s.tlsConfig, ctx, func(context.Context) { s.handleConnection(ctx, connection) }) {
++					_ = connection.CloseWithError(0, "")
++				}
++			}
++		}) { _ = listener.Close(); return net.ErrClosed }
+ 	}
+ 	return nil
+ }
+@@ -159,11 +167,11 @@
+ 	)
+ }
+ 
+-func (s *Service[U]) handleConnection(connection *quic.Conn) {
+-	setCongestion(s.ctx, connection, s.congestionControl)
++func (s *Service[U]) handleConnection(ctx context.Context, connection *quic.Conn) {
++	setCongestion(ctx, connection, s.congestionControl)
+ 	session := &serverSession[U]{
+ 		Service:    s,
+-		ctx:        s.ctx,
++		ctx:        ctx,
+ 		quicConn:   connection,
+ 		connDone:   make(chan struct{}),
+ 		authDone:   make(chan struct{}),
+@@ -188,19 +196,19 @@
+ 
+ func (s *serverSession[U]) handle() {
+ 	if s.ctx.Done() != nil {
+-		go func() {
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) {
+ 			select {
+ 			case <-s.ctx.Done():
+ 				s.closeWithError(s.ctx.Err())
+ 			case <-s.connDone:
+ 			}
+-		}()
+-	}
+-	go s.loopUniStreams()
+-	go s.loopStreams()
+-	go s.loopMessages()
+-	go s.handleAuthTimeout()
+-	go s.loopHeartbeats()
++		}) { s.closeWithError(net.ErrClosed); return }
++	}
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopUniStreams() }) { s.closeWithError(net.ErrClosed); return }
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopStreams() }) { s.closeWithError(net.ErrClosed); return }
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopMessages() }) { s.closeWithError(net.ErrClosed); return }
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.handleAuthTimeout() }) { s.closeWithError(net.ErrClosed); return }
++	if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) { s.loopHeartbeats() }) { s.closeWithError(net.ErrClosed); return }
+ }
+ 
+ func (s *serverSession[U]) loopUniStreams() {
+@@ -209,12 +217,12 @@
+ 		if err != nil {
+ 			return
+ 		}
+-		go func() {
+-			err = s.handleUniStream(uniStream)
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(context.Context) {
++			err := s.handleUniStream(uniStream)
+ 			if err != nil {
+ 				s.closeWithError(E.Cause(err, "handle uni stream"))
+ 			}
+-		}()
++		}) { uniStream.CancelRead(0); return }
+ 	}
+ }
+ 
+@@ -321,18 +329,18 @@
+ 		if err != nil {
+ 			return
+ 		}
+-		go func() {
+-			err = s.handleStream(stream)
++		if !qtls.RunServerTask(s.tlsConfig, s.ctx, func(ctx context.Context) {
++			err := s.handleStream(ctx, stream)
+ 			if err != nil {
+ 				stream.CancelRead(0)
+ 				stream.Close()
+ 				s.logger.Error(E.Cause(err, "handle stream request"))
+ 			}
+-		}()
+-	}
+-}
+-
+-func (s *serverSession[U]) handleStream(stream *quic.Stream) error {
++		}) { stream.CancelRead(0); stream.CancelWrite(0); return }
++	}
++}
++
++func (s *serverSession[U]) handleStream(ctx context.Context, stream *quic.Stream) error {
+ 	buffer := buf.NewSize(2 + M.MaxSocksaddrLength)
+ 	defer buffer.Release()
+ 	_, err := buffer.ReadAtLeastFrom(stream, 2)
+@@ -363,7 +371,7 @@
+ 	if !buffer.IsEmpty() {
+ 		conn = bufio.NewCachedConn(conn, buffer.ToOwned())
+ 	}
+-	s.handler.NewConnectionEx(auth.ContextWithUser(s.ctx, s.authUser), conn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++	s.handler.NewConnectionEx(auth.ContextWithUser(ctx, s.authUser), conn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
+ 	return nil
+ }
+ 
+--- a/tuic/service_packet.go
++++ b/tuic/service_packet.go
+@@ -1,6 +1,8 @@
+ package tuic
+ 
+ import (
++ "context"
++ qtls "github.com/sagernet/sing-quic"
+ 	"github.com/sagernet/sing/common"
+ 	"github.com/sagernet/sing/common/auth"
+ 	"github.com/sagernet/sing/common/canceler"
+@@ -60,7 +62,7 @@
+ 	if !loaded || common.Done(udpConn.ctx) {
+ 		udpConn = newUDPPacketConn(auth.ContextWithUser(s.ctx, s.authUser), s.quicConn, udpStream, true, func() {
+ 			s.udpAccess.Lock()
+-			delete(s.udpConnMap, sessionID)
++			if s.udpConnMap[sessionID] == udpConn { delete(s.udpConnMap, sessionID) }
+ 			s.udpAccess.Unlock()
+ 		})
+ 		udpConn.sessionID = sessionID
+@@ -68,7 +70,14 @@
+ 		s.udpConnMap[sessionID] = udpConn
+ 		s.udpAccess.Unlock()
+ 		newCtx, newConn := canceler.NewPacketConn(udpConn.ctx, udpConn, s.udpTimeout)
+-		go s.handler.NewPacketConnectionEx(newCtx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), message.destination, nil)
++		destination := message.destination
++		if !qtls.RunServerTask(s.tlsConfig, newCtx, func(ctx context.Context) {
++			s.handler.NewPacketConnectionEx(ctx, newConn, M.SocksaddrFromNet(s.quicConn.RemoteAddr()).Unwrap(), destination, nil)
++		}) {
++			_ = newConn.Close()
++			message.releaseMessage()
++			return
++		}
+ 	}
+ 	udpConn.inputPacket(message)
+ }
+--- /dev/null
++++ b/tuic/service_runtime_test.go
+@@ -0,0 +1,22 @@
++package tuic
++
++import (
++ "context"
++ "testing"
++ "github.com/sagernet/quic-go"
++ "github.com/sagernet/sing/common/buf"
++ aTLS "github.com/sagernet/sing/common/tls"
++)
++type rejectedRuntimeConfig struct{aTLS.ServerConfig;calls int}
++func(c *rejectedRuntimeConfig)RuntimeServerContext(ctx context.Context,_ *quic.Conn)(context.Context,error){return ctx,nil}
++func(c *rejectedRuntimeConfig)RuntimeServerTask(context.Context,func(context.Context))bool{c.calls++;return false}
++func TestRejectedRuntimePacketSessionClosesAndRemovesExactEntry(t *testing.T){
++ config:=new(rejectedRuntimeConfig)
++ session:=&serverSession[int]{Service:&Service[int]{tlsConfig:config},ctx:context.Background(),udpConnMap:make(map[uint16]*udpPacketConn)}
++ message:=allocMessage();message.sessionID=7;message.data=buf.NewSize(1);message.data.WriteByte(1)
++ session.handleUDPMessage(message,false)
++ if config.calls!=1{t.Fatal("new session did not attempt prelaunch acquisition")}
++ if len(session.udpConnMap)!=0{t.Fatal("failed acquisition left private session published")}
++ // A nil physical QUIC connection is intentional: neither RemoteAddr nor the
++ // graph-facing handler may execute after denied prelaunch acquisition.
++}

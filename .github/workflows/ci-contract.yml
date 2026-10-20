@@ -14,9 +14,11 @@ jobs:
         python-version: '3.12'
     - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
     - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_container_source_identity.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_owned_publication_gate.py'
     - run: python -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py'
     - run: python -B -m unittest discover -s scripts -p 'test_polaris_runner_resources.py'
     - run: PYTHONPATH=scripts python -B -m unittest test_polaris_production_release.ProductionTests.test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes

@@ -7,11 +7,16 @@ import (
 	"errors"
 	"io"
 	"net/http"
+ "net"
+ "fmt"
 	"time"
 
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/common/httpclient"
+ "github.com/sagernet/sing-box/adapter"
+ "github.com/sagernet/sing-box/adapter/outbound"
+ "github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/common/listener"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/log"
@@ -28,10 +33,9 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		udpConn, err := listener.ListenUDP()
-		if err != nil {
-			return nil, err
-		}
+  staged:=listener.RuntimeEnabled()
+  var udpConn net.PacketConn
+  if !staged{udpConn,err=listener.ListenUDP();if err!=nil{return nil,err}}
 		quicConfig := httpclient.NewQUICConfig(options)
 		if quicConfig.MaxIncomingStreams == 0 {
 			quicConfig.MaxIncomingStreams = 1 << 60
@@ -39,11 +43,9 @@ func init() {
 		quicConfig.Allow0RTT = true
 		quicConfig.DisablePathManager = true
 		quicConfig.EnableDatagrams = true
-		quicListener, err := qtls.ListenEarly(udpConn, tlsConfig, quicConfig)
-		if err != nil {
-			udpConn.Close()
-			return nil, err
-		}
+  var quicListener qtls.EarlyListener
+  if staged{quicListener,err=runtimeingress.ListenQUIC(ctx,listener,tlsConfig,quicConfig,true)}else{quicListener,err=qtls.ListenEarly(udpConn,tlsConfig,quicConfig)}
+  if err!=nil{if udpConn!=nil{_=udpConn.Close()};return nil,err}
 		http3Server := &http3.Server{
 			Handler:         handler,
 			EnableDatagrams: true,
@@ -52,6 +54,23 @@ func init() {
 				return log.ContextWithNewID(ctx)
 			},
 		}
+  if staged{
+   done:=make(chan struct{})
+   var serveErr error
+   closeFence:=outbound.NewRuntimeIOFence(func()error{
+    err:=quicListener.Close()
+    err=errors.Join(err,http3Server.Close())
+    <-done
+    if serveErr!=nil&&!E.IsClosedOrCanceled(serveErr){err=errors.Join(err,serveErr)}
+    if err!=nil{return fmt.Errorf("HTTP3 server cleanup incomplete: %v",err)}
+    return nil
+   })
+   go func(){defer close(done);defer func(){if failure:=recover();failure!=nil{serveErr=fmt.Errorf("HTTP3 Serve panic; cleanup unknown: %v",failure)}}();serveErr=http3Server.ServeListener(quicListener)}()
+   context.AfterFunc(ctx,func(){_=closeFence.RuntimeCloseAndWait()})
+   if err:=adapter.DeferConstructionCleanup(ctx,closeFence.RuntimeCloseAndWait);err!=nil{return nil,err}
+   if err:=adapter.ConstructionScopeErr(ctx);err!=nil{return nil,err}
+   return &runtimeHTTP3Closer{fence:closeFence},nil
+  }
 		go func() {
 			serveErr := http3Server.ServeListener(quicListener)
 			udpConn.Close()
@@ -106,3 +125,7 @@ func (s *datagramStream) Close() error {
 	s.Stream.CancelRead(0)
 	return s.Stream.Close()
 }
+
+type runtimeHTTP3Closer struct{fence *outbound.RuntimeIOFence}
+func(c *runtimeHTTP3Closer)Close()error{return c.fence.RuntimeCloseAndWait()}
+func(c *runtimeHTTP3Closer)RuntimeCloseAndWait()error{return c.Close()}

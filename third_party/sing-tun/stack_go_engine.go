@@ -58,6 +58,7 @@ const (
 const goInjectQueueLimit = 512
 
 type goInjectedFrame struct {
+	verdict FlowVerdict
 	next   *goInjectedFrame
 	buffer *buf.Buffer
 	meta   ForwardFrameMeta
@@ -517,13 +518,18 @@ func (e *goEngine) handleMessage(message *goMessage) {
 }
 
 func (e *goEngine) inject(packet []byte, meta ForwardFrameMeta) {
+	verdict := FlowVerdict{}
+	e.injectOwned(packet, meta, &verdict)
+}
+
+func (e *goEngine) injectOwned(packet []byte, meta ForwardFrameMeta, verdict *FlowVerdict) {
 	if e.injectCount.Add(1) > goInjectQueueLimit {
 		e.injectCount.Add(-1)
 		e.droppedInjectFrames.record(e.stack.logger, "frames handed over between queues")
 		return
 	}
 	options := e.packetReadOptions.Load()
-	frame := &goInjectedFrame{buffer: options.NewBufferSize(len(packet)), meta: meta}
+	frame := &goInjectedFrame{buffer: options.NewBufferSize(len(packet)), meta: meta, verdict: verdict.Take()}
 	common.Must1(frame.buffer.Write(packet))
 	options.PostReturn(frame.buffer)
 	e.injectStack.push(frame)
@@ -535,9 +541,10 @@ func (e *goEngine) processInjected() {
 		next := frame.next
 		e.injectCount.Add(-1)
 		frame.buffer = e.packetReadOptions.Load().Copy(frame.buffer)
-		e.processFrame(&goFrame{buffer: frame.buffer, meta: frame.meta})
+		e.processFrame(&goFrame{buffer: frame.buffer, meta: frame.meta, verdict: frame.verdict.Take()})
 		e.flushPacketUploads()
 		e.platformIO.flush()
+		frame.verdict.Release()
 		frame.buffer.Release()
 		frame = next
 	}
@@ -547,6 +554,7 @@ func (e *goEngine) releaseInjected() {
 	for frame := e.injectStack.popAll(); frame != nil; {
 		next := frame.next
 		e.injectCount.Add(-1)
+		frame.verdict.Release()
 		frame.buffer.Release()
 		frame = next
 	}
@@ -645,6 +653,7 @@ func (e *goEngine) processBurst() error {
 }
 
 func (e *goEngine) processFrame(frame *goFrame) {
+	defer frame.verdict.Release()
 	if frame.meta.gsoType == goUDPGSOType {
 		e.processUDPSegments(frame)
 		return
@@ -667,10 +676,12 @@ func (e *goEngine) processFrame(frame *goFrame) {
 		}
 		return
 	}
+	parsed.verdict = frame.verdict.Take()
 	e.processParsed(frame.buffer, frame.meta, &parsed)
 }
 
 func (e *goEngine) processParsed(buffer *buf.Buffer, meta ForwardFrameMeta, parsed *forwardPacket) {
+	defer parsed.verdict.Release()
 	if parsed.protocol == uint8(header.UDPProtocolNumber) {
 		if len(parsed.transport) < header.UDPMinimumSize {
 			return
@@ -695,7 +706,7 @@ func (e *goEngine) processParsed(buffer *buf.Buffer, meta ForwardFrameMeta, pars
 		}
 		if len(e.stack.engines) > 1 {
 			if owner := e.stack.directory.lookupUDPSocket(parsed.destination); owner != nil && owner.engine != e {
-				owner.engine.inject(packet, meta)
+				owner.engine.injectOwned(packet, meta, &parsed.verdict)
 				return
 			}
 		}
@@ -719,13 +730,13 @@ func (e *goEngine) processParsed(buffer *buf.Buffer, meta ForwardFrameMeta, pars
 		e.demuxL4(buffer, meta, parsed)
 		return
 	}
-	if e.dispatchStage != nil && e.dispatchStage.DispatchParsed(packet, meta, parsed) {
+	if parsed.verdict.Ownership == nil && e.dispatchStage != nil && e.dispatchStage.DispatchParsed(packet, meta, parsed) {
 		return
 	}
 	if establishedTCP && len(e.stack.engines) > 1 {
 		owner := e.stack.directory.lookup(parsed.flowKey())
 		if owner != nil && owner.engine != e {
-			owner.engine.inject(packet, meta)
+			owner.engine.injectOwned(packet, meta, &parsed.verdict)
 			return
 		}
 	}

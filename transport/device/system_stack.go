@@ -1,7 +1,9 @@
 package device
 
 import (
+	"context"
 	"net/netip"
+	"sync"
 
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/gtcpip/header"
@@ -14,6 +16,9 @@ var _ Device = (*systemStackDevice)(nil)
 type systemStackDevice struct {
 	*systemDevice
 	stackDevice *stackDevice
+	closeOnce sync.Once
+	closeDone chan struct{}
+	closeErr error
 }
 
 func newSystemStackDevice(options Options) (*systemStackDevice, error) {
@@ -29,6 +34,7 @@ func newSystemStackDevice(options Options) (*systemStackDevice, error) {
 	return &systemStackDevice{
 		systemDevice: system,
 		stackDevice:  stackDevice,
+		closeDone: make(chan struct{}),
 	}, nil
 }
 
@@ -117,5 +123,15 @@ func (d *systemStackDevice) NewOutboundQueue(handler func(packetBuffers []*buf.B
 }
 
 func (d *systemStackDevice) Close() error {
-	return E.Errors(d.stackDevice.Close(), d.systemDevice.Close())
+	d.closeOnce.Do(func() {
+		d.closeErr = E.New("device shutdown did not complete")
+		defer close(d.closeDone)
+		d.closeErr = E.Errors(d.stackDevice.Close(), d.systemDevice.Close())
+	})
+	return d.closeErr
+}
+
+// The actual stack is a named child. UpstreamPort exposes system port capabilities.
+func (d *systemStackDevice) WaitDetached(ctx context.Context) error {
+	return waitStackDetached(ctx, d.closeDone, &d.closeErr, d.stackDevice)
 }

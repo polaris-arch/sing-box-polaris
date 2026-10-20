@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/badhttp"
 	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/tls"
@@ -37,6 +38,9 @@ type tlsDialer interface {
 }
 
 type ClientOptions struct {
+	// RuntimeSource binds the actual receiving allocation, never a tag lookup.
+	RuntimeSource adapter.RuntimeResourceSource
+	runtimeTLS bool
 	Dialer                 N.Dialer
 	HTTP1Dialer            N.Dialer
 	RawDialer              N.Dialer
@@ -63,6 +67,7 @@ type http3Client interface {
 var NewHTTP3Client func(options ClientOptions, authorization string) (http3Client, error)
 
 type Client struct {
+	clientLifecycle
 	dialer                          N.Dialer
 	http1Dialer                     N.Dialer
 	tlsDialer                       tlsDialer
@@ -77,6 +82,7 @@ type Client struct {
 	http2Transport                  *http2.Transport
 	http2Access                     sync.Mutex
 	http2Conns                      []*http2ClientConn
+	http2Epoch                      uint64
 	http2Unsupported                atomic.Bool
 	http2ExtendedConnectUnsupported atomic.Bool
 	http3                           http3Client
@@ -85,6 +91,8 @@ type Client struct {
 }
 
 func NewClientWithTLS(ctx context.Context, logger logger.ContextLogger, outboundDialer N.Dialer, serverOptions option.ServerOptions, tlsOptions option.OutboundTLSOptions, options ClientOptions) (*Client, error) {
+	options.RuntimeSource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	options.runtimeTLS = tlsOptions.Enabled
 	if options.Version == 3 && !tlsOptions.Enabled {
 		return nil, C.ErrTLSRequired
 	}
@@ -120,11 +128,28 @@ func NewClientWithTLS(ctx context.Context, logger logger.ContextLogger, outbound
 	}
 	options.RawDialer = outboundDialer
 	options.Server = serverOptions.Build()
-	return NewClient(options)
+	client, err := NewClient(options)
+	if err != nil { return nil, err }
+	if adapter.HasConstructionScope(ctx) {
+		if err := adapter.DeferConstructionCleanup(ctx, client.Close); err != nil { return nil, err }
+		// A canceled bound scope runs the registration immediately, even when
+		// the passed context is not that scope's context.
+		if client.isClosed() { return nil, context.Canceled }
+		if err := adapter.ConstructionScopeErr(ctx); err != nil {
+			return nil, errors.Join(err, client.Close())
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(err, client.Close())
+	}
+	return client, nil
 }
 
 func NewClient(options ClientOptions) (*Client, error) {
+	if _, isTLS := options.Dialer.(tlsDialer); isTLS { options.runtimeTLS = true }
+	if _, isTLS := options.HTTP1Dialer.(tlsDialer); isTLS { options.runtimeTLS = true }
 	client := &Client{
+		clientLifecycle: newClientLifecycle(options.RuntimeSource, options.runtimeTLS),
 		dialer:                 options.Dialer,
 		http1Dialer:            options.HTTP1Dialer,
 		server:                 options.Server,
@@ -213,6 +238,9 @@ func (c *Client) clearHTTP3Broken() {
 }
 
 func (c *Client) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	ctx, finish, err := c.beginOperation(ctx)
+	if err != nil { return nil, err }
+	defer finish()
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 	case N.NetworkUDP:
@@ -221,10 +249,12 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 		return nil, E.Extend(N.ErrUnknownNetwork, network)
 	}
 	if c.http3Available() {
-		conn, err := c.http3.DialContext(ctx, destination)
+		dialCtx,err:=c.ownedDialContext(ctx)
+		if err!=nil{return nil,err}
+		conn, err := c.http3.DialContext(dialCtx, destination)
 		if err == nil {
 			c.clearHTTP3Broken()
-			return conn, nil
+			return c.ownConnection(ctx, conn)
 		}
 		if c.disableVersionFallback || !errors.Is(err, ErrHTTP3Unavailable) {
 			return nil, err
@@ -240,7 +270,7 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 			return c.connectHTTP2(ctx, clientConn, destination)
 		}
 		if c.disableVersionFallback {
-			conn.Close()
+			c.recordCloseError(closeHTTPResource(conn.Close))
 			return nil, ErrHTTP2Unsupported
 		}
 		return c.connectAndClose(ctx, conn, destination)
@@ -252,29 +282,37 @@ func (c *Client) DialContext(ctx context.Context, network string, destination M.
 	return c.connectAndClose(ctx, conn, destination)
 }
 
-func (c *Client) closeHTTP2Locked() {
-	for _, clientConn := range c.http2Conns {
-		clientConn.Close()
-	}
+func (c *Client) closeHTTP2() error {
+	c.http2Access.Lock()
+	connections := c.http2Conns
 	c.http2Conns = nil
+	c.http2Epoch++
+	c.http2Access.Unlock()
+	cleanups:=make([]func()error,0,len(connections))
+	for _,connection:=range connections{cleanups=append(cleanups,connection.Close)}
+	return closeHTTPResources(cleanups...)
 }
 
 func (c *Client) ResetConnections() {
-	c.http2Access.Lock()
-	c.closeHTTP2Locked()
-	c.http2Access.Unlock()
+	_ = c.ResetConnectionsContext(context.Background())
+}
+
+func (c *Client) ResetConnectionsContext(ctx context.Context) error {
+	_, finish, err := c.beginOperation(ctx)
+	if err != nil { return err }
+	defer finish()
+	c.recordCloseError(c.closeHTTP2())
 	c.http2Unsupported.Store(false)
 	c.http2ExtendedConnectUnsupported.Store(false)
 	if c.http3 != nil {
 		c.http3.ResetConnection()
 		c.clearHTTP3Broken()
 	}
+	return nil
 }
 
 func (c *Client) connect(ctx context.Context, conn net.Conn, destination M.Socksaddr) (net.Conn, error) {
-	stop := context.AfterFunc(ctx, func() {
-		conn.Close()
-	})
+	stop := c.closeOnCancel(ctx, conn)
 	defer stop()
 	request := &http.Request{
 		Method: http.MethodConnect,
@@ -311,13 +349,7 @@ func (c *Client) connect(ctx context.Context, conn net.Conn, destination M.Socks
 		return nil, ctx.Err()
 	}
 	if reader.Buffered() > 0 {
-		buffer := buf.NewSize(reader.Buffered())
-		_, err = buffer.ReadFullFrom(reader, buffer.FreeLen())
-		if err != nil {
-			buffer.Release()
-			return nil, err
-		}
-		return bufio.NewCachedConn(conn, buffer), nil
+		return &clientBufferedConn{Conn: conn, reader: reader}, nil
 	}
 	return conn, nil
 }
@@ -340,15 +372,6 @@ func buildRequestHeader(headers http.Header, authorization string, originAuthori
 	return header
 }
 
-func (c *Client) Close() error {
-	c.http2Access.Lock()
-	defer c.http2Access.Unlock()
-	c.closeHTTP2Locked()
-	if c.http3 != nil {
-		c.http3.Close()
-	}
-	return nil
-}
 
 const (
 	http3BrokenBackoffInitial = 5 * time.Second
@@ -374,11 +397,16 @@ func statusError(response *http.Response) error {
 }
 
 func (c *Client) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	ctx, finish, err := c.beginOperation(ctx)
+	if err != nil { return nil, err }
+	defer finish()
 	packetConn, err := c.listenPacket(ctx, destination)
 	if err != nil {
 		return nil, err
 	}
-	return deadline.NewPacketConn(bufio.NewNetPacketConn(&boundPacketConn{PacketConn: packetConn, destination: destination.Unwrap()})), nil
+	bound := bufio.NewNetPacketConn(&boundPacketConn{PacketConn: packetConn, destination: destination.Unwrap()})
+	if c.source != nil { return c.newRuntimePacketConn(ctx, bound) }
+	return deadline.NewPacketConn(bound), nil
 }
 
 func (c *Client) listenPacket(ctx context.Context, destination M.Socksaddr) (N.PacketConn, error) {

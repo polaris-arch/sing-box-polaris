@@ -20,16 +20,19 @@ type stackDevice struct {
 	baseDevice
 	stateAccess  sync.RWMutex
 	options      Options
-	stack        *tun.Go
+	stack        deviceIPStack
 	memoryTun    *tun.MemoryTun
 	inet4Address netip.Addr
 	inet6Address netip.Addr
 	closeOnce    sync.Once
+	closeDone    chan struct{}
+	closeErr     error
 }
 
 func newStackDevice(options Options) (*stackDevice, error) {
 	device := &stackDevice{
 		options: options,
+		closeDone: make(chan struct{}),
 	}
 	device.inet4Address, device.inet6Address = firstAddresses(options.Configuration.Address)
 	device.memoryTun = tun.NewMemoryTun(tun.MemoryTunOptions{
@@ -154,9 +157,14 @@ func (d *stackDevice) NewOutboundQueue(handler func(packetBuffers []*buf.Buffer)
 }
 
 func (d *stackDevice) Close() error {
-	var err error
 	d.closeOnce.Do(func() {
-		err = E.Errors(d.stack.Close(), d.memoryTun.Close())
+		d.closeErr = E.New("device shutdown did not complete")
+		defer close(d.closeDone)
+		d.closeErr = E.Errors(d.stack.Close(), d.memoryTun.Close())
 	})
-	return err
+	return d.closeErr
+}
+
+func (d *stackDevice) WaitDetached(ctx context.Context) error {
+	return waitStackDetached(ctx, d.closeDone, &d.closeErr, d.stack)
 }

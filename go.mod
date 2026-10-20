@@ -106,7 +106,7 @@ require (
 	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/florianl/go-nfqueue/v2 v2.1.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gaissmai/bart v0.26.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
@@ -205,7 +205,25 @@ require (
 
 replace github.com/sagernet/sing-tun => ./third_party/sing-tun
 
-replace github.com/sagernet/tailscale => github.com/polaris-arch/tailscale v1.102.1-sing-box-1.14-mod.5.0.20261016043520-2f8810107046
+replace github.com/sagernet/tailscale => ./third_party/tailscale
 
 // Source-owned Meta v1.8.8 ALPN compatibility; baseline and exact delta in release/dependency-sources.
 replace github.com/metacubex/utls => ./third_party/metacubex-utls
+
+// Source-owned Cronet client admission repair; native module versions are unchanged.
+replace github.com/sagernet/cronet-go => ./third_party/cronet-go
+
+// Pinned fswatch v0.1.2 failed-Add unwind; exact upstream and delta retained in release/dependency-sources.
+replace github.com/sagernet/fswatch => ./third_party/fswatch
+
+// Pinned sing UDP session ownership hook; unchanged carrier manifest retained.
+replace github.com/sagernet/sing => ./third_party/sing
+
+// Pinned server-only runtime ownership hook; version and client implementation unchanged.
+replace github.com/sagernet/sing-quic => ./third_party/sing-quic
+
+// Pinned WireGuard graph-facing completion; exact baseline and reviewed delta retained.
+replace github.com/sagernet/wireguard-go => ./third_party/wireguard-go
+
+// Pinned TFO callback/racer completion; original module and bounded review retained.
+replace github.com/database64128/tfo-go/v2 => ./third_party/tfo-go
