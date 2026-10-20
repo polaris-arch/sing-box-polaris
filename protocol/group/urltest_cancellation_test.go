@@ -213,9 +213,9 @@ func TestManualCancellationDuringSelectionSnapshotRejectsPublication(t *testing.
 	var once sync.Once
 	t.Cleanup(func() { once.Do(func() { close(release) }) })
 	g.outbounds = []adapter.Outbound{&blockingNetworkOutbound{
-		epochTestOutbound: epochTestOutbound{tag: "node"},
-		entered:          entered,
-		release:          release,
+		tag:     "node",
+		entered: entered,
+		release: release,
 	}}
 	epoch := history.Epoch()
 	if !history.StoreIfCurrent(epoch, "node", &adapter.URLTestHistory{Delay: 5}) {

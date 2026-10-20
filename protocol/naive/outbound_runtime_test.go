@@ -65,6 +65,7 @@ func (*naiveOutboundTestConn) SetReadDeadline(time.Time) error  { return nil }
 func (*naiveOutboundTestConn) SetWriteDeadline(time.Time) error { return nil }
 func (*naiveOutboundTestConn) Upstream() any                    { return &net.TCPConn{} }
 func (c *naiveOutboundTestConn) CloseWrite() error              { c.halfClosed.Store(true); return nil }
+
 func naiveOutboundWait(t *testing.T, ch <-chan struct{}) {
 	t.Helper()
 	select {

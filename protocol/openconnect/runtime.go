@@ -142,9 +142,11 @@ func (e *Endpoint) RuntimeResourceID() adapter.RuntimeResourceID {
 	}
 	return e.runtime.source.ID()
 }
+
 func (e *Endpoint) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
 	return e.RuntimeValidate()
 }
+
 func (e *Endpoint) RuntimeReservePhysical(context.Context) error {
 	if err := e.RuntimeValidate(); err != nil {
 		return err
@@ -156,9 +158,11 @@ func (e *Endpoint) RuntimeReservePhysical(context.Context) error {
 	}
 	return nil
 }
+
 func (e *Endpoint) RuntimeReleasePhysicalReservation(context.Context) error {
 	return e.RuntimeValidate()
 }
+
 func (e *Endpoint) RuntimeStagePhysical(ctx context.Context) error {
 	if err := e.RuntimeValidate(); err != nil {
 		return err
@@ -221,11 +225,13 @@ func (e *Endpoint) RuntimePreparePublication() (func(), error) {
 	}
 	return func() { r.gate.Store(true); r.ingress.Store(true) }, nil
 }
+
 func (e *Endpoint) RuntimeStop() {
 	if e.runtime != nil {
 		e.runtime.ingress.Store(false)
 	}
 }
+
 func (e *Endpoint) RuntimeCloseAndWait() error {
 	if e.runtime == nil {
 		return errors.New("endpoint runtime owner missing")

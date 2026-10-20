@@ -20,7 +20,7 @@ func fixtureRuntimeClient() *runtimeClientState {
 func TestRuntimeClientPublicationRequiresCompletedStage(t *testing.T) {
 	r := fixtureRuntimeClient()
 	defer r.close()
-	e := &Endpoint{endpointBase: endpointBase{runtime: r}}
+	e := &Endpoint{runtime: r}
 	if _, err := e.RuntimePreparePublication(); err == nil {
 		t.Fatal("unprepared client admitted")
 	}

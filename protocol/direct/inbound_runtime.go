@@ -156,33 +156,33 @@ func (r *inboundRuntime) prepare(start func() error) error {
 
 var _ inbound.RuntimePreparedInbound = (*Inbound)(nil)
 
-func (h *Inbound) RuntimeValidate() error {
-	if h.runtime == nil {
+func (i *Inbound) RuntimeValidate() error {
+	if i.runtime == nil {
 		return errors.New("inbound has no staged runtime binding")
 	}
-	if err := h.listener.ValidateRuntime(); err != nil {
+	if err := i.listener.ValidateRuntime(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (h *Inbound) RuntimeListeners() []*listener.Listener { return []*listener.Listener{h.listener} }
+func (i *Inbound) RuntimeListeners() []*listener.Listener { return []*listener.Listener{i.listener} }
 
-func (h *Inbound) PrepareRuntime(stage adapter.StartStage, _ *adapter.Scope) error {
-	if err := h.RuntimeValidate(); err != nil {
+func (i *Inbound) PrepareRuntime(stage adapter.StartStage, _ *adapter.Scope) error {
+	if err := i.RuntimeValidate(); err != nil {
 		return err
 	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	return h.runtime.prepare(func() error {
+	return i.runtime.prepare(func() error {
 		return nil
 	})
 }
 
-func (h *Inbound) closeRuntimeProtocol() error {
-	if h.udpNat != nil {
-		h.udpNat.Purge()
+func (i *Inbound) closeRuntimeProtocol() error {
+	if i.udpNat != nil {
+		i.udpNat.Purge()
 	}
 	return nil
 }

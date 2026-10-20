@@ -5,7 +5,6 @@ package tailscale
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -179,7 +178,7 @@ func TestWindowsCheckpointRenameLayout(t *testing.T) {
 	}
 	for _, bad := range []string{"", "../" + name, "SHA256-" + name[7:], name + "x", ".checkpoint-" + name} {
 		if _, err := windowsCheckpointRenameBuffer(root, bad); err == nil {
-			t.Fatal(fmt.Sprintf("accepted %q", bad))
+			t.Fatalf("accepted %q", bad)
 		}
 	}
 }

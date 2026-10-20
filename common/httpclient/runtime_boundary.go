@@ -13,8 +13,6 @@ import (
 
 	"github.com/sagernet/sing-box/adapter/outbound"
 	boxTLS "github.com/sagernet/sing-box/common/tls"
-
-	"golang.org/x/net/http2"
 )
 
 // RuntimeTransportBoundary owns the edges from a transport's private workers
@@ -68,9 +66,7 @@ func (b *RuntimeTransportBoundary) closeDependencies() error {
 	var results sync.Mutex
 	var workers sync.WaitGroup
 	join := func(cleanup func() error) {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			var err error
 			defer func() {
 				if value := recover(); value != nil {
@@ -83,21 +79,19 @@ func (b *RuntimeTransportBoundary) closeDependencies() error {
 				}
 			}()
 			err = cleanup()
-		}()
+		})
 	}
 	// Initiate every independent close before waiting for any foreign Close.
 	// A blocked native/socket cleanup must not prevent another from receiving
 	// its cancellation. This local group is part of the actual terminal call.
 	join(b.connections.Wait)
 	for _, resource := range resources {
-		resource := resource
 		join(resource.RuntimeCloseAndWait)
 	}
 	if b.closeInner != nil {
 		join(b.closeInner)
 	}
 	for _, r := range requests {
-		r := r
 		join(r.Close)
 	}
 	workers.Wait()
@@ -151,7 +145,8 @@ type runtimeStateConn struct {
 
 func (c *runtimeStateConn) ConnectionState() tls.ConnectionState { return c.state }
 
-type runtimeDialBoundary struct{ reserved byte }
+// The non-zero size gives concurrent dial reservations distinct pointer identities.
+type runtimeDialBoundary struct{ _ byte }
 
 // BeginDial reserves and makes cancellation visible before calling any external
 // dial/handshake. A late result must transfer to GuardConnection/RegisterResource
@@ -202,58 +197,6 @@ func (b *RuntimeTransportBoundary) Dial(ctx context.Context, dial func(context.C
 		return nil, err
 	}
 	return b.GuardConnection(conn)
-}
-
-// BindHTTP2 must run before publication or the first transport invocation.
-// The supplied transport stays the exact pinned dependency implementation,
-// including its ordinary Go-version-dependent engine selection.
-func (b *RuntimeTransportBoundary) BindHTTP2(t *http2.Transport) {
-	if dial := t.DialTLSContext; dial != nil {
-		t.DialTLSContext = func(ctx context.Context, network, addr string, config *tls.Config) (net.Conn, error) {
-			return b.Dial(ctx, func(ctx context.Context) (net.Conn, error) { return dial(ctx, network, addr, config) })
-		}
-	}
-	if dial := t.DialTLS; dial != nil {
-		t.DialTLS = func(network, addr string, config *tls.Config) (net.Conn, error) {
-			return b.Dial(context.Background(), func(context.Context) (net.Conn, error) { return dial(network, addr, config) })
-		}
-	}
-	if count := t.CountError; count != nil {
-		t.CountError = func(name string) {
-			release, err := b.fence.Acquire()
-			if err != nil {
-				return
-			}
-			defer release()
-			count(name)
-		}
-	}
-	if t.ConnPool != nil {
-		t.ConnPool = &runtimeHTTP2Pool{pool: t.ConnPool, boundary: b}
-	}
-}
-
-type runtimeHTTP2Pool struct {
-	pool     http2.ClientConnPool
-	boundary *RuntimeTransportBoundary
-}
-
-func (p *runtimeHTTP2Pool) GetClientConn(r *http.Request, addr string) (*http2.ClientConn, error) {
-	release, err := p.boundary.fence.Acquire()
-	if err != nil {
-		return nil, err
-	}
-	defer release()
-	return p.pool.GetClientConn(r, addr)
-}
-
-func (p *runtimeHTTP2Pool) MarkDead(c *http2.ClientConn) {
-	release, err := p.boundary.fence.Acquire()
-	if err != nil {
-		return
-	}
-	defer release()
-	p.pool.MarkDead(c)
 }
 
 func (b *RuntimeTransportBoundary) RoundTrip(request *http.Request, roundTrip func(*http.Request) (*http.Response, error)) (*http.Response, error) {

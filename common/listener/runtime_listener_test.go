@@ -73,6 +73,7 @@ func (r *resourceFixture) Fork() (adapter.RuntimeResourceLease, error) {
 	r.owner.resourceRefs.Add(1)
 	return &resourceFixture{owner: r.owner}, nil
 }
+
 func (r *resourceFixture) Release()                { r.once.Do(func() { r.owner.resourceRefs.Add(-1) }) }
 func (*resourceFixture) Retiring() <-chan struct{} { return nil }
 func newAdmissionFixture() *admissionFixture {

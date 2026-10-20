@@ -28,8 +28,8 @@ func TestMethodMetadataCompatibility(t *testing.T) {
 				t.Fatal(err)
 			}
 			metadata := adapter.InboundContext{TLSSpoofMethod: parsed}
-			var originalAPI tlsspoof.Method = metadata.TLSSpoofMethod
-			if originalAPI != test.method || int(originalAPI) != test.value || originalAPI.String() != test.name {
+			var originalAPI tlsspoof.Method
+			if originalAPI = metadata.TLSSpoofMethod; originalAPI != test.method || int(originalAPI) != test.value || originalAPI.String() != test.name {
 				t.Fatalf("method identity changed: %v (%d)", originalAPI, originalAPI)
 			}
 		})

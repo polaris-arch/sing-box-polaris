@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -87,9 +88,7 @@ func (m *Manager) startRuntime(stage adapter.StartStage) error {
 	m.stages[stage] = current
 	members := slices.Clone(m.services)
 	owned := make(map[string]*adapter.Scope, len(m.owned))
-	for tag, scope := range m.owned {
-		owned[tag] = scope
-	}
+	maps.Copy(owned, m.owned)
 	m.access.Unlock()
 	defer close(current.done)
 	for _, member := range members {

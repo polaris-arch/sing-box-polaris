@@ -89,7 +89,7 @@ func prepareRuntimeHTTP3(ctx context.Context, _ logger.Logger, ingress *listener
 			err = errors.Join(err, s.err)
 		}
 		if err != nil {
-			return fmt.Errorf("Naive HTTP3 cleanup incomplete: %v", err)
+			return fmt.Errorf("naive HTTP3 cleanup incomplete: %v", err)
 		}
 		return nil
 	})
@@ -127,7 +127,7 @@ func prepareRuntimeHTTP3(ctx context.Context, _ logger.Logger, ingress *listener
 		defer close(s.done)
 		defer func() {
 			if value := recover(); value != nil || !returned {
-				s.err = fmt.Errorf("Naive HTTP3 Serve did not complete (panic=%v)", value)
+				s.err = fmt.Errorf("naive HTTP3 Serve did not complete (panic=%v)", value)
 			}
 		}()
 		s.err = s.server.ServeListener(runtimeHTTP3Listener{server: s})

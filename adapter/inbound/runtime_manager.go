@@ -3,6 +3,7 @@ package inbound
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -119,9 +120,7 @@ func (m *Manager) startRuntime(stage adapter.StartStage) error {
 	m.stages[stage] = current
 	members := slices.Clone(m.inbounds)
 	owned := make(map[string]*adapter.Scope, len(m.owned))
-	for tag, scope := range m.owned {
-		owned[tag] = scope
-	}
+	maps.Copy(owned, m.owned)
 	m.access.Unlock()
 	// A panic cannot be published as success to another lifecycle caller.
 	current.err = errors.New("runtime inbound preparation did not complete")

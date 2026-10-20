@@ -18,11 +18,12 @@ func isConstructionValidation(ctx context.Context) bool {
 // It never invokes Start or runtime staging and does not prove live availability.
 // Original constructors can acquire resources; their cleanup errors retain
 // NewWithConstructionReport semantics, without claiming exact global disposal.
-func NewForValidationWithConstructionReport(options Options) (*Box, error, ConstructionReport) {
+func NewForValidationWithConstructionReport(options Options) (*Box, ConstructionReport, error) {
 	ctx := options.Context
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	options.Context = context.WithValue(ctx, constructionValidationKey{}, true)
-	return NewWithConstructionReport(options)
+	instance, err, report := NewWithConstructionReport(options)
+	return instance, report, err
 }

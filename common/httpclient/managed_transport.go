@@ -308,9 +308,7 @@ func (t *ManagedTransport) closeOwned() error {
 	t.rebuildAccess.Unlock()
 	var closes sync.WaitGroup
 	for _, epoch := range epochs {
-		epoch := epoch
-		closes.Add(1)
-		go func() { defer closes.Done(); t.recordClose(epoch.tryClose()) }()
+		closes.Go(func() { t.recordClose(epoch.tryClose()) })
 	}
 	closes.Wait()
 	if t.ownedCallbacks != nil {
@@ -318,7 +316,7 @@ func (t *ManagedTransport) closeOwned() error {
 	}
 	return nil
 }
-func (t *ManagedTransport) close() error { return t.RuntimeCloseAndWait() }
+
 func (t *ManagedTransport) RuntimeCloseAndWait() error {
 	err := t.fence.RuntimeCloseAndWait()
 	t.rebuildAccess.Lock()

@@ -78,8 +78,7 @@ func TestDeviceWaitDetachedUsesActualStackAndStickyErrors(t *testing.T) {
 			if err := device.Close(); !errors.Is(err, closeFailure) {
 				t.Fatalf("repeated Close erased failure: %v", err)
 			}
-			workers.Add(1)
-			go func() { defer workers.Done(); result <- device.WaitDetached(ctx) }()
+			workers.Go(func() { result <- device.WaitDetached(ctx) })
 			awaitCompletionEvent(t, stack.entered)
 			select {
 			case <-result:
@@ -96,8 +95,7 @@ func TestDeviceWaitDetachedUsesActualStackAndStickyErrors(t *testing.T) {
 				t.Fatal("observer watchdog")
 			}
 			// Cancellation is only observation. Actual completion still needs finish.
-			workers.Add(1)
-			go func() { defer workers.Done(); result <- device.WaitDetached(context.Background()) }()
+			workers.Go(func() { result <- device.WaitDetached(context.Background()) })
 			awaitCompletionEvent(t, stack.entered)
 			select {
 			case <-result:
@@ -129,7 +127,11 @@ func (d *endpointCompletionDevice) Close() error {
 	// This would deadlock if Endpoint.Close still held stateAccess while calling
 	// a device whose copied callback needed the same guard.
 	d.endpoint.stateAccess.Lock()
+	attached := d.endpoint.tunDevice == d
 	d.endpoint.stateAccess.Unlock()
+	if !attached {
+		return errors.New("endpoint lost its original device before close")
+	}
 	return nil
 }
 
@@ -153,8 +155,7 @@ func TestEndpointClosePropagatesActualDeviceCompletion(t *testing.T) {
 	var workers sync.WaitGroup
 	t.Cleanup(func() { release(); workers.Wait() })
 	result := make(chan error, 1)
-	workers.Add(1)
-	go func() { defer workers.Done(); result <- endpoint.Close() }()
+	workers.Go(func() { result <- endpoint.Close() })
 	awaitCompletionEvent(t, device.entered)
 	select {
 	case <-result:

@@ -195,7 +195,9 @@ func (s *Service) RuntimeActivate() {
 	s.activated = true
 	close(s.activate)
 }
-func (s *Service) stop()                      { s.mu.Lock(); s.stopped = true; s.mu.Unlock(); s.cancel() }
+
+func (s *Service) stop() { s.mu.Lock(); s.stopped = true; s.mu.Unlock(); s.cancel() }
+
 func (s *Service) RuntimeStop()               { s.stop(); _ = s.callbacks.Close(); _ = s.fence.Close() }
 func (s *Service) RuntimeCloseAndWait() error { return s.fence.RuntimeCloseAndWait() }
 func (s *Service) closeOwned() error {
@@ -260,6 +262,7 @@ func (s *Service) onPauseEvent(event int) {
 func (s *Service) isPaused() bool {
 	return s.pause != nil && (s.pause.IsDevicePaused() || s.pause.IsNetworkPaused())
 }
+
 func stopTimer(timer *time.Timer) {
 	if !timer.Stop() {
 		select {
@@ -268,6 +271,7 @@ func stopTimer(timer *time.Timer) {
 		}
 	}
 }
+
 func (s *Service) run(done chan struct{}) {
 	defer close(done)
 	defer func() {
@@ -424,6 +428,7 @@ func (s *Service) recordCleanup(err error, conn *exchangeConnection) {
 	}
 	s.mu.Unlock()
 }
+
 func (s *Service) hasCleanupError() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -442,6 +447,7 @@ func clonePointer[T any](value *T) *T {
 	copy := *value
 	return &copy
 }
+
 func cloneOptions(value option.NTPOptions) option.NTPOptions {
 	value.Inet4BindAddress = clonePointer(value.Inet4BindAddress)
 	value.Inet6BindAddress = clonePointer(value.Inet6BindAddress)

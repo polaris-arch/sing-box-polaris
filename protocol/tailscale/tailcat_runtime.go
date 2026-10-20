@@ -78,7 +78,7 @@ func (s *runtimeTailcatSession) owned(ctx context.Context) (context.Context, fun
 
 func (s *runtimeTailcatSession) close() error {
 	s.closeOnce.Do(func() {
-		s.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailcat native session cleanup did not return"))
+		s.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailcat native session cleanup did not return"))
 		s.cancel()
 		_ = s.callbacks.Close()
 		s.carriers.Stop()
@@ -199,7 +199,7 @@ func (s *runtimeTailcatSession) packetListener(ctx context.Context, network, add
 	var fence *outbound.RuntimeIOFence
 	defer func() {
 		if recover() != nil {
-			uncertain := runtimeTLS.NewRuntimeCleanupError(errors.New("Tailcat original packet allocation panicked"))
+			uncertain := runtimeTLS.NewRuntimeCleanupError(errors.New("tailcat original packet allocation panicked"))
 			s.carriers.Record(uncertain)
 			if fence != nil {
 				uncertain = runtimeTLS.NewRuntimeCleanupError(errors.Join(uncertain, fence.RuntimeCloseAndWait()))

@@ -42,20 +42,29 @@ func PrivateClientDependencies(liveCache adapter.CacheFile, views ...RuntimeClie
 		if liveCache == nil || view.RuntimeDNSPhysicalCache() != liveCache {
 			return RouterClientDependencies{}, errors.New("private DNS store view belongs to a different physical cache")
 		}
-		if view.StoreDNS() != liveCache.StoreDNS() || view.StoreRDRC() != liveCache.StoreRDRC() {
+		storeDNS, storeRDRC := liveCache.StoreDNS(), liveCache.StoreRDRC()
+		viewDNS, viewRDRC := view.StoreDNS(), view.StoreRDRC()
+		if viewDNS != storeDNS || viewRDRC != storeRDRC {
 			return RouterClientDependencies{}, errors.New("private DNS store settings differ from the retained physical cache")
 		}
 		var dependencies RouterClientDependencies
-		if view.StoreDNS() {
+		if viewDNS {
 			dependencies.DNSCache = view
 		}
-		if view.StoreRDRC() {
+		if viewRDRC {
 			dependencies.RDRC = view
 		}
 		return dependencies, nil
 	}
-	if liveCache != nil && (liveCache.StoreDNS() || liveCache.StoreRDRC()) {
-		return RouterClientDependencies{}, errors.New("persistent DNS/RDRC requires a retained private logical view")
+	var missingView []error
+	if liveCache != nil {
+		storeDNS, storeRDRC := liveCache.StoreDNS(), liveCache.StoreRDRC()
+		if storeDNS {
+			missingView = append(missingView, errors.New("experimental.cache_file.store_dns requires a retained private logical view"))
+		}
+		if storeRDRC {
+			missingView = append(missingView, errors.New("experimental.cache_file.store_rdrc requires a retained private logical view"))
+		}
 	}
-	return RouterClientDependencies{}, nil
+	return RouterClientDependencies{}, errors.Join(missingView...)
 }

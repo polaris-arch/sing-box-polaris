@@ -3,6 +3,7 @@ package fakeip
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/netip"
 	"testing"
 
@@ -68,9 +69,7 @@ func (f *fixedInitialCacheFixture) SnapshotFakeIP(context.Context) (adapter.Fake
 		result.Metadata = &copy
 	}
 	f.storage.addressAccess.RLock()
-	for address, domain := range f.storage.addressCache {
-		result.Mappings[address] = domain
-	}
+	maps.Copy(result.Mappings, f.storage.addressCache)
 	f.storage.addressAccess.RUnlock()
 	return result, nil
 }

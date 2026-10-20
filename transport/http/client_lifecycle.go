@@ -35,7 +35,8 @@ type clientLifecycle struct {
 	hiddenWorkers  error
 }
 
-type clientOperation struct{ reserved byte }
+// Keep each allocation non-zero-sized: distinct live operations need distinct map keys.
+type clientOperation byte
 
 // Keep unread handshake bytes in a Go-owned reader. Closing the socket never
 // releases a pooled buffer concurrently with a returned connection's Read.
@@ -119,9 +120,7 @@ func closeHTTPResources(cleanups ...func() error) error {
 	errs := make([]error, len(cleanups))
 	var workers sync.WaitGroup
 	for index, cleanup := range cleanups {
-		index, cleanup := index, cleanup
-		workers.Add(1)
-		go func() { defer workers.Done(); errs[index] = closeHTTPResource(cleanup) }()
+		workers.Go(func() { errs[index] = closeHTTPResource(cleanup) })
 	}
 	workers.Wait()
 	return errors.Join(errs...)

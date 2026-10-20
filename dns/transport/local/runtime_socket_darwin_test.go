@@ -13,7 +13,9 @@ type failedHandshakeConn struct {
 }
 
 func (c *failedHandshakeConn) Write([]byte) (int, error) { return 0, errors.New("handshake failed") }
-func (c *failedHandshakeConn) Close() error              { c.closes++; return errors.New("compensation failed") }
+
+func (c *failedHandshakeConn) Close() error { c.closes++; return errors.New("compensation failed") }
+
 func TestResolverFailedHandshakeRetainsCloseFailure(t *testing.T) {
 	resolver := new(systemResolver)
 	conn := new(failedHandshakeConn)

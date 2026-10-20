@@ -1615,6 +1615,7 @@
       "dns/router.go",
       "dns/router_dependencies.go",
       "dns/router_dependencies_test.go",
+      "dns/router_dependencies_validation_test.go",
       "dns/router_policy.go",
       "dns/router_policy_correctness_test.go",
       "dns/router_runtime_ownership_test.go",
@@ -1899,6 +1900,7 @@
       "protocol/tailscale/directory_lease_windows.go",
       "protocol/tailscale/directory_lifecycle.go",
       "protocol/tailscale/directory_prepare.go",
+      "protocol/tailscale/directory_prepare_nonwindows.go",
       "protocol/tailscale/directory_prepare_test.go",
       "protocol/tailscale/directory_prepare_windows.go",
       "protocol/tailscale/directory_prepare_windows_test.go",
@@ -2074,8 +2076,10 @@
       "transport/wireguard/stack_completion_test.go"
     ],
     "followupReviewedPaths": [
-      "protocol/group/urltest_cancellation_test.go"
+      "dns/router_dependencies_validation_test.go",
+      "protocol/group/urltest_cancellation_test.go",
+      "protocol/tailscale/directory_prepare_nonwindows.go"
     ],
-    "scopeNote": "Owned changes from acceptedTree plus explicitly listed follow-up regression sources."
+    "scopeNote": "Owned changes from acceptedTree plus explicitly listed follow-up owned sources."
   }
 }

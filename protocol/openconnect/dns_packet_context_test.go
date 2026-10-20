@@ -52,7 +52,7 @@ func TestDNSPacketExPreservesBorrowedAdmission(t *testing.T) {
 	destination := M.ParseSocksaddr("192.0.2.2:53")
 	t.Run("Endpoint", func(t *testing.T) {
 		router := &dnsContextRouter{t: t, wantLease: lease, wantValue: "packet"}
-		handler := &Endpoint{loopContext: legacy, endpointBase: endpointBase{router: router, logger: logger}}
+		handler := &Endpoint{loopContext: legacy, router: router, logger: logger}
 		var ex tun.DNSPacketHandlerEx = handler
 		ex.NewDNSPacketEx(incoming, []byte("query"), source, destination, nil)
 		if router.calls != 1 {

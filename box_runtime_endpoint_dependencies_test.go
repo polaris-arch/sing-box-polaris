@@ -51,7 +51,7 @@ func TestRuntimeEndpointOutboundAmbiguityRejectedBeforeConstruction(t *testing.T
 func TestRuntimeTailscaleDNSCapturesEndpointAndResolverRouter(t *testing.T) {
 	options := runtimeResolveGraphDefaults(option.Options{
 		Endpoints: []option.Endpoint{{Type: C.TypeTailscale, Tag: "tail", Options: &option.TailscaleEndpointOptions{}}},
-		DNS:       &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeTailscale, Tag: "tail-dns", Options: &option.TailscaleDNSServerOptions{Endpoint: "tail"}}}}},
+		DNS:       &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeTailscale, Tag: "tail-dns", Options: &option.TailscaleDNSServerOptions{Endpoint: "tail"}}}},
 	})
 	nodes, configs, err := runtimeConfigNodes(context.Background(), options)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestRuntimeTailscaleDNSCapturesEndpointAndResolverRouter(t *testing.T) {
 func TestRuntimePushedDNSAndEndpointShareCallbackCohort(t *testing.T) {
 	options := runtimeResolveGraphDefaults(option.Options{
 		Endpoints: []option.Endpoint{{Type: C.TypeOpenConnect, Tag: "vpn", Options: &option.OpenConnectEndpointOptions{}}},
-		DNS:       &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeOpenConnect, Tag: "pushed", Options: &option.OpenConnectDNSServerOptions{Endpoint: "vpn"}}}}},
+		DNS:       &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeOpenConnect, Tag: "pushed", Options: &option.OpenConnectDNSServerOptions{Endpoint: "vpn"}}}},
 	})
 	nodes, _, err := runtimeConfigNodes(context.Background(), options)
 	if err != nil {

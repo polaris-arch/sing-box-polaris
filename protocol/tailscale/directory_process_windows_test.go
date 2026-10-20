@@ -1184,7 +1184,7 @@ func TestWindowsCheckpointColdRepeatedAndScratchRecovery(t *testing.T) {
 	if err := l.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for round := 0; round < 2; round++ {
+	for range 2 {
 		old, markerPath := windowsTestFillCheckpointJournal(t, path, true)
 		previous, err := windowsDecodeMarkerLog(old)
 		if err != nil {

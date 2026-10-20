@@ -61,10 +61,6 @@ func (s *Box) stageRuntimeListeners(ctx context.Context, g *preparedRuntimeGraph
 	return transaction.Stage(ctx)
 }
 
-func (g *preparedRuntimeGraph) restoreRuntimeListeners() error {
-	return g.restoreRuntimeListenersWithEffects(true)
-}
-
 func (g *preparedRuntimeGraph) restoreRuntimeListenersWithEffects(candidateAbsent bool) error {
 	if g == nil || g.listenerRestoration != nil {
 		return nil

@@ -21,6 +21,7 @@ type pingTestNetwork struct{ adapter.NetworkManager }
 func (pingTestNetwork) InterfaceFinder() control.InterfaceFinder {
 	return control.NewDefaultInterfaceFinder()
 }
+
 func (pingTestNetwork) DefaultOptions() adapter.NetworkOptions        { return adapter.NetworkOptions{} }
 func (pingTestNetwork) AutoDetectInterface() bool                     { return false }
 func (pingTestNetwork) AutoRedirectOutputMarkFunc() control.Func      { return nil }

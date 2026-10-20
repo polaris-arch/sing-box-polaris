@@ -75,6 +75,7 @@ func (t *Inbound) RuntimeValidate() error {
 	}
 	return nil
 }
+
 func (t *Inbound) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
 	return t.RuntimeValidate()
 }
@@ -244,6 +245,7 @@ func PrepareRuntimeTunPublication(inbounds []*Inbound) (*RuntimeTunPublication, 
 	}
 	return result, nil
 }
+
 func (p *RuntimeTunPublication) Publish() {
 	for _, physical := range p.physical {
 		physical.gate.Store(true)

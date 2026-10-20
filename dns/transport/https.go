@@ -164,7 +164,7 @@ func newHTTPSRaw(ctx context.Context, transportAdapter dns.TransportAdapter, log
 		TransportAdapter: transportAdapter,
 		logger:           logger,
 		dialer:           dialer,
-		destination:      common.Ptr(*destination),
+		destination:      new(*destination),
 		headers:          headers.Clone(),
 		serverAddr:       serverAddr,
 		fallback:         fallback,

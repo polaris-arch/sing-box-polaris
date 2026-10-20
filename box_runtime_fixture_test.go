@@ -324,7 +324,8 @@ func runtimeTestApplyAsync(f *runtimeTestFixture, ctx context.Context, request R
 func runtimeTestReceiveApply(t *testing.T, result <-chan struct {
 	operation RuntimeConfigOperation
 	err       error
-}) RuntimeConfigOperation {
+},
+) RuntimeConfigOperation {
 	t.Helper()
 	select {
 	case value := <-result:

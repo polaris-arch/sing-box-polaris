@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"fmt"
+	"maps"
 	"net"
 	"strconv"
 
@@ -179,6 +180,10 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 		} else {
 			req.Key = key
 		}
+	case *control.ED25519Key:
+		svc.Key = key.KeyPair
+		svc.Version3 = true
+		req.Key = key
 	case ed25519.KeyPair:
 		svc.Key = key
 		svc.Version3 = true
@@ -188,12 +193,8 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 		svc.Key = properKey
 		svc.Version3 = true
 		req.Key = &control.ED25519Key{properKey}
-	case *control.ED25519Key:
-		svc.Key = key.KeyPair
-		svc.Version3 = true
-		req.Key = key
 	default:
-		err = fmt.Errorf("Unrecognized key type: %T", key)
+		err = fmt.Errorf("unrecognized key type: %T", key)
 	}
 
 	// Apply the remote ports
@@ -201,7 +202,7 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 		if len(conf.RemotePorts) == 0 {
 			tcpAddr, ok := svc.LocalListener.Addr().(*net.TCPAddr)
 			if !ok {
-				err = fmt.Errorf("Unable to derive local TCP port")
+				err = fmt.Errorf("unable to derive local TCP port")
 			} else {
 				svc.RemotePorts = []int{tcpAddr.Port}
 			}
@@ -238,17 +239,13 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 		case *control.ED25519Key:
 			svc.Key = key.KeyPair
 		default:
-			err = fmt.Errorf("Unrecognized result key type: %T", key)
+			err = fmt.Errorf("unrecognized result key type: %T", key)
 		}
 		// Client auths are the conf and then overridden by results
 		if len(conf.ClientAuths) > 0 {
 			svc.ClientAuths = make(map[string]string, len(conf.ClientAuths))
-			for k, v := range conf.ClientAuths {
-				svc.ClientAuths[k] = v
-			}
-			for k, v := range resp.ClientAuths {
-				svc.ClientAuths[k] = v
-			}
+			maps.Copy(svc.ClientAuths, conf.ClientAuths)
+			maps.Copy(svc.ClientAuths, resp.ClientAuths)
 		}
 	}
 
@@ -275,7 +272,7 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 							failures = append(failures,
 								fmt.Sprintf("Failed uploading to dir %v - reason: %v", hs.HSDir, hs.Reason))
 							if len(failures) == uploadsAttempted {
-								return false, fmt.Errorf("Failed all uploads, reasons: %v", failures)
+								return false, fmt.Errorf("failed all uploads, reasons: %v", failures)
 							}
 						case "UPLOADED":
 							return true, nil
@@ -289,7 +286,7 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 	// Give back err and close if there is an err
 	if err != nil {
 		if closeErr := svc.Close(); closeErr != nil {
-			err = fmt.Errorf("Error on listen: %v (also got error trying to close: %v)", err, closeErr)
+			err = fmt.Errorf("error on listen: %v (also got error trying to close: %v)", err, closeErr)
 		}
 		return nil, err
 	}
@@ -329,7 +326,7 @@ func (o *OnionService) Close() (err error) {
 	if o.CloseLocalListenerOnClose && o.LocalListener != nil {
 		if closeErr := o.LocalListener.Close(); closeErr != nil {
 			if err != nil {
-				err = fmt.Errorf("Unable to close onion: %v (also unable to close local listener: %v)", err, closeErr)
+				err = fmt.Errorf("unable to close onion: %v (also unable to close local listener: %v)", err, closeErr)
 			} else {
 				err = closeErr
 			}

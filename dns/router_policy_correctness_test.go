@@ -90,7 +90,7 @@ func correctnessQuestion(qtype uint16) *mDNS.Msg {
 func correctnessRouter(t *testing.T, strategy C.DomainStrategy, rules []option.DNSRule, store *correctnessCacheStore, transport *policyTestTransport) *Router {
 	t.Helper()
 	ctx := service.ContextWith[adapter.DNSTransportManager](context.Background(), &fakeDNSTransportManager{transports: map[string]adapter.DNSTransport{transport.tag: transport}})
-	options := option.DNSOptions{RawDNSOptions: option.RawDNSOptions{DNSClientOptions: option.DNSClientOptions{Strategy: option.DomainStrategy(strategy)}}}
+	options := option.DNSOptions{Strategy: option.DomainStrategy(strategy)}
 	router, err := NewRouter(ctx, log.NewNOPFactory(), options)
 	require.NoError(t, err)
 	require.NoError(t, router.Initialize(rules))
@@ -199,17 +199,50 @@ func TestPolicyScopedActionStrategyRejectedDuringInitialize(t *testing.T) {
 				} else {
 					rules = append([]option.DNSRule{first}, rules...)
 				}
-				encoded, err := json.Marshal(rules)
+				// Marshal the default route with its canonical action so its
+				// options survive. A zero action intentionally marshals as {}.
+				wireRules := append([]option.DNSRule(nil), rules...)
+				if action == "" {
+					wireRules[0].DefaultOptions.Action = C.RuleActionTypeRoute
+				}
+				encoded, err := json.Marshal(wireRules)
+				require.NoError(t, err)
+				var wireObjects []map[string]json.RawMessage
+				require.NoError(t, json.Unmarshal(encoded, &wireObjects))
+				// Exercise both omitted and explicit route actions on the wire.
+				if action != "" {
+					wireObjects[0]["action"], err = json.Marshal(action)
+					require.NoError(t, err)
+				}
+				encoded, err = json.Marshal(wireObjects)
 				require.NoError(t, err)
 				var roundTrip []option.DNSRule
 				require.NoError(t, json.UnmarshalContext(context.Background(), encoded, &roundTrip))
-				router := raceTestRouter(t)
-				err = router.Initialize(roundTrip)
-				if strategy == C.DomainStrategyAsIS {
-					require.NoError(t, err)
-				} else {
-					require.ErrorContains(t, err, "policy "+testPolicyID+" rule[0]")
-					require.ErrorContains(t, err, "strategy")
+				decodedAction := roundTrip[0].DefaultOptions.DNSRuleAction
+				var decodedStrategy option.DomainStrategy
+				switch action {
+				case C.RuleActionTypeEvaluate:
+					decodedStrategy = decodedAction.EvaluateOptions.Strategy
+				case C.RuleActionTypeRouteOptions:
+					decodedStrategy = decodedAction.RouteOptionsOptions.Strategy
+				default:
+					decodedStrategy = decodedAction.RouteOptions.Strategy
+				}
+				require.Equal(t, option.DomainStrategy(strategy), decodedStrategy, "wire fixture must preserve the action strategy")
+				for _, input := range []struct {
+					name  string
+					rules []option.DNSRule
+				}{{"direct", rules}, {"json", roundTrip}} {
+					t.Run(input.name, func(t *testing.T) {
+						router := raceTestRouter(t)
+						err := router.Initialize(input.rules)
+						if strategy == C.DomainStrategyAsIS {
+							require.NoError(t, err)
+						} else {
+							require.ErrorContains(t, err, "policy "+testPolicyID+" rule[0]")
+							require.ErrorContains(t, err, "strategy")
+						}
+					})
 				}
 			})
 		}

@@ -182,6 +182,7 @@ func (r *RuntimeACME) RuntimeActivate() {
 	r.mu.Unlock()
 	go r.run(done, ready)
 }
+
 func (r *RuntimeACME) RuntimeStop()               { r.mu.Lock(); r.stopped = true; r.mu.Unlock(); r.cancel() }
 func (r *RuntimeACME) CompensateRuntime() error   { return r.RuntimeCloseAndWait() }
 func (r *RuntimeACME) RuntimeCloseAndWait() error { return r.fence.RuntimeCloseAndWait() }
@@ -272,12 +273,12 @@ func (r *RuntimeACME) refresh(ctx context.Context) error {
 	issuer := r.issuer
 	issuer.Logger = r.logger
 	if solver, ok := issuer.DNS01Solver.(*certmagic.DNS01Solver); ok {
-		copy := &certmagic.DNS01Solver{DNSManager: certmagic.DNSManager{
+		copy := &certmagic.DNS01Solver{
 			DNSProvider: solver.DNSProvider, TTL: solver.TTL,
 			PropagationDelay: solver.PropagationDelay, PropagationTimeout: solver.PropagationTimeout,
 			Resolvers: append([]string(nil), solver.Resolvers...), OverrideDomain: solver.OverrideDomain,
 			Logger: r.logger.Named("dns_manager"),
-		}}
+		}
 		// Provider clients may reset cleanup cancellation. A fresh callback-owned
 		// admission below restores only this provider's exact immutable DAG.
 		issuer.DNS01Solver = &runtimeACMEDNSSolver{inner: copy, owner: r}

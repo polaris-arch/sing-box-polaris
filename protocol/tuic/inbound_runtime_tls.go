@@ -33,6 +33,7 @@ var (
 )
 
 func (c *inboundRuntimeTLS) RuntimeValidate() error { return tls.ValidateRuntimeServer(c.ServerConfig) }
+
 func (c *inboundRuntimeTLS) Listen(packet net.PacketConn, config *quic.Config) (qtls.Listener, error) {
 	return c.listen(packet, config, false)
 }

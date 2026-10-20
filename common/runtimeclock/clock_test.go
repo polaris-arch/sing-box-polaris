@@ -184,12 +184,14 @@ type clockLog struct {
 func newClockLog() *clockLog {
 	return &clockLog{Logger: logger.NOP(), info: make(chan struct{}, 8), fail: make(chan string, 8)}
 }
+
 func (l *clockLog) Info(...any) {
 	select {
 	case l.info <- struct{}{}:
 	default:
 	}
 }
+
 func (l *clockLog) Error(args ...any) {
 	select {
 	case l.fail <- fmt.Sprint(args...):
@@ -213,7 +215,7 @@ func (p *clockPolicy) CheckFeature(_ context.Context, feature string) error {
 func TestClockConstructorIsInertAndFreezesOptions(t *testing.T) {
 	policy := "captured-policy"
 	fragment := true
-	options := option.NTPOptions{DialerOptions: option.DialerOptions{AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &policy}, UDPFragment: &fragment, NetworkType: []option.InterfaceType{1}}}}
+	options := option.NTPOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &policy}, UDPFragment: &fragment, NetworkType: []option.InterfaceType{1}}
 	f := newClockFixture(t, options, nil, nil, nil)
 	s := f.s
 	policy = "mutated"
@@ -268,7 +270,7 @@ func TestClockSecurityCheckOccursOnceInPrivatePreparation(t *testing.T) {
 	if policy.calls.Load() != 0 {
 		t.Fatal("constructor invoked security policy")
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := s.Prepare(); !errors.Is(err, denied) {
 			t.Fatal("policy denial not preserved", err)
 		}
@@ -544,7 +546,7 @@ func TestClockPauseWakeIsCoalescedAndNeverRunsWriterUnderPauseLock(t *testing.T)
 	if err := s.Prepare(); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		s.onPauseEvent(pause.EventNetworkWake)
 	}
 	if len(s.changed) != 1 || writes.Load() != 0 {
@@ -585,16 +587,14 @@ func TestClockTimeFuncUsesItsOwnAtomicOffset(t *testing.T) {
 		t.Fatal("independent clock generations shared an offset")
 	}
 	var readers sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		readers.Add(1)
-		go func() {
-			defer readers.Done()
-			for j := 0; j < 1000; j++ {
+	for range 8 {
+		readers.Go(func() {
+			for range 1000 {
 				_ = aTime()
 			}
-		}()
+		})
 	}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		a.offset.Store(int64(time.Duration(i)))
 	}
 	readers.Wait()

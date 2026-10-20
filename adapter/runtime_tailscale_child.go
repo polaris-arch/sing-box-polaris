@@ -43,7 +43,7 @@ func RegisterRuntimeTailscaleChild(ctx context.Context, request RuntimeTailscale
 	}
 	source, ok := RuntimeResourceSourceFromContext(ctx)
 	if !ok || source.ID() != request.ResourceID {
-		return nil, errors.New("Tailscale child does not match constructor owner")
+		return nil, errors.New("tailscale child does not match constructor owner")
 	}
 	return registrar(ctx, request)
 }

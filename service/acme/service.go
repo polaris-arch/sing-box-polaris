@@ -252,14 +252,14 @@ func newDNSSolver(dnsOptions *option.ACMEProviderDNS01ChallengeOptions, logger *
 	if dnsOptions.PropagationTimeout < -1 {
 		return nil, E.New("invalid ACME DNS01 propagation_timeout: ", dnsOptions.PropagationTimeout.Build())
 	}
-	solver := &certmagic.DNS01Solver{DNSManager: certmagic.DNSManager{
+	solver := &certmagic.DNS01Solver{
 		TTL:                time.Duration(dnsOptions.TTL),
 		PropagationDelay:   time.Duration(dnsOptions.PropagationDelay),
 		PropagationTimeout: time.Duration(dnsOptions.PropagationTimeout),
 		Resolvers:          dnsOptions.Resolvers,
 		OverrideDomain:     dnsOptions.OverrideDomain,
 		Logger:             logger.Named("dns_manager"),
-	}}
+	}
 	switch dnsOptions.Provider {
 	case C.DNSProviderAliDNS:
 		solver.DNSProvider = &alidns.Provider{

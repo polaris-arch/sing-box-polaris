@@ -27,7 +27,17 @@ func TestTailcatTerminalJoinDoesNotHoldLazyMutex(t *testing.T) {
 		t.Fatal(err)
 	}
 	returned := make(chan struct{})
-	go func() { <-ctx.Done(); o.access.Lock(); o.access.Unlock(); leave(); close(returned) }()
+	go func() {
+		<-ctx.Done()
+		o.access.Lock()
+		stopped := o.runtimeStopped
+		o.access.Unlock()
+		if !stopped {
+			t.Error("lazy owner canceled before terminal admission was sealed")
+		}
+		leave()
+		close(returned)
+	}()
 	if err = o.RuntimeCloseAndWait(); err != nil {
 		t.Fatal(err)
 	}

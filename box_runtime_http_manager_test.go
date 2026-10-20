@@ -39,7 +39,7 @@ func TestRuntimeHTTPImplicitDefaultCapturesSourceOrderFinal(t *testing.T) {
 }
 
 func TestRuntimeHTTPNamedDefinitionsCaptureResolverAndDetour(t *testing.T) {
-	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "updates", DialerOptions: option.DialerOptions{Detour: "proxy", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}}}}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "updates", Detour: "proxy", DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:proxy", "dns-router", "dns-transport:bootstrap"} {
 		if !slices.Contains(node.dependencies, dependency) {
@@ -67,7 +67,7 @@ func TestRuntimeHTTPDefaultSelectionAffectsFingerprint(t *testing.T) {
 }
 
 func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) {
-	client := &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "issuer-proxy", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "issuer-dns"}}}}
+	client := &option.HTTPClientOptions{Detour: "issuer-proxy", DomainResolver: &option.DomainResolveOptions{Server: "issuer-dns"}}
 	options := option.Options{CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: client}}}}
 	first := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:issuer-proxy", "dns-router", "dns-transport:issuer-dns"} {
@@ -90,7 +90,7 @@ func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) 
 }
 
 func TestRuntimeNamedProviderHTTPReferenceDoesNotCreateInlineTransport(t *testing.T) {
-	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", DialerOptions: option.DialerOptions{Detour: "shared-proxy"}}}, CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "shared-proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
 	if !slices.Contains(node.dependencies, "outbound:shared-proxy") {
 		t.Fatal("shared HTTP definition lost")

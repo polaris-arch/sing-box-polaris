@@ -65,7 +65,6 @@ type runtimeCoordinator struct {
 	persist                func(RuntimeIdentity, []byte) error
 	persistenceMode        string
 	resources              []*runtimeResource
-	trustedSources         map[string]runtimeSourceSnapshot
 	plans                  map[string]*runtimePlanRecord
 	planStorage            int
 	sequence               uint64

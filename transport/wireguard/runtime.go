@@ -83,9 +83,11 @@ func (r *endpointRuntime) startPause(e *Endpoint) {
 		}
 	}()
 }
+
 func (r *endpointRuntime) stop() {
 	r.stopOnce.Do(func() { close(r.stopSignal); _ = r.callbacks.Close() })
 }
+
 func (r *endpointRuntime) record(err error) {
 	if err == nil {
 		return

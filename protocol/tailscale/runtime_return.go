@@ -52,7 +52,7 @@ func (m *runtimeEndpointReturn) attach(child *Endpoint, target tun.Return) error
 	m.mu.Lock()
 	if m.hasHeadroom && headroom != m.headroom {
 		m.mu.Unlock()
-		return errors.New("Tailscale shared return paths require identical packet headroom")
+		return errors.New("tailscale shared return paths require identical packet headroom")
 	}
 	if m.entries == nil {
 		m.entries = make(map[tun.Return]*runtimeReturnEntry)

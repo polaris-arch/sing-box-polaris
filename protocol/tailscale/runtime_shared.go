@@ -27,13 +27,13 @@ func (t *Endpoint) RuntimeSetPhysicalBase(ctx context.Context, source adapter.Ru
 		return errors.New("incomplete Tailscale physical base")
 	}
 	if source.ID() == t.runtime.source.ID() {
-		return errors.New("Tailscale physical base cannot retain its logical owner")
+		return errors.New("tailscale physical base cannot retain its logical owner")
 	}
 	r := t.runtime
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.closing || r.physical != nil || r.reserved != nil {
-		return errors.New("Tailscale physical base supplied after reservation")
+		return errors.New("tailscale physical base supplied after reservation")
 	}
 	r.baseContext = ctx
 	r.baseSource = source
@@ -115,7 +115,7 @@ func (p *runtimeEndpointPhysical) detach(b *runtimeEndpointBinding) error {
 func (p *runtimeEndpointPhysical) bindingContext(ctx context.Context, ingress bool) (*runtimeEndpointBinding, context.Context, func(), error) {
 	if inherited, ok := ctx.Value(runtimeBindingContextKey{}).(*runtimeBindingContinuation); ok {
 		if inherited == nil || inherited.binding.physical != p {
-			return nil, nil, nil, errors.New("Tailscale inherited binding does not match physical owner")
+			return nil, nil, nil, errors.New("tailscale inherited binding does not match physical owner")
 		}
 		owned, release, err := inherited.binding.acquire(ctx)
 		return inherited.binding, owned, release, err
@@ -145,7 +145,7 @@ func (t *Endpoint) RuntimeStageSharedPhysical(ctx context.Context, prior *Endpoi
 		return err
 	}
 	if prior == nil || prior == t || !prior.RuntimeCanSharePhysical(t.Tag(), t.runtime.options) {
-		return errors.New("Tailscale physical identity is not shareable")
+		return errors.New("tailscale physical identity is not shareable")
 	}
 	return t.runtime.run(ctx, func() error {
 		if err := ctx.Err(); err != nil {
@@ -162,7 +162,7 @@ func (t *Endpoint) RuntimeStageSharedPhysical(ctx context.Context, prior *Endpoi
 		existing, reserved := r.physical, r.reserved
 		r.mu.Unlock()
 		if existing != nil || reserved != nil {
-			return errors.New("Tailscale shared attachment must precede fresh birth reservation")
+			return errors.New("tailscale shared attachment must precede fresh birth reservation")
 		}
 		b, err := t.newRuntimeBinding(p)
 		if err != nil {
@@ -180,7 +180,7 @@ func (t *Endpoint) RuntimeStageSharedPhysical(ctx context.Context, prior *Endpoi
 		child := p.child
 		p.mu.Unlock()
 		if child == nil {
-			return errors.New("Tailscale shared physical child is not constructed")
+			return errors.New("tailscale shared physical child is not constructed")
 		}
 		// Replay under the same lock as the original reconfiguration callback. A
 		// private DNS consumer must have a usable snapshot before publication.

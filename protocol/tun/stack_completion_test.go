@@ -43,8 +43,7 @@ func TestInboundShutdownWaitsForActualDetachAndKeepsFailure(t *testing.T) {
 	release := func() { releaseOnce.Do(func() { close(stack.finish) }) }
 	var workers sync.WaitGroup
 	t.Cleanup(func() { release(); workers.Wait() })
-	workers.Add(1)
-	go func() { defer workers.Done(); result <- shutdown.Close() }()
+	workers.Go(func() { result <- shutdown.Close() })
 	select {
 	case <-stack.entered:
 	case <-time.After(5 * time.Second):

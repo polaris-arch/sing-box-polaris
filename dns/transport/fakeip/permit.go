@@ -26,6 +26,7 @@ func (p *AnswerPermit) Commit() error {
 	}
 	return ErrCandidateNotCommitted
 }
+
 func (p *AnswerPermit) Abort() {
 	if p != nil {
 		p.state.CompareAndSwap(0, 2)

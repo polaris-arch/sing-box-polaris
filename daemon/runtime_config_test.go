@@ -12,9 +12,10 @@ import (
 // wire compatibility claim. Descriptor/serialization tests must be added after
 // the separately authorized protobuf output has been generated and inspected.
 func TestRuntimeActorRequiresServerOwnedTypedContext(t *testing.T) {
+	type clientActorKey string
 	for _, ctx := range []context.Context{
 		context.Background(),
-		context.WithValue(context.Background(), "runtime_actor", "client-supplied"),
+		context.WithValue(context.Background(), clientActorKey("runtime_actor"), "client-supplied"),
 		context.WithValue(context.Background(), runtimeActorKey{}, 42),
 		ContextWithRuntimeActor(context.Background(), ""),
 	} {

@@ -41,8 +41,7 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		}
 	}
 	workers.Add(1)
-	go func() {
-		defer workers.Done()
+	go runStatusWorker(&workers, func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -67,14 +66,13 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 			}
 			fn(result)
 		}
-	}()
+	})
 	fileSignal := make(chan struct{}, 1)
 	watchErr := t.taildrop.watch(t.taildrop.fileWatchers, fileSignal)
 	if watchErr == nil {
 		defer t.taildrop.unwatch(t.taildrop.fileWatchers, fileSignal)
 		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		go runStatusWorker(&workers, func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -83,7 +81,7 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 					scheduleUpdate()
 				}
 			}
-		}()
+		})
 	}
 	scheduleUpdate()
 	for {
@@ -115,6 +113,14 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		}
 		scheduleUpdate()
 	}
+}
+
+// runStatusWorker owns subscriber completion even while a callback panic unwinds.
+// WaitGroup.Go deliberately skips Done on panic in Go 1.27, so it cannot own
+// this boundary without changing when the subscription's deferred join returns.
+func runStatusWorker(workers *sync.WaitGroup, worker func()) {
+	defer workers.Done()
+	worker()
 }
 
 func convertTailscaleStatus(status *ipnstate.Status) *adapter.TailscaleEndpointStatus {

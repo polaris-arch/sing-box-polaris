@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"slices"
 	"strconv"
 	"time"
 
@@ -615,14 +616,7 @@ func (m *Manager) compactTransition(ctx context.Context, p *persistentPreparatio
 	}
 	var discarded []adapter.FakeIPRuntimeNamespace
 	for _, handle := range p.created {
-		retained := false
-		for _, current := range keep {
-			if current == handle {
-				retained = true
-				break
-			}
-		}
-		if !retained {
+		if !slices.Contains(keep, handle) {
 			discarded = append(discarded, handle)
 		}
 	}
@@ -656,14 +650,7 @@ func (m *Manager) compactTransition(ctx context.Context, p *persistentPreparatio
 		}
 	}
 	for _, handle := range p.created {
-		retained := false
-		for _, current := range keep {
-			if current == handle {
-				retained = true
-				break
-			}
-		}
-		if !retained {
+		if !slices.Contains(keep, handle) {
 			if err := handle.Reclaim(ctx); err != nil {
 				return err
 			}

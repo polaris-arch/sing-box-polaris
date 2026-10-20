@@ -10,6 +10,7 @@ func newSnapshotPlatform(pemBytes []byte) (snapshotPlatform, error) {
 	anchors, err := newAppleAnchors(pemBytes)
 	return snapshotPlatform{anchors: anchors}, err
 }
+
 func (p snapshotPlatform) release() {
 	if p.anchors != nil {
 		p.anchors.Release()

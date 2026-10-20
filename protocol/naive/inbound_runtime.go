@@ -323,11 +323,13 @@ func (n *Inbound) RuntimeValidate() error {
 		return err
 	}
 	if common.Contains(n.network, N.NetworkUDP) && PrepareRuntimeHTTP3ListenerFunc == nil {
-		return errors.New("Naive HTTP3 lacks compiled staged adapter")
+		return errors.New("naive HTTP3 lacks compiled staged adapter")
 	}
 	return tls.ValidateRuntimeServer(n.tlsConfig)
 }
+
 func (n *Inbound) RuntimeListeners() []*listener.Listener { return []*listener.Listener{n.listener} }
+
 func (n *Inbound) PrepareRuntime(stage adapter.StartStage, _ *adapter.Scope) error {
 	if err := n.RuntimeValidate(); err != nil {
 		return err
@@ -366,7 +368,7 @@ func (n *Inbound) closeRuntimeProtocol() error {
 		err = errors.Join(err, n.http3Server.Close())
 	}
 	if err != nil {
-		return fmt.Errorf("Naive ingress cleanup incomplete: %v", err)
+		return fmt.Errorf("naive ingress cleanup incomplete: %v", err)
 	}
 	return nil
 }

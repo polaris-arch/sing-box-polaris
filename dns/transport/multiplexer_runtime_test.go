@@ -339,7 +339,7 @@ func TestOwnedTransportConstructorCleanupBeforeAndAfterStart(t *testing.T) {
 				ctx := adapter.ContextWithRuntimeResourceSource(scope.Context(), owner)
 				ctx = adapter.ContextWithConstructionScope(ctx, scope)
 				t.Cleanup(func() { owner.Seal(); construction.Release(); runtimeTransportAwait(t, owner.Closed()) })
-				transport, err := constructor(ctx, logger, kind, option.RemoteDNSServerOptions{DNSServerAddressOptions: option.DNSServerAddressOptions{Server: "192.0.2.53"}})
+				transport, err := constructor(ctx, logger, kind, option.RemoteDNSServerOptions{Server: "192.0.2.53"})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -517,7 +517,7 @@ func TestOwnedTransportStartFailureAndMissingScopeCloseAllocatedWorkers(t *testi
 			}
 			scope = adapter.NewScope(owner.Context(), logger)
 			ctx := adapter.ContextWithRuntimeResourceSource(scope.Context(), owner)
-			options := option.RemoteDNSServerOptions{DNSServerAddressOptions: option.DNSServerAddressOptions{Server: "192.0.2.53"}}
+			options := option.RemoteDNSServerOptions{Server: "192.0.2.53"}
 			t.Cleanup(func() { owner.Seal(); construction.Release(); runtimeTransportAwait(t, owner.Closed()) })
 			if result, err := constructor(ctx, logger, kind, options); !errors.Is(err, net.ErrClosed) || result != nil {
 				t.Fatalf("missing construction scope escaped: %v %v", result, err)

@@ -34,10 +34,6 @@ import (
 
 const runtimeResourceLimit = 1024
 
-func (s *Box) prepareRuntimeGraph(request context.Context, identity RuntimeIdentity, options option.Options, sources ...runtimeSourceSnapshot) (*preparedRuntimeGraph, error) {
-	return s.prepareRuntimeGraphWithSelections(request, identity, options, nil, sources...)
-}
-
 func (s *Box) prepareRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, sources ...runtimeSourceSnapshot) (*preparedRuntimeGraph, error) {
 	prepared, err := s.constructRuntimeGraphWithSelections(request, identity, options, intents, sources...)
 	if err != nil {

@@ -33,6 +33,7 @@ func (c *naiveTestConn) Write(p []byte) (int, error) {
 		return len(p), nil
 	}
 }
+
 func (c *naiveTestConn) Close() error                     { c.once.Do(func() { close(c.closed) }); return nil }
 func (c *naiveTestConn) LocalAddr() net.Addr              { return &net.TCPAddr{} }
 func (c *naiveTestConn) RemoteAddr() net.Addr             { return &net.TCPAddr{} }
@@ -147,7 +148,7 @@ func TestNaiveStagedRouteCloseInterruptsBlockedResponseBeforeJoining(t *testing.
 	route := naiveRouteFixture{handed: make(chan naiveRoutedConn, 1)}
 	n := &Inbound{ctx: construction, runtime: state, router: route, logger: log.NewNOPFactory().Logger(), listener: listener.New(listener.Options{Context: construction, Logger: log.NewNOPFactory().Logger()})}
 	ctx, graph := f.context()
-	raw := &naiveBlockedResponse{naiveTestConn: naiveTestConn{closed: make(chan struct{})}, entered: make(chan struct{}), interrupted: make(chan struct{})}
+	raw := &naiveBlockedResponse{closed: make(chan struct{}), entered: make(chan struct{}), interrupted: make(chan struct{})}
 	handlerDone := make(chan struct{})
 	go func() {
 		n.newConnection(ctx, true, &runtimeNaiveResponseConn{Conn: raw, writer: raw}, "", M.Socksaddr{}, M.Socksaddr{})

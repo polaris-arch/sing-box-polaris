@@ -614,6 +614,7 @@ func (s *URLTest) RuntimeActivate() {
 		s.group.PostStart()
 	}
 }
+
 func (s *URLTest) RuntimeStop() {
 	if s.group != nil {
 		_ = s.group.Close()

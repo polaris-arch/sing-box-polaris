@@ -18,14 +18,13 @@ type preparedDirectoryKey struct{}
 // Only the Windows validated preparation entrypoint creates populated plans.
 // Abort is lifecycle-owned and must run after Box construction has unwound.
 type PreparedDirectoryLeases struct {
-	mu                 sync.Mutex
-	ctx                context.Context
-	entries            []*preparedDirectoryEntry
-	aborted            bool
-	committed          bool
-	validated          bool
-	acquisitionStarted bool
-	preparationError   error
+	preparedDirectoryPlatform
+	mu        sync.Mutex
+	ctx       context.Context
+	entries   []*preparedDirectoryEntry
+	aborted   bool
+	committed bool
+	validated bool
 }
 
 type preparedDirectoryEntry struct {

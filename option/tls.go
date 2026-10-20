@@ -40,6 +40,13 @@ type InboundTLSOptions struct {
 	Reality *InboundRealityOptions `json:"reality,omitempty"`
 }
 
+// HasLegacyACME reports a legacy configuration that runtime planning must reject.
+// Keep this compatibility inspection beside the deprecated input definition;
+// it does not construct or enable the retired ACME implementation.
+func (o *InboundTLSOptions) HasLegacyACME() bool {
+	return o != nil && o.ACME != nil
+}
+
 type ClientAuthType tls.ClientAuthType
 
 func (t ClientAuthType) MarshalJSON() ([]byte, error) {

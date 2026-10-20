@@ -405,7 +405,7 @@ func (m *Manager) closeOwned() error {
 	}
 	return nil
 }
-func (m *Manager) close() error { return m.RuntimeCloseAndWait() }
+
 func (m *Manager) RuntimeCloseAndWait() error {
 	err := m.fence.RuntimeCloseAndWait()
 	m.access.Lock()

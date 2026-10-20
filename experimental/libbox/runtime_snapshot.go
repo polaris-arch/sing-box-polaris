@@ -7,22 +7,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
-// Unlike the historical diagnostic snapshot writer, this callback must return
-// every durability failure to the already-committed operation. A rename may
-// have succeeded even when the following directory sync fails; callers must
-// keep COMMITTED_DURABILITY_PENDING, never pretend the runtime was rolled back.
-func saveRuntimeConfigSnapshot(content []byte) error {
-	return writeRuntimeConfigSnapshot(configSnapshotPath(), content, func(file *os.File) error {
-		if runtime.GOOS != "android" && runtime.GOOS != "windows" {
-			return file.Chown(sUserID, sGroupID)
-		}
-		return nil
-	})
-}
-
+// writeRuntimeConfigSnapshot returns every durability failure. A rename may
+// have succeeded even when the following directory sync fails; a future restart
+// source owner must retain COMMITTED_DURABILITY_PENDING in that case.
 func writeRuntimeConfigSnapshot(path string, content []byte, prepare func(*os.File) error) error {
 	file, err := os.CreateTemp(filepath.Dir(path), ".runtime-config-*")
 	if err != nil {

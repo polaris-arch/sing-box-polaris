@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -75,12 +76,7 @@ func runtimeValidateSelectorIntents(options option.Options, intents []RuntimeSel
 			if !ok {
 				return errors.New("invalid selector options")
 			}
-			for _, member := range selector.Outbounds {
-				if member == intent.Selected {
-					found = true
-					break
-				}
-			}
+			found = found || slices.Contains(selector.Outbounds, intent.Selected)
 		}
 		if !found {
 			return errors.New("selector intent target or member missing")
@@ -129,8 +125,8 @@ func (c *runtimeCoordinator) lockRuntimeSelectorIntents(ctx context.Context, exp
 	sort.Slice(outbounds, func(i, j int) bool { return outbounds[i].Tag() < outbounds[j].Tag() })
 	var unlocks []func()
 	release := func() {
-		for index := len(unlocks) - 1; index >= 0; index-- {
-			unlocks[index]()
+		for _, value := range slices.Backward(unlocks) {
+			value()
 		}
 		lease.Release()
 	}

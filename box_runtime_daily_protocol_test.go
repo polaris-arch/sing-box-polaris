@@ -11,7 +11,7 @@ import (
 func TestDailyProtocolInventoryWithStablePersistentCache(t *testing.T) {
 	for _, kind := range []string{C.TypeDirect, C.TypeSelector, C.TypeURLTest, C.TypeShadowsocks, C.TypeVMess, C.TypeVLESS, C.TypeTrojan, C.TypeAnyTLS, C.TypeSnell, C.TypeShadowTLS, C.TypeSSH, C.TypeHysteria, C.TypeTUIC} {
 		t.Run(kind, func(t *testing.T) {
-			options := option.Options{Outbounds: []option.Outbound{{Type: kind, Tag: "node"}}, DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeUDP}}}}, Experimental: &option.ExperimentalOptions{CacheFile: &option.CacheFileOptions{Enabled: true, StoreDNS: true, StoreFakeIP: true}}}
+			options := option.Options{Outbounds: []option.Outbound{{Type: kind, Tag: "node"}}, DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeUDP}}}, Experimental: &option.ExperimentalOptions{CacheFile: &option.CacheFileOptions{Enabled: true, StoreDNS: true, StoreFakeIP: true}}}
 			_, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options)
 			if len(problems) != 0 {
 				t.Fatalf("source-composed daily protocol blocked: %+v", problems)
@@ -21,7 +21,7 @@ func TestDailyProtocolInventoryWithStablePersistentCache(t *testing.T) {
 }
 
 func TestDailyHysteria2RealmIsExplicitException(t *testing.T) {
-	options := option.Options{Outbounds: []option.Outbound{{Type: C.TypeHysteria2, Tag: "node", Options: &option.Hysteria2OutboundOptions{}}}, DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeFakeIP}}}}}
+	options := option.Options{Outbounds: []option.Outbound{{Type: C.TypeHysteria2, Tag: "node", Options: &option.Hysteria2OutboundOptions{}}}, DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeFakeIP}}}}
 	if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 		t.Fatal(problems)
 	}
@@ -40,7 +40,7 @@ func TestDailyUserspaceEndpointAndPushedDNSInventory(t *testing.T) {
 		}
 	}
 	for _, kind := range []string{C.DNSTypeOpenConnect, C.DNSTypeOpenVPN} {
-		options := option.Options{DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: kind, Tag: "pushed"}}}}}
+		options := option.Options{DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: kind, Tag: "pushed"}}}}
 		if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 			t.Fatal(kind, problems)
 		}
@@ -50,7 +50,7 @@ func TestDailyUserspaceEndpointAndPushedDNSInventory(t *testing.T) {
 func TestDailyTorAndTFOUseSeparateReplacementValidation(t *testing.T) {
 	for _, outbound := range []option.Outbound{
 		{Type: C.TypeTor, Tag: "tor", Options: &option.TorOutboundOptions{}},
-		{Type: C.TypeHTTP, Tag: "http", Options: &option.HTTPOutboundOptions{DialerOptions: option.DialerOptions{TCPFastOpen: true}}},
+		{Type: C.TypeHTTP, Tag: "http", Options: &option.HTTPOutboundOptions{TCPFastOpen: true}},
 	} {
 		options := option.Options{Outbounds: []option.Outbound{outbound}}
 		if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
@@ -61,7 +61,7 @@ func TestDailyTorAndTFOUseSeparateReplacementValidation(t *testing.T) {
 
 func TestDailyNetworkProfileLocalAndDHCPDNSInventory(t *testing.T) {
 	for _, kind := range []string{C.DNSTypeLocal, C.DNSTypeDHCP} {
-		options := option.Options{DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: kind, Tag: "network-profile"}}}}}
+		options := option.Options{DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: kind, Tag: "network-profile"}}}}
 		if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 			t.Fatal(kind, problems)
 		}
@@ -74,7 +74,7 @@ func TestDailyTailscaleAndTailcatInventoryUsesReviewedAdapters(t *testing.T) {
 	options := option.Options{
 		Endpoints: []option.Endpoint{{Type: C.TypeTailscale, Tag: "tail", Options: &option.TailscaleEndpointOptions{}}},
 		Outbounds: []option.Outbound{{Type: C.TypeTailcat, Tag: "lazy-tail"}},
-		DNS:       &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeTailscale, Tag: "tail-dns", Options: &option.TailscaleDNSServerOptions{Endpoint: "tail"}}}}},
+		DNS:       &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeTailscale, Tag: "tail-dns", Options: &option.TailscaleDNSServerOptions{Endpoint: "tail"}}}},
 	}
 	if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 		t.Fatal(problems)

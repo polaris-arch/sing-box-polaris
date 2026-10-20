@@ -164,7 +164,7 @@ func (s *StartedService) admitTailscaleRetirementRun() error {
 	clear(s.tailscaleRetirementRuns[len(retained):])
 	s.tailscaleRetirementRuns = retained
 	if len(retained) >= maxTailscaleRetirementRuns {
-		return fmt.Errorf("Tailscale retirement census capacity reached")
+		return fmt.Errorf("tailscale retirement census capacity reached")
 	}
 	return nil
 }
@@ -204,7 +204,7 @@ func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRu
 	clear(s.tailscaleRetirementRuns[len(retained):])
 	s.tailscaleRetirementRuns = retained
 	if len(s.tailscaleRetirementRuns) >= maxTailscaleRetirementRuns {
-		return fmt.Errorf("Tailscale retirement census capacity reached")
+		return fmt.Errorf("tailscale retirement census capacity reached")
 	}
 	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, run)
 	return nil

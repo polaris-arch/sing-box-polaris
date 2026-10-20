@@ -160,7 +160,7 @@ func validateRuntimeCertificateEndpoint(value any, tag string) (adapter.RuntimeR
 	}
 	id := endpoint.RuntimeResourceID()
 	if id == (adapter.RuntimeResourceID{}) {
-		return id, errors.New("Tailscale endpoint has no runtime resource identity")
+		return id, errors.New("tailscale endpoint has no runtime resource identity")
 	}
 	return id, nil
 }
@@ -172,7 +172,7 @@ func (p *CertificateProvider) initializeRuntime(ctx context.Context) error {
 	}
 	source, ok := adapter.RuntimeResourceSourceFromContext(ctx)
 	if !ok || !adapter.HasConstructionScope(ctx) {
-		return errors.New("Tailscale certificate provider requires its constructor resource and scope")
+		return errors.New("tailscale certificate provider requires its constructor resource and scope")
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	r := &runtimeCertificateProvider{ctx: ctx, cancel: cancel, source: source, endpointID: endpointID}
@@ -194,10 +194,10 @@ func (p *CertificateProvider) initializeRuntime(ctx context.Context) error {
 		incomplete := r.stageDone != nil && !r.stageReturned
 		r.mu.Unlock()
 		if incomplete {
-			closeErr = errors.Join(closeErr, errors.New("Tailscale certificate stage completion unknown"))
+			closeErr = errors.Join(closeErr, errors.New("tailscale certificate stage completion unknown"))
 		}
 		if closeErr != nil {
-			return fmt.Errorf("Tailscale certificate cleanup incomplete: %v", closeErr)
+			return fmt.Errorf("tailscale certificate cleanup incomplete: %v", closeErr)
 		}
 		return nil
 	})
@@ -226,7 +226,7 @@ func (p *CertificateProvider) RuntimeDependencies() []adapter.RuntimeResourceID 
 
 func (p *CertificateProvider) RuntimeValidate() error {
 	if p.runtime == nil {
-		return errors.New("Tailscale certificate provider lacks a staged endpoint and provider owner")
+		return errors.New("tailscale certificate provider lacks a staged endpoint and provider owner")
 	}
 	return nil
 }
@@ -257,7 +257,7 @@ func (p *CertificateProvider) StageRuntime(ctx context.Context) error {
 	r.mu.Lock()
 	if !r.prepared || r.stopped {
 		r.mu.Unlock()
-		return errors.New("Tailscale certificate provider not prepared for staging")
+		return errors.New("tailscale certificate provider not prepared for staging")
 	}
 	if r.stageDone != nil {
 		done := r.stageDone
@@ -270,7 +270,7 @@ func (p *CertificateProvider) StageRuntime(ctx context.Context) error {
 	}
 	r.stageDone = make(chan struct{})
 	done := r.stageDone
-	r.stageErr = errors.New("Tailscale certificate stage did not complete")
+	r.stageErr = errors.New("tailscale certificate stage did not complete")
 	r.mu.Unlock()
 	defer close(done)
 	err = p.stageLocalClient(ctx)
@@ -384,14 +384,14 @@ func (p *CertificateProvider) GetCertificateWithContext(ctx context.Context, hel
 	active := r.active
 	r.mu.Unlock()
 	if !active {
-		return nil, errors.New("Tailscale certificate provider is not active")
+		return nil, errors.New("tailscale certificate provider is not active")
 	}
 	if hello == nil || hello.ServerName == "" {
 		return nil, errors.New("no SNI ServerName")
 	}
 	client := p.localClient.Load()
 	if client == nil {
-		return nil, errors.New("Tailscale certificate local client is not ready")
+		return nil, errors.New("tailscale certificate local client is not ready")
 	}
 	// Pinned local.Client.GetCertificate replaces caller context with Background.
 	// Its public ExpandSNIName and CertPair APIs preserve the admitted lineage and

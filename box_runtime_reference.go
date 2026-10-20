@@ -2,6 +2,7 @@ package box
 
 import (
 	"errors"
+	"maps"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -34,9 +35,7 @@ func (s *Box) AcquireReferenceSnapshot() (route.RuntimeReferenceSnapshot, error)
 		return route.RuntimeReferenceSnapshot{}, errors.New("invalid runtime reference view")
 	}
 	resources := make(map[any]adapter.RuntimeResourceID, len(view.referenceResources))
-	for object, id := range view.referenceResources {
-		resources[object] = id
-	}
+	maps.Copy(resources, view.referenceResources)
 	mode := ""
 	if c.clashMode != nil {
 		mode = c.clashMode.Mode()

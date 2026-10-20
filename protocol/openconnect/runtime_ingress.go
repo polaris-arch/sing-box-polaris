@@ -73,8 +73,8 @@ type (
 	}
 )
 
-func (p *runtimeClientState) wrapInboundConn(ctx context.Context, conn net.Conn, onClose N.CloseHandlerFunc) (context.Context, net.Conn, N.CloseHandlerFunc, error) {
-	owned, release, err := adapter.AcquireRuntimeOperation(ctx, p.source)
+func (r *runtimeClientState) wrapInboundConn(ctx context.Context, conn net.Conn, onClose N.CloseHandlerFunc) (context.Context, net.Conn, N.CloseHandlerFunc, error) {
+	owned, release, err := adapter.AcquireRuntimeOperation(ctx, r.source)
 	if err != nil {
 		return ctx, conn, onClose, err
 	}
@@ -88,8 +88,8 @@ func (p *runtimeClientState) wrapInboundConn(ctx context.Context, conn net.Conn,
 	}), nil
 }
 
-func (p *runtimeClientState) wrapInboundPacket(ctx context.Context, conn N.PacketConn, onClose N.CloseHandlerFunc) (context.Context, N.PacketConn, N.CloseHandlerFunc, error) {
-	owned, release, err := adapter.AcquireRuntimeOperation(ctx, p.source)
+func (r *runtimeClientState) wrapInboundPacket(ctx context.Context, conn N.PacketConn, onClose N.CloseHandlerFunc) (context.Context, N.PacketConn, N.CloseHandlerFunc, error) {
+	owned, release, err := adapter.AcquireRuntimeOperation(ctx, r.source)
 	if err != nil {
 		return ctx, conn, onClose, err
 	}

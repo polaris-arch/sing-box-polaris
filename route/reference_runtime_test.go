@@ -34,6 +34,7 @@ func (o *referenceTestOutbound) SetKeepIdleConnections(keep bool) {
 		o.keep(keep)
 	}
 }
+
 func (o *referenceTestOutbound) CloseIdleConnections() {
 	if o.idle != nil {
 		o.idle()
@@ -60,6 +61,7 @@ func (d *referenceTestTransport) SetKeepIdleConnections(keep bool) {
 		d.keep(keep)
 	}
 }
+
 func (d *referenceTestTransport) CloseIdleConnections() {
 	if d.idle != nil {
 		d.idle()
@@ -591,8 +593,17 @@ func TestRuntimeReferencePauseRegistryTailDoesNotHoldObserverLock(t *testing.T) 
 	awaitReferenceSignal(t, entered)
 	m.Stop()
 	lockDone := make(chan struct{})
-	go func() { m.mu.Lock(); m.mu.Unlock(); close(lockDone) }()
+	var stopping bool
+	go func() {
+		m.mu.Lock()
+		stopping = m.stopping
+		m.mu.Unlock()
+		close(lockDone)
+	}()
 	awaitReferenceSignal(t, lockDone)
+	if !stopping {
+		t.Fatal("stop did not seal the observer")
+	}
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := m.WaitStopped(cancelled); !errors.Is(err, context.Canceled) {
@@ -1012,7 +1023,7 @@ func (e *referenceTestOnDemandEndpoint) SetKeepIdleConnections(keep bool) { e.ke
 
 func TestRuntimeReferencePauseJoinsExactEndpointEffect(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
-	endpoint := &referenceTestOnDemandEndpoint{referenceTestEndpoint: referenceTestEndpoint{tag: "peer"}, keep: func(bool) { close(entered); <-release }}
+	endpoint := &referenceTestOnDemandEndpoint{tag: "peer", keep: func(bool) { close(entered); <-release }}
 	graph := newReferenceTestGraph(1, nil, nil)
 	graph.view.endpoints = []adapter.Endpoint{endpoint}
 	id := adapter.RuntimeResourceID{Incarnation: "reference-test", Sequence: 200}

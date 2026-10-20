@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"sync"
 	"time"
@@ -75,9 +76,7 @@ func (s *runtimeNamespace) SnapshotAllocation() adapter.FakeIPStorageSnapshot {
 	defer s.mappingAccess.RUnlock()
 	metadata := s.metadata
 	snapshot := adapter.FakeIPStorageSnapshot{Metadata: &metadata, Mappings: make(map[netip.Addr]string, len(s.mappings))}
-	for address, domain := range s.mappings {
-		snapshot.Mappings[address] = domain
-	}
+	maps.Copy(snapshot.Mappings, s.mappings)
 	return snapshot
 }
 
@@ -150,9 +149,7 @@ func (s *runtimeNamespace) snapshotLocked() (adapter.FakeIPStorageSnapshot, erro
 			metadata := *pending.metadata
 			snapshot.Metadata = &metadata
 		}
-		for address, domain := range pending.mappings {
-			snapshot.Mappings[address] = domain
-		}
+		maps.Copy(snapshot.Mappings, pending.mappings)
 		for address, authority := range pending.authorities {
 			current, exists := answers[address]
 			write, err := mergeRuntimeAnswer(current, exists, authority)

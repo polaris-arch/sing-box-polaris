@@ -65,8 +65,8 @@ func runtimeInitialEligible(ctx context.Context, options Options) bool {
 	return true
 }
 
-func newRuntimeBox(options Options, ctx context.Context, scope *adapter.Scope, factory log.Factory, createdAt time.Time, internal []adapter.LifecycleService) (*Box, error) {
-	ctx = adapter.ContextWithConstructionScope(scope.Context(), scope)
+func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, createdAt time.Time, internal []adapter.LifecycleService) (*Box, error) {
+	ctx := adapter.ContextWithConstructionScope(scope.Context(), scope)
 	coordinator, err := newRuntimeCoordinator(ctx)
 	if err != nil {
 		return nil, err

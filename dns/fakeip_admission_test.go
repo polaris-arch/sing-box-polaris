@@ -40,12 +40,12 @@ func (t *fakeIPAdmissionTransport) ProtectAnswer(response *mDNS.Msg) (adapter.Fa
 }
 
 func newFakeIPAdmissionTransport(kind string) *fakeIPAdmissionTransport {
-	return &fakeIPAdmissionTransport{kind: kind, answer: &fakeIPAdmissionAnswer{}, policyTestTransport: policyTestTransport{tag: "selected", exchange: func(_ context.Context, q *mDNS.Msg) (*mDNS.Msg, error) {
+	return &fakeIPAdmissionTransport{kind: kind, answer: &fakeIPAdmissionAnswer{}, tag: "selected", exchange: func(_ context.Context, q *mDNS.Msg) (*mDNS.Msg, error) {
 		response := new(mDNS.Msg)
 		response.SetReply(q)
 		response.Answer = []mDNS.RR{&mDNS.A{Hdr: mDNS.RR_Header{Name: q.Question[0].Name, Rrtype: mDNS.TypeA, Class: mDNS.ClassINET, Ttl: 600}, A: net.ParseIP("198.18.0.2").To4()}}
 		return response, nil
-	}}}
+	}}
 }
 
 func TestFakeIPFinalAdmissionObservesRewrittenTTLAndPendingEgress(t *testing.T) {

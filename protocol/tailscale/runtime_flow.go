@@ -26,7 +26,7 @@ func (f *runtimeBindingFlow) Retain() (tun.FlowOwnership, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.released {
-		return nil, errors.New("Tailscale flow binding already released")
+		return nil, errors.New("tailscale flow binding already released")
 	}
 	owned, release, err := f.binding.acquire(f.owned)
 	if err != nil {
@@ -58,7 +58,7 @@ func (f *runtimeBindingFlow) RetainPort(port tun.Port) (tun.PortOwnership, error
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.released || f.inner == nil {
-		return nil, errors.New("Tailscale verdict has no retained port authority")
+		return nil, errors.New("tailscale verdict has no retained port authority")
 	}
 	return f.inner.RetainPort(port)
 }

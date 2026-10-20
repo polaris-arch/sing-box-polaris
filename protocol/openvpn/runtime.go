@@ -129,45 +129,45 @@ func (r *runtimeClientState) close() error {
 	return r.closeErr
 }
 
-func (e *ClientEndpoint) RuntimeValidate() error {
-	if e.runtime == nil {
+func (c *ClientEndpoint) RuntimeValidate() error {
+	if c.runtime == nil {
 		return errors.New("endpoint lacks prepared userspace ownership")
 	}
 	return nil
 }
 
-func (e *ClientEndpoint) RuntimeResourceID() adapter.RuntimeResourceID {
-	if e.runtime == nil {
+func (c *ClientEndpoint) RuntimeResourceID() adapter.RuntimeResourceID {
+	if c.runtime == nil {
 		return adapter.RuntimeResourceID{}
 	}
-	return e.runtime.source.ID()
+	return c.runtime.source.ID()
 }
 
-func (e *ClientEndpoint) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
-	return e.RuntimeValidate()
+func (c *ClientEndpoint) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
+	return c.RuntimeValidate()
 }
 
-func (e *ClientEndpoint) RuntimeReservePhysical(context.Context) error {
-	if err := e.RuntimeValidate(); err != nil {
+func (c *ClientEndpoint) RuntimeReservePhysical(context.Context) error {
+	if err := c.RuntimeValidate(); err != nil {
 		return err
 	}
-	e.runtime.mu.Lock()
-	defer e.runtime.mu.Unlock()
-	if e.runtime.closing {
+	c.runtime.mu.Lock()
+	defer c.runtime.mu.Unlock()
+	if c.runtime.closing {
 		return net.ErrClosed
 	}
 	return nil
 }
 
-func (e *ClientEndpoint) RuntimeReleasePhysicalReservation(context.Context) error {
-	return e.RuntimeValidate()
+func (c *ClientEndpoint) RuntimeReleasePhysicalReservation(context.Context) error {
+	return c.RuntimeValidate()
 }
 
-func (e *ClientEndpoint) RuntimeStagePhysical(ctx context.Context) error {
-	if err := e.RuntimeValidate(); err != nil {
+func (c *ClientEndpoint) RuntimeStagePhysical(ctx context.Context) error {
+	if err := c.RuntimeValidate(); err != nil {
 		return err
 	}
-	r := e.runtime
+	r := c.runtime
 	r.mu.Lock()
 	if r.closing || r.stageDone != nil {
 		r.mu.Unlock()
@@ -185,7 +185,7 @@ func (e *ClientEndpoint) RuntimeStagePhysical(ctx context.Context) error {
 			close(done)
 		}()
 		for _, stage := range adapter.ListStartStages {
-			if err := r.scope.Start("prepared endpoint", e, stage); err != nil {
+			if err := r.scope.Start("prepared endpoint", c, stage); err != nil {
 				r.stageErr = err
 				return
 			}
@@ -201,11 +201,11 @@ func (e *ClientEndpoint) RuntimeStagePhysical(ctx context.Context) error {
 	}
 }
 
-func (e *ClientEndpoint) RuntimePreparePublication() (func(), error) {
-	if err := e.RuntimeValidate(); err != nil {
+func (c *ClientEndpoint) RuntimePreparePublication() (func(), error) {
+	if err := c.RuntimeValidate(); err != nil {
 		return nil, err
 	}
-	r := e.runtime
+	r := c.runtime
 	r.mu.Lock()
 	done, closing := r.stageDone, r.closing
 	r.mu.Unlock()
@@ -225,23 +225,25 @@ func (e *ClientEndpoint) RuntimePreparePublication() (func(), error) {
 	}
 	return func() { r.gate.Store(true); r.ingress.Store(true) }, nil
 }
-func (e *ClientEndpoint) RuntimeStop() {
-	if e.runtime != nil {
-		e.runtime.ingress.Store(false)
+
+func (c *ClientEndpoint) RuntimeStop() {
+	if c.runtime != nil {
+		c.runtime.ingress.Store(false)
 	}
-}
-func (e *ClientEndpoint) RuntimeCloseAndWait() error {
-	if e.runtime == nil {
-		return errors.New("endpoint runtime owner missing")
-	}
-	return e.runtime.close()
 }
 
-func (e *ClientEndpoint) closeNativeClient() error {
-	if e.runtime != nil {
-		return e.runtime.closeNative()
+func (c *ClientEndpoint) RuntimeCloseAndWait() error {
+	if c.runtime == nil {
+		return errors.New("endpoint runtime owner missing")
 	}
-	return e.client.Close()
+	return c.runtime.close()
+}
+
+func (c *ClientEndpoint) closeNativeClient() error {
+	if c.runtime != nil {
+		return c.runtime.closeNative()
+	}
+	return c.client.Close()
 }
 
 func (r *runtimeClientState) acquire() (func(), error) {

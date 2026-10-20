@@ -107,11 +107,9 @@ func TestPreparedActivationConcurrentConsumeHasOneWinner(t *testing.T) {
 	results := make(chan error, 2)
 	var workers sync.WaitGroup
 	for range 2 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			results <- validatePreparedActivation(prepared, options, source, info, true)
-		}()
+		})
 	}
 	workers.Wait()
 	close(results)

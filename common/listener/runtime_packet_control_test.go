@@ -28,7 +28,9 @@ func (c *packetControlFixture) ConsumeRuntimeControlPacket(context.Context, []by
 	}
 	return false
 }
+
 func (c *packetControlFixture) AuthorizeRuntimeControlWrite([]byte, M.Socksaddr) bool { return false }
+
 func privateControlListener(t *testing.T, control RuntimePacketControl) *Listener {
 	t.Helper()
 	id := adapter.RuntimeResourceID{Incarnation: "control", Sequence: 1}

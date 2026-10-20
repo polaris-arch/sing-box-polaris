@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"maps"
 	"net"
 	"sync"
 
@@ -29,9 +30,7 @@ type runtimeRouterStructure = RuntimeRouterStructure
 
 func NewRuntimeRouter(admission adapter.RuntimeAdmission, structure RuntimeRouterStructure) *RuntimeRouter {
 	rules := make(map[string]adapter.RuleSet, len(structure.RuleSets))
-	for tag, rule := range structure.RuleSets {
-		rules[tag] = rule
-	}
+	maps.Copy(rules, structure.RuleSets)
 	structure.RuleSets = rules
 	return &RuntimeRouter{admission: admission, structural: structure}
 }

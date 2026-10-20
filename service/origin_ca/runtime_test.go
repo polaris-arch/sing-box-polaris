@@ -54,7 +54,9 @@ func (s *originStorageFixture) Exists(_ context.Context, key string) bool {
 	_, ok := s.values[key]
 	return ok
 }
+
 func (*originStorageFixture) List(context.Context, string, bool) ([]string, error) { return nil, nil }
+
 func (*originStorageFixture) Stat(context.Context, string) (certmagic.KeyInfo, error) {
 	return certmagic.KeyInfo{}, nil
 }

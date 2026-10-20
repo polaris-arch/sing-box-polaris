@@ -22,6 +22,7 @@ func (c *inboundHandshakeFixture) SetDeadline(time.Time) error      { return nil
 func (c *inboundHandshakeFixture) SetReadDeadline(time.Time) error  { return nil }
 func (c *inboundHandshakeFixture) SetWriteDeadline(time.Time) error { return nil }
 func (c *inboundHandshakeFixture) HandshakeSuccess() error          { close(c.entered); <-c.proceed; return nil }
+
 func TestRuntimeProtocolHandshakeIsJoinedBeforeCarrierRelease(t *testing.T) {
 	f := newIngressFixture()
 	construction, scope := ingressConstruction(f)
@@ -77,7 +78,7 @@ func TestRuntimeProtocolHandshakePanicRetainsUncertainty(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, graph := f.context()
-	raw := &inboundPanicHandshakeFixture{inboundHandshakeFixture: inboundHandshakeFixture{closed: make(chan struct{})}}
+	raw := &inboundPanicHandshakeFixture{closed: make(chan struct{})}
 	conn, _, err := state.wrapConnection(ctx, raw, nil)
 	if err != nil {
 		t.Fatal(err)

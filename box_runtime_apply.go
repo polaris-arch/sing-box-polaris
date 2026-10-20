@@ -165,7 +165,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 	}()
 	// Only preparation work observes request cancellation. Committed component
-	// contexts are constructed under coordinator.ctx by prepareRuntimeGraph.
+	// contexts are constructed under coordinator.ctx by prepareRuntimeGraphWithSelections.
 	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(ctx, next, record.options, record.selectorIntents, record.sources...)
 	if prepareErr == nil && prepared.rootDigest != record.rootDigest {
 		prepareErr = errors.New("root content changed after planning")

@@ -37,14 +37,16 @@ type Server struct {
 func NewServer(ctx context.Context, logger logger.ContextLogger, options option.V2RayGRPCOptions, tlsConfig tls.ServerConfig, handler adapter.V2RayServerTransportHandler) (*Server, error) {
 	var serverOptions []grpc.ServerOption
 	var transportCredentials credentials.TransportCredentials
+	var tlsCredentials *TLSTransportCredentials
 	if tlsConfig != nil {
 		if !common.Contains(tlsConfig.NextProtos(), http2.NextProtoTLS) {
 			tlsConfig.SetNextProtos(append([]string{"h2"}, tlsConfig.NextProtos()...))
 		}
-		transportCredentials = NewTLSTransportCredentials(tlsConfig)
+		tlsCredentials = &TLSTransportCredentials{config: tlsConfig}
+		transportCredentials = tlsCredentials
 	}
 	if adapter.IsRuntimePreparation(ctx) {
-		transportCredentials = &runtimeServerCredentials{inner: transportCredentials}
+		transportCredentials = &runtimeServerCredentials{inner: tlsCredentials}
 	}
 	if transportCredentials != nil {
 		serverOptions = append(serverOptions, grpc.Creds(transportCredentials))

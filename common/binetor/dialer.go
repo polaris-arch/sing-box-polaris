@@ -65,7 +65,7 @@ func (t *Tor) Dialer(ctx context.Context, conf *DialConf) (*Dialer, error) {
 			return nil, err
 		}
 		if len(info) != 1 || info[0].Key != "net/listeners/socks" {
-			return nil, fmt.Errorf("Unable to get socks proxy address")
+			return nil, fmt.Errorf("unable to get socks proxy address")
 		}
 		proxyAddress = info[0].Val
 		if strings.HasPrefix(proxyAddress, "unix:") {

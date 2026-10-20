@@ -58,7 +58,7 @@ func (s *Box) prepareRuntimeSourceDownload(expected RuntimeIdentity, candidate [
 				continue
 			}
 			value := source.RemoteOptions.HTTPClient
-			if source.RemoteOptions.DownloadDetour != "" || (value != nil && !value.IsEmpty() && value.Tag == "") {
+			if source.RemoteOptions.HasLegacyDownloadDetour() || (value != nil && !value.IsEmpty() && value.Tag == "") {
 				return reject("RESTART_REQUIRED", "inline source download transports are outside this runtime capability")
 			}
 		}
@@ -100,7 +100,7 @@ func (s *Box) prepareRuntimeSourceDownload(expected RuntimeIdentity, candidate [
 	var once sync.Once
 	session := &runtimeSourceDownloadSession{ctx: adapter.ContextWithRuntimeLease(c.ctx, lease), candidateDigest: runtimeDigest(candidate), dependencyDigest: hex.EncodeToString(hash.Sum(nil)), previous: previous}
 	session.resolve = func(_ context.Context, source option.RuleSet) (http.RoundTripper, error) {
-		if source.RemoteOptions.DownloadDetour != "" {
+		if source.RemoteOptions.HasLegacyDownloadDetour() {
 			return nil, errors.New("source download detour was not prevalidated")
 		}
 		tag := ""

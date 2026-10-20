@@ -19,7 +19,7 @@ var (
 	ErrMigrationConflict           = errors.New("fake-IP range migration has no collision-safe allocation capacity")
 	ErrMigrationStale              = errors.New("fake-IP migration candidate is stale or finalized")
 	ErrAllocationConflict          = errors.New("fake-IP configured pool is exhausted by other retained namespaces")
-	ErrNoActiveNamespace           = errors.New("Box fake-IP authority has no active allocation namespace")
+	ErrNoActiveNamespace           = errors.New("box fake-IP authority has no active allocation namespace")
 )
 
 type memoryNamespace struct {

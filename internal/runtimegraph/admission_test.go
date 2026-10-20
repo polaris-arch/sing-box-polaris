@@ -256,7 +256,7 @@ func TestSealRacesAndParallelRelease(t *testing.T) {
 	assertGeneration(t, g, 32, true, true)
 	for _, l := range leases {
 		wg.Add(2)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			go func(l *generationLease) { defer wg.Done(); l.release() }(l)
 		}
 	}

@@ -9,7 +9,7 @@ func (t *Tor) DebugEnabled() bool {
 
 // Debugf writes the formatted string with a newline appended to the DebugWriter
 // if present.
-func (t *Tor) Debugf(format string, args ...interface{}) {
+func (t *Tor) Debugf(format string, args ...any) {
 	if w := t.DebugWriter; w != nil {
 		fmt.Fprintf(w, format+"\n", args...)
 	}

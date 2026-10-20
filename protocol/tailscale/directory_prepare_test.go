@@ -73,7 +73,7 @@ func TestPreparedDirectoryAbortCallbackOutsideGuard(t *testing.T) {
 	}
 	calls := 0
 	failure := errors.New("cleanup uncertain")
-	b.publish(func() error { p.mu.Lock(); p.mu.Unlock(); calls++; return failure })
+	b.publish(func() error { p.mu.Lock(); calls++; p.mu.Unlock(); return failure })
 	b.finish(false)
 	if err := p.Abort(); !errors.Is(err, failure) {
 		t.Fatal("cleanup evidence lost", err)

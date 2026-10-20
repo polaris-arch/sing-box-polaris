@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"strconv"
 	"sync"
@@ -89,7 +90,6 @@ type persistentPreparation struct {
 	post                   []persistentCompletion
 	superseded             []adapter.FakeIPRuntimeNamespace
 	publicationTransitions []*persistentPreparation
-	compacted              bool
 	acknowledged           bool  // manager.mappingAccess
 	cleanupErr             error // after finished, or manager.mappingAccess
 	completionErr          error // writer-owned; read only after finished
@@ -323,9 +323,7 @@ func storageSnapshot(ctx context.Context, storage adapter.FakeIPStorage) (adapte
 	if memory, ok := storage.(*MemoryStorage); ok {
 		snapshot := adapter.FakeIPStorageSnapshot{Mappings: make(map[netip.Addr]string)}
 		memory.addressAccess.RLock()
-		for address, domain := range memory.addressCache {
-			snapshot.Mappings[address] = domain
-		}
+		maps.Copy(snapshot.Mappings, memory.addressCache)
 		memory.addressAccess.RUnlock()
 		return snapshot, nil
 	}
@@ -554,9 +552,7 @@ func (p *persistentPreparation) prepareFence(ctx context.Context) (*RangeCommit,
 		}
 		commit := &RangeCommit{candidate: p.candidate, authority: make(map[netip.Addr]authorityEntry), domains: make(map[domainKey]netip.Addr), owned: make(map[*memoryNamespace]map[netip.Addr]struct{})}
 		if m.authority != nil {
-			for address, entry := range m.authority {
-				commit.authority[address] = entry
-			}
+			maps.Copy(commit.authority, m.authority)
 		} else {
 			for _, image := range p.images {
 				if image.namespace.published {
@@ -565,9 +561,7 @@ func (p *persistentPreparation) prepareFence(ctx context.Context) (*RangeCommit,
 					}
 				}
 			}
-			for address, entry := range p.deltas {
-				commit.authority[address] = entry
-			}
+			maps.Copy(commit.authority, p.deltas)
 		}
 		if p.candidate.base.empty {
 			for _, image := range p.images {
@@ -596,9 +590,7 @@ func (p *persistentPreparation) prepareFence(ctx context.Context) (*RangeCommit,
 		p.transfers = make(map[*answerLease]answerJournal)
 		for _, lease := range p.leases {
 			journals := make(answerJournal)
-			for handle, records := range lease.journals {
-				journals[handle] = records
-			}
+			maps.Copy(journals, lease.journals)
 			for _, image := range p.images {
 				var records []adapter.FakeIPRuntimeAnswer
 				for _, token := range image.snapshot.PendingAnswers {

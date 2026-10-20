@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
@@ -24,8 +25,10 @@ type runtimeEndpointTransaction struct {
 
 type runtimeEndpointRestartRequiredError struct{ detail RuntimePlanError }
 
-func (e *runtimeEndpointRestartRequiredError) Error() string                      { return e.detail.Message }
+func (e *runtimeEndpointRestartRequiredError) Error() string { return e.detail.Message }
+
 func (e *runtimeEndpointRestartRequiredError) RuntimePlanError() RuntimePlanError { return e.detail }
+
 func runtimeEndpointRestart(tag, message string) error {
 	return &runtimeEndpointRestartRequiredError{RuntimePlanError{Code: "RESTART_REQUIRED", Path: "endpoints." + tag, Message: message}}
 }
@@ -161,11 +164,11 @@ func (t *runtimeEndpointTransaction) Compensate(ctx context.Context) error {
 	result = errors.Join(result, t.clients.compensate(ctx))
 	// Terminal close joins an outstanding Stage operation, including a caller
 	// timeout. It cannot report completion merely because ctx was cancelled.
-	for index := len(t.next) - 1; index >= 0; index-- {
-		result = errors.Join(result, t.next[index].RuntimeCloseAndWait())
+	for _, value := range slices.Backward(t.next) {
+		result = errors.Join(result, value.RuntimeCloseAndWait())
 	}
-	for index := len(t.reserved) - 1; index >= 0; index-- {
-		result = errors.Join(result, t.reserved[index].RuntimeReleasePhysicalReservation(ctx))
+	for _, value := range slices.Backward(t.reserved) {
+		result = errors.Join(result, value.RuntimeReleasePhysicalReservation(ctx))
 	}
 	if result != nil {
 		return tls.NewRuntimeCleanupError(result)

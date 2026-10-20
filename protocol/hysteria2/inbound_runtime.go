@@ -331,7 +331,9 @@ func (h *Inbound) RuntimeValidate() error {
 	}
 	return h.protocolTLS.RuntimeValidate()
 }
+
 func (h *Inbound) RuntimeListeners() []*listener.Listener { return []*listener.Listener{h.listener} }
+
 func (h *Inbound) PrepareRuntime(stage adapter.StartStage, _ *adapter.Scope) error {
 	if err := h.RuntimeValidate(); err != nil {
 		return err

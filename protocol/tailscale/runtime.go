@@ -115,7 +115,7 @@ func (p *runtimeEndpointPhysical) close() error {
 	p.closeOnce.Do(func() {
 		p.mu.Lock()
 		p.closing = true
-		p.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale physical close did not return"))
+		p.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale physical close did not return"))
 		child := p.child
 		acquisition := p.acquisition
 		p.mu.Unlock()
@@ -197,7 +197,7 @@ type (
 func (t *Endpoint) initializeRuntime(options option.TailscaleEndpointOptions) error {
 	source, ok := adapter.RuntimeResourceSourceFromContext(t.ctx)
 	if !ok {
-		return errors.New("Tailscale runtime owner missing")
+		return errors.New("tailscale runtime owner missing")
 	}
 	// Registrar identity uses the captured configured spelling after expansion;
 	// actual default/base/absolute path selection belongs to the fresh child plan.
@@ -212,7 +212,7 @@ func (t *Endpoint) initializeRuntime(options option.TailscaleEndpointOptions) er
 
 func (t *Endpoint) RuntimeValidate() error {
 	if t.runtime == nil {
-		return errors.New("Tailscale has no private physical lifecycle")
+		return errors.New("tailscale has no private physical lifecycle")
 	}
 	return nil
 }
@@ -269,7 +269,7 @@ func (t *Endpoint) RuntimeReservePhysical(ctx context.Context) error {
 	}
 	r.generation++
 	if r.baseContext == nil || r.baseSource == nil || r.baseLogger == nil {
-		return errors.New("Tailscale stable physical base was not supplied")
+		return errors.New("tailscale stable physical base was not supplied")
 	}
 	baseLease, err := r.baseSource.Acquire()
 	if err != nil {
@@ -278,7 +278,7 @@ func (t *Endpoint) RuntimeReservePhysical(ctx context.Context) error {
 	physicalContext, cancel := context.WithCancel(r.baseContext)
 	callbacks := outbound.NewRuntimeIOFence(nil)
 	scope := adapter.NewScope(physicalContext, outbound.WrapRuntimeLogger(r.baseLogger, callbacks))
-	p := &runtimeEndpointPhysical{attachments: make(map[*runtimeEndpointBinding]struct{}), baseLease: baseLease, source: r.baseSource, scope: scope, callbacks: callbacks, carriers: outbound.NewRuntimeIOFenceSet(), cancel: cancel, generation: r.generation, constructionDone: make(chan struct{}), closeDone: make(chan struct{}), constructionErr: errors.New("Tailscale construction not complete"), closeErr: errors.New("Tailscale close not complete")}
+	p := &runtimeEndpointPhysical{attachments: make(map[*runtimeEndpointBinding]struct{}), baseLease: baseLease, source: r.baseSource, scope: scope, callbacks: callbacks, carriers: outbound.NewRuntimeIOFenceSet(), cancel: cancel, generation: r.generation, constructionDone: make(chan struct{}), closeDone: make(chan struct{}), constructionErr: errors.New("tailscale construction not complete"), closeErr: errors.New("tailscale close not complete")}
 	p.returns.physical = p
 	p.ctx = adapter.ContextWithConstructionScope(context.WithValue(adapter.ContextWithRuntimeResourceSource(scope.Context(), r.baseSource), runtimePhysicalEndpointKey{}, p), scope)
 	r.reserved = p // retain the inert evidence holder even if registration fails
@@ -331,14 +331,14 @@ func (t *Endpoint) RuntimeStop() {
 func (t *Endpoint) RuntimeCloseAndWait() error {
 	r := t.runtime
 	if r == nil {
-		return errors.New("Tailscale runtime owner missing")
+		return errors.New("tailscale runtime owner missing")
 	}
 	r.closeOnce.Do(func() {
 		r.mu.Lock()
 		r.closing = true
 		operation := r.operation
 		r.mu.Unlock()
-		r.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale logical close did not complete"))
+		r.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale logical close did not complete"))
 		defer close(r.closeDone)
 		if operation != nil {
 			<-operation.done
@@ -375,17 +375,17 @@ func (r *runtimeEndpointState) run(ctx context.Context, fn func() error) error {
 		case <-previous.done:
 		default:
 			r.mu.Unlock()
-			return errors.New("Tailscale physical operation still running")
+			return errors.New("tailscale physical operation still running")
 		}
 	}
 	op := &runtimeEndpointOperation{done: make(chan struct{})}
 	r.operation = op
 	r.mu.Unlock()
 	go func() {
-		op.err = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale physical operation did not return"))
+		op.err = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale physical operation did not return"))
 		defer func() {
 			if recover() != nil {
-				op.err = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale physical operation panicked; original child retained"))
+				op.err = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale physical operation panicked; original child retained"))
 			}
 			close(op.done)
 		}()
@@ -409,10 +409,10 @@ func (t *Endpoint) RuntimeStagePhysical(ctx context.Context) error {
 		existing, reserved := r.physical, r.reserved
 		r.mu.Unlock()
 		if existing != nil {
-			return errors.New("Tailscale logical endpoint physical attachment is single-use")
+			return errors.New("tailscale logical endpoint physical attachment is single-use")
 		}
 		if reserved == nil || reserved.registration == nil {
-			return errors.New("Tailscale child birth was not reserved before staging")
+			return errors.New("tailscale child birth was not reserved before staging")
 		}
 		p := reserved
 		b, err := t.newRuntimeBinding(p)
@@ -435,7 +435,7 @@ func (t *Endpoint) RuntimeStagePhysical(ctx context.Context) error {
 		// as an empty reservation; retain the failed/partial owner for actual close.
 		defer func() {
 			if failure := recover(); failure != nil {
-				p.constructed(runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale child construction panicked")))
+				p.constructed(runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale child construction panicked")))
 				panic(failure)
 			}
 		}()
@@ -515,7 +515,7 @@ func PrepareRuntimeEndpointPublication(endpoints []*Endpoint) (*RuntimeEndpointP
 			return nil, reconfigErr
 		}
 		if closing || p == nil || b == nil || op == nil {
-			return nil, errors.New("Tailscale physical preparation incomplete")
+			return nil, errors.New("tailscale physical preparation incomplete")
 		}
 		select {
 		case <-op.done:
@@ -523,7 +523,7 @@ func PrepareRuntimeEndpointPublication(endpoints []*Endpoint) (*RuntimeEndpointP
 				return nil, op.err
 			}
 		default:
-			return nil, errors.New("Tailscale physical preparation still running")
+			return nil, errors.New("tailscale physical preparation still running")
 		}
 		p.mu.Lock()
 		_, attached := p.attachments[b]
@@ -546,6 +546,7 @@ func (p *RuntimeEndpointPublication) Publish() {
 		owner.mu.Unlock()
 	}
 }
+
 func cloneRuntimePointer[T any](value *T) *T {
 	if value == nil {
 		return nil
@@ -553,6 +554,7 @@ func cloneRuntimePointer[T any](value *T) *T {
 	copy := *value
 	return &copy
 }
+
 func cloneRuntimeOptions(value option.TailscaleEndpointOptions) option.TailscaleEndpointOptions {
 	value.AdvertiseRoutes = slices.Clone(value.AdvertiseRoutes)
 	value.AdvertiseTags = slices.Clone(value.AdvertiseTags)

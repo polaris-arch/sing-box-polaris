@@ -212,7 +212,7 @@ type runtimeSourceDownloadSession struct {
 	previous         map[string]runtimeSourceSnapshot
 }
 
-// runtimePrepareRemoteSources never writes coordinator.trustedSources. The
+// runtimePrepareRemoteSources keeps source authority transaction-owned. The
 // returned private batch is consumed once by the same Plan, whose dependency
 // digest binds exact bytes and current-revision downloader provenance.
 func runtimePrepareRemoteSources(request context.Context, options option.Options, candidateDigest string, session *runtimeSourceDownloadSession) (result map[string]runtimeSourceSnapshot, resultErr error) {

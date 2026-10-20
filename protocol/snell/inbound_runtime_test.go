@@ -143,7 +143,7 @@ func TestRuntimeIngressConstructorAndPreparationRemainInert(t *testing.T) {
 	f := newIngressFixture()
 	ctx, scope := ingressConstruction(f)
 	defer scope.Close()
-	member, err := NewInbound(ctx, nil, log.NewNOPFactory().Logger(), "in", option.SnellInboundOptions{Version: 5, AbstractSnellInboundOptions: option.AbstractSnellInboundOptions{PSK: "test-key"}})
+	member, err := NewInbound(ctx, nil, log.NewNOPFactory().Logger(), "in", option.SnellInboundOptions{Version: 5, PSK: "test-key"})
 	if err != nil {
 		t.Fatal(err)
 	}

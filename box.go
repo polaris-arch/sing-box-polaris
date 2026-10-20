@@ -251,7 +251,7 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 	ctx = adapter.ContextWithConstructionScope(ctx, scope)
 
 	if !isConstructionValidation(ctx) && runtimeInitialEligible(ctx, options) {
-		return newRuntimeBox(options, ctx, scope, logFactory, createdAt, nil)
+		return newRuntimeBox(options, scope, logFactory, createdAt, nil)
 	}
 
 	var internalServices []adapter.LifecycleService

@@ -103,8 +103,11 @@ func (s *RootSnapshot) Release() {
 	s.mu.Unlock()
 	platform.release()
 }
-func (s *RootSnapshot) Name() string                                   { return "certificate-snapshot" }
+
+func (s *RootSnapshot) Name() string { return "certificate-snapshot" }
+
 func (s *RootSnapshot) Start(adapter.StartStage, *adapter.Scope) error { return s.RuntimeValidate() }
+
 func (s *RootSnapshot) Pool() *x509.CertPool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -113,6 +116,7 @@ func (s *RootSnapshot) Pool() *x509.CertPool {
 	}
 	return s.state.pool.Clone()
 }
+
 func (s *RootSnapshot) ExclusiveAnchors() bool                       { return s.state.kind != C.CertificateStoreSystem }
 func (s *RootSnapshot) StoreKind() string                            { return s.state.kind }
 func (s *RootSnapshot) Digest() [sha256.Size]byte                    { return s.state.digest }

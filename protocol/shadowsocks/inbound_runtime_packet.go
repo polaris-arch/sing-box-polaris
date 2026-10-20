@@ -16,7 +16,7 @@ import (
 // claim HOT readiness against the unpatched borrowed-context launch boundary.
 func validateRuntimePacketContext() error {
 	if !udpnat.RuntimePacketContextSupported() {
-		return errors.New("Shadowsocks UDP session context retention is unavailable")
+		return errors.New("shadowsocks UDP session context retention is unavailable")
 	}
 	return nil
 }

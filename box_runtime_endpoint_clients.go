@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/sagernet/sing-box/adapter"
 )
@@ -84,11 +85,11 @@ func (t *runtimeClientEndpointTransaction) preparePublication() error {
 
 func (t *runtimeClientEndpointTransaction) compensate(ctx context.Context) error {
 	var result error
-	for i := len(t.next) - 1; i >= 0; i-- {
-		result = errors.Join(result, t.next[i].RuntimeCloseAndWait())
+	for _, value := range slices.Backward(t.next) {
+		result = errors.Join(result, value.RuntimeCloseAndWait())
 	}
-	for i := len(t.reserved) - 1; i >= 0; i-- {
-		result = errors.Join(result, t.reserved[i].RuntimeReleasePhysicalReservation(ctx))
+	for _, value := range slices.Backward(t.reserved) {
+		result = errors.Join(result, value.RuntimeReleasePhysicalReservation(ctx))
 	}
 	return result
 }

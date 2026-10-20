@@ -17,8 +17,9 @@ func TestHTTPOutboundConstructorOwnsClientBeforeStart(t *testing.T) {
 	scope := adapter.NewScope(context.Background(), logger)
 	ctx := adapter.ContextWithConstructionScope(context.Background(), scope)
 	component, err := NewOutbound(ctx, nil, logger, "proxy", option.HTTPOutboundOptions{
-		ServerOptions: option.ServerOptions{Server: "192.0.2.1", ServerPort: 8080},
-		Version:       1,
+		Server:     "192.0.2.1",
+		ServerPort: 8080,
+		Version:    1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -43,8 +44,9 @@ func TestHTTPOutboundCanceledConstructionScope(t *testing.T) {
 	cancel()
 	ctx := adapter.ContextWithConstructionScope(context.Background(), scope)
 	component, err := NewOutbound(ctx, nil, logger, "proxy", option.HTTPOutboundOptions{
-		ServerOptions: option.ServerOptions{Server: "192.0.2.1", ServerPort: 8080},
-		Version:       1,
+		Server:     "192.0.2.1",
+		ServerPort: 8080,
+		Version:    1,
 	})
 	if component != nil || !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled scope produced outbound: %v, %v", component, err)
@@ -57,8 +59,9 @@ func TestHTTPOutboundCanceledConstructionScope(t *testing.T) {
 func TestHTTPOutboundStandaloneKeepsLifecycleOwnership(t *testing.T) {
 	logger := log.NewNOPFactory().Logger()
 	component, err := NewOutbound(context.Background(), nil, logger, "proxy", option.HTTPOutboundOptions{
-		ServerOptions: option.ServerOptions{Server: "192.0.2.1", ServerPort: 8080},
-		Version:       1,
+		Server:     "192.0.2.1",
+		ServerPort: 8080,
+		Version:    1,
 	})
 	if err != nil {
 		t.Fatal(err)

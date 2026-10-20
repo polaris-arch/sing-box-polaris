@@ -37,7 +37,7 @@ func TestRuntimeQUICConstructorAndPrepareRemainPrivate(t *testing.T) {
 	f := newIngressFixture()
 	ctx, scope := ingressConstruction(f)
 	defer scope.Close()
-	options := option.HysteriaInboundOptions{UpMbps: 10, DownMbps: 10, InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{TLS: ingressTLSOptions(t)}}
+	options := option.HysteriaInboundOptions{UpMbps: 10, DownMbps: 10, TLS: ingressTLSOptions(t)}
 	member, err := NewInbound(ctx, nil, log.NewNOPFactory().Logger(), "in", options)
 	if err != nil {
 		t.Fatal(err)
@@ -64,13 +64,13 @@ func TestSessionContextBorrowsPhysicalLifetimeRatherThanSetupTask(t *testing.T) 
 	defer graph.Release()
 	physical, cancel := context.WithCancel(physical)
 	defer cancel()
-	fallback := context.WithValue(context.Background(), struct{}{}, "service")
+	fallback := context.WithValue(context.Background(), ingressTestContextKey{}, "service")
 	binding := new(inboundRuntimeTLS)
 	session, err := binding.sessionContext(fallback, physical)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.Value(struct{}{}) != "service" {
+	if session.Value(ingressTestContextKey{}) != "service" {
 		t.Fatal("constructor services lost")
 	}
 	ctx, release, err := adapter.AcquireRuntimeOperation(session, nil)

@@ -98,10 +98,6 @@ func (s *Server) acceptLoop() {
 	}
 }
 
-func (s *Server) streamAcceptLoop(conn *quic.Conn) error {
-	return s.streamAcceptLoopContext(conn.Context(), conn)
-}
-
 func (s *Server) streamAcceptLoopContext(ctx context.Context, conn *quic.Conn) error {
 	for {
 		stream, err := conn.AcceptStream(s.ctx)

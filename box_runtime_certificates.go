@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/sagernet/sing-box/adapter"
 )
@@ -41,8 +42,7 @@ func (g *preparedRuntimeGraph) stageRuntimeCertificates(ctx context.Context) err
 }
 
 func (g *preparedRuntimeGraph) compensateRuntimeCertificates() {
-	for i := len(g.stagedProviders) - 1; i >= 0; i-- {
-		provider := g.stagedProviders[i]
+	for _, provider := range slices.Backward(g.stagedProviders) {
 		err := func() (err error) {
 			defer func() {
 				if recover() != nil {

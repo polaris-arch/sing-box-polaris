@@ -16,6 +16,11 @@ import (
 // normal crypto/send teardown. Guard the actual graph-facing provider methods
 // independently: context cancellation is never used as their completion proof.
 // Nil fields stay nil, preserving ChromeParrot's explicit capability checks.
+//
+// This is exclusively a client-side guard for DialRuntimeQUIC. Both the pinned
+// standard QUIC client and ChromeParrot ignore the server-only named-certificate
+// map. Do not reuse this guard for server handshakes: those require a separate
+// fence for legacy named-certificate selection and its private-key providers.
 func guardRuntimeQUICTLS(original *tls.Config, fence *outbound.RuntimeIOFence) *tls.Config {
 	config := original.Clone()
 	if value := config.Rand; value != nil {
@@ -139,13 +144,6 @@ func guardRuntimeQUICTLS(original *tls.Config, fence *outbound.RuntimeIOFence) *
 			certificates[i] = *guardRuntimeQUICCertificate(&config.Certificates[i], fence)
 		}
 		config.Certificates = certificates
-	}
-	if config.NameToCertificate != nil {
-		certificates := make(map[string]*tls.Certificate, len(config.NameToCertificate))
-		for name, cert := range config.NameToCertificate {
-			certificates[name] = guardRuntimeQUICCertificate(cert, fence)
-		}
-		config.NameToCertificate = certificates
 	}
 	return config
 }

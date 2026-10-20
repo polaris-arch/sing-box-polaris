@@ -1,6 +1,9 @@
 package listener
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 // PreparedListenerPublication holds only the already staged admission guards.
 // Prepare performs validation and allocation; Publish only opens prevalidated
@@ -61,8 +64,8 @@ func (p *PreparedListenerPublication) Publish() {
 		r.phase = "active"
 	}
 	p.published = true
-	for i := len(t.next) - 1; i >= 0; i-- {
-		r := t.next[i].runtime
+	for _, next := range slices.Backward(t.next) {
+		r := next.runtime
 		r.gateway.mu.Unlock()
 		r.mu.Unlock()
 	}
@@ -75,8 +78,8 @@ func (p *PreparedListenerPublication) Finish() {
 	p.finished = true
 	t := p.transaction
 	if !p.published {
-		for i := len(t.next) - 1; i >= 0; i-- {
-			r := t.next[i].runtime
+		for _, next := range slices.Backward(t.next) {
+			r := next.runtime
 			r.gateway.mu.Unlock()
 			r.mu.Unlock()
 		}

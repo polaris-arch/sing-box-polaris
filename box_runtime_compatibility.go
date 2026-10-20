@@ -101,7 +101,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		if wrapper, ok := inbound.Options.(option.InboundTLSOptionsWrapper); ok {
 			value := wrapper.TakeInboundTLSOptions()
 			if value != nil && value.Enabled {
-				if value.CertificateProvider != nil || value.ACME != nil {
+				if value.CertificateProvider != nil || value.HasLegacyACME() {
 					pending(fmt.Sprintf("inbounds[%d].tls.certificate_provider", i))
 				}
 				if value.Reality != nil && value.Reality.Enabled {

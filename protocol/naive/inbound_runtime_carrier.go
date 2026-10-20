@@ -6,7 +6,6 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
-	"github.com/sagernet/sing/common/bufio"
 	N "github.com/sagernet/sing/common/network"
 )
 
@@ -66,19 +65,4 @@ func (c *inboundHandshakeConn) HandshakeFailure(err error) error {
 		}
 		return nil
 	})
-}
-
-func (r *inboundRuntime) wrapPacketConnection(ctx context.Context, conn N.PacketConn, onClose N.CloseHandlerFunc) (N.PacketConn, N.CloseHandlerFunc, error) {
-	owned, release, err := adapter.AcquireRuntimeOperation(ctx, nil)
-	if err != nil {
-		return conn, onClose, err
-	}
-	physical, _ := outbound.WrapRuntimeOwnedPacketConn(bufio.NewNetPacketConn(conn))
-	wrapped := bufio.NewPacketConn(outbound.WrapRuntimePacketConn(owned, release, physical))
-	return wrapped, N.OnceClose(func(err error) {
-		_ = wrapped.Close()
-		if onClose != nil {
-			onClose(err)
-		}
-	}), nil
 }

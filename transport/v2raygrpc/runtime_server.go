@@ -25,7 +25,7 @@ func (a *runtimeServerAuth) AuthType() string {
 }
 
 type runtimeServerCredentials struct {
-	inner credentials.TransportCredentials
+	inner *TLSTransportCredentials
 }
 
 func (c *runtimeServerCredentials) ServerHandshake(raw net.Conn) (net.Conn, credentials.AuthInfo, error) {
@@ -62,16 +62,16 @@ func (c *runtimeServerCredentials) Info() credentials.ProtocolInfo {
 }
 
 func (c *runtimeServerCredentials) Clone() credentials.TransportCredentials {
-	var inner credentials.TransportCredentials
+	var inner *TLSTransportCredentials
 	if c.inner != nil {
-		inner = c.inner.Clone()
+		inner = &TLSTransportCredentials{config: c.inner.config.Clone(), boundary: c.inner.boundary}
 	}
 	return &runtimeServerCredentials{inner: inner}
 }
 
 func (c *runtimeServerCredentials) OverrideServerName(name string) error {
 	if c.inner != nil {
-		return c.inner.OverrideServerName(name)
+		c.inner.config.SetServerName(name)
 	}
 	return nil
 }

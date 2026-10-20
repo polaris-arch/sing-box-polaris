@@ -52,7 +52,7 @@ func (s *runtimeNaiveTCP) prepare() error {
 		defer close(s.done)
 		defer func() {
 			if value := recover(); value != nil || !returned {
-				s.err = fmt.Errorf("Naive Serve did not complete (panic=%v)", value)
+				s.err = fmt.Errorf("naive Serve did not complete (panic=%v)", value)
 				n.runtime.record(s.err)
 			}
 		}()
@@ -64,7 +64,7 @@ func (s *runtimeNaiveTCP) prepare() error {
 	case <-s.acceptor.Ready():
 		select {
 		case <-s.done:
-			return errors.New("Naive Serve stopped at private readiness")
+			return errors.New("naive Serve stopped at private readiness")
 		default:
 			return nil
 		}
@@ -72,7 +72,7 @@ func (s *runtimeNaiveTCP) prepare() error {
 		if s.err != nil {
 			return s.err
 		}
-		return errors.New("Naive Serve stopped before private accept readiness")
+		return errors.New("naive Serve stopped before private accept readiness")
 	case <-n.ctx.Done():
 		return n.ctx.Err()
 	}
@@ -115,9 +115,9 @@ func (l *runtimeNaiveListener) Accept() (net.Conn, error) {
 	ctx := runtimeingress.Context(l.inbound.ctx, conn)
 	if _, ok := adapter.RuntimeLeaseFromContext(ctx); !ok {
 		_ = conn.Close()
-		return nil, errors.New("Naive accepted carrier lacks physical lineage")
+		return nil, errors.New("naive accepted carrier lacks physical lineage")
 	}
-	var actual net.Conn = conn
+	actual := conn
 	if l.inbound.tlsConfig != nil {
 		actual = newRuntimeNaiveTLSConn(ctx, conn, l.inbound.tlsConfig, l.inbound.runtime)
 	}
@@ -180,11 +180,13 @@ func (c *runtimeNaiveTLSConn) Read(p []byte) (int, error) {
 func (c *runtimeNaiveTLSConn) Write(p []byte) (int, error) {
 	return c.invoke(func(conn net.Conn) (int, error) { return conn.Write(p) })
 }
-func (c *runtimeNaiveTLSConn) Close() error                       { return c.fence.RuntimeCloseAndWait() }
-func (c *runtimeNaiveTLSConn) LocalAddr() net.Addr                { return c.raw.LocalAddr() }
-func (c *runtimeNaiveTLSConn) RemoteAddr() net.Addr               { return c.raw.RemoteAddr() }
-func (c *runtimeNaiveTLSConn) SetDeadline(t time.Time) error      { return c.raw.SetDeadline(t) }
-func (c *runtimeNaiveTLSConn) SetReadDeadline(t time.Time) error  { return c.raw.SetReadDeadline(t) }
+
+func (c *runtimeNaiveTLSConn) Close() error                      { return c.fence.RuntimeCloseAndWait() }
+func (c *runtimeNaiveTLSConn) LocalAddr() net.Addr               { return c.raw.LocalAddr() }
+func (c *runtimeNaiveTLSConn) RemoteAddr() net.Addr              { return c.raw.RemoteAddr() }
+func (c *runtimeNaiveTLSConn) SetDeadline(t time.Time) error     { return c.raw.SetDeadline(t) }
+func (c *runtimeNaiveTLSConn) SetReadDeadline(t time.Time) error { return c.raw.SetReadDeadline(t) }
+
 func (c *runtimeNaiveTLSConn) SetWriteDeadline(t time.Time) error { return c.raw.SetWriteDeadline(t) }
 
 type runtimeNaiveResponseConn struct {
@@ -197,7 +199,7 @@ func (c *runtimeNaiveResponseConn) Close() error {
 	err := http.NewResponseController(c.writer).SetWriteDeadline(time.Now())
 	closeErr := c.Conn.Close()
 	if err != nil {
-		return fmt.Errorf("Naive response write interruption unproven: %v; close: %v", err, closeErr)
+		return fmt.Errorf("naive response write interruption unproven: %v; close: %v", err, closeErr)
 	}
 	return closeErr
 }

@@ -37,7 +37,7 @@ func TestRuntimeQUICConstructorAndPrepareRemainPrivate(t *testing.T) {
 	f := newIngressFixture()
 	ctx, scope := ingressConstruction(f)
 	defer scope.Close()
-	options := option.Hysteria2InboundOptions{InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{TLS: ingressTLSOptions(t)}}
+	options := option.Hysteria2InboundOptions{TLS: ingressTLSOptions(t)}
 	member, err := NewInbound(ctx, nil, log.NewNOPFactory().Logger(), "in", options)
 	if err != nil {
 		t.Fatal(err)
@@ -64,13 +64,13 @@ func TestSessionContextBorrowsPhysicalLifetimeRatherThanSetupTask(t *testing.T) 
 	defer graph.Release()
 	physical, cancel := context.WithCancel(physical)
 	defer cancel()
-	fallback := context.WithValue(context.Background(), struct{}{}, "service")
+	fallback := context.WithValue(context.Background(), ingressTestContextKey{}, "service")
 	binding := new(inboundRuntimeTLS)
 	session, err := binding.sessionContext(fallback, physical)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.Value(struct{}{}) != "service" {
+	if session.Value(ingressTestContextKey{}) != "service" {
 		t.Fatal("constructor services lost")
 	}
 	ctx, release, err := adapter.AcquireRuntimeOperation(session, nil)
@@ -104,7 +104,7 @@ func TestRuntimeRealmRejectsBeforeRemoteDependencies(t *testing.T) {
 	f := newIngressFixture()
 	ctx, scope := ingressConstruction(f)
 	defer scope.Close()
-	options := option.Hysteria2InboundOptions{InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{TLS: ingressTLSOptions(t)}, Realm: &option.Hysteria2InboundRealm{}}
+	options := option.Hysteria2InboundOptions{TLS: ingressTLSOptions(t), Realm: &option.Hysteria2InboundRealm{}}
 	// No HTTP client manager or DNS router is installed. Staged Realm rejection
 	// must precede dependency construction and any remote activation attempt.
 	if _, err := NewInbound(ctx, nil, log.NewNOPFactory().Logger(), "in", options); err == nil {

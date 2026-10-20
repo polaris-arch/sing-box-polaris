@@ -65,9 +65,7 @@ type runtimeResource struct {
 	rootStore       *roots.Store
 	id              adapter.RuntimeResourceID
 	kind            string
-	tag             string
 	fingerprint     string
-	dependencies    []adapter.RuntimeResourceID
 	owner           *runtimegraph.ResourceOwner
 	scope           *adapter.Scope
 	networkReady    bool // guarded by coordinator.access; components immutable once true

@@ -177,6 +177,7 @@ func (s *Store) RuntimeCloseAndWait() error {
 	}
 	return s.runtime.fence.RuntimeCloseAndWait()
 }
+
 func (s *Store) RuntimeRevision() uint64 {
 	s.access.RLock()
 	defer s.access.RUnlock()

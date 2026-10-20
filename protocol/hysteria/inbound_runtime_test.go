@@ -14,6 +14,8 @@ import (
 	"github.com/sagernet/sing-box/log"
 )
 
+type ingressTestContextKey struct{}
+
 // Pure ownership fixtures. Constructors and preparation must never bind sockets,
 // acquire the published graph, or start receiving protocol traffic.
 type ingressFixture struct {
@@ -333,7 +335,7 @@ func TestRuntimeBackgroundWorkerCannotGrantRequestLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoked := false
-	if state.runTask(context.WithValue(construction, struct{}{}, true), func(context.Context) { invoked = true }) {
+	if state.runTask(context.WithValue(construction, ingressTestContextKey{}, true), func(context.Context) { invoked = true }) {
 		t.Fatal("unadmitted request task accepted")
 	}
 	if invoked || f.sourceAcquires.Load() != 0 {

@@ -81,8 +81,10 @@ func (h *HTTPSTransportWrapper) RoundTrip(request *http.Request) (*http.Response
 
 // Close retains the historical void signature. Runtime owners use the typed
 // terminal method so a failed physical close cannot be mistaken for completion.
-func (h *HTTPSTransportWrapper) Close()                     { _ = h.RuntimeCloseAndWait() }
+func (h *HTTPSTransportWrapper) Close() { _ = h.RuntimeCloseAndWait() }
+
 func (h *HTTPSTransportWrapper) RuntimeCloseAndWait() error { return h.boundary.RuntimeCloseAndWait() }
+
 func (h *HTTPSTransportWrapper) CloseIdleConnections() {
 	h.http2Transport.CloseIdleConnections()
 	h.httpTransport.CloseIdleConnections()

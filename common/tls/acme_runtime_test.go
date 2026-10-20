@@ -30,6 +30,7 @@ type acmeFixtureStorage struct {
 }
 
 func (s *acmeFixtureStorage) Store(context.Context, string, []byte) error { s.calls.Add(1); return nil }
+
 func (s *acmeFixtureStorage) Load(ctx context.Context, key string) ([]byte, error) {
 	s.calls.Add(1)
 	if s.load != nil {
@@ -225,6 +226,7 @@ func (acmeCleanupFailureSolver) Present(context.Context, acme.Challenge) error {
 func (acmeCleanupFailureSolver) CleanUp(context.Context, acme.Challenge) error {
 	return context.Canceled
 }
+
 func TestRuntimeACMEIgnoredSolverCleanupErrorRemainsNonFilterable(t *testing.T) {
 	r, scope := acmeRuntimeFixture(t, new(acmeFixtureStorage), false, nil)
 	solver := &runtimeACMEDNSSolver{inner: acmeCleanupFailureSolver{}, owner: r}

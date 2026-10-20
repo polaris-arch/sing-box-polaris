@@ -203,7 +203,7 @@ func TestDataFailureDoesNotEraseNestedSelectorHistory(t *testing.T) {
 		t.Run(network, func(t *testing.T) {
 			g, history, _ := epochTestGroup(t)
 			first, second := &epochTestOutbound{tag: "first"}, &epochTestOutbound{tag: "second"}
-			selector := &failingEpochSelector{epochSelector: epochSelector{selected: first}}
+			selector := &failingEpochSelector{selected: first}
 			selector.onDial = func() { selector.selected = second }
 			epoch := history.Epoch()
 			history.StoreIfCurrent(epoch, "first", &adapter.URLTestHistory{Delay: 5})
@@ -284,7 +284,7 @@ func TestSelectionSnapshotInvalidatedBeforePublish(t *testing.T) {
 		t.Run(map[bool]string{false: "epoch", true: "close"}[closeOwner], func(t *testing.T) {
 			g, history, _ := epochTestGroup(t)
 			entered, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})
-			outbound := &blockingNetworkOutbound{epochTestOutbound: epochTestOutbound{tag: "node"}, entered: entered, release: release}
+			outbound := &blockingNetworkOutbound{tag: "node", entered: entered, release: release}
 			g.outbounds = []adapter.Outbound{outbound}
 			epoch := history.Epoch()
 			history.StoreIfCurrent(epoch, "node", &adapter.URLTestHistory{Delay: 5})
@@ -415,7 +415,7 @@ func TestPauseCallbackAndCloseDoNotHoldGroupLockAcrossUnregister(t *testing.T) {
 	// Close has sealed group admission, and is now permitted to wait only on
 	// pause's registry mutex. It must not retain group access while doing so.
 	acquired := make(chan struct{})
-	go func() { g.access.Lock(); g.access.Unlock(); close(acquired) }()
+	go func() { g.access.Lock(); close(acquired); g.access.Unlock() }()
 	awaitEpochSignal(t, acquired)
 	close(release)
 	awaitEpochSignal(t, pauseDone)

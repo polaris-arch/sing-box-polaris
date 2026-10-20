@@ -195,10 +195,18 @@ func TestServiceStatusSnapshotDoesNotRegressToQueuedOldEventOrLockSend(t *testin
 		t.Fatal("initial snapshot missing")
 	}
 	// Send is blocked. A lifecycle writer must still acquire the service lock.
-	written := make(chan struct{})
-	go func() { s.serviceAccess.Lock(); s.serviceAccess.Unlock(); close(written) }()
+	written := make(chan ServiceStatus_Type, 1)
+	go func() {
+		s.serviceAccess.Lock()
+		status := s.serviceStatus.Status
+		s.serviceAccess.Unlock()
+		written <- status
+	}()
 	select {
-	case <-written:
+	case status := <-written:
+		if status != ServiceStatus_STARTED {
+			t.Fatal(status)
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Send holds lifecycle lock")
 	}

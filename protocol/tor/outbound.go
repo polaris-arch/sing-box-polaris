@@ -2,6 +2,7 @@ package tor
 
 import (
 	"context"
+	"maps"
 	"net"
 	"os"
 	"path/filepath"
@@ -302,8 +303,6 @@ func (t *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (n
 
 func cloneTorOptions(options map[string]string) map[string]string {
 	cloned := make(map[string]string, len(options))
-	for key, value := range options {
-		cloned[key] = value
-	}
+	maps.Copy(cloned, options)
 	return cloned
 }

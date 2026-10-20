@@ -125,6 +125,7 @@ func ListenQUICPacket(ctx context.Context, ingress *listener.Listener, packet ne
 	}
 	return endpoint, nil
 }
+
 func (e *QUICEndpoint) Accept(ctx context.Context) (*quic.Conn, error) { return e.acceptor.Accept(ctx) }
 func (e *QUICEndpoint) Addr() net.Addr                                 { return e.acceptor.Addr() }
 func (e *QUICEndpoint) Close() error                                   { return e.callbacks.RuntimeCloseAndWait() }

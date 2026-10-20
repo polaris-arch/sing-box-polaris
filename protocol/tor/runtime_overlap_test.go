@@ -43,7 +43,7 @@ func TestRuntimeTorOverlapExclusiveConfiguration(t *testing.T) {
 
 func TestRuntimeTorOverlapDeterministicAndDoesNotMutate(t *testing.T) {
 	options := option.TorOutboundOptions{Options: map[string]string{"SocksPort": "9050", "ControlPort": "9051"}}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		field, _ := RuntimeOverlapProblem(options)
 		if field != "torrc.ControlPort" {
 			t.Fatal(field)

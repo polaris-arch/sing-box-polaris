@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -116,8 +117,7 @@ func (g *preparedRuntimeGraph) stageRuntimePostBindEffects(ctx context.Context) 
 // can time out while the owned compensation retains its evidence.
 func (g *preparedRuntimeGraph) suspendRuntimeCandidateEffects() bool {
 	absent := true
-	for i := len(g.postBindStaged) - 1; i >= 0; i-- {
-		entry := g.postBindStaged[i]
+	for _, entry := range slices.Backward(g.postBindStaged) {
 		err := runtimeEffectCall("candidate control suspension", func() error { return entry.effect.SuspendRuntime(context.Background()) })
 		if err != nil {
 			absent = false
@@ -128,8 +128,7 @@ func (g *preparedRuntimeGraph) suspendRuntimeCandidateEffects() bool {
 }
 
 func (g *preparedRuntimeGraph) restoreRuntimePreviousEffects() {
-	for i := len(g.postBindSuspended) - 1; i >= 0; i-- {
-		entry := g.postBindSuspended[i]
+	for _, entry := range slices.Backward(g.postBindSuspended) {
 		err := runtimeEffectCall("old control restoration", func() error { return entry.effect.RestoreRuntime(context.Background()) })
 		if err != nil {
 			g.postBindError = errors.Join(g.postBindError, err)

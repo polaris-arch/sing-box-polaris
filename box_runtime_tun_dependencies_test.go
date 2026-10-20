@@ -25,7 +25,7 @@ func TestRuntimeTunDoesNotCaptureDefaultResolverOrProxyConfiguration(t *testing.
 	options := option.Options{Inbounds: []option.Inbound{{Type: C.TypeTun, Tag: "tun", Options: &option.TunInboundOptions{}}}, Outbounds: []option.Outbound{{Type: C.TypeDirect, Tag: "direct", Options: &option.DirectOutboundOptions{}}}}
 	before := tunDependencyFixtureNode(t, context.Background(), options)
 	options.Route = &option.RouteOptions{DefaultDomainResolver: &option.DomainResolveOptions{Server: "resolver"}}
-	options.DNS = &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeUDP, Tag: "resolver", Options: &option.RemoteDNSServerOptions{}}}}}
+	options.DNS = &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeUDP, Tag: "resolver", Options: &option.RemoteDNSServerOptions{}}}}
 	after := tunDependencyFixtureNode(t, context.Background(), options)
 	if before.fingerprint != after.fingerprint {
 		t.Fatal("default DNS policy recreated unchanged TUN")

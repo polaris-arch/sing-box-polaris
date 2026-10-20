@@ -109,6 +109,7 @@ func (w *Endpoint) RuntimeResourceID() adapter.RuntimeResourceID {
 	}
 	return w.runtime.source.ID()
 }
+
 func (w *Endpoint) PrepareRuntime(adapter.StartStage, *adapter.Scope) error {
 	return w.RuntimeValidate()
 }
@@ -126,9 +127,11 @@ func (w *Endpoint) RuntimeReservePhysical(context.Context) error {
 	}
 	return nil
 }
+
 func (w *Endpoint) RuntimeReleasePhysicalReservation(context.Context) error {
 	return w.RuntimeValidate()
 }
+
 func (w *Endpoint) RuntimeStop() {
 	if w.runtime == nil {
 		return
@@ -429,6 +432,7 @@ func (d *runtimeEndpointUDPListener) UDPListenerControl() (control.Func, bool) {
 		return callback(network, address, raw)
 	}, egress
 }
+
 func cloneRuntimePointer[T any](value *T) *T {
 	if value == nil {
 		return nil
@@ -436,6 +440,7 @@ func cloneRuntimePointer[T any](value *T) *T {
 	copy := *value
 	return &copy
 }
+
 func cloneRuntimeOptions(value option.WireGuardEndpointOptions) option.WireGuardEndpointOptions {
 	value.Address = slices.Clone(value.Address)
 	value.Peers = slices.Clone(value.Peers)

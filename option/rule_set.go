@@ -186,6 +186,12 @@ type RemoteRuleSet struct {
 	DownloadDetour string `json:"download_detour,omitempty" reference:"outbound" schema:"omit"`
 }
 
+// HasLegacyDownloadDetour reports legacy routing input before runtime source
+// preparation. Callers reject it rather than silently ignoring its semantics.
+func (o RemoteRuleSet) HasLegacyDownloadDetour() bool {
+	return o.DownloadDetour != ""
+}
+
 type _HeadlessRule struct {
 	Type           string              `json:"type,omitempty" enum:"default,logical"`
 	DefaultOptions DefaultHeadlessRule `json:"-"`

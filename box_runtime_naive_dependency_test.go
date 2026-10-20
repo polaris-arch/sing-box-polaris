@@ -8,7 +8,7 @@ import (
 )
 
 func TestRuntimeNaiveIPPeerRetainsNativeDNSCallbackDependency(t *testing.T) {
-	options := option.Options{Outbounds: []option.Outbound{{Type: "naive", Tag: "native", Options: &option.NaiveOutboundOptions{ServerOptions: option.ServerOptions{Server: "192.0.2.1", ServerPort: 443}}}}}
+	options := option.Options{Outbounds: []option.Outbound{{Type: "naive", Tag: "native", Options: &option.NaiveOutboundOptions{Server: "192.0.2.1", ServerPort: 443}}}}
 	node := runtimeHTTPNode(t, options, "outbound:native")
 	if !slices.Contains(node.dependencies, "dns-router") {
 		t.Fatal("native DNS callback lost its constructor graph")

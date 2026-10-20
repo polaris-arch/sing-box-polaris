@@ -165,7 +165,7 @@ func TestSlowOpenDependencyCleanupFailureIsSticky(t *testing.T) {
 	if _, err := c.Write([]byte("first")); err == nil {
 		t.Fatal("failed dial succeeded")
 	}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if err := c.Close(); err == nil || errors.Is(err, context.Canceled) {
 			t.Fatalf("dependency cleanup lost or filterable: %v", err)
 		}

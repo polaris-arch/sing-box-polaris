@@ -47,6 +47,7 @@ type (
 		err              error
 	}
 )
+
 type runtimeDNSState struct {
 	source     adapter.RuntimeResourceSource
 	callbacks  *outbound.RuntimeIOFence
@@ -68,7 +69,7 @@ type runtimeDNSState struct {
 func (t *DNSTransport) initializeRuntimeDNS() error {
 	source, ok := adapter.RuntimeResourceSourceFromContext(t.ctx)
 	if !ok {
-		return errors.New("Tailscale DNS runtime owner missing")
+		return errors.New("tailscale DNS runtime owner missing")
 	}
 	r := &runtimeDNSState{source: source, callbacks: outbound.NewRuntimeIOFence(nil), retiring: make(map[*runtimeDNSSnapshot]struct{}), closeDone: make(chan struct{})}
 	t.runtime = r
@@ -82,11 +83,11 @@ func (t *DNSTransport) startRuntimeDNS(stage adapter.StartStage) error {
 	}
 	raw, ok := t.endpointManager.Get(t.endpointTag)
 	if !ok {
-		return errors.New("Tailscale DNS endpoint missing")
+		return errors.New("tailscale DNS endpoint missing")
 	}
 	ep, ok := raw.(*Endpoint)
 	if !ok {
-		return errors.New("Tailscale DNS endpoint has wrong type")
+		return errors.New("tailscale DNS endpoint has wrong type")
 	}
 	r := t.runtime
 	r.update.Lock()
@@ -147,10 +148,10 @@ func (r *runtimeDNSState) retire(snapshot *runtimeDNSSnapshot) {
 	r.mu.Unlock()
 	_ = snapshot.fence.Close()
 	go func() {
-		snapshot.err = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale DNS snapshot cleanup did not return"))
+		snapshot.err = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale DNS snapshot cleanup did not return"))
 		defer func() {
 			if recover() != nil {
-				snapshot.err = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale DNS snapshot cleanup panicked"))
+				snapshot.err = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale DNS snapshot cleanup panicked"))
 			}
 			r.mu.Lock()
 			r.cleanupErr = errors.Join(r.cleanupErr, snapshot.err)
@@ -345,7 +346,7 @@ func (t *DNSTransport) closeRuntimeDNS() error {
 	r.closeOnce.Do(func() {
 		t.idleWork.Seal()
 		t.idleWork.Wait()
-		r.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale DNS cleanup did not return"))
+		r.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale DNS cleanup did not return"))
 		defer close(r.closeDone)
 		r.mu.Lock()
 		r.stopped = true

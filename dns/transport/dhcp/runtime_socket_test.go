@@ -31,7 +31,9 @@ func TestDHCPDiscoveryCloseFailureIsOnceAndSticky(t *testing.T) {
 	raw := &discoveryFailurePacket{closeErr: failure}
 	tr := &Transport{ctx: context.Background()}
 	owned := &ownedDiscoveryPacket{PacketConn: raw, errors: &tr.discoveryErrors}
-	if !errors.Is(owned.Close(), failure) || !errors.Is(owned.Close(), failure) || raw.calls != 1 {
+	firstClose := owned.Close()
+	secondClose := owned.Close()
+	if !errors.Is(firstClose, failure) || !errors.Is(secondClose, failure) || raw.calls != 1 {
 		t.Fatal("physical close repeated or failure lost")
 	}
 	first := tr.close()
@@ -102,7 +104,7 @@ func (c *discoveryCancelFailure) Close() error {
 }
 
 func TestDHCPCancellationCloseFailureJoinsAndSurvives(t *testing.T) {
-	raw := &discoveryCancelFailure{discoveryBarrierConn: discoveryBarrierConn{readStarted: make(chan struct{}), closeStarted: make(chan struct{}), readMayReturn: make(chan struct{})}, failure: errors.New("cancel close failure")}
+	raw := &discoveryCancelFailure{readStarted: make(chan struct{}), closeStarted: make(chan struct{}), readMayReturn: make(chan struct{}), failure: errors.New("cancel close failure")}
 	original := listenDiscoveryPacket
 	listenDiscoveryPacket = func(*net.ListenConfig, context.Context, string, string) (net.PacketConn, error) { return raw, nil }
 	t.Cleanup(func() { listenDiscoveryPacket = original })

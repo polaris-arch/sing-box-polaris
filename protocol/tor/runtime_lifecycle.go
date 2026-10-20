@@ -54,7 +54,7 @@ func (t *Outbound) initRuntime(ctx context.Context) error {
 			// The process has exited; this only closes the controller socket.
 			// Never call bine Tor.Close: its 300ms observer is not completion.
 			if err := t.torInstance.Control.Close(); err != nil {
-				result = append(result, fmt.Errorf("Tor control close incomplete: %v", err))
+				result = append(result, fmt.Errorf("tor control close incomplete: %v", err))
 			}
 		}
 		// We never call bine HandleEvents/EventWait. All event sends occur
@@ -130,7 +130,7 @@ func (p *runtimeProcess) Start() error {
 		defer close(p.done)
 		defer func() {
 			if recover() != nil {
-				p.uncertainty = errors.New("Tor process Wait panicked; completion unknown")
+				p.uncertainty = errors.New("tor process Wait panicked; completion unknown")
 			}
 		}()
 		p.waitErr = p.inner.Wait()

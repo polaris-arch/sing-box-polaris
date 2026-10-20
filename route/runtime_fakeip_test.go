@@ -54,6 +54,7 @@ type mappingTestProtection struct {
 func (p mappingTestProtection) AcquireMapping(netip.Addr) (adapter.FakeIPMappingLease, bool, error) {
 	return p.token, p.recognized, p.err
 }
+
 func (mappingTestProtection) ProtectAnswer(*dns.Msg) (adapter.FakeIPAnswerLease, error) {
 	return nil, nil
 }

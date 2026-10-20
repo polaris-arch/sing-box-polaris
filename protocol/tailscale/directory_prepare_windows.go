@@ -14,6 +14,10 @@ import (
 	"github.com/sagernet/sing-box/option"
 )
 
+type preparedDirectoryPlatform struct {
+	acquisitionStarted bool
+}
+
 // NewPreparedDirectoryLeases is allocation-only. The original run must retain
 // Snapshot before Acquire, including when a later acquisition fails.
 func NewPreparedDirectoryLeases(ctx context.Context, options option.Options) (*PreparedDirectoryLeases, error) {
@@ -80,7 +84,6 @@ func (p *PreparedDirectoryLeases) acquire(request context.Context, acquire func(
 			failure := fmt.Errorf("prepare directory %s: %w", e.tag, err)
 			p.mu.Lock()
 			e.failed = true
-			p.preparationError = failure
 			p.mu.Unlock()
 			return failure
 		}

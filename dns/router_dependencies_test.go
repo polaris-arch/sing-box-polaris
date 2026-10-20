@@ -28,8 +28,9 @@ type dependenciesCacheFile struct {
 	optimisticTimeout              time.Duration
 }
 
-func (c *dependenciesCacheFile) StoreDNS() bool              { c.dnsChecks++; return c.dnsEnabled }
-func (c *dependenciesCacheFile) StoreRDRC() bool             { c.rdrcChecks++; return c.rdrcEnabled }
+func (c *dependenciesCacheFile) StoreDNS() bool  { c.dnsChecks++; return c.dnsEnabled }
+func (c *dependenciesCacheFile) StoreRDRC() bool { c.rdrcChecks++; return c.rdrcEnabled }
+
 func (c *dependenciesCacheFile) SetDisableExpire(value bool) { c.setters++; c.disableExpire = value }
 
 func (c *dependenciesCacheFile) SetOptimisticTimeout(value time.Duration) {

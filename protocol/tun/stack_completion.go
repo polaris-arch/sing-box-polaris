@@ -51,7 +51,6 @@ func (s *stackShutdown) WaitDetached(ctx context.Context) error {
 func (t *Inbound) WaitDetached(ctx context.Context) error {
 	if t.runtime != nil {
 		t.runtime.mu.Lock()
-		physical := t.runtime.physical
 		operation := t.runtime.operation
 		t.runtime.mu.Unlock()
 		if operation != nil {
@@ -62,7 +61,7 @@ func (t *Inbound) WaitDetached(ctx context.Context) error {
 			}
 		}
 		t.runtime.mu.Lock()
-		physical = t.runtime.physical
+		physical := t.runtime.physical
 		t.runtime.mu.Unlock()
 		if physical == nil {
 			return nil

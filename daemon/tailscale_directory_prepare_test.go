@@ -122,7 +122,7 @@ func (p *preparationFixtureResources) Validate(nodes []adapter.TailscaleDirector
 func (p *preparationFixtureResources) Commit() error { p.committed = true; return nil }
 
 func TestActualReloadPreparationFailurePreservesOldAndOriginalCensus(t *testing.T) {
-	for failAt := 0; failAt < 3; failAt++ {
+	for failAt := range 3 {
 		host, _ := retirementPureHost(t)
 		oldCtx, cancelOld := context.WithCancel(context.Background())
 		old := &Instance{ctx: oldCtx, cancel: cancelOld}

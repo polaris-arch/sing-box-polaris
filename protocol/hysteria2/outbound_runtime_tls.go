@@ -102,7 +102,7 @@ func (c *outboundRuntimeTLS) CreateTransport(raw net.Conn, connection **quic.Con
 }
 
 func (c *outboundRuntimeTLS) CreatePacketTransport(net.PacketConn, net.Addr, **quic.Conn, *quic.Config) http.RoundTripper {
-	return outboundFailedRoundTripper{errors.New("Realm packet transport has no ordinary-node runtime contract")}
+	return outboundFailedRoundTripper{errors.New("realm packet transport has no ordinary-node runtime contract")}
 }
 
 type outboundHTTP3Closer struct{ transport *http3.Transport }

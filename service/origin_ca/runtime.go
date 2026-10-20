@@ -39,7 +39,7 @@ type runtimeOriginCA struct {
 func (s *Service) initializeRuntime(ctx context.Context) error {
 	source, ok := adapter.RuntimeResourceSourceFromContext(ctx)
 	if !ok || !adapter.HasConstructionScope(ctx) {
-		return errors.New("Origin CA requires its constructor resource and scope")
+		return errors.New("origin CA requires its constructor resource and scope")
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	r := &runtimeOriginCA{ctx: ctx, cancel: cancel, source: source}
@@ -58,13 +58,13 @@ func (s *Service) initializeRuntime(ctx context.Context) error {
 		r.mu.Lock()
 		err := r.closeErr
 		if r.stageDone != nil && !r.stageReturned {
-			err = errors.Join(err, errors.New("Origin CA stage completion unknown"))
+			err = errors.Join(err, errors.New("origin CA stage completion unknown"))
 		}
 		r.mu.Unlock()
 		// Do not close a borrowed HTTP-manager transport. Its exact resource is an
 		// immutable dependency and owns its own pooled-connection retirement.
 		if err != nil {
-			return fmt.Errorf("Origin CA cleanup incomplete: %v", err)
+			return fmt.Errorf("origin CA cleanup incomplete: %v", err)
 		}
 		return nil
 	})
@@ -86,7 +86,7 @@ func (s *Service) RuntimeResourceID() adapter.RuntimeResourceID {
 
 func (s *Service) RuntimeValidate() error {
 	if s.runtime == nil {
-		return errors.New("Origin CA provider was not privately constructed")
+		return errors.New("origin CA provider was not privately constructed")
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (s *Service) StageRuntime(ctx context.Context) error {
 	r.mu.Lock()
 	if !r.prepared || r.stopped {
 		r.mu.Unlock()
-		return errors.New("Origin CA is not prepared for staging")
+		return errors.New("origin CA is not prepared for staging")
 	}
 	if r.stageDone != nil {
 		done := r.stageDone
@@ -133,7 +133,7 @@ func (s *Service) StageRuntime(ctx context.Context) error {
 	}
 	r.stageDone = make(chan struct{})
 	done := r.stageDone
-	r.stageErr = errors.New("Origin CA stage did not complete")
+	r.stageErr = errors.New("origin CA stage did not complete")
 	r.mu.Unlock()
 	defer close(done)
 	stageContext, cancel := context.WithCancel(r.ctx)
@@ -162,7 +162,7 @@ func (s *Service) stageCertificate(ctx context.Context) error {
 	cleanupErr := s.runtime.closeErr
 	s.runtime.mu.Unlock()
 	if cleanupErr != nil {
-		return errors.Join(err, fmt.Errorf("Origin CA stage cleanup incomplete: %v", cleanupErr))
+		return errors.Join(err, fmt.Errorf("origin CA stage cleanup incomplete: %v", cleanupErr))
 	}
 	if err != nil {
 		return err
@@ -185,7 +185,7 @@ func (s *Service) RuntimeActivate() {
 		defer func() {
 			if value := recover(); value != nil {
 				r.mu.Lock()
-				r.closeErr = fmt.Errorf("Origin CA refresh panicked: %v", value)
+				r.closeErr = fmt.Errorf("origin CA refresh panicked: %v", value)
 				r.mu.Unlock()
 			}
 		}()

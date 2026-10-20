@@ -87,7 +87,7 @@ func (b *runtimeEndpointBinding) reserve(root bool) (func(), error) {
 func (b *runtimeEndpointBinding) acquire(ctx context.Context) (context.Context, func(), error) {
 	inherited, hasInherited := ctx.Value(runtimeBindingContextKey{}).(*runtimeBindingContinuation)
 	if hasInherited && (inherited == nil || inherited.binding != b) {
-		return nil, nil, errors.New("Tailscale continuation belongs to a different binding")
+		return nil, nil, errors.New("tailscale continuation belongs to a different binding")
 	}
 	var owned context.Context
 	var release func()
@@ -97,7 +97,7 @@ func (b *runtimeEndpointBinding) acquire(ctx context.Context) (context.Context, 
 		// the wrapped capability charges every nested adapter continuation too.
 		lease, ok := adapter.RuntimeResourceLeaseFromContext(inherited.context, b.source.ID())
 		if !ok {
-			return nil, nil, errors.New("Tailscale inherited binding capability missing")
+			return nil, nil, errors.New("tailscale inherited binding capability missing")
 		}
 		owned = adapter.ContextWithRuntimeResourceLease(ctx, lease)
 		owned, release, err = adapter.AcquireRuntimeOperation(owned, b.source)
@@ -115,7 +115,7 @@ func (b *runtimeEndpointBinding) acquire(ctx context.Context) (context.Context, 
 		if !ok {
 			release()
 			leave()
-			return nil, nil, errors.New("Tailscale registered binding capability missing")
+			return nil, nil, errors.New("tailscale registered binding capability missing")
 		}
 		lease := &runtimeBindingLease{binding: b, inner: inner, releaseInner: release, releaseSlot: leave}
 		owned = adapter.ContextWithRuntimeResourceLease(owned, lease)
@@ -180,7 +180,7 @@ func (l *runtimeBindingLease) RetainResource(id adapter.RuntimeResourceID) (adap
 	}
 	continuation, ok := l.inner.(adapter.RuntimeResourceContinuation)
 	if !ok {
-		return nil, errors.New("Tailscale binding lacks captured dependency continuation")
+		return nil, errors.New("tailscale binding lacks captured dependency continuation")
 	}
 	return continuation.RetainResource(id)
 }
@@ -214,7 +214,7 @@ func (b *runtimeEndpointBinding) retireRoot() {
 
 func (b *runtimeEndpointBinding) closeAndWait() error {
 	b.closeOnce.Do(func() {
-		b.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale binding cleanup did not return"))
+		b.closeErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale binding cleanup did not return"))
 		defer close(b.closeDone)
 		b.retireRoot()
 		if b.transport != nil {
@@ -260,12 +260,12 @@ func (t *Endpoint) newRuntimeBinding(p *runtimeEndpointPhysical) (*runtimeEndpoi
 	}
 	resolver, ok := b.dialer.(dialer.ResolveDialer)
 	if !ok {
-		return nil, errors.Join(errors.New("Tailscale binding dialer lacks query policy"), scope.Close())
+		return nil, errors.Join(errors.New("tailscale binding dialer lacks query policy"), scope.Close())
 	}
 	b.query = resolver.QueryOptions()
 	b.dns = service.FromContext[adapter.DNSRouter](b.ctx)
 	if b.dns == nil {
-		return nil, errors.Join(errors.New("Tailscale binding lacks DNS router"), scope.Close())
+		return nil, errors.Join(errors.New("tailscale binding lacks DNS router"), scope.Close())
 	}
 	// Keep pooled carriers finite after retirement, including an H2 stream that
 	// becomes idle after Body.Close returns on request cancellation. Native idle

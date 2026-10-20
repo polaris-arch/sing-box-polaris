@@ -850,7 +850,9 @@ type (
 )
 
 func (c *runtimeTCPControl) SyscallConn() (syscall.RawConn, error) { return RuntimeSyscallConn(c.Conn) }
-func (c *runtimeTCPControl) SetNoDelay(value bool) error           { return runtimeSetNoDelay(c.Conn, value) }
+
+func (c *runtimeTCPControl) SetNoDelay(value bool) error { return runtimeSetNoDelay(c.Conn, value) }
+
 func RuntimeTCPControl(conn net.Conn) (RuntimeTCPControlConn, error) {
 	if !runtimeHasNoDelay(conn) {
 		return nil, os.ErrInvalid

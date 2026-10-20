@@ -79,11 +79,9 @@ type clientState struct {
 func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.OpenVPNClientEndpointOptions) (adapter.Endpoint, error) {
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	clientEndpoint := &ClientEndpoint{
-		endpointBase: endpointBase{
-			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-			router:  router,
-			logger:  logger,
-		},
+		Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+		router:        router,
+		logger:        logger,
 		ctx:           ctx,
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,

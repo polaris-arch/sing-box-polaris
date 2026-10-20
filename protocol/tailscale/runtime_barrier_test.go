@@ -84,8 +84,7 @@ func TestRuntimeReconfigConsumersUnregisterIndependently(t *testing.T) {
 
 func TestRuntimePacketListenerWaitsFactoryReturn(t *testing.T) {
 	callbacks := outbound.NewRuntimeIOFence(nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	physical := &runtimeEndpointPhysical{ctx: ctx, callbacks: callbacks, carriers: outbound.NewRuntimeIOFenceSet()}
 	binding := newRuntimeBindingFixture(t, 1)
 	binding.physical = physical

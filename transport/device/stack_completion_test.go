@@ -76,8 +76,7 @@ func TestDeviceWaitDetachedUsesActualStackAndStickyErrors(t *testing.T) {
 			if err := device.Close(); !errors.Is(err, closeFailure) {
 				t.Fatalf("repeated Close erased failure: %v", err)
 			}
-			workers.Add(1)
-			go func() { defer workers.Done(); result <- device.WaitDetached(ctx) }()
+			workers.Go(func() { result <- device.WaitDetached(ctx) })
 			awaitCompletionEvent(t, stack.entered)
 			select {
 			case <-result:
@@ -94,8 +93,7 @@ func TestDeviceWaitDetachedUsesActualStackAndStickyErrors(t *testing.T) {
 				t.Fatal("observer watchdog")
 			}
 			// Cancellation is only observation. Actual completion still needs finish.
-			workers.Add(1)
-			go func() { defer workers.Done(); result <- device.WaitDetached(context.Background()) }()
+			workers.Go(func() { result <- device.WaitDetached(context.Background()) })
 			awaitCompletionEvent(t, stack.entered)
 			select {
 			case <-result:
@@ -124,8 +122,7 @@ func TestCloseAndWaitDoesNotFlattenCloseIntoCompletion(t *testing.T) {
 	var workers sync.WaitGroup
 	t.Cleanup(func() { release(); workers.Wait(); _ = device.Close() })
 	result := make(chan error, 1)
-	workers.Add(1)
-	go func() { defer workers.Done(); result <- CloseAndWait(device) }()
+	workers.Go(func() { result <- CloseAndWait(device) })
 	awaitCompletionEvent(t, stack.entered)
 	select {
 	case <-result:

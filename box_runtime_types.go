@@ -45,6 +45,7 @@ type (
 		NoOp               bool               `json:"no_op"`
 	}
 )
+
 type RuntimeConfigApply struct {
 	ContractVersion      uint32          `json:"contract_version"`
 	PlanID               string          `json:"plan_id"`

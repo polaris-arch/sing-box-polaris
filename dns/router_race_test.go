@@ -161,7 +161,7 @@ func raceTestExchange(router *Router, rules []adapter.DNSRule) exchangeWithRules
 
 func evaluateRule(server string, tag string, speculative bool) option.DNSRule {
 	return option.DNSRule{
-		Type: "",
+		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultDNSRule{
 			DNSRuleAction: option.DNSRuleAction{
 				Action: C.RuleActionTypeEvaluate,
@@ -177,7 +177,7 @@ func evaluateRule(server string, tag string, speculative bool) option.DNSRule {
 
 func respondRule(responseTag string, race bool, requireSuccess bool) option.DNSRule {
 	rule := option.DNSRule{
-		Type: "",
+		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{
 				MatchResponse: &option.DNSRuleMatchResponse{Enabled: true, Tag: responseTag},
@@ -197,7 +197,7 @@ func respondRule(responseTag string, race bool, requireSuccess bool) option.DNSR
 
 func routeRule(server string, speculative bool) option.DNSRule {
 	return option.DNSRule{
-		Type: "",
+		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultDNSRule{
 			DNSRuleAction: option.DNSRuleAction{
 				Action: C.RuleActionTypeRoute,
@@ -313,7 +313,7 @@ func TestDNSRaceImmediateRouteCommits(t *testing.T) {
 	router := raceTestRouter(t, transportX, transportY, transportFinal)
 	successRcode := option.DNSRCode(mDNS.RcodeSuccess)
 	raceRouteRule := option.DNSRule{
-		Type: "",
+		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{
 				MatchResponse: &option.DNSRuleMatchResponse{Enabled: true, Tag: "y"},
@@ -472,7 +472,7 @@ func TestDNSSpeculativeRouteOnBindingRule(t *testing.T) {
 	router := raceTestRouter(t, transportMiss, transportY, transportFinal)
 	successRcode := option.DNSRCode(mDNS.RcodeSuccess)
 	boundRouteRule := option.DNSRule{
-		Type: "",
+		Type: C.RuleTypeDefault,
 		DefaultOptions: option.DefaultDNSRule{
 			RawDefaultDNSRule: option.RawDefaultDNSRule{
 				MatchResponse: &option.DNSRuleMatchResponse{Enabled: true, Tag: "y"},

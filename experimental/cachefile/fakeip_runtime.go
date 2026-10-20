@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"path/filepath"
 
@@ -248,9 +249,7 @@ func (c *CacheFile) SnapshotFakeIP(ctx context.Context) (adapter.FakeIPStorageSn
 		return snapshot, err
 	}
 	c.pendingAccess.RLock()
-	for address, domain := range c.pending.fakeIPDomain {
-		snapshot.Mappings[address] = domain
-	}
+	maps.Copy(snapshot.Mappings, c.pending.fakeIPDomain)
 	if c.pending.fakeIPMetadata != nil {
 		metadata := *c.pending.fakeIPMetadata
 		snapshot.Metadata = &metadata

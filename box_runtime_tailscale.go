@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -149,21 +150,23 @@ func (t *runtimeTailscaleEndpointTransaction) preparePublication() error {
 	t.publication, err = protocolTS.PrepareRuntimeEndpointPublication(t.next)
 	return err
 }
+
 func (t *runtimeTailscaleEndpointTransaction) publish() {
 	if t != nil {
 		t.publication.Publish()
 	}
 }
+
 func (t *runtimeTailscaleEndpointTransaction) compensate(ctx context.Context) error {
 	if t == nil {
 		return nil
 	}
 	var err error
-	for i := len(t.next) - 1; i >= 0; i-- {
-		err = errors.Join(err, t.next[i].RuntimeCloseAndWait())
+	for _, value := range slices.Backward(t.next) {
+		err = errors.Join(err, value.RuntimeCloseAndWait())
 	}
-	for i := len(t.reserved) - 1; i >= 0; i-- {
-		err = errors.Join(err, t.reserved[i].RuntimeReleasePhysicalReservation(ctx))
+	for _, value := range slices.Backward(t.reserved) {
+		err = errors.Join(err, value.RuntimeReleasePhysicalReservation(ctx))
 	}
 	return err
 }

@@ -3,6 +3,7 @@ package tun
 import (
 	"context"
 	"errors"
+	"slices"
 )
 
 // RuntimeSetTransaction replaces only physical TUN participants. Existing
@@ -60,8 +61,8 @@ func (t *RuntimeSetTransaction) Compensate(ctx context.Context) error {
 	t.compensated = true
 	// Do not reopen old devices while a new/uncertain owner may still own the
 	// interface, routes or platform VPN handle.
-	for i := len(t.next) - 1; i >= 0; i-- {
-		if err := t.next[i].RuntimeSuspendPhysical(ctx); err != nil {
+	for _, next := range slices.Backward(t.next) {
+		if err := next.RuntimeSuspendPhysical(ctx); err != nil {
 			t.compensationError = errors.Join(t.compensationError, err)
 		}
 	}

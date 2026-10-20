@@ -51,6 +51,7 @@ func (t *runtimeBoundHTTPTransport) RoundTrip(request *http.Request) (*http.Resp
 	}
 	return response, nil
 }
+
 func (t *runtimeBoundHTTPTransport) CloseIdleConnections() {
 	t.binding.transport.CloseIdleConnections()
 }
@@ -76,7 +77,7 @@ func (b *runtimeHTTPBody) Close() error { return b.fence.Close() }
 type runtimeHTTPDispatcher struct{ physical *runtimeEndpointPhysical }
 
 func (t *runtimeHTTPDispatcher) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, errors.New("Tailscale HTTP request lacks whole-operation binding")
+	return nil, errors.New("tailscale HTTP request lacks whole-operation binding")
 }
 
 func (t *runtimeHTTPDispatcher) CloseIdleConnections() {

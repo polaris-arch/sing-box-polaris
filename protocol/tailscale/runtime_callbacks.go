@@ -33,15 +33,6 @@ func (p *runtimeEndpointPhysical) joinContext(ctx context.Context) (context.Cont
 	}
 }
 
-func (p *runtimeEndpointPhysical) ownedContext(ctx context.Context) (context.Context, func(), error) {
-	_, owned, release, err := p.bindingContext(ctx, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	owned, cancel := p.joinContext(owned)
-	return owned, func() { cancel(); release() }, nil
-}
-
 // Admission occurs before the goroutine becomes visible. Canceling a caller
 // never releases this fence; only the actual worker's return does so.
 func (p *runtimeEndpointPhysical) launch(worker func()) error {
@@ -223,7 +214,7 @@ func (p *runtimeEndpointPhysical) packetListener(ctx context.Context, network, a
 	var fence *outbound.RuntimeIOFence
 	defer func() {
 		if failure := recover(); failure != nil {
-			uncertainty := runtimeTLS.NewRuntimeCleanupError(errors.New("Tailscale native packet creation panicked; original allocation retained as unknown"))
+			uncertainty := runtimeTLS.NewRuntimeCleanupError(errors.New("tailscale native packet creation panicked; original allocation retained as unknown"))
 			p.carriers.Record(uncertainty)
 			if fence != nil {
 				resultErr = errors.Join(uncertainty, fence.RuntimeCloseAndWait())
@@ -255,20 +246,6 @@ func (p *runtimeEndpointPhysical) packetListener(ctx context.Context, network, a
 	return &runtimeNetIPPacketConn{raw: raw, fence: fence, local: raw.LocalAddr()}, nil
 }
 
-func (p *runtimeEndpointPhysical) timeFunction(base func() time.Time) func() time.Time {
-	if base == nil {
-		return nil
-	}
-	return func() time.Time {
-		leave, err := p.callbacks.Acquire()
-		if err != nil {
-			return time.Now()
-		}
-		defer leave()
-		return base()
-	}
-}
-
 // A logical subscription survives a compensating physical reconstruction, but
 // each delivery names the exact original child. Unregistration seals the
 // consumer's fence; no callback is run under the endpoint state mutex.
@@ -279,7 +256,7 @@ type runtimeReconfigRegistration struct {
 
 func (t *Endpoint) registerRuntimeReconfig(fence *outbound.RuntimeIOFence, callback func(*Endpoint, *wgcfg.Config, *router.Config, *tsDNS.Config)) (func(), error) {
 	if t.runtime == nil {
-		return nil, errors.New("Tailscale DNS requires a prepared logical endpoint")
+		return nil, errors.New("tailscale DNS requires a prepared logical endpoint")
 	}
 	registration := &runtimeReconfigRegistration{fence: fence, callback: callback}
 	r := t.runtime

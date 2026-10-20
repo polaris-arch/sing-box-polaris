@@ -101,12 +101,10 @@ func TestTypedGraphPublishOldOrNew(t *testing.T) {
 	publishTestGraph(t, store, 0, testGraph(t, 1))
 	start := make(chan struct{})
 	var wg sync.WaitGroup
-	for i := 0; i < 32; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 32 {
+		wg.Go(func() {
 			<-start
-			for j := 0; j < 32; j++ {
+			for range 32 {
 				lease, err := store.Acquire()
 				if err != nil {
 					t.Error(err)
@@ -119,7 +117,7 @@ func TestTypedGraphPublishOldOrNew(t *testing.T) {
 				}
 				lease.Release()
 			}
-		}()
+		})
 	}
 	close(start)
 	publishTestGraph(t, store, 1, testGraph(t, 2))
@@ -161,7 +159,7 @@ func TestGraphForkAfterRetireBeforeSourceRelease(t *testing.T) {
 }
 
 func TestGraphForkReleaseOneMutex(t *testing.T) {
-	for iteration := 0; iteration < 64; iteration++ {
+	for range 64 {
 		g := newGeneration(1)
 		a := mustAdmission(t, g)
 		lease := mustGenerationLease(t, a)
@@ -349,7 +347,9 @@ func TestCleanupUncertaintyRetainsDependencies(t *testing.T) {
 	}
 	once.Do(func() { close(unblock) })
 	await(t, owner.Closed())
-	if owner.WaitClosed(context.Background()) != sentinel || owner.WaitClosed(context.Background()) != sentinel {
+	firstClose := owner.WaitClosed(context.Background())
+	secondClose := owner.WaitClosed(context.Background())
+	if firstClose != sentinel || secondClose != sentinel {
 		t.Fatal("lost sticky cleanup error")
 	}
 	select {
@@ -433,7 +433,7 @@ func TestForbiddenRuntimegraphImportDirections(t *testing.T) {
 }
 
 func TestResourceForkReleaseOneMutex(t *testing.T) {
-	for iteration := 0; iteration < 64; iteration++ {
+	for range 64 {
 		r := newResourceOwner(context.Background(), nil)
 		lease := mustResourceLease(t, r)
 		r.requestClose()

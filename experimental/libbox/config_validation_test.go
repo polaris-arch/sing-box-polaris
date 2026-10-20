@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -884,9 +885,7 @@ func TestValidationTailscalePublicEntryRunsOriginalOptionValidation(t *testing.T
 		t.Run(test.name, func(t *testing.T) {
 			directory := filepath.Join(validationPhysicalTempDir(t), "unstarted")
 			endpoint := map[string]any{"type": "tailscale", "tag": "target", "state_directory": directory}
-			for name, value := range test.fields {
-				endpoint[name] = value
-			}
+			maps.Copy(endpoint, test.fields)
 			content, err := json.Marshal(map[string]any{"log": map[string]any{"disabled": true}, "endpoints": []any{endpoint}})
 			if err != nil {
 				t.Fatal(err)

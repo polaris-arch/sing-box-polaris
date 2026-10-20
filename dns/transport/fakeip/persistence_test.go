@@ -3,6 +3,7 @@ package fakeip
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/netip"
 	"sort"
 	"strconv"
@@ -288,9 +289,7 @@ func (n *runtimeFixtureNamespace) FakeIPSaveMetadata(v *adapter.FakeIPMetadata) 
 func (n *runtimeFixtureNamespace) SnapshotAllocation() adapter.FakeIPStorageSnapshot {
 	image := adapter.FakeIPStorageSnapshot{Metadata: n.FakeIPMetadata(), Mappings: make(map[netip.Addr]string)}
 	n.addressAccess.RLock()
-	for address, domain := range n.addressCache {
-		image.Mappings[address] = domain
-	}
+	maps.Copy(image.Mappings, n.addressCache)
 	n.addressAccess.RUnlock()
 	return image
 }

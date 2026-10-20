@@ -272,7 +272,7 @@ func projectWindowsDirectories(options option.Options, root string) (windowsDire
 			return projection, nil, fmt.Errorf("duplicate outbound/endpoint tag: %s", tag)
 		}
 		seenTags[tag] = true
-		entry := windowsDirectoryEndpointProjection{windowsDirectoryTagProjection: windowsDirectoryTagProjection{Type: endpoint.Type, Tag: tag}}
+		entry := windowsDirectoryEndpointProjection{Type: endpoint.Type, Tag: tag}
 		if endpoint.Type == C.TypeTailscale {
 			var ts option.TailscaleEndpointOptions
 			switch value := endpoint.Options.(type) {

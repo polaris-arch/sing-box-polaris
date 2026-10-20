@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/textproto"
 	"os"
 	"path/filepath"
@@ -155,13 +154,13 @@ func Start(ctx context.Context, conf *StartConf) (*Tor, error) {
 		if tempBase, err = filepath.Abs(tempBase); err != nil {
 			return nil, err
 		}
-		if tor.DataDir, err = ioutil.TempDir(tempBase, "data-dir-"); err != nil {
-			return nil, fmt.Errorf("Unable to create temp data dir: %v", err)
+		if tor.DataDir, err = os.MkdirTemp(tempBase, "data-dir-"); err != nil {
+			return nil, fmt.Errorf("unable to create temp data dir: %v", err)
 		}
 		tor.Debugf("Created temp data directory at: %v", tor.DataDir)
 		tor.DeleteDataDirOnClose = !conf.RetainTempDataDir
 	} else if err := os.MkdirAll(tor.DataDir, 0o700); err != nil {
-		return nil, fmt.Errorf("Unable to create data dir: %v", err)
+		return nil, fmt.Errorf("unable to create data dir: %v", err)
 	}
 
 	// !!!! From this point on, we must close tor if we error !!!!
@@ -183,7 +182,7 @@ func Start(ctx context.Context, conf *StartConf) (*Tor, error) {
 	// If there was an error, we have to try to close here but it may leave the process open
 	if err != nil {
 		if closeErr := tor.Close(); closeErr != nil {
-			err = fmt.Errorf("Error on start: %v (also got error trying to close: %v)", err, closeErr)
+			err = fmt.Errorf("error on start: %v (also got error trying to close: %v)", err, closeErr)
 		}
 	}
 	return tor, err
@@ -194,19 +193,19 @@ func (t *Tor) copyGeoIPFiles(conf *StartConf) error {
 		return nil
 	}
 	if r, err := conf.GeoIPFileReader(false); err != nil {
-		return fmt.Errorf("Unable to read geoip file: %v", err)
+		return fmt.Errorf("unable to read geoip file: %v", err)
 	} else if r != nil {
 		t.GeoIPCreatedFile = "geoip"
 		if err := createFile(filepath.Join(t.DataDir, "geoip"), r); err != nil {
-			return fmt.Errorf("Unable to create geoip file: %v", err)
+			return fmt.Errorf("unable to create geoip file: %v", err)
 		}
 	}
 	if r, err := conf.GeoIPFileReader(true); err != nil {
-		return fmt.Errorf("Unable to read geoip6 file: %v", err)
+		return fmt.Errorf("unable to read geoip6 file: %v", err)
 	} else if r != nil {
 		t.GeoIPv6CreatedFile = "geoip6"
 		if err := createFile(filepath.Join(t.DataDir, "geoip6"), r); err != nil {
-			return fmt.Errorf("Unable to create geoip6 file: %v", err)
+			return fmt.Errorf("unable to create geoip6 file: %v", err)
 		}
 	}
 	return nil
@@ -259,7 +258,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 	// If there is no Torrc file, create a blank temp one
 	torrcFileName := conf.TorrcFile
 	if torrcFileName == "" {
-		torrcFile, err := ioutil.TempFile(t.DataDir, "torrc-")
+		torrcFile, err := os.CreateTemp(t.DataDir, "torrc-")
 		if err != nil {
 			return err
 		}
@@ -274,7 +273,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 	var err error
 	if !conf.UseEmbeddedControlConn {
 		if conf.ControlPort == 0 {
-			controlPortFile, err := ioutil.TempFile(t.DataDir, "control-port-")
+			controlPortFile, err := os.CreateTemp(t.DataDir, "control-port-")
 			if err != nil {
 				return err
 			}
@@ -300,7 +299,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 		t.Debugf("Using embedded control connection")
 		conn, err := p.EmbeddedControlConn()
 		if err != nil {
-			return fmt.Errorf("Unable to get embedded control conn: %v", err)
+			return fmt.Errorf("unable to get embedded control conn: %v", err)
 		}
 		t.Control = control.NewConn(textproto.NewConn(conn))
 		t.Control.DebugWriter = t.DebugWriter
@@ -316,7 +315,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 		t.ControlPort = conf.ControlPort
 		if t.ControlPort == 0 {
 		ControlPortCheck:
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				select {
 				case <-ctx.Done():
 					err = ctx.Err()
@@ -324,7 +323,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 				default:
 					// Try to read the controlport file, or wait a bit
 					var byts []byte
-					if byts, err = ioutil.ReadFile(controlPortFileName); err != nil {
+					if byts, err = os.ReadFile(controlPortFileName); err != nil {
 						break ControlPortCheck
 					} else if t.ControlPort, err = process.ControlPortFromFileContents(string(byts)); err == nil {
 						break ControlPortCheck
@@ -333,7 +332,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 				}
 			}
 			if err != nil {
-				return fmt.Errorf("Unable to read control port file: %v", err)
+				return fmt.Errorf("unable to read control port file: %v", err)
 			}
 		}
 	}
@@ -383,7 +382,7 @@ func (t *Tor) EnableNetwork(ctx context.Context, wait bool) error {
 				if status.Severity == "NOTICE" && status.Arguments["PROGRESS"] == "100" {
 					return true, nil
 				} else if status.Severity == "ERR" {
-					return false, fmt.Errorf("Failing bootstrapping, Tor warning: %v", status.Arguments["WARNING"])
+					return false, fmt.Errorf("failing bootstrapping, Tor warning: %v", status.Arguments["WARNING"])
 				}
 			}
 			return false, nil
@@ -401,14 +400,14 @@ func (t *Tor) Close() error {
 	if t.Control != nil {
 		if t.Control.Authenticated && t.StopProcessOnClose {
 			if err := t.Control.Signal("HALT"); err != nil {
-				errs = append(errs, fmt.Errorf("Unable to signal halt: %v", err))
+				errs = append(errs, fmt.Errorf("unable to signal halt: %v", err))
 			} else {
 				sentHalt = true
 			}
 		}
 		// Now close the controller
 		if err := t.Control.Close(); err != nil {
-			errs = append(errs, fmt.Errorf("Unable to close contrlller: %v", err))
+			errs = append(errs, fmt.Errorf("unable to close contrlller: %v", err))
 		} else {
 			t.Control = nil
 		}
@@ -425,10 +424,10 @@ func (t *Tor) Close() error {
 		select {
 		case waitErr = <-errCh:
 			if waitErr != nil {
-				errs = append(errs, fmt.Errorf("Process wait failed: %v", waitErr))
+				errs = append(errs, fmt.Errorf("process wait failed: %v", waitErr))
 			}
 		case <-time.After(300 * time.Millisecond):
-			errs = append(errs, fmt.Errorf("Process did not exit after 300 ms"))
+			errs = append(errs, fmt.Errorf("process did not exit after 300 ms"))
 		}
 		if waitErr == nil {
 			t.Process = nil
@@ -437,7 +436,7 @@ func (t *Tor) Close() error {
 	// Get rid of the entire data dir
 	if t.DeleteDataDirOnClose {
 		if err := os.RemoveAll(t.DataDir); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to remove data dir %v: %v", t.DataDir, err))
+			errs = append(errs, fmt.Errorf("failed to remove data dir %v: %v", t.DataDir, err))
 		}
 	}
 	// Combine the errors if present
@@ -448,5 +447,5 @@ func (t *Tor) Close() error {
 		return errs[0]
 	}
 	t.Debugf("Errors while closing Tor: %v", errs)
-	return fmt.Errorf("Got %v errors while closing - %v", len(errs), errs)
+	return fmt.Errorf("got %v errors while closing - %v", len(errs), errs)
 }

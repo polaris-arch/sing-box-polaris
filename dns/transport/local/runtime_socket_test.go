@@ -20,13 +20,11 @@ func TestResolverSocketCloseFailureStickyAndOnce(t *testing.T) {
 	conn := &resolverOwnedConn{Conn: native, errors: &retained}
 	var group sync.WaitGroup
 	for range 2 {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			if conn.Close() != native.failure {
 				t.Error("close error lost")
 			}
-		}()
+		})
 	}
 	group.Wait()
 	if native.calls != 1 || retained.result() == nil {

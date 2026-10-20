@@ -26,7 +26,7 @@ func operationTestRouter(t *testing.T, rules []option.DNSRule, transport *policy
 	t.Cleanup(func() { owner.Seal(); construction.Release(); operationTestClosed(t, owner) })
 	ctx := service.ContextWithDefaultRegistry(adapter.ContextWithRuntimeResourceSource(scope.Context(), owner))
 	service.MustRegister[adapter.DNSTransportManager](ctx, &fakeDNSTransportManager{transports: map[string]adapter.DNSTransport{transport.Tag(): transport}, defaultTransport: transport})
-	router, err := NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), option.DNSOptions{RawDNSOptions: option.RawDNSOptions{DNSClientOptions: option.DNSClientOptions{DisableCache: true}}}, RouterClientDependencies{})
+	router, err := NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), option.DNSOptions{DisableCache: true}, RouterClientDependencies{})
 	if err != nil {
 		t.Fatal(err)
 	}

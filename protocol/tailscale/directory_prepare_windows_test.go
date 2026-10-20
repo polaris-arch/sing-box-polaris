@@ -117,7 +117,7 @@ func TestWindowsPreparedLeaseRejectsDistinctDomainDurablePoison(t *testing.T) {
 
 // This seam executes the production serial-acquisition loop without native IO.
 func TestWindowsPreparedPartialAcquisitionKeepsOnlyActualOriginalNodes(t *testing.T) {
-	for failAt := 0; failAt < 3; failAt++ {
+	for failAt := range 3 {
 		t.Run(fmt.Sprint(failAt), func(t *testing.T) {
 			root := filepath.Join(t.TempDir(), "polaris")
 			d, err := adapter.NewTailscaleWindowsDirectoryDomain(root, strings.Repeat("a", 32))
@@ -132,7 +132,7 @@ func TestWindowsPreparedPartialAcquisitionKeepsOnlyActualOriginalNodes(t *testin
 			}
 			var inputs []adapter.TailscaleDirectoryMappingInput
 			var options option.Options
-			for index := 0; index < 3; index++ {
+			for index := range 3 {
 				tag := fmt.Sprint(index)
 				state := filepath.Join(root, "tailscale", tag)
 				drop := filepath.Join(state, "Taildrop")

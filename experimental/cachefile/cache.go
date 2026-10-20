@@ -199,7 +199,7 @@ func (c *CacheFile) startCacheCleanup(ctx context.Context) {
 			interval = time.Hour
 		}
 		c.cleanupWorkers.Add(1)
-		go func() { defer c.cleanupWorkers.Done(); c.loopCacheCleanup(ctx, interval, c.cleanupDNSCache) }()
+		go c.runCacheCleanup(ctx, interval, c.cleanupDNSCache)
 	} else if c.storeRDRC {
 		c.cleanupRDRC()
 		interval := c.rdrcTimeout / 2
@@ -207,8 +207,16 @@ func (c *CacheFile) startCacheCleanup(ctx context.Context) {
 			interval = time.Hour
 		}
 		c.cleanupWorkers.Add(1)
-		go func() { defer c.cleanupWorkers.Done(); c.loopCacheCleanup(ctx, interval, c.cleanupRDRC) }()
+		go c.runCacheCleanup(ctx, interval, c.cleanupRDRC)
 	}
+}
+
+// runCacheCleanup keeps the reservation and deferred completion on the worker
+// stack, including panic unwinding. WaitGroup.Go deliberately does not mark a
+// panicking worker done, so it cannot preserve this cleanup contract.
+func (c *CacheFile) runCacheCleanup(ctx context.Context, interval time.Duration, cleanup func()) {
+	defer c.cleanupWorkers.Done()
+	c.loopCacheCleanup(ctx, interval, cleanup)
 }
 
 func (c *CacheFile) start() error {

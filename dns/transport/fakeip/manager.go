@@ -16,7 +16,7 @@ import (
 var (
 	ErrMigrationRequired   = errors.New("fake-IP range or backing-store replacement requires issued-answer migration")
 	ErrRecognitionReadOnly = errors.New("fake-IP recognition view is read-only")
-	ErrManagerNotStarted   = errors.New("Box fake-IP allocator has not started")
+	ErrManagerNotStarted   = errors.New("box fake-IP allocator has not started")
 	ErrManagerRequired     = errors.New("runtime fake-IP transport requires the Box-owned allocator")
 )
 

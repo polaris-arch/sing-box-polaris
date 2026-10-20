@@ -203,7 +203,7 @@ func (o *TailcatOutbound) buildNode(ctx context.Context) (node *tailcatNode, ses
 	var constructed *tailcatNode
 	defer func() {
 		if recover() != nil {
-			resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailcat lazy construction panicked"))
+			resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailcat lazy construction panicked"))
 			resultErr = errors.Join(resultErr, closeTailcatNative(constructed, session))
 			node = nil
 		}
@@ -261,10 +261,10 @@ func (o *TailcatOutbound) buildNode(ctx context.Context) (node *tailcatNode, ses
 }
 
 func closeTailcatNative(node *tailcatNode, session *runtimeTailcatSession) (resultErr error) {
-	resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailcat original close did not return"))
+	resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailcat original close did not return"))
 	defer func() {
 		if recover() != nil {
-			resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("Tailcat original close panicked"))
+			resultErr = runtimeTLS.NewRuntimeCleanupError(errors.New("tailcat original close panicked"))
 		}
 	}()
 	if session != nil {

@@ -9,7 +9,8 @@ type blockedRuntimeReturn struct {
 	packets          int
 }
 
-func (r *blockedRuntimeReturn) ReturnHeadroom() int                     { close(r.entered); <-r.proceed; return 0 }
+func (r *blockedRuntimeReturn) ReturnHeadroom() int { close(r.entered); <-r.proceed; return 0 }
+
 func (r *blockedRuntimeReturn) ReturnPackets(packets [][]byte) [][]byte { r.packets++; return packets }
 
 func TestBridgeDetachJoinsCopiedReturnSnapshot(t *testing.T) {

@@ -140,16 +140,14 @@ func TestResourceStickyErrorAndPanic(t *testing.T) {
 			start := make(chan struct{})
 			results := make(chan error, 16)
 			var wg sync.WaitGroup
-			for i := 0; i < 16; i++ {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+			for range 16 {
+				wg.Go(func() {
 					<-start
 					r.requestClose()
 					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
 					results <- r.waitClosed(ctx)
-				}()
+				})
 			}
 			close(start)
 			wg.Wait()
@@ -239,14 +237,12 @@ func TestResourceConcurrentSealAcquireRelease(t *testing.T) {
 	start := make(chan struct{})
 	var wg sync.WaitGroup
 	for _, l := range leases {
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			wg.Add(1)
 			go func(l *resourceLease) { defer wg.Done(); <-start; l.release(); r.requestClose() }(l)
 		}
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-start
 		l, err := r.acquire()
 		if err == nil {
@@ -254,7 +250,7 @@ func TestResourceConcurrentSealAcquireRelease(t *testing.T) {
 		} else if !errors.Is(err, errResourceSealed) {
 			t.Error(err)
 		}
-	}()
+	})
 	close(start)
 	wg.Wait()
 	if err := waitResource(t, r); err != nil {

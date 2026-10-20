@@ -32,7 +32,7 @@ type runtimeTailscaleChild struct {
 func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, request adapter.RuntimeTailscaleChildRequest) (adapter.RuntimeTailscaleChildRegistration, error) {
 	canonical, ok := adapter.RuntimeTailscaleConfiguration(ctx)
 	if !ok {
-		return nil, errors.New("Tailscale child lacks captured whole configuration")
+		return nil, errors.New("tailscale child lacks captured whole configuration")
 	}
 	options, err := parseConfig(ctx, string(canonical))
 	if err != nil {
@@ -45,17 +45,17 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 			continue
 		}
 		if found || endpoint.Type != C.TypeTailscale {
-			return nil, errors.New("Tailscale physical child identity is ambiguous")
+			return nil, errors.New("tailscale physical child identity is ambiguous")
 		}
 		settings, ok := endpoint.Options.(*option.TailscaleEndpointOptions)
 		if !ok || os.ExpandEnv(settings.StateDirectory) != request.StateDirectory || os.ExpandEnv(settings.TaildropDirectory) != request.TaildropDirectory {
-			return nil, errors.New("Tailscale physical child paths differ from captured configuration")
+			return nil, errors.New("tailscale physical child paths differ from captured configuration")
 		}
 		selected = endpoint
 		found = true
 	}
 	if !found {
-		return nil, errors.New("Tailscale child is absent from captured configuration")
+		return nil, errors.New("tailscale child is absent from captured configuration")
 	}
 	run, err := newTailscaleRetirementRun(string(canonical), option.Options{Endpoints: []option.Endpoint{selected}})
 	if err != nil {
@@ -78,18 +78,20 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	go child.observeActualClose()
 	return child, nil
 }
+
 func (c *runtimeTailscaleChild) Context() context.Context {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.ctx
 }
+
 func (c *runtimeTailscaleChild) Prepare(request context.Context) error {
 	c.op.Lock()
 	defer c.op.Unlock()
 	c.mu.Lock()
 	if c.entered || c.aborted || c.committed {
 		c.mu.Unlock()
-		return errors.New("Tailscale physical preparation replay")
+		return errors.New("tailscale physical preparation replay")
 	}
 	c.entered = true
 	c.mu.Unlock()
@@ -119,7 +121,7 @@ func (c *runtimeTailscaleChild) Constructed() error {
 	select {
 	case <-c.request.ConstructionDone:
 	default:
-		return errors.New("Tailscale constructor is not terminal")
+		return errors.New("tailscale constructor is not terminal")
 	}
 	if err := c.request.ConstructionResult(); err != nil {
 		return err
@@ -128,7 +130,7 @@ func (c *runtimeTailscaleChild) Constructed() error {
 	invalid := !c.entered || c.aborted || c.committed
 	c.mu.Unlock()
 	if invalid {
-		return errors.New("Tailscale construction commit replay")
+		return errors.New("tailscale construction commit replay")
 	}
 	if err := c.ctx.Err(); err != nil {
 		return err
@@ -170,7 +172,7 @@ func (c *runtimeTailscaleChild) Abort() error {
 	case <-c.request.ConstructionDone:
 	default:
 		c.mu.Unlock()
-		return errors.New("Tailscale constructor still owns preparation")
+		return errors.New("tailscale constructor still owns preparation")
 	}
 	c.aborted = true
 	plan := c.plan

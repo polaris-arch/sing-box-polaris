@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -539,8 +540,8 @@ func (r *runtimeReferenceReservation) prepare() (referenceInventory, error) {
 }
 
 func (r *runtimeReferenceReservation) release() {
-	for index := len(r.resources) - 1; index >= 0; index-- {
-		r.resources[index].Release()
+	for _, resource := range slices.Backward(r.resources) {
+		resource.Release()
 	}
 	if r.snapshot.Lease != nil {
 		r.snapshot.Lease.Release()
@@ -577,14 +578,14 @@ func (m *RuntimeReferenceManager) Stop() {
 func (m *RuntimeReferenceManager) stopAndJoin() {
 	defer close(m.stoppedDone)
 	<-m.setupDone
-	for index := len(m.unregister) - 1; index >= 0; index-- {
+	for _, unregister := range slices.Backward(m.unregister) {
 		err := func() (err error) {
 			defer func() {
 				if value := recover(); value != nil {
 					err = fmt.Errorf("reference producer unregister panic: %v", value)
 				}
 			}()
-			return m.unregister[index]()
+			return unregister()
 		}()
 		m.recordFailure(err)
 	}

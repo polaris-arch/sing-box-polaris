@@ -56,7 +56,7 @@ func TestRuntimeImplicitDirectAndLocalAreEligibleWithoutPresenceExceptions(t *te
 
 func TestRuntimeExplicitLocalAndMDNSAreEligible(t *testing.T) {
 	for _, kind := range []string{C.DNSTypeLocal, C.DNSTypeMDNS} {
-		options := option.Options{DNS: &option.DNSOptions{RawDNSOptions: option.RawDNSOptions{Servers: []option.DNSServerOptions{{Type: kind}}}}}
+		options := option.Options{DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: kind}}}}
 		if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 			t.Fatal(kind, problems)
 		}

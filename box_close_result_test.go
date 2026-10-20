@@ -56,7 +56,7 @@ func testContext() context.Context {
 
 func testBoxWithService(t *testing.T, extra *failingCloseService) *Box {
 	t.Helper()
-	instance, err := New(Options{Context: testContext(), Options: option.Options{}})
+	instance, err := New(Options{Context: testContext()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func (f *countingLogFactory) Close() error {
 func TestStartFailureAfterCloseRunsLateRegistrations(t *testing.T) {
 	// This assertion covers the legacy late-registration path. Runtime startup
 	// rejects a closed instance before touching the logger (covered separately).
-	instance, constructErr := New(Options{Context: testContext(), Options: option.Options{Certificate: &option.CertificateOptions{}}})
+	instance, constructErr := New(Options{Context: testContext(), Certificate: &option.CertificateOptions{}})
 	if constructErr != nil {
 		t.Fatal(constructErr)
 	}
