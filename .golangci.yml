@@ -54,21 +54,23 @@ linters:
       # Metadata is required by encrypted NewPacket parsing/auth/NAT. Remove
       # after a packet API migration preserves tuple and buffer/session custody.
       # Full diagnostic and statement matches leave every other finding enabled.
+      # Staticcheck v0.8.2 folds the doc's final newline into one trailing space.
+      # Match raw issue.Text exactly, before the v2.15.0 printer trims that space.
       - linters: [staticcheck]
         path: '^common/httpclient/runtime_quic_tls\.go$'
-        text: '^SA1019: \(crypto/tls\.Config\)\.Rand has been deprecated since Go 1\.27 and an alternative has been available since Go 1\.26: this should be left nil in production\. Not all TLS configurations are guaranteed to use Rand\. Test code can use \[testing/cryptotest\.SetGlobalRandom\] instead\.$'
+        text: '^SA1019: \(crypto/tls\.Config\)\.Rand has been deprecated since Go 1\.27 and an alternative has been available since Go 1\.26: this should be left nil in production\. Not all TLS configurations are guaranteed to use Rand\. Test code can use \[testing/cryptotest\.SetGlobalRandom\] instead\. $'
         source: '^\s*(?:if value := config\.Rand; value != nil \{|config\.Rand = runtimeQUICReader\{value, fence\})$'
       - linters: [staticcheck]
         path: '^protocol/naive/inbound_runtime_tcp\.go$'
-        text: '^SA1019: golang\.org/x/net/http2/h2c is deprecated: This package is deprecated\. It is not maintained and should not be used\.$'
+        text: '^SA1019: golang\.org/x/net/http2/h2c is deprecated: This package is deprecated\. It is not maintained and should not be used\. $'
         source: '^\s*(?:"golang\.org/x/net/http2/h2c")$'
       - linters: [staticcheck]
         path: '^protocol/naive/inbound_runtime_tcp\.go$'
-        text: '^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\.$'
+        text: '^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $'
         source: '^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'
       - linters: [staticcheck]
         path: '^protocol/shadowsocks/inbound_runtime_packet\.go$'
-        text: '^SA1019: github\.com/sagernet/sing/common/metadata\.Metadata is deprecated: wtf is this\?$'
+        text: '^SA1019: github\.com/sagernet/sing/common/metadata\.Metadata is deprecated: wtf is this\? $'
         source: '^\s*(?:err = h\.service\.NewPacket\(ctx, &stubPacketConn\{h\.listener\.PacketWriter\(\)\}, buffer, M\.Metadata\{Source: source\}\))$'
       # Preserve the public compatibility result order; match only this declaration.
       - linters: [staticcheck]

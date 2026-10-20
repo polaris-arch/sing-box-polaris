@@ -6,6 +6,9 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +16,36 @@ import (
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/tailscale/tsnet"
 )
+
+// Both platform declarations must keep the same common lifecycle state. Only
+// Windows exposes mapped-directory acquisition and needs its one-shot guard.
+func TestPreparedDirectoryPlatformState(t *testing.T) {
+	type expectedField struct {
+		name string
+		typ  reflect.Type
+	}
+	expected := []expectedField{
+		{"mu", reflect.TypeFor[sync.Mutex]()},
+		{"ctx", reflect.TypeFor[context.Context]()},
+		{"entries", reflect.TypeFor[[]*preparedDirectoryEntry]()},
+		{"aborted", reflect.TypeFor[bool]()},
+		{"committed", reflect.TypeFor[bool]()},
+		{"validated", reflect.TypeFor[bool]()},
+	}
+	if runtime.GOOS == "windows" {
+		expected = append(expected, expectedField{"acquisitionStarted", reflect.TypeFor[bool]()})
+	}
+	actual := reflect.TypeFor[PreparedDirectoryLeases]()
+	if actual.NumField() != len(expected) {
+		t.Fatalf("directory platform state has %d fields, want %d", actual.NumField(), len(expected))
+	}
+	for index, want := range expected {
+		field := actual.Field(index)
+		if field.Anonymous || field.Name != want.name || field.Type != want.typ {
+			t.Fatalf("directory state field %d: got %s %v, want %s %v", index, field.Name, field.Type, want.name, want.typ)
+		}
+	}
+}
 
 func testPreparedDirectoryPlan() (*PreparedDirectoryLeases, *preparedDirectoryEntry) {
 	p := &PreparedDirectoryLeases{}

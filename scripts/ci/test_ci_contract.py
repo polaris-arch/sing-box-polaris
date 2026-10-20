@@ -245,22 +245,61 @@ class TestCIContract(unittest.TestCase):
   text=(ROOT/'scripts/ci/native_release_index.py').read_text()
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
+ def expected_lint_rules(self):
+  # Keep each reviewed boundary explicit: five SA1019 rules have distinct
+  # path/diagnostic identities, so the diagnostic code alone is not a key.
+  return {
+   'http2':{
+    'linters':['staticcheck'],
+    'path':r'^(common/httpclient/http2_(config|fallback_transport|transport)\.go|common/tls/reality_client\.go|dns/transport/https_transport\.go|transport/http/(client|client_h2_wrap|server|server_h2)\.go|transport/v2raygrpclite/(client|server)\.go|transport/v2rayhttp/(client|force_close|force_close_go127|server)\.go)$',
+    'text':r'^SA1019:.*golang\.org/x/net/http2\.'},
+   'tls-rand':{
+    'linters':['staticcheck'],
+    'path':r'^common/httpclient/runtime_quic_tls\.go$',
+    'text':r'^SA1019: \(crypto/tls\.Config\)\.Rand has been deprecated since Go 1\.27 and an alternative has been available since Go 1\.26: this should be left nil in production\. Not all TLS configurations are guaranteed to use Rand\. Test code can use \[testing/cryptotest\.SetGlobalRandom\] instead\. $',
+    'source':r'^\s*(?:if value := config\.Rand; value != nil \{|config\.Rand = runtimeQUICReader\{value, fence\})$'},
+   'h2c-import':{
+    'linters':['staticcheck'],
+    'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c is deprecated: This package is deprecated\. It is not maintained and should not be used\. $',
+    'source':r'^\s*(?:"golang\.org/x/net/http2/h2c")$'},
+   'h2c-handler':{
+    'linters':['staticcheck'],
+    'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $',
+    'source':r'^\s*(?:Handler:     h2c\.NewHandler\(n, &http2\.Server\{\}\),)$'},
+   'shadowsocks-metadata':{
+    'linters':['staticcheck'],
+    'path':r'^protocol/shadowsocks/inbound_runtime_packet\.go$',
+    'text':r'^SA1019: github\.com/sagernet/sing/common/metadata\.Metadata is deprecated: wtf is this\? $',
+    'source':r'^\s*(?:err = h\.service\.NewPacket\(ctx, &stubPacketConn\{h\.listener\.PacketWriter\(\)\}, buffer, M\.Metadata\{Source: source\}\))$'},
+   'result-order':{
+    'linters':['staticcheck'],
+    'path':r'^box\.go$',
+    'text':r'^ST1008: error should be returned as the last argument$',
+    'source':r'^func NewWithConstructionReport\(options Options\) \(instance \*Box, err error, report ConstructionReport\) \{$'}}
  def lint_rules(self):
   config=yaml.safe_load((ROOT/'.golangci.yml').read_text())
   for name in ['staticcheck','unused','modernize']:self.assertIn(name,config['linters']['enable'])
   checks=config['linters']['settings']['staticcheck']['checks']
   self.assertIn('all',checks)
   for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),2)
-  by_code={code:[r for r in rules if r['text'].startswith('^'+code+':')] for code in ['SA1019','ST1008']}
-  for matches in by_code.values():self.assertEqual(len(matches),1)
-  return {code:matches[0] for code,matches in by_code.items()}
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),6)
+  expected=self.expected_lint_rules()
+  self.assertCountEqual(rules,list(expected.values()))
+  by_scope={(rule['path'],rule['text']):rule for rule in rules}
+  self.assertEqual(len(by_scope),len(rules))
+  return {name:by_scope[(rule['path'],rule['text'])] for name,rule in expected.items()}
  def rule_matches(self,rule,linter,path,text,source=''):
-  return (linter in rule['linters'] and re.search(rule['path'],path) is not None
-          and re.search(rule['text'],text) is not None
-          and ('source' not in rule or re.search(rule['source'],source) is not None))
+  # Go regexp's terminal $ means end of text, unlike Python's allowance for
+  # a final newline. Keep this fixture faithful to the native filter.
+  def search(pattern,value):
+   return re.search(pattern[:-1]+r'\Z' if pattern.endswith('$') else pattern,value)
+  return (linter in rule['linters'] and search(rule['path'],path) is not None
+          and search(rule['text'],text) is not None
+          and ('source' not in rule or search(rule['source'],source) is not None))
  def test_http2_compatibility_exclusion_is_exactly_scoped(self):
-  rule=self.lint_rules()['SA1019'];self.assertEqual(set(rule),{'linters','path','text'})
+  rule=self.lint_rules()['http2'];self.assertEqual(set(rule),{'linters','path','text'})
   self.assertEqual(rule['linters'],['staticcheck'])
   allowed={
    'common/httpclient/http2_config.go','common/httpclient/http2_fallback_transport.go',
@@ -287,7 +326,7 @@ class TestCIContract(unittest.TestCase):
    self.assertIsNone(path.search(negative))
   self.assertFalse(self.rule_matches(rule,'unused','transport/http/client.go',message))
  def test_public_compatibility_result_order_exclusion_requires_all_four_fields(self):
-  rule=self.lint_rules()['ST1008'];self.assertEqual(set(rule),{'linters','path','text','source'})
+  rule=self.lint_rules()['result-order'];self.assertEqual(set(rule),{'linters','path','text','source'})
   self.assertEqual(rule['linters'],['staticcheck'])
   signature='func NewWithConstructionReport(options Options) (instance *Box, err error, report ConstructionReport) {'
   actual=next(s for s in (ROOT/'box.go').read_text().splitlines() if s.startswith('func NewWithConstructionReport('))
@@ -306,6 +345,74 @@ class TestCIContract(unittest.TestCase):
                  signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
                  'return instance, err, report',signature+' // another line']:
    self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
+ def test_reviewed_compatibility_exclusions_match_only_seven_exact_diagnostics(self):
+  rules=self.lint_rules()
+  fixtures=[
+   ('tls-rand','common/httpclient/runtime_quic_tls.go',
+    'SA1019: (crypto/tls.Config).Rand has been deprecated since Go 1.27 and an alternative has been available since Go 1.26: this should be left nil in production. Not all TLS configurations are guaranteed to use Rand. Test code can use [testing/cryptotest.SetGlobalRandom] instead.',
+    ['if value := config.Rand; value != nil {','config.Rand = runtimeQUICReader{value, fence}']),
+   ('h2c-import','protocol/naive/inbound_runtime_tcp.go',
+    'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
+    ['"golang.org/x/net/http2/h2c"']),
+   ('h2c-handler','protocol/naive/inbound_runtime_tcp.go',
+    'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.',
+    ['Handler:     h2c.NewHandler(n, &http2.Server{}),']),
+   ('shadowsocks-metadata','protocol/shadowsocks/inbound_runtime_packet.go',
+    'SA1019: github.com/sagernet/sing/common/metadata.Metadata is deprecated: wtf is this?',
+    ['err = h.service.NewPacket(ctx, &stubPacketConn{h.listener.PacketWriter()}, buffer, M.Metadata{Source: source})']*3)]
+  matched=[]
+  for name,path,message,statements in fixtures:
+   with self.subTest(rule=name):
+    rule=rules[name]
+    self.assertEqual(set(rule),{'linters','path','text','source'})
+    # honnef.co/go/tools v0.8.2 folds CommentGroup.Text()'s final newline
+    # into one ASCII space. golangci v2.15.0 matches issue.Text unchanged;
+    # its text printer applies TrimSpace only after exclusion processing.
+    rendered=message
+    message+=' '
+    self.assertEqual(message.strip(),rendered)
+    actual=[line for line in (ROOT/path).read_text().splitlines() if re.search(rule['source'],line)]
+    self.assertEqual([line.strip() for line in actual],statements)
+    for source in actual:
+     # Every approved diagnostic has exactly one matching rule, even when two
+     # rules share a path or several diagnostics share a code and statement.
+     self.assertEqual([key for key,value in rules.items()
+                       if self.rule_matches(value,'staticcheck',path,message,source)],[name])
+     matched.append((name,path,message,source))
+     for linter in ['unused','modernize']:
+      self.assertFalse(self.rule_matches(rule,linter,path,message,source))
+     for other_path in ['other/'+path,path+'.backup',path.replace('.go','_test.go')]:
+      self.assertFalse(self.rule_matches(rule,'staticcheck',other_path,message,source))
+     for other_message in [message.replace('SA1019','SA4000'),'prefix '+message,
+                           message+' extra','SA1019: unrelated.API is deprecated',
+                           rendered,message+' ',message+'\n']:
+      self.assertFalse(self.rule_matches(rule,'staticcheck',path,other_message,source))
+     for other_source in ['',source+' // another statement','prefix '+source,'unrelated()']:
+      self.assertFalse(self.rule_matches(rule,'staticcheck',path,message,other_source))
+  self.assertEqual(len(matched),7)
+  # The rejected server-only field must not inherit the client Rand exception.
+  message='SA1019: (crypto/tls.Config).NameToCertificate has been deprecated since Go 1.14: NameToCertificate only allows associating a single certificate with a given name. Leave this field nil to let the library select the first compatible chain from Certificates.'
+  self.assertFalse(any(self.rule_matches(rule,'staticcheck','common/httpclient/runtime_quic_tls.go',
+                                       message,'if config.NameToCertificate != nil {') for rule in rules.values()))
+ def test_lint_rule_inventory_rejects_missing_duplicate_or_widened_boundaries(self):
+  original=yaml.safe_load((ROOT/'.golangci.yml').read_text())
+  rules=original['linters']['exclusions']['rules']
+  mutations=[]
+  for index,rule in enumerate(rules):
+   mutations.extend([(index,'remove',None),(index,'duplicate',None),
+                     (index,'linters',['staticcheck','unused']),
+                     (index,'path','.*'),(index,'text','^SA1019:')])
+   if 'source' in rule:
+    mutations.extend([(index,'source','.*'),(index,'remove-source',None)])
+  for index,field,value in mutations:
+   with self.subTest(rule=index,mutation=field):
+    config=copy.deepcopy(original);changed=config['linters']['exclusions']['rules']
+    if field=='remove':changed.pop(index)
+    elif field=='duplicate':changed.append(copy.deepcopy(changed[index]))
+    elif field=='remove-source':changed[index].pop('source')
+    else:changed[index][field]=value
+    with mock.patch.object(yaml,'safe_load',return_value=config),self.assertRaises(AssertionError):
+     self.lint_rules()
  def test_lint_collects_uncapped_diagnostics_and_retains_failure_status(self):
   lint=yaml.safe_load((ROOT/'.github/workflows/lint.yml').read_text())
   job=lint['jobs']['build']

@@ -7,25 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 )
 
 type preparedDirectoryKey struct{}
-
-// PreparedDirectoryLeases retains the original leases through construction.
-// Only the Windows validated preparation entrypoint creates populated plans.
-// Abort is lifecycle-owned and must run after Box construction has unwound.
-type PreparedDirectoryLeases struct {
-	preparedDirectoryPlatform
-	mu        sync.Mutex
-	ctx       context.Context
-	entries   []*preparedDirectoryEntry
-	aborted   bool
-	committed bool
-	validated bool
-}
 
 type preparedDirectoryEntry struct {
 	tag, originalState, originalTaildrop string

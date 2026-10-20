@@ -162,6 +162,13 @@ func TestWindowsPreparedPartialAcquisitionKeepsOnlyActualOriginalNodes(t *testin
 			if !errors.Is(err, injected) || calls != failAt+1 {
 				t.Fatal("acquisition did not stop at first error", err, calls)
 			}
+			replayed := false
+			if err := p.acquire(context.Background(), func(string, string) (string, *directoryLease, error) {
+				replayed = true
+				return "", nil, injected
+			}); err == nil || replayed {
+				t.Fatal("failed acquisition did not retain its one-shot guard", err)
+			}
 			nodes := p.Snapshot()
 			if len(nodes) != failAt {
 				t.Fatal("fabricated census for failed acquisition", nodes)
