@@ -105,10 +105,10 @@ type appleTransportShared struct {
 
 type appleTransport struct {
 	boundary *RuntimeTransportBoundary
-	shared  *appleTransportShared
-	access  sync.Mutex
-	session *C.box_apple_http_session_t
-	closed  bool
+	shared   *appleTransportShared
+	access   sync.Mutex
+	session  *C.box_apple_http_session_t
+	closed   bool
 }
 
 func validateAppleTransport(ctx context.Context, options option.HTTPClientOptions) error {
@@ -121,10 +121,10 @@ func validateAppleTransport(ctx context.Context, options option.HTTPClientOption
 }
 
 func newAppleTransport(ctx context.Context, logger logger.ContextLogger, rawDialer N.Dialer, options option.HTTPClientOptions) (innerTransport, error) {
-	return newAppleTransportWithRuntime(ctx,logger,rawDialer,options,nil)
+	return newAppleTransportWithRuntime(ctx, logger, rawDialer, options, nil)
 }
 
-func newAppleTransportWithRuntime(ctx context.Context,logger logger.ContextLogger,rawDialer N.Dialer,options option.HTTPClientOptions,admit func(context.Context)(context.Context,func(),error))(innerTransport,error){
+func newAppleTransportWithRuntime(ctx context.Context, logger logger.ContextLogger, rawDialer N.Dialer, options option.HTTPClientOptions, admit func(context.Context) (context.Context, func(), error)) (innerTransport, error) {
 	sessionConfig, err := newAppleSessionConfig(ctx, options)
 	if err != nil {
 		return nil, err
@@ -136,13 +136,20 @@ func newAppleTransportWithRuntime(ctx context.Context,logger logger.ContextLogge
 		}
 	}()
 	var bridge *proxybridge.Bridge
-	if admit!=nil{bridge,err=proxybridge.NewWithRuntimeContinuation(ctx,logger,"apple http proxy",rawDialer,admit)}else{bridge,err=newAppleProxyBridge(ctx,logger,"apple http proxy",rawDialer)}
+	if admit != nil {
+		bridge, err = proxybridge.NewWithRuntimeContinuation(ctx, logger, "apple http proxy", rawDialer, admit)
+	} else {
+		bridge, err = newAppleProxyBridge(ctx, logger, "apple http proxy", rawDialer)
+	}
 	if err != nil {
 		return nil, err
 	}
 	err = bridge.Start()
 	if err != nil {
-		closeErr:=bridge.Close();if closeErr!=nil{return nil,E.New("Apple bridge start cleanup incomplete: ",err,": ",closeErr)}
+		closeErr := bridge.Close()
+		if closeErr != nil {
+			return nil, E.New("Apple bridge start cleanup incomplete: ", err, ": ", closeErr)
+		}
 		return nil, err
 	}
 	shared := &appleTransportShared{
@@ -154,14 +161,17 @@ func newAppleTransportWithRuntime(ctx context.Context,logger logger.ContextLogge
 	shared.refs.Store(1)
 	sessionRef, err := newAppleTransportSession(shared)
 	if err != nil {
-		closeErr:=bridge.Close();if closeErr!=nil{return nil,E.New("Apple session construction cleanup incomplete: ",err,": ",closeErr)}
+		closeErr := bridge.Close()
+		if closeErr != nil {
+			return nil, E.New("Apple session construction cleanup incomplete: ", err, ": ", closeErr)
+		}
 		return nil, err
 	}
 	session := (*C.box_apple_http_session_t)(sessionRef)
 	releaseConfig = false
-	transport:=&appleTransport{shared:shared,session:session}
-	transport.boundary=NewRuntimeTransportBoundary(transport.closeOwned)
-	return transport,nil
+	transport := &appleTransport{shared: shared, session: session}
+	transport.boundary = NewRuntimeTransportBoundary(transport.closeOwned)
+	return transport, nil
 }
 
 func newAppleSessionConfig(ctx context.Context, options option.HTTPClientOptions) (appleSessionConfig, error) {
@@ -307,11 +317,19 @@ func (s *appleTransportShared) newSession() (*C.box_apple_http_session_t, error)
 	return nil, appleCStringError(cErr, "create Apple HTTP session")
 }
 
-func(t *appleTransport)RoundTrip(request *http.Request)(*http.Response,error){return t.boundary.RoundTrip(request,t.roundTripOwned)}
+func (t *appleTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return t.boundary.RoundTrip(request, t.roundTripOwned)
+}
 
 func (t *appleTransport) roundTripOwned(request *http.Request) (*http.Response, error) {
-	t.access.Lock();if t.closed{t.access.Unlock();return nil,net.ErrClosed};t.shared.retain();t.access.Unlock()
-	defer func(){t.boundary.RecordClose(t.shared.release())}()
+	t.access.Lock()
+	if t.closed {
+		t.access.Unlock()
+		return nil, net.ErrClosed
+	}
+	t.shared.retain()
+	t.access.Unlock()
+	defer func() { t.boundary.RecordClose(t.shared.release()) }()
 	if requestRequiresHTTP1(request) {
 		return nil, E.New("HTTP upgrade requests are unsupported in Apple HTTP engine")
 	}
@@ -430,7 +448,11 @@ func (t *appleTransport) roundTripOwned(request *http.Request) (*http.Response, 
 }
 
 func (t *appleTransport) CloseIdleConnections() {
-	leave,err:=t.boundary.Acquire();if err!=nil{return};defer leave()
+	leave, err := t.boundary.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	t.access.Lock()
 	if t.closed {
 		t.access.Unlock()
@@ -438,7 +460,7 @@ func (t *appleTransport) CloseIdleConnections() {
 	}
 	t.shared.retain()
 	t.access.Unlock()
-	defer func(){t.boundary.RecordClose(t.shared.release())}()
+	defer func() { t.boundary.RecordClose(t.shared.release()) }()
 	newSession, err := t.shared.newSession()
 	if err != nil {
 		t.shared.logger.Error(E.Cause(err, "reset Apple HTTP session"))
@@ -456,7 +478,7 @@ func (t *appleTransport) CloseIdleConnections() {
 	C.box_apple_http_session_retire(oldSession)
 }
 
-func(t *appleTransport)Close()error{return t.boundary.RuntimeCloseAndWait()}
+func (t *appleTransport) Close() error { return t.boundary.RuntimeCloseAndWait() }
 
 func (t *appleTransport) closeOwned() error {
 	t.access.Lock()

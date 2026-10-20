@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/badhttp"
- "github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/transport/v2rayhttp"
 	"github.com/sagernet/sing/common/bufio"
@@ -84,10 +84,13 @@ type httpHandler struct {
 
 func (h *httpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	owned, release, err := adapter.AcquireRuntimeOperation(request.Context(), nil)
- if err != nil { writer.WriteHeader(http.StatusServiceUnavailable); return }
- defer release()
- request = request.WithContext(owned)
- ctx := log.ContextWithNewID(owned)
+	if err != nil {
+		writer.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	defer release()
+	request = request.WithContext(owned)
+	ctx := log.ContextWithNewID(owned)
 	connectionSource := h.source
 	if !connectionSource.IsValid() {
 		connectionSource = M.ParseSocksaddr(request.RemoteAddr).Unwrap()
@@ -273,18 +276,20 @@ func newUpstreamConn(ctx context.Context, handler Handler, source M.Socksaddr, d
 		done:        make(chan struct{}),
 	}
 	owned, release, err := adapter.AcquireRuntimeOperation(ctx, nil)
- if err != nil {
-  _ = serverSide.Close(); _ = clientSide.Close()
-  upstream.err = err; close(upstream.done)
-  return upstream
- }
- go func() {
-  defer release()
-  handler.NewConnectionEx(owned, serverSide, source, destination, N.OnceClose(func(it error) {
-   upstream.err = it
-   close(upstream.done)
-  }))
- }()
+	if err != nil {
+		_ = serverSide.Close()
+		_ = clientSide.Close()
+		upstream.err = err
+		close(upstream.done)
+		return upstream
+	}
+	go func() {
+		defer release()
+		handler.NewConnectionEx(owned, serverSide, source, destination, N.OnceClose(func(it error) {
+			upstream.err = it
+			close(upstream.done)
+		}))
+	}()
 	return upstream
 }
 

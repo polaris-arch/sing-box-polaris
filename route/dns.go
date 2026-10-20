@@ -70,22 +70,36 @@ func (r *Router) HijackDNSPacket(ctx context.Context, payload []byte, writer N.P
 	var operation adapter.RuntimeLease
 	if borrowed, ok := adapter.RuntimeLeaseFromContext(ctx); ok {
 		operation, err = borrowed.Fork()
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		ctx = adapter.ContextWithRuntimeLease(ctx, operation)
 	}
 	// A core-owned packet carrier admits current DNS policy for every query,
 	// even if its writer/port still belongs to a retained older flow. The old
 	// operation reservation above remains through the actual response write.
 	queryRouter := r.dns
-	if ingress, ok := adapter.RuntimeDNSIngressFromContext(ctx); ok { queryRouter = ingress }
-	answers:=&adapter.FakeIPAnswerBatch{}
-	ctx=adapter.ContextWithFakeIPAnswerSink(ctx,answers)
+	if ingress, ok := adapter.RuntimeDNSIngressFromContext(ctx); ok {
+		queryRouter = ingress
+	}
+	answers := &adapter.FakeIPAnswerBatch{}
+	ctx = adapter.ContextWithFakeIPAnswerSink(ctx, answers)
 	var completed sync.Once
-	releaseOperation := func() { if operation != nil { completed.Do(operation.Release) } }
-	defer func() { if recovered := recover(); recovered != nil { answers.Abort(); releaseOperation(); panic(recovered) } }()
+	releaseOperation := func() {
+		if operation != nil {
+			completed.Do(operation.Release)
+		}
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			answers.Abort()
+			releaseOperation()
+			panic(recovered)
+		}
+	}()
 	queryRouter.ExchangeAsync(adapter.WithContext(ctx, &metadata), &message, adapter.DNSQueryOptions{}, func(response *mDNS.Msg, exchangeErr error) {
 		defer releaseOperation()
-  defer answers.Abort()
+		defer answers.Abort()
 		if exchangeErr == nil {
 			exchangeErr = r.writeDNSPacketResponse(&message, response, writer, destination, answers)
 		}
@@ -100,6 +114,6 @@ func (r *Router) writeDNSPacketResponse(message *mDNS.Msg, response *mDNS.Msg, w
 	if err != nil {
 		return err
 	}
-	defer func(){answers.Delivered(time.Now())}()
+	defer func() { answers.Delivered(time.Now()) }()
 	return writer.WritePacket(responseBuffer, destination)
 }

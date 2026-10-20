@@ -10,10 +10,10 @@ import (
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
- "github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-quic"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -25,7 +25,7 @@ import (
 var _ adapter.V2RayServerTransport = (*Server)(nil)
 
 type Server struct {
- runtime *runtimeServerState
+	runtime      *runtimeServerState
 	ctx          context.Context
 	logger       logger.ContextLogger
 	tlsConfig    tls.ServerConfig
@@ -77,12 +77,20 @@ func (s *Server) acceptLoop() {
 		if err != nil {
 			return
 		}
-  owned,leave,ownershipErr:=runtimeingress.Acquire(conn.Context(),s.runtime!=nil)
-  if ownershipErr!=nil{_=conn.CloseWithError(0,"retired session");continue}
-  if s.runtime!=nil{s.runtime.connections.Add(1)}
+		owned, leave, ownershipErr := runtimeingress.Acquire(conn.Context(), s.runtime != nil)
+		if ownershipErr != nil {
+			_ = conn.CloseWithError(0, "retired session")
+			continue
+		}
+		if s.runtime != nil {
+			s.runtime.connections.Add(1)
+		}
 		go func() {
-   if s.runtime!=nil{defer s.runtime.connections.Done()};defer leave()
-			hErr := s.streamAcceptLoopContext(owned,conn)
+			if s.runtime != nil {
+				defer s.runtime.connections.Done()
+			}
+			defer leave()
+			hErr := s.streamAcceptLoopContext(owned, conn)
 			if hErr != nil && !E.IsClosedOrCanceled(hErr) {
 				s.logger.ErrorContext(conn.Context(), hErr)
 			}
@@ -90,21 +98,38 @@ func (s *Server) acceptLoop() {
 	}
 }
 
-func (s *Server) streamAcceptLoop(conn *quic.Conn) error { return s.streamAcceptLoopContext(conn.Context(),conn) }
-func (s *Server) streamAcceptLoopContext(ctx context.Context,conn *quic.Conn) error {
+func (s *Server) streamAcceptLoop(conn *quic.Conn) error {
+	return s.streamAcceptLoopContext(conn.Context(), conn)
+}
+
+func (s *Server) streamAcceptLoopContext(ctx context.Context, conn *quic.Conn) error {
 	for {
 		stream, err := conn.AcceptStream(s.ctx)
 		if err != nil {
 			return qtls.WrapError(err)
 		}
-  owned,release,err:=runtimeingress.Acquire(ctx,s.runtime!=nil)
-  if err!=nil{stream.CancelRead(0);stream.CancelWrite(0);return err}
-  if s.runtime!=nil{s.runtime.connections.Add(1)}
-  go func(){if s.runtime!=nil{defer s.runtime.connections.Done()};defer release();s.handler.NewConnectionEx(owned,&StreamWrapper{Conn:conn,Stream:stream},M.SocksaddrFromNet(conn.RemoteAddr()),M.Socksaddr{},nil)}()
+		owned, release, err := runtimeingress.Acquire(ctx, s.runtime != nil)
+		if err != nil {
+			stream.CancelRead(0)
+			stream.CancelWrite(0)
+			return err
+		}
+		if s.runtime != nil {
+			s.runtime.connections.Add(1)
+		}
+		go func() {
+			if s.runtime != nil {
+				defer s.runtime.connections.Done()
+			}
+			defer release()
+			s.handler.NewConnectionEx(owned, &StreamWrapper{Conn: conn, Stream: stream}, M.SocksaddrFromNet(conn.RemoteAddr()), M.Socksaddr{}, nil)
+		}()
 	}
 }
 
 func (s *Server) Close() error {
- if s.runtime!=nil{return s.RuntimeCloseAndWait()}
+	if s.runtime != nil {
+		return s.RuntimeCloseAndWait()
+	}
 	return common.Close(s.udpListener, s.quicListener)
 }

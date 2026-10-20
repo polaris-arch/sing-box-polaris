@@ -9,11 +9,10 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"unsafe"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/control"
@@ -29,8 +28,8 @@ import (
 const configRefreshInterval = time.Second
 
 type Source struct {
-	work lifecycle.Work
-	closeOnce sync.Once
+	work             lifecycle.Work
+	closeOnce        sync.Once
 	interfaceMonitor tun.DefaultInterfaceMonitor
 	access           sync.Mutex
 	updateCallback   *list.Element[tun.DefaultInterfaceUpdateCallback]
@@ -54,7 +53,11 @@ func (s *Source) Configuration() *Config {
 }
 
 func (s *Source) configuration(now time.Time, readConfig func() *Config) *Config {
-	done, ok := s.work.Reserve(); if !ok { return &Config{} }; defer done()
+	done, ok := s.work.Reserve()
+	if !ok {
+		return &Config{}
+	}
+	defer done()
 	s.access.Lock()
 	defer s.access.Unlock()
 	if s.config != nil && !s.stale && s.updateCallback != nil && now.Sub(s.lastChecked) < configRefreshInterval {
@@ -71,14 +74,22 @@ func (s *Source) configuration(now time.Time, readConfig func() *Config) *Config
 }
 
 func (s *Source) interfaceUpdated(defaultInterface *control.Interface, flags int) {
-	done, ok := s.work.Reserve(); if !ok { return }; defer done()
+	done, ok := s.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	s.access.Lock()
 	s.stale = true
 	s.access.Unlock()
 }
 
 func (s *Source) Reset() {
-	done, ok := s.work.Reserve(); if !ok { return }; defer done()
+	done, ok := s.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	s.access.Lock()
 	s.stale = true
 	s.access.Unlock()
@@ -91,7 +102,9 @@ func (s *Source) Close() error {
 		updateCallback := s.updateCallback
 		s.updateCallback = nil
 		s.access.Unlock()
-		if updateCallback != nil { s.interfaceMonitor.UnregisterCallback(updateCallback) }
+		if updateCallback != nil {
+			s.interfaceMonitor.UnregisterCallback(updateCallback)
+		}
 		s.work.Wait()
 	})
 	return nil

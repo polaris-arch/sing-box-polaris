@@ -32,8 +32,8 @@ type systemDevice struct {
 	batchDevice  tun.LinuxTUN
 	events       chan wgTun.Event
 	closeOnce    sync.Once
-	closeDone chan struct{}
-	closeErr error
+	closeDone    chan struct{}
+	closeErr     error
 	inet4Address netip.Addr
 	inet6Address netip.Addr
 }
@@ -44,7 +44,7 @@ func newSystemDevice(options DeviceOptions) (*systemDevice, error) {
 	}
 	inet4Address, inet6Address := deviceAddresses(options.Address)
 	return &systemDevice{
-		closeDone: make(chan struct{}),
+		closeDone:    make(chan struct{}),
 		options:      options,
 		dialer:       options.CreateDialer(options.Name),
 		events:       make(chan wgTun.Event, 1),
@@ -212,5 +212,10 @@ func (w *systemDevice) BatchSize() int {
 // A plain system device has no embedded TUN flow dispatcher. Its existing
 // synchronous Close result is observable; this does not certify native callbacks.
 func (w *systemDevice) WaitDetached(ctx context.Context) error {
-	select { case <-w.closeDone: return w.closeErr; case <-ctx.Done(): return ctx.Err() }
+	select {
+	case <-w.closeDone:
+		return w.closeErr
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

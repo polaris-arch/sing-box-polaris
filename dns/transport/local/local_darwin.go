@@ -80,13 +80,13 @@ const (
 )
 
 type systemResolver struct {
- socketErrors resolverSocketErrors
-	work lifecycle.Work
-	stopCtx context.Context
-	stopCancel context.CancelFunc
-	closeOnce sync.Once
-	closeDone chan struct{}
-	closeErr error
+	socketErrors resolverSocketErrors
+	work         lifecycle.Work
+	stopCtx      context.Context
+	stopCancel   context.CancelFunc
+	closeOnce    sync.Once
+	closeDone    chan struct{}
+	closeErr     error
 
 	initOnce    sync.Once
 	connection  *dnsTransport.ConnPool[net.Conn]
@@ -152,34 +152,56 @@ func (r *systemResolver) close() error {
 
 func (r *systemResolver) reset() {
 	r.initOnce.Do(r.init)
-	done, ok := r.work.Reserve(); if !ok { return }; defer done()
+	done, ok := r.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	r.connection.Reset()
 }
 
 func (r *systemResolver) setKeepIdleConnections(keep bool) {
 	r.initOnce.Do(r.init)
-	done, ok := r.work.Reserve(); if !ok { return }; defer done()
+	done, ok := r.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	r.connection.SetKeepIdleConnections(keep)
 }
 
 func (r *systemResolver) closeIdleConnections() {
 	r.initOnce.Do(r.init)
-	done, ok := r.work.Reserve(); if !ok { return }; defer done()
+	done, ok := r.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	r.connection.CloseIdle()
 }
 
 func (r *systemResolver) exchangeAsync(ctx context.Context, name string, qtype uint16, qclass uint16, callback func(response *mDNS.Msg, err error)) {
 	r.initOnce.Do(r.init)
 	callDone, ok := r.work.Reserve()
-	if !ok { callback(nil, lifecycle.ErrStopped); return }; defer callDone()
+	if !ok {
+		callback(nil, lifecycle.ErrStopped)
+		return
+	}
+	defer callDone()
 	callbackDone, ok := r.work.Reserve()
-	if !ok { callback(nil, lifecycle.ErrStopped); return }
+	if !ok {
+		callback(nil, lifecycle.ErrStopped)
+		return
+	}
 	ctx, unlink := lifecycle.LinkCancellation(ctx, r.stopCtx)
 	originalCallback := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
-		if !called.CompareAndSwap(false, true) { return }
-		defer callbackDone(); defer unlink()
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
+		defer callbackDone()
+		defer unlink()
 		originalCallback(response, err)
 	}
 	for firstAttempt := true; ; firstAttempt = false {
@@ -191,11 +213,16 @@ func (r *systemResolver) exchangeAsync(ctx context.Context, name string, qtype u
 		if created {
 			if !r.work.Go(func() { r.recvLoop(conn) }) {
 				r.connection.Invalidate(conn, lifecycle.ErrStopped)
-				callback(nil, lifecycle.ErrStopped); return
+				callback(nil, lifecycle.ErrStopped)
+				return
 			}
 		}
 		queryId, registerErr := r.register(ctx, connCtx, conn, name, qtype, qclass, callback)
-		if registerErr != nil { r.connection.Release(conn, false); callback(nil, registerErr); return }
+		if registerErr != nil {
+			r.connection.Release(conn, false)
+			callback(nil, registerErr)
+			return
+		}
 		_, writeErr := conn.Write(buildQueryRequest(queryId, name, qtype, qclass))
 		if writeErr == nil {
 			return
@@ -220,7 +247,7 @@ func (r *systemResolver) dial(ctx context.Context) (net.Conn, error) {
 	if err != nil {
 		return nil, E.Cause(err, "connect mDNSResponder")
 	}
- return r.initializeConnection(ctx, conn)
+	return r.initializeConnection(ctx, conn)
 }
 
 func (r *systemResolver) initializeConnection(ctx context.Context, conn net.Conn) (net.Conn, error) {
@@ -228,8 +255,12 @@ func (r *systemResolver) initializeConnection(ctx context.Context, conn net.Conn
 	closeDone := make(chan struct{})
 	stopCancel := context.AfterFunc(ctx, func() { defer close(closeDone); conn.Close() })
 	err := writeConnectionRequest(conn)
-	if !stopCancel() { <-closeDone }
-	if err == nil && ctx.Err() != nil { err = ctx.Err() }
+	if !stopCancel() {
+		<-closeDone
+	}
+	if err == nil && ctx.Err() != nil {
+		err = ctx.Err()
+	}
 	if err != nil {
 		conn.Close()
 		return nil, contextError(ctx, err)
@@ -257,7 +288,9 @@ func writeConnectionRequest(conn net.Conn) error {
 func (r *systemResolver) register(ctx context.Context, connCtx context.Context, conn net.Conn, name string, qtype uint16, qclass uint16, callback func(response *mDNS.Msg, err error)) (uint64, error) {
 	r.queryAccess.Lock()
 	defer r.queryAccess.Unlock()
-	if r.queryId == ^uint64(0) { return 0, E.New("mDNSResponder query identity exhausted") }
+	if r.queryId == ^uint64(0) {
+		return 0, E.New("mDNSResponder query identity exhausted")
+	}
 	r.queryId++
 	queryId := r.queryId
 	pending := &systemPendingQuery{
@@ -269,10 +302,17 @@ func (r *systemResolver) register(ctx context.Context, connCtx context.Context, 
 	}
 	r.queries[queryId] = pending
 	stopContext, ok := r.work.AfterFunc(ctx, func() { r.cancelQuery(queryId, ctx) })
-	if !ok { delete(r.queries, queryId); return 0, lifecycle.ErrStopped }
+	if !ok {
+		delete(r.queries, queryId)
+		return 0, lifecycle.ErrStopped
+	}
 	pending.stopContext = stopContext
 	stopConn, ok := r.work.AfterFunc(connCtx, func() { r.completeConnClosed(queryId, connCtx) })
-	if !ok { delete(r.queries, queryId); stopContext(); return 0, lifecycle.ErrStopped }
+	if !ok {
+		delete(r.queries, queryId)
+		stopContext()
+		return 0, lifecycle.ErrStopped
+	}
 	pending.stopConn = stopConn
 	return queryId, nil
 }

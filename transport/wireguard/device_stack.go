@@ -25,8 +25,8 @@ type stackDevice struct {
 	events       chan wgTun.Event
 	closed       chan struct{}
 	closeOnce    sync.Once
-	closeDone chan struct{}
-	closeErr error
+	closeDone    chan struct{}
+	closeErr     error
 	inet4Address netip.Addr
 	inet6Address netip.Addr
 }
@@ -40,7 +40,7 @@ func newStackDevice(options DeviceOptions) (*stackDevice, error) {
 	}
 	inet4Address, inet6Address := deviceAddresses(options.Address)
 	return &stackDevice{
-		closeDone: make(chan struct{}),
+		closeDone:    make(chan struct{}),
 		stack:        stack,
 		router:       router,
 		mtu:          options.MTU,

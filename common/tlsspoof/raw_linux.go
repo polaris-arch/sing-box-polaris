@@ -4,8 +4,8 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/sagernet/sing/common/control"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 
 	"golang.org/x/sys/unix"

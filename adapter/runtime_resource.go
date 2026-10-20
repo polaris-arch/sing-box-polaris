@@ -27,17 +27,20 @@ type RuntimeResourceContinuation interface {
 	RetainResource(RuntimeResourceID) (RuntimeResourceLease, error)
 }
 
-type runtimeResourceSourceKey struct{}
-type runtimeResourceSourceValue struct { source RuntimeResourceSource }
-type runtimeResourceLeasesKey struct{}
-type runtimeResourceLeases struct {
-	lease RuntimeResourceLease
-	previous *runtimeResourceLeases
-}
+type (
+	runtimeResourceSourceKey   struct{}
+	runtimeResourceSourceValue struct{ source RuntimeResourceSource }
+	runtimeResourceLeasesKey   struct{}
+	runtimeResourceLeases      struct {
+		lease    RuntimeResourceLease
+		previous *runtimeResourceLeases
+	}
+)
 
 func ContextWithRuntimeResourceSource(ctx context.Context, source RuntimeResourceSource) context.Context {
 	return context.WithValue(ctx, runtimeResourceSourceKey{}, runtimeResourceSourceValue{source: source})
 }
+
 func RuntimeResourceSourceFromContext(ctx context.Context) (RuntimeResourceSource, bool) {
 	value, ok := ctx.Value(runtimeResourceSourceKey{}).(runtimeResourceSourceValue)
 	return value.source, ok && value.source != nil
@@ -45,14 +48,19 @@ func RuntimeResourceSourceFromContext(ctx context.Context) (RuntimeResourceSourc
 
 // ContextWithRuntimeResourceLease borrows a handle. It does not create ownership.
 func ContextWithRuntimeResourceLease(ctx context.Context, lease RuntimeResourceLease) context.Context {
-	if lease == nil { return ctx }
+	if lease == nil {
+		return ctx
+	}
 	previous, _ := ctx.Value(runtimeResourceLeasesKey{}).(*runtimeResourceLeases)
 	return context.WithValue(ctx, runtimeResourceLeasesKey{}, &runtimeResourceLeases{lease: lease, previous: previous})
 }
+
 func RuntimeResourceLeaseFromContext(ctx context.Context, id RuntimeResourceID) (RuntimeResourceLease, bool) {
 	entry, _ := ctx.Value(runtimeResourceLeasesKey{}).(*runtimeResourceLeases)
 	for ; entry != nil; entry = entry.previous {
-		if entry.lease.ID() == id { return entry.lease, true }
+		if entry.lease.ID() == id {
+			return entry.lease, true
+		}
 	}
 	return nil, false
 }
@@ -77,37 +85,57 @@ func AcquireRuntimeOperation(ctx context.Context, source RuntimeResourceSource) 
 	if borrowed, ok := RuntimeLeaseFromContext(ctx); ok {
 		var err error
 		graph, err = borrowed.Fork()
-		if err != nil { return nil, nil, err }
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	var retained *runtimeResourceLeases
 	seen := make(map[RuntimeResourceID]bool)
 	release := func() {
-		for entry := retained; entry != nil; entry = entry.previous { entry.lease.Release() }
-		if graph != nil { graph.Release() }
+		for entry := retained; entry != nil; entry = entry.previous {
+			entry.lease.Release()
+		}
+		if graph != nil {
+			graph.Release()
+		}
 	}
 	inherited, _ := ctx.Value(runtimeResourceLeasesKey{}).(*runtimeResourceLeases)
 	for entry := inherited; entry != nil; entry = entry.previous {
 		id := entry.lease.ID()
-		if seen[id] { continue }
+		if seen[id] {
+			continue
+		}
 		lease, err := entry.lease.Fork()
-		if err != nil { release(); return nil, nil, err }
+		if err != nil {
+			release()
+			return nil, nil, err
+		}
 		seen[id] = true
 		retained = &runtimeResourceLeases{lease: lease, previous: retained}
 	}
 	if source != nil && !seen[source.ID()] {
 		var lease RuntimeResourceLease
 		var err error
-		if graph != nil { lease, err = graph.RetainResource(source.ID()) }
+		if graph != nil {
+			lease, err = graph.RetainResource(source.ID())
+		}
 		if lease == nil {
 			for entry := retained; entry != nil; entry = entry.previous {
 				if closure, ok := entry.lease.(RuntimeResourceContinuation); ok {
 					lease, err = closure.RetainResource(source.ID())
-					if lease != nil { break }
+					if lease != nil {
+						break
+					}
 				}
 			}
 		}
-		if lease == nil { lease, err = source.Acquire() }
-		if err != nil { release(); return nil, nil, err }
+		if lease == nil {
+			lease, err = source.Acquire()
+		}
+		if err != nil {
+			release()
+			return nil, nil, err
+		}
 		retained = &runtimeResourceLeases{lease: lease, previous: retained}
 	}
 	ctx = ContextWithRuntimeLease(ctx, graph)

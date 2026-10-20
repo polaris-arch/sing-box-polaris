@@ -3,8 +3,8 @@ package v2raygrpclite
 import (
 	std_bufio "bufio"
 	"context"
-	"errors"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -33,8 +33,8 @@ type GunConn struct {
 	cancel        context.CancelFunc
 	readRemaining uint64
 	onClose       func()
-	closeOnce sync.Once
-	closeErr error
+	closeOnce     sync.Once
+	closeErr      error
 }
 
 func newGunConn(reader io.Reader, writer io.Writer, flusher http.Flusher) *GunConn {
@@ -148,14 +148,20 @@ func (c *GunConn) FrontHeadroom() int {
 }
 
 func (c *GunConn) Close() error {
-	c.closeOnce.Do(func(){
-		if c.cancel!=nil{c.cancel()}
+	c.closeOnce.Do(func() {
+		if c.cancel != nil {
+			c.cancel()
+		}
 		// Interrupt the request pipe before joining setup. A setup response
 		// racing cancellation must be observed and closed, never abandoned.
-		c.closeErr=common.Close(c.writer)
-		if c.create!=nil{<-c.create}
-		c.closeErr=errors.Join(c.closeErr,common.Close(c.rawReader))
-		if c.onClose!=nil{c.onClose()}
+		c.closeErr = common.Close(c.writer)
+		if c.create != nil {
+			<-c.create
+		}
+		c.closeErr = errors.Join(c.closeErr, common.Close(c.rawReader))
+		if c.onClose != nil {
+			c.onClose()
+		}
 	})
 	return c.closeErr
 }

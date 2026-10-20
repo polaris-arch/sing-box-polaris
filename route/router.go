@@ -25,32 +25,32 @@ import (
 var _ adapter.Router = (*Router)(nil)
 
 type Router struct {
-	runtimeLeaf bool
+	runtimeLeaf             bool
 	runtimeRuleSetsExternal bool
-	immutableRuleSets bool
-	runtimePlatformScope *adapter.Scope
-	ctx               context.Context
-	logger            log.ContextLogger
-	inbound           adapter.InboundManager
-	outbound          adapter.OutboundManager
-	dns               adapter.DNSRouter
-	dnsTransport      adapter.DNSTransportManager
-	connection        adapter.ConnectionManager
-	network           adapter.NetworkManager
-	httpClientManager adapter.HTTPClientManager
-	rules             []adapter.Rule
-	needFindProcess   bool
-	needFindNeighbor  bool
-	leaseFiles        []string
-	ruleSets          []adapter.RuleSet
-	ruleSetMap        map[string]adapter.RuleSet
-	ruleSetUpdater    *R.RuleSetUpdater
-	processSearcher   process.Searcher
-	processCache      *freelru.Cache[processCacheKey, processCacheEntry]
-	neighborResolver  adapter.NeighborResolver
-	pauseManager      pause.Manager
-	trackers          []adapter.ConnectionTracker
-	platformInterface adapter.PlatformInterface
+	immutableRuleSets       bool
+	runtimePlatformScope    *adapter.Scope
+	ctx                     context.Context
+	logger                  log.ContextLogger
+	inbound                 adapter.InboundManager
+	outbound                adapter.OutboundManager
+	dns                     adapter.DNSRouter
+	dnsTransport            adapter.DNSTransportManager
+	connection              adapter.ConnectionManager
+	network                 adapter.NetworkManager
+	httpClientManager       adapter.HTTPClientManager
+	rules                   []adapter.Rule
+	needFindProcess         bool
+	needFindNeighbor        bool
+	leaseFiles              []string
+	ruleSets                []adapter.RuleSet
+	ruleSetMap              map[string]adapter.RuleSet
+	ruleSetUpdater          *R.RuleSetUpdater
+	processSearcher         process.Searcher
+	processCache            *freelru.Cache[processCacheKey, processCacheEntry]
+	neighborResolver        adapter.NeighborResolver
+	pauseManager            pause.Manager
+	trackers                []adapter.ConnectionTracker
+	platformInterface       adapter.PlatformInterface
 }
 
 func NewRouter(ctx context.Context, logFactory log.Factory, options option.RouteOptions, dnsOptions option.DNSOptions) *Router {
@@ -85,7 +85,9 @@ func (r *Router) Initialize(rules []option.Rule, ruleSets []option.RuleSet) erro
 			return E.Cause(err, "parse rule[", i, "]")
 		}
 		r.rules = append(r.rules, rule)
-		if r.runtimeRuleSetsExternal { adapter.DeferConstructionCleanup(r.ctx, rule.Close) }
+		if r.runtimeRuleSetsExternal {
+			adapter.DeferConstructionCleanup(r.ctx, rule.Close)
+		}
 	}
 	for i, options := range ruleSets {
 		for _, tag := range options.Tag {
@@ -106,11 +108,15 @@ func (r *Router) Initialize(rules []option.Rule, ruleSets []option.RuleSet) erro
 func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	monitor := taskmonitor.New(r.logger, C.StartTimeout)
 	platformScope := scope
-	if r.runtimePlatformScope != nil { platformScope = r.runtimePlatformScope }
+	if r.runtimePlatformScope != nil {
+		platformScope = r.runtimePlatformScope
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		for _, ruleSet := range r.ruleSets {
-			if !r.runtimeRuleSetsExternal { scope.Add(ruleSet.Close) }
+			if !r.runtimeRuleSetsExternal {
+				scope.Add(ruleSet.Close)
+			}
 		}
 		if r.needFindNeighbor && !r.runtimeLeaf {
 			if r.platformInterface != nil && r.platformInterface.UsePlatformNeighborResolver() {
@@ -170,11 +176,15 @@ func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if startContext != nil {
 			startContext.Close()
 		}
-		if !r.immutableRuleSets { r.ruleSetUpdater = R.NewRuleSetUpdater(r.ctx, r.ruleSets) }
+		if !r.immutableRuleSets {
+			r.ruleSetUpdater = R.NewRuleSetUpdater(r.ctx, r.ruleSets)
+		}
 		if r.ruleSetUpdater != nil {
 			scope.Add(r.ruleSetUpdater.Close)
 		}
-		if !r.runtimeLeaf { r.network.Initialize(r.ruleSets) }
+		if !r.runtimeLeaf {
+			r.network.Initialize(r.ruleSets)
+		}
 		needFindProcess := r.needFindProcess
 		for _, ruleSet := range r.ruleSets {
 			metadata := ruleSet.Metadata()
@@ -187,21 +197,29 @@ func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		}
 		r.needFindProcess = needFindProcess
 		if needFindProcess && r.processSearcher == nil {
-            // A candidate may provision its first process rule privately. Borrowed
-            // stable searchers are never replaced or registered for leaf cleanup.
-            ownerScope := platformScope
-            if r.runtimeLeaf { ownerScope = scope }
-            monitor.Start("initialize process searcher")
-            err := r.initializeProcessSearcher(ownerScope, process.NewSearcher)
-            monitor.Finish()
-            if err != nil {
-                if r.runtimeLeaf { return E.Cause(err, "initialize runtime process searcher") }
-                if err != os.ErrInvalid { r.logger.Warn(E.Cause(err, "create process searcher")) }
-            }
-        }
+			// A candidate may provision its first process rule privately. Borrowed
+			// stable searchers are never replaced or registered for leaf cleanup.
+			ownerScope := platformScope
+			if r.runtimeLeaf {
+				ownerScope = scope
+			}
+			monitor.Start("initialize process searcher")
+			err := r.initializeProcessSearcher(ownerScope, process.NewSearcher)
+			monitor.Finish()
+			if err != nil {
+				if r.runtimeLeaf {
+					return E.Cause(err, "initialize runtime process searcher")
+				}
+				if err != os.ErrInvalid {
+					r.logger.Warn(E.Cause(err, "create process searcher"))
+				}
+			}
+		}
 	case adapter.StartStatePostStart:
 		for i, rule := range r.rules {
-			if !r.runtimeRuleSetsExternal { scope.Add(rule.Close) }
+			if !r.runtimeRuleSetsExternal {
+				scope.Add(rule.Close)
+			}
 			monitor.Start("initialize rule[", i, "]")
 			err := rule.Start()
 			monitor.Finish()
@@ -215,9 +233,13 @@ func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		return nil
 	case adapter.StartStateStarted:
 		for _, ruleSet := range r.ruleSets {
-			if !r.runtimeRuleSetsExternal { ruleSet.Cleanup() }
+			if !r.runtimeRuleSetsExternal {
+				ruleSet.Cleanup()
+			}
 		}
-		if !r.runtimeLeaf { runtime.GC() }
+		if !r.runtimeLeaf {
+			runtime.GC()
+		}
 	}
 	return nil
 }
@@ -262,21 +284,27 @@ func (r *Router) ResetNetwork() {
 // was borrowed. The caller's scope outlives all admitted routing operations.
 // The factory argument allows failure/ownership fixtures without native queries.
 func (r *Router) initializeProcessSearcher(scope *adapter.Scope, create func(process.Config) (process.Searcher, error)) error {
-    if r.processSearcher != nil { return nil }
-    var searcher process.Searcher
-    if r.platformInterface != nil && r.platformInterface.UsePlatformConnectionOwnerFinder() {
-        searcher = newPlatformSearcher(r.platformInterface)
-    } else {
-        config := process.Config{Logger: r.logger}
-        if r.network != nil { config.PackageManager = r.network.PackageManager() }
-        var err error
-        searcher, err = create(config)
-        if err != nil { return err }
-    }
-    scope.Add(searcher.Close)
-    processCache := common.Must1(freelru.New[processCacheKey, processCacheEntry](256, maphash.NewHasher[processCacheKey]().Hash32, true))
-    processCache.SetLifetime(200 * time.Millisecond)
-    r.processSearcher = searcher
-    r.processCache = processCache
-    return nil
+	if r.processSearcher != nil {
+		return nil
+	}
+	var searcher process.Searcher
+	if r.platformInterface != nil && r.platformInterface.UsePlatformConnectionOwnerFinder() {
+		searcher = newPlatformSearcher(r.platformInterface)
+	} else {
+		config := process.Config{Logger: r.logger}
+		if r.network != nil {
+			config.PackageManager = r.network.PackageManager()
+		}
+		var err error
+		searcher, err = create(config)
+		if err != nil {
+			return err
+		}
+	}
+	scope.Add(searcher.Close)
+	processCache := common.Must1(freelru.New[processCacheKey, processCacheEntry](256, maphash.NewHasher[processCacheKey]().Hash32, true))
+	processCache.SetLifetime(200 * time.Millisecond)
+	r.processSearcher = searcher
+	r.processCache = processCache
+	return nil
 }

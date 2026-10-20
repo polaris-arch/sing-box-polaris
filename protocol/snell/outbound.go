@@ -27,16 +27,16 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeContext context.Context
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeContext      context.Context
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	runtimeDialer *runtimeDialer
-	logger     logger.ContextLogger
-	dialer     N.Dialer
-	client     snellClient
-	serverAddr M.Socksaddr
-	reuse      bool
+	runtimeDialer       *runtimeDialer
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	client              snellClient
+	serverAddr          M.Socksaddr
+	reuse               bool
 }
 
 var (
@@ -101,22 +101,32 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	outbound := &Outbound{
-		Adapter:    outbound.NewAdapterWithDialerOptions(C.TypeSnell, tag, options.Network.Build(), options.DialerOptions),
-		logger:     logger,
-		dialer:     outboundDialer,
+		Adapter:       outbound.NewAdapterWithDialerOptions(C.TypeSnell, tag, options.Network.Build(), options.DialerOptions),
+		logger:        logger,
+		dialer:        outboundDialer,
 		runtimeDialer: ownedDialer,
-		client:     client,
-		serverAddr: serverAddr,
-		reuse:      options.Reuse,
+		client:        client,
+		serverAddr:    serverAddr,
+		reuse:         options.Reuse,
 	}
-	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	if err := outbound.initRuntimeCleanup(ctx); err != nil {
+		return nil, err
+	}
 	constructed := false
 	defer func() {
-		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+		if !constructed && !outbound.constructionCleanup {
+			_ = outbound.runtimeCleanup()
+		}
 	}()
-	if err := ctx.Err(); err != nil { return nil, err }
-	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
-	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return outbound, nil
 }
@@ -176,7 +186,9 @@ func (h *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (n
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.Reset()
 }
@@ -187,19 +199,25 @@ func (h *Outbound) MultiplexEnabled() bool {
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.CloseIdleConnections()
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
 	return h.registerRuntimeStart(scope)
 }

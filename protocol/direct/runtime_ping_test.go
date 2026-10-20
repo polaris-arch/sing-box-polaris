@@ -18,20 +18,22 @@ import (
 
 type pingTestNetwork struct{ adapter.NetworkManager }
 
-func (pingTestNetwork) InterfaceFinder() control.InterfaceFinder { return control.NewDefaultInterfaceFinder() }
-func (pingTestNetwork) DefaultOptions() adapter.NetworkOptions { return adapter.NetworkOptions{} }
-func (pingTestNetwork) AutoDetectInterface() bool { return false }
-func (pingTestNetwork) AutoRedirectOutputMarkFunc() control.Func { return nil }
+func (pingTestNetwork) InterfaceFinder() control.InterfaceFinder {
+	return control.NewDefaultInterfaceFinder()
+}
+func (pingTestNetwork) DefaultOptions() adapter.NetworkOptions        { return adapter.NetworkOptions{} }
+func (pingTestNetwork) AutoDetectInterface() bool                     { return false }
+func (pingTestNetwork) AutoRedirectOutputMarkFunc() control.Func      { return nil }
 func (pingTestNetwork) InterfaceMonitor() tun.DefaultInterfaceMonitor { return nil }
 
 type pingTestDNS struct{ adapter.DNSTransportManager }
 
 func (pingTestDNS) Transports() []adapter.DNSTransport { return nil }
-func (pingTestDNS) Default() adapter.DNSTransport { return nil }
+func (pingTestDNS) Default() adapter.DNSTransport      { return nil }
 
 type pingTestReturn struct{}
 
-func (*pingTestReturn) ReturnHeadroom() int { return 0 }
+func (*pingTestReturn) ReturnHeadroom() int                     { return 0 }
 func (*pingTestReturn) ReturnPackets(packets [][]byte) [][]byte { return packets }
 
 func pingConstructorContext(ctx context.Context) context.Context {

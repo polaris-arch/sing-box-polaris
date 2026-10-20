@@ -591,19 +591,21 @@ func (r *Router) prepareMatchMetadata(ctx context.Context, metadata *adapter.Inb
 			r.logger.InfoContext(ctx, "found neighbor: ", mac)
 		}
 	}
- protection,protected := adapter.FakeIPProtectionFromContext(r.ctx)
- runtimeDomain,runtimeRecognized := "",false
- if protected && metadata.Destination.Addr.IsValid() {
-  var err error
-  runtimeDomain,runtimeRecognized,err=recognizeRuntimeFakeIP(ctx,protection,metadata.Destination.Addr)
-  if err!=nil{return err}
- }
- if runtimeRecognized {
-  metadata.OriginDestination=metadata.Destination
-  metadata.Destination=M.Socksaddr{Fqdn:runtimeDomain,Port:metadata.Destination.Port}
-  metadata.FakeIP=true
-  r.logger.DebugContext(ctx,"found fakeip domain: ",runtimeDomain)
- } else if !protected && metadata.Destination.Addr.IsValid() && r.dnsTransport.FakeIP() != nil && r.dnsTransport.FakeIP().Store().Contains(metadata.Destination.Addr) {
+	protection, protected := adapter.FakeIPProtectionFromContext(r.ctx)
+	runtimeDomain, runtimeRecognized := "", false
+	if protected && metadata.Destination.Addr.IsValid() {
+		var err error
+		runtimeDomain, runtimeRecognized, err = recognizeRuntimeFakeIP(ctx, protection, metadata.Destination.Addr)
+		if err != nil {
+			return err
+		}
+	}
+	if runtimeRecognized {
+		metadata.OriginDestination = metadata.Destination
+		metadata.Destination = M.Socksaddr{Fqdn: runtimeDomain, Port: metadata.Destination.Port}
+		metadata.FakeIP = true
+		r.logger.DebugContext(ctx, "found fakeip domain: ", runtimeDomain)
+	} else if !protected && metadata.Destination.Addr.IsValid() && r.dnsTransport.FakeIP() != nil && r.dnsTransport.FakeIP().Store().Contains(metadata.Destination.Addr) {
 		domain, loaded := r.dnsTransport.FakeIP().Store().Lookup(metadata.Destination.Addr)
 		if !loaded {
 			return E.New("missing fakeip record, try enable `experimental.cache_file`")

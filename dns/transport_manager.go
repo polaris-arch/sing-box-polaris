@@ -2,8 +2,8 @@ package dns
 
 import (
 	"context"
-	"os"
 	"errors"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -27,11 +27,11 @@ type TransportManager struct {
 	defaultTransport         adapter.DNSTransport
 	defaultTransportFallback func() (adapter.DNSTransport, error)
 	fakeIPTransport          adapter.FakeIPTransport
-	runtime bool
-	frozen bool
-	owned map[string]*adapter.Scope
-	pending map[string]bool
-	stages map[adapter.StartStage]error
+	runtime                  bool
+	frozen                   bool
+	owned                    map[string]*adapter.Scope
+	pending                  map[string]bool
+	stages                   map[adapter.StartStage]error
 }
 
 func NewTransportManager(registry adapter.DNSTransportRegistry, outbound adapter.OutboundManager, defaultTag string) *TransportManager {
@@ -40,7 +40,7 @@ func NewTransportManager(registry adapter.DNSTransportRegistry, outbound adapter
 		outbound:       outbound,
 		defaultTag:     defaultTag,
 		transportByTag: make(map[string]adapter.DNSTransport),
-		pending: make(map[string]bool),
+		pending:        make(map[string]bool),
 	}
 }
 
@@ -54,33 +54,59 @@ func NewRuntimeTransportManager(registry adapter.DNSTransportRegistry, outbound 
 
 // Insert does not adopt cleanup. Rejection leaves the caller's owner in charge.
 func (m *TransportManager) Insert(member adapter.DNSTransport, ownedScope *adapter.Scope) error {
-	if member == nil || member.Tag() == "" { return os.ErrInvalid }
+	if member == nil || member.Tag() == "" {
+		return os.ErrInvalid
+	}
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.runtime || m.frozen { return errors.New("DNS inventory is not mutable") }
-	if _, exists := m.transportByTag[member.Tag()]; exists { return E.New("duplicate DNS server tag: ", member.Tag()) }
+	if !m.runtime || m.frozen {
+		return errors.New("DNS inventory is not mutable")
+	}
+	if _, exists := m.transportByTag[member.Tag()]; exists {
+		return E.New("duplicate DNS server tag: ", member.Tag())
+	}
 	var fakeIP adapter.FakeIPTransport
 	if member.Type() == C.DNSTypeFakeIP {
-		if m.fakeIPTransport != nil { return E.New("multiple fakeip server are not supported") }
+		if m.fakeIPTransport != nil {
+			return E.New("multiple fakeip server are not supported")
+		}
 		var ok bool
 		fakeIP, ok = member.(adapter.FakeIPTransport)
-		if !ok { return errors.New("fakeip transport lacks allocator interface") }
+		if !ok {
+			return errors.New("fakeip transport lacks allocator interface")
+		}
 	}
 	m.transports = append(m.transports, member)
 	m.transportByTag[member.Tag()] = member
-	if fakeIP != nil { m.fakeIPTransport = fakeIP }
-	if ownedScope != nil { m.owned[member.Tag()] = ownedScope }
+	if fakeIP != nil {
+		m.fakeIPTransport = fakeIP
+	}
+	if ownedScope != nil {
+		m.owned[member.Tag()] = ownedScope
+	}
 	return nil
 }
 
 func (m *TransportManager) Freeze() error {
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.runtime { return errors.New("not a runtime DNS manager") }
-	if m.frozen { return nil }
-	if m.defaultTag != "" { m.defaultTransport = m.transportByTag[m.defaultTag] } else if len(m.transports) != 0 { m.defaultTransport = m.transports[0] }
-	if m.defaultTransport == nil { return E.New("explicit default DNS server required: ", m.defaultTag) }
-	if m.defaultTransport.Type() == C.DNSTypeFakeIP { return E.New("default server cannot be fakeip") }
+	if !m.runtime {
+		return errors.New("not a runtime DNS manager")
+	}
+	if m.frozen {
+		return nil
+	}
+	if m.defaultTag != "" {
+		m.defaultTransport = m.transportByTag[m.defaultTag]
+	} else if len(m.transports) != 0 {
+		m.defaultTransport = m.transports[0]
+	}
+	if m.defaultTransport == nil {
+		return E.New("explicit default DNS server required: ", m.defaultTag)
+	}
+	if m.defaultTransport.Type() == C.DNSTypeFakeIP {
+		return E.New("default server cannot be fakeip")
+	}
 	m.frozen = true
 	return nil
 }
@@ -88,19 +114,29 @@ func (m *TransportManager) Freeze() error {
 func (m *TransportManager) Initialize(defaultTransportFallback func() (adapter.DNSTransport, error)) {
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.frozen { m.defaultTransportFallback = defaultTransportFallback }
+	if !m.frozen {
+		m.defaultTransportFallback = defaultTransportFallback
+	}
 }
 
 func (m *TransportManager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	m.access.Lock()
 	if m.runtime {
-		if !m.frozen { m.access.Unlock(); return errors.New("DNS inventory not frozen") }
-		if result, exists := m.stages[stage]; exists { m.access.Unlock(); return result }
+		if !m.frozen {
+			m.access.Unlock()
+			return errors.New("DNS inventory not frozen")
+		}
+		if result, exists := m.stages[stage]; exists {
+			m.access.Unlock()
+			return result
+		}
 		m.stages[stage] = errors.New("DNS stage in progress")
 		transports := slices.Clone(m.transports)
 		m.access.Unlock()
 		err := m.startRuntime(stage, transports)
-		m.access.Lock(); m.stages[stage] = err; m.access.Unlock()
+		m.access.Lock()
+		m.stages[stage] = err
+		m.access.Unlock()
 		return err
 	}
 	if stage == adapter.StartStateInitialize {
@@ -135,11 +171,17 @@ func (m *TransportManager) Start(stage adapter.StartStage, scope *adapter.Scope)
 }
 
 func (m *TransportManager) startRuntime(stage adapter.StartStage, transports []adapter.DNSTransport) error {
-	if stage == adapter.StartStateStart { return m.startTransports(nil, transports) }
+	if stage == adapter.StartStateStart {
+		return m.startTransports(nil, transports)
+	}
 	for _, transport := range transports {
 		scope := m.owned[transport.Tag()]
-		if scope == nil { continue }
-		if err := scope.Start("dns/"+transport.Type()+"["+transport.Tag()+"]", transport, stage); err != nil { return err }
+		if scope == nil {
+			continue
+		}
+		if err := scope.Start("dns/"+transport.Type()+"["+transport.Tag()+"]", transport, stage); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -147,7 +189,11 @@ func (m *TransportManager) startRuntime(stage adapter.StartStage, transports []a
 func (m *TransportManager) startTransports(scope *adapter.Scope, transports []adapter.DNSTransport) error {
 	started := make(map[string]bool)
 	if m.runtime {
-		for _, member := range transports { if m.owned[member.Tag()] == nil { started[member.Tag()] = true } }
+		for _, member := range transports {
+			if m.owned[member.Tag()] == nil {
+				started[member.Tag()] = true
+			}
+		}
 	}
 	for {
 		canContinue := false
@@ -167,7 +213,9 @@ func (m *TransportManager) startTransports(scope *adapter.Scope, transports []ad
 			canContinue = true
 			name := "dns/" + transportToStart.Type() + "[" + transportTag + "]"
 			memberScope := scope
-			if m.runtime { memberScope = m.owned[transportTag] }
+			if m.runtime {
+				memberScope = m.owned[transportTag]
+			}
 			err := memberScope.Start(name, transportToStart, adapter.StartStateStart)
 			if err != nil {
 				return err
@@ -233,8 +281,14 @@ func (m *TransportManager) Create(ctx context.Context, logger log.ContextLogger,
 		return os.ErrInvalid
 	}
 	m.access.Lock()
-	if m.runtime || m.frozen { m.access.Unlock(); return errors.New("runtime DNS transports require explicit insertion") }
-	if _, exists := m.transportByTag[tag]; exists || m.pending[tag] { m.access.Unlock(); return E.New("duplicate DNS server tag: ", tag) }
+	if m.runtime || m.frozen {
+		m.access.Unlock()
+		return errors.New("runtime DNS transports require explicit insertion")
+	}
+	if _, exists := m.transportByTag[tag]; exists || m.pending[tag] {
+		m.access.Unlock()
+		return E.New("duplicate DNS server tag: ", tag)
+	}
 	m.pending[tag] = true
 	m.access.Unlock()
 	defer func() { m.access.Lock(); delete(m.pending, tag); m.access.Unlock() }()

@@ -47,24 +47,24 @@ var (
 var errInterfaceIsCellular = E.New("interface is cellular")
 
 type Transport struct {
-	work lifecycle.Work
-	producers lifecycle.Work
-	runtimeResource adapter.RuntimeResourceSource
-	operationCtx context.Context
-	operationCancel context.CancelFunc
-	producerCtx context.Context
-	producerCancel context.CancelFunc
-	runtimeOnce sync.Once
-	startOnce sync.Once
-	startErr error
-	closeOnce sync.Once
-	closeErr error
+	work              lifecycle.Work
+	producers         lifecycle.Work
+	runtimeResource   adapter.RuntimeResourceSource
+	operationCtx      context.Context
+	operationCancel   context.CancelFunc
+	producerCtx       context.Context
+	producerCancel    context.CancelFunc
+	runtimeOnce       sync.Once
+	startOnce         sync.Once
+	startErr          error
+	closeOnce         sync.Once
+	closeErr          error
 	constructionOwned bool
-	serverScopes lifecycle.Scopes
-	idleAccess sync.Mutex
-	idleDisabled bool
-	discoveryErrors discoverySocketErrors
-	unregister func()
+	serverScopes      lifecycle.Scopes
+	idleAccess        sync.Mutex
+	idleDisabled      bool
+	discoveryErrors   discoverySocketErrors
+	unregister        func()
 
 	dns.TransportAdapter
 	ctx               context.Context
@@ -108,7 +108,9 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}
 	t.initRuntime()
 	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -133,9 +135,17 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
 		}
 	})
-	if t.startErr != nil { return t.startErr }
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
-	if scope.Context().Err() != nil { return scope.Context().Err() }
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -159,14 +169,19 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			}
 		}
 	})
-	if t.work.Sealed() { return lifecycle.ErrStopped }
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
 	return scope.Context().Err()
 }
 
 func (t *Transport) Reset() {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	t.refreshAccess.Lock()
 	defer t.refreshAccess.Unlock()
 	state := t.savedState.Load()
@@ -185,7 +200,10 @@ func (t *Transport) Reset() {
 func (t *Transport) ServerAddresses() []netip.Addr {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	state := t.loadState()
 	if state == nil {
 		return nil
@@ -198,7 +216,10 @@ func (t *Transport) ServerAddresses() []netip.Addr {
 func (t *Transport) SearchDomains() []string {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	state := t.loadState()
 	if state == nil {
 		return nil
@@ -209,7 +230,10 @@ func (t *Transport) SearchDomains() []string {
 func (t *Transport) Environment() []string {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	state := t.savedState.Load()
 	if state == nil {
 		return nil
@@ -239,15 +263,25 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	t.initRuntime()
 	ctx, releaseCall, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }; defer releaseCall()
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer releaseCall()
 	ctx, releaseCallback, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }
+	if err != nil {
+		callback(nil, err)
+		return
+	}
 	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
 	originalCallback := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
-		if !called.CompareAndSwap(false, true) { return }
-		defer releaseCallback(); defer unlink()
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
+		defer releaseCallback()
+		defer unlink()
 		originalCallback(response, err)
 	}
 	state := t.savedState.Load()
@@ -286,7 +320,10 @@ func (t *Transport) exchangeCold(ctx context.Context, message *mDNS.Msg, callbac
 func (t *Transport) Fetch() []M.Socksaddr {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	state := t.loadState()
 	if state == nil {
 		return nil
@@ -331,7 +368,9 @@ func (t *Transport) fetch(ctx context.Context) error {
 
 func (t *Transport) startRefresh() {
 	state := t.savedState.Load()
-	if state != nil && time.Since(state.updatedAt) < C.DHCPTTL { return }
+	if state != nil && time.Since(state.updatedAt) < C.DHCPTTL {
+		return
+	}
 	t.requestRefresh()
 }
 
@@ -340,9 +379,15 @@ func (t *Transport) requestRefresh() {
 		t.refreshAccess.Lock()
 		err := t.updateServersLocked(ctx)
 		t.refreshAccess.Unlock()
-		if errors.Is(err, lifecycle.ErrSocketCohortBusy) { return true }
+		if errors.Is(err, lifecycle.ErrSocketCohortBusy) {
+			return true
+		}
 		if err != nil && ctx.Err() == nil {
-			if errors.Is(err, errInterfaceIsCellular) && t.optional { t.logger.Debug(E.Cause(err, "dhcp: refresh DNS servers")) } else { t.logger.Error(E.Cause(err, "dhcp: refresh DNS servers")) }
+			if errors.Is(err, errInterfaceIsCellular) && t.optional {
+				t.logger.Debug(E.Cause(err, "dhcp: refresh DNS servers"))
+			} else {
+				t.logger.Error(E.Cause(err, "dhcp: refresh DNS servers"))
+			}
 		}
 		return false
 	})
@@ -375,7 +420,9 @@ func (t *Transport) fetchInterface() (*control.Interface, error) {
 }
 
 func (t *Transport) updateServersLocked(ctx context.Context) error {
-	if err := ctx.Err(); err != nil { return err }
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	iface, err := t.fetchInterface()
 	if err != nil {
 		t.storeFailureLocked(err)
@@ -389,7 +436,10 @@ func (t *Transport) updateServersLocked(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return err
 		}
-		if errors.Is(err, lifecycle.ErrSocketCohortBusy) { t.requestRefresh(); return err }
+		if errors.Is(err, lifecycle.ErrSocketCohortBusy) {
+			t.requestRefresh()
+			return err
+		}
 		t.storeFailureLocked(err)
 		return err
 	}
@@ -456,7 +506,11 @@ func (t *Transport) fetchServers0(ctx context.Context, iface *control.Interface)
 	defer packetConn.Close()
 	closeDone := make(chan struct{})
 	stopClose := context.AfterFunc(ctx, func() { defer close(closeDone); _ = packetConn.Close() })
-	defer func() { if !stopClose() { <-closeDone } }()
+	defer func() {
+		if !stopClose() {
+			<-closeDone
+		}
+	}()
 
 	discovery, err := dhcpv4.NewDiscovery(iface.HardwareAddr, dhcpv4.WithBroadcast(true), dhcpv4.WithRequestedOptions(
 		dhcpv4.OptionDomainName,
@@ -540,7 +594,9 @@ func (t *Transport) recreateServersLocked(iface *control.Interface, dhcpPacket *
 		return nil
 	}
 	serverScope, err := t.serverScopes.New(t.operationCtx, t.logger)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	serverTransports := make([]adapter.DNSTransport, 0, len(newState.servers))
 	for _, serverAddr := range newState.servers {
 		serverTransport := transport.NewUDPRaw(t.logger, dns.NewTransportAdapter(C.DNSTypeUDP, "", nil), t.dialer, serverAddr)
@@ -562,28 +618,36 @@ func (t *Transport) recreateServersLocked(iface *control.Interface, dhcpPacket *
 
 func (t *Transport) initRuntime() {
 	t.runtimeOnce.Do(func() {
-		ctx := t.ctx; if ctx == nil { ctx = context.Background() }
+		ctx := t.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		t.runtimeResource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
 		t.operationCtx, t.operationCancel = context.WithCancel(ctx)
 		t.producerCtx, t.producerCancel = context.WithCancel(t.operationCtx)
 	})
 }
+
 func (t *Transport) StopRuntimeProducers() {
 	t.initRuntime()
 	t.producers.Seal()
 	t.producerCancel()
 }
+
 func (t *Transport) StopRuntimeOperations() {
 	t.initRuntime()
 	t.work.Seal()
 	t.operationCancel()
 	t.StopRuntimeProducers()
 }
+
 func (t *Transport) close() error {
 	t.closeOnce.Do(func() {
 		t.StopRuntimeOperations()
 		t.work.Wait() // includes Start, cold discovery and final user callbacks
-		if t.unregister != nil { t.unregister() }
+		if t.unregister != nil {
+			t.unregister()
+		}
 		t.producers.Wait() // copied monitor callbacks cannot admit after Seal
 		t.savedState.Store(nil)
 		t.closeErr = errors.Join(t.serverScopes.Close(), t.discoveryErrors.result())

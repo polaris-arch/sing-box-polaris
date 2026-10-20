@@ -72,14 +72,19 @@ func (d *DefaultDialer) dialParallelInterface(ctx context.Context, dialer net.Di
 		return nil
 	}
 	launchRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
-		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned,primary,iif) }, func(err error) {
-			select { case results <- dialResult{error:err,primary:primary}: case <-returned: }
+		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned, primary, iif) }, func(err error) {
+			select {
+			case results <- dialResult{error: err, primary: primary}:
+			case <-returned:
+			}
 		})
 	}
 	primaryCtx, primaryCancel := context.WithCancel(ctx)
 	defer primaryCancel()
 	for _, iif := range primaryInterfaces {
-		if err := launchRacer(primaryCtx, true, iif); err != nil { return nil,false,err }
+		if err := launchRacer(primaryCtx, true, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	var (
 		fallbackTimer *time.Timer
@@ -93,12 +98,15 @@ func (d *DefaultDialer) dialParallelInterface(ctx context.Context, dialer net.Di
 	var errors []error
 	for {
 		select {
-		case <-ctx.Done(): return nil,false,ctx.Err()
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
 		case <-fallbackChan:
 			fallbackCtx, fallbackCancel := context.WithCancel(ctx)
 			defer fallbackCancel()
 			for _, iif := range fallbackInterfaces {
-				if err := launchRacer(fallbackCtx, false, iif); err != nil { return nil,false,err }
+				if err := launchRacer(fallbackCtx, false, iif); err != nil {
+					return nil, false, err
+				}
 			}
 		case res := <-results:
 			if res.error == nil {
@@ -178,22 +186,33 @@ func (d *DefaultDialer) dialParallelInterfaceFastFallback(ctx context.Context, d
 		return nil
 	}
 	launchRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
-		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned,primary,iif) }, func(err error) {
-			select { case results <- dialResult{error:err,primary:primary}: case <-returned: }
+		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned, primary, iif) }, func(err error) {
+			select {
+			case results <- dialResult{error: err, primary: primary}:
+			case <-returned:
+			}
 		})
 	}
 	for _, iif := range primaryInterfaces {
-		if err := launchRacer(ctx, true, iif); err != nil { return nil,false,err }
+		if err := launchRacer(ctx, true, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	fallbackCtx, fallbackCancel := context.WithCancel(ctx)
 	defer fallbackCancel()
 	for _, iif := range fallbackInterfaces {
-		if err := launchRacer(fallbackCtx, false, iif); err != nil { return nil,false,err }
+		if err := launchRacer(fallbackCtx, false, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	var errors []error
 	for {
 		var res dialResult
-		select { case res = <-results: case <-ctx.Done(): return nil,false,ctx.Err() }
+		select {
+		case res = <-results:
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
+		}
 		if res.error == nil {
 			return res.Conn, res.primary, nil
 		}

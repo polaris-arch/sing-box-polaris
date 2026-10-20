@@ -7,9 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sagernet/sing-box/dns/transport/lifecycle"
-
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/dnsinfo"
 	"github.com/sagernet/sing/common"
@@ -20,8 +19,8 @@ import (
 )
 
 type Source struct {
-	work lifecycle.Work
-	closeOnce sync.Once
+	work             lifecycle.Work
+	closeOnce        sync.Once
 	interfaceMonitor tun.DefaultInterfaceMonitor
 	access           sync.Mutex
 	stale            bool
@@ -36,7 +35,11 @@ func NewSource(ctx context.Context) *Source {
 }
 
 func (s *Source) Configuration() *Config {
-	done, ok := s.work.Reserve(); if !ok { return &Config{} }; defer done()
+	done, ok := s.work.Reserve()
+	if !ok {
+		return &Config{}
+	}
+	defer done()
 	interfaceIndex := s.defaultInterfaceIndex()
 	s.access.Lock()
 	defer s.access.Unlock()
@@ -62,7 +65,11 @@ func (s *Source) Configuration() *Config {
 }
 
 func (s *Source) Reset() {
-	done, ok := s.work.Reserve(); if !ok { return }; defer done()
+	done, ok := s.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	s.access.Lock()
 	s.stale = true
 	s.access.Unlock()

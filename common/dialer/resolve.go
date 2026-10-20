@@ -97,8 +97,10 @@ func (d *resolveDialer) initServer() {
 
 func (d *resolveDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	if d.runtimeSource != nil {
-		owned, release, err := adapter.AcquireRuntimeOperation(ctx,d.runtimeSource)
-		if err != nil { return nil,err }
+		owned, release, err := adapter.AcquireRuntimeOperation(ctx, d.runtimeSource)
+		if err != nil {
+			return nil, err
+		}
 		defer release()
 		ctx = owned
 	}
@@ -117,7 +119,7 @@ func (d *resolveDialer) DialContext(ctx context.Context, network string, destina
 	if d.parallel {
 		if d.runtimeSource == nil {
 			if _, bound := adapter.RuntimeLeaseFromContext(ctx); !bound {
-				return N.DialParallel(ctx,d.dialer,network,destination,addresses,d.queryOptions.Strategy == C.DomainStrategyPreferIPv6,d.fallbackDelay)
+				return N.DialParallel(ctx, d.dialer, network, destination, addresses, d.queryOptions.Strategy == C.DomainStrategyPreferIPv6, d.fallbackDelay)
 			}
 		}
 		return DialParallelNetwork(ctx, runtimeSerialInterfaceDialer{d.dialer}, network, destination, addresses, d.queryOptions.Strategy == C.DomainStrategyPreferIPv6, nil, nil, nil, d.fallbackDelay)

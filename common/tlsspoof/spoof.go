@@ -4,23 +4,22 @@ import (
 	"net"
 
 	"github.com/sagernet/sing-box/common/tlsspoof/method"
-
 	E "github.com/sagernet/sing/common/exceptions"
 )
 
 type Method = method.Method
 
 const (
-	MethodWrongSequence = method.MethodWrongSequence
-	MethodWrongChecksum = method.MethodWrongChecksum
-	MethodWrongAcknowledgment = method.MethodWrongAcknowledgment
-	MethodWrongMD5Sig = method.MethodWrongMD5Sig
-	MethodWrongTimestamp = method.MethodWrongTimestamp
-	MethodNameWrongSequence = method.MethodNameWrongSequence
-	MethodNameWrongChecksum = method.MethodNameWrongChecksum
+	MethodWrongSequence           = method.MethodWrongSequence
+	MethodWrongChecksum           = method.MethodWrongChecksum
+	MethodWrongAcknowledgment     = method.MethodWrongAcknowledgment
+	MethodWrongMD5Sig             = method.MethodWrongMD5Sig
+	MethodWrongTimestamp          = method.MethodWrongTimestamp
+	MethodNameWrongSequence       = method.MethodNameWrongSequence
+	MethodNameWrongChecksum       = method.MethodNameWrongChecksum
 	MethodNameWrongAcknowledgment = method.MethodNameWrongAcknowledgment
-	MethodNameWrongMD5Sig = method.MethodNameWrongMD5Sig
-	MethodNameWrongTimestamp = method.MethodNameWrongTimestamp
+	MethodNameWrongMD5Sig         = method.MethodNameWrongMD5Sig
+	MethodNameWrongTimestamp      = method.MethodNameWrongTimestamp
 )
 
 func ParseOptions(spoof, method string) (string, Method, error) {

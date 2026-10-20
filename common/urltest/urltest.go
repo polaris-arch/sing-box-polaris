@@ -23,21 +23,21 @@ import (
 
 type HistoryStorage struct {
 	runtimeAdmission adapter.RuntimeAdmission
-	runtimeActive map[*HistoryStorage]struct{}
-	epoch *HistoryEpoch
-	closed bool
-	access       *sync.RWMutex
-	authority *HistoryStorage
-	views map[*HistoryStorage]struct{}
-	delayHistory map[string]*adapter.URLTestHistory
-	updateHooks  []*observable.Subscriber[struct{}]
+	runtimeActive    map[*HistoryStorage]struct{}
+	epoch            *HistoryEpoch
+	closed           bool
+	access           *sync.RWMutex
+	authority        *HistoryStorage
+	views            map[*HistoryStorage]struct{}
+	delayHistory     map[string]*adapter.URLTestHistory
+	updateHooks      []*observable.Subscriber[struct{}]
 }
 
 func NewHistoryStorage() *HistoryStorage {
 	root := &HistoryStorage{
 		epoch: newHistoryEpoch(true), access: new(sync.RWMutex),
 		delayHistory: make(map[string]*adapter.URLTestHistory),
-		views: make(map[*HistoryStorage]struct{}),
+		views:        make(map[*HistoryStorage]struct{}),
 	}
 	root.authority = root
 	root.views[root] = struct{}{}
@@ -47,31 +47,45 @@ func NewHistoryStorage() *HistoryStorage {
 // NewIncarnationHistory shares only network epoch authority. Probe values and
 // selection notifications belong to this resource incarnation, never its tag.
 func NewIncarnationHistory(parent *HistoryStorage) *HistoryStorage {
-	if parent == nil { return NewHistoryStorage() }
+	if parent == nil {
+		return NewHistoryStorage()
+	}
 	root := parent.authority
 	root.access.Lock()
 	defer root.access.Unlock()
-	view := &HistoryStorage{epoch: root.epoch, access: root.access, authority: root,
-		delayHistory: make(map[string]*adapter.URLTestHistory), closed: root.closed}
-	if !root.closed { root.views[view] = struct{}{} }
+	view := &HistoryStorage{
+		epoch: root.epoch, access: root.access, authority: root,
+		delayHistory: make(map[string]*adapter.URLTestHistory), closed: root.closed,
+	}
+	if !root.closed {
+		root.views[view] = struct{}{}
+	}
 	return view
 }
 
 func (s *HistoryStorage) AddUpdateHook(hook *observable.Subscriber[struct{}]) {
 	s.access.Lock()
 	defer s.access.Unlock()
-	if !s.closed && hook != nil { s.updateHooks = append(s.updateHooks, hook) }
+	if !s.closed && hook != nil {
+		s.updateHooks = append(s.updateHooks, hook)
+	}
 }
 
 // RemoveUpdateHook serializes with every in-flight Emit under the same mutex.
 // After return only already-buffered payload-free notifications may remain.
 // The subscriber itself belongs to its registrant and is not closed here.
 func (s *HistoryStorage) RemoveUpdateHook(hook *observable.Subscriber[struct{}]) {
-	if s == nil || hook == nil { return }
+	if s == nil || hook == nil {
+		return
+	}
 	s.access.Lock()
 	defer s.access.Unlock()
 	kept := s.updateHooks[:0]
-	for _, current := range s.updateHooks { if current != hook { kept = append(kept, current) } }
+	for _, current := range s.updateHooks {
+		if current != hook {
+			kept = append(kept, current)
+		}
+	}
 	clear(s.updateHooks[len(kept):])
 	s.updateHooks = kept
 }
@@ -83,20 +97,31 @@ func (s *HistoryStorage) NotifyUpdated() {
 }
 
 func (s *HistoryStorage) LoadURLTestHistory(tag string) *adapter.URLTestHistory {
-	if s == nil { return nil }
-	if result, bound := s.projectedLoad(tag); bound { return result }
+	if s == nil {
+		return nil
+	}
+	if result, bound := s.projectedLoad(tag); bound {
+		return result
+	}
 	s.access.RLock()
 	defer s.access.RUnlock()
-	if s.closed { return nil }
+	if s.closed {
+		return nil
+	}
 	value := s.delayHistory[tag]
-	if value == nil { return nil }
+	if value == nil {
+		return nil
+	}
 	copy := *value
 	return &copy
 }
 
 func (s *HistoryStorage) DeleteURLTestHistory(tag string) {
 	s.access.Lock()
-	if !s.writableLocked() { s.access.Unlock(); return }
+	if !s.writableLocked() {
+		s.access.Unlock()
+		return
+	}
 	delete(s.delayHistory, tag)
 	s.notifyUpdated()
 	s.access.Unlock()
@@ -104,7 +129,10 @@ func (s *HistoryStorage) DeleteURLTestHistory(tag string) {
 
 func (s *HistoryStorage) StoreURLTestHistory(tag string, history *adapter.URLTestHistory) {
 	s.access.Lock()
-	if !s.writableLocked() || history == nil { s.access.Unlock(); return }
+	if !s.writableLocked() || history == nil {
+		s.access.Unlock()
+		return
+	}
 	copy := *history
 	s.delayHistory[tag] = &copy
 	s.notifyUpdated()
@@ -112,10 +140,16 @@ func (s *HistoryStorage) StoreURLTestHistory(tag string, history *adapter.URLTes
 }
 
 func (s *HistoryStorage) notifyUpdated() {
-	if s.closed { return }
+	if s.closed {
+		return
+	}
 	s.notifyLocalLocked()
 	root := s.authority
-	if root != s { if _, active := root.runtimeActive[s]; active && !root.closed { root.notifyLocalLocked() } }
+	if root != s {
+		if _, active := root.runtimeActive[s]; active && !root.closed {
+			root.notifyLocalLocked()
+		}
+	}
 }
 
 func (s *HistoryStorage) notifyLocalLocked() {
@@ -126,18 +160,26 @@ func (s *HistoryStorage) notifyLocalLocked() {
 
 func (s *HistoryStorage) Close() error {
 	s.access.Lock()
-	if s.closed { s.access.Unlock(); return nil }
+	if s.closed {
+		s.access.Unlock()
+		return nil
+	}
 	s.closed = true
 	root := s.authority
 	if root != s {
 		delete(root.views, s)
 		delete(root.runtimeActive, s)
-		s.updateHooks = nil; clear(s.delayHistory)
+		s.updateHooks = nil
+		clear(s.delayHistory)
 		s.access.Unlock()
 		return nil
 	}
 	epoch := s.epoch
-	for view := range s.views { view.closed = true; view.updateHooks = nil; clear(view.delayHistory) }
+	for view := range s.views {
+		view.closed = true
+		view.updateHooks = nil
+		clear(view.delayHistory)
+	}
 	clear(s.views)
 	clear(s.runtimeActive)
 	s.access.Unlock()

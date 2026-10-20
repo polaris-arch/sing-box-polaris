@@ -58,9 +58,14 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 	inbound.router = uot.NewRouter(router, logger)
 	var err error
 	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
@@ -99,7 +104,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		}
 	}
 	network := []string{N.NetworkTCP}
-	if inbound.transport != nil { network = inbound.transport.Network() }
+	if inbound.transport != nil {
+		network = inbound.transport.Network()
+	}
 	inbound.listener = listener.New(listener.Options{
 		Context:           ctx,
 		Logger:            logger,
@@ -108,13 +115,17 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		ConnectionHandler: inbound,
 	})
 	if inbound.runtime != nil {
-		if err := v2ray.BindRuntimeServer(inbound.transport, inbound.listener); err != nil { return nil, err }
+		if err := v2ray.BindRuntimeServer(inbound.transport, inbound.listener); err != nil {
+			return nil, err
+		}
 	}
 	return inbound, nil
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -169,7 +180,10 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	if h.tlsConfig != nil && h.transport == nil {
 		tlsConn, err := tls.ServerHandshake(ctx, conn, h.tlsConfig)
@@ -189,7 +203,10 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 
 func (h *Inbound) newConnectionEx(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
@@ -210,7 +227,10 @@ func (h *Inbound) newConnectionEx(ctx context.Context, conn net.Conn, metadata a
 
 func (h *Inbound) newPacketConnectionEx(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
@@ -241,7 +261,10 @@ type inboundTransportHandler Inbound
 
 func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	var metadata adapter.InboundContext
 	metadata.Source = source

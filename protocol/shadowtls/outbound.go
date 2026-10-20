@@ -27,7 +27,7 @@ type Outbound struct {
 	outbound.Adapter
 	runtimeSource adapter.RuntimeResourceSource
 	runtimeDialer *runtimeDialer
-	client *shadowtls.Client
+	client        *shadowtls.Client
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.ShadowTLSOutboundOptions) (adapter.Outbound, error) {
@@ -87,7 +87,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	outbound.client = client
 	outbound.runtimeSource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
-	if err := finishRuntimeConstruction(ctx, ownedDialer); err != nil { return nil, err }
+	if err := finishRuntimeConstruction(ctx, ownedDialer); err != nil {
+		return nil, err
+	}
 	return outbound, nil
 }
 

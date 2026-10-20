@@ -36,7 +36,7 @@ var _ adapter.DNSClient = (*Client)(nil)
 type Client struct {
 	ctx               context.Context
 	refreshOwner      *runtimegraph.DNSRefreshOwner
-	runtimeResource adapter.RuntimeResourceSource
+	runtimeResource   adapter.RuntimeResourceSource
 	timeout           time.Duration
 	disableCache      bool
 	disableExpire     bool
@@ -72,7 +72,7 @@ func NewClient(options ClientOptions) *Client {
 	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(options.Context)
 	client := &Client{
 		ctx:               options.Context,
-		runtimeResource: runtimeResource,
+		runtimeResource:   runtimeResource,
 		refreshOwner:      runtimegraph.NewDNSRefreshOwner(options.Context),
 		timeout:           options.Timeout,
 		disableCache:      options.DisableCache,
@@ -427,11 +427,20 @@ func (c *Client) finishExchange(transport adapter.DNSTransport, operation *excha
 }
 
 func (c *Client) Exchange(ctx context.Context, transport adapter.DNSTransport, message *dns.Msg, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool) (answer *dns.Msg, resultErr error) {
- ownsAnswer:=fakeIPClientOwnsAdmission(ctx) && transport.Type()==C.DNSTypeFakeIP
+	ownsAnswer := fakeIPClientOwnsAdmission(ctx) && transport.Type() == C.DNSTypeFakeIP
 	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, c.runtimeResource)
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	defer releaseRuntime()
- defer func(){if ownsAnswer && resultErr==nil && answer!=nil{if err:=protectFinalFakeIPAnswer(c.ctx,ctx,transport,answer);err!=nil{answer=nil;resultErr=err}}}()
+	defer func() {
+		if ownsAnswer && resultErr == nil && answer != nil {
+			if err := protectFinalFakeIPAnswer(c.ctx, ctx, transport, answer); err != nil {
+				answer = nil
+				resultErr = err
+			}
+		}
+	}()
 	if options.Timeout == 0 {
 		options.Timeout = c.timeout
 	}
@@ -453,18 +462,29 @@ func (c *Client) Exchange(ctx context.Context, transport adapter.DNSTransport, m
 }
 
 func (c *Client) ExchangeAsync(ctx context.Context, transport adapter.DNSTransport, message *dns.Msg, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool, callback func(response *dns.Msg, err error)) {
- if fakeIPClientOwnsAdmission(ctx) && transport.Type()==C.DNSTypeFakeIP{
-  answerContext,deliverAnswer:=ctx,callback
-  callback=func(response *dns.Msg,err error){
-   if err==nil && response!=nil{if protectionErr:=protectFinalFakeIPAnswer(c.ctx,answerContext,transport,response);protectionErr!=nil{response=nil;err=protectionErr}}
-   deliverAnswer(response,err)
-  }
- }
+	if fakeIPClientOwnsAdmission(ctx) && transport.Type() == C.DNSTypeFakeIP {
+		answerContext, deliverAnswer := ctx, callback
+		callback = func(response *dns.Msg, err error) {
+			if err == nil && response != nil {
+				if protectionErr := protectFinalFakeIPAnswer(c.ctx, answerContext, transport, response); protectionErr != nil {
+					response = nil
+					err = protectionErr
+				}
+			}
+			deliverAnswer(response, err)
+		}
+	}
 	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, c.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	defer releaseCall()
 	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, c.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	originalCallback := callback
 	callback = func(response *dns.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
 
@@ -516,7 +536,9 @@ func (c *Client) ExchangeAsync(ctx context.Context, transport adapter.DNSTranspo
 
 func (c *Client) Lookup(ctx context.Context, transport adapter.DNSTransport, domain string, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool) ([]netip.Addr, error) {
 	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, c.runtimeResource)
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	defer releaseRuntime()
 	domain = FqdnToDomain(domain)
 	dnsName := dns.Fqdn(domain)
@@ -721,7 +743,9 @@ func applyResponseOptions(question dns.Question, response *dns.Msg, options adap
 
 func (c *Client) backgroundRefreshDNS(caller context.Context, transport adapter.DNSTransport, key dnsCacheKey, message *dns.Msg, options adapter.DNSQueryOptions, responseChecker func(response *dns.Msg) bool) {
 	refreshContext, release, admitted := c.admitBackgroundRefresh(caller)
-	if !admitted { return }
+	if !admitted {
+		return
+	}
 	_, loaded := c.backgroundRefresh.LoadOrStore(key, struct{}{})
 	if loaded {
 		release()

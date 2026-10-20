@@ -162,20 +162,20 @@ func (m *ReferenceManager) update() {
 // Only the runtime observer invokes this path for connected graphs, after its
 // publication fence admits the complete census and all resulting idle effects.
 type referenceInventory struct {
-	rules []option.Rule
-	dnsRules []option.DNSRule
-	staticOutbounds []string
+	rules            []option.Rule
+	dnsRules         []option.DNSRule
+	staticOutbounds  []string
 	staticTransports []string
-	mode string
-	devicePaused bool
-	outbounds adapter.OutboundManager
-	endpoints adapter.EndpointManager
-	inbounds adapter.InboundManager
-	services adapter.ServiceManager
-	transports adapter.DNSTransportManager
-	network adapter.NetworkManager
-	httpClient adapter.HTTPClientManager
-	allowReset bool
+	mode             string
+	devicePaused     bool
+	outbounds        adapter.OutboundManager
+	endpoints        adapter.EndpointManager
+	inbounds         adapter.InboundManager
+	services         adapter.ServiceManager
+	transports       adapter.DNSTransportManager
+	network          adapter.NetworkManager
+	httpClient       adapter.HTTPClientManager
+	allowReset       bool
 }
 
 func (m *ReferenceManager) updateInventory(inventory referenceInventory) {

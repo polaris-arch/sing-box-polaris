@@ -21,7 +21,8 @@ func CloseAndWait(device Device) error {
 func waitStackDetached(ctx context.Context, done <-chan struct{}, closeErr *error, stack tun.StackWithDetachWaiter) error {
 	select {
 	case <-done:
-	case <-ctx.Done(): return ctx.Err()
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	return errors.Join(*closeErr, stack.WaitDetached(ctx))
 }

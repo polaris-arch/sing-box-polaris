@@ -161,13 +161,13 @@ func TestCloseResultReportsCleanupPanic(t *testing.T) {
 
 type countingLogFactory struct {
 	log.Factory
-	closed int
+	closed  int
 	started int
 }
 
 func (f *countingLogFactory) Start() error {
- f.started++
- return f.Factory.Start()
+	f.started++
+	return f.Factory.Start()
 }
 
 func (f *countingLogFactory) Close() error {
@@ -176,11 +176,15 @@ func (f *countingLogFactory) Close() error {
 }
 
 func TestStartFailureAfterCloseRunsLateRegistrations(t *testing.T) {
- // This assertion covers the legacy late-registration path. Runtime startup
- // rejects a closed instance before touching the logger (covered separately).
- instance, constructErr := New(Options{Context: testContext(), Options: option.Options{Certificate: &option.CertificateOptions{}}})
- if constructErr != nil { t.Fatal(constructErr) }
- if instance.runtime != nil { t.Fatal("legacy fixture selected runtime startup") }
+	// This assertion covers the legacy late-registration path. Runtime startup
+	// rejects a closed instance before touching the logger (covered separately).
+	instance, constructErr := New(Options{Context: testContext(), Options: option.Options{Certificate: &option.CertificateOptions{}}})
+	if constructErr != nil {
+		t.Fatal(constructErr)
+	}
+	if instance.runtime != nil {
+		t.Fatal("legacy fixture selected runtime startup")
+	}
 	factory := &countingLogFactory{Factory: instance.logFactory}
 	instance.logFactory = factory
 	err := instance.Close()
@@ -193,19 +197,31 @@ func TestStartFailureAfterCloseRunsLateRegistrations(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Start after Close = %v, want context canceled", err)
 	}
-	if factory.started != 1 { t.Fatalf("legacy start count = %d, want 1",factory.started) }
+	if factory.started != 1 {
+		t.Fatalf("legacy start count = %d, want 1", factory.started)
+	}
 	if factory.closed != 1 {
 		t.Fatalf("log factory started by the failed start was closed %d times, want 1", factory.closed)
 	}
 }
 
 func TestRuntimeStartAfterCloseDoesNotRestartLogger(t *testing.T) {
- instance := testBoxWithService(t, &failingCloseService{})
- if instance.runtime == nil { t.Fatal("runtime fixture selected legacy startup") }
- factory := &countingLogFactory{Factory: instance.logFactory}
- instance.logFactory = factory
- if err := instance.Close(); err != nil { t.Fatal(err) }
- if err := instance.Start(); err == nil { t.Fatal("closed runtime restarted") }
- if factory.started != 0 { t.Fatalf("closed runtime restarted logger %d times",factory.started) }
- if factory.closed != 0 { t.Fatalf("closed runtime touched logger lifecycle: %d", factory.closed) }
+	instance := testBoxWithService(t, &failingCloseService{})
+	if instance.runtime == nil {
+		t.Fatal("runtime fixture selected legacy startup")
+	}
+	factory := &countingLogFactory{Factory: instance.logFactory}
+	instance.logFactory = factory
+	if err := instance.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := instance.Start(); err == nil {
+		t.Fatal("closed runtime restarted")
+	}
+	if factory.started != 0 {
+		t.Fatalf("closed runtime restarted logger %d times", factory.started)
+	}
+	if factory.closed != 0 {
+		t.Fatalf("closed runtime touched logger lifecycle: %d", factory.closed)
+	}
 }

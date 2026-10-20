@@ -9,13 +9,13 @@ import (
 // RuntimeRevision identifies one immutable effective graph, within one Box run.
 type RuntimeRevision struct {
 	Incarnation string
-	Revision uint64
+	Revision    uint64
 }
 
 // RuntimeResourceID identifies an allocation, never a user-configured tag.
 type RuntimeResourceID struct {
 	Incarnation string
-	Sequence uint64
+	Sequence    uint64
 }
 
 // RuntimeView contains leaf dependencies. Ingress gateways are never leaves.
@@ -55,8 +55,10 @@ type RuntimeAdmission interface {
 	Acquire() (RuntimeLease, error)
 }
 
-type runtimeLeaseContextKey struct{}
-type runtimeLeaseContextValue struct { lease RuntimeLease }
+type (
+	runtimeLeaseContextKey   struct{}
+	runtimeLeaseContextValue struct{ lease RuntimeLease }
+)
 
 // ContextWithRuntimeLease borrows lease. Copying the context does not retain it;
 // an escaping callback or goroutine must Fork before it is published.

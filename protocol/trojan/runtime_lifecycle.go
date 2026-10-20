@@ -26,7 +26,9 @@ func (h *Outbound) registerRuntimeStart(scope *adapter.Scope) error {
 		_ = h.runtimeCleanup()
 		return err
 	}
-	if h.constructionCleanup { return nil }
+	if h.constructionCleanup {
+		return nil
+	}
 	ctx := adapter.ContextWithConstructionScope(scope.Context(), scope)
 	var err error
 	h.constructionCleanup, err = outbound.RegisterRuntimeCleanup(ctx, h.runtimeCleanup)

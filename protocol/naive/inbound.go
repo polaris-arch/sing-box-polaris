@@ -33,8 +33,8 @@ import (
 
 var (
 	PrepareRuntimeHTTP3ListenerFunc func(ctx context.Context, logger logger.Logger, listener *listener.Listener, handler http.Handler, tlsConfig tls.ServerConfig, options option.NaiveInboundOptions) (io.Closer, error)
-	ConfigureHTTP3ListenerFunc func(ctx context.Context, logger logger.Logger, listener *listener.Listener, handler http.Handler, tlsConfig tls.ServerConfig, options option.NaiveInboundOptions) (io.Closer, error)
-	WrapError                  func(error) error
+	ConfigureHTTP3ListenerFunc      func(ctx context.Context, logger logger.Logger, listener *listener.Listener, handler http.Handler, tlsConfig tls.ServerConfig, options option.NaiveInboundOptions) (io.Closer, error)
+	WrapError                       func(error) error
 )
 
 func RegisterInbound(registry *inbound.Registry) {
@@ -42,9 +42,9 @@ func RegisterInbound(registry *inbound.Registry) {
 }
 
 type Inbound struct {
- runtime *inboundRuntime
- runtimeTCP *runtimeNaiveTCP
- http3Server io.Closer
+	runtime     *inboundRuntime
+	runtimeTCP  *runtimeNaiveTCP
+	http3Server io.Closer
 	inbound.Adapter
 	ctx              context.Context
 	router           adapter.ConnectionRouterEx
@@ -59,9 +59,12 @@ type Inbound struct {
 }
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveInboundOptions) (adapter.Inbound, error) {
- udpFragmentDefault:=options.UDPFragmentDefault
- options,err:=cloneInboundOptions(ctx,options);if err!=nil{return nil,err}
- options.UDPFragmentDefault=udpFragmentDefault
+	udpFragmentDefault := options.UDPFragmentDefault
+	options, err := cloneInboundOptions(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	options.UDPFragmentDefault = udpFragmentDefault
 	inbound := &Inbound{
 		Adapter: inbound.NewAdapter(C.TypeNaive, tag),
 		ctx:     ctx,
@@ -73,23 +76,36 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		network:          options.Network.Build(),
 		authenticator:    auth.NewAuthenticator(options.Users),
 	}
- runtime,finishRuntimeConstruction,runtimeErr:=newInboundRuntimeConstruction(ctx,inbound.closeRuntimeProtocol)
- defer finishRuntimeConstruction()
- if runtimeErr!=nil{return nil,runtimeErr}
- inbound.runtime=runtime
- if runtime!=nil{
-  logger=runtime.wrapLogger(logger);inbound.logger=logger;ctx=runtime.bindContext(ctx);inbound.ctx=ctx
-  if inbound.networkIsDefault&&PrepareRuntimeHTTP3ListenerFunc==nil{inbound.network=[]string{N.NetworkTCP}}
- }
- inbound.router=uot.NewRouter(router,logger)
- inbound.listener=listener.New(listener.Options{Context:ctx,Logger:logger,Network:inbound.network,Listen:options.ListenOptions})
- if runtime!=nil{
-  if common.Contains(inbound.network,N.NetworkTCP){
-   inbound.runtimeTCP=newRuntimeNaiveTCP(inbound)
-   if err:=inbound.listener.BindRuntimeStreamHandler(inbound.runtimeTCP.acceptor);err!=nil{return nil,err}
-  }
-  if common.Contains(inbound.network,N.NetworkUDP){if err:=inbound.listener.DeclareRuntimePacketTransport();err!=nil{return nil,err}}
- }
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, inbound.closeRuntimeProtocol)
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	inbound.runtime = runtime
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+		ctx = runtime.bindContext(ctx)
+		inbound.ctx = ctx
+		if inbound.networkIsDefault && PrepareRuntimeHTTP3ListenerFunc == nil {
+			inbound.network = []string{N.NetworkTCP}
+		}
+	}
+	inbound.router = uot.NewRouter(router, logger)
+	inbound.listener = listener.New(listener.Options{Context: ctx, Logger: logger, Network: inbound.network, Listen: options.ListenOptions})
+	if runtime != nil {
+		if common.Contains(inbound.network, N.NetworkTCP) {
+			inbound.runtimeTCP = newRuntimeNaiveTCP(inbound)
+			if err := inbound.listener.BindRuntimeStreamHandler(inbound.runtimeTCP.acceptor); err != nil {
+				return nil, err
+			}
+		}
+		if common.Contains(inbound.network, N.NetworkUDP) {
+			if err := inbound.listener.DeclareRuntimePacketTransport(); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	if common.Contains(inbound.network, N.NetworkUDP) {
 		if options.TLS == nil || !options.TLS.Enabled {
@@ -110,7 +126,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (n *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if n.runtime!=nil{return n.PrepareRuntime(stage,scope)}
+	if n.runtime != nil {
+		return n.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -167,10 +185,13 @@ func (n *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (n *Inbound) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
- owned,release,admitErr:=n.runtime.enter(request.Context())
- if admitErr!=nil{writer.WriteHeader(http.StatusServiceUnavailable);return}
- defer release()
- request=request.WithContext(owned)
+	owned, release, admitErr := n.runtime.enter(request.Context())
+	if admitErr != nil {
+		writer.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	defer release()
+	request = request.WithContext(owned)
 	ctx := log.ContextWithNewID(request.Context())
 	if request.Method != "CONNECT" {
 		rejectHTTP(writer, http.StatusBadRequest)
@@ -222,22 +243,26 @@ func (n *Inbound) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 			conn = bufio.NewCachedConn(conn, cache)
 		}
 		n.newConnection(ctx, false, &naiveConn{Conn: conn}, userName, source, destination)
- } else {
-  logical:=&naiveH2Conn{reader:request.Body,writer:writer,flusher:writer.(http.Flusher),remoteAddress:source}
-  var conn net.Conn=logical
-  if n.runtime!=nil{conn=&runtimeNaiveResponseConn{Conn:logical,writer:writer}}
-  n.newConnection(ctx,true,conn,userName,source,destination)
- }
-
+	} else {
+		logical := &naiveH2Conn{reader: request.Body, writer: writer, flusher: writer.(http.Flusher), remoteAddress: source}
+		var conn net.Conn = logical
+		if n.runtime != nil {
+			conn = &runtimeNaiveResponseConn{Conn: logical, writer: writer}
+		}
+		n.newConnection(ctx, true, conn, userName, source, destination)
+	}
 }
 
 func (n *Inbound) newConnection(ctx context.Context, waitForClose bool, conn net.Conn, userName string, source M.Socksaddr, destination M.Socksaddr) {
- var closeCarrier N.CloseHandlerFunc
- if n.runtime!=nil{
-  var err error
-  conn,closeCarrier,err=n.runtime.wrapConnection(ctx,conn,nil)
-  if err!=nil{N.CloseOnHandshakeFailure(conn,nil,err);return}
- }
+	var closeCarrier N.CloseHandlerFunc
+	if n.runtime != nil {
+		var err error
+		conn, closeCarrier, err = n.runtime.wrapConnection(ctx, conn, nil)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, nil, err)
+			return
+		}
+	}
 
 	if userName != "" {
 		n.logger.InfoContext(ctx, "[", userName, "] inbound connection from ", source)
@@ -260,15 +285,20 @@ func (n *Inbound) newConnection(ctx context.Context, waitForClose bool, conn net
 		n.router.RouteConnectionEx(ctx, conn, metadata, closeCarrier)
 	} else {
 		done := make(chan struct{})
-  finish:=N.OnceClose(func(it error){if closeCarrier!=nil{closeCarrier(it)};close(done)})
-  if n.runtime!=nil{
-   // The owned carrier seals writes and interrupts the concrete response
-   // before joining them. The legacy wrapper locks before Close and can
-   // deadlock behind a flow-controlled Write before that interrupt is reached.
-   n.router.RouteConnectionEx(ctx,conn,metadata,finish)
-   <-done
-   return
-  }
+		finish := N.OnceClose(func(it error) {
+			if closeCarrier != nil {
+				closeCarrier(it)
+			}
+			close(done)
+		})
+		if n.runtime != nil {
+			// The owned carrier seals writes and interrupts the concrete response
+			// before joining them. The legacy wrapper locks before Close and can
+			// deadlock behind a flow-controlled Write before that interrupt is reached.
+			n.router.RouteConnectionEx(ctx, conn, metadata, finish)
+			<-done
+			return
+		}
 		wrapper := v2rayhttp.NewHTTP2Wrapper(conn)
 		n.router.RouteConnectionEx(ctx, wrapper, metadata, finish)
 		<-done

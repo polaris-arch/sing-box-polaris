@@ -27,7 +27,7 @@ func RegisterEndpoint(registry *endpoint.Registry) {
 }
 
 type endpointBase struct {
- runtime *runtimeClientState
+	runtime *runtimeClientState
 	endpoint.Adapter
 	router adapter.Router
 	logger log.ContextLogger

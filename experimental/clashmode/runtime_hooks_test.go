@@ -17,5 +17,7 @@ func TestRuntimeRemoveUpdateHookPreservesOtherRegistrations(t *testing.T) {
 	m.AddUpdateHook(first)
 	m.RemoveUpdateHook(first)
 	m.RemoveUpdateHook(first)
-	if len(m.updateHooks) != 1 || m.updateHooks[0] != second { t.Fatal("removal changed another observer or retained duplicate registration") }
+	if len(m.updateHooks) != 1 || m.updateHooks[0] != second {
+		t.Fatal("removal changed another observer or retained duplicate registration")
+	}
 }

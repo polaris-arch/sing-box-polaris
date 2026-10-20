@@ -3,7 +3,7 @@ package cachefile
 import (
 	"context"
 	"encoding/binary"
- "strings"
+	"strings"
 	"time"
 
 	"github.com/sagernet/bbolt"
@@ -118,7 +118,9 @@ func (c *CacheFile) cleanupDNSCache() {
 		}
 		var emptyTransports [][]byte
 		err := bucket.ForEachBucket(func(transportName []byte) error {
-   if strings.HasPrefix(string(transportName), "hot-dns\x00") { return nil }
+			if strings.HasPrefix(string(transportName), "hot-dns\x00") {
+				return nil
+			}
 			transportBucket := bucket.Bucket(transportName)
 			if transportBucket == nil {
 				return nil
@@ -206,7 +208,9 @@ func (c *CacheFile) cleanupRDRC() {
 		}
 		var emptyTransports [][]byte
 		err := bucket.ForEachBucket(func(transportName []byte) error {
-   if strings.HasPrefix(string(transportName), "hot-dns\x00") { return nil }
+			if strings.HasPrefix(string(transportName), "hot-dns\x00") {
+				return nil
+			}
 			transportBucket := bucket.Bucket(transportName)
 			if transportBucket == nil {
 				return nil

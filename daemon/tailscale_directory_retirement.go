@@ -88,7 +88,9 @@ func (r *tailscaleRetirementRun) freezeDirectories(nodes []adapter.TailscaleDire
 		}
 	}
 	r.directoryFinal = &result
-	if complete { r.directoryPreparation = nil }
+	if complete {
+		r.directoryPreparation = nil
+	}
 	// Do not retain an unnecessary live Box graph once original results freeze.
 	r.directoryScopes = nil
 }
@@ -120,7 +122,9 @@ func (s *StartedService) ExportTailscaleDirectoryRetirement() string {
 	for _, run := range s.snapshotTailscaleRetirementRuns() {
 		run.access.Lock()
 		authority := adapter.TailscaleDirectoryDomainFromContext(s.ctx)
-		if run.directoryAuthorityBound { authority = run.directoryAuthority }
+		if run.directoryAuthorityBound {
+			authority = run.directoryAuthority
+		}
 		snapshot := applyDirectoryDomainAuthority(run.directorySnapshotUnderLock(), authority)
 		result.Instances = append(result.Instances, snapshot)
 		run.access.Unlock()

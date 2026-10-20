@@ -61,10 +61,16 @@ func TestAppleClientHandshakeAppliesALPNAndVersion(t *testing.T) {
 			t.Fatalf("iteration %d: %v", index, err)
 		}
 
-        owned, ok := clientConn.(*runtimeTLSConn)
-        if !ok { t.Fatalf("public handshake returned unguarded %T", clientConn) }
-        if _, ok := owned.tlsConn.(*appleTLSConn); !ok { t.Fatalf("wrong provider %T", owned.tlsConn) }
-        if clientConn.NetConn() != owned.raw { t.Fatal("public NetConn lost raw guard") }
+		owned, ok := clientConn.(*runtimeTLSConn)
+		if !ok {
+			t.Fatalf("public handshake returned unguarded %T", clientConn)
+		}
+		if _, ok := owned.tlsConn.(*appleTLSConn); !ok {
+			t.Fatalf("wrong provider %T", owned.tlsConn)
+		}
+		if clientConn.NetConn() != owned.raw {
+			t.Fatal("public NetConn lost raw guard")
+		}
 		clientState := clientConn.ConnectionState()
 		if clientState.Version != stdtls.VersionTLS12 {
 			_ = clientConn.Close()
@@ -74,12 +80,12 @@ func TestAppleClientHandshakeAppliesALPNAndVersion(t *testing.T) {
 			_ = clientConn.Close()
 			t.Fatalf("iteration %d: unexpected negotiated protocol: %q", index, clientState.NegotiatedProtocol)
 		}
-        _ = clientConn.Close()
-        if err := clientConn.HandshakeContext(context.Background()); !errors.Is(err, net.ErrClosed) {
-            t.Fatalf("closed public handshake admitted: %v", err)
-        }
+		_ = clientConn.Close()
+		if err := clientConn.HandshakeContext(context.Background()); !errors.Is(err, net.ErrClosed) {
+			t.Fatalf("closed public handshake admitted: %v", err)
+		}
 
-        result := <-serverResult
+		result := <-serverResult
 		if result.err != nil {
 			t.Fatalf("iteration %d: %v", index, result.err)
 		}
@@ -776,15 +782,25 @@ func dialAppleTestClientConn(t testing.TB, serverAddress string, clientConfig Co
 // Provider-only buffer/read-wait tests deliberately exercise the Apple engine.
 // Ordinary handshake and lifecycle tests retain the public guarded path above.
 func newAppleEngineTestClientConn(t testing.TB, serverAddress string, options option.OutboundTLSOptions) (Conn, error) {
-    t.Helper()
-    config, err := NewClientWithOptions(ClientOptions{Context: context.Background(), Logger: logger.NOP(), Options: options})
-    if err != nil { return nil, err }
-    ctx, cancel := context.WithTimeout(context.Background(), appleTLSTestTimeout)
-    t.Cleanup(cancel)
-    conn, err := net.DialTimeout("tcp", serverAddress, appleTLSTestTimeout)
-    if err != nil { return nil, err }
-    provider, err := aTLS.ClientHandshake(ctx, conn, config)
-    if err != nil { _ = conn.Close(); return nil, err }
-    if _, ok := provider.(*appleTLSConn); !ok { _ = provider.Close(); t.Fatalf("wrong Apple engine %T", provider) }
-    return provider, nil
+	t.Helper()
+	config, err := NewClientWithOptions(ClientOptions{Context: context.Background(), Logger: logger.NOP(), Options: options})
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), appleTLSTestTimeout)
+	t.Cleanup(cancel)
+	conn, err := net.DialTimeout("tcp", serverAddress, appleTLSTestTimeout)
+	if err != nil {
+		return nil, err
+	}
+	provider, err := aTLS.ClientHandshake(ctx, conn, config)
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	if _, ok := provider.(*appleTLSConn); !ok {
+		_ = provider.Close()
+		t.Fatalf("wrong Apple engine %T", provider)
+	}
+	return provider, nil
 }

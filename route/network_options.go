@@ -36,23 +36,23 @@ func BuildNetworkOptions(options option.RouteOptions) (adapter.NetworkOptions, e
 		}
 	}
 	return cloneNetworkOptions(adapter.NetworkOptions{
-		BindInterface: options.DefaultInterface,
-		RoutingMark: uint32(options.DefaultMark),
+		BindInterface:  options.DefaultInterface,
+		RoutingMark:    uint32(options.DefaultMark),
 		DomainResolver: resolver.Server,
 		DomainResolveOptions: adapter.DNSQueryOptions{
-			UseRules: resolver.Mode == option.DomainResolverModeRules,
-			Policy: common.PtrValueOrDefault(resolver.Policy),
-			Strategy: C.DomainStrategy(resolver.Strategy),
-			Timeout: time.Duration(resolver.Timeout),
-			DisableCache: resolver.DisableCache,
+			UseRules:               resolver.Mode == option.DomainResolverModeRules,
+			Policy:                 common.PtrValueOrDefault(resolver.Policy),
+			Strategy:               C.DomainStrategy(resolver.Strategy),
+			Timeout:                time.Duration(resolver.Timeout),
+			DisableCache:           resolver.DisableCache,
 			DisableOptimisticCache: resolver.DisableOptimisticCache,
-			RewriteTTL: resolver.RewriteTTL,
-			ClientSubnet: resolver.ClientSubnet.Build(netip.Prefix{}),
+			RewriteTTL:             resolver.RewriteTTL,
+			ClientSubnet:           resolver.ClientSubnet.Build(netip.Prefix{}),
 		},
-		NetworkStrategy: (*C.NetworkStrategy)(options.DefaultNetworkStrategy),
-		NetworkType: common.Map(options.DefaultNetworkType, option.InterfaceType.Build),
+		NetworkStrategy:     (*C.NetworkStrategy)(options.DefaultNetworkStrategy),
+		NetworkType:         common.Map(options.DefaultNetworkType, option.InterfaceType.Build),
 		FallbackNetworkType: common.Map(options.DefaultFallbackNetworkType, option.InterfaceType.Build),
-		FallbackDelay: time.Duration(options.DefaultFallbackDelay),
+		FallbackDelay:       time.Duration(options.DefaultFallbackDelay),
 	}), nil
 }
 

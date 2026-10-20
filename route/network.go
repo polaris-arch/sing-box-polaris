@@ -14,7 +14,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/settings"
 	"github.com/sagernet/sing-box/common/taskmonitor"
- "github.com/sagernet/sing-box/common/urltest"
+	"github.com/sagernet/sing-box/common/urltest"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-tun"
@@ -34,8 +34,8 @@ import (
 var _ adapter.NetworkManager = (*NetworkManager)(nil)
 
 type NetworkManager struct {
- runtimeInventory RuntimeNetworkInventory
- urlTestHistory *urltest.HistoryStorage
+	runtimeInventory        RuntimeNetworkInventory
+	urlTestHistory          *urltest.HistoryStorage
 	ctx                     context.Context
 	logger                  logger.ContextLogger
 	router                  adapter.Router
@@ -78,19 +78,19 @@ func NewNetworkManager(ctx context.Context, logger logger.ContextLogger, options
 		return nil, err
 	}
 	nm := &NetworkManager{
- urlTestHistory: service.PtrFromContext[urltest.HistoryStorage](ctx),
+		urlTestHistory:      service.PtrFromContext[urltest.HistoryStorage](ctx),
 		ctx:                 ctx,
 		logger:              logger,
 		interfaceFinder:     control.NewDefaultInterfaceFinder(),
 		autoDetectInterface: options.AutoDetectInterface,
-		defaultOptions: defaultOptions,
-		pauseManager:      service.FromContext[pause.Manager](ctx),
-		platformInterface: service.FromContext[adapter.PlatformInterface](ctx),
-		connectionManager: service.FromContext[adapter.ConnectionManager](ctx),
-		endpoint:          service.FromContext[adapter.EndpointManager](ctx),
-		inbound:           service.FromContext[adapter.InboundManager](ctx),
-		outbound:          service.FromContext[adapter.OutboundManager](ctx),
-		needWIFIState:     hasRule(options.Rules, isWIFIRule) || hasDNSRule(dnsOptions.Rules, isWIFIDNSRule),
+		defaultOptions:      defaultOptions,
+		pauseManager:        service.FromContext[pause.Manager](ctx),
+		platformInterface:   service.FromContext[adapter.PlatformInterface](ctx),
+		connectionManager:   service.FromContext[adapter.ConnectionManager](ctx),
+		endpoint:            service.FromContext[adapter.EndpointManager](ctx),
+		inbound:             service.FromContext[adapter.InboundManager](ctx),
+		outbound:            service.FromContext[adapter.OutboundManager](ctx),
+		needWIFIState:       hasRule(options.Rules, isWIFIRule) || hasDNSRule(dnsOptions.Rules, isWIFIDNSRule),
 	}
 	usePlatformDefaultInterfaceMonitor := nm.platformInterface != nil && nm.platformInterface.UsePlatformDefaultInterfaceMonitor()
 	enforceInterfaceMonitor := options.AutoDetectInterface
@@ -462,8 +462,12 @@ func (r *NetworkManager) ResetNetwork(ctx context.Context) {
 
 	if r.runtimeInventory != nil {
 		r.runtimeInventory.VisitRuntimeNetwork(ctx, func(bound context.Context, outbound adapter.Outbound, router adapter.Router) {
-			if listener, ok := outbound.(adapter.InterfaceUpdateListener); ok { listener.InterfaceUpdated(bound) }
-			if router != nil { router.ResetNetwork() }
+			if listener, ok := outbound.(adapter.InterfaceUpdateListener); ok {
+				listener.InterfaceUpdated(bound)
+			}
+			if router != nil {
+				router.ResetNetwork()
+			}
 		})
 		return
 	}
@@ -481,7 +485,9 @@ func (r *NetworkManager) ReleaseMemory(ctx context.Context) {
 	r.ResetNetwork(ctx)
 	if r.runtimeInventory != nil {
 		r.runtimeInventory.VisitRuntimeNetwork(ctx, func(_ context.Context, outbound adapter.Outbound, _ adapter.Router) {
-			if keeper, ok := outbound.(adapter.IdleConnectionKeeper); ok { keeper.CloseIdleConnections() }
+			if keeper, ok := outbound.(adapter.IdleConnectionKeeper); ok {
+				keeper.CloseIdleConnections()
+			}
 		})
 		return
 	}
@@ -497,11 +503,13 @@ func (r *NetworkManager) notifyInterfaceUpdate(_ *control.Interface, _ int) {
 	r.interfaceUpdateAccess.Lock()
 	defer r.interfaceUpdateAccess.Unlock()
 	r.networkResetPending = true
- // Invalidate before any early offline/not-started return. Only this transition
- // owner advances history; ResetNetwork has unrelated callers.
- r.urlTestHistory.AdvanceNetworkEpoch()
- if r.interfaceUpdateCancel != nil { r.interfaceUpdateCancel() }
- if r.startedCtx != nil {
+	// Invalidate before any early offline/not-started return. Only this transition
+	// owner advances history; ResetNetwork has unrelated callers.
+	r.urlTestHistory.AdvanceNetworkEpoch()
+	if r.interfaceUpdateCancel != nil {
+		r.interfaceUpdateCancel()
+	}
+	if r.startedCtx != nil {
 		r.dispatchInterfaceUpdateLocked()
 	}
 }
@@ -542,16 +550,16 @@ func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *
 			return it.Interface.Index == defaultInterface.Index
 		})
 		// Platform metadata can lag the monitor. Prepare using the existing
-        // DefaultNetworkInterface fallback, without inventing metadata.
-        if networkInterface.Name != "" {
-        options = append(options, F.ToString("type ", networkInterface.Type))
-		if networkInterface.Expensive {
-			options = append(options, "expensive")
+		// DefaultNetworkInterface fallback, without inventing metadata.
+		if networkInterface.Name != "" {
+			options = append(options, F.ToString("type ", networkInterface.Type))
+			if networkInterface.Expensive {
+				options = append(options, "expensive")
+			}
+			if networkInterface.Constrained {
+				options = append(options, "constrained")
+			}
 		}
-		if networkInterface.Constrained {
-			options = append(options, "constrained")
-		}
-        }
 	}
 	r.logger.Info("updated default interface ", defaultInterface.Name, ", ", strings.Join(options, ", "))
 	r.UpdateWIFIState(ctx)
@@ -560,12 +568,18 @@ func (r *NetworkManager) updateInterface(ctx context.Context, defaultInterface *
 	}
 	r.updateNetworkEnvironment()
 	r.interfaceUpdateAccess.Lock()
-	if ctx.Err() != nil { r.interfaceUpdateAccess.Unlock(); return }
-    // Readiness follows environment preparation. Holding the interface guard
-    // through Wake prevents an old update waking a newer offline transition.
-    if r.urlTestHistory != nil && !r.urlTestHistory.MarkReady(epoch) { r.interfaceUpdateAccess.Unlock(); return }
-    r.pauseManager.NetworkWake()
-    resetNetwork := r.networkResetPending
+	if ctx.Err() != nil {
+		r.interfaceUpdateAccess.Unlock()
+		return
+	}
+	// Readiness follows environment preparation. Holding the interface guard
+	// through Wake prevents an old update waking a newer offline transition.
+	if r.urlTestHistory != nil && !r.urlTestHistory.MarkReady(epoch) {
+		r.interfaceUpdateAccess.Unlock()
+		return
+	}
+	r.pauseManager.NetworkWake()
+	resetNetwork := r.networkResetPending
 	if resetNetwork {
 		r.networkResetPending = false
 	}

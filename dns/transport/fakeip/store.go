@@ -24,10 +24,10 @@ type Store struct {
 	inet6Last  netip.Addr
 	storage    adapter.FakeIPStorage
 
-	addressAccess sync.Mutex
-	inet4Current  netip.Addr
-	inet6Current  netip.Addr
-	reservedCount int
+	addressAccess      sync.Mutex
+	inet4Current       netip.Addr
+	inet6Current       netip.Addr
+	reservedCount      int
 	reservationStorage adapter.FakeIPStorage // addressAccess; reservation belongs to this exact handle
 }
 
@@ -134,7 +134,9 @@ func (s *Store) Create(domain string, isIPv6 bool) (netip.Addr, error) {
 	} else if isIPv6 && !s.inet6Current.IsValid() {
 		return netip.Addr{}, E.New("missing IPv6 fakeip address range")
 	}
-	if err := s.reserveMetadata(s.storage); err != nil { return netip.Addr{}, err }
+	if err := s.reserveMetadata(s.storage); err != nil {
+		return netip.Addr{}, err
+	}
 	s.reservedCount--
 	var address netip.Addr
 	if !isIPv6 {
@@ -169,26 +171,28 @@ func (s *Store) storeMapping(address netip.Addr, domain string) error {
 // Caller holds addressAccess. Manager calls this before its data fence while
 // allocationAccess serializes only allocators; recognition and flow pins proceed.
 func (s *Store) reserveMetadata(storage adapter.FakeIPStorage) error {
-	if s.reservationStorage == storage && s.reservedCount != 0 { return nil }
-		metadata := &adapter.FakeIPMetadata{
-			Inet4Range:   s.inet4Range,
-			Inet6Range:   s.inet6Range,
-			Inet4Current: s.inet4Current,
-			Inet6Current: s.inet6Current,
+	if s.reservationStorage == storage && s.reservedCount != 0 {
+		return nil
+	}
+	metadata := &adapter.FakeIPMetadata{
+		Inet4Range:   s.inet4Range,
+		Inet6Range:   s.inet6Range,
+		Inet4Current: s.inet4Current,
+		Inet6Current: s.inet6Current,
+	}
+	for range reservedAddressCount {
+		if metadata.Inet4Current.IsValid() {
+			metadata.Inet4Current = nextAddress(s.inet4Range, s.inet4Last, metadata.Inet4Current)
 		}
-		for range reservedAddressCount {
-			if metadata.Inet4Current.IsValid() {
-				metadata.Inet4Current = nextAddress(s.inet4Range, s.inet4Last, metadata.Inet4Current)
-			}
-			if metadata.Inet6Current.IsValid() {
-				metadata.Inet6Current = nextAddress(s.inet6Range, s.inet6Last, metadata.Inet6Current)
-			}
+		if metadata.Inet6Current.IsValid() {
+			metadata.Inet6Current = nextAddress(s.inet6Range, s.inet6Last, metadata.Inet6Current)
 		}
-		err := storage.FakeIPSaveMetadata(metadata)
-		if err != nil {
-			return E.Cause(err, "save fakeip metadata")
-		}
-		s.reservedCount = reservedAddressCount
+	}
+	err := storage.FakeIPSaveMetadata(metadata)
+	if err != nil {
+		return E.Cause(err, "save fakeip metadata")
+	}
+	s.reservedCount = reservedAddressCount
 	s.reservationStorage = storage
 	return nil
 }

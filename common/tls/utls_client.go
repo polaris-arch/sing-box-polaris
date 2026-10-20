@@ -513,4 +513,8 @@ func uTLSClientHelloID(name string) (utls.ClientHelloID, error) {
 	return utls.ClientHelloID{}, E.New("unknown uTLS fingerprint: ", name)
 }
 
-func(c *UTLSClientConfig)withRuntimeContext(ctx context.Context)Config{copy:=c.Clone().(*UTLSClientConfig);copy.ctx=ctx;return copy}
+func (c *UTLSClientConfig) withRuntimeContext(ctx context.Context) Config {
+	copy := c.Clone().(*UTLSClientConfig)
+	copy.ctx = ctx
+	return copy
+}

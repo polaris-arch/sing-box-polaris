@@ -608,7 +608,9 @@ func (s *Box) startInternalServices(stage adapter.StartStage) error {
 }
 
 func (s *Box) preStart() error {
-	if s.runtime != nil { return s.preStartRuntime() }
+	if s.runtime != nil {
+		return s.preStartRuntime()
+	}
 	monitor := taskmonitor.New(s.logger, C.StartTimeout)
 	monitor.Start("start logger")
 	err := s.logFactory.Start()
@@ -661,7 +663,9 @@ func (s *Box) preStart() error {
 }
 
 func (s *Box) start() error {
-	if s.runtime != nil { return s.startRuntime() }
+	if s.runtime != nil {
+		return s.startRuntime()
+	}
 	err := s.preStart()
 	if err != nil {
 		return err
@@ -785,7 +789,9 @@ func (s *Box) Network() adapter.NetworkManager {
 }
 
 func (s *Box) Router() adapter.Router {
-	if s.runtime != nil { return s.runtime.gateway }
+	if s.runtime != nil {
+		return s.runtime.gateway
+	}
 	return s.router
 }
 
@@ -794,7 +800,9 @@ func (s *Box) Inbound() adapter.InboundManager {
 }
 
 func (s *Box) Outbound() adapter.OutboundManager {
-	if s.runtime != nil { return &runtimeOutboundManager{s.runtime} }
+	if s.runtime != nil {
+		return &runtimeOutboundManager{s.runtime}
+	}
 	return s.outbound
 }
 
@@ -811,7 +819,9 @@ func (s *Box) CloseIdleConnections() {
 		if s.runtime.reference != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), C.StopTimeout)
 			defer cancel()
-			if err := s.runtime.reference.CloseIdleConnections(ctx); err != nil { s.logger.Warn("runtime idle close incomplete: ", err) }
+			if err := s.runtime.reference.CloseIdleConnections(ctx); err != nil {
+				s.logger.Warn("runtime idle close incomplete: ", err)
+			}
 		}
 		return
 	}

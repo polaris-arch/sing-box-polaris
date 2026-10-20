@@ -78,7 +78,10 @@ func newHTTP3Client(options ClientOptions, authorization string) (http3Client, e
 
 func (c *http3ClientImpl) acquire(ctx context.Context) (*http3.ClientConn, error) {
 	c.access.Lock()
-	if c.closed { c.access.Unlock(); return nil, net.ErrClosed }
+	if c.closed {
+		c.access.Unlock()
+		return nil, net.ErrClosed
+	}
 	if c.conn != nil && c.conn.Context().Err() == nil {
 		connection := c.conn
 		c.access.Unlock()
@@ -92,12 +95,17 @@ func (c *http3ClientImpl) acquire(ctx context.Context) (*http3.ClientConn, error
 	// publication and cancels/joins that operation without holding this lock.
 	rawConn, err := c.dialer.DialContext(ctx, N.NetworkUDP, c.server)
 	if err != nil {
-		if ctx.Err() != nil { return nil, ctx.Err() }
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
-	stdConfig,err:=c.tlsConfig.STDConfig()
-	if err!=nil{c.recordClose(closeHTTPResource(rawConn.Close));return nil,err}
-	quicSession, err := httpclient.DialRuntimeQUIC(ctx, rawConn, stdConfig, c.quicConfig,c.recordClose)
+	stdConfig, err := c.tlsConfig.STDConfig()
+	if err != nil {
+		c.recordClose(closeHTTPResource(rawConn.Close))
+		return nil, err
+	}
+	quicSession, err := httpclient.DialRuntimeQUIC(ctx, rawConn, stdConfig, c.quicConfig, c.recordClose)
 	if err != nil {
 		return nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
@@ -202,13 +210,19 @@ func (c *http3ClientImpl) OpenTunnel(ctx context.Context, request tunnelRequest)
 
 func closeHTTP3Connection(connection *http3.ClientConn, raw *httpclient.RuntimeQUICSession) error {
 	var closeErrors []error
-	if raw != nil { closeErrors = append(closeErrors, closeHTTPResource(raw.Close)) }
-	if connection != nil { closeErrors = append(closeErrors, closeHTTPResource(func() error { return connection.CloseWithError(0, "") })) }
+	if raw != nil {
+		closeErrors = append(closeErrors, closeHTTPResource(raw.Close))
+	}
+	if connection != nil {
+		closeErrors = append(closeErrors, closeHTTPResource(func() error { return connection.CloseWithError(0, "") }))
+	}
 	return errors.Join(closeErrors...)
 }
 
 func (c *http3ClientImpl) recordClose(err error) {
-	if err == nil || httpAlreadyClosed(err) { return }
+	if err == nil || httpAlreadyClosed(err) {
+		return
+	}
 	c.access.Lock()
 	c.closeErr = errors.Join(c.closeErr, err)
 	c.access.Unlock()
@@ -216,7 +230,10 @@ func (c *http3ClientImpl) recordClose(err error) {
 
 func (c *http3ClientImpl) ResetConnection() {
 	c.access.Lock()
-	if c.closed { c.access.Unlock(); return }
+	if c.closed {
+		c.access.Unlock()
+		return
+	}
 	connection, raw := c.conn, c.rawConn
 	c.conn, c.rawConn = nil, nil
 	c.epoch++
@@ -349,4 +366,4 @@ var (
 	_ DatagramStream = (*http3RequestDatagramStream)(nil)
 )
 
-func(c *http3ClientImpl)RuntimeCloseAndWait()error{return c.Close()}
+func (c *http3ClientImpl) RuntimeCloseAndWait() error { return c.Close() }

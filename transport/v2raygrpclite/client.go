@@ -8,8 +8,8 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"os"
-	"sync/atomic"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -34,8 +34,8 @@ var defaultClientHeader = http.Header{
 }
 
 type Client struct {
-	boundary *httpclient.RuntimeTransportBoundary
-	source adapter.RuntimeResourceSource
+	boundary   *httpclient.RuntimeTransportBoundary
+	source     adapter.RuntimeResourceSource
 	ctx        context.Context
 	serverAddr M.Socksaddr
 	transport  *http2.Transport
@@ -83,19 +83,38 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 		}
 	}
 
-	client.source,_=adapter.RuntimeResourceSourceFromContext(ctx)
-	client.boundary=httpclient.NewRuntimeTransportBoundary(func()error{client.transport.CloseIdleConnections();return nil})
+	client.source, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	client.boundary = httpclient.NewRuntimeTransportBoundary(func() error { client.transport.CloseIdleConnections(); return nil })
 	client.boundary.BindHTTP2(client.transport)
 	return client
 }
 
-func(c *Client)DialContext(ctx context.Context)(net.Conn,error){
-	ctx,release,err:=adapter.AcquireRuntimeOperation(ctx,c.source);if err!=nil{return nil,err}
-	leave,err:=c.boundary.Acquire();if err!=nil{release();return nil,err};defer leave()
-	if c.source!=nil{ctx,err=outbound.ContextForRuntimeOwnedSession(ctx,c.source);if err!=nil{release();return nil,err}}
-	conn,err:=c.dialContextOwned(ctx);if err!=nil{release();return nil,err}
-	return outbound.WrapRuntimeConn(ctx,release,conn),nil
+func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
+	ctx, release, err := adapter.AcquireRuntimeOperation(ctx, c.source)
+	if err != nil {
+		return nil, err
+	}
+	leave, err := c.boundary.Acquire()
+	if err != nil {
+		release()
+		return nil, err
+	}
+	defer leave()
+	if c.source != nil {
+		ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, c.source)
+		if err != nil {
+			release()
+			return nil, err
+		}
+	}
+	conn, err := c.dialContextOwned(ctx)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	return outbound.WrapRuntimeConn(ctx, release, conn), nil
 }
+
 func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 	pipeInReader, pipeInWriter := io.Pipe()
 	requestCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
@@ -118,10 +137,10 @@ func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 		handshakeTimeout = time.Until(deadline)
 	}
 	var handshakeTimedOut atomic.Bool
-	timerDone:=make(chan struct{})
+	timerDone := make(chan struct{})
 	var timerOnce sync.Once
 	handshakeTimer := time.AfterFunc(handshakeTimeout, func() {
-		defer timerOnce.Do(func(){close(timerDone)})
+		defer timerOnce.Do(func() { close(timerDone) })
 		handshakeTimedOut.Store(true)
 		cancel()
 	})
@@ -129,18 +148,42 @@ func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 	// returning does not mark the stream as established; the request headers being written does.
 	request = request.WithContext(httptrace.WithClientTrace(requestCtx, &httptrace.ClientTrace{
 		WroteHeaders: func() {
-			if handshakeTimer.Stop(){timerOnce.Do(func(){close(timerDone)})}
+			if handshakeTimer.Stop() {
+				timerOnce.Do(func() { close(timerDone) })
+			}
 		},
 	}))
-	workerCtx,releaseWorker,workerErr:=adapter.AcquireRuntimeOperation(ctx,nil)
-	if workerErr!=nil{if handshakeTimer.Stop(){timerOnce.Do(func(){close(timerDone)})};<-timerDone;cancel();_ = pipeInWriter.Close();_ = pipeInReader.Close();return nil,workerErr}
-	leaveWorker,workerErr:=c.boundary.Acquire()
-	if workerErr!=nil{if handshakeTimer.Stop(){timerOnce.Do(func(){close(timerDone)})};<-timerDone;releaseWorker();cancel();_ = pipeInWriter.Close();_ = pipeInReader.Close();return nil,workerErr}
+	workerCtx, releaseWorker, workerErr := adapter.AcquireRuntimeOperation(ctx, nil)
+	if workerErr != nil {
+		if handshakeTimer.Stop() {
+			timerOnce.Do(func() { close(timerDone) })
+		}
+		<-timerDone
+		cancel()
+		_ = pipeInWriter.Close()
+		_ = pipeInReader.Close()
+		return nil, workerErr
+	}
+	leaveWorker, workerErr := c.boundary.Acquire()
+	if workerErr != nil {
+		if handshakeTimer.Stop() {
+			timerOnce.Do(func() { close(timerDone) })
+		}
+		<-timerDone
+		releaseWorker()
+		cancel()
+		_ = pipeInWriter.Close()
+		_ = pipeInReader.Close()
+		return nil, workerErr
+	}
 	_ = workerCtx // The retained capability owns the existing request context.
 	go func() {
-		defer leaveWorker();defer releaseWorker()
-		response, err := c.boundary.RoundTrip(request,c.transport.RoundTrip)
-		if handshakeTimer.Stop(){timerOnce.Do(func(){close(timerDone)})}
+		defer leaveWorker()
+		defer releaseWorker()
+		response, err := c.boundary.RoundTrip(request, c.transport.RoundTrip)
+		if handshakeTimer.Stop() {
+			timerOnce.Do(func() { close(timerDone) })
+		}
 		<-timerDone
 		if err != nil {
 			if handshakeTimedOut.Load() {
@@ -172,7 +215,7 @@ func (c *Client) CloseIdleConnections() {
 	c.transport.CloseIdleConnections()
 }
 
-func(c *Client)Close()error{return c.boundary.RuntimeCloseAndWait()}
-func(c *Client)RuntimeCloseAndWait()error{return c.Close()}
+func (c *Client) Close() error               { return c.boundary.RuntimeCloseAndWait() }
+func (c *Client) RuntimeCloseAndWait() error { return c.Close() }
 
-func(c *Client)StopRuntimeOperations(){c.boundary.StopRuntimeOperations()}
+func (c *Client) StopRuntimeOperations() { c.boundary.StopRuntimeOperations() }

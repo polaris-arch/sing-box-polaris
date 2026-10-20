@@ -64,7 +64,9 @@ func (t *Transport) serverSetFor(systemConfig *systemconfig.Config) (*localServe
 	oldServerSet := t.swapServerSet(newServerSet)
 	if t.producersStopped.Load() {
 		for _, server := range newServerSet.transports {
-			if producer, ok := server.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+			if producer, ok := server.(interface{ StopRuntimeProducers() }); ok {
+				producer.StopRuntimeProducers()
+			}
 		}
 	}
 	if oldServerSet != nil {
@@ -136,7 +138,9 @@ func newNameExchanger(systemConfig *systemconfig.Config, serverSet *localServerS
 
 func (t *Transport) requestServerRefresh() {
 	t.refresh.Request(&t.producers, t.producerCtx, 0, t.serverScopes.WaitReady, func(ctx context.Context) bool {
-		if ctx.Err() != nil { return false }
+		if ctx.Err() != nil {
+			return false
+		}
 		_, err := t.serverSetFor(loadConfiguration(t.configSource))
 		return errors.Is(err, lifecycle.ErrSocketCohortBusy)
 	})

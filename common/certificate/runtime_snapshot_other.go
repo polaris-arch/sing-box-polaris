@@ -3,5 +3,6 @@
 package certificate
 
 type snapshotPlatform struct{}
-func newSnapshotPlatform([]byte)(snapshotPlatform,error){return snapshotPlatform{},nil}
-func(snapshotPlatform)release(){}
+
+func newSnapshotPlatform([]byte) (snapshotPlatform, error) { return snapshotPlatform{}, nil }
+func (snapshotPlatform) release()                          {}

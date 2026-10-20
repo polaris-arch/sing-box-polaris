@@ -2,9 +2,9 @@ package mux
 
 import (
 	"context"
+	"net"
 	"sync"
 	"syscall"
-	"net"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -22,12 +22,12 @@ import (
 // close, but can no longer reach a retired dialer, TLS object or detour.
 type Client struct {
 	*mux.Client
-	source adapter.RuntimeResourceSource
-	stop context.Context
-	cancel context.CancelFunc
-	fences *outbound.RuntimeIOFenceSet
+	source      adapter.RuntimeResourceSource
+	stop        context.Context
+	cancel      context.CancelFunc
+	fences      *outbound.RuntimeIOFenceSet
 	cleanupOnce sync.Once
-	cleanupErr error
+	cleanupErr  error
 }
 
 func NewClientWithOptions(dialer N.Dialer, logger logger.Logger, options option.OutboundMultiplexOptions) (*Client, error) {
@@ -65,7 +65,10 @@ func NewClientWithContext(ctx context.Context, dialer N.Dialer, logger logger.Lo
 		Padding:        options.Padding,
 		Brutal:         brutalOptions,
 	})
-	if err != nil { cancel(); return nil, err }
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 	client.Client = inner
 	return client, nil
 }
@@ -77,45 +80,77 @@ type clientDialer struct {
 
 func (d *clientDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	ctx = adapter.ContextForMultiplexSession(ctx)
-	if d.owner.source == nil { return d.Dialer.DialContext(ctx, network, destination) }
+	if d.owner.source == nil {
+		return d.Dialer.DialContext(ctx, network, destination)
+	}
 	creation, err := d.owner.fences.Begin()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer creation.Done()
 	ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, d.owner.source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	callbackDone := make(chan struct{})
 	stop := context.AfterFunc(d.owner.stop, func() { defer close(callbackDone); cancel() })
-	defer func() { if !stop() { <-callbackDone }; cancel() }()
+	defer func() {
+		if !stop() {
+			<-callbackDone
+		}
+		cancel()
+	}()
 	conn, err := d.Dialer.DialContext(ctx, network, destination)
 	if err != nil {
-		if conn != nil { _, fence := outbound.WrapRuntimeOwnedConn(conn); d.owner.fences.Record(fence.RuntimeCloseAndWait()) }
+		if conn != nil {
+			_, fence := outbound.WrapRuntimeOwnedConn(conn)
+			d.owner.fences.Record(fence.RuntimeCloseAndWait())
+		}
 		return nil, err
 	}
 	wrapped, fence := outbound.WrapRuntimeOwnedConn(conn)
-	if err := creation.Register(fence); err != nil { return nil, err }
+	if err := creation.Register(fence); err != nil {
+		return nil, err
+	}
 	return &runtimeMuxConn{Conn: wrapped}, nil
 }
 
 func (d *clientDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	ctx = adapter.ContextForMultiplexSession(ctx)
-	if d.owner.source == nil { return d.Dialer.ListenPacket(ctx, destination) }
+	if d.owner.source == nil {
+		return d.Dialer.ListenPacket(ctx, destination)
+	}
 	creation, err := d.owner.fences.Begin()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer creation.Done()
 	ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, d.owner.source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	callbackDone := make(chan struct{})
 	stop := context.AfterFunc(d.owner.stop, func() { defer close(callbackDone); cancel() })
-	defer func() { if !stop() { <-callbackDone }; cancel() }()
+	defer func() {
+		if !stop() {
+			<-callbackDone
+		}
+		cancel()
+	}()
 	conn, err := d.Dialer.ListenPacket(ctx, destination)
 	if err != nil {
-		if conn != nil { _, fence := outbound.WrapRuntimeOwnedPacketConn(conn); d.owner.fences.Record(fence.RuntimeCloseAndWait()) }
+		if conn != nil {
+			_, fence := outbound.WrapRuntimeOwnedPacketConn(conn)
+			d.owner.fences.Record(fence.RuntimeCloseAndWait())
+		}
 		return nil, err
 	}
 	wrapped, fence := outbound.WrapRuntimeOwnedPacketConn(conn)
-	if err := creation.Register(fence); err != nil { return nil, err }
+	if err := creation.Register(fence); err != nil {
+		return nil, err
+	}
 	return wrapped, nil
 }
 
@@ -134,7 +169,8 @@ func (c *Client) RuntimeCloseAndWait() error {
 // TCP Brutal requires syscall.Conn through encrypted protocol wrappers. This
 // private physical-session adapter exposes only descriptor callbacks guarded
 // by the already-registered owned carrier, never an unwrapped connection.
-type runtimeMuxConn struct { net.Conn }
+type runtimeMuxConn struct{ net.Conn }
+
 func (c *runtimeMuxConn) SyscallConn() (syscall.RawConn, error) {
 	return outbound.RuntimeSyscallConn(c.Conn)
 }

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
-	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/common/logger"
 )
 
 var ErrRuntimeClosePending = errors.New("runtime connection close is still in progress")
@@ -30,17 +30,25 @@ func RegisterRuntimeCleanup(ctx context.Context, cleanup func() error) (bool, er
 		started.Store(true)
 		return cleanup()
 	})
-	if err != nil { return true, err }
-	if err = ctx.Err(); err != nil { return true, err }
-	if err = adapter.ConstructionScopeErr(ctx); err != nil { return true, err }
-	if started.Load() { return true, os.ErrClosed }
+	if err != nil {
+		return true, err
+	}
+	if err = ctx.Err(); err != nil {
+		return true, err
+	}
+	if err = adapter.ConstructionScopeErr(ctx); err != nil {
+		return true, err
+	}
+	if started.Load() {
+		return true, os.ErrClosed
+	}
 	return true, nil
 }
 
 // RuntimeCloseWaiter is implemented by the actual component owning its worker
 // slots. Close alone is not evidence that those workers or native callbacks left.
 // It must seal scheduling, interrupt owned carriers, then join actual completion.
-type RuntimeCloseWaiter interface { RuntimeCloseAndWait() error }
+type RuntimeCloseWaiter interface{ RuntimeCloseAndWait() error }
 
 // CloseRuntimeResource keeps an unknown component's exact dependency closure
 // charged. The diagnostic intentionally does not wrap canceled/closed errors:
@@ -69,44 +77,76 @@ func runtimeBound(ctx context.Context, source adapter.RuntimeResourceSource) boo
 // transports must not use this for idle owned sessions: those are joined by
 // their component's sole close worker, without external self-leases.
 func DialRuntimeConn(ctx context.Context, source adapter.RuntimeResourceSource, dial func(context.Context) (net.Conn, error)) (net.Conn, error) {
-	if !runtimeBound(ctx, source) { return dial(ctx) }
+	if !runtimeBound(ctx, source) {
+		return dial(ctx)
+	}
 	internal, err := ValidateRuntimeOwnedSession(ctx, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	owned, release, err := adapter.AcquireRuntimeOperation(ctx, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	// Deliberately no unconditional defer: a panic provides no evidence that
 	// asynchronous work started by the call has ended.
 	conn, err := dial(owned)
 	if err != nil {
 		if conn != nil {
 			closeErr := closeRuntimeCarrier(func() error { return closeRuntimeOwnedCarrier(conn) })
-			if closeErr != nil { return nil, errors.Join(err, closeErr) }
+			if closeErr != nil {
+				return nil, errors.Join(err, closeErr)
+			}
 		}
-		if !runtimeCleanupIncomplete(err) { release() }
+		if !runtimeCleanupIncomplete(err) {
+			release()
+		}
 		return nil, err
 	}
-	if conn == nil { release(); return nil, errors.New("runtime dial returned no connection") }
-	if internal { release(); return conn, nil }
+	if conn == nil {
+		release()
+		return nil, errors.New("runtime dial returned no connection")
+	}
+	if internal {
+		release()
+		return conn, nil
+	}
 	return WrapRuntimeConn(owned, release, conn), nil
 }
 
 func ListenRuntimePacket(ctx context.Context, source adapter.RuntimeResourceSource, listen func(context.Context) (net.PacketConn, error)) (net.PacketConn, error) {
-	if !runtimeBound(ctx, source) { return listen(ctx) }
+	if !runtimeBound(ctx, source) {
+		return listen(ctx)
+	}
 	internal, err := ValidateRuntimeOwnedSession(ctx, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	owned, release, err := adapter.AcquireRuntimeOperation(ctx, source)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	conn, err := listen(owned)
 	if err != nil {
 		if conn != nil {
 			closeErr := closeRuntimeCarrier(func() error { return closeRuntimeOwnedCarrier(conn) })
-			if closeErr != nil { return nil, errors.Join(err, closeErr) }
+			if closeErr != nil {
+				return nil, errors.Join(err, closeErr)
+			}
 		}
-		if !runtimeCleanupIncomplete(err) { release() }
+		if !runtimeCleanupIncomplete(err) {
+			release()
+		}
 		return nil, err
 	}
-	if conn == nil { release(); return nil, errors.New("runtime listen returned no packet connection") }
-	if internal { release(); return conn, nil }
+	if conn == nil {
+		release()
+		return nil, errors.New("runtime listen returned no packet connection")
+	}
+	if internal {
+		release()
+		return conn, nil
+	}
 	return WrapRuntimePacketConn(owned, release, conn), nil
 }
 
@@ -130,40 +170,48 @@ func WrapRuntimePacketConn(ctx context.Context, release func(), conn net.PacketC
 // retains the existing runtimegraph leases under its own owner mutex via Fork.
 // No lock is held while performing network I/O, user callbacks, Close or joins.
 type runtimeCarrier struct {
-	mu sync.Mutex
-	ctx context.Context
-	release func()
-	closing bool
-	closeDone bool
-	closeErr error
-	closeSignal chan struct{}
+	mu           sync.Mutex
+	ctx          context.Context
+	release      func()
+	closing      bool
+	closeDone    bool
+	closeErr     error
+	closeSignal  chan struct{}
 	sealedSignal chan struct{}
-	owned bool
-	ownedClose func() error // immutable, installed before publication
-	methods sync.WaitGroup
+	owned        bool
+	ownedClose   func() error // immutable, installed before publication
+	methods      sync.WaitGroup
 }
 
 func (s *runtimeCarrier) begin() (func(), error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closing { return nil, net.ErrClosed }
-	if s.owned { s.methods.Add(1); return s.methods.Done, nil }
+	if s.closing {
+		return nil, net.ErrClosed
+	}
+	if s.owned {
+		s.methods.Add(1)
+		return s.methods.Done, nil
+	}
 	_, release, err := adapter.AcquireRuntimeOperation(s.ctx, nil)
 	return release, err
 }
 
-type runtimeCleanupError struct { message string }
-func (e *runtimeCleanupError) Error() string { return e.message }
+type runtimeCleanupError struct{ message string }
+
+func (e *runtimeCleanupError) Error() string                { return e.message }
 func (*runtimeCleanupError) RuntimeCleanupIncomplete() bool { return true }
 
 func runtimeCleanupIncomplete(err error) bool {
- var marker interface { RuntimeCleanupIncomplete() bool }
- return errors.As(err, &marker) && marker.RuntimeCleanupIncomplete()
+	var marker interface{ RuntimeCleanupIncomplete() bool }
+	return errors.As(err, &marker) && marker.RuntimeCleanupIncomplete()
 }
 
 func closeRuntimeCarrier(closeFn func() error) (err error) {
 	defer func() {
-		if recover() != nil { err = &runtimeCleanupError{"runtime carrier close panicked; completion unknown"} }
+		if recover() != nil {
+			err = &runtimeCleanupError{"runtime carrier close panicked; completion unknown"}
+		}
 	}()
 	if err = closeFn(); err != nil {
 		return &runtimeCleanupError{fmt.Sprintf("runtime carrier close failed; completion unknown: %v", err)}
@@ -175,12 +223,16 @@ func (s *runtimeCarrier) close(closeFn func() error) error {
 	s.mu.Lock()
 	if s.closing {
 		err := s.closeErr
-		if !s.closeDone { err = ErrRuntimeClosePending }
+		if !s.closeDone {
+			err = ErrRuntimeClosePending
+		}
 		s.mu.Unlock()
 		return err
 	}
 	s.closing = true
-	if s.sealedSignal != nil { close(s.sealedSignal) }
+	if s.sealedSignal != nil {
+		close(s.sealedSignal)
+	}
 	s.mu.Unlock()
 	if s.owned {
 		// Public Close only requests the single fixed cleanup. Its caller may
@@ -197,93 +249,217 @@ func (s *runtimeCarrier) finishClose(closeFn func() error) error {
 	s.closeErr, s.closeDone = err, true
 	close(s.closeSignal)
 	release := s.release
-	if err == nil { s.release = nil }
+	if err == nil {
+		s.release = nil
+	}
 	s.mu.Unlock()
-	if err == nil && release != nil { release() }
+	if err == nil && release != nil {
+		release()
+	}
 	return err
 }
 
-type runtimeConn struct { conn net.Conn; state *runtimeCarrier; local, remote net.Addr }
+type runtimeConn struct {
+	conn          net.Conn
+	state         *runtimeCarrier
+	local, remote net.Addr
+}
 
 func (c *runtimeConn) Read(p []byte) (int, error) {
-	release, err := c.state.begin(); if err != nil { return 0, err }
-	n, err := c.conn.Read(p); release(); return n, err
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, err
+	}
+	n, err := c.conn.Read(p)
+	release()
+	return n, err
 }
+
 func (c *runtimeConn) Write(p []byte) (int, error) {
-	release, err := c.state.begin(); if err != nil { return 0, err }
-	n, err := c.conn.Write(p); release(); return n, err
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, err
+	}
+	n, err := c.conn.Write(p)
+	release()
+	return n, err
 }
-func (c *runtimeConn) Close() error { return c.state.close(func() error { return closeRuntimeOwnedCarrier(c.conn) }) }
+
+func (c *runtimeConn) Close() error {
+	return c.state.close(func() error { return closeRuntimeOwnedCarrier(c.conn) })
+}
+
 func (c *runtimeConn) LocalAddr() net.Addr {
-	release, err := c.state.begin(); if err != nil { return c.local }
-	value := c.conn.LocalAddr(); release(); return value
+	release, err := c.state.begin()
+	if err != nil {
+		return c.local
+	}
+	value := c.conn.LocalAddr()
+	release()
+	return value
 }
+
 func (c *runtimeConn) RemoteAddr() net.Addr {
-	release, err := c.state.begin(); if err != nil { return c.remote }
-	value := c.conn.RemoteAddr(); release(); return value
+	release, err := c.state.begin()
+	if err != nil {
+		return c.remote
+	}
+	value := c.conn.RemoteAddr()
+	release()
+	return value
 }
+
 func (c *runtimeConn) SetDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetDeadline(t)
+	release()
+	return err
 }
+
 func (c *runtimeConn) SetReadDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetReadDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetReadDeadline(t)
+	release()
+	return err
 }
+
 func (c *runtimeConn) SetWriteDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetWriteDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetWriteDeadline(t)
+	release()
+	return err
 }
+
 func (c *runtimeConn) CloseRead() error {
-	release, err := c.state.begin(); if err != nil { return err }
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
 	if closer, ok := c.conn.(interface{ CloseRead() error }); ok {
 		err = closer.CloseRead()
-	} else { err = os.ErrInvalid }
-	release(); return err
+	} else {
+		err = os.ErrInvalid
+	}
+	release()
+	return err
 }
+
 func (c *runtimeConn) CloseWrite() error {
-	release, err := c.state.begin(); if err != nil { return err }
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
 	if closer, ok := c.conn.(interface{ CloseWrite() error }); ok {
 		err = closer.CloseWrite()
-	} else { err = os.ErrInvalid }
-	release(); return err
+	} else {
+		err = os.ErrInvalid
+	}
+	release()
+	return err
 }
 
-type runtimeConnPacket struct { *runtimeConn; packet net.PacketConn }
+type runtimeConnPacket struct {
+	*runtimeConn
+	packet net.PacketConn
+}
+
 func (c *runtimeConnPacket) ReadFrom(p []byte) (int, net.Addr, error) {
-	release, err := c.state.begin(); if err != nil { return 0, nil, err }
-	n, addr, err := c.packet.ReadFrom(p); release(); return n, addr, err
-}
-func (c *runtimeConnPacket) WriteTo(p []byte, addr net.Addr) (int, error) {
-	release, err := c.state.begin(); if err != nil { return 0, err }
-	n, err := c.packet.WriteTo(p, addr); release(); return n, err
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, nil, err
+	}
+	n, addr, err := c.packet.ReadFrom(p)
+	release()
+	return n, addr, err
 }
 
-type runtimePacketConn struct { conn net.PacketConn; state *runtimeCarrier; local net.Addr }
+func (c *runtimeConnPacket) WriteTo(p []byte, addr net.Addr) (int, error) {
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, err
+	}
+	n, err := c.packet.WriteTo(p, addr)
+	release()
+	return n, err
+}
+
+type runtimePacketConn struct {
+	conn  net.PacketConn
+	state *runtimeCarrier
+	local net.Addr
+}
+
 func (c *runtimePacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
-	release, err := c.state.begin(); if err != nil { return 0, nil, err }
-	n, addr, err := c.conn.ReadFrom(p); release(); return n, addr, err
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, nil, err
+	}
+	n, addr, err := c.conn.ReadFrom(p)
+	release()
+	return n, addr, err
 }
+
 func (c *runtimePacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
-	release, err := c.state.begin(); if err != nil { return 0, err }
-	n, err := c.conn.WriteTo(p, addr); release(); return n, err
+	release, err := c.state.begin()
+	if err != nil {
+		return 0, err
+	}
+	n, err := c.conn.WriteTo(p, addr)
+	release()
+	return n, err
 }
-func (c *runtimePacketConn) Close() error { return c.state.close(func() error { return closeRuntimeOwnedCarrier(c.conn) }) }
+
+func (c *runtimePacketConn) Close() error {
+	return c.state.close(func() error { return closeRuntimeOwnedCarrier(c.conn) })
+}
+
 func (c *runtimePacketConn) LocalAddr() net.Addr {
-	release, err := c.state.begin(); if err != nil { return c.local }
-	value := c.conn.LocalAddr(); release(); return value
+	release, err := c.state.begin()
+	if err != nil {
+		return c.local
+	}
+	value := c.conn.LocalAddr()
+	release()
+	return value
 }
+
 func (c *runtimePacketConn) SetDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetDeadline(t)
+	release()
+	return err
 }
+
 func (c *runtimePacketConn) SetReadDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetReadDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetReadDeadline(t)
+	release()
+	return err
 }
+
 func (c *runtimePacketConn) SetWriteDeadline(t time.Time) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.conn.SetWriteDeadline(t); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.conn.SetWriteDeadline(t)
+	release()
+	return err
 }
 
 // OnceRuntimeCleanup preserves the first outcome, including panic uncertainty,
@@ -295,7 +471,9 @@ func OnceRuntimeCleanup(cleanup func() error) func() error {
 	return func() error {
 		once.Do(func() {
 			defer func() {
-				if recover() != nil { result = errors.New("runtime resource cleanup panicked; completion unknown") }
+				if recover() != nil {
+					result = errors.New("runtime resource cleanup panicked; completion unknown")
+				}
 			}()
 			result = cleanup()
 		})
@@ -308,34 +486,58 @@ func OnceRuntimeCleanup(cleanup func() error) func() error {
 // it. That slot must survive fence registration/publication or late-result
 // cleanup. It must never be copied into an escaping worker without retaining
 // its existing runtime operation and reserving the enclosing pool's slot first.
-type runtimeOwnedSessionKey struct{}
-type runtimeOwnedSession struct { owner adapter.RuntimeResourceID }
+type (
+	runtimeOwnedSessionKey struct{}
+	runtimeOwnedSession    struct{ owner adapter.RuntimeResourceID }
+)
 
 func ContextForRuntimeOwnedSession(ctx context.Context, owner adapter.RuntimeResourceSource) (context.Context, error) {
-	if owner == nil { return nil, errors.New("owned session has no constructor-bound owner") }
+	if owner == nil {
+		return nil, errors.New("owned session has no constructor-bound owner")
+	}
 	lease, ok := adapter.RuntimeResourceLeaseFromContext(ctx, owner.ID())
-	if !ok { return nil, errors.New("owned session requires its admitted owner continuation") }
+	if !ok {
+		return nil, errors.New("owned session requires its admitted owner continuation")
+	}
 	proof, err := lease.Fork()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	proof.Release()
 	return context.WithValue(ctx, runtimeOwnedSessionKey{}, runtimeOwnedSession{owner: owner.ID()}), nil
 }
 
 func ValidateRuntimeOwnedSession(ctx context.Context, receiver adapter.RuntimeResourceSource) (bool, error) {
 	marker, marked := ctx.Value(runtimeOwnedSessionKey{}).(runtimeOwnedSession)
-	if !marked { return false, nil }
-	if receiver == nil { return false, errors.New("owned session receiver is not resource-bound") }
+	if !marked {
+		return false, nil
+	}
+	if receiver == nil {
+		return false, errors.New("owned session receiver is not resource-bound")
+	}
 	lease, ok := adapter.RuntimeResourceLeaseFromContext(ctx, marker.owner)
-	if !ok { return false, errors.New("owned session lost its owner continuation") }
+	if !ok {
+		return false, errors.New("owned session lost its owner continuation")
+	}
 	proof, err := lease.Fork()
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	defer proof.Release()
-	if receiver.ID() == marker.owner { return true, nil }
+	if receiver.ID() == marker.owner {
+		return true, nil
+	}
 	closure, ok := proof.(adapter.RuntimeResourceContinuation)
-	if !ok { return false, errors.New("owned session has no captured dependency closure") }
+	if !ok {
+		return false, errors.New("owned session has no captured dependency closure")
+	}
 	dependency, err := closure.RetainResource(receiver.ID())
-	if err != nil { return false, err }
-	if dependency == nil { return false, errors.New("owned session receiver is outside its captured dependency closure") }
+	if err != nil {
+		return false, err
+	}
+	if dependency == nil {
+		return false, errors.New("owned session receiver is outside its captured dependency closure")
+	}
 	dependency.Release()
 	return true, nil
 }
@@ -346,9 +548,13 @@ func ValidateRuntimeOwnedSession(ctx context.Context, receiver adapter.RuntimeRe
 // Acquire also guards protocol-specific methods (e.g. TLS ConnectionState).
 // The caller must retain this fence in its existing pool owner before exposing
 // its connection, and join it before releasing that owner's dependency edges.
-type RuntimeIOFence struct { state *runtimeCarrier; closeFn func() error }
+type RuntimeIOFence struct {
+	state   *runtimeCarrier
+	closeFn func() error
+}
+
 func (f *RuntimeIOFence) Acquire() (func(), error) { return f.state.begin() }
-func (f *RuntimeIOFence) Close() error { return f.state.close(f.closeFn) }
+func (f *RuntimeIOFence) Close() error             { return f.state.close(f.closeFn) }
 func (f *RuntimeIOFence) RuntimeCloseAndWait() error {
 	_ = f.Close()
 	return f.Wait()
@@ -359,19 +565,24 @@ func (f *RuntimeIOFence) RuntimeCloseAndWait() error {
 func (f *RuntimeIOFence) Wait() error {
 	<-f.state.closeSignal
 	f.state.methods.Wait()
-	f.state.mu.Lock(); err := f.state.closeErr; f.state.mu.Unlock()
+	f.state.mu.Lock()
+	err := f.state.closeErr
+	f.state.mu.Unlock()
 	return err
 }
 
 // Only these private carriers have an owned method barrier. Do not infer
 // completion from a public Close returning pending or from an arbitrary raw
 // wrapper. Nested carriers join the same fixed worker, without a second Close.
-func closeRuntimeOwnedCarrier(conn interface { Close() error }) error {
+func closeRuntimeOwnedCarrier(conn interface{ Close() error }) error {
 	var state *runtimeCarrier
 	switch c := conn.(type) {
-	case *runtimeConn: state = c.state
-	case *runtimeConnPacket: state = c.state
-	case *runtimePacketConn: state = c.state
+	case *runtimeConn:
+		state = c.state
+	case *runtimeConnPacket:
+		state = c.state
+	case *runtimePacketConn:
+		state = c.state
 	}
 	if state != nil && state.owned {
 		_ = state.close(nil) // ownedClose was installed before publication
@@ -384,7 +595,9 @@ func WrapRuntimeOwnedConn(conn net.Conn) (net.Conn, *RuntimeIOFence) {
 	state := &runtimeCarrier{owned: true, closeSignal: make(chan struct{}), ownedClose: func() error { return closeRuntimeOwnedCarrier(conn) }}
 	wrapped := &runtimeConn{conn: conn, state: state, local: conn.LocalAddr(), remote: conn.RemoteAddr()}
 	fence := &RuntimeIOFence{state: state, closeFn: conn.Close}
-	if packet, ok := conn.(net.PacketConn); ok { return &runtimeConnPacket{runtimeConn: wrapped, packet: packet}, fence }
+	if packet, ok := conn.(net.PacketConn); ok {
+		return &runtimeConnPacket{runtimeConn: wrapped, packet: packet}, fence
+	}
 	return wrapped, fence
 }
 
@@ -399,7 +612,9 @@ func WrapRuntimeOwnedPacketConn(conn net.PacketConn) (net.PacketConn, *RuntimeIO
 // guard. RuntimeCloseAndWait must not be called by a callback holding Acquire;
 // that callback may request Close and let the external owner join it afterward.
 func NewRuntimeIOFence(closeFn func() error) *RuntimeIOFence {
-	if closeFn == nil { closeFn = func() error { return nil } }
+	if closeFn == nil {
+		closeFn = func() error { return nil }
+	}
 	return &RuntimeIOFence{state: &runtimeCarrier{owned: true, closeSignal: make(chan struct{}), ownedClose: closeFn}, closeFn: closeFn}
 }
 
@@ -408,15 +623,15 @@ func NewRuntimeIOFence(closeFn func() error) *RuntimeIOFence {
 // own cancellation and exact-ID authorization, and calls Stop before its
 // terminal close, then Wait before releasing its dependency edges.
 type RuntimeIOFenceSet struct {
-	mu sync.Mutex
-	sealed bool
+	mu      sync.Mutex
+	sealed  bool
 	pending sync.WaitGroup
-	fences map[*RuntimeIOFence]struct{}
-	err error
+	fences  map[*RuntimeIOFence]struct{}
+	err     error
 }
 
 type RuntimeIOCreation struct {
-	set *RuntimeIOFenceSet
+	set      *RuntimeIOFenceSet
 	finished bool
 }
 
@@ -425,8 +640,11 @@ func NewRuntimeIOFenceSet() *RuntimeIOFenceSet {
 }
 
 func (s *RuntimeIOFenceSet) Begin() (*RuntimeIOCreation, error) {
-	s.mu.Lock(); defer s.mu.Unlock()
-	if s.sealed { return nil, net.ErrClosed }
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sealed {
+		return nil, net.ErrClosed
+	}
 	s.pending.Add(1)
 	return &RuntimeIOCreation{set: s}, nil
 }
@@ -437,16 +655,24 @@ func (s *RuntimeIOFenceSet) Begin() (*RuntimeIOCreation, error) {
 func (c *RuntimeIOCreation) Done() {
 	failure := recover()
 	c.set.mu.Lock()
-	if failure != nil { c.set.err = errors.Join(c.set.err, errors.New("owned creation panicked; completion unknown")) }
+	if failure != nil {
+		c.set.err = errors.Join(c.set.err, errors.New("owned creation panicked; completion unknown"))
+	}
 	finished := c.finished
 	c.finished = true
 	c.set.mu.Unlock()
-	if !finished { c.set.pending.Done() }
-	if failure != nil { panic(failure) }
+	if !finished {
+		c.set.pending.Done()
+	}
+	if failure != nil {
+		panic(failure)
+	}
 }
 
 func (s *RuntimeIOFenceSet) Record(err error) {
-	if err == nil { return }
+	if err == nil {
+		return
+	}
 	s.mu.Lock()
 	s.err = errors.Join(s.err, fmt.Errorf("owned boundary completion unknown: %v", err))
 	s.mu.Unlock()
@@ -462,7 +688,9 @@ func (c *RuntimeIOCreation) Register(fence *RuntimeIOFence) error {
 		s.mu.Unlock()
 		err := fence.RuntimeCloseAndWait()
 		s.Record(err)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		return net.ErrClosed
 	}
 	s.fences[fence] = struct{}{}
@@ -472,7 +700,9 @@ func (c *RuntimeIOCreation) Register(fence *RuntimeIOFence) error {
 		defer s.pending.Done()
 		err := fence.Wait()
 		s.mu.Lock()
-		if err == nil { delete(s.fences, fence) } else {
+		if err == nil {
+			delete(s.fences, fence)
+		} else {
 			s.err = errors.Join(s.err, fmt.Errorf("owned carrier completion unknown: %v", err))
 		}
 		s.mu.Unlock()
@@ -486,17 +716,25 @@ func (c *RuntimeIOCreation) Register(fence *RuntimeIOFence) error {
 // which could falsely release dependencies from a non-returning close.
 func (s *RuntimeIOFenceSet) Stop() {
 	s.mu.Lock()
-	if s.sealed { s.mu.Unlock(); return }
+	if s.sealed {
+		s.mu.Unlock()
+		return
+	}
 	s.sealed = true
 	fences := make([]*RuntimeIOFence, 0, len(s.fences))
-	for fence := range s.fences { fences = append(fences, fence) }
+	for fence := range s.fences {
+		fences = append(fences, fence)
+	}
 	s.mu.Unlock()
-	for _, fence := range fences { go func(f *RuntimeIOFence) { _ = f.Close() }(fence) }
+	for _, fence := range fences {
+		go func(f *RuntimeIOFence) { _ = f.Close() }(fence)
+	}
 }
 
 func (s *RuntimeIOFenceSet) Wait() error {
 	s.pending.Wait()
-	s.mu.Lock(); defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.err
 }
 
@@ -506,11 +744,17 @@ func (s *RuntimeIOFenceSet) RuntimeCloseAndWait() error { s.Stop(); return s.Wai
 // exact admitted dependency closure on any uncertain close result. It is used
 // when a protocol handshake failed before it could return a typed carrier.
 func CloseRuntimeCreation(ctx context.Context, source adapter.RuntimeResourceSource, closeFn func() error) error {
-	if !runtimeBound(ctx, source) { return closeFn() }
+	if !runtimeBound(ctx, source) {
+		return closeFn()
+	}
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, source)
-	if err != nil { return &runtimeCleanupError{fmt.Sprintf("failed carrier cleanup could not retain its owner: %v", err)} }
+	if err != nil {
+		return &runtimeCleanupError{fmt.Sprintf("failed carrier cleanup could not retain its owner: %v", err)}
+	}
 	err = closeRuntimeCarrier(closeFn)
-	if err == nil { release() }
+	if err == nil {
+		release()
+	}
 	return err
 }
 
@@ -518,84 +762,164 @@ func CloseRuntimeCreation(ctx context.Context, source adapter.RuntimeResourceSou
 // Upstream escape. The returned object admits each Control/Read/Write against
 // every enclosing runtime carrier before invoking the original RawConn.
 func RuntimeSyscallConn(conn any) (syscall.RawConn, error) {
-	if guarded, ok := conn.(interface{ runtimeSyscallConn() (syscall.RawConn, error) }); ok { return guarded.runtimeSyscallConn() }
-	if native, ok := conn.(syscall.Conn); ok { return native.SyscallConn() }
+	if guarded, ok := conn.(interface {
+		runtimeSyscallConn() (syscall.RawConn, error)
+	}); ok {
+		return guarded.runtimeSyscallConn()
+	}
+	if native, ok := conn.(syscall.Conn); ok {
+		return native.SyscallConn()
+	}
 	return nil, os.ErrInvalid
 }
+
 // Only an admitted outer carrier calls this traversal. Legacy protocol
 // wrappers may expose Upstream internally; the raw connection is never returned
 // and every descriptor callback remains enclosed by the outer carrier fence.
 // Find another private carrier first so traversing a protocol wrapper cannot
 // skip an inner runtime boundary.
 func runtimeCapturedSyscallConn(conn any) (syscall.RawConn, error) {
-	if guarded, ok := common.Cast[interface{ runtimeSyscallConn() (syscall.RawConn, error) }](conn); ok { return guarded.runtimeSyscallConn() }
-	if native, ok := common.Cast[syscall.Conn](conn); ok { return native.SyscallConn() }
+	if guarded, ok := common.Cast[interface {
+		runtimeSyscallConn() (syscall.RawConn, error)
+	}](conn); ok {
+		return guarded.runtimeSyscallConn()
+	}
+	if native, ok := common.Cast[syscall.Conn](conn); ok {
+		return native.SyscallConn()
+	}
 	return nil, os.ErrInvalid
 }
 
 func (c *runtimeConn) runtimeSyscallConn() (syscall.RawConn, error) {
-	release, err := c.state.begin(); if err != nil { return nil, err }
+	release, err := c.state.begin()
+	if err != nil {
+		return nil, err
+	}
 	raw, err := runtimeCapturedSyscallConn(c.conn)
 	release()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return &runtimeRawConn{raw: raw, state: c.state}, nil
 }
-type runtimeRawConn struct { raw syscall.RawConn; state *runtimeCarrier }
+
+type runtimeRawConn struct {
+	raw   syscall.RawConn
+	state *runtimeCarrier
+}
+
 func (c *runtimeRawConn) Control(callback func(uintptr)) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.raw.Control(callback); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.raw.Control(callback)
+	release()
+	return err
 }
+
 func (c *runtimeRawConn) Read(callback func(uintptr) bool) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.raw.Read(callback); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.raw.Read(callback)
+	release()
+	return err
 }
+
 func (c *runtimeRawConn) Write(callback func(uintptr) bool) error {
-	release, err := c.state.begin(); if err != nil { return err }
-	err = c.raw.Write(callback); release(); return err
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	err = c.raw.Write(callback)
+	release()
+	return err
 }
 
 // RuntimeTCPControlConn is the narrow TCP contract needed by TLS fragmentation.
 // It exposes neither *net.TCPConn nor a replacable reader/writer bypass.
-type RuntimeTCPControlConn interface { net.Conn; syscall.Conn; SetNoDelay(bool) error }
-type runtimeTCPControl struct { net.Conn }
+type (
+	RuntimeTCPControlConn interface {
+		net.Conn
+		syscall.Conn
+		SetNoDelay(bool) error
+	}
+	runtimeTCPControl struct{ net.Conn }
+)
+
 func (c *runtimeTCPControl) SyscallConn() (syscall.RawConn, error) { return RuntimeSyscallConn(c.Conn) }
-func (c *runtimeTCPControl) SetNoDelay(value bool) error { return runtimeSetNoDelay(c.Conn, value) }
+func (c *runtimeTCPControl) SetNoDelay(value bool) error           { return runtimeSetNoDelay(c.Conn, value) }
 func RuntimeTCPControl(conn net.Conn) (RuntimeTCPControlConn, error) {
-	if !runtimeHasNoDelay(conn) { return nil, os.ErrInvalid }
-	if _, err := RuntimeSyscallConn(conn); err != nil { return nil, err }
+	if !runtimeHasNoDelay(conn) {
+		return nil, os.ErrInvalid
+	}
+	if _, err := RuntimeSyscallConn(conn); err != nil {
+		return nil, err
+	}
 	return &runtimeTCPControl{Conn: conn}, nil
 }
+
 func runtimeHasNoDelay(conn net.Conn) bool {
- if guarded, ok := conn.(interface{ runtimeHasNoDelay() bool }); ok { return guarded.runtimeHasNoDelay() }
- _, ok := conn.(interface{ SetNoDelay(bool) error }); return ok
+	if guarded, ok := conn.(interface{ runtimeHasNoDelay() bool }); ok {
+		return guarded.runtimeHasNoDelay()
+	}
+	_, ok := conn.(interface{ SetNoDelay(bool) error })
+	return ok
 }
+
 func (c *runtimeConn) runtimeHasNoDelay() bool {
- release,err:=c.state.begin(); if err!=nil{return false};defer release()
- if guarded,ok:=common.Cast[interface{runtimeHasNoDelay()bool}](c.conn);ok{return guarded.runtimeHasNoDelay()}
- _,ok:=common.Cast[interface{SetNoDelay(bool)error}](c.conn);return ok
+	release, err := c.state.begin()
+	if err != nil {
+		return false
+	}
+	defer release()
+	if guarded, ok := common.Cast[interface{ runtimeHasNoDelay() bool }](c.conn); ok {
+		return guarded.runtimeHasNoDelay()
+	}
+	_, ok := common.Cast[interface{ SetNoDelay(bool) error }](c.conn)
+	return ok
 }
+
 func runtimeSetNoDelay(conn net.Conn, value bool) error {
- if guarded,ok:=conn.(interface{runtimeSetNoDelay(bool)error});ok{return guarded.runtimeSetNoDelay(value)}
- if control,ok:=conn.(interface{SetNoDelay(bool)error});ok{return control.SetNoDelay(value)}
- return os.ErrInvalid
+	if guarded, ok := conn.(interface{ runtimeSetNoDelay(bool) error }); ok {
+		return guarded.runtimeSetNoDelay(value)
+	}
+	if control, ok := conn.(interface{ SetNoDelay(bool) error }); ok {
+		return control.SetNoDelay(value)
+	}
+	return os.ErrInvalid
 }
-func(c *runtimeConn)runtimeSetNoDelay(value bool)error{
- release,err:=c.state.begin();if err!=nil{return err}
- // Legacy wrapper traversal is allowed only while this carrier is admitted.
- // Find an inner private fence first instead of skipping its closing boundary.
- if guarded,ok:=common.Cast[interface{runtimeSetNoDelay(bool)error}](c.conn);ok{
-  err=guarded.runtimeSetNoDelay(value)
- }else if control,ok:=common.Cast[interface{SetNoDelay(bool)error}](c.conn);ok{
-  err=control.SetNoDelay(value)
- }else{err=os.ErrInvalid}
- release();return err
+
+func (c *runtimeConn) runtimeSetNoDelay(value bool) error {
+	release, err := c.state.begin()
+	if err != nil {
+		return err
+	}
+	// Legacy wrapper traversal is allowed only while this carrier is admitted.
+	// Find an inner private fence first instead of skipping its closing boundary.
+	if guarded, ok := common.Cast[interface{ runtimeSetNoDelay(bool) error }](c.conn); ok {
+		err = guarded.runtimeSetNoDelay(value)
+	} else if control, ok := common.Cast[interface{ SetNoDelay(bool) error }](c.conn); ok {
+		err = control.SetNoDelay(value)
+	} else {
+		err = os.ErrInvalid
+	}
+	release()
+	return err
 }
 
 func (c *runtimePacketConn) runtimeSyscallConn() (syscall.RawConn, error) {
-	release, err := c.state.begin(); if err != nil { return nil, err }
+	release, err := c.state.begin()
+	if err != nil {
+		return nil, err
+	}
 	raw, err := runtimeCapturedSyscallConn(c.conn)
 	release()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return &runtimeRawConn{raw: raw, state: c.state}, nil
 }
 
@@ -603,25 +927,46 @@ func (c *runtimePacketConn) runtimeSyscallConn() (syscall.RawConn, error) {
 // guarded descriptor callbacks instead of Read/Write. Copied accounting hooks
 // cannot reach their original provider after the enclosing carrier is sealed.
 func RuntimeIOActivityFuncs(conn any) (func(int), func(int)) {
-	if guarded, ok := conn.(interface{ runtimeIOActivityFuncs() (func(int), func(int)) }); ok { return guarded.runtimeIOActivityFuncs() }
-	if accounting, ok := conn.(interface{ IOActivityFuncs() (func(int), func(int)) }); ok { return accounting.IOActivityFuncs() }
+	if guarded, ok := conn.(interface{ runtimeIOActivityFuncs() (func(int), func(int)) }); ok {
+		return guarded.runtimeIOActivityFuncs()
+	}
+	if accounting, ok := conn.(interface{ IOActivityFuncs() (func(int), func(int)) }); ok {
+		return accounting.IOActivityFuncs()
+	}
 	return nil, nil
 }
+
 func guardedRuntimeActivity(state *runtimeCarrier, callback func(int)) func(int) {
-	if callback == nil { return nil }
+	if callback == nil {
+		return nil
+	}
 	return func(size int) {
-		release, err := state.begin(); if err != nil { return }
-		callback(size); release()
+		release, err := state.begin()
+		if err != nil {
+			return
+		}
+		callback(size)
+		release()
 	}
 }
+
 func (c *runtimeConn) runtimeIOActivityFuncs() (func(int), func(int)) {
-	release, err := c.state.begin(); if err != nil { return nil, nil }
-	read, write := RuntimeIOActivityFuncs(c.conn); release()
+	release, err := c.state.begin()
+	if err != nil {
+		return nil, nil
+	}
+	read, write := RuntimeIOActivityFuncs(c.conn)
+	release()
 	return guardedRuntimeActivity(c.state, read), guardedRuntimeActivity(c.state, write)
 }
+
 func (c *runtimePacketConn) runtimeIOActivityFuncs() (func(int), func(int)) {
-	release, err := c.state.begin(); if err != nil { return nil, nil }
-	read, write := RuntimeIOActivityFuncs(c.conn); release()
+	release, err := c.state.begin()
+	if err != nil {
+		return nil, nil
+	}
+	read, write := RuntimeIOActivityFuncs(c.conn)
+	release()
 	return guardedRuntimeActivity(c.state, read), guardedRuntimeActivity(c.state, write)
 }
 
@@ -639,13 +984,23 @@ func RegisterRuntimeOwnedFence(ctx context.Context, fence *RuntimeIOFence) (func
 		}, nil
 	}
 	captured, ok := source.(adapter.RuntimeCapturedResourceSource)
-	if !ok { return nil, errors.New("runtime source does not expose captured dependency ownership") }
-	if !adapter.HasConstructionScope(ctx) { return nil, errors.New("owned runtime fence requires its constructor scope") }
-	if fence == nil { return nil, errors.New("owned runtime fence is nil") }
-	if _, err := RegisterRuntimeCleanup(ctx, fence.RuntimeCloseAndWait); err != nil { return nil, err }
+	if !ok {
+		return nil, errors.New("runtime source does not expose captured dependency ownership")
+	}
+	if !adapter.HasConstructionScope(ctx) {
+		return nil, errors.New("owned runtime fence requires its constructor scope")
+	}
+	if fence == nil {
+		return nil, errors.New("owned runtime fence is nil")
+	}
+	if _, err := RegisterRuntimeCleanup(ctx, fence.RuntimeCloseAndWait); err != nil {
+		return nil, err
+	}
 	return func(ctx context.Context) (context.Context, func(), error) {
 		release, err := fence.Acquire()
-		if err != nil { return nil, nil, err }
+		if err != nil {
+			return nil, nil, err
+		}
 		lease := &runtimeOwnedLease{source: captured, fence: fence, release: release}
 		ctx = adapter.ContextWithRuntimeOwnership(ctx, context.Background())
 		return adapter.ContextWithRuntimeResourceLease(ctx, lease), lease.Release, nil
@@ -655,41 +1010,61 @@ func RegisterRuntimeOwnedFence(ctx context.Context, fence *RuntimeIOFence) (func
 // This capability is backed by an actually registered owner-method fence, not
 // a resource reference. Its only authority is its constructor's immutable DAG.
 type runtimeOwnedLease struct {
-	mu sync.Mutex
-	source adapter.RuntimeCapturedResourceSource
-	fence *RuntimeIOFence
-	release func()
+	mu       sync.Mutex
+	source   adapter.RuntimeCapturedResourceSource
+	fence    *RuntimeIOFence
+	release  func()
 	released bool
 }
+
 func (l *runtimeOwnedLease) ID() adapter.RuntimeResourceID { return l.source.ID() }
 func (l *runtimeOwnedLease) Retiring() <-chan struct{} {
 	state := l.fence.state
-	state.mu.Lock(); defer state.mu.Unlock()
+	state.mu.Lock()
+	defer state.mu.Unlock()
 	if state.sealedSignal == nil {
 		state.sealedSignal = make(chan struct{})
-		if state.closing { close(state.sealedSignal) }
+		if state.closing {
+			close(state.sealedSignal)
+		}
 	}
 	return state.sealedSignal
 }
+
 func (l *runtimeOwnedLease) Fork() (adapter.RuntimeResourceLease, error) {
-	l.mu.Lock(); defer l.mu.Unlock()
-	if l.released { return nil, net.ErrClosed }
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.released {
+		return nil, net.ErrClosed
+	}
 	release, err := l.fence.Acquire()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return &runtimeOwnedLease{source: l.source, fence: l.fence, release: release}, nil
 }
+
 func (l *runtimeOwnedLease) Release() {
 	l.mu.Lock()
-	if l.released { l.mu.Unlock(); return }
+	if l.released {
+		l.mu.Unlock()
+		return
+	}
 	l.released = true
 	release := l.release
 	l.mu.Unlock()
 	release()
 }
+
 func (l *runtimeOwnedLease) RetainResource(id adapter.RuntimeResourceID) (adapter.RuntimeResourceLease, error) {
-	if id == l.ID() { return l.Fork() }
-	l.mu.Lock(); defer l.mu.Unlock()
-	if l.released { return nil, net.ErrClosed }
+	if id == l.ID() {
+		return l.Fork()
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.released {
+		return nil, net.ErrClosed
+	}
 	return l.source.RetainCapturedResource(id)
 }
 
@@ -698,71 +1073,148 @@ func (l *runtimeOwnedLease) RetainResource(id adapter.RuntimeResourceID) (adapte
 func WrapRuntimeLogger(base logger.ContextLogger, fence *RuntimeIOFence) logger.ContextLogger {
 	return &runtimeLogger{ContextLogger: base, fence: fence}
 }
-type runtimeLogger struct { logger.ContextLogger; fence *RuntimeIOFence }
+
+type runtimeLogger struct {
+	logger.ContextLogger
+	fence *RuntimeIOFence
+}
+
 func (l *runtimeLogger) Trace(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Trace(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Trace(args...)
+	release()
 }
+
 func (l *runtimeLogger) TraceContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.TraceContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.TraceContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Debug(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Debug(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Debug(args...)
+	release()
 }
+
 func (l *runtimeLogger) DebugContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.DebugContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.DebugContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Info(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Info(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Info(args...)
+	release()
 }
+
 func (l *runtimeLogger) InfoContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.InfoContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.InfoContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Warn(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Warn(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Warn(args...)
+	release()
 }
+
 func (l *runtimeLogger) WarnContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.WarnContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.WarnContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Error(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Error(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Error(args...)
+	release()
 }
+
 func (l *runtimeLogger) ErrorContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.ErrorContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.ErrorContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Fatal(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Fatal(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Fatal(args...)
+	release()
 }
+
 func (l *runtimeLogger) FatalContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.FatalContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.FatalContext(ctx, args...)
+	release()
 }
+
 func (l *runtimeLogger) Panic(args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.Panic(args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.Panic(args...)
+	release()
 }
+
 func (l *runtimeLogger) PanicContext(ctx context.Context, args ...any) {
-	release, err := l.fence.Acquire(); if err != nil { return }
-	l.ContextLogger.PanicContext(ctx, args...); release()
+	release, err := l.fence.Acquire()
+	if err != nil {
+		return
+	}
+	l.ContextLogger.PanicContext(ctx, args...)
+	release()
 }
 
 // RuntimeConnContext exposes only a private carrier's already-owned lineage to
 // protocol server adapters. It does not retain it: the adapter must keep conn
 // alive and fork an operation before accessing graph resources.
-func RuntimeConnContext(conn net.Conn)(context.Context,bool){
- switch value:=conn.(type){
- case *runtimeConn:return value.state.ctx,true
- case *runtimeConnPacket:return value.state.ctx,true
- default:return nil,false
- }
+func RuntimeConnContext(conn net.Conn) (context.Context, bool) {
+	switch value := conn.(type) {
+	case *runtimeConn:
+		return value.state.ctx, true
+	case *runtimeConnPacket:
+		return value.state.ctx, true
+	default:
+		return nil, false
+	}
 }

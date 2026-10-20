@@ -49,9 +49,14 @@ func newRelayInbound(ctx context.Context, router adapter.Router, logger log.Cont
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 	inbound.router = uot.NewRouter(router, logger)
 	var err error
 	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
@@ -95,7 +100,9 @@ func newRelayInbound(ctx context.Context, router adapter.Router, logger log.Cont
 }
 
 func (h *RelayInbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -110,7 +117,10 @@ func (h *RelayInbound) Start(stage adapter.StartStage, scope *adapter.Scope) err
 //nolint:staticcheck
 func (h *RelayInbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	err = h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
 	N.CloseOnHandshakeFailure(conn, onClose, err)
@@ -133,7 +143,9 @@ func (h *RelayInbound) NewPacket(buffer *buf.Buffer, source M.Socksaddr) {
 
 func (h *RelayInbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer release()
 	destinationIndex, loaded := auth.UserFromContext[int](ctx)
 	if !loaded {
@@ -156,7 +168,9 @@ func (h *RelayInbound) newConnection(ctx context.Context, conn net.Conn, metadat
 
 func (h *RelayInbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) error {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer release()
 	destinationIndex, loaded := auth.UserFromContext[int](ctx)
 	if !loaded {

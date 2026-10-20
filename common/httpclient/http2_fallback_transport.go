@@ -21,7 +21,7 @@ var errHTTP2Fallback = E.New("fallback to HTTP/1.1")
 
 type http2FallbackTransport struct {
 	h2Transport       *http2.Transport
-	boundary *RuntimeTransportBoundary
+	boundary          *RuntimeTransportBoundary
 	h1Transport       *http1Transport
 	fallbackAccess    sync.RWMutex
 	fallbackAuthority map[string]struct{}
@@ -36,10 +36,10 @@ func newHTTP2FallbackTransport(rawDialer N.Dialer, baseTLSConfig tls.Config, opt
 	h2Transport.DialTLSContext = func(ctx context.Context, network, addr string, _ *stdTLS.Config) (net.Conn, error) {
 		return dialTLS(ctx, rawDialer, baseTLSConfig, M.ParseSocksaddr(addr), []string{http2.NextProtoTLS, "http/1.1"}, http2.NextProtoTLS)
 	}
-	boundary:=NewRuntimeTransportBoundary(func()error{h2Transport.CloseIdleConnections();return nil})
+	boundary := NewRuntimeTransportBoundary(func() error { h2Transport.CloseIdleConnections(); return nil })
 	boundary.BindHTTP2(h2Transport)
 	return &http2FallbackTransport{
-		boundary:boundary,
+		boundary:          boundary,
 		h2Transport:       h2Transport,
 		h1Transport:       h1,
 		fallbackAuthority: make(map[string]struct{}),
@@ -80,7 +80,7 @@ func (t *http2FallbackTransport) roundTrip(request *http.Request, allowHTTP1Fall
 		}
 		return t.h1Transport.RoundTrip(request)
 	}
-	response, err := t.boundary.RoundTrip(request,t.h2Transport.RoundTrip)
+	response, err := t.boundary.RoundTrip(request, t.h2Transport.RoundTrip)
 	if err == nil {
 		return response, nil
 	}
@@ -97,7 +97,11 @@ func (t *http2FallbackTransport) CloseIdleConnections() {
 }
 
 func (t *http2FallbackTransport) Close() error {
-	t.StopRuntimeOperations();return errors.Join(t.boundary.Close(),t.h1Transport.Close())
+	t.StopRuntimeOperations()
+	return errors.Join(t.boundary.Close(), t.h1Transport.Close())
 }
 
-func(t *http2FallbackTransport)StopRuntimeOperations(){t.boundary.StopRuntimeOperations();t.h1Transport.StopRuntimeOperations()}
+func (t *http2FallbackTransport) StopRuntimeOperations() {
+	t.boundary.StopRuntimeOperations()
+	t.h1Transport.StopRuntimeOperations()
+}

@@ -20,8 +20,8 @@ type pendingWrites struct {
 	fakeIPAddress4 map[string]netip.Addr
 	fakeIPAddress6 map[string]netip.Addr
 	fakeIPMetadata *adapter.FakeIPMetadata
-	fakeIPRuntime map[string]*runtimePending
-	fakeIPFailure error
+	fakeIPRuntime  map[string]*runtimePending
+	fakeIPFailure  error
 	count          int
 	size           int
 }
@@ -29,7 +29,7 @@ type pendingWrites struct {
 func newPendingWrites() *pendingWrites {
 	return &pendingWrites{
 		dnsCache:       make(map[saveCacheKey]saveDNSCacheEntry),
-		fakeIPRuntime: make(map[string]*runtimePending),
+		fakeIPRuntime:  make(map[string]*runtimePending),
 		rdrc:           make(map[saveCacheKey]struct{}),
 		fakeIPDomain:   make(map[netip.Addr]string),
 		fakeIPAddress4: make(map[string]netip.Addr),
@@ -76,7 +76,9 @@ func (c *CacheFile) Flush() {
 func (c *CacheFile) FlushFakeIP(ctx context.Context) error {
 	c.flushAccess.Lock()
 	defer c.flushAccess.Unlock()
-	if err := ctx.Err(); err != nil { return err }
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	return c.flushPendingLocked()
 }
 
@@ -94,9 +96,16 @@ func (c *CacheFile) flushPendingLocked() error {
 	// Runtime journals must not take the legacy corruption-reset path. A
 	// damaged identity is an explicit failure, never permission to replace it.
 	var err error
-	if c.runtimeStrict.Load() || len(writing.fakeIPRuntime) != 0 { err = c.runtimeUpdate(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) }) } else { err = c.update(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) }) }
+	if c.runtimeStrict.Load() || len(writing.fakeIPRuntime) != 0 {
+		err = c.runtimeUpdate(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) })
+	} else {
+		err = c.update(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) })
+	}
 	c.pendingAccess.Lock()
-	if err != nil { c.restoreFakeIPLocked(writing); c.pending.fakeIPFailure = err }
+	if err != nil {
+		c.restoreFakeIPLocked(writing)
+		c.pending.fakeIPFailure = err
+	}
 	c.writing = nil
 	c.pendingAccess.Unlock()
 	return err
@@ -129,7 +138,9 @@ func (c *CacheFile) writePending(tx *bbolt.Tx, pending *pendingWrites) error {
 			}
 		}
 	}
-	if err := writeRuntimePending(tx, pending.fakeIPRuntime); err != nil { return err }
+	if err := writeRuntimePending(tx, pending.fakeIPRuntime); err != nil {
+		return err
+	}
 	for address, domain := range pending.fakeIPDomain {
 		err := putFakeIP(tx, address, domain)
 		if err != nil {

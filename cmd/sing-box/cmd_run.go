@@ -148,11 +148,13 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 		return nil, nil, E.Cause(err, "create service")
 	}
 
- if persist != nil && instance.RuntimeCapabilities().Identity.Incarnation != "" {
-  if err := instance.BindRuntimePersistenceMode(persist, "exact_configuration_file"); err != nil {
-   cancel(); _ = instance.Close(); return nil, nil, E.Cause(err, "bind configuration persistence")
-  }
- }
+	if persist != nil && instance.RuntimeCapabilities().Identity.Incarnation != "" {
+		if err := instance.BindRuntimePersistenceMode(persist, "exact_configuration_file"); err != nil {
+			cancel()
+			_ = instance.Close()
+			return nil, nil, E.Cause(err, "bind configuration persistence")
+		}
+	}
 
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
@@ -195,8 +197,10 @@ func run() error {
 	defer signal.Stop(osSignals)
 	for {
 		persist, persistErr := cliRuntimePersistence(optionsList)
-  if persistErr != nil { return persistErr }
-  instance, cancel, createErr := create(options, persist)
+		if persistErr != nil {
+			return persistErr
+		}
+		instance, cancel, createErr := create(options, persist)
 		if createErr != nil {
 			return createErr
 		}
@@ -223,10 +227,14 @@ func run() error {
 			}
 			break
 		}
-  optionsList, err = readConfig()
-  if err != nil { return err }
-  options, err = mergeOptionsList(optionsList)
-  if err != nil { return err }
+		optionsList, err = readConfig()
+		if err != nil {
+			return err
+		}
+		options, err = mergeOptionsList(optionsList)
+		if err != nil {
+			return err
+		}
 	}
 }
 

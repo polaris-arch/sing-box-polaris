@@ -2,8 +2,8 @@ package outbound
 
 import (
 	"context"
-	"os"
 	"errors"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -25,11 +25,11 @@ type Manager struct {
 	outboundByTag           map[string]adapter.Outbound
 	defaultOutbound         adapter.Outbound
 	defaultOutboundFallback func() (adapter.Outbound, error)
-	runtime bool
-	frozen bool
-	owned map[string]*adapter.Scope
-	pending map[string]bool
-	stages map[adapter.StartStage]error
+	runtime                 bool
+	frozen                  bool
+	owned                   map[string]*adapter.Scope
+	pending                 map[string]bool
+	stages                  map[adapter.StartStage]error
 }
 
 func NewManager(registry adapter.OutboundRegistry, endpoint adapter.EndpointManager, defaultTag string) *Manager {
@@ -38,7 +38,7 @@ func NewManager(registry adapter.OutboundRegistry, endpoint adapter.EndpointMana
 		endpoint:      endpoint,
 		defaultTag:    defaultTag,
 		outboundByTag: make(map[string]adapter.Outbound),
-		pending: make(map[string]bool),
+		pending:       make(map[string]bool),
 	}
 }
 
@@ -54,15 +54,25 @@ func NewRuntimeManager(registry adapter.OutboundRegistry, endpoint adapter.Endpo
 }
 
 func (m *Manager) Insert(member adapter.Outbound, ownedScope *adapter.Scope) error {
-	if member == nil || member.Tag() == "" { return os.ErrInvalid }
+	if member == nil || member.Tag() == "" {
+		return os.ErrInvalid
+	}
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.runtime || m.frozen { return errors.New("outbound inventory is not mutable") }
-	if _, exists := m.outboundByTag[member.Tag()]; exists { return E.New("duplicate outbound tag: ", member.Tag()) }
-	if _, exists := m.endpoint.Get(member.Tag()); exists { return E.New("duplicate outbound/endpoint tag: ", member.Tag()) }
+	if !m.runtime || m.frozen {
+		return errors.New("outbound inventory is not mutable")
+	}
+	if _, exists := m.outboundByTag[member.Tag()]; exists {
+		return E.New("duplicate outbound tag: ", member.Tag())
+	}
+	if _, exists := m.endpoint.Get(member.Tag()); exists {
+		return E.New("duplicate outbound/endpoint tag: ", member.Tag())
+	}
 	m.outbounds = append(m.outbounds, member)
 	m.outboundByTag[member.Tag()] = member
-	if ownedScope != nil { m.owned[member.Tag()] = ownedScope }
+	if ownedScope != nil {
+		m.owned[member.Tag()] = ownedScope
+	}
 	return nil
 }
 
@@ -70,17 +80,34 @@ func (m *Manager) Insert(member adapter.Outbound, ownedScope *adapter.Scope) err
 func (m *Manager) Freeze() error {
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.runtime { return errors.New("not a runtime outbound manager") }
-	if m.frozen { return nil }
-	endpointInventory, ok := m.endpoint.(interface { RuntimeFrozen() bool; OwnsEndpoint(string) bool })
-	if !ok || !endpointInventory.RuntimeFrozen() { return errors.New("runtime endpoint inventory must be frozen first") }
+	if !m.runtime {
+		return errors.New("not a runtime outbound manager")
+	}
+	if m.frozen {
+		return nil
+	}
+	endpointInventory, ok := m.endpoint.(interface {
+		RuntimeFrozen() bool
+		OwnsEndpoint(string) bool
+	})
+	if !ok || !endpointInventory.RuntimeFrozen() {
+		return errors.New("runtime endpoint inventory must be frozen first")
+	}
 	if m.defaultTag != "" {
 		m.defaultOutbound = m.outboundByTag[m.defaultTag]
-		if m.defaultOutbound == nil { m.defaultOutbound, _ = m.endpoint.Get(m.defaultTag) }
-	} else if len(m.outbounds) != 0 { m.defaultOutbound = m.outbounds[0] }
-	if m.defaultOutbound == nil { return E.New("explicit default outbound required: ", m.defaultTag) }
+		if m.defaultOutbound == nil {
+			m.defaultOutbound, _ = m.endpoint.Get(m.defaultTag)
+		}
+	} else if len(m.outbounds) != 0 {
+		m.defaultOutbound = m.outbounds[0]
+	}
+	if m.defaultOutbound == nil {
+		return E.New("explicit default outbound required: ", m.defaultTag)
+	}
 	for _, endpoint := range m.endpoint.Endpoints() {
-		if _, exists := m.outboundByTag[endpoint.Tag()]; exists { return E.New("duplicate outbound/endpoint tag: ", endpoint.Tag()) }
+		if _, exists := m.outboundByTag[endpoint.Tag()]; exists {
+			return E.New("duplicate outbound/endpoint tag: ", endpoint.Tag())
+		}
 	}
 	m.frozen = true
 	return nil
@@ -89,19 +116,29 @@ func (m *Manager) Freeze() error {
 func (m *Manager) Initialize(defaultOutboundFallback func() (adapter.Outbound, error)) {
 	m.access.Lock()
 	defer m.access.Unlock()
-	if !m.frozen { m.defaultOutboundFallback = defaultOutboundFallback }
+	if !m.frozen {
+		m.defaultOutboundFallback = defaultOutboundFallback
+	}
 }
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	m.access.Lock()
 	if m.runtime {
-		if !m.frozen { m.access.Unlock(); return errors.New("outbound inventory not frozen") }
-		if result, exists := m.stages[stage]; exists { m.access.Unlock(); return result }
+		if !m.frozen {
+			m.access.Unlock()
+			return errors.New("outbound inventory not frozen")
+		}
+		if result, exists := m.stages[stage]; exists {
+			m.access.Unlock()
+			return result
+		}
 		m.stages[stage] = errors.New("outbound stage in progress")
 		outbounds := slices.Clone(m.outbounds)
 		m.access.Unlock()
 		err := m.startRuntime(stage, outbounds)
-		m.access.Lock(); m.stages[stage] = err; m.access.Unlock()
+		m.access.Lock()
+		m.stages[stage] = err
+		m.access.Unlock()
 		return err
 	}
 	if stage == adapter.StartStateInitialize {
@@ -149,9 +186,13 @@ func (m *Manager) startRuntime(stage adapter.StartStage, outbounds []adapter.Out
 	}
 	for _, outbound := range outbounds {
 		scope := m.owned[outbound.Tag()]
-		if scope == nil { continue }
+		if scope == nil {
+			continue
+		}
 		if lifecycle, ok := outbound.(adapter.Lifecycle); ok {
-			if err := scope.Start("outbound/"+outbound.Type()+"["+outbound.Tag()+"]", lifecycle, stage); err != nil { return err }
+			if err := scope.Start("outbound/"+outbound.Type()+"["+outbound.Tag()+"]", lifecycle, stage); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -162,8 +203,12 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 	if m.runtime {
 		for _, member := range outbounds {
 			if _, endpoint := m.endpoint.Get(member.Tag()); endpoint {
-				if ownership, ok := m.endpoint.(interface { OwnsEndpoint(string) bool }); ok && !ownership.OwnsEndpoint(member.Tag()) { started[member.Tag()] = true }
-			} else if m.owned[member.Tag()] == nil { started[member.Tag()] = true }
+				if ownership, ok := m.endpoint.(interface{ OwnsEndpoint(string) bool }); ok && !ownership.OwnsEndpoint(member.Tag()) {
+					started[member.Tag()] = true
+				}
+			} else if m.owned[member.Tag()] == nil {
+				started[member.Tag()] = true
+			}
 		}
 	}
 	for {
@@ -195,7 +240,9 @@ func (m *Manager) startOutbounds(scope *adapter.Scope, outbounds []adapter.Outbo
 			}
 			name := "outbound/" + outboundToStart.Type() + "[" + outboundTag + "]"
 			memberScope := scope
-			if m.runtime { memberScope = m.owned[outboundTag] }
+			if m.runtime {
+				memberScope = m.owned[outboundTag]
+			}
 			err := memberScope.Start(name, lifecycle, adapter.StartStateStart)
 			if err != nil {
 				return err
@@ -258,8 +305,14 @@ func (m *Manager) Create(ctx context.Context, router adapter.Router, logger log.
 		return os.ErrInvalid
 	}
 	m.access.Lock()
-	if m.runtime || m.frozen { m.access.Unlock(); return errors.New("runtime outbounds require explicit insertion") }
-	if _, exists := m.outboundByTag[tag]; exists || m.pending[tag] { m.access.Unlock(); return E.New("duplicate outbound tag: ", tag) }
+	if m.runtime || m.frozen {
+		m.access.Unlock()
+		return errors.New("runtime outbounds require explicit insertion")
+	}
+	if _, exists := m.outboundByTag[tag]; exists || m.pending[tag] {
+		m.access.Unlock()
+		return E.New("duplicate outbound tag: ", tag)
+	}
 	m.pending[tag] = true
 	m.access.Unlock()
 	defer func() { m.access.Lock(); delete(m.pending, tag); m.access.Unlock() }()

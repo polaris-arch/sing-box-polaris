@@ -13,7 +13,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	"github.com/sagernet/sing-box/common/dialer"
- "github.com/sagernet/sing-box/common/httpclient"
+	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/listener"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
@@ -37,10 +37,10 @@ func RegisterInbound(registry *inbound.Registry) {
 }
 
 type Inbound struct {
- realmEnabled bool
- masqueradeTransport *httpclient.ManagedTransport
- runtime *inboundRuntime
- protocolTLS *inboundRuntimeTLS
+	realmEnabled        bool
+	masqueradeTransport *httpclient.ManagedTransport
+	runtime             *inboundRuntime
+	protocolTLS         *inboundRuntimeTLS
 	inbound.Adapter
 	router       adapter.Router
 	logger       log.ContextLogger
@@ -54,27 +54,41 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
- udpFragmentDefault:=options.UDPFragmentDefault
- options, err := cloneInboundOptions(ctx, options)
- options.UDPFragmentDefault=udpFragmentDefault
- if err != nil { return nil,err }
- if adapter.IsRuntimePreparation(ctx)&&options.Realm!=nil{return nil,E.New("Hysteria2 Realm requires coordinated remote activation and joined punch/control workers")}
- inbound := &Inbound{Adapter:inbound.NewAdapter(C.TypeHysteria2,tag),router:router,logger:logger}
- runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, inbound.closeRuntimeProtocol)
- defer finishRuntimeConstruction()
- if runtimeErr != nil { return nil,runtimeErr }
- inbound.runtime = runtime
- if runtime != nil { logger=runtime.wrapLogger(logger);inbound.logger=logger;ctx=runtime.bindContext(ctx) }
- tlsConfig, err := tls.NewServer(ctx, logger, common.PtrValueOrDefault(options.TLS))
- if err != nil { return nil,err }
- inbound.tlsConfig=tlsConfig
- inbound.listener=listener.New(listener.Options{Context:ctx,Logger:logger,Network:[]string{N.NetworkUDP},Listen:options.ListenOptions})
- if runtime != nil {
-  if err:=inbound.listener.DeclareRuntimePacketTransport();err!=nil{return nil,err}
-  inbound.protocolTLS=&inboundRuntimeTLS{ServerConfig:tlsConfig,runtime:runtime,listener:inbound.listener}
-  tlsConfig=inbound.protocolTLS
- }
- inbound.realmEnabled=options.Realm!=nil
+	udpFragmentDefault := options.UDPFragmentDefault
+	options, err := cloneInboundOptions(ctx, options)
+	options.UDPFragmentDefault = udpFragmentDefault
+	if err != nil {
+		return nil, err
+	}
+	if adapter.IsRuntimePreparation(ctx) && options.Realm != nil {
+		return nil, E.New("Hysteria2 Realm requires coordinated remote activation and joined punch/control workers")
+	}
+	inbound := &Inbound{Adapter: inbound.NewAdapter(C.TypeHysteria2, tag), router: router, logger: logger}
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, inbound.closeRuntimeProtocol)
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	inbound.runtime = runtime
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+		ctx = runtime.bindContext(ctx)
+	}
+	tlsConfig, err := tls.NewServer(ctx, logger, common.PtrValueOrDefault(options.TLS))
+	if err != nil {
+		return nil, err
+	}
+	inbound.tlsConfig = tlsConfig
+	inbound.listener = listener.New(listener.Options{Context: ctx, Logger: logger, Network: []string{N.NetworkUDP}, Listen: options.ListenOptions})
+	if runtime != nil {
+		if err := inbound.listener.DeclareRuntimePacketTransport(); err != nil {
+			return nil, err
+		}
+		inbound.protocolTLS = &inboundRuntimeTLS{ServerConfig: tlsConfig, runtime: runtime, listener: inbound.listener}
+		tlsConfig = inbound.protocolTLS
+	}
+	inbound.realmEnabled = options.Realm != nil
 
 	var salamanderPassword string
 	var geckoPassword string
@@ -109,14 +123,16 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			if err != nil {
 				return nil, E.Cause(err, "parse masquerade URL")
 			}
-   var proxyTransport http.RoundTripper
-   if runtime != nil {
-    inbound.masqueradeTransport,err=httpclient.NewTransport(ctx,logger,"",option.HTTPClientOptions{DisableEmptyDirectCheck:true})
-    if err!=nil{return nil,err}
-    proxyTransport=inbound.masqueradeTransport
-   }
+			var proxyTransport http.RoundTripper
+			if runtime != nil {
+				inbound.masqueradeTransport, err = httpclient.NewTransport(ctx, logger, "", option.HTTPClientOptions{DisableEmptyDirectCheck: true})
+				if err != nil {
+					return nil, err
+				}
+				proxyTransport = inbound.masqueradeTransport
+			}
 			masqueradeHandler = &httputil.ReverseProxy{
- Transport:proxyTransport,
+				Transport: proxyTransport,
 				Rewrite: func(r *httputil.ProxyRequest) {
 					r.SetURL(masqueradeURL)
 					if !options.Masquerade.ProxyOptions.RewriteHost {
@@ -200,11 +216,11 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			}
 		}
 	}
- if runtime != nil {
-  obfsEnabled:=geckoPassword!=""||salamanderPassword!=""
-  inbound.protocolTLS.transportOptions=inboundQUICTransportOptions{DisableVersionNegotiationPackets:obfsEnabled,StatelessReset:!obfsEnabled}
-  masqueradeHandler=runtime.wrapHTTPHandler(masqueradeHandler)
- }
+	if runtime != nil {
+		obfsEnabled := geckoPassword != "" || salamanderPassword != ""
+		inbound.protocolTLS.transportOptions = inboundQUICTransportOptions{DisableVersionNegotiationPackets: obfsEnabled, StatelessReset: !obfsEnabled}
+		masqueradeHandler = runtime.wrapHTTPHandler(masqueradeHandler)
+	}
 	hysteriaService, err := hysteria2.NewService[int](hysteria2.ServiceOptions{
 		Context:            ctx,
 		Logger:             logger,
@@ -250,13 +266,19 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- ctx,release,err:=h.runtime.enter(ctx)
- if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
- defer release()
- if h.runtime!=nil {
-  conn,onClose,err=h.runtime.wrapConnection(ctx,conn,onClose)
-  if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
- }
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
+	if h.runtime != nil {
+		conn, onClose, err = h.runtime.wrapConnection(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -270,7 +292,10 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 	metadata.Destination = destination
 	h.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
 	userID, validUser := auth.UserFromContext[int](ctx)
- if !validUser || userID<0 || userID>=len(h.userNameList) { N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return }
+	if !validUser || userID < 0 || userID >= len(h.userNameList) {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
 	if userName := h.userNameList[userID]; userName != "" {
 		metadata.User = userName
 		h.logger.InfoContext(ctx, "[", userName, "] inbound connection to ", metadata.Destination)
@@ -281,13 +306,19 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 }
 
 func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- ctx,release,err:=h.runtime.enter(ctx)
- if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
- defer release()
- if h.runtime!=nil {
-  conn,onClose,err=h.runtime.wrapPacketConnection(ctx,conn,onClose)
-  if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}
- }
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
+	if h.runtime != nil {
+		conn, onClose, err = h.runtime.wrapPacketConnection(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -301,7 +332,10 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 	metadata.Destination = destination
 	h.logger.InfoContext(ctx, "inbound packet connection from ", metadata.Source)
 	userID, validUser := auth.UserFromContext[int](ctx)
- if !validUser || userID<0 || userID>=len(h.userNameList) { N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return }
+	if !validUser || userID < 0 || userID >= len(h.userNameList) {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
 	if userName := h.userNameList[userID]; userName != "" {
 		metadata.User = userName
 		h.logger.InfoContext(ctx, "[", userName, "] inbound packet connection to ", metadata.Destination)
@@ -312,7 +346,9 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if h.runtime!=nil{return h.PrepareRuntime(stage,scope)}
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -337,6 +373,12 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) InterfaceUpdated(ctx context.Context) {
- if h.runtime!=nil { leave,err:=h.runtime.callbacks.Acquire();if err!=nil{return};defer leave() }
+	if h.runtime != nil {
+		leave, err := h.runtime.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	h.service.Reset()
 }

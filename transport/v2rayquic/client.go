@@ -31,16 +31,16 @@ type Client struct {
 	quicConfig *quic.Config
 	connAccess sync.Mutex
 	conn       common.TypedValue[*clientConnection]
-	boundary *httpclient.RuntimeTransportBoundary
-	source adapter.RuntimeResourceSource
-	closed bool
-	creating chan struct{}
+	boundary   *httpclient.RuntimeTransportBoundary
+	source     adapter.RuntimeResourceSource
+	closed     bool
+	creating   chan struct{}
 	closeIdle  atomic.Bool
 }
 
 type clientConnection struct {
 	*quic.Conn
-	session *httpclient.RuntimeQUICSession
+	session   *httpclient.RuntimeQUICSession
 	access    sync.Mutex
 	streams   int
 	closed    bool
@@ -89,47 +89,127 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	if len(tlsConfig.NextProtos()) == 0 {
 		tlsConfig.SetNextProtos([]string{http3.NextProtoH3})
 	}
-	client:=&Client{
+	client := &Client{
 		ctx:        ctx,
 		dialer:     dialer,
 		serverAddr: serverAddr,
 		tlsConfig:  tlsConfig,
 		quicConfig: quicConfig,
 	}
-	client.source,_=adapter.RuntimeResourceSourceFromContext(ctx)
-	client.boundary=httpclient.NewRuntimeTransportBoundary(func()error{client.connAccess.Lock();client.closed=true;client.conn.Swap(nil);client.connAccess.Unlock();return nil})
-	return client,nil
+	client.source, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	client.boundary = httpclient.NewRuntimeTransportBoundary(func() error {
+		client.connAccess.Lock()
+		client.closed = true
+		client.conn.Swap(nil)
+		client.connAccess.Unlock()
+		return nil
+	})
+	return client, nil
 }
 
-func(c *Client)offer(ctx context.Context)(*clientConnection,error){
-	for{
-		c.connAccess.Lock();if c.closed{c.connAccess.Unlock();return nil,net.ErrClosed}
-		if conn:=c.conn.Load();conn!=nil&&conn.active(){c.connAccess.Unlock();return conn,nil}
-		if pending:=c.creating;pending!=nil{c.connAccess.Unlock();select{case <-pending:continue;case <-ctx.Done():return nil,ctx.Err()}}
-		pending:=make(chan struct{});c.creating=pending;c.connAccess.Unlock()
-		conn,err:=c.offerNew(ctx)
-		c.connAccess.Lock();closed:=c.closed;if err==nil&&!closed{c.conn.Store(conn)};c.creating=nil;close(pending);c.connAccess.Unlock()
-		if err!=nil{return nil,err};if closed{c.boundary.RecordClose(conn.session.RuntimeCloseAndWait());return nil,net.ErrClosed};return conn,nil
+func (c *Client) offer(ctx context.Context) (*clientConnection, error) {
+	for {
+		c.connAccess.Lock()
+		if c.closed {
+			c.connAccess.Unlock()
+			return nil, net.ErrClosed
+		}
+		if conn := c.conn.Load(); conn != nil && conn.active() {
+			c.connAccess.Unlock()
+			return conn, nil
+		}
+		if pending := c.creating; pending != nil {
+			c.connAccess.Unlock()
+			select {
+			case <-pending:
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		pending := make(chan struct{})
+		c.creating = pending
+		c.connAccess.Unlock()
+		conn, err := c.offerNew(ctx)
+		c.connAccess.Lock()
+		closed := c.closed
+		if err == nil && !closed {
+			c.conn.Store(conn)
+		}
+		c.creating = nil
+		close(pending)
+		c.connAccess.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		if closed {
+			c.boundary.RecordClose(conn.session.RuntimeCloseAndWait())
+			return nil, net.ErrClosed
+		}
+		return conn, nil
 	}
 }
-func(c *Client)offerNew(ctx context.Context)(*clientConnection,error){
-	ctx,leave,err:=c.boundary.BeginDial(ctx);if err!=nil{return nil,err};defer leave()
-	if c.source!=nil{var err error;ctx,err=outbound.ContextForRuntimeOwnedSession(ctx,c.source);if err!=nil{return nil,err}}
-	config,err:=c.tlsConfig.STDConfig();if err!=nil{return nil,err}
-	raw,err:=c.dialer.DialContext(ctx,N.NetworkUDP,c.serverAddr);if err!=nil{return nil,err}
-	session,err:=httpclient.DialRuntimeQUIC(ctx,raw,config,c.quicConfig,c.boundary.RecordClose);if err!=nil{return nil,err}
-	if err=c.boundary.RegisterResource(session);err!=nil{return nil,err}
+
+func (c *Client) offerNew(ctx context.Context) (*clientConnection, error) {
+	ctx, leave, err := c.boundary.BeginDial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer leave()
+	if c.source != nil {
+		var err error
+		ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, c.source)
+		if err != nil {
+			return nil, err
+		}
+	}
+	config, err := c.tlsConfig.STDConfig()
+	if err != nil {
+		return nil, err
+	}
+	raw, err := c.dialer.DialContext(ctx, N.NetworkUDP, c.serverAddr)
+	if err != nil {
+		return nil, err
+	}
+	session, err := httpclient.DialRuntimeQUIC(ctx, raw, config, c.quicConfig, c.boundary.RecordClose)
+	if err != nil {
+		return nil, err
+	}
+	if err = c.boundary.RegisterResource(session); err != nil {
+		return nil, err
+	}
 	// This protocol historically used Dial, not DialEarly: do not publish a
 	// stream before the authenticated handshake has actually completed.
-	select{case <-session.Conn.HandshakeComplete():case <-session.Conn.Context().Done():return nil,context.Cause(session.Conn.Context());case <-ctx.Done():c.boundary.RecordClose(session.RuntimeCloseAndWait());return nil,ctx.Err()}
-	return &clientConnection{Conn:session.Conn,session:session,closeIdle:&c.closeIdle},nil
+	select {
+	case <-session.Conn.HandshakeComplete():
+	case <-session.Conn.Context().Done():
+		return nil, context.Cause(session.Conn.Context())
+	case <-ctx.Done():
+		c.boundary.RecordClose(session.RuntimeCloseAndWait())
+		return nil, ctx.Err()
+	}
+	return &clientConnection{Conn: session.Conn, session: session, closeIdle: &c.closeIdle}, nil
 }
 
-func(c *Client)DialContext(ctx context.Context)(net.Conn,error){
-	ctx,release,err:=adapter.AcquireRuntimeOperation(ctx,c.source);if err!=nil{return nil,err}
-	leave,err:=c.boundary.Acquire();if err!=nil{release();return nil,err};defer leave()
-	conn,err:=c.dialContextOwned(ctx);if err!=nil{release();return nil,err};return outbound.WrapRuntimeConn(ctx,release,conn),nil
+func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
+	ctx, release, err := adapter.AcquireRuntimeOperation(ctx, c.source)
+	if err != nil {
+		return nil, err
+	}
+	leave, err := c.boundary.Acquire()
+	if err != nil {
+		release()
+		return nil, err
+	}
+	defer leave()
+	conn, err := c.dialContextOwned(ctx)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	return outbound.WrapRuntimeConn(ctx, release, conn), nil
 }
+
 func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 	for {
 		conn, err := c.offer(ctx)
@@ -173,7 +253,7 @@ func (c *Client) CloseIdleConnections() {
 	}
 }
 
-func(c *Client)Close()error{return c.boundary.RuntimeCloseAndWait()}
-func(c *Client)RuntimeCloseAndWait()error{return c.Close()}
+func (c *Client) Close() error               { return c.boundary.RuntimeCloseAndWait() }
+func (c *Client) RuntimeCloseAndWait() error { return c.Close() }
 
-func(c *Client)StopRuntimeOperations(){c.boundary.StopRuntimeOperations()}
+func (c *Client) StopRuntimeOperations() { c.boundary.StopRuntimeOperations() }

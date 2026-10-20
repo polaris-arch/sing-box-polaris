@@ -12,8 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
- "github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
@@ -30,7 +30,7 @@ import (
 )
 
 type Endpoint struct {
- runtime *endpointRuntime
+	runtime        *endpointRuntime
 	options        EndpointOptions
 	peers          []peerConfig
 	ipcConf        string
@@ -45,9 +45,9 @@ type Endpoint struct {
 	stateAccess    sync.Mutex
 	suspended      atomic.Bool
 	networkPaused  bool
-	closeOnce sync.Once
-	closeDone chan struct{}
-	closeErr error
+	closeOnce      sync.Once
+	closeDone      chan struct{}
+	closeErr       error
 }
 
 func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
@@ -114,15 +114,19 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if options.MTU == 0 {
 		options.MTU = 1408
 	}
-	endpoint:= &Endpoint{
-		closeDone: make(chan struct{}),
+	endpoint := &Endpoint{
+		closeDone:      make(chan struct{}),
 		options:        options,
 		peers:          peers,
 		ipcConf:        ipcConf,
 		allowedAddress: allowedAddresses,
 	}
- if adapter.IsRuntimePreparation(options.Context){if err:=endpoint.initializeRuntime();err!=nil{return nil,err}}
- return endpoint,nil
+	if adapter.IsRuntimePreparation(options.Context) {
+		if err := endpoint.initializeRuntime(); err != nil {
+			return nil, err
+		}
+	}
+	return endpoint, nil
 }
 
 func (e *Endpoint) Initialize(memoryPressure func() tun.MemoryPressure) error {
@@ -191,7 +195,9 @@ func (e *Endpoint) Start(postStart bool) error {
 			}
 		}
 		bind = standardBind
- if e.runtime!=nil{bind=&runtimeStandardBind{StdNetBind:standardBind,owner:e.runtime}}
+		if e.runtime != nil {
+			bind = &runtimeStandardBind{StdNetBind: standardBind, owner: e.runtime}
+		}
 	} else {
 		var (
 			isConnect   bool
@@ -206,8 +212,10 @@ func (e *Endpoint) Start(postStart bool) error {
 			}
 		}
 		clientBind := NewClientBind(e.options.Context, e.options.Logger, e.options.Dialer, isConnect, connectAddr, reserved)
-  bind = clientBind
-  if e.runtime!=nil{bind=&runtimeClientBind{ClientBind:clientBind,owner:e.runtime}}
+		bind = clientBind
+		if e.runtime != nil {
+			bind = &runtimeClientBind{ClientBind: clientBind, owner: e.runtime}
+		}
 	}
 	if isUDPListener || len(e.peers) > 1 {
 		for _, peer := range e.peers {
@@ -281,7 +289,9 @@ func (e *Endpoint) Start(postStart bool) error {
 	e.device.Store(wgDevice)
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
 	if e.pause != nil {
- if e.runtime!=nil{e.runtime.startPause(e)}
+		if e.runtime != nil {
+			e.runtime.startPause(e)
+		}
 		e.pauseCallback = e.pause.RegisterCallback(e.onPauseUpdated)
 	}
 	e.allowedIPs = wgDevice.AllowedIPs()
@@ -355,7 +365,9 @@ func (e *Endpoint) Close() error {
 }
 
 func (e *Endpoint) close() error {
- if e.runtime!=nil{e.runtime.stop()}
+	if e.runtime != nil {
+		e.runtime.stop()
+	}
 	if e.pauseCallback != nil {
 		e.pause.UnregisterCallback(e.pauseCallback)
 		e.pauseCallback = nil
@@ -369,17 +381,21 @@ func (e *Endpoint) close() error {
 		wgDevice.Down()
 		wgDevice.Close()
 	}
- var closeErr error
- if e.tunDevice!=nil{closeErr=E.Errors(e.tunDevice.Close(),e.tunDevice.WaitDetached(context.Background()))}
- if e.runtime!=nil{closeErr=E.Errors(closeErr,e.runtime.wait())}
- // Native bind.Close has already set port zero, waking receives. Terminal
- // pool disposal comes after every native rebind and pause worker returned;
- // otherwise a late Open can re-register the shared finder after unregister.
- if e.egressPool != nil {
-  e.egressPool.Close()
-  e.egressPool = nil
- }
- return closeErr
+	var closeErr error
+	if e.tunDevice != nil {
+		closeErr = E.Errors(e.tunDevice.Close(), e.tunDevice.WaitDetached(context.Background()))
+	}
+	if e.runtime != nil {
+		closeErr = E.Errors(closeErr, e.runtime.wait())
+	}
+	// Native bind.Close has already set port zero, waking receives. Terminal
+	// pool disposal comes after every native rebind and pause worker returned;
+	// otherwise a late Open can re-register the shared finder after unregister.
+	if e.egressPool != nil {
+		e.egressPool.Close()
+		e.egressPool = nil
+	}
+	return closeErr
 }
 
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {
@@ -398,7 +414,10 @@ func (e *Endpoint) BindUpdate() error {
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {
- if e.runtime!=nil{e.runtime.notifyPause();return}
+	if e.runtime != nil {
+		e.runtime.notifyPause()
+		return
+	}
 	e.stateAccess.Lock()
 	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()

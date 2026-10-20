@@ -12,7 +12,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/endpoint"
- "github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/iponly"
 	C "github.com/sagernet/sing-box/constant"
@@ -79,10 +79,11 @@ type clientState struct {
 func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.OpenVPNClientEndpointOptions) (adapter.Endpoint, error) {
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	clientEndpoint := &ClientEndpoint{
-		endpointBase: endpointBase{Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:        router,
-		logger:        logger,
-  },
+		endpointBase: endpointBase{
+			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenVPNClient, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+			router:  router,
+			logger:  logger,
+		},
 		ctx:           ctx,
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,
@@ -90,8 +91,14 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		statusUpdated: make(chan struct{}),
 		onDemand:      options.OnDemand,
 	}
- if err := clientEndpoint.initializeRuntime(ctx, options.System); err != nil { cancelLoop(); return nil, err }; logger=clientEndpoint.logger
- if clientEndpoint.runtime!=nil {clientEndpoint.runtime.scope.Add(func()error{cancelLoop();return nil})}
+	if err := clientEndpoint.initializeRuntime(ctx, options.System); err != nil {
+		cancelLoop()
+		return nil, err
+	}
+	logger = clientEndpoint.logger
+	if clientEndpoint.runtime != nil {
+		clientEndpoint.runtime.scope.Add(func() error { cancelLoop(); return nil })
+	}
 	success := false
 	defer func() {
 		if success {
@@ -119,7 +126,9 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 	if isResolveDialer {
 		queryOptions = resolveDialer.QueryOptions()
 	}
- if clientEndpoint.runtime!=nil {outboundDialer=clientEndpoint.runtime.wrapDialer(outboundDialer)}
+	if clientEndpoint.runtime != nil {
+		outboundDialer = clientEndpoint.runtime.wrapDialer(outboundDialer)
+	}
 	clientEndpoint.outboundDialer = outboundDialer
 	clientEndpoint.queryOptions = queryOptions
 	udpTimeout := C.UDPTimeout
@@ -153,7 +162,13 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		},
 	}
 	clientOptions.IncomingPacketHeadroom = func() int {
- if clientEndpoint.runtime!=nil {leave,err:=clientEndpoint.runtime.callbacks.Acquire();if err!=nil{return 0};defer leave()}
+		if clientEndpoint.runtime != nil {
+			leave, err := clientEndpoint.runtime.callbacks.Acquire()
+			if err != nil {
+				return 0
+			}
+			defer leave()
+		}
 		return clientEndpoint.device.FrontHeadroom()
 	}
 	client, err := ovpn.NewClient(clientOptions)
@@ -161,7 +176,12 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		return nil, err
 	}
 	clientEndpoint.client = client
- if clientEndpoint.runtime!=nil {if err:=clientEndpoint.runtime.installNative(client.Close);err!=nil{return nil,err};clientEndpoint.runtime.scope.Add(clientEndpoint.closeNativeClient)}
+	if clientEndpoint.runtime != nil {
+		if err := clientEndpoint.runtime.installNative(client.Close); err != nil {
+			return nil, err
+		}
+		clientEndpoint.runtime.scope.Add(clientEndpoint.closeNativeClient)
+	}
 	success = true
 	return clientEndpoint, nil
 }
@@ -487,8 +507,24 @@ func buildClientTimingOptions(options option.OpenVPNClientEndpointOptions) ovpn.
 }
 
 func (c *ClientEndpoint) transportDialContextWithAddressIndex(ctx context.Context, network string, address string, addressIndex int) (net.Conn, error) {
- if c.runtime!=nil {owned,release,err:=c.runtime.begin(ctx);if err!=nil{return nil,err};defer release();ctx,err=outbound.ContextForRuntimeOwnedSession(owned,c.runtime.source);if err!=nil{return nil,err}}
- if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{return nil,err};defer leave()}
+	if c.runtime != nil {
+		owned, release, err := c.runtime.begin(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer release()
+		ctx, err = outbound.ContextForRuntimeOwnedSession(owned, c.runtime.source)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+	}
 	destination := M.ParseSocksaddr(address)
 	if destination.IsDomain() {
 		destinationAddresses, lookupErr := c.dnsRouter.Lookup(ctx, destination.Fqdn, c.queryOptions)
@@ -519,7 +555,13 @@ func (c *ClientEndpoint) transportDialContextWithAddressIndex(ctx context.Contex
 }
 
 func (c *ClientEndpoint) handleTunnelConfiguration(event ovpn.TunnelConfigurationEvent) error {
- if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	defer c.notifyStatusUpdated()
 	c.stateAccess.Lock()
 	configuration := configurationFromClientEvent(event, c.logger)
@@ -688,7 +730,13 @@ func (c *ClientEndpoint) readLoop(ctx context.Context) {
 }
 
 func (c *ClientEndpoint) InterfaceUpdated(ctx context.Context) {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	c.client.RestartSession()
 }
 
@@ -697,7 +745,13 @@ func (c *ClientEndpoint) OnDemand() bool {
 }
 
 func (c *ClientEndpoint) SetKeepIdleConnections(keep bool) {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	if keep {
 		c.client.Resume()
 	} else {
@@ -743,32 +797,67 @@ func (c *ClientEndpoint) PreMatchFlow(network string, destination netip.Addr) ad
 }
 
 func (c *ClientEndpoint) PortAddresses() (netip.Addr, netip.Addr) {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return netip.Addr{},netip.Addr{}};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return netip.Addr{}, netip.Addr{}
+		}
+		defer leave()
+	}
 	return c.device.PortAddresses()
 }
 
 func (c *ClientEndpoint) PortMTU() uint32 {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return 0};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return 0
+		}
+		defer leave()
+	}
 	return c.device.PortMTU()
 }
 
 func (c *ClientEndpoint) UpstreamPort() any {
- if c.runtime!=nil{return c}
+	if c.runtime != nil {
+		return c
+	}
 	return c.device
 }
 
 func (c *ClientEndpoint) AttachReturn(returnPath tun.Return) error {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return c.device.AttachReturn(returnPath)
 }
 
 func (c *ClientEndpoint) DetachReturn(returnPath tun.Return) error {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return c.device.DetachReturn(returnPath)
 }
 
 func (c *ClientEndpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
- if c.runtime!=nil&&!c.runtime.ingress.Load(){return tun.FlowVerdict{Action:tun.ActionDrop}};if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{return tun.FlowVerdict{Action:tun.ActionDrop}};defer leave()}
+	if c.runtime != nil && !c.runtime.ingress.Load() {
+		return tun.FlowVerdict{Action: tun.ActionDrop}
+	}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			return tun.FlowVerdict{Action: tun.ActionDrop}
+		}
+		defer leave()
+	}
 	return judgeOpenVPNFlow(c.router, c.Tag(), c.Type(), c.state.Load().localAddresses, network, source, destination, firstPacket)
 }
 
@@ -779,8 +868,24 @@ func (c *ClientEndpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destin
 // NewDNSPacketEx forwards the borrowed packet admission synchronously.
 // HijackDNSPacket owns the fork before asynchronous DNS work is published.
 func (c *ClientEndpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
- if c.runtime!=nil&&!c.runtime.ingress.Load(){return};if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{return};defer leave()}
- if c.runtime!=nil{owned,release,err:=adapter.AcquireRuntimeOperation(ctx,c.runtime.source);if err!=nil{return};defer release();ctx=owned}
+	if c.runtime != nil && !c.runtime.ingress.Load() {
+		return
+	}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
+	if c.runtime != nil {
+		owned, release, err := adapter.AcquireRuntimeOperation(ctx, c.runtime.source)
+		if err != nil {
+			return
+		}
+		defer release()
+		ctx = owned
+	}
 	c.newDNSPacket(log.ContextWithNewID(ctx), c, payload, source, destination, writer)
 }
 
@@ -790,7 +895,13 @@ func (c *ClientEndpoint) ready() bool {
 }
 
 func (c *ClientEndpoint) WritePackets(packets [][]byte) error {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	if c.onDemand {
 		c.client.Resume()
 	}
@@ -822,7 +933,14 @@ func (c *ClientEndpoint) WritePackets(packets [][]byte) error {
 }
 
 func (c *ClientEndpoint) writePacketBuffers(packetBuffers []*buf.Buffer) error {
- if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{buf.ReleaseMulti(packetBuffers);return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			buf.ReleaseMulti(packetBuffers)
+			return err
+		}
+		defer leave()
+	}
 	if c.onDemand {
 		c.client.Resume()
 	}
@@ -853,21 +971,67 @@ func (c *ClientEndpoint) writePacketBuffers(packetBuffers []*buf.Buffer) error {
 }
 
 func (c *ClientEndpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- if c.runtime!=nil&&!c.runtime.ingress.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return};if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()}
- if c.runtime!=nil{var err error;ctx,conn,onClose,err=c.runtime.wrapInboundConn(ctx,conn,onClose);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}}
+	if c.runtime != nil && !c.runtime.ingress.Load() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer leave()
+	}
+	if c.runtime != nil {
+		var err error
+		ctx, conn, onClose, err = c.runtime.wrapInboundConn(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 	c.newConnection(ctx, c, c.state.Load().localAddresses, conn, source, destination, onClose)
 }
 
 func (c *ClientEndpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- if c.runtime!=nil&&!c.runtime.ingress.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return};if c.runtime!=nil {leave,err:=c.runtime.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()}
- if c.runtime!=nil{var err error;ctx,conn,onClose,err=c.runtime.wrapInboundPacket(ctx,conn,onClose);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}}
+	if c.runtime != nil && !c.runtime.ingress.Load() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
+	if c.runtime != nil {
+		leave, err := c.runtime.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer leave()
+	}
+	if c.runtime != nil {
+		var err error
+		ctx, conn, onClose, err = c.runtime.wrapInboundPacket(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 	c.newPacketConnection(ctx, c, c.state.Load().localAddresses, conn, source, destination, onClose)
 }
 
 func (c *ClientEndpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
- if c.runtime==nil {return c.dialContext(ctx,network,destination)}
- return outbound.DialRuntimeConn(ctx,c.runtime.source,func(ctx context.Context)(net.Conn,error){leave,err:=c.runtime.acquire();if err!=nil{return nil,err};defer leave();return c.dialContext(ctx,network,destination)})
+	if c.runtime == nil {
+		return c.dialContext(ctx, network, destination)
+	}
+	return outbound.DialRuntimeConn(ctx, c.runtime.source, func(ctx context.Context) (net.Conn, error) {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		return c.dialContext(ctx, network, destination)
+	})
 }
+
 func (c *ClientEndpoint) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	switch network {
 	case N.NetworkTCP:
@@ -893,10 +1057,23 @@ func (c *ClientEndpoint) dialContext(ctx context.Context, network string, destin
 }
 
 func (c *ClientEndpoint) ListenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
- if c.runtime==nil {return c.listenPacketWithDestination(ctx,destination)}
- var address netip.Addr
- packet,err:=outbound.ListenRuntimePacket(ctx,c.runtime.source,func(ctx context.Context)(net.PacketConn,error){leave,err:=c.runtime.acquire();if err!=nil{return nil,err};defer leave();var packet net.PacketConn;packet,address,err=c.listenPacketWithDestination(ctx,destination);return packet,err});return packet,address,err
+	if c.runtime == nil {
+		return c.listenPacketWithDestination(ctx, destination)
+	}
+	var address netip.Addr
+	packet, err := outbound.ListenRuntimePacket(ctx, c.runtime.source, func(ctx context.Context) (net.PacketConn, error) {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		var packet net.PacketConn
+		packet, address, err = c.listenPacketWithDestination(ctx, destination)
+		return packet, err
+	})
+	return packet, address, err
 }
+
 func (c *ClientEndpoint) listenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
 	c.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	readyErr := c.waitReady(ctx)
@@ -936,7 +1113,13 @@ func (c *ClientEndpoint) ListenPacket(ctx context.Context, destination M.Socksad
 }
 
 func (c *ClientEndpoint) PreferredDomain(metadata *adapter.InboundContext, domain string) bool {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return false};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return false
+		}
+		defer leave()
+	}
 	state := c.state.Load()
 	if !state.started || !state.tunnelConfigured || !c.client.Ready() {
 		return false
@@ -950,7 +1133,13 @@ func (c *ClientEndpoint) PreferredDomain(metadata *adapter.InboundContext, domai
 }
 
 func (c *ClientEndpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return false};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return false
+		}
+		defer leave()
+	}
 	state := c.state.Load()
 	if !state.started || !state.tunnelConfigured || state.routeSet == nil || !c.client.Ready() {
 		return false

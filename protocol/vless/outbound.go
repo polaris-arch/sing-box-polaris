@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
- "github.com/gofrs/uuid/v5"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -23,6 +22,8 @@ import (
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 func RegisterOutbound(registry *outbound.Registry) {
@@ -37,22 +38,22 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeContext context.Context
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeContext      context.Context
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	logger          logger.ContextLogger
-	dialer          N.Dialer
-	client          *vless.Client
- visionUUID [16]byte
- flow string
-	serverAddr      M.Socksaddr
-	multiplexDialer *mux.Client
-	tlsConfig       tls.Config
-	tlsDialer       tls.Dialer
-	transport       adapter.V2RayClientTransport
-	packetAddr      bool
-	xudp            bool
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	client              *vless.Client
+	visionUUID          [16]byte
+	flow                string
+	serverAddr          M.Socksaddr
+	multiplexDialer     *mux.Client
+	tlsConfig           tls.Config
+	tlsDialer           tls.Dialer
+	transport           adapter.V2RayClientTransport
+	packetAddr          bool
+	xudp                bool
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.VLESSOutboundOptions) (adapter.Outbound, error) {
@@ -66,10 +67,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		dialer:     outboundDialer,
 		serverAddr: options.ServerOptions.Build(),
 	}
-	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	if err := outbound.initRuntimeCleanup(ctx); err != nil {
+		return nil, err
+	}
 	constructed := false
 	defer func() {
-		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+		if !constructed && !outbound.constructionCleanup {
+			_ = outbound.runtimeCleanup()
+		}
 	}()
 	if options.TLS != nil {
 		outbound.tlsConfig, err = tls.NewClientWithOptions(tls.ClientOptions{
@@ -105,10 +110,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return nil, E.New("unknown packet encoding: ", *options.PacketEncoding)
 		}
 	}
- outbound.flow = options.Flow
- user, parseErr := uuid.FromString(options.UUID)
- if parseErr != nil { user = uuid.NewV5(uuid.Nil, options.UUID) }
- outbound.visionUUID = user
+	outbound.flow = options.Flow
+	user, parseErr := uuid.FromString(options.UUID)
+	if parseErr != nil {
+		user = uuid.NewV5(uuid.Nil, options.UUID)
+	}
+	outbound.visionUUID = user
 	outbound.client, err = vless.NewClient(options.UUID, options.Flow, logger)
 	if err != nil {
 		return nil, err
@@ -117,9 +124,15 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
-	if err := ctx.Err(); err != nil { return nil, err }
-	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
-	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return outbound, nil
 }
@@ -176,7 +189,9 @@ func (h *Outbound) MultiplexEnabled() bool {
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	if h.transport != nil {
 		h.transport.Close()
@@ -188,7 +203,9 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
@@ -201,7 +218,9 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 
 func (h *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
@@ -213,15 +232,21 @@ func (h *Outbound) CloseIdleConnections() {
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
 	return h.registerRuntimeStart(scope)
 }
 
 type vlessDialer Outbound
 
 func (h *vlessDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (result net.Conn, resultErr error) {
-	if name := N.NetworkName(network); name != N.NetworkTCP && name != N.NetworkUDP { return nil, E.Extend(N.ErrUnknownNetwork, network) }
-	if N.NetworkName(network) == N.NetworkUDP && h.packetAddr && !h.xudp && destination.IsDomain() { return nil, E.New("packetaddr: domain destination is not supported") }
+	if name := N.NetworkName(network); name != N.NetworkTCP && name != N.NetworkUDP {
+		return nil, E.Extend(N.ErrUnknownNetwork, network)
+	}
+	if N.NetworkName(network) == N.NetworkUDP && h.packetAddr && !h.xudp && destination.IsDomain() {
+		return nil, E.New("packetaddr: domain destination is not supported")
+	}
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination
@@ -268,7 +293,9 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 }
 
 func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (result net.PacketConn, resultErr error) {
-	if h.packetAddr && !h.xudp && destination.IsDomain() { return nil, E.New("packetaddr: domain destination is not supported") }
+	if h.packetAddr && !h.xudp && destination.IsDomain() {
+		return nil, E.New("packetaddr: domain destination is not supported")
+	}
 	h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()

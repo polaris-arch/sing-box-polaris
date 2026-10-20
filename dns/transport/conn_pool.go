@@ -5,8 +5,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing/common/x/list"
- "github.com/sagernet/sing-box/adapter"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -31,12 +31,12 @@ type ConnPool[T comparable] struct {
 
 	sem *semaphore.Weighted
 
-	access sync.Mutex
-	closed bool
-	keepIdle bool
-	state  *connPoolState[T]
+	access         sync.Mutex
+	closed         bool
+	keepIdle       bool
+	state          *connPoolState[T]
 	connectWorkers sync.WaitGroup
-	closeDone chan struct{}
+	closeDone      chan struct{}
 }
 
 type connPoolState[T comparable] struct {
@@ -66,8 +66,8 @@ type connPoolConnect[T comparable] struct {
 
 func NewConnPool[T comparable](options ConnPoolOptions[T]) *ConnPool[T] {
 	p := &ConnPool[T]{
-		options: options,
-		keepIdle: true,
+		options:   options,
+		keepIdle:  true,
 		closeDone: make(chan struct{}),
 	}
 	if options.Mode == ConnPoolOrdered && options.MaxInflight > 0 {
@@ -139,7 +139,9 @@ func (p *ConnPool[T]) Release(conn T, reuse bool) {
 		}
 	}
 	var idle []T
-	if !p.keepIdle { idle = p.takeIdleLocked(state) }
+	if !p.keepIdle {
+		idle = p.takeIdleLocked(state)
+	}
 	p.access.Unlock()
 	p.closeIdle(idle)
 }
@@ -217,7 +219,9 @@ func (p *ConnPool[T]) SetKeepIdleConnections(keep bool) {
 	p.access.Lock()
 	p.keepIdle = keep
 	var idle []T
-	if !p.closed && !keep { idle = p.takeIdleLocked(p.state) }
+	if !p.closed && !keep {
+		idle = p.takeIdleLocked(p.state)
+	}
 	p.access.Unlock()
 	p.closeIdle(idle)
 }
@@ -225,7 +229,9 @@ func (p *ConnPool[T]) SetKeepIdleConnections(keep bool) {
 func (p *ConnPool[T]) CloseIdle() {
 	p.access.Lock()
 	var idle []T
-	if !p.closed { idle = p.takeIdleLocked(p.state) }
+	if !p.closed {
+		idle = p.takeIdleLocked(p.state)
+	}
 	p.access.Unlock()
 	p.closeIdle(idle)
 }
@@ -234,7 +240,9 @@ func (p *ConnPool[T]) CloseIdle() {
 // stay admitted; neither their contexts nor active queries are cancelled.
 func (p *ConnPool[T]) takeIdleLocked(state *connPoolState[T]) []T {
 	if p.options.Mode == ConnPoolSingle {
-		if !state.hasShared || state.sharedUsers > 0 || state.sharedWaiters > 0 { return nil }
+		if !state.hasShared || state.sharedUsers > 0 || state.sharedWaiters > 0 {
+			return nil
+		}
 		conn := state.shared
 		p.removeConn(state, conn, net.ErrClosed)
 		return []T{conn}
@@ -249,7 +257,9 @@ func (p *ConnPool[T]) takeIdleLocked(state *connPoolState[T]) []T {
 }
 
 func (p *ConnPool[T]) closeIdle(idle []T) {
-	for _, conn := range idle { p.options.Close(conn, net.ErrClosed) }
+	for _, conn := range idle {
+		p.options.Close(conn, net.ErrClosed)
+	}
 }
 
 func (p *ConnPool[T]) Reset() {
@@ -390,16 +400,16 @@ func (p *ConnPool[T]) acquireShared(ctx context.Context, dial func(context.Conte
 		p.access.Unlock()
 
 		if startDial {
-   // Reserve before dispatch: a canceled waiter may return and release its
-   // inherited operation before the worker is first scheduled.
-   workerContext,releaseWorker,reserveErr:=adapter.AcquireRuntimeOperation(ctx,nil)
-   if reserveErr!=nil {
-    // Resolve the already-published connecting slot and worker counter through
-    // the normal failure path; no dial or new source admission takes place.
-    p.connectSingle(current,state,ctx,func(context.Context)(T,error){return zero,reserveErr})
-   } else {
-    go func(){defer releaseWorker();p.connectSingle(current,state,workerContext,dial)}()
-   }
+			// Reserve before dispatch: a canceled waiter may return and release its
+			// inherited operation before the worker is first scheduled.
+			workerContext, releaseWorker, reserveErr := adapter.AcquireRuntimeOperation(ctx, nil)
+			if reserveErr != nil {
+				// Resolve the already-published connecting slot and worker counter through
+				// the normal failure path; no dial or new source admission takes place.
+				p.connectSingle(current, state, ctx, func(context.Context) (T, error) { return zero, reserveErr })
+			} else {
+				go func() { defer releaseWorker(); p.connectSingle(current, state, workerContext, dial) }()
+			}
 		}
 
 		select {
@@ -413,7 +423,9 @@ func (p *ConnPool[T]) acquireShared(ctx context.Context, dial func(context.Conte
 			p.access.Lock()
 			current.sharedWaiters--
 			var idle []T
-			if !p.closed && p.state == current && !p.keepIdle { idle = p.takeIdleLocked(current) }
+			if !p.closed && p.state == current && !p.keepIdle {
+				idle = p.takeIdleLocked(current)
+			}
 			p.access.Unlock()
 			p.closeIdle(idle)
 			return zero, nil, false, ctx.Err()
@@ -469,7 +481,9 @@ func (p *ConnPool[T]) connectSingle(current *connPoolState[T], state *connPoolCo
 		current.all[conn] = struct{}{}
 	}
 	var idle []T
-	if !p.closed && p.state == current && !p.keepIdle { idle = p.takeIdleLocked(current) }
+	if !p.closed && p.state == current && !p.keepIdle {
+		idle = p.takeIdleLocked(current)
+	}
 	p.access.Unlock()
 	p.closeIdle(idle)
 
@@ -487,7 +501,9 @@ func (p *ConnPool[T]) collectShared(current *connPoolState[T], state *connPoolCo
 	if state.err != nil {
 		err := state.err
 		var idle []T
-		if !p.closed && p.state == current && !p.keepIdle { idle = p.takeIdleLocked(current) }
+		if !p.closed && p.state == current && !p.keepIdle {
+			idle = p.takeIdleLocked(current)
+		}
 		p.access.Unlock()
 		p.closeIdle(idle)
 		if startDial {
@@ -538,5 +554,13 @@ func afterFuncJoined(ctx context.Context, callback func()) func() bool {
 	stop := context.AfterFunc(ctx, func() { defer close(done); callback() })
 	var once sync.Once
 	var stopped bool
-	return func() bool { once.Do(func() { stopped = stop(); if !stopped { <-done } }); return stopped }
+	return func() bool {
+		once.Do(func() {
+			stopped = stop()
+			if !stopped {
+				<-done
+			}
+		})
+		return stopped
+	}
 }

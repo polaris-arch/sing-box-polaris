@@ -17,30 +17,60 @@ type urlTestSelection struct {
 
 type groupCheckResult struct {
 	values map[string]uint16
-	err error
+	err    error
+}
+
+// Publication must observe the effective caller even before an asynchronous
+// cancellation bridge runs. Nested native checks inherit this guard; required
+// and coalesced host-owned passes deliberately start from the host context.
+type urlTestCallerGuardKey struct{}
+
+func urlTestCanPublish(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	guard, loaded := ctx.Value(urlTestCallerGuardKey{}).(func() bool)
+	return !loaded || guard()
 }
 
 // Check work and ticker loops reserve workers under access. Closing admission
 // precedes Wait; actual raw probes, never just timed-out waiters, own the lease.
 func (g *URLTestGroup) requestCheck(ctx context.Context, force, wait bool) (map[string]uint16, error) {
- return g.requestCheckEpoch(ctx, force, wait, nil)
+	return g.requestCheckEpoch(ctx, force, wait, nil)
 }
 
 func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, expected *urltest.HistoryEpoch) (map[string]uint16, error) {
-	if err := ctx.Err(); err != nil { return nil, err }
- g.access.Lock()
-	if g.closed { g.access.Unlock(); return nil, os.ErrClosed }
-	if expected != nil && !g.history.IsCurrent(expected) { g.access.Unlock(); return nil, urltest.ErrStaleHistory }
- required := g.pendingForce
- if force { g.pendingForce = true }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if !urlTestCanPublish(ctx) {
+		return nil, context.Canceled
+	}
+	g.access.Lock()
+	if g.closed {
+		g.access.Unlock()
+		return nil, os.ErrClosed
+	}
+	if expected != nil && !g.history.IsCurrent(expected) {
+		g.access.Unlock()
+		return nil, urltest.ErrStaleHistory
+	}
+	required := g.pendingForce
+	if force {
+		g.pendingForce = true
+	}
 	epoch := expected
- if epoch == nil { epoch = g.history.Epoch() }
+	if epoch == nil {
+		epoch = g.history.Epoch()
+	}
 	if !g.started || g.running || g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() || !g.history.IsCurrent(epoch) {
 		g.access.Unlock()
 		return make(map[string]uint16), nil
 	}
 	workerContext := ctx
-	if required { workerContext = adapter.ContextWithRuntimeOwnership(g.ctx, ctx) }
+	if required {
+		workerContext = adapter.ContextWithRuntimeOwnership(g.ctx, ctx)
+	}
 	// External manual probes transfer their live graph/receiver continuation
 	// before the worker is published. Internal ticker/startup work is already
 	// owned and joined by this resource scope, with no self-retaining root.
@@ -48,11 +78,16 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 	_, hasGraph := adapter.RuntimeLeaseFromContext(workerContext)
 	source, hasSource := adapter.RuntimeResourceSourceFromContext(g.ctx)
 	hasReceiver := false
-	if hasSource { _, hasReceiver = adapter.RuntimeResourceLeaseFromContext(workerContext, source.ID()) }
+	if hasSource {
+		_, hasReceiver = adapter.RuntimeResourceLeaseFromContext(workerContext, source.ID())
+	}
 	if hasGraph || hasReceiver {
 		var retainErr error
 		workerContext, release, retainErr = adapter.AcquireRuntimeOperation(workerContext, source)
-		if retainErr != nil { g.access.Unlock(); return nil, retainErr }
+		if retainErr != nil {
+			g.access.Unlock()
+			return nil, retainErr
+		}
 	}
 	force = force || g.pendingForce
 	g.pendingForce = false
@@ -61,7 +96,9 @@ func (g *URLTestGroup) requestCheckEpoch(ctx context.Context, force, wait bool, 
 	result := make(chan groupCheckResult, 1)
 	g.access.Unlock()
 	go g.runChecks(workerContext, force, epoch, result, release)
-	if !wait { return nil, nil }
+	if !wait {
+		return nil, nil
+	}
 	select {
 	case result := <-result:
 		return result.values, result.err
@@ -79,21 +116,32 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 	for {
 		ctx, cancel := context.WithCancel(g.ctx)
 		ctx = adapter.ContextWithRuntimeOwnership(ctx, ownership)
+		passCaller := caller
+		ctx = context.WithValue(ctx, urlTestCallerGuardKey{}, func() bool { return urlTestCanPublish(passCaller) })
 		stop := context.AfterFunc(caller, cancel)
-		if caller.Err() != nil { cancel() }
+		if caller.Err() != nil {
+			cancel()
+		}
 		g.access.Lock()
 		g.activeCancel = cancel
-		if g.closed || g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() { cancel() }
+		if g.closed || g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() {
+			cancel()
+		}
 		g.access.Unlock()
 		values := urlTestOutbounds(ctx, g.outbound, g.history, g.logger, g.outbounds, g.link, g.interval, force, epoch, g)
-		checkErr := ctx.Err()
-		if checkErr == nil { g.performUpdateCheckEpoch(epoch) }
+		current := urlTestCanPublish(ctx)
+		if current {
+			g.performUpdateCheckEpochContext(ctx, epoch)
+		}
+		current = urlTestCanPublish(ctx)
 		stop()
 		cancel()
 		g.access.Lock()
 		g.activeCancel = nil
-		valid := checkErr == nil && !g.closed && g.history.IsCurrent(epoch)
-		if !valid { values = make(map[string]uint16) }
+		valid := current && urlTestCanPublish(passCaller) && !g.closed && g.history.IsCurrent(epoch)
+		if !valid {
+			values = make(map[string]uint16)
+		}
 		if result != nil {
 			result <- groupCheckResult{values: values}
 			result = nil
@@ -115,10 +163,17 @@ func (g *URLTestGroup) runChecks(caller context.Context, force bool, epoch *urlt
 // unregisters, probes inline, or creates one worker per coalesced request.
 func (g *URLTestGroup) pauseChanged(event int) {
 	g.access.Lock()
-	if g.closed { g.access.Unlock(); return }
+	if g.closed {
+		g.access.Unlock()
+		return
+	}
 	paused := g.pause.IsDevicePaused() || g.pause.IsNetworkPaused()
 	if g.ticker != nil {
-		if paused { g.ticker.Stop() } else { g.ticker.Reset(g.interval) }
+		if paused {
+			g.ticker.Stop()
+		} else {
+			g.ticker.Reset(g.interval)
+		}
 	}
 	var cancel context.CancelFunc
 	if paused {
@@ -126,7 +181,9 @@ func (g *URLTestGroup) pauseChanged(event int) {
 		cancel = g.activeCancel
 	}
 	g.access.Unlock()
-	if cancel != nil { cancel() }
+	if cancel != nil {
+		cancel()
+	}
 	if !paused && (event == pause.EventDeviceWake || event == pause.EventNetworkWake) {
 		_, _ = g.requestCheck(g.ctx, true, false)
 	}
@@ -134,7 +191,10 @@ func (g *URLTestGroup) pauseChanged(event int) {
 
 func (g *URLTestGroup) PostStart() {
 	g.access.Lock()
-	if g.closed || g.started { g.access.Unlock(); return }
+	if g.closed || g.started {
+		g.access.Unlock()
+		return
+	}
 	g.started = true
 	g.lastActive.Store(time.Now())
 	g.access.Unlock()
@@ -143,11 +203,19 @@ func (g *URLTestGroup) PostStart() {
 
 func (g *URLTestGroup) Touch() {
 	g.access.Lock()
-	if !g.started || g.closed { g.access.Unlock(); return }
+	if !g.started || g.closed {
+		g.access.Unlock()
+		return
+	}
 	g.lastActive.Store(time.Now())
-	if g.ticker != nil { g.access.Unlock(); return }
+	if g.ticker != nil {
+		g.access.Unlock()
+		return
+	}
 	ticker := time.NewTicker(g.interval)
-	if g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() { ticker.Stop() }
+	if g.pause.IsDevicePaused() || g.pause.IsNetworkPaused() {
+		ticker.Stop()
+	}
 	g.ticker = ticker
 	g.workers.Add(1)
 	g.access.Unlock()
@@ -158,16 +226,24 @@ func (g *URLTestGroup) Touch() {
 // signal: an uncooperative probe keeps it open and cannot be treated as retired.
 func (g *URLTestGroup) Close() error {
 	g.access.Lock()
-	if g.closed { g.access.Unlock(); return nil }
+	if g.closed {
+		g.access.Unlock()
+		return nil
+	}
 	g.closed = true
 	g.pendingForce = false
-	if g.ticker != nil { g.ticker.Stop(); g.ticker = nil }
+	if g.ticker != nil {
+		g.ticker.Stop()
+		g.ticker = nil
+	}
 	callback := g.pauseCallback
 	g.pauseCallback = nil
 	close(g.close)
 	g.access.Unlock()
 	g.cancel()
-	if callback != nil { g.pause.UnregisterCallback(callback) }
+	if callback != nil {
+		g.pause.UnregisterCallback(callback)
+	}
 	go func() { g.workers.Wait(); close(g.done) }()
 	return nil
 }
@@ -176,6 +252,8 @@ func (g *URLTestGroup) Done() <-chan struct{} { return g.done }
 
 func (g *URLTestGroup) selected() *urlTestSelection {
 	selection := g.selection.Load()
-	if selection == nil { return &urlTestSelection{} }
+	if selection == nil {
+		return &urlTestSelection{}
+	}
 	return selection
 }

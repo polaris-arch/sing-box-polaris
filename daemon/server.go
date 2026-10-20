@@ -35,7 +35,9 @@ func newUnaryAuthInterceptor(secret string) grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 		scope := "daemon:shared-credential"
-		if secret == "" { scope = "daemon:trusted-local" }
+		if secret == "" {
+			scope = "daemon:trusted-local"
+		}
 		return handler(ContextWithRuntimeActor(ctx, scope), request)
 	}
 }

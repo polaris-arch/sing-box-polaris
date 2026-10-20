@@ -10,6 +10,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	tor "github.com/sagernet/sing-box/common/binetor"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/proxybridge"
 	C "github.com/sagernet/sing-box/constant"
@@ -25,7 +26,6 @@ import (
 	"github.com/sagernet/sing/service/filemanager"
 
 	"github.com/cretz/bine/control"
-	tor "github.com/sagernet/sing-box/common/binetor"
 )
 
 func RegisterOutbound(registry *outbound.Registry) {
@@ -34,23 +34,23 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeStarts *outbound.RuntimeIOFence
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeStarts       *outbound.RuntimeIOFence
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	processOwner *runtimeProcessCreator
-	torInstance *tor.Tor
-	eventsDone chan struct{}
-	runtimeWork *outbound.RuntimeIOFence
-	admitRuntime func(context.Context) (context.Context, func(), error)
-	ctx         context.Context
-	logger      logger.ContextLogger
-	dialer      N.Dialer
-	proxy       *proxybridge.Bridge
-	startConf   *tor.StartConf
-	options     map[string]string
-	events      chan control.Event
-	socksClient *socks.Client
+	processOwner        *runtimeProcessCreator
+	torInstance         *tor.Tor
+	eventsDone          chan struct{}
+	runtimeWork         *outbound.RuntimeIOFence
+	admitRuntime        func(context.Context) (context.Context, func(), error)
+	ctx                 context.Context
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	proxy               *proxybridge.Bridge
+	startConf           *tor.StartConf
+	options             map[string]string
+	events              chan control.Event
+	socksClient         *socks.Client
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.TorOutboundOptions) (adapter.Outbound, error) {
@@ -104,21 +104,33 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		startConf: &startConf,
 		options:   cloneTorOptions(options.Options),
 	}
-	if err := instance.initRuntime(ctx); err != nil { return nil, err }
+	if err := instance.initRuntime(ctx); err != nil {
+		return nil, err
+	}
 	registered, err := outbound.RegisterRuntimeCleanup(ctx, instance.runtimeCleanup)
 	instance.constructionCleanup = registered
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return instance, nil
 }
 
 func (t *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if err := scope.Context().Err(); err != nil { _ = t.runtimeCleanup(); return err }
+	if err := scope.Context().Err(); err != nil {
+		_ = t.runtimeCleanup()
+		return err
+	}
 	if !t.constructionCleanup {
 		registered, err := outbound.RegisterRuntimeCleanup(adapter.ContextWithConstructionScope(scope.Context(), scope), t.runtimeCleanup)
 		t.constructionCleanup = registered
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 	}
-	release, err := t.runtimeStarts.Acquire(); if err != nil { return err }
+	release, err := t.runtimeStarts.Acquire()
+	if err != nil {
+		return err
+	}
 	defer release()
 	switch stage {
 	case adapter.StartStateInitialize:
@@ -212,13 +224,24 @@ func (t *Outbound) start(scope *adapter.Scope) error {
 	// soon-closed channel. Poll through synchronous control requests instead;
 	// each response still relays log events to our joined receiver.
 	err = torInstance.EnableNetwork(t.ctx, false)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	for {
 		phase, phaseErr := torInstance.Control.GetInfo("status/bootstrap-phase")
-		if phaseErr != nil { return phaseErr }
-		if len(phase) == 1 && strings.Contains(phase[0].Val, "PROGRESS=100") { break }
+		if phaseErr != nil {
+			return phaseErr
+		}
+		if len(phase) == 1 && strings.Contains(phase[0].Val, "PROGRESS=100") {
+			break
+		}
 		timer := time.NewTimer(200 * time.Millisecond)
-		select { case <-timer.C: case <-t.ctx.Done(): timer.Stop(); return t.ctx.Err() }
+		select {
+		case <-timer.C:
+		case <-t.ctx.Done():
+			timer.Stop()
+			return t.ctx.Err()
+		}
 	}
 	info, err := torInstance.Control.GetInfo("net/listeners/socks")
 	if err != nil {
@@ -279,6 +302,8 @@ func (t *Outbound) listenPacket(ctx context.Context, destination M.Socksaddr) (n
 
 func cloneTorOptions(options map[string]string) map[string]string {
 	cloned := make(map[string]string, len(options))
-	for key, value := range options { cloned[key] = value }
+	for key, value := range options {
+		cloned[key] = value
+	}
 	return cloned
 }

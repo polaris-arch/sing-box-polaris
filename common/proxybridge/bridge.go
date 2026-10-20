@@ -21,21 +21,21 @@ import (
 )
 
 type Bridge struct {
-	ctx           context.Context
-	runtimeSource adapter.RuntimeResourceSource
-	admitRuntime func(context.Context) (context.Context, func(), error)
-	fences *outbound.RuntimeIOFenceSet
-	handlers *outbound.RuntimeIOFence
-	cleanup func() error
+	ctx            context.Context
+	runtimeSource  adapter.RuntimeResourceSource
+	admitRuntime   func(context.Context) (context.Context, func(), error)
+	fences         *outbound.RuntimeIOFenceSet
+	handlers       *outbound.RuntimeIOFence
+	cleanup        func() error
 	listenerAccess sync.Mutex
-	logger        logger.ContextLogger
-	tag           string
-	dialer        N.Dialer
-	connection    adapter.ConnectionManager
-	tcpListener   *net.TCPListener
-	username      string
-	password      string
-	authenticator *auth.Authenticator
+	logger         logger.ContextLogger
+	tag            string
+	dialer         N.Dialer
+	connection     adapter.ConnectionManager
+	tcpListener    *net.TCPListener
+	username       string
+	password       string
+	authenticator  *auth.Authenticator
 }
 
 func New(ctx context.Context, logger logger.ContextLogger, tag string, dialer N.Dialer) (*Bridge, error) {
@@ -67,26 +67,44 @@ func New(ctx context.Context, logger logger.ContextLogger, tag string, dialer N.
 // another user stream, or an idle resource baseline.
 func NewWithRuntimeContinuation(ctx context.Context, logger logger.ContextLogger, tag string, dialer N.Dialer, admit func(context.Context) (context.Context, func(), error)) (*Bridge, error) {
 	bridge, err := New(ctx, logger, tag, dialer)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	bridge.admitRuntime = admit
 	return bridge, nil
 }
 
 func (b *Bridge) acquireRuntime(ctx context.Context) (context.Context, func(), error) {
-	if b.admitRuntime != nil { return b.admitRuntime(ctx) }
-	if b.runtimeSource != nil { return nil, nil, E.New("runtime bridge requires constructor-owned fence admission") }
+	if b.admitRuntime != nil {
+		return b.admitRuntime(ctx)
+	}
+	if b.runtimeSource != nil {
+		return nil, nil, E.New("runtime bridge requires constructor-owned fence admission")
+	}
 	return adapter.AcquireRuntimeOperation(ctx, nil)
 }
 
 func (b *Bridge) Start() error {
-	creation, err := b.fences.Begin(); if err != nil { return err }; defer creation.Done()
+	creation, err := b.fences.Begin()
+	if err != nil {
+		return err
+	}
+	defer creation.Done()
 	tcpListener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	fence := outbound.NewRuntimeIOFence(tcpListener.Close)
-	if err := creation.Register(fence); err != nil { return err }
-	b.listenerAccess.Lock(); b.tcpListener = tcpListener; b.listenerAccess.Unlock()
+	if err := creation.Register(fence); err != nil {
+		return err
+	}
+	b.listenerAccess.Lock()
+	b.tcpListener = tcpListener
+	b.listenerAccess.Unlock()
 	release, err := b.handlers.Acquire()
-	if err != nil { return fence.RuntimeCloseAndWait() }
+	if err != nil {
+		return fence.RuntimeCloseAndWait()
+	}
 	go func() { defer release(); b.acceptLoop(tcpListener) }()
 	return nil
 }
@@ -98,8 +116,13 @@ func randomHex(size int) string {
 }
 
 func (b *Bridge) Port() uint16 {
-	b.listenerAccess.Lock(); listener := b.tcpListener; b.listenerAccess.Unlock()
-	if listener == nil { return 0 }; return M.SocksaddrFromNet(listener.Addr()).Port
+	b.listenerAccess.Lock()
+	listener := b.tcpListener
+	b.listenerAccess.Unlock()
+	if listener == nil {
+		return 0
+	}
+	return M.SocksaddrFromNet(listener.Addr()).Port
 }
 
 func (b *Bridge) Username() string {
@@ -110,28 +133,42 @@ func (b *Bridge) Password() string {
 	return b.password
 }
 
-func (b *Bridge) Close() error { return b.cleanup() }
+func (b *Bridge) Close() error               { return b.cleanup() }
 func (b *Bridge) RuntimeCloseAndWait() error { return b.cleanup() }
 
 func (b *Bridge) closeAndWait() error {
 	_ = b.handlers.Close()
 	b.fences.Stop()
-	if err := b.handlers.Wait(); err != nil { b.fences.Record(err) }
+	if err := b.handlers.Wait(); err != nil {
+		b.fences.Record(err)
+	}
 	return b.fences.Wait()
 }
 
 func (b *Bridge) acceptLoop(listener *net.TCPListener) {
-	for b.acceptOne(listener) {}
+	for b.acceptOne(listener) {
+	}
 }
 
 func (b *Bridge) acceptOne(listener *net.TCPListener) bool {
-	creation, err := b.fences.Begin(); if err != nil { return false }; defer creation.Done()
+	creation, err := b.fences.Begin()
+	if err != nil {
+		return false
+	}
+	defer creation.Done()
 	tcpConn, err := listener.AcceptTCP()
-	if err != nil { return false }
+	if err != nil {
+		return false
+	}
 	conn, fence := outbound.WrapRuntimeOwnedConn(tcpConn)
-	if err := creation.Register(fence); err != nil { return false }
+	if err := creation.Register(fence); err != nil {
+		return false
+	}
 	release, err := b.handlers.Acquire()
-	if err != nil { b.fences.Record(fence.RuntimeCloseAndWait()); return false }
+	if err != nil {
+		b.fences.Record(fence.RuntimeCloseAndWait())
+		return false
+	}
 	ctx := log.ContextWithNewID(b.ctx)
 	go func() {
 		// A panic cannot certify completion of a callback that may already
@@ -141,7 +178,9 @@ func (b *Bridge) acceptOne(listener *net.TCPListener) bool {
 			_ = conn.Close()
 			if E.IsClosedOrCanceled(hErr) {
 				b.logger.DebugContext(ctx, E.Cause(hErr, b.tag, " connection closed"))
-			} else { b.logger.ErrorContext(ctx, E.Cause(hErr, b.tag)) }
+			} else {
+				b.logger.ErrorContext(ctx, E.Cause(hErr, b.tag))
+			}
 		}
 		release()
 	}()
@@ -149,15 +188,26 @@ func (b *Bridge) acceptOne(listener *net.TCPListener) bool {
 }
 
 func (b *Bridge) guardOnClose(onClose N.CloseHandlerFunc) N.CloseHandlerFunc {
-	if onClose == nil { return nil }
+	if onClose == nil {
+		return nil
+	}
 	return func(err error) {
-		release, acquireErr := b.handlers.Acquire(); if acquireErr != nil { return }
-		onClose(err); release()
+		release, acquireErr := b.handlers.Acquire()
+		if acquireErr != nil {
+			return
+		}
+		onClose(err)
+		release()
 	}
 }
 
 func (b *Bridge) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
-	release, err := b.handlers.Acquire(); if err != nil { _ = conn.Close(); return }; defer release()
+	release, err := b.handlers.Acquire()
+	if err != nil {
+		_ = conn.Close()
+		return
+	}
+	defer release()
 	var metadata adapter.InboundContext
 	metadata.Source = source
 	metadata.Destination = destination
@@ -167,7 +217,12 @@ func (b *Bridge) NewConnectionEx(ctx context.Context, conn net.Conn, source M.So
 }
 
 func (b *Bridge) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
-	release, err := b.handlers.Acquire(); if err != nil { _ = conn.Close(); return }; defer release()
+	release, err := b.handlers.Acquire()
+	if err != nil {
+		_ = conn.Close()
+		return
+	}
+	defer release()
 	var metadata adapter.InboundContext
 	metadata.Source = source
 	metadata.Destination = destination

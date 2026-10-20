@@ -34,7 +34,9 @@ func dialTLS(ctx context.Context, rawDialer N.Dialer, baseTLSConfig tls.Config, 
 		return nil, err
 	}
 	if expectProto != "" && tlsConn.ConnectionState().NegotiatedProtocol != expectProto {
-		if closeErr:=tlsConn.Close();closeErr!=nil{return nil,tls.NewRuntimeCleanupError(closeErr)}
+		if closeErr := tlsConn.Close(); closeErr != nil {
+			return nil, tls.NewRuntimeCleanupError(closeErr)
+		}
 		return nil, errHTTP2Fallback
 	}
 	return tlsConn, nil

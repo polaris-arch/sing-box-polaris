@@ -3,10 +3,10 @@ package dns
 import (
 	"context"
 	"encoding/binary"
-	"net"
 	"io"
+	"net"
 	"sync"
- "time"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -26,10 +26,17 @@ import (
 // asynchronous replies. Query ownership is retained by the callback until the
 // entire Write returns. Close unblocks writers through the underlying socket.
 func NewDNSStreamConn(conn net.Conn) net.Conn {
-	if _, ok := conn.(*dnsStreamConn); ok { return conn }
+	if _, ok := conn.(*dnsStreamConn); ok {
+		return conn
+	}
 	return &dnsStreamConn{Conn: conn}
 }
-type dnsStreamConn struct { net.Conn; writeAccess sync.Mutex }
+
+type dnsStreamConn struct {
+	net.Conn
+	writeAccess sync.Mutex
+}
+
 func (c *dnsStreamConn) Write(p []byte) (int, error) {
 	c.writeAccess.Lock()
 	defer c.writeAccess.Unlock()
@@ -38,14 +45,20 @@ func (c *dnsStreamConn) Write(p []byte) (int, error) {
 		n, err := c.Conn.Write(p)
 		total += n
 		p = p[n:]
-		if err != nil { return total, err }
-		if n == 0 { return total, io.ErrNoProgress }
+		if err != nil {
+			return total, err
+		}
+		if n == 0 {
+			return total, io.ErrNoProgress
+		}
 	}
 	return total, nil
 }
 
 func queryRouter(ctx context.Context, fallback adapter.DNSRouter) adapter.DNSRouter {
-	if ingress, ok := adapter.RuntimeDNSIngressFromContext(ctx); ok { return ingress }
+	if ingress, ok := adapter.RuntimeDNSIngressFromContext(ctx); ok {
+		return ingress
+	}
 	return fallback
 }
 
@@ -70,10 +83,10 @@ func HandleStreamDNSRequest(ctx context.Context, router adapter.DNSRouter, conn 
 		return err
 	}
 	metadataInQuery := metadata
- answers:=&adapter.FakeIPAnswerBatch{}
- queryContext:=adapter.ContextWithFakeIPAnswerSink(ctx,answers)
+	answers := &adapter.FakeIPAnswerBatch{}
+	queryContext := adapter.ContextWithFakeIPAnswerSink(ctx, answers)
 	exchangeDNSAnswer(adapter.WithContext(queryContext, &metadataInQuery), router, &message, adapter.DNSQueryOptions{}, answers, func(response *mDNS.Msg, err error) {
-  defer answers.Abort()
+		defer answers.Abort()
 		if err != nil {
 			conn.Close()
 			return
@@ -95,7 +108,7 @@ func writeStreamResponse(conn net.Conn, response *mDNS.Msg, answers *adapter.Fak
 	responseBuffer.Truncate(len(n))
 	binary.BigEndian.PutUint16(responseBuffer.ExtendHeader(2), uint16(len(n)))
 	// Once Write is entered, a partial error or panic may have issued bytes.
- defer func(){answers.Delivered(time.Now())}()
+	defer func() { answers.Delivered(time.Now()) }()
 	conn.Write(responseBuffer.Bytes())
 }
 
@@ -162,10 +175,10 @@ func NewDNSPacketConnection(ctx context.Context, router adapter.DNSRouter, conn 
 				timeout.Update()
 			}
 			metadataInQuery := metadata
-   answers:=&adapter.FakeIPAnswerBatch{}
-   queryContext:=adapter.ContextWithFakeIPAnswerSink(ctx,answers)
+			answers := &adapter.FakeIPAnswerBatch{}
+			queryContext := adapter.ContextWithFakeIPAnswerSink(ctx, answers)
 			exchangeDNSAnswer(adapter.WithContext(queryContext, &metadataInQuery), router, &message, adapter.DNSQueryOptions{}, answers, func(response *mDNS.Msg, err error) {
-    defer answers.Abort()
+				defer answers.Abort()
 				if err != nil {
 					cancel(err)
 					return
@@ -176,7 +189,7 @@ func NewDNSPacketConnection(ctx context.Context, router adapter.DNSRouter, conn 
 					cancel(truncateErr)
 					return
 				}
-    defer func(){answers.Delivered(time.Now())}()
+				defer func() { answers.Delivered(time.Now()) }()
 				writeErr := conn.WritePacket(responseBuffer, destination)
 				if writeErr != nil {
 					cancel(writeErr)
@@ -236,10 +249,10 @@ func newDNSPacketConnection(ctx context.Context, router adapter.DNSRouter, conn 
 				timeout.Update()
 			}
 			metadataInQuery := metadata
-   answers:=&adapter.FakeIPAnswerBatch{}
-   queryContext:=adapter.ContextWithFakeIPAnswerSink(ctx,answers)
+			answers := &adapter.FakeIPAnswerBatch{}
+			queryContext := adapter.ContextWithFakeIPAnswerSink(ctx, answers)
 			exchangeDNSAnswer(adapter.WithContext(queryContext, &metadataInQuery), router, &message, adapter.DNSQueryOptions{}, answers, func(response *mDNS.Msg, err error) {
-    defer answers.Abort()
+				defer answers.Abort()
 				if err != nil {
 					cancel(err)
 					return
@@ -250,7 +263,7 @@ func newDNSPacketConnection(ctx context.Context, router adapter.DNSRouter, conn 
 					cancel(truncateErr)
 					return
 				}
-    defer func(){answers.Delivered(time.Now())}()
+				defer func() { answers.Delivered(time.Now()) }()
 				writeErr := conn.WritePacket(responseBuffer, destination)
 				if writeErr != nil {
 					cancel(writeErr)
@@ -266,7 +279,12 @@ func newDNSPacketConnection(ctx context.Context, router adapter.DNSRouter, conn 
 
 // A dispatch panic is a definitely-undelivered exit unless the callback already
 // entered its writer (whose terminal Delivered call wins over Abort).
-func exchangeDNSAnswer(ctx context.Context,router adapter.DNSRouter,message *mDNS.Msg,options adapter.DNSQueryOptions,answers *adapter.FakeIPAnswerBatch,callback func(*mDNS.Msg,error)){
- defer func(){if recovered:=recover();recovered!=nil{answers.Abort();panic(recovered)}}()
- queryRouter(ctx,router).ExchangeAsync(ctx,message,options,callback)
+func exchangeDNSAnswer(ctx context.Context, router adapter.DNSRouter, message *mDNS.Msg, options adapter.DNSQueryOptions, answers *adapter.FakeIPAnswerBatch, callback func(*mDNS.Msg, error)) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			answers.Abort()
+			panic(recovered)
+		}
+	}()
+	queryRouter(ctx, router).ExchangeAsync(ctx, message, options, callback)
 }

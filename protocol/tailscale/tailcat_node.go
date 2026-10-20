@@ -62,7 +62,7 @@ const (
 )
 
 type tailcatNodeOptions struct {
- OnConstruct func(*tailcatNode)
+	OnConstruct    func(*tailcatNode)
 	Context        context.Context
 	Logger         logger.ContextLogger
 	PrivateKey     key.NodePrivate
@@ -104,10 +104,10 @@ type tailcatNode struct {
 	meowed          chan struct{}
 	meowResponses   chan [16]byte
 	meowRequests    chan struct{}
-	workers struct {
+	workers         struct {
 		sync.Mutex
 		closed bool
-		wait sync.WaitGroup
+		wait   sync.WaitGroup
 	}
 
 	access           sync.Mutex
@@ -152,7 +152,9 @@ func newTailcatNode(options tailcatNodeOptions) (*tailcatNode, error) {
 		meowRequests:     make(chan struct{}, 1),
 		clientsByAddress: make(map[netip.Addr]key.NodePublic),
 	}
- if options.OnConstruct!=nil{options.OnConstruct(node)}
+	if options.OnConstruct != nil {
+		options.OnConstruct(node)
+	}
 	if isServer {
 		rand.Read(node.sessionID[:])
 	}
@@ -640,20 +642,23 @@ func (n *tailcatNode) interfaceUpdated() {
 // Native engine callbacks may still arrive during native shutdown; after sealing
 // they cannot launch new node workers against already disposed dependencies.
 func (n *tailcatNode) startWorker(worker func()) bool {
- n.workers.Lock()
- if n.workers.closed { n.workers.Unlock(); return false }
- n.workers.wait.Add(1)
- n.workers.Unlock()
- go func() { defer n.workers.wait.Done(); worker() }()
- return true
+	n.workers.Lock()
+	if n.workers.closed {
+		n.workers.Unlock()
+		return false
+	}
+	n.workers.wait.Add(1)
+	n.workers.Unlock()
+	go func() { defer n.workers.wait.Done(); worker() }()
+	return true
 }
 
 // stopWorkers is called only by the physical node owner, never from a node
 // worker. It holds neither node.access nor engine locks while joining.
 func (n *tailcatNode) stopWorkers() {
- n.workers.Lock()
- n.workers.closed = true
- n.workers.Unlock()
- n.cancel()
- n.workers.wait.Wait()
+	n.workers.Lock()
+	n.workers.closed = true
+	n.workers.Unlock()
+	n.cancel()
+	n.workers.wait.Wait()
 }

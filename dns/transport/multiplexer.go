@@ -31,7 +31,7 @@ const (
 )
 
 type queryMultiplexerOptions struct {
-	context context.Context
+	context        context.Context
 	dial           func(ctx context.Context) (net.Conn, error)
 	write          func(conn net.Conn, message *mDNS.Msg, queryId uint16) error
 	readNext       func(conn net.Conn) (*mDNS.Msg, error)
@@ -43,18 +43,18 @@ type queryMultiplexer struct {
 	options    queryMultiplexerOptions
 	connection *ConnPool[*multiplexConn]
 
-	queryAccess sync.Mutex
-	queryId     uint16
-	queries     map[uint16]*pendingQuery
-	workers sync.WaitGroup
-	workSealed bool // guarded by queryAccess
-	workerCtx context.Context
-	workerCancel context.CancelFunc
-	stopOnce sync.Once
-	closeDone chan struct{}
-	closeErr error
- cleanupAccess sync.Mutex
- cleanupErr error
+	queryAccess   sync.Mutex
+	queryId       uint16
+	queries       map[uint16]*pendingQuery
+	workers       sync.WaitGroup
+	workSealed    bool // guarded by queryAccess
+	workerCtx     context.Context
+	workerCancel  context.CancelFunc
+	stopOnce      sync.Once
+	closeDone     chan struct{}
+	closeErr      error
+	cleanupAccess sync.Mutex
+	cleanupErr    error
 
 	reuseState     atomic.Int32
 	demoteFailures atomic.Int32
@@ -63,9 +63,9 @@ type queryMultiplexer struct {
 	probeAccess   sync.Mutex
 	probeEpoch    uint32
 	lastProbeTime time.Time
-	probeStopped bool
-	probeCtx context.Context
-	probeCancel context.CancelFunc
+	probeStopped  bool
+	probeCtx      context.Context
+	probeCancel   context.CancelFunc
 }
 
 type multiplexConn struct {
@@ -97,15 +97,17 @@ type pendingQuery struct {
 
 func newQueryMultiplexer(options queryMultiplexerOptions) *queryMultiplexer {
 	parent := options.context
-	if parent == nil { parent = context.Background() }
+	if parent == nil {
+		parent = context.Background()
+	}
 	workerCtx, workerCancel := context.WithCancel(parent)
 	probeCtx, probeCancel := context.WithCancel(workerCtx)
 	multiplexer := &queryMultiplexer{
 		workerCtx: workerCtx, workerCancel: workerCancel,
 		probeCtx: probeCtx, probeCancel: probeCancel,
 		closeDone: make(chan struct{}),
-		options: options,
-		queries: make(map[uint16]*pendingQuery),
+		options:   options,
+		queries:   make(map[uint16]*pendingQuery),
 		connection: NewConnPool(ConnPoolOptions[*multiplexConn]{
 			Mode: ConnPoolSingle,
 			IsAlive: func(conn *multiplexConn) bool {
@@ -116,13 +118,17 @@ func newQueryMultiplexer(options queryMultiplexerOptions) *queryMultiplexer {
 			},
 		}),
 	}
- dial := multiplexer.options.dial
- multiplexer.options.dial = func(ctx context.Context)(net.Conn,error){
-  conn,err:=dial(ctx)
-  if conn!=nil { conn=multiplexer.trackClose(conn) }
-  if runtimeDNSCleanupIncomplete(err) { multiplexer.recordCleanup(err) }
-  return conn,err
- }
+	dial := multiplexer.options.dial
+	multiplexer.options.dial = func(ctx context.Context) (net.Conn, error) {
+		conn, err := dial(ctx)
+		if conn != nil {
+			conn = multiplexer.trackClose(conn)
+		}
+		if runtimeDNSCleanupIncomplete(err) {
+			multiplexer.recordCleanup(err)
+		}
+		return conn, err
+	}
 	multiplexer.keepIdle.Store(true)
 	return multiplexer
 }
@@ -152,7 +158,9 @@ func (m *queryMultiplexer) Close() error {
 // runs separately and joins socket/dial/callback/worker completion exactly once.
 func (m *queryMultiplexer) Stop() {
 	m.stopOnce.Do(func() {
-		m.queryAccess.Lock(); m.workSealed = true; m.queryAccess.Unlock()
+		m.queryAccess.Lock()
+		m.workSealed = true
+		m.queryAccess.Unlock()
 		m.StopProbes()
 		m.workerCancel()
 		go func() {
@@ -160,12 +168,16 @@ func (m *queryMultiplexer) Stop() {
 			// boundary's panic-to-sticky-error behavior on this worker too.
 			// A failed close is uncertainty, never successful worker drain.
 			defer func() {
-				if value := recover(); value != nil { m.closeErr = fmt.Errorf("DNS multiplexer close panic: %v", value) }
+				if value := recover(); value != nil {
+					m.closeErr = fmt.Errorf("DNS multiplexer close panic: %v", value)
+				}
 				close(m.closeDone)
 			}()
 			m.closeErr = m.connection.Close()
 			m.workers.Wait()
-   m.cleanupAccess.Lock(); m.closeErr = errors.Join(m.closeErr,m.cleanupErr); m.cleanupAccess.Unlock()
+			m.cleanupAccess.Lock()
+			m.closeErr = errors.Join(m.closeErr, m.cleanupErr)
+			m.cleanupAccess.Unlock()
 		}()
 	})
 }
@@ -180,13 +192,17 @@ func (m *queryMultiplexer) StopProbes() {
 func (m *queryMultiplexer) reserveWorker() bool {
 	m.queryAccess.Lock()
 	defer m.queryAccess.Unlock()
-	if m.workSealed { return false }
+	if m.workSealed {
+		return false
+	}
 	m.workers.Add(1)
 	return true
 }
 
 func (m *queryMultiplexer) goWorker(work func()) bool {
-	if !m.reserveWorker() { return false }
+	if !m.reserveWorker() {
+		return false
+	}
 	go func() { defer m.workers.Done(); work() }()
 	return true
 }
@@ -194,13 +210,24 @@ func (m *queryMultiplexer) goWorker(work func()) bool {
 // Callbacks reserve before AfterFunc registration. A false stop result is not
 // completion: only the actual callback discharges that already-owned slot.
 func (m *queryMultiplexer) afterFuncLocked(ctx context.Context, callback func()) (func() bool, bool) {
-	if m.workSealed { return nil, false }
+	if m.workSealed {
+		return nil, false
+	}
 	m.workers.Add(1)
 	stop := context.AfterFunc(ctx, func() { defer m.workers.Done(); callback() })
 	var once sync.Once
 	var stopped bool
-	return func() bool { once.Do(func() { stopped = stop(); if stopped { m.workers.Done() } }); return stopped }, true
+	return func() bool {
+		once.Do(func() {
+			stopped = stop()
+			if stopped {
+				m.workers.Done()
+			}
+		})
+		return stopped
+	}, true
 }
+
 func (m *queryMultiplexer) afterFunc(ctx context.Context, callback func()) (func() bool, bool) {
 	m.queryAccess.Lock()
 	defer m.queryAccess.Unlock()
@@ -210,8 +237,13 @@ func (m *queryMultiplexer) afterFunc(ctx context.Context, callback func()) (func
 func (m *queryMultiplexer) linkWorkerContext(ctx context.Context) (context.Context, func(), bool) {
 	bound, cancel := context.WithCancel(ctx)
 	stop, ok := m.afterFunc(m.workerCtx, cancel)
-	if !ok { cancel(); return nil, nil, false }
-	if m.workerCtx.Err() != nil { cancel() }
+	if !ok {
+		cancel()
+		return nil, nil, false
+	}
+	if m.workerCtx.Err() != nil {
+		cancel()
+	}
 	return bound, func() { stop(); cancel() }, true
 }
 
@@ -243,14 +275,26 @@ func (m *queryMultiplexer) Exchange(ctx context.Context, message *mDNS.Msg) (*mD
 }
 
 func (m *queryMultiplexer) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	if !m.reserveWorker() { callback(nil, net.ErrClosed); return }
+	if !m.reserveWorker() {
+		callback(nil, net.ErrClosed)
+		return
+	}
 	defer m.workers.Done() // invocation stack, even for a synchronous callback
 	ctx, releaseContext, ok := m.linkWorkerContext(ctx)
-	if !ok { callback(nil, net.ErrClosed); return }
-	if !m.reserveWorker() { releaseContext(); callback(nil, net.ErrClosed); return }
+	if !ok {
+		callback(nil, net.ErrClosed)
+		return
+	}
+	if !m.reserveWorker() {
+		releaseContext()
+		callback(nil, net.ErrClosed)
+		return
+	}
 	var called atomic.Bool
 	finish := func(response *mDNS.Msg, err error) {
-		if !called.CompareAndSwap(false, true) { return }
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
 		defer m.workers.Done()
 		defer releaseContext()
 		callback(response, err)
@@ -259,11 +303,16 @@ func (m *queryMultiplexer) ExchangeAsync(ctx context.Context, message *mDNS.Msg,
 }
 
 func (m *queryMultiplexer) dispatch(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error), retryReadError bool) {
-	if !m.reserveWorker() { callback(nil, net.ErrClosed); return }
+	if !m.reserveWorker() {
+		callback(nil, net.ErrClosed)
+		return
+	}
 	defer m.workers.Done()
 	if m.options.probeReuse && m.reuseState.Load() != reuseStateSupported {
 		m.maybeStartProbe(ctx, message)
-		if !m.goWorker(func() { m.exchangeSingle(ctx, message, callback) }) { callback(nil, net.ErrClosed) }
+		if !m.goWorker(func() { m.exchangeSingle(ctx, message, callback) }) {
+			callback(nil, net.ErrClosed)
+		}
 		return
 	}
 	m.exchangeAsync(ctx, message, callback, retryReadError)
@@ -277,7 +326,10 @@ func (m *queryMultiplexer) exchangeSingle(ctx context.Context, message *mDNS.Msg
 	}
 	defer conn.Close()
 	stop, admitted := m.afterFunc(ctx, func() { conn.Close() })
-	if !admitted { callback(nil, net.ErrClosed); return }
+	if !admitted {
+		callback(nil, net.ErrClosed)
+		return
+	}
 	defer stop()
 	err = m.options.write(conn, message, message.Id)
 	if err != nil {
@@ -325,7 +377,10 @@ func (m *queryMultiplexer) maybeStartProbe(ctx context.Context, message *mDNS.Ms
 	}
 	// Reserve under the producer gate before publication. StopProbes cannot
 	// acknowledge retirement while an unreserved probe is still being queued.
-	if !m.reserveWorker() { m.probeAccess.Unlock(); return }
+	if !m.reserveWorker() {
+		m.probeAccess.Unlock()
+		return
+	}
 	m.reuseState.Store(reuseStateProbing)
 	m.lastProbeTime = time.Now()
 	epoch := m.probeEpoch
@@ -361,7 +416,9 @@ func (m *queryMultiplexer) executeReuseProbe(ctx context.Context, questionName s
 	}
 	defer conn.Close()
 	stop, admitted := m.afterFunc(probeCtx, func() { conn.Close() })
-	if !admitted { return false, false }
+	if !admitted {
+		return false, false
+	}
 	defer stop()
 	queryA := new(mDNS.Msg)
 	queryA.SetQuestion(questionName, mDNS.TypeA)
@@ -474,7 +531,9 @@ func (m *queryMultiplexer) dialConn(ctx context.Context) (*multiplexConn, error)
 func (m *queryMultiplexer) register(ctx context.Context, connCtx context.Context, conn *multiplexConn, message *mDNS.Msg, callback func(response *mDNS.Msg, err error), retryReadError bool) (uint16, error) {
 	m.queryAccess.Lock()
 	defer m.queryAccess.Unlock()
-	if m.workSealed { return 0, net.ErrClosed }
+	if m.workSealed {
+		return 0, net.ErrClosed
+	}
 	start := m.queryId
 	for {
 		m.queryId++

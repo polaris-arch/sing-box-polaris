@@ -26,8 +26,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing/common/buf"
 	E "github.com/sagernet/sing/common/exceptions"
 	N "github.com/sagernet/sing/common/network"
 
@@ -39,7 +39,6 @@ func (c *appleClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) 
 	if err != nil {
 		return nil, E.Cause(err, "access raw connection")
 	}
-
 
 	serverName := c.serverName
 	serverNamePtr := cStringOrNil(serverName)
@@ -194,9 +193,9 @@ func waitAppleTLSClientReady(ctx context.Context, client *C.box_apple_tls_client
 
 type appleTLSConn struct {
 	closeErr error
-	rawConn net.Conn
-	client  *C.box_apple_tls_client_t
-	state   tls.ConnectionState
+	rawConn  net.Conn
+	client   *C.box_apple_tls_client_t
+	state    tls.ConnectionState
 
 	readAccess     sync.Mutex
 	writeAccess    sync.Mutex

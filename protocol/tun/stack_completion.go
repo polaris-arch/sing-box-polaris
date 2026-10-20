@@ -13,9 +13,9 @@ import (
 // The separate observer never turns canceled waiting into completed cleanup.
 type stackShutdown struct {
 	stack tun.Stack
-	once sync.Once
-	done chan struct{}
-	err error
+	once  sync.Once
+	done  chan struct{}
+	err   error
 }
 
 func newStackShutdown(stack tun.Stack) *stackShutdown {
@@ -39,22 +39,44 @@ func (s *stackShutdown) Close() error {
 
 func (s *stackShutdown) WaitDetached(ctx context.Context) error {
 	select {
-	case <-s.done: return s.err
-	case <-ctx.Done(): return ctx.Err()
+	case <-s.done:
+		return s.err
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
 // WaitDetached observes scope shutdown; it does not initiate it or certify a
 // native port implementation's independent callback deregistration.
 func (t *Inbound) WaitDetached(ctx context.Context) error {
- if t.runtime!=nil{
-  t.runtime.mu.Lock();physical:=t.runtime.physical;operation:=t.runtime.operation;t.runtime.mu.Unlock()
-  if operation!=nil{select{case <-operation.done:case <-ctx.Done():return ctx.Err()}}
-  t.runtime.mu.Lock();physical=t.runtime.physical;t.runtime.mu.Unlock()
-  if physical==nil{return nil}
-  select{case <-physical.done:return physical.err;case <-ctx.Done():return ctx.Err()}
- }
-	if t.stackShutdown == nil { return nil }
+	if t.runtime != nil {
+		t.runtime.mu.Lock()
+		physical := t.runtime.physical
+		operation := t.runtime.operation
+		t.runtime.mu.Unlock()
+		if operation != nil {
+			select {
+			case <-operation.done:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		t.runtime.mu.Lock()
+		physical = t.runtime.physical
+		t.runtime.mu.Unlock()
+		if physical == nil {
+			return nil
+		}
+		select {
+		case <-physical.done:
+			return physical.err
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	if t.stackShutdown == nil {
+		return nil
+	}
 	return t.stackShutdown.WaitDetached(ctx)
 }
 

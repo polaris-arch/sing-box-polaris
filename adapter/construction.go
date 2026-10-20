@@ -46,6 +46,8 @@ func HasConstructionScope(ctx context.Context) bool {
 // canceled. This is an observation, not a lock that prevents later retirement.
 func ConstructionScopeErr(ctx context.Context) error {
 	scope, _ := ctx.Value(constructionScopeKey{}).(*Scope)
-	if scope == nil { return nil }
+	if scope == nil {
+		return nil
+	}
 	return scope.ctx.Err()
 }

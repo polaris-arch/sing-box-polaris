@@ -1,8 +1,9 @@
 package libbox
 
 import (
- "errors"
- box "github.com/sagernet/sing-box"
+	"errors"
+
+	box "github.com/sagernet/sing-box"
 )
 
 // RuntimePersistenceHandler belongs to one exact native start/reload owner.
@@ -21,15 +22,21 @@ import (
 // confirm its durable desired generation before the operation becomes durable.
 // Publication is never rolled back; failures leave durability pending.
 type RuntimePersistenceHandler interface {
- RuntimePersistenceMode() string
- PersistRuntimeConfiguration(incarnation string, revision int64, effectiveDigest string, configContent string) error
+	RuntimePersistenceMode() string
+	PersistRuntimeConfiguration(incarnation string, revision int64, effectiveDigest string, configContent string) error
 }
 
 func runtimeHostPersistence(handler RuntimePersistenceHandler, mode string) func(box.RuntimeIdentity, []byte) error {
- return func(identity box.RuntimeIdentity, content []byte) error {
-  if identity.Incarnation == "" || identity.Revision > 1<<63-1 { return errors.New("runtime host persistence identity is invalid") }
-  if err := handler.PersistRuntimeConfiguration(identity.Incarnation, int64(identity.Revision), identity.EffectiveDigest, string(content)); err != nil { return err }
-  if mode == "app_authoritative_regeneration" { return &box.RuntimeOwnerAcknowledgementRequiredError{Mode: mode} }
-  return nil
- }
+	return func(identity box.RuntimeIdentity, content []byte) error {
+		if identity.Incarnation == "" || identity.Revision > 1<<63-1 {
+			return errors.New("runtime host persistence identity is invalid")
+		}
+		if err := handler.PersistRuntimeConfiguration(identity.Incarnation, int64(identity.Revision), identity.EffectiveDigest, string(content)); err != nil {
+			return err
+		}
+		if mode == "app_authoritative_regeneration" {
+			return &box.RuntimeOwnerAcknowledgementRequiredError{Mode: mode}
+		}
+		return nil
+	}
 }

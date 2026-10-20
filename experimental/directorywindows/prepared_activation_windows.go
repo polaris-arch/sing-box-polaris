@@ -18,7 +18,6 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
-
 	sjson "github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
 )
@@ -322,7 +321,7 @@ func projectWindowsDirectories(options option.Options, root string) (windowsDire
 func rawWindowsDirectoryOptions(raw []byte) (option.Options, error) {
 	var original struct {
 		Envelope  *option.WindowsDirectoryOptions `json:"polaris_windows_directory"`
-		Endpoints []json.RawMessage              `json:"endpoints"`
+		Endpoints []json.RawMessage               `json:"endpoints"`
 		Outbounds []struct {
 			Type string `json:"type"`
 			Tag  string `json:"tag"`
@@ -343,8 +342,8 @@ func rawWindowsDirectoryOptions(raw []byte) (option.Options, error) {
 		value := option.Endpoint{Type: endpoint.Type, Tag: endpoint.Tag}
 		if endpoint.Type == C.TypeTailscale {
 			var directories struct {
-				StateDirectory    string                           `json:"state_directory"`
-				TaildropDirectory string                           `json:"taildrop_directory"`
+				StateDirectory    string                            `json:"state_directory"`
+				TaildropDirectory string                            `json:"taildrop_directory"`
 				SSHServer         *option.TailscaleSSHServerOptions `json:"ssh_server"`
 			}
 			if err := json.Unmarshal(rawEndpoint, &directories); err != nil {

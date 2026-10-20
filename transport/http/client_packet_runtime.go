@@ -7,7 +7,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
 )
 
 // runtimePacketConn supplies the existing resumable packet-read deadline
@@ -15,32 +14,35 @@ import (
 // session owns its lease; its read worker has no immortal resource self-lease.
 // The generic sing deadline wrapper cannot expose that completion barrier.
 type runtimePacketConn struct {
-	upstream net.PacketConn
-	client *Client
-	release func()
-	access sync.Mutex
-	closed bool
-	deadline time.Time
+	upstream        net.PacketConn
+	client          *Client
+	release         func()
+	access          sync.Mutex
+	closed          bool
+	deadline        time.Time
 	deadlineChanged chan struct{}
-	shutdown chan struct{}
-	workerDone chan struct{}
-	results chan *runtimePacketResult
-	readAccess sync.Mutex
-	pending *runtimePacketResult
-	operations sync.WaitGroup
-	closeOnce sync.Once
-	closeErr error
+	shutdown        chan struct{}
+	workerDone      chan struct{}
+	results         chan *runtimePacketResult
+	readAccess      sync.Mutex
+	pending         *runtimePacketResult
+	operations      sync.WaitGroup
+	closeOnce       sync.Once
+	closeErr        error
 }
 
 type runtimePacketResult struct {
-	data []byte
+	data    []byte
 	address net.Addr
-	err error
+	err     error
 }
 
 func (c *Client) newRuntimePacketConn(ctx context.Context, upstream net.PacketConn) (net.PacketConn, error) {
 	release, err := c.reserveSession(ctx)
-	if err != nil { c.recordCloseError(closeHTTPResource(upstream.Close)); return nil, err }
+	if err != nil {
+		c.recordCloseError(closeHTTPResource(upstream.Close))
+		return nil, err
+	}
 	conn := &runtimePacketConn{
 		upstream: upstream, client: c, release: release,
 		deadlineChanged: make(chan struct{}), shutdown: make(chan struct{}),
@@ -49,8 +51,11 @@ func (c *Client) newRuntimePacketConn(ctx context.Context, upstream net.PacketCo
 	c.access.Lock()
 	if c.closed {
 		c.access.Unlock()
-		closeErr:=closeHTTPResource(upstream.Close);c.recordCloseError(closeErr)
-		if closeErr==nil||httpAlreadyClosed(closeErr){release()}
+		closeErr := closeHTTPResource(upstream.Close)
+		c.recordCloseError(closeErr)
+		if closeErr == nil || httpAlreadyClosed(closeErr) {
+			release()
+		}
 		return nil, net.ErrClosed
 	}
 	c.packets[conn] = struct{}{}
@@ -74,22 +79,29 @@ func (c *runtimePacketConn) readLoop() {
 		result := &runtimePacketResult{data: data[:n], address: address, err: err}
 		select {
 		case c.results <- result:
-		case <-c.shutdown: return
+		case <-c.shutdown:
+			return
 		}
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 	}
 }
 
 func (c *runtimePacketConn) enter() bool {
 	c.access.Lock()
 	defer c.access.Unlock()
-	if c.closed { return false }
+	if c.closed {
+		return false
+	}
 	c.operations.Add(1)
 	return true
 }
 
 func (c *runtimePacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
-	if !c.enter() { return 0, nil, net.ErrClosed }
+	if !c.enter() {
+		return 0, nil, net.ErrClosed
+	}
 	defer c.operations.Done()
 	c.readAccess.Lock()
 	defer c.readAccess.Unlock()
@@ -97,7 +109,9 @@ func (c *runtimePacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 		// Match the prior wrapper: already-buffered data wins over a deadline.
 		select {
 		case result, ok := <-c.results:
-			if !ok { return 0, nil, net.ErrClosed }
+			if !ok {
+				return 0, nil, net.ErrClosed
+			}
 			c.pending = result
 			continue
 		default:
@@ -105,36 +119,54 @@ func (c *runtimePacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 		c.access.Lock()
 		deadline, changed, closed := c.deadline, c.deadlineChanged, c.closed
 		c.access.Unlock()
-		if closed { return 0, nil, net.ErrClosed }
+		if closed {
+			return 0, nil, net.ErrClosed
+		}
 		var timer *time.Timer
 		var timeout <-chan time.Time
 		if !deadline.IsZero() {
 			remaining := time.Until(deadline)
-			if remaining <= 0 { return 0, nil, os.ErrDeadlineExceeded }
+			if remaining <= 0 {
+				return 0, nil, os.ErrDeadlineExceeded
+			}
 			timer = time.NewTimer(remaining)
 			timeout = timer.C
 		}
 		var err error
 		select {
 		case result, ok := <-c.results:
-			if ok { c.pending = result } else { err = net.ErrClosed }
+			if ok {
+				c.pending = result
+			} else {
+				err = net.ErrClosed
+			}
 		case <-changed:
-		case <-timeout: err = os.ErrDeadlineExceeded
-		case <-c.shutdown: err = net.ErrClosed
+		case <-timeout:
+			err = os.ErrDeadlineExceeded
+		case <-c.shutdown:
+			err = net.ErrClosed
 		}
-		if timer != nil { timer.Stop() }
-		if err != nil { return 0, nil, err }
+		if timer != nil {
+			timer.Stop()
+		}
+		if err != nil {
+			return 0, nil, err
+		}
 	}
 	result := c.pending
 	n := copy(p, result.data)
 	result.data = result.data[n:]
-	if len(result.data) > 0 { return n, result.address, nil }
+	if len(result.data) > 0 {
+		return n, result.address, nil
+	}
 	c.pending = nil
 	return n, result.address, result.err
 }
 
 func (c *runtimePacketConn) WriteTo(p []byte, address net.Addr) (int, error) {
-	if !c.enter() { return 0, net.ErrClosed }
+	if !c.enter() {
+		return 0, net.ErrClosed
+	}
 	defer c.operations.Done()
 	return c.upstream.WriteTo(p, address)
 }
@@ -152,13 +184,17 @@ func (c *runtimePacketConn) Close() error {
 		c.client.access.Lock()
 		delete(c.client.packets, c)
 		c.client.access.Unlock()
-		if c.closeErr==nil||httpAlreadyClosed(c.closeErr){c.release()}
+		if c.closeErr == nil || httpAlreadyClosed(c.closeErr) {
+			c.release()
+		}
 	})
 	return c.closeErr
 }
 
 func (c *runtimePacketConn) LocalAddr() net.Addr {
-	if !c.enter() { return nil }
+	if !c.enter() {
+		return nil
+	}
 	defer c.operations.Done()
 	return c.upstream.LocalAddr()
 }
@@ -166,7 +202,9 @@ func (c *runtimePacketConn) LocalAddr() net.Addr {
 func (c *runtimePacketConn) SetReadDeadline(deadline time.Time) error {
 	c.access.Lock()
 	defer c.access.Unlock()
-	if c.closed { return net.ErrClosed }
+	if c.closed {
+		return net.ErrClosed
+	}
 	c.deadline = deadline
 	close(c.deadlineChanged)
 	c.deadlineChanged = make(chan struct{})
@@ -174,13 +212,17 @@ func (c *runtimePacketConn) SetReadDeadline(deadline time.Time) error {
 }
 
 func (c *runtimePacketConn) SetWriteDeadline(deadline time.Time) error {
-	if !c.enter() { return net.ErrClosed }
+	if !c.enter() {
+		return net.ErrClosed
+	}
 	defer c.operations.Done()
 	return c.upstream.SetWriteDeadline(deadline)
 }
 
 func (c *runtimePacketConn) SetDeadline(deadline time.Time) error {
-	if err := c.SetReadDeadline(deadline); err != nil { return err }
+	if err := c.SetReadDeadline(deadline); err != nil {
+		return err
+	}
 	return c.SetWriteDeadline(deadline)
 }
 

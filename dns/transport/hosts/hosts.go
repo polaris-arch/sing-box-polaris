@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/netip"
 	"os"
-	"sync"
 	"slices"
+	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -28,12 +28,12 @@ var (
 )
 
 type Transport struct {
-	work lifecycle.Work
-	runtimeResource adapter.RuntimeResourceSource
+	work              lifecycle.Work
+	runtimeResource   adapter.RuntimeResourceSource
 	constructionOwned bool
-	closeOnce sync.Once
-	startOnce sync.Once
-	startErr error
+	closeOnce         sync.Once
+	startOnce         sync.Once
+	startErr          error
 	dns.TransportAdapter
 	files      []*File
 	predefined map[string][]netip.Addr
@@ -62,14 +62,16 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}
 	resource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	t := &Transport{
-		runtimeResource: resource,
+		runtimeResource:  resource,
 		TransportAdapter: dns.NewTransportAdapter(C.DNSTypeHosts, tag, nil),
 		files:            files,
 		predefined:       predefined,
 	}
 	var err error
 	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -79,10 +81,20 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
 		}
 	})
-	if t.startErr != nil { return t.startErr }
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
-	if scope.Context().Err() != nil { return scope.Context().Err() }
-	if t.work.Sealed() { return lifecycle.ErrStopped }
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
 	return scope.Context().Err()
 }
 
@@ -91,7 +103,10 @@ func (t *Transport) Reset() {
 
 func (t *Transport) PreferredDomain(domain string) bool {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return false }; defer done()
+	if err != nil {
+		return false
+	}
+	defer done()
 	if _, loaded := t.predefined[domain]; loaded {
 		return true
 	}
@@ -105,7 +120,10 @@ func (t *Transport) PreferredDomain(domain string) bool {
 
 func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	_, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { return nil, err }; defer done()
+	if err != nil {
+		return nil, err
+	}
+	defer done()
 	return t.exchange(message)
 }
 
@@ -133,17 +151,23 @@ func (t *Transport) exchange(message *mDNS.Msg) (*mDNS.Msg, error) {
 
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	_, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }; defer done()
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer done()
 	callback(t.exchange(message))
 }
 
-func (t *Transport) StopRuntimeProducers() {}
+func (t *Transport) StopRuntimeProducers()  {}
 func (t *Transport) StopRuntimeOperations() { t.work.Seal() }
 func (t *Transport) close() error {
 	t.closeOnce.Do(func() {
 		t.StopRuntimeOperations()
 		t.work.Wait()
-		for _, file := range t.files { _ = file.Close() }
+		for _, file := range t.files {
+			_ = file.Close()
+		}
 	})
 	return nil
 }

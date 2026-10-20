@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
- "github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/common/badhttp"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/transport/v2rayhttp"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
@@ -66,16 +66,20 @@ func NewServer(ctx context.Context, logger logger.ContextLogger, options option.
 			return ctx
 		},
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return log.ContextWithNewID(runtimeingress.Context(ctx,c))
+			return log.ContextWithNewID(runtimeingress.Context(ctx, c))
 		},
 	}
 	return server, nil
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
- owned,leave,err:=runtimeingress.Acquire(request.Context(),adapter.IsRuntimePreparation(s.ctx))
- if err!=nil{http.Error(writer,"connection retired",http.StatusServiceUnavailable);return}
- defer leave();request=request.WithContext(owned)
+	owned, leave, err := runtimeingress.Acquire(request.Context(), adapter.IsRuntimePreparation(s.ctx))
+	if err != nil {
+		http.Error(writer, "connection retired", http.StatusServiceUnavailable)
+		return
+	}
+	defer leave()
+	request = request.WithContext(owned)
 	if s.maxEarlyData == 0 || s.earlyDataHeaderName != "" {
 		if request.URL.Path != s.path {
 			s.invalidRequest(writer, request, http.StatusNotFound, E.New("bad path: ", request.URL.Path))

@@ -129,9 +129,9 @@ type backendWindows struct {
 
 	icmp4, icmp6 *icmpTable
 
-	diverterUpdate chan struct{} // protected by egressAccess; never held across native calls
+	diverterUpdate   chan struct{} // protected by egressAccess; never held across native calls
 	diverterCloseErr error
-	diverters []*diverter
+	diverters        []*diverter
 }
 
 func newBackend(ctx context.Context, logger logger.ContextLogger, networkManager adapter.NetworkManager, tag string, options option.BridgeOutboundOptions) (Backend, error) {
@@ -237,7 +237,8 @@ func (b *backendWindows) publishRange(protocol uint8, block tun.SelectorRange) {
 }
 
 func (b *backendWindows) ExpandSelectorRanges(protocol uint8) bool {
-	finishUpdate := b.beginDiverterUpdate(); defer finishUpdate()
+	finishUpdate := b.beginDiverterUpdate()
+	defer finishUpdate()
 	block, err := b.ports.Acquire(protocol)
 	if err != nil {
 		b.logger.Debug(E.Cause(err, "bridge: expand selector range"))
@@ -269,7 +270,9 @@ func transportName(protocol uint8) string {
 
 func (b *backendWindows) rebuildDiverters(state *egressState) error {
 	b.closeDiverters()
-	if b.diverterCloseErr != nil { return b.diverterCloseErr }
+	if b.diverterCloseErr != nil {
+		return b.diverterCloseErr
+	}
 
 	if b.inet4Port.IsValid() && state.inet4.IsValid() {
 		err := b.openFamilyDiverters(state.divertAddresses(false), false)
@@ -295,7 +298,9 @@ func (b *backendWindows) beginDiverterUpdate() func() {
 	for {
 		b.egressAccess.Lock()
 		if pending := b.diverterUpdate; pending != nil {
-			b.egressAccess.Unlock(); <-pending; continue
+			b.egressAccess.Unlock()
+			<-pending
+			continue
 		}
 		pending := make(chan struct{})
 		b.diverterUpdate = pending
@@ -314,7 +319,7 @@ func (b *backendWindows) closeDiverters() {
 	b.diverters = nil
 	for _, existing := range diverters {
 		if err := existing.handle.Close(); err != nil {
-			b.diverterCloseErr = errors.Join(b.diverterCloseErr, errors.New("bridge diverter close incomplete: " + err.Error()))
+			b.diverterCloseErr = errors.Join(b.diverterCloseErr, errors.New("bridge diverter close incomplete: "+err.Error()))
 		}
 		<-existing.done
 	}
@@ -778,7 +783,8 @@ func (b *backendWindows) prepareOutbound(packet []byte, state *egressState) bool
 }
 
 func (b *backendWindows) syncEgress() {
-	finishUpdate := b.beginDiverterUpdate(); defer finishUpdate()
+	finishUpdate := b.beginDiverterUpdate()
+	defer finishUpdate()
 	select {
 	case <-b.closed:
 		return

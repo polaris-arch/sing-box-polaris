@@ -76,7 +76,14 @@ func (d *directoryOwner) ready() bool {
 }
 
 func (t *Endpoint) WithDirectoryAccess(fn func() error) error {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(false);if err!=nil{return err};defer leave();return child.WithDirectoryAccess(fn)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(false)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.WithDirectoryAccess(fn)
+	}
 	release, err := t.directory.scope.Begin()
 	if err != nil {
 		return err
@@ -89,14 +96,25 @@ func (t *Endpoint) WithDirectoryAccess(fn func() error) error {
 // Dial admission is defense in depth; persistent HTTP connection operations
 // are independently protected by the SDK's filesystem-leaf capabilities.
 func (t *Endpoint) NewLocalClient() (*local.Client, error) {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(false);if err!=nil{return nil,err};defer leave();return child.NewLocalClient()}
- if t.runtimePhysical!=nil&&!t.started.Load(){return nil,net.ErrClosed}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(false)
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		return child.NewLocalClient()
+	}
+	if t.runtimePhysical != nil && !t.started.Load() {
+		return nil, net.ErrClosed
+	}
 	var result *local.Client
 	err := t.WithDirectoryAccess(func() error {
 		t.directoryStartMu.Lock()
 		defer t.directoryStartMu.Unlock()
 		if t.preparedDirectoryCheck != nil {
-			if err := t.preparedDirectoryCheck(); err != nil { return err }
+			if err := t.preparedDirectoryCheck(); err != nil {
+				return err
+			}
 		}
 		if err := t.directory.acquire(); err != nil {
 			return err
@@ -115,11 +133,15 @@ func (t *Endpoint) NewLocalClient() (*local.Client, error) {
 				return nil, err
 			}
 			defer release()
-			if t.runtimePhysical!=nil{
-    binding,owned,leave,err:=t.runtimePhysical.bindingContext(ctx,false);if err!=nil{return nil,err};defer leave()
-    return binding.dialWith(owned,func(ctx context.Context)(net.Conn,error){return original.Dial(ctx,network,address)})
-   }
-   return original.Dial(ctx, network, address)
+			if t.runtimePhysical != nil {
+				binding, owned, leave, err := t.runtimePhysical.bindingContext(ctx, false)
+				if err != nil {
+					return nil, err
+				}
+				defer leave()
+				return binding.dialWith(owned, func(ctx context.Context) (net.Conn, error) { return original.Dial(ctx, network, address) })
+			}
+			return original.Dial(ctx, network, address)
 		}}
 		return nil
 	})
@@ -127,7 +149,9 @@ func (t *Endpoint) NewLocalClient() (*local.Client, error) {
 }
 
 func (t *Endpoint) TailscaleDirectoryScope() adapter.TailscaleDirectoryNode {
- if t.runtime!=nil{return adapter.TailscaleDirectoryNode{Tag:t.Tag(),WriterState:"Unknown",CensusVersion:1,Failure:"logical runtime endpoint has no original directory ownership"}}
+	if t.runtime != nil {
+		return adapter.TailscaleDirectoryNode{Tag: t.Tag(), WriterState: "Unknown", CensusVersion: 1, Failure: "logical runtime endpoint has no original directory ownership"}
+	}
 	return t.directory.snapshot()
 }
 
@@ -152,7 +176,10 @@ func (d *directoryOwner) snapshot() adapter.TailscaleDirectoryNode {
 // beginDirectoryRetirement seals before shutdown and uses one original worker.
 // It must never block the caller on IO or a callback which invoked Close itself.
 func (t *Endpoint) SealTailscaleDirectory() {
- if t.runtime!=nil{t.RuntimeStop();return}
+	if t.runtime != nil {
+		t.RuntimeStop()
+		return
+	}
 	t.directory.scope.Seal()
 	t.taildrop.seal()
 }
@@ -227,7 +254,9 @@ func (t *Endpoint) beginDirectoryRetirement() {
 }
 
 func (t *Endpoint) RetireTailscaleDirectory(deadline time.Time) adapter.TailscaleDirectoryNode {
- if t.runtime!=nil{return t.TailscaleDirectoryScope()}
+	if t.runtime != nil {
+		return t.TailscaleDirectoryScope()
+	}
 	t.beginDirectoryRetirement()
 	d := t.directory
 	select {

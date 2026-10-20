@@ -242,10 +242,12 @@ func (c *EarlyWebsocketConn) Close() error {
 	if conn != nil {
 		return conn.Close()
 	}
-	closeErr:=c.rawConn.Close()
+	closeErr := c.rawConn.Close()
 	c.access.Lock()
 	defer c.access.Unlock()
-	if conn:=c.conn.Load();conn!=nil{return errors.Join(closeErr,conn.Close())}
+	if conn := c.conn.Load(); conn != nil {
+		return errors.Join(closeErr, conn.Close())
+	}
 	if c.err != nil {
 		return closeErr
 	}

@@ -29,19 +29,19 @@ type tailscaleRetirementInstance struct {
 type tailscaleRetirementRun struct {
 	// Bound only to the original instance. A duplicate Close returning nil is
 	// not completion, and failed construction never gets successful eligibility.
-	closeFinished          <-chan struct{}
-	originalCloseSucceeded bool
- runtimeNoAcquisition bool // exact runtime child marker plus actual never-entered preparation
-	directoryPreparation preparedDirectoryResources
-	directoryAuthority *adapter.TailscaleDirectoryDomain
+	closeFinished           <-chan struct{}
+	originalCloseSucceeded  bool
+	runtimeNoAcquisition    bool // exact runtime child marker plus actual never-entered preparation
+	directoryPreparation    preparedDirectoryResources
+	directoryAuthority      *adapter.TailscaleDirectoryDomain
 	directoryAuthorityBound bool
-	directoryScopes        func() []adapter.TailscaleDirectoryNode
-	directoryFinal         *tailscaleDirectoryInstance
-	access                 sync.Mutex
-	binding                adapter.TailscaleStoreRunBinding
-	expected               []string
-	active                 []adapter.TailscaleStoreNode
-	final                  *tailscaleRetirementInstance
+	directoryScopes         func() []adapter.TailscaleDirectoryNode
+	directoryFinal          *tailscaleDirectoryInstance
+	access                  sync.Mutex
+	binding                 adapter.TailscaleStoreRunBinding
+	expected                []string
+	active                  []adapter.TailscaleStoreNode
+	final                   *tailscaleRetirementInstance
 }
 
 func newTailscaleRetirementRun(content string, options option.Options) (*tailscaleRetirementRun, error) {
@@ -185,16 +185,27 @@ func (r *tailscaleRetirementRun) reclaimableEmptyRun() bool {
 // The registry is independent of lifecycleAccess: a live HOT graph can reserve
 // new physical births without re-entering the outer start/reload lock. Exports
 // copy the exact original run pointers, then inspect each run outside this lock.
-func(s *StartedService)snapshotTailscaleRetirementRuns()[]*tailscaleRetirementRun{
- s.tailscaleRetirementAccess.Lock();defer s.tailscaleRetirementAccess.Unlock()
- return append([]*tailscaleRetirementRun(nil),s.tailscaleRetirementRuns...)
+func (s *StartedService) snapshotTailscaleRetirementRuns() []*tailscaleRetirementRun {
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	return append([]*tailscaleRetirementRun(nil), s.tailscaleRetirementRuns...)
 }
-func(s *StartedService)appendTailscaleRetirementRun(run *tailscaleRetirementRun)error{
- s.tailscaleRetirementAccess.Lock();defer s.tailscaleRetirementAccess.Unlock()
- // This is a new construction admission, the only allowed pruning boundary.
- retained:=s.tailscaleRetirementRuns[:0]
- for _,original:=range s.tailscaleRetirementRuns{if !original.reclaimableEmptyRun(){retained=append(retained,original)}}
- clear(s.tailscaleRetirementRuns[len(retained):]);s.tailscaleRetirementRuns=retained
- if len(s.tailscaleRetirementRuns)>=maxTailscaleRetirementRuns{return fmt.Errorf("Tailscale retirement census capacity reached")}
- s.tailscaleRetirementRuns=append(s.tailscaleRetirementRuns,run);return nil
+
+func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRun) error {
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	// This is a new construction admission, the only allowed pruning boundary.
+	retained := s.tailscaleRetirementRuns[:0]
+	for _, original := range s.tailscaleRetirementRuns {
+		if !original.reclaimableEmptyRun() {
+			retained = append(retained, original)
+		}
+	}
+	clear(s.tailscaleRetirementRuns[len(retained):])
+	s.tailscaleRetirementRuns = retained
+	if len(s.tailscaleRetirementRuns) >= maxTailscaleRetirementRuns {
+		return fmt.Errorf("Tailscale retirement census capacity reached")
+	}
+	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, run)
+	return nil
 }

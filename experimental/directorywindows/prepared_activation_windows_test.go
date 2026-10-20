@@ -16,7 +16,6 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
-
 	sjson "github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
 )
@@ -139,7 +138,8 @@ func TestPreparedActivationRejectsMismatchesWithoutConsuming(t *testing.T) {
 			candidate.Endpoints[0].Options = &endpoint
 			envelope := *options.PolarisWindowsDirectory
 			candidate.PolarisWindowsDirectory = &envelope
-			binding := *service.PtrFromContext[adapter.TailscaleStoreRunBinding](prepared)
+			originalBinding := *service.PtrFromContext[adapter.TailscaleStoreRunBinding](prepared)
+			binding := originalBinding
 			switch name {
 			case "raw":
 				candidate.RawMessage = append(append([]byte(nil), options.RawMessage...), ' ')
@@ -151,10 +151,10 @@ func TestPreparedActivationRejectsMismatchesWithoutConsuming(t *testing.T) {
 				candidateInfo = &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs", Value: "git"}, {Key: "vcs.revision", Value: source}, {Key: "vcs.modified", Value: "true"}}}
 			case "nonce":
 				binding.RunNonce = strings.Repeat("4", 64)
-				candidateContext = service.ContextWithPtr(prepared, &binding)
+				candidateContext = service.ContextWithPtr(service.ExtendContext(prepared), &binding)
 			case "digest":
 				binding.ConfigDigest = strings.Repeat("5", 64)
-				candidateContext = service.ContextWithPtr(prepared, &binding)
+				candidateContext = service.ContextWithPtr(service.ExtendContext(prepared), &binding)
 			case "domain":
 				other := mustPrepareActivationFixture(t, ctx, options, source, info)
 				candidateContext = adapter.ContextWithTailscaleDirectoryDomain(prepared, adapter.TailscaleDirectoryDomainFromContext(other))
@@ -189,6 +189,11 @@ func TestPreparedActivationRejectsMismatchesWithoutConsuming(t *testing.T) {
 				candidate.Endpoints[0].Type = "wireguard"
 			case "runtime-options":
 				candidate.Log = &option.LogOptions{Level: "debug"}
+			}
+			// ContextWithPtr updates its registry in place; candidate bindings must
+			// use a cloned registry so the original activation remains unchanged.
+			if *service.PtrFromContext[adapter.TailscaleStoreRunBinding](prepared) != originalBinding {
+				t.Fatal("candidate setup changed original run binding")
 			}
 			if err := validatePreparedActivation(candidateContext, candidate, candidateSource, candidateInfo, true); err == nil {
 				t.Fatal("mismatched prepared activation accepted")

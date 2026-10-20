@@ -232,7 +232,9 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	if !verifier.verified {
 		// The disguise request remains within the admitted handshake. It must not
 		// borrow e.ctx after the handshake reservation has been released.
-		if closeErr:=realityClientFallback(ctx, uConn, e.uClient.ServerName(), e.uClient.id);closeErr!=nil{return nil,NewRuntimeCleanupError(E.New("reality fallback cleanup incomplete: ",closeErr))}
+		if closeErr := realityClientFallback(ctx, uConn, e.uClient.ServerName(), e.uClient.id); closeErr != nil {
+			return nil, NewRuntimeCleanupError(E.New("reality fallback cleanup incomplete: ", closeErr))
+		}
 		return nil, E.New("reality verification failed")
 	}
 
@@ -258,7 +260,7 @@ func filterRealityKeyShares(uConn *utls.UConn) {
 
 func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) (closeErr error) {
 	guarded, fence := outbound.WrapRuntimeOwnedConn(uConn)
-	defer func(){closeErr=fence.RuntimeCloseAndWait()}()
+	defer func() { closeErr = fence.RuntimeCloseAndWait() }()
 	uConn = guarded
 	client := &http.Client{
 		Transport: &http2.Transport{

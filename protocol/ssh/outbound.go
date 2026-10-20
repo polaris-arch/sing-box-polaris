@@ -40,31 +40,31 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeFences *outbound.RuntimeIOFenceSet
-	runtimeStop context.Context
-	runtimeCancel context.CancelFunc
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeFences       *outbound.RuntimeIOFenceSet
+	runtimeStop         context.Context
+	runtimeCancel       context.CancelFunc
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	clientOpening chan struct{}
-	clientSealed bool
-	clientWatchers sync.WaitGroup
-	logger            logger.ContextLogger
-	dialer            N.Dialer
-	serverAddr        M.Socksaddr
-	user              string
-	hostKey           []ssh.PublicKey
-	hostKeyAlgorithms []string
-	cipher            []string
-	mac               []string
-	kexAlgorithm      []string
-	clientVersion     string
-	authMethod        []ssh.AuthMethod
-	clientAccess      sync.Mutex
-	clientConn        net.Conn
-	client            *ssh.Client
-	streams           int
-	closeIdle         bool
+	clientOpening       chan struct{}
+	clientSealed        bool
+	clientWatchers      sync.WaitGroup
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	serverAddr          M.Socksaddr
+	user                string
+	hostKey             []ssh.PublicKey
+	hostKeyAlgorithms   []string
+	cipher              []string
+	mac                 []string
+	kexAlgorithm        []string
+	clientVersion       string
+	authMethod          []ssh.AuthMethod
+	clientAccess        sync.Mutex
+	clientConn          net.Conn
+	client              *ssh.Client
+	streams             int
+	closeIdle           bool
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SSHOutboundOptions) (adapter.Outbound, error) {
@@ -129,10 +129,15 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		}
 	}
 	outbound.initRuntime(ctx)
-	if err := ctx.Err(); err != nil { _ = outbound.runtimeCleanup(); return nil, err }
+	if err := ctx.Err(); err != nil {
+		_ = outbound.runtimeCleanup()
+		return nil, err
+	}
 	registered, err := registerSSHCleanup(ctx, outbound.runtimeCleanup)
 	outbound.constructionCleanup = registered
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return outbound, nil
 }
 
@@ -149,14 +154,26 @@ func randomVersion() string {
 func (s *Outbound) connect(ctx context.Context) (*ssh.Client, error) {
 	for {
 		s.clientAccess.Lock()
-		if s.clientSealed { s.clientAccess.Unlock(); return nil, net.ErrClosed }
+		if s.clientSealed {
+			s.clientAccess.Unlock()
+			return nil, net.ErrClosed
+		}
 		if s.client != nil {
 			s.streams++
-			client := s.client; s.clientAccess.Unlock(); return client, nil
+			client := s.client
+			s.clientAccess.Unlock()
+			return client, nil
 		}
 		if opening := s.clientOpening; opening != nil {
 			s.clientAccess.Unlock()
-			select { case <-opening: continue; case <-ctx.Done(): return nil, ctx.Err(); case <-s.runtimeStop.Done(): return nil, net.ErrClosed }
+			select {
+			case <-opening:
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-s.runtimeStop.Done():
+				return nil, net.ErrClosed
+			}
 		}
 		opening := make(chan struct{})
 		s.clientOpening = opening
@@ -169,28 +186,50 @@ func (s *Outbound) connect(ctx context.Context) (*ssh.Client, error) {
 
 func (s *Outbound) openClient(ctx context.Context, opening chan struct{}) (*ssh.Client, error) {
 	defer func() {
-		s.clientAccess.Lock(); s.clientOpening = nil; close(opening); s.clientAccess.Unlock()
+		s.clientAccess.Lock()
+		s.clientOpening = nil
+		close(opening)
+		s.clientAccess.Unlock()
 	}()
 	creation, err := s.runtimeFences.Begin()
-	if err != nil { return nil, err }; defer creation.Done()
+	if err != nil {
+		return nil, err
+	}
+	defer creation.Done()
 	if s.runtimeSource != nil {
 		ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, s.runtimeSource)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	cancelDone := make(chan struct{})
 	stopOwner := context.AfterFunc(s.runtimeStop, func() { defer close(cancelDone); cancel() })
-	defer func() { if !stopOwner() { <-cancelDone }; cancel() }()
+	defer func() {
+		if !stopOwner() {
+			<-cancelDone
+		}
+		cancel()
+	}()
 	raw, err := s.dialer.DialContext(ctx, N.NetworkTCP, s.serverAddr)
 	if err != nil {
-		if raw != nil { _, fence := outbound.WrapRuntimeOwnedConn(raw); s.runtimeFences.Record(fence.RuntimeCloseAndWait()) }
+		if raw != nil {
+			_, fence := outbound.WrapRuntimeOwnedConn(raw)
+			s.runtimeFences.Record(fence.RuntimeCloseAndWait())
+		}
 		return nil, err
 	}
 	conn, fence := outbound.WrapRuntimeOwnedConn(raw)
-	if err := creation.Register(fence); err != nil { return nil, err }
+	if err := creation.Register(fence); err != nil {
+		return nil, err
+	}
 	handshakeDone := make(chan struct{})
 	stopHandshake := context.AfterFunc(ctx, func() { defer close(handshakeDone); _ = fence.Close() })
-	stopAndJoin := func() { if !stopHandshake() { <-handshakeDone } }
+	stopAndJoin := func() {
+		if !stopHandshake() {
+			<-handshakeDone
+		}
+	}
 	hostKeys := append([]ssh.PublicKey(nil), s.hostKey...)
 	config := &ssh.ClientConfig{
 		User:              s.user,
@@ -231,7 +270,9 @@ func (s *Outbound) openClient(ctx context.Context, opening chan struct{}) (*ssh.
 		s.clientAccess.Unlock()
 		_ = client.Close()
 		s.runtimeFences.Record(fence.RuntimeCloseAndWait())
-		if err := ctx.Err(); err != nil { return nil, err }
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		return nil, net.ErrClosed
 	}
 	s.clientConn, s.client, s.streams = conn, client, 1
@@ -242,7 +283,10 @@ func (s *Outbound) openClient(ctx context.Context, opening chan struct{}) (*ssh.
 		_ = client.Wait()
 		s.runtimeFences.Record(fence.RuntimeCloseAndWait())
 		s.clientAccess.Lock()
-		if s.client == client { s.client = nil; s.clientConn = nil }
+		if s.client == client {
+			s.client = nil
+			s.clientConn = nil
+		}
 		s.clientAccess.Unlock()
 	}()
 	return client, nil
@@ -250,9 +294,13 @@ func (s *Outbound) openClient(ctx context.Context, opening chan struct{}) (*ssh.
 
 func (s *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, s.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	s.clientAccess.Lock()
-	conn := s.clientConn; s.client = nil; s.clientConn = nil
+	conn := s.clientConn
+	s.client = nil
+	s.clientConn = nil
 	s.clientAccess.Unlock()
 	_ = common.Close(conn)
 	release()
@@ -264,7 +312,10 @@ func (s *Outbound) MultiplexEnabled() bool {
 
 func (s *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), s.runtimeSource)
-	if err != nil { return }; defer release()
+	if err != nil {
+		return
+	}
+	defer release()
 	s.clientAccess.Lock()
 	s.closeIdle = !keep
 	s.clientAccess.Unlock()
@@ -275,7 +326,10 @@ func (s *Outbound) SetKeepIdleConnections(keep bool) {
 
 func (s *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), s.runtimeSource)
-	if err != nil { return }; defer release()
+	if err != nil {
+		return
+	}
+	defer release()
 	s.clientAccess.Lock()
 	if s.client == nil || s.streams > 0 {
 		s.clientAccess.Unlock()
@@ -307,9 +361,16 @@ func (s *Outbound) releaseStream(client *ssh.Client, keepSession bool) {
 }
 
 func (s *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
-	if err := scope.Context().Err(); err != nil { _ = s.runtimeCleanup(); return err }
-	if s.constructionCleanup { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
+	if err := scope.Context().Err(); err != nil {
+		_ = s.runtimeCleanup()
+		return err
+	}
+	if s.constructionCleanup {
+		return nil
+	}
 	var err error
 	s.constructionCleanup, err = registerSSHCleanup(adapter.ContextWithConstructionScope(scope.Context(), scope), s.runtimeCleanup)
 	return err
@@ -349,7 +410,7 @@ type chanConnWrapper struct {
 	net.Conn
 	closeOnce sync.Once
 	onClose   func()
-	closeErr error
+	closeErr  error
 }
 
 func (c *chanConnWrapper) Close() error {

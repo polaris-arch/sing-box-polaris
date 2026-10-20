@@ -43,7 +43,7 @@ const (
 
 type PreMatchResult struct {
 	// Ownership is moved into the verdict, including ordinary accept fallback.
-	Ownership RuntimeLease
+	Ownership   RuntimeLease
 	Action      PreMatchAction
 	Outbound    Outbound
 	Destination netip.AddrPort

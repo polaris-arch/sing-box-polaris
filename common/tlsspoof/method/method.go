@@ -35,4 +35,3 @@ func (m Method) String() string {
 		return "unknown"
 	}
 }
-

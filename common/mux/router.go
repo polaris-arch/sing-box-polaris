@@ -42,7 +42,9 @@ func NewRouterWithContext(ctx context.Context, router adapter.ConnectionRouterEx
 		}
 	}
 	handler, wrappedLogger, err := newRuntimeServerHandler(ctx, adapter.NewRouteContextHandler(router), logger)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	service, err := mux.NewService(mux.ServiceOptions{
 		NewStreamContext: func(ctx context.Context, conn net.Conn) context.Context {
 			return log.ContextWithNewID(ctx)

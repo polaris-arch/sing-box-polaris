@@ -66,16 +66,16 @@ var (
 )
 
 type Transport struct {
- socketErrors packetSocketErrors
-	work lifecycle.Work
-	runtimeResource adapter.RuntimeResourceSource
-	operationCtx context.Context
-	operationCancel context.CancelFunc
+	socketErrors      packetSocketErrors
+	work              lifecycle.Work
+	runtimeResource   adapter.RuntimeResourceSource
+	operationCtx      context.Context
+	operationCancel   context.CancelFunc
 	constructionOwned bool
-	startOnce sync.Once
-	startErr error
-	closeOnce sync.Once
-	closeErr error
+	startOnce         sync.Once
+	startErr          error
+	closeOnce         sync.Once
+	closeErr          error
 	dns.TransportAdapter
 	ctx            context.Context
 	logger         logger.ContextLogger
@@ -102,7 +102,9 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}
 	var err error
 	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -124,28 +126,43 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
 		}
 	})
-	if t.startErr != nil { return t.startErr }
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
-	if scope.Context().Err() != nil { return scope.Context().Err() }
-	if t.work.Sealed() { return lifecycle.ErrStopped }
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
 	return scope.Context().Err()
 }
 
-func (t *Transport) StopRuntimeProducers() {}
+func (t *Transport) StopRuntimeProducers()  {}
 func (t *Transport) StopRuntimeOperations() { t.work.Seal(); t.operationCancel() }
 func (t *Transport) close() error {
 	t.closeOnce.Do(func() {
 		t.StopRuntimeOperations()
 		t.work.Wait()
-		if t.configSource != nil { t.closeErr = lifecycle.Uncertain("mDNS configuration source", closeConfigSource(t.configSource)) }
-  t.closeErr = E.Errors(t.closeErr, t.socketErrors.result())
+		if t.configSource != nil {
+			t.closeErr = lifecycle.Uncertain("mDNS configuration source", closeConfigSource(t.configSource))
+		}
+		t.closeErr = E.Errors(t.closeErr, t.socketErrors.result())
 	})
 	return t.closeErr
 }
 
 func (t *Transport) Reset() {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	if t.configSource != nil {
 		t.configSource.Reset()
 	}
@@ -157,7 +174,10 @@ func (t *Transport) PreferredDomain(domain string) bool {
 
 func (t *Transport) Environment() []string {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	if t.configSource == nil {
 		return nil
 	}
@@ -166,7 +186,10 @@ func (t *Transport) Environment() []string {
 
 func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	ctx, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { return nil, err }; defer done()
+	if err != nil {
+		return nil, err
+	}
+	defer done()
 	return t.exchange(ctx, message)
 }
 
@@ -195,7 +218,9 @@ func (t *Transport) exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 		go func(target queryTarget) {
 			defer group.Done()
 			response, err := t.exchangeTarget(exchangeCtx, target, rawMessage, message.Question[0], deadline)
-			if err != nil || response != nil { results <- exchangeResult{response: response, err: err} }
+			if err != nil || response != nil {
+				results <- exchangeResult{response: response, err: err}
+			}
 		}(target)
 	}
 	// A cancelled context is a request to close the sockets. Every actual socket
@@ -227,7 +252,10 @@ func (t *Transport) exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	ctx, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }
+	if err != nil {
+		callback(nil, err)
+		return
+	}
 	go func() { defer done(); callback(t.exchange(ctx, message)) }()
 }
 
@@ -253,7 +281,11 @@ func (t *Transport) exchangeTarget(ctx context.Context, target queryTarget, rawM
 	defer packetConn.Close()
 	closeDone := make(chan struct{})
 	stopClose := context.AfterFunc(ctx, func() { defer close(closeDone); _ = packetConn.Close() })
-	defer func() { if !stopClose() { <-closeDone } }()
+	defer func() {
+		if !stopClose() {
+			<-closeDone
+		}
+	}()
 
 	_, err = packetConn.WriteTo(rawMessage, destination)
 	if err != nil {

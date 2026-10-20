@@ -14,7 +14,7 @@ var (
 	errRevisionMismatch  = errors.New("generation revision mismatch")
 	errInvalidGeneration = errors.New("invalid or already owned generation")
 	errAdmissionNotReady = errors.New("generation admission not ready")
-	errLeaseReleased = errors.New("runtime lease released")
+	errLeaseReleased     = errors.New("runtime lease released")
 )
 
 // generation holds one fixed typed view and its declared resource closure.
@@ -30,9 +30,9 @@ type generation struct {
 	retired  bool
 	zero     chan struct{}
 	identity adapter.RuntimeRevision
-	view adapter.RuntimeView
-	members map[adapter.RuntimeResourceID]*resourceLease
-	drained chan struct{}
+	view     adapter.RuntimeView
+	members  map[adapter.RuntimeResourceID]*resourceLease
+	drained  chan struct{}
 }
 
 func newGeneration(revision uint64) *generation {
@@ -59,7 +59,9 @@ func (g *generation) discard() error {
 	g.retired = true
 	zero := g.dropLocked()
 	g.mu.Unlock()
-	if zero { g.releaseMembers() }
+	if zero {
+		g.releaseMembers()
+	}
 	return nil
 }
 
@@ -79,7 +81,9 @@ func (g *generation) drop() {
 	g.mu.Lock()
 	zero := g.dropLocked()
 	g.mu.Unlock()
-	if zero { g.releaseMembers() }
+	if zero {
+		g.releaseMembers()
+	}
 }
 
 // Lock order is admission.mu then generation.mu, never the reverse. No user
@@ -106,7 +110,7 @@ func newAdmission(initial *generation) (*admission, error) {
 
 type generationLease struct {
 	generation *generation
-	released bool // protected by generation.mu, together with refs
+	released   bool // protected by generation.mu, together with refs
 }
 
 func (a *admission) acquire() (*generationLease, error) {
@@ -116,7 +120,9 @@ func (a *admission) acquire() (*generationLease, error) {
 		return nil, errAdmissionSealed
 	}
 	g := a.current
-	if g == nil { return nil, errAdmissionNotReady }
+	if g == nil {
+		return nil, errAdmissionNotReady
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	// Retain remains inside the admission read guard: publish/seal cannot
@@ -131,11 +137,16 @@ func (a *admission) acquire() (*generationLease, error) {
 func (l *generationLease) release() {
 	g := l.generation
 	g.mu.Lock()
-	if l.released { g.mu.Unlock(); return }
+	if l.released {
+		g.mu.Unlock()
+		return
+	}
 	l.released = true
 	zero := g.dropLocked()
 	g.mu.Unlock()
-	if zero { g.releaseMembers() }
+	if zero {
+		g.releaseMembers()
+	}
 }
 
 // publish transfers next's prospective owner only on success. A failed call
@@ -191,6 +202,8 @@ func (a *admission) seal() *generation {
 		old.mu.Unlock()
 	}
 	a.mu.Unlock()
-	if old != nil { old.drop() }
+	if old != nil {
+		old.drop()
+	}
 	return old
 }

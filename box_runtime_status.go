@@ -3,28 +3,40 @@ package box
 import "errors"
 
 type RuntimeConfigStatus struct {
-	ContractVersion uint32
-	Active RuntimeIdentity
-	Operation *RuntimeConfigOperation
-	LookupState string
-	DurableAppliedDigest string
- PersistenceMode string
- DurableDesiredStateDigest string
- DurableDesiredStateRevision string
- DurableOwnerReloadAcknowledged bool
+	ContractVersion                uint32
+	Active                         RuntimeIdentity
+	Operation                      *RuntimeConfigOperation
+	LookupState                    string
+	DurableAppliedDigest           string
+	PersistenceMode                string
+	DurableDesiredStateDigest      string
+	DurableDesiredStateRevision    string
+	DurableOwnerReloadAcknowledged bool
 }
 
 func (s *Box) GetRuntimeConfigStatus(actor, incarnation, transaction string) (RuntimeConfigStatus, error) {
 	c := s.runtime
-	if c == nil { return RuntimeConfigStatus{}, errors.New("runtime configuration adapter unavailable") }
-	c.access.Lock(); defer c.access.Unlock()
-	result := RuntimeConfigStatus{ContractVersion: RuntimeConfigContractVersion, Active: c.active, DurableAppliedDigest: c.durableDigest, PersistenceMode:c.persistenceMode, DurableDesiredStateDigest:c.durableDesiredDigest, DurableDesiredStateRevision:c.durableDesiredRevision, DurableOwnerReloadAcknowledged:c.durableOwnerReload, LookupState: "ACTIVE_ONLY"}
-	if incarnation != "" && incarnation != c.active.Incarnation { result.LookupState = "WRONG_INCARNATION"; return result, nil }
-	if transaction == "" { return result, nil }
+	if c == nil {
+		return RuntimeConfigStatus{}, errors.New("runtime configuration adapter unavailable")
+	}
+	c.access.Lock()
+	defer c.access.Unlock()
+	result := RuntimeConfigStatus{ContractVersion: RuntimeConfigContractVersion, Active: c.active, DurableAppliedDigest: c.durableDigest, PersistenceMode: c.persistenceMode, DurableDesiredStateDigest: c.durableDesiredDigest, DurableDesiredStateRevision: c.durableDesiredRevision, DurableOwnerReloadAcknowledged: c.durableOwnerReload, LookupState: "ACTIVE_ONLY"}
+	if incarnation != "" && incarnation != c.active.Incarnation {
+		result.LookupState = "WRONG_INCARNATION"
+		return result, nil
+	}
+	if transaction == "" {
+		return result, nil
+	}
 	record := c.plans[transaction]
-	if record == nil || record.actor != actor || record.operation == nil { result.LookupState = "UNKNOWN_OR_EXPIRED"; return result, nil }
+	if record == nil || record.actor != actor || record.operation == nil {
+		result.LookupState = "UNKNOWN_OR_EXPIRED"
+		return result, nil
+	}
 	operation := cloneRuntimeOperation(*record.operation)
-	result.Operation = &operation; result.LookupState = "FOUND"
+	result.Operation = &operation
+	result.LookupState = "FOUND"
 	return result, nil
 }
 
@@ -36,11 +48,18 @@ func (s *Box) BindRuntimePersistence(persist func(RuntimeIdentity, []byte) error
 }
 
 func (s *Box) BindRuntimePersistenceMode(persist func(RuntimeIdentity, []byte) error, mode string) error {
- if mode!="owner_acknowledged" && mode!="exact_configuration_file" && mode!="app_authoritative_regeneration" {return errors.New("unsupported runtime persistence mode")}
- if s.runtime == nil { return errors.New("runtime configuration adapter unavailable") }
-	s.runtime.access.Lock(); defer s.runtime.access.Unlock()
-	if s.runtime.initialPhase != 0 || s.runtime.preparing { return errors.New("runtime persistence binding is already active") }
+	if mode != "owner_acknowledged" && mode != "exact_configuration_file" && mode != "app_authoritative_regeneration" {
+		return errors.New("unsupported runtime persistence mode")
+	}
+	if s.runtime == nil {
+		return errors.New("runtime configuration adapter unavailable")
+	}
+	s.runtime.access.Lock()
+	defer s.runtime.access.Unlock()
+	if s.runtime.initialPhase != 0 || s.runtime.preparing {
+		return errors.New("runtime persistence binding is already active")
+	}
 	s.runtime.persist = persist
- s.runtime.persistenceMode = mode
+	s.runtime.persistenceMode = mode
 	return nil
 }

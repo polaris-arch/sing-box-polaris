@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/sagernet/sing-box/common/tls"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/pipe"
-	"github.com/sagernet/sing-box/common/tls"
 
 	"golang.org/x/net/http2"
 )
@@ -27,16 +27,25 @@ func (c *Client) acquireHTTP2(ctx context.Context) (*http2ClientConn, net.Conn, 
 	epoch := c.http2Epoch
 	c.http2Access.Unlock()
 	// TLS/network creation is deliberately outside the pool's short lock.
-	dialCtx,err:=c.ownedDialContext(ctx)
-	if err!=nil{return nil,nil,err}
+	dialCtx, err := c.ownedDialContext(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	conn, err := c.tlsDialer.DialTLSContext(dialCtx, c.server)
-	if err != nil {if tls.IsRuntimeCleanupIncomplete(err){c.recordCloseError(err)};return nil, nil, err }
+	if err != nil {
+		if tls.IsRuntimeCleanupIncomplete(err) {
+			c.recordCloseError(err)
+		}
+		return nil, nil, err
+	}
 	if c.isClosed() || ctx.Err() != nil {
 		c.recordCloseError(closeHTTPResource(conn.Close))
 		return nil, nil, errors.Join(net.ErrClosed, ctx.Err())
 	}
 	if conn.ConnectionState().NegotiatedProtocol != http2.NextProtoTLS {
-		if !c.disableVersionFallback { c.http2Unsupported.Store(true) }
+		if !c.disableVersionFallback {
+			c.http2Unsupported.Store(true)
+		}
 		return nil, conn, nil
 	}
 	stop := c.closeOnCancel(ctx, conn)

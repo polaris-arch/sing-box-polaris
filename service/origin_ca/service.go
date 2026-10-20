@@ -57,7 +57,7 @@ func RegisterCertificateProvider(registry *certificate.Registry) {
 var _ adapter.CertificateProviderService = (*Service)(nil)
 
 type Service struct {
- runtime *runtimeOriginCA
+	runtime *runtimeOriginCA
 	certificate.Adapter
 	logger            log.ContextLogger
 	ctx               context.Context
@@ -144,11 +144,13 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 		domain:            domain,
 		requestType:       requestType,
 		requestedValidity: requestedValidity,
- }
- if adapter.IsRuntimePreparation(ctx) {
-  if err := result.initializeRuntime(ctx); err != nil { return nil, err }
- }
- return result, nil
+	}
+	if adapter.IsRuntimePreparation(ctx) {
+		if err := result.initializeRuntime(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func originCAHTTPClient(ctx context.Context, logger log.ContextLogger, options option.CloudflareOriginCACertificateProviderOptions) (*http.Client, error) {
@@ -162,7 +164,9 @@ func originCAHTTPClient(ctx context.Context, logger log.ContextLogger, options o
 }
 
 func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if s.runtime != nil { return s.PrepareRuntime(stage,scope) }
+	if s.runtime != nil {
+		return s.PrepareRuntime(stage, scope)
+	}
 	if stage == adapter.StartStateInitialize {
 		if s.dataDirectory == "" {
 			return nil
@@ -175,8 +179,10 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	} else if stage != adapter.StartStateStart {
 		return nil
 	}
- ctx := scope.Context()
- if err := s.initializeCertificate(ctx); err != nil { return err }
+	ctx := scope.Context()
+	if err := s.initializeCertificate(ctx); err != nil {
+		return err
+	}
 
 	done := make(chan struct{})
 	go s.refreshLoop(ctx, done)
@@ -205,14 +211,14 @@ func (s *Service) initializeCertificate(ctx context.Context) error {
 			s.logger.Warn(E.Cause(err, "renew cached Cloudflare Origin CA certificate"))
 		}
 	}
- return nil
+	return nil
 }
 
 func (s *Service) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
- return s.GetCertificateWithContext(certificate.HelloContext(hello),hello)
+	return s.GetCertificateWithContext(certificate.HelloContext(hello), hello)
 }
 
-func (s *Service) certificateValue() (*tls.Certificate,error) {
+func (s *Service) certificateValue() (*tls.Certificate, error) {
 	s.access.RLock()
 	certificate := s.currentCertificate
 	s.access.RUnlock()
@@ -292,13 +298,13 @@ func (s *Service) issueAndStoreCertificate(ctx context.Context) (resultErr error
 	if err != nil {
 		return E.Cause(err, "lock Cloudflare Origin CA certificate storage")
 	}
- defer func() {
-  if unlockErr := s.storage.Unlock(context.WithoutCancel(ctx),s.storageLockKey); unlockErr != nil {
-   cleanupErr := &originCACompensationError{cause:E.Cause(unlockErr,"unlock Cloudflare Origin CA certificate storage")}
-   s.recordRuntimeCleanup(cleanupErr)
-   resultErr = errors.Join(resultErr,cleanupErr)
-  }
- }()
+	defer func() {
+		if unlockErr := s.storage.Unlock(context.WithoutCancel(ctx), s.storageLockKey); unlockErr != nil {
+			cleanupErr := &originCACompensationError{cause: E.Cause(unlockErr, "unlock Cloudflare Origin CA certificate storage")}
+			s.recordRuntimeCleanup(cleanupErr)
+			resultErr = errors.Join(resultErr, cleanupErr)
+		}
+	}()
 	cachedCertificate, cachedLeaf, err := s.loadCachedCertificate(ctx)
 	if err != nil {
 		s.logger.Warn(E.Cause(err, "load cached Cloudflare Origin CA certificate"))
@@ -395,11 +401,11 @@ func (s *Service) requestCertificate(ctx context.Context) ([]byte, []byte, *tls.
 	if err != nil {
 		return nil, nil, nil, nil, E.Cause(err, "request certificate from Cloudflare")
 	}
- defer func(){
-  if closeErr:=response.Body.Close();closeErr!=nil&&s.runtime!=nil{
-   s.recordRuntimeCleanup(&originCACompensationError{cause:E.Cause(closeErr,"close Cloudflare Origin CA response")})
-  }
- }()
+	defer func() {
+		if closeErr := response.Body.Close(); closeErr != nil && s.runtime != nil {
+			s.recordRuntimeCleanup(&originCACompensationError{cause: E.Cause(closeErr, "close Cloudflare Origin CA response")})
+		}
+	}()
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, nil, nil, nil, E.Cause(err, "read Cloudflare response")
@@ -552,32 +558,45 @@ func storeCertificateResource(ctx context.Context, storage certmagic.Storage, is
 			value: metaBytes,
 		},
 	}
- // Capture exact preimages while the caller holds the certificate storage
- // lock. A failed write can itself be partial, so restore that key as well as
- // completed predecessors. Never erase a previously valid private key/cert.
- type preimage struct { value []byte; exists bool }
- before := make([]preimage,len(keyValueList))
- for i,item := range keyValueList {
-  value,loadErr := storage.Load(ctx,item.key)
-  if loadErr != nil && !errors.Is(loadErr,fs.ErrNotExist) { return loadErr }
-  before[i] = preimage{value:value,exists:loadErr==nil}
- }
- for i,item := range keyValueList {
-  if err = storage.Store(ctx,item.key,item.value); err != nil {
-   restoreContext := context.WithoutCancel(ctx)
-   var restoreErrors []error
-   for j:=i;j>=0;j-- {
-    var restoreErr error
-    if before[j].exists { restoreErr=storage.Store(restoreContext,keyValueList[j].key,before[j].value) } else {
-     restoreErr=storage.Delete(restoreContext,keyValueList[j].key)
-     if errors.Is(restoreErr,fs.ErrNotExist) { restoreErr=nil }
-    }
-    if restoreErr!=nil { restoreErrors=append(restoreErrors,restoreErr) }
-   }
-   if len(restoreErrors)!=0 { return errors.Join(err,&originCACompensationError{cause:errors.Join(restoreErrors...)}) }
-   return err
-  }
- }
+	// Capture exact preimages while the caller holds the certificate storage
+	// lock. A failed write can itself be partial, so restore that key as well as
+	// completed predecessors. Never erase a previously valid private key/cert.
+	type preimage struct {
+		value  []byte
+		exists bool
+	}
+	before := make([]preimage, len(keyValueList))
+	for i, item := range keyValueList {
+		value, loadErr := storage.Load(ctx, item.key)
+		if loadErr != nil && !errors.Is(loadErr, fs.ErrNotExist) {
+			return loadErr
+		}
+		before[i] = preimage{value: value, exists: loadErr == nil}
+	}
+	for i, item := range keyValueList {
+		if err = storage.Store(ctx, item.key, item.value); err != nil {
+			restoreContext := context.WithoutCancel(ctx)
+			var restoreErrors []error
+			for j := i; j >= 0; j-- {
+				var restoreErr error
+				if before[j].exists {
+					restoreErr = storage.Store(restoreContext, keyValueList[j].key, before[j].value)
+				} else {
+					restoreErr = storage.Delete(restoreContext, keyValueList[j].key)
+					if errors.Is(restoreErr, fs.ErrNotExist) {
+						restoreErr = nil
+					}
+				}
+				if restoreErr != nil {
+					restoreErrors = append(restoreErrors, restoreErr)
+				}
+			}
+			if len(restoreErrors) != 0 {
+				return errors.Join(err, &originCACompensationError{cause: errors.Join(restoreErrors...)})
+			}
+			return err
+		}
+	}
 
 	return nil
 }
@@ -657,12 +676,21 @@ type originCAIssuerData struct {
 }
 
 // This opaque marker survives Scope's benign canceled/closed error filtering.
-type originCACompensationError struct { cause error }
-func(e *originCACompensationError)Error()string{return "Origin CA storage restoration incomplete: "+e.cause.Error()}
-func(*originCACompensationError)RuntimeCleanupIncomplete()bool{return true}
-func(s *Service)recordRuntimeCleanup(err error){
- if s.runtime==nil||err==nil{return}
- var incomplete *originCACompensationError
- if !errors.As(err,&incomplete){return}
- s.runtime.mu.Lock();s.runtime.closeErr=errors.Join(s.runtime.closeErr,incomplete);s.runtime.mu.Unlock()
+type originCACompensationError struct{ cause error }
+
+func (e *originCACompensationError) Error() string {
+	return "Origin CA storage restoration incomplete: " + e.cause.Error()
+}
+func (*originCACompensationError) RuntimeCleanupIncomplete() bool { return true }
+func (s *Service) recordRuntimeCleanup(err error) {
+	if s.runtime == nil || err == nil {
+		return
+	}
+	var incomplete *originCACompensationError
+	if !errors.As(err, &incomplete) {
+		return
+	}
+	s.runtime.mu.Lock()
+	s.runtime.closeErr = errors.Join(s.runtime.closeErr, incomplete)
+	s.runtime.mu.Unlock()
 }

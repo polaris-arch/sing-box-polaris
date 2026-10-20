@@ -35,18 +35,18 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeContext context.Context
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeContext      context.Context
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	logger          logger.ContextLogger
-	dialer          N.Dialer
-	serverAddr      M.Socksaddr
-	key             [56]byte
-	multiplexDialer *mux.Client
-	tlsConfig       tls.Config
-	tlsDialer       tls.Dialer
-	transport       adapter.V2RayClientTransport
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	serverAddr          M.Socksaddr
+	key                 [56]byte
+	multiplexDialer     *mux.Client
+	tlsConfig           tls.Config
+	tlsDialer           tls.Dialer
+	transport           adapter.V2RayClientTransport
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.TrojanOutboundOptions) (adapter.Outbound, error) {
@@ -61,10 +61,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		serverAddr: options.ServerOptions.Build(),
 		key:        trojan.Key(options.Password),
 	}
-	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	if err := outbound.initRuntimeCleanup(ctx); err != nil {
+		return nil, err
+	}
 	constructed := false
 	defer func() {
-		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+		if !constructed && !outbound.constructionCleanup {
+			_ = outbound.runtimeCleanup()
+		}
 	}()
 	if options.TLS != nil {
 		outbound.tlsConfig, err = tls.NewClientWithOptions(tls.ClientOptions{
@@ -90,9 +94,15 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
-	if err := ctx.Err(); err != nil { return nil, err }
-	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
-	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return outbound, nil
 }
@@ -149,7 +159,9 @@ func (h *Outbound) MultiplexEnabled() bool {
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	if h.transport != nil {
 		h.transport.Close()
@@ -161,7 +173,9 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
@@ -174,7 +188,9 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 
 func (h *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	transportKeeper, isTransportKeeper := h.transport.(adapter.IdleConnectionKeeper)
 	if isTransportKeeper {
@@ -186,14 +202,18 @@ func (h *Outbound) CloseIdleConnections() {
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
 	return h.registerRuntimeStart(scope)
 }
 
 type trojanDialer Outbound
 
 func (h *trojanDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (result net.Conn, resultErr error) {
-	if name := N.NetworkName(network); name != N.NetworkTCP && name != N.NetworkUDP { return nil, E.Extend(N.ErrUnknownNetwork, network) }
+	if name := N.NetworkName(network); name != N.NetworkTCP && name != N.NetworkUDP {
+		return nil, E.Extend(N.ErrUnknownNetwork, network)
+	}
 	ctx, metadata := adapter.ExtendContext(ctx)
 	metadata.Outbound = h.Tag()
 	metadata.Destination = destination

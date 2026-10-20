@@ -56,7 +56,7 @@ type directoryLease struct {
 	rootID, controlID, admissionID, targetID, lifetimeID              windowsDirectoryID
 	domain                                                            windowsDirectoryDomainRecord
 	admissionHeld, lifetimeHeld                                       bool
-	checkpointExclusive                                            bool
+	checkpointExclusive                                               bool
 	closeOnce                                                         sync.Once
 	closeErr                                                          error
 }
@@ -455,8 +455,12 @@ func (l *directoryLease) appendMarker(m *directoryLeaseMarker, previous *directo
 		return err
 	}
 	fits, reserveErr := windowsMarkerAdmissionFits(size, *m)
-	if reserveErr != nil { return reserveErr }
-	if !fits { return fmt.Errorf("directory lease: marker log lacks deletion reserve") }
+	if reserveErr != nil {
+		return reserveErr
+	}
+	if !fits {
+		return fmt.Errorf("directory lease: marker log lacks deletion reserve")
+	}
 	if len(line) > 16<<10 || size+len(line)+1 > windowsMarkerLimit {
 		return fmt.Errorf("directory lease: marker log full")
 	}
@@ -573,10 +577,16 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 	checkpoint := false
 	if !missing {
 		existingMarker, err = l.findMarker(true, nil)
-		if err != nil { return nil, err }
-		if existingMarker == nil { return nil, fmt.Errorf("directory lease: existing unmarked physical target") }
+		if err != nil {
+			return nil, err
+		}
+		if existingMarker == nil {
+			return nil, fmt.Errorf("directory lease: existing unmarked physical target")
+		}
 		checkpoint, err = l.markerNeedsCheckpoint(existingMarker)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 	l.lockName = "directory-" + l.targetID.key() + ".lock"
 	disposition := uint32(windows.FILE_OPEN)
@@ -649,7 +659,9 @@ func acquireDirectoryLease(directory string) (_ *directoryLease, resultErr error
 			return nil, fmt.Errorf("directory lease: incarnation mismatch")
 		}
 		if checkpoint {
-			if err := l.checkpointOpenJournal(marker); err != nil { return nil, err }
+			if err := l.checkpointOpenJournal(marker); err != nil {
+				return nil, err
+			}
 		}
 		next := *marker
 		next.DirectoryEpoch, err = windowsNextNonce(marker.DirectoryEpoch)

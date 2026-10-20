@@ -10,14 +10,17 @@ inventory = json.loads(Path('release/audit-remediation-source-inventory.json').r
 if inventory.get('schema') != 'audit-remediation-source-inventory-v1':
     raise SystemExit('Invalid current remediation inventory; historical source is unsupported')
 files = []
-for row in inventory['files']:
-    path = row['path']
+paths = [row['path'] for row in inventory['files']]
+paths.extend(inventory.get('dailyHotFormattingScope', {}).get('paths', []))
+for path in paths:
     if not isinstance(path, str) or PurePosixPath(path).is_absolute() or '..' in PurePosixPath(path).parts:
         raise SystemExit('Invalid inventory path')
-    if not path.endswith('.go') or path.endswith('.pb.go') or path.startswith(('vendor/', 'third_party/')):
+    if not path.endswith('.go') or path.endswith('.pb.go') or path.startswith(('vendor/', 'third_party/', 'release/dependency-sources/')):
         continue
     if not Path(path).is_file() or Path(path).is_symlink():
         raise SystemExit('Missing or unsafe owned Go source: ' + path)
+    if 'Code generated ' in Path(path).read_text()[:2048]:
+        continue
     files.append(path)
 files = sorted(set(files))
 if not files:

@@ -12,9 +12,9 @@ var ErrStaleHistory = errors.New("URL test network epoch is not current and read
 // HistoryEpoch is an opaque, storage-bound identity. Cancellation requests that
 // admitted probes stop; it never certifies their actual completion.
 type HistoryEpoch struct {
-	ctx context.Context
+	ctx    context.Context
 	cancel context.CancelFunc
-	ready bool // protected by the owning HistoryStorage.access
+	ready  bool // protected by the owning HistoryStorage.access
 }
 
 func newHistoryEpoch(ready bool) *HistoryEpoch {
@@ -23,10 +23,14 @@ func newHistoryEpoch(ready bool) *HistoryEpoch {
 }
 
 func (s *HistoryStorage) Epoch() *HistoryEpoch {
-	if s == nil { return nil }
+	if s == nil {
+		return nil
+	}
 	s.access.RLock()
 	defer s.access.RUnlock()
-	if s.closed { return nil }
+	if s.closed {
+		return nil
+	}
 	return s.epoch
 }
 
@@ -35,7 +39,9 @@ func (s *HistoryStorage) currentLocked(epoch *HistoryEpoch) bool {
 }
 
 func (s *HistoryStorage) IsCurrent(epoch *HistoryEpoch) bool {
-	if s == nil { return false }
+	if s == nil {
+		return false
+	}
 	s.access.RLock()
 	defer s.access.RUnlock()
 	return s.currentLocked(epoch)
@@ -44,23 +50,36 @@ func (s *HistoryStorage) IsCurrent(epoch *HistoryEpoch) bool {
 // AdvanceNetworkEpoch is called once by the interface transition owner. Work
 // cannot be admitted until that owner has prepared and marked this epoch ready.
 func (s *HistoryStorage) AdvanceNetworkEpoch() *HistoryEpoch {
-	if s == nil { return nil }
+	if s == nil {
+		return nil
+	}
 	s.access.Lock()
-	if s.closed || s.authority != s { s.access.Unlock(); return nil }
+	if s.closed || s.authority != s {
+		s.access.Unlock()
+		return nil
+	}
 	previous := s.epoch
 	s.epoch = newHistoryEpoch(false)
 	next := s.epoch
-	for view := range s.views { view.epoch = next; clear(view.delayHistory); view.notifyLocalLocked() }
+	for view := range s.views {
+		view.epoch = next
+		clear(view.delayHistory)
+		view.notifyLocalLocked()
+	}
 	s.access.Unlock()
 	previous.cancel()
 	return next
 }
 
 func (s *HistoryStorage) MarkReady(epoch *HistoryEpoch) bool {
-	if s == nil { return false }
+	if s == nil {
+		return false
+	}
 	s.access.Lock()
 	defer s.access.Unlock()
-	if s.closed || s.authority != s || epoch == nil || s.epoch != epoch { return false }
+	if s.closed || s.authority != s || epoch == nil || s.epoch != epoch {
+		return false
+	}
 	epoch.ready = true
 	return true
 }
@@ -69,7 +88,10 @@ func (s *HistoryStorage) MarkReady(epoch *HistoryEpoch) bool {
 // started during preparation to become valid merely because readiness changes.
 func (s *HistoryStorage) ProbeContext(ctx context.Context, epoch *HistoryEpoch) (context.Context, context.CancelFunc, error) {
 	s.access.RLock()
-	if !s.currentLocked(epoch) { s.access.RUnlock(); return nil, nil, ErrStaleHistory }
+	if !s.currentLocked(epoch) {
+		s.access.RUnlock()
+		return nil, nil, ErrStaleHistory
+	}
 	probeCtx, cancel := context.WithCancel(ctx)
 	stop := context.AfterFunc(epoch.ctx, cancel)
 	s.access.RUnlock()
@@ -77,13 +99,20 @@ func (s *HistoryStorage) ProbeContext(ctx context.Context, epoch *HistoryEpoch) 
 }
 
 func (s *HistoryStorage) Snapshot(epoch *HistoryEpoch) (map[string]*adapter.URLTestHistory, bool) {
-	if result, valid, bound := s.projectedSnapshot(epoch); bound { return result, valid }
+	if result, valid, bound := s.projectedSnapshot(epoch); bound {
+		return result, valid
+	}
 	s.access.RLock()
 	defer s.access.RUnlock()
-	if !s.currentLocked(epoch) { return nil, false }
+	if !s.currentLocked(epoch) {
+		return nil, false
+	}
 	result := make(map[string]*adapter.URLTestHistory, len(s.delayHistory))
 	for tag, history := range s.delayHistory {
-		if history != nil { copy := *history; result[tag] = &copy }
+		if history != nil {
+			copy := *history
+			result[tag] = &copy
+		}
 	}
 	return result, true
 }
@@ -91,7 +120,9 @@ func (s *HistoryStorage) Snapshot(epoch *HistoryEpoch) (map[string]*adapter.URLT
 func (s *HistoryStorage) StoreIfCurrent(epoch *HistoryEpoch, tag string, history *adapter.URLTestHistory) bool {
 	s.access.Lock()
 	defer s.access.Unlock()
-	if !s.currentLocked(epoch) || !s.writableLocked() || history == nil { return false }
+	if !s.currentLocked(epoch) || !s.writableLocked() || history == nil {
+		return false
+	}
 	copy := *history
 	s.delayHistory[tag] = &copy
 	s.notifyUpdated()
@@ -101,7 +132,9 @@ func (s *HistoryStorage) StoreIfCurrent(epoch *HistoryEpoch, tag string, history
 func (s *HistoryStorage) DeleteIfCurrent(epoch *HistoryEpoch, tag string) bool {
 	s.access.Lock()
 	defer s.access.Unlock()
-	if !s.currentLocked(epoch) || !s.writableLocked() { return false }
+	if !s.currentLocked(epoch) || !s.writableLocked() {
+		return false
+	}
 	delete(s.delayHistory, tag)
 	s.notifyUpdated()
 	return true
@@ -113,7 +146,9 @@ func (s *HistoryStorage) DeleteIfCurrent(epoch *HistoryEpoch, tag string) bool {
 func (s *HistoryStorage) PublishIfCurrent(epoch *HistoryEpoch, publish func()) bool {
 	s.access.RLock()
 	defer s.access.RUnlock()
-	if !s.currentLocked(epoch) { return false }
+	if !s.currentLocked(epoch) {
+		return false
+	}
 	publish()
 	return true
 }

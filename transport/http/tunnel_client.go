@@ -24,7 +24,9 @@ type tunnelRequest struct {
 
 func (c *Client) OpenTunnel(ctx context.Context, protocol string, path string) (io.ReadWriteCloser, error) {
 	ctx, finish, err := c.beginOperation(ctx)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer finish()
 	requestURL, err := url.ParseRequestURI(path)
 	if err != nil {
@@ -47,7 +49,10 @@ func (c *Client) OpenTunnel(ctx context.Context, protocol string, path string) (
 
 func (c *Client) openTunnel(ctx context.Context, request tunnelRequest) (net.Conn, DatagramStream, error) {
 	if c.http3Available() {
-		dialCtx,err:=c.ownedDialContext(ctx);if err!=nil{return nil,nil,err}
+		dialCtx, err := c.ownedDialContext(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
 		stream, err := c.http3.OpenTunnel(dialCtx, request)
 		if err == nil {
 			c.clearHTTP3Broken()

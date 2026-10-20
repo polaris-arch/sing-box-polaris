@@ -23,13 +23,13 @@ import (
 
 type correctnessCacheEntry struct {
 	message []byte
-	expire time.Time
+	expire  time.Time
 }
 
 type correctnessCacheStore struct {
-	mu sync.Mutex
-	entries map[string]correctnessCacheEntry
-	writes int
+	mu          sync.Mutex
+	entries     map[string]correctnessCacheEntry
+	writes      int
 	loadBarrier func()
 	saveBarrier func()
 }
@@ -39,35 +39,48 @@ func (s *correctnessCacheStore) LoadDNSCache(transport, name string, qtype uint1
 	entry, ok := s.entries[fmt.Sprint(transport, "|", name, "|", qtype)]
 	barrier := s.loadBarrier
 	s.mu.Unlock()
-	if ok && barrier != nil { barrier() }
+	if ok && barrier != nil {
+		barrier()
+	}
 	return append([]byte(nil), entry.message...), entry.expire, ok
 }
+
 func (s *correctnessCacheStore) SaveDNSCache(transport, name string, qtype uint16, message []byte, expire time.Time) error {
 	s.mu.Lock()
-	if s.entries == nil { s.entries = make(map[string]correctnessCacheEntry) }
+	if s.entries == nil {
+		s.entries = make(map[string]correctnessCacheEntry)
+	}
 	s.entries[fmt.Sprint(transport, "|", name, "|", qtype)] = correctnessCacheEntry{append([]byte(nil), message...), expire}
 	s.writes++
 	barrier := s.saveBarrier
 	s.mu.Unlock()
-	if barrier != nil { barrier() }
+	if barrier != nil {
+		barrier()
+	}
 	return nil
 }
+
 func (s *correctnessCacheStore) SaveDNSCacheAsync(transport, name string, qtype uint16, message []byte, expire time.Time, _ logger.Logger) {
 	_ = s.SaveDNSCache(transport, name, qtype, message, expire)
 }
+
 func (s *correctnessCacheStore) ClearDNSCache() error {
-	s.mu.Lock(); defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.entries = nil
 	return nil
 }
+
 func (s *correctnessCacheStore) writeCount() int {
-	s.mu.Lock(); defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.writes
 }
 
-type correctnessRDRC struct { writes atomic.Int32 }
-func (*correctnessRDRC) LoadRDRC(string, string, uint16) bool { return false }
-func (s *correctnessRDRC) SaveRDRC(string, string, uint16) error { s.writes.Add(1); return nil }
+type correctnessRDRC struct{ writes atomic.Int32 }
+
+func (*correctnessRDRC) LoadRDRC(string, string, uint16) bool                  { return false }
+func (s *correctnessRDRC) SaveRDRC(string, string, uint16) error               { s.writes.Add(1); return nil }
 func (s *correctnessRDRC) SaveRDRCAsync(string, string, uint16, logger.Logger) { s.writes.Add(1) }
 
 func correctnessQuestion(qtype uint16) *mDNS.Msg {
@@ -92,19 +105,31 @@ func correctnessRouter(t *testing.T, strategy C.DomainStrategy, rules []option.D
 
 func correctnessWire(t *testing.T, router *Router, ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions, async bool) (*mDNS.Msg, error) {
 	t.Helper()
-	if !async { return router.Exchange(ctx, message, options) }
-	type result struct { response *mDNS.Msg; err error }
+	if !async {
+		return router.Exchange(ctx, message, options)
+	}
+	type result struct {
+		response *mDNS.Msg
+		err      error
+	}
 	done := make(chan result, 1)
 	router.ExchangeAsync(ctx, message, options, func(response *mDNS.Msg, err error) { done <- result{response, err} })
 	select {
-	case got := <-done: return got.response, got.err
-	case <-time.After(5*time.Second): t.Fatal("DNS callback did not complete"); return nil, context.DeadlineExceeded
+	case got := <-done:
+		return got.response, got.err
+	case <-time.After(5 * time.Second):
+		t.Fatal("DNS callback did not complete")
+		return nil, context.DeadlineExceeded
 	}
 }
 
 func TestPolicyGlobalStrategyAcrossPersistentRouterCaches(t *testing.T) {
 	for _, async := range []bool{false, true} {
-		for _, family := range []struct { qtype uint16; only, override C.DomainStrategy; address string }{
+		for _, family := range []struct {
+			qtype          uint16
+			only, override C.DomainStrategy
+			address        string
+		}{
 			{mDNS.TypeAAAA, C.DomainStrategyIPv4Only, C.DomainStrategyIPv6Only, "2001:db8::1"},
 			{mDNS.TypeA, C.DomainStrategyIPv6Only, C.DomainStrategyIPv4Only, "192.0.2.1"},
 		} {
@@ -115,7 +140,8 @@ func TestPolicyGlobalStrategyAcrossPersistentRouterCaches(t *testing.T) {
 				options := adapter.DNSQueryOptions{UseRules: true, Policy: testPolicyID, Timeout: time.Second}
 				first := correctnessRouter(t, C.DomainStrategyAsIS, rules, store, hit)
 				response, err := correctnessWire(t, first, context.Background(), correctnessQuestion(family.qtype), options, async)
-				require.NoError(t, err); require.Len(t, response.Answer, 1)
+				require.NoError(t, err)
+				require.Len(t, response.Answer, 1)
 				require.Positive(t, store.writeCount())
 				second := correctnessRouter(t, family.only, rules, store, hit)
 				require.NotEqual(t, first.policyConfigIdentity, second.policyConfigIdentity)
@@ -123,23 +149,28 @@ func TestPolicyGlobalStrategyAcrossPersistentRouterCaches(t *testing.T) {
 				require.Equal(t, second.policyConfigIdentity, same.policyConfigIdentity)
 				before := hit.calls.Load()
 				warm, err := correctnessWire(t, second, context.Background(), correctnessQuestion(family.qtype), options, async)
-				require.NoError(t, err); require.Empty(t, warm.Answer)
+				require.NoError(t, err)
+				require.Empty(t, warm.Answer)
 				cold := correctnessRouter(t, family.only, rules, new(correctnessCacheStore), hit)
 				coldResponse, err := correctnessWire(t, cold, context.Background(), correctnessQuestion(family.qtype), options, async)
-				require.NoError(t, err); require.Equal(t, warm.Answer, coldResponse.Answer)
+				require.NoError(t, err)
+				require.Equal(t, warm.Answer, coldResponse.Answer)
 				require.Equal(t, before, hit.calls.Load(), "family rejection precedes transport/cache reuse")
 				options.Strategy = family.override
 				overridden, err := correctnessWire(t, second, context.Background(), correctnessQuestion(family.qtype), options, async)
-				require.NoError(t, err); require.Len(t, overridden.Answer, 1)
+				require.NoError(t, err)
+				require.Len(t, overridden.Answer, 1)
 				lookupOptions := adapter.DNSQueryOptions{UseRules: true, Policy: testPolicyID, Timeout: time.Second, LookupStrategy: family.override}
 				addresses, err := second.Lookup(context.Background(), "node.example", lookupOptions)
-				require.NoError(t, err); require.Equal(t, []netip.Addr{netip.MustParseAddr(family.address)}, addresses)
+				require.NoError(t, err)
+				require.Equal(t, []netip.Addr{netip.MustParseAddr(family.address)}, addresses)
 				require.Equal(t, C.DomainStrategyAsIS, lookupOptions.Strategy, "caller options remain unchanged")
 				// Returning to the permissive configuration may reuse its valid namespace.
 				back := correctnessRouter(t, C.DomainStrategyAsIS, rules, store, hit)
 				options.Strategy = C.DomainStrategyAsIS
 				response, err = correctnessWire(t, back, context.Background(), correctnessQuestion(family.qtype), options, async)
-				require.NoError(t, err); require.Len(t, response.Answer, 1)
+				require.NoError(t, err)
+				require.Len(t, response.Answer, 1)
 			})
 		}
 	}
@@ -163,13 +194,20 @@ func TestPolicyScopedActionStrategyRejectedDuringInitialize(t *testing.T) {
 				default:
 					first.DefaultOptions.RouteOptions.Strategy = option.DomainStrategy(strategy)
 				}
-				if action == C.RuleActionTypeEvaluate { rules[0] = first } else { rules = append([]option.DNSRule{first}, rules...) }
-				encoded, err := json.Marshal(rules); require.NoError(t, err)
+				if action == C.RuleActionTypeEvaluate {
+					rules[0] = first
+				} else {
+					rules = append([]option.DNSRule{first}, rules...)
+				}
+				encoded, err := json.Marshal(rules)
+				require.NoError(t, err)
 				var roundTrip []option.DNSRule
 				require.NoError(t, json.UnmarshalContext(context.Background(), encoded, &roundTrip))
 				router := raceTestRouter(t)
 				err = router.Initialize(roundTrip)
-				if strategy == C.DomainStrategyAsIS { require.NoError(t, err) } else {
+				if strategy == C.DomainStrategyAsIS {
+					require.NoError(t, err)
+				} else {
 					require.ErrorContains(t, err, "policy "+testPolicyID+" rule[0]")
 					require.ErrorContains(t, err, "strategy")
 				}
@@ -183,7 +221,8 @@ func TestPolicyCompletionIgnoresOperationCancelButHonorsParentAndCutoff(t *testi
 	defer parentCancel()
 	cutoff := time.Now().Add(time.Hour)
 	ctx := context.WithValue(parent, dnsPolicyBudgetKey{}, &dnsPolicyBudget{parent: parent, deadline: cutoff})
-	operation, cancel := context.WithCancel(ctx); cancel()
+	operation, cancel := context.WithCancel(ctx)
+	cancel()
 	require.NoError(t, dnsPolicyCompletionError(operation, cutoff))
 	require.ErrorIs(t, dnsPolicyCompletionError(operation, cutoff.Add(time.Nanosecond)), context.DeadlineExceeded)
 	parentCancel()
@@ -203,15 +242,32 @@ func TestPolicyLatePrivateRouteDoesNotCacheOrFallThrough(t *testing.T) {
 					return FixedResponse(msg.Id, msg.Question[0], []netip.Addr{netip.MustParseAddr("192.0.2.1")}, 60), nil
 				}}
 				public := policyReply("public", 0, 0, "192.0.2.2")
-				first := routeRule("private", false); first.DefaultOptions.ResolverPolicy = new(testPolicyID)
+				first := routeRule("private", false)
+				first.DefaultOptions.ResolverPolicy = new(testPolicyID)
 				rules := append([]option.DNSRule{first}, policyTestRules(t, []string{"public"})...)
 				router := policyRouter(t, rules, private, public)
-				store := new(correctnessCacheStore); router.client.(*Client).dnsCache = store
-				parent, cancel := context.WithCancel(context.Background()); defer cancel()
-				if cancelParent { go func() { select { case <-started: cancel(); case <-parent.Done(): } }() }
+				store := new(correctnessCacheStore)
+				router.client.(*Client).dnsCache = store
+				parent, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if cancelParent {
+					go func() {
+						select {
+						case <-started:
+							cancel()
+						case <-parent.Done():
+						}
+					}()
+				}
 				response, err := correctnessWire(t, router, parent, correctnessQuestion(mDNS.TypeA), policyOptions(20*time.Millisecond), async)
-				if cancelParent { require.ErrorIs(t, err, context.Canceled) } else { require.ErrorIs(t, err, context.DeadlineExceeded) }
-				require.Nil(t, response); require.Zero(t, store.writeCount()); require.Zero(t, public.calls.Load())
+				if cancelParent {
+					require.ErrorIs(t, err, context.Canceled)
+				} else {
+					require.ErrorIs(t, err, context.DeadlineExceeded)
+				}
+				require.Nil(t, response)
+				require.Zero(t, store.writeCount())
+				require.Zero(t, public.calls.Load())
 				// No successful inner or outer response was admitted to shared storage.
 				require.EqualValues(t, 1, private.calls.Load())
 			})
@@ -239,7 +295,10 @@ func TestPolicyDelayedCheckerCannotWriteResponseOrRDRC(t *testing.T) {
 					<-release
 					return accepted
 				}
-				type result struct { response *mDNS.Msg; err error }
+				type result struct {
+					response *mDNS.Msg
+					err      error
+				}
 				done := make(chan result, 1)
 				go func() {
 					if async {
@@ -251,7 +310,9 @@ func TestPolicyDelayedCheckerCannotWriteResponseOrRDRC(t *testing.T) {
 				}()
 				select {
 				case <-entered:
-				case <-time.After(5*time.Second): close(release); t.Fatal("checker was not entered")
+				case <-time.After(5 * time.Second):
+					close(release)
+					t.Fatal("checker was not entered")
 				}
 				// Test-only cutoff advancement while the worker is blocked. No
 				// budget reader runs in this phase; release establishes happens-before.
@@ -274,12 +335,17 @@ func TestPolicyAsyncSuccessfulLocalCancelStillCaches(t *testing.T) {
 	client := NewClient(ClientOptions{Context: context.Background(), Logger: log.NewNOPFactory().Logger()})
 	client.dnsCache = store
 	hit := policyReply("hit", 0, 0, "192.0.2.1")
-	ctx, cancel := withDNSPolicyBudget(context.Background(), time.Hour); defer cancel()
+	ctx, cancel := withDNSPolicyBudget(context.Background(), time.Hour)
+	defer cancel()
 	done := make(chan error, 1)
 	client.ExchangeAsync(ctx, hit, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil, func(response *mDNS.Msg, err error) {
-		if response == nil && err == nil { err = fmt.Errorf("missing successful response") }; done <- err
+		if response == nil && err == nil {
+			err = fmt.Errorf("missing successful response")
+		}
+		done <- err
 	})
-	require.NoError(t, <-done); require.Equal(t, 1, store.writeCount())
+	require.NoError(t, <-done)
+	require.Equal(t, 1, store.writeCount())
 }
 
 func TestPolicyDirectRouteChecksCachedAndPostAdmissionReturnBoundary(t *testing.T) {
@@ -314,7 +380,9 @@ func TestPolicyDirectRouteChecksCachedAndPostAdmissionReturnBoundary(t *testing.
 			}()
 			select {
 			case <-entered:
-			case <-time.After(5*time.Second): close(release); t.Fatal("cache boundary was not entered")
+			case <-time.After(5 * time.Second):
+				close(release)
+				t.Fatal("cache boundary was not entered")
 			}
 			// Advance only the test-owned cutoff while no budget reader runs.
 			// Cache admission in the store branch has already occurred; the
@@ -326,9 +394,11 @@ func TestPolicyDirectRouteChecksCachedAndPostAdmissionReturnBoundary(t *testing.
 			require.Nil(t, result.response)
 			require.Equal(t, 1, store.writeCount())
 			require.EqualValues(t, 1, hit.calls.Load())
-			store.loadBarrier = nil; store.saveBarrier = nil
+			store.loadBarrier = nil
+			store.saveBarrier = nil
 			response, err := router.client.Exchange(context.Background(), hit, question.Copy(), options, nil)
-			require.NoError(t, err); require.Len(t, response.Answer, 1)
+			require.NoError(t, err)
+			require.Len(t, response.Answer, 1)
 			require.EqualValues(t, 1, hit.calls.Load(), "a valid pre-cutoff inner cache entry remains reusable")
 		})
 	}

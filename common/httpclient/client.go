@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -17,16 +17,20 @@ import (
 )
 
 func NewTransport(ctx context.Context, logger logger.ContextLogger, tag string, options option.HTTPClientOptions) (*ManagedTransport, error) {
-	return newManagedTransport(ctx,logger,tag,options,nil)
+	return newManagedTransport(ctx, logger, tag, options, nil)
 }
 
 // A manager binds its owned callback fence once during construction. Children
 // created after publication belong to that manager; they never append cleanup
 // to the candidate's already-published construction scope.
-func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag string, options option.HTTPClientOptions, ownerAdmission func(context.Context)(context.Context,func(),error)) (*ManagedTransport, error) {
-	if ownerAdmission!=nil{ctx=adapter.ContextWithConstructionScope(ctx,nil)}
-	options,cloneErr:=cloneHTTPClientOptions(ctx,options)
-	if cloneErr!=nil{return nil,cloneErr}
+func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag string, options option.HTTPClientOptions, ownerAdmission func(context.Context) (context.Context, func(), error)) (*ManagedTransport, error) {
+	if ownerAdmission != nil {
+		ctx = adapter.ContextWithConstructionScope(ctx, nil)
+	}
+	options, cloneErr := cloneHTTPClientOptions(ctx, options)
+	if cloneErr != nil {
+		return nil, cloneErr
+	}
 	rawDialer, err := dialer.NewWithOptions(dialer.Options{
 		Context:                 ctx,
 		Options:                 options.DialerOptions,
@@ -52,14 +56,16 @@ func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag s
 			return nil, err
 		}
 		var ownedFence *outbound.RuntimeIOFence
-		admitOwned:=ownerAdmission
-		if admitOwned==nil{
-			ownedFence=outbound.NewRuntimeIOFence(nil)
-			admitOwned,err=outbound.RegisterRuntimeOwnedFence(ctx,ownedFence)
-			if err!=nil{return nil,err}
+		admitOwned := ownerAdmission
+		if admitOwned == nil {
+			ownedFence = outbound.NewRuntimeIOFence(nil)
+			admitOwned, err = outbound.RegisterRuntimeOwnedFence(ctx, ownedFence)
+			if err != nil {
+				return nil, err
+			}
 		}
-		managed:=&ManagedTransport{
-			ownedCallbacks:ownedFence,
+		managed := &ManagedTransport{
+			ownedCallbacks:  ownedFence,
 			dialer:          rawDialer,
 			headers:         headers,
 			host:            host,
@@ -67,11 +73,13 @@ func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag s
 			detour:          options.Detour,
 			defaultOutbound: options.DefaultOutbound,
 			factory: func() (innerTransport, error) {
-				return newAppleTransportWithRuntime(ctx, logger, rawDialer, options,admitOwned)
+				return newAppleTransportWithRuntime(ctx, logger, rawDialer, options, admitOwned)
 			},
 		}
-		if err:=managed.initializeRuntime(ctx);err!=nil{return nil,err}
-		return managed,nil
+		if err := managed.initializeRuntime(ctx); err != nil {
+			return nil, err
+		}
+		return managed, nil
 	case "", C.TLSEngineGo:
 		cheapRebuild = true
 	default:
@@ -105,7 +113,9 @@ func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag s
 		},
 	}
 	managedTransport.epoch.Store(&transportEpoch{transport: inner})
-	if err:=managedTransport.initializeRuntime(ctx);err!=nil{return nil,err}
+	if err := managedTransport.initializeRuntime(ctx); err != nil {
+		return nil, err
+	}
 	return managedTransport, nil
 }
 

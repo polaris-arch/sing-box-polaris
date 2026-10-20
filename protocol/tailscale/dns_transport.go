@@ -50,7 +50,7 @@ type DNSTransport struct {
 	idleResolvers          map[adapter.IdleConnectionKeeper]struct{}
 	idleCleanupErr         error
 	idleWork               lifecycle.Work
- runtime *runtimeDNSState
+	runtime                *runtimeDNSState
 	dns.TransportAdapter
 	ctx                    context.Context
 	logger                 logger.ContextLogger
@@ -75,7 +75,7 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 	if options.Endpoint == "" {
 		return nil, E.New("missing tailscale endpoint tag")
 	}
-	result:= &DNSTransport{
+	result := &DNSTransport{
 		TransportAdapter:       dns.NewTransportAdapter(C.DNSTypeTailscale, tag, nil),
 		ctx:                    ctx,
 		logger:                 logger,
@@ -85,12 +85,18 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 		dnsRouter:              service.FromContext[adapter.DNSRouter](ctx),
 		endpointManager:        service.FromContext[adapter.EndpointManager](ctx),
 	}
- if _,bound:=adapter.RuntimeResourceSourceFromContext(ctx);bound{if err:=result.initializeRuntimeDNS();err!=nil{return nil,err}}
- return result,nil
+	if _, bound := adapter.RuntimeResourceSourceFromContext(ctx); bound {
+		if err := result.initializeRuntimeDNS(); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if t.runtime!=nil{return t.startRuntimeDNS(stage)}
+	if t.runtime != nil {
+		return t.startRuntimeDNS(stage)
+	}
 	if stage != adapter.StartStateInitialize {
 		return nil
 	}
@@ -135,7 +141,10 @@ func (t *DNSTransport) closeLegacyDNS() error {
 }
 
 func (t *DNSTransport) Reset() {
- if t.runtime!=nil{t.resetRuntimeDNS();return}
+	if t.runtime != nil {
+		t.resetRuntimeDNS()
+		return
+	}
 	t.access.RLock()
 	transports := t.collectResolversLocked()
 	t.access.RUnlock()
@@ -325,13 +334,13 @@ func (t *DNSTransport) Raw() bool {
 func (t *DNSTransport) ServerAddresses() []netip.Addr {
 	t.access.RLock()
 	defer t.access.RUnlock()
-	return append([]netip.Addr(nil),t.serverAddresses...)
+	return append([]netip.Addr(nil), t.serverAddresses...)
 }
 
 func (t *DNSTransport) SearchDomains() []string {
 	t.access.RLock()
 	defer t.access.RUnlock()
-	return append([]string(nil),t.searchDomains...)
+	return append([]string(nil), t.searchDomains...)
 }
 
 func (t *DNSTransport) PreferredDomain(domain string) bool {
@@ -382,11 +391,14 @@ func (t *DNSTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.M
 }
 
 func (t *DNSTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
- if t.runtime!=nil{t.exchangeRuntimeDNS(ctx,message,callback);return}
- t.exchangeAsync(ctx,message,callback)
+	if t.runtime != nil {
+		t.exchangeRuntimeDNS(ctx, message, callback)
+		return
+	}
+	t.exchangeAsync(ctx, message, callback)
 }
-func(t *DNSTransport)exchangeAsync(ctx context.Context,message *mDNS.Msg,callback func(*mDNS.Msg,error)){
 
+func (t *DNSTransport) exchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(*mDNS.Msg, error)) {
 	if len(message.Question) != 1 {
 		callback(nil, os.ErrInvalid)
 		return
@@ -405,7 +417,9 @@ func (t *DNSTransport) exchangeWithSearchDomains(ctx context.Context, message *m
 	t.access.RLock()
 	searchDomains := t.searchDomains
 	t.access.RUnlock()
- if snapshot,_:=ctx.Value(runtimeDNSSnapshotKey{}).(*runtimeDNSSnapshot);snapshot!=nil{searchDomains=snapshot.searchDomains}
+	if snapshot, _ := ctx.Value(runtimeDNSSnapshotKey{}).(*runtimeDNSSnapshot); snapshot != nil {
+		searchDomains = snapshot.searchDomains
+	}
 	if len(searchDomains) == 0 {
 		callback(nil, dns.RcodeNameError)
 		return
@@ -453,7 +467,12 @@ func (t *DNSTransport) exchangeOnce(ctx context.Context, message *mDNS.Msg, allo
 	routes := t.routes
 	defaultResolvers := t.defaultResolvers
 	t.access.RUnlock()
- if snapshot,_:=ctx.Value(runtimeDNSSnapshotKey{}).(*runtimeDNSSnapshot);snapshot!=nil{hosts=snapshot.hosts;magicHosts=snapshot.magicHosts;routes=snapshot.routes;defaultResolvers=snapshot.defaultResolvers}
+	if snapshot, _ := ctx.Value(runtimeDNSSnapshotKey{}).(*runtimeDNSSnapshot); snapshot != nil {
+		hosts = snapshot.hosts
+		magicHosts = snapshot.magicHosts
+		routes = snapshot.routes
+		defaultResolvers = snapshot.defaultResolvers
+	}
 
 	addresses, hostsLoaded := lookupHosts(hosts, magicHosts, question.Name)
 	if hostsLoaded {
@@ -534,8 +553,8 @@ func (t *DNSTransport) collectResolversLocked() []adapter.DNSTransport {
 }
 
 type DNSDialer struct {
- endpoint N.Dialer
- routePrefixes []netip.Prefix
+	endpoint       N.Dialer
+	routePrefixes  []netip.Prefix
 	transport      *DNSTransport
 	fallbackDialer N.Dialer
 }
@@ -544,9 +563,12 @@ func (d *DNSDialer) DialContext(ctx context.Context, network string, destination
 	if destination.IsDomain() {
 		panic("invalid request here")
 	}
-	routePrefixes:=d.routePrefixes
- endpoint:=d.endpoint
- if endpoint==nil{routePrefixes=d.transport.routePrefixesSnapshot();endpoint=d.transport.endpoint}
+	routePrefixes := d.routePrefixes
+	endpoint := d.endpoint
+	if endpoint == nil {
+		routePrefixes = d.transport.routePrefixesSnapshot()
+		endpoint = d.transport.endpoint
+	}
 	for _, prefix := range routePrefixes {
 		if prefix.Contains(destination.Addr) {
 			return endpoint.DialContext(ctx, network, destination)
@@ -559,9 +581,12 @@ func (d *DNSDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (
 	if destination.IsDomain() {
 		panic("invalid request here")
 	}
-	routePrefixes:=d.routePrefixes
- endpoint:=d.endpoint
- if endpoint==nil{routePrefixes=d.transport.routePrefixesSnapshot();endpoint=d.transport.endpoint}
+	routePrefixes := d.routePrefixes
+	endpoint := d.endpoint
+	if endpoint == nil {
+		routePrefixes = d.transport.routePrefixesSnapshot()
+		endpoint = d.transport.endpoint
+	}
 	for _, prefix := range routePrefixes {
 		if prefix.Contains(destination.Addr) {
 			return endpoint.ListenPacket(ctx, destination)

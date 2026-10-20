@@ -33,10 +33,10 @@ func RegisterTCP(registry *dns.TransportRegistry) {
 
 type TCPTransport struct {
 	dns.TransportAdapter
-	dialer      N.Dialer
-	serverAddr  M.Socksaddr
-	multiplexer *queryMultiplexer
-	runtimeResource adapter.RuntimeResourceSource
+	dialer            N.Dialer
+	serverAddr        M.Socksaddr
+	multiplexer       *queryMultiplexer
+	runtimeResource   adapter.RuntimeResourceSource
 	constructionOwned bool
 }
 
@@ -54,10 +54,16 @@ func NewTCP(ctx context.Context, logger log.ContextLogger, tag string, options o
 	}
 	transport := newTCPRaw(ctx, dns.NewTransportAdapterWithRemoteOptions(C.DNSTypeTCP, tag, options), transportDialer, serverAddr)
 	if transport.runtimeResource != nil {
-		if err := adapter.DeferConstructionCleanup(ctx, transport.multiplexer.Close); err != nil { return nil, err }
+		if err := adapter.DeferConstructionCleanup(ctx, transport.multiplexer.Close); err != nil {
+			return nil, err
+		}
 		transport.constructionOwned = true
-		transport.multiplexer.queryAccess.Lock(); stopped := transport.multiplexer.workSealed; transport.multiplexer.queryAccess.Unlock()
-		if stopped { return nil, net.ErrClosed }
+		transport.multiplexer.queryAccess.Lock()
+		stopped := transport.multiplexer.workSealed
+		transport.multiplexer.queryAccess.Unlock()
+		if stopped {
+			return nil, net.ErrClosed
+		}
 	}
 	return transport, nil
 }
@@ -69,7 +75,7 @@ func NewTCPRaw(transportAdapter dns.TransportAdapter, dialer N.Dialer, serverAdd
 func newTCPRaw(ctx context.Context, transportAdapter dns.TransportAdapter, dialer N.Dialer, serverAddr M.Socksaddr) *TCPTransport {
 	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	t := &TCPTransport{
-		runtimeResource: runtimeResource,
+		runtimeResource:  runtimeResource,
 		TransportAdapter: transportAdapter,
 		dialer:           dialer,
 		serverAddr:       serverAddr,
@@ -99,7 +105,9 @@ func (t *TCPTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	if !t.constructionOwned { scope.Add(t.multiplexer.Close) }
+	if !t.constructionOwned {
+		scope.Add(t.multiplexer.Close)
+	}
 	return dialer.InitializeDetour(t.dialer)
 }
 
@@ -117,17 +125,25 @@ func (t *TCPTransport) CloseIdleConnections() {
 
 func (t *TCPTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	defer releaseRuntime()
 	return t.multiplexer.Exchange(ctx, message)
 }
 
 func (t *TCPTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	defer releaseCall()
 	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	originalCallback := callback
 	callback = func(response *mDNS.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
 
@@ -186,6 +202,7 @@ func WriteMessage(writer io.Writer, messageId uint16, message *mDNS.Msg) error {
 
 // Ordinary retirement stops optional producers while admitted exchanges remain.
 func (t *TCPTransport) StopRuntimeProducers() { t.multiplexer.StopProbes() }
+
 // Final stop may cancel sockets before external users drain. This never joins
 // the calling callback; the resource cleanup's Close performs the actual join.
 func (t *TCPTransport) StopRuntimeOperations() { t.multiplexer.Stop() }

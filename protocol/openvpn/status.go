@@ -11,7 +11,13 @@ import (
 var _ adapter.OpenVPNEndpoint = (*ClientEndpoint)(nil)
 
 func (c *ClientEndpoint) OpenVPNStatus() adapter.OpenVPNStatus {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return adapter.OpenVPNStatus{}};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return adapter.OpenVPNStatus{}
+		}
+		defer leave()
+	}
 	var status adapter.OpenVPNStatus
 	challenge := c.client.PendingChallenge()
 	state := c.state.Load()
@@ -54,7 +60,13 @@ func (c *ClientEndpoint) StatusUpdated() <-chan struct{} {
 }
 
 func (c *ClientEndpoint) CompleteChallenge(challengeID string, response adapter.OpenVPNChallengeResponse) error {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return c.client.CompleteChallenge(challengeID, ovpn.ChallengeResponse{
 		Username: response.Username,
 		Password: response.Password,
@@ -63,7 +75,13 @@ func (c *ClientEndpoint) CompleteChallenge(challengeID string, response adapter.
 }
 
 func (c *ClientEndpoint) CancelChallenge(challengeID string) error {
- if c.runtime!=nil {leave,err:=c.runtime.acquire();if err!=nil{return err};defer leave()}
+	if c.runtime != nil {
+		leave, err := c.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return c.client.CancelChallenge(challengeID)
 }
 

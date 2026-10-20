@@ -83,7 +83,9 @@ func New(
 }
 
 func (l *Listener) Start() error {
-	if l.runtime != nil { return l.Prepare() }
+	if l.runtime != nil {
+		return l.Prepare()
+	}
 	if common.Contains(l.network, N.NetworkTCP) {
 		_, err := l.ListenTCP()
 		if err != nil {
@@ -126,7 +128,9 @@ func (l *Listener) Start() error {
 }
 
 func (l *Listener) Close() error {
-	if l.runtime != nil { return l.RuntimeCloseAndWait() }
+	if l.runtime != nil {
+		return l.RuntimeCloseAndWait()
+	}
 	l.shutdown.Store(true)
 	var err error
 	if l.systemProxy != nil {
@@ -144,13 +148,17 @@ func (l *Listener) Close() error {
 // TCPListener is a legacy raw descriptor accessor. Runtime callers must use
 // their staged transport adapter; exposing the descriptor would bypass ingress.
 func (l *Listener) TCPListener() net.Listener {
-	if l.runtime != nil { return nil }
+	if l.runtime != nil {
+		return nil
+	}
 	return l.tcpListener
 }
 
 // UDPConn is legacy-only for the same reason as TCPListener.
 func (l *Listener) UDPConn() *net.UDPConn {
-	if l.runtime != nil { return nil }
+	if l.runtime != nil {
+		return nil
+	}
 	return l.udpConn
 }
 

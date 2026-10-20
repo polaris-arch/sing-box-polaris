@@ -7,8 +7,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-tun"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
@@ -23,7 +23,7 @@ type serviceBase struct {
 	tunFileDescriptor int
 	forwardingRestore []sysctlState
 
-	monitorFence *outbound.RuntimeIOFence
+	monitorFence   *outbound.RuntimeIOFence
 	networkMonitor tun.NetworkUpdateMonitor
 	monitorElement *list.Element[tun.NetworkUpdateCallback]
 
@@ -94,13 +94,17 @@ func (s *serviceBase) beginClose() bool {
 	s.networkMonitor = nil
 	s.monitorElement = nil
 	s.access.Unlock()
-	if s.monitorFence != nil { _ = s.monitorFence.Close() }
+	if s.monitorFence != nil {
+		_ = s.monitorFence.Close()
+	}
 	if networkMonitor != nil {
 		if monitorElement != nil {
 			networkMonitor.UnregisterCallback(monitorElement)
 		}
 		_ = networkMonitor.Close()
 	}
-	if s.monitorFence != nil { _ = s.monitorFence.Wait() }
+	if s.monitorFence != nil {
+		_ = s.monitorFence.Wait()
+	}
 	return true
 }

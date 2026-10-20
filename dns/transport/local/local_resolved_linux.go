@@ -54,18 +54,18 @@ func isSystemdResolvedManaged() bool {
 }
 
 type DBusResolvedResolver struct {
-	work lifecycle.Work
-	producers lifecycle.Work
-	serverScopes lifecycle.Scopes
+	work             lifecycle.Work
+	producers        lifecycle.Work
+	serverScopes     lifecycle.Scopes
 	producersStopped atomic.Bool
-	runtimeResource adapter.RuntimeResourceSource
-	operationCtx context.Context
-	operationCancel context.CancelFunc
-	producerCtx context.Context
-	producerCancel context.CancelFunc
-	closeOnce sync.Once
-	closeDone chan struct{}
-	closeErr error
+	runtimeResource  adapter.RuntimeResourceSource
+	operationCtx     context.Context
+	operationCancel  context.CancelFunc
+	producerCtx      context.Context
+	producerCancel   context.CancelFunc
+	closeOnce        sync.Once
+	closeDone        chan struct{}
+	closeErr         error
 
 	ctx               context.Context
 	logger            logger.ContextLogger
@@ -175,15 +175,16 @@ func NewResolvedResolver(ctx context.Context, logger logger.ContextLogger) (Reso
 	producerCtx, producerCancel := context.WithCancel(operationCtx)
 	systemBus, err := dbus.ConnectSystemBus(dbus.WithContext(operationCtx))
 	if err != nil {
-		producerCancel(); operationCancel()
+		producerCancel()
+		operationCancel()
 		return nil, err
 	}
 	resource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	return &DBusResolvedResolver{
 		runtimeResource: resource,
-		operationCtx: operationCtx, operationCancel: operationCancel,
+		operationCtx:    operationCtx, operationCancel: operationCancel,
 		producerCtx: producerCtx, producerCancel: producerCancel,
-		closeDone: make(chan struct{}),
+		closeDone:        make(chan struct{}),
 		ctx:              ctx,
 		logger:           logger,
 		interfaceFinder:  networkManager.InterfaceFinder(),
@@ -194,7 +195,11 @@ func NewResolvedResolver(ctx context.Context, logger logger.ContextLogger) (Reso
 }
 
 func (t *DBusResolvedResolver) Start() error {
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
 	t.updateStatus(t.operationCtx)
 	t.interfaceCallback = t.interfaceMonitor.RegisterCallback(t.updateDefaultInterface)
 	if t.networkMonitor != nil {
@@ -218,7 +223,9 @@ func (t *DBusResolvedResolver) Start() error {
 	if err != nil {
 		return E.Cause(err, "configure resolved properties listener")
 	}
-	if !t.producers.Go(t.loopUpdateStatus) { return lifecycle.ErrStopped }
+	if !t.producers.Go(t.loopUpdateStatus) {
+		return lifecycle.ErrStopped
+	}
 	return nil
 }
 
@@ -243,14 +250,21 @@ func (t *DBusResolvedResolver) StopRuntimeOperations() {
 		go func() {
 			defer close(t.closeDone)
 			t.closeErr = lifecycle.CleanupResult("resolved resolver", func() error {
-			closeErr := lifecycle.Uncertain("private resolved DBus connection", t.systemBus.Close())
-			t.work.Wait()
-			if t.interfaceCallback != nil { t.interfaceMonitor.UnregisterCallback(t.interfaceCallback) }
-			if t.networkCallback != nil { t.networkMonitor.UnregisterCallback(t.networkCallback) }
-			t.producers.Wait()
-			t.updateRunAccess.Lock(); t.closed = true; t.savedServerSet.Store(nil); t.updateRunAccess.Unlock()
-			closeErr = E.Errors(closeErr, t.serverScopes.Close())
-			return closeErr
+				closeErr := lifecycle.Uncertain("private resolved DBus connection", t.systemBus.Close())
+				t.work.Wait()
+				if t.interfaceCallback != nil {
+					t.interfaceMonitor.UnregisterCallback(t.interfaceCallback)
+				}
+				if t.networkCallback != nil {
+					t.networkMonitor.UnregisterCallback(t.networkCallback)
+				}
+				t.producers.Wait()
+				t.updateRunAccess.Lock()
+				t.closed = true
+				t.savedServerSet.Store(nil)
+				t.updateRunAccess.Unlock()
+				closeErr = E.Errors(closeErr, t.serverScopes.Close())
+				return closeErr
 			})
 		}()
 	})
@@ -264,7 +278,10 @@ func (t *DBusResolvedResolver) Close() error {
 
 func (t *DBusResolvedResolver) Reset() {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return
@@ -281,7 +298,10 @@ func (t *DBusResolvedResolver) Reset() {
 
 func (t *DBusResolvedResolver) Environment() []string {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return nil
@@ -291,7 +311,10 @@ func (t *DBusResolvedResolver) Environment() []string {
 
 func (t *DBusResolvedResolver) ServerAddresses() []netip.Addr {
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	serverSet := t.savedServerSet.Load()
 	if serverSet == nil {
 		return nil
@@ -301,15 +324,25 @@ func (t *DBusResolvedResolver) ServerAddresses() []netip.Addr {
 
 func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	ctx, callDone, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }; defer callDone()
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer callDone()
 	ctx, callbackDone, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }
+	if err != nil {
+		callback(nil, err)
+		return
+	}
 	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
 	originalCallback := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
-		if !called.CompareAndSwap(false, true) { return }
-		defer callbackDone(); defer unlink()
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
+		defer callbackDone()
+		defer unlink()
 		originalCallback(response, err)
 	}
 	serverSet := t.savedServerSet.Load()
@@ -321,7 +354,9 @@ func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.
 				return
 			}
 			t.exchangeServerSet(ctx, message, t.savedServerSet.Load(), callback)
-		}) { callback(nil, lifecycle.ErrStopped) }
+		}) {
+			callback(nil, lifecycle.ErrStopped)
+		}
 		return
 	}
 	t.exchangeServerSet(ctx, message, serverSet, func(response *mDNS.Msg, err error) {
@@ -337,7 +372,9 @@ func (t *DBusResolvedResolver) ExchangeAsync(ctx context.Context, message *mDNS.
 				return
 			}
 			t.exchangeServerSet(ctx, message, refreshedServerSet, callback)
-		}) { callback(nil, lifecycle.ErrStopped) }
+		}) {
+			callback(nil, lifecycle.ErrStopped)
+		}
 	})
 }
 
@@ -453,8 +490,13 @@ func (t *DBusResolvedResolver) loopUpdateStatus() {
 	for {
 		var signal *dbus.Signal
 		select {
-		case <-t.producerCtx.Done(): return
-		case next, ok := <-signalChan: if !ok { return }; signal = next
+		case <-t.producerCtx.Done():
+			return
+		case next, ok := <-signalChan:
+			if !ok {
+				return
+			}
+			signal = next
 		}
 		switch signal.Name {
 		case "org.freedesktop.DBus.NameOwnerChanged":
@@ -506,14 +548,20 @@ func (t *DBusResolvedResolver) updateStatus(ctx context.Context) error {
 			// A failed candidate (including a full retirement cohort queue)
 			// must not discard the working resolver. Only an authoritative
 			// service disappearance retires it without a replacement.
-			if serverSet != nil { t.serverScopes.Retire(serverSet.serverScope) }
-			if errors.Is(err, lifecycle.ErrSocketCohortBusy) { t.postUpdateStatus() }
+			if serverSet != nil {
+				t.serverScopes.Retire(serverSet.serverScope)
+			}
+			if errors.Is(err, lifecycle.ErrSocketCohortBusy) {
+				t.postUpdateStatus()
+			}
 			t.logger.Debug(E.Cause(err, "systemd-resolved refresh failed; retaining current servers"))
 			return err
 		}
 	}
 	oldServerSet := t.swapIdleServerSet(serverSet)
-	if t.producersStopped.Load() { stopResolvedProducers(serverSet) }
+	if t.producersStopped.Load() {
+		stopResolvedProducers(serverSet)
+	}
 	if oldServerSet != nil {
 		t.serverScopes.Retire(oldServerSet.serverScope)
 	}
@@ -629,7 +677,9 @@ func (t *DBusResolvedResolver) checkResolved(ctx context.Context) (*resolvedServ
 		return nil, E.New("no DNS servers configured")
 	}
 	serverScope, err := t.serverScopes.New(t.operationCtx, t.logger)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	serverSet := &resolvedServerSet{serverScope: serverScope}
 	for _, scopeSpecification := range scopeSpecifications {
 		scope, createErr := t.createResolvedScope(serverSet.serverScope, scopeSpecification)
@@ -879,11 +929,17 @@ func (t *DBusResolvedResolver) updateDefaultInterface(defaultInterface *control.
 }
 
 func stopResolvedProducers(set *resolvedServerSet) {
-	if set == nil { return }
+	if set == nil {
+		return
+	}
 	for _, scope := range set.scopes {
 		for _, server := range scope.servers {
-			if producer, ok := server.primaryTransport.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
-			if producer, ok := server.fallbackTransport.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+			if producer, ok := server.primaryTransport.(interface{ StopRuntimeProducers() }); ok {
+				producer.StopRuntimeProducers()
+			}
+			if producer, ok := server.fallbackTransport.(interface{ StopRuntimeProducers() }); ok {
+				producer.StopRuntimeProducers()
+			}
 		}
 	}
 }

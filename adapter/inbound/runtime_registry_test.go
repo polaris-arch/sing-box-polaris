@@ -20,9 +20,16 @@ func TestRuntimeRegistryInvokesConstructorsOutsideRegistryLock(t *testing.T) {
 		return &preparedInboundFixture{tag: "fixture"}, nil
 	})
 	done := make(chan error, 1)
-	go func() { _, err := registry.Create(context.Background(), nil, nil, "fixture", "fixture", nil); done <- err }()
+	go func() {
+		_, err := registry.Create(context.Background(), nil, nil, "fixture", "fixture", nil)
+		done <- err
+	}()
 	select {
-	case err := <-done: if err != nil { t.Fatal(err) }
-	case <-time.After(5*time.Second): t.Fatal("registry constructor reentry deadlocked")
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("registry constructor reentry deadlocked")
 	}
 }

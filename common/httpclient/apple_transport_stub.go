@@ -19,4 +19,6 @@ func newAppleTransport(ctx context.Context, logger logger.ContextLogger, rawDial
 	return nil, E.New("Apple HTTP engine is not available on non-Apple platforms")
 }
 
-func newAppleTransportWithRuntime(ctx context.Context,logger logger.ContextLogger,rawDialer N.Dialer,options option.HTTPClientOptions,admit func(context.Context)(context.Context,func(),error))(innerTransport,error){return newAppleTransport(ctx,logger,rawDialer,options)}
+func newAppleTransportWithRuntime(ctx context.Context, logger logger.ContextLogger, rawDialer N.Dialer, options option.HTTPClientOptions, admit func(context.Context) (context.Context, func(), error)) (innerTransport, error) {
+	return newAppleTransport(ctx, logger, rawDialer, options)
+}

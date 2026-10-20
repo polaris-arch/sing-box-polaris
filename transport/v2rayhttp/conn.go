@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
- "github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/baderror"
 	"github.com/sagernet/sing/common/buf"
@@ -132,14 +132,14 @@ func (c *HTTPConn) Upstream() any {
 }
 
 type HTTP2Conn struct {
-	reader  io.Reader
-	writer  io.Writer
-	create  chan struct{}
-	err     error
-	cancel  context.CancelFunc
-	onClose func()
+	reader    io.Reader
+	writer    io.Writer
+	create    chan struct{}
+	err       error
+	cancel    context.CancelFunc
+	onClose   func()
 	closeOnce sync.Once
-	closeErr error
+	closeErr  error
 }
 
 func NewHTTPConn(reader io.Reader, writer io.Writer) HTTP2Conn {
@@ -180,14 +180,20 @@ func (c *HTTP2Conn) Write(b []byte) (n int, err error) {
 }
 
 func (c *HTTP2Conn) Close() error {
-	c.closeOnce.Do(func(){
-		if c.cancel!=nil{c.cancel()}
+	c.closeOnce.Do(func() {
+		if c.cancel != nil {
+			c.cancel()
+		}
 		// Interrupt the request pipe before joining setup. A setup response
 		// racing cancellation must be observed and closed, never abandoned.
-		c.closeErr=common.Close(c.writer)
-		if c.create!=nil{<-c.create}
-		c.closeErr=errors.Join(c.closeErr,common.Close(c.reader))
-		if c.onClose!=nil{c.onClose()}
+		c.closeErr = common.Close(c.writer)
+		if c.create != nil {
+			<-c.create
+		}
+		c.closeErr = errors.Join(c.closeErr, common.Close(c.reader))
+		if c.onClose != nil {
+			c.onClose()
+		}
 	})
 	return c.closeErr
 }
@@ -275,7 +281,9 @@ func (w *HTTP2ConnWrapper) Upstream() any {
 }
 
 func DupContext(ctx context.Context) context.Context {
- if _,ok:=adapter.RuntimeLeaseFromContext(ctx);ok{return context.WithoutCancel(ctx)}
+	if _, ok := adapter.RuntimeLeaseFromContext(ctx); ok {
+		return context.WithoutCancel(ctx)
+	}
 	id, loaded := log.IDFromContext(ctx)
 	if !loaded {
 		return context.Background()

@@ -6,13 +6,13 @@ import (
 	"os"
 	"strings"
 	"sync"
- "sync/atomic"
- "github.com/sagernet/sing-box/dns/transport/lifecycle"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	openconnecttransport "github.com/sagernet/sing-box/transport/openconnect"
@@ -35,20 +35,20 @@ type DNSTransport struct {
 	disableIdleConnections bool
 	idleResolvers          map[adapter.IdleConnectionKeeper]struct{}
 	idleCleanupErr         error
- work lifecycle.Work
- producers lifecycle.Work
- scopes lifecycle.Scopes
- resource adapter.RuntimeResourceSource
- operationCtx context.Context
- operationCancel context.CancelFunc
- producerCtx context.Context
- producerCancel context.CancelFunc
- closeOnce sync.Once
- closeErr error
- constructionOwned bool
- endpointUnlink func()
- startOnce sync.Once
- startErr error
+	work                   lifecycle.Work
+	producers              lifecycle.Work
+	scopes                 lifecycle.Scopes
+	resource               adapter.RuntimeResourceSource
+	operationCtx           context.Context
+	operationCancel        context.CancelFunc
+	producerCtx            context.Context
+	producerCancel         context.CancelFunc
+	closeOnce              sync.Once
+	closeErr               error
+	constructionOwned      bool
+	endpointUnlink         func()
+	startOnce              sync.Once
+	startErr               error
 
 	dns.TransportAdapter
 	ctx                    context.Context
@@ -59,7 +59,7 @@ type DNSTransport struct {
 	endpointManager        adapter.EndpointManager
 	dialer                 N.Dialer
 	access                 sync.RWMutex
- updateAccess sync.Mutex
+	updateAccess           sync.Mutex
 	closed                 bool
 	routes                 []openConnectDNSRoute
 	searchDomains          []string
@@ -85,18 +85,32 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 		acceptDefaultResolvers: options.AcceptDefaultResolvers,
 		acceptSearchDomain:     options.AcceptSearchDomain,
 		endpointManager:        service.FromContext[adapter.EndpointManager](ctx),
- }
- t.resource,_=adapter.RuntimeResourceSourceFromContext(ctx)
- t.operationCtx,t.operationCancel=context.WithCancel(ctx)
- t.producerCtx,t.producerCancel=context.WithCancel(t.operationCtx)
- var err error;t.constructionOwned,err=lifecycle.ConstructionCleanup(ctx,t.close)
- if err!=nil{return nil,err};return t,nil
+	}
+	t.resource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	t.operationCtx, t.operationCancel = context.WithCancel(ctx)
+	t.producerCtx, t.producerCancel = context.WithCancel(t.operationCtx)
+	var err error
+	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- t.startOnce.Do(func(){if !t.constructionOwned{_,t.startErr=lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(),scope),t.close)}})
- if t.startErr!=nil{return t.startErr}
- done,ok:=t.work.Reserve();if !ok{return lifecycle.ErrStopped};defer done()
+	t.startOnce.Do(func() {
+		if !t.constructionOwned {
+			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
+		}
+	})
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
 
 	if stage != adapter.StartStateInitialize {
 		return nil
@@ -109,8 +123,12 @@ func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 	if !isOpenConnect {
 		return E.New("endpoint is not OpenConnect: ", t.endpointTag)
 	}
- if t.resource!=nil && (openConnectEndpoint.runtime==nil || openConnectEndpoint.runtime.source.ID()!=t.resource.ID()) {return E.New("endpoint DNS callback requires the same runtime resource cohort")}
- if openConnectEndpoint.runtime!=nil{t.producerCtx,t.endpointUnlink=lifecycle.LinkCancellation(t.producerCtx,openConnectEndpoint.runtime.ctx)}
+	if t.resource != nil && (openConnectEndpoint.runtime == nil || openConnectEndpoint.runtime.source.ID() != t.resource.ID()) {
+		return E.New("endpoint DNS callback requires the same runtime resource cohort")
+	}
+	if openConnectEndpoint.runtime != nil {
+		t.producerCtx, t.endpointUnlink = lifecycle.LinkCancellation(t.producerCtx, openConnectEndpoint.runtime.ctx)
+	}
 
 	openConnectEndpoint.dnsTransportAccess.Lock()
 	if openConnectEndpoint.dnsTransport != nil && openConnectEndpoint.dnsTransport.Tag() != t.Tag() {
@@ -136,9 +154,16 @@ func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 }
 
 func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Configuration) {
- done,ok:=t.producers.Reserve();if !ok{return};defer done()
- t.updateAccess.Lock();defer t.updateAccess.Unlock()
- if err:=t.scopes.WaitReady(t.producerCtx);err!=nil{return}
+	done, ok := t.producers.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
+	t.updateAccess.Lock()
+	defer t.updateAccess.Unlock()
+	if err := t.scopes.WaitReady(t.producerCtx); err != nil {
+		return
+	}
 
 	resolverByAddress := make(map[netip.Addr]adapter.DNSTransport)
 	var serverAddresses []netip.Addr
@@ -226,8 +251,10 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 		defaultResolvers = nil
 	}
 
-	resolverScope,scopeErr := t.scopes.New(t.operationCtx,t.logger)
- if scopeErr!=nil{return}
+	resolverScope, scopeErr := t.scopes.New(t.operationCtx, t.logger)
+	if scopeErr != nil {
+		return
+	}
 	for _, resolver := range resolverByAddress {
 		err := t.startDNSResolver(resolver, resolverScope)
 		if err != nil {
@@ -260,7 +287,11 @@ func (t *DNSTransport) updateConfiguration(configuration openconnecttransport.Co
 }
 
 func (t *DNSTransport) Reset() {
- _,done,err:=t.work.Operation(context.Background(),t.resource);if err!=nil{return};defer done()
+	_, done, err := t.work.Operation(context.Background(), t.resource)
+	if err != nil {
+		return
+	}
+	defer done()
 	t.access.RLock()
 	resolvers := t.collectResolversLocked()
 	t.access.RUnlock()
@@ -270,21 +301,33 @@ func (t *DNSTransport) Reset() {
 }
 
 func (t *DNSTransport) ServerAddresses() []netip.Addr {
- _,done,err:=t.work.Operation(context.Background(),t.resource);if err!=nil{return nil};defer done()
+	_, done, err := t.work.Operation(context.Background(), t.resource)
+	if err != nil {
+		return nil
+	}
+	defer done()
 	t.access.RLock()
 	defer t.access.RUnlock()
-	return append([]netip.Addr(nil),t.serverAddresses...)
+	return append([]netip.Addr(nil), t.serverAddresses...)
 }
 
 func (t *DNSTransport) SearchDomains() []string {
- _,done,err:=t.work.Operation(context.Background(),t.resource);if err!=nil{return nil};defer done()
+	_, done, err := t.work.Operation(context.Background(), t.resource)
+	if err != nil {
+		return nil
+	}
+	defer done()
 	t.access.RLock()
 	defer t.access.RUnlock()
-	return append([]string(nil),t.searchDomains...)
+	return append([]string(nil), t.searchDomains...)
 }
 
 func (t *DNSTransport) PreferredDomain(domain string) bool {
- _,done,err:=t.work.Operation(context.Background(),t.resource);if err!=nil{return false};defer done()
+	_, done, err := t.work.Operation(context.Background(), t.resource)
+	if err != nil {
+		return false
+	}
+	defer done()
 	canonicalDomain := mDNS.Fqdn(canonicalOpenConnectDomain(domain))
 	t.access.RLock()
 	routes := t.routes
@@ -311,11 +354,28 @@ func (t *DNSTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.M
 }
 
 func (t *DNSTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
- ctx,releaseCall,err:=t.work.Operation(ctx,t.resource);if err!=nil{callback(nil,err);return};defer releaseCall()
- ctx,releaseCallback,err:=t.work.Operation(ctx,t.resource);if err!=nil{callback(nil,err);return}
- ctx,unlink:=lifecycle.LinkCancellation(ctx,t.operationCtx)
- original:=callback;var called atomic.Bool
- callback=func(response *mDNS.Msg,err error){if !called.CompareAndSwap(false,true){return};defer releaseCallback();defer unlink();original(response,err)}
+	ctx, releaseCall, err := t.work.Operation(ctx, t.resource)
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer releaseCall()
+	ctx, releaseCallback, err := t.work.Operation(ctx, t.resource)
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
+	original := callback
+	var called atomic.Bool
+	callback = func(response *mDNS.Msg, err error) {
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
+		defer releaseCallback()
+		defer unlink()
+		original(response, err)
+	}
 
 	if len(message.Question) != 1 {
 		callback(nil, os.ErrInvalid)

@@ -2,8 +2,8 @@ package dns
 
 import (
 	"context"
-	"net/netip"
 	"fmt"
+	"net/netip"
 	"runtime"
 	"sync"
 	"testing"
@@ -15,21 +15,27 @@ import (
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/service"
+
 	mDNS "github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 )
 
 type dependenciesCacheFile struct {
-	adapter.CacheFile // Unrelated lifecycle/FakeIP methods panic if incorrectly used.
-	dnsEnabled, rdrcEnabled bool
+	adapter.CacheFile              // Unrelated lifecycle/FakeIP methods panic if incorrectly used.
+	dnsEnabled, rdrcEnabled        bool
 	dnsChecks, rdrcChecks, setters int
-	disableExpire bool
-	optimisticTimeout time.Duration
+	disableExpire                  bool
+	optimisticTimeout              time.Duration
 }
-func (c *dependenciesCacheFile) StoreDNS() bool { c.dnsChecks++; return c.dnsEnabled }
-func (c *dependenciesCacheFile) StoreRDRC() bool { c.rdrcChecks++; return c.rdrcEnabled }
+
+func (c *dependenciesCacheFile) StoreDNS() bool              { c.dnsChecks++; return c.dnsEnabled }
+func (c *dependenciesCacheFile) StoreRDRC() bool             { c.rdrcChecks++; return c.rdrcEnabled }
 func (c *dependenciesCacheFile) SetDisableExpire(value bool) { c.setters++; c.disableExpire = value }
-func (c *dependenciesCacheFile) SetOptimisticTimeout(value time.Duration) { c.setters++; c.optimisticTimeout = value }
+
+func (c *dependenciesCacheFile) SetOptimisticTimeout(value time.Duration) {
+	c.setters++
+	c.optimisticTimeout = value
+}
 
 func dependenciesStartRouter(t *testing.T, router *Router) {
 	t.Helper()
@@ -42,17 +48,26 @@ func dependenciesStartRouter(t *testing.T, router *Router) {
 func TestPrivateClientDependenciesRejectPersistence(t *testing.T) {
 	deps, err := PrivateClientDependencies(nil)
 	require.NoError(t, err)
-	require.Nil(t, deps.DNSCache); require.Nil(t, deps.RDRC)
-	for _, flags := range [][2]bool{{false,false},{true,false},{false,true},{true,true}} {
+	require.Nil(t, deps.DNSCache)
+	require.Nil(t, deps.RDRC)
+	for _, flags := range [][2]bool{{false, false}, {true, false}, {false, true}, {true, true}} {
 		cache := &dependenciesCacheFile{dnsEnabled: flags[0], rdrcEnabled: flags[1]}
 		deps, err := PrivateClientDependencies(cache)
 		if flags[0] || flags[1] {
 			require.Error(t, err)
-			if flags[0] { require.ErrorContains(t, err, "experimental.cache_file.store_dns") }
-			if flags[1] { require.ErrorContains(t, err, "experimental.cache_file.store_rdrc") }
-		} else { require.NoError(t, err) }
-		require.Nil(t, deps.DNSCache); require.Nil(t, deps.RDRC)
-		require.Equal(t, 1, cache.dnsChecks); require.Equal(t, 1, cache.rdrcChecks)
+			if flags[0] {
+				require.ErrorContains(t, err, "experimental.cache_file.store_dns")
+			}
+			if flags[1] {
+				require.ErrorContains(t, err, "experimental.cache_file.store_rdrc")
+			}
+		} else {
+			require.NoError(t, err)
+		}
+		require.Nil(t, deps.DNSCache)
+		require.Nil(t, deps.RDRC)
+		require.Equal(t, 1, cache.dnsChecks)
+		require.Equal(t, 1, cache.rdrcChecks)
 		require.Zero(t, cache.setters) // No FakeIP or lifetime method may be called either.
 	}
 }
@@ -65,13 +80,18 @@ func TestRouterExplicitNilStoresIgnoreAmbientCache(t *testing.T) {
 	require.NoError(t, err)
 	second, err := NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), option.DNSOptions{}, RouterClientDependencies{})
 	require.NoError(t, err)
-	dependenciesStartRouter(t, first); dependenciesStartRouter(t, second)
+	dependenciesStartRouter(t, first)
+	dependenciesStartRouter(t, second)
 	a, b := first.client.(*Client), second.client.(*Client)
-	require.Nil(t, a.dnsCache); require.Nil(t, a.rdrc)
-	require.NotNil(t, a.cache); require.NotSame(t, a.cache, b.cache)
-	require.Zero(t, ambient.dnsChecks); require.Zero(t, ambient.rdrcChecks); require.Zero(t, ambient.setters)
+	require.Nil(t, a.dnsCache)
+	require.Nil(t, a.rdrc)
+	require.NotNil(t, a.cache)
+	require.NotSame(t, a.cache, b.cache)
+	require.Zero(t, ambient.dnsChecks)
+	require.Zero(t, ambient.rdrcChecks)
+	require.Zero(t, ambient.setters)
 	transport := policyReply("private-memory", 0, 0, "192.0.2.1")
-	for _, client := range []*Client{a,b} {
+	for _, client := range []*Client{a, b} {
 		for range 2 {
 			_, err := client.Exchange(context.Background(), transport, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil)
 			require.NoError(t, err)
@@ -80,10 +100,14 @@ func TestRouterExplicitNilStoresIgnoreAmbientCache(t *testing.T) {
 	require.EqualValues(t, 2, transport.calls.Load())
 	a.ClearCache()
 	_, err = b.Exchange(context.Background(), transport, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil)
-	require.NoError(t, err); require.EqualValues(t, 2, transport.calls.Load())
+	require.NoError(t, err)
+	require.EqualValues(t, 2, transport.calls.Load())
 	_, err = a.Exchange(context.Background(), transport, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil)
-	require.NoError(t, err); require.EqualValues(t, 3, transport.calls.Load())
-	require.Zero(t, ambient.dnsChecks); require.Zero(t, ambient.rdrcChecks); require.Zero(t, ambient.setters)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, transport.calls.Load())
+	require.Zero(t, ambient.dnsChecks)
+	require.Zero(t, ambient.rdrcChecks)
+	require.Zero(t, ambient.setters)
 
 	var disabled option.DNSOptions
 	require.NoError(t, json.Unmarshal([]byte(`{"disable_cache":true}`), &disabled))
@@ -102,19 +126,23 @@ func TestRouterExplicitStoresRemainBoundAfterRegistryReplacement(t *testing.T) {
 	deps := RouterClientDependencies{DNSCache: store, RDRC: rdrc}
 	router, err := NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), option.DNSOptions{}, deps)
 	require.NoError(t, err)
-	deps.DNSCache = &correctnessCacheStore{}; deps.RDRC = &dependenciesRDRC{}
+	deps.DNSCache = &correctnessCacheStore{}
+	deps.RDRC = &dependenciesRDRC{}
 	secondAmbient := &dependenciesCacheFile{dnsEnabled: true, rdrcEnabled: true}
 	service.MustRegister[adapter.CacheFile](ctx, secondAmbient)
 	dependenciesStartRouter(t, router)
 	client := router.client.(*Client)
-	require.Same(t, store, client.dnsCache); require.Same(t, rdrc, client.rdrc)
+	require.Same(t, store, client.dnsCache)
+	require.Same(t, rdrc, client.rdrc)
 	for _, cache := range []*dependenciesCacheFile{firstAmbient, secondAmbient} {
-		require.Zero(t, cache.dnsChecks); require.Zero(t, cache.rdrcChecks); require.Zero(t, cache.setters)
+		require.Zero(t, cache.dnsChecks)
+		require.Zero(t, cache.rdrcChecks)
+		require.Zero(t, cache.setters)
 	}
 }
 
 func TestRouterLegacyStorageRemainsLazy(t *testing.T) {
-	for _, flags := range [][2]bool{{false,false},{true,false},{false,true},{true,true}} {
+	for _, flags := range [][2]bool{{false, false}, {true, false}, {false, true}, {true, true}} {
 		ctx := service.ContextWithDefaultRegistry(context.Background())
 		var options option.DNSOptions
 		require.NoError(t, json.Unmarshal([]byte(`{"optimistic":{"enabled":true}}`), &options))
@@ -123,11 +151,18 @@ func TestRouterLegacyStorageRemainsLazy(t *testing.T) {
 		// Normal Box order registers CacheFile after constructing the DNS Router.
 		cache := &dependenciesCacheFile{dnsEnabled: flags[0], rdrcEnabled: flags[1]}
 		service.MustRegister[adapter.CacheFile](ctx, cache)
-		require.Zero(t, cache.dnsChecks); require.Zero(t, cache.rdrcChecks); require.Zero(t, cache.setters)
+		require.Zero(t, cache.dnsChecks)
+		require.Zero(t, cache.rdrcChecks)
+		require.Zero(t, cache.setters)
 		dependenciesStartRouter(t, router)
 		client := router.client.(*Client)
-		require.Equal(t, 1, cache.dnsChecks); require.Equal(t, 1, cache.rdrcChecks)
-		if flags[1] { require.Same(t, cache, client.rdrc) } else { require.Nil(t, client.rdrc) }
+		require.Equal(t, 1, cache.dnsChecks)
+		require.Equal(t, 1, cache.rdrcChecks)
+		if flags[1] {
+			require.Same(t, cache, client.rdrc)
+		} else {
+			require.Nil(t, client.rdrc)
+		}
 		if flags[0] {
 			require.Same(t, cache, client.dnsCache)
 			require.Equal(t, 2, cache.setters)
@@ -135,14 +170,15 @@ func TestRouterLegacyStorageRemainsLazy(t *testing.T) {
 			require.Equal(t, 3*24*time.Hour, cache.optimisticTimeout)
 		} else {
 			require.Nil(t, client.dnsCache)
-			require.NotNil(t, client.cache); require.Zero(t, cache.setters)
+			require.NotNil(t, client.cache)
+			require.Zero(t, cache.setters)
 		}
 	}
 }
 
 func TestRouterBoundStoresIsolateQueriesAndRejections(t *testing.T) {
 	ctx := service.ContextWithDefaultRegistry(context.Background())
-	ambient := &dependenciesCacheFile{dnsEnabled:true, rdrcEnabled:true}
+	ambient := &dependenciesCacheFile{dnsEnabled: true, rdrcEnabled: true}
 	service.MustRegister[adapter.CacheFile](ctx, ambient)
 	stores := []*correctnessCacheStore{{}, {}}
 	rejections := []*dependenciesRDRC{{}, {}}
@@ -161,7 +197,9 @@ func TestRouterBoundStoresIsolateQueriesAndRejections(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.EqualValues(t, 2, transport.calls.Load()) // Each client's second query hits its own cache.
-	for _, store := range stores { require.Equal(t, 1, store.writeCount()) }
+	for _, store := range stores {
+		require.Equal(t, 1, store.writeCount())
+	}
 	for owner := range clients {
 		question := correctnessQuestion(mDNS.TypeA)
 		question.Question[0].Name = fmt.Sprintf("rejected-%d.example.", owner)
@@ -171,22 +209,28 @@ func TestRouterBoundStoresIsolateQueriesAndRejections(t *testing.T) {
 		_, err = clients[owner].Exchange(context.Background(), transport, question, adapter.DNSQueryOptions{}, func(*mDNS.Msg) bool { return true })
 		require.ErrorIs(t, err, ErrResponseRejectedCached)
 		require.Equal(t, calls, transport.calls.Load())
-		other := 1-owner
+		other := 1 - owner
 		_, err = clients[other].Exchange(context.Background(), transport, question, adapter.DNSQueryOptions{}, func(*mDNS.Msg) bool { return true })
 		require.NoError(t, err)
 		require.Equal(t, calls+1, transport.calls.Load())
 		require.True(t, rejections[owner].LoadRDRC(transport.Tag(), question.Question[0].Name, mDNS.TypeA))
 		require.False(t, rejections[other].LoadRDRC(transport.Tag(), question.Question[0].Name, mDNS.TypeA))
 	}
-	for _, rejection := range rejections { require.Equal(t, 1, rejection.writeCount()) }
+	for _, rejection := range rejections {
+		require.Equal(t, 1, rejection.writeCount())
+	}
 	calls := transport.calls.Load()
 	clients[0].ClearCache()
 	_, err := clients[1].Exchange(context.Background(), transport, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil)
-	require.NoError(t, err); require.Equal(t, calls, transport.calls.Load())
+	require.NoError(t, err)
+	require.Equal(t, calls, transport.calls.Load())
 	_, err = clients[0].Exchange(context.Background(), transport, correctnessQuestion(mDNS.TypeA), adapter.DNSQueryOptions{}, nil)
-	require.NoError(t, err); require.Equal(t, calls+1, transport.calls.Load())
+	require.NoError(t, err)
+	require.Equal(t, calls+1, transport.calls.Load())
 
-	require.Zero(t, ambient.dnsChecks); require.Zero(t, ambient.rdrcChecks); require.Zero(t, ambient.setters)
+	require.Zero(t, ambient.dnsChecks)
+	require.Zero(t, ambient.rdrcChecks)
+	require.Zero(t, ambient.setters)
 }
 
 func TestOldOptimisticRefreshCannotWriteCandidateStore(t *testing.T) {
@@ -211,7 +255,9 @@ func dependenciesRefreshIsolation(t *testing.T, rejected bool) {
 	var refreshKey *dnsCacheKey
 	t.Cleanup(func() {
 		releaseOnce.Do(func() { close(release) })
-		if refreshKey != nil { require.NoError(t, dependenciesWaitRefresh(old, *refreshKey)) }
+		if refreshKey != nil {
+			require.NoError(t, dependenciesWaitRefresh(old, *refreshKey))
+		}
 	})
 	transport := &policyTestTransport{tag: "same-tag", exchange: func(context.Context, *mDNS.Msg) (*mDNS.Msg, error) {
 		close(entered)
@@ -221,11 +267,17 @@ func dependenciesRefreshIsolation(t *testing.T, rejected bool) {
 	key := old.newCacheKey(transport, question.Question[0], question, adapter.DNSQueryOptions{})
 	refreshKey = &key
 	stale := FixedResponse(question.Id, question.Question[0], []netip.Addr{netip.MustParseAddr("192.0.2.1")}, 60)
-	packed, err := stale.Pack(); require.NoError(t, err)
+	packed, err := stale.Pack()
+	require.NoError(t, err)
 	require.NoError(t, oldStore.SaveDNSCache(key.persistentName(), key.Name, key.Qtype, packed, time.Now().Add(-time.Minute)))
 	response, err := old.Exchange(context.Background(), transport, question, adapter.DNSQueryOptions{}, func(*mDNS.Msg) bool { return !rejected })
-	require.NoError(t, err); require.NotNil(t, response)
-	select { case <-entered: case <-time.After(5*time.Second): t.Fatal("refresh never entered transport") }
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("refresh never entered transport")
+	}
 	// Rebinding ambient state cannot retarget an already admitted old refresh.
 	service.MustRegister[adapter.CacheFile](ctx, &dependenciesCacheFile{dnsEnabled: true})
 	nextRouter, err := NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), options, RouterClientDependencies{DNSCache: nextStore, RDRC: nextRDRC})
@@ -249,21 +301,28 @@ func dependenciesRefreshIsolation(t *testing.T, rejected bool) {
 }
 
 type dependenciesRDRC struct {
-	mu sync.Mutex
+	mu      sync.Mutex
 	entries map[string]bool
-	writes int
+	writes  int
 }
+
 func (s *dependenciesRDRC) LoadRDRC(transport, name string, qtype uint16) bool {
-	s.mu.Lock(); defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.entries[fmt.Sprint(transport, "|", name, "|", qtype)]
 }
+
 func (s *dependenciesRDRC) SaveRDRC(transport, name string, qtype uint16) error {
-	s.mu.Lock(); defer s.mu.Unlock()
-	if s.entries == nil { s.entries = make(map[string]bool) }
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.entries == nil {
+		s.entries = make(map[string]bool)
+	}
 	s.entries[fmt.Sprint(transport, "|", name, "|", qtype)] = true
 	s.writes++
 	return nil
 }
+
 func (s *dependenciesRDRC) SaveRDRCAsync(transport, name string, qtype uint16, _ logger.Logger) {
 	_ = s.SaveRDRC(transport, name, qtype)
 }
@@ -275,8 +334,15 @@ func dependenciesWaitRefresh(client *Client, key dnsCacheKey) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	for {
-		if _, running := client.backgroundRefresh.Load(key); !running { return nil }
-		select { case <-ctx.Done(): return ctx.Err(); default: runtime.Gosched() }
+		if _, running := client.backgroundRefresh.Load(key); !running {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			runtime.Gosched()
+		}
 	}
 }
 
@@ -303,21 +369,30 @@ func TestRouterDependencyValidationFailuresLeaveStoresUntouched(t *testing.T) {
 	scope := adapter.NewScope(ctx, log.NewNOPFactory().NewLogger("test"))
 	require.ErrorContains(t, router.Start(adapter.StartStateStart, scope), "empty resolver_policy")
 	require.NoError(t, scope.Close())
-	require.Equal(t, 1, store.writeCount()); require.Equal(t, 1, rdrc.writeCount())
+	require.Equal(t, 1, store.writeCount())
+	require.Equal(t, 1, rdrc.writeCount())
 	_, _, loaded := store.LoadDNSCache("live", "live.example.", mDNS.TypeA)
-	require.True(t, loaded); require.True(t, rdrc.LoadRDRC("live", "live.example.", mDNS.TypeA))
-	require.Zero(t, ambient.dnsChecks); require.Zero(t, ambient.rdrcChecks); require.Zero(t, ambient.setters)
+	require.True(t, loaded)
+	require.True(t, rdrc.LoadRDRC("live", "live.example.", mDNS.TypeA))
+	require.Zero(t, ambient.dnsChecks)
+	require.Zero(t, ambient.rdrcChecks)
+	require.Zero(t, ambient.setters)
 }
 
 func TestRouterLegacyNonDefaultCacheOptions(t *testing.T) {
-	for _, test := range []struct { config string; disable bool; optimistic time.Duration }{
+	for _, test := range []struct {
+		config     string
+		disable    bool
+		optimistic time.Duration
+	}{
 		{`{"disable_expire":true}`, true, 0},
-		{`{"optimistic":{"enabled":true,"timeout":"2h"}}`, false, 2*time.Hour},
+		{`{"optimistic":{"enabled":true,"timeout":"2h"}}`, false, 2 * time.Hour},
 	} {
 		ctx := service.ContextWithDefaultRegistry(context.Background())
 		var options option.DNSOptions
 		require.NoError(t, json.Unmarshal([]byte(test.config), &options))
-		router, err := NewRouter(ctx, log.NewNOPFactory(), options); require.NoError(t, err)
+		router, err := NewRouter(ctx, log.NewNOPFactory(), options)
+		require.NoError(t, err)
 		cache := &dependenciesCacheFile{dnsEnabled: true}
 		service.MustRegister[adapter.CacheFile](ctx, cache)
 		dependenciesStartRouter(t, router)

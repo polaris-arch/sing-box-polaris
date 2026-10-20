@@ -105,8 +105,8 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 		commandCloseDone:  make(chan struct{}),
 		commandClosing:    make(chan struct{}),
 	}
- // configuration.json is a diagnostic snapshot, not an established App
- // restart source. Durability remains pending without an App owner contract.
+	// configuration.json is a diagnostic snapshot, not an established App
+	// restart source. Durability remains pending without an App owner contract.
 	server.StartedService = daemon.NewStartedService(daemon.ServiceOptions{
 		Context: ctx,
 		// Platform:         platformWrapper,
@@ -308,13 +308,13 @@ type OverrideOptions struct {
 }
 
 func (s *CommandServer) StartOrReloadService(configContent string, options *OverrideOptions) error {
- return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil)
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil)
 }
 
 // StartOrReloadServiceWithRuntimePersistence captures this host owner for the
 // new instance. A fresh handler must be supplied for each full start/reload.
 func (s *CommandServer) StartOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
- return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler)
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler)
 }
 
 func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
@@ -332,15 +332,19 @@ func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent
 			}
 		}
 	}
- startContext := s.ctx
- if handler != nil {
-  mode := handler.RuntimePersistenceMode()
-  var err error
-  startContext, err = daemon.ContextWithRuntimePersistenceMode(startContext, runtimeHostPersistence(handler, mode), mode)
-  if err != nil { return err }
- }
- if options == nil { options = new(OverrideOptions) }
- err := s.StartedService.StartOrReloadServiceWithBeforeStart(startContext, configContent, &daemon.OverrideOptions{
+	startContext := s.ctx
+	if handler != nil {
+		mode := handler.RuntimePersistenceMode()
+		var err error
+		startContext, err = daemon.ContextWithRuntimePersistenceMode(startContext, runtimeHostPersistence(handler, mode), mode)
+		if err != nil {
+			return err
+		}
+	}
+	if options == nil {
+		options = new(OverrideOptions)
+	}
+	err := s.StartedService.StartOrReloadServiceWithBeforeStart(startContext, configContent, &daemon.OverrideOptions{
 		AutoRedirect:   options.AutoRedirect,
 		IncludePackage: iteratorToArray(options.IncludePackage),
 		ExcludePackage: iteratorToArray(options.ExcludePackage),

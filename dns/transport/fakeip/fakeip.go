@@ -24,13 +24,13 @@ func RegisterTransport(registry *dns.TransportRegistry) {
 var _ adapter.FakeIPTransport = (*Transport)(nil)
 
 type Transport struct {
-	work lifecycle.Work
-	runtimeResource adapter.RuntimeResourceSource
+	work              lifecycle.Work
+	runtimeResource   adapter.RuntimeResourceSource
 	constructionOwned bool
-	startOnce sync.Once
-	startErr error
-	closeOnce sync.Once
-	closeErr error
+	startOnce         sync.Once
+	startErr          error
+	closeOnce         sync.Once
+	closeErr          error
 	dns.TransportAdapter
 	logger       logger.ContextLogger
 	store        adapter.FakeIPStore
@@ -49,7 +49,9 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	if manager, ok := ManagerFromContext(ctx); ok {
 		var err error
 		if migration, ok := RangeMigrationFromContext(ctx); ok {
-			if migration.manager != manager { return nil, ErrMigrationStale }
+			if migration.manager != manager {
+				return nil, ErrMigrationStale
+			}
 			store, err = migration.Borrow(inet4Range, inet6Range)
 		} else if permit, ok := AnswerPermitFromContext(ctx); ok {
 			store, err = manager.BorrowCandidate(inet4Range, inet6Range, permit)
@@ -58,13 +60,17 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 		} else {
 			store, err = manager.Borrow(inet4Range, inet6Range)
 		}
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		if resource != nil { return nil, ErrManagerRequired }
+		if resource != nil {
+			return nil, ErrManagerRequired
+		}
 		store = NewStore(ctx, logger, inet4Range, inet6Range)
 	}
 	t := &Transport{
-		runtimeResource: resource,
+		runtimeResource:  resource,
 		TransportAdapter: dns.NewTransportAdapter(C.DNSTypeFakeIP, tag, nil),
 		logger:           logger,
 		store:            store,
@@ -73,7 +79,9 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}
 	var err error
 	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -83,9 +91,17 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
 		}
 	})
-	if t.startErr != nil { return t.startErr }
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
-	if scope.Context().Err() != nil { return scope.Context().Err() }
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -93,7 +109,9 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 	if err != nil {
 		return err
 	}
-	if t.work.Sealed() { return lifecycle.ErrStopped }
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
 	return scope.Context().Err()
 }
 
@@ -102,7 +120,10 @@ func (t *Transport) Reset() {
 
 func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	_, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { return nil, err }; defer done()
+	if err != nil {
+		return nil, err
+	}
+	defer done()
 	return t.exchange(message)
 }
 
@@ -127,7 +148,11 @@ func (t *Transport) exchange(message *mDNS.Msg) (*mDNS.Msg, error) {
 
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	_, done, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }; defer done()
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer done()
 	callback(t.exchange(message))
 }
 
@@ -135,11 +160,12 @@ func (t *Transport) Store() adapter.FakeIPStore {
 	return t.store
 }
 
-func (t *Transport) StopRuntimeProducers() {}
+func (t *Transport) StopRuntimeProducers()  {}
 func (t *Transport) StopRuntimeOperations() { t.work.Seal() }
 func (t *Transport) close() error {
 	t.closeOnce.Do(func() {
-		t.StopRuntimeOperations(); t.work.Wait()
+		t.StopRuntimeOperations()
+		t.work.Wait()
 		t.closeErr = lifecycle.Uncertain("fake-IP transport", t.store.Close())
 	})
 	return t.closeErr
@@ -148,14 +174,19 @@ func (t *Transport) close() error {
 // ProtectAnswer is immutable selected-response provenance. The Box manager,
 // rather than this transport's resource lifetime, owns the reservation.
 func (t *Transport) ProtectAnswer(response *mDNS.Msg) (adapter.FakeIPAnswerLease, error) {
-	if store, ok := t.store.(*borrowedStore); ok { return store.manager.protectAnswer(store.namespace, response) }
+	if store, ok := t.store.(*borrowedStore); ok {
+		return store.manager.protectAnswer(store.namespace, response)
+	}
 	return nil, nil // standalone legacy allocator has no range migration
 }
 
 var _ adapter.FakeIPAnswerProtection = (*Transport)(nil)
 
 func (t *Transport) ProtectAnswerContext(ctx context.Context, response *mDNS.Msg) (adapter.FakeIPAnswerLease, error) {
-	if store, ok := t.store.(*borrowedStore); ok { return store.manager.protectAnswerContext(ctx, store.namespace, response) }
+	if store, ok := t.store.(*borrowedStore); ok {
+		return store.manager.protectAnswerContext(ctx, store.namespace, response)
+	}
 	return nil, nil
 }
+
 var _ adapter.FakeIPAnswerContextProtection = (*Transport)(nil)

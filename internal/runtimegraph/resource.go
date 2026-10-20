@@ -34,9 +34,9 @@ type resourceOwner struct {
 	closeOnce sync.Once
 	closed    chan struct{}
 	// closeErr is published by closing closed and read only after that signal.
-	closeErr error
-	id adapter.RuntimeResourceID
-	retiring chan struct{}
+	closeErr     error
+	id           adapter.RuntimeResourceID
+	retiring     chan struct{}
 	dependencies []*resourceLease
 }
 
@@ -51,7 +51,7 @@ func newResourceOwner(parent context.Context, closeFn func() error) *resourceOwn
 func (r *resourceOwner) context() context.Context { return r.ctx }
 
 type resourceLease struct {
-	owner *resourceOwner
+	owner    *resourceOwner
 	released bool // protected by owner.mu, together with refs
 }
 
@@ -71,13 +71,21 @@ func (r *resourceOwner) acquire() (*resourceLease, error) {
 func (l *resourceLease) release() {
 	r := l.owner
 	r.mu.Lock()
-	if l.released { r.mu.Unlock(); return }
+	if l.released {
+		r.mu.Unlock()
+		return
+	}
 	l.released = true
-	if r.refs == 0 { r.mu.Unlock(); panic("runtimegraph: resource reference underflow") }
+	if r.refs == 0 {
+		r.mu.Unlock()
+		panic("runtimegraph: resource reference underflow")
+	}
 	r.refs--
 	start := r.startCloseLocked()
 	r.mu.Unlock()
-	if start { go r.finishClose() }
+	if start {
+		go r.finishClose()
+	}
 }
 
 // startCloseLocked reserves the sole close worker; ordinary releases allocate
@@ -114,7 +122,9 @@ func (r *resourceOwner) finishClose() {
 		// A failed cleanup stays quarantined with its dependency reservations.
 		// A timeout/error is not evidence that native users have stopped.
 		if r.closeErr == nil {
-			for _, dependency := range r.dependencies { dependency.release() }
+			for _, dependency := range r.dependencies {
+				dependency.release()
+			}
 		}
 		r.mu.Lock()
 		r.state = resourceClosed

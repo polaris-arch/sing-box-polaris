@@ -4,7 +4,7 @@ package tailscale
 
 import (
 	"context"
- "net"
+	"net"
 	"net/netip"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -25,7 +25,14 @@ func (t *Endpoint) PreMatchFlow(network string, destination netip.Addr) adapter.
 }
 
 func (t *Endpoint) PortAddresses() (netip.Addr, netip.Addr) {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return netip.Addr{},netip.Addr{}};defer leave();return child.PortAddresses()}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return netip.Addr{}, netip.Addr{}
+		}
+		defer leave()
+		return child.PortAddresses()
+	}
 
 	if !t.started.Load() {
 		return netip.Addr{}, netip.Addr{}
@@ -34,7 +41,14 @@ func (t *Endpoint) PortAddresses() (netip.Addr, netip.Addr) {
 }
 
 func (t *Endpoint) PortMTU() uint32 {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return 0};defer leave();return child.PortMTU()}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return 0
+		}
+		defer leave()
+		return child.PortMTU()
+	}
 
 	if t.systemInterface {
 		return t.systemInterfaceMTU
@@ -43,7 +57,9 @@ func (t *Endpoint) PortMTU() uint32 {
 }
 
 func (t *Endpoint) UpstreamPort() any {
- if t.runtime!=nil{return t}
+	if t.runtime != nil {
+		return t
+	}
 	if !t.started.Load() {
 		return nil
 	}
@@ -51,25 +67,41 @@ func (t *Endpoint) UpstreamPort() any {
 }
 
 func (t *Endpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) (verdict tun.FlowVerdict) {
- child:=t
- routeRouter:=t.router;inboundTag:=t.Tag()
- var b *runtimeEndpointBinding
- var owned context.Context
- var release func()
- var err error
- if t.runtime!=nil {
-  child,owned,release,err=t.runtimeBoundChild(context.Background())
-  if err==nil{t.runtime.mu.Lock();b=t.runtime.binding;t.runtime.mu.Unlock();routeRouter=b.router;inboundTag=b.logical.Tag()}
- } else if t.runtimePhysical!=nil {
-  b,owned,release,err=t.runtimePhysical.bindingContext(context.Background(),true)
-  if err==nil{routeRouter=b.router;inboundTag=b.logical.Tag()}
- }
- if err!=nil{return tun.FlowVerdict{Action:tun.ActionDrop}}
- if b!=nil{defer func(){verdict.Ownership=&runtimeBindingFlow{inner:verdict.Ownership,binding:b,owned:owned,release:release}}()}
- return child.judgeFlowBound(routeRouter,inboundTag,network,source,destination,firstPacket)
+	child := t
+	routeRouter := t.router
+	inboundTag := t.Tag()
+	var b *runtimeEndpointBinding
+	var owned context.Context
+	var release func()
+	var err error
+	if t.runtime != nil {
+		child, owned, release, err = t.runtimeBoundChild(context.Background())
+		if err == nil {
+			t.runtime.mu.Lock()
+			b = t.runtime.binding
+			t.runtime.mu.Unlock()
+			routeRouter = b.router
+			inboundTag = b.logical.Tag()
+		}
+	} else if t.runtimePhysical != nil {
+		b, owned, release, err = t.runtimePhysical.bindingContext(context.Background(), true)
+		if err == nil {
+			routeRouter = b.router
+			inboundTag = b.logical.Tag()
+		}
+	}
+	if err != nil {
+		return tun.FlowVerdict{Action: tun.ActionDrop}
+	}
+	if b != nil {
+		defer func() {
+			verdict.Ownership = &runtimeBindingFlow{inner: verdict.Ownership, binding: b, owned: owned, release: release}
+		}()
+	}
+	return child.judgeFlowBound(routeRouter, inboundTag, network, source, destination, firstPacket)
 }
 
-func(t *Endpoint)judgeFlowBound(routeRouter adapter.Router,inboundTag string,network uint8,source,destination netip.AddrPort,firstPacket []byte)tun.FlowVerdict{
+func (t *Endpoint) judgeFlowBound(routeRouter adapter.Router, inboundTag string, network uint8, source, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
 	inet4Address, inet6Address := t.PortAddresses()
 	if destination.Addr() == inet4Address || destination.Addr() == inet6Address {
 		return tun.FlowVerdict{Action: tun.ActionAccept}
@@ -111,8 +143,18 @@ func (t *Endpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination 
 // NewDNSPacketEx forwards the borrowed packet admission synchronously.
 // HijackDNSPacket owns the fork before asynchronous DNS work is published.
 func (t *Endpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
- routeRouter:=t.router;inboundTag:=t.Tag()
- if t.runtimePhysical!=nil{b,owned,release,err:=t.runtimePhysical.bindingContext(ctx,true);if err!=nil{return};defer release();ctx=owned;routeRouter=b.router;inboundTag=b.logical.Tag()}
+	routeRouter := t.router
+	inboundTag := t.Tag()
+	if t.runtimePhysical != nil {
+		b, owned, release, err := t.runtimePhysical.bindingContext(ctx, true)
+		if err != nil {
+			return
+		}
+		defer release()
+		ctx = owned
+		routeRouter = b.router
+		inboundTag = b.logical.Tag()
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -127,7 +169,14 @@ func (t *Endpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.
 }
 
 func (t *Endpoint) AttachReturn(returnPath tun.Return) error {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.runtimePhysical.returns.attach(child,returnPath)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.runtimePhysical.returns.attach(child, returnPath)
+	}
 
 	t.returnAccess.Lock()
 	defer t.returnAccess.Unlock()
@@ -146,7 +195,14 @@ func (t *Endpoint) AttachReturn(returnPath tun.Return) error {
 }
 
 func (t *Endpoint) DetachReturn(returnPath tun.Return) error {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.runtimePhysical.returns.detach(returnPath)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.runtimePhysical.returns.detach(returnPath)
+	}
 
 	t.returnAccess.Lock()
 	defer t.returnAccess.Unlock()
@@ -157,7 +213,14 @@ func (t *Endpoint) DetachReturn(returnPath tun.Return) error {
 }
 
 func (t *Endpoint) WritePackets(packets [][]byte) error {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return err};defer leave();return child.WritePackets(packets)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.WritePackets(packets)
+	}
 
 	if !t.started.Load() {
 		return E.New("Tailscale is not ready yet")
@@ -194,7 +257,23 @@ func (t *Endpoint) WritePackets(packets [][]byte) error {
 
 var _ tun.DNSPacketHandlerEx = (*Endpoint)(nil)
 
-func(t *Endpoint)WaitDetached(ctx context.Context)error{
- if t.runtime!=nil{t.runtime.mu.Lock();b:=t.runtime.binding;t.runtime.mu.Unlock();if b==nil{return nil};select{case <-b.closeDone:return b.closeErr;case <-ctx.Done():return ctx.Err()}}
- if t.stack==nil{return net.ErrClosed};return t.stack.WaitDetached(ctx)
+func (t *Endpoint) WaitDetached(ctx context.Context) error {
+	if t.runtime != nil {
+		t.runtime.mu.Lock()
+		b := t.runtime.binding
+		t.runtime.mu.Unlock()
+		if b == nil {
+			return nil
+		}
+		select {
+		case <-b.closeDone:
+			return b.closeErr
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	if t.stack == nil {
+		return net.ErrClosed
+	}
+	return t.stack.WaitDetached(ctx)
 }

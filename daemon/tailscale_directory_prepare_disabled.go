@@ -4,4 +4,6 @@ package daemon
 
 import "context"
 
-func (s *StartedService) prepareManagedDirectories(_ context.Context, _ *preparedInstance) error { return nil }
+func (s *StartedService) prepareManagedDirectories(_ context.Context, _ *preparedInstance) error {
+	return nil
+}

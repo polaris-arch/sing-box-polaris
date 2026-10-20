@@ -32,10 +32,18 @@ func TestHosts(t *testing.T) {
 func TestHostsLookupReturnsImmutableSnapshotAndCloseSealsReads(t *testing.T) {
 	file := NewFile(context.Background(), "testdata/hosts")
 	first := file.Lookup("localhost")
-	if len(first) == 0 { t.Fatal("missing hosts fixture") }
+	if len(first) == 0 {
+		t.Fatal("missing hosts fixture")
+	}
 	original := first[0]
 	first[0] = netip.MustParseAddr("192.0.2.99")
-	if next := file.Lookup("localhost"); len(next) == 0 || next[0] != original { t.Fatal("lookup exposed mutable cached addresses") }
-	if err := file.Close(); err != nil { t.Fatal(err) }
-	if addresses := file.Lookup("localhost"); addresses != nil { t.Fatal("file admitted a read after close") }
+	if next := file.Lookup("localhost"); len(next) == 0 || next[0] != original {
+		t.Fatal("lookup exposed mutable cached addresses")
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if addresses := file.Lookup("localhost"); addresses != nil {
+		t.Fatal("file admitted a read after close")
+	}
 }

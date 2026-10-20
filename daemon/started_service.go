@@ -61,37 +61,37 @@ type StartedService struct {
 	// userID           int
 	// groupID          int
 	// systemProxyEnabled      bool
-	lifecycleAccess         sync.Mutex
-	serviceAccess           sync.RWMutex
-	closed                  bool
-	strictCleanup           bool
-	shutdownRequested       bool
-	cleanupErr              error                     // protected by lifecycleAccess; sticky for strict transient hosts
-	tailscaleRetirementAccess sync.Mutex // registry only; no native callbacks under this guard
- tailscaleRetirementRuns []*tailscaleRetirementRun // immutable original births; registry guard
-	startInterrupted        bool
-	serviceStatus           *ServiceStatus
-	serviceStatusSubscriber *observable.Subscriber[*ServiceStatus]
-	serviceStatusObserver   *observable.Observer[*ServiceStatus]
-	logAccess               sync.RWMutex
-	logLines                logRing
-	logSubscriber           *observable.Subscriber[*log.Entry]
-	logObserver             *observable.Observer[*log.Entry]
-	instance                *Instance
-	startedAt               time.Time
-	urlTestSubscriber       *observable.Subscriber[struct{}]
-	urlTestObserver         *observable.Observer[struct{}]
-	clashModeSubscriber     *observable.Subscriber[struct{}]
-	clashModeObserver       *observable.Observer[struct{}]
-	notificationSubscriber  *observable.Subscriber[*NotificationEvent]
-	notificationObserver    *observable.Observer[*NotificationEvent]
+	lifecycleAccess           sync.Mutex
+	serviceAccess             sync.RWMutex
+	closed                    bool
+	strictCleanup             bool
+	shutdownRequested         bool
+	cleanupErr                error                     // protected by lifecycleAccess; sticky for strict transient hosts
+	tailscaleRetirementAccess sync.Mutex                // registry only; no native callbacks under this guard
+	tailscaleRetirementRuns   []*tailscaleRetirementRun // immutable original births; registry guard
+	startInterrupted          bool
+	serviceStatus             *ServiceStatus
+	serviceStatusSubscriber   *observable.Subscriber[*ServiceStatus]
+	serviceStatusObserver     *observable.Observer[*ServiceStatus]
+	logAccess                 sync.RWMutex
+	logLines                  logRing
+	logSubscriber             *observable.Subscriber[*log.Entry]
+	logObserver               *observable.Observer[*log.Entry]
+	instance                  *Instance
+	startedAt                 time.Time
+	urlTestSubscriber         *observable.Subscriber[struct{}]
+	urlTestObserver           *observable.Observer[struct{}]
+	clashModeSubscriber       *observable.Subscriber[struct{}]
+	clashModeObserver         *observable.Observer[struct{}]
+	notificationSubscriber    *observable.Subscriber[*NotificationEvent]
+	notificationObserver      *observable.Observer[*NotificationEvent]
 }
 
 type ServiceOptions struct {
 	// RuntimePersistence receives a detached committed effective configuration.
 	// Returning nil certifies that the owner completed its durable write.
 	RuntimePersistence func(box.RuntimeIdentity, []byte) error
-	Context context.Context
+	Context            context.Context
 	// Platform           adapter.PlatformInterface
 	Handler           PlatformHandler
 	KeepDefaultLogger bool
@@ -110,7 +110,7 @@ type ServiceOptions struct {
 
 func NewStartedService(options ServiceOptions) *StartedService {
 	s := &StartedService{
-		ctx: options.Context,
+		ctx:                options.Context,
 		runtimePersistence: options.RuntimePersistence,
 		// platform:                options.Platform,
 		handler:           options.Handler,
@@ -365,7 +365,9 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 	if err := s.admitTailscaleRetirementRun(); err != nil {
 		return err
 	}
-	if err := s.prepareReloadAdmission(ctx,prepared,beforeStart,s.prepareManagedDirectories); err != nil { return err }
+	if err := s.prepareReloadAdmission(ctx, prepared, beforeStart, s.prepareManagedDirectories); err != nil {
+		return err
+	}
 	defer prepared.abortDirectories()
 	s.serviceAccess.Lock()
 	if s.closed || (s.strictCleanup && s.shutdownRequested) {
@@ -860,8 +862,12 @@ func (s *StartedService) SetClashMode(ctx context.Context, request *ClashMode) (
 }
 
 func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (*emptypb.Empty, error) {
-	if request == nil { return nil, status.Error(codes.InvalidArgument, "missing URL test request") }
-	if err := ctx.Err(); err != nil { return nil, err }
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "missing URL test request")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	s.serviceAccess.RLock()
 	if s.serviceStatus.Status != ServiceStatus_STARTED {
 		s.serviceAccess.RUnlock()
@@ -874,7 +880,9 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 	// graph/receiver handles are acquired before publication of the goroutine.
 	probe, connected, probeErr := boxService.instance.AcquireRuntimeURLTest(boxService.ctx, outboundTag)
 	if connected {
-		if probeErr != nil { return nil, status.Error(codes.FailedPrecondition, probeErr.Error()) }
+		if probeErr != nil {
+			return nil, status.Error(codes.FailedPrecondition, probeErr.Error())
+		}
 		go func() {
 			defer probe.Release()
 			actual := probe.Outbound()
@@ -886,18 +894,27 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 			}
 			if selectedGroup, ok := actual.(adapter.OutboundGroup); ok {
 				members := common.FilterNotNil(common.Map(selectedGroup.All(), func(tag string) adapter.Outbound {
-					member, _ := probe.OutboundManager().Outbound(tag); return member
+					member, _ := probe.OutboundManager().Outbound(tag)
+					return member
 				}))
 				group.URLTestOutboundsEpoch(probe.Context(), probe.OutboundManager(), probe.History(), boxService.logFactory.Logger(), members, "", 0, true, probe.Epoch())
 				return
 			}
 			target, realTag := group.URLTestTarget(actual, N.NetworkTCP)
-			if target == nil { return }
+			if target == nil {
+				return
+			}
 			delay, err := urltest.URLTest(probe.Context(), "", target)
-			if probe.Context().Err() != nil { return }
+			if probe.Context().Err() != nil {
+				return
+			}
 			var history *adapter.URLTestHistory
-			if err == nil { history = &adapter.URLTestHistory{Time: time.Now(), Delay: delay} }
-			if urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), realTag, history) { group.PerformRuntimeUpdateChecks(probe.Context(), probe.Epoch(), realTag) }
+			if err == nil {
+				history = &adapter.URLTestHistory{Time: time.Now(), Delay: delay}
+			}
+			if urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), realTag, history) {
+				group.PerformRuntimeUpdateChecks(probe.Context(), probe.Epoch(), realTag)
+			}
 		}()
 		return &emptypb.Empty{}, nil
 	}
@@ -916,29 +933,37 @@ func (s *StartedService) URLTest(ctx context.Context, request *URLTestRequest) (
 			return itOutbound
 		}))
 		epoch := historyStorage.Epoch()
-        probeCtx, stopProbe, err := historyStorage.ProbeContext(boxService.ctx, epoch)
-        if err != nil { return nil, err }
-        go func() {
-            defer stopProbe()
-            group.URLTestOutboundsEpoch(probeCtx, boxService.outboundManager, historyStorage, boxService.logFactory.Logger(), outbounds, "", 0, true, epoch)
-        }()
+		probeCtx, stopProbe, err := historyStorage.ProbeContext(boxService.ctx, epoch)
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			defer stopProbe()
+			group.URLTestOutboundsEpoch(probeCtx, boxService.outboundManager, historyStorage, boxService.logFactory.Logger(), outbounds, "", 0, true, epoch)
+		}()
 	} else {
-        target, realTag := group.URLTestTarget(outbound, N.NetworkTCP)
-        if target == nil { return nil, status.Error(codes.NotFound, "missing probe target") }
-        epoch := historyStorage.Epoch()
-        probeCtx, cancel, err := historyStorage.ProbeContext(boxService.ctx, epoch)
-        if err != nil { return nil, err }
-        go func() {
-            defer cancel()
-            t, err := urltest.URLTest(probeCtx, "", target)
-            if probeCtx.Err() != nil { return }
-            if err != nil {
-                historyStorage.DeleteIfCurrent(epoch, realTag)
-            } else {
-                historyStorage.StoreIfCurrent(epoch, realTag, &adapter.URLTestHistory{Time: time.Now(), Delay: t})
-            }
-        }()
-    }
+		target, realTag := group.URLTestTarget(outbound, N.NetworkTCP)
+		if target == nil {
+			return nil, status.Error(codes.NotFound, "missing probe target")
+		}
+		epoch := historyStorage.Epoch()
+		probeCtx, cancel, err := historyStorage.ProbeContext(boxService.ctx, epoch)
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			defer cancel()
+			t, err := urltest.URLTest(probeCtx, "", target)
+			if probeCtx.Err() != nil {
+				return
+			}
+			if err != nil {
+				historyStorage.DeleteIfCurrent(epoch, realTag)
+			} else {
+				historyStorage.StoreIfCurrent(epoch, realTag, &adapter.URLTestHistory{Time: time.Now(), Delay: t})
+			}
+		}()
+	}
 	return &emptypb.Empty{}, nil
 }
 

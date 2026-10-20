@@ -229,8 +229,12 @@ func (b *backendLinux) startPlatform(scope *adapter.Scope) error {
 	monitor := b.networkManager.InterfaceMonitor()
 	if monitor != nil {
 		element := monitor.RegisterCallback(func(_ *control.Interface, _ int) {
-			release, err := b.callbackFence.Acquire(); if err != nil { return }
-			b.syncSessionEgress(); release()
+			release, err := b.callbackFence.Acquire()
+			if err != nil {
+				return
+			}
+			b.syncSessionEgress()
+			release()
 		})
 		scope.Add(func() error {
 			monitor.UnregisterCallback(element)

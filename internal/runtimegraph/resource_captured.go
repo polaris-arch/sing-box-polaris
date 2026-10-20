@@ -7,18 +7,30 @@ import "github.com/sagernet/sing-box/adapter"
 // dependency handles authorize this traversal. Racing terminal cleanup fails
 // closed if any captured root has already been released.
 func (o *ResourceOwner) RetainCapturedResource(id adapter.RuntimeResourceID) (adapter.RuntimeResourceLease, error) {
-	if o == nil || o.owner == nil { return nil, ErrResourceNotMember }
+	if o == nil || o.owner == nil {
+		return nil, ErrResourceNotMember
+	}
 	r := o.owner
-	if id == r.id || id.Sequence == 0 || id.Incarnation != r.id.Incarnation { return nil, ErrResourceNotMember }
+	if id == r.id || id.Sequence == 0 || id.Incarnation != r.id.Incarnation {
+		return nil, ErrResourceNotMember
+	}
 	r.mu.Lock()
 	closed := r.state == resourceClosed
 	r.mu.Unlock()
-	if closed { return nil, errResourceSealed }
+	if closed {
+		return nil, errResourceSealed
+	}
 	roots := make([]*resourceLease, 0, len(r.dependencies))
-	defer func() { for _, root := range roots { root.release() } }()
+	defer func() {
+		for _, root := range roots {
+			root.release()
+		}
+	}()
 	for _, dependency := range r.dependencies {
 		root, err := dependency.fork()
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		roots = append(roots, root)
 	}
 	// Each root pins its entire immutable dependency closure. No owner mutex is
@@ -32,15 +44,23 @@ func (o *ResourceOwner) RetainCapturedResource(id adapter.RuntimeResourceID) (ad
 		pending = pending[:len(pending)-1]
 		currentID := current.ID()
 		if previous := seen[currentID]; previous != nil {
-			if previous != current.owner { return nil, ErrResourceNotMember }
+			if previous != current.owner {
+				return nil, ErrResourceNotMember
+			}
 			continue
 		}
-		if currentID.Incarnation != id.Incarnation || currentID == r.id { return nil, ErrResourceNotMember }
+		if currentID.Incarnation != id.Incarnation || currentID == r.id {
+			return nil, ErrResourceNotMember
+		}
 		seen[currentID] = current.owner
-		if currentID == id { found = current }
+		if currentID == id {
+			found = current
+		}
 		pending = append(pending, current.owner.dependencies...)
 	}
-	if found == nil { return nil, ErrResourceNotMember }
+	if found == nil {
+		return nil, ErrResourceNotMember
+	}
 	return found.Fork()
 }
 

@@ -47,7 +47,11 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	runtime := newOutboundRuntime(ctx)
 	runtime.allowNativeDescriptor = options.Obfs == "" && len(options.ServerPorts) == 0
 	constructed := false
-	defer func(){if !constructed{_ = runtime.close()}}()
+	defer func() {
+		if !constructed {
+			_ = runtime.close()
+		}
+	}()
 	tlsConfig, err := tls.NewClient(ctx, logger, options.Server, common.PtrValueOrDefault(options.TLS))
 	if err != nil {
 		return nil, err
@@ -75,7 +79,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		receiveBps = uint64(options.DownMbps) * hysteria.MbpsToBps
 	}
 	tlsConfig, err = runtime.guardTLS(tlsConfig)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	client, err := hysteria.NewClient(hysteria.ClientOptions{
 		Context:       runtime.ctx,
 		Dialer:        runtime.guardDialer(outboundDialer),
@@ -94,7 +100,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
-	if err = runtime.install(ctx, client); err != nil { return nil, err }
+	if err = runtime.install(ctx, client); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return &Outbound{
 		runtime: runtime,
@@ -105,8 +113,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
- return outbound.DialRuntimeConn(ctx,h.runtime.source,func(ctx context.Context)(net.Conn,error){return h.dialContextOwned(ctx,network,destination)})
+	return outbound.DialRuntimeConn(ctx, h.runtime.source, func(ctx context.Context) (net.Conn, error) { return h.dialContextOwned(ctx, network, destination) })
 }
+
 func (h *Outbound) dialContextOwned(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
@@ -124,15 +133,20 @@ func (h *Outbound) dialContextOwned(ctx context.Context, network string, destina
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
- return outbound.ListenRuntimePacket(ctx,h.runtime.source,func(ctx context.Context)(net.PacketConn,error){return h.listenPacketOwned(ctx,destination)})
+	return outbound.ListenRuntimePacket(ctx, h.runtime.source, func(ctx context.Context) (net.PacketConn, error) { return h.listenPacketOwned(ctx, destination) })
 }
+
 func (h *Outbound) listenPacketOwned(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	return h.client.ListenPacket(ctx, destination)
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
- leave,err:=h.runtime.fence.Acquire();if err!=nil{return};defer leave()
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.CloseWithError(E.New("network changed"))
 }
 
@@ -141,12 +155,20 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
- leave,err:=h.runtime.fence.Acquire();if err!=nil{return};defer leave()
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
- leave,err:=h.runtime.fence.Acquire();if err!=nil{return};defer leave()
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.CloseIdleConnections()
 }
 
@@ -154,6 +176,8 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateInitialize {
 		return nil
 	}
-	if !h.runtime.registered { scope.Add(h.runtime.close) }
+	if !h.runtime.registered {
+		scope.Add(h.runtime.close)
+	}
 	return nil
 }

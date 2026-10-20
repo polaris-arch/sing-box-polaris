@@ -1977,11 +1977,13 @@ func TestWindowsClientConnectionStateFields(t *testing.T) {
 }
 
 func TestWindowsClientNetConnReturnsUnderlying(t *testing.T) {
- clientConn,serverDone:=startWindowsEchoEngineServer(t,stdtls.VersionTLS12)
- defer func(){<-serverDone}()
- defer clientConn.Close()
- underlying:=clientConn.NetConn()
- if _,isTCP:=underlying.(*net.TCPConn);!isTCP{t.Fatalf("NetConn returned %T, expected *net.TCPConn",underlying)}
+	clientConn, serverDone := startWindowsEchoEngineServer(t, stdtls.VersionTLS12)
+	defer func() { <-serverDone }()
+	defer clientConn.Close()
+	underlying := clientConn.NetConn()
+	if _, isTCP := underlying.(*net.TCPConn); !isTCP {
+		t.Fatalf("NetConn returned %T, expected *net.TCPConn", underlying)
+	}
 }
 
 func TestWindowsClientHandshakeNetConnRetainsRuntimeGuard(t *testing.T) {
@@ -1990,18 +1992,34 @@ func TestWindowsClientHandshakeNetConnRetainsRuntimeGuard(t *testing.T) {
 	defer clientConn.Close()
 
 	owned, ok := clientConn.(*runtimeTLSConn)
-	if !ok { t.Fatalf("ClientHandshake returned %T, expected the runtime TLS owner", clientConn) }
+	if !ok {
+		t.Fatalf("ClientHandshake returned %T, expected the runtime TLS owner", clientConn)
+	}
 	underlying := clientConn.NetConn()
-	if underlying != owned.raw || underlying == owned.Conn { t.Fatal("NetConn did not return the guarded raw carrier") }
+	if underlying != owned.raw || underlying == owned.Conn {
+		t.Fatal("NetConn did not return the guarded raw carrier")
+	}
 	provider, ok := owned.tlsConn.(*windowsTLSConn)
-	if !ok { t.Fatalf("Windows engine returned %T", owned.tlsConn) }
+	if !ok {
+		t.Fatalf("Windows engine returned %T", owned.tlsConn)
+	}
 	handshake, ok := provider.NetConn().(*runtimeHandshakeConn)
-	if !ok || handshake.Conn != underlying { t.Fatal("native provider bypassed the guarded handshake carrier") }
+	if !ok || handshake.Conn != underlying {
+		t.Fatal("native provider bypassed the guarded handshake carrier")
+	}
 	control, err := outbound.RuntimeTCPControl(underlying)
-	if err != nil { t.Fatal(err) }
-	if err = control.SetNoDelay(true); err != nil { t.Fatalf("guarded TCP control failed: %v", err) }
-	if err = clientConn.Close(); err != nil { t.Fatal(err) }
-	if err = control.SetNoDelay(true); !errors.Is(err, net.ErrClosed) { t.Fatalf("closed raw carrier admitted TCP control: %v", err) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = control.SetNoDelay(true); err != nil {
+		t.Fatalf("guarded TCP control failed: %v", err)
+	}
+	if err = clientConn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err = control.SetNoDelay(true); !errors.Is(err, net.ErrClosed) {
+		t.Fatalf("closed raw carrier admitted TCP control: %v", err)
+	}
 }
 
 func TestNewWindowsClientMissingServerName(t *testing.T) {

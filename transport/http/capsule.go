@@ -292,7 +292,7 @@ type http3PacketConn struct {
 	closeOnce   sync.Once
 	waitGroup   sync.WaitGroup
 	cleanupDone chan struct{}
-	closeErr error
+	closeErr    error
 	writeAccess sync.Mutex
 	err         error
 }

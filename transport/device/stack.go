@@ -31,7 +31,7 @@ type stackDevice struct {
 
 func newStackDevice(options Options) (*stackDevice, error) {
 	device := &stackDevice{
-		options: options,
+		options:   options,
 		closeDone: make(chan struct{}),
 	}
 	device.inet4Address, device.inet6Address = firstAddresses(options.Configuration.Address)

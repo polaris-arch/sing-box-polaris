@@ -49,9 +49,14 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 	inbound.router = uot.NewRouter(router, logger)
 	var userList []int
 	var keyList [][]byte
@@ -128,7 +133,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -142,7 +149,10 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
 	if err != nil {
@@ -157,7 +167,10 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 
 func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	_, metadata := adapter.ExtendContext(ctx)
 	if source.IsValid() {
@@ -171,7 +184,10 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 
 func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	_, metadata := adapter.ExtendContext(ctx)
 	if source.IsValid() {
@@ -185,7 +201,10 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
@@ -210,7 +229,10 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 
 func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()

@@ -25,7 +25,7 @@ import (
 )
 
 type Instance struct {
- runtimeOverrides *OverrideOptions // immutable detached startup projection
+	runtimeOverrides      *OverrideOptions // immutable detached startup projection
 	ctx                   context.Context
 	cancel                context.CancelFunc
 	instance              *box.Box
@@ -94,18 +94,18 @@ type OverrideOptions struct {
 }
 
 type preparedInstance struct {
- runtimeOverrides *OverrideOptions
- runtimeGraph bool
-	ctx            context.Context
-	profileContent string
-	options        option.Options
-	request context.Context
-	directoryPlan preparedDirectoryResources
-	directoryRun *tailscaleRetirementRun
-	directoryCancel context.CancelFunc
-	directoryWatch *directoryPreparationCancellation
+	runtimeOverrides   *OverrideOptions
+	runtimeGraph       bool
+	ctx                context.Context
+	profileContent     string
+	options            option.Options
+	request            context.Context
+	directoryPlan      preparedDirectoryResources
+	directoryRun       *tailscaleRetirementRun
+	directoryCancel    context.CancelFunc
+	directoryWatch     *directoryPreparationCancellation
 	directoryCommitted bool
-	directoryFinished chan struct{}
+	directoryFinished  chan struct{}
 }
 
 // prepareInstance decodes once and changes only its fresh options graph. It must
@@ -147,7 +147,7 @@ func (s *StartedService) prepareInstance(ctx context.Context, profileContent str
 			})
 		}
 	}
-	return &preparedInstance{runtimeOverrides: cloneRuntimeOverrides(overrideOptions), ctx: ctx, profileContent: profileContent, options: options, request:request,runtimeGraph:box.RuntimeUsesResourceGraph(ctx,options)}, nil
+	return &preparedInstance{runtimeOverrides: cloneRuntimeOverrides(overrideOptions), ctx: ctx, profileContent: profileContent, options: options, request: request, runtimeGraph: box.RuntimeUsesResourceGraph(ctx, options)}, nil
 }
 
 // newInstance is retained for constructor-only callers. The lifecycle owner
@@ -160,14 +160,18 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 	if err := s.admitTailscaleRetirementRun(); err != nil {
 		return nil, err
 	}
-	if err := s.prepareManagedDirectories(ctx,prepared); err != nil { return nil,err }
+	if err := s.prepareManagedDirectories(ctx, prepared); err != nil {
+		return nil, err
+	}
 	defer prepared.abortDirectories()
 	return s.newPreparedInstance(prepared, reloading)
 }
 
 func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloading bool) (*Instance, error) {
 	ctx, profileContent, options := prepared.ctx, prepared.profileContent, prepared.options
- if prepared.runtimeGraph { ctx=adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx,s.registerRuntimeTailscaleChild) }
+	if prepared.runtimeGraph {
+		ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, s.registerRuntimeTailscaleChild)
+	}
 	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil && prepared.directoryPlan == nil {
 		if !domain.Activated() {
 			return nil, E.New("managed directory domain is not activated")
@@ -177,7 +181,9 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 		}
 	}
 	if prepared.directoryPlan == nil {
-		if err := guardRawDirectoryNamespace(ctx, profileContent); err != nil { return nil,err }
+		if err := guardRawDirectoryNamespace(ctx, profileContent); err != nil {
+			return nil, err
+		}
 	}
 	var cancel context.CancelFunc
 	retirement := prepared.directoryRun
@@ -186,19 +192,30 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 	} else {
 		ctx, cancel = context.WithCancel(ctx)
 		var err error
-		retirementOptions:=options
-  if prepared.runtimeGraph{retirementOptions.Endpoints=nil}
-  retirement,err = newTailscaleRetirementRun(profileContent,retirementOptions)
-		if err != nil { cancel(); return nil,err }
-		if err=s.appendTailscaleRetirementRun(retirement);err!=nil{cancel();return nil,err}
-		ctx = service.ContextWithPtr(ctx,&retirement.binding)
-		ctx,err = prepareTailscaleDirectoryMapping(ctx,options)
-		if err != nil { cancel(); return nil,err }
+		retirementOptions := options
+		if prepared.runtimeGraph {
+			retirementOptions.Endpoints = nil
+		}
+		retirement, err = newTailscaleRetirementRun(profileContent, retirementOptions)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+		if err = s.appendTailscaleRetirementRun(retirement); err != nil {
+			cancel()
+			return nil, err
+		}
+		ctx = service.ContextWithPtr(ctx, &retirement.binding)
+		ctx, err = prepareTailscaleDirectoryMapping(ctx, options)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
 	}
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
 	i := &Instance{
- runtimeOverrides: cloneRuntimeOverrides(prepared.runtimeOverrides),
+		runtimeOverrides:      cloneRuntimeOverrides(prepared.runtimeOverrides),
 		ctx:                   ctx,
 		cancel:                cancel,
 		urlTestHistoryStorage: urlTestHistoryStorage,
@@ -206,13 +223,22 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 		tailscaleRetirement:   retirement,
 	}
 	if prepared.directoryRun != nil {
-		if err := prepared.attachPreparedDirectoryRun(i); err != nil { cancel(); return nil,err }
-	} else { retirement.access.Lock();retirement.closeFinished = i.closeFinished;retirement.access.Unlock() }
+		if err := prepared.attachPreparedDirectoryRun(i); err != nil {
+			cancel()
+			return nil, err
+		}
+	} else {
+		retirement.access.Lock()
+		retirement.closeFinished = i.closeFinished
+		retirement.access.Unlock()
+	}
 	constructed := false
 	defer func() {
 		if !constructed {
 			retirement.freeze(nil, false)
-			if prepared.directoryPlan == nil { retirement.freezeDirectories(nil, false) }
+			if prepared.directoryPlan == nil {
+				retirement.freezeDirectories(nil, false)
+			}
 		}
 	}()
 	boxInstance, err := box.New(box.Options{
@@ -235,8 +261,17 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 	boxInstance.CaptureTailscaleStateStores()
 	retirement.capture(boxInstance.TailscaleStateStoreScopes())
 	if prepared.directoryPlan != nil {
-		if err := prepared.commitDirectories(boxInstance.TailscaleDirectoryScopes); err != nil { cancel(); _ = boxInstance.Close(); return nil,err }
-	} else { retirement.captureDirectories(boxInstance.TailscaleDirectoryScopes);if prepared.runtimeGraph{prepared.directoryCommitted=true} }
+		if err := prepared.commitDirectories(boxInstance.TailscaleDirectoryScopes); err != nil {
+			cancel()
+			_ = boxInstance.Close()
+			return nil, err
+		}
+	} else {
+		retirement.captureDirectories(boxInstance.TailscaleDirectoryScopes)
+		if prepared.runtimeGraph {
+			prepared.directoryCommitted = true
+		}
+	}
 	i.instance = boxInstance
 	i.connectionManager = service.FromContext[adapter.ConnectionManager](ctx)
 	i.clashMode = service.PtrFromContext[clashmode.Manager](ctx)

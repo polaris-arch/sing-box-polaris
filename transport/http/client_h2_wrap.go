@@ -3,11 +3,12 @@
 package http
 
 import (
+	"errors"
 	"net"
 	"net/http"
-	"errors"
-	"github.com/sagernet/sing-box/common/httpclient"
 	"unsafe"
+
+	"github.com/sagernet/sing-box/common/httpclient"
 
 	"golang.org/x/net/http2"
 )
@@ -18,14 +19,16 @@ type http2ClientConn struct {
 }
 
 func newHTTP2ClientConn(transport *http2.Transport, conn net.Conn) (*http2ClientConn, error) {
-	boundary:=httpclient.NewRuntimeTransportBoundary(nil)
-	guarded,err:=boundary.GuardConnection(conn)
-	if err!=nil{return nil,err}
+	boundary := httpclient.NewRuntimeTransportBoundary(nil)
+	guarded, err := boundary.GuardConnection(conn)
+	if err != nil {
+		return nil, err
+	}
 	clientConn, err := transport.NewClientConn(guarded)
 	if err != nil {
-		return nil, errors.Join(err,boundary.Close())
+		return nil, errors.Join(err, boundary.Close())
 	}
-	return &http2ClientConn{ClientConn: *(**http.ClientConn)(unsafe.Pointer(clientConn)),boundary:boundary}, nil
+	return &http2ClientConn{ClientConn: *(**http.ClientConn)(unsafe.Pointer(clientConn)), boundary: boundary}, nil
 }
 
 func (c *http2ClientConn) isClosed() bool {
@@ -37,10 +40,10 @@ func (c *http2ClientConn) reserveNewRequest() bool {
 }
 
 func (c *http2ClientConn) roundTrip(request *http.Request) (*http.Response, error) {
-	return c.boundary.RoundTrip(request,c.roundTripInner)
+	return c.boundary.RoundTrip(request, c.roundTripInner)
 }
 
-func (c *http2ClientConn) roundTripInner(request *http.Request) (*http.Response,error) {
+func (c *http2ClientConn) roundTripInner(request *http.Request) (*http.Response, error) {
 	if request.Header.Get(":protocol") == "" {
 		return c.ClientConn.RoundTrip(request)
 	}
@@ -56,4 +59,4 @@ func http2RoundTrip(request *http.Request, roundTrip func(clientRequest unsafe.P
 //go:linkname netHTTPClientConnRoundTrip net/http/internal/http2.NetHTTPClientConn.RoundTrip
 func netHTTPClientConnRoundTrip(clientConn unsafe.Pointer, clientRequest unsafe.Pointer) (unsafe.Pointer, error)
 
-func(c *http2ClientConn)Close()error{return errors.Join(c.ClientConn.Close(),c.boundary.Close())}
+func (c *http2ClientConn) Close() error { return errors.Join(c.ClientConn.Close(), c.boundary.Close()) }

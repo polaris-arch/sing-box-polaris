@@ -5,7 +5,7 @@ package tailscale
 import (
 	"context"
 	"slices"
- "sync"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -16,11 +16,18 @@ import (
 var _ adapter.TailscaleEndpoint = (*Endpoint)(nil)
 
 func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapter.TailscaleEndpointStatus)) error {
- if t.runtime!=nil{child,ctx,leave,err:=t.runtimeOperation(ctx);if err!=nil{return err};defer leave();return child.SubscribeTailscaleStatus(ctx,fn)}
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.SubscribeTailscaleStatus(ctx, fn)
+	}
 
- ctx,cancel:=context.WithCancel(ctx)
- var workers sync.WaitGroup
- defer func(){cancel();workers.Wait()}()
+	ctx, cancel := context.WithCancel(ctx)
+	var workers sync.WaitGroup
+	defer func() { cancel(); workers.Wait() }()
 	localBackend := t.server.ExportLocalBackend()
 	// The notification callback must stay cheap and non-blocking: a
 	// watcher whose queue fills is disconnected by the IPN bus, so
@@ -34,8 +41,8 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		}
 	}
 	workers.Add(1)
- go func() {
- defer workers.Done()
+	go func() {
+		defer workers.Done()
 		for {
 			select {
 			case <-ctx.Done():
@@ -66,8 +73,8 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 	if watchErr == nil {
 		defer t.taildrop.unwatch(t.taildrop.fileWatchers, fileSignal)
 		workers.Add(1)
- go func() {
- defer workers.Done()
+		go func() {
+			defer workers.Done()
 			for {
 				select {
 				case <-ctx.Done():

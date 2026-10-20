@@ -25,16 +25,17 @@ func (r *Router) BorrowRuntimePlatform(initial *Router) {
 }
 
 type RuntimeRequirements struct {
-	Process bool
-	Neighbor bool
-	WIFI bool
+	Process        bool
+	Neighbor       bool
+	WIFI           bool
 	DHCPLeaseFiles []string
 }
+
 func RuntimeRequirementsFor(options option.RouteOptions, dns option.DNSOptions) RuntimeRequirements {
 	result := RuntimeRequirements{
-		Process: options.FindProcess || hasRule(options.Rules, isProcessRule) || hasDNSRule(dns.Rules, isProcessDNSRule),
-		Neighbor: options.FindNeighbor || hasRule(options.Rules, isNeighborRule) || hasDNSRule(dns.Rules, isNeighborDNSRule) || hasLocalNeighborDNSServer(dns.Servers),
-		WIFI: hasRule(options.Rules, isWIFIRule) || hasDNSRule(dns.Rules, isWIFIDNSRule),
+		Process:        options.FindProcess || hasRule(options.Rules, isProcessRule) || hasDNSRule(dns.Rules, isProcessDNSRule),
+		Neighbor:       options.FindNeighbor || hasRule(options.Rules, isNeighborRule) || hasDNSRule(dns.Rules, isNeighborDNSRule) || hasLocalNeighborDNSServer(dns.Servers),
+		WIFI:           hasRule(options.Rules, isWIFIRule) || hasDNSRule(dns.Rules, isWIFIDNSRule),
 		DHCPLeaseFiles: append([]string(nil), options.DHCPLeaseFiles...),
 	}
 	for _, set := range options.RuleSet {
@@ -53,7 +54,9 @@ func (r *Router) InitializeRuntime(rules []option.Rule, ruleSets []adapter.RuleS
 	r.ruleSets = append([]adapter.RuleSet(nil), ruleSets...)
 	r.ruleSetMap = make(map[string]adapter.RuleSet, len(ruleSets))
 	for _, set := range ruleSets {
-		if _, exists := r.ruleSetMap[set.Name()]; exists { return E.New("duplicate runtime rule-set") }
+		if _, exists := r.ruleSetMap[set.Name()]; exists {
+			return E.New("duplicate runtime rule-set")
+		}
 		r.ruleSetMap[set.Name()] = set
 	}
 	return r.Initialize(rules, nil)
@@ -63,9 +66,11 @@ func (r *Router) InitializeRuntime(rules []option.Rule, ruleSets []adapter.RuleS
 // startup, including platform-provided process lookup that does not require a
 // find_process flag (Android). It never provisions resources during Plan.
 func (r *Router) RuntimeProvisionedRequirements(requested RuntimeRequirements) RuntimeRequirements {
- requested.Process = r.processSearcher != nil
- requested.Neighbor = r.neighborResolver != nil
- requested.WIFI = r.network != nil && r.network.NeedWIFIState()
- if !requested.Neighbor { requested.DHCPLeaseFiles = nil }
- return requested
+	requested.Process = r.processSearcher != nil
+	requested.Neighbor = r.neighborResolver != nil
+	requested.WIFI = r.network != nil && r.network.NeedWIFIState()
+	if !requested.Neighbor {
+		requested.DHCPLeaseFiles = nil
+	}
+	return requested
 }

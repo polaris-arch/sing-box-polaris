@@ -399,15 +399,21 @@ func windowsOpenCheckpointAt(parent windows.Handle, name string) (windows.Handle
 		return 0, fmt.Errorf("directory lease: invalid checkpoint scratch name")
 	}
 	u, err := windows.NewNTUnicodeString(name)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	oa := windows.OBJECT_ATTRIBUTES{RootDirectory: parent, ObjectName: u, Attributes: windows.OBJ_CASE_INSENSITIVE | windows.OBJ_DONT_REPARSE}
 	oa.Length = uint32(unsafe.Sizeof(oa))
 	var h windows.Handle
 	var status windows.IO_STATUS_BLOCK
 	err = windows.NtCreateFile(&h, windows.GENERIC_READ|windows.GENERIC_WRITE|windows.DELETE|windows.READ_CONTROL|windows.SYNCHRONIZE, &oa, &status, nil, windows.FILE_ATTRIBUTE_NORMAL, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, windows.FILE_OPEN, windows.FILE_NON_DIRECTORY_FILE|windows.FILE_SYNCHRONOUS_IO_NONALERT|windows.FILE_OPEN_REPARSE_POINT|windows.FILE_WRITE_THROUGH, 0, 0)
 	runtime.KeepAlive(u)
-	if err != nil { return 0, windowsNormalizeError(err) }
-	if _, err := windowsInspect(h, false); err != nil { return 0, errors.Join(err, windows.CloseHandle(h)) }
+	if err != nil {
+		return 0, windowsNormalizeError(err)
+	}
+	if _, err := windowsInspect(h, false); err != nil {
+		return 0, errors.Join(err, windows.CloseHandle(h))
+	}
 	return h, nil
 }
 
@@ -418,27 +424,31 @@ func windowsCheckpointRenameBuffer(directory windows.Handle, name string) ([]byt
 		return nil, fmt.Errorf("directory lease: invalid checkpoint destination")
 	}
 	wide, err := windows.UTF16FromString(name)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	wide = wide[:len(wide)-1]
 	type renameInformation struct {
 		ReplaceIfExists byte
-		RootDirectory windows.Handle
-		FileNameLength uint32
-		FileName [1]uint16
+		RootDirectory   windows.Handle
+		FileNameLength  uint32
+		FileName        [1]uint16
 	}
 	var header renameInformation
 	buffer := make([]byte, int(unsafe.Sizeof(header))+len(wide)*2)
 	info := (*renameInformation)(unsafe.Pointer(&buffer[0]))
 	info.ReplaceIfExists = 1
 	info.RootDirectory = directory
-	info.FileNameLength = uint32(len(wide)*2)
+	info.FileNameLength = uint32(len(wide) * 2)
 	copy(unsafe.Slice((*uint16)(unsafe.Pointer(&buffer[unsafe.Offsetof(header.FileName)])), len(wide)), wide)
 	return buffer, nil
 }
 
 func windowsReplacePrivateFile(source windows.Handle, directory windows.Handle, name string) error {
 	buffer, err := windowsCheckpointRenameBuffer(directory, name)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	var status windows.IO_STATUS_BLOCK
 	err = windows.NtSetInformationFile(source, &status, &buffer[0], uint32(len(buffer)), windows.FileRenameInformation)
 	runtime.KeepAlive(buffer)

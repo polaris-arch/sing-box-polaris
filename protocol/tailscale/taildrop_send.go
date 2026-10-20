@@ -27,7 +27,14 @@ import (
 )
 
 func (t *Endpoint) SendTaildropFile(ctx context.Context, peerStableID string, fileName string, size int64, content io.Reader, progress func(sentBytes int64)) error {
- if t.runtime!=nil{child,ctx,leave,err:=t.runtimeOperation(ctx);if err!=nil{return err};defer leave();return child.SendTaildropFile(ctx,peerStableID,fileName,size,content,progress)}
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.SendTaildropFile(ctx, peerStableID, fileName, size, content, progress)
+	}
 
 	if !t.taildrop.beginIO() {
 		return os.ErrClosed

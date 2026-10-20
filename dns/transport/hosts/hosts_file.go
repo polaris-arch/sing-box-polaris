@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/netip"
-	"strings"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +21,7 @@ import (
 const cacheMaxAge = 5 * time.Second
 
 type File struct {
-	work lifecycle.Work
+	work    lifecycle.Work
 	ctx     context.Context
 	path    string
 	access  sync.Mutex
@@ -52,7 +52,9 @@ func (f *File) Close() error { f.work.Seal(); f.work.Wait(); return nil }
 
 func (f *File) Lookup(name string) []netip.Addr {
 	done, ok := f.work.Reserve()
-	if !ok { return nil }
+	if !ok {
+		return nil
+	}
 	defer done()
 	f.access.Lock()
 	defer f.access.Unlock()

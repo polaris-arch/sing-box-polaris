@@ -43,9 +43,14 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 
 	if options.Version == 0 {
 		options.Version = 1
@@ -112,7 +117,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -126,12 +133,19 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	if h.runtime != nil {
 		carriers := &runtimeHandshakeCarriers{}
 		ctx = context.WithValue(ctx, runtimeHandshakeKey{}, carriers)
-		defer func() { if closeErr := carriers.close(); closeErr != nil { h.logger.ErrorContext(ctx, "handshake carrier cleanup incomplete: ", closeErr) } }()
+		defer func() {
+			if closeErr := carriers.close(); closeErr != nil {
+				h.logger.ErrorContext(ctx, "handshake carrier cleanup incomplete: ", closeErr)
+			}
+		}()
 	}
 	err = h.service.NewConnection(adapter.WithContext(log.ContextWithNewID(ctx), &metadata), conn, metadata.Source, metadata.Destination, onClose)
 	N.CloseOnHandshakeFailure(conn, onClose, err)
@@ -148,7 +162,10 @@ type inboundHandler Inbound
 
 func (h *inboundHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	var metadata adapter.InboundContext
 	metadata.Inbound = h.Tag()

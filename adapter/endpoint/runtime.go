@@ -7,8 +7,8 @@ import "github.com/sagernet/sing-box/adapter"
 // Existing foreground sessions retain the exact endpoint and captured graph.
 // RuntimeValidate rejects a legacy instance; a method name alone is insufficient.
 type RuntimePreparedEndpoint interface {
- adapter.Endpoint
- RuntimeValidate() error
- RuntimeResourceID() adapter.RuntimeResourceID
- PrepareRuntime(adapter.StartStage,*adapter.Scope) error
+	adapter.Endpoint
+	RuntimeValidate() error
+	RuntimeResourceID() adapter.RuntimeResourceID
+	PrepareRuntime(adapter.StartStage, *adapter.Scope) error
 }

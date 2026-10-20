@@ -114,10 +114,15 @@ func (a *appleAnchors) Ref() unsafe.Pointer {
 }
 
 func (s *Store) AppleAnchors() adapter.AppleAnchors {
- s.access.RLock()
- defer s.access.RUnlock()
- if s.runtime != nil { if s.latest == nil { return nil }; return s.latest.AppleAnchors() }
- if s.platform.anchors == nil {
+	s.access.RLock()
+	defer s.access.RUnlock()
+	if s.runtime != nil {
+		if s.latest == nil {
+			return nil
+		}
+		return s.latest.AppleAnchors()
+	}
+	if s.platform.anchors == nil {
 		return nil
 	}
 	return s.platform.anchors.Retain()

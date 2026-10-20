@@ -16,9 +16,9 @@ var _ Device = (*systemStackDevice)(nil)
 type systemStackDevice struct {
 	*systemDevice
 	stackDevice *stackDevice
-	closeOnce sync.Once
-	closeDone chan struct{}
-	closeErr error
+	closeOnce   sync.Once
+	closeDone   chan struct{}
+	closeErr    error
 }
 
 func newSystemStackDevice(options Options) (*systemStackDevice, error) {
@@ -34,7 +34,7 @@ func newSystemStackDevice(options Options) (*systemStackDevice, error) {
 	return &systemStackDevice{
 		systemDevice: system,
 		stackDevice:  stackDevice,
-		closeDone: make(chan struct{}),
+		closeDone:    make(chan struct{}),
 	}, nil
 }
 

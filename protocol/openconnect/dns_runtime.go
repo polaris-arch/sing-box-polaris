@@ -1,31 +1,60 @@
 package openconnect
 
 import (
- "context"
- "errors"
+	"context"
+	"errors"
 
- "github.com/sagernet/sing-box/adapter"
- "github.com/sagernet/sing-box/dns/transport/lifecycle"
+	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 )
 
-func(t *DNSTransport)StopRuntimeProducers(){
- t.producers.Seal();if t.producerCancel!=nil{t.producerCancel()}
- t.access.RLock();resolvers:=t.collectResolversLocked();t.access.RUnlock()
- for _,resolver:=range resolvers{if producer,ok:=resolver.(interface{StopRuntimeProducers()});ok{producer.StopRuntimeProducers()}}
+func (t *DNSTransport) StopRuntimeProducers() {
+	t.producers.Seal()
+	if t.producerCancel != nil {
+		t.producerCancel()
+	}
+	t.access.RLock()
+	resolvers := t.collectResolversLocked()
+	t.access.RUnlock()
+	for _, resolver := range resolvers {
+		if producer, ok := resolver.(interface{ StopRuntimeProducers() }); ok {
+			producer.StopRuntimeProducers()
+		}
+	}
 }
-func(t *DNSTransport)StopRuntimeOperations(){
- t.work.Seal();if t.operationCancel!=nil{t.operationCancel()};t.StopRuntimeProducers();t.scopes.Stop()
+
+func (t *DNSTransport) StopRuntimeOperations() {
+	t.work.Seal()
+	if t.operationCancel != nil {
+		t.operationCancel()
+	}
+	t.StopRuntimeProducers()
+	t.scopes.Stop()
 }
-func(t *DNSTransport)close()error{
- t.closeOnce.Do(func(){
-  t.StopRuntimeOperations();t.work.Wait();t.producers.Wait()
-  if t.endpointUnlink!=nil{t.endpointUnlink()}
-  t.access.Lock();t.closed=true;t.routes=nil;t.searchDomains=nil;t.serverAddresses=nil;t.defaultResolvers=nil;t.resolverScope=nil;t.access.Unlock()
-  scopeErr:=t.scopes.Close()
-  t.idleAccess.Lock();childErr:=t.idleCleanupErr;t.idleAccess.Unlock()
-  t.closeErr=lifecycle.Uncertain("endpoint DNS resolver cohorts",errors.Join(scopeErr,childErr))
- })
- return t.closeErr
+
+func (t *DNSTransport) close() error {
+	t.closeOnce.Do(func() {
+		t.StopRuntimeOperations()
+		t.work.Wait()
+		t.producers.Wait()
+		if t.endpointUnlink != nil {
+			t.endpointUnlink()
+		}
+		t.access.Lock()
+		t.closed = true
+		t.routes = nil
+		t.searchDomains = nil
+		t.serverAddresses = nil
+		t.defaultResolvers = nil
+		t.resolverScope = nil
+		t.access.Unlock()
+		scopeErr := t.scopes.Close()
+		t.idleAccess.Lock()
+		childErr := t.idleCleanupErr
+		t.idleAccess.Unlock()
+		t.closeErr = lifecycle.Uncertain("endpoint DNS resolver cohorts", errors.Join(scopeErr, childErr))
+	})
+	return t.closeErr
 }
 
 // Idle policy covers all children owned by this wrapper, including candidates

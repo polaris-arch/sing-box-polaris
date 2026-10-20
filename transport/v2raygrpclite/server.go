@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
- "github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/common/badhttp"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-box/transport/v2rayhttp"
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
@@ -29,7 +29,7 @@ import (
 var _ adapter.V2RayServerTransport = (*Server)(nil)
 
 type Server struct {
- ctx context.Context
+	ctx        context.Context
 	tlsConfig  tls.ServerConfig
 	logger     logger.ContextLogger
 	handler    adapter.V2RayServerTransportHandler
@@ -41,7 +41,7 @@ type Server struct {
 
 func NewServer(ctx context.Context, logger logger.ContextLogger, options option.V2RayGRPCOptions, tlsConfig tls.ServerConfig, handler adapter.V2RayServerTransportHandler) (*Server, error) {
 	server := &Server{
- ctx:ctx,
+		ctx:       ctx,
 		tlsConfig: tlsConfig,
 		logger:    logger,
 		handler:   handler,
@@ -56,7 +56,7 @@ func NewServer(ctx context.Context, logger logger.ContextLogger, options option.
 			return ctx
 		},
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return log.ContextWithNewID(runtimeingress.Context(ctx,c))
+			return log.ContextWithNewID(runtimeingress.Context(ctx, c))
 		},
 	}
 	//nolint:staticcheck
@@ -65,9 +65,13 @@ func NewServer(ctx context.Context, logger logger.ContextLogger, options option.
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
- owned,leave,err:=runtimeingress.Acquire(request.Context(),adapter.IsRuntimePreparation(s.ctx))
- if err!=nil{http.Error(writer,"connection retired",http.StatusServiceUnavailable);return}
- defer leave();request=request.WithContext(owned)
+	owned, leave, err := runtimeingress.Acquire(request.Context(), adapter.IsRuntimePreparation(s.ctx))
+	if err != nil {
+		http.Error(writer, "connection retired", http.StatusServiceUnavailable)
+		return
+	}
+	defer leave()
+	request = request.WithContext(owned)
 	if request.Method == "PRI" && len(request.Header) == 0 && request.URL.Path == "*" && request.Proto == "HTTP/2.0" {
 		s.h2cHandler.ServeHTTP(writer, request)
 		return

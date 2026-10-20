@@ -42,20 +42,25 @@ type FakeIPAnswerSink interface {
 	Add(FakeIPAnswerLease) error
 }
 
-type fakeIPAnswerSinkKey struct{}
-type fakeIPProtectionKey struct{}
-type fakeIPAnswerProtectionKey struct{}
+type (
+	fakeIPAnswerSinkKey       struct{}
+	fakeIPProtectionKey       struct{}
+	fakeIPAnswerProtectionKey struct{}
+)
 
 func ContextWithFakeIPAnswerSink(ctx context.Context, sink FakeIPAnswerSink) context.Context {
 	return context.WithValue(ctx, fakeIPAnswerSinkKey{}, sink)
 }
+
 func FakeIPAnswerSinkFromContext(ctx context.Context) (FakeIPAnswerSink, bool) {
 	sink, ok := ctx.Value(fakeIPAnswerSinkKey{}).(FakeIPAnswerSink)
 	return sink, ok && sink != nil
 }
+
 func ContextWithFakeIPProtection(ctx context.Context, protection FakeIPProtection) context.Context {
 	return context.WithValue(ctx, fakeIPProtectionKey{}, protection)
 }
+
 func FakeIPProtectionFromContext(ctx context.Context) (FakeIPProtection, bool) {
 	protection, ok := ctx.Value(fakeIPProtectionKey{}).(FakeIPProtection)
 	return protection, ok && protection != nil
@@ -66,6 +71,7 @@ func FakeIPProtectionFromContext(ctx context.Context) (FakeIPProtection, bool) {
 func ContextWithFakeIPAnswerProtection(ctx context.Context, protection FakeIPAnswerProtection) context.Context {
 	return context.WithValue(ctx, fakeIPAnswerProtectionKey{}, protection)
 }
+
 func FakeIPAnswerProtectionFromContext(ctx context.Context) (FakeIPAnswerProtection, bool) {
 	protection, ok := ctx.Value(fakeIPAnswerProtectionKey{}).(FakeIPAnswerProtection)
 	return protection, ok && protection != nil
@@ -77,15 +83,30 @@ func FakeIPAnswerProtectionFromContext(ctx context.Context) (FakeIPAnswerProtect
 // There is deliberately no indefinitely-pending default reservation.
 func ProtectFakeIPAnswer(ctx context.Context, response *dns.Msg) error {
 	protection, ok := FakeIPAnswerProtectionFromContext(ctx)
-	if !ok { protection, ok = FakeIPProtectionFromContext(ctx) }
-	if !ok || response == nil { return nil }
+	if !ok {
+		protection, ok = FakeIPProtectionFromContext(ctx)
+	}
+	if !ok || response == nil {
+		return nil
+	}
 	var answer FakeIPAnswerLease
 	var err error
-	if contextual, ok := protection.(FakeIPAnswerContextProtection); ok { answer, err = contextual.ProtectAnswerContext(ctx, response) } else { answer, err = protection.ProtectAnswer(response) }
-	if err != nil { return err }
-	if answer == nil { return nil }
+	if contextual, ok := protection.(FakeIPAnswerContextProtection); ok {
+		answer, err = contextual.ProtectAnswerContext(ctx, response)
+	} else {
+		answer, err = protection.ProtectAnswer(response)
+	}
+	if err != nil {
+		return err
+	}
+	if answer == nil {
+		return nil
+	}
 	if sink, ok := FakeIPAnswerSinkFromContext(ctx); ok {
-		if err := sink.Add(answer); err != nil { answer.Abort(); return err }
+		if err := sink.Add(answer); err != nil {
+			answer.Abort()
+			return err
+		}
 	} else {
 		answer.Delivered(time.Now())
 	}
@@ -97,29 +118,44 @@ var ErrFakeIPAnswerSinkClosed = errors.New("fake-IP answer egress is already com
 // FakeIPAnswerBatch is a per-core-egress sink. Terminal operations snapshot
 // under its mutex and invoke lease methods outside it. Late Add is rejected.
 type FakeIPAnswerBatch struct {
-	access sync.Mutex
-	closed bool
+	access  sync.Mutex
+	closed  bool
 	answers []FakeIPAnswerLease
 }
 
 func (b *FakeIPAnswerBatch) Add(answer FakeIPAnswerLease) error {
-	if answer == nil { return nil }
-	b.access.Lock(); defer b.access.Unlock()
-	if b.closed { return ErrFakeIPAnswerSinkClosed }
+	if answer == nil {
+		return nil
+	}
+	b.access.Lock()
+	defer b.access.Unlock()
+	if b.closed {
+		return ErrFakeIPAnswerSinkClosed
+	}
 	b.answers = append(b.answers, answer)
 	return nil
 }
+
 func (b *FakeIPAnswerBatch) take() []FakeIPAnswerLease {
-	b.access.Lock(); defer b.access.Unlock()
-	if b.closed { return nil }
+	b.access.Lock()
+	defer b.access.Unlock()
+	if b.closed {
+		return nil
+	}
 	b.closed = true
 	answers := b.answers
 	b.answers = nil
 	return answers
 }
+
 func (b *FakeIPAnswerBatch) Delivered(at time.Time) {
-	for _, answer := range b.take() { answer.Delivered(at) }
+	for _, answer := range b.take() {
+		answer.Delivered(at)
+	}
 }
+
 func (b *FakeIPAnswerBatch) Abort() {
-	for _, answer := range b.take() { answer.Abort() }
+	for _, answer := range b.take() {
+		answer.Abort()
+	}
 }

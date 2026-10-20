@@ -19,7 +19,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/endpoint"
- "github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/iponly"
 	C "github.com/sagernet/sing-box/constant"
@@ -75,29 +75,29 @@ func RegisterEndpoint(registry *endpoint.Registry) {
 }
 
 type Endpoint struct {
- runtime *runtimeEndpointState
- runtimePhysical *runtimeEndpointPhysical
+	runtime         *runtimeEndpointState
+	runtimePhysical *runtimeEndpointPhysical
 	endpoint.Adapter
-	ctx               context.Context
-	router            adapter.Router
-	logger            logger.ContextLogger
-	queryOptions      adapter.DNSQueryOptions
-	dnsRouter         adapter.DNSRouter
-	network           adapter.NetworkManager
-	platformInterface adapter.PlatformInterface
-	detour            string
-	stateStore        *guardedStateStore
-	directory         *directoryOwner
-	directoryStartMu  sync.Mutex
+	ctx                    context.Context
+	router                 adapter.Router
+	logger                 logger.ContextLogger
+	queryOptions           adapter.DNSQueryOptions
+	dnsRouter              adapter.DNSRouter
+	network                adapter.NetworkManager
+	platformInterface      adapter.PlatformInterface
+	detour                 string
+	stateStore             *guardedStateStore
+	directory              *directoryOwner
+	directoryStartMu       sync.Mutex
 	preparedDirectoryCheck func() error
-	server            *tsnet.Server
-	stack             *tun.Go
-	returnAccess      sync.Mutex
-	returnPath        tun.Return
-	wgEngine          wgengine.ExportedUserspaceEngine
-	onReconfigHook    wgengine.ReconfigListener
- reconfigAccess sync.Mutex
-	sshReconfigHook   wgengine.ReconfigListener
+	server                 *tsnet.Server
+	stack                  *tun.Go
+	returnAccess           sync.Mutex
+	returnPath             tun.Return
+	wgEngine               wgengine.ExportedUserspaceEngine
+	onReconfigHook         wgengine.ReconfigListener
+	reconfigAccess         sync.Mutex
+	sshReconfigHook        wgengine.ReconfigListener
 
 	cfg           *wgcfg.Config
 	routerCfg     *router.Config
@@ -135,11 +135,14 @@ type Endpoint struct {
 }
 
 func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.TailscaleEndpointOptions) (adapter.Endpoint, error) {
- physical,_:=ctx.Value(runtimePhysicalEndpointKey{}).(*runtimeEndpointPhysical)
- if adapter.IsRuntimePreparation(ctx)&&physical==nil{
-  endpoint:=&Endpoint{Adapter:endpoint.NewAdapter(C.TypeTailscale,tag,[]string{N.NetworkTCP,N.NetworkUDP,N.NetworkICMP},nil),ctx:ctx,router:router,logger:logger,detour:options.Detour,onDemand:options.OnDemand,systemInterface:options.SystemInterface,systemInterfaceName:options.SystemInterfaceName,systemInterfaceMTU:options.SystemInterfaceMTU}
-  if err:=endpoint.initializeRuntime(options);err!=nil{return nil,err};return endpoint,nil
- }
+	physical, _ := ctx.Value(runtimePhysicalEndpointKey{}).(*runtimeEndpointPhysical)
+	if adapter.IsRuntimePreparation(ctx) && physical == nil {
+		endpoint := &Endpoint{Adapter: endpoint.NewAdapter(C.TypeTailscale, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil), ctx: ctx, router: router, logger: logger, detour: options.Detour, onDemand: options.OnDemand, systemInterface: options.SystemInterface, systemInterfaceName: options.SystemInterfaceName, systemInterfaceMTU: options.SystemInterfaceMTU}
+		if err := endpoint.initializeRuntime(options); err != nil {
+			return nil, err
+		}
+		return endpoint, nil
+	}
 
 	stateDirectory := options.StateDirectory
 	if stateDirectory == "" {
@@ -174,18 +177,20 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.AdvertiseExitNode && options.ExitNode != "" {
 		return nil, E.New("cannot advertise an exit node and use an exit node at the same time.")
 	}
- var outboundDialer N.Dialer
- var dialerQueryOptions adapter.DNSQueryOptions
- var dnsRouter adapter.DNSRouter
- var err error
- if physical!=nil {
-  outboundDialer=&runtimeEndpointDialer{physical:physical}
- } else {
-  outboundDialer,err=dialer.NewWithOptions(dialer.Options{Context:ctx,Options:options.DialerOptions,RemoteIsDomain:true,ResolverOnDetour:true,NewDialer:true})
-  if err!=nil{return nil,err}
-  dialerQueryOptions=outboundDialer.(dialer.ResolveDialer).QueryOptions()
-  dnsRouter=service.FromContext[adapter.DNSRouter](ctx)
- }
+	var outboundDialer N.Dialer
+	var dialerQueryOptions adapter.DNSQueryOptions
+	var dnsRouter adapter.DNSRouter
+	var err error
+	if physical != nil {
+		outboundDialer = &runtimeEndpointDialer{physical: physical}
+	} else {
+		outboundDialer, err = dialer.NewWithOptions(dialer.Options{Context: ctx, Options: options.DialerOptions, RemoteIsDomain: true, ResolverOnDetour: true, NewDialer: true})
+		if err != nil {
+			return nil, err
+		}
+		dialerQueryOptions = outboundDialer.(dialer.ResolveDialer).QueryOptions()
+		dnsRouter = service.FromContext[adapter.DNSRouter](ctx)
+	}
 	taildropDirectory := options.TaildropDirectory
 	if taildropDirectory == "" {
 		taildropDirectory = "Taildrop"
@@ -196,16 +201,20 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	// Filesystem selection is atomic under the directory protocol, before any
 	// SDK store/server/taildrop handle can capture a path.
 	var initialLease *directoryLease
-	binding, err := beginPreparedDirectoryBinding(ctx,tag,stateDirectory,taildropDirectory)
-	if err != nil { return nil,err }
+	binding, err := beginPreparedDirectoryBinding(ctx, tag, stateDirectory, taildropDirectory)
+	if err != nil {
+		return nil, err
+	}
 	bindingSuccess := false
 	if binding != nil {
 		defer func() { binding.finish(bindingSuccess) }()
-		if err := binding.entry.validate(); err != nil { return nil,err }
-		stateDirectory,taildropDirectory = binding.entry.state,binding.entry.taildrop
+		if err := binding.entry.validate(); err != nil {
+			return nil, err
+		}
+		stateDirectory, taildropDirectory = binding.entry.state, binding.entry.taildrop
 	}
 	tailscaleEndpoint := &Endpoint{
- runtimePhysical:physical,
+		runtimePhysical:   physical,
 		Adapter:           endpoint.NewAdapter(C.TypeTailscale, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 		ctx:               ctx,
 		router:            router,
@@ -231,8 +240,15 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			AdvertiseTags: options.AdvertiseTags,
 			Dialer:        &endpointDialer{Dialer: outboundDialer, logger: logger},
 			LookupHook: func(ctx context.Context, host string) ([]netip.Addr, error) {
-				if physical!=nil{b,owned,release,err:=physical.bindingContext(ctx,false);if err!=nil{return nil,err};defer release();return b.dns.Lookup(owned,host,b.query)}
-    return dnsRouter.Lookup(ctx, host, dialerQueryOptions)
+				if physical != nil {
+					b, owned, release, err := physical.bindingContext(ctx, false)
+					if err != nil {
+						return nil, err
+					}
+					defer release()
+					return b.dns.Lookup(owned, host, b.query)
+				}
+				return dnsRouter.Lookup(ctx, host, dialerQueryOptions)
 			},
 			DNS: &dnsConfigurtor{},
 			HTTPClient: &http.Client{
@@ -270,11 +286,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	} else {
 		tailscaleEndpoint.directory = newDirectoryOwner(ctx, tag, stateDirectory)
 	}
- if physical!=nil{
-  physical.observe(tailscaleEndpoint,tailscaleEndpoint.directory,nil)
-  tailscaleEndpoint.server.HTTPClient=&http.Client{Transport:&runtimeHTTPDispatcher{physical:physical}}
-  tailscaleEndpoint.server.AcquireHTTPClient=physical.acquireHTTPClient
- }
+	if physical != nil {
+		physical.observe(tailscaleEndpoint, tailscaleEndpoint.directory, nil)
+		tailscaleEndpoint.server.HTTPClient = &http.Client{Transport: &runtimeHTTPDispatcher{physical: physical}}
+		tailscaleEndpoint.server.AcquireHTTPClient = physical.acquireHTTPClient
+	}
 	if mapping := adapter.TailscaleDirectoryMappingFromContext(ctx); mapping != nil && binding == nil {
 		physicalState, physicalTaildrop, allowed := mapping.Resolve(stateDirectory, taildropDirectory)
 		if !allowed {
@@ -290,8 +306,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		}
 		stateDirectory = actual
 	}
- tailscaleEndpoint.server.Dir=stateDirectory;tailscaleEndpoint.taildrop.directory=taildropDirectory
- tailscaleEndpoint.directory.mu.Lock();tailscaleEndpoint.directory.node.StateDirectory=stateDirectory;tailscaleEndpoint.directory.mu.Unlock()
+	tailscaleEndpoint.server.Dir = stateDirectory
+	tailscaleEndpoint.taildrop.directory = taildropDirectory
+	tailscaleEndpoint.directory.mu.Lock()
+	tailscaleEndpoint.directory.node.StateDirectory = stateDirectory
+	tailscaleEndpoint.directory.mu.Unlock()
 	if initialLease != nil {
 		d := tailscaleEndpoint.directory
 		d.leaseOnce.Do(func() {
@@ -306,7 +325,9 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		// capability. Preserve SSH behavior but never certify this directory.
 		tailscaleEndpoint.directory.node.Failure = "SSH filesystem capability is not retirement-scoped"
 	}
-	if err := tailscaleEndpoint.finishDirectoryConstruction(ctx,tag,stateDirectory,binding); err != nil { return nil,err }
+	if err := tailscaleEndpoint.finishDirectoryConstruction(ctx, tag, stateDirectory, binding); err != nil {
+		return nil, err
+	}
 	bindingSuccess = true
 	return tailscaleEndpoint, nil
 }
@@ -319,7 +340,9 @@ func (t *Endpoint) References() []string {
 }
 
 func (t *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if t.runtime!=nil{return t.PrepareRuntime(stage,scope)}
+	if t.runtime != nil {
+		return t.PrepareRuntime(stage, scope)
+	}
 	t.directoryStartMu.Lock()
 	defer t.directoryStartMu.Unlock()
 	// A permanently sealed Store cannot re-enter Start, including before the
@@ -333,7 +356,9 @@ func (t *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	defer release()
 	if t.preparedDirectoryCheck != nil {
-		if err := t.preparedDirectoryCheck(); err != nil { return err }
+		if err := t.preparedDirectoryCheck(); err != nil {
+			return err
+		}
 	}
 	if err := t.directory.acquire(); err != nil {
 		return err
@@ -374,8 +399,10 @@ func (t *Endpoint) start(scope *adapter.Scope) error {
 	}
 	t.server.ControlFunc = binding.control
 	t.server.ListenPacketFunc = binding.listenPacket
- t.server.InterfacesFunc = binding.interfaces
- if t.runtimePhysical!=nil{t.server.PacketListenerHook=t.runtimePhysical.packetListener}
+	t.server.InterfacesFunc = binding.interfaces
+	if t.runtimePhysical != nil {
+		t.server.PacketListenerHook = t.runtimePhysical.packetListener
+	}
 	if t.systemInterface {
 		mtu := t.systemInterfaceMTU
 		if mtu == 0 {
@@ -449,7 +476,13 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 			unregisterTaildropEndpoint(localBackend)
 			return nil
 		})
-	 if t.runtimePhysical!=nil{if err:=t.runtimePhysical.launch(t.taildrop.start);err!=nil{return err}}else{go t.taildrop.start()}
+		if t.runtimePhysical != nil {
+			if err := t.runtimePhysical.launch(t.taildrop.start); err != nil {
+				return err
+			}
+		} else {
+			go t.taildrop.start()
+		}
 	}
 	wgEngine := localBackend.ExportEngine().(wgengine.ExportedUserspaceEngine)
 	wgEngine.SetOnReconfigListener(t.onReconfig)
@@ -484,7 +517,13 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 		t.sshReconfigHook = sshServer.OnReconfig
 		t.sshServerInstance = sshServer
 	}
- if t.runtimePhysical!=nil{if err:=t.runtimePhysical.launch(func(){t.watchState(scope.Context())});err!=nil{return err}}else{go t.watchState(scope.Context())}
+	if t.runtimePhysical != nil {
+		if err := t.runtimePhysical.launch(func() { t.watchState(scope.Context()) }); err != nil {
+			return err
+		}
+	} else {
+		go t.watchState(scope.Context())
+	}
 	t.started.Store(true)
 	scope.Add(func() error {
 		t.started.Store(false)
@@ -617,7 +656,14 @@ func (t *Endpoint) applyExitNode() error {
 }
 
 func (t *Endpoint) SetTailscaleExitNode(ctx context.Context, stableID string) error {
- if t.runtime!=nil{child,ctx,leave,err:=t.runtimeOperation(ctx);if err!=nil{return err};defer leave();return child.SetTailscaleExitNode(ctx,stableID)}
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.SetTailscaleExitNode(ctx, stableID)
+	}
 
 	if !t.started.Load() {
 		return E.New("Tailscale is not ready yet")
@@ -660,7 +706,14 @@ func (t *Endpoint) SetTailscaleExitNode(ctx context.Context, stableID string) er
 }
 
 func (t *Endpoint) Logout(ctx context.Context) error {
- if t.runtime!=nil{child,ctx,leave,err:=t.runtimeOperation(ctx);if err!=nil{return err};defer leave();return child.Logout(ctx)}
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.Logout(ctx)
+	}
 
 	if !t.started.Load() {
 		return E.New("Tailscale is not ready yet")
@@ -694,7 +747,15 @@ func (t *Endpoint) Logout(ctx context.Context) error {
 }
 
 func (t *Endpoint) InterfaceUpdated(ctx context.Context) {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return };defer leave();child.InterfaceUpdated(ctx);return}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return
+		}
+		defer leave()
+		child.InterfaceUpdated(ctx)
+		return
+	}
 
 	if !t.started.Load() {
 		return
@@ -710,19 +771,27 @@ func (t *Endpoint) OnDemand() bool {
 }
 
 func (t *Endpoint) SetKeepIdleConnections(keep bool) {
- if t.runtime!=nil {
-  child,leave,err:=t.runtimeChild(true);if err!=nil{return};defer leave()
-  // Reference reconciliation must finish its native effect before observer
-  // Pause permits another logical binding to publish on this physical owner.
-  if keep {
-   if err=child.resume(child.ctx);err!=nil{child.logger.Error(E.Cause(err,"resume"))}
-  } else {
-   child.idleRequested.Store(true)
-   child.suspendAccess.Lock();child.suspendLocked();child.suspendAccess.Unlock()
-  }
-  child.waitRuntimeResumeCompletion()
-  return
- }
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return
+		}
+		defer leave()
+		// Reference reconciliation must finish its native effect before observer
+		// Pause permits another logical binding to publish on this physical owner.
+		if keep {
+			if err = child.resume(child.ctx); err != nil {
+				child.logger.Error(E.Cause(err, "resume"))
+			}
+		} else {
+			child.idleRequested.Store(true)
+			child.suspendAccess.Lock()
+			child.suspendLocked()
+			child.suspendAccess.Unlock()
+		}
+		child.waitRuntimeResumeCompletion()
+		return
+	}
 
 	t.idleRequested.Store(!keep)
 	if !keep {
@@ -737,22 +806,32 @@ func (t *Endpoint) SetKeepIdleConnections(keep bool) {
 // Even a canceled resume caller can leave awaitRunning reverting native prefs.
 // Join that actual completion without holding the state or physical owner locks.
 func (t *Endpoint) waitRuntimeResumeCompletion() {
- t.suspendAccess.Lock();done:=t.resumeDone;t.suspendAccess.Unlock()
- if done!=nil{<-done}
+	t.suspendAccess.Lock()
+	done := t.resumeDone
+	t.suspendAccess.Unlock()
+	if done != nil {
+		<-done
+	}
 }
 
 func (t *Endpoint) requestResume() {
 	if !t.suspended.Load() || !t.resumePending.CompareAndSwap(false, true) {
 		return
 	}
-	worker:=func() {
+	worker := func() {
 		defer t.resumePending.Store(false)
 		err := t.resume(t.ctx)
 		if err != nil {
 			t.logger.Error(E.Cause(err, "resume"))
 		}
 	}
- if t.runtimePhysical!=nil{if err:=t.runtimePhysical.launch(worker);err!=nil{t.resumePending.Store(false)}}else{go worker()}
+	if t.runtimePhysical != nil {
+		if err := t.runtimePhysical.launch(worker); err != nil {
+			t.resumePending.Store(false)
+		}
+	} else {
+		go worker()
+	}
 }
 
 func (t *Endpoint) suspendIfRequested() {
@@ -812,9 +891,16 @@ func (t *Endpoint) resume(ctx context.Context) error {
 		}
 		resumeDone = make(chan struct{})
 		t.resumeDone = resumeDone
-  if t.runtimePhysical!=nil{
-   if err:=t.runtimePhysical.launch(func(){t.awaitRunning(localBackend,resumeDone)});err!=nil{t.resumeDone=nil;close(resumeDone);t.suspendAccess.Unlock();return err}
-  }else{go t.awaitRunning(localBackend,resumeDone)}
+		if t.runtimePhysical != nil {
+			if err := t.runtimePhysical.launch(func() { t.awaitRunning(localBackend, resumeDone) }); err != nil {
+				t.resumeDone = nil
+				close(resumeDone)
+				t.suspendAccess.Unlock()
+				return err
+			}
+		} else {
+			go t.awaitRunning(localBackend, resumeDone)
+		}
 	}
 	t.suspendAccess.Unlock()
 	select {
@@ -862,7 +948,16 @@ func (t *Endpoint) awaitRunning(localBackend *ipnlocal.LocalBackend, resumeDone 
 }
 
 func (t *Endpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
- if t.runtime!=nil{return outbound.DialRuntimeConn(ctx,t.runtime.source,func(ctx context.Context)(net.Conn,error){child,owned,leave,err:=t.runtimeBoundChild(ctx);if err!=nil{return nil,err};defer leave();return child.DialContext(owned,network,destination)})}
+	if t.runtime != nil {
+		return outbound.DialRuntimeConn(ctx, t.runtime.source, func(ctx context.Context) (net.Conn, error) {
+			child, owned, leave, err := t.runtimeBoundChild(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer leave()
+			return child.DialContext(owned, network, destination)
+		})
+	}
 
 	switch network {
 	case N.NetworkTCP:
@@ -940,7 +1035,20 @@ func (t *Endpoint) listenPacketWithAddress(ctx context.Context, destination M.So
 }
 
 func (t *Endpoint) ListenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
- if t.runtime!=nil{var address netip.Addr;packet,err:=outbound.ListenRuntimePacket(ctx,t.runtime.source,func(ctx context.Context)(net.PacketConn,error){child,owned,leave,err:=t.runtimeBoundChild(ctx);if err!=nil{return nil,err};defer leave();var packet net.PacketConn;packet,address,err=child.ListenPacketWithDestination(owned,destination);return packet,err});return packet,address,err}
+	if t.runtime != nil {
+		var address netip.Addr
+		packet, err := outbound.ListenRuntimePacket(ctx, t.runtime.source, func(ctx context.Context) (net.PacketConn, error) {
+			child, owned, leave, err := t.runtimeBoundChild(ctx)
+			if err != nil {
+				return nil, err
+			}
+			defer leave()
+			var packet net.PacketConn
+			packet, address, err = child.ListenPacketWithDestination(owned, destination)
+			return packet, err
+		})
+		return packet, address, err
+	}
 
 	t.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	if destination.IsDomain() {
@@ -980,8 +1088,19 @@ func (t *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 }
 
 func (t *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- routeRouter:=t.router;inboundTag:=t.Tag()
- if t.runtimePhysical!=nil{b,owned,release,err:=t.runtimePhysical.bindingContext(ctx,true);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer release();ctx=owned;routeRouter=b.router;inboundTag=b.logical.Tag()}
+	routeRouter := t.router
+	inboundTag := t.Tag()
+	if t.runtimePhysical != nil {
+		b, owned, release, err := t.runtimePhysical.bindingContext(ctx, true)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer release()
+		ctx = owned
+		routeRouter = b.router
+		inboundTag = b.logical.Tag()
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -1007,8 +1126,19 @@ func (t *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.
 }
 
 func (t *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- routeRouter:=t.router;inboundTag:=t.Tag()
- if t.runtimePhysical!=nil{b,owned,release,err:=t.runtimePhysical.bindingContext(ctx,true);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer release();ctx=owned;routeRouter=b.router;inboundTag=b.logical.Tag()}
+	routeRouter := t.router
+	inboundTag := t.Tag()
+	if t.runtimePhysical != nil {
+		b, owned, release, err := t.runtimePhysical.bindingContext(ctx, true)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer release()
+		ctx = owned
+		routeRouter = b.router
+		inboundTag = b.logical.Tag()
+	}
 
 	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
@@ -1039,7 +1169,14 @@ func (t *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn,
 }
 
 func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain string) bool {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return false};defer leave();return child.PreferredDomain(metadata,domain)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return false
+		}
+		defer leave()
+		return child.PreferredDomain(metadata, domain)
+	}
 
 	routeDomains := t.routeDomains.Load()
 	if routeDomains == nil {
@@ -1064,7 +1201,14 @@ func (t *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 }
 
 func (t *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
- if t.runtime!=nil{child,leave,err:=t.runtimeChild(true);if err!=nil{return false};defer leave();return child.PreferredAddress(metadata,address)}
+	if t.runtime != nil {
+		child, leave, err := t.runtimeChild(true)
+		if err != nil {
+			return false
+		}
+		defer leave()
+		return child.PreferredAddress(metadata, address)
+	}
 
 	if !t.started.Load() {
 		return false
@@ -1074,8 +1218,15 @@ func (t *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address ne
 }
 
 func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCfg *tsDNS.Config) {
- t.reconfigAccess.Lock();defer t.reconfigAccess.Unlock()
- if t.runtimePhysical!=nil{leave,err:=t.runtimePhysical.callbacks.Acquire();if err!=nil{return};defer leave()}
+	t.reconfigAccess.Lock()
+	defer t.reconfigAccess.Unlock()
+	if t.runtimePhysical != nil {
+		leave, err := t.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	if cfg == nil || dnsCfg == nil {
 		return
 	}
@@ -1088,7 +1239,9 @@ func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCf
 	if t.cfg != nil && reflect.DeepEqual(t.cfg, cfg) &&
 		t.routerCfg != nil && reflect.DeepEqual(t.routerCfg, routerCfg) &&
 		t.dnsCfg != nil && reflect.DeepEqual(t.dnsCfg, dnsCfg) {
-  if t.runtimePhysical!=nil{t.runtimePhysical.reconfigured(t,cfg,routerCfg,dnsCfg)}
+		if t.runtimePhysical != nil {
+			t.runtimePhysical.reconfigured(t, cfg, routerCfg, dnsCfg)
+		}
 		return
 	}
 	t.cfg = cfg
@@ -1113,7 +1266,9 @@ func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCf
 	if t.onReconfigHook != nil {
 		t.onReconfigHook(cfg, routerCfg, dnsCfg)
 	}
- if t.runtimePhysical!=nil{t.runtimePhysical.reconfigured(t,cfg,routerCfg,dnsCfg)}
+	if t.runtimePhysical != nil {
+		t.runtimePhysical.reconfigured(t, cfg, routerCfg, dnsCfg)
+	}
 }
 
 type endpointDialer struct {
@@ -1160,8 +1315,18 @@ func (c *dnsConfigurtor) Close() error {
 type peerDNSQueryHandler Endpoint
 
 func (t *peerDNSQueryHandler) HandlePeerDNSQuery(ctx context.Context, query []byte, sourceAddress netip.AddrPort, allowName func(name string) bool) ([]byte, error) {
- dnsRouter:=t.dnsRouter;inboundTag:=t.Tag()
- if t.runtimePhysical!=nil{b,owned,leave,err:=t.runtimePhysical.bindingContext(ctx,true);if err!=nil{return nil,err};defer leave();ctx=owned;dnsRouter=b.dns;inboundTag=b.logical.Tag()}
+	dnsRouter := t.dnsRouter
+	inboundTag := t.Tag()
+	if t.runtimePhysical != nil {
+		b, owned, leave, err := t.runtimePhysical.bindingContext(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		ctx = owned
+		dnsRouter = b.dns
+		inboundTag = b.logical.Tag()
+	}
 
 	var message mDNS.Msg
 	err := message.Unpack(query)

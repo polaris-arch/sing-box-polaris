@@ -39,7 +39,7 @@ var (
 
 type Router struct {
 	ctx                   context.Context
-	runtimeResource adapter.RuntimeResourceSource
+	runtimeResource       adapter.RuntimeResourceSource
 	logger                logger.ContextLogger
 	transport             adapter.DNSTransportManager
 	outbound              adapter.OutboundManager
@@ -64,7 +64,7 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 func newRouter(ctx context.Context, logFactory log.Factory, options option.DNSOptions, explicitDependencies *RouterClientDependencies) (*Router, error) {
 	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	router := &Router{
-		runtimeResource: runtimeResource,
+		runtimeResource:       runtimeResource,
 		ctx:                   ctx,
 		logger:                logFactory.NewLogger("dns"),
 		transport:             service.FromContext[adapter.DNSTransportManager](ctx),
@@ -75,7 +75,7 @@ func newRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 		defaultDomainStrategy: C.DomainStrategy(options.Strategy),
 	}
 	encodedPolicyConfig, err := json.Marshal(struct {
-		Servers []option.DNSServerOptions
+		Servers               []option.DNSServerOptions
 		DefaultDomainStrategy C.DomainStrategy
 	}{options.Servers, router.defaultDomainStrategy})
 	if err != nil {
@@ -142,9 +142,9 @@ func newRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 		OptimisticTimeout: optimisticTimeout,
 		CacheCapacity:     options.DNSClientOptions.CacheCapacity,
 		ClientSubnet:      options.DNSClientOptions.ClientSubnet.Build(netip.Prefix{}),
-		RDRC: rdrcProvider,
-		DNSCache: dnsCacheProvider,
-		Logger: router.logger,
+		RDRC:              rdrcProvider,
+		DNSCache:          dnsCacheProvider,
+		Logger:            router.logger,
 	})
 	if options.ReverseMapping {
 		router.dnsReverseMapping = common.Must1(freelru.New[netip.Addr, string](1024, maphash.NewHasher[netip.Addr]().Hash32, true))
@@ -1279,9 +1279,11 @@ func (r *Router) exchangeLegacy(ctx context.Context, exchangeCtx *dnsExchangeCon
 }
 
 func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions) (*mDNS.Msg, error) {
- ctx=context.WithValue(ctx,fakeIPRouterAdmissionKey{},true)
+	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
 	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	defer releaseRuntime()
 	if options.Policy != "" {
 		return r.exchangePolicy(ctx, message, options)
@@ -1292,7 +1294,7 @@ func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapte
 	}
 	ctx = exchangeCtx.ctx
 	var (
-		response *mDNS.Msg
+		response  *mDNS.Msg
 		transport adapter.DNSTransport
 	)
 	if options.Transport != nil {
@@ -1307,18 +1309,28 @@ func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapte
 	if err != nil {
 		return nil, err
 	}
-	if transport != nil && transport.Type()==C.DNSTypeFakeIP { if err:=protectFinalFakeIPAnswer(r.ctx,ctx,transport,response);err!=nil{return nil,err} }
+	if transport != nil && transport.Type() == C.DNSTypeFakeIP {
+		if err := protectFinalFakeIPAnswer(r.ctx, ctx, transport, response); err != nil {
+			return nil, err
+		}
+	}
 	r.recordReverseMapping(message, response, transport)
 	return response, nil
 }
 
 func (r *Router) ExchangeAsync(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions, callback func(response *mDNS.Msg, err error)) {
- ctx=context.WithValue(ctx,fakeIPRouterAdmissionKey{},true)
+	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
 	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	defer releaseCall()
 	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
-	if runtimeErr != nil { callback(nil, runtimeErr); return }
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
 	originalCallback := callback
 	callback = func(response *mDNS.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
 
@@ -1354,14 +1366,21 @@ func (r *Router) finishExchangeAsync(ctx context.Context, message *mDNS.Msg, tra
 		callback(nil, err)
 		return
 	}
-	if transport != nil && transport.Type()==C.DNSTypeFakeIP { if protectionErr:=protectFinalFakeIPAnswer(r.ctx,ctx,transport,response);protectionErr!=nil{callback(nil,protectionErr);return} }
+	if transport != nil && transport.Type() == C.DNSTypeFakeIP {
+		if protectionErr := protectFinalFakeIPAnswer(r.ctx, ctx, transport, response); protectionErr != nil {
+			callback(nil, protectionErr)
+			return
+		}
+	}
 	r.recordReverseMapping(message, response, transport)
 	callback(response, nil)
 }
 
 func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQueryOptions) ([]netip.Addr, error) {
 	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	defer releaseRuntime()
 	if options.Policy != "" {
 		return r.lookupPolicy(ctx, domain, options)
@@ -1910,9 +1929,14 @@ func dnsRuleRace(rule option.DNSRule) bool {
 // StopRuntimeProducers seals refresh roots without joining from a callback.
 // Foreign-lineage calls are covered by the receiving resource, not this Wait.
 func (r *Router) StopRuntimeProducers() {
-	if client, ok := r.client.(*Client); ok { client.stopBackgroundRefreshes() }
+	if client, ok := r.client.(*Client); ok {
+		client.stopBackgroundRefreshes()
+	}
 }
+
 func (r *Router) WaitRuntimeProducers(ctx context.Context) error {
-	if client, ok := r.client.(*Client); ok { return client.waitBackgroundRefreshes(ctx) }
+	if client, ok := r.client.(*Client); ok {
+		return client.waitBackgroundRefreshes(ctx)
+	}
 	return nil
 }

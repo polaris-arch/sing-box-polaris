@@ -46,9 +46,14 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 	if options.OverrideAddress != "" && options.OverridePort != 0 {
 		inbound.overrideOption = 1
 		inbound.overrideDestination = M.ParseSocksaddrHostPort(options.OverrideAddress, options.OverridePort)
@@ -78,7 +83,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (i *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if i.runtime != nil { return i.PrepareRuntime(stage, scope) }
+	if i.runtime != nil {
+		return i.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -91,7 +98,13 @@ func (i *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (i *Inbound) InterfaceUpdated(ctx context.Context) {
-	if i.runtime != nil { leave, err := i.runtime.callbacks.Acquire(); if err != nil { return }; defer leave() }
+	if i.runtime != nil {
+		leave, err := i.runtime.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	i.udpNat.Purge()
 }
 
@@ -105,7 +118,10 @@ func (i *Inbound) NewPacketBatch(buffers []*buf.Buffer, sources []M.Socksaddr) {
 
 func (i *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := i.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	metadata.Inbound = i.Tag()
 	metadata.InboundType = i.Type()
@@ -130,10 +146,18 @@ func (i *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 		defer prepared.releaseInvocation()
 		conn = prepared.wrap(conn)
 		originalClose := onClose
-		onClose = N.OnceClose(func(err error) { _ = conn.Close(); if originalClose != nil { originalClose(err) } })
+		onClose = N.OnceClose(func(err error) {
+			_ = conn.Close()
+			if originalClose != nil {
+				originalClose(err)
+			}
+		})
 	}
 	ctx, release, err := i.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	i.logger.InfoContext(ctx, "inbound packet connection from ", source)
 	var metadata adapter.InboundContext
@@ -162,7 +186,9 @@ func (i *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 }
 
 func (i *Inbound) preparePacketConnection(source M.Socksaddr, destination M.Socksaddr, userData any) (bool, context.Context, N.PacketWriter, N.CloseHandlerFunc) {
-	if i.runtime != nil { return i.prepareRuntimePacketConnection(source, userData) }
+	if i.runtime != nil {
+		return i.prepareRuntimePacketConnection(source, userData)
+	}
 	return true, log.ContextWithNewID(i.ctx), &directPacketWriter{i.listener.PacketWriter(), source}, nil
 }
 

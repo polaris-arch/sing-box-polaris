@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
-	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/common/dialer"
+	C "github.com/sagernet/sing-box/constant"
 	D "github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,11 +55,15 @@ type optionsTestOwner struct {
 	adapter.NetworkManager
 	starts, initializes int
 }
-func (o *optionsTestOwner) Start(adapter.StartStage, *adapter.Scope) error { o.starts++; return nil }
-func (o *optionsTestOwner) Initialize([]adapter.RuleSet) { o.initializes++ }
-func (*optionsTestOwner) NetworkEnvironment() uint64 { return 37 }
 
-type optionsTestDNS struct { adapter.DNSRouter; adapter.DNSRuleSetUpdateValidator }
+func (o *optionsTestOwner) Start(adapter.StartStage, *adapter.Scope) error { o.starts++; return nil }
+func (o *optionsTestOwner) Initialize([]adapter.RuleSet)                   { o.initializes++ }
+func (*optionsTestOwner) NetworkEnvironment() uint64                       { return 37 }
+
+type optionsTestDNS struct {
+	adapter.DNSRouter
+	adapter.DNSRuleSetUpdateValidator
+}
 
 func TestNetworkOptionsViewCopiesAndBorrows(t *testing.T) {
 	owner := &optionsTestOwner{}
@@ -67,13 +72,16 @@ func TestNetworkOptionsViewCopiesAndBorrows(t *testing.T) {
 	defaults := adapter.NetworkOptions{NetworkStrategy: &strategy, NetworkType: []C.InterfaceType{0}, FallbackNetworkType: []C.InterfaceType{1}, DomainResolveOptions: adapter.DNSQueryOptions{RewriteTTL: &ttl}}
 	view, err := NewNetworkOptionsView(owner, defaults)
 	require.NoError(t, err)
-	strategy = C.NetworkStrategy(1); ttl = 99
+	strategy = C.NetworkStrategy(1)
+	ttl = 99
 	defaults.NetworkType[0] = 2
 	first := view.DefaultOptions()
 	require.Equal(t, C.NetworkStrategy(0), *first.NetworkStrategy)
 	require.Equal(t, uint32(5), *first.DomainResolveOptions.RewriteTTL)
-	*first.NetworkStrategy = 3; *first.DomainResolveOptions.RewriteTTL = 77
-	first.NetworkType[0] = 4; first.FallbackNetworkType[0] = 4
+	*first.NetworkStrategy = 3
+	*first.DomainResolveOptions.RewriteTTL = 77
+	first.NetworkType[0] = 4
+	first.FallbackNetworkType[0] = 4
 	second := view.DefaultOptions()
 	require.Equal(t, C.NetworkStrategy(0), *second.NetworkStrategy)
 	require.Equal(t, uint32(5), *second.DomainResolveOptions.RewriteTTL)
@@ -129,7 +137,8 @@ func TestNetworkOptionsContextIsolationAndValidatorRebinding(t *testing.T) {
 
 func (*optionsTestDNS) HasResolverPolicy(policy string) bool { return policy == "candidate-only" }
 
-type optionsFakeIPOwner struct { adapter.CacheFile }
+type optionsFakeIPOwner struct{ adapter.CacheFile }
+
 func (*optionsFakeIPOwner) StoreFakeIP() bool { return true }
 
 func TestNetworkOptionsViewFeedsActualDialerDefaults(t *testing.T) {
@@ -147,10 +156,12 @@ func TestNetworkOptionsViewFeedsActualDialerDefaults(t *testing.T) {
 	service.MustRegister[adapter.DNSRuleSetUpdateValidator](child, candidateDNS)
 	got, err := dialer.NewDNSQueryOptions(child, nil, true)
 	require.NoError(t, err)
-	require.True(t, got.UseRules); require.Equal(t, policy, got.Policy)
+	require.True(t, got.UseRules)
+	require.Equal(t, policy, got.Policy)
 	explicit := &option.DomainResolveOptions{Mode: option.DomainResolverModeRules}
 	got, err = dialer.NewDNSQueryOptions(child, explicit, true)
-	require.NoError(t, err); require.Empty(t, got.Policy)
+	require.NoError(t, err)
+	require.Empty(t, got.Policy)
 	require.Same(t, fakeIP, service.FromContext[adapter.CacheFile](child))
 	require.Same(t, fakeIP, service.FromContext[adapter.CacheFile](parent))
 	require.True(t, service.FromContext[adapter.CacheFile](child).StoreFakeIP())
@@ -160,7 +171,9 @@ func TestNetworkOptionsStrategyOwnershipAndValidation(t *testing.T) {
 	strategy := option.NetworkStrategy(0)
 	_, err := BuildNetworkOptions(option.RouteOptions{DefaultNetworkStrategy: &strategy})
 	require.ErrorContains(t, err, "auto_detect_interface")
-	if !(C.IsLinux || C.IsDarwin || C.IsWindows) { return }
+	if !(C.IsLinux || C.IsDarwin || C.IsWindows) {
+		return
+	}
 	options := option.RouteOptions{AutoDetectInterface: true, DefaultNetworkStrategy: &strategy}
 	got, err := BuildNetworkOptions(options)
 	require.NoError(t, err)
@@ -170,26 +183,38 @@ func TestNetworkOptionsStrategyOwnershipAndValidation(t *testing.T) {
 	_, err = BuildNetworkOptions(options)
 	require.ErrorContains(t, err, "conflict with `default_interface`")
 	manager := &NetworkManager{defaultOptions: got}
-	borrowed := manager.DefaultOptions(); *borrowed.NetworkStrategy = 2
+	borrowed := manager.DefaultOptions()
+	*borrowed.NetworkStrategy = 2
 	require.Equal(t, C.NetworkStrategy(0), *manager.DefaultOptions().NetworkStrategy)
 }
 
-type optionsNamedTransport struct { adapter.DNSTransport; tag string }
+type optionsNamedTransport struct {
+	adapter.DNSTransport
+	tag string
+}
+
 func (t *optionsNamedTransport) Tag() string { return t.tag }
-type optionsTransportManager struct { adapter.DNSTransportManager; transport adapter.DNSTransport }
-func (m *optionsTransportManager) Transport(tag string) (adapter.DNSTransport, bool) { return m.transport, tag == "resolver" }
+
+type optionsTransportManager struct {
+	adapter.DNSTransportManager
+	transport adapter.DNSTransport
+}
+
+func (m *optionsTransportManager) Transport(tag string) (adapter.DNSTransport, bool) {
+	return m.transport, tag == "resolver"
+}
 
 func TestNetworkOptionsActualDNSRouterContexts(t *testing.T) {
 	parent := service.ContextWithDefaultRegistry(context.Background())
 	owner := &optionsTestOwner{}
 	contexts := make([]context.Context, 2)
-	transports := []*optionsNamedTransport{{tag:"old-transport"},{tag:"new-transport"}}
+	transports := []*optionsNamedTransport{{tag: "old-transport"}, {tag: "new-transport"}}
 	for i, policy := range []string{"old-only", "new-only"} {
 		var options option.RouteOptions
 		require.NoError(t, json.Unmarshal([]byte(`{"default_domain_resolver":{"mode":"rules","policy":"`+policy+`","timeout":"2s","strategy":"prefer_ipv6","disable_cache":true,"disable_optimistic_cache":true,"rewrite_ttl":7,"client_subnet":"192.0.2.0/24"}}`), &options))
 		ctx, err := ContextWithNetworkOptions(parent, owner, options)
 		require.NoError(t, err)
-		service.MustRegister[adapter.DNSTransportManager](ctx, &optionsTransportManager{transport:transports[i]})
+		service.MustRegister[adapter.DNSTransportManager](ctx, &optionsTransportManager{transport: transports[i]})
 		router, err := D.NewRouterWithClientDependencies(ctx, log.NewNOPFactory(), option.DNSOptions{}, D.RouterClientDependencies{})
 		require.NoError(t, err)
 		service.MustRegister[adapter.DNSRouter](ctx, router)
@@ -197,17 +222,19 @@ func TestNetworkOptionsActualDNSRouterContexts(t *testing.T) {
 		_, err = dialer.NewDNSQueryOptions(ctx, nil, true)
 		require.ErrorContains(t, err, "unknown DNS resolver policy")
 		failure := option.DNSRCode(2)
-		rules := []option.DNSRule{{Type:C.RuleTypeDefault, DefaultOptions:option.DefaultDNSRule{
-			RawDefaultDNSRule:option.RawDefaultDNSRule{ResolverPolicy:&policy},
-			DNSRuleAction:option.DNSRuleAction{Action:C.RuleActionTypeRespond, RespondOptions:option.DNSRespondActionOptions{Mode:"fallback", FallbackRcode:&failure}},
+		rules := []option.DNSRule{{Type: C.RuleTypeDefault, DefaultOptions: option.DefaultDNSRule{
+			RawDefaultDNSRule: option.RawDefaultDNSRule{ResolverPolicy: &policy},
+			DNSRuleAction:     option.DNSRuleAction{Action: C.RuleActionTypeRespond, RespondOptions: option.DNSRespondActionOptions{Mode: "fallback", FallbackRcode: &failure}},
 		}}}
 		require.NoError(t, router.Initialize(rules))
 		got, err := dialer.NewDNSQueryOptions(ctx, nil, true)
 		require.NoError(t, err)
-		require.True(t, got.UseRules); require.Equal(t, policy, got.Policy)
+		require.True(t, got.UseRules)
+		require.Equal(t, policy, got.Policy)
 		require.Equal(t, 2*time.Second, got.Timeout)
 		require.Equal(t, C.DomainStrategyPreferIPv6, got.Strategy)
-		require.True(t, got.DisableCache); require.True(t, got.DisableOptimisticCache)
+		require.True(t, got.DisableCache)
+		require.True(t, got.DisableOptimisticCache)
 		require.Equal(t, uint32(7), *got.RewriteTTL)
 		require.Equal(t, "192.0.2.0/24", got.ClientSubnet.String())
 		require.Nil(t, got.Transport)
@@ -228,7 +255,7 @@ func TestNetworkOptionsActualDNSRouterContexts(t *testing.T) {
 	}
 	for i, ctx := range contexts {
 		other := []string{"new-only", "old-only"}[i]
-		_, err := dialer.NewDNSQueryOptions(ctx, &option.DomainResolveOptions{Mode:option.DomainResolverModeRules, Policy:&other}, true)
+		_, err := dialer.NewDNSQueryOptions(ctx, &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &other}, true)
 		require.ErrorContains(t, err, "unknown DNS resolver policy")
 		own, err := dialer.NewDNSQueryOptions(ctx, nil, true)
 		require.NoError(t, err)

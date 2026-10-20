@@ -87,9 +87,13 @@ func (s *URLTest) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		s.group = group
 		if adapter.IsRuntimePreparation(s.ctx) {
 			scope.Add(func() error { err := group.Close(); <-group.Done(); return err })
-		} else { scope.Add(group.Close) }
+		} else {
+			scope.Add(group.Close)
+		}
 	case adapter.StartStateStarted:
-		if !adapter.IsRuntimePreparation(s.ctx) { s.group.PostStart() }
+		if !adapter.IsRuntimePreparation(s.ctx) {
+			s.group.PostStart()
+		}
 	}
 	return nil
 }
@@ -154,8 +158,14 @@ func (s *URLTest) PerformUpdateCheckEpoch(epoch *urltest.HistoryEpoch) {
 	s.group.performUpdateCheckEpoch(epoch)
 }
 
+func (s *URLTest) performUpdateCheckEpochContext(ctx context.Context, epoch *urltest.HistoryEpoch) {
+	s.group.performUpdateCheckEpochContext(ctx, epoch)
+}
+
 func (s *URLTest) InterfaceUpdated(_ context.Context) {
-	if s.group != nil { _, _ = s.group.requestCheck(s.group.ctx, true, false) }
+	if s.group != nil {
+		_, _ = s.group.requestCheck(s.group.ctx, true, false)
+	}
 }
 
 func (s *URLTest) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -176,7 +186,7 @@ func (s *URLTest) DialContext(ctx context.Context, network string, destination M
 		return nil, E.New("missing supported outbound")
 	}
 	epoch := s.group.history.Epoch()
- historyTag := outbound.Tag()
+	historyTag := outbound.Tag()
 	conn, err := outbound.DialContext(ctx, network, destination)
 	if err == nil {
 		return s.group.interruptGroup.NewConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
@@ -196,7 +206,7 @@ func (s *URLTest) ListenPacket(ctx context.Context, destination M.Socksaddr) (ne
 		return nil, E.New("missing supported outbound")
 	}
 	epoch := s.group.history.Epoch()
- historyTag := outbound.Tag()
+	historyTag := outbound.Tag()
 	conn, err := outbound.ListenPacket(ctx, destination)
 	if err == nil {
 		return s.group.interruptGroup.NewPacketConn(conn, interrupt.IsExternalConnectionFromContext(ctx)), nil
@@ -218,15 +228,15 @@ type URLTestGroup struct {
 	tolerance                    uint16
 	idleTimeout                  time.Duration
 	history                      *urltest.HistoryStorage
-	selection atomic.Pointer[urlTestSelection]
-	cancel context.CancelFunc
-	closed bool
-	running bool
-	pendingForce bool
-	activeCancel context.CancelFunc
-	workers sync.WaitGroup
-	done chan struct{}
-	probe func(context.Context, string, N.Dialer) (uint16, error)
+	selection                    atomic.Pointer[urlTestSelection]
+	cancel                       context.CancelFunc
+	closed                       bool
+	running                      bool
+	pendingForce                 bool
+	activeCancel                 context.CancelFunc
+	workers                      sync.WaitGroup
+	done                         chan struct{}
+	probe                        func(context.Context, string, N.Dialer) (uint16, error)
 	interruptGroup               *interrupt.Group
 	interruptExternalConnections bool
 	access                       sync.Mutex
@@ -257,9 +267,9 @@ func NewURLTestGroup(ctx context.Context, outboundManager adapter.OutboundManage
 	ctx, cancel := context.WithCancel(ctx)
 	g := &URLTestGroup{
 		ctx:                          ctx,
-		cancel: cancel,
-		done: make(chan struct{}),
-		probe: urltest.URLTest,
+		cancel:                       cancel,
+		done:                         make(chan struct{}),
+		probe:                        urltest.URLTest,
 		outbound:                     outboundManager,
 		logger:                       logger,
 		outbounds:                    outbounds,
@@ -369,8 +379,8 @@ type urlTestResult struct {
 }
 
 type urlTestBatch struct {
-	epoch *urltest.HistoryEpoch
-	owner *URLTestGroup
+	epoch    *urltest.HistoryEpoch
+	owner    *URLTestGroup
 	ctx      context.Context
 	outbound adapter.OutboundManager
 	history  *urltest.HistoryStorage
@@ -388,18 +398,20 @@ func URLTestOutbounds(ctx context.Context, outboundManager adapter.OutboundManag
 
 // URLTestOutboundsEpoch preserves an epoch admitted before asynchronous dispatch.
 func URLTestOutboundsEpoch(ctx context.Context, outboundManager adapter.OutboundManager, history *urltest.HistoryStorage, logger log.Logger, outbounds []adapter.Outbound, link string, interval time.Duration, force bool, epoch *urltest.HistoryEpoch) map[string]uint16 {
- return urlTestOutbounds(ctx, outboundManager, history, logger, outbounds, link, interval, force, epoch, nil)
+	return urlTestOutbounds(ctx, outboundManager, history, logger, outbounds, link, interval, force, epoch, nil)
 }
 
 func urlTestOutbounds(ctx context.Context, outboundManager adapter.OutboundManager, history *urltest.HistoryStorage, logger log.Logger, outbounds []adapter.Outbound, link string, interval time.Duration, force bool, epoch *urltest.HistoryEpoch, owner *URLTestGroup) map[string]uint16 {
 	ctx, cancel, err := history.ProbeContext(ctx, epoch)
-	if err != nil { return make(map[string]uint16) }
+	if err != nil {
+		return make(map[string]uint16)
+	}
 	defer cancel()
 	b, _ := batch.New(ctx, batch.WithConcurrencyNum[any](10))
 	testBatch := &urlTestBatch{
 		ctx:      ctx,
-		epoch: epoch,
-		owner: owner,
+		epoch:    epoch,
+		owner:    owner,
 		outbound: outboundManager,
 		history:  history,
 		logger:   logger,
@@ -410,15 +422,24 @@ func urlTestOutbounds(ctx context.Context, outboundManager adapter.OutboundManag
 	testBatch.test(outbounds, link, interval, force)
 	b.Wait()
 	histories, valid := history.Snapshot(epoch)
-	if !valid || ctx.Err() != nil { return make(map[string]uint16) }
+	if !valid || !urlTestCanPublish(ctx) {
+		return make(map[string]uint16)
+	}
 	for _, outboundGroup := range testBatch.groups {
 		groupHistory := histories[RealTag(outboundGroup, N.NetworkTCP)]
 		if groupHistory != nil {
 			testBatch.result[outboundGroup.Tag()] = groupHistory.Delay
 		}
 	}
-	if !history.IsCurrent(epoch) { return make(map[string]uint16) }
-	for tag := range testBatch.result { PerformRuntimeUpdateChecks(ctx, epoch, tag) }
+	if !history.IsCurrent(epoch) || !urlTestCanPublish(ctx) {
+		return make(map[string]uint16)
+	}
+	for tag := range testBatch.result {
+		PerformRuntimeUpdateChecks(ctx, epoch, tag)
+	}
+	if !urlTestCanPublish(ctx) {
+		return make(map[string]uint16)
+	}
 	return testBatch.result
 }
 
@@ -437,8 +458,10 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 				// A nested native group owns a different private history. Copy its
 				// completed epoch values into this parent's captured history; never
 				// fall back to root visible projection for native selection.
-				if histories, valid := nested.group.history.Snapshot(b.epoch); valid && b.ctx.Err() == nil {
-					for tag, history := range histories { b.storeHistory(tag, history) }
+				if histories, valid := nested.group.history.Snapshot(b.epoch); valid && urlTestCanPublish(b.ctx) {
+					for tag, history := range histories {
+						b.storeHistory(tag, history)
+					}
 				}
 				b.access.Lock()
 				maps.Copy(b.result, nestedResult)
@@ -461,15 +484,21 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 			b.batch.Go(tag, func() (any, error) {
 				testCtx, cancel := context.WithTimeout(b.ctx, C.TCPTimeout)
 				defer cancel()
- if testCtx.Err() != nil { return nil, nil }
+				if !urlTestCanPublish(testCtx) {
+					return nil, nil
+				}
 				probe := urltest.URLTest
-				if b.owner != nil { probe = b.owner.probe }
+				if b.owner != nil {
+					probe = b.owner.probe
+				}
 				delay, probeErr := probe(testCtx, link, detour)
- if testCtx.Err() != nil { probeErr = testCtx.Err() }
+				if testCtx.Err() != nil {
+					probeErr = testCtx.Err()
+				}
 				testResult := urlTestResult{delay: delay, err: probeErr}
 
 				if testResult.err != nil {
-					if b.ctx.Err() != nil {
+					if !urlTestCanPublish(b.ctx) {
 						return nil, nil
 					}
 					b.logger.Debug("outbound ", tag, " unavailable: ", testResult.err)
@@ -480,7 +509,9 @@ func (b *urlTestBatch) test(outbounds []adapter.Outbound, link string, interval 
 						Time:  time.Now(),
 						Delay: testResult.delay,
 					})
-					if !stored { return nil, nil }
+					if !stored {
+						return nil, nil
+					}
 					b.access.Lock()
 					b.result[tag] = testResult.delay
 					b.access.Unlock()
@@ -496,9 +527,16 @@ func (g *URLTestGroup) performUpdateCheck() {
 }
 
 func (g *URLTestGroup) performUpdateCheckEpoch(epoch *urltest.HistoryEpoch) {
+	g.performUpdateCheckEpochContext(g.ctx, epoch)
+}
+
+func (g *URLTestGroup) performUpdateCheckEpochContext(ctx context.Context, epoch *urltest.HistoryEpoch) {
 	g.updateAccess.Lock()
 	histories, valid := g.history.Snapshot(epoch)
-	if !valid { g.updateAccess.Unlock(); return }
+	if !valid {
+		g.updateAccess.Unlock()
+		return
+	}
 	previous := g.selected()
 	next := *previous
 	updated, selected := false, false
@@ -513,12 +551,18 @@ func (g *URLTestGroup) performUpdateCheckEpoch(epoch *urltest.HistoryEpoch) {
 		selected = true
 	}
 	g.access.Lock()
-	published := !g.closed && !g.pause.IsDevicePaused() && !g.pause.IsNetworkPaused() && g.history.PublishIfCurrent(epoch, func() { g.selection.Store(&next) })
+	published := !g.closed && !g.pause.IsDevicePaused() && !g.pause.IsNetworkPaused() && urlTestCanPublish(ctx) && g.history.PublishIfCurrent(epoch, func() { g.selection.Store(&next) })
 	g.access.Unlock()
 	g.updateAccess.Unlock()
-	if !published { return }
-	if updated { g.interruptGroup.Interrupt(g.interruptExternalConnections) }
-	if selected { g.history.NotifyUpdated() }
+	if !published {
+		return
+	}
+	if updated {
+		g.interruptGroup.Interrupt(g.interruptExternalConnections)
+	}
+	if selected {
+		g.history.NotifyUpdated()
+	}
 }
 
 func (g *URLTestGroup) deleteHistory(epoch *urltest.HistoryEpoch, tag string) bool {
@@ -528,50 +572,92 @@ func (g *URLTestGroup) deleteHistory(epoch *urltest.HistoryEpoch, tag string) bo
 }
 
 func (b *urlTestBatch) deleteHistory(tag string) bool {
-	if b.owner != nil { b.owner.access.Lock(); defer b.owner.access.Unlock(); if b.owner.closed || b.owner.pause.IsDevicePaused() || b.owner.pause.IsNetworkPaused() { return false } }
-	if b.ctx.Err() != nil { return false }
+	if b.owner != nil {
+		b.owner.access.Lock()
+		defer b.owner.access.Unlock()
+		if b.owner.closed || b.owner.pause.IsDevicePaused() || b.owner.pause.IsNetworkPaused() {
+			return false
+		}
+	}
+	if !urlTestCanPublish(b.ctx) {
+		return false
+	}
 	committed := b.history.DeleteIfCurrent(b.epoch, tag)
-	urltest.PublishRuntimeResult(b.ctx, b.epoch, tag, nil)
+	if urlTestCanPublish(b.ctx) {
+		urltest.PublishRuntimeResult(b.ctx, b.epoch, tag, nil)
+	}
 	return committed
 }
 
 func (b *urlTestBatch) storeHistory(tag string, history *adapter.URLTestHistory) bool {
-	if b.owner != nil { b.owner.access.Lock(); defer b.owner.access.Unlock(); if b.owner.closed || b.owner.pause.IsDevicePaused() || b.owner.pause.IsNetworkPaused() { return false } }
-	if b.ctx.Err() != nil { return false }
+	if b.owner != nil {
+		b.owner.access.Lock()
+		defer b.owner.access.Unlock()
+		if b.owner.closed || b.owner.pause.IsDevicePaused() || b.owner.pause.IsNetworkPaused() {
+			return false
+		}
+	}
+	if !urlTestCanPublish(b.ctx) {
+		return false
+	}
 	committed := b.history.StoreIfCurrent(b.epoch, tag, history)
-	urltest.PublishRuntimeResult(b.ctx, b.epoch, tag, history)
+	if urlTestCanPublish(b.ctx) {
+		urltest.PublishRuntimeResult(b.ctx, b.epoch, tag, history)
+	}
 	return committed
 }
 
 // RuntimeActivate is a nonblocking, idempotent producer admission. PostStart
 // already arbitrates with Close under the group's existing admission mutex.
-func (s *URLTest) RuntimeActivate() { if s.group != nil { s.group.PostStart() } }
-func (s *URLTest) RuntimeStop() { if s.group != nil { _ = s.group.Close() } }
+func (s *URLTest) RuntimeActivate() {
+	if s.group != nil {
+		s.group.PostStart()
+	}
+}
+func (s *URLTest) RuntimeStop() {
+	if s.group != nil {
+		_ = s.group.Close()
+	}
+}
 
 // PerformRuntimeUpdateChecks uses only fixed actual groups from a retained
 // graph and only consumers of the same captured target. Selection still has
 // exactly one owner: each native group's epoch/paused/closed guarded method.
 func PerformRuntimeUpdateChecks(ctx context.Context, epoch *urltest.HistoryEpoch, tag string) {
 	borrowed, ok := adapter.RuntimeLeaseFromContext(ctx)
-	if !ok || ctx.Err() != nil { return }
+	if !ok || !urlTestCanPublish(ctx) {
+		return
+	}
 	lease, err := borrowed.Fork()
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer lease.Release()
 	view, ok := lease.View().(urltest.RuntimeHistoryView)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	consumers := make(map[*urltest.HistoryStorage]bool)
-	for _, history := range view.RuntimeURLTestConsumers(tag) { consumers[history] = true }
+	for _, history := range view.RuntimeURLTestConsumers(tag) {
+		consumers[history] = true
+	}
 	for _, outbound := range lease.View().OutboundManager().Outbounds() {
 		history, _, exists := view.RuntimeURLTestHistory(outbound.Tag())
-		if !exists || !consumers[history] { continue }
-		if native, ok := outbound.(interface { PerformUpdateCheckEpoch(*urltest.HistoryEpoch) }); ok { native.PerformUpdateCheckEpoch(epoch) }
+		if !exists || !consumers[history] {
+			continue
+		}
+		if native, ok := outbound.(interface {
+			performUpdateCheckEpochContext(context.Context, *urltest.HistoryEpoch)
+		}); ok {
+			native.performUpdateCheckEpochContext(ctx, epoch)
+		}
 	}
 }
 
 // The coordinator orders these locks by group tag while holding its control
 // gate, then validates the captured winner path and publishes the new graph.
 func (s *URLTest) RuntimeLockSelection() func() {
- s.group.updateAccess.Lock()
- return s.group.updateAccess.Unlock
+	s.group.updateAccess.Lock()
+	return s.group.updateAccess.Unlock
 }
 func (s *URLTest) RuntimeSelectionSnapshot() adapter.Outbound { return s.group.selected().tcp }

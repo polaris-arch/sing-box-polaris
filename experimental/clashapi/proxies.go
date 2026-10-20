@@ -230,7 +230,9 @@ func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		ctx, cancel := context.WithTimeout(server.ctx, time.Millisecond*time.Duration(timeout))
 		stopRequest := context.AfterFunc(r.Context(), cancel)
 		defer func() { stopRequest(); cancel() }()
-		if r.Context().Err() != nil { cancel() }
+		if r.Context().Err() != nil {
+			cancel()
+		}
 		history := server.urlTestHistory
 		manager := server.outbound
 		probe, connected, admissionErr := urltest.AcquireRuntimeProbeFromContext(server.ctx, ctx, proxy.Tag())
@@ -247,7 +249,9 @@ func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		epoch := history.Epoch()
 		probeCtx, stopProbe, admissionErr := history.ProbeContext(ctx, epoch)
 		if target == nil || admissionErr != nil {
-			if stopProbe != nil { stopProbe() }
+			if stopProbe != nil {
+				stopProbe()
+			}
 			render.Status(r, http.StatusServiceUnavailable)
 			render.JSON(w, r, newError("Probe target or network is not ready"))
 			return
@@ -255,12 +259,17 @@ func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		defer stopProbe()
 		delay, err := urltest.URLTest(probeCtx, url, target)
 		committed := false
-		if probeCtx.Err() == nil {
+		// The request cancellation callback may still be waiting to run.
+		if r.Context().Err() == nil && probeCtx.Err() == nil {
 			if connected {
 				var value *adapter.URLTestHistory
-				if err == nil { value = &adapter.URLTestHistory{Time: time.Now(), Delay: delay} }
+				if err == nil {
+					value = &adapter.URLTestHistory{Time: time.Now(), Delay: delay}
+				}
 				committed = urltest.PublishRuntimeResult(probeCtx, epoch, realTag, value)
-				if committed { group.PerformRuntimeUpdateChecks(probeCtx, epoch, realTag) }
+				if committed {
+					group.PerformRuntimeUpdateChecks(probeCtx, epoch, realTag)
+				}
 			} else if err != nil {
 				committed = history.DeleteIfCurrent(epoch, realTag)
 			} else {
@@ -270,10 +279,12 @@ func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) 
 		if committed && !connected {
 			for _, detour := range manager.Outbounds() {
 				urlTestGroup, ok := detour.(adapter.URLTestGroup)
-				if ok && groupContains(manager, urlTestGroup, realTag, map[string]bool{detour.Tag(): true}) { urlTestGroup.PerformUpdateCheck() }
+				if ok && groupContains(manager, urlTestGroup, realTag, map[string]bool{detour.Tag(): true}) {
+					urlTestGroup.PerformUpdateCheck()
+				}
 			}
 		}
-		if ctx.Err() != nil {
+		if r.Context().Err() != nil || ctx.Err() != nil {
 			render.Status(r, http.StatusGatewayTimeout)
 			render.JSON(w, r, ErrRequestTimeout)
 			return

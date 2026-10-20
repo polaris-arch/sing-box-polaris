@@ -2,10 +2,10 @@ package tf
 
 import (
 	"context"
-	"github.com/sagernet/sing-box/adapter/outbound"
 	"errors"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/common/winiphlpapi"
 
 	"golang.org/x/sys/windows"

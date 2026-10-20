@@ -34,17 +34,17 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeContext context.Context
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeContext      context.Context
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	logger          logger.ContextLogger
-	dialer          N.Dialer
-	method          shadowsocks.Method
-	serverAddr      M.Socksaddr
-	plugin          sip003.Plugin
-	uotClient       *uot.Client
-	multiplexDialer *mux.Client
+	logger              logger.ContextLogger
+	dialer              N.Dialer
+	method              shadowsocks.Method
+	serverAddr          M.Socksaddr
+	plugin              sip003.Plugin
+	uotClient           *uot.Client
+	multiplexDialer     *mux.Client
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.ShadowsocksOutboundOptions) (adapter.Outbound, error) {
@@ -65,10 +65,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		method:     method,
 		serverAddr: options.ServerOptions.Build(),
 	}
-	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	if err := outbound.initRuntimeCleanup(ctx); err != nil {
+		return nil, err
+	}
 	constructed := false
 	defer func() {
-		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+		if !constructed && !outbound.constructionCleanup {
+			_ = outbound.runtimeCleanup()
+		}
 	}()
 	if options.Plugin != "" {
 		outbound.plugin, err = sip003.CreatePlugin(ctx, options.Plugin, options.PluginOptions, router, outbound.dialer, outbound.serverAddr)
@@ -89,9 +93,15 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			Version: uotOptions.Version,
 		}
 	}
-	if err := ctx.Err(); err != nil { return nil, err }
-	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
-	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return outbound, nil
 }
@@ -161,7 +171,9 @@ func (h *Outbound) MultiplexEnabled() bool {
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.Reset()
@@ -170,7 +182,9 @@ func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.SetKeepIdleConnections(keep)
@@ -179,7 +193,9 @@ func (h *Outbound) SetKeepIdleConnections(keep bool) {
 
 func (h *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	if h.multiplexDialer != nil {
 		h.multiplexDialer.CloseIdleConnections()
@@ -187,7 +203,9 @@ func (h *Outbound) CloseIdleConnections() {
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
 	return h.registerRuntimeStart(scope)
 }
 

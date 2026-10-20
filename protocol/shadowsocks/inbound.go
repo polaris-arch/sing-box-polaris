@@ -66,9 +66,14 @@ func newInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 
 	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
 	defer finishRuntimeConstruction()
-	if runtimeErr != nil { return nil, runtimeErr }
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
 	inbound.runtime = runtime
-	if runtime != nil { logger = runtime.wrapLogger(logger); inbound.logger = logger }
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
 	inbound.router = uot.NewRouter(router, logger)
 	var err error
 	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
@@ -104,7 +109,9 @@ func newInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if h.runtime != nil { return h.PrepareRuntime(stage, scope) }
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -119,7 +126,10 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 //nolint:staticcheck
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { N.CloseOnHandshakeFailure(conn, onClose, err); return }
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
 	defer release()
 	err = h.service.NewConnection(ctx, conn, adapter.UpstreamMetadata(metadata))
 	N.CloseOnHandshakeFailure(conn, onClose, err)
@@ -142,7 +152,9 @@ func (h *Inbound) NewPacket(buffer *buf.Buffer, source M.Socksaddr) {
 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext) error {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer release()
 	h.logger.InfoContext(ctx, "inbound connection to ", metadata.Destination)
 	metadata.Inbound = h.Tag()
@@ -152,7 +164,9 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 
 func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext) error {
 	ctx, release, err := h.runtime.enter(ctx)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer release()
 	ctx = log.ContextWithNewID(ctx)
 	h.logger.InfoContext(ctx, "inbound packet connection from ", metadata.Source)

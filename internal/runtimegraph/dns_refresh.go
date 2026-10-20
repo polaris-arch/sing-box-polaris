@@ -7,8 +7,8 @@ import "context"
 // The parent is an operational host context, never a preparation or wait RPC.
 type DNSRefreshOwner struct {
 	resource *resourceOwner
-	ctx context.Context
-	cancel context.CancelFunc
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func NewDNSRefreshOwner(parent context.Context) *DNSRefreshOwner {
@@ -18,11 +18,13 @@ func NewDNSRefreshOwner(parent context.Context) *DNSRefreshOwner {
 
 func (o *DNSRefreshOwner) Context() context.Context { return o.ctx }
 
-type DNSRefreshOperation struct { lease *resourceLease }
+type DNSRefreshOperation struct{ lease *resourceLease }
 
 func (o *DNSRefreshOwner) Acquire() (*DNSRefreshOperation, error) {
 	lease, err := o.resource.acquire()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return &DNSRefreshOperation{lease: lease}, nil
 }
 

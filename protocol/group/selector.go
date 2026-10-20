@@ -135,11 +135,15 @@ func (s *Selector) References() []string {
 func (s *Selector) SelectOutbound(tag string) bool {
 	if control, ok := adapter.RuntimeControlFromContext(s.ctx); ok {
 		source, present := adapter.RuntimeResourceSourceFromContext(s.ctx)
-		if !present { return false }
+		if !present {
+			return false
+		}
 		return control.SelectRuntimeOutbound(source.ID(), s.Tag(), tag)
 	}
 	_, accepted, effect := s.RuntimeSelect(tag)
-	if effect != nil { effect() }
+	if effect != nil {
+		effect()
+	}
 	return accepted
 }
 
@@ -148,17 +152,25 @@ func (s *Selector) SelectOutbound(tag string) bool {
 // persistence. Legacy callers keep identical synchronous effects above.
 func (s *Selector) RuntimeSelect(tag string) (changed bool, accepted bool, effect func()) {
 	detour, loaded := s.outbounds[tag]
-	if !loaded { return false, false, nil }
-	if s.selected.Swap(detour) == detour { return false, true, nil }
+	if !loaded {
+		return false, false, nil
+	}
+	if s.selected.Swap(detour) == detour {
+		return false, true, nil
+	}
 	return true, true, func() {
 		if s.Tag() != "" {
 			cacheFile := service.FromContext[adapter.CacheFile](s.ctx)
 			if cacheFile != nil {
-				if err := cacheFile.StoreSelected(s.Tag(), tag); err != nil { s.logger.Error("store selected: ", err) }
+				if err := cacheFile.StoreSelected(s.Tag(), tag); err != nil {
+					s.logger.Error("store selected: ", err)
+				}
 			}
 		}
 		s.interruptGroup.Interrupt(s.interruptExternalConnections)
-		if s.history != nil { s.history.NotifyUpdated() }
+		if s.history != nil {
+			s.history.NotifyUpdated()
+		}
 	}
 }
 
@@ -167,9 +179,13 @@ func (s *Selector) RuntimeSelect(tag string) (changed bool, accepted bool, effec
 func (s *Selector) RuntimeSelectInitial(tag string) bool {
 	s.runtimeAccess.Lock()
 	defer s.runtimeAccess.Unlock()
-	if !adapter.IsRuntimePreparation(s.ctx) || s.runtimeActive { return false }
+	if !adapter.IsRuntimePreparation(s.ctx) || s.runtimeActive {
+		return false
+	}
 	detour, exists := s.outbounds[tag]
-	if !exists { return false }
+	if !exists {
+		return false
+	}
 	s.selected.Store(detour)
 	return true
 }
@@ -204,5 +220,7 @@ func RealTag(detour adapter.Outbound, network string) string {
 }
 
 func (s *Selector) RuntimeActivate() {
-	s.runtimeAccess.Lock(); s.runtimeActive = true; s.runtimeAccess.Unlock()
+	s.runtimeAccess.Lock()
+	s.runtimeActive = true
+	s.runtimeAccess.Unlock()
 }

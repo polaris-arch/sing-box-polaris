@@ -100,22 +100,30 @@ func DialParallelNetwork(ctx context.Context, dialer ParallelInterfaceDialer, ne
 	}
 	launchRacer := func(ctx context.Context, primary bool) error {
 		return startRuntimeRacer(ctx, nil, func(owned context.Context) error { return startRacer(owned, primary) }, func(err error) {
-			select { case results <- dialResult{error:err,primary:primary,done:true}: case <-returned: }
+			select {
+			case results <- dialResult{error: err, primary: primary, done: true}:
+			case <-returned:
+			}
 		})
 	}
 	var primary, fallback dialResult
 	primaryCtx, primaryCancel := context.WithCancel(ctx)
 	defer primaryCancel()
-	if err := launchRacer(primaryCtx, true); err != nil { return nil,err }
+	if err := launchRacer(primaryCtx, true); err != nil {
+		return nil, err
+	}
 	fallbackTimer := time.NewTimer(fallbackDelay)
 	defer fallbackTimer.Stop()
 	for {
 		select {
-		case <-ctx.Done(): return nil,ctx.Err()
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case <-fallbackTimer.C:
 			fallbackCtx, fallbackCancel := context.WithCancel(ctx)
 			defer fallbackCancel()
-			if err := launchRacer(fallbackCtx, false); err != nil { return nil,err }
+			if err := launchRacer(fallbackCtx, false); err != nil {
+				return nil, err
+			}
 
 		case res := <-results:
 			if res.error == nil {

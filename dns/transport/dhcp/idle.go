@@ -11,7 +11,10 @@ var _ adapter.IdleConnectionKeeper = (*Transport)(nil)
 func (t *Transport) SetKeepIdleConnections(keep bool) {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	t.idleAccess.Lock()
 	defer t.idleAccess.Unlock()
 	t.idleDisabled = !keep
@@ -21,7 +24,10 @@ func (t *Transport) SetKeepIdleConnections(keep bool) {
 func (t *Transport) CloseIdleConnections() {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	t.idleAccess.Lock()
 	defer t.idleAccess.Unlock()
 	if state := t.savedState.Load(); state != nil {
@@ -43,7 +49,9 @@ func (t *Transport) storeState(state *transportState) {
 }
 
 func setStateKeepIdle(state *transportState, keep bool) {
-	if state == nil { return }
+	if state == nil {
+		return
+	}
 	for _, server := range state.serverTransports {
 		server.(adapter.IdleConnectionKeeper).SetKeepIdleConnections(keep)
 	}

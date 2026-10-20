@@ -7,8 +7,8 @@ import "context"
 type constructionValidationKey struct{}
 
 func isConstructionValidation(ctx context.Context) bool {
- validation, _ := ctx.Value(constructionValidationKey{}).(bool)
- return validation
+	validation, _ := ctx.Value(constructionValidationKey{}).(bool)
+	return validation
 }
 
 // NewForValidationWithConstructionReport constructs an instance solely for
@@ -19,8 +19,10 @@ func isConstructionValidation(ctx context.Context) bool {
 // Original constructors can acquire resources; their cleanup errors retain
 // NewWithConstructionReport semantics, without claiming exact global disposal.
 func NewForValidationWithConstructionReport(options Options) (*Box, error, ConstructionReport) {
- ctx := options.Context
- if ctx == nil { ctx = context.Background() }
- options.Context = context.WithValue(ctx, constructionValidationKey{}, true)
- return NewWithConstructionReport(options)
+	ctx := options.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	options.Context = context.WithValue(ctx, constructionValidationKey{}, true)
+	return NewWithConstructionReport(options)
 }

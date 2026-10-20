@@ -11,9 +11,15 @@ type runtimePersistenceParticipant interface {
 
 func runtimePersistCommitted(ctx context.Context, identity RuntimeIdentity, canonical []byte, persist func(RuntimeIdentity, []byte) error, migration runtimePersistenceParticipant) error {
 	if migration != nil {
-		if err := migration.WaitPersistence(ctx); err != nil { return err }
+		if err := migration.WaitPersistence(ctx); err != nil {
+			return err
+		}
 	}
-	if err := persist(identity, append([]byte(nil), canonical...)); err != nil { return err }
-	if migration != nil { return migration.AcknowledgePersistence(ctx, identity.EffectiveDigest) }
+	if err := persist(identity, append([]byte(nil), canonical...)); err != nil {
+		return err
+	}
+	if migration != nil {
+		return migration.AcknowledgePersistence(ctx, identity.EffectiveDigest)
+	}
 	return nil
 }

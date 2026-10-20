@@ -7,8 +7,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
- "slices"
 	"sync"
 
 	"github.com/sagernet/fswatch"
@@ -23,9 +23,9 @@ import (
 var _ adapter.CertificateStore = (*Store)(nil)
 
 type Store struct {
- runtime *runtimeStore
- latest *RootSnapshot
- revision uint64
+	runtime                   *runtimeStore
+	latest                    *RootSnapshot
+	revision                  uint64
 	ctx                       context.Context
 	access                    sync.RWMutex
 	storeType                 string
@@ -74,25 +74,33 @@ func NewStore(ctx context.Context, logger logger.Logger, options option.Certific
 		certificatePaths:          slices.Clone(options.CertificatePath),
 		certificateDirectoryPaths: slices.Clone(options.CertificateDirectoryPath),
 	}
- if adapter.IsRuntimePreparation(ctx) {
-  if err := store.initializeRuntime(ctx); err != nil { return nil,err }
-  logger = &runtimeStoreLogger{Logger:logger,fence:store.runtime.callbacks}
- }
- var watchPaths []string
- for _,target:=range store.certificatePaths {
-  path,err:=filepath.Abs(filemanager.BasePath(ctx,target));if err!=nil{return nil,E.Cause(err,"resolve certificate watch path")}
-  watchPaths=append(watchPaths,path)
- }
- var watchDirectories []string
- for _,target:=range store.certificateDirectoryPaths {
-  path,err:=filepath.Abs(filemanager.BasePath(ctx,target));if err!=nil{return nil,E.Cause(err,"resolve certificate directory watch path")}
-  watchDirectories=append(watchDirectories,path)
- }
- if len(watchPaths) > 0 || len(watchDirectories) > 0 {
+	if adapter.IsRuntimePreparation(ctx) {
+		if err := store.initializeRuntime(ctx); err != nil {
+			return nil, err
+		}
+		logger = &runtimeStoreLogger{Logger: logger, fence: store.runtime.callbacks}
+	}
+	var watchPaths []string
+	for _, target := range store.certificatePaths {
+		path, err := filepath.Abs(filemanager.BasePath(ctx, target))
+		if err != nil {
+			return nil, E.Cause(err, "resolve certificate watch path")
+		}
+		watchPaths = append(watchPaths, path)
+	}
+	var watchDirectories []string
+	for _, target := range store.certificateDirectoryPaths {
+		path, err := filepath.Abs(filemanager.BasePath(ctx, target))
+		if err != nil {
+			return nil, E.Cause(err, "resolve certificate directory watch path")
+		}
+		watchDirectories = append(watchDirectories, path)
+	}
+	if len(watchPaths) > 0 || len(watchDirectories) > 0 {
 		watcher, err := fswatch.NewWatcher(fswatch.Options{
-			Path:   watchPaths,
-   Directory: watchDirectories,
-			Logger: logger,
+			Path:      watchPaths,
+			Directory: watchDirectories,
+			Logger:    logger,
 			Callback: func(_ string) {
 				err := store.update()
 				if err != nil {
@@ -109,14 +117,16 @@ func NewStore(ctx context.Context, logger logger.Logger, options option.Certific
 	if err != nil {
 		return nil, E.Cause(err, "initializing certificate store")
 	}
- if store.runtime != nil {
-  snapshot,err := newRootSnapshot(store.runtime.source.ID(),1,storeType,currentPool,anchorPEM)
-  if err != nil { return nil,E.Cause(err,"initializing platform certificate snapshot") }
-  store.latest,store.revision = snapshot,1
- }
- store.currentPool = currentPool
- store.anchorPEM = anchorPEM
- return store, nil
+	if store.runtime != nil {
+		snapshot, err := newRootSnapshot(store.runtime.source.ID(), 1, storeType, currentPool, anchorPEM)
+		if err != nil {
+			return nil, E.Cause(err, "initializing platform certificate snapshot")
+		}
+		store.latest, store.revision = snapshot, 1
+	}
+	store.currentPool = currentPool
+	store.anchorPEM = anchorPEM
+	return store, nil
 }
 
 func (s *Store) Name() string {
@@ -124,7 +134,9 @@ func (s *Store) Name() string {
 }
 
 func (s *Store) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if s.runtime != nil { return s.PrepareRuntime(stage,scope) }
+	if s.runtime != nil {
+		return s.PrepareRuntime(stage, scope)
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		s.access.Lock()
@@ -149,8 +161,13 @@ func (s *Store) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 func (s *Store) Pool() *x509.CertPool {
 	s.access.RLock()
 	defer s.access.RUnlock()
- if s.runtime != nil { if s.currentPool == nil { return nil }; return s.currentPool.Clone() }
- return s.currentPool
+	if s.runtime != nil {
+		if s.currentPool == nil {
+			return nil
+		}
+		return s.currentPool.Clone()
+	}
+	return s.currentPool
 }
 
 func (s *Store) StoreKind() string {
@@ -162,17 +179,21 @@ func (s *Store) ExclusiveAnchors() bool {
 }
 
 func (s *Store) update() error {
- if s.runtime != nil { return s.reloadRuntime() }
+	if s.runtime != nil {
+		return s.reloadRuntime()
+	}
 	currentPool, anchorPEM, err := s.load()
 	if err != nil {
 		return err
 	}
 	s.access.Lock()
 	defer s.access.Unlock()
- if err := s.updatePlatformLocked(anchorPEM); err != nil { return err }
- s.currentPool = currentPool
- s.anchorPEM = anchorPEM
- return nil
+	if err := s.updatePlatformLocked(anchorPEM); err != nil {
+		return err
+	}
+	s.currentPool = currentPool
+	s.anchorPEM = anchorPEM
+	return nil
 }
 
 func (s *Store) load() (*x509.CertPool, []byte, error) { return s.loadWithContext(s.ctx) }

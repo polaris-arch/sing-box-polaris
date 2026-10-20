@@ -26,10 +26,14 @@ func ContextWithRuntimeCarrierHandoff(ctx context.Context, handoff func()) conte
 
 func RuntimeDNSCarrierContext(ctx context.Context, fallback DNSRouter) (context.Context, DNSRouter) {
 	gateway, ok := RuntimeDNSIngressFromContext(ctx)
-	if !ok { return ctx, fallback }
-	if handoff, ok := ctx.Value(runtimeCarrierHandoffKey{}).(func()); ok { handoff() }
+	if !ok {
+		return ctx, fallback
+	}
+	if handoff, ok := ctx.Value(runtimeCarrierHandoffKey{}).(func()); ok {
+		handoff()
+	}
 	ctx = ContextWithRuntimeLease(ctx, nil)
 	// Mask the hook so descendants cannot release an unrelated later admission.
-	ctx = ContextWithRuntimeCarrierHandoff(ctx, func(){})
+	ctx = ContextWithRuntimeCarrierHandoff(ctx, func() {})
 	return ctx, gateway
 }

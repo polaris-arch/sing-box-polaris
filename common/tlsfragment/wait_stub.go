@@ -4,8 +4,9 @@ package tf
 
 import (
 	"context"
-	"github.com/sagernet/sing-box/adapter/outbound"
 	"time"
+
+	"github.com/sagernet/sing-box/adapter/outbound"
 )
 
 func writeAndWaitAck(ctx context.Context, conn outbound.RuntimeTCPControlConn, payload []byte, fallbackDelay time.Duration) error {

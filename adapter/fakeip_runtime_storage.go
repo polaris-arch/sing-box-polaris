@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"time"
+
 	mDNS "github.com/miekg/dns"
 )
 
@@ -18,52 +19,52 @@ type FakeIPAnswerContextProtection interface {
 type FakeIPStorageSnapshot struct {
 	// Issued means a post-publication allocator/answer write was admitted.
 	// It does not assert that a network peer received an answer.
-	Issued bool
-	Metadata *FakeIPMetadata
-	Mappings map[netip.Addr]string
-	Answers []FakeIPRuntimeAnswer
+	Issued         bool
+	Metadata       *FakeIPMetadata
+	Mappings       map[netip.Addr]string
+	Answers        []FakeIPRuntimeAnswer
 	PendingAnswers []FakeIPRuntimeAnswer
 }
 
 type FakeIPRuntimeBackendDescriptor struct {
-	Path string
-	CacheID string
+	Path       string
+	CacheID    string
 	DatabaseID string
 }
 
 type FakeIPRuntimeNamespaceDescriptor struct {
 	Version uint8
 	// Immutable fixed-journal owner; a shared cache can contain other owners.
-	AnchorDatabaseID string
-	Backend FakeIPRuntimeBackendDescriptor
-	ID string
+	AnchorDatabaseID         string
+	Backend                  FakeIPRuntimeBackendDescriptor
+	ID                       string
 	EffectiveConfigurationID string
-	LogicalID string
-	Allocator bool
-	Generation uint64
+	LogicalID                string
+	Allocator                bool
+	Generation               uint64
 }
 
 type FakeIPRuntimeAnswer struct {
-	Token uint64
+	Token    uint64
 	Obsolete bool
 	// Superseded is an exact identity invalidation, unlike an expired copy.
 	// It wins over an equally revised stale pending copy during recovery.
 	Superseded bool
-	Address netip.Addr
-	Domain string
+	Address    netip.Addr
+	Domain     string
 	// Global address-authority order, assigned only after actual mapping
 	// arbitration. Newer different-domain certificates supersede stale copies.
-	Revision uint64
-	Pending uint64
+	Revision   uint64
+	Pending    uint64
 	PendingTTL uint32
-	ExpiresAt time.Time
+	ExpiresAt  time.Time
 }
 
 type FakeIPRuntimeLink struct {
-	ID string
+	ID                       string
 	EffectiveConfigurationID string
-	Namespaces []FakeIPRuntimeNamespaceDescriptor
-	Acknowledged bool
+	Namespaces               []FakeIPRuntimeNamespaceDescriptor
+	Acknowledged             bool
 	// DiscoveryReady certifies all participant descriptors/links were durable;
 	// it does not certify graph publication or choose the active configuration.
 	DiscoveryReady bool
@@ -71,7 +72,7 @@ type FakeIPRuntimeLink struct {
 
 type FakeIPRuntimeCatalog struct {
 	Namespaces []FakeIPRuntimeNamespaceDescriptor
-	Links []FakeIPRuntimeLink
+	Links      []FakeIPRuntimeLink
 }
 
 // A namespace handle permanently names one database identity and bucket. It
@@ -107,7 +108,10 @@ type FakeIPRuntimeNamespace interface {
 	Reclaim(context.Context) error
 }
 
-type FakeIPRuntimeCounters struct { Revision uint64; Token uint64 }
+type FakeIPRuntimeCounters struct {
+	Revision uint64
+	Token    uint64
+}
 
 type FakeIPRuntimeBackend interface {
 	// Reserve is called only on the fixed recovery anchor. Returned floors

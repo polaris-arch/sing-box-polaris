@@ -33,10 +33,10 @@ import (
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
 type ConnectionManager struct {
- closed bool // guarded by access
- tasks sync.WaitGroup
- closeOnce sync.Once
- closeErr error
+	closed      bool // guarded by access
+	tasks       sync.WaitGroup
+	closeOnce   sync.Once
+	closeErr    error
 	logger      logger.ContextLogger
 	access      sync.Mutex
 	connections list.List[io.Closer]
@@ -84,7 +84,11 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 		manager:  m,
 	}
 	m.access.Lock()
- if m.closed{m.access.Unlock();_ = closeManagedSocket(tracked);return tracked}
+	if m.closed {
+		m.access.Unlock()
+		_ = closeManagedSocket(tracked)
+		return tracked
+	}
 	tracked.element = m.connections.PushBack(tracked)
 	m.access.Unlock()
 	return tracked
@@ -97,16 +101,23 @@ func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn 
 		manager:       m,
 	}
 	m.access.Lock()
- if m.closed{m.access.Unlock();_ = closeManagedSocket(tracked);return tracked}
+	if m.closed {
+		m.access.Unlock()
+		_ = closeManagedSocket(tracked)
+		return tracked
+	}
 	tracked.element = m.connections.PushBack(tracked)
 	m.access.Unlock()
 	return tracked
 }
 
 func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
- taskDone,taskErr:=m.reserveTask()
- if taskErr!=nil{N.CloseOnHandshakeFailure(conn,onClose,taskErr);return}
- defer taskDone()
+	taskDone, taskErr := m.reserveTask()
+	if taskErr != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		return
+	}
+	defer taskDone()
 	ctx = adapter.WithContext(ctx, &metadata)
 	var (
 		remoteConn net.Conn
@@ -177,21 +188,24 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.connectionCopy(ctx, conn, remoteConn, false, &done, onClose) }); taskErr != nil {
-  _ = remoteConn.Close()
+		_ = remoteConn.Close()
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.connectionCopy(ctx, remoteConn, conn, true, &done, onClose) }); taskErr != nil {
-  _ = remoteConn.Close()
+		_ = remoteConn.Close()
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
 	}
 }
 
 func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dialer, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
- taskDone,taskErr:=m.reserveTask()
- if taskErr!=nil{N.CloseOnHandshakeFailure(conn,onClose,taskErr);return}
- defer taskDone()
+	taskDone, taskErr := m.reserveTask()
+	if taskErr != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		return
+	}
+	defer taskDone()
 	ctx = adapter.WithContext(ctx, &metadata)
 	var (
 		remotePacketConn   net.PacketConn
@@ -305,12 +319,12 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	destination := bufio.NewPacketConn(remotePacketConn)
 	var done atomic.Bool
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.packetConnectionCopy(ctx, conn, destination, false, &done, onClose) }); taskErr != nil {
-  _ = destination.Close()
+		_ = destination.Close()
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.packetConnectionCopy(ctx, destination, conn, true, &done, onClose) }); taskErr != nil {
-  _ = destination.Close()
+		_ = destination.Close()
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
 	}
@@ -501,7 +515,10 @@ func (c *trackedConn) Detach() {
 
 func (c *trackedConn) Close() error {
 	c.manager.access.Lock()
-	if c.element!=nil{c.manager.connections.Remove(c.element);c.element=nil}
+	if c.element != nil {
+		c.manager.connections.Remove(c.element)
+		c.element = nil
+	}
 	c.manager.access.Unlock()
 	if c.socketOwner.close() {
 		return nil
@@ -544,7 +561,10 @@ func (c *trackedPacketConn) Detach() {
 
 func (c *trackedPacketConn) Close() error {
 	c.manager.access.Lock()
-	if c.element!=nil{c.manager.connections.Remove(c.element);c.element=nil}
+	if c.element != nil {
+		c.manager.connections.Remove(c.element)
+		c.element = nil
+	}
 	c.manager.access.Unlock()
 	if c.socketOwner.close() {
 		return nil

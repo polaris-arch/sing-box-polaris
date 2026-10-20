@@ -40,15 +40,15 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	ctx            context.Context
-	logger         logger.ContextLogger
-	network        adapter.NetworkManager
-	dialer         dialer.ParallelInterfaceDialer
-	domainStrategy C.DomainStrategy
-	fallbackDelay  time.Duration
-	isEmpty        bool
-	myAddresses    common.TypedValue[[]netip.Prefix]
-	icmpPort       *ping.Port
+	ctx                 context.Context
+	logger              logger.ContextLogger
+	network             adapter.NetworkManager
+	dialer              dialer.ParallelInterfaceDialer
+	domainStrategy      C.DomainStrategy
+	fallbackDelay       time.Duration
+	isEmpty             bool
+	myAddresses         common.TypedValue[[]netip.Prefix]
+	icmpPort            *ping.Port
 	constructionCleanup bool
 }
 

@@ -21,7 +21,7 @@ func TestRuntimeTorOverlapDefaultAppSettings(t *testing.T) {
 func TestRuntimeTorOverlapExclusiveConfiguration(t *testing.T) {
 	cases := []struct {
 		options option.TorOutboundOptions
-		field string
+		field   string
 	}{
 		{option.TorOutboundOptions{DataDirectory: "persistent"}, "data_directory"},
 		{option.TorOutboundOptions{DataDirectory: "$TOR_STATE"}, "data_directory"},
@@ -35,7 +35,9 @@ func TestRuntimeTorOverlapExclusiveConfiguration(t *testing.T) {
 	}
 	for _, test := range cases {
 		field, reason := RuntimeOverlapProblem(test.options)
-		if field != test.field || reason == "" { t.Fatalf("got %q %q, want %q", field, reason, test.field) }
+		if field != test.field || reason == "" {
+			t.Fatalf("got %q %q, want %q", field, reason, test.field)
+		}
 	}
 }
 
@@ -43,7 +45,11 @@ func TestRuntimeTorOverlapDeterministicAndDoesNotMutate(t *testing.T) {
 	options := option.TorOutboundOptions{Options: map[string]string{"SocksPort": "9050", "ControlPort": "9051"}}
 	for i := 0; i < 10; i++ {
 		field, _ := RuntimeOverlapProblem(options)
-		if field != "torrc.ControlPort" { t.Fatal(field) }
+		if field != "torrc.ControlPort" {
+			t.Fatal(field)
+		}
 	}
-	if len(options.Options) != 2 || options.Options["SocksPort"] != "9050" { t.Fatal("classifier mutated options") }
+	if len(options.Options) != 2 || options.Options["SocksPort"] != "9050" {
+		t.Fatal("classifier mutated options")
+	}
 }

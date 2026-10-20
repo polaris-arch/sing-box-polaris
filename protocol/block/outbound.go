@@ -22,7 +22,7 @@ func RegisterOutbound(registry *outbound.Registry) {
 type Outbound struct {
 	outbound.Adapter
 	runtimeSource adapter.RuntimeResourceSource
-	logger logger.ContextLogger
+	logger        logger.ContextLogger
 }
 
 func New(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, _ option.StubOptions) (adapter.Outbound, error) {

@@ -45,7 +45,7 @@ var (
 )
 
 type Service struct {
- runtime *boxtls.RuntimeACME
+	runtime *boxtls.RuntimeACME
 	certificate.Adapter
 	ctx           context.Context
 	config        *certmagic.Config
@@ -161,8 +161,10 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 		}
 	}
 
- certmagicIssuer, err := boxtls.NewACMEIssuerWithHTTPClient(config, acmeIssuer, acmeHTTPClient)
- if err != nil { return nil, err }
+	certmagicIssuer, err := boxtls.NewACMEIssuerWithHTTPClient(config, acmeIssuer, acmeHTTPClient)
+	if err != nil {
+		return nil, err
+	}
 	config.Issuers = []certmagic.Issuer{certmagicIssuer}
 
 	var nextProtos []string
@@ -177,22 +179,28 @@ func NewCertificateProvider(ctx context.Context, logger log.ContextLogger, tag s
 		dataDirectory: dataDirectory,
 		domain:        options.Domain,
 		nextProtos:    nextProtos,
- }
- if adapter.IsRuntimePreparation(ctx) {
-  result.runtime, err = boxtls.NewRuntimeACME(ctx, logger, *config, acmeIssuer, acmeHTTPClient, options.Domain, dataDirectory, false)
-  if err != nil { return nil, err }
-  if dnsSolver != nil {
-   switch provider := dnsSolver.DNSProvider.(type) {
-   case *cloudflare.Provider: provider.HTTPClient = result.runtime.HTTPClient()
-   case *acmeDNSProvider: provider.httpClient = result.runtime.HTTPClient()
-   }
-  }
- }
- return result, nil
+	}
+	if adapter.IsRuntimePreparation(ctx) {
+		result.runtime, err = boxtls.NewRuntimeACME(ctx, logger, *config, acmeIssuer, acmeHTTPClient, options.Domain, dataDirectory, false)
+		if err != nil {
+			return nil, err
+		}
+		if dnsSolver != nil {
+			switch provider := dnsSolver.DNSProvider.(type) {
+			case *cloudflare.Provider:
+				provider.HTTPClient = result.runtime.HTTPClient()
+			case *acmeDNSProvider:
+				provider.httpClient = result.runtime.HTTPClient()
+			}
+		}
+	}
+	return result, nil
 }
 
 func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
- if s.runtime != nil { return s.PrepareRuntime(stage, scope) }
+	if s.runtime != nil {
+		return s.PrepareRuntime(stage, scope)
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		if s.dataDirectory != "" {
@@ -221,7 +229,10 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (s *Service) GetCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	if s.runtime != nil { return s.runtime.GetCertificate(hello) }; return s.config.GetCertificate(hello)
+	if s.runtime != nil {
+		return s.runtime.GetCertificate(hello)
+	}
+	return s.config.GetCertificate(hello)
 }
 
 func (s *Service) GetACMENextProtos() []string {

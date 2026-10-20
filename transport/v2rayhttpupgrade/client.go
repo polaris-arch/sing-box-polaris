@@ -10,8 +10,8 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
-	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/badhttp"
+	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/buf"
@@ -24,8 +24,8 @@ import (
 var _ adapter.V2RayClientTransport = (*Client)(nil)
 
 type Client struct {
-	boundary *httpclient.RuntimeTransportBoundary
-	source adapter.RuntimeResourceSource
+	boundary   *httpclient.RuntimeTransportBoundary
+	source     adapter.RuntimeResourceSource
 	dialer     N.Dialer
 	serverAddr M.Socksaddr
 	requestURL url.URL
@@ -65,27 +65,43 @@ func NewClient(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, opt
 	}
 	headers := make(http.Header)
 	for key, value := range options.Headers {
-		headers[key] = append([]string(nil),value...)
+		headers[key] = append([]string(nil), value...)
 	}
-	client:=&Client{
+	client := &Client{
 		dialer:     dialer,
 		serverAddr: serverAddr,
 		requestURL: requestURL,
 		headers:    headers,
 		host:       host,
 	}
-	client.source,_=adapter.RuntimeResourceSourceFromContext(ctx)
-	client.boundary=httpclient.NewRuntimeTransportBoundary(nil)
-	return client,nil
+	client.source, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	client.boundary = httpclient.NewRuntimeTransportBoundary(nil)
+	return client, nil
 }
 
-func(c *Client)DialContext(ctx context.Context)(net.Conn,error){
-	ctx,release,err:=adapter.AcquireRuntimeOperation(ctx,c.source);if err!=nil{return nil,err}
-	leave,err:=c.boundary.Acquire();if err!=nil{release();return nil,err};defer leave()
-	conn,err:=c.dialContextOwned(ctx);if err!=nil{release();return nil,err};return outbound.WrapRuntimeConn(ctx,release,conn),nil
+func (c *Client) DialContext(ctx context.Context) (net.Conn, error) {
+	ctx, release, err := adapter.AcquireRuntimeOperation(ctx, c.source)
+	if err != nil {
+		return nil, err
+	}
+	leave, err := c.boundary.Acquire()
+	if err != nil {
+		release()
+		return nil, err
+	}
+	defer leave()
+	conn, err := c.dialContextOwned(ctx)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	return outbound.WrapRuntimeConn(ctx, release, conn), nil
 }
+
 func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
-	conn, err := c.boundary.Dial(ctx,func(ctx context.Context)(net.Conn,error){return c.dialer.DialContext(ctx,N.NetworkTCP,c.serverAddr)})
+	conn, err := c.boundary.Dial(ctx, func(ctx context.Context) (net.Conn, error) {
+		return c.dialer.DialContext(ctx, N.NetworkTCP, c.serverAddr)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +144,7 @@ func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 	return conn, nil
 }
 
-func(c *Client)Close()error{return c.boundary.RuntimeCloseAndWait()}
-func(c *Client)RuntimeCloseAndWait()error{return c.Close()}
+func (c *Client) Close() error               { return c.boundary.RuntimeCloseAndWait() }
+func (c *Client) RuntimeCloseAndWait() error { return c.Close() }
 
-func(c *Client)StopRuntimeOperations(){c.boundary.StopRuntimeOperations()}
+func (c *Client) StopRuntimeOperations() { c.boundary.StopRuntimeOperations() }

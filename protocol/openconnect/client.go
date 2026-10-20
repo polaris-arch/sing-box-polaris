@@ -14,7 +14,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/endpoint"
- "github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/iponly"
 	C "github.com/sagernet/sing-box/constant"
@@ -108,10 +108,11 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	options.UDPBindPort = options.DTLSLocalPort
 	loopContext, cancelLoop := context.WithCancel(ctx)
 	openConnectEndpoint := &Endpoint{
-		endpointBase: endpointBase{Adapter:       endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
-		router:        router,
-		logger:        logger,
-  },
+		endpointBase: endpointBase{
+			Adapter: endpoint.NewAdapterWithDialerOptions(C.TypeOpenConnect, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, options.DialerOptions),
+			router:  router,
+			logger:  logger,
+		},
 		loopContext:   loopContext,
 		cancelLoop:    cancelLoop,
 		dnsRouter:     service.FromContext[adapter.DNSRouter](ctx),
@@ -119,8 +120,14 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		onDemand:      options.OnDemand,
 	}
 	openConnectEndpoint.state.Store(new(clientState))
- if err := openConnectEndpoint.initializeRuntime(ctx, options.System); err != nil { cancelLoop(); return nil, err }; logger=openConnectEndpoint.logger
- if openConnectEndpoint.runtime!=nil {openConnectEndpoint.runtime.scope.Add(func()error{cancelLoop();return nil})}
+	if err := openConnectEndpoint.initializeRuntime(ctx, options.System); err != nil {
+		cancelLoop()
+		return nil, err
+	}
+	logger = openConnectEndpoint.logger
+	if openConnectEndpoint.runtime != nil {
+		openConnectEndpoint.runtime.scope.Add(func() error { cancelLoop(); return nil })
+	}
 	success := false
 	defer func() {
 		if success {
@@ -182,7 +189,9 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 			MTU: openconnecttransport.DefaultMTU,
 		},
 	}
- if openConnectEndpoint.runtime!=nil {outboundDialer=openConnectEndpoint.runtime.wrapDialer(outboundDialer)}
+	if openConnectEndpoint.runtime != nil {
+		outboundDialer = openConnectEndpoint.runtime.wrapDialer(outboundDialer)
+	}
 	clientOptions, err := openConnectEndpoint.buildClientOptions(options, outboundDialer)
 	if err != nil {
 		return nil, err
@@ -192,7 +201,12 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	openConnectEndpoint.client = client
- if openConnectEndpoint.runtime!=nil {if err:=openConnectEndpoint.runtime.installNative(client.Close);err!=nil{return nil,err};openConnectEndpoint.runtime.scope.Add(openConnectEndpoint.closeNativeClient)}
+	if openConnectEndpoint.runtime != nil {
+		if err := openConnectEndpoint.runtime.installNative(client.Close); err != nil {
+			return nil, err
+		}
+		openConnectEndpoint.runtime.scope.Add(openConnectEndpoint.closeNativeClient)
+	}
 	success = true
 	return openConnectEndpoint, nil
 }
@@ -347,7 +361,13 @@ func (e *Endpoint) buildClientOptions(options option.OpenConnectEndpointOptions,
 }
 
 func (e *Endpoint) handleTunnelConfiguration(event openconnect.TunnelConfigurationEvent) error {
- if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{return err};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	configuration := configurationFromClientEvent(event)
 	defer e.notifyStatusUpdated()
 	e.stateAccess.Lock()
@@ -502,7 +522,13 @@ func (e *Endpoint) readLoop(ctx context.Context) {
 }
 
 func (e *Endpoint) InterfaceUpdated(ctx context.Context) {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	e.client.RestartSession()
 }
 
@@ -511,7 +537,13 @@ func (e *Endpoint) OnDemand() bool {
 }
 
 func (e *Endpoint) SetKeepIdleConnections(keep bool) {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
 	if keep {
 		e.client.Resume()
 	} else {
@@ -557,32 +589,67 @@ func (e *Endpoint) PreMatchFlow(network string, destination netip.Addr) adapter.
 }
 
 func (e *Endpoint) PortAddresses() (netip.Addr, netip.Addr) {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return netip.Addr{},netip.Addr{}};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return netip.Addr{}, netip.Addr{}
+		}
+		defer leave()
+	}
 	return e.device.PortAddresses()
 }
 
 func (e *Endpoint) PortMTU() uint32 {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return 0};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return 0
+		}
+		defer leave()
+	}
 	return e.device.PortMTU()
 }
 
 func (e *Endpoint) UpstreamPort() any {
- if e.runtime!=nil{return e}
+	if e.runtime != nil {
+		return e
+	}
 	return e.device
 }
 
 func (e *Endpoint) AttachReturn(returnPath tun.Return) error {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return err};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return e.device.AttachReturn(returnPath)
 }
 
 func (e *Endpoint) DetachReturn(returnPath tun.Return) error {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return err};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	return e.device.DetachReturn(returnPath)
 }
 
 func (e *Endpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
- if e.runtime!=nil&&!e.runtime.ingress.Load(){return tun.FlowVerdict{Action:tun.ActionDrop}};if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{return tun.FlowVerdict{Action:tun.ActionDrop}};defer leave()}
+	if e.runtime != nil && !e.runtime.ingress.Load() {
+		return tun.FlowVerdict{Action: tun.ActionDrop}
+	}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			return tun.FlowVerdict{Action: tun.ActionDrop}
+		}
+		defer leave()
+	}
 	return judgeOpenConnectFlow(e.router, e.Tag(), e.Type(), e.state.Load().localAddresses, network, source, destination, firstPacket)
 }
 
@@ -593,8 +660,24 @@ func (e *Endpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination 
 // NewDNSPacketEx forwards the borrowed packet admission synchronously.
 // HijackDNSPacket owns the fork before asynchronous DNS work is published.
 func (e *Endpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
- if e.runtime!=nil&&!e.runtime.ingress.Load(){return};if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{return};defer leave()}
- if e.runtime!=nil{owned,release,err:=adapter.AcquireRuntimeOperation(ctx,e.runtime.source);if err!=nil{return};defer release();ctx=owned}
+	if e.runtime != nil && !e.runtime.ingress.Load() {
+		return
+	}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
+	if e.runtime != nil {
+		owned, release, err := adapter.AcquireRuntimeOperation(ctx, e.runtime.source)
+		if err != nil {
+			return
+		}
+		defer release()
+		ctx = owned
+	}
 	e.newDNSPacket(log.ContextWithNewID(ctx), e, payload, source, destination, writer)
 }
 
@@ -604,7 +687,13 @@ func (e *Endpoint) ready() bool {
 }
 
 func (e *Endpoint) WritePackets(packets [][]byte) error {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return err};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return err
+		}
+		defer leave()
+	}
 	if e.onDemand {
 		e.client.Resume()
 	}
@@ -619,7 +708,14 @@ func (e *Endpoint) WritePackets(packets [][]byte) error {
 }
 
 func (e *Endpoint) writePacketBuffers(packetBuffers []*buf.Buffer) error {
- if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{buf.ReleaseMulti(packetBuffers);return err};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			buf.ReleaseMulti(packetBuffers)
+			return err
+		}
+		defer leave()
+	}
 	if e.onDemand {
 		e.client.Resume()
 	}
@@ -635,21 +731,67 @@ func (e *Endpoint) writePacketBuffers(packetBuffers []*buf.Buffer) error {
 }
 
 func (e *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- if e.runtime!=nil&&!e.runtime.ingress.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return};if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()}
- if e.runtime!=nil{var err error;ctx,conn,onClose,err=e.runtime.wrapInboundConn(ctx,conn,onClose);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}}
+	if e.runtime != nil && !e.runtime.ingress.Load() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer leave()
+	}
+	if e.runtime != nil {
+		var err error
+		ctx, conn, onClose, err = e.runtime.wrapInboundConn(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 	e.newConnection(ctx, e, e.state.Load().localAddresses, conn, source, destination, onClose)
 }
 
 func (e *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
- if e.runtime!=nil&&!e.runtime.ingress.Load(){N.CloseOnHandshakeFailure(conn,onClose,net.ErrClosed);return};if e.runtime!=nil {leave,err:=e.runtime.callbacks.Acquire();if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return};defer leave()}
- if e.runtime!=nil{var err error;ctx,conn,onClose,err=e.runtime.wrapInboundPacket(ctx,conn,onClose);if err!=nil{N.CloseOnHandshakeFailure(conn,onClose,err);return}}
+	if e.runtime != nil && !e.runtime.ingress.Load() {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
+	if e.runtime != nil {
+		leave, err := e.runtime.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+		defer leave()
+	}
+	if e.runtime != nil {
+		var err error
+		ctx, conn, onClose, err = e.runtime.wrapInboundPacket(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
 	e.newPacketConnection(ctx, e, e.state.Load().localAddresses, conn, source, destination, onClose)
 }
 
 func (e *Endpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
- if e.runtime==nil {return e.dialContext(ctx,network,destination)}
- return outbound.DialRuntimeConn(ctx,e.runtime.source,func(ctx context.Context)(net.Conn,error){leave,err:=e.runtime.acquire();if err!=nil{return nil,err};defer leave();return e.dialContext(ctx,network,destination)})
+	if e.runtime == nil {
+		return e.dialContext(ctx, network, destination)
+	}
+	return outbound.DialRuntimeConn(ctx, e.runtime.source, func(ctx context.Context) (net.Conn, error) {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		return e.dialContext(ctx, network, destination)
+	})
 }
+
 func (e *Endpoint) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	switch network {
 	case N.NetworkTCP:
@@ -675,10 +817,23 @@ func (e *Endpoint) dialContext(ctx context.Context, network string, destination 
 }
 
 func (e *Endpoint) ListenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
- if e.runtime==nil {return e.listenPacketWithDestination(ctx,destination)}
- var address netip.Addr
- packet,err:=outbound.ListenRuntimePacket(ctx,e.runtime.source,func(ctx context.Context)(net.PacketConn,error){leave,err:=e.runtime.acquire();if err!=nil{return nil,err};defer leave();var packet net.PacketConn;packet,address,err=e.listenPacketWithDestination(ctx,destination);return packet,err});return packet,address,err
+	if e.runtime == nil {
+		return e.listenPacketWithDestination(ctx, destination)
+	}
+	var address netip.Addr
+	packet, err := outbound.ListenRuntimePacket(ctx, e.runtime.source, func(ctx context.Context) (net.PacketConn, error) {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		var packet net.PacketConn
+		packet, address, err = e.listenPacketWithDestination(ctx, destination)
+		return packet, err
+	})
+	return packet, address, err
 }
+
 func (e *Endpoint) listenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
 	e.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	readyErr := e.waitReady(ctx)
@@ -718,7 +873,13 @@ func (e *Endpoint) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 }
 
 func (e *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain string) bool {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return false};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return false
+		}
+		defer leave()
+	}
 	state := e.state.Load()
 	if !state.started || !state.tunnelConfigured || !e.client.Ready() {
 		return false
@@ -728,7 +889,13 @@ func (e *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 }
 
 func (e *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
- if e.runtime!=nil {leave,err:=e.runtime.acquire();if err!=nil{return false};defer leave()}
+	if e.runtime != nil {
+		leave, err := e.runtime.acquire()
+		if err != nil {
+			return false
+		}
+		defer leave()
+	}
 	state := e.state.Load()
 	if !state.started || !state.tunnelConfigured || state.routeSet == nil || !e.client.Ready() {
 		return false

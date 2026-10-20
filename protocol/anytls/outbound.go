@@ -32,21 +32,21 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	runtimeSource adapter.RuntimeResourceSource
-	runtimeContext context.Context
-	runtimeCleanup func() error
+	runtimeSource       adapter.RuntimeResourceSource
+	runtimeContext      context.Context
+	runtimeCleanup      func() error
 	constructionCleanup bool
-	runtimeFences *outbound.RuntimeIOFenceSet
-	runtimeCallbacks *outbound.RuntimeIOFence
-	runtimeStop context.Context
-	runtimeCancel context.CancelFunc
-	dialer        tls.Dialer
-	server        M.Socksaddr
-	tlsConfig     tls.Config
-	clientOptions anytls.ClientOptions
-	client        *anytls.Client
-	uotClient     *uot.Client
-	logger        log.ContextLogger
+	runtimeFences       *outbound.RuntimeIOFenceSet
+	runtimeCallbacks    *outbound.RuntimeIOFence
+	runtimeStop         context.Context
+	runtimeCancel       context.CancelFunc
+	dialer              tls.Dialer
+	server              M.Socksaddr
+	tlsConfig           tls.Config
+	clientOptions       anytls.ClientOptions
+	client              *anytls.Client
+	uotClient           *uot.Client
+	logger              log.ContextLogger
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.AnyTLSOutboundOptions) (adapter.Outbound, error) {
@@ -55,10 +55,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		server:  options.ServerOptions.Build(),
 		logger:  logger,
 	}
-	if err := outbound.initRuntimeCleanup(ctx); err != nil { return nil, err }
+	if err := outbound.initRuntimeCleanup(ctx); err != nil {
+		return nil, err
+	}
 	constructed := false
 	defer func() {
-		if !constructed && !outbound.constructionCleanup { _ = outbound.runtimeCleanup() }
+		if !constructed && !outbound.constructionCleanup {
+			_ = outbound.runtimeCleanup()
+		}
 	}()
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
@@ -95,17 +99,27 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		Logger:                   outbound.runtimeLogger(logger),
 	}
 	outbound.client, err = anytls.NewClient(outbound.clientOptions)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	outbound.uotClient = &uot.Client{Dialer: anytlsDialer(outbound.client.DialContext), Version: uot.Version}
-	if err := ctx.Err(); err != nil { return nil, err }
-	if err := adapter.ConstructionScopeErr(ctx); err != nil { return nil, err }
-	if err := outbound.finishRuntimeConstruction(ctx); err != nil { return nil, err }
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err := outbound.finishRuntimeConstruction(ctx); err != nil {
+		return nil, err
+	}
 	constructed = true
 	return outbound, nil
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage != adapter.StartStateInitialize { return nil }
+	if stage != adapter.StartStateInitialize {
+		return nil
+	}
 	return h.registerRuntimeStart(scope)
 }
 
@@ -129,21 +143,27 @@ func (h *Outbound) MultiplexEnabled() bool {
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.Reset()
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
 	_, release, err := adapter.AcquireRuntimeOperation(context.Background(), h.runtimeSource)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	defer release()
 	h.client.CloseIdleConnections()
 }

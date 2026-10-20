@@ -9,8 +9,12 @@ import (
 )
 
 func (l *Listener) runtimeBatchSupported() bool {
-	if l.runtime == nil { return true }
- if l.runtime.control!=nil{return false}
+	if l.runtime == nil {
+		return true
+	}
+	if l.runtime.control != nil {
+		return false
+	}
 	_, ok := l.packetHandler.(RuntimePacketBatchHandler)
 	return ok
 }
@@ -25,18 +29,36 @@ func (l *Listener) writeRuntimePacket(buffer *buf.Buffer, destination M.Socksadd
 	r.mu.Lock()
 	closed := l.shutdown.Load() || !r.outputStarted || l.disablePacketOutput
 	queued := false
-	if !closed { select { case l.packetOutbound <- packet: queued = true; default: } }
+	if !closed {
+		select {
+		case l.packetOutbound <- packet:
+			queued = true
+		default:
+		}
+	}
 	r.mu.Unlock()
-	if queued { return nil }
-	buffer.Release(); N.PutPacketBuffer(packet)
-	if closed { return os.ErrClosed }
+	if queued {
+		return nil
+	}
+	buffer.Release()
+	N.PutPacketBuffer(packet)
+	if closed {
+		return os.ErrClosed
+	}
 	l.logger.Trace("dropped packet to ", destination)
 	return nil
 }
+
 func (l *Listener) writeRuntimePacketBatch(buffers []*buf.Buffer, destinations []M.Socksaddr) error {
-	if len(buffers) == 0 || len(buffers) != len(destinations) { buf.ReleaseMulti(buffers); return os.ErrInvalid }
+	if len(buffers) == 0 || len(buffers) != len(destinations) {
+		buf.ReleaseMulti(buffers)
+		return os.ErrInvalid
+	}
 	for index, buffer := range buffers {
-		if err := l.writeRuntimePacket(buffer, destinations[index]); err != nil { buf.ReleaseMulti(buffers[index+1:]); return err }
+		if err := l.writeRuntimePacket(buffer, destinations[index]); err != nil {
+			buf.ReleaseMulti(buffers[index+1:])
+			return err
+		}
 	}
 	return nil
 }

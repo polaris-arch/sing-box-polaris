@@ -18,7 +18,7 @@ type systemStackDevice struct {
 	router    *peerRouter
 	closeOnce sync.Once
 	closeDone chan struct{}
-	closeErr error
+	closeErr  error
 }
 
 func newSystemStackDevice(options DeviceOptions) (*systemStackDevice, error) {
@@ -33,7 +33,7 @@ func newSystemStackDevice(options DeviceOptions) (*systemStackDevice, error) {
 		return nil, err
 	}
 	return &systemStackDevice{
-		closeDone: make(chan struct{}),
+		closeDone:    make(chan struct{}),
 		systemDevice: system,
 		stack:        stack,
 		router:       router,

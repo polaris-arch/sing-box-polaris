@@ -35,22 +35,22 @@ var (
 )
 
 type Transport struct {
-	work lifecycle.Work
-	runtimeResource adapter.RuntimeResourceSource
-	operationCtx context.Context
-	operationCancel context.CancelFunc
-	runtimeOnce sync.Once
-	startOnce sync.Once
-	startErr error
-	closeOnce sync.Once
-	closeErr error
-	constructionOwned bool
-	serverScopes lifecycle.Scopes
-	refresh lifecycle.CoalescedRefresh
-	producers lifecycle.Work
-	producerCtx context.Context
-	producerCancel context.CancelFunc
-	producersStopped atomic.Bool
+	work               lifecycle.Work
+	runtimeResource    adapter.RuntimeResourceSource
+	operationCtx       context.Context
+	operationCancel    context.CancelFunc
+	runtimeOnce        sync.Once
+	startOnce          sync.Once
+	startErr           error
+	closeOnce          sync.Once
+	closeErr           error
+	constructionOwned  bool
+	serverScopes       lifecycle.Scopes
+	refresh            lifecycle.CoalescedRefresh
+	producers          lifecycle.Work
+	producerCtx        context.Context
+	producerCancel     context.CancelFunc
+	producersStopped   atomic.Bool
 	runtimeStateAccess sync.Mutex
 	dns.TransportAdapter
 	ctx               context.Context
@@ -93,7 +93,9 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 	}
 	t.initRuntime()
 	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -104,9 +106,17 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
 		}
 	})
-	if t.startErr != nil { return t.startErr }
-	done, ok := t.work.Reserve(); if !ok { return lifecycle.ErrStopped }; defer done()
-	if scope.Context().Err() != nil { return scope.Context().Err() }
+	if t.startErr != nil {
+		return t.startErr
+	}
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
 	t.preferredResolver.Start(stage)
 	switch stage {
 	case adapter.StartStateInitialize:
@@ -119,7 +129,9 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 					t.installResolved(resolvedResolver)
 				} else {
 					closeErr := resolvedResolver.Close()
-					if closeErr != nil { return E.Errors(err, closeErr) }
+					if closeErr != nil {
+						return E.Errors(err, closeErr)
+					}
 					t.installResolved(nil)
 					t.logger.Warn(E.Cause(err, "initialize resolved resolver"))
 				}
@@ -139,14 +151,19 @@ func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error 
 			}
 		}
 	}
-	if t.work.Sealed() { return lifecycle.ErrStopped }
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
 	return scope.Context().Err()
 }
 
 func (t *Transport) Reset() {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return }; defer done()
+	if err != nil {
+		return
+	}
+	defer done()
 	serverSet := t.serverSet.Load()
 	if serverSet != nil {
 		for _, serverTransport := range serverSet.transports {
@@ -166,14 +183,20 @@ func (t *Transport) Reset() {
 func (t *Transport) PreferredDomain(domain string) bool {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return false }; defer done()
+	if err != nil {
+		return false
+	}
+	defer done()
 	return t.preferredResolver.PreferredDomain(domain)
 }
 
 func (t *Transport) ServerAddresses() []netip.Addr {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	if t.resolved != nil {
 		return t.resolved.ServerAddresses()
 	}
@@ -185,14 +208,20 @@ func (t *Transport) ServerAddresses() []netip.Addr {
 func (t *Transport) SearchDomains() []string {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	return t.configSource.Configuration().Search
 }
 
 func (t *Transport) Environment() []string {
 	t.initRuntime()
 	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
-	if err != nil { return nil }; defer done()
+	if err != nil {
+		return nil
+	}
+	defer done()
 	if t.resolved != nil {
 		return t.resolved.Environment()
 	}
@@ -217,15 +246,25 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
 	t.initRuntime()
 	ctx, releaseCall, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }; defer releaseCall()
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	defer releaseCall()
 	ctx, releaseCallback, err := t.work.Operation(ctx, t.runtimeResource)
-	if err != nil { callback(nil, err); return }
+	if err != nil {
+		callback(nil, err)
+		return
+	}
 	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
 	originalCallback := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
-		if !called.CompareAndSwap(false, true) { return }
-		defer releaseCallback(); defer unlink()
+		if !called.CompareAndSwap(false, true) {
+			return
+		}
+		defer releaseCallback()
+		defer unlink()
 		originalCallback(response, err)
 	}
 	question := message.Question[0]
@@ -251,7 +290,10 @@ func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callba
 
 func (t *Transport) initRuntime() {
 	t.runtimeOnce.Do(func() {
-		ctx := t.ctx; if ctx == nil { ctx = context.Background() }
+		ctx := t.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		t.runtimeResource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
 		t.operationCtx, t.operationCancel = context.WithCancel(ctx)
 		t.producerCtx, t.producerCancel = context.WithCancel(t.operationCtx)
@@ -260,38 +302,59 @@ func (t *Transport) initRuntime() {
 
 func (t *Transport) StopRuntimeProducers() {
 	t.initRuntime()
-	t.producers.Seal(); t.producerCancel()
+	t.producers.Seal()
+	t.producerCancel()
 	t.producersStopped.Store(true)
 	if set := t.serverSet.Load(); set != nil {
 		for _, server := range set.transports {
-			if producer, ok := server.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+			if producer, ok := server.(interface{ StopRuntimeProducers() }); ok {
+				producer.StopRuntimeProducers()
+			}
 		}
 	}
-	t.runtimeStateAccess.Lock(); resolved := t.resolved; t.runtimeStateAccess.Unlock()
-	if producer, ok := resolved.(interface { StopRuntimeProducers() }); ok { producer.StopRuntimeProducers() }
+	t.runtimeStateAccess.Lock()
+	resolved := t.resolved
+	t.runtimeStateAccess.Unlock()
+	if producer, ok := resolved.(interface{ StopRuntimeProducers() }); ok {
+		producer.StopRuntimeProducers()
+	}
 }
+
 func (t *Transport) StopRuntimeOperations() {
 	t.initRuntime()
 	t.work.Seal()
 	t.operationCancel()
 	t.system.stop()
-	t.runtimeStateAccess.Lock(); resolved := t.resolved; t.runtimeStateAccess.Unlock()
-	if stopper, ok := resolved.(interface { StopRuntimeOperations() }); ok { stopper.StopRuntimeOperations() }
+	t.runtimeStateAccess.Lock()
+	resolved := t.resolved
+	t.runtimeStateAccess.Unlock()
+	if stopper, ok := resolved.(interface{ StopRuntimeOperations() }); ok {
+		stopper.StopRuntimeOperations()
+	}
 	t.StopRuntimeProducers()
 	// Cancellation reaches admitted raw UDP/TCP requests through their caller
 	// context. Socket cohorts are joined only after construction stacks finish.
 }
+
 func (t *Transport) close() error {
 	t.closeOnce.Do(func() {
 		t.StopRuntimeOperations()
 		t.work.Wait()
 		t.producers.Wait()
 		t.closeErr = E.Errors(t.closeErr, t.system.close())
-		if t.resolved != nil { t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("resolved resolver", t.resolved.Close())) }
-		if t.mdnsScope != nil { t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("local mDNS", t.mdnsScope.Close())) }
+		if t.resolved != nil {
+			t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("resolved resolver", t.resolved.Close()))
+		}
+		if t.mdnsScope != nil {
+			t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("local mDNS", t.mdnsScope.Close()))
+		}
 		t.closeErr = E.Errors(t.closeErr, t.serverScopes.Close())
-		if t.configSource != nil { t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("local configuration source", closeConfigSource(t.configSource))) }
-		if t.preferredResolver != nil && t.preferredResolver.hosts != nil { t.closeErr = E.Errors(t.closeErr, t.preferredResolver.hosts.Close()) }
+		if t.configSource != nil {
+			t.closeErr = E.Errors(t.closeErr, lifecycle.Uncertain("local configuration source", closeConfigSource(t.configSource)))
+		}
+		if t.preferredResolver != nil && t.preferredResolver.hosts != nil {
+			t.closeErr = E.Errors(t.closeErr, t.preferredResolver.hosts.Close())
+		}
 	})
 	return t.closeErr
 }
