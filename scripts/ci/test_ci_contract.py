@@ -186,6 +186,32 @@ class TestCIContract(unittest.TestCase):
   step=next(s for s in w['jobs']['build_docker']['steps'] if s.get('uses','').startswith('docker/build-push-action@'))
   self.assertEqual(step['env']['DOCKER_BUILD_RECORD_UPLOAD'],'false')
   self.assertFalse(step['with']['push']);self.assertIn('type=oci,dest=',step['with']['outputs'])
+ def test_unsigned_packaging_preserves_plugin_validation_and_private_apk_tools(self):
+  text=(ROOT/'.github/workflows/build.yml').read_text()
+  self.assertNotIn('IDESkipPackagePluginFingerprintValidatation',text)
+  self.assertNotIn('-skipPackagePluginValidation',text)
+  w=yaml.safe_load(text)
+  standalone=[s for job in w['jobs'].values() for s in job['steps'] if s.get('name')=='Build standalone packages']
+  self.assertEqual(len(standalone),2)
+  for step in standalone:
+   # Upstream Makefile defaults include a validation skip: retain this explicit override.
+   self.assertEqual(step['env']['XCODEBUILD_FLAGS'],
+                    '-clonedSourcePackagesDirPath ${{ runner.temp }}/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""')
+  step=next(s for s in w['jobs']['build']['steps'] if s.get('name')=='Install apk-tools')
+  self.assertEqual(step['if'],"fromJSON(toJSON(matrix)).openwrt != '' || fromJSON(toJSON(matrix)).alpine != ''")
+  steps=w['jobs']['build']['steps']
+  for name in ['Package OpenWrt APK','Package Alpine APK']:
+   consumer=next(s for s in steps if s.get('name')==name)
+   self.assertLess(steps.index(step),steps.index(consumer))
+  run=step['run']
+  for fragment in ['apk add --no-cache apk-tools-static && cp /sbin/apk.static /mnt/apk && chmod 755 /mnt/apk',
+                   'set -euo pipefail','mktemp -d "$RUNNER_TEMP/apk-tools.XXXXXX"',
+                   'docker run --rm -v "$apk_tools_dir:/mnt" alpine:edge',
+                   'test -x "$apk_tools_dir/apk"','echo "$apk_tools_dir" >> "$GITHUB_PATH"']:
+   self.assertIn(fragment,run)
+  self.assertNotIn('/usr/local/bin',run);self.assertNotIn('--privileged',run)
+  for name in ['build_alpine_apk.sh','build_openwrt_apk.sh']:
+   self.assertIn('apk --root ',(ROOT/'.github'/name).read_text())
  def test_existing_build_entry_can_run_pretag_source_gates_without_products(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])

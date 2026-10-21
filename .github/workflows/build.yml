@@ -734,8 +734,13 @@ jobs:
         rm "dist/openwrt.deb"
     - name: Install apk-tools
       if: fromJSON(toJSON(matrix)).openwrt != '' || fromJSON(toJSON(matrix)).alpine != ''
-      run: docker run --rm -v /usr/local/bin:/mnt alpine:edge sh -c "apk add --no-cache apk-tools-static && cp /sbin/apk.static
-        /mnt/apk && chmod +x /mnt/apk"
+      run: |-
+        set -euo pipefail
+        apk_tools_dir="$(mktemp -d "$RUNNER_TEMP/apk-tools.XXXXXX")"
+        docker run --rm -v "$apk_tools_dir:/mnt" alpine:edge sh -c \
+          'apk add --no-cache apk-tools-static && cp /sbin/apk.static /mnt/apk && chmod 755 /mnt/apk'
+        test -x "$apk_tools_dir/apk"
+        echo "$apk_tools_dir" >> "$GITHUB_PATH"
     - name: Package OpenWrt APK
       if: fromJSON(toJSON(matrix)).openwrt != ''
       run: |-
@@ -1682,9 +1687,6 @@ jobs:
     - name: Install jailbreak packaging tools
       if: matrix.if && matrix.type == 'jailbreak'
       run: brew install dpkg ldid
-    - name: Trust build plugins
-      if: matrix.if && matrix.type != 'jailbreak'
-      run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
     - name: Download library
       if: matrix.if
       uses: actions/download-artifact@v4
@@ -1890,9 +1892,6 @@ jobs:
     - name: Install jailbreak packaging tools
       if: matrix.if && matrix.type == 'jailbreak'
       run: brew install dpkg ldid
-    - name: Trust build plugins
-      if: matrix.if && matrix.type != 'jailbreak'
-      run: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
     - name: Download library
       if: matrix.if
       uses: actions/download-artifact@v4
