@@ -65,7 +65,7 @@ func TestRuntimeStableAPICoexistsAndClosesBeforeGraphDrain(t *testing.T) {
 	})
 	listen := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
 	options.Services = []option.Service{{Type: C.TypeAPI, Options: &option.APIServiceOptions{
-		ListenOptions: option.ListenOptions{Listen: &listen, ListenPort: 12345}, Secret: "one",
+		Listen: &listen, ListenPort: 12345, Secret: "one",
 	}}}
 	instance, err := New(options)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestRuntimeStableAPICoexistsAndClosesBeforeGraphDrain(t *testing.T) {
 
 func TestRuntimeAPIDashboardAndRemoteListenersRemainLegacy(t *testing.T) {
 	listen := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
-	options := &option.APIServiceOptions{ListenOptions: option.ListenOptions{Listen: &listen}}
+	options := &option.APIServiceOptions{Listen: &listen}
 	item := option.Service{Type: C.TypeAPI, Options: options}
 	if !runtimeStableAPIService(item) {
 		t.Fatal("plain local API rejected")

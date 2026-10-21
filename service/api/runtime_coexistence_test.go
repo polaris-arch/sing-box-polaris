@@ -112,10 +112,41 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 			if capabilities.Active == nil || capabilities.Active.Incarnation == "" || capabilities.Active.AppliedRevision != 1 || capabilities.ConnectedHotEnabled {
 				t.Fatalf("attached owning identity/public gate mismatch: %+v", capabilities)
 			}
+			expectedRuleStatus := func() adapter.RuleSetLoadStatus {
+				lease, _, connected, err := instance.AcquireRuntimeAPI()
+				if err != nil || !connected {
+					t.Fatalf("owning graph admission failed: connected=%v err=%v", connected, err)
+				}
+				defer lease.Release()
+				identity := lease.View().Identity()
+				if identity.Incarnation != capabilities.Active.Incarnation || identity.Revision != capabilities.Active.AppliedRevision {
+					t.Fatal("attached API and direct admission identify different graphs")
+				}
+				set, found := lease.View().Router().RuleSet("sites")
+				if !found {
+					t.Fatal("owning graph is missing the fixture rule-set")
+				}
+				provider, ok := set.(adapter.RuleSetStatusProvider)
+				if !ok {
+					t.Fatal("owning rule-set has no status provider")
+				}
+				return provider.RuleSetStatus()
+			}()
+			// Inline rules have no accepted file bytes: reloadRules intentionally
+			// publishes an empty digest. Revision/state prove the live inline set;
+			// the empty digest must not be mistaken for a file acknowledgement.
+			if expectedRuleStatus != (adapter.RuleSetLoadStatus{Revision: 1, WatcherState: "inline"}) {
+				t.Fatalf("inline fixture status violates its source contract: %+v", expectedRuleStatus)
+			}
 			client := daemon.NewStartedServiceClient(connection)
 			rules, err := client.GetRuleSetStatus(request, &daemon.RuleSetStatusRequest{Tags: []string{"sites"}})
-			if err != nil || len(rules.GetRuleSets()) != 1 || rules.RuleSets[0].ActiveDigest == "" || rules.RuleSets[0].Closed {
+			if err != nil || len(rules.GetRuleSets()) != 1 || rules.InstanceStartedAtUnixNano == 0 {
 				t.Fatalf("attached rule-set status did not use the admitted graph: %+v %v", rules, err)
+			}
+			loaded := rules.RuleSets[0]
+			actualRuleStatus := adapter.RuleSetLoadStatus{ActiveDigest: loaded.ActiveDigest, Revision: loaded.Revision, WatcherState: loaded.WatcherState, LastError: loaded.LastError, Closed: loaded.Closed}
+			if loaded.Tag != "sites" || actualRuleStatus != expectedRuleStatus {
+				t.Fatalf("attached rule-set status differs from its owning graph: tag=%q actual=%+v expected=%+v", loaded.Tag, actualRuleStatus, expectedRuleStatus)
 			}
 			stream, err := client.SubscribeOutbounds(request, &emptypb.Empty{})
 			if err != nil {
