@@ -31,39 +31,59 @@ import (
 // Initial runtime allocation uses the same resource constructor as Apply. This
 // predicate is an adapter inventory, not a promise of whole-schema completion.
 func runtimeInitialEligible(ctx context.Context, options Options) bool {
+	return len(runtimeInitialEligibilityErrors(ctx, options)) == 0
+}
+
+// Eligibility diagnostics contain only schema paths and fixed messages. Never
+// retain configuration values or errors returned by an option's marshaler.
+func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []RuntimePlanError {
 	canonical, err := json.MarshalContext(ctx, options.Options)
 	if err != nil {
-		return false
+		return []RuntimePlanError{{Code: "INITIAL_CONFIG_ENCODING_FAILED", Path: "runtime", Message: "initial configuration could not be evaluated for runtime updates"}}
 	}
 	_, problems := runtimeConfigCompatibility(ctx, canonical, canonical, options.Options)
 	if len(problems) != 0 {
-		return false
+		return problems
 	}
-	if options.Certificate != nil || len(options.NetworkNamespaces) != 0 {
-		return false
+	pending := func(path, message string) {
+		problems = append(problems, RuntimePlanError{Code: "PENDING_ADAPTER", Path: path, Message: message})
+	}
+	if options.Certificate != nil {
+		pending("certificate", "initial certificate configuration requires a runtime adapter")
+	}
+	if len(options.NetworkNamespaces) != 0 {
+		pending("network_namespaces", "initial network namespaces require a runtime adapter")
 	}
 	experimentalOptions := common.PtrValueOrDefault(options.Experimental)
 	// Stable physical cache now has private DNS views and fixed FakeIP binding.
-	if clash := experimentalOptions.ClashAPI; clash != nil && (clash.ExternalUI != "" || clash.ExternalUIDownloadURL != "" || clash.ExternalUIDownloadDetour != "") {
-		return false
+	if clash := experimentalOptions.ClashAPI; clash != nil {
+		if clash.ExternalUI != "" {
+			pending("experimental.clash_api.external_ui", "initial external dashboard requires a runtime adapter")
+		}
+		if clash.ExternalUIDownloadURL != "" {
+			pending("experimental.clash_api.external_ui_download_url", "initial dashboard download requires a runtime adapter")
+		}
+		if clash.ExternalUIDownloadDetour != "" {
+			pending("experimental.clash_api.external_ui_download_detour", "initial dashboard download dependency requires a runtime adapter")
+		}
 	}
-	for _, input := range options.Inbounds {
+	for index, input := range options.Inbounds {
 		switch input.Type {
 		case "socks", "http", "mixed", "tun":
 		default:
-			return false
+			pending(fmt.Sprintf("inbounds[%d].lifecycle", index), "initial inbound lifecycle requires a runtime adapter")
 		}
 	}
 	// Network bootstrap without an existing graph is a separate remaining
 	// adapter; do not select a runtime startup that can only fail afterward.
 	if options.Route != nil {
-		for _, source := range options.Route.RuleSet {
+		for index, source := range options.Route.RuleSet {
 			if source.Type == "remote" && source.RemoteOptions.InitialPath == "" {
-				return false
+				pending(fmt.Sprintf("route.rule_set[%d].initial_path", index), "initial remote rule-set bootstrap requires a local snapshot for runtime updates")
 			}
 		}
 	}
-	return true
+	return problems
 }
 
 func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, createdAt time.Time, internal []adapter.LifecycleService) (*Box, error) {

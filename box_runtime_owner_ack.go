@@ -25,9 +25,6 @@ type RuntimePersistenceAcknowledgement struct {
 }
 
 func (s *Box) AcknowledgeRuntimePersistence(ctx context.Context, actor string, request RuntimePersistenceAcknowledgement) (RuntimeConfigOperation, error) {
-	if !runtimeConfigurationEnabled {
-		return RuntimeConfigOperation{}, errors.New("connected runtime configuration capability is not enabled")
-	}
 	return s.acknowledgeRuntimePersistence(ctx, actor, request)
 }
 

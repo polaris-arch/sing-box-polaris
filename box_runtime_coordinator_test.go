@@ -85,8 +85,8 @@ func TestRuntimeBoxInitialPublicationWaitsForActualStartedStage(t *testing.T) {
 		}
 	}
 	capability := f.box.RuntimeCapabilities()
-	if capability.Enabled || capability.FullConfiguration {
-		t.Fatal("unfinished production adapters advertised complete HOT support")
+	if !capability.Enabled || capability.FullConfiguration {
+		t.Fatal("started daily runtime capability or bounded schema declaration is incorrect")
 	}
 }
 

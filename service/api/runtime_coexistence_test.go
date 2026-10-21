@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"runtime"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -26,7 +29,9 @@ import (
 	"github.com/sagernet/sing/service"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -84,6 +89,25 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 					t.Errorf("Box cleanup: %v", err)
 				}
 			})
+			mode := "exact_configuration_file"
+			if secret != "" {
+				mode = "app_authoritative_regeneration"
+			}
+			var persistenceCalls atomic.Int32
+			if err := instance.BindRuntimePersistenceOptions(func(identity box.RuntimeIdentity, content []byte) error {
+				if identity.Incarnation == "" || len(content) == 0 {
+					return errors.New("missing owner identity/content")
+				}
+				if persistenceCalls.Add(1) == 1 {
+					return errors.New("synthetic transient owner failure")
+				}
+				if mode == "app_authoritative_regeneration" {
+					return &box.RuntimeOwnerAcknowledgementRequiredError{Mode: mode}
+				}
+				return nil
+			}, mode, true); err != nil {
+				t.Fatal(err)
+			}
 			if err := instance.Start(); err != nil {
 				t.Fatal(err)
 			}
@@ -105,11 +129,22 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 			defer connection.Close()
 			request, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
+			if secret != "" {
+				unauthorized, err := grpc.NewClient(api.listener.TCPListener().Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(daemon.NewClientAuthUnaryInterceptor("wrong-synthetic-secret")))
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, denied := daemon.NewRuntimeConfigServiceClient(unauthorized).GetRuntimeCapabilities(request, &emptypb.Empty{})
+				closeErr := unauthorized.Close()
+				if status.Code(denied) != codes.Unauthenticated || closeErr != nil {
+					t.Fatalf("public authentication boundary: %v, close: %v", denied, closeErr)
+				}
+			}
 			var capabilities daemon.RuntimeCapabilities
 			if err := connection.Invoke(request, "/daemon.RuntimeConfigService/GetRuntimeCapabilities", &emptypb.Empty{}, &capabilities); err != nil {
 				t.Fatal(err)
 			}
-			if capabilities.Active == nil || capabilities.Active.Incarnation == "" || capabilities.Active.AppliedRevision != 1 || capabilities.ConnectedHotEnabled {
+			if capabilities.Active == nil || capabilities.Active.Incarnation == "" || capabilities.Active.AppliedRevision != 1 || !capabilities.ConnectedHotEnabled {
 				t.Fatalf("attached owning identity/public gate mismatch: %+v", capabilities)
 			}
 			expectedRuleStatus := func() adapter.RuleSetLoadStatus {
@@ -167,11 +202,64 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 			if err != nil || len(groups.GetGroup()) != 1 || groups.Group[0].Selected != "b" {
 				t.Fatalf("existing selector RPC no longer targets the live graph: %+v %v", groups, err)
 			}
+			// Use only generated public RPCs for the transaction. The control
+			// revision is freshly read after the existing selector RPC above.
+			runtimeClient := daemon.NewRuntimeConfigServiceClient(connection)
+			current, err := runtimeClient.GetRuntimeCapabilities(request, &emptypb.Empty{})
+			if err != nil || !current.GetConnectedHotEnabled() || current.GetImplementationManifestDigest() == "" {
+				t.Fatalf("public capability: %+v %v", current, err)
+			}
+			plan, err := runtimeClient.PlanRuntimeConfig(request, &daemon.PlanRuntimeConfigRequest{ContractVersion: 1, Expected: current.Active, ExpectedControlRevision: current.ControlRevision, ConfigContent: strings.Replace(content, "example.test", "updated.test", 1)})
+			if err != nil || !plan.GetApplicable() {
+				t.Fatalf("public plan: %+v %v", plan, err)
+			}
+			apply := &daemon.ApplyRuntimeConfigRequest{ContractVersion: 1, PlanId: plan.PlanId, TransactionId: plan.TransactionId, Expected: plan.Expected, ExpectedControlRevision: plan.ExpectedControlRevision, CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest}
+			operation, err := runtimeClient.ApplyRuntimeConfig(request, apply)
+			if err != nil || operation.GetState() != daemon.RuntimeOperationState_COMMITTED_DURABILITY_PENDING || operation.GetDurable() || persistenceCalls.Load() != 1 {
+				t.Fatalf("public owner failure: %+v %v", operation, err)
+			}
+			if operation.Active.Incarnation != current.Active.Incarnation || operation.Active.AppliedRevision != current.Active.AppliedRevision+1 {
+				t.Fatal("public Apply replaced instance or did not advance graph")
+			}
+			receipt, err := runtimeClient.GetRuntimeConfigStatus(request, &daemon.RuntimeConfigStatusRequest{ContractVersion: 1, TransactionId: plan.TransactionId, RuntimeIncarnation: current.Active.Incarnation})
+			if err != nil || receipt.GetOperation().GetState() != daemon.RuntimeOperationState_COMMITTED_DURABILITY_PENDING {
+				t.Fatalf("public receipt: %+v %v", receipt, err)
+			}
+			operation, err = runtimeClient.RetryRuntimePersistence(request, &daemon.RuntimePersistenceRetryRequest{ContractVersion: 1, TransactionId: plan.TransactionId, Active: operation.Active, ControlRevision: operation.ControlRevision, PersistenceMode: mode})
+			if err != nil || persistenceCalls.Load() != 2 {
+				t.Fatalf("public retry: %+v %v", operation, err)
+			}
+			if mode == "app_authoritative_regeneration" {
+				if operation.Durable || !operation.OwnerReloadAcknowledged {
+					t.Fatal("reload receipt confused with durable owner acknowledgement")
+				}
+				operation, err = runtimeClient.AcknowledgeRuntimePersistence(request, &daemon.RuntimePersistenceAcknowledgementRequest{ContractVersion: 1, TransactionId: plan.TransactionId, Active: operation.Active, ControlRevision: operation.ControlRevision, PersistenceMode: mode, DesiredStateDigest: strings.Repeat("a", 64), DesiredStateRevision: "fixture-desired-1"})
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if !operation.Durable || operation.State != daemon.RuntimeOperationState_COMMITTED {
+				t.Fatalf("public persistence completion: %+v", operation)
+			}
+			replay, err := runtimeClient.ApplyRuntimeConfig(request, apply)
+			if err != nil || !replay.GetDurable() || replay.GetActive().GetAppliedRevision() != operation.Active.AppliedRevision || persistenceCalls.Load() != 2 {
+				t.Fatalf("public replay repeated publication/persistence: %+v %v", replay, err)
+			}
 			if err := instance.CloseWithResult(); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := stream.Recv(); err == nil {
-				t.Fatal("API subscription survived owning Box shutdown")
+			// HOT may have queued a valid update before Close. Drain bounded
+			// responses until transport termination; a deadline is not proof
+			// that the owning API actually shut down.
+			for {
+				_, receiveErr := stream.Recv()
+				if receiveErr == nil {
+					continue
+				}
+				if status.Code(receiveErr) == codes.DeadlineExceeded || request.Err() != nil {
+					t.Fatalf("API subscription did not terminate before deadline: %v", receiveErr)
+				}
+				break
 			}
 		})
 	}

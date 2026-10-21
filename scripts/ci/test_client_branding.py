@@ -143,5 +143,12 @@ class ClientBrandingTests(unittest.TestCase):
         self.assertNotEqual(r['referenceDiagnostic']['clientSourceOverlayManifestSHA256'],r['clientSource']['overlayManifestSHA256'])
         self.assertEqual(r['clientSource']['overlayManifestSHA256'],c.sha(c.MANIFEST.read_bytes()))
         self.assertTrue(all(not path.endswith(('.gradle','.kts','.properties')) for path in r['reviewedOverlayChange']['androidPaths']))
+        transition=r['reviewedNDKSourceChange']
+        self.assertEqual(transition['previousOverlayManifestSHA256'],r['reviewedOverlayChange']['currentOverlayManifestSHA256'])
+        self.assertEqual(transition['currentOverlayManifestSHA256'],r['clientSource']['overlayManifestSHA256'])
+        self.assertEqual(transition['ndkVersion'],'30.0.16248370')
+        self.assertEqual(transition['androidPaths'],['app/build.gradle.kts','gradle.properties'])
+        self.assertTrue(transition['historicalDiagnosticPreserved'])
+        self.assertTrue(transition['requiresActualRuntimeArtifactComparison'])
 
 if __name__=='__main__':unittest.main()

@@ -72,10 +72,23 @@ type RuntimeConfigOperation struct {
 	RetirementState         string             `json:"retirement_state"`
 }
 type RuntimeConfigCapabilities struct {
-	ContractVersion   uint32          `json:"contract_version"`
-	FullConfiguration bool            `json:"full_configuration"`
-	Enabled           bool            `json:"enabled"`
-	Identity          RuntimeIdentity `json:"identity"`
-	SupportedPaths    []string        `json:"supported_paths"`
-	PendingAdapters   []string        `json:"pending_adapters"`
+	ImplementationManifestDigest string                   `json:"implementation_manifest_digest"`
+	Fields                       []RuntimeFieldCapability `json:"fields"`
+	ContractVersion              uint32                   `json:"contract_version"`
+	FullConfiguration            bool                     `json:"full_configuration"`
+	Enabled                      bool                     `json:"enabled"`
+	Identity                     RuntimeIdentity          `json:"identity"`
+	SupportedPaths               []string                 `json:"supported_paths"`
+	PendingAdapters              []string                 `json:"pending_adapters"`
+}
+
+// RuntimeFieldCapability describes a bounded implementation surface. Plan still
+// validates the concrete candidate and its resource/physical dependencies.
+type RuntimeFieldCapability struct {
+	Path           string   `json:"effective_path"`
+	Variant        string   `json:"variant"`
+	PlatformBuild  string   `json:"platform_build"`
+	UpdateClass    string   `json:"update_class"`
+	AdapterVersion string   `json:"adapter_version"`
+	Conditions     []string `json:"conditions"`
 }

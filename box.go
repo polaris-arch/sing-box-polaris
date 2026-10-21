@@ -66,9 +66,12 @@ type Box struct {
 	tsStores            []adapter.Endpoint
 	tsCaptured          bool
 	tsRetirement        []adapter.TailscaleStoreNode
+	started             atomic.Bool
 	closeStarted        atomic.Bool
 	closeOnce           sync.Once
 	closeResult         error
+
+	runtimeEligibilityErrors []RuntimePlanError
 }
 
 type Options struct {
@@ -250,8 +253,12 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 	*constructionScope = scope
 	ctx = adapter.ContextWithConstructionScope(ctx, scope)
 
-	if !isConstructionValidation(ctx) && runtimeInitialEligible(ctx, options) {
-		return newRuntimeBox(options, scope, logFactory, createdAt, nil)
+	var runtimeEligibilityErrors []RuntimePlanError
+	if !isConstructionValidation(ctx) {
+		runtimeEligibilityErrors = runtimeInitialEligibilityErrors(ctx, options)
+		if len(runtimeEligibilityErrors) == 0 {
+			return newRuntimeBox(options, scope, logFactory, createdAt, nil)
+		}
 	}
 
 	var internalServices []adapter.LifecycleService
@@ -559,6 +566,8 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		internalService:     internalServices,
 		ntpService:          ntpService,
 		scope:               scope,
+
+		runtimeEligibilityErrors: runtimeEligibilityErrors,
 	}
 	service.MustRegisterPtr(ctx, instance)
 	return instance, nil
@@ -580,6 +589,7 @@ func (s *Box) Start() error {
 		s.closeAfterStartFailure()
 		return err
 	}
+	s.started.Store(true)
 	s.logger.Info("sing-box started (", F.Seconds(time.Since(s.createdAt).Seconds()), "s)")
 	return nil
 }

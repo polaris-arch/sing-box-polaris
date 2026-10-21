@@ -14,9 +14,6 @@ type RuntimePersistenceRetry struct {
 }
 
 func (s *Box) RetryRuntimePersistence(ctx context.Context, actor string, request RuntimePersistenceRetry) (RuntimeConfigOperation, error) {
-	if !runtimeConfigurationEnabled {
-		return RuntimeConfigOperation{}, errors.New("connected runtime configuration capability is not enabled")
-	}
 	return s.retryRuntimePersistence(ctx, actor, request)
 }
 

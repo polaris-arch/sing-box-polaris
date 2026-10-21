@@ -13,7 +13,7 @@
     "repository": "SagerNet/sing-box-for-android",
     "baseCommit": "ae93152f21457723af77d144f28c1f7be7362aec",
     "baseTree": "be0859307908afb7e8870b05af9b7c65797a1491",
-    "overlayManifestSHA256": "93511ad5db6c5f942459845ce8098516e1b64ddec2fab6d10b5abce4e82b584c",
+    "overlayManifestSHA256": "6565ccd48a4392dcc6f0172353f0faba0dad221e0c25ed2803fc79a0e0dd8093",
     "platform": "android",
     "unsigned": true
   },
@@ -9392,5 +9392,17 @@
       "previousOverlayManifestSHA256": "fe7e7aa354f95ff9ae7275bfda1a15062486016151a3461431f23b7bce890f62",
       "reason": "Only Windows/Linux electron-builder YAML desktop.entry indentation corrected against locked app-builder-lib26.15.3 schema. Android transforms and exact runtime dependency graph are unchanged; historical diagnostic is not relabeled."
     }
+  },
+  "reviewedNDKSourceChange": {
+    "previousOverlayManifestSHA256": "93511ad5db6c5f942459845ce8098516e1b64ddec2fab6d10b5abce4e82b584c",
+    "currentOverlayManifestSHA256": "6565ccd48a4392dcc6f0172353f0faba0dad221e0c25ed2803fc79a0e0dd8093",
+    "ndkVersion": "30.0.16248370",
+    "androidPaths": [
+      "app/build.gradle.kts",
+      "gradle.properties"
+    ],
+    "reason": "Stable NDK r30 changes the native compiler selection only. The historical diagnostic, external runtime artifact identities, and source/notice map remain unchanged. This source identity admits a new producer for comparison; it does not assert that the old diagnostic built with r30 or that new native bytes are equivalent. Each new producer must still supply its actual runtime graph and pass exact external artifact identity/byte comparison.",
+    "historicalDiagnosticPreserved": true,
+    "requiresActualRuntimeArtifactComparison": true
   }
 }

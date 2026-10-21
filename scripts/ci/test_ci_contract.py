@@ -252,6 +252,9 @@ class TestCIContract(unittest.TestCase):
    self.assertIn(fragment,run)
   self.assertNotIn('-run ',run)
   self.assertIn(' . ',run.replace('\n',' '))
+  for fragment in ['./service/api', 'TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay', 'TestRuntimeCapabilityBuildInventoryIsCanonicalAndHonest', 'TestRuntimePublicCommandRegenerationPersistenceChain', "os.environ['RUNNER_OS'] == 'Linux'", "os.environ['RUNNER_OS'] in {'Linux', 'macOS'}"]:
+   self.assertIn(fragment,run)
+  self.assertNotIn('TestRuntimePublicCapabilityGateDoesNotInvokePrivateApply',run)
  def test_go_utls_gate_is_part_of_one_existing_source_dispatch(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   gate=w['jobs']['utls_gate']

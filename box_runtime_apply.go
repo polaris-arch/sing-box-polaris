@@ -11,43 +11,15 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
-// Public capability remains withheld until the connected source, generated
-// clients and execution/platform gates are accepted as a coherent batch.
-const runtimeConfigurationEnabled = false
-
-func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {
-	result := RuntimeConfigCapabilities{
-		ContractVersion: RuntimeConfigContractVersion, Enabled: runtimeConfigurationEnabled, FullConfiguration: false,
-		PendingAdapters: []string{"outbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "http_clients", "certificate_providers", "ntp"},
-	}
-	if s.runtime == nil {
-		result.Enabled = false
-		return result
-	}
-	s.runtime.access.Lock()
-	result.Identity = s.runtime.active
-	s.runtime.access.Unlock()
-	return result
-}
-
 func (s *Box) PlanRuntimeConfig(ctx context.Context, actor string, expected RuntimeIdentity, content []byte) (RuntimeConfigPlan, error) {
-	if !runtimeConfigurationEnabled {
-		return RuntimeConfigPlan{}, errors.New("connected runtime configuration capability is not enabled")
-	}
 	return s.planRuntimeConfig(ctx, actor, expected, content)
 }
 
 func (s *Box) PlanRuntimeConfigWithSelections(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, intents []RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
-	if !runtimeConfigurationEnabled {
-		return RuntimeConfigPlan{}, errors.New("connected runtime configuration capability is not enabled")
-	}
 	return s.planRuntimeConfig(ctx, actor, expected, content, intents...)
 }
 
 func (s *Box) ApplyRuntimeConfig(ctx context.Context, actor string, request RuntimeConfigApply) (RuntimeConfigOperation, error) {
-	if !runtimeConfigurationEnabled {
-		return RuntimeConfigOperation{}, errors.New("connected runtime configuration capability is not enabled")
-	}
 	return s.applyRuntimeConfig(ctx, actor, request)
 }
 
@@ -86,7 +58,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 		return operation, nil
 	}
-	if coordinator.stopped || coordinator.preparing || coordinator.active != request.Expected || record.plan.Expected != request.Expected || coordinator.now().UnixMilli() >= record.plan.ExpiresAtUnixMilli || request.CandidateDigest != record.plan.CandidateDigest || request.AcceptedImpactDigest != record.plan.ImpactDigest {
+	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.preparing || coordinator.active != request.Expected || record.plan.Expected != request.Expected || coordinator.now().UnixMilli() >= record.plan.ExpiresAtUnixMilli || request.CandidateDigest != record.plan.CandidateDigest || request.AcceptedImpactDigest != record.plan.ImpactDigest {
 		coordinator.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("runtime plan precondition changed")
 	}

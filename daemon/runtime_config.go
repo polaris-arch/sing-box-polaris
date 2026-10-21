@@ -77,9 +77,9 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 		return nil, err
 	}
 	capability := instance.RuntimeCapabilities()
-	result := &RuntimeCapabilities{ContractVersion: capability.ContractVersion, ConnectedHotEnabled: capability.Enabled, Active: runtimeIdentity(capability.Identity), ReceiptRetentionSeconds: 300, MaxReceipts: 256, FullEffectiveSchemaSupported: capability.FullConfiguration, ControlRevision: capability.Identity.ControlRevision}
-	for _, path := range capability.PendingAdapters {
-		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: path, UpdateClass: RuntimeUpdateClass_PENDING_ADAPTER})
+	result := &RuntimeCapabilities{ContractVersion: capability.ContractVersion, ConnectedHotEnabled: capability.Enabled, ImplementationManifestDigest: capability.ImplementationManifestDigest, Active: runtimeIdentity(capability.Identity), ReceiptRetentionSeconds: 300, MaxReceipts: 256, FullEffectiveSchemaSupported: capability.FullConfiguration, ControlRevision: capability.Identity.ControlRevision}
+	for _, field := range capability.Fields {
+		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: field.Path, Variant: field.Variant, PlatformBuild: field.PlatformBuild, UpdateClass: RuntimeUpdateClass(RuntimeUpdateClass_value[field.UpdateClass]), AdapterVersion: field.AdapterVersion, Conditions: append([]string(nil), field.Conditions...)})
 	}
 	return result, nil
 }

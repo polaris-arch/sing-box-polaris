@@ -154,7 +154,7 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		return plan, errors.New("runtime configuration adapter is unavailable")
 	}
 	coordinator.access.Lock()
-	if coordinator.stopped || coordinator.active != expected {
+	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected {
 		coordinator.access.Unlock()
 		return plan, errors.New("stale or stopped runtime")
 	}
@@ -311,7 +311,7 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	}
 	coordinator.access.Lock()
 	defer coordinator.access.Unlock()
-	if coordinator.stopped || coordinator.active != expected {
+	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected {
 		return RuntimeConfigPlan{}, errors.New("stale or stopped runtime")
 	}
 	now := coordinator.now()

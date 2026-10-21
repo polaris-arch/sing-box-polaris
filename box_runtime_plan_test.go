@@ -127,17 +127,62 @@ func TestRuntimePlanInputAndSequenceBudgetsDoNotChangeActiveGraph(t *testing.T) 
 	}
 }
 
-func TestRuntimePublicCapabilityGateDoesNotInvokePrivateApply(t *testing.T) {
+func TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
-	f.start(t)
-	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
+	initial := f.box.RuntimeCapabilities()
+	if initial.Enabled || initial.Identity.Incarnation == "" || initial.ImplementationManifestDigest == "" {
+		t.Fatal("pre-start identity/manifest must exist without admitting mutations")
+	}
 	if _, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", f.identity(), runtimeTestConfig(1081, "example.org")); err == nil {
-		t.Fatal("unreviewed connected capability is publicly enabled")
+		t.Fatal("public Plan admitted an unstarted graph")
+	}
+	f.start(t)
+	before := f.identity()
+	capability := f.box.RuntimeCapabilities()
+	if !capability.Enabled || capability.FullConfiguration || capability.ImplementationManifestDigest != initial.ImplementationManifestDigest {
+		t.Fatal("started daily capability or stable implementation manifest is incorrect")
+	}
+	plan, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, runtimeTestConfig(1081, "example.org"))
+	if err != nil || !plan.Applicable {
+		t.Fatalf("public Plan: %+v %v", plan, err)
+	}
+	request := RuntimeConfigApply{ContractVersion: RuntimeConfigContractVersion, PlanID: plan.PlanID, TransactionID: plan.TransactionID, Expected: plan.Expected, CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest}
+	// Model the real startup window after graph publication but before all
+	// stable API/listener Started callbacks have finished.
+	f.box.runtime.access.Lock()
+	f.box.runtime.initialPhase = 1
+	f.box.runtime.access.Unlock()
+	if f.box.RuntimeCapabilities().Enabled {
+		t.Fatal("partially started graph advertised ready")
+	}
+	if _, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, runtimeTestConfig(1081, "example.org")); err == nil {
+		t.Fatal("published-but-unready graph admitted Plan")
 	}
 	if _, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request); err == nil {
-		t.Fatal("public gate permitted private Apply")
+		t.Fatal("published-but-unready graph admitted Apply")
 	}
-	if f.count("a") != 1 || f.identity() != request.Expected {
-		t.Fatal("capability gate performed constructor work")
+	f.box.runtime.access.Lock()
+	f.box.runtime.initialPhase = 2
+	f.box.runtime.access.Unlock()
+	operation, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.Active.Revision != before.Revision+1 || operation.State != "COMMITTED_DURABILITY_PENDING" || operation.Durable {
+		t.Fatalf("public Apply without owner must truthfully retain durability debt: %+v %v", operation, err)
+	}
+	if _, err := f.box.PlanRuntimeConfig(context.Background(), "actor-a", before, runtimeTestConfig(1082, "example.org")); err == nil {
+		t.Fatal("stale public Plan admitted")
+	}
+	count := f.count("a")
+	f.box.runtime.access.Lock()
+	f.box.runtime.preparing = true
+	f.box.runtime.access.Unlock()
+	replay, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
+	f.box.runtime.access.Lock()
+	f.box.runtime.preparing = false
+	f.box.runtime.access.Unlock()
+	if err != nil || replay.Active != operation.Active || f.count("a") != count {
+		t.Fatal("public replay reconstructed the graph")
+	}
+	if _, err := f.box.ApplyRuntimeConfig(context.Background(), "another-owner", request); err == nil {
+		t.Fatal("foreign actor acquired a receipt")
 	}
 }

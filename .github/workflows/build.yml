@@ -145,16 +145,18 @@ jobs:
         tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
         go test -json -race -p=2 -parallel=2 -count=1 -timeout=15m \
           -tags "$tags" -ldflags "$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" \
-          . ./daemon ./experimental/libbox ./experimental/cachefile ./adapter ./adapter/inbound ./adapter/outbound \
+          . ./daemon ./experimental/libbox ./experimental/cachefile ./service/api ./adapter ./adapter/inbound ./adapter/outbound \
           ./adapter/endpoint ./adapter/certificate ./common/runtimeclock ./common/certificate \
           ./internal/runtimegraph ./log ./route ./dns/transport/... \
           ./protocol/openconnect ./protocol/openvpn ./protocol/tailscale \
           | tee "$evidence/tests.jsonl"
         python - "$evidence/tests.jsonl" <<'PYTEST'
-        import json, sys
+        import json, os, sys
         prefix = 'github.com/sagernet/sing-box'
         required = {
-            prefix: {'TestRuntimePublicCapabilityGateDoesNotInvokePrivateApply',
+            prefix: {'TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay',
+                     'TestRuntimeCapabilitiesManifestIsDetachedAndInstanceIndependent',
+                     'TestRuntimeCapabilityBuildInventoryIsCanonicalAndHonest',
                      'TestRuntimeOwnerAcknowledgementIsBoundAndReplaySafe'},
             prefix + '/daemon': {'TestRuntimeActorRequiresServerOwnedTypedContext',
                                  'TestRuntimePersistenceAcknowledgementAuthenticatesFirst'},
@@ -172,6 +174,10 @@ jobs:
             prefix + '/route': {'TestRuntimeReferenceRetainsExactEndpointAllocation',
                                 'TestRuntimeReferencePauseJoinsExactEndpointEffect'},
         }
+        if os.environ['RUNNER_OS'] in {'Linux', 'macOS'}:
+            required[prefix + '/service/api'] = {'TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs'}
+        if os.environ['RUNNER_OS'] == 'Linux':
+            required[prefix + '/experimental/libbox'].add('TestRuntimePublicCommandRegenerationPersistenceChain')
         events = [json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
         for package, tests in required.items():
             passed = {e.get('Test') for e in events if e.get('Action') == 'pass' and e.get('Package') == package}
