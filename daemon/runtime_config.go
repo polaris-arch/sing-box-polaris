@@ -205,3 +205,28 @@ func (s *StartedService) AcknowledgeRuntimePersistence(ctx context.Context, requ
 	}
 	return runtimeOperation(operation), nil
 }
+
+func (s *StartedService) RetryRuntimePersistence(ctx context.Context, request *RuntimePersistenceRetryRequest) (*RuntimeConfigOperation, error) {
+	actor, err := runtimeActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if request == nil || request.ContractVersion != box.RuntimeConfigContractVersion {
+		return nil, status.Error(codes.InvalidArgument, "unsupported runtime contract version")
+	}
+	active, err := runtimeExpected(request.Active, request.ControlRevision)
+	if err != nil {
+		return nil, err
+	}
+	instance, err := s.runtimeInstance()
+	if err != nil {
+		return nil, err
+	}
+	operation, err := instance.RetryRuntimePersistence(ctx, actor, box.RuntimePersistenceRetry{
+		ContractVersion: request.ContractVersion, TransactionID: request.TransactionId, Active: active, PersistenceMode: request.PersistenceMode,
+	})
+	if err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
+	return runtimeOperation(operation), nil
+}

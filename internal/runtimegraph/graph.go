@@ -128,13 +128,14 @@ type Store struct {
 	sealOnce    sync.Once
 	closed      chan struct{}
 	drained     chan struct{}
+	changed     chan struct{} // protected by admission.mu
 }
 
 func NewStore(incarnation string) (*Store, error) {
 	if incarnation == "" {
 		return nil, errInvalidGeneration
 	}
-	return &Store{admission: &admission{}, incarnation: incarnation, closed: make(chan struct{}), drained: make(chan struct{})}, nil
+	return &Store{admission: &admission{}, incarnation: incarnation, closed: make(chan struct{}), drained: make(chan struct{}), changed: make(chan struct{})}, nil
 }
 
 func (s *Store) Acquire() (adapter.RuntimeLease, error) {
@@ -144,6 +145,18 @@ func (s *Store) Acquire() (adapter.RuntimeLease, error) {
 	}
 	return lease, nil
 }
+
+// AcquireWithChanges captures notification before the same-epoch snapshot.
+func (s *Store) AcquireWithChanges() (adapter.RuntimeLease, <-chan struct{}, error) {
+	s.admission.mu.RLock()
+	defer s.admission.mu.RUnlock()
+	lease, err := s.admission.acquireLocked()
+	if err != nil {
+		return nil, s.changed, err
+	}
+	return lease, s.changed, nil
+}
+
 func (s *Store) Closed() <-chan struct{}  { return s.closed }
 func (s *Store) Drained() <-chan struct{} { return s.drained }
 
@@ -163,6 +176,7 @@ func (s *Store) PublishPrepared(expected adapter.RuntimeRevision, candidate *Gra
 	if candidate == nil || candidate.generation == nil {
 		return nil, errInvalidGeneration
 	}
+	nextChanged := make(chan struct{})
 	next := candidate.generation
 	identity := candidate.Identity()
 	a := s.admission
@@ -211,6 +225,8 @@ func (s *Store) PublishPrepared(expected adapter.RuntimeRevision, candidate *Gra
 	if prepared != nil {
 		prepared.Publish()
 	}
+	close(s.changed)
+	s.changed = nextChanged
 	a.mu.Unlock()
 	if old != nil {
 		old.drop()
@@ -225,6 +241,9 @@ func (s *Store) PublishPrepared(expected adapter.RuntimeRevision, candidate *Gra
 func (s *Store) Seal() {
 	s.sealOnce.Do(func() {
 		s.admission.seal()
+		s.admission.mu.Lock()
+		close(s.changed)
+		s.admission.mu.Unlock()
 		close(s.closed)
 		s.admission.mu.RLock()
 		graphs := append([]*Graph(nil), s.graphs...)

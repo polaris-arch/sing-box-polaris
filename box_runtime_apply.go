@@ -18,7 +18,7 @@ const runtimeConfigurationEnabled = false
 func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {
 	result := RuntimeConfigCapabilities{
 		ContractVersion: RuntimeConfigContractVersion, Enabled: runtimeConfigurationEnabled, FullConfiguration: false,
-		PendingAdapters: []string{"outbounds[hysteria2.realm]", "services", "http_clients", "certificate_providers", "ntp"},
+		PendingAdapters: []string{"outbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "http_clients", "certificate_providers", "ntp"},
 	}
 	if s.runtime == nil {
 		result.Enabled = false
@@ -268,6 +268,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				coordinator.currentSources = append([]runtimeSourceSnapshot(nil), record.sources...)
 				coordinator.canonical = append([]byte(nil), record.canonical...)
 				coordinator.active = next
+				coordinator.pendingPersistence = nil
 				if coordinator.clashMode != nil {
 					coordinator.clashMode.RuntimeReplaceModes(clashmode.CalculateModeList(record.options))
 				}
@@ -334,6 +335,15 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		if prepared.fakeIPMigration != nil {
 			migration = prepared.fakeIPMigration
 		}
+		coordinator.access.Lock()
+		record.persistenceCallback = persist
+		record.persistenceParticipant = migration
+		record.persistenceRetrySafe = coordinator.persistenceRetrySafe
+		record.persistenceTailEntered = true
+		if coordinator.active == next && (record.persistenceRetrySafe || coordinator.persistenceMode == "app_authoritative_regeneration") {
+			coordinator.pendingPersistence = record
+		}
+		coordinator.access.Unlock()
 		persistErr := coordinator.persistRuntimeTransaction(coordinator.ctx, next, record.canonical, record.selectorIntents, persist, migration)
 		coordinator.access.Lock()
 		var ownerPending *RuntimeOwnerAcknowledgementRequiredError
@@ -352,6 +362,9 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			coordinator.durableOwnerReload = false
 		} else {
 			record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PERSISTENCE_FAILED", Message: "active configuration committed; owner persistence acknowledgement pending"})
+		}
+		if coordinator.pendingPersistence == record && (record.operation.Durable || (!record.persistenceRetrySafe && !record.awaitingOwnerAcknowledgement)) {
+			coordinator.pendingPersistence = nil
 		}
 		coordinator.access.Unlock()
 	}

@@ -539,7 +539,7 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		})
 		timeService.TimeService = ntpService
 	}
-	return &Box{
+	instance := &Box{
 		network:             networkManager,
 		endpoint:            endpointManager,
 		inbound:             inboundManager,
@@ -559,7 +559,9 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		internalService:     internalServices,
 		ntpService:          ntpService,
 		scope:               scope,
-	}, nil
+	}
+	service.MustRegisterPtr(ctx, instance)
+	return instance, nil
 }
 
 func (s *Box) PreStart() error {

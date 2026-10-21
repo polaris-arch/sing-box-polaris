@@ -214,6 +214,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 	}
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
+	ctx = context.WithValue(ctx, runtimeStartupOverridesKey{}, cloneRuntimeOverrides(prepared.runtimeOverrides))
 	i := &Instance{
 		runtimeOverrides:      cloneRuntimeOverrides(prepared.runtimeOverrides),
 		ctx:                   ctx,
@@ -251,7 +252,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 		return nil, err
 	}
 	if persist := runtimePersistenceForRequest(prepared.request, s.runtimePersistence); persist != nil && boxInstance.RuntimeCapabilities().Identity.Incarnation != "" {
-		if err := boxInstance.BindRuntimePersistenceMode(persist, runtimePersistenceModeForRequest(prepared.request)); err != nil {
+		if err := boxInstance.BindRuntimePersistenceOptions(persist, runtimePersistenceModeForRequest(prepared.request), runtimePersistenceRetrySafeForRequest(prepared.request)); err != nil {
 			cancel()
 			_ = boxInstance.Close()
 			return nil, err
@@ -289,7 +290,10 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 }
 
 func attachInstance(ctx context.Context) *Instance {
+	overrides, _ := ctx.Value(runtimeStartupOverridesKey{}).(*OverrideOptions)
 	return &Instance{
+		runtimeOverrides:      cloneRuntimeOverrides(overrides),
+		instance:              service.PtrFromContext[box.Box](ctx),
 		ctx:                   ctx,
 		closeFinished:         make(chan struct{}),
 		connectionManager:     service.FromContext[adapter.ConnectionManager](ctx),

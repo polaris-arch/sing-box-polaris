@@ -190,6 +190,13 @@ func (s *Box) startRuntime() error {
 			return err
 		}
 	}
+	// Stable API ingress starts only after graph admission. Its subscriptions
+	// are canceled during ingress cleanup before waiting for graph leases.
+	for _, stage := range adapter.ListStartStages {
+		if err := c.ingressScope.Start("service", s.service, stage); err != nil {
+			return err
+		}
+	}
 	// Graph admission is ready before listeners can accept their first flow.
 	for _, stage := range adapter.ListStartStages {
 		if err := c.ingressScope.Start("inbound", s.inbound, stage); err != nil {
@@ -247,6 +254,7 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 				<-workDone
 			}
 			c.access.Lock()
+			c.pendingPersistence = nil
 			resources := make([]*runtimeResource, 0, len(c.catalog))
 			for _, resource := range c.catalog {
 				resources = append(resources, resource)

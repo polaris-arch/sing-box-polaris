@@ -10,6 +10,7 @@ service RuntimeConfigService {
   rpc PlanRuntimeConfig(PlanRuntimeConfigRequest) returns (RuntimeConfigPlan);
   rpc ApplyRuntimeConfig(ApplyRuntimeConfigRequest) returns (RuntimeConfigOperation);
   rpc GetRuntimeConfigStatus(RuntimeConfigStatusRequest) returns (RuntimeConfigStatus);
+  rpc RetryRuntimePersistence(RuntimePersistenceRetryRequest) returns (RuntimeConfigOperation);
   rpc AcknowledgeRuntimePersistence(RuntimePersistenceAcknowledgementRequest) returns (RuntimeConfigOperation);
 }
 message RuntimeIdentity { string incarnation = 1; uint64 applied_revision = 2; string effective_digest = 3; }
@@ -69,4 +70,12 @@ message RuntimePersistenceAcknowledgementRequest {
   uint32 contract_version = 1; string transaction_id = 2; RuntimeIdentity active = 3;
   uint64 control_revision = 4; string persistence_mode = 5;
   string desired_state_digest = 6; string desired_state_revision = 7;
+}
+
+// Explicit original-transaction durability retry, never graph re-application.
+// The authenticated original actor and every identity field must still match.
+// No configuration, path or replacement desired-state evidence is accepted.
+message RuntimePersistenceRetryRequest {
+  uint32 contract_version = 1; string transaction_id = 2; RuntimeIdentity active = 3;
+  uint64 control_revision = 4; string persistence_mode = 5;
 }

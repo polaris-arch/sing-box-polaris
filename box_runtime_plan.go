@@ -46,6 +46,10 @@ type runtimePlanRecord struct {
 	awaitingOwnerAcknowledgement bool
 	acknowledging                bool
 	persistenceParticipant       runtimePersistenceParticipant
+	persistenceCallback          func(RuntimeIdentity, []byte) error
+	persistenceRetrySafe         bool
+	persistenceTailEntered       bool
+	retryInFlight                bool
 }
 
 type runtimeCoordinator struct {
@@ -64,6 +68,8 @@ type runtimeCoordinator struct {
 	durableOwnerReload     bool
 	persist                func(RuntimeIdentity, []byte) error
 	persistenceMode        string
+	persistenceRetrySafe   bool
+	pendingPersistence     *runtimePlanRecord
 	resources              []*runtimeResource
 	plans                  map[string]*runtimePlanRecord
 	planStorage            int
@@ -314,7 +320,7 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		if record.consumed {
 			deadline = record.receiptExpires
 		}
-		if !record.inFlight && !record.acknowledging && deadline != 0 && now.UnixMilli() >= deadline {
+		if record != coordinator.pendingPersistence && !record.inFlight && !record.acknowledging && !record.retryInFlight && deadline != 0 && now.UnixMilli() >= deadline {
 			coordinator.planStorage -= record.storageCharge
 			delete(coordinator.plans, id)
 		}

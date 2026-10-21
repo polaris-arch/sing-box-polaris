@@ -66,8 +66,11 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		// WG physical identity and fixed-port overlap are classified by the pure
 		// endpoint preflight and repeated against live owners before staging.
 	}
-	if len(options.Services) != 0 {
-		pending("services")
+	for _, item := range options.Services {
+		if !runtimeStableAPIService(item) {
+			pending("services")
+			break
+		}
 	}
 	if len(options.HTTPClients) != 0 {
 		pending("http_clients")

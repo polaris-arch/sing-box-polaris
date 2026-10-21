@@ -48,6 +48,14 @@ func (s *Box) BindRuntimePersistence(persist func(RuntimeIdentity, []byte) error
 }
 
 func (s *Box) BindRuntimePersistenceMode(persist func(RuntimeIdentity, []byte) error, mode string) error {
+	return s.BindRuntimePersistenceOptions(persist, mode, false)
+}
+
+// BindRuntimePersistenceOptions explicitly opts a host into same-identity,
+// same-byte replay after partial success, errors or a later namespace failure.
+// Callbacks are synchronous and must not call Close, Ack or control operations.
+// Generic callbacks remain non-repeatable unless their owner makes this promise.
+func (s *Box) BindRuntimePersistenceOptions(persist func(RuntimeIdentity, []byte) error, mode string, retrySafe bool) error {
 	if mode != "owner_acknowledged" && mode != "exact_configuration_file" && mode != "app_authoritative_regeneration" {
 		return errors.New("unsupported runtime persistence mode")
 	}
@@ -61,5 +69,6 @@ func (s *Box) BindRuntimePersistenceMode(persist func(RuntimeIdentity, []byte) e
 	}
 	s.runtime.persist = persist
 	s.runtime.persistenceMode = mode
+	s.runtime.persistenceRetrySafe = retrySafe
 	return nil
 }

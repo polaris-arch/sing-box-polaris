@@ -308,16 +308,26 @@ type OverrideOptions struct {
 }
 
 func (s *CommandServer) StartOrReloadService(configContent string, options *OverrideOptions) error {
-	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil)
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, nil, false)
 }
 
 // StartOrReloadServiceWithRuntimePersistence captures this host owner for the
 // new instance. A fresh handler must be supplied for each full start/reload.
 func (s *CommandServer) StartOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
-	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler)
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, false)
 }
 
-func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
+// StartOrReloadServiceWithRetryableRuntimePersistence explicitly promises that
+// this owner safely accepts identical identity/content after partial success or
+// an error. The ordinary entry point does not authorize callback replay.
+func (s *CommandServer) StartOrReloadServiceWithRetryableRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler) error {
+	if handler == nil {
+		return errors.New("retryable persistence owner is required")
+	}
+	return s.startOrReloadServiceWithRuntimePersistence(configContent, options, handler, true)
+}
+
+func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent string, options *OverrideOptions, handler RuntimePersistenceHandler, retrySafe bool) error {
 	if s.directoryDomain != nil && !s.directoryDomain.Activated() {
 		return errors.New("managed directory bootstrap has not been activated")
 	}
@@ -336,7 +346,7 @@ func (s *CommandServer) startOrReloadServiceWithRuntimePersistence(configContent
 	if handler != nil {
 		mode := handler.RuntimePersistenceMode()
 		var err error
-		startContext, err = daemon.ContextWithRuntimePersistenceMode(startContext, runtimeHostPersistence(handler, mode), mode)
+		startContext, err = daemon.ContextWithRuntimePersistenceOptions(startContext, runtimeHostPersistence(handler, mode), mode, retrySafe)
 		if err != nil {
 			return err
 		}

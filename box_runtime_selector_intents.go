@@ -223,6 +223,16 @@ func (c *runtimeCoordinator) persistRuntimeTransaction(ctx context.Context, iden
 		return err
 	}
 	defer c.controlEffects.Unlock()
+	return c.persistRuntimeTransactionLocked(ctx, identity, canonical, intents, persist, migration)
+}
+
+// The caller owns controlEffects for the entire synchronous durability tail.
+func (c *runtimeCoordinator) persistRuntimeTransactionLocked(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error, migration runtimePersistenceParticipant) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errors.New("runtime persistence tail panicked; durability remains pending")
+		}
+	}()
 	c.access.Lock()
 	current := !c.stopped && c.active == identity
 	c.access.Unlock()

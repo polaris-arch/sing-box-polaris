@@ -1480,6 +1480,85 @@ func (x *RuntimePersistenceAcknowledgementRequest) GetDesiredStateRevision() str
 	return ""
 }
 
+// Explicit original-transaction durability retry, never graph re-application.
+// The authenticated original actor and every identity field must still match.
+// No configuration, path or replacement desired-state evidence is accepted.
+type RuntimePersistenceRetryRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ContractVersion uint32                 `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	TransactionId   string                 `protobuf:"bytes,2,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	Active          *RuntimeIdentity       `protobuf:"bytes,3,opt,name=active,proto3" json:"active,omitempty"`
+	ControlRevision uint64                 `protobuf:"varint,4,opt,name=control_revision,json=controlRevision,proto3" json:"control_revision,omitempty"`
+	PersistenceMode string                 `protobuf:"bytes,5,opt,name=persistence_mode,json=persistenceMode,proto3" json:"persistence_mode,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RuntimePersistenceRetryRequest) Reset() {
+	*x = RuntimePersistenceRetryRequest{}
+	mi := &file_daemon_runtime_config_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimePersistenceRetryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimePersistenceRetryRequest) ProtoMessage() {}
+
+func (x *RuntimePersistenceRetryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_daemon_runtime_config_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimePersistenceRetryRequest.ProtoReflect.Descriptor instead.
+func (*RuntimePersistenceRetryRequest) Descriptor() ([]byte, []int) {
+	return file_daemon_runtime_config_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *RuntimePersistenceRetryRequest) GetContractVersion() uint32 {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return 0
+}
+
+func (x *RuntimePersistenceRetryRequest) GetTransactionId() string {
+	if x != nil {
+		return x.TransactionId
+	}
+	return ""
+}
+
+func (x *RuntimePersistenceRetryRequest) GetActive() *RuntimeIdentity {
+	if x != nil {
+		return x.Active
+	}
+	return nil
+}
+
+func (x *RuntimePersistenceRetryRequest) GetControlRevision() uint64 {
+	if x != nil {
+		return x.ControlRevision
+	}
+	return 0
+}
+
+func (x *RuntimePersistenceRetryRequest) GetPersistenceMode() string {
+	if x != nil {
+		return x.PersistenceMode
+	}
+	return ""
+}
+
 var File_daemon_runtime_config_proto protoreflect.FileDescriptor
 
 const file_daemon_runtime_config_proto_rawDesc = "" +
@@ -1605,7 +1684,13 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x10control_revision\x18\x04 \x01(\x04R\x0fcontrolRevision\x12)\n" +
 	"\x10persistence_mode\x18\x05 \x01(\tR\x0fpersistenceMode\x120\n" +
 	"\x14desired_state_digest\x18\x06 \x01(\tR\x12desiredStateDigest\x124\n" +
-	"\x16desired_state_revision\x18\a \x01(\tR\x14desiredStateRevision*\x98\x01\n" +
+	"\x16desired_state_revision\x18\a \x01(\tR\x14desiredStateRevision\"\xf9\x01\n" +
+	"\x1eRuntimePersistenceRetryRequest\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x12%\n" +
+	"\x0etransaction_id\x18\x02 \x01(\tR\rtransactionId\x12/\n" +
+	"\x06active\x18\x03 \x01(\v2\x17.daemon.RuntimeIdentityR\x06active\x12)\n" +
+	"\x10control_revision\x18\x04 \x01(\x04R\x0fcontrolRevision\x12)\n" +
+	"\x10persistence_mode\x18\x05 \x01(\tR\x0fpersistenceMode*\x98\x01\n" +
 	"\x12RuntimeUpdateClass\x12\x1e\n" +
 	"\x1aRUNTIME_UPDATE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bIN_PLACE\x10\x01\x12\x11\n" +
@@ -1626,12 +1711,13 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\vACTIVE_ONLY\x10\x00\x12\t\n" +
 	"\x05FOUND\x10\x01\x12\x16\n" +
 	"\x12UNKNOWN_OR_EXPIRED\x10\x02\x12\x15\n" +
-	"\x11WRONG_INCARNATION\x10\x032\xde\x03\n" +
+	"\x11WRONG_INCARNATION\x10\x032\xc1\x04\n" +
 	"\x14RuntimeConfigService\x12M\n" +
 	"\x16GetRuntimeCapabilities\x12\x16.google.protobuf.Empty\x1a\x1b.daemon.RuntimeCapabilities\x12P\n" +
 	"\x11PlanRuntimeConfig\x12 .daemon.PlanRuntimeConfigRequest\x1a\x19.daemon.RuntimeConfigPlan\x12W\n" +
 	"\x12ApplyRuntimeConfig\x12!.daemon.ApplyRuntimeConfigRequest\x1a\x1e.daemon.RuntimeConfigOperation\x12Y\n" +
-	"\x16GetRuntimeConfigStatus\x12\".daemon.RuntimeConfigStatusRequest\x1a\x1b.daemon.RuntimeConfigStatus\x12q\n" +
+	"\x16GetRuntimeConfigStatus\x12\".daemon.RuntimeConfigStatusRequest\x1a\x1b.daemon.RuntimeConfigStatus\x12a\n" +
+	"\x17RetryRuntimePersistence\x12&.daemon.RuntimePersistenceRetryRequest\x1a\x1e.daemon.RuntimeConfigOperation\x12q\n" +
 	"\x1dAcknowledgeRuntimePersistence\x120.daemon.RuntimePersistenceAcknowledgementRequest\x1a\x1e.daemon.RuntimeConfigOperationB%Z#github.com/sagernet/sing-box/daemonb\x06proto3"
 
 var (
@@ -1647,7 +1733,7 @@ func file_daemon_runtime_config_proto_rawDescGZIP() []byte {
 }
 
 var file_daemon_runtime_config_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_daemon_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_daemon_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_daemon_runtime_config_proto_goTypes = []any{
 	(RuntimeUpdateClass)(0),                          // 0: daemon.RuntimeUpdateClass
 	(RuntimeOperationState)(0),                       // 1: daemon.RuntimeOperationState
@@ -1666,7 +1752,8 @@ var file_daemon_runtime_config_proto_goTypes = []any{
 	(*RuntimeConfigStatusRequest)(nil),               // 14: daemon.RuntimeConfigStatusRequest
 	(*RuntimeConfigStatus)(nil),                      // 15: daemon.RuntimeConfigStatus
 	(*RuntimePersistenceAcknowledgementRequest)(nil), // 16: daemon.RuntimePersistenceAcknowledgementRequest
-	(*emptypb.Empty)(nil),                            // 17: google.protobuf.Empty
+	(*RuntimePersistenceRetryRequest)(nil),           // 17: daemon.RuntimePersistenceRetryRequest
+	(*emptypb.Empty)(nil),                            // 18: google.protobuf.Empty
 }
 var file_daemon_runtime_config_proto_depIdxs = []int32{
 	0,  // 0: daemon.RuntimeFieldCapability.update_class:type_name -> daemon.RuntimeUpdateClass
@@ -1689,21 +1776,24 @@ var file_daemon_runtime_config_proto_depIdxs = []int32{
 	13, // 17: daemon.RuntimeConfigStatus.operation:type_name -> daemon.RuntimeConfigOperation
 	2,  // 18: daemon.RuntimeConfigStatus.lookup_state:type_name -> daemon.RuntimeLookupState
 	3,  // 19: daemon.RuntimePersistenceAcknowledgementRequest.active:type_name -> daemon.RuntimeIdentity
-	17, // 20: daemon.RuntimeConfigService.GetRuntimeCapabilities:input_type -> google.protobuf.Empty
-	7,  // 21: daemon.RuntimeConfigService.PlanRuntimeConfig:input_type -> daemon.PlanRuntimeConfigRequest
-	12, // 22: daemon.RuntimeConfigService.ApplyRuntimeConfig:input_type -> daemon.ApplyRuntimeConfigRequest
-	14, // 23: daemon.RuntimeConfigService.GetRuntimeConfigStatus:input_type -> daemon.RuntimeConfigStatusRequest
-	16, // 24: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:input_type -> daemon.RuntimePersistenceAcknowledgementRequest
-	5,  // 25: daemon.RuntimeConfigService.GetRuntimeCapabilities:output_type -> daemon.RuntimeCapabilities
-	9,  // 26: daemon.RuntimeConfigService.PlanRuntimeConfig:output_type -> daemon.RuntimeConfigPlan
-	13, // 27: daemon.RuntimeConfigService.ApplyRuntimeConfig:output_type -> daemon.RuntimeConfigOperation
-	15, // 28: daemon.RuntimeConfigService.GetRuntimeConfigStatus:output_type -> daemon.RuntimeConfigStatus
-	13, // 29: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
-	25, // [25:30] is the sub-list for method output_type
-	20, // [20:25] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	3,  // 20: daemon.RuntimePersistenceRetryRequest.active:type_name -> daemon.RuntimeIdentity
+	18, // 21: daemon.RuntimeConfigService.GetRuntimeCapabilities:input_type -> google.protobuf.Empty
+	7,  // 22: daemon.RuntimeConfigService.PlanRuntimeConfig:input_type -> daemon.PlanRuntimeConfigRequest
+	12, // 23: daemon.RuntimeConfigService.ApplyRuntimeConfig:input_type -> daemon.ApplyRuntimeConfigRequest
+	14, // 24: daemon.RuntimeConfigService.GetRuntimeConfigStatus:input_type -> daemon.RuntimeConfigStatusRequest
+	17, // 25: daemon.RuntimeConfigService.RetryRuntimePersistence:input_type -> daemon.RuntimePersistenceRetryRequest
+	16, // 26: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:input_type -> daemon.RuntimePersistenceAcknowledgementRequest
+	5,  // 27: daemon.RuntimeConfigService.GetRuntimeCapabilities:output_type -> daemon.RuntimeCapabilities
+	9,  // 28: daemon.RuntimeConfigService.PlanRuntimeConfig:output_type -> daemon.RuntimeConfigPlan
+	13, // 29: daemon.RuntimeConfigService.ApplyRuntimeConfig:output_type -> daemon.RuntimeConfigOperation
+	15, // 30: daemon.RuntimeConfigService.GetRuntimeConfigStatus:output_type -> daemon.RuntimeConfigStatus
+	13, // 31: daemon.RuntimeConfigService.RetryRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
+	13, // 32: daemon.RuntimeConfigService.AcknowledgeRuntimePersistence:output_type -> daemon.RuntimeConfigOperation
+	27, // [27:33] is the sub-list for method output_type
+	21, // [21:27] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_daemon_runtime_config_proto_init() }
@@ -1718,7 +1808,7 @@ func file_daemon_runtime_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_daemon_runtime_config_proto_rawDesc), len(file_daemon_runtime_config_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

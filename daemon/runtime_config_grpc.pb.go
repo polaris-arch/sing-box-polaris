@@ -24,6 +24,7 @@ const (
 	RuntimeConfigService_PlanRuntimeConfig_FullMethodName             = "/daemon.RuntimeConfigService/PlanRuntimeConfig"
 	RuntimeConfigService_ApplyRuntimeConfig_FullMethodName            = "/daemon.RuntimeConfigService/ApplyRuntimeConfig"
 	RuntimeConfigService_GetRuntimeConfigStatus_FullMethodName        = "/daemon.RuntimeConfigService/GetRuntimeConfigStatus"
+	RuntimeConfigService_RetryRuntimePersistence_FullMethodName       = "/daemon.RuntimeConfigService/RetryRuntimePersistence"
 	RuntimeConfigService_AcknowledgeRuntimePersistence_FullMethodName = "/daemon.RuntimeConfigService/AcknowledgeRuntimePersistence"
 )
 
@@ -38,6 +39,7 @@ type RuntimeConfigServiceClient interface {
 	PlanRuntimeConfig(ctx context.Context, in *PlanRuntimeConfigRequest, opts ...grpc.CallOption) (*RuntimeConfigPlan, error)
 	ApplyRuntimeConfig(ctx context.Context, in *ApplyRuntimeConfigRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error)
 	GetRuntimeConfigStatus(ctx context.Context, in *RuntimeConfigStatusRequest, opts ...grpc.CallOption) (*RuntimeConfigStatus, error)
+	RetryRuntimePersistence(ctx context.Context, in *RuntimePersistenceRetryRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error)
 	AcknowledgeRuntimePersistence(ctx context.Context, in *RuntimePersistenceAcknowledgementRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error)
 }
 
@@ -89,6 +91,16 @@ func (c *runtimeConfigServiceClient) GetRuntimeConfigStatus(ctx context.Context,
 	return out, nil
 }
 
+func (c *runtimeConfigServiceClient) RetryRuntimePersistence(ctx context.Context, in *RuntimePersistenceRetryRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RuntimeConfigOperation)
+	err := c.cc.Invoke(ctx, RuntimeConfigService_RetryRuntimePersistence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runtimeConfigServiceClient) AcknowledgeRuntimePersistence(ctx context.Context, in *RuntimePersistenceAcknowledgementRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimeConfigOperation)
@@ -110,6 +122,7 @@ type RuntimeConfigServiceServer interface {
 	PlanRuntimeConfig(context.Context, *PlanRuntimeConfigRequest) (*RuntimeConfigPlan, error)
 	ApplyRuntimeConfig(context.Context, *ApplyRuntimeConfigRequest) (*RuntimeConfigOperation, error)
 	GetRuntimeConfigStatus(context.Context, *RuntimeConfigStatusRequest) (*RuntimeConfigStatus, error)
+	RetryRuntimePersistence(context.Context, *RuntimePersistenceRetryRequest) (*RuntimeConfigOperation, error)
 	AcknowledgeRuntimePersistence(context.Context, *RuntimePersistenceAcknowledgementRequest) (*RuntimeConfigOperation, error)
 	mustEmbedUnimplementedRuntimeConfigServiceServer()
 }
@@ -132,6 +145,9 @@ func (UnimplementedRuntimeConfigServiceServer) ApplyRuntimeConfig(context.Contex
 }
 func (UnimplementedRuntimeConfigServiceServer) GetRuntimeConfigStatus(context.Context, *RuntimeConfigStatusRequest) (*RuntimeConfigStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRuntimeConfigStatus not implemented")
+}
+func (UnimplementedRuntimeConfigServiceServer) RetryRuntimePersistence(context.Context, *RuntimePersistenceRetryRequest) (*RuntimeConfigOperation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetryRuntimePersistence not implemented")
 }
 func (UnimplementedRuntimeConfigServiceServer) AcknowledgeRuntimePersistence(context.Context, *RuntimePersistenceAcknowledgementRequest) (*RuntimeConfigOperation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AcknowledgeRuntimePersistence not implemented")
@@ -229,6 +245,24 @@ func _RuntimeConfigService_GetRuntimeConfigStatus_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeConfigService_RetryRuntimePersistence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RuntimePersistenceRetryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeConfigServiceServer).RetryRuntimePersistence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuntimeConfigService_RetryRuntimePersistence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeConfigServiceServer).RetryRuntimePersistence(ctx, req.(*RuntimePersistenceRetryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RuntimeConfigService_AcknowledgeRuntimePersistence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RuntimePersistenceAcknowledgementRequest)
 	if err := dec(in); err != nil {
@@ -269,6 +303,10 @@ var RuntimeConfigService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRuntimeConfigStatus",
 			Handler:    _RuntimeConfigService_GetRuntimeConfigStatus_Handler,
+		},
+		{
+			MethodName: "RetryRuntimePersistence",
+			Handler:    _RuntimeConfigService_RetryRuntimePersistence_Handler,
 		},
 		{
 			MethodName: "AcknowledgeRuntimePersistence",

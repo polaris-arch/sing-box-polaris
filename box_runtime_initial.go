@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -91,6 +92,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	scope.Add(instance.closeRuntimeResources)
 	ctx = adapter.ContextWithConstructionScope(stable.scope.Context(), stable.scope)
 	coordinator.ctx = ctx
+	service.MustRegisterPtr(ctx, instance)
 	coordinator.ingressScope = adapter.NewScope(ctx, factory.Logger())
 	stable.scope.Add(coordinator.closeIngress)
 	namespaceManager, err := netns.NewManager(factory.NewLogger("netns"), options.NetworkNamespaces, options.NetworkNamespaceHolderArgs)
@@ -164,7 +166,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	if err != nil {
 		return nil, err
 	}
-	if options.PlatformLogWriter != nil || experimentalOptions.ClashAPI != nil {
+	if options.PlatformLogWriter != nil || experimentalOptions.ClashAPI != nil || len(options.Services) > 0 {
 		traffic := trafficcontrol.NewManager()
 		service.MustRegisterPtr(ctx, traffic)
 		coordinator.trackers.Append(traffic)
@@ -186,6 +188,18 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 			coordinator.trackers.Append(server.StatsService())
 			instance.internalService = append(instance.internalService, server)
 			service.MustRegister[adapter.V2RayServer](ctx, server)
+		}
+	}
+	for index, item := range options.Services {
+		if !runtimeStableAPIService(item) {
+			return nil, errors.New("unsupported stable runtime service")
+		}
+		tag := item.Tag
+		if tag == "" {
+			tag = fmt.Sprint(index)
+		}
+		if err := instance.service.Create(ctx, factory.NewLogger("service/api["+tag+"]"), tag, item.Type, item.Options); err != nil {
+			return nil, err
 		}
 	}
 	canonical, err := json.MarshalContext(ctx, options.Options)

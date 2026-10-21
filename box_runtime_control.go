@@ -37,6 +37,7 @@ func (c *runtimeCoordinator) SelectRuntimeOutbound(expected adapter.RuntimeResou
 	changed, accepted, effect := selector.RuntimeSelect(selected)
 	if changed {
 		c.active.ControlRevision++
+		c.pendingPersistence = nil
 	}
 	revision := c.active.ControlRevision
 	c.access.Unlock()
@@ -81,6 +82,7 @@ func (c *runtimeCoordinator) SetRuntimeClashMode(mode string) bool {
 	changed, accepted, effect := c.clashMode.RuntimeSetMode(mode)
 	if changed {
 		c.active.ControlRevision++
+		c.pendingPersistence = nil
 	}
 	revision := c.active.ControlRevision
 	c.access.Unlock()

@@ -14,8 +14,9 @@ import (
 
 type (
 	runtimePersistenceBinding struct {
-		persist func(box.RuntimeIdentity, []byte) error
-		mode    string
+		persist   func(box.RuntimeIdentity, []byte) error
+		mode      string
+		retrySafe bool
 	}
 	runtimePersistenceContextKey struct{}
 )
@@ -28,12 +29,26 @@ func ContextWithRuntimePersistence(ctx context.Context, persist func(box.Runtime
 
 // ContextWithRuntimePersistenceMode captures a fixed host contract per instance.
 func ContextWithRuntimePersistenceMode(ctx context.Context, persist func(box.RuntimeIdentity, []byte) error, mode string) (context.Context, error) {
+	return ContextWithRuntimePersistenceOptions(ctx, persist, mode, false)
+}
+
+// retrySafe promises same-identity replay even after partial callback success.
+func ContextWithRuntimePersistenceOptions(ctx context.Context, persist func(box.RuntimeIdentity, []byte) error, mode string, retrySafe bool) (context.Context, error) {
 	switch mode {
 	case "owner_acknowledged", "exact_configuration_file", "app_authoritative_regeneration":
 	default:
 		return nil, errors.New("unsupported runtime persistence mode")
 	}
-	return context.WithValue(ctx, runtimePersistenceContextKey{}, runtimePersistenceBinding{persist: persist, mode: mode}), nil
+	return context.WithValue(ctx, runtimePersistenceContextKey{}, runtimePersistenceBinding{persist: persist, mode: mode, retrySafe: retrySafe}), nil
+}
+
+func runtimePersistenceRetrySafeForRequest(ctx context.Context) bool {
+	if ctx != nil {
+		if binding, ok := ctx.Value(runtimePersistenceContextKey{}).(runtimePersistenceBinding); ok {
+			return binding.retrySafe
+		}
+	}
+	return false
 }
 
 func runtimePersistenceModeForRequest(ctx context.Context) string {

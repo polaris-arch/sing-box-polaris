@@ -92,3 +92,22 @@ func TestDailyTailscaleAndTailcatInventoryUsesReviewedAdapters(t *testing.T) {
 		}
 	}
 }
+
+func TestDailyStableAPICapabilityBoundary(t *testing.T) {
+	capabilities := new(Box).RuntimeCapabilities()
+	if capabilities.Enabled || capabilities.FullConfiguration {
+		t.Fatal("stable API support enabled public capability")
+	}
+	found := false
+	for _, pending := range capabilities.PendingAdapters {
+		if pending == "services" {
+			t.Fatal("unchanged plain loopback API is not a pending adapter")
+		}
+		if pending == "services[non-api-or-api-dependent-listener]" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("unsupported service variants must remain explicit")
+	}
+}

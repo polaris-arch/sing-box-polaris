@@ -275,30 +275,37 @@ func (s *StartedService) followInstance(ctx context.Context, run func(ctx contex
 			instance = nil
 		}
 		s.serviceAccess.RUnlock()
+		snapshot, changed, release, snapshotErr := instance.runtimeSnapshot()
+		if snapshotErr != nil {
+			return snapshotErr
+		}
 		runCtx, cancel := context.WithCancel(ctx)
+		runCtx = snapshot.runtimeOperationContext(runCtx)
 		runResult := make(chan error, 1)
-		go func() {
-			runResult <- run(runCtx, instance)
-		}()
+		go func() { runResult <- run(runCtx, snapshot) }()
+		var result error
+		finished, terminal := false, false
 		select {
 		case <-statusSubscription:
-			cancel()
-			<-runResult
-		case err = <-runResult:
-			cancel()
-			return err
+		case <-changed:
+		case result = <-runResult:
+			finished, terminal = true, true
 		case <-ctx.Done():
-			cancel()
-			<-runResult
-			return ctx.Err()
+			result, terminal = ctx.Err(), true
 		case <-s.ctx.Done():
-			cancel()
-			<-runResult
-			return s.ctx.Err()
+			result, terminal = s.ctx.Err(), true
 		case <-statusDone:
-			cancel()
+			terminal = true
+		}
+		cancel()
+		if !finished {
 			<-runResult
-			return nil
+		}
+		// run must join its provider work before returning; only then may the
+		// immutable view's resource closure retire.
+		release()
+		if terminal {
+			return result
 		}
 	}
 }
@@ -679,8 +686,16 @@ func (s *StartedService) SubscribeGroups(empty *emptypb.Empty, server grpc.Serve
 	for {
 		s.serviceAccess.RLock()
 		var groups *Groups
+		var graphChanged <-chan struct{}
 		if s.serviceStatus.Status == ServiceStatus_STARTED {
-			groups = s.readGroups()
+			snapshot, changed, release, snapshotErr := s.instance.runtimeSnapshot()
+			if snapshotErr != nil {
+				s.serviceAccess.RUnlock()
+				return snapshotErr
+			}
+			graphChanged = changed
+			groups = s.readGroups(snapshot)
+			release()
 		} else {
 			groups = &Groups{}
 		}
@@ -690,17 +705,8 @@ func (s *StartedService) SubscribeGroups(empty *emptypb.Empty, server grpc.Serve
 			return err
 		}
 		lastSendTime = time.Now()
-		select {
-		case <-subscription:
-		case <-statusSubscription:
-		case <-s.ctx.Done():
-			return s.ctx.Err()
-		case <-server.Context().Done():
-			return server.Context().Err()
-		case <-done:
-			return nil
-		case <-statusDone:
-			return nil
+		if stop, waitErr := s.waitRuntimeAPIUpdate(server.Context(), graphChanged, subscription, done, statusSubscription, statusDone); stop {
+			return waitErr
 		}
 		throttleDelay := urlTestPushMinInterval - time.Since(lastSendTime)
 		if throttleDelay <= 0 {
@@ -733,10 +739,13 @@ func (s *StartedService) SubscribeGroups(empty *emptypb.Empty, server grpc.Serve
 	}
 }
 
-func (s *StartedService) readGroups() *Groups {
-	historyStorage := s.instance.urlTestHistoryStorage
-	boxService := s.instance
-	outbounds := boxService.outboundManager.Outbounds()
+func (s *StartedService) readGroups(boxService *Instance) *Groups {
+	historyStorage := boxService.urlTestHistoryStorage
+	outboundManager := boxService.outboundManager
+	if lease, ok := adapter.RuntimeLeaseFromContext(boxService.ctx); ok {
+		outboundManager = lease.View().OutboundManager()
+	}
+	outbounds := outboundManager.Outbounds()
 	var iGroups []adapter.OutboundGroup
 	for _, it := range outbounds {
 		if group, isGroup := it.(adapter.OutboundGroup); isGroup {
@@ -759,7 +768,7 @@ func (s *StartedService) readGroups() *Groups {
 		}
 
 		for _, itemTag := range iGroup.All() {
-			itemOutbound, isLoaded := boxService.outboundManager.Outbound(itemTag)
+			itemOutbound, isLoaded := outboundManager.Outbound(itemTag)
 			if !isLoaded {
 				continue
 			}
@@ -1385,9 +1394,21 @@ func (s *StartedService) SubscribeOutbounds(_ *emptypb.Empty, server grpc.Server
 		started := s.serviceStatus.Status == ServiceStatus_STARTED
 		s.serviceAccess.RUnlock()
 		var list OutboundList
+		var graphChanged <-chan struct{}
+		release := func() {}
 		if started {
+			snapshot, changed, snapshotRelease, snapshotErr := boxService.runtimeSnapshot()
+			if snapshotErr != nil {
+				return snapshotErr
+			}
+			boxService, graphChanged, release = snapshot, changed, snapshotRelease
 			historyStorage := boxService.urlTestHistoryStorage
-			for _, ob := range boxService.outboundManager.Outbounds() {
+			outboundManager := boxService.outboundManager
+			if lease, ok := adapter.RuntimeLeaseFromContext(boxService.ctx); ok {
+				// Serialize one coherent inventory under the snapshot lease.
+				outboundManager = lease.View().OutboundManager()
+			}
+			for _, ob := range outboundManager.Outbounds() {
 				item := &GroupItem{
 					Tag:  ob.Tag(),
 					Type: ob.Type(),
@@ -1410,22 +1431,14 @@ func (s *StartedService) SubscribeOutbounds(_ *emptypb.Empty, server grpc.Server
 				list.Outbounds = append(list.Outbounds, item)
 			}
 		}
+		release()
 		err = server.Send(&list)
 		if err != nil {
 			return err
 		}
 		lastSendTime = time.Now()
-		select {
-		case <-subscription:
-		case <-statusSubscription:
-		case <-s.ctx.Done():
-			return s.ctx.Err()
-		case <-server.Context().Done():
-			return server.Context().Err()
-		case <-done:
-			return nil
-		case <-statusDone:
-			return nil
+		if stop, waitErr := s.waitRuntimeAPIUpdate(server.Context(), graphChanged, subscription, done, statusSubscription, statusDone); stop {
+			return waitErr
 		}
 		throttleDelay := urlTestPushMinInterval - time.Since(lastSendTime)
 		if throttleDelay <= 0 {
@@ -1470,7 +1483,7 @@ func resolveOutbound(instance *Instance, tag string) (adapter.Outbound, error) {
 }
 
 func resolveTailscaleEndpoint(instance *Instance, tag string) (adapter.Endpoint, error) {
-	endpointManager := service.FromContext[adapter.EndpointManager](instance.ctx)
+	endpointManager := instance.endpointManager
 	endpoint, loaded := endpointManager.Get(tag)
 	if !loaded {
 		return nil, status.Error(codes.NotFound, "endpoint not found: "+tag)
@@ -1537,7 +1550,7 @@ func NewSTUNTestResult(result *stun.Result) *STUNTestProgress {
 
 func resolveEndpoint[T adapter.Endpoint](instance *Instance, tag string, endpointType string, endpointName string) (T, error) {
 	var zero T
-	endpointManager := service.FromContext[adapter.EndpointManager](instance.ctx)
+	endpointManager := instance.endpointManager
 	endpoint, loaded := endpointManager.Get(tag)
 	if !loaded {
 		return zero, status.Error(codes.NotFound, "endpoint not found: "+tag)
@@ -1555,6 +1568,12 @@ type endpointStatusProvider interface {
 
 func subscribeEndpointStatus[T endpointStatusProvider](ctx context.Context, startedService *StartedService, endpointType string, send func([]T) error) error {
 	return startedService.followInstance(ctx, func(runCtx context.Context, instance *Instance) error {
+		runCtx, cancel := context.WithCancel(runCtx)
+		var watchers sync.WaitGroup
+		defer func() {
+			cancel()
+			watchers.Wait()
+		}()
 		var endpoints []T
 		if instance != nil {
 			for _, endpoint := range instance.endpointManager.Endpoints() {
@@ -1566,7 +1585,8 @@ func subscribeEndpointStatus[T endpointStatusProvider](ctx context.Context, star
 		updated := make(chan struct{}, 1)
 		updated <- struct{}{}
 		for _, endpoint := range endpoints {
-			go func(provider T) {
+			provider := endpoint
+			watchers.Go(func() {
 				for {
 					statusUpdated := provider.StatusUpdated()
 					select {
@@ -1579,7 +1599,7 @@ func subscribeEndpointStatus[T endpointStatusProvider](ctx context.Context, star
 						return
 					}
 				}
-			}(endpoint)
+			})
 		}
 
 		for {
@@ -1607,7 +1627,12 @@ func streamTaggedStatus[T any](ctx context.Context, sources []taggedStatusSource
 		latest   chan T
 		finished chan struct{}
 	}
+	ctx, cancel := context.WithCancel(ctx)
 	var waitGroup sync.WaitGroup
+	defer func() {
+		cancel()
+		waitGroup.Wait()
+	}()
 	subscriptions := make([]subscription, 0, len(sources))
 	for _, source := range sources {
 		current := subscription{
@@ -1665,20 +1690,17 @@ func streamTaggedStatus[T any](ctx context.Context, sources []taggedStatusSource
 			}
 		})
 	}
-	go func() {
-		waitGroup.Wait()
-		close(updates)
-	}()
-
-	for update := range updates {
-		statuses[update.tag] = update.status
-		err = send(statuses)
-		if err != nil {
-			return err
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case update := <-updates:
+			statuses[update.tag] = update.status
+			if err := send(statuses); err != nil {
+				return err
+			}
 		}
 	}
-	<-ctx.Done()
-	return nil
 }
 
 func storeLatestStatus[T any](slot chan T, status T) {
@@ -1892,17 +1914,18 @@ func (s *StartedService) StartTailscalePing(
 	request *TailscalePingRequest,
 	server grpc.ServerStreamingServer[TailscalePingResponse],
 ) error {
-	boxService, err := s.startedInstance(server.Context())
+	boxService, release, err := s.startedGraphInstance(server.Context())
 	if err != nil {
 		return err
 	}
+	defer release()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
 		return err
 	}
 
-	return provider.StartTailscalePing(server.Context(), request.PeerIP, func(result *adapter.TailscalePingResult) {
+	return provider.StartTailscalePing(boxService.runtimeOperationContext(server.Context()), request.PeerIP, func(result *adapter.TailscalePingResult) {
 		_ = server.Send(&TailscalePingResponse{
 			LatencyMs:      result.LatencyMs,
 			IsDirect:       result.IsDirect,
@@ -1916,10 +1939,12 @@ func (s *StartedService) StartTailscalePing(
 }
 
 func (s *StartedService) SetTailscaleExitNode(ctx context.Context, request *SetTailscaleExitNodeRequest) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
+	ctx = boxService.runtimeOperationContext(ctx)
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -1937,10 +1962,12 @@ func (s *StartedService) SetTailscaleExitNode(ctx context.Context, request *SetT
 }
 
 func (s *StartedService) TailscaleLogout(ctx context.Context, request *TailscaleLogoutRequest) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
+	ctx = boxService.runtimeOperationContext(ctx)
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -1958,10 +1985,12 @@ func (s *StartedService) TailscaleLogout(ctx context.Context, request *Tailscale
 }
 
 func (s *StartedService) GetTailscaleCertificate(ctx context.Context, request *TailscaleCertificateRequest) (*TailscaleCertificate, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
+	ctx = boxService.runtimeOperationContext(ctx)
 
 	endpoint, err := resolveTailscaleEndpoint(boxService, request.EndpointTag)
 	if err != nil {
@@ -2050,10 +2079,11 @@ func openConnectEndpointStatusToProto(tag string, endpointStatus adapter.OpenCon
 }
 
 func (s *StartedService) SubmitOpenConnectAuthResponse(ctx context.Context, request *OpenConnectAuthResponseSubmission) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	endpoint, err := resolveEndpoint[adapter.OpenConnectEndpoint](boxService, request.EndpointTag, C.TypeOpenConnect, "OpenConnect client")
 	if err != nil {
@@ -2084,10 +2114,11 @@ func (s *StartedService) SubmitOpenConnectAuthResponse(ctx context.Context, requ
 }
 
 func (s *StartedService) CancelOpenConnectAuthChallenge(ctx context.Context, request *OpenConnectAuthChallengeCancel) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	endpoint, err := resolveEndpoint[adapter.OpenConnectEndpoint](boxService, request.EndpointTag, C.TypeOpenConnect, "OpenConnect client")
 	if err != nil {
@@ -2184,10 +2215,11 @@ func openVPNTunnelInfoToProto(tunnelInfo *adapter.OpenVPNTunnelInfo) *OpenVPNTun
 }
 
 func (s *StartedService) SubmitOpenVPNChallengeResponse(ctx context.Context, request *OpenVPNChallengeSubmission) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	endpoint, err := resolveEndpoint[adapter.OpenVPNEndpoint](boxService, request.EndpointTag, C.TypeOpenVPNClient, "OpenVPN client")
 	if err != nil {
@@ -2205,10 +2237,11 @@ func (s *StartedService) SubmitOpenVPNChallengeResponse(ctx context.Context, req
 }
 
 func (s *StartedService) CancelOpenVPNChallenge(ctx context.Context, request *OpenVPNChallengeCancel) (*emptypb.Empty, error) {
-	boxService, err := s.startedInstance(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
+	defer release()
 
 	endpoint, err := resolveEndpoint[adapter.OpenVPNEndpoint](boxService, request.EndpointTag, C.TypeOpenVPNClient, "OpenVPN client")
 	if err != nil {

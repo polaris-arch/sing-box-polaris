@@ -49,7 +49,7 @@ func (s *Box) acknowledgeRuntimePersistence(ctx context.Context, actor string, r
 	defer c.controlEffects.Unlock()
 	c.access.Lock()
 	record := c.plans[request.TransactionID]
-	if record == nil || record.actor != actor || record.operation == nil || (record.receiptExpires != 0 && c.now().UnixMilli() >= record.receiptExpires) {
+	if record == nil || record.actor != actor || record.operation == nil || (record != c.pendingPersistence && record.receiptExpires != 0 && c.now().UnixMilli() >= record.receiptExpires) {
 		c.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("unknown owner transaction")
 	}
@@ -98,13 +98,17 @@ func (s *Box) acknowledgeRuntimePersistence(ctx context.Context, actor string, r
 		return RuntimeConfigOperation{}, errors.New("runtime stopped before owner acknowledgement")
 	}
 	record.awaitingOwnerAcknowledgement = false
+	if c.pendingPersistence == record {
+		c.pendingPersistence = nil
+	}
+	record.receiptExpires = c.now().Add(runtimePlanLifetime).UnixMilli()
 	record.operation.State = "COMMITTED"
 	record.operation.Durable = true
 	record.operation.DesiredStateDigest = request.DesiredStateDigest
 	record.operation.DesiredStateRevision = request.DesiredStateRevision
 	filtered := record.operation.Errors[:0]
 	for _, problem := range record.operation.Errors {
-		if problem.Code != "OWNER_ACKNOWLEDGEMENT_REQUIRED" {
+		if problem.Code != "OWNER_ACKNOWLEDGEMENT_REQUIRED" && problem.Code != "PERSISTENCE_FAILED" {
 			filtered = append(filtered, problem)
 		}
 	}

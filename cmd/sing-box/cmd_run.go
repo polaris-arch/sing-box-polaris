@@ -149,7 +149,7 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 	}
 
 	if persist != nil && instance.RuntimeCapabilities().Identity.Incarnation != "" {
-		if err := instance.BindRuntimePersistenceMode(persist, "exact_configuration_file"); err != nil {
+		if err := instance.BindRuntimePersistenceOptions(persist, "exact_configuration_file", true); err != nil {
 			cancel()
 			_ = instance.Close()
 			return nil, nil, E.Cause(err, "bind configuration persistence")

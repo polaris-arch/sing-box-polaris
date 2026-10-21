@@ -5,11 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -268,10 +270,11 @@ func buildTestPacket() []byte {
 }
 
 type testTUN struct {
-	name    string
-	inbound chan []byte
-	events  chan tun.Event
-	done    chan struct{}
+	name      string
+	inbound   chan []byte
+	events    chan tun.Event
+	done      chan struct{}
+	closeOnce sync.Once
 }
 
 func (t *testTUN) File() *os.File { return nil }
@@ -303,14 +306,67 @@ func (t *testTUN) Events() <-chan tun.Event {
 }
 
 func (t *testTUN) Close() error {
-	select {
-	case <-t.done:
-	default:
+	t.closeOnce.Do(func() {
 		close(t.done)
-	}
+		close(t.events)
+	})
 	return nil
 }
 
 func (t *testTUN) BatchSize() int {
 	return 1
+}
+
+func TestTestTUNCloseStopsReadersAndEvents(t *testing.T) {
+	tunDevice := &testTUN{
+		inbound: make(chan []byte),
+		events:  make(chan tun.Event, 1),
+		done:    make(chan struct{}),
+	}
+	tunDevice.events <- tun.EventUp
+
+	// Concurrent and repeated Close calls must close both channels exactly once.
+	start := make(chan struct{})
+	var closers sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		closers.Add(1)
+		go func() {
+			defer closers.Done()
+			<-start
+			if err := tunDevice.Close(); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	close(start)
+	closers.Wait()
+	if err := tunDevice.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-tunDevice.done:
+	default:
+		t.Fatal("Close did not stop packet reads")
+	}
+	if n, err := tunDevice.Read([][]byte{make([]byte, 1)}, make([]int, 1), 0); n != 0 || !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("Read after Close = (%d, %v), want (0, os.ErrClosed)", n, err)
+	}
+
+	select {
+	case event, ok := <-tunDevice.Events():
+		if !ok || event != tun.EventUp {
+			t.Fatalf("buffered event after Close = (%v, %v), want (EventUp, true)", event, ok)
+		}
+	default:
+		t.Fatal("Close lost the buffered event")
+	}
+	select {
+	case _, ok := <-tunDevice.Events():
+		if ok {
+			t.Fatal("unexpected event after draining the closed event channel")
+		}
+	default:
+		t.Fatal("Close left the event channel open")
+	}
 }

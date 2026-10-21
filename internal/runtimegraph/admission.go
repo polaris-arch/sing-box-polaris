@@ -116,6 +116,11 @@ type generationLease struct {
 func (a *admission) acquire() (*generationLease, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
+	return a.acquireLocked()
+}
+
+// acquireLocked requires admission.mu read or write ownership.
+func (a *admission) acquireLocked() (*generationLease, error) {
 	if a.sealed {
 		return nil, errAdmissionSealed
 	}
