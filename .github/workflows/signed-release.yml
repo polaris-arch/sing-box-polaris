@@ -320,10 +320,12 @@ jobs:
         echo "PATH=$HOME/go/go_win7/bin:$PATH" >> $GITHUB_ENV
         echo "GOROOT=$HOME/go/go_win7" >> $GITHUB_ENV
     - name: Setup Android NDK
+      id: setup-ndk
       if: matrix.os == 'android'
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r28
+        ndk-version: r30
+        link-to-sdk: true
     - name: Clone cronet-go
       if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
@@ -475,6 +477,7 @@ jobs:
         -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' ${LDFLAGS_SHARED} -s -w -buildid=" \
         ./cmd/sing-box
       env:
+        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         CGO_ENABLED: '1'
         BUILD_GOOS: ${{ matrix.os }}
         BUILD_GOARCH: ${{ matrix.arch }}
@@ -922,7 +925,8 @@ jobs:
       id: setup-ndk
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r28
+        ndk-version: r30
+        link-to-sdk: true
     - name: Setup OpenJDK
       uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
       with:
@@ -996,7 +1000,8 @@ jobs:
       id: setup-ndk
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r28
+        ndk-version: r30
+        link-to-sdk: true
     - name: Setup OpenJDK
       uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
       with:
@@ -1099,7 +1104,8 @@ jobs:
       id: setup-ndk
       uses: nttld/setup-ndk@v1
       with:
-        ndk-version: r28
+        ndk-version: r30
+        link-to-sdk: true
     - name: Setup OpenJDK
       uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
       with:

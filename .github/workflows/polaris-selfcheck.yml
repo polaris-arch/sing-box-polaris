@@ -83,10 +83,10 @@ env:
   BASE_REF: ${{ inputs.base_ref || 'v1.15.0-alpha.12' }}
   BASE_COMMIT: ${{ inputs.base_commit || '25b0d5ea3e466d246c708ac0f20d0448110e566c' }}
   EXPECTED_SYMBOLS: ${{ inputs.expected_symbols || 'mobile' }}
-  # NDK 30.0.16138531-beta3, as pinned by the app's ndk-linux-archive.json.
-  NDK_URL: https://dl.google.com/android/repository/android-ndk-r30-beta3-linux.zip
-  NDK_SHA256: 2698cca1e9f161048ecd84e1e70a556e1aa00b78409473d4c1e87969d40c3efc
-  NDK_ROOT: android-ndk-r30-beta3
+  # NDK 30.0.16248370, as pinned by the app's ndk-linux-archive.json.
+  NDK_URL: https://dl.google.com/android/repository/android-ndk-r30-linux.zip
+  NDK_SHA256: 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
+  NDK_ROOT: android-ndk-r30
   # These tests start an instance in process, except the last one, which
   # constructs a TUN inbound without starting it. None of them has run on this
   # baseline yet, so they are kept out of the default gate.
@@ -609,6 +609,7 @@ jobs:
           python -B "$RUNNER_TEMP/polaris-ci-downloads.py" ndk --root "$RUNNER_TEMP/ndk-cache" \
             --url "$NDK_URL" --sha256 "$NDK_SHA256" --output "$RUNNER_TEMP/polaris-ci/ndk-input-check.json"
           unzip -q "$RUNNER_TEMP/ndk-cache/ndk.zip" -d "$RUNNER_TEMP"
+          grep -Eq '^Pkg.Revision[[:space:]]*=[[:space:]]*30\.0\.16248370[[:space:]]*$' "$RUNNER_TEMP/$NDK_ROOT/source.properties"
           echo "ANDROID_NDK_HOME=$RUNNER_TEMP/$NDK_ROOT" >> "$GITHUB_ENV"
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         timeout-minutes: 5

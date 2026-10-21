@@ -48,14 +48,15 @@ func FindSDK() {
 }
 
 func findNDK() bool {
-	const fixedVersion = "28.0.13004108"
+	const fixedVersion = "30.0.16248370"
 	const versionFile = "source.properties"
-	if fixedPath := filepath.Join(androidSDKPath, "ndk", fixedVersion); rw.IsFile(filepath.Join(fixedPath, versionFile)) {
-		androidNDKPath = fixedPath
+	// Honor the explicitly verified CI toolchain before installed SDK defaults.
+	if ndkHomeEnv := os.Getenv("ANDROID_NDK_HOME"); ndkHomeEnv != "" && rw.IsFile(filepath.Join(ndkHomeEnv, versionFile)) {
+		androidNDKPath = ndkHomeEnv
 		return true
 	}
-	if ndkHomeEnv := os.Getenv("ANDROID_NDK_HOME"); rw.IsFile(filepath.Join(ndkHomeEnv, versionFile)) {
-		androidNDKPath = ndkHomeEnv
+	if fixedPath := filepath.Join(androidSDKPath, "ndk", fixedVersion); rw.IsFile(filepath.Join(fixedPath, versionFile)) {
+		androidNDKPath = fixedPath
 		return true
 	}
 	ndkVersions, err := os.ReadDir(filepath.Join(androidSDKPath, "ndk"))
