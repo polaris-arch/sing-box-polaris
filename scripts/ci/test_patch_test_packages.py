@@ -311,7 +311,7 @@ class PatchWorkflowNetnsOrderTests(unittest.TestCase):
                          for line in command.splitlines()) + '\n'
 
     def run_workflow(self, *, authorized=False, root_selected=True,
-                     netns_selected=True, netns_pass=True):
+                     netns_selected=True, netns_pass=True, recheck=0):
         import os
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -332,6 +332,8 @@ class PatchWorkflowNetnsOrderTests(unittest.TestCase):
             write_plan(root / 'runner/polaris-ci/patch-test-packages', plan)
             trace = root / 'trace.tsv'
             trace.touch()
+            authorization_trace = root / 'authorization-trace.tsv'
+            authorization_trace.touch()
             resolved = ['github.com/sagernet/sing-box/fixture']
             if netns_selected:
                 resolved.append('github.com/sagernet/sing-box/common/netns')
@@ -340,7 +342,9 @@ class PatchWorkflowNetnsOrderTests(unittest.TestCase):
                        SING_TUN_INSTANCE_TESTS='FixtureTunInstance',
                        NETNS_BATCH_ELEVATION=str(authorized).lower(),
                        MOCK_TRACE=str(trace), MOCK_RESOLVED='\n'.join(resolved),
-                       MOCK_NETNS_PASS=str(netns_pass).lower())
+                       MOCK_NETNS_PASS=str(netns_pass).lower(),
+                       MOCK_AUTHORIZATION_TRACE=str(authorization_trace),
+                       MOCK_NETNS_RECHECK_RC=str(recheck))
             stubs = r'''
 git() {
   case "$1" in
@@ -355,6 +359,10 @@ python3() {
   case "$2" in
     -m) test "$3" = unittest ;;
     scripts/ci/patch_test_packages.py) test "$3" = --base ;;
+    "$RUNNER_TEMP/polaris-netns-authorization.py")
+      test "$#" = 3 && test "$3" = --check || return 99
+      printf '%s\t%s\n' "$2" "$3" >> "$MOCK_AUTHORIZATION_TRACE"
+      return "$MOCK_NETNS_RECHECK_RC" ;;
     -) cat >/dev/null ;;
     *) return 99 ;;
   esac
@@ -373,7 +381,17 @@ go() {
   fi
   test "$1" = test || return 99
   if [ "${!#}" = github.com/sagernet/sing-box/common/netns ]; then
-    if [ "$NETNS_BATCH_ELEVATION" != true ]; then
+    # Initial approval alone cannot make the fake binary privileged: the
+    # actual command must retain the narrowly scoped wrapper after recheck.
+    local previous='' elevated=false
+    for arg in "$@"; do
+      if [ "$previous" = -exec ]; then
+        test "$arg" = 'sudo -n --' || return 99
+        elevated=true
+      fi
+      previous="$arg"
+    done
+    if [ "$elevated" != true ]; then
       echo 'mock netns: operation not permitted' >&2
       return 47
     fi
@@ -407,6 +425,9 @@ go() {
             for line in trace.read_text().splitlines():
                 directory, *args = line.rstrip('\t').split('\t')
                 calls.append((str(Path(directory).relative_to(root)), args))
+            self.authorization_calls = [line.split('\t') for line in authorization_trace.read_text().splitlines()]
+            for args in self.authorization_calls:
+                self.assertEqual(args, [str(root / 'runner/polaris-netns-authorization.py'), '--check'])
             return result, calls
 
     def assert_all_modules_before_netns(self, calls, *, root_selected=True, netns_selected=True):
@@ -433,11 +454,13 @@ go() {
         tests = self.assert_all_modules_before_netns(calls)
         self.assertEqual(tests[0][1][-1], 'github.com/sagernet/sing-box/fixture')
         self.assertFalse(any('-exec' in args for _, args in calls))
+        self.assertEqual(self.authorization_calls, [])
         self.assertIn('running required netns gate unprivileged', result.stdout)
 
     def test_authorization_only_adds_sudo_exec_to_selected_netns(self):
         result, calls = self.run_workflow(authorized=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(self.authorization_calls), 1)
         tests = self.assert_all_modules_before_netns(calls)
         elevated = [(owner, args) for owner, args in calls if '-exec' in args]
         self.assertEqual(elevated, [tests[-1]])
@@ -445,9 +468,23 @@ go() {
         self.assertEqual(args[args.index('-exec') + 1], 'sudo -n --')
         denied, denied_calls = self.run_workflow()
         self.assertEqual(denied.returncode, 47)
+        self.assertEqual(self.authorization_calls, [])
         stripped = [(owner, [arg for arg in args if arg not in ('-exec', 'sudo -n --')])
                     for owner, args in calls]
         self.assertEqual(stripped, denied_calls)
+
+    def test_denied_or_failed_recheck_retains_order_and_unprivileged_failure(self):
+        denied, denied_calls = self.run_workflow()
+        self.assertEqual(denied.returncode, 47)
+        for recheck in [1, 2, 99]:
+            with self.subTest(recheck=recheck):
+                result, calls = self.run_workflow(authorized=True, recheck=recheck)
+                self.assertEqual(result.returncode, 47, result.stdout + result.stderr)
+                self.assertEqual(len(self.authorization_calls), 1)
+                self.assert_all_modules_before_netns(calls)
+                self.assertFalse(any('-exec' in args for _, args in calls))
+                self.assertEqual(calls, denied_calls)
+                self.assertIn('running required netns gate unprivileged', result.stdout)
 
     def test_empty_root_still_runs_nested_modules_without_netns_or_unbound_state(self):
         result, calls = self.run_workflow(root_selected=False)
@@ -455,6 +492,7 @@ go() {
         self.assert_all_modules_before_netns(calls, root_selected=False)
         self.assertFalse(any('-exec' in args or 'github.com/sagernet/sing-box/common/netns' in args
                              for _, args in calls))
+        self.assertEqual(self.authorization_calls, [])
 
     def test_authorization_cannot_add_unselected_netns(self):
         result, calls = self.run_workflow(authorized=True, netns_selected=False)
@@ -462,6 +500,7 @@ go() {
         self.assert_all_modules_before_netns(calls, netns_selected=False)
         self.assertFalse(any('-exec' in args or 'github.com/sagernet/sing-box/common/netns' in args
                              for _, args in calls))
+        self.assertEqual(self.authorization_calls, [])
 
     def test_success_status_without_required_netns_pass_still_fails(self):
         result, calls = self.run_workflow(authorized=True, netns_pass=False)
