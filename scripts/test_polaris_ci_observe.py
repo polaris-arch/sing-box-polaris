@@ -217,7 +217,7 @@ class ObservationTests(unittest.TestCase):
                 with patch.object(observe.queue, 'Queue', DelayedEOFQueue), \
                      patch.object(observe, 'terminate_owned_tree', side_effect=cleanup), \
                      patch.object(observe.sys, 'stdout', sink):
-                    code = observe.observe([sys.executable, '-c', 'print("completed-tail")'],
+                    code = observe.observe([sys.executable, '-c', 'import sys; sys.stdout.buffer.write(b"completed-tail\\n")'],
                         'pending-eof', root/'output', 20, budget_file=Path(env['POLARIS_JOB_BUDGET']))
             finally:
                 release_eof.set(); sink.close()
@@ -262,17 +262,42 @@ class ObservationTests(unittest.TestCase):
 
     @unittest.skipIf(os.name == 'nt', 'POSIX escaped session fixture; Windows owns a Job Object')
     def test_escaped_pipe_holder_later_eof_does_not_clear_failure(self):
-        # This unowned session closes itself shortly after the leader-exit grace.
-        # Later EOF during drain must not turn a genuinely open pipe green.
-        holder = 'import time; print("escaped-pipe",flush=True); time.sleep(2.5)'
-        leader = ('import os,subprocess,sys\n'
-                  'subprocess.Popen([sys.executable,"-u","-c",' + repr(holder) + '],start_new_session=True)\n'
-                  'os._exit(0)\n')
-        row, raw, stdout = self.run_child(leader, timeout=20, expected=1)
-        self.assertEqual(row['childExitCode'], 0)
-        self.assertEqual(row['observerErrorKind'], 'leader-exited-with-open-stream')
-        self.assertTrue(row['streamObservedThroughEOF']); self.assertTrue(row['ownedTreeCleanupComplete'])
-        self.assertIn(b'escaped-pipe', raw); self.assertLess(row['elapsedSeconds'], 7)
+        # Keep the escaped pipe open until cleanup classifies it, regardless of
+        # scheduling speed. Later EOF must not clear that sticky failure.
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); env = budget_env(folder)
+            ready = root/'holder-ready'; release = root/'release-holder'
+            holder = ('import time\nfrom pathlib import Path\n'
+                      'print("escaped-pipe",flush=True)\n'
+                      'Path(' + repr(str(ready)) + ').touch()\n'
+                      'deadline=time.monotonic()+10\n'
+                      'while not Path(' + repr(str(release)) + ').exists() and time.monotonic()<deadline: time.sleep(.02)\n')
+            leader = ('import os,subprocess,sys,time\nfrom pathlib import Path\n'
+                      'subprocess.Popen([sys.executable,"-u","-c",' + repr(holder) + '],start_new_session=True)\n'
+                      'deadline=time.monotonic()+5\n'
+                      'while not Path(' + repr(str(ready)) + ').exists() and time.monotonic()<deadline: time.sleep(.02)\n'
+                      'assert Path(' + repr(str(ready)) + ').exists()\n'
+                      'os._exit(0)\n')
+            original_cleanup = observe.terminate_owned_tree; cleanup_groups = []
+            def cleanup(child, job=None):
+                cleanup_groups.append(observe.group_alive(child, job))
+                complete = original_cleanup(child, job)
+                release.touch()
+                return complete
+            sink = io.TextIOWrapper(io.BytesIO(), write_through=True)
+            try:
+                with patch.object(observe, 'terminate_owned_tree', side_effect=cleanup), \
+                     patch.object(observe.sys, 'stdout', sink):
+                    code = observe.observe([sys.executable, '-u', '-c', leader], 'escaped-pipe',
+                        root/'output', 20, budget_file=Path(env['POLARIS_JOB_BUDGET']))
+            finally: release.touch(); sink.close()
+            row = json.loads((root/'output/observation.json').read_text())
+            self.assertEqual(cleanup_groups, [False]); self.assertTrue(ready.exists())
+            self.assertEqual(code, 1); self.assertEqual(row['childExitCode'], 0)
+            self.assertEqual(row['observerErrorKind'], 'leader-exited-with-open-stream')
+            self.assertTrue(row['streamObservedThroughEOF']); self.assertTrue(row['ownedTreeCleanupComplete'])
+            self.assertIn(b'escaped-pipe', (root/'output/command.log').read_bytes())
+            self.assertLess(row['elapsedSeconds'], 7)
 
     def test_cleanup_incomplete_never_becomes_green(self):
         with tempfile.TemporaryDirectory() as folder:
