@@ -34,7 +34,7 @@ func TestRuntimeInitialEligibilityReasonsPreserveInventory(t *testing.T) {
 			name: "retained TUN cache and plain API",
 			options: option.Options{
 				Inbounds: []option.Inbound{{Type: "tun", Options: &option.TunInboundOptions{}}},
-				Services: []option.Service{{Type: "api", Options: &option.APIServiceOptions{ListenOptions: option.ListenOptions{Listen: &listen}}}},
+				Services: []option.Service{{Type: "api", Options: &option.APIServiceOptions{Listen: &listen}}},
 				Experimental: &option.ExperimentalOptions{CacheFile: &option.CacheFileOptions{
 					Enabled: true, Path: runtimeEligibilitySecret, StoreDNS: true, StoreFakeIP: true,
 				}},
@@ -134,9 +134,9 @@ func TestRuntimeInitialEligibilityReasonsPreserveInventory(t *testing.T) {
 }
 
 func TestRuntimeInitialEligibilityDoesNotRetainMarshalError(t *testing.T) {
-	options := Options{Options: option.Options{Outbounds: []option.Outbound{{
+	options := Options{Outbounds: []option.Outbound{{
 		Type: "direct", Tag: runtimeEligibilitySecret, Options: runtimeEligibilityFailedOptions{},
-	}}}}
+	}}}
 	problems := runtimeInitialEligibilityErrors(context.Background(), options)
 	if len(problems) != 1 || problems[0].Code != "INITIAL_CONFIG_ENCODING_FAILED" || problems[0].Path != "runtime" || strings.Contains(fmt.Sprint(problems), runtimeEligibilitySecret) {
 		t.Fatal("initial encoding diagnostic lost its safe classification", problems)
