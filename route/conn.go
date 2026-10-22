@@ -80,7 +80,7 @@ func (m *ConnectionManager) CloseAll() {
 func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 	tracked := &trackedConn{
 		Conn:     conn,
-		original: conn,
+		original: socketOriginalCloser(sync.OnceValue(conn.Close)),
 		manager:  m,
 	}
 	m.access.Lock()
@@ -97,7 +97,7 @@ func (m *ConnectionManager) TrackConn(conn net.Conn) net.Conn {
 func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn {
 	tracked := &trackedPacketConn{
 		NetPacketConn: bufio.NewPacketConn(conn),
-		original:      conn,
+		original:      socketOriginalCloser(sync.OnceValue(conn.Close)),
 		manager:       m,
 	}
 	m.access.Lock()
@@ -456,6 +456,13 @@ func (m *ConnectionManager) packetConnectionCopy(ctx context.Context, source N.P
 	common.Close(source, destination)
 }
 
+// All physical closes, including the original returned to a TUN splice, share
+// one result and join the same call. OnceValue also replays a panic: a failed
+// close must not become a false successful completion on a later observer.
+type socketOriginalCloser func() error
+
+func (c socketOriginalCloser) Close() error { return c() }
+
 type socketOwner struct {
 	access   sync.Mutex
 	original io.Closer
@@ -509,7 +516,7 @@ func (c *trackedConn) SyscallConn() (syscall.RawConn, error) {
 
 func (c *trackedConn) Detach() {
 	if c.socketOwner.detach() {
-		c.Conn.Close()
+		c.original.Close()
 	}
 }
 
@@ -523,7 +530,7 @@ func (c *trackedConn) Close() error {
 	if c.socketOwner.close() {
 		return nil
 	}
-	return c.Conn.Close()
+	return c.original.Close()
 }
 
 func (c *trackedConn) Upstream() any {
@@ -555,7 +562,7 @@ func (c *trackedPacketConn) SyscallConn() (syscall.RawConn, error) {
 
 func (c *trackedPacketConn) Detach() {
 	if c.socketOwner.detach() {
-		c.NetPacketConn.Close()
+		c.original.Close()
 	}
 }
 
@@ -569,7 +576,7 @@ func (c *trackedPacketConn) Close() error {
 	if c.socketOwner.close() {
 		return nil
 	}
-	return c.NetPacketConn.Close()
+	return c.original.Close()
 }
 
 func (c *trackedPacketConn) Upstream() any {

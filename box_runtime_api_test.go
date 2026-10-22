@@ -127,3 +127,33 @@ func TestRuntimeAPIDashboardAndRemoteListenersRemainLegacy(t *testing.T) {
 		t.Fatal("non-loopback API admitted")
 	}
 }
+
+func TestRuntimeDashboardDetourOnlyEligibility(t *testing.T) {
+	listen := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
+	for _, test := range []struct {
+		name   string
+		change func(*option.HTTPClientOptions)
+	}{
+		{"named", func(c *option.HTTPClientOptions) { c.Tag = "named" }},
+		{"empty", func(c *option.HTTPClientOptions) { c.Detour = "" }},
+		{"engine", func(c *option.HTTPClientOptions) { c.Engine = "go" }},
+		{"version", func(c *option.HTTPClientOptions) { c.Version = 2 }},
+		{"hidden_default", func(c *option.HTTPClientOptions) { c.DefaultOutbound = true }},
+		{"hidden_resolve", func(c *option.HTTPClientOptions) { c.ResolveOnDetour = true }},
+		{"hidden_direct", func(c *option.HTTPClientOptions) { c.DirectResolver = true }},
+		{"hidden_skip_check", func(c *option.HTTPClientOptions) { c.DisableEmptyDirectCheck = true }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client := &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "select"}}
+			options := &option.APIServiceOptions{Listen: &listen, Dashboard: &option.APIDashboardOptions{Enabled: true, HTTPClient: client}}
+			item := option.Service{Type: C.TypeAPI, Options: options}
+			if !runtimeStableAPIService(item) {
+				t.Fatal("App inline detour-only dashboard rejected")
+			}
+			test.change(client)
+			if runtimeStableAPIService(item) {
+				t.Fatal("unsupported dashboard client admitted")
+			}
+		})
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing/common"
 	N "github.com/sagernet/sing/common/network"
 )
 
@@ -83,7 +84,7 @@ func (r *RuntimeRouter) RouteConnectionEx(ctx context.Context, conn net.Conn, me
 			}
 		})
 	}
-	owned := &runtimeConn{Conn: conn, finish: finish}
+	owned := &runtimeConn{Conn: conn, lease: lease, finish: finish}
 	lease.View().Router().RouteConnectionEx(adapter.ContextWithRuntimeLease(ctx, lease), owned, metadata, finish)
 }
 
@@ -113,7 +114,7 @@ func (r *RuntimeRouter) RoutePacketConnectionEx(ctx context.Context, conn N.Pack
 			}
 		})
 	}
-	owned := &runtimePacketConn{PacketConn: conn, finish: finish}
+	owned := &runtimePacketConn{PacketConn: conn, lease: lease, finish: finish}
 	lease.View().Router().RoutePacketConnectionEx(adapter.ContextWithRuntimeLease(ctx, lease), owned, metadata, finish)
 }
 
@@ -205,16 +206,74 @@ func (r *RuntimeRouter) ResetNetwork() {
 
 type runtimeConn struct {
 	net.Conn
+	lease  adapter.RuntimeLease
 	finish N.CloseHandlerFunc
 }
 
 func (c *runtimeConn) Close() error { err := c.Conn.Close(); c.finish(err); return err }
 
+// Preserve protocol handshake capabilities without exposing Upstream or a raw
+// carrier. A concurrent terminal callback may release the flow reservation, so
+// each synchronous handshake owns a continuation through its actual return.
+func runtimeHandshake(lease adapter.RuntimeLease, handshake func() error) error {
+	operation, err := lease.Fork()
+	if err != nil {
+		return err
+	}
+	defer operation.Release()
+	return handshake()
+}
+
+func (c *runtimeConn) ConnHandshakeSuccess(conn net.Conn) error {
+	return runtimeHandshake(c.lease, func() error { return N.ReportConnHandshakeSuccess(c.Conn, conn) })
+}
+
+func (c *runtimeConn) HandshakeSuccess() error {
+	return runtimeHandshake(c.lease, func() error {
+		if handshake, ok := common.Cast[N.HandshakeSuccess](c.Conn); ok {
+			return handshake.HandshakeSuccess()
+		}
+		return nil
+	})
+}
+
+func (c *runtimeConn) HandshakeFailure(err error) error {
+	return runtimeHandshake(c.lease, func() error {
+		if handshake, ok := common.Cast[N.HandshakeFailure](c.Conn); ok {
+			return handshake.HandshakeFailure(err)
+		}
+		return nil
+	})
+}
+
 type runtimePacketConn struct {
 	N.PacketConn
+	lease  adapter.RuntimeLease
 	finish N.CloseHandlerFunc
 }
 
 func (c *runtimePacketConn) Close() error { err := c.PacketConn.Close(); c.finish(err); return err }
+
+func (c *runtimePacketConn) PacketConnHandshakeSuccess(conn net.PacketConn) error {
+	return runtimeHandshake(c.lease, func() error { return N.ReportPacketConnHandshakeSuccess(c.PacketConn, conn) })
+}
+
+func (c *runtimePacketConn) HandshakeSuccess() error {
+	return runtimeHandshake(c.lease, func() error {
+		if handshake, ok := common.Cast[N.HandshakeSuccess](c.PacketConn); ok {
+			return handshake.HandshakeSuccess()
+		}
+		return nil
+	})
+}
+
+func (c *runtimePacketConn) HandshakeFailure(err error) error {
+	return runtimeHandshake(c.lease, func() error {
+		if handshake, ok := common.Cast[N.HandshakeFailure](c.PacketConn); ok {
+			return handshake.HandshakeFailure(err)
+		}
+		return nil
+	})
+}
 
 var _ adapter.Router = (*RuntimeRouter)(nil)

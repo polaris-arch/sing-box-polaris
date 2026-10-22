@@ -62,6 +62,10 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	// Its fingerprint must include them, rather than merely retaining a provider
 	// edge to an unchanged manager with stale captured detours/defaults.
 	var providerHTTP []option.HTTPClientOptions
+	dashboardHTTP, err := runtimeDashboardHTTPConfigs(options)
+	if err != nil {
+		return nil, nil, err
+	}
 	providerDependencies := func(value any) ([]string, bool) {
 		var client *option.HTTPClientOptions
 		switch options := value.(type) {
@@ -440,6 +444,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		allHTTP = append(allHTTP, client.Options())
 	}
 	allHTTP = append(allHTTP, providerHTTP...)
+	for _, client := range dashboardHTTP {
+		allHTTP = append(allHTTP, client.Options)
+	}
 	for _, value := range allHTTP {
 		if value.Detour != "" {
 			httpDeps = append(httpDeps, "outbound:"+value.Detour)
@@ -456,8 +463,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	httpConfig := struct {
 		Clients        []option.HTTPClient
 		ProviderInline []option.HTTPClientOptions
+		Dashboard      []runtimeDashboardHTTPConfig
 		Default        string
-	}{options.HTTPClients, providerHTTP, routeOptions.DefaultHTTPClient}
+	}{options.HTTPClients, providerHTTP, dashboardHTTP, routeOptions.DefaultHTTPClient}
 	httpNode, err := makeNode("http-manager", httpConfig, httpDeps, true)
 	if err != nil {
 		return nil, nil, err

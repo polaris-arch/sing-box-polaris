@@ -7,6 +7,32 @@ import (
 	"testing"
 )
 
+func TestRuntimeCapabilitiesDashboardCoexistenceIsNotServiceHotUpdate(t *testing.T) {
+	capability := (*Box)(nil).RuntimeCapabilities()
+	if capability.FullConfiguration {
+		t.Fatal("narrow dashboard adapter advertised full configuration")
+	}
+	for _, path := range capability.SupportedPaths {
+		if path == "services" {
+			t.Fatal("stable dashboard advertised hot service replacement")
+		}
+	}
+	for _, field := range capability.Fields {
+		if field.Path != "services" || field.Variant != "structural-change" {
+			continue
+		}
+		if field.UpdateClass != "RESTART_REQUIRED" || !reflect.DeepEqual(field.Conditions, []string{
+			"unchanged-supported-components-may-coexist", "explicit-host-restart-only",
+			"unchanged-plain-loopback-api-may-coexist", "enabled-dashboard-requires-inline-detour-only-http-client",
+			"dashboard-fetch-borrows-current-graph-until-body-close",
+		}) {
+			t.Fatalf("dashboard coexistence boundary missing: %+v", field)
+		}
+		return
+	}
+	t.Fatal("missing service structural-change capability")
+}
+
 func TestRuntimeCapabilitiesManifestIsDetachedAndInstanceIndependent(t *testing.T) {
 	instance := new(Box)
 	first := instance.RuntimeCapabilities()

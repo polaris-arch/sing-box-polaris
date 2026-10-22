@@ -187,13 +187,29 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	if err := m.PrepareRuntime(nil); err != nil {
-		return err
+	// Ordinary lifecycle startup is not graph preparation. In a legacy Box,
+	// the implicit default is needed only when a consumer requests it; eagerly
+	// preparing it here also reports the remote rule-set deprecation for
+	// configurations that never use that default. Connected graphs explicitly
+	// call PrepareRuntime and FreezeRuntime before publication instead.
+	m.access.Lock()
+	setupErr, closed, hasDefault := m.setupErr, m.closed, m.defaultTag != ""
+	m.access.Unlock()
+	if setupErr != nil {
+		return setupErr
+	}
+	if closed {
+		return net.ErrClosed
+	}
+	if hasDefault {
+		if _, err := m.resolveDefault(); err != nil {
+			return E.Cause(err, "resolve default http client")
+		}
 	}
 	if !m.constructionOwned {
 		scope.Add(m.RuntimeCloseAndWait)
 	}
-	return m.FreezeRuntime()
+	return nil
 }
 
 func (m *Manager) begin(ctx context.Context) (context.Context, func(), error) {

@@ -3,6 +3,10 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -53,14 +57,19 @@ func (*runtimeAPIPlatform) UsePlatformWIFIMonitor() bool                        
 func (*runtimeAPIPlatform) UsePlatformNeighborResolver() bool                      { return false }
 
 // Production API constructor, actual loopback transport and attached RPCs. The
-// API JSON matches the App's default projection: no tag, dashboard, TLS or CORS.
+// This plain-API fixture has no tag, dashboard, TLS or CORS; the App default
+// enables its dashboard and is covered separately.
 // Only the OS monitor boundary is replaced. Port zero is test-only allocation.
 func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 	if runtime.GOOS == "android" || runtime.GOOS == "windows" {
 		t.Skip("native certificate/power boundary requires its platform fixture")
 	}
-	for _, secret := range []string{"", "synthetic"} {
-		t.Run("secret="+secret, func(t *testing.T) {
+	for _, variant := range []struct {
+		secret    string
+		dashboard bool
+	}{{"", false}, {"synthetic", false}, {"", true}, {"synthetic", true}} {
+		t.Run(fmt.Sprintf("secret=%s/dashboard=%v", variant.secret, variant.dashboard), func(t *testing.T) {
+			secret := variant.secret
 			outbounds := outbound.NewRegistry()
 			direct.RegisterOutbound(outbounds)
 			socks.RegisterOutbound(outbounds)
@@ -74,6 +83,14 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 			apiJSON := `{"type":"api","listen":"127.0.0.1","listen_port":0}`
 			if secret != "" {
 				apiJSON = `{"type":"api","listen":"127.0.0.1","listen_port":0,"secret":"synthetic"}`
+			}
+			if variant.dashboard {
+				path := t.TempDir()
+				if err := os.WriteFile(filepath.Join(path, "index.html"), []byte("bundled-dashboard"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				encodedPath, _ := json.Marshal(path)
+				apiJSON = strings.TrimSuffix(apiJSON, "}") + `,"dashboard":{"enabled":true,"path":` + string(encodedPath) + `,"http_client":{"detour":"select"}}}`
 			}
 			content := `{"log":{"disabled":true},"dns":{"servers":[{"type":"udp","tag":"resolver","server":"192.0.2.53"}],"final":"resolver"},"outbounds":[{"type":"socks","tag":"a","server":"192.0.2.1","server_port":1080,"version":"5"},{"type":"socks","tag":"b","server":"192.0.2.2","server_port":1080,"version":"5"},{"type":"selector","tag":"select","outbounds":["a","b"],"default":"a"}],"route":{"final":"select","rule_set":[{"type":"inline","tag":"sites","rules":[{"domain_suffix":["example.test"]}]}]},"services":[` + apiJSON + `]}`
 			var options option.Options
@@ -116,8 +133,18 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				t.Fatal("default untagged API was not preserved")
 			}
 			api := registered.(*Service)
-			if api.dashboard != nil || api.listener.TCPListener() == nil {
+			if (api.dashboard != nil) != variant.dashboard || api.listener.TCPListener() == nil {
 				t.Fatal("default API listener/dashboard projection changed")
+			}
+			if variant.dashboard {
+				if api.dashboard.done != nil {
+					t.Fatal("user-provided bundle started a download worker")
+				}
+				response := httptest.NewRecorder()
+				api.dashboard.serveHTTP(response, httptest.NewRequest("GET", "/dashboard/", nil))
+				if response.Code != 200 || response.Body.String() != "bundled-dashboard" {
+					t.Fatalf("bundle serving: %d %s", response.Code, response.Body.String())
+				}
 			}
 			connection, err := grpc.NewClient(api.listener.TCPListener().Addr().String(),
 				grpc.WithTransportCredentials(insecure.NewCredentials()),

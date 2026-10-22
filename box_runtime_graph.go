@@ -41,6 +41,7 @@ type runtimeView struct {
 	endpoints          adapter.EndpointManager
 	transports         adapter.DNSTransportManager
 	httpClients        *httpclient.Manager
+	dashboardHTTP      map[runtimeDashboardHTTPKey]adapter.HTTPTransport
 	network            adapter.NetworkManager
 	ports              map[tun.Port]adapter.RuntimeResourceID
 	componentIDs       map[string]adapter.RuntimeResourceID
@@ -76,18 +77,19 @@ type runtimeResource struct {
 }
 
 type runtimeComponent struct {
-	service     adapter.Service
-	clock       *runtimeclock.Service
-	endpoint    adapter.Endpoint
-	provider    adapter.CertificateProviderService
-	httpClients *httpclient.Manager
-	history     *urltest.HistoryStorage
-	inbound     adapter.Inbound
-	outbound    adapter.Outbound
-	transport   adapter.DNSTransport
-	ruleSet     adapter.RuleSet
-	router      *route.Router
-	dns         *dns.Router
+	service       adapter.Service
+	clock         *runtimeclock.Service
+	endpoint      adapter.Endpoint
+	provider      adapter.CertificateProviderService
+	httpClients   *httpclient.Manager
+	dashboardHTTP map[runtimeDashboardHTTPKey]adapter.HTTPTransport
+	history       *urltest.HistoryStorage
+	inbound       adapter.Inbound
+	outbound      adapter.Outbound
+	transport     adapter.DNSTransport
+	ruleSet       adapter.RuleSet
+	router        *route.Router
+	dns           *dns.Router
 }
 
 type preparedRuntimeGraph struct {

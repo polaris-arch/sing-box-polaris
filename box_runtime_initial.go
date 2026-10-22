@@ -181,6 +181,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	service.MustRegister[adapter.NetworkManager](ctx, networkView)
 	// HTTP clients belong to each prepared graph and are constructed/frozen
 	// with that graph's outbound and DNS dependencies. No stable placeholder.
+	service.MustRegister[adapter.RuntimeDashboardHTTPProvider](ctx, instance)
 	coordinator.reference = route.NewRuntimeReferenceManager(ctx, factory.NewLogger("reference"), instance, instance)
 	coordinator.referenceReservation, err = stable.owner.Acquire()
 	if err != nil {
