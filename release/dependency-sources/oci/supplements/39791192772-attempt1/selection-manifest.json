@@ -1,0 +1,340 @@
+{
+  "schema": "polaris-oci-material-supplement-selection-v1",
+  "supplementId": "39791192772-attempt1",
+  "directory": "release/dependency-sources/oci/supplements/39791192772-attempt1",
+  "binding": {
+    "repository": "polaris-arch/sing-box-polaris",
+    "repositoryId": 1421657509,
+    "sourceCommit": "814da362838e96e54f904836a92c2b0d8c3ae29b",
+    "sourceTree": "ad574f93026557b49edecb492bd7ecdb851057c1",
+    "tag": "v1.15.0-polaris-alpha.12.1",
+    "tagObject": "8ecda357ea755a1295336a35ec7eaf1fe2daebc2",
+    "producerRunId": 39791192772,
+    "producerAttempt": 1,
+    "workflowPath": ".github/workflows/docker.yml",
+    "nativeIndexSHA256": "1b5c1ae5a83a452cd14cda6ea608f3964f4e1ee1face98b40ee400fe47cb5215",
+    "sourceArchive": {
+      "name": "sing-box-polaris-source-814da362838e96e54f904836a92c2b0d8c3ae29b.tar.gz",
+      "bytes": 12565749,
+      "sha256": "083c9ff23d7e7efc45debd89dd415fb11025845a5e2e73c1fc96878851951a9e"
+    },
+    "historicalMaterialMap": {
+      "path": "release/dependency-sources/oci/oci-source-notice-map.json",
+      "bytes": 384794,
+      "sha256": "64dcd0b76de00e327eba2461bf9df8c8609911f7ca909a474f2ee572833e853d"
+    },
+    "historicalReuseReference": {
+      "path": "release/dependency-sources/oci/reuse-reference.json",
+      "bytes": 70365,
+      "sha256": "b7839556ef7aa5dc3be9fbf75f4d2108b14f7a98640597b220207957fcfae1d9"
+    },
+    "historicalAcquisition": {
+      "path": "release/dependency-sources/oci/source-acquisition.json",
+      "bytes": 22037,
+      "sha256": "69705b5a9f423afaf634644a87a93f0590e78a3f7533f619eba37cc56041c0c8"
+    }
+  },
+  "materialReference": {
+    "path": "reuse-reference.json",
+    "bytes": 77826,
+    "sha256": "cab26dc0586949a05e5fa7dbdc52111062773e6e0156e68cf3d0f4a775168b3d"
+  },
+  "materialMap": {
+    "path": "oci-source-notice-map.json",
+    "bytes": 289901,
+    "sha256": "adfca0e411cc1b28a529c835daf0251e55cafeccdc5488cf119360b500870e0e"
+  },
+  "sourceAcquisition": {
+    "path": "source-acquisition.json",
+    "bytes": 3451,
+    "sha256": "5d5582aa5b1d4c2059107e9cd19dec4eb9c423fb80b89a35ddbc9f734f52a4f0"
+  },
+  "noticeInventory": {
+    "path": "notice-inventory.json",
+    "bytes": 5856,
+    "sha256": "171ec3e2e23e301b155e179d03a1154cf3e5b38782aa0b6f87265c022346927c"
+  },
+  "httpGetReceipts": {
+    "path": "http-get-receipts.json",
+    "bytes": 3030,
+    "sha256": "19494493298534845c55b94f5d1a00763876744cc8062cbf6ded251234254367"
+  },
+  "fileInventoryPolicy": "All regular files beneath this directory except selection-manifest.json itself; no symlinks, unknown files, duplicates, or path traversal. The selector hash is pinned outside this directory by the independently reviewed publisher registry.",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1663,
+      "sha256": "d643c11251cdda91fbe9cee7520c78e3b638cf64da3b176efc8f35d96af7111b"
+    },
+    {
+      "path": "aports/0afa2da0e8c8051c6f8f64a7a388e5a259904245/main/zlib/APKBUILD",
+      "bytes": 1134,
+      "sha256": "c9348892bf3857602fe74fcc1d411e263b408b7d70344170396f5993a62bbe26"
+    },
+    {
+      "path": "aports/0afa2da0e8c8051c6f8f64a7a388e5a259904245/main/zlib/CVE-2026-85091.patch",
+      "bytes": 854,
+      "sha256": "110ff14375733173d8aa54574473424fbd7dfe4b81f1ca34a759c6fe14b15b14"
+    },
+    {
+      "path": "aports/1c5642bff0a86736a8ae3a78f13977867add64ff/main/ca-certificates/APKBUILD",
+      "bytes": 2520,
+      "sha256": "7b35fb8e11790105578f47d57a3b22831227b0d8ad7d064e575bad146023f3da"
+    },
+    {
+      "path": "aports/1c5642bff0a86736a8ae3a78f13977867add64ff/main/ca-certificates/ca-certificates.post-deinstall",
+      "bytes": 137,
+      "sha256": "9523860edc396093bd41270c6e33a569a30657e2ffd729829514ee6b6d54d652"
+    },
+    {
+      "path": "aports/1c5642bff0a86736a8ae3a78f13977867add64ff/main/ca-certificates/ca-certificates.trigger",
+      "bytes": 67,
+      "sha256": "1bf77c8eae3220b1bd7dd86561d0899315f51d72257c1aeb4066072ed4304fe5"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/0001-add-stub-for-pthread_mutexattr_setprioceiling.patch",
+      "bytes": 896,
+      "sha256": "b2067680c66af9eb9f4fdc1fa5d9337a9fd62bdab2c437b416aa97d79eb884ee"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/0001-fix-toctou-race-in-popen-children-s-closing-of-other.patch",
+      "bytes": 2819,
+      "sha256": "f93dacf1044877a7d1a50dd34df00ce982e3599bc37b89c3753111cd9d5a4284"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/APKBUILD",
+      "bytes": 7092,
+      "sha256": "fb5ab4f3d497cf9060244ef5dc0d825896c60ea4f54f7a8ba3638850ccc33ca6"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/CVE-2026-107891.patch",
+      "bytes": 5943,
+      "sha256": "0cf0090ab433e8f9ed08ae03a0c93aff557c1d3e347260f62a61a10281f5333b"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/CVE-2026-40200.patch",
+      "bytes": 5594,
+      "sha256": "1ee29f64f9ca8e8ad7c349779d661ff6b52126a27575d3586981357a52c406fb"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/CVE-2026-6042.patch",
+      "bytes": 7506,
+      "sha256": "1d0be2e72b9d5bd16546b923aa8af861d271322f01644716a81823bec4065c99"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/__stack_chk_fail_local.c",
+      "bytes": 133,
+      "sha256": "299a7d75a09de3e2e11e7fb4acc3182e4a14e868093d2f30938fce9bfcff13da"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/adjust-paths.patch",
+      "bytes": 1578,
+      "sha256": "a918356c67939dfbe3cc2888a18cdff2bf74915f547ee3f35089a5d5c5321285"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/fix-loongarch64-zero-len-extcontext.patch",
+      "bytes": 738,
+      "sha256": "92c8e965798ed516c15cb2a4e7c4ac45ec1eb68b6abff16c73adff2a3bae1b14"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/fstatat-null.patch",
+      "bytes": 451,
+      "sha256": "1a3407b311b0b65f50330496986124c987c31ce25254b271a3c7b2bffea1f626"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/getconf.c",
+      "bytes": 11614,
+      "sha256": "d87d0cbb3690ae2c5d8cc218349fd8278b93855dd625deaf7ae50e320aad247c"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/getent.c",
+      "bytes": 11656,
+      "sha256": "a6171c2db641cdd99c164169d3c5c6ca323617483cedec4cbbe3eb39c5834df0"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/handle-aux-at_base.patch",
+      "bytes": 1214,
+      "sha256": "2a65e03b94217063d72fe998e5fb2e25cd01716078a3ba1b0ab574ab205111e6"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/iconv.c",
+      "bytes": 2577,
+      "sha256": "f79a2930a2e5bb0624321589edf8b889d1e9b603e01e6b7ae214616605b3fdd7"
+    },
+    {
+      "path": "aports/6a9a5fe7d82a10358a59391e4117cc9aeefcb690/main/musl/ldconfig",
+      "bytes": 393,
+      "sha256": "7065021e04a5060957b5c6907af671a7028230d91927fb0c25892cadd9312b7c"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/0001-add-stub-for-pthread_mutexattr_setprioceiling.patch",
+      "bytes": 896,
+      "sha256": "b2067680c66af9eb9f4fdc1fa5d9337a9fd62bdab2c437b416aa97d79eb884ee"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/APKBUILD",
+      "bytes": 6495,
+      "sha256": "22c5adb3f3b68ab84e5ff7d20df68447063d1ecb5c7b39afd5a04a1dfd444a35"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/CVE-2026-107891.patch",
+      "bytes": 5943,
+      "sha256": "0cf0090ab433e8f9ed08ae03a0c93aff557c1d3e347260f62a61a10281f5333b"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/CVE-2026-40200.patch",
+      "bytes": 5594,
+      "sha256": "1ee29f64f9ca8e8ad7c349779d661ff6b52126a27575d3586981357a52c406fb"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/CVE-2026-6042.patch",
+      "bytes": 7506,
+      "sha256": "1d0be2e72b9d5bd16546b923aa8af861d271322f01644716a81823bec4065c99"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/__stack_chk_fail_local.c",
+      "bytes": 133,
+      "sha256": "299a7d75a09de3e2e11e7fb4acc3182e4a14e868093d2f30938fce9bfcff13da"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/fix-loongarch64-zero-len-extcontext.patch",
+      "bytes": 738,
+      "sha256": "92c8e965798ed516c15cb2a4e7c4ac45ec1eb68b6abff16c73adff2a3bae1b14"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/getconf.c",
+      "bytes": 11614,
+      "sha256": "d87d0cbb3690ae2c5d8cc218349fd8278b93855dd625deaf7ae50e320aad247c"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/getent.c",
+      "bytes": 11656,
+      "sha256": "a6171c2db641cdd99c164169d3c5c6ca323617483cedec4cbbe3eb39c5834df0"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/handle-aux-at_base.patch",
+      "bytes": 1214,
+      "sha256": "2a65e03b94217063d72fe998e5fb2e25cd01716078a3ba1b0ab574ab205111e6"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/iconv.c",
+      "bytes": 2577,
+      "sha256": "f79a2930a2e5bb0624321589edf8b889d1e9b603e01e6b7ae214616605b3fdd7"
+    },
+    {
+      "path": "aports/8f79d39391b46d6dbf1800fb68b8212a21d5ee2e/main/musl/ldconfig",
+      "bytes": 393,
+      "sha256": "7065021e04a5060957b5c6907af671a7028230d91927fb0c25892cadd9312b7c"
+    },
+    {
+      "path": "aports/e78f5987166c6ffbe23f6472e2e8f040298fe2da/main/ca-certificates/APKBUILD",
+      "bytes": 2520,
+      "sha256": "7b35fb8e11790105578f47d57a3b22831227b0d8ad7d064e575bad146023f3da"
+    },
+    {
+      "path": "aports/e78f5987166c6ffbe23f6472e2e8f040298fe2da/main/ca-certificates/ca-certificates.post-deinstall",
+      "bytes": 137,
+      "sha256": "9523860edc396093bd41270c6e33a569a30657e2ffd729829514ee6b6d54d652"
+    },
+    {
+      "path": "aports/e78f5987166c6ffbe23f6472e2e8f040298fe2da/main/ca-certificates/ca-certificates.trigger",
+      "bytes": 67,
+      "sha256": "1bf77c8eae3220b1bd7dd86561d0899315f51d72257c1aeb4066072ed4304fe5"
+    },
+    {
+      "path": "aports/ee92350c8a4509152dc91c693814215a884c07c3/main/alpine-base/APKBUILD",
+      "bytes": 1507,
+      "sha256": "51cb91f683941e1d9d89fe9e600d5c11bbae4b7baa45a870dba4a969516c7f3f"
+    },
+    {
+      "path": "http-get-receipts.json",
+      "bytes": 3030,
+      "sha256": "19494493298534845c55b94f5d1a00763876744cc8062cbf6ded251234254367"
+    },
+    {
+      "path": "notice-inventory.json",
+      "bytes": 5856,
+      "sha256": "171ec3e2e23e301b155e179d03a1154cf3e5b38782aa0b6f87265c022346927c"
+    },
+    {
+      "path": "notices/ca-certificates-20261020.tar.bz2/c_rehash.c.license-header.txt",
+      "bytes": 329,
+      "sha256": "97fdd5501244be771a0d8695419b4997dbd742e666015aa7e3c3cc1f2fe022b4"
+    },
+    {
+      "path": "notices/ca-certificates-20261020.tar.bz2/certdata.txt.license-header.txt",
+      "bytes": 200,
+      "sha256": "74595f1b77f959c9bd601bd2206af1084dec2b8731ae187ad37d1082bc8eabb5"
+    },
+    {
+      "path": "notices/ca-certificates-20261020.tar.bz2/mk-ca-bundle.pl.license-header.txt",
+      "bytes": 1086,
+      "sha256": "ac8ff1112ed26659be28189d5cec87164c003b569339ebf8517bc1221523e625"
+    },
+    {
+      "path": "notices/musl-1.2.6.tar.gz/musl-1.2.6/COPYRIGHT",
+      "bytes": 6196,
+      "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b"
+    },
+    {
+      "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/LICENSE",
+      "bytes": 1002,
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    },
+    {
+      "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+      "bytes": 1359,
+      "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951"
+    },
+    {
+      "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+      "bytes": 3509,
+      "sha256": "fc686023047ce5ce3a18a9b8a777156f0e475929d3de06bac279f3c025d2b2ca"
+    },
+    {
+      "path": "oci-source-notice-map.json",
+      "bytes": 289901,
+      "sha256": "adfca0e411cc1b28a529c835daf0251e55cafeccdc5488cf119360b500870e0e"
+    },
+    {
+      "path": "reuse-reference.json",
+      "bytes": 77826,
+      "sha256": "cab26dc0586949a05e5fa7dbdc52111062773e6e0156e68cf3d0f4a775168b3d"
+    },
+    {
+      "path": "source-acquisition.json",
+      "bytes": 3451,
+      "sha256": "5d5582aa5b1d4c2059107e9cd19dec4eb9c423fb80b89a35ddbc9f734f52a4f0"
+    },
+    {
+      "path": "sources/ca-certificates-20261020.tar.bz2",
+      "bytes": 230531,
+      "sha256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400"
+    },
+    {
+      "path": "sources/musl-1.2.6.tar.gz",
+      "bytes": 1082499,
+      "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"
+    },
+    {
+      "path": "sources/zlib-1.3.2.tar.gz",
+      "bytes": 1502830,
+      "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
+    }
+  ],
+  "artifactCount": 9,
+  "packageAssociationCount": 243,
+  "newRecipeCount": 6,
+  "historicalRecipeCount": 31,
+  "selectionPolicy": "Exact repository/source/tree/tag/tagObject/workflow/run/attempt and each artifact ID/API digest/archive/image identity; fail closed when requested, no error fallback.",
+  "historicalRootPolicy": "Historical anchors and referenced material files must be read from the immutable sourceCommit checkout/archive, never from the publisher branch.",
+  "coreBindingPolicy": "Exact observed OCI coreBytes/coreSHA256 only; no assertion of equality with a different independently built product.",
+  "distributionBoundary": {
+    "publicReleaseAssetSet": "unchanged",
+    "ociDistribution": "separate-channel",
+    "appendOnlyPublisherDirectory": "release/dependency-sources/oci/supplements/39791192772-attempt1",
+    "auditDelivery": "Existing authorized publisher audit mechanism or immutable GitHub source references to the exact independently reviewed publisher commit; no additional public Release assets."
+  },
+  "legalConclusion": false,
+  "notPublisherReceipt": true
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ca-certificates-20261020.tar.bz2",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20261020.tar.bz2",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20261020.tar.bz2",
+    "method": "GET",
+    "status": 200,
+    "startedAtUTC": "2026-10-22T14:49:14.694022+00:00",
+    "completedAtUTC": "2026-10-22T14:49:21.350806+00:00",
+    "responseHeaders": {
+      "Date": "Thu, 22 Oct 2026 14:49:20 GMT",
+      "Content-Type": "application/octet-stream",
+      "Content-Length": "230531",
+      "Last-Modified": "Wed, 21 Oct 2026 01:00:05 GMT",
+      "ETag": "\"6ad80e95-38483\""
+    },
+    "bytes": 230531,
+    "sha256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400",
+    "sha512": "d28eb01751b1a914ffb5d8cb99e662f0a35a95148c21dcf98de1ab3108b54db9714a99472d07715023867f4f76a21f2a79a2bc1c7e9876ce5167fdd865ad2dd7",
+    "fullGet": true,
+    "bodySaved": "sources/ca-certificates-20261020.tar.bz2",
+    "matchesExactAPKBUILDSHA512": true
+  },
+  {
+    "name": "musl-1.2.6.tar.gz",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/musl-1.2.6.tar.gz",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/musl-1.2.6.tar.gz",
+    "method": "GET",
+    "status": 200,
+    "startedAtUTC": "2026-10-22T14:49:14.695012+00:00",
+    "completedAtUTC": "2026-10-22T14:49:21.349330+00:00",
+    "responseHeaders": {
+      "Date": "Thu, 22 Oct 2026 14:49:20 GMT",
+      "Content-Type": "application/octet-stream",
+      "Content-Length": "1082499",
+      "Last-Modified": "Sat, 18 Apr 2026 01:00:39 GMT",
+      "ETag": "\"69e2d7b7-108483\""
+    },
+    "bytes": 1082499,
+    "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "sha512": "1adad96eddb3a2eb0cacb3e363b0046568925fcdd75cf8b0503f2139df1f693d64730779ca0ce8131b7624ab2d37f4247bb1d3393c523de6e30d2b1d7732555c",
+    "fullGet": true,
+    "bodySaved": "sources/musl-1.2.6.tar.gz",
+    "matchesExactAPKBUILDSHA512": true
+  },
+  {
+    "name": "zlib-1.3.2.tar.gz",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/zlib-1.3.2.tar.gz",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/zlib-1.3.2.tar.gz",
+    "method": "GET",
+    "status": 200,
+    "startedAtUTC": "2026-10-22T14:49:14.695566+00:00",
+    "completedAtUTC": "2026-10-22T14:49:21.307139+00:00",
+    "responseHeaders": {
+      "Date": "Thu, 22 Oct 2026 14:49:20 GMT",
+      "Content-Type": "application/octet-stream",
+      "Content-Length": "1502830",
+      "Last-Modified": "Sat, 07 Mar 2026 01:00:04 GMT",
+      "ETag": "\"69ab7894-16ee6e\""
+    },
+    "bytes": 1502830,
+    "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sha512": "70963771ea5d763614278a69b474f09b7d237ef8f53b675a10fe31d9923aeef601504b35d7ebd1b1e7f347e9ebb048e6b3b47fffdf137e7bdc7e8d5eb4ec4692",
+    "fullGet": true,
+    "bodySaved": "sources/zlib-1.3.2.tar.gz",
+    "matchesExactAPKBUILDSHA512": true
+  }
+]

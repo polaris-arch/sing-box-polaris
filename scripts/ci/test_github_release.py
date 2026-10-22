@@ -12,6 +12,10 @@ import os
 import runpy
 from contextlib import chdir, contextmanager
 import zipfile
+import io
+import struct
+import zlib
+import errno
 
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
@@ -27,6 +31,350 @@ def historical_release():
         with mock.patch.multiple(p, CONFIG=config, VERSION=version, PUBLIC_VERSION='1.15.0-alpha.12',
                                  TAG='v' + version, RECEIPT='polaris-github-release-receipt-' + version + '.json'):
             yield
+
+
+class BoundedStorageTests(unittest.TestCase):
+    @staticmethod
+    def zipped(rows, compression=zipfile.ZIP_DEFLATED):
+        stream=io.BytesIO()
+        with zipfile.ZipFile(stream,'w',compression=compression) as archive:
+            for name,data in rows:archive.writestr(name,data)
+        return stream.getvalue()
+
+    @staticmethod
+    def metadata(data,name='test',ident=31):
+        return {'id':ident,'name':name,'size_in_bytes':len(data),'digest':'sha256:'+hashlib.sha256(data).hexdigest(),
+                'expired':False,'workflow_run':{'id':7,'head_sha':'a'*40}}
+
+    @contextmanager
+    def download(self,data,metadata=None,exit_code=0,limit=p.SCRATCH_LIMIT,reserve=0):
+        class Child:
+            def __init__(self):self.stdout=io.BytesIO(data);self.done=False;self.terminated=False;self.reaped=False
+            def wait(self,timeout=None):self.done=True;self.reaped=True;return exit_code
+            def poll(self):return exit_code if self.done else None
+            def terminate(self):self.terminated=True;self.done=True
+            def kill(self):self.terminated=True;self.done=True
+        child=Child()
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);budget=p.ScratchBudget(root,limit=limit,reserve=reserve)
+            with mock.patch.object(p.subprocess,'Popen',return_value=child) as started:
+                yield metadata or self.metadata(data),budget,child,started
+            self.assertEqual(list(root.iterdir()),[])
+            self.assertEqual(budget.live,0)
+
+    def test_streams_all_bytes_without_retaining_expanded_private_payloads(self):
+        payload=b'x'*(4*1024**2)
+        data=self.zipped([(f'sdk-{n}.bin',payload) for n in range(32)])
+        with self.download(data) as (metadata,budget,child,_):
+            with p.artifact_archive(metadata,budget) as (archive,members):
+                self.assertEqual(len(members),32)
+                for item in members:
+                    measured,_=p.measure_member(archive,item)
+                    self.assertEqual(measured,{'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
+                    self.assertEqual(len(list(budget.root.iterdir())),1)
+            self.assertEqual(budget.peak,len(data));self.assertTrue(child.reaped)
+
+    def test_stream_matches_legacy_extraction_hashes_and_sizes(self):
+        data=self.zipped([('a.bin',b'a'*12345),('sub/b.json',b'{"value":42}')])
+        with tempfile.TemporaryDirectory() as d,self.download(data) as (metadata,budget,_,_):
+            path=Path(d)/'archive.zip';path.write_bytes(data);p.extract(path,Path(d)/'old')
+            with p.artifact_archive(metadata,budget) as (archive,members):
+                for item in members:
+                    measured,_=p.measure_member(archive,item)
+                    old=Path(d)/'old'/item.filename
+                    self.assertEqual(measured,{'bytes':old.stat().st_size,'sha256':p.sha(old)})
+
+    def test_download_digest_size_child_errors_clean_and_reap(self):
+        data=self.zipped([('payload',b'data')])
+        for kind in ('digest','short','long','exit'):
+            metadata=self.metadata(data);downloaded=data;code=0
+            if kind=='digest':metadata['digest']='sha256:'+'0'*64
+            elif kind=='short':downloaded=data[:-1]
+            elif kind=='long':downloaded=data+b'extra'
+            else:code=7
+            with self.subTest(kind=kind),self.download(downloaded,metadata,exit_code=code) as (a,budget,child,_):
+                with self.assertRaises(ValueError),p.artifact_archive(a,budget):pass
+                self.assertTrue(child.reaped)
+                if kind=='long':self.assertTrue(child.terminated)
+
+    def test_scratch_and_available_space_admission_precede_download(self):
+        data=self.zipped([('x',b'x')])
+        with self.download(data,limit=len(data)-1) as (a,budget,_,started):
+            with self.assertRaisesRegex(ValueError,'scratch budget'),p.artifact_archive(a,budget):pass
+            started.assert_not_called()
+        with self.download(data,reserve=128) as (a,budget,_,started),mock.patch.object(p.shutil,'disk_usage',return_value=type('Usage',(),{'free':len(data)+127})()):
+            with self.assertRaisesRegex(ValueError,'free scratch'),p.artifact_archive(a,budget):pass
+            started.assert_not_called()
+
+    def test_archive_path_type_case_and_prefix_failures_before_member_writes(self):
+        symlink=zipfile.ZipInfo('link');symlink.create_system=3;symlink.external_attr=(0o120777<<16)
+        cases=[ [('a',b'x'),('A',b'y')], [('file',b'x'),('file/child',b'y')],
+                [('parent/child',b'x'),('PARENT',b'y')], [('../escape',b'x')],
+                [('a//b',b'x')], [(symlink,b'target')], [('name/',b'nonempty')]]
+        for rows in cases:
+            data=self.zipped(rows)
+            with self.subTest(rows=str(rows)[:70]),self.download(data) as (a,budget,_,_):
+                with self.assertRaises(ValueError),p.artifact_archive(a,budget):pass
+
+    def test_crc_and_real_inflated_size_are_checked_not_zipfile_truncation(self):
+        for compression in (zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED):
+            original=self.zipped([('x',b'0123456789')],compression)
+            for kind in ('crc','declared-short','declared-long'):
+                data=bytearray(original);central=data.index(b'PK\x01\x02')
+                if kind=='crc':
+                    struct.pack_into('<L',data,14,0);struct.pack_into('<L',data,central+16,0)
+                else:
+                    size=5 if kind=='declared-short' else 20
+                    struct.pack_into('<L',data,22,size);struct.pack_into('<L',data,central+24,size)
+                    crc=zlib.crc32(b'01234') if kind=='declared-short' else zlib.crc32(b'0123456789')
+                    struct.pack_into('<L',data,14,crc);struct.pack_into('<L',data,central+16,crc)
+                with self.subTest(compression=compression,kind=kind),self.download(bytes(data)) as (a,budget,_,_):
+                    with p.artifact_archive(a,budget) as (archive,members),self.assertRaises(ValueError):
+                        p.measure_member(archive,members[0])
+
+    def test_member_edquot_and_json_cap_clean_owned_member_and_zip(self):
+        data=self.zipped([('record.json',b'{"data":"'+b'x'*10000+b'"}')])
+        with self.download(data) as (a,budget,_,_):
+            with p.artifact_archive(a,budget) as (archive,members):
+                with self.assertRaisesRegex(ValueError,'JSON evidence'):
+                    p.measure_member(archive,members[0],json_limit=100)
+                with self.assertRaises(OSError) as caught:
+                    with budget.temporary(members[0].file_size,'fixture') as f,mock.patch.object(f,'write',side_effect=OSError(errno.EDQUOT,'fixture quota')):
+                        p.measure_member(archive,members[0],f)
+                self.assertEqual(caught.exception.errno,errno.EDQUOT)
+                self.assertEqual(len(list(budget.root.iterdir())),1)
+
+    def test_audit_copy_and_json_write_quota_failures_remove_partial_destinations(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=root/'source';source.write_bytes(b'x'*32);target=root/'audit'
+            budget=p.ScratchBudget(root,reserve=0)
+            def partial(src,dst,length):dst.write(b'partial');raise OSError(errno.EDQUOT,'quota')
+            with mock.patch.object(p.shutil,'copyfileobj',side_effect=partial),self.assertRaises(OSError):budget.copy(source,target)
+            self.assertFalse(target.exists());self.assertEqual(budget.live,0)
+            with mock.patch.object(Path,'open',side_effect=OSError(errno.EDQUOT,'quota')),self.assertRaises(OSError):budget.write_json(target,{'small':True})
+            self.assertFalse(target.exists());self.assertEqual(budget.live,0)
+
+    def test_reviewed_contract_streams_extras_but_retains_only_reviewed_proposal(self):
+        proposal=json.dumps({'sourceCommit':'a'*40,'reviewed':False}).encode()
+        data=self.zipped([('release-inventory-proposal.json',proposal),('audit/private-sdk.bin',b'z'*2**20)])
+        metadata=self.metadata(data,'github-release-validation')
+        run={'repository':{'id':p.RID},'head_repository':{'id':p.RID},'path':'.github/workflows/publish-github.yml',
+             'head_sha':'b'*40,'status':'completed','conclusion':'success'}
+        with self.download(data,metadata) as (_,budget,_,_),mock.patch.object(p,'api',return_value=run),mock.patch.object(p,'pages',return_value=[metadata]):
+            record=p.reviewed_contract('7',hashlib.sha256(proposal).hexdigest(),'a'*40,publisher_commit='b'*40,budget=budget)
+            self.assertEqual(record,{'sourceCommit':'a'*40,'reviewed':True});self.assertIn(b'false',proposal)
+            self.assertEqual(budget.peak,len(data))
+            with self.assertRaisesRegex(ValueError,'revision'):
+                p.reviewed_contract('7',hashlib.sha256(proposal).hexdigest(),'a'*40,publisher_commit='c'*40,budget=budget)
+
+    def public_fixture(self):
+        name='sing-box-polaris-'+p.VERSION+'-linux-amd64.tar.gz';private='polaris-candidate-manifest-unused.json'
+        rows=[(name,b'public'*100000),(private,b'private'*100000)];data=self.zipped(rows)
+        artifact='binary-linux_amd64';metadata=self.metadata(data,artifact)
+        files={n:dict(bytes=len(content),sha256=hashlib.sha256(content).hexdigest(),releaseName=p.publication('all',artifact,n)[0],
+                      publicationDisposition=p.publication('all',artifact,n)[1]) for n,content in rows}
+        actual={'sourceCommit':'a'*40,'runs':{'all':{'id':'7','attempt':1,'artifacts':{artifact:{'id':metadata['id'],
+                    'archiveBytes':len(data),'archiveSha256':metadata['digest'],'files':files}}}}}
+        return data,metadata,actual
+
+    def test_public_supplier_closes_on_upload_failure_and_binds_second_pass(self):
+        data,metadata,actual=self.public_fixture()
+        with self.download(data) as (_,budget,_,_),mock.patch.object(p,'api',return_value=metadata):
+            supplier=p.public_asset_stream(actual,budget)
+            with self.assertRaisesRegex(RuntimeError,'upload failed'),p.closing(supplier):
+                name,path=next(supplier);self.assertTrue(path.is_file());self.assertEqual(path.stat().st_size,600000)
+                self.assertEqual(len(list(budget.root.iterdir())),2)
+                raise RuntimeError('upload failed')
+            self.assertEqual(list(budget.root.iterdir()),[])
+            self.assertEqual(budget.peak,len(data)+600000)
+        changed=dict(metadata,id=999)
+        with self.download(data) as (_,budget,_,started),mock.patch.object(p,'api',return_value=changed):
+            with self.assertRaisesRegex(ValueError,'identity changed'):list(p.public_asset_stream(actual,budget))
+            started.assert_not_called()
+
+    def test_public_supplier_refuses_wrong_member_hash_before_yield(self):
+        data,metadata,actual=self.public_fixture()
+        first=next(iter(actual['runs']['all']['artifacts'].values()))
+        next(iter(first['files'].values()))['sha256']='0'*64
+        with self.download(data) as (_,budget,_,_),mock.patch.object(p,'api',return_value=metadata):
+            with self.assertRaisesRegex(ValueError,'member bytes changed'):list(p.public_asset_stream(actual,budget))
+
+    def test_all_roles_inventory_and_validation_keep_only_small_source_audit(self):
+        source='a'*40;scope={};runs={};artifacts={};downloads={};ident=100
+        source_bytes=b'original-source';source_name='source.tar.gz'
+        index={'platforms':[],'sourceArchive':{'name':source_name,'bytes':len(source_bytes),'sha256':hashlib.sha256(source_bytes).hexdigest()}}
+        for role,rid in [('all','7'),('linux','8'),('docker','9')]:
+            workflow=f'.github/workflows/{role}.yml';runs[rid]={'repository':{'id':p.RID},'head_repository':{'id':p.RID},
+                'head_sha':source,'path':workflow,'status':'completed','conclusion':'success','event':'workflow_dispatch',
+                'run_attempt':1,'run_started_at':'2026-10-22T00:00:00Z'}
+            receipt={'repository':p.REPO,'repositoryId':p.RID,'sourceCommit':source,'runId':rid,'attempt':1,'version':p.VERSION,
+                     'build':'All','role':role,'publishStores':False,'publishRegistry':False}
+            payloads={'publisher-run-receipt':[('publisher-run-receipt.json',json.dumps(receipt).encode())]}
+            if role=='all':
+                payloads['binary-native-index']=[('polaris-upstream-native-assets.json',json.dumps(index).encode()),(source_name,source_bytes)]
+                payloads['libbox-internal-fixture']=[('large-private.bin',b'x'*(8*1024**2))]
+                for flavor in ('other','other-legacy'):
+                    payloads['binary-android-apks-'+flavor]=[(f'SFA-{p.VERSION}-{flavor}-version-metadata.json',b'{"version":1}')]
+            scope[role]={'workflow':workflow,'requiredArtifacts':list(payloads),'payloadRules':{}}
+            artifacts[rid]=[]
+            for name,rows in payloads.items():
+                data=self.zipped(rows);a=self.metadata(data,name,ident);a.update(created_at='2026-10-22T00:01:00Z',workflow_run={'id':int(rid),'head_sha':source})
+                ident+=1;downloads[a['id']]=data;artifacts[rid].append(a)
+                scope[role]['payloadRules'][name]=[{'pattern':re.escape(n),'count':1} for n,_ in rows]
+        def child(command,**kwargs):
+            data=downloads[int(command[-1].split('/')[-2])]
+            return type('Child',(),{'stdout':io.BytesIO(data),'wait':lambda self,**k:0,'poll':lambda self:0})()
+        def associate(result,*_):result['distributionMaterials']={};return result
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);work=root/'work';budget=p.ScratchBudget(work,reserve=0)
+            with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',side_effect=lambda path:runs[path.split('/')[-1]]) as remote, \
+                 mock.patch.object(p,'pages',side_effect=lambda path,key:artifacts[path.split('/')[-2]]), \
+                 mock.patch.object(p.subprocess,'Popen',side_effect=child),mock.patch.object(p,'client_platform',return_value=None), \
+                 mock.patch.object(p,'validate_final_index'),mock.patch.object(p,'associate_distribution_materials',side_effect=associate):
+                actual=p.inventory({'all':'7','linux':'8','docker':'9'},source,work,'b'*40,'c'*40,budget=budget)
+            self.assertEqual(len(remote.call_args_list),3)
+            self.assertTrue(all(len(call.args)==1 for call in remote.call_args_list))
+            self.assertFalse(actual['reviewed'])
+            self.assertEqual({x.relative_to(work).as_posix() for x in work.rglob('*') if x.is_file()},
+                {'all/binary-native-index/polaris-upstream-native-assets.json','all/binary-native-index/'+source_name})
+            config=copy.deepcopy(actual);config['reviewed']=True
+            receipt=p.assemble(actual,config,work,root/'dist',root/'audit',materialize=False,budget=budget)
+            self.assertEqual(list((root/'dist').iterdir()),[]);self.assertEqual(len(receipt['assets']),1)
+            self.assertLess(budget.peak,1024**2)
+            self.assertTrue((root/'audit'/source_name).is_file())
+
+    def test_publish_finalization_uncertainty_is_read_back_never_retried(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);out=root/'dist';out.mkdir();audit=root/'audit';audit.mkdir()
+            (out/'payload').write_bytes(b'public');(audit/'polaris-upstream-native-assets.json').write_text('{}')
+            budget=p.ScratchBudget(root/'scratch',reserve=0,audit=audit)
+            release={'id':42,'draft':True,'tag_name':p.TAG,'upload_url':f'https://uploads.github.com/repos/{p.REPO}/releases/42/assets{{?name,label}}'}
+            calls=[]
+            def remote(path,method='GET',payload=None):
+                calls.append((path,method))
+                if method=='POST':return release
+                if method=='PATCH':raise TimeoutError('response lost after final PATCH')
+                return dict(release,draft=not any(m=='PATCH' for _,m in calls))
+            listing_calls=0
+            def pages(path):
+                nonlocal listing_calls
+                if path.endswith('/assets'):
+                    return [{'name':'payload','state':'uploaded','size':6,'digest':'sha256:'+hashlib.sha256(b'public').hexdigest()}]
+                listing_calls+=1
+                return [] if listing_calls==1 else [release]
+            with mock.patch.object(p,'api',side_effect=remote),mock.patch.object(p,'pages',side_effect=pages), \
+                 mock.patch.object(p,'tag_identity',return_value='c'*40),mock.patch.object(p,'validate_publication_index'), \
+                 mock.patch.object(p.subprocess,'run'),mock.patch.dict(os.environ,{'GITHUB_RUN_ID':'99'}),mock.patch('builtins.print'):
+                with self.assertRaises(TimeoutError):p.publish(out,'a'*40,audit,budget=budget)
+            self.assertEqual([m for _,m in calls].count('PATCH'),1)
+            self.assertEqual(calls[-1],(f'repos/{p.REPO}/releases/42','GET'))
+            self.assertEqual(budget.state['remoteWriteState'],'finalization-readback');self.assertIs(budget.state['observedDraft'],False)
+            self.assertNotIn('DELETE',[m for _,m in calls])
+
+    def test_audit_existing_files_are_never_removed_on_exclusive_open_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);source=root/'source';target=root/'existing';source.write_bytes(b'source');target.write_bytes(b'existing')
+            budget=p.ScratchBudget(root,reserve=0)
+            with self.assertRaises(FileExistsError):budget.copy(source,target)
+            self.assertEqual(target.read_bytes(),b'existing')
+            with self.assertRaises(FileExistsError):budget.write_json(target,{'value':1})
+            self.assertEqual(target.read_bytes(),b'existing');self.assertEqual(budget.live,0)
+
+    def test_zip64_directory_budget_is_checked_before_zipfile_allocation(self):
+        original=self.zipped([('x',b'x')]);end=len(original)-22
+        fields=struct.unpack('<4s4H2LH',original[end:]);count,size,offset=fields[4:7]
+        def zip64(n=count,dsize=size):
+            record=struct.pack('<4sQ2H2L4Q',b'PK\x06\x06',44,45,45,0,0,n,n,dsize,offset)
+            locator=struct.pack('<4sLQL',b'PK\x06\x07',0,end,1)
+            final=struct.pack('<4s4H2LH',b'PK\x05\x06',0,0,65535,65535,0xffffffff,0xffffffff,0)
+            return original[:end]+record+locator+final
+        with self.download(zip64()) as (a,budget,_,_):
+            with p.artifact_archive(a,budget) as (archive,members):
+                self.assertEqual(p.measure_member(archive,members[0])[0]['bytes'],1)
+        for data in (zip64(16385),zip64(dsize=32*1024**2+1)):
+            with self.download(data) as (a,budget,_,_),mock.patch.object(p.zipfile,'ZipFile') as opened:
+                with self.assertRaisesRegex(ValueError,'directory exceeds'),p.artifact_archive(a,budget):pass
+                opened.assert_not_called()
+
+    def test_download_edquot_stops_and_reaps_child_without_retaining_zip(self):
+        data=self.zipped([('x',b'x')]);real=p.tempfile.NamedTemporaryFile
+        @contextmanager
+        def failing_file(*args,**kwargs):
+            with real(*args,**kwargs) as f,mock.patch.object(f,'write',side_effect=OSError(errno.EDQUOT,'download quota')):
+                yield f
+        with self.download(data) as (a,budget,child,_),mock.patch.object(p.tempfile,'NamedTemporaryFile',failing_file):
+            with self.assertRaises(OSError) as caught,p.artifact_archive(a,budget):pass
+            self.assertEqual(caught.exception.errno,errno.EDQUOT);self.assertTrue(child.terminated);self.assertTrue(child.reaped)
+
+    def test_cleanup_error_does_not_mask_original_storage_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);budget=p.ScratchBudget(root,reserve=0);primary=OSError(errno.EDQUOT,'primary')
+            @contextmanager
+            def cleanup_fails(*args,**kwargs):
+                try:yield mock.Mock()
+                finally:raise PermissionError(errno.EACCES,'cleanup')
+            with mock.patch.object(p.tempfile,'NamedTemporaryFile',cleanup_fails),self.assertRaises(OSError) as caught:
+                with budget.temporary(10,'test'):raise primary
+            self.assertIs(caught.exception,primary);self.assertEqual(budget.live,0)
+            source=root/'source';source.write_bytes(b'x');target=root/'target'
+            with mock.patch.object(p.shutil,'copyfileobj',side_effect=primary),mock.patch.object(Path,'unlink',side_effect=PermissionError('cleanup')):
+                with self.assertRaises(OSError) as caught:budget.copy(source,target)
+            self.assertIs(caught.exception,primary);self.assertTrue(primary.__notes__);self.assertEqual(budget.live,0)
+
+    def test_whole_public_staging_peak_is_admitted_before_any_draft_write(self):
+        data,metadata,actual=self.public_fixture()
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);out=root/'dist';out.mkdir();audit=root/'audit';audit.mkdir()
+            (audit/'polaris-upstream-native-assets.json').write_text('{}')
+            public=next(f for f in next(iter(actual['runs']['all']['artifacts'].values()))['files'].values() if f['releaseName'])
+            (audit/p.RECEIPT).write_text(json.dumps({'assets':[public]}))
+            budget=p.ScratchBudget(root/'scratch',limit=len(data)+public['bytes']-1,reserve=0)
+            with mock.patch.object(p,'api') as remote,mock.patch.object(p,'pages',return_value=[]),mock.patch.object(p,'tag_identity',return_value='c'*40),mock.patch.object(p,'validate_publication_index'):
+                with self.assertRaisesRegex(ValueError,'scratch budget'):p.publish(out,'a'*40,audit,measured=actual,budget=budget)
+                remote.assert_not_called()
+
+    def test_workflow_keeps_guards_and_retains_only_bounded_evidence_on_failure(self):
+        import yaml
+        workflow=yaml.safe_load((p.ROOT/'.github/workflows/publish-github.yml').read_text())
+        self.assertEqual(set(workflow['on']),{'workflow_dispatch'})
+        self.assertEqual(workflow['permissions'],{'contents':'read'})
+        self.assertEqual(workflow['jobs']['validate']['permissions'],{'contents':'read','actions':'read'})
+        step=next(s for s in workflow['jobs']['validate']['steps'] if s.get('with',{}).get('name')=='github-release-validation')
+        self.assertEqual(step['if'],'always()')
+        self.assertEqual(step['with']['path'].splitlines(),['release-inventory-proposal.json','github-release-audit'])
+        job=workflow['jobs']['publish'];self.assertEqual(job['environment'],'polaris-github-release')
+        self.assertEqual(job['needs'],'validate');self.assertIn("vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'",job['if'])
+        self.assertEqual(job['permissions'],{'contents':'write','actions':'read'})
+
+    def test_entire_release_preserves_primary_when_outer_scratch_cleanup_also_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);primary=OSError(errno.EDQUOT,'original inventory quota')
+            @contextmanager
+            def cleanup_fails(*args,**kwargs):
+                owned=root/'scratch';owned.mkdir()
+                try:yield str(owned)
+                finally:raise PermissionError(errno.EACCES,'injected outer cleanup failure')
+            args=p.argparse.Namespace(audit=root/'audit',source_dir=Path('reviewed-source'),source='a'*40,mode='inventory')
+            with mock.patch.object(p.tempfile,'TemporaryDirectory',cleanup_fails),mock.patch.object(p,'command',return_value='b'*40),mock.patch.object(p,'tag_identity',return_value='c'*40),mock.patch.object(p,'inventory',side_effect=primary),mock.patch('builtins.print'):
+                with self.assertRaises(OSError) as caught:p.bounded_release(args,{'all':'7','linux':'8','docker':'9'})
+            self.assertIs(caught.exception,primary);self.assertEqual(caught.exception.errno,errno.EDQUOT)
+            state=json.loads((args.audit/'storage-status.json').read_text())
+            self.assertTrue(state['scratchCleanupFailed']);self.assertEqual(state['result'],'failed')
+            self.assertTrue(any('Scratch directory cleanup' in note for note in state['cleanupNotes']))
+            self.assertEqual(state['remoteWriteState'],'none')
+
+    def test_supplement_wrapper_keeps_strict_graph_and_exact_core_identity_without_fallback(self):
+        policy={'reference_path':Path('new-reference'),'material_map_path':Path('new-map'),'selector_sha256':'9'*64}
+        expected={'coreBytes':10,'coreSHA256':'a'*64,'installedSHA256':'b'*64,'imageManifest':'c'*64}
+        measured=dict(expected);measured['actualImageManifest']=measured.pop('imageManifest')
+        with mock.patch.object(oci_supplement,'check_image',return_value=expected),mock.patch.object(p,'validate_oci_material_reuse',return_value=measured) as strict:
+            result=p.measure_oci_materials(Path('image'),'oci-linux-amd64','d'*40,'42',1,policy)
+            strict.assert_called_once_with(Path('image'),'oci-linux-amd64','d'*40,'42',1,reference_paths=(policy['reference_path'],policy['material_map_path']))
+            self.assertEqual(result['supplementSelectorSHA256'],'9'*64)
+        for failure in ('graph','core'):
+            with mock.patch.object(oci_supplement,'check_image',return_value=expected),mock.patch.object(p,'validate_oci_material_reuse',side_effect=ValueError('graph') if failure=='graph' else None,return_value=dict(measured,coreSHA256='0'*64)) as strict:
+                with self.assertRaises(ValueError):p.measure_oci_materials(Path('image'),'oci-linux-amd64','d'*40,'42',1,policy)
+                self.assertEqual(strict.call_count,1)
 
 
 class GateTests(unittest.TestCase):
@@ -568,14 +916,18 @@ class GateTests(unittest.TestCase):
                    for number,name in enumerate(required,1)]
         receipt={'repository':p.REPO,'repositoryId':p.RID,'sourceCommit':source,'runId':'42',
                  'attempt':1,'version':p.VERSION,'build':'All','role':'all','publishStores':False,'publishRegistry':False}
-        def extract_fixture(archive,directory):
-            name,value=('polaris-upstream-native-assets.json',index) if directory.name=='binary-native-index' else ('publisher-run-receipt.json',receipt)
-            (directory/name).write_text(json.dumps(value))
+        @contextmanager
+        def archive_fixture(artifact,budget):
+            name,value=('polaris-upstream-native-assets.json',index) if artifact['name']=='binary-native-index' else ('publisher-run-receipt.json',receipt)
+            archive_path=budget.root/(artifact['name']+'.zip')
+            with zipfile.ZipFile(archive_path,'w') as z:z.writestr(name,json.dumps(value))
+            artifact['size_in_bytes']=archive_path.stat().st_size
+            with zipfile.ZipFile(archive_path) as z:yield z,z.infolist()
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);source_root=root/'reviewed-source'
             with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',return_value=run), \
                  mock.patch.object(p,'pages',return_value=artifacts),mock.patch.object(p,'sha',return_value='a'*64), \
-                 mock.patch.object(p,'extract',side_effect=extract_fixture),mock.patch.object(p.subprocess,'run'), \
+                 mock.patch.object(p,'artifact_archive',side_effect=archive_fixture), \
                  mock.patch.object(p,'validate_final_index',side_effect=StopInventory) as validate:
                 with self.assertRaises(StopInventory):
                     p.inventory({'all':'42','linux':'43','docker':'44'},source,root/'work','b'*40,'c'*40,source_root=source_root)
@@ -586,7 +938,7 @@ class GateTests(unittest.TestCase):
         source='a'*40;source_root=Path('/offline-fixture/reviewed-source')
         argv=['github_release.py','inventory','--source',source,'--source-dir',str(source_root),
               '--all-run','42','--linux-run','43','--docker-run','44']
-        with mock.patch('sys.argv',argv),mock.patch.object(p,'identity') as identity, \
+        with tempfile.TemporaryDirectory() as audit_temp, mock.patch('sys.argv',argv+['--audit',str(Path(audit_temp)/'audit')]),mock.patch.object(p,'identity') as identity, \
              mock.patch.object(p,'command',return_value='b'*40) as command, \
              mock.patch.object(p,'tag_identity',return_value='c'*40), \
              mock.patch.object(p,'inventory',side_effect=StopInventory) as inventory:
@@ -594,7 +946,7 @@ class GateTests(unittest.TestCase):
             identity.assert_called_once_with(source,source_root)
             command.assert_called_once_with('git','-C',str(source_root),'rev-parse','HEAD^{tree}')
             inventory.assert_called_once_with({'all':'42','linux':'43','docker':'44'},source,
-                                              mock.ANY,'b'*40,'c'*40,source_root)
+                                              mock.ANY,'b'*40,'c'*40,source_root,budget=mock.ANY)
 
     def test_final_index_and_staging_wrong_tag_schema_mixed_source_controls(self):
         index=self.final_index();self.check_index(index)
@@ -1728,7 +2080,7 @@ class ReplacementTests(unittest.TestCase):
             calls.attach_mock(recovery, 'recovery'); calls.attach_mock(replaced, 'replace')
             p.main()
             inventory.assert_called_once_with({'all': '52', 'linux': '53', 'docker': '54'}, self.source,
-                                              mock.ANY, 'b' * 40, self.tag_object, Path('reviewed-source'))
+                                              mock.ANY, 'b' * 40, self.tag_object, Path('reviewed-source'), materialize=True)
             contract.assert_called_once_with('55', self.inventory_digest, self.source)
             assembled.assert_called_once_with(actual, reviewed, mock.ANY, self.output, audit)
             recovery.assert_called_once_with(audit, '56')
@@ -1896,6 +2248,286 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(json.loads((audit / p.RECEIPT).read_text()), receipt)
         self.assertEqual(len(list(output.iterdir())), 168)
         self.assertFalse((output / p.RECEIPT).exists())
+
+
+import contextlib
+import gzip
+import shutil
+import tarfile
+import oci_material_supplement as oci_supplement
+
+_SUPPLEMENT_REFERENCE=json.loads((p.ROOT/oci_supplement.DIRECTORY/'reuse-reference.json').read_text())
+SUPPLEMENT_API=[{'id':row['artifactId'],'name':name,'size_in_bytes':row['archiveBytes'],
+    'digest':row['artifactAPIDigest'],'expired':False,
+    'workflow_run':{'id':oci_supplement.RUN_ID,'head_sha':oci_supplement.SOURCE,
+        'repository_id':p.RID,'head_repository_id':p.RID}}
+    for name,row in _SUPPLEMENT_REFERENCE['artifacts'].items()]
+
+def load_supplement_fixture(**kwargs):
+    args = dict(source=oci_supplement.SOURCE, tree=oci_supplement.TREE, tag=oci_supplement.TAG, tag_object=oci_supplement.TAG_OBJECT,
+                run_id=oci_supplement.RUN_ID, attempt=oci_supplement.ATTEMPT, workflow=oci_supplement.WORKFLOW,
+                artifacts=copy.deepcopy(SUPPLEMENT_API), source_root=p.ROOT, publisher_root=p.ROOT)
+    args.update(kwargs)
+    return oci_supplement.load_for_run(**args)
+
+
+@contextlib.contextmanager
+def changed_supplement_publication():
+    with tempfile.TemporaryDirectory(prefix='helper-pub-') as tmp:
+        root = Path(tmp)
+        shutil.copytree(p.ROOT / oci_supplement.DIRECTORY, root / oci_supplement.DIRECTORY)
+        yield root, root / oci_supplement.DIRECTORY
+
+
+class OciSupplementTests(unittest.TestCase):
+    def test_actual_material_closure_and_budget(self):
+        policy = load_supplement_fixture()
+        self.assertEqual(set(policy['artifacts']), oci_supplement.ARTIFACT_NAMES)
+        self.assertEqual(policy['bundle_tar_bytes'], 3399680)
+        self.assertEqual(policy['bundle_maximum_bytes'], 3877824)
+
+    def test_wrong_tuple_never_falls_back(self):
+        for key, value in [('source', 'a' * 40), ('tree', 'b' * 40), ('tag', 'other'),
+                           ('tag_object', 'c' * 40), ('run_id', 1), ('attempt', 2),
+                           ('workflow', '.github/workflows/other.yml'), ('attempt', True), ('run_id', str(oci_supplement.RUN_ID))]:
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                load_supplement_fixture(**{key: value})
+
+    def test_api_exact_set(self):
+        variants = [SUPPLEMENT_API[:-1], SUPPLEMENT_API + [SUPPLEMENT_API[0]], SUPPLEMENT_API[:-1] + [SUPPLEMENT_API[0]]]
+        for artifact_rows in variants:
+            with self.subTest(count=len(artifact_rows)), self.assertRaises(ValueError):
+                load_supplement_fixture(artifacts=artifact_rows)
+
+    def test_api_identity_fields(self):
+        for field, value in [('id', 1), ('name', 'oci-other'), ('size_in_bytes', 1),
+                             ('digest', 'sha256:' + '0' * 64), ('expired', True), ('expired', None)]:
+            api = copy.deepcopy(SUPPLEMENT_API)
+            api[0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                load_supplement_fixture(artifacts=api)
+        for field, value in [('id', 1), ('head_sha', 'a' * 40), ('repository_id', 1), ('head_repository_id', 1)]:
+            api = copy.deepcopy(SUPPLEMENT_API)
+            api[0]['workflow_run'][field] = value
+            with self.subTest(runfield=field), self.assertRaises(ValueError):
+                load_supplement_fixture(artifacts=api)
+        api = copy.deepcopy(SUPPLEMENT_API)
+        api[0]['id'] = api[1]['id']
+        with self.assertRaises(ValueError):
+            load_supplement_fixture(artifacts=api)
+
+    def test_selector_tamper(self):
+        with changed_supplement_publication() as (root, directory):
+            path = directory / 'selection-manifest.json'
+            path.write_bytes(path.read_bytes() + b'\n')
+            with self.assertRaises(ValueError):
+                load_supplement_fixture(publisher_root=root)
+
+    def test_missing_payload_supplement_fixture(self):
+        with changed_supplement_publication() as (root, directory):
+            (directory / 'README.md').unlink()
+            with self.assertRaises(ValueError):
+                load_supplement_fixture(publisher_root=root)
+
+    def test_extra_file_and_empty_directory(self):
+        for extra_directory in (False, True):
+            with self.subTest(extra_directory=extra_directory), changed_supplement_publication() as (root, directory):
+                path = directory / 'extra'
+                if extra_directory:
+                    path.mkdir()
+                else:
+                    path.write_text('unlisted')
+                with self.assertRaises(ValueError):
+                    load_supplement_fixture(publisher_root=root)
+
+    def test_nonregular_fifo_rejected_without_opening(self):
+        import os
+        with changed_supplement_publication() as (root, directory):
+            os.mkfifo(directory / 'fifo')
+            with self.assertRaises(ValueError):
+                load_supplement_fixture(publisher_root=root)
+
+    def test_symlink_file_and_directory(self):
+        for target_name in ('README.md', 'sources'):
+            with self.subTest(target_name=target_name), changed_supplement_publication() as (root, directory):
+                path = directory / target_name
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
+                path.symlink_to(p.ROOT / oci_supplement.DIRECTORY / target_name, target_is_directory=target_name == 'sources')
+                with self.assertRaises(ValueError):
+                    load_supplement_fixture(publisher_root=root)
+
+    def test_changed_source_recipe_notice_indexes(self):
+        originals = ['sources/ca-certificates-20261020.tar.bz2', 'reuse-reference.json',
+                     'oci-source-notice-map.json', 'source-acquisition.json', 'notice-inventory.json',
+                     'http-get-receipts.json', 'notices/ca-certificates-20261020.tar.bz2/certdata.txt.license-header.txt',
+                     'aports/ee92350c8a4509152dc91c693814215a884c07c3/main/alpine-base/APKBUILD']
+        for name in originals:
+            with self.subTest(name=name), changed_supplement_publication() as (root, directory):
+                path = directory / name
+                data = path.read_bytes()
+                path.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+                with self.assertRaises(ValueError):
+                    load_supplement_fixture(publisher_root=root)
+
+    def test_source_root_anchor_is_not_publisher_root(self):
+        with tempfile.TemporaryDirectory(prefix='helper-old-') as tmp:
+            root = Path(tmp)
+            for name in ('oci-source-notice-map.json', 'reuse-reference.json', 'source-acquisition.json'):
+                relative = Path('release/dependency-sources/oci') / name
+                (root / relative).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(p.ROOT / relative, root / relative)
+            path = root / 'release/dependency-sources/oci/oci-source-notice-map.json'
+            path.write_bytes(path.read_bytes() + b'\n')
+            with self.assertRaises(ValueError):
+                load_supplement_fixture(source_root=root)
+
+    def test_historical_record_and_association_negatives(self):
+        policy = load_supplement_fixture()
+        reference = json.loads(policy['reference_path'].read_text())
+        original = json.loads(policy['material_map_path'].read_text())
+        for case in ('canonical', 'missing', 'duplicate', 'wrong-origin', 'unknown-kind', 'wrong-package'):
+            material = copy.deepcopy(original)
+            if case == 'canonical':
+                material['historicalRecipeReferences'][0]['historicalRecordSHA256'] = '0' * 64
+            elif case == 'missing':
+                material['packageAssociations'].pop()
+            elif case == 'duplicate':
+                material['packageAssociations'][-1] = copy.deepcopy(material['packageAssociations'][0])
+            elif case == 'wrong-origin':
+                material['packageAssociations'][0]['origin'] = 'other'
+            elif case == 'unknown-kind':
+                material['packageAssociations'][0]['materialKind'] = 'fallback'
+            else:
+                material['packageAssociations'][0]['package']['C'] = 'forged'
+            with self.subTest(case=case), self.assertRaises(ValueError):
+                oci_supplement._materials(policy['directory'], p.ROOT, policy['selector'], reference, material)
+
+    def test_path_and_json_negatives(self):
+        for name in ('../other', '/etc/passwd', 'a/../b', './x', 'a//b', 'a\\b', '', 'a\0b'):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                oci_supplement._relative(name)
+        with self.assertRaises(ValueError):
+            oci_supplement._json(b'{"key":1,"key":2}')
+
+    def test_bounded_read_after_hash(self):
+        requested = []
+        class Reader(io.BytesIO):
+            def read(self, size=-1):
+                requested.append(size)
+                return super().read(size)
+        expected = {'path': 'fake', 'bytes': 3, 'sha256': hashlib.sha256(b'abc').hexdigest()}
+        with mock.patch.object(oci_supplement, '_path', return_value=Path('fake')), \
+             mock.patch.object(oci_supplement, '_digest_file', return_value=(3, expected['sha256'])), \
+             mock.patch.object(Path, 'open', return_value=Reader(b'abcEXCESS')):
+            with self.assertRaises(ValueError):
+                oci_supplement._file(Path('.'), expected, read=True)
+        self.assertEqual(requested, [4])
+
+    def test_image_negative_and_mocked_positive_only(self):
+        policy = load_supplement_fixture()
+        with tempfile.TemporaryDirectory(prefix='helper-image-') as tmp:
+            path = Path(tmp) / 'not-an-oci-image'
+            path.write_bytes(b'not actual OCI bytes')
+            with self.assertRaises(ValueError):
+                oci_supplement.check_image(policy, 'oci-linux-amd64', path)
+            with self.assertRaises(ValueError):
+                oci_supplement.check_image(policy, 'oci-unknown', path)
+            real_digest = oci_supplement._digest_file
+            expected = policy['artifacts']['oci-linux-amd64']
+            def mocked_digest(candidate, expected_bytes=None):
+                if Path(candidate) == path:
+                    return expected['imageBytes'], expected['imageSHA256']
+                return real_digest(candidate, expected_bytes)
+            with mock.patch.object(oci_supplement, '_digest_file', side_effect=mocked_digest):
+                self.assertEqual(oci_supplement.check_image(policy, 'oci-linux-amd64', path), expected)
+
+    def test_policy_mutation_rejected(self):
+        policy = load_supplement_fixture()
+        policy['artifacts']['oci-linux-amd64']['imageSHA256'] = '0' * 64
+        with self.assertRaises(ValueError):
+            oci_supplement.check_image(policy, 'oci-linux-amd64', Path('unused'))
+
+    def test_bundle_determinism_receipt_and_no_self_reference(self):
+        with tempfile.TemporaryDirectory(prefix='helper-bundle-') as tmp:
+            first, second = Path(tmp) / 'first.tar.gz', Path(tmp) / 'second.tar.gz'
+            p1, p2 = load_supplement_fixture(), load_supplement_fixture()
+            r1, r2 = oci_supplement.write_bundle(p1, first), oci_supplement.write_bundle(p2, second)
+            self.assertEqual((r1['bytes'], r1['sha256']), (r2['bytes'], r2['sha256']))
+            self.assertEqual(r1['bytes'], 2919816)
+            self.assertEqual(r1['sha256'], 'b7b2d88bc429d130e4bdcabf1063cb6e409e002ef681d6cb8a83362e519241e0')
+            self.assertEqual(len(gzip.open(first, 'rb').read()), p1['bundle_tar_bytes'])
+            with tarfile.open(first, 'r:gz') as archive:
+                members = archive.getmembers()
+                self.assertEqual(len(members), 53)
+                self.assertTrue(all(x.isfile() and x.mode == 0o644 and x.mtime == 0 for x in members))
+                self.assertNotIn('oci_material_supplement.py', [Path(x.name).name for x in members])
+            receipt = oci_supplement.record(p1, 'a' * 40, first)
+            self.assertFalse(receipt['legalConclusion'])
+            self.assertTrue(receipt['publicReleaseAssetSetUnchanged'])
+            self.assertEqual(receipt['auditBundle']['sha256'], r1['sha256'])
+            self.assertIn('/' + 'a' * 40 + '/', receipt['publisherImmutableURL'])
+            self.assertNotIn('sourceMaterialsReusable', receipt)
+            with self.assertRaises(ValueError):
+                oci_supplement.record(p1, 'HEAD', first)
+            with self.assertRaises(ValueError):
+                oci_supplement.record(p1, 'a' * 40, second)
+            first.write_bytes(first.read_bytes() + b'x')
+            with self.assertRaises(ValueError):
+                oci_supplement.record(p1, 'a' * 40, first)
+
+    def test_bundle_destination_preserved_and_partial_cleaned(self):
+        policy = load_supplement_fixture()
+        with tempfile.TemporaryDirectory(prefix='helper-clean-') as tmp:
+            existing = Path(tmp) / 'existing.tar.gz'
+            existing.write_bytes(b'preserve')
+            with self.assertRaises(ValueError):
+                oci_supplement.write_bundle(policy, existing)
+            self.assertEqual(existing.read_bytes(), b'preserve')
+            target = Path(tmp) / 'failed.tar.gz'
+            with mock.patch.object(tarfile.TarFile, 'addfile', side_effect=OSError('injected write failure')):
+                with self.assertRaises(OSError):
+                    oci_supplement.write_bundle(policy, target)
+            self.assertFalse(target.exists())
+            self.assertNotIn('_written_bundle', policy)
+            with self.assertRaises(ValueError):
+                oci_supplement.record(policy, 'a' * 40, target)
+
+    def test_bundle_writes_exact_checked_bytes_and_cleans_midstream_drift(self):
+        policy = load_supplement_fixture()
+        real_file = oci_supplement._file
+        reads = []
+        def changed_after_loading(root, row, read=False):
+            if read and row['path'].startswith('aports/'):
+                reads.append(row['path'])
+                raise ValueError('simulated bounded member verification failure')
+            return real_file(root, row, read=read)
+        with tempfile.TemporaryDirectory(prefix='helper-drift-') as tmp:
+            target = Path(tmp) / 'failed.tar.gz'
+            with mock.patch.object(oci_supplement, '_file', side_effect=changed_after_loading):
+                with self.assertRaises(ValueError):
+                    oci_supplement.write_bundle(policy, target)
+            self.assertTrue(reads)
+            self.assertFalse(target.exists())
+
+    def test_cleanup_error_does_not_mask_primary_failure(self):
+        policy = load_supplement_fixture()
+        with tempfile.TemporaryDirectory(prefix='helper-cleanup-error-') as tmp:
+            target = Path(tmp) / 'failed.tar.gz'
+            primary = OSError(122, 'injected EDQUOT during addfile')
+            with mock.patch.object(tarfile.TarFile, 'addfile', side_effect=primary), \
+                 mock.patch.object(Path, 'unlink', side_effect=PermissionError(13, 'injected cleanup failure')):
+                with self.assertRaises(OSError) as caught:
+                    oci_supplement.write_bundle(policy, target)
+            self.assertIs(caught.exception, primary)
+            self.assertEqual(caught.exception.errno, 122)
+            if hasattr(primary, 'add_note'):
+                self.assertTrue(any('partial cleanup failed' in note for note in primary.__notes__))
+            self.assertNotIn('_written_bundle', policy)
+
+
 
 if __name__=='__main__':
     unittest.main()
