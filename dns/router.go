@@ -698,6 +698,10 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 			if awaitFuture != nil {
 				return exchangeWithRulesResult{}, &dnsWalkSuspension{await: awaitFuture}
 			}
+			// A callback may publish after the first settlement scan but
+			// before readiness is checked. All bound futures are now done;
+			// install their responses before matching this non-racing rule.
+			r.settleDNSFutures(ctx, message, state)
 		}
 		metadata.ResetRuleCache()
 		metadata.DNSResponse = state.anonymousResponse()
@@ -709,6 +713,12 @@ func (r *Router) walkDNSRules(ctx context.Context, rules []adapter.DNSRule, mess
 		if state.lastLoggedIndex != state.ruleIndex {
 			state.lastLoggedIndex = state.ruleIndex
 			r.logRuleMatch(ctx, state.ruleIndex, currentRule)
+		}
+		if state.policy && (ctx.Err() != nil || dnsPolicyDeadlineExpired(ctx)) {
+			// Matching and logging can outlive the top-of-iteration check.
+			// Reuse deadline arbitration: retain pre-cutoff publications but
+			// never admit a late response or begin another action after cutoff.
+			return r.finishDNSPolicyDeadline(ctx, rules, message, state), nil
 		}
 		switch action := currentRule.Action().(type) {
 		case *R.RuleActionDNSRouteOptions:
@@ -919,6 +929,11 @@ func (r *Router) sweepArmedDNSRules(ctx context.Context, message *mDNS.Msg, stat
 		if !ready {
 			index++
 			continue
+		}
+		if !state.policy {
+			// Ordinary racing rules have no policy publication snapshot.
+			// A newly ready binding must also be present in match metadata.
+			r.settleDNSFutures(ctx, message, state)
 		}
 		state.armedRules = append(state.armedRules[:index], state.armedRules[index+1:]...)
 		metadata.ResetRuleCache()
