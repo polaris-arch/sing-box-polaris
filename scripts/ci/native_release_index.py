@@ -216,8 +216,11 @@ def validate_distribution_assessment(catalog):
 def distribution_materials(index, root=Path('.')):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
+ from apple_package_overlays import definition as apple_package_definition
+ apple_package_definition(root)
  inputs=['go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/ci/client-overlays.json','release/ci/distribution-materials.json',
+         'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
          'release/ci/current-module-sources.json','release/polaris-public-source-inputs.json',
          'release/ci/current44-notice-mappings.json','release/licenses/CURRENT44-NOTICE-CANDIDATE.txt',
          'release/dependency-sources/sing-usbip/source-tar-materials-manifest.json',

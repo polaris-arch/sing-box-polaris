@@ -13,6 +13,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
     - name: Reject publication of staging evidence
       if: inputs.publish_github || inputs.publish_stores
@@ -2249,6 +2250,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
     - name: Verify existing annotated source tag
       run: python3 scripts/ci/owned_distribution.py verify-tag
@@ -2338,6 +2340,7 @@ jobs:
     - name: Checkout exact source
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
     - name: Install index schema validator
       run: python3 -m pip install jsonschema==4.23.0

@@ -8,9 +8,12 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +23,9 @@ JOBS = {'build_android':'android','publish_android':'android','build_windows_cli
 MAX_SOURCE_BYTES = 1024 * 1024
 MAX_DIFF_BYTES = 1024 * 1024
 MAX_SOURCE_FILES = 64
+MAX_DIAGNOSTIC_PATHS = 8
+MAX_DIAGNOSTIC_PATH_CHARS = 96
+APPLE_LOCK = 'sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved'
 
 
 def sha(raw): return hashlib.sha256(raw).hexdigest()
@@ -27,6 +33,116 @@ def blob(raw): return hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).he
 def git(directory,*args): return subprocess.check_output(['git','-C',str(directory),*args])
 def definition(platform): return json.loads(MANIFEST.read_text(encoding='utf-8'))['platforms'][platform]
 def selected(spec,unsigned): return [e for e in spec['files'] if e['kind']!='unsigned' or unsigned]
+
+
+@contextmanager
+def private_client_git(directory):
+    """Isolate index *and* object writes, including intent-to-add's empty blob.
+
+    Ask Git before isolation: .git may be a gitfile and objects may be packed,
+    shared with a linked worktree, or themselves backed by alternates. Never
+    export these overrides: nested Swift-package checks use their own stores.
+    """
+    def original_path(name):
+        value=os.fsdecode(git(directory,'rev-parse','--path-format=absolute','--git-path',name)).removesuffix('\n')
+        if not os.path.isabs(value) or any(c in value for c in '\x00\r\n'):
+            raise ValueError('unsafe original client Git storage path')
+        return Path(value)
+    original_index=original_path('index');original_objects=original_path('objects')
+    if original_index.is_symlink() or not original_objects.is_dir():
+        raise ValueError('unsafe original client Git storage')
+    shared_index=original_path('sharedindex.')
+    # Git can freshen a live shared index's mtime even with a private index and
+    # core.splitIndex=false. Fail closed before reading that optional layout.
+    if any(shared_index.parent.glob(shared_index.name+'*')):
+        raise ValueError('split client Git index is unsupported by read-only preflight')
+    with tempfile.TemporaryDirectory(prefix='client-source-preflight-') as temporary:
+        root=Path(temporary);index=root/'index';objects=root/'objects'
+        (objects/'info').mkdir(parents=True)
+        if original_index.exists():shutil.copyfile(original_index,index)
+        env=dict(os.environ,GIT_INDEX_FILE=str(index),GIT_OBJECT_DIRECTORY=str(objects),GIT_OPTIONAL_LOCKS='0')
+        options=['git','-c','core.splitIndex=false','-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null','-C',str(directory)]
+        (objects/'info/alternates').write_text(str(original_objects.resolve())+'\n',encoding='utf-8',newline='\n')
+        def command(actual_directory,*args,input=None):
+            if Path(actual_directory).resolve()!=Path(directory).resolve():
+                raise ValueError('private client Git cannot address another repository')
+            # Do not create a split index or invoke repository-configured
+            # fsmonitor/post-index-change hooks during this read-only gate.
+            if args and args[0]=='diff':args=('diff','--no-ext-diff','--no-textconv',*args[1:])
+            if args[:2]==('add','--intent-to-add'):
+                # Git also freshens alternate packs before checking loose blobs.
+                # This sole writable command creates its empty blob privately:
+                # detach read-only stores for its duration, restoring on failure.
+                alternate=objects/'info/alternates';detached=root/'read-alternates'
+                alternate.rename(detached)
+                try:
+                    return subprocess.check_output([*options,*args],input=input,
+                        env=dict(env,GIT_ALTERNATE_OBJECT_DIRECTORIES=''),stderr=subprocess.PIPE)
+                finally:detached.rename(alternate)
+            return subprocess.check_output([*options,*args],input=input,env=env,stderr=subprocess.PIPE)
+        # Reading effective attributes runs no clean/process filter. Reject any
+        # active filter before add/diff rather than rewriting its configuration;
+        # a globally installed LFS driver with no selected attributes is fine.
+        paths=command(directory,'ls-files','--cached','--others','--exclude-standard','-z')
+        attributes=command(directory,'check-attr','--stdin','-z','filter',input=paths)
+        fields=attributes.split(b'\0')[:-1]
+        if (attributes and not attributes.endswith(b'\0')) or len(fields)%3 or any(
+                fields[i+1]!=b'filter' or fields[i+2] not in (b'unspecified',b'unset') for i in range(0,len(fields),3)):
+            raise ValueError('active client Git filters are unsupported by read-only preflight')
+        yield command
+
+
+def bounded_paths(paths):
+    values=sorted(paths)
+    return {'count':len(values),'paths':[name[:MAX_DIAGNOSTIC_PATH_CHARS] for name in values[:MAX_DIAGNOSTIC_PATHS]],
+            'omitted':max(0,len(values)-MAX_DIAGNOSTIC_PATHS),
+            'shortened':sum(len(name)>MAX_DIAGNOSTIC_PATH_CHARS for name in values[:MAX_DIAGNOSTIC_PATHS])}
+
+
+def fixed_lock_diagnostic(directory):
+    # Only this fixed source-owned lock is inspected, never arbitrary extra paths.
+    # No exception text, source bytes, environment, credentials or parsed contents.
+    try:
+        policy=json.loads((ROOT/'release/ci/apple-swift-package-overlays.json').read_text(encoding='utf-8'))
+        expected=policy['client']['lockSHA256']
+        if not isinstance(expected,str) or not re.fullmatch('[0-9a-f]{64}',expected):raise ValueError('invalid digest')
+        raw=source_bytes(directory,APPLE_LOCK)
+        mode=None if raw is None else format(stat.S_IMODE((directory/APPLE_LOCK).lstat().st_mode),'04o')
+        return {'expectedSHA256':expected,'actualSHA256':None if raw is None else sha(raw),
+                'actualMode':mode,'bytes':None if raw is None else len(raw)}
+    except (OSError,ValueError,KeyError,TypeError):
+        return {'status':'unsafe-or-unavailable'}
+
+
+def inventory_diagnostic(spec,directory,touched,changed,others):
+    result={'missingTouched':bounded_paths(touched-changed),
+            'unexpectedChanged':bounded_paths(changed-touched-set(spec['versionMetadata'])),
+            'untracked':bounded_paths(others),'changedCount':len(changed),'touchedCount':len(touched)}
+    if spec['path']=='clients/apple':result['fixedAppleLock']=fixed_lock_diagnostic(directory)
+    return json.dumps(result,ensure_ascii=True,separators=(',',':'))
+
+
+def preflight(platform,unsigned):
+    if platform!='apple' or unsigned is not True:raise ValueError('preflight is only for unsigned Apple sources')
+    _,directory=checkout(platform)
+    with private_client_git(directory) as command:
+        record=collect(platform,unsigned,_client_git=command)
+    # No receipt/file creation: final post-build collection remains authoritative.
+    return 'Verified pre-build unsigned Apple sources: '+str(len(record['files']))+' client files; '+str(len(record['swiftPackageOverlays']['packages']))+' package overlays (not a build or producer receipt)'
+
+
+def diagnose(platform,unsigned):
+    if platform!='apple' or unsigned is not True:raise ValueError('diagnostics are only for unsigned Apple sources')
+    try:
+        spec,directory=checkout(platform);entries=selected(spec,unsigned)
+        touched={entry['path'] for entry in entries}
+        with private_client_git(directory) as command:
+            others=set(filter(None,command(directory,'ls-files','--others','--exclude-standard','-z').decode().split('\0')))
+            if others&touched:command(directory,'add','--intent-to-add','--',*sorted(others&touched))
+            changed=set(filter(None,command(directory,'diff','--no-renames','--name-only','-z','HEAD').decode().split('\0')))
+        return inventory_diagnostic(spec,directory,touched,changed,others)
+    except (OSError,ValueError,KeyError,TypeError,subprocess.CalledProcessError) as error:
+        return json.dumps({'diagnostic':'unavailable','errorType':type(error).__name__},separators=(',',':'))
 
 
 def portable(path):
@@ -219,15 +335,19 @@ def apply(platform,unsigned=False):
         else:p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(raw);p.chmod(int(modes[name],8)&0o777)
 
 
-def collect(platform,unsigned):
+def collect(platform,unsigned,*,_client_git=None):
+    command=_client_git or git
     spec,directory=checkout(platform);entries=selected(spec,unsigned);identity=identity_definition(platform,unsigned)
     touched={e['path'] for e in entries}|(set(identity['files']) if identity else set())
     bases=baseline_definition(spec,entries,identity)
-    others=set(filter(None,git(directory,'ls-files','--others','--exclude-standard','-z').decode().split('\0')))
-    if not others<=touched:raise ValueError('untracked client source has no declared origin: '+repr(sorted(others-touched)))
-    if others:git(directory,'add','--intent-to-add','--',*sorted(others))
-    changed=set(filter(None,git(directory,'diff','--no-renames','--name-only','-z','HEAD').decode().split('\0')))
-    if not touched<=changed<=touched|set(spec['versionMetadata']):raise ValueError('client source change inventory differs from declared transforms')
+    others=set(filter(None,command(directory,'ls-files','--others','--exclude-standard','-z').decode().split('\0')))
+    if not others<=touched:
+        changed=set(filter(None,command(directory,'diff','--no-renames','--name-only','-z','HEAD').decode().split('\0')))
+        raise ValueError('untracked client source has no declared origin: '+inventory_diagnostic(spec,directory,touched,changed,others))
+    if others:command(directory,'add','--intent-to-add','--',*sorted(others))
+    changed=set(filter(None,command(directory,'diff','--no-renames','--name-only','-z','HEAD').decode().split('\0')))
+    if not touched<=changed<=touched|set(spec['versionMetadata']):
+        raise ValueError('client source change inventory differs from declared transforms: '+inventory_diagnostic(spec,directory,touched,changed,others))
     baseline={name:original_bytes(directory,spec,name,bases[name]) for name in changed};check_baseline(baseline,bases)
     rows=[]
     for name in sorted(changed):
@@ -240,11 +360,20 @@ def collect(platform,unsigned):
             'coreSourceCommit':git(ROOT,'rev-parse','HEAD').decode().strip(),'overlayManifestSHA256':sha(MANIFEST.read_bytes()),'unsigned':unsigned,
             'sourceOverlayCount':len(touched),'identity':identity,'files':rows,
             'baseline':{name:None if raw is None else base64.b64encode(raw).decode() for name,raw in baseline.items()},
-            'diff':git(directory,'diff','--no-ext-diff','--no-renames','--binary','--full-index','HEAD').decode()}
-    record['diffSHA256']=sha(record['diff'].encode());validate(record,platform,record['coreSourceCommit'],unsigned);return record
+            'diff':command(directory,'diff','--no-ext-diff','--no-renames','--binary','--full-index','HEAD').decode()}
+    record['diffSHA256']=sha(record['diff'].encode())
+    if platform=='apple' and unsigned:
+        from apple_package_overlays import collect as collect_packages
+        record['swiftPackageOverlays']=collect_packages(record['coreSourceCommit'],root=ROOT)
+    validate(record,platform,record['coreSourceCommit'],unsigned);return record
 
 
 def validate(record,platform,source,unsigned):
+    if platform=='apple' and unsigned:
+        from apple_package_overlays import validate as validate_packages
+        validate_packages(record.get('swiftPackageOverlays'),source,root=ROOT)
+    elif 'swiftPackageOverlays' in record:
+        raise ValueError('unexpected unsigned Apple package evidence')
     spec=definition(platform);entries=selected(spec,unsigned);identity=identity_definition(platform,unsigned)
     touched={e['path'] for e in entries}|(set(identity['files']) if identity else set())
     for key,value in [('schema','polaris-client-source-v1'),('platform',platform),('repository',spec['repository']),('baseCommit',spec['commit']),('baseTree',spec['tree']),
@@ -282,4 +411,7 @@ def record_signed(platform,directory):
 if __name__=='__main__':
     if sys.argv[1]=='apply':apply(sys.argv[2],unsigned='--unsigned' in sys.argv[3:])
     elif sys.argv[1]=='record-signed':record_signed(sys.argv[2],sys.argv[3])
-    else:raise SystemExit('expected apply or record-signed')
+    elif sys.argv[1]=='preflight':print(preflight(sys.argv[2],unsigned='--unsigned' in sys.argv[3:]))
+    elif sys.argv[1]=='diagnose':
+        print(diagnose(sys.argv[2],unsigned='--unsigned' in sys.argv[3:]));raise SystemExit(1)
+    else:raise SystemExit('expected apply, preflight, diagnose or record-signed')

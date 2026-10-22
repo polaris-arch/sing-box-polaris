@@ -598,6 +598,26 @@
             }
           ],
           "beforeMode": "100644"
+        },
+        {
+          "path": "Jailbreak/package.sh",
+          "kind": "unsigned",
+          "beforeGitBlob": "9291775ff498123226cebb2d0755e84e60ae7cce",
+          "beforeSHA256": "24fc7314bcb1e412122af6313f7c70042d75240c6199ba36764fafa658c1ec85",
+          "afterSHA256": "5c91218cb90036c229a2bbbafbe22cbd986774b0e9115616cb495ff6c68bb326",
+          "edits": [
+            {
+              "old": "XCODEBUILD_FLAGS=()",
+              "new": "XCODEBUILD_FLAGS=(-disableAutomaticPackageResolution)",
+              "count": 1
+            },
+            {
+              "old": "\tXCODEBUILD_FLAGS=(-clonedSourcePackagesDirPath \"$XCODEBUILD_CLONED_SOURCE_PACKAGES_DIR_PATH\")",
+              "new": "\tXCODEBUILD_FLAGS+=(-clonedSourcePackagesDirPath \"$XCODEBUILD_CLONED_SOURCE_PACKAGES_DIR_PATH\")",
+              "count": 1
+            }
+          ],
+          "beforeMode": "100755"
         }
       ],
       "tree": "ced7c1398c36931c0aa83877ec6c0cf08660618e",

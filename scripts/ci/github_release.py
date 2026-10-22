@@ -28,7 +28,7 @@ CANONICAL_METADATA = 'SFA-version-metadata.json'
 NAME_ALIGNMENT = ROOT / 'release/ci/github-release-name-alignment.json'
 NAME_ALIGNMENT_SHA256 = 'c77f674bddbd0f6f77ee636b1bd93643faf8e6cd62d5d9ce7a6a667c789d8064'
 # One reviewed Apple-only manifest transition, not a general migration allowlist.
-ANDROID_OVERLAY_TRANSITION_SHA256 = '68a5b52a4768ecf1534cb48b99285c21b365b815fcf985d7303994b1664b3b11'
+ANDROID_OVERLAY_TRANSITION_SHA256 = '06fdfb3e24a0a6a934ad1ba8660bac3452955894d627d792f0a7317b47d6cd6f'
 VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
 PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
 TAG = 'v' + VERSION
@@ -106,6 +106,9 @@ def identity(source, source_dir):
     require(command('git', '-C', str(source_dir), 'rev-parse', 'HEAD') == source, 'publisher checkout differs from source')
     require(not command('git', '-C', str(source_dir), 'status', '--porcelain', '--untracked-files=no'), 'tracked source is dirty')
     require(sha(ROOT / 'release/ci/client-overlays.json') == sha(source_dir / 'release/ci/client-overlays.json'), 'publisher client overlay contract differs from actual build source')
+    for path in ('release/ci/apple-swift-package-overlays.json', 'scripts/ci/apple_package_overlays.py', 'scripts/ci/client_source.py'):
+        require((ROOT / path).is_file() and (source_dir / path).is_file()
+                and sha(ROOT / path) == sha(source_dir / path), 'publisher Apple package policy differs from actual build source: ' + path)
     owned = Path('release/ci/owned-distribution.json')
     if (ROOT / owned).exists() or (source_dir / owned).exists():
         require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
@@ -316,6 +319,12 @@ def associate_distribution_materials(result, index, index_sha):
                         'sourceArchiveURL': acquired[0]['sourceURL'],
                         'sourceArchiveSHA256': acquired[0]['sourceArchiveSHA256'],
                         'receiptArtifactPath': next(k for k,v in item['files'].items() if 'clientSource' in v)}
+                    if 'swiftPackageOverlays' in c:
+                        packages = c['swiftPackageOverlays']
+                        record['distributionMaterials']['clientSource']['swiftPackageOverlays'] = {
+                            'manifestSHA256': packages['manifestSHA256'],
+                            'lockSHA256': packages['lockSHA256'],
+                            'evidenceSHA256': hashlib.sha256(json.dumps(packages, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
     return result
 
 

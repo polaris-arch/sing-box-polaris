@@ -1,5 +1,6 @@
 import importlib.util
 import copy
+import hashlib
 import jsonschema
 import json
 from pathlib import Path
@@ -905,6 +906,54 @@ class PublicNameRenameTests(unittest.TestCase):
 class DistributionMaterialsTests(unittest.TestCase):
     final_index = GateTests.final_index
     check_index = GateTests.check_index
+    def test_apple_overlay_source_input_tampering_fails_final_native_gate(self):
+        index=self.final_index()
+        for path in ('release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py'):
+            candidate=copy.deepcopy(index)
+            candidate['distributionMaterials']['inputs'][path]='0'*64
+            with self.subTest(path=path),self.assertRaises(ValueError):self.check_index(candidate)
+
+    def test_publisher_apple_policy_matches_actual_source_checkout(self):
+        paths=('release/ci/client-overlays.json','release/ci/owned-distribution.json',
+               'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py','scripts/ci/client_source.py')
+        with tempfile.TemporaryDirectory() as directory:
+            source_root=Path(directory)
+            for name in paths:
+                if not (p.ROOT/name).exists():continue
+                destination=source_root/name;destination.parent.mkdir(parents=True,exist_ok=True)
+                destination.write_bytes((p.ROOT/name).read_bytes())
+            environment={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID)}
+            with mock.patch.dict(os.environ,environment),mock.patch.object(p,'api',return_value={'id':p.RID}),\
+                 mock.patch.object(p,'command',side_effect=lambda *args:'a'*40 if 'rev-parse' in args else ''):
+                p.identity('a'*40,source_root)
+                for name in paths[2:]:
+                    path=source_root/name;original=path.read_bytes();path.write_bytes(original+b'\n')
+                    with self.subTest(path=name),self.assertRaisesRegex(ValueError,'Apple package policy'):
+                        p.identity('a'*40,source_root)
+                    path.write_bytes(original)
+                (source_root/paths[2]).unlink()
+                with self.assertRaisesRegex(ValueError,'Apple package policy'):p.identity('a'*40,source_root)
+
+    def test_apple_overlay_evidence_stays_nested_without_new_public_asset(self):
+        import apple_package_overlays as apple
+        index=self.final_index();spec=apple.definition();packages=apple.expected_record(index['sourceCommit'])
+        client={'coreSourceCommit':index['sourceCommit'],'repository':spec['client']['repository'],
+                'baseCommit':spec['client']['commit'],'overlayManifestSHA256':p.sha(p.ROOT/'release/ci/client-overlays.json'),
+                'diffSHA256':'8'*64,'swiftPackageOverlays':packages}
+        result={'sourceCommit':index['sourceCommit'],'sourceTree':index['sourceTree'],
+                'runs':{'all':{'artifacts':{'binary-apple-standalone-all':{'files':{
+                    'fixture.pkg':{'releaseName':'fixture.pkg','publicationDisposition':'upstream-public-product'},
+                    'polaris-candidate-manifest-fixture.json':{'releaseName':None,'publicationDisposition':'producer-evidence','clientSource':client}}}}}}}
+        files=result['runs']['all']['artifacts']['binary-apple-standalone-all']['files'];names=set(files)
+        p.associate_distribution_materials(result,index,'9'*64)
+        self.assertEqual(set(files),names)
+        self.assertEqual(sum(value['releaseName'] is not None for value in files.values()),1)
+        extra=files['fixture.pkg']['distributionMaterials']['clientSource']['swiftPackageOverlays']
+        self.assertEqual(extra['manifestSHA256'],packages['manifestSHA256'])
+        self.assertEqual(extra['lockSHA256'],packages['lockSHA256'])
+        self.assertEqual(extra['evidenceSHA256'],hashlib.sha256(apple.canonical(packages).encode()).hexdigest())
+        self.assertNotIn('distributionMaterials',files['polaris-candidate-manifest-fixture.json'])
+
     def test_current_scope_materials_tampering_fails(self):
         index=self.final_index()
         for field,value in [('sourceCommit','d'*40),('modules',{}),('legalFiles',{})]:

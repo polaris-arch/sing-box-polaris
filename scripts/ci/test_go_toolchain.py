@@ -3,6 +3,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +16,56 @@ legacy=importlib.util.module_from_spec(spec);spec.loader.exec_module(legacy)
 
 
 class ToolchainControls(unittest.TestCase):
+    def test_windows_console_hunk_fixture_is_exact_official_source(self):
+        # These complete source/license files were copied from the hash-pinned
+        # official archive; no reconstructed snippet or patched-source fixture.
+        fixture=ROOT/'scripts/ci/testdata/go1.27.2'
+        self.assertIn('/scripts/ci/testdata/go1.27.2/** -text',(ROOT/'.gitattributes').read_text())
+        manifest=json.loads((ROOT/'.github/go-toolchains.json').read_text())
+        self.assertEqual(manifest['officialCommit'],'022c8636110ebac86a9b88724cda168ed713c21f')
+        self.assertEqual(manifest['archives']['linux-amd64']['sha256'],
+                         'ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5')
+        for name,digest in [('exec_windows.go','031afbedd3b2e8ee58d890b8ff3df3df67f5556ff174768ec17e9fe31d44ae40'),
+                            ('LICENSE','911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad')]:
+            self.assertEqual(legacy.file_hash(fixture/name),digest)
+
+    @unittest.skipUnless(shutil.which('patch'),'real patch executable required for cold source applicability')
+    def test_windows_console_hunk_applies_cold_with_zero_fuzz_and_rejects_drift(self):
+        _,_,patch,_,_=legacy.toolchain_input('windows7','linux-amd64')
+        raw=patch.read_text()
+        header='diff --git a/src/syscall/exec_windows.go b/src/syscall/exec_windows.go\n'
+        self.assertGreater(raw.count(header),0)
+        # The patch queue may visit this file more than once; replay every
+        # section in its original order, not only the previously failing hunk.
+        section='\n'.join(header+part.split('\ndiff --git ',1)[0] for part in raw.split(header)[1:])+'\n'
+        context=' \tprocAttrList, err := newProcThreadAttributeList(2)\n'
+        self.assertEqual(section.count(context),1)
+        self.assertIn('@@ -374,11 +388,19 @@',section)
+        # Recreate precisely the former asymmetric trailing-context defect.
+        old=section.replace('@@ -374,11 +388,19 @@','@@ -374,10 +388,18 @@').replace(context,'')
+        official=(ROOT/'scripts/ci/testdata/go1.27.2/exec_windows.go').read_bytes()
+        drift=official.replace(b'procAttrList, err := newProcThreadAttributeList(2)',
+                               b'procAttrList, err := newProcThreadAttributeList(3)')
+        self.assertNotEqual(drift,official)
+        for name,selected,source,accepted in [('fixed',section,official,True),
+                                              ('former-missing-context',old,official,False),
+                                              ('unreviewed-source',section,drift,False)]:
+            with self.subTest(case=name),tempfile.TemporaryDirectory() as td:
+                root=Path(td);file=root/'src/syscall/exec_windows.go';file.parent.mkdir(parents=True)
+                file.write_bytes(source);selected_patch=root/'selected.patch';selected_patch.write_text(selected)
+                result=subprocess.run(['patch','--batch','--fuzz=0','-p1','-i',str(selected_patch)],
+                                      cwd=root,text=True,capture_output=True)
+                output=result.stdout+result.stderr
+                if accepted:
+                    self.assertEqual(result.returncode,0,output)
+                    self.assertFalse(list(root.rglob('*.rej')))
+                    actual=file.read_text()
+                    self.assertIn('defer DuplicateHandle(destinationProcessHandle, fd[i]',actual)
+                    self.assertIn(context[1:],actual)
+                else:
+                    self.assertNotEqual(result.returncode,0,output)
+                    self.assertTrue(list(root.rglob('*.rej')),output)
+
     def test_windows_console_duplicate_cleanup_uses_actual_destination(self):
         patch=(ROOT/'.github/patches/go1.27.2/windows7.patch').read_text()
         added='\n'.join(line[1:] for line in patch.splitlines() if line.startswith('+') and not line.startswith('+++'))
