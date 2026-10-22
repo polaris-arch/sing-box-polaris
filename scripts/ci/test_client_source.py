@@ -300,27 +300,37 @@ class ClientSourceControls(unittest.TestCase):
             self.assertIn(entry,client.selected(spec,unsigned))
         # Only pure version assignments and the variable prologue of build_deb
         # are taken from the full patched source. No Xcode, ldid or dpkg runs.
-        capture=script[:script.index('\nREPO_ROOT=')]
+        self.assertIn('python3 "$POLARIS_SOURCE_ROOT/scripts/ci/polaris_version.py" "$PACKAGE_VERSION"',script)
+        self.assertNotIn('[[ "$PACKAGE_VERSION" =~',script)
+        capture=script[:script.index('\nneed()')]
         start=script.index('# Apple bundle marketing')
         marketing=script[start:script.index('\necho "Packaging',start)]
         debian=script[script.index('TILDE="~"'):script.index('\nbuild_deb() {')]
         prologue=script[script.index('build_deb() {'):script.index('\n\trm -rf "$deb_root"')]
         finish='\n\tprintf "%s\\n" "$PACKAGE_VERSION" "$MARKETING_VERSION" "$DEB_VERSION" "$deb_out"\n}\nbuild_deb /var/jb iphoneos-arm64\nbuild_deb "" iphoneos-arm64e\n'
         fragment='\n'.join([capture,marketing,debian,prologue])+finish
-        def evaluate(version,marketing_version):
+        def evaluate(version,marketing_version,include_helper=True):
             with tempfile.TemporaryDirectory() as temp:
-                directory=Path(temp);(directory/'sing-box.xcodeproj').mkdir()
+                root=Path(temp);directory=root/'clients/apple'
+                (directory/'sing-box.xcodeproj').mkdir(parents=True)
                 (directory/'sing-box.xcodeproj/project.pbxproj').write_text(
                     'MARKETING_VERSION = '+marketing_version+';\n'
                     'PRODUCT_BUNDLE_IDENTIFIER = "$(BASE_PACKAGE_IDENTIFIER).standalone";\n')
-                env=dict(os.environ,REPO_ROOT=temp,PRODUCT_NAME='sing-box')
+                script_path=directory/'Jailbreak/package.sh';script_path.parent.mkdir()
+                script_path.write_text(fragment)
+                if include_helper:
+                    helper=root/'scripts/ci/polaris_version.py';helper.parent.mkdir(parents=True)
+                    helper.write_bytes((REAL_ROOT/'scripts/ci/polaris_version.py').read_bytes())
+                unrelated=root/'unrelated-working-directory';unrelated.mkdir()
+                env=dict(os.environ,PRODUCT_NAME='sing-box')
                 if version is None:env.pop('VERSION',None)
                 else:env['VERSION']=version
-                result=subprocess.run(['bash','-c',fragment],cwd=directory,env=env,capture_output=True,text=True,timeout=10)
-                return result,temp
-        for version,marketing_version,deb_version in [
-                ('1.15.0-polaris-alpha.12','1.15.0','1.15.0~polaris~alpha.12'),
-                ('2.0.0-polaris-beta.0','2.0.0','2.0.0~polaris~beta.0')]:
+                result=subprocess.run(['bash',str(script_path)],cwd=unrelated,env=env,capture_output=True,text=True,timeout=10)
+                return result,str(directory)
+        contract=json.loads((REAL_ROOT/'scripts/ci/testdata/polaris-versions.json').read_text())
+        versions=contract['valid']+['2.0.0-polaris-beta.0']
+        for version in versions:
+            marketing_version=version.split('-')[0];deb_version=version.replace('-','~')
             with self.subTest(version=version):
                 result,temp=evaluate(version,marketing_version)
                 self.assertEqual(result.returncode,0,result.stderr)
@@ -328,11 +338,14 @@ class ClientSourceControls(unittest.TestCase):
                 for arch in ['iphoneos-arm64','iphoneos-arm64e']:
                     expected += [version,marketing_version,deb_version,temp+'/build/jailbreak/SFI-'+version+'-'+arch+'.deb']
                 self.assertEqual(result.stdout.splitlines(),expected)
-        for version in [None,'','1.15.0','1.15.0-alpha.12','../1.15.0-polaris-alpha.12','1.15.0-polaris-alpha.12\n']:
+        for version in [None,*contract['invalid']]:
             with self.subTest(invalid_package=version):
                 result,_=evaluate(version,'1.15.0')
                 self.assertNotEqual(result.returncode,0)
                 self.assertIn('VERSION',result.stderr)
+        result,_=evaluate('1.15.0-polaris-alpha.12.1','1.15.0',include_helper=False)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('VERSION',result.stderr)
         for marketing_version in ['','1.16.0','1.15.0-alpha.12']:
             with self.subTest(invalid_marketing=marketing_version):
                 result,_=evaluate('1.15.0-polaris-alpha.12',marketing_version)

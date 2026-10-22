@@ -1,0 +1,12 @@
+{
+  "schema": "polaris-android-material-overlay-transition-v1",
+  "referenceSHA256": "6267fd43a2e4167b6f015303d13090d4e8286843c58cdc89ad1be5186008a8a3",
+  "previousSourceCommit": "9031509c75ade460fd631437decbc9045eccee2a",
+  "previousOverlayManifestSHA256": "6565ccd48a4392dcc6f0172353f0faba0dad221e0c25ed2803fc79a0e0dd8093",
+  "currentOverlayManifestSHA256": "20ad4680fe067d84227260fe91d48d8a83d424b508ec8f44e2b871453187f1d7",
+  "unchangedAndroidDefinitionSHA256": "6f07e48e2cb13c83af50c4498530cc9102725d39b5503be40b5e633f2a37e265",
+  "changedPlatforms": [
+    "apple"
+  ],
+  "requiresActualRuntimeArtifactComparison": true
+}

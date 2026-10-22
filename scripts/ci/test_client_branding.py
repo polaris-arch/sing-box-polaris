@@ -141,7 +141,16 @@ class ClientBrandingTests(unittest.TestCase):
         self.assertEqual(r['referenceDiagnostic']['runId'],'39031988065')
         self.assertEqual(r['referenceDiagnostic']['clientSourceOverlayManifestSHA256'],r['reviewedOverlayChange']['previousOverlayManifestSHA256'])
         self.assertNotEqual(r['referenceDiagnostic']['clientSourceOverlayManifestSHA256'],r['clientSource']['overlayManifestSHA256'])
-        self.assertEqual(r['clientSource']['overlayManifestSHA256'],c.sha(c.MANIFEST.read_bytes()))
+        # The original reference stays historical; Apple-only patch-version support
+        # has a distinct, hash-bound transition and cannot redefine Android materials.
+        transition=json.loads((c.ROOT/'release/ci/android-material-overlay-transition.json').read_text())
+        self.assertEqual(r['clientSource']['overlayManifestSHA256'],transition['previousOverlayManifestSHA256'])
+        self.assertNotEqual(r['clientSource']['overlayManifestSHA256'],c.sha(c.MANIFEST.read_bytes()))
+        self.assertEqual(transition['currentOverlayManifestSHA256'],c.sha(c.MANIFEST.read_bytes()))
+        self.assertEqual(transition['referenceSHA256'],c.sha((c.ROOT/'release/dependency-sources/clients/runtime/android-resolved/reuse-reference.json').read_bytes()))
+        self.assertEqual(transition['unchangedAndroidDefinitionSHA256'],c.sha(json.dumps(c.definition('android'),sort_keys=True,separators=(',',':')).encode()))
+        self.assertEqual(transition['changedPlatforms'],['apple'])
+        self.assertTrue(transition['requiresActualRuntimeArtifactComparison'])
         self.assertTrue(all(not path.endswith(('.gradle','.kts','.properties')) for path in r['reviewedOverlayChange']['androidPaths']))
         transition=r['reviewedNDKSourceChange']
         self.assertEqual(transition['previousOverlayManifestSHA256'],r['reviewedOverlayChange']['currentOverlayManifestSHA256'])

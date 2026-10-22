@@ -258,3 +258,59 @@ alpha.12 product, move its tag, enable signed/Fury/GHCR/App Store publication, o
 change the currently approved unsigned GitHub-only scope. Existing App delivery
 continues against the verified a4d085 source and asset IDs. It takes effect only
 when a subsequent authorized producer run uses the updated source.
+
+### Polaris patch identity within an upstream prerelease
+
+The current source-owned plan is `1.15.0-polaris-alpha.12.1`, still based on
+upstream `v1.15.0-alpha.12`. A Polaris fix does not advance the upstream alpha
+number. A later reviewed patch may use `.12.2`; only a real upstream alpha.13
+upgrade advances that series to `.13`.
+
+`scripts/ci/polaris_version.py` is the shared release-input validator. Its grammar
+is `MAJOR.MINOR.PATCH-polaris-{alpha,beta,rc}.NUMBER[.PATCH]`: every number is an
+ASCII canonical decimal (`0` or a nonzero digit followed by digits), with exactly
+one optional Polaris patch component. Empty components, leading zeroes, signs,
+extra components, metadata/shell suffixes and unbranded upstream inputs are not
+release identities. The two self-contained native JSON Schemas use local `$defs`
+whose patterns are checked against that same parser, including strict end of
+input. The shared fixture is `scripts/ci/testdata/polaris-versions.json`.
+
+Raw kernel versions, tag names, producer receipts and native archive identities
+retain the complete `.12.1` spelling. The existing public-name mapping removes
+only the redundant `-polaris-` version marker, e.g.
+`sing-box-polaris-1.15.0-alpha.12.1-linux-amd64.tar.gz`; this does not rewrite its
+internal archive identity. `badversion.Parse(...).String()` and JSON round trips,
+including nearest-tag/non-exact/nightly builders, retain the patch. Upstream-series
+comparison intentionally ignores the Polaris patch: alpha.12, alpha.12.1 and
+alpha.12.2 are equivalent for that comparison, and alpha.13 is newer. Stable,
+beta/rc and legacy upstream comparisons retain their existing behavior.
+
+Only APK package-manager metadata uses `_alpha12_p1-r0`, since a dot after an APK
+suffix number is invalid. Both Alpine and OpenWrt packaging call the shared
+`--apk` converter; stable/upstream metadata mappings are retained. DEB/RPM and
+raw product names keep their existing separate mappings.
+
+`github-release.json` selects the exact reviewed current version. Workflow
+inputs and publisher concurrency are checked against that plan; admitting the
+syntax `.12.2` does not authorize publishing it under a `.12.1` plan. Final source
+commit/tree and annotated tag object still come from the actual producer checkout
+and dispatch/readback, never a self-referencing SHA in this plan.
+
+Historical alpha.12 reconciliation, replacement and name-alignment JSON/IDs are
+unchanged. Their maintenance modes fail closed under the new release plan; their
+offline tests explicitly select the old historical context instead of relabeling
+old evidence. This compatibility change creates no tag, runs no producer or
+publisher, grants no signing/registry/store permission and carries no old netns
+authorization to a new SHA.
+
+The Apple package overlay now invokes this shared validator relative to its
+source path, not the caller's working directory. This changes the whole client
+overlay manifest hash but leaves the Android definition unchanged. The separate
+`android-material-overlay-transition.json` binds that exact Apple-only change to
+the old Android material reference and the new manifest/unchanged Android
+content. Its complete bytes are pinned by `ANDROID_OVERLAY_TRANSITION_SHA256`;
+this is not a general migration allowlist. It does not edit the historical
+reference. The publisher still compares
+every actual external Android runtime artifact identity and byte digest with the
+reviewed materials, and records the transition's hash in the reuse evidence;
+unknown manifest, Android source or runtime-artifact drift remains rejected.

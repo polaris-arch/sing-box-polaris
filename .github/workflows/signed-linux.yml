@@ -309,7 +309,7 @@ jobs:
       version:
         type: string
         required: true
-        default: 1.15.0-polaris-alpha.12
+        default: 1.15.0-polaris-alpha.12.1
       publish_packages:
         type: boolean
         default: false

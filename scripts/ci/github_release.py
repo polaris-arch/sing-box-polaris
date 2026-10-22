@@ -27,6 +27,8 @@ RECONCILIATION = ROOT / 'release/ci/github-release-reconciliation.json'
 CANONICAL_METADATA = 'SFA-version-metadata.json'
 NAME_ALIGNMENT = ROOT / 'release/ci/github-release-name-alignment.json'
 NAME_ALIGNMENT_SHA256 = 'c77f674bddbd0f6f77ee636b1bd93643faf8e6cd62d5d9ce7a6a667c789d8064'
+# One reviewed Apple-only manifest transition, not a general migration allowlist.
+ANDROID_OVERLAY_TRANSITION_SHA256 = '68a5b52a4768ecf1534cb48b99285c21b365b815fcf985d7303994b1664b3b11'
 VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
 PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
 TAG = 'v' + VERSION
@@ -331,7 +333,31 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     require(materials.get('concreteUnresolvedMaterials') == [], 'Android source/notice materials remain unresolved')
     identity_keys = ('repository', 'baseCommit', 'baseTree', 'overlayManifestSHA256', 'platform', 'unsigned')
     require(isinstance(client_source, dict) and all(key in client_source for key in identity_keys), 'missing Android client material identity')
-    require({key: client_source[key] for key in identity_keys} == reference.get('clientSource'), 'Android client source material reference drift')
+    actual_identity = {key: client_source[key] for key in identity_keys}
+    expected_identity = reference.get('clientSource')
+    transition_sha = None
+    if actual_identity != expected_identity:
+        # A separate reviewed Apple-only edit may change the whole overlay manifest.
+        # Never relabel the historical reference or relax Android/runtime byte identity.
+        require(isinstance(expected_identity, dict) and
+                all(actual_identity[key] == expected_identity.get(key) for key in identity_keys if key != 'overlayManifestSHA256'),
+                'Android client source material reference drift')
+        transition_path = root / 'release/ci/android-material-overlay-transition.json'
+        require(transition_path.is_file(), 'Android overlay material reference drift: transition missing')
+        require(sha(transition_path) == ANDROID_OVERLAY_TRANSITION_SHA256, 'Android overlay material reference drift: transition changed')
+        transition = json.loads(transition_path.read_text(encoding='utf-8'))
+        manifest_path = root / 'release/ci/client-overlays.json'
+        require(transition.get('schema') == 'polaris-android-material-overlay-transition-v1' and
+                transition.get('referenceSHA256') == sha(reference_path) and
+                transition.get('previousOverlayManifestSHA256') == expected_identity['overlayManifestSHA256'] and
+                transition.get('currentOverlayManifestSHA256') == actual_identity['overlayManifestSHA256'] == sha(manifest_path) and
+                transition.get('changedPlatforms') == ['apple'] and transition.get('requiresActualRuntimeArtifactComparison') is True,
+                'Android overlay material reference drift: transition identity changed')
+        android = json.loads(manifest_path.read_text(encoding='utf-8'))['platforms']['android']
+        definition_sha = hashlib.sha256(json.dumps(android, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        require(definition_sha == transition.get('unchangedAndroidDefinitionSHA256'),
+                'Android overlay material reference drift: Android definition changed')
+        transition_sha = sha(transition_path)
     actual = validate_android_runtime(record, configuration)
     expected = reference.get('variants', {}).get(configuration)
     require(isinstance(expected, dict), 'missing Android configuration material reference')
@@ -349,9 +375,12 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     require(canonical(actual['artifacts']) == canonical(expected['artifacts']), 'Android actual runtime artifact material drift')
     mapped = set(canonical([item['artifact'] for item in materials['components']]))
     require(set(canonical(actual['artifacts'])) <= mapped, 'Android actual artifact lacks exact source/notice mapping')
-    return {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
-            'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
-            'sourceMaterialsReusable': True, 'legalConclusion': False}
+    evidence = {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
+                'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
+                'sourceMaterialsReusable': True, 'legalConclusion': False}
+    if transition_sha is not None:
+        evidence['overlayTransitionSHA256'] = transition_sha
+    return evidence
 
 
 def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT):
@@ -1263,6 +1292,9 @@ def main():
     args = p.parse_args()
     public = json.loads(CONFIG.read_text(encoding='utf-8'))
     require(public == {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'tag': TAG, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
+    # Old ID-bound maintenance plans are historical, not a patch-release migration.
+    require(args.mode in ('inventory', 'validate', 'publish') or TAG == 'v1.15.0-polaris-alpha.12',
+            'historical alpha.12 maintenance is unavailable for the current release plan')
     if args.mode in ('check-names', 'rename-names'):
         plan = public_name_plan()
         require(args.source == plan['sourceCommit'], 'public-name source differs from fixed snapshot')

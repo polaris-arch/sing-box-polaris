@@ -18,6 +18,7 @@ jobs:
     - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
+    - run: python -m unittest discover -s scripts/ci -p 'test_polaris_version.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_client_branding.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_android_material_reuse.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_owned_publication_gate.py'

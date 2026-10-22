@@ -26,12 +26,10 @@ fi
 
 PROJECT=$(cd "$(dirname "$0")/.."; pwd)
 
-# Convert version to APK format:
-#   1.13.0-beta.8  -> 1.13.0_beta8-r0
-#   1.13.0-rc.3    -> 1.13.0_rc3-r0
-#   1.13.0         -> 1.13.0-r0
-APK_VERSION=$(echo "$VERSION" | sed -E 's/-polaris-(alpha|beta|rc)\./-\1./; s/-([a-z]+)\.([0-9]+)/_\1\2/')
-APK_VERSION="${APK_VERSION}-r0"
+# Keep raw VERSION for product identity; APK suffixes cannot contain .PATCH.
+# 1.15.0-polaris-alpha.12.1 -> 1.15.0_alpha12_p1-r0
+# Stable and upstream channel versions retain their existing APK spellings.
+APK_VERSION=$(python3 "$PROJECT/scripts/ci/polaris_version.py" --apk "$VERSION")
 
 ROOT_DIR=$(mktemp -d)
 prepare_apk_root

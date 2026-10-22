@@ -9,11 +9,24 @@ from unittest import mock
 import re
 import os
 import runpy
-from contextlib import chdir
+from contextlib import chdir, contextmanager
 import zipfile
 
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+
+@contextmanager
+def historical_release():
+    """Exercise immutable alpha.12 recovery evidence, never the current release plan."""
+    version = '1.15.0-polaris-alpha.12'
+    with tempfile.TemporaryDirectory() as directory:
+        config = Path(directory) / 'github-release.json'
+        current = json.loads(p.CONFIG.read_text())
+        config.write_text(json.dumps(dict(current, version=version, tag='v' + version)))
+        with mock.patch.multiple(p, CONFIG=config, VERSION=version, PUBLIC_VERSION='1.15.0-alpha.12',
+                                 TAG='v' + version, RECEIPT='polaris-github-release-receipt-' + version + '.json'):
+            yield
+
 
 class GateTests(unittest.TestCase):
     def test_scope_preserved(self):
@@ -238,6 +251,7 @@ class GateTests(unittest.TestCase):
                 self.assertEqual(p.publication(role,artifact,path),(None,disposition))
                 self.assertIsNone(p.default_name(role,artifact,path))
 
+    @historical_release()
     def test_publication_matches_exact_reviewed_168_asset_set(self):
         operations=self.reconciliation_operations()
         self.assertEqual(len(operations),228)
@@ -269,6 +283,7 @@ class GateTests(unittest.TestCase):
         self.assertNotIn(p.RECEIPT,selected)
         self.assertFalse(any('-build.' in name for name in selected))
 
+    @historical_release()
     def test_22_distro_names_keep_all_producer_identity_and_digest(self):
         operations=self.reconciliation_operations()
         all_packages=[row for row in operations if row['operation']=='rename' and row['oldName'].endswith(('.deb','.rpm'))]
@@ -308,6 +323,7 @@ class GateTests(unittest.TestCase):
                 for invalid in [missing,extra]:
                     with self.assertRaises(ValueError):p.verify_payloads(invalid,rules,artifact)
 
+    @historical_release()
     def test_unsigned_android_apk_names_remain_explicit(self):
         apks=[row for row in self.reconciliation_operations()
               if row['producer'].get('artifact','').startswith('binary-android-apks-') and row['oldName'].endswith('.apk')]
@@ -606,9 +622,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.1')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.1')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.1')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
@@ -642,6 +658,7 @@ class PublicAssetNameTests(unittest.TestCase):
             with self.subTest(name=before):
                 self.assertEqual(p.public_asset_name(before.format(version=p.VERSION)),after.format(public=p.PUBLIC_VERSION))
 
+    @historical_release()
     def test_all_168_public_names_match_the_reviewed_local_contract(self):
         # This committed, hash-locked snapshot was compared with the reviewed
         # mapping.csv offline. CI must not depend on an external workspace file.
@@ -664,6 +681,7 @@ class PublicAssetNameTests(unittest.TestCase):
         selected.discard(None)
         self.assertEqual(selected,{row['newName'] for row in rows})
 
+    @historical_release()
     def test_public_name_contract_cannot_be_modified(self):
         plan=p.public_name_plan()
         for field,value in [('id',1),('oldName','unexpected.zip'),('newName','unexpected.zip'),
@@ -679,6 +697,7 @@ class PublicNameRenameTests(unittest.TestCase):
     """All API traffic is mocked; the reviewed 168 asset IDs are never mutated."""
 
     def setUp(self):
+        self.enterContext(historical_release())
         self.plan=p.public_name_plan()
         self.release=dict(self.plan['release'],id=self.plan['releaseId'])
         self.original_release=copy.deepcopy(self.release)
@@ -938,6 +957,7 @@ class DistributionMaterialsTests(unittest.TestCase):
 
 class ReconciliationTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(historical_release())
         self.plan = json.loads(p.RECONCILIATION.read_text())
         self.actual = {k:self.plan[k] for k in ('sourceCommit','tag','tagObject')}
         self.actual['runs'] = {}
@@ -1099,7 +1119,7 @@ class ReconciliationTests(unittest.TestCase):
         import yaml
         workflow=yaml.safe_load((p.ROOT/'.github/workflows/publish-github.yml').read_text())
         self.assertEqual(workflow['permissions'],{'contents':'read'})
-        self.assertEqual(workflow['concurrency'],{'group':'polaris-github-release-v1.15.0-polaris-alpha.12','cancel-in-progress':False})
+        self.assertEqual(workflow['concurrency'],{'group':'polaris-github-release-'+json.loads((p.ROOT/'release/ci/github-release.json').read_text())['tag'],'cancel-in-progress':False})
         job=workflow['jobs']['publish']
         self.assertEqual(job['environment'],'polaris-github-release')
         self.assertEqual(job['needs'],'validate')
@@ -1707,7 +1727,7 @@ class ReplacementTests(unittest.TestCase):
         workflow = yaml.safe_load((p.ROOT / '.github/workflows/publish-github.yml').read_text())
         self.assertEqual(set(workflow['jobs']), {'validate', 'publish'})
         self.assertEqual(workflow['permissions'], {'contents': 'read'})
-        self.assertEqual(workflow['concurrency'], {'group': 'polaris-github-release-' + p.TAG, 'cancel-in-progress': False})
+        self.assertEqual(workflow['concurrency'], {'group': 'polaris-github-release-' + json.loads((p.ROOT/'release/ci/github-release.json').read_text())['tag'], 'cancel-in-progress': False})
         inputs = workflow['on']['workflow_dispatch']['inputs']
         self.assertTrue({'prepare-replacement', 'stage-replacement', 'replace'} <= set(inputs['mode']['options']))
         publish = workflow['jobs']['publish']

@@ -302,6 +302,6 @@ jobs:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.12
+        default: v1.15.0-polaris-alpha.12.1
 permissions:
   contents: read

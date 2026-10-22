@@ -519,11 +519,11 @@
           "kind": "compatibility",
           "beforeGitBlob": "1985f32becc0a18596e606dbcbb2d8765f74bcb1",
           "beforeSHA256": "fee23b4df4492f8c75e94719f391fd1f624e17265ed15aa1e3acb10f772924d6",
-          "afterSHA256": "7d0bd6ace2df0d7656e7bd5a67cf1894c6d1b6e0c518d8d87b26a4f6c2155ab5",
+          "afterSHA256": "24fc7314bcb1e412122af6313f7c70042d75240c6199ba36764fafa658c1ec85",
           "edits": [
             {
               "old": "set -euo pipefail\n",
-              "new": "set -euo pipefail\n\n# Capture the full workflow version before reading numeric Apple marketing metadata.\nPACKAGE_VERSION=\"${VERSION:?full release VERSION is required}\"\n[[ \"$PACKAGE_VERSION\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(alpha|beta|rc)\\.(0|[1-9][0-9]*)$ ]] || { echo \"error: invalid full package VERSION\" >&2; exit 1; }\n",
+              "new": "set -euo pipefail\n\n# Capture the full workflow version before reading numeric Apple marketing metadata.\nPACKAGE_VERSION=\"${VERSION:?full release VERSION is required}\"\n# This source-owned overlay lives at clients/apple/Jailbreak/package.sh.\n# Resolve from the script, not cwd, and share the producer's canonical validator.\nPOLARIS_SOURCE_ROOT=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")/../../..\" && pwd)\"\npython3 \"$POLARIS_SOURCE_ROOT/scripts/ci/polaris_version.py\" \"$PACKAGE_VERSION\" >/dev/null || {\n\techo \"error: invalid full package VERSION\" >&2; exit 1;\n}\n",
               "count": 1
             },
             {
