@@ -430,6 +430,7 @@ func (c testCase) Run(t *testing.T, f func(*testing.T, ListenConfig, Dialer)) {
 	t.Run(c.name, func(t *testing.T) {
 		c.setRuntimeFallbackListen(t)
 		c.setRuntimeFallbackDial(t)
+		t.Logf("requested listener MultipathTCP=%t TFO=%t; dialer MultipathTCP=%t TFO=%t", c.listenConfig.MultipathTCP(), c.listenConfig.TFO(), c.dialer.MultipathTCP(), c.dialer.TFO())
 		f(t, c.listenConfig, c.dialer)
 	})
 }
@@ -489,8 +490,13 @@ func init() {
 
 // discardTCPServer is a TCP server that accepts and drains incoming connections.
 type discardTCPServer struct {
-	ln *net.TCPListener
-	wg sync.WaitGroup
+	ln        *net.TCPListener
+	wg        sync.WaitGroup
+	handlers  sync.WaitGroup
+	mu        sync.Mutex
+	closed    bool
+	conns     map[*net.TCPConn]struct{}
+	closeOnce sync.Once
 }
 
 // newDiscardTCPServer creates a new [discardTCPServer] that listens on a random port.
@@ -500,7 +506,7 @@ func newDiscardTCPServer(ctx context.Context) (*discardTCPServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &discardTCPServer{ln: ln.(*net.TCPListener)}, nil
+	return &discardTCPServer{ln: ln.(*net.TCPListener), conns: make(map[*net.TCPConn]struct{})}, nil
 }
 
 // Addr returns the server's address.
@@ -519,19 +525,34 @@ func (s *discardTCPServer) Start(t *testing.T) {
 		for {
 			c, err := s.ln.AcceptTCP()
 			if err != nil {
-				if errors.Is(err, os.ErrDeadlineExceeded) {
+				if errors.Is(err, os.ErrDeadlineExceeded) || errors.Is(err, net.ErrClosed) {
 					return
 				}
 				t.Error("AcceptTCP:", err)
 				return
 			}
 
+			s.mu.Lock()
+			s.conns[c] = struct{}{}
+			s.mu.Unlock()
+			s.handlers.Add(1)
 			go func() {
-				defer c.Close()
+				defer s.handlers.Done()
+				defer func() {
+					c.Close()
+					s.mu.Lock()
+					delete(s.conns, c)
+					s.mu.Unlock()
+				}()
 
 				n, err := io.Copy(io.Discard, c)
 				if err != nil {
-					t.Error("Copy:", err)
+					s.mu.Lock()
+					closing := s.closed
+					s.mu.Unlock()
+					if !closing || !errors.Is(err, net.ErrClosed) {
+						t.Error("Copy:", err)
+					}
 				}
 				t.Logf("Discarded %d bytes from %s", n, c.RemoteAddr())
 			}()
@@ -539,12 +560,22 @@ func (s *discardTCPServer) Start(t *testing.T) {
 	}()
 }
 
-// Close interrupts all running accept goroutines, waits for them to finish,
-// and closes the listener.
+// Close interrupts and joins both accept and drain goroutines. No handler may
+// retain a connection or testing.T after the owning test returns.
 func (s *discardTCPServer) Close() {
-	s.ln.SetDeadline(aLongTimeAgo)
-	s.wg.Wait()
-	s.ln.Close()
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+		s.ln.Close()
+		s.wg.Wait() // No more handlers can be added after this join.
+		s.mu.Lock()
+		for c := range s.conns {
+			c.Close()
+		}
+		s.mu.Unlock()
+		s.handlers.Wait()
+	})
 }
 
 var (
@@ -609,6 +640,7 @@ func TestDialCtrlFn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.Start(t)
 	defer s.Close()
 
 	address := s.Addr().String()
@@ -881,7 +913,7 @@ func readUntilEOF(r io.Reader, expectedData []byte, t *testing.T) {
 	t.Helper()
 	b, err := io.ReadAll(r)
 	if err != nil {
-		t.Error(err)
+		t.Errorf("read until EOF: received %d of %d expected bytes: %v", len(b), len(expectedData), err)
 		return
 	}
 	if !bytes.Equal(b, expectedData) {
@@ -901,34 +933,27 @@ func testClientWriteReadServerReadWrite(t *testing.T, lc ListenConfig, d Dialer)
 	defer lntcp.Close()
 	t.Log("Started listener on", lntcp.Addr())
 
-	ctrlCh := make(chan struct{})
-	go func() {
-		conn, err := lntcp.AcceptTCP()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		defer conn.Close()
+	session := newTCPTestSession(t, lntcp)
+	session.start(func(conn *net.TCPConn) {
 		t.Log("Accepted", conn.RemoteAddr())
 
 		readUntilEOF(conn, helloworld, t)
 		write(conn, world, t)
 		write(conn, hello, t)
-		conn.CloseWrite()
-		close(ctrlCh)
-	}()
+		if !closeTCPTestWrite(t, conn) {
+			return
+		}
+	})
 
-	c, err := d.Dial("tcp", ln.Addr().String(), hello)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tc := c.(*net.TCPConn)
+	tc := session.dial(d, hello)
 	defer tc.Close()
 
 	write(tc, world, t)
-	tc.CloseWrite()
+	if !closeTCPTestWrite(t, tc) {
+		return
+	}
 	readUntilEOF(tc, worldhello, t)
-	<-ctrlCh
+	session.wait()
 }
 
 func testServerWriteReadClientReadWrite(t *testing.T, lc ListenConfig, d Dialer) {
@@ -943,35 +968,28 @@ func testServerWriteReadClientReadWrite(t *testing.T, lc ListenConfig, d Dialer)
 	defer lntcp.Close()
 	t.Log("Started listener on", lntcp.Addr())
 
-	ctrlCh := make(chan struct{})
-	go func() {
-		conn, err := lntcp.AcceptTCP()
-		if err != nil {
-			t.Error(err)
-			return
-		}
+	session := newTCPTestSession(t, lntcp)
+	session.start(func(conn *net.TCPConn) {
 		t.Log("Accepted", conn.RemoteAddr())
-		defer conn.Close()
 
 		write(conn, world, t)
 		write(conn, hello, t)
-		conn.CloseWrite()
+		if !closeTCPTestWrite(t, conn) {
+			return
+		}
 		readUntilEOF(conn, helloworld, t)
-		close(ctrlCh)
-	}()
+	})
 
-	c, err := d.Dial("tcp", ln.Addr().String(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tc := c.(*net.TCPConn)
+	tc := session.dial(d, nil)
 	defer tc.Close()
 
 	readUntilEOF(tc, worldhello, t)
 	write(tc, hello, t)
 	write(tc, world, t)
-	tc.CloseWrite()
-	<-ctrlCh
+	if !closeTCPTestWrite(t, tc) {
+		return
+	}
+	session.wait()
 }
 
 func testClientServerReadFrom(t *testing.T, lc ListenConfig, d Dialer) {
@@ -986,34 +1004,27 @@ func testClientServerReadFrom(t *testing.T, lc ListenConfig, d Dialer) {
 	defer lntcp.Close()
 	t.Log("Started listener on", lntcp.Addr())
 
-	ctrlCh := make(chan struct{})
-	go func() {
-		conn, err := lntcp.AcceptTCP()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		defer conn.Close()
+	session := newTCPTestSession(t, lntcp)
+	session.start(func(conn *net.TCPConn) {
 		t.Log("Accepted", conn.RemoteAddr())
 
 		readUntilEOF(conn, helloworld, t)
 		writeWithReadFrom(conn, world, t)
 		writeWithReadFrom(conn, hello, t)
-		conn.CloseWrite()
-		close(ctrlCh)
-	}()
+		if !closeTCPTestWrite(t, conn) {
+			return
+		}
+	})
 
-	c, err := d.Dial("tcp", ln.Addr().String(), hello)
-	if err != nil {
-		t.Fatal(err)
-	}
-	tc := c.(*net.TCPConn)
+	tc := session.dial(d, hello)
 	defer tc.Close()
 
 	writeWithReadFrom(tc, world, t)
-	tc.CloseWrite()
+	if !closeTCPTestWrite(t, tc) {
+		return
+	}
 	readUntilEOF(tc, worldhello, t)
-	<-ctrlCh
+	session.wait()
 }
 
 func testSetDeadline(t *testing.T, lc ListenConfig, d Dialer) {
@@ -1027,26 +1038,15 @@ func testSetDeadline(t *testing.T, lc ListenConfig, d Dialer) {
 	defer lntcp.Close()
 	t.Log("Started listener on", lntcp.Addr())
 
-	ctrlCh := make(chan struct{})
-	go func() {
-		conn, err := lntcp.AcceptTCP()
-		if err != nil {
-			t.Error(err)
-			return
-		}
+	session := newTCPTestSession(t, lntcp)
+	session.start(func(conn *net.TCPConn) {
 		t.Log("Accepted", conn.RemoteAddr())
-		defer conn.Close()
 
 		write(conn, helloWorldSentence, t)
 		readUntilEOF(conn, []byte{'h', 'l', 'l', ','}, t)
-		close(ctrlCh)
-	}()
+	})
 
-	c, err := d.Dial("tcp", ln.Addr().String(), helloWorldSentence[:1])
-	if err != nil {
-		t.Fatal(err)
-	}
-	tc := c.(*net.TCPConn)
+	tc := session.dial(d, helloWorldSentence[:1])
 	defer tc.Close()
 
 	b := make([]byte, 1)
@@ -1094,6 +1094,8 @@ func testSetDeadline(t *testing.T, lc ListenConfig, d Dialer) {
 	readExactlyOneByte(tc, 'l', t)
 	write(tc, helloWorldSentence[5:6], t)
 
-	tc.CloseWrite()
-	<-ctrlCh
+	if !closeTCPTestWrite(t, tc) {
+		return
+	}
+	session.wait()
 }
