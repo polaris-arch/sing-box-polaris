@@ -42,7 +42,12 @@ class OCIMaterialReuseTests(unittest.TestCase):
         layer=blob(tar(entries),'application/vnd.oci.image.layer.v1.tar')
         if mutation=='media':layer['mediaType']='application/unknown'
         if mutation=='compression':layer['mediaType']+='+'+'gzip'
-        manifest=blob({'schemaVersion':2,'mediaType':'application/vnd.oci.image.manifest.v1+json','config':cfg,'layers':[layer]},'application/vnd.oci.image.manifest.v1+json')
+        layers = [layer]
+        if mutation == 'earlier_layer':
+            base_package = dict(package, V='old-base-version')
+            base_entries = [('lib/apk/db/installed', ('\n'.join(k+':'+v for k,v in base_package.items())+'\n\n').encode(), tarfile.REGTYPE)]
+            layers.insert(0, blob(tar(base_entries), 'application/vnd.oci.image.layer.v1.tar'))
+        manifest=blob({'schemaVersion':2,'mediaType':'application/vnd.oci.image.manifest.v1+json','config':cfg,'layers':layers},'application/vnd.oci.image.manifest.v1+json')
         manifest['platform']=platform
         actual_base=base if mutation!='base' else []
         predicate={'buildDefinition':{'buildType':'https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md','resolvedDependencies':actual_base,'externalParameters':{'configSource':{'path':'Dockerfile.binary'}}},'runDetails':{'builder':{'id':f'https://github.com/{g.REPO}/actions/runs/123/attempts/'+('2' if mutation=='attempt' else '1')},'metadata':{'buildkit_metadata':{'vcs':{'revision':source,'source':'https://github.com/'+g.REPO}}}}}
@@ -69,6 +74,12 @@ class OCIMaterialReuseTests(unittest.TestCase):
     def test_valid_identity_reuse_measures_new_core(self):
         result=self.check();self.assertTrue(result['sourceMaterialsReusable']);self.assertEqual(result['packageCount'],1)
         self.assertEqual(result['coreSHA256'],hashlib.sha256(b'fixture core bytes').hexdigest());self.assertFalse(result['legalConclusion'])
+    def test_final_installed_database_overrides_base_layer(self):
+        single = self.check()
+        layered = self.check('earlier_layer')
+        self.assertEqual(single['installedSHA256'], layered['installedSHA256'])
+        self.assertEqual(layered['packageCount'], 1)
+        self.assertEqual(single['coreSHA256'], layered['coreSHA256'])
     def test_rejects_blob_graph_and_provenance_drift(self):
         for mutation in ['hash','size','media','platform','source','base','attempt','attestation_target','duplicate_provenance','duplicate_image','duplicate_member','outer_alias','compression','alternate_manifest','statement_subject_missing','statement_subject_wrong','statement_subject_ambiguous','artifact_subject_wrong']:
             with self.subTest(mutation=mutation),self.assertRaises(ValueError):self.check(mutation)

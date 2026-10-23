@@ -766,7 +766,7 @@ def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=RO
 def measure_oci_materials(path, artifact, source, run_id, attempt, policy=None):
     if policy is None:
         return validate_oci_material_reuse(path, artifact, source, run_id, attempt)
-    from oci_material_supplement import check_image
+    from oci_material_registry import check_image
     expected = check_image(policy, artifact, path)
     measured = validate_oci_material_reuse(path, artifact, source, run_id, attempt,
         reference_paths=(policy['reference_path'], policy['material_map_path']))
@@ -797,8 +797,8 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
         oci_policy = None
         if role == 'docker':
-            from oci_material_supplement import SOURCE as supplement_source, load_for_run
-            if source == supplement_source:
+            from oci_material_registry import supports_source, load_for_run
+            if supports_source(source):
                 oci_policy = load_for_run(source, source_tree, TAG, tag_object, int(rid), run['run_attempt'],
                     run['path'], [a for a in artifacts if a['name'].startswith('oci-')], source_root, ROOT)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
@@ -874,8 +874,8 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
         if oci_policy is not None:
-            from oci_material_supplement import write_bundle, record as supplement_record
-            bundle = work / 'polaris-oci-material-supplement-39791192772-attempt1.tar.gz'
+            from oci_material_registry import write_bundle, record as supplement_record, bundle_name
+            bundle = work / bundle_name(oci_policy)
             allocation = oci_policy['bundle_maximum_bytes']
             budget.admit(allocation, 'OCI material supplement audit bundle')
             try:

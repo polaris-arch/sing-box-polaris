@@ -2529,5 +2529,8 @@ class OciSupplementTests(unittest.TestCase):
 
 
 
+# Keep the exact current-selection regressions in the existing publisher CI gate.
+from test_oci_material_registry import RegistryTests
+
 if __name__=='__main__':
     unittest.main()
