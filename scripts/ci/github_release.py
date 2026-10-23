@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """GitHub-only release gate. Inventory is read-only; alpha.12 reconciliation is ID-bound."""
 import argparse
+import io
+from github_read_transport import read_get
 import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -200,27 +202,14 @@ def artifact_archive(artifact, budget):
     size = artifact.get('size_in_bytes')
     require(type(size) is int and size > 0, 'Actions artifact ZIP size required')
     require(re.fullmatch(r'sha256:[0-9a-f]{64}', artifact.get('digest', '')), 'Actions artifact digest missing')
+    budget.state.update(artifactId=artifact['id'], artifact=artifact['name'])
+    for key in ('member', 'readAttempt', 'readStatus', 'readHeaders', 'readBytes', 'readError'):
+        budget.state.pop(key, None)
     with budget.temporary(size, 'ZIP ' + str(artifact['id']) + ' ' + artifact['name']) as zipped:
-        child = subprocess.Popen(['gh', 'api', f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'], stdout=subprocess.PIPE)
-        count, digest = 0, hashlib.sha256()
-        try:
-            for chunk in iter(lambda: child.stdout.read(IO_CHUNK), b''):
-                count += len(chunk)
-                require(count <= size, 'Actions artifact ZIP exceeds declared size')
-                digest.update(chunk)
-                zipped.write(chunk)
-            require(child.wait() == 0, 'Actions artifact download failed')
-        finally:
-            child.stdout.close()
-            if child.poll() is None:
-                child.terminate()
-                try:
-                    child.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    child.kill()
-                    child.wait()
-        require(count == size, 'Actions artifact ZIP size differs')
-        require(artifact['digest'] == 'sha256:' + digest.hexdigest(), 'Actions artifact digest missing or mismatched')
+        measured = read_get(f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip', zipped, size,
+                            record=budget.record)
+        require(measured['bytes'] == size, 'Actions artifact ZIP size differs')
+        require(artifact['digest'] == 'sha256:' + measured['sha256'], 'Actions artifact digest missing or mismatched')
         zipped.flush()
         bounded_zip_directory(Path(zipped.name))
         with zipfile.ZipFile(zipped.name) as archive:
@@ -281,6 +270,10 @@ def command(*args):
 
 
 def api(path, method='GET', payload=None):
+    if method == 'GET' and payload is None:
+        stream = io.BytesIO()
+        read_get(path, stream, JSON_LIMIT)
+        return json.loads(stream.getvalue()) if stream.getvalue().strip() else None
     args = ['gh', 'api', '--method', method, path]
     if payload is not None:
         args += ['--input', '-']
@@ -1697,6 +1690,13 @@ def bounded_release(args, runs):
             budget.record(phase='inventory')
             source_tree = command('git', '-C', str(args.source_dir), 'rev-parse', 'HEAD^{tree}')
             tag_object = tag_identity(args.source)
+            contract = None
+            if args.mode != 'inventory':
+                budget.record(phase='reviewed-contract')
+                contract = reviewed_contract(args.inventory_run, args.inventory_sha256, args.source, budget=budget)
+                require({role: str(run['id']) for role, run in contract['runs'].items()} == runs,
+                        'reviewed inventory producer inputs differ')
+            budget.record(phase='inventory')
             actual = inventory(runs, args.source, work, source_tree, tag_object, args.source_dir, budget=budget)
             require(tag_identity(args.source) == tag_object, 'tag changed while collecting release inventory')
             if args.mode == 'inventory':
@@ -1712,7 +1712,6 @@ def bounded_release(args, runs):
                 print('Inventory SHA-256: ' + sha(args.output))
                 return
             budget.record(phase='reviewed-contract')
-            contract = reviewed_contract(args.inventory_run, args.inventory_sha256, args.source, budget=budget)
             assemble(actual, contract, work, args.output, args.audit, materialize=False, budget=budget)
             require(tag_identity(args.source) == tag_object, 'tag changed while validating release contract')
             if args.mode == 'publish':
