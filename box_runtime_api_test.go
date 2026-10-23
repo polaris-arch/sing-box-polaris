@@ -144,7 +144,7 @@ func TestRuntimeDashboardDetourOnlyEligibility(t *testing.T) {
 		{"hidden_skip_check", func(c *option.HTTPClientOptions) { c.DisableEmptyDirectCheck = true }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			client := &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "select"}}
+			client := &option.HTTPClientOptions{Detour: "select"}
 			options := &option.APIServiceOptions{Listen: &listen, Dashboard: &option.APIDashboardOptions{Enabled: true, HTTPClient: client}}
 			item := option.Service{Type: C.TypeAPI, Options: options}
 			if !runtimeStableAPIService(item) {

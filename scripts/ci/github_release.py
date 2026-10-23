@@ -59,7 +59,7 @@ class ScratchBudget:
         if self.audit:
             try:
                 self.audit.mkdir(parents=True, exist_ok=True)
-                (self.audit / 'storage-status.json').write_text(record, encoding='utf-8')
+                (self.audit / 'storage-status.json').write_text(record, encoding='utf-8', newline='\n')
             except OSError as error:
                 print('Unable to retain storage diagnostic: ' + str(error)[:400])
 

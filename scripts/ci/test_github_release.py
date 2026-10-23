@@ -975,9 +975,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.1')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.1')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.1')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.2')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.2')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.2')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):

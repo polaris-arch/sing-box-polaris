@@ -151,13 +151,11 @@ func TestSOCKSPacketConcurrentControlCloseAndRollbackPreserveError(t *testing.T)
 	}
 	var group sync.WaitGroup
 	for range 8 {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			if !errors.Is(conn.Close(), closeErr) {
 				t.Error("close error changed")
 			}
-		}()
+		})
 	}
 	err = transaction.Finish(handshakeErr)
 	group.Wait()

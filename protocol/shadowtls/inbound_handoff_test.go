@@ -74,7 +74,7 @@ func TestShadowTLSHandoffAndSynchronousFallbackHaveSeparateOwnership(t *testing.
 			})
 			terminals := 0
 			var reported error
-			var callback N.CloseHandlerFunc = func(err error) { terminals++; reported = err; _ = owned.Close() }
+			callback := func(err error) { terminals++; reported = err; _ = owned.Close() }
 			if mode == "nil-callback" {
 				callback = nil
 			}

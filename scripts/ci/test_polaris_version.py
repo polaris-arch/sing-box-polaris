@@ -110,7 +110,7 @@ class PolarisVersionTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64')
         self.assertEqual(publisher.VERSION, PLAN['version'])
-        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.13']:
+        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.13']:
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
