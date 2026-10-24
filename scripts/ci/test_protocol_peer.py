@@ -1,5 +1,7 @@
 """Runner controls, not Naive/MASQUE protocol PASS or native-core execution."""
+import ast
 import contextlib
+import shlex
 import io
 import json
 import os
@@ -34,7 +36,97 @@ def normal_build_matrix(matrix):
     return normal
 
 
+def native_smoke_dependency_contract(workflow, source_dir=ROOT/'scripts/ci'):
+    """Cover both peer modes and all smoke branches, without importing product code."""
+    todo = ['test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic', 'native_release_index']
+    visited, external = set(), set()
+    while todo:
+        name = todo.pop()
+        if name in visited:
+            continue
+        visited.add(name)
+        tree = ast.parse((source_dir/(name+'.py')).read_text())
+        for node in ast.walk(tree):
+            imports = []
+            if isinstance(node, ast.Import):
+                imports = [entry.name for entry in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.level:
+                    raise AssertionError('relative native smoke import needs explicit closure review')
+                imports = [node.module]
+            elif isinstance(node, ast.Call) and ((isinstance(node.func, ast.Name) and node.func.id == '__import__')
+                    or (isinstance(node.func, ast.Attribute) and node.func.attr == 'import_module')):
+                if not node.args or not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
+                    raise AssertionError('dynamic native smoke import is not statically bound')
+                imports = [node.args[0].value]
+            for imported in imports:
+                module = imported.split('.')[0]
+                if (source_dir/(module+'.py')).is_file():
+                    todo.append(module)
+                elif module not in sys.stdlib_module_names:
+                    external.add(module)
+    if external != {'yaml', 'jsonschema'}:
+        raise AssertionError('native smoke external import closure changed: '+repr(sorted(external)))
+    steps = workflow['jobs']['native_smoke']['steps']
+    installs = [step for step in steps if step.get('name') == 'Install native smoke and peer validators']
+    if len(installs) != 1:
+        raise AssertionError('exactly one unconditional native dependency installer required')
+    install = installs[0]
+    if ('if' in install or 'continue-on-error' in install
+            or shlex.split(install.get('run', '')) != ['python', '-m', 'pip', 'install', 'PyYAML==6.0.2', 'jsonschema==4.23.0']):
+        raise AssertionError('native smoke dependencies must use both reviewed exact pins unconditionally')
+    installer_index = steps.index(install)
+    python_steps = [i for i, step in enumerate(steps) if step.get('uses', '').startswith('actions/setup-python@')]
+    if len(python_steps) != 1 or python_steps[0] >= installer_index:
+        raise AssertionError('native dependency installer must follow the selected Python runtime')
+    for name in ('Acquire only the frozen original Linux carrier for QA', 'Execute final-package Cronet smoke',
+                 'Verify controlled native peer runner contracts',
+                 'Execute same-run Linux native Naive and MASQUE controlled peers',
+                 'Diagnose the original Linux product with separately bound QA code'):
+        consumers = [i for i, step in enumerate(steps) if step.get('name') == name]
+        if len(consumers) != 1 or consumers[0] <= installer_index:
+            raise AssertionError('native dependencies must precede every smoke/peer consumer')
+    return visited, external
+
+
 class ControlledPeerContracts(unittest.TestCase):
+    def test_native_smoke_python_dependency_closure_and_install_order(self):
+        workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        modules, external = native_smoke_dependency_contract(workflow)
+        self.assertEqual(external, {'yaml', 'jsonschema'})
+        self.assertEqual(modules, {'test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic',
+            'native_release_index', 'tls_fingerprint_probe', 'release_identity', 'polaris_version',
+            'apple_package_overlays', 'legacy_binary_version'})
+
+    def test_native_smoke_dependency_omission_or_conditional_or_late_install_is_rejected(self):
+        original = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        for mutation in ('omit-yaml', 'omit-jsonschema', 'wrong-version', 'conditional', 'ignore-failure', 'late'):
+            with self.subTest(mutation=mutation):
+                workflow = copy.deepcopy(original)
+                steps = workflow['jobs']['native_smoke']['steps']
+                step = next(item for item in steps if item.get('name') == 'Install native smoke and peer validators')
+                if mutation == 'omit-yaml': step['run'] = step['run'].replace('PyYAML==6.0.2 ', '')
+                elif mutation == 'omit-jsonschema': step['run'] = step['run'].replace(' jsonschema==4.23.0', '')
+                elif mutation == 'wrong-version': step['run'] = step['run'].replace('6.0.2', '6.0.3')
+                elif mutation == 'conditional': step['if'] = "inputs.build != 'NativePeerDiagnostic'"
+                elif mutation == 'ignore-failure': step['continue-on-error'] = True
+                else: steps.remove(step); steps.append(step)
+                with self.assertRaises(AssertionError): native_smoke_dependency_contract(workflow)
+
+    def test_native_smoke_new_external_or_dynamic_import_requires_review(self):
+        workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        modules, _ = native_smoke_dependency_contract(workflow)
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            for name in modules:
+                (source/(name+'.py')).write_bytes((ROOT/'scripts/ci'/(name+'.py')).read_bytes())
+            file = source/'protocol_peer.py'
+            original = file.read_text()
+            for extra in ('import requests', '__import__("requests")', '__import__(unreviewed_module_name)'):
+                with self.subTest(extra=extra):
+                    file.write_text(original+'\n'+extra+'\n')
+                    with self.assertRaises(AssertionError): native_smoke_dependency_contract(workflow, source)
+
     def test_linux_exact_source_dispatch_is_staging_only(self):
         valid={'GITHUB_ACTIONS':'true','RUNNER_OS':'Linux','GITHUB_EVENT_NAME':'workflow_dispatch',
                'PEER_BUILD':'NativePeerLinux','PEER_EVIDENCE_MODE':'staging','PEER_SOURCE_GENERATE_ONLY':'false',

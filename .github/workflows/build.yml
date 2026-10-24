@@ -1941,8 +1941,8 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Install selected-core capability validator
-      run: python -m pip install jsonschema==4.23.0
+    - name: Install native smoke and peer validators
+      run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
     - name: Acquire only the frozen original Linux carrier for QA
       if: inputs.build == 'NativePeerDiagnostic'
       env:
