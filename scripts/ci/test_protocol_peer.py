@@ -90,6 +90,106 @@ def native_smoke_dependency_contract(workflow, source_dir=ROOT/'scripts/ci'):
 
 
 class ControlledPeerContracts(unittest.TestCase):
+    def test_same_source_linux_diagnostic_tests_are_exact_and_required(self):
+        workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        steps=workflow['jobs']['build']['steps']
+        matches=[item for item in steps if item.get('name')=='Verify exact Linux cleanup diagnostic tests']
+        self.assertEqual(len(matches),1);step=matches[0]
+        self.assertEqual(step['if'],"inputs.build == 'NativePeerLinux'")
+        self.assertEqual(step['env'],{'CGO_ENABLED':'0','GOOS':'linux','GOARCH':'amd64','GOENV':'off','GOWORK':'off','GOTOOLCHAIN':'local'})
+        self.assertNotIn('continue-on-error',step)
+        command=step['run'];self.assertIn('set -euo pipefail',command)
+        self.assertIn('-tags "$BUILD_TAGS"',command)
+        self.assertIn('-ldflags "$TEST_LDFLAGS"',command)
+        self.assertIn('constant.Version=${{ needs.calculate_version.outputs.version }} ${LDFLAGS_SHARED} -s -w -buildid=',command)
+        self.assertIn("'TEST_LDFLAGS'",command)
+        self.assertIn("-run '^TestCleanup(Diagnostic|Snapshot)'",command)
+        self.assertIn('passed != names',command);self.assertIn("{'fail', 'skip'}",command)
+        self.assertIn("!= set(required)",command)
+        python=command.split("<<'PYDIAGNOSTIC'\n",1)[1].split('\nPYDIAGNOSTIC',1)[0]
+        tree=ast.parse(python);assignment=next(node for node in tree.body if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='required' for t in node.targets))
+        names=set()
+        for node in ast.walk(assignment.value):
+            if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith('TestCleanup'):names.add(node.value)
+        self.assertEqual(len(names),10)
+        for name in names:
+            self.assertEqual(sum(bool(re.search(r'^func '+name+r'\(',file.read_text(),re.M)) for file in ROOT.rglob('*_test.go')),1)
+        preserve=next(item for item in steps if item.get('name')=='Preserve exact Linux cleanup diagnostic test evidence')
+        self.assertEqual(preserve['if'],"always() && inputs.build == 'NativePeerLinux'")
+        self.assertEqual(preserve['with']['if-no-files-found'],'error')
+        self.assertNotIn('sudo',command)
+
+    def test_cleanup_snapshot_finite_schema_and_secret_rejection(self):
+        snapshot = {'schema':'runtime-cleanup-v1','atomic':False,'available':True,
+            'preparing':False,'phase':7,'done':False,'failed':False,'truncated':False,'resourceCount':3,
+            'resources':[{'owners':0,'unavailable':0,'states':[0]*4,'references':0,
+                'dependencies':0,'endpointPhases':[0]*8,'endpointFailures':0,'ownerFailures':0} for _ in range(10)],
+            'connections':{'available':True,'closed':False,'tasks':2,'physical':0},
+            'reference':{'available':True,'started':True,'stopping':True,'busy':False,
+                'pauses':0,'quarantined':0,'failed':False,'setupDone':True,'workerDone':True,'stoppedDone':True}}
+        raw = b'ERROR runtime cleanup snapshot: '+json.dumps(snapshot).encode()+b'\n'
+        self.assertEqual(diagnostic.cleanup_snapshot_observations(raw),([snapshot],0))
+        bad=[]
+        for key,value in [('phase',9),('schema','secret-user-host'),('atomic',True),('resourceCount',1000001),('phase',True)]:
+            mutated=copy.deepcopy(snapshot);mutated[key]=value;bad.append(mutated)
+        mutated=copy.deepcopy(snapshot);mutated['private']='secret-user-host';bad.append(mutated)
+        mutated=copy.deepcopy(snapshot);mutated['resources'][2]['references']='secret';bad.append(mutated)
+        mutated=copy.deepcopy(snapshot);mutated['resources'][2]['states'].append(0);bad.append(mutated)
+        mutated=copy.deepcopy(snapshot);mutated['reference']['extra']='secret';bad.append(mutated)
+        mutated=copy.deepcopy(snapshot);mutated['connections']['tasks']=-1;bad.append(mutated)
+        for value in bad:
+            observed,rejected=diagnostic.cleanup_snapshot_observations(b'runtime cleanup snapshot: '+json.dumps(value).encode())
+            self.assertEqual(observed,[]);self.assertEqual(rejected,1)
+            self.assertNotIn('secret',json.dumps([observed,rejected]))
+        self.assertEqual(diagnostic.cleanup_snapshot_observations(b'runtime cleanup snapshot: {"phase":1,"phase":2}'),([],1))
+        observed,rejected=diagnostic.cleanup_snapshot_observations(raw*5)
+        self.assertEqual(len(observed),4);self.assertEqual(rejected,1)
+        self.assertEqual(diagnostic.cleanup_snapshot_observations(b'runtime cleanup snapshot: '+b'x'*16385),([],1))
+
+    def test_close_error_classes_do_not_retain_arbitrary_error_text(self):
+        raw=(b'sing-box did not closed properly: runtime resource cleanup remains unconfirmed: context deadline exceeded; secret-host\n'
+             b'context canceled; runtime reference observer cleanup incomplete; device shutdown did not complete; secret-token')
+        observed=diagnostic.safe_log_observation(raw,ROOT)
+        codes={row['category'] for row in observed['categories']}
+        self.assertTrue({'native_close_incomplete','runtime_graph_cleanup_incomplete','close_observer_deadline',
+            'close_context_canceled','runtime_reference_cleanup_incomplete','runtime_device_close_incomplete'}<=codes)
+        self.assertNotIn('secret',json.dumps(observed))
+
+    def test_naive_native_callback_protocol_exact_tokens_and_status(self):
+        for kind, token in [('naive-h2','h2'),('naive-h3','quic/1+spdy/3')]:
+            raw = ('response received, protocol: '+token+', status: 200\n').encode()
+            result = peer.naive_protocol_observation(kind,raw)
+            self.assertTrue(result['successfulExpectedProtocolObserved'])
+            self.assertEqual(result['observedAllowlistedProtocolAndStatus'],[[token,200]])
+            self.assertEqual(result['privateRawLogSHA256'],peer.digest(raw))
+        for token in ('h2','h3','h3-29','quic','quic/1+spdy/3-secret'):
+            raw=('response received, protocol: '+token+', status: 200\n').encode()
+            self.assertFalse(peer.naive_protocol_observation('naive-h3',raw)['successfulExpectedProtocolObserved'])
+        for status in ('401','407','500','2000','200SECRET','200 SECRET'):
+            raw=('response received, protocol: quic/1+spdy/3, status: '+status+'\n').encode()
+            self.assertFalse(peer.naive_protocol_observation('naive-h3',raw)['successfulExpectedProtocolObserved'])
+        raw=b'response received, protocol: PRIVATE_TOKEN, status: 200\n'
+        result=peer.naive_protocol_observation('naive-h3',raw)
+        self.assertEqual(result['unrecognizedObservationCount'],1)
+        self.assertNotIn('PRIVATE_TOKEN',str(result))
+
+    def test_h3_proof_retains_exact_listener_fallback_and_two_way_udp(self):
+        config,_=peer.configs('naive-h3',1,2,3,'CA','CERT','KEY','PASSWORD',[4,5])
+        with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as reserved:
+            reserved.bind(('127.0.0.1',0))
+            relay=mock.Mock(port=reserved.getsockname()[1],counts=[4,7])
+            self.assertEqual(peer.verify_h3_only_carrier(config,reserved,relay),
+                {'listenerNetwork':'udp','serverALPN':['h3'],'tcpFallbackBoundNonListening':True,'carrierDatagrams':[4,7]})
+            for key, value in [('network','tcp'),('listen','0.0.0.0'),('tls',{'alpn':['h3','h2']})]:
+                wrong=copy.deepcopy(config);wrong['inbounds'][0][key]=value
+                with self.assertRaises(RuntimeError):peer.verify_h3_only_carrier(wrong,reserved,relay)
+            relay.counts=[4,0]
+            with self.assertRaises(RuntimeError):peer.verify_h3_only_carrier(config,reserved,relay)
+            relay.counts=[4,7];relay.port+=1
+            with self.assertRaises(RuntimeError):peer.verify_h3_only_carrier(config,reserved,relay)
+            relay.port-=1;reserved.listen()
+            with self.assertRaises(RuntimeError):peer.verify_h3_only_carrier(config,reserved,relay)
+
     def test_native_smoke_python_dependency_closure_and_install_order(self):
         workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
         modules, external = native_smoke_dependency_contract(workflow)

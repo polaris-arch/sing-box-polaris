@@ -33,13 +33,14 @@ import (
 var _ adapter.ConnectionManager = (*ConnectionManager)(nil)
 
 type ConnectionManager struct {
-	closed      bool // guarded by access
-	tasks       sync.WaitGroup
-	closeOnce   sync.Once
-	closeErr    error
-	logger      logger.ContextLogger
-	access      sync.Mutex
-	connections list.List[io.Closer]
+	closed          bool // guarded by access
+	tasks           sync.WaitGroup
+	diagnosticTasks atomic.Uint64
+	closeOnce       sync.Once
+	closeErr        error
+	logger          logger.ContextLogger
+	access          sync.Mutex
+	connections     list.List[io.Closer]
 }
 
 func NewConnectionManager(logger logger.ContextLogger) *ConnectionManager {

@@ -102,3 +102,24 @@ func TestRuntimeClientNativeCloseErrorIsSticky(t *testing.T) {
 		t.Fatal("native cleanup result changed")
 	}
 }
+
+func TestCleanupDiagnosticMasquePhaseAndPanic(t *testing.T) {
+	r := fixtureRuntimeClient()
+	e := &ClientEndpoint{runtime: r}
+	if phase, failed := e.RuntimeCleanupObservation(); phase != 0 || failed {
+		t.Fatal(phase, failed)
+	}
+	r.nativeClose = func() error { panic("private native value") }
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("diagnostic swallowed native panic")
+			}
+		}()
+		_ = r.close()
+	}()
+	phase, failed := e.RuntimeCleanupObservation()
+	if phase != 3 || !failed {
+		t.Fatal("panic must retain native stage and failure, not done", phase, failed)
+	}
+}

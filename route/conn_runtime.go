@@ -18,9 +18,10 @@ func (m *ConnectionManager) reserveTask() (func(), error) {
 		return nil, net.ErrClosed
 	}
 	m.tasks.Add(1)
+	m.diagnosticTasks.Add(1)
 	m.access.Unlock()
 	var once sync.Once
-	return func() { once.Do(m.tasks.Done) }, nil
+	return func() { once.Do(func() { m.diagnosticTasks.Add(^uint64(0)); m.tasks.Done() }) }, nil
 }
 
 func (m *ConnectionManager) runtimeTask(ctx context.Context, task func(context.Context)) error {

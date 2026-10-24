@@ -442,6 +442,58 @@ jobs:
         git -C "$RUNNER_TEMP/cronet-go-lib" fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
         git -C "$RUNNER_TEMP/cronet-go-lib" checkout FETCH_HEAD
         cp "$RUNNER_TEMP/cronet-go-lib/$LIBRARY_PATH" dist/
+    - name: Verify exact Linux cleanup diagnostic tests
+      if: inputs.build == 'NativePeerLinux'
+      env:
+        CGO_ENABLED: '0'
+        GOOS: linux
+        GOARCH: amd64
+        GOENV: 'off'
+        GOWORK: 'off'
+        GOTOOLCHAIN: local
+      run: |
+        set -euo pipefail
+        evidence="$RUNNER_TEMP/native-cleanup-diagnostic-tests"
+        mkdir -p "$evidence"
+        go version > "$evidence/go-version.txt"
+        export TEST_LDFLAGS="-X github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }} ${LDFLAGS_SHARED} -s -w -buildid="
+        python3 - "$evidence/context.json" <<'PYCONTEXT'
+        import json, os, sys
+        keys = ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'BUILD_TAGS', 'CGO_ENABLED', 'GOOS', 'GOARCH', 'TEST_LDFLAGS')
+        json.dump({key: os.environ[key] for key in keys}, open(sys.argv[1], 'w'), indent=2)
+        PYCONTEXT
+        go test -json -trimpath -mod=readonly -p=2 -count=1 -timeout=60s -tags "$BUILD_TAGS" -ldflags "$TEST_LDFLAGS" \
+          -run '^TestCleanup(Diagnostic|Snapshot)' \
+          . ./internal/runtimegraph ./route ./protocol/masque ./cmd/sing-box \
+          | tee "$evidence/tests.jsonl"
+        python3 - "$evidence/tests.jsonl" <<'PYDIAGNOSTIC'
+        import json, sys
+        prefix = 'github.com/sagernet/sing-box'
+        required = {
+            prefix: {'TestCleanupDiagnosticSaturationAndFiniteKinds', 'TestCleanupDiagnosticDoesNotExposeIdentityOrWaitForCoordinator'},
+            prefix + '/internal/runtimegraph': {'TestCleanupSnapshotDoesNotTakeLeaseOrWaitForMutex', 'TestCleanupSnapshotDistinguishesLeaseDrainNativeCloseAndFailure'},
+            prefix + '/route': {'TestCleanupSnapshotConnectionTaskAndContention', 'TestCleanupSnapshotReferenceSignalsAndContention'},
+            prefix + '/protocol/masque': {'TestCleanupDiagnosticMasquePhaseAndPanic'},
+            prefix + '/cmd/sing-box': {'TestCleanupDiagnosticPanicDoesNotMaskCloseError', 'TestCleanupDiagnosticEncodingFailureIsFixed', 'TestCleanupDiagnosticFiniteSnapshotIsEncoded'},
+        }
+        events = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+        if any(e.get('Action') in {'fail', 'skip'} for e in events):
+            raise SystemExit('cleanup diagnostic test failure or skip')
+        for package, names in required.items():
+            passed = {e.get('Test') for e in events if e.get('Package') == package and e.get('Action') == 'pass' and 'Test' in e}
+            if passed != names or not any(e.get('Package') == package and e.get('Action') == 'pass' and 'Test' not in e for e in events):
+                raise SystemExit('exact cleanup diagnostic named tests/package PASS missing: ' + package)
+        if {e.get('Package') for e in events if e.get('Action') == 'pass' and 'Test' not in e} != set(required):
+            raise SystemExit('cleanup diagnostic package inventory differs')
+        PYDIAGNOSTIC
+    - name: Preserve exact Linux cleanup diagnostic test evidence
+      if: always() && inputs.build == 'NativePeerLinux'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: native-cleanup-diagnostics-${{ github.sha }}
+        path: ${{ runner.temp }}/native-cleanup-diagnostic-tests
+        if-no-files-found: error
+        retention-days: 7
     - name: Build (glibc)
       if: fromJSON(toJSON(matrix)).variant == 'glibc'
       run: |

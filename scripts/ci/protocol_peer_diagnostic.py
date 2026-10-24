@@ -214,6 +214,15 @@ ERROR_CATEGORIES = {
     'go_concurrent_map': b'fatal error: concurrent map writes',
     'go_deadlock': b'fatal error: all goroutines are asleep - deadlock!',
     'native_close_incomplete': b'sing-box did not closed properly',
+    'runtime_graph_cleanup_incomplete': b'runtime resource cleanup remains unconfirmed',
+    'close_observer_deadline': b'context deadline exceeded',
+    'close_context_canceled': b'context canceled',
+    'runtime_reference_cleanup_incomplete': b'runtime reference observer cleanup incomplete',
+    'runtime_owned_cleanup_incomplete': b'completion unknown',
+    'runtime_device_close_incomplete': b'device shutdown did not complete',
+    'runtime_scope_close_panic': b'panic during close:',
+    'runtime_owner_close_panic': b'resource close panic:',
+    'cleanup_snapshot_encoding_unavailable': b'runtime cleanup snapshot encoding unavailable',
     'native_close_timeout': b'sing-box did not close!',
     'tls_unknown_ca': b'certificate signed by unknown authority',
     'http_auth407': b'status: 407', 'http_auth401': b'unexpected status: 401',
@@ -267,6 +276,75 @@ def source_symbols(root):
     return _SOURCE_SYMBOLS
 
 
+CLEANUP_COUNT_CAP = 1000000
+
+
+def validate_cleanup_snapshot(value):
+    """Exact finite schema; no arbitrary strings, extra keys or unbounded counts."""
+    def obj(item, keys):
+        return type(item) is dict and set(item) == set(keys.split())
+    def count(item, maximum=CLEANUP_COUNT_CAP):
+        return type(item) is int and 0 <= item <= maximum
+    def flags(item, names):
+        return all(type(item[name]) is bool for name in names.split())
+    if not obj(value, 'schema atomic available preparing phase done failed truncated resourceCount resources connections reference'):
+        return False
+    if value['schema'] != 'runtime-cleanup-v1' or value['atomic'] is not False:
+        return False
+    if not flags(value, 'available preparing done failed truncated') or not count(value['phase'], 8) or not count(value['resourceCount']):
+        return False
+    resources = value['resources']
+    if type(resources) is not list or len(resources) != 10:
+        return False
+    for item in resources:
+        if not obj(item, 'owners unavailable states references dependencies endpointPhases endpointFailures ownerFailures'):
+            return False
+        if not all(count(item[key]) for key in ('owners', 'unavailable', 'references', 'dependencies', 'endpointFailures', 'ownerFailures')):
+            return False
+        for name, length in [('states', 4), ('endpointPhases', 8)]:
+            if type(item[name]) is not list or len(item[name]) != length or not all(count(n) for n in item[name]):
+                return False
+    conn = value['connections']
+    if not obj(conn, 'available closed tasks physical') or not flags(conn, 'available closed') or not count(conn['tasks']) or not count(conn['physical']):
+        return False
+    ref = value['reference']
+    if not obj(ref, 'available started stopping busy pauses quarantined failed setupDone workerDone stoppedDone'):
+        return False
+    return (flags(ref, 'available started stopping busy failed setupDone workerDone stoppedDone')
+            and count(ref['pauses']) and count(ref['quarantined']))
+
+
+def cleanup_snapshot_observations(raw):
+    observations, rejected = [], 0
+    for line in raw.splitlines():
+        marker = b'runtime cleanup snapshot: '
+        if marker not in line:
+            continue
+        encoded = line.split(marker, 1)[1]
+        # Generated fixtures disable color; reject anything outside exact JSON.
+        if len(encoded) > 16384 or len(observations) >= 4:
+            rejected += 1
+            continue
+        try:
+            # Duplicate keys are not an exact source-generated snapshot.
+            def unique_pairs(pairs):
+                item = {}
+                for key, value in pairs:
+                    if key in item:
+                        raise ValueError('duplicate cleanup snapshot key')
+                    item[key] = value
+                return item
+            value = json.loads(encoded, object_pairs_hook=unique_pairs)
+        except (ValueError, UnicodeError, RecursionError):
+            rejected += 1
+            continue
+        if validate_cleanup_snapshot(value):
+            observations.append(value)
+        else:
+            rejected += 1
+    return observations, min(rejected, CLEANUP_COUNT_CAP)
+
+
 def safe_log_observation(raw, root):
     """Emit enumerated source-derived classifications, never arbitrary log lines."""
     result={'sha256':sha(raw),'bytes':len(raw),'categories':[], 'goFrames':[],
@@ -298,6 +376,7 @@ def safe_log_observation(raw, root):
                 result['goFrames'].append({'symbol':pending[0],'file':location[1],'line':int(location[2])})
                 if len(result['goFrames'])>=48: break
             pending=None
+    result['cleanupSnapshots'], result['cleanupSnapshotsRejected'] = cleanup_snapshot_observations(raw)
     result['unknownTextRetained']=False
     return result
 

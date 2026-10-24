@@ -729,6 +729,37 @@ def config_check(binary, config_path, directory, name, records=None):
     return fact
 
 
+def naive_protocol_observation(kind, raw):
+    # Pinned naiveproxy be1be963 components/grpc_support/bidirectional_stream.cc
+    # reports QUIC NextProto as this legacy C callback token, not the ALPN h3.
+    expected = {'naive-h2':'h2', 'naive-h3':'quic/1+spdy/3'}[kind]
+    observed, unknown = [], 0
+    for protocol, status in re.findall(rb'response received, protocol: ([^,\r\n]{1,64}), status: ([0-9]{3})[ \t]*(?=\r?$)', raw, re.M):
+        code = int(status)
+        if protocol not in (b'h2', b'quic/1+spdy/3') or not 100 <= code <= 599:
+            unknown += 1
+            continue
+        observed.append([protocol.decode('ascii'), code])
+    return {'expectedNativeCallbackProtocol':expected, 'observedAllowlistedProtocolAndStatus':observed,
+            'unrecognizedObservationCount':unknown, 'successfulExpectedProtocolObserved':[expected,200] in observed,
+            'privateRawLogSHA256':digest(raw), 'privateRawLogBytes':len(raw)}
+
+
+def verify_h3_only_carrier(peer_config, reserved_tcp, relay):
+    inbound = peer_config['inbounds'][0]
+    if (inbound.get('type') != 'naive' or inbound.get('network') != 'udp'
+            or inbound.get('listen') != '127.0.0.1' or inbound.get('tls',{}).get('alpn') != ['h3']):
+        raise RuntimeError('controlled Naive H3 peer is not the exact H3-only listener')
+    if (reserved_tcp is None or relay is None or reserved_tcp.family != socket.AF_INET
+            or reserved_tcp.type != socket.SOCK_STREAM
+            or reserved_tcp.getsockname() != ('127.0.0.1',relay.port)
+            or reserved_tcp.getsockopt(socket.SOL_SOCKET,socket.SO_ACCEPTCONN) != 0
+            or not all(relay.counts)):
+        raise RuntimeError('controlled Naive H3 fallback block or two-way QUIC carrier not proven')
+    return {'listenerNetwork':'udp','serverALPN':['h3'],'tcpFallbackBoundNonListening':True,
+            'carrierDatagrams':relay.counts[:]}
+
+
 def run_case(binary, row, root, kind, mutation=None):
     directory = Path(tempfile.mkdtemp(prefix=kind+'-', dir=root)); directory.chmod(0o700)
     echo = None; udp_echo = None
@@ -795,11 +826,16 @@ def run_case(binary, row, root, kind, mutation=None):
             library_event=event(events,'healthy.native_identity.verify',status='RUNNING')
             result['loadedNativeLibrary'] = bound_library(healthy, binary, row)
             library_event['status']='PASS'
-            protocol = 'h2' if kind == 'naive-h2' else 'h3'
-            pairs = re.findall(r'response received, protocol: ([^,\s]+), status: (\d+)', healthy.log_path.read_text(errors='replace'))
-            if not any(status == '200' and (name == protocol or protocol == 'h3' and name.startswith('h3-')) for name, status in pairs):
+            protocol_event=event(events,'healthy.native_protocol.verify',status='RUNNING')
+            observation = naive_protocol_observation(kind, healthy.log_path.read_bytes())
+            result['nativeProtocolObservation'] = observation
+            result['negotiatedProtocolAndStatus'] = observation['observedAllowlistedProtocolAndStatus']
+            if not observation['successfulExpectedProtocolObserved']:
+                protocol_event['status']='FAIL'
                 raise RuntimeError('actual successful negotiated Naive protocol not proven')
-            result['negotiatedProtocolAndStatus'] = [list(x) for x in pairs]
+            if kind == 'naive-h3':
+                result['h3OnlyCarrierObservation'] = verify_h3_only_carrier(peer_cfg,reserved_tcp,relay)
+            protocol_event['status']='PASS'
         if relay and not all(relay.counts): raise RuntimeError('actual two-way QUIC carrier missing')
         if not mutation:
             result['concurrentTCP']=[[],[]]

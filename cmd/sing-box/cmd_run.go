@@ -221,6 +221,7 @@ func run() error {
 			closed()
 			if osSignal != syscall.SIGHUP {
 				if err != nil {
+					log.Error(runtimeCleanupDiagnosticMessage(func() any { return instance.RuntimeCleanupSnapshot() }))
 					log.Error(E.Cause(err, "sing-box did not closed properly"))
 				}
 				return nil
