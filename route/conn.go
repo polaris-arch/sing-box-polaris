@@ -36,6 +36,8 @@ type ConnectionManager struct {
 	closed          bool // guarded by access
 	tasks           sync.WaitGroup
 	diagnosticTasks atomic.Uint64
+	finalOnce       sync.Once
+	flows           map[*connectionFlow]struct{} // guarded by access
 	closeOnce       sync.Once
 	closeErr        error
 	logger          logger.ContextLogger
@@ -113,7 +115,7 @@ func (m *ConnectionManager) TrackPacketConn(conn net.PacketConn) net.PacketConn 
 }
 
 func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	taskDone, taskErr := m.reserveTask()
+	ctx, flow, taskDone, taskErr := m.reserveFlow(ctx, conn)
 	if taskErr != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
@@ -143,6 +145,10 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		err = E.Cause(err, "open connection to ", remoteString, dialerString)
 		N.CloseOnHandshakeFailure(conn, onClose, err)
 		m.logger.ErrorContext(ctx, err)
+		return
+	}
+	if !flow.replace(1, remoteConn) {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
 		return
 	}
 	err = N.ReportConnHandshakeSuccess(conn, remoteConn)
@@ -180,6 +186,10 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		}
 		remoteConn = spoofConn
 	}
+	if (metadata.TLSFragment || metadata.TLSRecordFragment || metadata.TLSSpoof != "") && !flow.wrap(1, remoteConn) {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
 	serverFirst := sniff.Skip(&metadata)
 	var done atomic.Bool
 	if m.kickWriteHandshake(ctx, conn, remoteConn, serverFirst, false, &done, onClose) {
@@ -201,7 +211,7 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 }
 
 func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dialer, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	taskDone, taskErr := m.reserveTask()
+	ctx, flow, taskDone, taskErr := m.reserveFlow(ctx, conn)
 	if taskErr != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
 		return
@@ -247,6 +257,10 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 			m.logger.ErrorContext(ctx, err)
 			return
 		}
+		if !flow.replace(1, remoteConn) {
+			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+			return
+		}
 		remotePacketConn = bufio.NewUnbindPacketConn(remoteConn)
 		connRemoteAddr := M.AddrFromNet(remoteConn.RemoteAddr())
 		if connRemoteAddr != metadata.Destination.Addr {
@@ -270,6 +284,16 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 			m.logger.ErrorContext(ctx, err)
 			return
 		}
+	}
+	var remoteAdmitted bool
+	if remoteConn != nil {
+		remoteAdmitted = flow.wrap(1, remotePacketConn)
+	} else {
+		remoteAdmitted = flow.replace(1, remotePacketConn)
+	}
+	if !remoteAdmitted {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
 	}
 	err = N.ReportPacketConnHandshakeSuccess(conn, remotePacketConn)
 	if err != nil {
@@ -318,6 +342,12 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 		ctx, conn = canceler.NewPacketConn(ctx, conn, udpTimeout)
 	}
 	destination := bufio.NewPacketConn(remotePacketConn)
+	localAdmitted := flow.wrap(0, conn)
+	remoteAdmitted = flow.wrap(1, destination)
+	if !localAdmitted || !remoteAdmitted {
+		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		return
+	}
 	var done atomic.Bool
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.packetConnectionCopy(ctx, conn, destination, false, &done, onClose) }); taskErr != nil {
 		_ = destination.Close()

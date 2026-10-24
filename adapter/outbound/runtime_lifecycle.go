@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -571,24 +572,107 @@ func (f *RuntimeIOFence) Wait() error {
 	return err
 }
 
-// Only these private carriers have an owned method barrier. Do not infer
-// completion from a public Close returning pending or from an arbitrary raw
-// wrapper. Nested carriers join the same fixed worker, without a second Close.
-func closeRuntimeOwnedCarrier(conn interface{ Close() error }) error {
-	var state *runtimeCarrier
+// Only these exact private carriers carry this completion contract. A nested
+// external carrier can also already be closing; treating its pending request
+// as a final error would permanently poison the outer carrier's result.
+func runtimeCarrierState(conn io.Closer) *runtimeCarrier {
 	switch c := conn.(type) {
 	case *runtimeConn:
-		state = c.state
+		return c.state
 	case *runtimeConnPacket:
-		state = c.state
+		return c.state
 	case *runtimePacketConn:
-		state = c.state
+		return c.state
+	default:
+		return nil
 	}
-	if state != nil && state.owned {
-		_ = state.close(nil) // ownedClose was installed before publication
-		return (&RuntimeIOFence{state: state}).Wait()
+}
+
+func closeRuntimeOwnedCarrier(conn interface{ Close() error }) error {
+	wait, known := RuntimeConnectionCloseWaiter(conn)
+	if known {
+		return wait()
 	}
 	return conn.Close()
+}
+
+// RuntimeConnectionCloseWaiter captures only the exact private carrier's fixed
+// close barrier, never its raw transport. A final flow controller may retain it
+// BEFORE adding known wrappers with their own cleanup (e.g. TLS spoof or UDP
+// canceler). It must still close the outer wrapper and preserve any other error.
+// Call from an independent final-close worker, not a callback holding Acquire.
+func RuntimeConnectionCloseWaiter(conn io.Closer) (func() error, bool) {
+	state := runtimeCarrierState(conn)
+	if state == nil {
+		return nil, false
+	}
+	return func() error {
+		_ = conn.Close()
+		<-state.closeSignal
+		state.methods.Wait()
+		state.mu.Lock()
+		err := state.closeErr
+		state.mu.Unlock()
+		return err
+	}, true
+}
+
+// The listener captures this completion at the actual private-carrier creation
+// boundary, before protocol wrappers obscure it. It conveys no I/O access or
+// admission authority. Only final Box flow shutdown consumes the waiter.
+type runtimeInboundCloseContextKey struct{}
+type runtimeInboundCloseTarget struct {
+	state *runtimeCarrier
+	wait  func() error
+}
+
+func ContextWithRuntimeInboundClose(ctx context.Context, conn io.Closer) context.Context {
+	wait, known := RuntimeConnectionCloseWaiter(conn)
+	if !known {
+		return ctx
+	}
+	state := runtimeCarrierState(conn)
+	previous, _ := ctx.Value(runtimeInboundCloseContextKey{}).([]runtimeInboundCloseTarget)
+	for _, target := range previous {
+		if target.state == state {
+			return ctx
+		}
+	}
+	// Immutable captured construction chain; never overwrite a listener's
+	// accepted carrier with a later protocol-private carrier.
+	targets := append([]runtimeInboundCloseTarget(nil), previous...)
+	targets = append(targets, runtimeInboundCloseTarget{state, wait})
+	return context.WithValue(ctx, runtimeInboundCloseContextKey{}, targets)
+}
+
+func RuntimeInboundCloseFromContext(ctx context.Context) (func() error, bool) {
+	targets, ok := ctx.Value(runtimeInboundCloseContextKey{}).([]runtimeInboundCloseTarget)
+	if !ok || len(targets) == 0 {
+		return nil, false
+	}
+	return func() error {
+		// One request per captured private construction object; all children
+		// join before this counted final-close worker can complete. No raw I/O
+		// or resource admission is granted by this control-only context value.
+		results := make(chan error, len(targets))
+		for _, target := range targets {
+			go func(wait func() error) { results <- waitRuntimeCloseRecovering(wait) }(target.wait)
+		}
+		var result error
+		for range targets {
+			result = errors.Join(result, <-results)
+		}
+		return result
+	}, true
+}
+
+func waitRuntimeCloseRecovering(wait func() error) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errors.New("runtime private connection close wait panicked; completion unknown")
+		}
+	}()
+	return wait()
 }
 
 func WrapRuntimeOwnedConn(conn net.Conn) (net.Conn, *RuntimeIOFence) {

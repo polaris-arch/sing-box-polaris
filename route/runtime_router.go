@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	outbound "github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/common"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -84,6 +85,7 @@ func (r *RuntimeRouter) RouteConnectionEx(ctx context.Context, conn net.Conn, me
 			}
 		})
 	}
+	ctx = outbound.ContextWithRuntimeInboundClose(ctx, conn)
 	owned := &runtimeConn{Conn: conn, lease: lease, finish: finish}
 	lease.View().Router().RouteConnectionEx(adapter.ContextWithRuntimeLease(ctx, lease), owned, metadata, finish)
 }

@@ -2,30 +2,18 @@ package route
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net"
-	"sync"
 )
 
 // The stable manager joins its own bookkeeping/logger tails. Internal physical
 // carriers do not acquire a graph lease merely to retain this Box-owned manager.
 func (m *ConnectionManager) reserveTask() (func(), error) {
-	m.access.Lock()
-	if m.closed {
-		m.access.Unlock()
-		return nil, net.ErrClosed
-	}
-	m.tasks.Add(1)
-	m.diagnosticTasks.Add(1)
-	m.access.Unlock()
-	var once sync.Once
-	return func() { once.Do(func() { m.diagnosticTasks.Add(^uint64(0)); m.tasks.Done() }) }, nil
+	return m.reserveFlowTask(context.Background())
 }
 
 func (m *ConnectionManager) runtimeTask(ctx context.Context, task func(context.Context)) error {
-	done, err := m.reserveTask()
+	done, err := m.reserveFlowTask(ctx)
 	if err != nil {
 		return err
 	}
@@ -38,23 +26,13 @@ func (m *ConnectionManager) runtimeTask(ctx context.Context, task func(context.C
 
 func (m *ConnectionManager) closeRuntimeTasks() error {
 	m.closeOnce.Do(func() {
-		m.access.Lock()
-		m.closed = true
-		var closers []io.Closer
-		for element := m.connections.Front(); element != nil; {
-			next := element.Next()
-			closers = append(closers, element.Value)
-			m.connections.Remove(element)
-			element = next
-		}
-		m.access.Unlock()
-		for _, closer := range closers {
-			m.closeErr = errors.Join(m.closeErr, closeManagedSocket(closer))
-		}
+		m.StopFinal()
 		// A blocked callback or nonreturning external dial remains an incomplete
 		// stable shutdown. Higher-level observers may stop waiting, not free it.
 		m.tasks.Wait()
 	})
+	m.access.Lock()
+	defer m.access.Unlock()
 	return m.closeErr
 }
 

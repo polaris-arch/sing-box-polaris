@@ -285,9 +285,9 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 				}
 				resource.owner.Seal()
 			}
-			c.shutdownDiagnosticPhase.Store(4) // physical socket close
+			c.shutdownDiagnosticPhase.Store(4) // final logical-flow stop and physical close
 			if s.connection != nil {
-				s.connection.CloseAll()
+				s.connection.StopFinal()
 			}
 			// Stop accepting and drain TUN flows before waiting for graph leases.
 			// Waiting for the stable owner first would create a TUN-flow cycle.

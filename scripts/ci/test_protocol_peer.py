@@ -103,15 +103,15 @@ class ControlledPeerContracts(unittest.TestCase):
         self.assertIn('-ldflags "$TEST_LDFLAGS"',command)
         self.assertIn('constant.Version=${{ needs.calculate_version.outputs.version }} ${LDFLAGS_SHARED} -s -w -buildid=',command)
         self.assertIn("'TEST_LDFLAGS'",command)
-        self.assertIn("-run '^TestCleanup(Diagnostic|Snapshot)'",command)
+        self.assertIn("-run '^(TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)'",command)
         self.assertIn('passed != names',command);self.assertIn("{'fail', 'skip'}",command)
         self.assertIn("!= set(required)",command)
         python=command.split("<<'PYDIAGNOSTIC'\n",1)[1].split('\nPYDIAGNOSTIC',1)[0]
         tree=ast.parse(python);assignment=next(node for node in tree.body if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='required' for t in node.targets))
         names=set()
         for node in ast.walk(assignment.value):
-            if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith('TestCleanup'):names.add(node.value)
-        self.assertEqual(len(names),10)
+            if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith(('TestCleanup','TestFinalLogicalFlow','TestRuntime')):names.add(node.value)
+        self.assertEqual(len(names),35)
         for name in names:
             self.assertEqual(sum(bool(re.search(r'^func '+name+r'\(',file.read_text(),re.M)) for file in ROOT.rglob('*_test.go')),1)
         preserve=next(item for item in steps if item.get('name')=='Preserve exact Linux cleanup diagnostic test evidence')
