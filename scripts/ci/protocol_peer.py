@@ -487,16 +487,16 @@ def process_identity(pid):
 
 
 def certificate(directory, name):
-    """One-day private CA and CA-signed localhost leaf; never install trust."""
+    """One-day private CA and CA-signed controlled.invalid leaf; never install trust."""
     ca_key, ca = directory/(name+'-ca.key'), directory/(name+'-ca.pem')
     key, csr, cert = directory/(name+'.key'), directory/(name+'.csr'), directory/(name+'.pem')
     ext = directory/(name+'.ext')
-    private_write(ext, 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:localhost,IP:127.0.0.1\n')
+    private_write(ext, 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:controlled.invalid,IP:127.0.0.1\n')
     commands = [
         ['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-sha256',
          '-subj','/CN=Controlled Peer Temporary CA','-addext','basicConstraints=critical,CA:TRUE',
          '-addext','keyUsage=critical,keyCertSign,cRLSign','-keyout',str(ca_key),'-out',str(ca)],
-        ['openssl','req','-new','-newkey','rsa:2048','-nodes','-sha256','-subj','/CN=localhost',
+        ['openssl','req','-new','-newkey','rsa:2048','-nodes','-sha256','-subj','/CN=controlled.invalid',
          '-keyout',str(key),'-out',str(csr)],
         ['openssl','x509','-req','-in',str(csr),'-CA',str(ca),'-CAkey',str(ca_key),
          '-set_serial',str(secrets.randbits(128) or 1),'-days','1','-sha256','-extfile',str(ext),'-out',str(cert)]]
@@ -509,7 +509,7 @@ def certificate(directory, name):
 
 def configs(kind, peer_port, client_peer_port, mixed_port, ca, cert, key, password, echo_ports, mutation=None):
     server_tls = {'enabled':True,'certificate':[cert],'key':[key],'alpn':['h2' if kind=='naive-h2' else 'h3']}
-    client_tls = {'enabled':True,'server_name':'wrong.invalid' if mutation=='wrong-sni' else 'localhost','certificate':[ca]}
+    client_tls = {'enabled':True,'server_name':'wrong.invalid' if mutation=='wrong-sni' else 'controlled.invalid','certificate':[ca]}
     username='controlled-peer'
     auth = {'username':username,'password':password}
     peer = {'log':{'level':'debug'},'outbounds':[{'type':'direct','tag':'echo-only'}],
@@ -531,7 +531,7 @@ def configs(kind, peer_port, client_peer_port, mixed_port, ca, cert, key, passwo
             path='/wrong-ip/' if mutation=='wrong-path' else '/controlled-ip/',
             disable_version_fallback=True,on_demand=kind.endswith('on-demand'))]
     for config in (peer, client):
-        config['dns'] = {'servers':[{'type':'hosts','tag':'test-hosts','predefined':{'localhost':['127.0.0.1']}}], 'final':'test-hosts'}
+        config['dns'] = {'servers':[{'type':'hosts','tag':'test-hosts','predefined':{'controlled.invalid':['127.0.0.1']}}], 'final':'test-hosts'}
     return peer,client
 
 
@@ -701,7 +701,7 @@ def negative_evidence(kind, mutation, client_raw, peer_raw):
     patterns = {
         'wrong-auth': r'authorization failed|authentication required|status: 407|407 Proxy Authentication',
         'wrong-ca': r'ERR_CERT_AUTHORITY_INVALID|cert authority invalid|certificate signed by unknown authority|unknown certificate authority',
-        'wrong-sni': r'ERR_CERT_COMMON_NAME_INVALID|cert common name invalid|certificate is valid for localhost(?:, 127\.0\.0\.1)?, not wrong\.invalid',
+        'wrong-sni': r'ERR_CERT_COMMON_NAME_INVALID|cert common name invalid|certificate is valid for controlled\.invalid(?:, 127\.0\.0\.1)?, not wrong\.invalid',
         'wrong-path': r'unexpected path: /wrong-ip/|unexpected status: 404',
     }
     if mutation == 'wrong-auth' and kind.startswith('masque'):
@@ -745,7 +745,7 @@ def run_case(binary, row, root, kind, mutation=None):
         verify_case_product(binary,row)
         identity_event['status']='PASS'
         event(events,'case.certificate')
-        ca, cert, key = certificate(directory, 'localhost')
+        ca, cert, key = certificate(directory, 'controlled.invalid')
         password = secrets.token_hex(24)
         if descendant_rows(process_snapshot(),os.getpid()):
             result['identityUncertain']=True
@@ -922,6 +922,20 @@ def run_case(binary, row, root, kind, mutation=None):
         result['privateLogs']=[{'name':path.name,**safe_log_observation(path.read_bytes(),Path(__file__).resolve().parents[2])} for path in directory.glob('*.private.log')]
         result['continuationSafe']=safe_to_continue(result)
     return result
+
+def validate_linux_dispatch(env=os.environ):
+    """A new exact-source native build, never a reuse of the old diagnostic carrier."""
+    if env.get('GITHUB_ACTIONS') != 'true' or env.get('RUNNER_OS') != 'Linux':
+        raise ValueError('Linux peer build requires its existing Actions environment')
+    if env.get('GITHUB_EVENT_NAME') != 'workflow_dispatch' or env.get('PEER_BUILD') != 'NativePeerLinux':
+        raise ValueError('Linux peer build requires its explicit manual selector')
+    if env.get('PEER_EVIDENCE_MODE') != 'staging' or env.get('PEER_SOURCE_GENERATE_ONLY') != 'false':
+        raise ValueError('Linux peer build cannot select final evidence or source generation')
+    if env.get('PEER_VERSION') != '1.15.0-polaris-alpha.12.3':
+        raise ValueError('Linux peer build version differs')
+    if env.get('GITHUB_REPOSITORY') != 'polaris-arch/sing-box-polaris' or env.get('GITHUB_REPOSITORY_ID') != '1421657509':
+        raise ValueError('Linux peer build repository differs')
+
 
 def verify_same_run_context(root, row, diagnostic=False):
     from native_release_index import identity as source_identity
@@ -1132,10 +1146,15 @@ def main():
     action.add_argument('--diagnostic',action='store_true')
     action.add_argument('--fetch-diagnostic',action='store_true')
     action.add_argument('--validate-diagnostic-dispatch',action='store_true')
+    action.add_argument('--validate-linux-dispatch',action='store_true')
     args = parser.parse_args()
     output=args.output.resolve() if args.output else None
     stage='native_execution_preflight'
     try:
+        if args.validate_linux_dispatch:
+            if args.directory is not None:parser.error('dispatch validation has no native directory')
+            stage='dispatch_preflight'
+            validate_linux_dispatch();return
         if args.validate_diagnostic_dispatch:
             if args.directory is not None:parser.error('dispatch validation has no native directory')
             stage='dispatch_preflight'

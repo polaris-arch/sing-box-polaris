@@ -1,0 +1,267 @@
+diff --git a/common/network/thread.go b/common/network/thread.go
+index d9afc69..59a5abf 100644
+--- a/common/network/thread.go
++++ b/common/network/thread.go
+@@ -78,6 +78,16 @@ type LazyHeadroom interface {
+ func CalculateFrontHeadroom(writer any) int {
+ 	var headroom int
+ 	for writer != nil {
++		// A metadata boundary describes this complete hidden suffix. Consume
++		// its scalar aggregate once; never unwrap or count it again.
++		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
++			value := boundary.WriterBufferMetadata()
++			if value.Lazy {
++				return DefaultHeadroom
++			}
++			return headroom + value.FrontHeadroom
++		}
++
+ 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
+ 			return DefaultHeadroom
+ 		}
+@@ -98,6 +108,16 @@ func CalculateFrontHeadroom(writer any) int {
+ func CalculateRearHeadroom(writer any) int {
+ 	var headroom int
+ 	for writer != nil {
++		// A metadata boundary describes this complete hidden suffix. Consume
++		// its scalar aggregate once; never unwrap or count it again.
++		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
++			value := boundary.WriterBufferMetadata()
++			if value.Lazy {
++				return DefaultHeadroom
++			}
++			return headroom + value.RearHeadroom
++		}
++
+ 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
+ 			return DefaultHeadroom
+ 		}
+@@ -122,6 +142,16 @@ type ReaderOverhead interface {
+ func CalculateReaderOverhead(reader any) int {
+ 	var overhead int
+ 	for reader != nil {
++		// A metadata boundary describes this complete hidden suffix. Consume
++		// its scalar aggregate once; never unwrap or count it again.
++		if boundary, ok := reader.(ReaderBufferMetadataProvider); ok {
++			value := boundary.ReaderBufferMetadata()
++			if value.Lazy {
++				return DefaultHeadroom
++			}
++			return overhead + value.Overhead
++		}
++
+ 		if lazyRoom, isLazy := reader.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
+ 			return DefaultHeadroom
+ 		}
+@@ -160,6 +190,19 @@ func CalculateMTU(reader any, writer any) int {
+ func calculateReaderMTU(reader any) int {
+ 	var mtu int
+ 	for reader != nil {
++		// A metadata boundary describes this complete hidden suffix. Consume
++		// its scalar aggregate once; never unwrap or count it again.
++		if boundary, ok := reader.(ReaderBufferMetadataProvider); ok {
++			value := boundary.ReaderBufferMetadata()
++			if value.Lazy {
++				return 0
++			}
++			if value.MTU > mtu {
++				mtu = value.MTU
++			}
++			return mtu
++		}
++
+ 		if lazyRoom, isLazy := reader.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
+ 			return 0
+ 		}
+@@ -183,6 +226,19 @@ func calculateReaderMTU(reader any) int {
+ func calculateWriterMTU(writer any) int {
+ 	var mtu int
+ 	for writer != nil {
++		// A metadata boundary describes this complete hidden suffix. Consume
++		// its scalar aggregate once; never unwrap or count it again.
++		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
++			value := boundary.WriterBufferMetadata()
++			if value.Lazy {
++				return 0
++			}
++			if mtu == 0 || value.MTU > 0 && value.MTU < mtu {
++				mtu = value.MTU
++			}
++			return mtu
++		}
++
+ 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
+ 			return 0
+ 		}
+diff --git a/common/network/buffer_metadata.go b/common/network/buffer_metadata.go
+new file mode 100644
+index 0000000..8cd2fdf
+--- /dev/null
++++ b/common/network/buffer_metadata.go
+@@ -0,0 +1,102 @@
++package network
++
++import "github.com/sagernet/sing/common"
++
++// ReaderBufferMetadata and WriterBufferMetadata describe a complete hidden
++// suffix of a connection's buffer contract. They contain only scalar values:
++// no carrier, callback or raw descriptor can escape an ownership boundary.
++// Lazy is directional and resets any already accumulated outer metadata, just
++// as LazyHeadroom does when traversed without a boundary.
++type ReaderBufferMetadata struct {
++	Overhead int
++	MTU      int
++	Lazy     bool
++}
++
++type WriterBufferMetadata struct {
++	FrontHeadroom int
++	RearHeadroom  int
++	MTU           int
++	Lazy          bool
++}
++
++type ReaderBufferMetadataProvider interface{ ReaderBufferMetadata() ReaderBufferMetadata }
++type WriterBufferMetadataProvider interface{ WriterBufferMetadata() WriterBufferMetadata }
++
++// Each direction is traversed once. In particular, nested opaque boundaries
++// must not recursively resample every field (which would be exponential).
++func CalculateReaderBufferMetadata(reader any) ReaderBufferMetadata {
++	var result ReaderBufferMetadata
++	for reader != nil {
++		if boundary, ok := reader.(ReaderBufferMetadataProvider); ok {
++			value := boundary.ReaderBufferMetadata()
++			if value.Lazy {
++				return ReaderBufferMetadata{Overhead: DefaultHeadroom, Lazy: true}
++			}
++			result.Overhead += value.Overhead
++			if value.MTU > result.MTU {
++				result.MTU = value.MTU
++			}
++			return result
++		}
++		if lazy, ok := reader.(LazyHeadroom); ok && lazy.LazyHeadroom() {
++			return ReaderBufferMetadata{Overhead: DefaultHeadroom, Lazy: true}
++		}
++		if overhead, ok := reader.(ReaderOverhead); ok {
++			result.Overhead += overhead.ReaderOverhead()
++		}
++		if withMTU, ok := reader.(ReaderWithMTU); ok {
++			if mtu := withMTU.ReaderMTU(); mtu > result.MTU {
++				result.MTU = mtu
++			}
++		}
++		if upstream, ok := reader.(WithUpstreamReader); ok {
++			reader = upstream.UpstreamReader()
++		} else if upstream, ok := reader.(common.WithUpstream); ok {
++			reader = upstream.Upstream()
++		} else {
++			break
++		}
++	}
++	return result
++}
++
++func CalculateWriterBufferMetadata(writer any) WriterBufferMetadata {
++	var result WriterBufferMetadata
++	for writer != nil {
++		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
++			value := boundary.WriterBufferMetadata()
++			if value.Lazy {
++				return WriterBufferMetadata{FrontHeadroom: DefaultHeadroom, RearHeadroom: DefaultHeadroom, Lazy: true}
++			}
++			result.FrontHeadroom += value.FrontHeadroom
++			result.RearHeadroom += value.RearHeadroom
++			if result.MTU == 0 || value.MTU > 0 && value.MTU < result.MTU {
++				result.MTU = value.MTU
++			}
++			return result
++		}
++		if lazy, ok := writer.(LazyHeadroom); ok && lazy.LazyHeadroom() {
++			return WriterBufferMetadata{FrontHeadroom: DefaultHeadroom, RearHeadroom: DefaultHeadroom, Lazy: true}
++		}
++		if front, ok := writer.(FrontHeadroom); ok {
++			result.FrontHeadroom += front.FrontHeadroom()
++		}
++		if rear, ok := writer.(RearHeadroom); ok {
++			result.RearHeadroom += rear.RearHeadroom()
++		}
++		if withMTU, ok := writer.(WriterWithMTU); ok {
++			if mtu := withMTU.WriterMTU(); result.MTU == 0 || mtu > 0 && mtu < result.MTU {
++				result.MTU = mtu
++			}
++		}
++		if upstream, ok := writer.(WithUpstreamWriter); ok {
++			writer = upstream.UpstreamWriter()
++		} else if upstream, ok := writer.(common.WithUpstream); ok {
++			writer = upstream.Upstream()
++		} else {
++			break
++		}
++	}
++	return result
++}
+diff --git a/common/network/buffer_metadata_test.go b/common/network/buffer_metadata_test.go
+new file mode 100644
+index 0000000..9107f86
+--- /dev/null
++++ b/common/network/buffer_metadata_test.go
+@@ -0,0 +1,58 @@
++package network
++
++import "testing"
++
++type metadataBoundaryFixture struct {
++	reader        ReaderBufferMetadata
++	writer        WriterBufferMetadata
++	reads, writes int
++}
++
++func (f *metadataBoundaryFixture) ReaderBufferMetadata() ReaderBufferMetadata {
++	f.reads++
++	return f.reader
++}
++func (f *metadataBoundaryFixture) WriterBufferMetadata() WriterBufferMetadata {
++	f.writes++
++	return f.writer
++}
++
++// Complete-boundary metadata must win over every scalar or carrier hook.
++func (*metadataBoundaryFixture) Upstream() any       { panic("carrier escape") }
++func (*metadataBoundaryFixture) UpstreamReader() any { panic("reader escape") }
++func (*metadataBoundaryFixture) UpstreamWriter() any { panic("writer escape") }
++func (*metadataBoundaryFixture) FrontHeadroom() int  { panic("double count") }
++func (*metadataBoundaryFixture) RearHeadroom() int   { panic("double count") }
++func (*metadataBoundaryFixture) ReaderOverhead() int { panic("double count") }
++func (*metadataBoundaryFixture) ReaderMTU() int      { panic("double count") }
++func (*metadataBoundaryFixture) WriterMTU() int      { panic("double count") }
++func (*metadataBoundaryFixture) LazyHeadroom() bool  { panic("directional state lost") }
++
++func TestBufferMetadataBoundaryHasPriorityAndNoCarrierAccess(t *testing.T) {
++	f := &metadataBoundaryFixture{reader: ReaderBufferMetadata{Overhead: 7, MTU: 1500}, writer: WriterBufferMetadata{FrontHeadroom: 11, RearHeadroom: 13, MTU: 1300}}
++	if CalculateFrontHeadroom(f) != 11 || CalculateRearHeadroom(f) != 13 || CalculateReaderOverhead(f) != 7 || calculateReaderMTU(f) != 1500 || calculateWriterMTU(f) != 1300 {
++		t.Fatal("boundary fields differ")
++	}
++	if f.reads != 2 || f.writes != 3 {
++		t.Fatal("boundary resampled")
++	}
++	f.reader.Lazy = true
++	f.writer.Lazy = true
++	if CalculateFrontHeadroom(f) != DefaultHeadroom || CalculateRearHeadroom(f) != DefaultHeadroom || CalculateReaderOverhead(f) != DefaultHeadroom || calculateReaderMTU(f) != 0 || calculateWriterMTU(f) != 0 {
++		t.Fatal("lazy reset differs")
++	}
++	if CalculateReaderBufferMetadata(f) != (ReaderBufferMetadata{Overhead: DefaultHeadroom, Lazy: true}) || CalculateWriterBufferMetadata(f) != (WriterBufferMetadata{FrontHeadroom: DefaultHeadroom, RearHeadroom: DefaultHeadroom, Lazy: true}) {
++		t.Fatal("lazy boundary aggregate differs")
++	}
++}
++
++func TestBufferMetadataEmptyContractRemainsEmpty(t *testing.T) {
++	for _, value := range []any{nil, struct{}{}} {
++		if CalculateReaderBufferMetadata(value) != (ReaderBufferMetadata{}) || CalculateWriterBufferMetadata(value) != (WriterBufferMetadata{}) {
++			t.Fatal("empty metadata changed")
++		}
++		if CalculateFrontHeadroom(value) != 0 || CalculateRearHeadroom(value) != 0 || CalculateReaderOverhead(value) != 0 || CalculateMTU(value, value) != 0 {
++			t.Fatal("empty scalar changed")
++		}
++	}
++}

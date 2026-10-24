@@ -22,7 +22,8 @@ class EfficiencyTests(unittest.TestCase):
             if role == 'signed':
                 for job in ['build', 'prepare_windows7', 'build_windows7']:
                     self.assertEqual(jobs[job]['environment'], 'polaris-distribution')
-            regular = jobs['build']['strategy']['matrix']['include']
+            from test_protocol_peer import normal_build_matrix
+            regular = normal_build_matrix(jobs['build']['strategy']['matrix'])['include']
             legacy = jobs['build_windows7']['strategy']['matrix']['include']
             self.assertEqual(len(legacy), 2)
             self.assertTrue(all(row['legacy_win7'] for row in legacy))

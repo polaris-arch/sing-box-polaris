@@ -12,6 +12,8 @@ import tempfile
 import time
 import unittest
 import copy
+import re
+import yaml
 import zipfile
 from unittest import mock
 
@@ -21,7 +23,55 @@ import protocol_peer_diagnostic as diagnostic
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def normal_build_matrix(matrix):
+    if isinstance(matrix, dict):return copy.deepcopy(matrix)
+    match=re.fullmatch(r"\$\{\{ fromJSON\(inputs\.build == 'NativePeerLinux' && '(.*?)' \|\| '(.*?)'\) \}\}",matrix)
+    if match is None:raise AssertionError('unexpected native matrix expression')
+    narrow,normal=map(json.loads,match.groups())
+    if narrow!={'include':[{'os':'linux','arch':'amd64','variant':'purego','naive':True}]}:
+        raise AssertionError('Linux peer build is not the exact existing native row')
+    if narrow['include'][0] not in normal['include']:raise AssertionError('new peer row is not an original producer')
+    return normal
+
+
 class ControlledPeerContracts(unittest.TestCase):
+    def test_linux_exact_source_dispatch_is_staging_only(self):
+        valid={'GITHUB_ACTIONS':'true','RUNNER_OS':'Linux','GITHUB_EVENT_NAME':'workflow_dispatch',
+               'PEER_BUILD':'NativePeerLinux','PEER_EVIDENCE_MODE':'staging','PEER_SOURCE_GENERATE_ONLY':'false',
+               'PEER_VERSION':'1.15.0-polaris-alpha.12.3','GITHUB_REPOSITORY':diagnostic.REPOSITORY,
+               'GITHUB_REPOSITORY_ID':str(diagnostic.REPOSITORY_ID)}
+        peer.validate_linux_dispatch(valid)
+        for key,wrong in [('PEER_BUILD','Binary'),('PEER_EVIDENCE_MODE','final'),('PEER_SOURCE_GENERATE_ONLY','true'),
+                          ('PEER_VERSION','1.15.0-polaris-alpha.12.2'),('GITHUB_EVENT_NAME','push'),
+                          ('GITHUB_REPOSITORY','other/repo'),('GITHUB_REPOSITORY_ID','1'),
+                          ('GITHUB_ACTIONS','false'),('RUNNER_OS','Windows')]:
+            with self.subTest(key=key),self.assertRaises(ValueError):peer.validate_linux_dispatch(dict(valid,**{key:wrong}))
+
+    def test_linux_selector_preserves_default_matrix_and_does_not_publish(self):
+        workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        jobs=workflow['jobs']; build=jobs['build']; pre=jobs['calculate_version']; smoke=jobs['native_smoke']
+        normal=normal_build_matrix(build['strategy']['matrix'])
+        baseline=json.loads((ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']['build.yml']['build']
+        self.assertCountEqual(normal['include']+jobs['build_windows7']['strategy']['matrix']['include'],baseline['include'])
+        self.assertEqual(build['needs'],['calculate_version'])
+        self.assertIn("inputs.build == 'NativePeerLinux'",build['if'])
+        self.assertIn("|| inputs.build == 'NativePeerLinux'",pre['if'])
+        guard=next(s for s in pre['steps'] if s.get('name')=='Reject incompatible exact-source Linux peer inputs')
+        self.assertEqual(guard['if'],"inputs.build == 'NativePeerLinux'")
+        self.assertEqual(guard['run'],'python3 -B scripts/ci/protocol_peer.py --validate-linux-dispatch')
+        tag=next(s for s in pre['steps'] if s.get('id')=='release_source')
+        self.assertLess(pre['steps'].index(guard),pre['steps'].index(tag))
+        self.assertIn("!failure()",smoke['if'])
+        self.assertIn("inputs.build == 'NativePeerLinux'",smoke['if'])
+        self.assertIn("(inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux')",smoke['strategy']['matrix'])
+        for name,job in jobs.items():
+            if name not in {'build','calculate_version','native_smoke'}:
+                self.assertNotIn('NativePeerLinux',job.get('if',''),name)
+        for step in build['steps']:
+            if 'sudo' in step.get('run','') or 'docker run' in step.get('run',''):
+                self.assertTrue(any(key in step.get('if','') for key in ('.debian','.rpm','.pacman','.openwrt','.alpine')),step['name'])
+        self.assertEqual(workflow['permissions'],{'contents':'read'})
+
     def test_core_environment_does_not_inherit_tokens_or_injection(self):
         with mock.patch.dict(os.environ, {'GH_TOKEN':'secret', 'GITHUB_TOKEN':'secret', 'HTTP_PROXY':'proxy', 'LD_PRELOAD':'library'}):
             env = peer.core_environment(Path('/private/test'))
@@ -37,8 +87,10 @@ class ControlledPeerContracts(unittest.TestCase):
                 self.assertEqual(server['route']['rules'][0]['port'], [44004,44005])
                 self.assertEqual(client['dns']['servers'][0]['type'], 'hosts')
                 self.assertEqual(len(client['dns']['servers']), 1)
+                self.assertEqual(client['dns']['servers'][0]['predefined'], {'controlled.invalid':['127.0.0.1']})
                 endpoint = (client.get('outbounds') or client['endpoints'])[0]
                 self.assertEqual(endpoint['server'], '127.0.0.1')
+                self.assertEqual(endpoint['tls']['server_name'], 'controlled.invalid')
                 self.assertNotIn('insecure', endpoint['tls'])
                 self.assertEqual(endpoint['tls']['certificate'], ['CA'])
                 self.assertNotIn('set_system_proxy', client['inbounds'][0])
@@ -66,7 +118,7 @@ class ControlledPeerContracts(unittest.TestCase):
             peer.negative_evidence('masque-h3','wrong-auth',b'timeout',b'')
 
     def test_negative_certificate_and_path_require_specific_evidence(self):
-        for mutation, text in [('wrong-ca','ERR_CERT_AUTHORITY_INVALID'),('wrong-sni','certificate is valid for localhost, not wrong.invalid'),('wrong-path','unexpected status: 404')]:
+        for mutation, text in [('wrong-ca','ERR_CERT_AUTHORITY_INVALID'),('wrong-sni','certificate is valid for controlled.invalid, not wrong.invalid'),('wrong-path','unexpected status: 404')]:
             self.assertTrue(peer.negative_evidence('masque-h3',mutation,text,b'')['specificRejectionObserved'])
             with self.assertRaisesRegex(RuntimeError,'lacks actual'):
                 peer.negative_evidence('masque-h3',mutation,b'generic timeout',b'')
@@ -195,14 +247,14 @@ print(json.dumps(receipt))
             # The log can be removed immediately and the failure is not masked.
             (Path(tmp)/'case.private.log').unlink()
 
-    def test_generated_certificate_is_valid_only_for_declared_localhost(self):
+    def test_generated_certificate_is_valid_only_for_declared_controlled_name(self):
         if not peer.shutil.which('openssl'):self.skipTest('existing OpenSSL absent')
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);old=os.umask(0o077)
             try:ca,cert,key=peer.certificate(root,'test')
             finally:os.umask(old)
             self.assertIn('BEGIN CERTIFICATE',ca);self.assertIn('BEGIN PRIVATE KEY',key)
-            valid=subprocess.run(['openssl','verify','-CAfile',str(root/'test-ca.pem'),'-verify_hostname','localhost',str(root/'test.pem')],capture_output=True)
+            valid=subprocess.run(['openssl','verify','-CAfile',str(root/'test-ca.pem'),'-verify_hostname','controlled.invalid',str(root/'test.pem')],capture_output=True)
             invalid=subprocess.run(['openssl','verify','-CAfile',str(root/'test-ca.pem'),'-verify_hostname','wrong.invalid',str(root/'test.pem')],capture_output=True)
             self.assertEqual(valid.returncode,0,valid.stderr)
             self.assertNotEqual(invalid.returncode,0)

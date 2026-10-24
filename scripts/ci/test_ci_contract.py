@@ -37,6 +37,23 @@ class TestVisionSourceContract(unittest.TestCase):
     with self.assertRaisesRegex(ValueError,expected):validate(root)
 
 class TestCIContract(unittest.TestCase):
+ def test_owned_packet_metadata_source_binding_preserves_history(self):
+  import hashlib
+  document=json.loads((ROOT/'release/dependency-sources/sing-packet-metadata.json').read_bytes())
+  self.assertEqual(document['baseProductCommit'],'28f848c936608e2ad0fabd0ec5bcc32cf317a526')
+  self.assertEqual(document['version'],'v0.9.7-0.20260929150544-6f21f2425a95')
+  self.assertEqual(document['replacementPath'],'./third_party/sing')
+  self.assertEqual({x['path'] for x in document['changes']},{'common/network/thread.go','common/network/buffer_metadata.go','common/network/buffer_metadata_test.go'})
+  self.assertEqual(hashlib.sha256((ROOT/document['patch']).read_bytes()).hexdigest(),document['patchSHA256'])
+  for change in document['changes']:
+   raw=(ROOT/'third_party/sing'/change['path']).read_bytes()
+   self.assertEqual(hashlib.sha256(raw).hexdigest(),change['afterSHA256'])
+   self.assertEqual(len(raw),change['bytes'])
+  historical=json.loads((ROOT/document['historicalOwnershipReceipt']).read_bytes())
+  for path,field in [('LICENSE','license_sha256'),('go.mod','go_mod_sha256'),('go.sum','go_sum_sha256')]:
+   value=hashlib.sha256((ROOT/'third_party/sing'/path).read_bytes()).hexdigest()
+   self.assertEqual(value,document['unchangedUpstreamFiles'][path]);self.assertEqual(value,historical[field])
+  self.assertIn('replace github.com/sagernet/sing => ./third_party/sing',(ROOT/'go.mod').read_text())
  def test_vision_vendor_source_and_product_graph_gates_are_complete(self):
   from vision_source import validate
   identity=validate(ROOT)
@@ -267,6 +284,9 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(set(w['on']),{'workflow_dispatch'},filename)
    for job,matrix in baseline[up].items():
     actual=copy.deepcopy(w['jobs'][job]['strategy']['matrix'])
+    if filename=='build.yml' and job=='build':
+     from test_protocol_peer import normal_build_matrix
+     actual=normal_build_matrix(actual)
     if job=='build' and filename in ('build.yml','signed-release.yml'):
      actual['include']+=w['jobs']['build_windows7']['strategy']['matrix']['include']
      self.assertCountEqual(actual['include'],matrix['include'],(filename,job))
@@ -420,7 +440,7 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
   self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(w['jobs']['calculate_version']['if'],"inputs.build != 'Source' && !inputs.source_generate_only")
+  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
   gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
