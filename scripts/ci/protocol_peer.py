@@ -20,9 +20,25 @@ import tempfile
 import threading
 import time
 import urllib.request
+from protocol_peer_diagnostic import event, safe_log_observation, safe_to_continue
 
 
 SUITE_DEADLINE = None
+
+
+class IdentityFailure(RuntimeError):
+    """Failure to prove exact executing or archived native identity; suite STOP."""
+
+
+def verify_case_product(binary,row):
+    try:
+        for field in ('core','sidecar'):
+            fact=row[field];file=binary.parent/fact['member']
+            if (file.is_symlink() or not file.is_file() or file.stat().st_size!=fact['bytes']
+                    or digest(file.read_bytes())!=fact['sha256']):
+                raise IdentityFailure('native executable or sidecar bytes changed before case')
+    except IdentityFailure:raise
+    except Exception:raise IdentityFailure('native executable or sidecar identity unavailable before case') from None
 
 
 def remaining(limit):
@@ -50,17 +66,35 @@ def private_write(path, data):
     return {'sha256': digest(data), 'bytes': len(data)}
 
 
-def exact_read(sock, size, deadline=None):
+def send_exact(sock, payload, events=None, stage='socket.send'):
+    fact=event(events,stage,requestedBytes=len(payload),completedBytes=0,status='RUNNING')
+    try:
+        while fact['completedBytes']<len(payload):
+            count=sock.send(memoryview(payload)[fact['completedBytes']:])
+            if count<=0: raise EOFError('socket closed during exact write')
+            fact['completedBytes']+=count
+        fact['status']='PASS'
+    except Exception as error:
+        fact.update(status='FAIL',errorType=type(error).__name__)
+        raise
+
+
+def exact_read(sock, size, deadline=None, events=None, stage='socket.receive'):
     deadline = time.monotonic() + remaining(8) if deadline is None else deadline
     result = bytearray()
-    while len(result) < size:
-        left = min(remaining(8), deadline - time.monotonic())
-        if left <= 0: raise TimeoutError('exact payload read deadline exceeded')
-        sock.settimeout(left)
-        part = sock.recv(size - len(result))
-        if not part:
-            raise EOFError('peer closed before exact response')
-        result.extend(part)
+    fact=event(events,stage,requestedBytes=size,completedBytes=0,status='RUNNING')
+    try:
+        while len(result) < size:
+            left = min(remaining(8), deadline - time.monotonic())
+            if left <= 0: raise TimeoutError('exact payload read deadline exceeded')
+            sock.settimeout(left)
+            part = sock.recv(size - len(result))
+            if not part: raise EOFError('peer closed before exact response')
+            result.extend(part);fact['completedBytes']=len(result)
+        fact['status']='PASS'
+    except Exception as error:
+        fact.update(status='FAIL',errorType=type(error).__name__,partialSHA256=digest(result))
+        raise
     return bytes(result)
 
 
@@ -229,7 +263,11 @@ def process_group_members(group):
 
 
 class CoreProcess:
-    def __init__(self, binary, config, directory, name, expected_hash):
+    def __init__(self, binary, config, directory, name, expected_hash, events=None):
+        self.events=events
+        self.role=name
+        self.source_root=Path(__file__).resolve().parents[2]
+        event(events,name+'.process.spawn')
         self.log_path = directory / (name + '.private.log')
         self.config_path = directory / (name + '.private.json')
         self.config_fact = private_write(self.config_path, json.dumps(config, separators=(',', ':')))
@@ -254,6 +292,7 @@ class CoreProcess:
             if digest(actual) != expected_hash:
                 raise RuntimeError('actual process ELF hash differs')
             self.bound_sha256 = expected_hash
+            event(events,name+'.process.identity',pid=self.pid,startTicks=self.start_identity['startTicks'],coreSHA256=expected_hash)
         except Exception as primary:
             try: self.close()
             except Exception as secondary: primary.add_note('startup cleanup also failed: ' + type(secondary).__name__)
@@ -261,18 +300,21 @@ class CoreProcess:
             raise
 
     def wait_tcp(self, port):
+        fact=event(self.events,self.role+'.readiness.tcp',status='RUNNING')
         end = time.monotonic() + remaining(10)
         while time.monotonic() < end:
             if self.process.poll() is not None:
                 raise RuntimeError('core exited during readiness')
             try:
                 with socket.create_connection(('127.0.0.1', port), .2):
+                    fact['status']='PASS'
                     return
             except OSError:
                 time.sleep(.05)
         raise TimeoutError('loopback listener not ready')
 
     def wait_udp(self, port):
+        fact=event(self.events,self.role+'.readiness.udp',status='RUNNING')
         end = time.monotonic() + remaining(10)
         expected = '0100007F:' + format(port, '04X')
         while time.monotonic() < end:
@@ -285,15 +327,18 @@ class CoreProcess:
                 if matched: inodes.add(matched[1])
             for line in Path(f'/proc/{self.pid}/net/udp').read_text().splitlines()[1:]:
                 fields = line.split()
-                if fields[1] == expected and fields[9] in inodes: return
+                if fields[1] == expected and fields[9] in inodes:
+                    fact['status']='PASS';return
             time.sleep(.05)
         raise TimeoutError('exact peer-owned UDP socket not ready')
 
     def wait_assigned(self):
+        fact=event(self.events,self.role+'.readiness.assigned',status='RUNNING')
         end = time.monotonic() + remaining(10)
         while time.monotonic() < end:
             if self.process.poll() is not None: raise RuntimeError('MASQUE client exited before readiness')
-            if re.search(r'assigned 198\.18\.0\.[0-9]+/', self.log_path.read_text(errors='replace')): return
+            if re.search(r'assigned 198\.18\.0\.[0-9]+/', self.log_path.read_text(errors='replace')):
+                fact['status']='PASS';return
             time.sleep(.05)
         raise TimeoutError('MASQUE assignment readiness not observed')
 
@@ -302,7 +347,10 @@ class CoreProcess:
         if self.stopped:
             return self.cleanup
         forced = False
-        if self.process.poll() is None:
+        pre_terminate=self.process.poll()
+        actions=[]
+        event(self.events,self.role+'.process.close.begin',pid=self.pid,exitBeforeTerminate=pre_terminate)
+        if pre_terminate is None:
             current_identity = process_identity(self.pid)
             if self.start_identity is None:
                 # Still our unreaped Popen child in its newly created group.
@@ -313,11 +361,13 @@ class CoreProcess:
                 raise RuntimeError('owned process identity changed; no signal sent')
             if self.pidfd is None: raise RuntimeError('owned child pidfd unavailable; deferred to exact subreaper cleanup')
             signal.pidfd_send_signal(self.pidfd, signal.SIGTERM)
+            actions.append(event(self.events,self.role+'.process.signal',signal='SIGTERM',pidfdBound=True))
             try:
                 self.process.wait(15)
             except subprocess.TimeoutExpired:
                 forced = True
                 signal.pidfd_send_signal(self.pidfd, signal.SIGKILL)
+                actions.append(event(self.events,self.role+'.process.signal',signal='SIGKILL',pidfdBound=True))
                 self.process.wait(5)
         self.log.close()
         if self.pidfd is not None:
@@ -326,10 +376,14 @@ class CoreProcess:
         remaining = process_group_members(self.pid)
         raw = self.log_path.read_bytes()
         close_error = any(s in raw.lower() for s in [b'did not closed properly', b'close timeout', b'close timed out', b'panic:', b'fatal'])
-        self.cleanup = {'pid': self.pid, 'startIdentity': self.start_identity, 'exitCode': self.process.returncode, 'forcedKill': forced,
+        self.cleanup = {'role':self.role,'pid': self.pid, 'startIdentity': self.start_identity, 'exitCode': self.process.returncode, 'forcedKill': forced,
+                        'boundCoreSHA256':getattr(self,'bound_sha256',None),
+                        'exitBeforeTerminate':pre_terminate,'terminationActions':actions,
+                        'safeLog':safe_log_observation(raw,self.source_root),
                         'remainingGroup': remaining, 'cleanupErrorLog': close_error,
                         'privateLogSHA256': digest(raw), 'privateLogBytes': len(raw)}
         self.stopped = True
+        event(self.events,self.role+'.process.close.observed',exitCode=self.process.returncode,forcedKill=forced,cleanupErrorLog=close_error)
         if forced or remaining or close_error or self.process.returncode != 0:
             raise RuntimeError('core graceful cleanup not proven')
         return self.cleanup
@@ -481,31 +535,33 @@ def configs(kind, peer_port, client_peer_port, mixed_port, ca, cert, key, passwo
     return peer,client
 
 
-def socks_connect(port, target, destination_port):
+def socks_connect(port, target, destination_port, events=None, label='client'):
+    event(events,label+'.socks.tcp_connect')
     conn=socket.create_connection(('127.0.0.1',port),remaining(5))
     conn.settimeout(remaining(8))
     deadline = time.monotonic() + remaining(8)
     try:
-        conn.sendall(b'\x05\x01\x00')
-        if exact_read(conn,2,deadline)!=b'\x05\x00':raise ValueError('SOCKS auth mode differs')
-        conn.sendall(b'\x05\x01\x00\x01'+socket.inet_aton(target)+struct.pack('!H',destination_port))
-        reply=exact_read(conn,4,deadline)
+        send_exact(conn,b'\x05\x01\x00',events,label+'.socks.greeting.send')
+        if exact_read(conn,2,deadline,events,label+'.socks.greeting.receive')!=b'\x05\x00':raise ValueError('SOCKS auth mode differs')
+        send_exact(conn,b'\x05\x01\x00\x01'+socket.inet_aton(target)+struct.pack('!H',destination_port),events,label+'.socks.connect.send')
+        reply=exact_read(conn,4,deadline,events,label+'.socks.connect.response')
+        event(events,label+'.socks.connect.status',version=reply[0],replyCode=reply[1],addressType=reply[3])
         if reply[0]!=5 or reply[1]!=0:raise ConnectionError('SOCKS controlled-peer connection rejected')
-        if reply[3]==1:exact_read(conn,6,deadline)
-        elif reply[3]==4:exact_read(conn,18,deadline)
-        elif reply[3]==3:exact_read(conn,exact_read(conn,1,deadline)[0]+2,deadline)
+        if reply[3]==1:exact_read(conn,6,deadline,events,label+'.socks.connect.address')
+        elif reply[3]==4:exact_read(conn,18,deadline,events,label+'.socks.connect.address')
+        elif reply[3]==3:exact_read(conn,exact_read(conn,1,deadline,events,label+'.socks.connect.address_length')[0]+2,deadline,events,label+'.socks.connect.address')
         else:raise ValueError('unknown SOCKS address')
         return conn
     except BaseException:
         conn.close();raise
 
 
-def identity(binary, row, expected_source, expected_hash):
+def identity(binary, row, expected_source, expected_hash, diagnostic=False):
     if row['schema']!='polaris-upstream-native-receipt-v1' or row['sourceCommit']!=expected_source:
         raise ValueError('producer source mismatch')
     if row['core']['sha256']!=expected_hash or digest(binary.read_bytes())!=expected_hash:
         raise ValueError('approved core bytes differ')
-    if row['target']!='linux/amd64' or row['finalPackageCronetSmoke']['status']!='passed':
+    if row['target']!='linux/amd64' or not diagnostic and row['finalPackageCronetSmoke']['status']!='passed':
         raise ValueError('requires already smoked Linux native producer row')
     if not {'with_naive_outbound','with_quic','with_gvisor'} <= set(row['tags'].split(',')):
         raise ValueError('not the required complete native profile')
@@ -522,18 +578,21 @@ def identity(binary, row, expected_source, expected_hash):
             'sidecar':row['sidecar'],'runtimeVersionOutputSHA256':digest(version.encode())}
 
 
-def socks_udp(port):
+def socks_udp(port, events=None, label='client'):
+    event(events,label+'.udp_associate.tcp_connect')
     control = socket.create_connection(('127.0.0.1', port), remaining(5))
     control.settimeout(remaining(8))
     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp.bind(('127.0.0.1', 0)); udp.settimeout(remaining(8))
     try:
-        control.sendall(b'\x05\x01\x00')
-        if exact_read(control, 2) != b'\x05\x00': raise ValueError('SOCKS UDP auth differs')
-        control.sendall(b'\x05\x03\x00\x01' + socket.inet_aton('127.0.0.1') + struct.pack('!H', udp.getsockname()[1]))
-        reply = exact_read(control, 4)
+        send_exact(control,b'\x05\x01\x00',events,label+'.udp_associate.greeting.send')
+        if exact_read(control,2,events=events,stage=label+'.udp_associate.greeting.receive') != b'\x05\x00': raise ValueError('SOCKS UDP auth differs')
+        send_exact(control,b'\x05\x03\x00\x01' + socket.inet_aton('127.0.0.1') + struct.pack('!H', udp.getsockname()[1]),events,label+'.udp_associate.request.send')
+        reply = exact_read(control,4,events=events,stage=label+'.udp_associate.response')
+        event(events,label+'.udp_associate.status',version=reply[0],replyCode=reply[1],addressType=reply[3])
         if reply != b'\x05\x00\x00\x01': raise ValueError('SOCKS UDP association is not loopback IPv4')
-        address = socket.inet_ntoa(exact_read(control, 4)); target_port = struct.unpack('!H', exact_read(control, 2))[0]
+        address = socket.inet_ntoa(exact_read(control,4,events=events,stage=label+'.udp_associate.address'))
+        target_port = struct.unpack('!H',exact_read(control,2,events=events,stage=label+'.udp_associate.port'))[0]
         if address not in ('0.0.0.0', '127.0.0.1') or not target_port: raise ValueError('SOCKS UDP relay escaped loopback')
         udp.connect(('127.0.0.1', target_port))
         return control, udp
@@ -541,41 +600,50 @@ def socks_udp(port):
         control.close(); udp.close(); raise
 
 
-def tcp_exchange(mixed, target, port, sizes=(1, 4096, 131071), keep=False):
-    conn = socks_connect(mixed, target, port)
-    facts = []
+def tcp_exchange(mixed, target, port, sizes=(1, 4096, 131071), keep=False, events=None, label='client', facts=None):
+    facts = [] if facts is None else facts
+    conn = socks_connect(mixed,target,port,events,label)
     succeeded = False
     deadline = time.monotonic() + remaining(20)
     try:
         for size in sizes:
             payload = secrets.token_bytes(size)
-            conn.sendall(payload)
-            received = exact_read(conn, size, deadline)
+            fact={'bytes':size,'sentSHA256':digest(payload),'status':'RUNNING'};facts.append(fact)
+            send_exact(conn,payload,events,label+'.tcp.payload.send')
+            received = exact_read(conn,size,deadline,events,label+'.tcp.payload.receive')
             if payload != received: raise RuntimeError('TCP echoed payload bytes differ')
-            facts.append({'bytes': size, 'sentSHA256': digest(payload), 'receivedSHA256': digest(received)})
+            fact.update(receivedSHA256=digest(received),status='PASS')
         succeeded = True
         return facts, conn if keep else None
     finally:
         if not keep or not succeeded: conn.close()
 
 
-def udp_exchange(mixed, target, port):
-    control, udp = socks_udp(mixed)
-    facts = []
+def udp_exchange(mixed,target,port,events=None,label='client',facts=None):
+    facts=[] if facts is None else facts
+    control, udp = socks_udp(mixed,events,label)
     try:
         header = b'\x00\x00\x00\x01' + socket.inet_aton(target) + struct.pack('!H', port)
         for size in (1, 64, 1200):
             payload = secrets.token_bytes(size)
-            udp.send(header + payload)
-            response = udp.recv(65535)
+            fact={'bytes':size,'sentSHA256':digest(payload),'status':'RUNNING'};facts.append(fact)
+            sent=udp.send(header + payload)
+            event(events,label+'.udp.payload.send',requestedBytes=len(header)+size,completedBytes=sent)
+            if sent!=len(header)+size: raise RuntimeError('UDP fixture datagram write was truncated')
+            receive=event(events,label+'.udp.payload.receive',status='RUNNING')
+            try:response = udp.recv(65535)
+            except Exception as error:
+                receive.update(status='FAIL',errorType=type(error).__name__);raise
+            receive.update(status='RECEIVED',completedBytes=len(response),sha256=digest(response))
             if response != header + payload: raise RuntimeError('UDP address, boundary or payload differs')
-            facts.append({'bytes': size, 'sentSHA256': digest(payload), 'receivedSHA256': digest(response[len(header):]), 'datagramBoundary': True})
+            fact.update(receivedSHA256=digest(response[len(header):]),datagramBoundary=True,status='PASS')
+            receive['status']='PASS'
         return facts
     finally:
         udp.close(); control.close()
 
 
-def bound_library(process, binary, row):
+def _bound_library(process, binary, row):
     if process.process.poll() is not None or process_identity(process.pid) != process.start_identity:
         raise RuntimeError('actual core identity no longer live')
     if digest(Path(f'/proc/{process.pid}/exe').read_bytes()) != row['core']['sha256']:
@@ -597,6 +665,11 @@ def bound_library(process, binary, row):
     return {'linkage': 'shared-purego', 'pid':process.pid, 'startIdentity':process.start_identity, 'sha256': row['sidecar']['sha256'], 'device': list(expected[:2]), 'inode': expected[2], 'mappedExecutable': True}
 
 
+def bound_library(process,binary,row):
+    try:return _bound_library(process,binary,row)
+    except Exception:raise IdentityFailure('actual native executable or Cronet mapping identity not proven') from None
+
+
 def assert_port_released(port, udp=False):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM if udp else socket.SOCK_STREAM) as sock:
         if not udp: sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -605,16 +678,19 @@ def assert_port_released(port, udp=False):
     return {'port': port, 'protocol': 'udp' if udp else 'tcp', 'released': True}
 
 
-def retire_old_stream(conn):
+def retire_old_stream(conn,events=None):
     nonce = secrets.token_bytes(32)
     try:
         conn.settimeout(remaining(2))
-        conn.sendall(nonce)
+        send_exact(conn,nonce,events,'healthy.retired_stream.send')
+        fact=event(events,'healthy.retired_stream.receive',status='RUNNING')
         retired = conn.recv(32) == b''
+        fact['status']='CLOSED' if retired else 'UNEXPECTED_PAYLOAD'
     except (socket.timeout, TimeoutError):
         raise RuntimeError('retired stream close is unknown after timeout')
     except (ConnectionResetError, BrokenPipeError):
         retired = True
+        event(events,'healthy.retired_stream.closed_reset')
     finally:
         conn.close()
     if not retired: raise RuntimeError('retired stream returned a new payload')
@@ -625,7 +701,7 @@ def negative_evidence(kind, mutation, client_raw, peer_raw):
     patterns = {
         'wrong-auth': r'authorization failed|authentication required|status: 407|407 Proxy Authentication',
         'wrong-ca': r'ERR_CERT_AUTHORITY_INVALID|cert authority invalid|certificate signed by unknown authority|unknown certificate authority',
-        'wrong-sni': r'ERR_CERT_COMMON_NAME_INVALID|cert common name invalid|certificate is valid for .*not wrong\.invalid',
+        'wrong-sni': r'ERR_CERT_COMMON_NAME_INVALID|cert common name invalid|certificate is valid for localhost(?:, 127\.0\.0\.1)?, not wrong\.invalid',
         'wrong-path': r'unexpected path: /wrong-ip/|unexpected status: 404',
     }
     if mutation == 'wrong-auth' and kind.startswith('masque'):
@@ -642,25 +718,39 @@ def negative_evidence(kind, mutation, client_raw, peer_raw):
     raise RuntimeError('negative lacks actual peer TLS/auth/path rejection evidence')
 
 
-def config_check(binary, config_path, directory, name):
+def config_check(binary, config_path, directory, name, records=None):
+    record={'role':name,'configurationSHA256':digest(config_path.read_bytes()),'configurationBytes':config_path.stat().st_size,'status':'RUNNING'}
+    if records is not None: records.append(record)
     result = subprocess.run([str(binary), 'check', '-c', str(config_path)], cwd=binary.parent,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=remaining(20), env=core_environment(directory))
     fact = private_write(directory / (name + '-check.private.log'), result.stdout)
+    record.update(exitCode=result.returncode,status='PASS' if result.returncode==0 else 'FAIL',privateLog=fact)
     if result.returncode != 0: raise RuntimeError('generated controlled configuration failed actual core check')
     return fact
 
 
 def run_case(binary, row, root, kind, mutation=None):
     directory = Path(tempfile.mkdtemp(prefix=kind+'-', dir=root)); directory.chmod(0o700)
-    ca, cert, key = certificate(directory, 'localhost')
-    password = secrets.token_hex(24)
     echo = None; udp_echo = None
     relay = None; processes = []; old_connection = None; reserved_tcp = None
     result = {'kind': kind, 'mutation': mutation, 'status': 'RUNNING', 'cleanup': [],
+              'expectedCoreSHA256':row['core']['sha256'],
+              'events':[], 'configurationChecks':[], 'fixturesJoined':False, 'identityUncertain':False,
               'rawConfigurationPubliclyRetained': False, 'privateFilesDeletedAtSuiteEnd': True}
+    events=result['events']
     primary = None
     peer_port = None; mixed_ports = []
     try:
+        identity_event=event(events,'case.native_identity.verify',status='RUNNING')
+        verify_case_product(binary,row)
+        identity_event['status']='PASS'
+        event(events,'case.certificate')
+        ca, cert, key = certificate(directory, 'localhost')
+        password = secrets.token_hex(24)
+        if descendant_rows(process_snapshot(),os.getpid()):
+            result['identityUncertain']=True
+            raise RuntimeError('unexpected children before isolated case')
+        event(events,'case.fixtures.start')
         echo = Echo()
         udp_echo = Echo(udp=True)
         peer_port = free_port(socket.SOCK_STREAM if kind == 'naive-h2' else socket.SOCK_DGRAM)
@@ -672,8 +762,12 @@ def run_case(binary, row, root, kind, mutation=None):
         peer_cfg, _ = configs(kind, peer_port, relay.port if relay else peer_port, 1, ca, cert, key,
                               password, [echo.port, udp_echo.port])
         config_file = directory / 'peer-check.private.json'; private_write(config_file, json.dumps(peer_cfg))
-        result['peerCheck'] = config_check(binary, config_file, directory, 'peer')
-        peer = CoreProcess(binary, peer_cfg, directory, 'peer', row['core']['sha256']); processes.append(peer)
+        event(events,'peer.configuration.check')
+        result['peerCheck'] = config_check(binary,config_file,directory,'peer',result['configurationChecks'])
+        try: peer = CoreProcess(binary,peer_cfg,directory,'peer',row['core']['sha256'],events)
+        except Exception:
+            result['identityUncertain']=True;raise
+        processes.append(peer)
         if kind == 'naive-h2': peer.wait_tcp(peer_port)
         else: peer.wait_udp(peer_port)
         def start_client(label, alter=None):
@@ -684,17 +778,23 @@ def run_case(binary, row, root, kind, mutation=None):
                 wrong_ca, _, _ = certificate(directory, label + '-wrong-ca')
                 (cfg.get('outbounds') or cfg['endpoints'])[0]['tls']['certificate'] = [wrong_ca]
             path = directory / (label + '-check.private.json'); private_write(path, json.dumps(cfg))
-            config_check(binary, path, directory, label)
-            proc = CoreProcess(binary, cfg, directory, label, row['core']['sha256']); processes.append(proc)
+            event(events,label+'.configuration.check')
+            config_check(binary,path,directory,label,result['configurationChecks'])
+            try: proc = CoreProcess(binary,cfg,directory,label,row['core']['sha256'],events)
+            except Exception:
+                result['identityUncertain']=True;raise
+            processes.append(proc)
             proc.wait_tcp(mixed)
             if kind.startswith('masque') and alter is None: proc.wait_assigned()
             return proc, mixed
         target = '127.0.0.1' if kind.startswith('naive') else '198.18.0.1'
         healthy, mixed = start_client('healthy')
-        healthy_facts, old_connection = tcp_exchange(mixed, target, echo.port, keep=True)
-        result['healthyTCP'] = healthy_facts
+        result['healthyTCP']=[]
+        _, old_connection = tcp_exchange(mixed,target,echo.port,keep=True,events=events,label='healthy',facts=result['healthyTCP'])
         if kind.startswith('naive'):
+            library_event=event(events,'healthy.native_identity.verify',status='RUNNING')
             result['loadedNativeLibrary'] = bound_library(healthy, binary, row)
+            library_event['status']='PASS'
             protocol = 'h2' if kind == 'naive-h2' else 'h3'
             pairs = re.findall(r'response received, protocol: ([^,\s]+), status: (\d+)', healthy.log_path.read_text(errors='replace'))
             if not any(status == '200' and (name == protocol or protocol == 'h3' and name.startswith('h3-')) for name, status in pairs):
@@ -702,14 +802,16 @@ def run_case(binary, row, root, kind, mutation=None):
             result['negotiatedProtocolAndStatus'] = [list(x) for x in pairs]
         if relay and not all(relay.counts): raise RuntimeError('actual two-way QUIC carrier missing')
         if not mutation:
+            result['concurrentTCP']=[[],[]]
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-                futures = [pool.submit(tcp_exchange, mixed, target, echo.port, (16384,)) for _ in range(2)]
-                result['concurrentTCP'] = [future.result(timeout=20)[0] for future in futures]
+                futures = [pool.submit(tcp_exchange,mixed,target,echo.port,(16384,),False,events,'concurrent'+str(i),result['concurrentTCP'][i]) for i in range(2)]
+                for future in futures: future.result(timeout=20)
             if kind.startswith('masque'):
-                result['applicationUDP'] = udp_exchange(mixed, target, udp_echo.port)
+                result['applicationUDP']=[]
+                udp_exchange(mixed,target,udp_echo.port,events,'healthy',result['applicationUDP'])
         healthy.close()
         before = echo.received
-        retired = retire_old_stream(old_connection); old_connection = None
+        retired = retire_old_stream(old_connection,events); old_connection = None
         time.sleep(.2)
         if echo.received != before: raise RuntimeError('retired process old stream still carried new payload')
         result['oldStreamRetired'] = dict(retired, noNewEchoBytes=True)
@@ -724,7 +826,8 @@ def run_case(binary, row, root, kind, mutation=None):
         baseline = (echo.accepted, echo.received, udp_echo.received)
         if mutation:
             failed = False
-            try: tcp_exchange(mixed, target, echo.port, (32,))
+            result['negativeAttemptTCP']=[]
+            try: tcp_exchange(mixed,target,echo.port,(32,),events=events,label='negative',facts=result['negativeAttemptTCP'])
             except (OSError, EOFError, TimeoutError): failed = True
             time.sleep(.25)
             if not failed or (echo.accepted, echo.received, udp_echo.received) != baseline:
@@ -732,15 +835,18 @@ def run_case(binary, row, root, kind, mutation=None):
             result['negative'] = negative_evidence(kind, mutation, client.log_path.read_bytes(), peer.log_path.read_bytes())
             result['negative'].update({'tcpAcceptDelta': 0, 'tcpByteDelta': 0, 'udpNegativeAttempted': False})
             if kind.startswith('masque'):
-                control, udp = socks_udp(mixed)
+                control, udp = socks_udp(mixed,events,'negative')
                 nonce = secrets.token_bytes(48)
                 header = b'\x00\x00\x00\x01' + socket.inet_aton(target) + struct.pack('!H', udp_echo.port)
                 try:
-                    udp.settimeout(remaining(2)); udp.send(header+nonce)
+                    udp.settimeout(remaining(2)); count=udp.send(header+nonce)
+                    event(events,'negative.udp.payload.send',requestedBytes=len(header)+len(nonce),completedBytes=count)
+                    if count!=len(header)+len(nonce): raise RuntimeError('negative UDP nonce truncated')
                     try:
                         udp.recv(65535)
                         raise RuntimeError('negative MASQUE UDP unexpectedly returned a payload')
-                    except socket.timeout: pass  # Expected no response, NOT a transport-close claim.
+                    except socket.timeout:
+                        event(events,'negative.udp.no_payload_timeout') # NOT a transport-close claim.
                 finally:
                     udp.close(); control.close()
                 result['negative'].update({'udpNegativeAttempted':True,'udpNonceSHA256':digest(nonce)})
@@ -750,20 +856,42 @@ def run_case(binary, row, root, kind, mutation=None):
                 raise RuntimeError('negative late fallback reached echo before complete retirement')
             result['negative']['afterCompleteClientRetirementZeroEchoDelta'] = True
         else:
-            result['freshProcessTCP'] = tcp_exchange(mixed, target, echo.port, (4096,))[0]
+            result['freshProcessTCP']=[]
+            tcp_exchange(mixed,target,echo.port,(4096,),events=events,label='reconnected',facts=result['freshProcessTCP'])
         if echo.errors or udp_echo.errors: raise RuntimeError('echo worker failed')
-        result['configs'] = [{'pid': proc.pid, 'startIdentity': proc.start_identity, **proc.config_fact} for proc in processes]
-        result['carrierDatagrams'] = relay.counts[:] if relay else None
         result['status'] = 'PASS'
     except Exception as error:
         primary = error
-        result.update(status='FAIL', errorType=type(error).__name__, error=str(error))
+        if isinstance(error,IdentityFailure):
+            result['identityUncertain']=True
+            for item in events:
+                if item['stage'].endswith('native_identity.verify') and item.get('status')=='RUNNING':
+                    item.update(status='FAIL',errorType='IdentityFailure')
+        from protocol_peer_diagnostic import safe_exception
+        result.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error),
+                      failedOperationStages=[e['stage'] for e in events if e.get('status')=='FAIL'],
+                      observedStageAtException=events[-1]['stage'] if events else 'case.setup',
+                      observedStageIsUniqueRootCause=False)
     finally:
+        result['configs']=[{'role':proc.role,'pid':proc.pid,'startIdentity':proc.start_identity,**proc.config_fact} for proc in processes]
+        result['carrierDatagrams']=relay.counts[:] if relay else None
+        result['echoCounters']={'tcpAccepted':echo.accepted if echo else 0,'tcpReceivedBytes':echo.received if echo else 0,
+                                'udpReceivedBytes':udp_echo.received if udp_echo else 0}
+        for item in events:
+            if item.get('status')=='RUNNING':item['status']='INCOMPLETE_AT_CASE_RETIREMENT'
+        for key in ('healthyTCP','applicationUDP','freshProcessTCP','negativeAttemptTCP'):
+            for fact in result.get(key,[]):
+                if fact.get('status')=='RUNNING':fact['status']='INCOMPLETE_AT_CASE_RETIREMENT'
+        for connection in result.get('concurrentTCP',[]):
+            for fact in connection:
+                if fact.get('status')=='RUNNING':fact['status']='INCOMPLETE_AT_CASE_RETIREMENT'
         if old_connection: old_connection.close()
         errors = []
         for proc in reversed(processes):
             try: proc.close()
-            except Exception as error: errors.append(type(error).__name__ + ': ' + str(error))
+            except Exception as error:
+                from protocol_peer_diagnostic import safe_exception
+                errors.append(type(error).__name__+': '+safe_exception(error))
             result['cleanup'].append(proc.cleanup)
         try:
             result['descendantRetirement'] = drain_owned_children()
@@ -774,7 +902,13 @@ def run_case(binary, row, root, kind, mutation=None):
         for fixture in (relay, echo, udp_echo):
             if fixture:
                 try: fixture.close()
-                except Exception as error: errors.append(type(error).__name__ + ': ' + str(error))
+                except Exception as error:
+                    from protocol_peer_diagnostic import safe_exception
+                    errors.append(type(error).__name__+': '+safe_exception(error))
+        result['fixturesJoined']=not errors
+        result['echoCountersAfterRetirement']={'tcpAccepted':echo.accepted if echo else 0,
+            'tcpReceivedBytes':echo.received if echo else 0,'udpReceivedBytes':udp_echo.received if udp_echo else 0}
+        result['carrierDatagramsAfterRetirement']=relay.counts[:] if relay else None
         if reserved_tcp: reserved_tcp.close()
         ports = [(port, False) for port in mixed_ports]
         if echo: ports.append((echo.port, False))
@@ -785,16 +919,25 @@ def run_case(binary, row, root, kind, mutation=None):
         except OSError: errors.append('owned listening port not released')
         if errors:
             result['status'] = 'FAIL'; result['cleanupErrors'] = errors
-        result['privateLogs'] = [{'name': path.name, 'sha256': digest(path.read_bytes()), 'bytes': path.stat().st_size} for path in directory.glob('*.private.log')]
+        result['privateLogs']=[{'name':path.name,**safe_log_observation(path.read_bytes(),Path(__file__).resolve().parents[2])} for path in directory.glob('*.private.log')]
+        result['continuationSafe']=safe_to_continue(result)
     return result
 
-def verify_same_run_context(root, row):
+def verify_same_run_context(root, row, diagnostic=False):
     from native_release_index import identity as source_identity
     commit, tree = source_identity()
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('RUNNER_OS') != 'Linux':
         raise ValueError('controlled native peer execution requires the existing Linux Actions job')
     if os.geteuid() == 0 or sys.platform != 'linux': raise ValueError('controlled peer execution must be nonroot Linux')
-    if os.environ.get('GITHUB_SHA') != commit or row['sourceCommit'] != commit or row['sourceTree'] != tree:
+    if os.environ.get('GITHUB_SHA') != commit:
+        raise ValueError('actual runner checkout differs from run')
+    if diagnostic:
+        from protocol_peer_diagnostic import verify_runner_bridge, PRODUCER
+        runner=verify_runner_bridge(root)
+        product_commit,product_tree=PRODUCER['commit'],PRODUCER['tree']
+    else:
+        product_commit,product_tree=commit,tree
+    if row['sourceCommit'] != product_commit or row['sourceTree'] != product_tree:
         raise ValueError('same-run exact checkout and native producer source differ')
     if os.environ.get('GITHUB_WORKFLOW_SHA') != commit:
         raise ValueError('runner implementation is not exact same-source workflow')
@@ -817,6 +960,10 @@ def verify_same_run_context(root, row):
         if not re.fullmatch(r'\./third_party/[A-Za-z0-9_-]+', path): raise ValueError('non-source-owned replacement')
         expected = subprocess.check_output(['git', 'rev-parse', 'HEAD:'+path[2:]], cwd=root, text=True).strip()
         if item['tree'] != expected: raise ValueError('native producer vendor tree differs')
+    if diagnostic:
+        return {'sourceCommit':product_commit,'sourceTree':product_tree,'runId':PRODUCER['run'],
+                'runAttempt':PRODUCER['attempt'],'workflowCommit':product_commit,
+                'runner':runner,'reusedProduct':True,'diagnosticOnly':True}
     return {'sourceCommit': commit, 'sourceTree': tree, 'runId': int(os.environ['GITHUB_RUN_ID']),
             'runAttempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'workflowCommit': os.environ['GITHUB_WORKFLOW_SHA']}
 
@@ -860,13 +1007,50 @@ def validate_executable_members(row, members):
         raise ValueError('Linux native smoke selected executable names differ')
 
 
-def run_suite(directory, output):
+def case_matrix():
+    return [(kind,mutation) for kind in ('naive-h2','naive-h3','masque-h3','masque-h3-on-demand')
+            for mutation in ((None,) if kind.endswith('on-demand') else
+                (None,'wrong-auth','wrong-ca','wrong-sni') if kind.startswith('naive') else
+                (None,'wrong-auth','wrong-ca','wrong-sni','wrong-path'))]
+
+
+def execute_cases(receipt, execute, deadline):
+    blocked=None
+    for kind,mutation in case_matrix():
+        if blocked:
+            receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN',
+                'reason':'blocked_by_cleanup_or_identity','blockedByCase':blocked})
+            continue
+        if time.monotonic()>=deadline:
+            receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':'bounded_suite_budget_exhausted'})
+            continue
+        try: result=execute(kind,mutation)
+        except Exception as error:
+            from protocol_peer_diagnostic import safe_exception
+            result={'kind':kind,'mutation':mutation,'status':'FAIL','identityUncertain':True,
+                'errorType':type(error).__name__,'error':safe_exception(error),'continuationSafe':False}
+        receipt['cases'].append(result)
+        if not safe_to_continue(result):
+            result['status']='FAIL'
+            blocked={'kind':kind,'mutation':mutation,'index':len(receipt['cases'])-1}
+
+
+def run_suite(directory, output, diagnostic=False):
     from native_release_index import read_archive, smoke_temp_directory
     root = Path(__file__).resolve().parents[2]
     rows = list(directory.glob('native-row-*.json'))
     if len(rows) != 1: raise ValueError('requires one exact same-run native row')
     row_raw = rows[0].read_bytes(); row = json.loads(row_raw)
-    context = verify_same_run_context(root, row)
+    context = verify_same_run_context(root,row,diagnostic)
+    if diagnostic:
+        from protocol_peer_diagnostic import verify_product_row,validate_zip,PRODUCER
+        verify_product_row(row,row_raw)
+        validate_zip((directory/'original-artifact.zip').read_bytes())
+        acquisition=json.loads((directory/'diagnostic-acquisition.json').read_bytes())
+        if acquisition.get('producer')!=PRODUCER or acquisition.get('runner')!=context['runner']:
+            raise ValueError('diagnostic artifact acquisition dual identity differs')
+        actual_artifact=acquisition['artifact']
+    else: actual_artifact=artifact_metadata(context)
     archive = directory/row['archive']['name']
     if archive.parent != directory or digest(archive.read_bytes()) != row['archive']['sha256']:
         raise ValueError('same-run final archive identity differs')
@@ -877,11 +1061,14 @@ def run_suite(directory, output):
     output.mkdir(parents=True, exist_ok=False)
     receipt = {'schema':'polaris-native-controlled-peer-v1', 'context':context,
                'producerRowSHA256':digest(row_raw), 'archive':row['archive'],
-               'artifact':artifact_metadata(context),
-               'outerArtifactDigestObservation':'API metadata and same-run download action; independently verified inner archive/member hashes',
+               'artifact':actual_artifact,
+               'outerArtifactDigestObservation':('independently hashed exact original artifact ZIP and inner members' if diagnostic else 'API metadata and same-run download action; independently verified inner archive/member hashes'),
                'status':'RUNNING', 'cases':[], 'publicationEligible':False,
                'coverage':'Linux native peer process-level IPv4; not App GUI, in-process HOT, IPv6 or other platforms',
                'privateOriginalConfigurationArchived':False}
+    if diagnostic:
+        receipt.update(diagnosticOnly=True,reusedProduct=True,producer=PRODUCER,runner=context['runner'],
+                       originalProducerRowImmutable=True,originalProducerRowSHA256=digest(row_raw))
     global SUITE_DEADLINE
     started = time.monotonic()
     SUITE_DEADLINE = started + 480
@@ -896,24 +1083,23 @@ def run_suite(directory, output):
             with owned_child_scope(receipt):
                 for name, raw in members.items(): private_write(work/name, raw)
                 binary = work/row['core']['member']; binary.chmod(0o700)
-                receipt['identity'] = identity(binary, row, context['sourceCommit'], row['core']['sha256'])
+                receipt['identity'] = identity(binary,row,context['sourceCommit'],row['core']['sha256'],diagnostic)
+                if diagnostic:
+                    from tls_fingerprint_probe import validate, producer_module_identities
+                    capability_raw=subprocess.check_output([str(binary),'tools','tls-fingerprints'],cwd=work,timeout=30,env=core_environment(work))
+                    document=json.loads(capability_raw)
+                    validate(document,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],
+                             target=row['target'],expected_modules=producer_module_identities(row['buildGraph']))
+                    receipt['nativeTLSCapabilityObservation']={'sha256':digest(capability_raw),'bytes':len(capability_raw),
+                        'profileIDs':[profile['id'] for profile in document['profiles']],'sourceValidated':True,
+                        'networkHandshakeValidated':False}
                 pins = json.loads((root/'release/polaris-candidate-inputs.json').read_bytes())
                 observed = json.loads(subprocess.check_output([str(binary),'tools','cronet','--expected-version',pins['cronetVersion'],
                     '--library',str(work/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']],cwd=work,text=True,timeout=30,env=core_environment(work)))
                 if observed.get('version') != pins['cronetVersion'] or observed.get('sha256') != row['sidecar']['sha256'] or observed.get('gvisorCompiled') is not True:
                     raise ValueError('actual final native Cronet library smoke differs')
                 receipt['nativeCronetObservation'] = observed
-                for kind in ('naive-h2','naive-h3','masque-h3','masque-h3-on-demand'):
-                    mutations = (None,'wrong-auth','wrong-ca','wrong-sni') if kind.startswith('naive') else (None,'wrong-auth','wrong-ca','wrong-sni','wrong-path')
-                    # on_demand is a data-plane option combination, not a cold-start claim.
-                    if kind.endswith('on-demand'): mutations = (None,)
-                    for mutation in mutations:
-                        if time.monotonic()-started > 480:
-                            receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':'bounded suite budget exhausted'})
-                            continue
-                        result = run_case(binary,row,work,kind,mutation)
-                        receipt['cases'].append(result)
-                        if result['status'] != 'PASS': break
+                execute_cases(receipt,lambda kind,mutation:run_case(binary,row,work,kind,mutation),started+480)
                 if digest(binary.read_bytes()) != row['core']['sha256'] or digest((work/row['sidecar']['member']).read_bytes()) != row['sidecar']['sha256']:
                     raise ValueError('native bytes changed during peer execution')
         receipt['privateWorkspaceDeleted'] = not Path(td).exists()
@@ -921,8 +1107,15 @@ def run_suite(directory, output):
         expected = 14
         receipt['status'] = 'PASS' if len(receipt['cases']) == expected and all(case['status']=='PASS' for case in receipt['cases']) else 'FAIL'
     except Exception as error:
-        receipt.update(status='FAIL', errorType=type(error).__name__, error=str(error))
+        from protocol_peer_diagnostic import safe_exception
+        receipt.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error))
     finally:
+        if rows[0].read_bytes()!=row_raw:
+            receipt.update(status='FAIL',originalProducerRowImmutable=False,error='original native row changed during QA')
+        completed={(case['kind'],case.get('mutation')) for case in receipt['cases']}
+        for kind,mutation in case_matrix():
+            if (kind,mutation) not in completed:
+                receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':'suite_preflight_or_safety_failure'})
         SUITE_DEADLINE = None
         os.umask(old_umask)
         receipt['elapsedSeconds'] = time.monotonic()-started
@@ -933,18 +1126,42 @@ def run_suite(directory, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('directory',type=Path)
-    parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('directory',type=Path,nargs='?')
+    parser.add_argument('--output',type=Path)
+    action=parser.add_mutually_exclusive_group()
+    action.add_argument('--diagnostic',action='store_true')
+    action.add_argument('--fetch-diagnostic',action='store_true')
+    action.add_argument('--validate-diagnostic-dispatch',action='store_true')
     args = parser.parse_args()
-    output = args.output.resolve()
+    output=args.output.resolve() if args.output else None
+    stage='native_execution_preflight'
     try:
-        run_suite(args.directory.resolve(strict=True), output)
+        if args.validate_diagnostic_dispatch:
+            if args.directory is not None:parser.error('dispatch validation has no native directory')
+            stage='dispatch_preflight'
+            from protocol_peer_diagnostic import validate_dispatch
+            validate_dispatch();return
+        if args.fetch_diagnostic:
+            if args.directory is None or output is None:
+                parser.error('fixed fetch needs native directory and failure receipt output')
+            stage='artifact_acquisition'
+            from protocol_peer_diagnostic import fetch_diagnostic
+            fetch_diagnostic(args.directory.resolve(),Path(__file__).resolve().parents[2]);return
+        if args.directory is None or output is None:parser.error('peer execution needs native directory and receipt output')
+        run_suite(args.directory.resolve(strict=True),output,args.diagnostic)
     except Exception as error:
-        if not (output/'receipt.json').exists():
+        if output is not None and not (output/'receipt.json').exists():
             output.mkdir(parents=True, exist_ok=True)
+            from protocol_peer_diagnostic import safe_exception
             (output/'receipt.json').write_text(json.dumps({'schema':'polaris-native-controlled-peer-v1','status':'FAIL',
-                'stage':'preflight','errorType':type(error).__name__,'error':str(error),'publicationEligible':False},indent=2)+'\n')
+                'stage':stage,'errorType':type(error).__name__,'error':safe_exception(error),'publicationEligible':False,
+                'cases':[{'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':stage+'_failed'} for kind,mutation in case_matrix()]},indent=2)+'\n')
         raise
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    try: main()
+    except Exception as error:
+        from protocol_peer_diagnostic import safe_exception
+        print(type(error).__name__+': '+safe_exception(error),file=sys.stderr)
+        raise SystemExit(1) from None

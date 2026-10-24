@@ -214,6 +214,14 @@ jobs:
       with:
         ref: ${{ github.sha }}
         fetch-depth: 0
+    - name: Reject incompatible fixed-peer diagnostic inputs
+      if: inputs.build == 'NativePeerDiagnostic'
+      env:
+        PEER_BUILD: ${{ inputs.build }}
+        PEER_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        PEER_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        PEER_VERSION: ${{ inputs.version }}
+      run: python3 -B scripts/ci/protocol_peer.py --validate-diagnostic-dispatch
     - name: Setup Go
       if: github.event_name != 'workflow_dispatch'
       uses: actions/setup-go@v5
@@ -2062,7 +2070,10 @@ jobs:
       run: python3 scripts/ci/client_source.py diagnose apple --unsigned
   native_smoke:
     name: Native final-package Cronet and gVisor smoke (${{ matrix.id }})
-    if: '!inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == ''All'' || inputs.build == ''Binary'')'
+    if: ${{ !cancelled() && (inputs.build == 'NativePeerDiagnostic' || (!inputs.source_generate_only && !failure() && (inputs.build == 'All' || inputs.build == 'Binary'))) }}
+    permissions:
+      contents: read
+      actions: read
     needs:
     - calculate_version
     - build
@@ -2072,24 +2083,24 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-        - id: linux-amd64-purego
-          runner: ubuntu-24.04
-          artifact: binary-linux_amd64-purego
-        - id: windows-amd64
-          runner: windows-2025
-          artifact: binary-windows_amd64
-        - id: darwin-amd64
-          runner: macos-15-intel
-          artifact: binary-darwin_amd64
-        - id: darwin-arm64
-          runner: macos-15
-          artifact: binary-darwin_arm64
+      matrix: ${{ fromJSON(inputs.build == 'NativePeerDiagnostic' && '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"}]}' || '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"},{"id":"windows-amd64","runner":"windows-2025","artifact":"binary-windows_amd64"},{"id":"darwin-amd64","runner":"macos-15-intel","artifact":"binary-darwin_amd64"},{"id":"darwin-arm64","runner":"macos-15","artifact":"binary-darwin_arm64"}]}') }}
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: ${{ inputs.build == 'NativePeerDiagnostic' && '0' || '1' }}
+        persist-credentials: false
+    - name: Validate fixed-peer diagnostic dispatch before artifact access
+      if: inputs.build == 'NativePeerDiagnostic'
+      env:
+        PEER_BUILD: ${{ inputs.build }}
+        PEER_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        PEER_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        PEER_VERSION: ${{ inputs.version }}
+      run: python3 -B scripts/ci/protocol_peer.py --validate-diagnostic-dispatch --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Download exact same-run native archive
+      if: inputs.build != 'NativePeerDiagnostic'
       uses: actions/download-artifact@v5
       with:
         name: ${{ matrix.artifact }}
@@ -2099,15 +2110,34 @@ jobs:
         python-version: '3.12'
     - name: Install selected-core capability validator
       run: python -m pip install jsonschema==4.23.0
+    - name: Acquire only the frozen original Linux carrier for QA
+      if: inputs.build == 'NativePeerDiagnostic'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PEER_BUILD: ${{ inputs.build }}
+        PEER_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        PEER_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        PEER_VERSION: ${{ inputs.version }}
+      run: python -B scripts/ci/protocol_peer.py native --fetch-diagnostic --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute final-package Cronet smoke
+      if: inputs.build != 'NativePeerDiagnostic'
       run: python scripts/ci/native_release_index.py smoke native
     - name: Verify controlled native peer runner contracts
       if: matrix.id == 'linux-amd64-purego'
       run: python -B -m unittest discover -s scripts/ci -p 'test_protocol_peer.py'
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
-      if: matrix.id == 'linux-amd64-purego'
+      if: matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'
       timeout-minutes: 12
       run: python -B scripts/ci/protocol_peer.py native --output "${{ runner.temp }}/native-controlled-peer-public"
+    - name: Diagnose the original Linux product with separately bound QA code
+      if: inputs.build == 'NativePeerDiagnostic'
+      timeout-minutes: 12
+      env:
+        PEER_BUILD: ${{ inputs.build }}
+        PEER_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        PEER_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        PEER_VERSION: ${{ inputs.version }}
+      run: python -B scripts/ci/protocol_peer.py native --diagnostic --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Preserve sanitized native peer receipt only
       if: always() && matrix.id == 'linux-amd64-purego'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -2117,6 +2147,7 @@ jobs:
         if-no-files-found: error
         retention-days: 7
     - name: Upload actual smoke receipt
+      if: inputs.build != 'NativePeerDiagnostic'
       uses: actions/upload-artifact@v4
       with:
         name: smoke-${{ matrix.id }}
@@ -2247,6 +2278,7 @@ jobs:
         - All
         - Source
         - Binary
+        - NativePeerDiagnostic
         - Android
         - Windows
         - Linux
