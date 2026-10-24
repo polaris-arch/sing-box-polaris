@@ -3,7 +3,52 @@ import json,re,unittest,yaml
 import contextlib,copy,io,os,shlex,shutil,subprocess,sys,tempfile
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
+class TestVisionSourceContract(unittest.TestCase):
+ def test_every_source_boundary_rejects_tampering(self):
+  from vision_source import validate, BINDING
+  for kind in ('bytes','mode','extra','missing','link','root-replace','provider-version','patch','notice','tree'):
+   with self.subTest(kind=kind),tempfile.TemporaryDirectory() as tmp:
+    root=Path(tmp)
+    for name in ('go.mod',BINDING,'release/dependency-sources/sing-vmess-vision.patch',
+                 'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt'):
+     target=root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/name,target)
+    shutil.copytree(ROOT/'third_party/sing-vmess',root/'third_party/sing-vmess')
+    target=root/'third_party/sing-vmess/vless/vision.go'
+    if kind=='bytes':target.write_bytes(target.read_bytes()+b'\n')
+    elif kind=='mode':target.chmod(0o755)
+    elif kind=='extra':(target.parent/'foreign.go').write_text('package vless\n')
+    elif kind=='missing':target.unlink()
+    elif kind=='link':target.unlink();target.symlink_to(ROOT/'third_party/sing-vmess/vless/vision.go')
+    elif kind=='root-replace':
+     target=root/'go.mod';target.write_text(target.read_text().replace('=> ./third_party/sing-vmess','=> ../foreign'))
+    elif kind=='provider-version':
+     target=root/'go.mod';target.write_text(target.read_text().replace('ff1b50fbbe9a','000000000000'))
+    elif kind=='patch':
+     target=root/'release/dependency-sources/sing-vmess-vision.patch';target.write_bytes(target.read_bytes()+b'\n')
+    elif kind=='notice':
+     target=root/'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt';target.write_bytes(b'wrong')
+    else:
+     target=root/BINDING;doc=json.loads(target.read_text());doc['replacementTree']='0'*40;target.write_text(json.dumps(doc))
+    with self.assertRaises(ValueError):validate(root)
+
 class TestCIContract(unittest.TestCase):
+ def test_vision_vendor_source_and_product_graph_gates_are_complete(self):
+  from vision_source import validate
+  identity=validate(ROOT)
+  self.assertEqual(identity['module'],'github.com/sagernet/sing-vmess')
+  workflow=yaml.safe_load((ROOT/'.github/workflows/test.yml').read_text())
+  job=workflow['jobs']['test']
+  step=next(s for s in job['steps'] if s.get('name')=='Test Vision providers through the product dependency graph')
+  self.assertEqual(step['shell'],'bash')
+  for flag in ('-mod=readonly','-race','-gcflags=all=-d=checkptr=2','-count=1','github.com/sagernet/sing-vmess/...'):
+   self.assertIn(flag,step['run'])
+  self.assertNotIn('cd third_party',step['run'])
+  self.assertNotIn('sudo',step['run'])
+  self.assertNotIn('if',step)
+  self.assertNotIn('continue-on-error',step)
+  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
+  source=(ROOT/'scripts/ci/utls_gate.py').read_text()
+  self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT)",source)
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']

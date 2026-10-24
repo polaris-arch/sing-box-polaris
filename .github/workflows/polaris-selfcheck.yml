@@ -890,6 +890,8 @@ jobs:
             third_party/wireguard-go/go.sum
             third_party/tfo-go/go.mod
             third_party/tfo-go/go.sum
+            third_party/sing-vmess/go.mod
+            third_party/sing-vmess/go.sum
       - name: Authorize explicitly approved exact SHA netns binary
         id: netns_batch_authorization
         env:
@@ -1050,6 +1052,19 @@ jobs:
               -tags "$tags" -ldflags "$ldflags" ./...) | tee "$selection_dir/tfo-go-test.log"
             grep -q '^--- PASS: TestRuntimeWriteCancellationJoinsActualDeadlineMutation ' "$selection_dir/tfo-go-test.log"
             grep -q '^--- PASS: TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback ' "$selection_dir/tfo-go-test.log"
+          fi
+          if [ -f "$selection_dir/sing-vmess-selected" ]; then
+            grep -qx 'github.com/sagernet/sing-vmess' "$selection_dir/sing-vmess-selected"
+            grep -qx 'module github.com/sagernet/sing-vmess' third_party/sing-vmess/go.mod
+            # Run the complete nested module from the product root. Bare cd
+            # would silently select older TLS/sing dependencies and lose the
+            # exact runtime ownership replacements under test.
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            go test -mod=readonly -race -gcflags=all=-d=checkptr=2 -count=1 -timeout=10m -v \
+              -tags "$tags" github.com/sagernet/sing-vmess/... | tee "$selection_dir/sing-vmess-test.log"
+            grep -q '^--- PASS: TestVisionTLSProvidersActualHandshakeAndDirect ' "$selection_dir/sing-vmess-test.log"
+            grep -q '^--- PASS: TestVisionTLSProvidersRejectBadCertificate ' "$selection_dir/sing-vmess-test.log"
+            grep -q '^--- PASS: TestVisionTLSBufferLayoutRejectsUnknownShapes ' "$selection_dir/sing-vmess-test.log"
           fi
           if [ "$netns_selected" = true ]; then
             # Only the selected netns test binary is elevated; compilation remains unprivileged.

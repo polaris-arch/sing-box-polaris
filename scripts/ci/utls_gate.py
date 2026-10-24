@@ -10,6 +10,7 @@ import signal
 import time
 
 from tls_fingerprint_probe import probe
+from vision_source import validate as validate_vision_source
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = '1.15.0-polaris-alpha.12'  # validation binary only, never a release asset
@@ -45,6 +46,31 @@ REQUIRED_FORK.update('TestUTLSRealECHHandshakeAndSessionIDConflict/' + profile +
 REQUIRED_FORK.update('TestRealityExplicitALPNWireAndClone/' + name for name in ('http1-only', 'custom', 'mismatch', 'clone-set-next-protos', 'server-policy-independent-of-camouflage', 'server-long-alpn-exceeds-camouflage', 'server-shorter-alpn-keeps-camouflage-budget'))
 REQUIRED_FORK.update('TestShadowTLSV3RejectsWrongPasswordAndTamperedSession/' + name for name in ('wrong-password', 'tampered-session'))
 REQUIRED_FORK.update('TestShadowTLSV3ActualAuthenticationAndForwarding/' + name for name in ('chrome_155', 'safari_26_3'))
+
+
+# A provider handshake alone cannot prove the Vision adapter or direct path.
+REQUIRED_FORK.update({'TestRealityVisionActualHandshakeAndDirect',
+                      'TestRealityVisionRejectsWrongKeyBeforePayload',
+                      'TestRuntimeVisionActualTCPAndXUDP',
+                      'TestRuntimeVisionActualRejectsUnsupportedUDPAndFlow',
+                      'TestRuntimeVisionRejectsActualUpgradedTransports',
+                      'TestVisionTLSProvidersActualHandshakeAndDirect',
+                      'TestVisionTLSProvidersRejectBadCertificate',
+                      'TestVisionTLSBufferLayoutAndGCLifetime',
+                      'TestVisionTLSBufferLayoutRejectsUnknownShapes',
+                      'TestVisionTLSProviderUnknownAndNilRejected',
+                      'TestVisionUTLSNilProvidersRejected', 'TestVisionConcurrentPlainTraffic',
+                      'TestVisionTLS12RemainsRecordMode', 'TestVisionTLSFragmentedProviderBuffers',
+                      'TestVisionTLSFragmentedDetectionFallsBackSafely'})
+REQUIRED_FORK.update('TestRealityVisionActualHandshakeAndDirect/' + profile + '/owned-' + owned
+                     for profile in ('chrome_155', 'safari_26_3') for owned in ('false', 'true'))
+REQUIRED_FORK.update('TestVisionTLSProvidersActualHandshakeAndDirect/' + provider + '/wrapped-' + wrapped
+                     for provider in ('standard-Conn', 'meta-Conn', 'meta-UConn', 'refraction-Conn', 'refraction-UConn')
+                     for wrapped in ('false', 'true'))
+REQUIRED_FORK.update(test + '/' + provider
+                     for test in ('TestVisionTLS12RemainsRecordMode', 'TestVisionTLSFragmentedProviderBuffers',
+                                  'TestVisionTLSFragmentedDetectionFallsBackSafely')
+                     for provider in ('standard-Conn', 'meta-Conn', 'meta-UConn', 'refraction-Conn', 'refraction-UConn'))
 
 
 # Both modes run real Tailscale constructors and generic validation/lifecycle
@@ -85,7 +111,7 @@ REQUIRED_LIBBOX = {
 def commands(ldflags):
     common = ['go', 'test', '-json', '-race', '-p=2', '-parallel=2', '-count=1', '-timeout=15m', '-ldflags=' + ldflags]
     return [
-        ('fork', common + ['-tags=with_utls,badlinkname,with_tailscale', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
+        ('fork', common + ['-gcflags=all=-d=checkptr=2', '-tags=with_utls,badlinkname,with_tailscale', './protocol/vless', 'github.com/sagernet/sing-vmess/...', './common/tls', './common/badtls', './common/ktls', './protocol/shadowtls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
         ('stub', common + ['-tags=with_tailscale', './common/tls', './experimental/libbox', './experimental/libbox/internal/oomprofile', './cmd/sing-box']),
         ('upstream', common + ['-run=^(' + UPSTREAM_TESTS + ')$', 'github.com/refraction-networking/utls']),
     ]
@@ -179,6 +205,7 @@ def main():
         return code == 0
 
     try:
+        receipt['visionSource'] = validate_vision_source(ROOT)
         execute('verify-modules', ['go', 'mod', 'verify'])
         for name, command in commands(ldflags):
             if execute(name, command):

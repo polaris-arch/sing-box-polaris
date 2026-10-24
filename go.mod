@@ -227,3 +227,6 @@ replace github.com/sagernet/wireguard-go => ./third_party/wireguard-go
 
 // Pinned TFO callback/racer completion; original module and bounded review retained.
 replace github.com/database64128/tfo-go/v2 => ./third_party/tfo-go
+
+// Pinned Vision provider compatibility; preserve both TLS forks and their concrete layouts.
+replace github.com/sagernet/sing-vmess => ./third_party/sing-vmess

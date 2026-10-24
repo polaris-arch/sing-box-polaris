@@ -96,7 +96,7 @@ class PatchModuleSelectionTests(unittest.TestCase):
                 'third_party/sing-quic/runtime_test.go',
                 'third_party/tailscale/net/netmon/runtime_hooks_test.go',
                 'third_party/wireguard-go/device/runtime_completion_test.go',
-                'third_party/tfo-go/runtime_join_test.go']]
+                'third_party/tfo-go/runtime_join_test.go', 'third_party/sing-vmess/vless/vision.go']]
             plan = selection(root, paths + [paths[0], 'README.md'])
             modules = plan['modules']
             self.assertEqual(set(modules), set(MODULES))
@@ -130,7 +130,8 @@ class PatchModuleSelectionTests(unittest.TestCase):
                                     'third_party/metacubex-utls/go.sum', 'third_party/cronet-go/go.mod',
                                     'third_party/fswatch/go.mod', 'third_party/sing/go.mod',
                                     'third_party/sing-quic/go.mod', 'third_party/tailscale/go.mod',
-                                    'third_party/wireguard-go/go.sum', 'third_party/tfo-go/go.mod'])
+                                    'third_party/wireguard-go/go.sum', 'third_party/tfo-go/go.mod',
+                                    'third_party/sing-vmess/go.mod'])
             self.assertEqual(set(plan['modules']), set(MODULES))
             for owner, entry in plan['modules'].items():
                 if owner == 'third_party/tailscale':
@@ -411,7 +412,9 @@ go() {
       TestRuntimeFinalJoinHoldsNoStateOrNetLocks TestRuntimeSourceGenerationInvalidatesBeforeSend \
       TestRuntimeRouteCancellationWithContinuouslyReadyInput TestRuntimeCloseJoinsOriginalCollector \
       TestRuntimeWriteCancellationJoinsActualDeadlineMutation \
-      TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback; do
+      TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback \
+      TestVisionTLSProvidersActualHandshakeAndDirect TestVisionTLSProvidersRejectBadCertificate \
+      TestVisionTLSBufferLayoutRejectsUnknownShapes; do
       printf '%s\n' "--- PASS: $name (0.00s)"
     done
   fi
@@ -436,7 +439,7 @@ go() {
             'third_party/sing-tun', 'third_party/sing-tun',
             'third_party/metacubex-utls', 'third_party/cronet-go', 'third_party/fswatch',
             'third_party/sing', 'third_party/sing-quic', '.',
-            'third_party/wireguard-go', 'third_party/tfo-go']
+            'third_party/wireguard-go', 'third_party/tfo-go', '.']
         if root_selected and netns_selected:
             expected.append('.')
             self.assertEqual(tests[-1][1][-1], 'github.com/sagernet/sing-box/common/netns')

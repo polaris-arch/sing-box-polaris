@@ -8,17 +8,21 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	stdtls "crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-vmess/vless"
 	"github.com/sagernet/sing/common/logger"
 
 	meta "github.com/metacubex/utls"
@@ -33,6 +37,53 @@ type realityHandshakeCase struct {
 	cloneALPN              []string
 	negotiated             string
 	reject                 bool
+	vision, owned          bool
+}
+
+// Authentication alone did not cover Vision's concrete provider adapter. These
+// cases use the real refraction REALITY wrapper, Meta server and (optionally)
+// the exact scoped runtime inspection/fences before an inner TLS1.3 exchange.
+func TestRealityVisionActualHandshakeAndDirect(t *testing.T) {
+	for _, profile := range []string{"chrome_155", "safari_26_3"} {
+		for _, owned := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/owned-%v", profile, owned), func(t *testing.T) {
+				realityHandshakeExchange(t, realityHandshakeCase{profile: profile, vision: true, owned: owned})
+			})
+		}
+	}
+}
+
+func TestRealityVisionRejectsWrongKeyBeforePayload(t *testing.T) {
+	realityHandshakeExchange(t, realityHandshakeCase{profile: "chrome_155", vision: true, owned: true, wrongKey: true, reject: true})
+}
+
+func realityVisionStream(ctx context.Context, secured Conn, certificate pinnedTestCertificate, server bool) (net.Conn, *vless.VisionConn, error) {
+	var vision *vless.VisionConn
+	err := WithRuntimeTLSInspection(secured, func(native net.Conn) error {
+		var err error
+		vision, err = vless.NewVisionConn(secured, native, [16]byte{3, 7, 11}, logger.NOP())
+		return err
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	runtime.GC()
+	var inner *stdtls.Conn
+	if server {
+		inner = stdtls.Server(vision, &stdtls.Config{Certificates: []stdtls.Certificate{certificate.Certificate}, MinVersion: stdtls.VersionTLS13})
+	} else {
+		roots := x509.NewCertPool()
+		roots.AddCert(certificate.Leaf)
+		inner = stdtls.Client(vision, &stdtls.Config{ServerName: "localhost", RootCAs: roots, MinVersion: stdtls.VersionTLS13})
+	}
+	return inner, vision, inner.HandshakeContext(ctx)
+}
+
+func realityVisionWasDirect(vision *vless.VisionConn) bool {
+	// Test-only observation of the actual pinned algorithm, not a replacement
+	// constructor/mocked success. Both network directions must have switched.
+	value := reflect.ValueOf(vision).Elem()
+	return value.FieldByName("directRead").Bool() && value.FieldByName("directWrite").Bool()
 }
 
 // Controlled TLS1.3 camouflage plus the actual Meta REALITY server and the real
@@ -144,18 +195,41 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 			serverDone <- result{err: err}
 			return
 		}
-		secured, err := server.ServerHandshake(ctx, &replayHelloConn{c, io.MultiReader(bytes.NewReader(wire), c)})
+		carrier := &replayHelloConn{c, io.MultiReader(bytes.NewReader(wire), c)}
+		observed := &realityVisionObservedConn{Conn: carrier}
+		var secured Conn
+		if tc.owned {
+			secured, err = serverHandshakeOwned(ctx, observed, server)
+		} else {
+			secured, err = server.ServerHandshake(ctx, carrier)
+		}
 		r := result{wire: wire, err: err}
 		if err == nil {
+			defer secured.Close()
 			r.negotiated = secured.ConnectionState().NegotiatedProtocol
+			var stream net.Conn = secured
+			var vision *vless.VisionConn
+			if tc.vision {
+				stream, vision, r.err = realityVisionStream(ctx, secured, cert, true)
+				if r.err != nil {
+					serverDone <- r
+					return
+				}
+			}
 			b := make([]byte, 4)
-			_, r.err = io.ReadFull(secured, b)
+			_, r.err = io.ReadFull(stream, b)
 			r.payload = r.err == nil
 			if r.err == nil && string(b) != "ping" {
 				r.err = errors.New("REALITY payload mismatch")
 			}
 			if r.err == nil {
-				_, r.err = secured.Write([]byte("pong"))
+				_, r.err = stream.Write([]byte("pong"))
+			}
+			if r.err == nil && tc.vision && !realityVisionWasDirect(vision) {
+				r.err = errors.New("REALITY Vision server did not enter direct mode")
+			}
+			if tc.vision && tc.owned {
+				r.err = errors.Join(r.err, verifyRealityVisionRetirement(secured, observed))
 			}
 		}
 		serverDone <- r
@@ -188,9 +262,16 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 		t.Fatal(err)
 	}
 	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
-	secured, clientErr := config.(interface {
-		ClientHandshake(context.Context, net.Conn) (Conn, error)
-	}).ClientHandshake(ctx, c)
+	var secured Conn
+	var clientErr error
+	observed := &realityVisionObservedConn{Conn: c}
+	if tc.owned {
+		secured, clientErr = clientHandshakeOwned(ctx, observed, config)
+	} else {
+		secured, clientErr = config.(interface {
+			ClientHandshake(context.Context, net.Conn) (Conn, error)
+		}).ClientHandshake(ctx, c)
+	}
 	admitted := clientErr == nil
 	if admitted && !tc.reject {
 		if secured.ConnectionState().CurveID != stdtls.X25519 {
@@ -199,14 +280,30 @@ func realityHandshakeExchange(t *testing.T, tc realityHandshakeCase) {
 		if expectedALPN != nil && secured.ConnectionState().NegotiatedProtocol != tc.negotiated {
 			t.Errorf("client ALPN %q != %q", secured.ConnectionState().NegotiatedProtocol, tc.negotiated)
 		}
-		_, clientErr = secured.Write([]byte("ping"))
+		var stream net.Conn = secured
+		var vision *vless.VisionConn
+		if tc.vision {
+			stream, vision, clientErr = realityVisionStream(ctx, secured, cert, false)
+		}
+		if clientErr == nil {
+			_, clientErr = stream.Write([]byte("ping"))
+		}
 		if clientErr == nil {
 			b := make([]byte, 4)
-			_, clientErr = io.ReadFull(secured, b)
+			_, clientErr = io.ReadFull(stream, b)
 			if clientErr == nil && string(b) != "pong" {
 				clientErr = errors.New("REALITY reply mismatch")
 			}
 		}
+		if clientErr == nil && tc.vision && !realityVisionWasDirect(vision) {
+			clientErr = errors.New("REALITY Vision client did not enter direct mode")
+		}
+		if tc.vision && tc.owned {
+			clientErr = errors.Join(clientErr, verifyRealityVisionRetirement(secured, observed))
+		}
+	}
+	if admitted {
+		_ = secured.Close()
 	}
 	c.Close()
 	listener.Close()

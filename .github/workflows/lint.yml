@@ -70,6 +70,8 @@ jobs:
           third_party/sing-tun/go.sum
           third_party/metacubex-utls/go.mod
           third_party/metacubex-utls/go.sum
+          third_party/sing-vmess/go.mod
+          third_party/sing-vmess/go.sum
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v8
       env:

@@ -51,6 +51,12 @@ jobs:
       run: |
         echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)" >> "$GITHUB_ENV"
         echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "$GITHUB_ENV"
+    - name: Test Vision providers through the product dependency graph
+      shell: bash
+      run: |
+        set -euo pipefail
+        go test -mod=readonly -race -gcflags=all=-d=checkptr=2 -count=1 -timeout=10m -v \
+          -tags "$BUILD_TAGS" github.com/sagernet/sing-vmess/...
     - name: Test (Linux ordinary packages)
       if: matrix.os == 'ubuntu-latest'
       shell: bash

@@ -1,0 +1,770 @@
+diff --git a/go.mod b/go.mod
+index 531a4ec..d74ad4d 100644
+--- a/go.mod
++++ b/go.mod
+@@ -1,10 +1,11 @@
+ module github.com/sagernet/sing-vmess
+ 
+-go 1.20
++go 1.27.0
+ 
+ require (
+ 	github.com/gofrs/uuid/v5 v5.3.2
+ 	github.com/metacubex/utls v1.7.3
++	github.com/refraction-networking/utls v1.8.3-0.20261006222701-ff1b50fbbe9a
+ 	github.com/sagernet/sing v0.7.8-0.20250909124511-ab3827767cea
+ 	golang.org/x/crypto v0.33.0
+ )
+diff --git a/go.sum b/go.sum
+index 028627b..43c5a89 100644
+--- a/go.sum
++++ b/go.sum
+@@ -10,6 +10,8 @@ github.com/klauspost/compress v1.17.9/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ib
+ github.com/metacubex/utls v1.7.3 h1:yDcMEWojFh+t8rU9X0HPcZDPAoFze/rIIyssqivzj8A=
+ github.com/metacubex/utls v1.7.3/go.mod h1:oknYT0qTOwE4hjPmZOEpzVdefnW7bAdGLvZcqmk4TLU=
+ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
++github.com/refraction-networking/utls v1.8.3-0.20261006222701-ff1b50fbbe9a h1:YwnpbX4nj1GfLEsvGDDqzpbxTVVbHcEqCfUcfMYe1gc=
++github.com/refraction-networking/utls v1.8.3-0.20261006222701-ff1b50fbbe9a/go.mod h1:rc/ctWeKlh9LSk5k90KlSPcwF7P6D31mn/9GI2NAfBI=
+ github.com/sagernet/sing v0.7.8-0.20250909124511-ab3827767cea h1:vkWFzPVlqnKq3FMpmh43ZVDbqHWapbv0Sh3vQc8oo7o=
+ github.com/sagernet/sing v0.7.8-0.20250909124511-ab3827767cea/go.mod h1:ARkL0gM13/Iv5VCZmci/NuoOlePoIsW0m7BWfln/Hak=
+ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+diff --git a/vless/vision.go b/vless/vision.go
+index 5d9b6c6..7a252b2 100644
+--- a/vless/vision.go
++++ b/vless/vision.go
+@@ -20,18 +20,53 @@ import (
+ 	N "github.com/sagernet/sing/common/network"
+ )
+ 
+-var tlsRegistry []func(conn net.Conn) (loaded bool, netConn net.Conn, reflectType reflect.Type, reflectPointer uintptr)
++// Each adapter returns its own concrete TLS Conn. Never reinterpret one TLS
++// fork as another or carry a Go pointer across a call as uintptr.
++var tlsRegistry []func(conn net.Conn) (loaded bool, netConn net.Conn, owner any)
+ 
+ func init() {
+-	tlsRegistry = append(tlsRegistry, func(conn net.Conn) (loaded bool, netConn net.Conn, reflectType reflect.Type, reflectPointer uintptr) {
++	tlsRegistry = append(tlsRegistry, func(conn net.Conn) (loaded bool, netConn net.Conn, owner any) {
+ 		tlsConn, loaded := N.CastReader[*tls.Conn](conn)
+ 		if !loaded {
+ 			return
+ 		}
+-		return true, tlsConn.NetConn(), reflect.TypeOf(tlsConn).Elem(), uintptr(unsafe.Pointer(tlsConn))
++		if tlsConn == nil {
++			return true, nil, nil
++		}
++		return true, tlsConn.NetConn(), tlsConn
+ 	})
+ }
+ 
++// Vision drains these provider-owned buffers when TLS record framing switches
++// to direct mode. Validate the exact pinned layout before creating interior
++// pointers. Value.UnsafePointer and unsafe.Add keep the allocation visible to
++// the GC; the owner is also retained by VisionConn for its full lifetime.
++func visionTLSBuffers(owner any) (*bytes.Reader, *bytes.Buffer, error) {
++	value := reflect.ValueOf(owner)
++	if !value.IsValid() || value.Kind() != reflect.Pointer || value.IsNil() || value.Type().Elem().Kind() != reflect.Struct {
++		return nil, nil, E.New("vision: invalid TLS buffer owner")
++	}
++	typ := value.Type().Elem()
++	field := func(name string, expected reflect.Type) (uintptr, error) {
++		member, ok := typ.FieldByName(name)
++		if !ok || len(member.Index) != 1 || member.Type != expected || member.Type.Size() > typ.Size() ||
++			member.Offset > typ.Size()-member.Type.Size() || member.Offset%uintptr(member.Type.Align()) != 0 {
++			return 0, E.New("vision: unsupported TLS buffer layout: ", typ, ".", name)
++		}
++		return member.Offset, nil
++	}
++	inputOffset, err := field("input", reflect.TypeOf(bytes.Reader{}))
++	if err != nil {
++		return nil, nil, err
++	}
++	rawInputOffset, err := field("rawInput", reflect.TypeOf(bytes.Buffer{}))
++	if err != nil {
++		return nil, nil, err
++	}
++	base := value.UnsafePointer()
++	return (*bytes.Reader)(unsafe.Add(base, inputOffset)), (*bytes.Buffer)(unsafe.Add(base, rawInputOffset)), nil
++}
++
+ const xrayChunkSize = 8192
+ 
+ type VisionConn struct {
+@@ -39,8 +74,10 @@ type VisionConn struct {
+ 	reader      *bufio.ChunkReader
+ 	writer      N.VectorisedWriter
+ 	writeAccess sync.Mutex
++	tlsAccess   sync.Mutex
+ 	input       *bytes.Reader
+ 	rawInput    *bytes.Buffer
++	tlsOwner    any
+ 	netConn     net.Conn
+ 	logger      logger.Logger
+ 
+@@ -66,13 +103,12 @@ type VisionConn struct {
+ 
+ func NewVisionConn(conn net.Conn, tlsConn net.Conn, userUUID [16]byte, logger logger.Logger) (*VisionConn, error) {
+ 	var (
+-		loaded         bool
+-		reflectType    reflect.Type
+-		reflectPointer uintptr
+-		netConn        net.Conn
++		loaded  bool
++		owner   any
++		netConn net.Conn
+ 	)
+ 	for _, tlsCreator := range tlsRegistry {
+-		loaded, netConn, reflectType, reflectPointer = tlsCreator(tlsConn)
++		loaded, netConn, owner = tlsCreator(tlsConn)
+ 		if loaded {
+ 			break
+ 		}
+@@ -80,14 +116,20 @@ func NewVisionConn(conn net.Conn, tlsConn net.Conn, userUUID [16]byte, logger lo
+ 	if !loaded {
+ 		return nil, E.New("vision: not a valid supported TLS connection: ", reflect.TypeOf(tlsConn))
+ 	}
+-	input, _ := reflectType.FieldByName("input")
+-	rawInput, _ := reflectType.FieldByName("rawInput")
++	input, rawInput, err := visionTLSBuffers(owner)
++	if err != nil {
++		return nil, err
++	}
++	if netConn == nil {
++		return nil, E.New("vision: missing TLS transport")
++	}
+ 	return &VisionConn{
+ 		Conn:     conn,
+ 		reader:   bufio.NewChunkReader(conn, xrayChunkSize),
+ 		writer:   bufio.NewVectorisedWriter(conn),
+-		input:    (*bytes.Reader)(unsafe.Pointer(reflectPointer + input.Offset)),
+-		rawInput: (*bytes.Buffer)(unsafe.Pointer(reflectPointer + rawInput.Offset)),
++		input:    input,
++		rawInput: rawInput,
++		tlsOwner: owner,
+ 		netConn:  netConn,
+ 		logger:   logger,
+ 
+@@ -137,7 +179,7 @@ func (c *VisionConn) Read(p []byte) (n int, err error) {
+ 			}
+ 			bufferBytes = chunkBuffer.Bytes()
+ 		}
+-		if c.withinPaddingBuffers || c.numberOfPacketToFilter > 0 {
++		if c.withinPaddingBuffers || c.needsTLSFilter() {
+ 			buffers := c.unPadding(bufferBytes)
+ 			if chunkBuffer != nil {
+ 				chunkBuffer.Reset()
+@@ -175,15 +217,11 @@ func (c *VisionConn) Read(p []byte) (n int, err error) {
+ 			} else {
+ 				c.withinPaddingBuffers = false
+ 			}
+-			if c.numberOfPacketToFilter > 0 {
+-				c.filterTLS(buf.ToSliceMulti(buffers))
+-			}
++			c.filterTLS(buf.ToSliceMulti(buffers))
+ 			c.remainingBuffers = buffers
+ 			continue
+ 		} else {
+-			if c.numberOfPacketToFilter > 0 {
+-				c.filterTLS([][]byte{bufferBytes})
+-			}
++			c.filterTLS([][]byte{bufferBytes})
+ 			if chunkBuffer != nil {
+ 				c.remainingBuffers = append(c.remainingBuffers, buf.As(chunkBuffer.Bytes()))
+ 				chunkBuffer.Reset() // chunkBuffer should not be release and only reused after c.remainingBuffers be emptied, so must reset at here
+@@ -197,30 +235,28 @@ func (c *VisionConn) Read(p []byte) (n int, err error) {
+ func (c *VisionConn) Write(p []byte) (n int, err error) {
+ 	c.writeAccess.Lock()
+ 	defer c.writeAccess.Unlock()
+-	if c.numberOfPacketToFilter > 0 {
+-		c.filterTLS([][]byte{p})
+-	}
++	state := c.filterTLS([][]byte{p})
+ 	if c.isPadding {
+ 		inputLen := len(p)
+ 		buffers := reshapeBuffer(p)
+ 		var specIndex int
+ 		for i, buffer := range buffers {
+-			if c.isTLS && buffer.Len() > 6 && bytes.Equal(tlsApplicationDataStart, buffer.To(3)) {
++			if state.isTLS && buffer.Len() > 6 && bytes.Equal(tlsApplicationDataStart, buffer.To(3)) {
+ 				var command byte = commandPaddingEnd
+-				if c.enableXTLS {
++				if state.enableXTLS {
+ 					c.directWrite = true
+ 					specIndex = i
+ 					command = commandPaddingDirect
+ 				}
+ 				c.isPadding = false
+-				buffers[i] = c.padding(buffer, command)
++				buffers[i] = c.padding(buffer, command, state.isTLS)
+ 				break
+-			} else if !c.isTLS12orAbove && c.numberOfPacketToFilter <= 1 {
++			} else if !state.isTLS12orAbove && state.numberOfPacketToFilter <= 1 {
+ 				c.isPadding = false
+-				buffers[i] = c.padding(buffer, commandPaddingEnd)
++				buffers[i] = c.padding(buffer, commandPaddingEnd, state.isTLS)
+ 				break
+ 			}
+-			buffers[i] = c.padding(buffer, commandPaddingContinue)
++			buffers[i] = c.padding(buffer, commandPaddingContinue, state.isTLS)
+ 		}
+ 		if c.directWrite {
+ 			encryptedBuffer := buffers[:specIndex+1]
+@@ -250,7 +286,29 @@ func (c *VisionConn) Write(p []byte) (n int, err error) {
+ 	}
+ }
+ 
+-func (c *VisionConn) filterTLS(buffers [][]byte) {
++type visionTLSDetection struct {
++	isTLS, isTLS12orAbove, enableXTLS bool
++	numberOfPacketToFilter            int
++}
++
++func (c *VisionConn) needsTLSFilter() bool {
++	c.tlsAccess.Lock()
++	defer c.tlsAccess.Unlock()
++	return c.numberOfPacketToFilter > 0
++}
++
++// Read and Write may inspect packets concurrently. Serialize only detection
++// state and give the writer an immutable decision snapshot; never hold this
++// lock across provider, protocol or direct network I/O.
++func (c *VisionConn) filterTLS(buffers [][]byte) (state visionTLSDetection) {
++	c.tlsAccess.Lock()
++	defer func() {
++		state = visionTLSDetection{c.isTLS, c.isTLS12orAbove, c.enableXTLS, c.numberOfPacketToFilter}
++		c.tlsAccess.Unlock()
++	}()
++	if c.numberOfPacketToFilter <= 0 {
++		return
++	}
+ 	for _, buffer := range buffers {
+ 		c.numberOfPacketToFilter--
+ 		if len(buffer) > 6 {
+@@ -298,15 +356,16 @@ func (c *VisionConn) filterTLS(buffers [][]byte) {
+ 			c.logger.Trace("XtlsFilterTls stop filtering ", len(buffer))
+ 		}
+ 	}
++	return
+ }
+ 
+-func (c *VisionConn) padding(buffer *buf.Buffer, command byte) *buf.Buffer {
++func (c *VisionConn) padding(buffer *buf.Buffer, command byte, isTLS bool) *buf.Buffer {
+ 	contentLen := 0
+ 	paddingLen := 0
+ 	if buffer != nil {
+ 		contentLen = buffer.Len()
+ 	}
+-	if contentLen < 900 && c.isTLS {
++	if contentLen < 900 && isTLS {
+ 		l, _ := rand.Int(rand.Reader, big.NewInt(500))
+ 		paddingLen = int(l.Int64()) + 900 - contentLen
+ 	} else {
+diff --git a/tmp/kernel-vision-compatibility-20261024/candidate/third_party/sing-vmess/vless/vision_buffers_test.go b/vless/vision_buffers_test.go
+new file mode 100644
+index 0000000..6d28061
+--- /dev/null
++++ b/vless/vision_buffers_test.go
+@@ -0,0 +1,75 @@
++package vless
++
++import (
++	"bytes"
++	"crypto/tls"
++	"net"
++	"runtime"
++	"testing"
++
++	"github.com/sagernet/sing/common/logger"
++)
++
++type visionBufferFixture struct {
++	before   uint64
++	input    bytes.Reader
++	rawInput bytes.Buffer
++	after    uint64
++}
++
++func TestVisionTLSBufferLayoutAndGCLifetime(t *testing.T) {
++	owner := &visionBufferFixture{before: 17, after: 29}
++	input, raw, err := visionTLSBuffers(owner)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if input != &owner.input || raw != &owner.rawInput {
++		t.Fatal("wrong provider buffer address")
++	}
++	for i := 0; i < 8; i++ {
++		runtime.GC()
++		input.Reset([]byte("input"))
++		raw.Reset()
++		_, _ = raw.WriteString("raw")
++		if owner.input.Len() != 5 || owner.rawInput.String() != "raw" || owner.before != 17 || owner.after != 29 {
++			t.Fatal("provider allocation changed")
++		}
++	}
++}
++
++func TestVisionTLSBufferLayoutRejectsUnknownShapes(t *testing.T) {
++	type promoted struct{ visionBufferFixture }
++	for name, owner := range map[string]any{
++		"nil": nil, "typed-nil": (*visionBufferFixture)(nil), "value": visionBufferFixture{},
++		"scalar": new(int), "missing": &struct{}{}, "promoted": &promoted{},
++		"input-type": &struct {
++			input    bytes.Buffer
++			rawInput bytes.Buffer
++		}{},
++		"raw-type": &struct {
++			input    bytes.Reader
++			rawInput bytes.Reader
++		}{},
++		"pointer-field": &struct {
++			input    *bytes.Reader
++			rawInput bytes.Buffer
++		}{},
++	} {
++		t.Run(name, func(t *testing.T) {
++			if input, raw, err := visionTLSBuffers(owner); err == nil || input != nil || raw != nil {
++				t.Fatal("invalid layout admitted")
++			}
++		})
++	}
++}
++
++func TestVisionTLSProviderUnknownAndNilRejected(t *testing.T) {
++	a, b := net.Pipe()
++	defer a.Close()
++	defer b.Close()
++	for _, conn := range []net.Conn{a, nil, (*tls.Conn)(nil)} {
++		if result, err := NewVisionConn(a, conn, [16]byte{}, logger.NOP()); err == nil || result != nil {
++			t.Fatal("unsupported provider admitted")
++		}
++	}
++}
+diff --git a/tmp/kernel-vision-compatibility-20261024/candidate/third_party/sing-vmess/vless/vision_concurrent_test.go b/vless/vision_concurrent_test.go
+new file mode 100644
+index 0000000..1646cd7
+--- /dev/null
++++ b/vless/vision_concurrent_test.go
+@@ -0,0 +1,106 @@
++//go:build with_utls
++
++package vless
++
++import (
++	"bytes"
++	"context"
++	"crypto/tls"
++	"errors"
++	"io"
++	"net"
++	"sync"
++	"testing"
++	"time"
++
++	"github.com/sagernet/sing/common/logger"
++)
++
++// net.Conn allows one reader and one writer concurrently. Exercise detection
++// before direct mode, where both directions inspect the first eight packets.
++func TestVisionConcurrentPlainTraffic(t *testing.T) {
++	certificate, roots := visionTestCertificate(t)
++	listener, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer listener.Close()
++	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
++	defer cancel()
++	serverDone := make(chan error, 1)
++	go func() {
++		conn, err := listener.Accept()
++		if err != nil {
++			serverDone <- err
++			return
++		}
++		defer conn.Close()
++		_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
++		provider := tls.Server(conn, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS13})
++		if err = provider.HandshakeContext(ctx); err != nil {
++			serverDone <- err
++			return
++		}
++		vision, err := NewVisionConn(provider, provider, [16]byte{1}, logger.NOP())
++		if err == nil {
++			err = visionConcurrentExchange(vision, 7, 9)
++		}
++		serverDone <- err
++	}()
++	conn, err := net.DialTimeout("tcp", listener.Addr().String(), time.Second)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer conn.Close()
++	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
++	provider := visionProviderFactories()["refraction-UConn"](conn, roots)
++	if err = provider.HandshakeContext(ctx); err != nil {
++		t.Fatal(err)
++	}
++	vision, err := NewVisionConn(provider, provider, [16]byte{1}, logger.NOP())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err = visionConcurrentExchange(vision, 9, 7); err != nil {
++		t.Error(err)
++	}
++	select {
++	case err = <-serverDone:
++		if err != nil {
++			t.Error(err)
++		}
++	case <-ctx.Done():
++		t.Fatal("concurrent Vision server not joined")
++	}
++}
++
++func visionConcurrentExchange(conn *VisionConn, send, receive byte) error {
++	const count = 64
++	writeDone := make(chan error, 1)
++	var start sync.WaitGroup
++	start.Add(1)
++	go func() {
++		start.Wait()
++		for i := 0; i < count; i++ {
++			if _, err := conn.Write(bytes.Repeat([]byte{send}, 1024)); err != nil {
++				writeDone <- err
++				return
++			}
++		}
++		writeDone <- nil
++	}()
++	start.Done()
++	actual := make([]byte, count*1024)
++	_, readErr := io.ReadFull(conn, actual)
++	writeErr := <-writeDone
++	if readErr != nil || writeErr != nil {
++		return errors.Join(readErr, writeErr)
++	}
++	if !bytes.Equal(actual, bytes.Repeat([]byte{receive}, len(actual))) {
++		return errors.New("concurrent payload changed")
++	}
++	if conn.directRead || conn.directWrite {
++		return errors.New("plain payload incorrectly entered direct mode")
++	}
++	return nil
++}
+diff --git a/tmp/kernel-vision-compatibility-20261024/candidate/third_party/sing-vmess/vless/vision_providers_test.go b/vless/vision_providers_test.go
+new file mode 100644
+index 0000000..d687b53
+--- /dev/null
++++ b/vless/vision_providers_test.go
+@@ -0,0 +1,254 @@
++//go:build with_utls
++
++package vless
++
++import (
++	"bytes"
++	"context"
++	"crypto/ecdsa"
++	"crypto/elliptic"
++	"crypto/rand"
++	"crypto/tls"
++	"crypto/x509"
++	"crypto/x509/pkix"
++	"errors"
++	"fmt"
++	"io"
++	"math/big"
++	"net"
++	"runtime"
++	"testing"
++	"time"
++
++	meta "github.com/metacubex/utls"
++	refraction "github.com/refraction-networking/utls"
++	"github.com/sagernet/sing/common/logger"
++)
++
++type visionHandshakeConn interface {
++	net.Conn
++	HandshakeContext(context.Context) error
++}
++type visionProviderFactory func(net.Conn, *x509.CertPool) visionHandshakeConn
++
++func visionTestCertificate(t *testing.T) (tls.Certificate, *x509.CertPool) {
++	t.Helper()
++	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
++	if err != nil {
++		t.Fatal(err)
++	}
++	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "localhost"},
++		DNSNames: []string{"localhost"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
++		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
++	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
++	if err != nil {
++		t.Fatal(err)
++	}
++	parsed, err := x509.ParseCertificate(der)
++	if err != nil {
++		t.Fatal(err)
++	}
++	pool := x509.NewCertPool()
++	pool.AddCert(parsed)
++	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}, pool
++}
++
++func visionProviderFactories() map[string]visionProviderFactory {
++	return map[string]visionProviderFactory{
++		"standard-Conn": func(c net.Conn, pool *x509.CertPool) visionHandshakeConn {
++			return tls.Client(c, &tls.Config{ServerName: "localhost", RootCAs: pool, MinVersion: tls.VersionTLS13})
++		},
++		"meta-Conn": func(c net.Conn, pool *x509.CertPool) visionHandshakeConn {
++			return meta.Client(c, &meta.Config{ServerName: "localhost", RootCAs: pool, MinVersion: meta.VersionTLS13})
++		},
++		"meta-UConn": func(c net.Conn, pool *x509.CertPool) visionHandshakeConn {
++			return meta.UClient(c, &meta.Config{ServerName: "localhost", RootCAs: pool, MinVersion: meta.VersionTLS13}, meta.HelloChrome_Auto)
++		},
++		"refraction-Conn": func(c net.Conn, pool *x509.CertPool) visionHandshakeConn {
++			return refraction.Client(c, &refraction.Config{ServerName: "localhost", RootCAs: pool, MinVersion: refraction.VersionTLS13})
++		},
++		"refraction-UConn": func(c net.Conn, pool *x509.CertPool) visionHandshakeConn {
++			return refraction.UClient(c, &refraction.Config{ServerName: "localhost", RootCAs: pool, MinVersion: refraction.VersionTLS13}, refraction.HelloChrome_Auto)
++		},
++	}
++}
++
++// This wrapper checks the same advertised CastReader contract as the product's
++// REALITY wrapper. Actual REALITY authentication is separately tested in core.
++type visionReplaceableProvider struct{ net.Conn }
++
++func (c visionReplaceableProvider) Upstream() any         { return c.Conn }
++func (visionReplaceableProvider) ReaderReplaceable() bool { return true }
++
++func TestVisionTLSProvidersActualHandshakeAndDirect(t *testing.T) {
++	for name, factory := range visionProviderFactories() {
++		for _, wrapped := range []bool{false, true} {
++			t.Run(fmt.Sprintf("%s/wrapped-%v", name, wrapped), func(t *testing.T) { visionProviderExchange(t, factory, wrapped, false, tls.VersionTLS13, 0) })
++		}
++	}
++}
++
++func TestVisionTLSProvidersRejectBadCertificate(t *testing.T) {
++	for name, factory := range visionProviderFactories() {
++		t.Run(name, func(t *testing.T) { visionProviderExchange(t, factory, false, true, tls.VersionTLS13, 0) })
++	}
++}
++
++type visionLimitedReadConn struct {
++	net.Conn
++	limit  int
++	vision *VisionConn
++}
++
++func (c *visionLimitedReadConn) Read(p []byte) (int, error) {
++	limit := c.limit
++	if limit < 0 {
++		limit = -limit
++	} else if c.vision == nil || !c.vision.filterTLS(nil).enableXTLS {
++		limit = 0
++	}
++	if limit > 0 && len(p) > limit {
++		p = p[:limit]
++	}
++	return c.Conn.Read(p)
++}
++
++func TestVisionTLSFragmentedDetectionFallsBackSafely(t *testing.T) {
++	for name, factory := range visionProviderFactories() {
++		t.Run(name, func(t *testing.T) { visionProviderExchange(t, factory, true, false, tls.VersionTLS13, -32) })
++	}
++}
++
++func TestVisionTLS12RemainsRecordMode(t *testing.T) {
++	for name, factory := range visionProviderFactories() {
++		t.Run(name, func(t *testing.T) { visionProviderExchange(t, factory, false, false, tls.VersionTLS12, 0) })
++	}
++}
++
++func TestVisionTLSFragmentedProviderBuffers(t *testing.T) {
++	for name, factory := range visionProviderFactories() {
++		t.Run(name, func(t *testing.T) { visionProviderExchange(t, factory, true, false, tls.VersionTLS13, 32) })
++	}
++}
++
++func TestVisionUTLSNilProvidersRejected(t *testing.T) {
++	a, b := net.Pipe()
++	defer a.Close()
++	defer b.Close()
++	for _, conn := range []net.Conn{(*meta.Conn)(nil), (*meta.UConn)(nil), &meta.UConn{}, (*refraction.Conn)(nil), (*refraction.UConn)(nil), &refraction.UConn{}} {
++		if result, err := NewVisionConn(a, conn, [16]byte{}, logger.NOP()); err == nil || result != nil {
++			t.Fatal("nil provider admitted")
++		}
++	}
++}
++
++func visionProviderExchange(t *testing.T, factory visionProviderFactory, wrapped, badCertificate bool, innerVersion uint16, readLimit int) {
++	t.Helper()
++	certificate, roots := visionTestCertificate(t)
++	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
++	defer cancel()
++	listener, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer listener.Close()
++	uuid := [16]byte{1, 3, 5, 7}
++	payload := bytes.Repeat([]byte("actual-inner-TLS13-over-Vision/"), 4096)
++	serverDone := make(chan error, 1)
++	go func() {
++		c, err := listener.Accept()
++		if err != nil {
++			serverDone <- err
++			return
++		}
++		defer c.Close()
++		_ = c.SetDeadline(time.Now().Add(10 * time.Second))
++		provider := tls.Server(c, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS13})
++		if err = provider.HandshakeContext(ctx); err != nil {
++			serverDone <- err
++			return
++		}
++		protocol := &visionLimitedReadConn{Conn: provider, limit: readLimit}
++		vision, err := NewVisionConn(protocol, provider, uuid, logger.NOP())
++		protocol.vision = vision
++		if err != nil {
++			serverDone <- err
++			return
++		}
++		inner := tls.Server(vision, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: innerVersion, MaxVersion: innerVersion})
++		if err = inner.HandshakeContext(ctx); err != nil {
++			serverDone <- err
++			return
++		}
++		actual := make([]byte, len(payload))
++		_, err = io.ReadFull(inner, actual)
++		if err == nil && !bytes.Equal(actual, payload) {
++			err = errors.New("server payload mismatch")
++		}
++		if err == nil {
++			_, err = inner.Write(actual)
++		}
++		if err == nil && (vision.directRead != (innerVersion == tls.VersionTLS13 && readLimit >= 0) || vision.directWrite != (innerVersion == tls.VersionTLS13 && readLimit >= 0)) {
++			err = errors.New("server Vision direct/record mode differs from detected TLS state")
++		}
++		serverDone <- err
++	}()
++	c, err := net.DialTimeout("tcp", listener.Addr().String(), time.Second)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer c.Close()
++	_ = c.SetDeadline(time.Now().Add(10 * time.Second))
++	if badCertificate {
++		roots = x509.NewCertPool()
++	}
++	provider := factory(c, roots)
++	err = provider.HandshakeContext(ctx)
++	if badCertificate {
++		if err == nil {
++			t.Error("untrusted outer certificate admitted")
++		}
++		_ = c.Close()
++	} else if err == nil {
++		var inspected net.Conn = provider
++		if wrapped {
++			inspected = visionReplaceableProvider{provider}
++		}
++		var vision *VisionConn
++		protocol := &visionLimitedReadConn{Conn: provider, limit: readLimit}
++		vision, err = NewVisionConn(protocol, inspected, uuid, logger.NOP())
++		protocol.vision = vision
++		if err == nil {
++			runtime.GC()
++			inner := tls.Client(vision, &tls.Config{ServerName: "localhost", RootCAs: roots, MinVersion: innerVersion, MaxVersion: innerVersion})
++			err = inner.HandshakeContext(ctx)
++			if err == nil {
++				runtime.GC()
++				_, err = inner.Write(payload)
++			}
++			if err == nil {
++				actual := make([]byte, len(payload))
++				_, err = io.ReadFull(inner, actual)
++				if err == nil && !bytes.Equal(actual, payload) {
++					err = errors.New("client payload mismatch")
++				}
++			}
++			if err == nil && (vision.directRead != (innerVersion == tls.VersionTLS13 && readLimit >= 0) || vision.directWrite != (innerVersion == tls.VersionTLS13 && readLimit >= 0)) {
++				err = errors.New("client Vision direct/record mode differs from detected TLS state")
++			}
++			if err == nil && vision.tlsOwner == nil {
++				err = errors.New("provider owner was not retained")
++			}
++		}
++	}
++	_ = c.Close()
++	_ = listener.Close()
++	select {
++	case serverErr := <-serverDone:
++		if !badCertificate && (err != nil || serverErr != nil) {
++			t.Fatalf("actual TLS/Vision exchange: client=%v server=%v", err, serverErr)
++		}
++	case <-ctx.Done():
++		t.Fatal("TLS/Vision server not joined")
++	}
++}
+diff --git a/vless/vision_utls.go b/vless/vision_utls.go
+index fa6d9c9..05647ec 100644
+--- a/vless/vision_utls.go
++++ b/vless/vision_utls.go
+@@ -4,23 +4,44 @@ package vless
+ 
+ import (
+ 	"net"
+-	"reflect"
+-	"unsafe"
+ 
+ 	N "github.com/sagernet/sing/common/network"
+ 
+-	utls "github.com/metacubex/utls"
++	meta "github.com/metacubex/utls"
++	refraction "github.com/refraction-networking/utls"
+ )
+ 
+ func init() {
+-	tlsRegistry = append(tlsRegistry, func(conn net.Conn) (loaded bool, netConn net.Conn, reflectType reflect.Type, reflectPointer uintptr) {
+-		uConn, loaded := N.CastReader[*utls.UConn](conn)
++	tlsRegistry = append(tlsRegistry, func(conn net.Conn) (loaded bool, netConn net.Conn, owner any) {
++		uConn, loaded := N.CastReader[*meta.UConn](conn)
+ 		if loaded {
+-			return true, uConn.NetConn(), reflect.TypeOf(uConn.Conn).Elem(), uintptr(unsafe.Pointer(uConn.Conn))
++			if uConn == nil || uConn.Conn == nil {
++				return true, nil, nil
++			}
++			return true, uConn.NetConn(), uConn.Conn
+ 		}
+-		tlsConn, loaded := N.CastReader[*utls.Conn](conn)
++		tlsConn, loaded := N.CastReader[*meta.Conn](conn)
+ 		if loaded {
+-			return true, tlsConn.NetConn(), reflect.TypeOf(tlsConn).Elem(), uintptr(unsafe.Pointer(tlsConn))
++			if tlsConn == nil {
++				return true, nil, nil
++			}
++			return true, tlsConn.NetConn(), tlsConn
++		}
++		return
++	}, func(conn net.Conn) (loaded bool, netConn net.Conn, owner any) {
++		uConn, loaded := N.CastReader[*refraction.UConn](conn)
++		if loaded {
++			if uConn == nil || uConn.Conn == nil {
++				return true, nil, nil
++			}
++			return true, uConn.NetConn(), uConn.Conn
++		}
++		tlsConn, loaded := N.CastReader[*refraction.Conn](conn)
++		if loaded {
++			if tlsConn == nil {
++				return true, nil, nil
++			}
++			return true, tlsConn.NetConn(), tlsConn
+ 		}
+ 		return
+ 	})
