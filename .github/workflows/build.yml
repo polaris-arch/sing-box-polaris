@@ -2101,6 +2101,21 @@ jobs:
       run: python -m pip install jsonschema==4.23.0
     - name: Execute final-package Cronet smoke
       run: python scripts/ci/native_release_index.py smoke native
+    - name: Verify controlled native peer runner contracts
+      if: matrix.id == 'linux-amd64-purego'
+      run: python -B -m unittest discover -s scripts/ci -p 'test_protocol_peer.py'
+    - name: Execute same-run Linux native Naive and MASQUE controlled peers
+      if: matrix.id == 'linux-amd64-purego'
+      timeout-minutes: 12
+      run: python -B scripts/ci/protocol_peer.py native --output "${{ runner.temp }}/native-controlled-peer-public"
+    - name: Preserve sanitized native peer receipt only
+      if: always() && matrix.id == 'linux-amd64-purego'
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: native-controlled-peer-${{ github.sha }}
+        path: ${{ runner.temp }}/native-controlled-peer-public/receipt.json
+        if-no-files-found: error
+        retention-days: 7
     - name: Upload actual smoke receipt
       uses: actions/upload-artifact@v4
       with:
