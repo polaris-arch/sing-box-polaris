@@ -157,6 +157,22 @@ def run_logged(command, *, cwd, env, logfile, timeout):
                 process.wait(timeout=15)
 
 
+def finalize_evidence(output, receipt, source_status, primary_error):
+    """Try both records, but never hide the original gate failure with I/O failure."""
+    errors = []
+    for name, operation in (
+            ('source status', lambda: source_status('final')),
+            ('gate receipt', lambda: (output / 'gate.json').write_text(json.dumps(receipt, indent=2) + '\n'))):
+        try:
+            operation()
+        except Exception as error:
+            errors.append(error)
+            if primary_error is not None:
+                primary_error.add_note('final ' + name + ' also failed: ' + type(error).__name__)
+    if errors and primary_error is None:
+        raise errors[0]
+
+
 def main():
     parser = argparse.ArgumentParser();parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -205,7 +221,22 @@ def main():
         return code == 0
 
     try:
-        receipt['visionSource'] = validate_vision_source(ROOT)
+        vision_diagnostics = {}
+        vision_error = None
+        try:
+            receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)
+        except Exception as error:
+            vision_error = error
+            receipt['errors'].append('vision-source: ' + str(error))
+            vision_diagnostics['error'] = str(error)
+            raise
+        finally:
+            try:
+                (output / 'vision-source.json').write_text(json.dumps(vision_diagnostics, indent=2) + '\n')
+            except OSError as diagnostic_error:
+                receipt['errors'].append('vision-source diagnostics: ' + str(diagnostic_error))
+                if vision_error is None:
+                    raise
         execute('verify-modules', ['go', 'mod', 'verify'])
         for name, command in commands(ldflags):
             if execute(name, command):
@@ -242,8 +273,7 @@ def main():
                     receipt['errors'].append(name + ': ' + repr(error))
         execute('module-source-clean', ['git', 'diff', '--exit-code', '--', 'go.mod', 'go.sum'])
     finally:
-        source_status('final')
-        (output / 'gate.json').write_text(json.dumps(receipt, indent=2) + '\n')
+        finalize_evidence(output, receipt, source_status, sys.exc_info()[1])
     if receipt['errors']:
         raise RuntimeError('; '.join(receipt['errors']))
 

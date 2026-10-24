@@ -9,13 +9,13 @@ class TestVisionSourceContract(unittest.TestCase):
   for kind in ('bytes','mode','extra','missing','link','root-replace','provider-version','patch','notice','tree'):
    with self.subTest(kind=kind),tempfile.TemporaryDirectory() as tmp:
     root=Path(tmp)
-    for name in ('go.mod',BINDING,'release/dependency-sources/sing-vmess-vision.patch',
-                 'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt'):
-     target=root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(ROOT/name,target)
-    shutil.copytree(ROOT/'third_party/sing-vmess',root/'third_party/sing-vmess')
+    from test_vision_source import fixture,git
+    fixture(root)
     target=root/'third_party/sing-vmess/vless/vision.go'
     if kind=='bytes':target.write_bytes(target.read_bytes()+b'\n')
-    elif kind=='mode':target.chmod(0o755)
+    elif kind=='mode':
+     if sys.platform=='win32':git(root,'update-index','--chmod=+x','third_party/sing-vmess/vless/vision.go')
+     else:target.chmod(0o755)
     elif kind=='extra':(target.parent/'foreign.go').write_text('package vless\n')
     elif kind=='missing':target.unlink()
     elif kind=='link':target.unlink();target.symlink_to(ROOT/'third_party/sing-vmess/vless/vision.go')
@@ -29,7 +29,12 @@ class TestVisionSourceContract(unittest.TestCase):
      target=root/'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt';target.write_bytes(b'wrong')
     else:
      target=root/BINDING;doc=json.loads(target.read_text());doc['replacementTree']='0'*40;target.write_text(json.dumps(doc))
-    with self.assertRaises(ValueError):validate(root)
+    expected={'bytes':'worktree bytes|complete source', 'mode':'HEAD/index|complete source',
+              'extra':'worktree bytes|complete source', 'missing':'worktree bytes|complete source',
+              'link':'replacement link', 'root-replace':'root replacement',
+              'provider-version':'provider pin', 'patch':'patch identity', 'notice':'upstream notice',
+              'tree':'complete source'}[kind]
+    with self.assertRaisesRegex(ValueError,expected):validate(root)
 
 class TestCIContract(unittest.TestCase):
  def test_vision_vendor_source_and_product_graph_gates_are_complete(self):
@@ -48,7 +53,7 @@ class TestCIContract(unittest.TestCase):
   self.assertNotIn('continue-on-error',step)
   self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
   source=(ROOT/'scripts/ci/utls_gate.py').read_text()
-  self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT)",source)
+  self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)",source)
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
