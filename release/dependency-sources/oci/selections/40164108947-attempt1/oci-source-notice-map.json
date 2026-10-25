@@ -1,0 +1,3015 @@
+{
+  "crossArchitectureSourceAssociations": [
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1WslqElVitprLQ+ZFEisYYqEHQUE=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      },
+      "recipe": {
+        "commit": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "directoryTreeSHA": "ba3f698751b5ba86e3b21425887afea2e2282f89",
+        "origin": "alpine-base",
+        "selector": "release/dependency-sources/oci/supplements/39791192772-attempt1/selection-manifest.json"
+      },
+      "reuseScope": "Source recipe, complete inputs and notices only; current architecture, APK checksum, image and core remain independently bound.",
+      "sourceAssociation": {
+        "artifact": "oci-linux-386",
+        "package": {
+          "A": "x86",
+          "C": "Q1WslqElVitprLQ+ZFEisYYqEHQUE=",
+          "L": "MIT",
+          "P": "alpine-release",
+          "V": "3.24.3-r0",
+          "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+          "o": "alpine-base"
+        }
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1fG5jX4aq+0bLOwFdhQWzpfYRVr0=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      },
+      "recipe": {
+        "commit": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "directoryTreeSHA": "cf049142e972ade53e9a4d9afbdaeb6b0a2cf277",
+        "origin": "ca-certificates",
+        "selector": "release/dependency-sources/oci/supplements/39791192772-attempt1/selection-manifest.json"
+      },
+      "reuseScope": "Source recipe, complete inputs and notices only; current architecture, APK checksum, image and core remain independently bound.",
+      "sourceAssociation": {
+        "artifact": "oci-linux-386",
+        "package": {
+          "A": "x86",
+          "C": "Q1fG5jX4aq+0bLOwFdhQWzpfYRVr0=",
+          "L": "MPL-2.0 AND MIT",
+          "P": "ca-certificates-bundle",
+          "V": "20261020-r0",
+          "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+          "o": "ca-certificates"
+        }
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1OzZ7tqzxuGCWilkEh66NQtwACjE=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      },
+      "recipe": {
+        "commit": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "directoryTreeSHA": "91ac4452385f6c3e888fba5b4b085e905e58c4af",
+        "origin": "musl",
+        "selector": "release/dependency-sources/oci/supplements/39791192772-attempt1/selection-manifest.json"
+      },
+      "reuseScope": "Source recipe, complete inputs and notices only; current architecture, APK checksum, image and core remain independently bound.",
+      "sourceAssociation": {
+        "artifact": "oci-linux-386",
+        "package": {
+          "A": "x86",
+          "C": "Q1fFW8R9xHCOpmZ8Lx8US2MOLQv14=",
+          "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+          "P": "musl-utils",
+          "V": "1.2.6-r3",
+          "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+          "o": "musl"
+        }
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1FYEp2NP1m9Ye4d08sauTKhYbBSM=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      },
+      "recipe": {
+        "commit": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "directoryTreeSHA": "ae4a51fac23d738f9920db90fe1d8cf229450c0f",
+        "origin": "zlib",
+        "selector": "release/dependency-sources/oci/supplements/39791192772-attempt1/selection-manifest.json"
+      },
+      "reuseScope": "Source recipe, complete inputs and notices only; current architecture, APK checksum, image and core remain independently bound.",
+      "sourceAssociation": {
+        "artifact": "oci-linux-386",
+        "package": {
+          "A": "x86",
+          "C": "Q1pAOAYwB/10m/c2P7wqt7TWXvYrE=",
+          "L": "Zlib",
+          "P": "zlib",
+          "V": "1.3.2-r1",
+          "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+          "o": "zlib"
+        }
+      }
+    }
+  ],
+  "exactPackageAssociations": [
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q18Pz9wvTaBYr2RzvEXE6rYpFiJbI=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1xvm97RfYRLbxsLtXZtLDXA1chQg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1xkf35sxisCLVCGBnj4vs0K4vz6o=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1WslqElVitprLQ+ZFEisYYqEHQUE=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1mORwZxDqDQ8Sjv+Cr/TR2s30sZs=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q16KawChgMmy563A+wn4N49dfpVFE=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1PjNTTxzXobeQSPe2M9sWCGeukdk=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1XL0UrMbxgExbrGx33CxJLwELD8c=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q13xE06QGRXSRmNxZRW7XtgeUxQHw=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1fG5jX4aq+0bLOwFdhQWzpfYRVr0=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1swHWeO4Jk4h1KU2GK2gFD0mZQvQ=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1VLeNVIhM90W8RLfFLfSXv7HCa48=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1DpoNJJKSw2YjEio4bbcadaIoXpg=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1CVBM1tuO+rFQKlJeqV5MWjI0qRg=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1OIfUdXzC4/89bAUj3mKfZ8Dmsvw=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1qmRm1scOHtW5upxlnaO0WEEh6Yo=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1kvkQBeV0tdy0rEv9AkzbxG6bwis=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1TZjzQhWHu0kEJ50nmrbnLYqHMbU=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q14A6mKPjWhZUhC7w8bX41XZo0XIQ=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1fFW8R9xHCOpmZ8Lx8US2MOLQv14=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1nVUdgo6cjuUsWAHB1gRoKOvxV1I=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1rTdw68bhpnk2njgPvIvHHDvoNJs=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1KIuNlPJcmVMnVVhQOIGNririxWo=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1ZkTa3rt3iHjla/cQ5AjBG3gOVA8=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1ybqdyq5oQVN8KWPWe9WppeEqB9g=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q18OWD+8Wb3rRP8R3xdVKa5IU1NGU=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-386",
+      "package": {
+        "A": "x86",
+        "C": "Q1pAOAYwB/10m/c2P7wqt7TWXvYrE=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q18Pz9wvTaBYr2RzvEXE6rYpFiJbI=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1xvm97RfYRLbxsLtXZtLDXA1chQg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q12Na4DlPAWad+SRXaeLqWTz/+okA=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1WslqElVitprLQ+ZFEisYYqEHQUE=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1eGEwqPLTrGn8MWEYdXt+gVG4uMM=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1LOlgbxwxQ4KXtA31h12862avtnU=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1tUBevAL33YvpW2JlxUskPVRWq48=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1XL0UrMbxgExbrGx33CxJLwELD8c=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1u5EAmbDnuKr2yRSXmG/co6uxPTU=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1fG5jX4aq+0bLOwFdhQWzpfYRVr0=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1ubqhYMW2Z+LZyyQCCZknhvXStOk=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1stvtY3e3CwJPyWQOnjlB9nQqEvU=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1uTzpVzwdDbPup84yhBrQhXq8SlQ=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1HA3ulzTPIvyXzdGBkTu9cQ5t+wg=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1JwHVBHl62eyxjUSAYmd61L+OPZ0=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1nzGObjJNaCcnSCkZTPasavut7RI=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1xkO48EgoNXfJpOl4LyRPU05LueM=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1IMTJDqnSCp3ToE3q3yxsT2QjNkM=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1dw6DBNlY3O2Y12mX356Podtcoy8=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1UTctqvsjRkaWDspNehP3BjJPJNY=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1nVUdgo6cjuUsWAHB1gRoKOvxV1I=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1ZqfcRSV1pIxl/7ehFlO/1ZTOn28=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1lFsW43i8AORNidTegSS7p2R/300=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1AT+QPQuiGWc6673QT3S7XtgrAfA=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1wiD0pRJaMTr3M+mN75QTK7Hp1A0=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q18OWD+8Wb3rRP8R3xdVKa5IU1NGU=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-amd64",
+      "package": {
+        "A": "x86_64",
+        "C": "Q1T1JcjMIE+EuLTKQNs744mVjwVsY=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q17hOhjufinXWHIBdAPVnASE2s2WM=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1MzfIPSHI6xFODUuydeVh3TSTvbg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1m7z7L5ECOmx5YDpt9KgB//1PpzE=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1vLeR64tqL6geAGmf21410czPK/I=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1IkGH1KAYOjWOYz+LEM+6/DYvyNE=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1SgTJu6favMJKF6z8/lCEBzaL7Fg=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1sDXzQaKnyBanDGT5LJ2fnrrTcBc=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1ax93IqPnu5fQTo75Bv1ywGZ7pdA=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1sjcYcNCIswq5HDHaMFDOwLL+qAo=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q11TztRkPmb8I4jKteprSsaIu3KW8=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1qBlDUKpCYQ7luKaF6pJGn04EmVI=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1Bgs3iY7EUPtERG9yqfmyM4FY9EY=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1RNYQGnKQM38zC+7b0VYGd944KSo=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1Pf9/8EMgp4i78D6v19SiyanY4Fk=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1CsBeDezxd4JArefcI1kL/jFj0+g=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q16IkwNqnosui/cXrFVvQdnmnbvr0=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1CaO6uEZ0XHrVWQ09g4+n+BOm9pk=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1V/tiKuqVPk8emGR4PJaaEA9Gm+g=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1+Y25WAu7lkKcc7miBs6tJ16ExrI=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1dU4T2xZUwXtUWJwygmrpMLuPiNw=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1B++P/6bRQnRGOfKTLqUfEp96Jb0=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1KUj6ZVsWOGMPbZ2nqnU/P/V6tL8=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q10XI/mE1ud15HSAEqfFnFoaoRH1U=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1E3eZORWpnu0nQmZZg8GTQ0kxTXU=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1tf5Js6V0yl92xpedw049/9yJuTI=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q1+xAmcPPDk2ereTd7GE3Nq8Q2Wvg=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v6",
+      "package": {
+        "A": "armhf",
+        "C": "Q18GhsoGS+Ea3c06o0CVfY0bCnnVI=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1cqcVZ7F+1x3djx1PQY9si6ef9Fw=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1WOahFQyfVUlCwLlZOiLmrSF8F3Q=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1KJOCH63VPkE9BTAMRHRoSK4CsqY=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1vLeR64tqL6geAGmf21410czPK/I=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1p99N0NVp1NVzVvB8GEH/AoPvZyg=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1qDxikxKPhnamvCjlizqpBFWUxJU=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1WZfENOtw/Y2PBeN44Dd+oP2WaQ4=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1ynB0MYBxVMB+rkdDkk3jEYxxsFU=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1RujAzvq90vsW+kciCSTdRyd5jDo=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q11TztRkPmb8I4jKteprSsaIu3KW8=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1lG8OQ6p9BnYKdj0MAc9awPxVFRA=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1OUPJq3VOS3mJcvc0ls+NUMt9T/4=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q13N/mSB2wwyUGxh7WhuslZGo9rUY=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1IBhppAhTRiN8QihS7kEWm8JCP90=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1yNEhAktgmePwd7TOG+UaT2Vffd8=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1fHs/XVTyRQWgjmLIpU5QXCHvmXg=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1u5pEK3/IBfS/FhDk3DK8rwGp4XI=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1R2pWbteC3r2ISlEqxFpYyhZc6hk=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q17kIR5F0eM1i7LLyk+n/wt0IPV64=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1+j9gbGmhBJgkgW0mNl+XY8Uu25c=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1B++P/6bRQnRGOfKTLqUfEp96Jb0=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q16Z1V2hItbSNxdUva8h0pT+JVFwI=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1x55I1fka5JZ83ZskgvJ6LOGRA8g=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1wRPSd8QmFdItQiKDzWutKwOsEKE=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1NVpsTBdWZOgdBBdFm159NLFqvEM=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1+xAmcPPDk2ereTd7GE3Nq8Q2Wvg=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm-v7",
+      "package": {
+        "A": "armv7",
+        "C": "Q1FOY+KclBk4aBBTf5WApGotNv5kM=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q17hOhjufinXWHIBdAPVnASE2s2WM=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1MzfIPSHI6xFODUuydeVh3TSTvbg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1ZEDSgayIcU2W6hJkHMark83sG4w=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1vLeR64tqL6geAGmf21410czPK/I=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1EfOebJKtWJwE97O8Tajr7Rhu+8o=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1Tmocg1FubGlvWQ6+OAUIG9yLWko=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1cc/8KYHy1Us5N8Jb4vUWmz+wRTI=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1ax93IqPnu5fQTo75Bv1ywGZ7pdA=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1pu+V2QOpCdgleZRuh6pkvinzs2M=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q11TztRkPmb8I4jKteprSsaIu3KW8=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1DJzr9ZbIpl8s1zSomENWF6MQREM=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q185lBVZZFfo04G/qflaBhcPayHJs=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1Ry4Nq4useKoU061sRzfPYEhlGXQ=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1nd3DZ6uRv/vKf+I4jGECIMBUisw=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1hEKvOZvv8fBWUp+l57eRAPiG1T4=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1wNl5+kek1M3VEWlcXl8M4+jPHqI=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1K/EtkqrW/Ch8vrksthxYMu4krsE=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1fPvgmLY6scIS37WtG8V+V3AmPLY=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1LxWdAiUjx6a3hymmYymFy3cU++Y=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1w4Ehr//R8t12gfesZgWKPNcj0DA=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1/MzFElM7Tf9vRK02sG+bQ+iEjR8=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1TZV+GUqb8OKwRjco5tm5KgffM0g=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1GPvWxvOSv5J0EQfi4YdIeWwjGK8=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q13IwcpjYtZI8DZAGEuviRS2K2Q/s=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1QQfD9w3aMC4MPtRimUGSRaiigLQ=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1+xAmcPPDk2ereTd7GE3Nq8Q2Wvg=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-arm64",
+      "package": {
+        "A": "aarch64",
+        "C": "Q1jP3JcWVZiDTJ6FovhLCh8M8Qt1I=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1fVN8Nhj6i4EkUxej75HNqYB0vfc=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1n5LBNVLmN3zmvRhEmYocVCKyloQ=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1Tv0mE9O7V2UIEugzra8KbyXJTf0=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1XUOjXJ+MwmfInCuumJS6vRRkizQ=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.25.0_alpha20260805-r0",
+        "c": "5aad27a98146f1557e9e3408f615c59d44a41acb",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1LH8XaUI2t9n0ZH/3sBfQz3/Ys6k=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.7-r0",
+        "c": "1397144f807abac6f9df704d21a1f71827df13b6",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1S2sEmLSsL3ZQlaH6mQwO1utF0PU=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r2",
+        "c": "052899da729dfcd14a202ddd63e5d5cc5e2fb533",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1MdJlgeqPtw7D4+3dbqFuTiP2unc=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.38.0-r4",
+        "c": "9ac9bf5318a9ccc8af34b1389eba3df432488673",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1AKzExIYCecp/vBqRndu0plEJkjI=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.38.0-r4",
+        "c": "9ac9bf5318a9ccc8af34b1389eba3df432488673",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q15KMVGuN8Ue0tcJCitcrOHcqrF6Q=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "1c5642bff0a86736a8ae3a78f13977867add64ff",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1k12ICSFXibY1K5NerQ4jZrGrujY=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20260611-r0",
+        "c": "5f8337afea8674524d360be5fdb513e7e57fcc29",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1+S3GVtfkY6viu7hVmz/HORltZuw=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "8bfc27fafbf6c27761b150c571c3075a5a3db0de",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1KjavKlJQ3ZQHT4xAvg1MS9yQ0jw=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1U6pmJB2CVsYrceeVXX4pvkCDH9A=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.7-r0",
+        "c": "1397144f807abac6f9df704d21a1f71827df13b6",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1sQ6kjnsktLxVddRHceVNpoatWHU=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "5ebc3527f96ca84caf382abd7f37d4009110e57d",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1PWl3Rbjb/F1nLezj6wcCfYTHw7I=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q190RcirPuOrXHFhTtAayXeX32aOs=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20261017-r0",
+        "c": "8b3f794ac226c47c66f0900fa1cd44f8d2c4e116",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1KeNLtZLILfiWBngoCHEcA3k6JNM=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.2-r0",
+        "c": "3f568d5532084c2124867f5ef64ca09d8c473698",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1tRLff/NucfK1Flbm5puHgCYdKjg=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "5ebc3527f96ca84caf382abd7f37d4009110e57d",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1mt4vXUvSHk5ir2AAoUtVmQ9gmuU=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r6",
+        "c": "6a9a5fe7d82a10358a59391e4117cc9aeefcb690",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1HMKh70Ifb5q8ILYOpQWVDW5gxzQ=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r2",
+        "c": "b0c8ea10e8f29cabe336b2e5d864124940e126ab",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1dbnpsKS/FFKJ03HBRdeMn8dOQQc=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20261017-r0",
+        "c": "8b3f794ac226c47c66f0900fa1cd44f8d2c4e116",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1lFuba3sQja4R9Oeq6n9xFNZMdA8=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.7-r0",
+        "c": "201b2e1d027107008e20e9beb2a4b3e0769018fc",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q12do7wKozAgmzyUz0L+BU7MNhJy0=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1tS1iUg8DDaUSYv/pmZ2sgPSht28=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1WqlBxgP6iZDve/sBPkcFD0XhMb8=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.38.0-r4",
+        "c": "9ac9bf5318a9ccc8af34b1389eba3df432488673",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1J39GWXZy5rMGPNPS3pg0rTlH0hw=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "cda14c83f09d51b5e04129ba528c3273621c2d78",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-loong64",
+      "package": {
+        "A": "loongarch64",
+        "C": "Q1wj6vWphmMh2mrasHJ67nfFTLiqM=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r0",
+        "c": "f248b33b5943c7dc69bf691031d7612ab2e8ed93",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1G6A5IUAyfV//JuBGujj5oJiTmHs=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q13DSHD615N1Zdk8K9lxfzfeQ7AIo=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1VXaVJWwSFzL3tOS/gfZ0GWAtHZw=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1mPWhwxEdZ9gUAvHRhknPIFiBqP4=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1yx1zxWzMbDBr5tY2iwx5819FHc4=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1712hQlyo+McbS9uvmBGST8GeFc8=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1m7m5HKqZUsXdeuXkNJDGnMoOQj8=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1kCA5NghYXJYylC2kfeU8jvd6dGA=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1IpRjedwK+wTBM3heOPw9ib0hJkM=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1MELRLT/lsiDsazlqGIh8HoKsLp8=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1i5jCAatWLW/31tH6CJNnCSuWbOg=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1p2nJLka4cIIcgnQklEVbguIDv0w=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q10yt/vIQwrwfbeNVcR2NCaaHIiOk=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1ZSCWntn6cNP3znS/2rC/owEzZOE=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1wRlbqbgEdf14s1wHXMrD+33fwWc=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1qT7rzixGGzayOjWqvbpsZ5/f1tY=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1XZJLzIPtGTkHOsDfiMu6/33799M=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1dVExRIMQ8NAANWQS+PoNmdFYtWM=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1TEoTxAYtFWWCx8Dn+z4c1rnTFPs=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1+/bW2xf6nikyn6ToxMU8o1ccauM=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1ea/hojR7dn6LVruHzu6EWjJJREg=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1+ZhUJd6dEcoM/u08mhDjFBRbGQ8=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q13wwvEbxwqpAu7h1x6+CKxtZFYY0=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1tWSohoMk+amRQC6kA6uISyCjYDE=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1KV+FlIfPAlU3ynNHZLITrrJ9Ae8=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1Xf1sqDEkqYQxyWPFtDBz33NToes=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-ppc64le",
+      "package": {
+        "A": "ppc64le",
+        "C": "Q1zCD4jWc9kFf5AwxtlseNPrpZtTg=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1K/YxO3apAaH3HzqO47ynUdcXxEg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1XdqtA0v2yP3G2MAzAtqgNYy2N+8=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1ybJyzu5c+mH+ZFBP9C+LaXCOi9M=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1w7YrXJIGNvVA4LhX9y5R4hoWwH0=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1dJZZH6gDb+wQfcJFkTfC+a/bAxQ=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1FtkqY2i+rk15moeHiugHV7Q7CBs=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1yK8WEvqQdG0bmG8yAvAv1kZ89Ag=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1k8cWVLptyYfH3n8bOrvsoDcURKk=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q10oDPX4C8scoWxzrf6OwCq0Rwx88=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1s9LDQsURflbVsIYbl5SMQPDi4t8=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1cPwyZhAherSjhlMxTfwt36eNj5k=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1r1h4JTwtg7Bia9xcjHDjLTfvE4o=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1TNPcszr7iIjjHZd/0HdcbGJdDyA=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1XRVMPnM6b/3odZHBAfQbvjPqhc4=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1RFe2QIKhNCAFE8M5Uo5Knk9am1k=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1/B8NMUoCxG89EXH671ROqIuygYA=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1rZc4QBfiQgzIHlb4UNikJJ5fhoI=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1Sqc04BIf7g/KA54GgF502WRqp9A=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1x9rdHXSSldN43H42Q75w1X3dTAI=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1dcSjJB7MbRn0O3wxKpJh8vamIWA=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1aMQ0HuwoZ8XIHHXxKN5z5rQJaV4=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q1zeiLEsyn2mYO+f8DkyjMwE45pmw=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-riscv64",
+      "package": {
+        "A": "riscv64",
+        "C": "Q18OWD+8Wb3rRP8R3xdVKa5IU1NGU=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q18Pz9wvTaBYr2RzvEXE6rYpFiJbI=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1xvm97RfYRLbxsLtXZtLDXA1chQg=",
+        "L": "GPL-2.0-only",
+        "P": "alpine-baselayout-data",
+        "V": "3.7.2-r1",
+        "c": "60a7585bbab2fa0f762504eb617dbca90216e31f",
+        "o": "alpine-baselayout"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1dwPFqKYsLTe0fwFfg2VdJjpja4U=",
+        "L": "MIT",
+        "P": "alpine-keys",
+        "V": "2.6-r0",
+        "c": "b9f23becced4d7b3ccc0fa0f28530243ccd314a0",
+        "o": "alpine-keys"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1WslqElVitprLQ+ZFEisYYqEHQUE=",
+        "L": "MIT",
+        "P": "alpine-release",
+        "V": "3.24.3-r0",
+        "c": "ee92350c8a4509152dc91c693814215a884c07c3",
+        "o": "alpine-base"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1LXNxXNsxVnNfm0tO+dkcUxdH1CQ=",
+        "L": "GPL-2.0-only",
+        "P": "apk-tools",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1zp869ZNc2jns/Ao9h+xc5aStQYY=",
+        "L": "GPL-3.0-or-later",
+        "P": "bash",
+        "V": "5.3.9-r1",
+        "c": "1522c3193610902d8493f9790a2755c11f21f26d",
+        "o": "bash"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1XAwIP+jYCIwdX6g7FTkujjxRWms=",
+        "L": "GPL-2.0-only",
+        "P": "busybox",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1XL0UrMbxgExbrGx33CxJLwELD8c=",
+        "L": "GPL-2.0-only",
+        "P": "busybox-binsh",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1BSxCKVveF0ed985PrGMJVKfis0I=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1fG5jX4aq+0bLOwFdhQWzpfYRVr0=",
+        "L": "MPL-2.0 AND MIT",
+        "P": "ca-certificates-bundle",
+        "V": "20261020-r0",
+        "c": "e78f5987166c6ffbe23f6472e2e8f040298fe2da",
+        "o": "ca-certificates"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1Sxr96oDAWsNK0XQ31anQXjjmP5U=",
+        "L": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+        "P": "gmp",
+        "V": "6.3.0-r4",
+        "c": "206e7b39f7884d62a174aba4d33a42454518c1c2",
+        "o": "gmp"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1EsuxsvKpGpiNzWNkYRAE+uKHXkk=",
+        "L": "MIT",
+        "P": "jansson",
+        "V": "2.15.0-r0",
+        "c": "88919740865a31680e7f1c4cb568dfd7a87e9f08",
+        "o": "jansson"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1GwHmLQL0j5GTiKXLnc2pb8xVyLg=",
+        "L": "GPL-2.0-only",
+        "P": "libapk",
+        "V": "3.0.8-r0",
+        "c": "4588b452722bd4800efdc6cce4f6e980e02a997f",
+        "o": "apk-tools"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1PX64fGNlIKGfsmADNIUC07sFBwQ=",
+        "L": "Apache-2.0",
+        "P": "libcrypto3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1oalNNQk/j9Nv6gWRh1boO4YGRnw=",
+        "L": "LGPL-2.1-or-later",
+        "P": "libmnl",
+        "V": "1.0.5-r2",
+        "c": "fc95c59998285564fbcb0bfb2443898c62e10171",
+        "o": "libmnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1qiURG1FGZVHA0xfL5CWP6zU2QFo=",
+        "L": "X11",
+        "P": "libncursesw",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1cCveNdgiY4amxPiRnF9uh0ofuL0=",
+        "L": "GPL-2.0-or-later",
+        "P": "libnftnl",
+        "V": "1.3.1-r0",
+        "c": "80fae26950fd406b1645cfa15aa6eba0b850ecef",
+        "o": "libnftnl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1SYudWKfG+VWRxWGbiKzaiip/lFU=",
+        "L": "Apache-2.0",
+        "P": "libssl3",
+        "V": "3.5.9-r0",
+        "c": "29b9ec24b1b5b39aeef51fa2a044210e2ec5258e",
+        "o": "openssl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1Jjzviz4y+fQa0awhuO31Bii411U=",
+        "L": "MIT",
+        "P": "musl",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1RPbPTEc+rsPUPIIP3TcSTi+e8A0=",
+        "L": "MIT AND BSD-2-Clause AND GPL-2.0-or-later",
+        "P": "musl-utils",
+        "V": "1.2.6-r3",
+        "c": "8f79d39391b46d6dbf1800fb68b8212a21d5ee2e",
+        "o": "musl"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1Sqc04BIf7g/KA54GgF502WRqp9A=",
+        "L": "X11",
+        "P": "ncurses-terminfo-base",
+        "V": "6.6_p20260516-r0",
+        "c": "2cee8a7328d061418336ad327b512d96bcd7bc5e",
+        "o": "ncurses"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q13yLzzR/0uWLG3A0tOG5sspXeE4Q=",
+        "L": "GPL-2.0-or-later",
+        "P": "nftables",
+        "V": "1.1.6-r1",
+        "c": "e0326a8ae770e02742daadffe8a8e64d8290ce06",
+        "o": "nftables"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1oEGH5pxFcHT9wlEuJc+JEEIA50Y=",
+        "L": "GPL-3.0-or-later",
+        "P": "readline",
+        "V": "8.3.3-r1",
+        "c": "a854c03acdac188901fb012f7acbee70a36e8041",
+        "o": "readline"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q19cHzgSp6x6/PInZf95ddfRXB4/I=",
+        "L": "GPL-2.0-only",
+        "P": "scanelf",
+        "V": "1.3.9-r1",
+        "c": "c61801eeacb3ffcd9c2025b09e402153bb93fb39",
+        "o": "pax-utils"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1SVPES/O/s5SwbZ8If0rYqLRcJ2Q=",
+        "L": "GPL-2.0-only",
+        "P": "ssl_client",
+        "V": "1.37.0-r31",
+        "c": "c3ef5d10e6ef6528852c51f0564963e2f8c1be19",
+        "o": "busybox"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q18OWD+8Wb3rRP8R3xdVKa5IU1NGU=",
+        "L": "Public-Domain",
+        "P": "tzdata",
+        "V": "2026e-r0",
+        "c": "faa135a1a22c90309bf381766a7cc47490dea786",
+        "o": "tzdata"
+      }
+    },
+    {
+      "artifact": "oci-linux-s390x",
+      "package": {
+        "A": "s390x",
+        "C": "Q1Bf8pOiR+KVi+P4mH6XlkqM2KVYs=",
+        "L": "Zlib",
+        "P": "zlib",
+        "V": "1.3.2-r1",
+        "c": "0afa2da0e8c8051c6f8f64a7a388e5a259904245",
+        "o": "zlib"
+      }
+    }
+  ],
+  "legalConclusion": false,
+  "newRecipeCount": 0,
+  "producerAttempt": 1,
+  "producerRunId": 40164108947,
+  "schema": "polaris-exact-oci-source-reassociation-v1",
+  "sharedMaterials": {
+    "producerAttempt": 1,
+    "producerRunId": 39887556943,
+    "relabelled": false,
+    "selector": {
+      "bytes": 13304,
+      "path": "release/dependency-sources/oci/selections/39887556943-attempt1/selection-manifest.json",
+      "sha256": "3f4980a25e8f319243ce8a72ba9cf84bc2af8e71d7e57a0ad7fd835effca26fe"
+    },
+    "sourceCommit": "c6c0d8b3b83ab4d6e7b953dd2dbdb7efe6f8021a"
+  },
+  "sourceCommit": "368b2489784dbe06498a18e83cc2257f94868c46"
+}

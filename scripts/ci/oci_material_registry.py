@@ -29,7 +29,8 @@ _require = legacy._require
 
 
 def supports_source(source):
-    return source in (legacy.SOURCE, SOURCE)
+    from oci_material_selection_12_3 import SOURCE as next_source
+    return source in (legacy.SOURCE, SOURCE, next_source)
 
 
 def _selector_record():
@@ -224,6 +225,9 @@ def _load(artifacts, source_root, publisher_root):
 
 
 def load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root):
+    import oci_material_selection_12_3 as current
+    if source == current.SOURCE:
+        return current.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
     if source == legacy.SOURCE:
         return legacy.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
     _require(type(run_id) is int and type(attempt) is int
@@ -241,6 +245,9 @@ def _checked(policy):
 
 
 def bundle_name(policy):
+    import oci_material_selection_12_3 as current
+    if policy.get('schema') == current.SCHEMA:
+        return current.bundle_name(policy)
     if policy.get('schema') != SCHEMA:
         legacy._checked_policy(policy)
         return 'polaris-oci-material-supplement-39791192772-attempt1.tar.gz'
@@ -249,6 +256,9 @@ def bundle_name(policy):
 
 
 def check_image(policy, artifact_name, actual_image_path):
+    import oci_material_selection_12_3 as current
+    if policy.get('schema') == current.SCHEMA:
+        return current.check_image(policy, artifact_name, actual_image_path)
     if policy.get('schema') != SCHEMA:
         return legacy.check_image(policy, artifact_name, actual_image_path)
     actual, _, _ = _checked(policy)
@@ -260,6 +270,9 @@ def check_image(policy, artifact_name, actual_image_path):
 
 
 def write_bundle(policy, path):
+    import oci_material_selection_12_3 as current
+    if policy.get('schema') == current.SCHEMA:
+        return current.write_bundle(policy, path)
     if policy.get('schema') != SCHEMA:
         return legacy.write_bundle(policy, path)
     actual, members, _ = _checked(policy)
@@ -301,6 +314,9 @@ def write_bundle(policy, path):
 
 
 def record(policy, publisher_sha, bundle_path):
+    import oci_material_selection_12_3 as current
+    if policy.get('schema') == current.SCHEMA:
+        return current.record(policy, publisher_sha, bundle_path)
     if policy.get('schema') != SCHEMA:
         return legacy.record(policy, publisher_sha, bundle_path)
     _require(re.fullmatch('[0-9a-f]{40}', publisher_sha or '') is not None, 'invalid immutable publisher commit')

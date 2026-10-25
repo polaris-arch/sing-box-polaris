@@ -21,6 +21,7 @@ import time
 import zipfile
 import struct
 import zlib
+import publisher_peer_evidence as peer_evidence
 from contextlib import contextmanager, closing
 
 IO_CHUNK = 1024 * 1024
@@ -217,7 +218,7 @@ def artifact_archive(artifact, budget):
             yield archive, members
 
 
-def measure_member(archive, item, destination=None, json_limit=None):
+def measure_member(archive, item, destination=None, json_limit=None, json_decoder=json.loads):
     if json_limit is not None:
         require(item.file_size <= json_limit, 'JSON evidence exceeds serialized budget')
     digest, data, count = hashlib.sha256(), bytearray(), 0
@@ -228,7 +229,7 @@ def measure_member(archive, item, destination=None, json_limit=None):
             destination.write(chunk)
         if json_limit is not None:
             data.extend(chunk)
-    return {'bytes': count, 'sha256': digest.hexdigest()}, json.loads(data) if json_limit is not None else None
+    return {'bytes': count, 'sha256': digest.hexdigest()}, json_decoder(data) if json_limit is not None else None
 
 REPO = 'polaris-arch/sing-box-polaris'
 RID = 1421657509
@@ -416,7 +417,10 @@ def public_asset_name(name):
     return name
 
 
-def publication(role, artifact, relative):
+def publication(role, artifact, relative, source=None):
+    private = peer_evidence.mapping(ROOT, role, artifact, relative, source)
+    if private is not None:
+        return private
     name, disposition = producer_publication(role, artifact, relative)
     return (public_asset_name(name) if name is not None else None), disposition
 
@@ -773,7 +777,9 @@ def measure_oci_materials(path, artifact, source, run_id, attempt, policy=None):
 
 def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None, materialize=False):
     budget = budget or ScratchBudget(work)
-    scope = release_scope(VERSION)
+    peer_policy = peer_evidence.select(ROOT, source, VERSION, TAG, source_tree, tag_object)
+    scope = peer_evidence.scoped(release_scope(VERSION), peer_policy, runs)
+    peer_receipt = None
     require(set(runs) in ({'all', 'linux', 'docker'}, {'all', 'linux', 'docker', 'signed'}), 'all, linux and docker runs are mandatory')
     result = {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'sourceCommit': source,
               'scopeSha256': sha(SCOPE), 'reviewed': False, 'runs': {}, 'signedOnlyBlockers': BLOCKED,
@@ -787,6 +793,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         require(run['event'] == 'workflow_dispatch', 'explicit build dispatch required')
         artifacts = pages(f'repos/{REPO}/actions/runs/{rid}/artifacts', 'artifacts')
         names = [x['name'] for x in artifacts]
+        require(len({x['id'] for x in artifacts}) == len(artifacts), 'duplicate Actions artifact IDs')
         verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
         oci_policy = None
         if role == 'docker':
@@ -797,6 +804,9 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
         for a in artifacts:
+            is_peer = peer_policy is not None and a['name'] == peer_policy['selection']['artifact']['name']
+            if is_peer:
+                peer_evidence.check_api(peer_policy, role, run, a)
             require(not a['expired'], 'expired artifact')
             require(datetime.fromisoformat(a['created_at'].replace('Z', '+00:00')) >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')), 'artifact predates current run attempt')
             arun = a.get('workflow_run', {})
@@ -804,6 +814,8 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
             files = {}
             client_sources = []
             with artifact_archive(a, budget) as (archive, members):
+                if is_peer:
+                    peer_evidence.members(peer_policy, members)
                 for item in members:
                     if item.is_dir():
                         measure_member(archive, item)
@@ -811,12 +823,15 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                     relative = item.filename
                     budget.state.update(artifactId=a['id'], artifact=a['name'], member=relative)
                     name = PurePosixPath(relative).name
-                    public_name, disposition = publication(role, a['name'], relative)
+                    public_name, disposition = publication(role, a['name'], relative, source)
                     candidate = name.startswith('polaris-candidate-manifest-')
-                    evidence = candidate or (a['name'], relative) in {
+                    evidence = is_peer or candidate or (a['name'], relative) in {
                         ('publisher-run-receipt', 'publisher-run-receipt.json'),
                         ('binary-native-index', 'polaris-upstream-native-assets.json')}
                     limit = (3 * 1024**2 if candidate and client_platform(a['name']) else JSON_LIMIT) if evidence else None
+                    if is_peer:
+                        limit = peer_evidence.JSON_LIMIT
+                    decoder = peer_evidence.strict_json if is_peer else json.loads
                     retained = materialize or a['name'] == 'binary-native-index'
                     if retained:
                         target = work / role / a['name'] / relative
@@ -824,7 +839,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                         budget.admit(item.file_size, 'retained ' + relative)
                         try:
                             with target.open('xb') as stream:
-                                measured_file, provenance = measure_member(archive, item, stream, limit)
+                                measured_file, provenance = measure_member(archive, item, stream, limit, json_decoder=decoder)
                             if role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
                                 measured_file['ociMaterialReuse'] = measure_oci_materials(target, a['name'], source, rid, run['run_attempt'], oci_policy)
                         except BaseException as error:
@@ -840,8 +855,11 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                             image.flush()
                             measured_file['ociMaterialReuse'] = measure_oci_materials(Path(image.name), a['name'], source, rid, run['run_attempt'], oci_policy)
                     else:
-                        measured_file, provenance = measure_member(archive, item, json_limit=limit)
+                        measured_file, provenance = measure_member(archive, item, json_limit=limit, json_decoder=decoder)
                     files[relative] = dict(measured_file, releaseName=public_name, publicationDisposition=disposition)
+                    if is_peer:
+                        peer_receipt = provenance
+                        files[relative]['controlledPeerEvidence'] = peer_evidence.validate_receipt(peer_policy, measured_file, provenance)
                     if (a['name'], relative) == ('publisher-run-receipt', 'publisher-run-receipt.json'):
                         receipt = provenance
                     if candidate:
@@ -884,6 +902,10 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         if role in ('all', 'signed'):
             index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
             validate_final_index(index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
+            if role == 'all' and peer_policy is not None:
+                require(peer_receipt is not None, 'required controlled peer receipt missing')
+                peer_evidence.cross_bind(peer_policy, index, sha(work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json'), entry)
+                result['controlledPeerEvidence'] = peer_evidence.record(peer_policy, os.environ.get('GITHUB_SHA'))
             indexed_names = set()
             for record in [x['archive'] for x in index['platforms']] + [index['sourceArchive']]:
                 require(record['name'] not in indexed_names, 'duplicate native index name')
@@ -903,6 +925,8 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
 
 def assemble(actual, config, work, output, audit=None, materialize=True, budget=None):
     require(config.get('reviewed') is True, 'public release file scope is not reviewed')
+    peer_evidence.check_inventory(ROOT, actual, os.environ.get('GITHUB_SHA'))
+    require(actual.get('controlledPeerEvidence') == config.get('controlledPeerEvidence'), 'reviewed controlled peer selection differs')
     require(actual.get('distributionMaterials') == config.get('distributionMaterials'), 'reviewed shared materials differ')
     require(actual.get('ociMaterialSupplement') == config.get('ociMaterialSupplement'), 'reviewed OCI supplement differs')
     for field in ('repository', 'repositoryId', 'version', 'sourceCommit', 'sourceTree', 'tag', 'tagObject', 'scopeSha256'):
@@ -932,7 +956,8 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 require(f.get('ociMaterialReuse') == review.get('ociMaterialReuse'), 'reviewed OCI material reuse evidence differs')
                 require(f.get('androidRuntimeMaterials') == review.get('androidRuntimeMaterials'), 'reviewed Android runtime evidence differs')
                 require(f.get('androidMaterialReuse') == review.get('androidMaterialReuse'), 'reviewed Android material reuse evidence differs')
-                name, disposition = publication(role, artifact, relative)
+                require(f.get('controlledPeerEvidence') == review.get('controlledPeerEvidence'), 'reviewed controlled peer evidence differs')
+                name, disposition = publication(role, artifact, relative, actual['sourceCommit'])
                 require(review['releaseName'] == f['releaseName'] == name, 'public filename differs from source-owned mapping')
                 require(review.get('publicationDisposition') == f.get('publicationDisposition') == disposition,
                         'publication disposition differs from source-owned mapping')
@@ -968,8 +993,12 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
 
 def public_asset_stream(actual, budget):
     """Second immutable ZIP pass; at most one public member exists on disk."""
+    peer_evidence.check_inventory(ROOT, actual, os.environ.get('GITHUB_SHA'))
     for role, run in actual['runs'].items():
         for name, expected in run['artifacts'].items():
+            for relative, reviewed in expected['files'].items():
+                require(publication(role, name, relative, actual['sourceCommit']) ==
+                        (reviewed['releaseName'], reviewed['publicationDisposition']), 'public ZIP mapping changed')
             if not any(f['releaseName'] is not None for f in expected['files'].values()):
                 continue
             metadata = api(f'repos/{REPO}/actions/artifacts/{expected["id"]}')
@@ -985,7 +1014,7 @@ def public_asset_stream(actual, budget):
                         measure_member(archive, item)
                         continue
                     reviewed = expected['files'][item.filename]
-                    public_name, disposition = publication(role, name, item.filename)
+                    public_name, disposition = publication(role, name, item.filename, actual['sourceCommit'])
                     require((public_name, disposition) == (reviewed['releaseName'], reviewed['publicationDisposition']), 'public ZIP mapping changed')
                     if public_name is None:
                         measured, _ = measure_member(archive, item)
@@ -1396,7 +1425,7 @@ def replacement_expected(actual, digest):
     for role, run in actual['runs'].items():
         for artifact, item in run['artifacts'].items():
             for path, record in item['files'].items():
-                name, disposition = publication(role, artifact, path)
+                name, disposition = publication(role, artifact, path, actual['sourceCommit'])
                 require((record['releaseName'], record['publicationDisposition']) == (name, disposition),
                         'rebuilt inventory public mapping differs')
                 if name is None:
