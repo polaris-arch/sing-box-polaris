@@ -463,7 +463,7 @@ jobs:
         json.dump({key: os.environ[key] for key in keys}, open(sys.argv[1], 'w'), indent=2)
         PYCONTEXT
         go test -json -trimpath -mod=readonly -p=2 -count=1 -timeout=60s -tags "$BUILD_TAGS" -ldflags "$TEST_LDFLAGS" \
-          -run '^(TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)' \
+          -run '^(TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)' \
           . ./internal/runtimegraph ./route ./protocol/masque ./cmd/sing-box ./adapter/outbound \
           | tee "$evidence/tests.jsonl"
         python3 - "$evidence/tests.jsonl" <<'PYDIAGNOSTIC'
@@ -475,7 +475,7 @@ jobs:
             prefix + '/route': {'TestCleanupSnapshotConnectionTaskAndContention', 'TestCleanupSnapshotReferenceSignalsAndContention', 'TestFinalLogicalFlowActualTCPAndOwner', 'TestFinalLogicalFlowActualPacketCopyAndOwner', 'TestFinalLogicalFlowActualHalfCloseKeepsDownload', 'TestFinalLogicalFlowRealTCPCloseRace', 'TestFinalLogicalFlowRealTCPHalfClose', 'TestFinalLogicalFlowListenerSocksRuntimeCompletion', 'TestFinalLogicalFlowSealAndLateAttach', 'TestFinalLogicalFlowCopyCompletionsAndStaleContext', 'TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock', 'TestFinalLogicalFlowCloseErrorPanicAndUnknownPending', 'TestFinalLogicalFlowRegisterSealRace', 'TestFinalLogicalFlowResetKeepsAdmissionAndLiveFlow', 'TestFinalLogicalFlowSpliceAbortAndCompletion', 'TestFinalLogicalFlowDifferentManagerRejectsContext', 'TestFinalLogicalFlowWrapperPreservesPrivateJoinAndErrors', 'TestFinalLogicalFlowLateWrappedBothSidesAreJoined', 'TestFinalLogicalFlowPrivateWaitPanicAndCombinedIngress'},
             prefix + '/adapter/outbound': {'TestRuntimeFinalNestedExternalCloseJoinsPending', 'TestRuntimeFinalOwnedWaiterJoinsMethodAndClose', 'TestRuntimeFinalUnknownWrapperHasNoPrivateWaiter', 'TestRuntimeFinalInboundCompletionPreservesAndDeduplicates', 'TestRuntimeFinalPrivateWaiterPanicIsUnknown', 'TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself', 'TestRuntimeNestedOwnedCloseJoinsOneFixedWorker', 'TestRuntimeCarrierUncertainCloseIsStickyAndRetains'},
             prefix + '/protocol/masque': {'TestCleanupDiagnosticMasquePhaseAndPanic'},
-            prefix + '/cmd/sing-box': {'TestCleanupDiagnosticPanicDoesNotMaskCloseError', 'TestCleanupDiagnosticEncodingFailureIsFixed', 'TestCleanupDiagnosticFiniteSnapshotIsEncoded'},
+            prefix + '/cmd/sing-box': {'TestNativePeerNetLogFileLimitBound', 'TestNativePeerNetLogStartupPanicsArePrivateAndClosed', 'TestNativePeerNetLogDefaultAndPartialFlags', 'TestNativePeerNetLogPrivatePathAdmission', 'TestNativePeerNetLogLifecycleAndIdempotence', 'TestNativePeerNetLogStartupFailuresAreClosed', 'TestNativePeerNetLogChangedIdentityAndBoundReject', 'TestNativePeerNetLogUncertainFlushNeverDestroysOrSucceeds', 'TestCleanupDiagnosticPanicDoesNotMaskCloseError', 'TestCleanupDiagnosticEncodingFailureIsFixed', 'TestCleanupDiagnosticFiniteSnapshotIsEncoded'},
         }
         events = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
         if any(e.get('Action') in {'fail', 'skip'} for e in events):

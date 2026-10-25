@@ -23,6 +23,7 @@ from unittest import mock
 
 import protocol_peer as peer
 import protocol_peer_diagnostic as diagnostic
+import protocol_peer_netlog as native_log
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -105,15 +106,15 @@ class ControlledPeerContracts(unittest.TestCase):
         self.assertIn('-ldflags "$TEST_LDFLAGS"',command)
         self.assertIn('constant.Version=${{ needs.calculate_version.outputs.version }} ${LDFLAGS_SHARED} -s -w -buildid=',command)
         self.assertIn("'TEST_LDFLAGS'",command)
-        self.assertIn("-run '^(TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)'",command)
+        self.assertIn("-run '^(TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)'",command)
         self.assertIn('passed != names',command);self.assertIn("{'fail', 'skip'}",command)
         self.assertIn("!= set(required)",command)
         python=command.split("<<'PYDIAGNOSTIC'\n",1)[1].split('\nPYDIAGNOSTIC',1)[0]
         tree=ast.parse(python);assignment=next(node for node in tree.body if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='required' for t in node.targets))
         names=set()
         for node in ast.walk(assignment.value):
-            if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith(('TestCleanup','TestFinalLogicalFlow','TestRuntime')):names.add(node.value)
-        self.assertEqual(len(names),35)
+            if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith(('TestNativePeerNetLog','TestCleanup','TestFinalLogicalFlow','TestRuntime')):names.add(node.value)
+        self.assertEqual(len(names),43)
         for name in names:
             self.assertEqual(sum(bool(re.search(r'^func '+name+r'\(',file.read_text(),re.M)) for file in ROOT.rglob('*_test.go')),1)
         preserve=next(item for item in steps if item.get('name')=='Preserve exact Linux cleanup diagnostic test evidence')
@@ -196,7 +197,7 @@ class ControlledPeerContracts(unittest.TestCase):
         workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
         modules, external = native_smoke_dependency_contract(workflow)
         self.assertEqual(external, {'yaml', 'jsonschema'})
-        self.assertEqual(modules, {'test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic',
+        self.assertEqual(modules, {'test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic', 'protocol_peer_netlog',
             'native_release_index', 'tls_fingerprint_probe', 'release_identity', 'polaris_version',
             'apple_package_overlays', 'legacy_binary_version'})
 
@@ -1717,7 +1718,8 @@ class PeerFinitePredicateDiagnostics(unittest.TestCase):
                  'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
             closed=[]
             class FixtureCore:
-                def __init__(self,binary,config,directory,role,sha,events):
+                def __init__(self,binary,config,directory,role,sha,events,**kwargs):
+                    self.native_netlog_path=directory/(role+'.private.netlog.json');self.native_netlog_identity=(1,2)
                     self.role=role;self.pid=123;self.start_identity={'pid':123,'startTicks':456};self.bound_sha256=sha
                     self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':1}
                     self.log_path=directory/(role+'.private.log');self.log_path.write_bytes(b'')
@@ -1740,14 +1742,195 @@ class PeerFinitePredicateDiagnostics(unittest.TestCase):
                  mock.patch.object(peer,'naive_protocol_observation',return_value={'observedAllowlistedProtocolAndStatus':[],'successfulExpectedProtocolObserved':True}), \
                  mock.patch.object(peer,'verify_h3_only_carrier',return_value={}),mock.patch.object(peer,'retire_old_stream',return_value={'status':'CLOSED'}), \
                  mock.patch.object(peer,'peer_certificate_log_observation',side_effect=PermissionError('PRIVATE')), \
-                 mock.patch.object(peer,'negative_evidence',side_effect=RuntimeError('negative lacks exact remote peer certificate alert')) as matcher:
+                 mock.patch.object(native_log,'private_identity',return_value=(1,2)),mock.patch.object(native_log,'leaf_hash',return_value='a'*64), \
+                 mock.patch.object(native_log,'collect',side_effect=[{'result':'healthy'},RuntimeError('negative lacks exact remote peer certificate alert')]) as matcher:
                 result=peer.run_case(binary,row,root,'naive-h3','wrong-sni')
-            matcher.assert_called_once();self.assertEqual(result['error'],'negative lacks exact remote peer certificate alert')
+            self.assertEqual(matcher.call_count,2,result);self.assertEqual(result['error'],'negative lacks exact remote peer certificate alert')
             self.assertEqual(result['status'],'FAIL');self.assertNotIn('PRIVATE',json.dumps(result))
             self.assertEqual([v['phase'] for v in result['negativePeerObservations']],['proof_attempt','post_cleanup'])
             self.assertTrue(all(v['unavailable'] for v in result['negativePeerObservations']))
             self.assertIn('negative',closed);self.assertIn('healthy',closed);self.assertIn('peer',closed);self.assertEqual(closed.count('observer'),2)
             self.assertTrue(result['fixturesJoined']);self.assertEqual(result['descendantRetirement']['remaining'],[])
 
+
+
+class NativeNetLogEvidenceTests(unittest.TestCase):
+    PEM='-----BEGIN CERTIFICATE-----\nYWJj\n-----END CERTIFICATE-----\n'
+    def document(self,code=0,status=0,host='controlled.invalid',source=7):
+        return {'constants':{'logEventTypes':{'CERT_VERIFY_PROC':9,'OTHER':10},'logEventPhase':{'PHASE_BEGIN':1,'PHASE_END':2}},'events':[
+            {'type':9,'phase':1,'source':{'id':source,'type':3},'time':'12.5','params':{'host':host,'certificates':[self.PEM],'PRIVATE_SECRET':'do-not-return'}},
+            {'type':9,'phase':2,'source':{'id':source,'type':3},'time':'13.5','params':{'net_error':code,'cert_status':status,'PRIVATE_SECRET':'do-not-return'}}]}
+    def parse(self,doc,mutation='healthy',host='controlled.invalid'):
+        return native_log.certificate_observation(json.dumps(doc).encode(),host,native_log.leaf_hash(self.PEM),mutation)
+    def test_exact_native_certificate_results_and_no_sensitive_fields(self):
+        for mode,code,status,host in [('healthy',0,0,'controlled.invalid'),('wrong-ca',-202,4,'controlled.invalid'),('wrong-sni',-200,1,'wrong.invalid')]:
+            fact=self.parse(self.document(code,status,host),mode,host)
+            self.assertEqual(fact['netError'],code);self.assertEqual(fact['certStatus'],status)
+            self.assertEqual(fact['verificationCount'],1)
+            for secret in ('controlled.invalid','wrong.invalid','PRIVATE_SECRET','do-not-return','BEGIN CERTIFICATE'):self.assertNotIn(secret,json.dumps(fact))
+        doc=self.document();del doc['events'][1]['params']['net_error'];self.assertEqual(self.parse(doc)['netError'],0)
+    def test_generic_or_inconsistent_native_codes_never_prove_certificate(self):
+        for code,status in [(-356,0),(-202,0),(-202,5),(-200,1),(0,4),(-202,True)]:
+            with self.subTest(code=code,status=status),self.assertRaises(ValueError):self.parse(self.document(code,status),'wrong-ca')
+    def test_native_begin_end_source_host_leaf_and_order_are_bound(self):
+        mutations=[lambda d:d['events'].pop(0),lambda d:d['events'].pop(),lambda d:d['events'][1]['source'].update(id=8),lambda d:d['events'][0]['params'].update(host='another-private.invalid'),lambda d:d['events'][0]['params'].update(certificates=['-----BEGIN CERTIFICATE-----\nZGVm\n-----END CERTIFICATE-----\n']),lambda d:d['events'][1].update(time='1')]
+        for mutate in mutations:
+            doc=self.document();mutate(doc)
+            with self.assertRaises(ValueError):self.parse(doc)
+    def test_native_retry_results_are_bounded_complete_and_consistent(self):
+        doc=self.document(-202,4);other=self.document(-202,4,source=8);doc['events']+=other['events'];self.assertEqual(self.parse(doc,'wrong-ca')['verificationCount'],2)
+        doc['events'][-1]['params']['net_error']=-356
+        with self.assertRaises(ValueError):self.parse(doc,'wrong-ca')
+        doc=self.document();doc['events']+=copy.deepcopy(doc['events'])
+        with self.assertRaises(ValueError):self.parse(doc)
+        doc=self.document();doc['events']=[e for i in range(17) for e in self.document(source=i)['events']]
+        with self.assertRaises(ValueError):self.parse(doc)
+    def test_native_json_limits_duplicate_keys_constants_and_truncation_reject(self):
+        for raw in [b'',b'{',b'{"x":1,"x":2}',b'x'*(native_log.MAXIMUM_BYTES+1)]:
+            with self.assertRaises((ValueError,KeyError)):native_log.certificate_observation(raw,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy')
+        for alter in [lambda d:d['constants']['logEventTypes'].update(OTHER=9),lambda d:d['constants']['logEventPhase'].update(PHASE_END=1),lambda d:d.update(events=[{}]*(native_log.MAXIMUM_EVENTS+1))]:
+            d=self.document();alter(d)
+            with self.assertRaises(ValueError):self.parse(d)
+    def test_native_strict_event_scalar_types_and_nonfinite_constants(self):
+        for alter in [lambda d:d['events'][0].update(phase=True),lambda d:d['events'][0].update(type=True),lambda d:d['events'][0].update(time='9'*400),lambda d:d['events'][0].update(time='NaN'),lambda d:d['events'][0]['source'].update(id=True)]:
+            d=self.document(-202,4);alter(d)
+            with self.assertRaises(ValueError):self.parse(d,'wrong-ca')
+        raw=json.dumps(self.document(-202,4)).replace('"events":','"irrelevant":NaN,"events":').encode()
+        with self.assertRaises(ValueError):native_log.certificate_observation(raw,'controlled.invalid',native_log.leaf_hash(self.PEM),'wrong-ca')
+
+    def test_native_private_file_symlink_mode_size_and_replacement_reject(self):
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'private';peer.private_write(p,b'{}');identity=native_log.private_identity(p)
+            q=Path(td)/'link';q.symlink_to(p)
+            with self.assertRaises(ValueError):native_log.private_identity(q)
+            p.chmod(0o644)
+            with self.assertRaises(ValueError):native_log.private_identity(p)
+            p.chmod(0o600)
+            with p.open('r+b') as f:f.truncate(native_log.MAXIMUM_BYTES+1)
+            with self.assertRaises(ValueError):native_log.private_identity(p)
+            with p.open('rb'):
+                p.unlink();peer.private_write(p,b'{}');self.assertNotEqual(identity,native_log.private_identity(p))
+    def test_native_collect_requires_graceful_exact_bound_private_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'private';peer.private_write(path,json.dumps(self.document()))
+            proc=mock.Mock();proc.cleanup={'gracefulCleanupProven':True};proc.process.poll.return_value=0
+            proc.native_netlog_path=path;proc.native_netlog_identity=native_log.private_identity(path)
+            proc.pid=123;proc.start_identity={'startTicks':456};proc.bound_sha256='a'*64
+            fact=native_log.collect(proc,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy');self.assertEqual(fact['process']['pid'],123)
+            with mock.patch.object(native_log.os,'open',side_effect=PermissionError('PRIVATE')):
+                with self.assertRaises(native_log.NativeObservationIdentityError):native_log.collect(proc,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy')
+            with path.open('rb'):
+                path.unlink();peer.private_write(path,json.dumps(self.document()))
+                with self.assertRaises(native_log.NativeObservationIdentityError):native_log.collect(proc,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy')
+            proc.cleanup={'gracefulCleanupProven':False}
+            with self.assertRaises(ValueError):native_log.collect(proc,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy')
+
+    def test_native_rejection_keeps_only_fixed_failure_category_hash_and_pid(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'private';raw=b'{PRIVATE_HOST_SECRET';peer.private_write(path,raw)
+            proc=mock.Mock();proc.cleanup={'gracefulCleanupProven':True};proc.process.poll.return_value=0;proc.native_netlog_path=path;proc.native_netlog_identity=native_log.private_identity(path)
+            proc.pid=123;proc.start_identity={'startTicks':456};proc.bound_sha256='a'*64
+            with self.assertRaises(native_log.NativeObservationEvidenceError) as caught:native_log.collect(proc,'controlled.invalid',native_log.leaf_hash(self.PEM),'healthy')
+            fact=caught.exception.evidence;self.assertEqual(fact['category'],'malformed_json');self.assertEqual(fact['rawSHA256'],peer.digest(raw));self.assertEqual(fact['rawBytes'],len(raw));self.assertNotIn('PRIVATE',json.dumps(fact))
+            self.assertEqual(native_log.failure_category(RuntimeError('PRIVATE')),'unknown')
+            self.assertEqual(native_log.failure_category(native_log.NativeObservationIdentityError('PRIVATE')),'private_identity_unknown')
+
+    def test_failed_native_proofs_keep_fixed_pair_and_coverage_counts_only(self):
+        cases=[]
+        for code,status,pair in [(0,0,'healthy'),(-200,1,'wrong-sni'),(-356,512,'other')]:
+            cases.append((self.document(code,status),'result_mismatch',pair,2,1,1))
+        missing=self.document();missing['events']=[];cases.append((missing,'incomplete_or_unrelated',None,0,0,0))
+        missing=self.document();missing['events'].pop();cases.append((missing,'incomplete_or_unrelated',None,1,1,0))
+        mismatch=self.document(-202,4,host='PRIVATE');cases.append((mismatch,'incomplete_or_unrelated','wrong-ca',2,0,1))
+        for doc,category,pair,events,host,complete in cases:
+            with self.assertRaises(ValueError) as caught:self.parse(doc,'wrong-ca')
+            error=caught.exception;facts=error.native_fixed_observation
+            self.assertEqual(native_log.failure_category(error),category)
+            self.assertEqual(facts['certificateEvents'],events);self.assertEqual(facts['hostMatches'],host);self.assertEqual(facts['completePairs'],complete)
+            if pair:self.assertEqual(facts['resultPairs'][pair],1)
+            for secret in ('PRIVATE','controlled.invalid','BEGIN CERTIFICATE','-356','512'):self.assertNotIn(secret,json.dumps(facts))
+
+    def test_socket_row_diagnostics_full_snapshot_does_not_publish_identifiers(self):
+        relay=peer.UDPRelay(1)
+        try:
+            def row(local,remote,inode):return ['0',local,remote,'0','0','0','0','0','0',inode]
+            rows=[('udp',row('0100007F:1234','0100007F:ABCD','PRIVATE1')),('udp',row('00000000:1234','0100007F:FFFF','PRIVATE2'))]
+            facts=relay.source_row_diagnostics(rows,{'PRIVATE1'},'0100007F:1234','0100007F:ABCD',{'inode':'PRIVATE1'})
+            self.assertEqual(facts['rows'],2);self.assertEqual(facts['distinctTuples'],2);self.assertEqual(facts['distinctNonzeroInodes'],2)
+            self.assertEqual(facts['jointCategories'],{'udp_exact_relay_owned_prior':1,'udp_wildcard_other_foreign_new':1})
+            for value in ('PRIVATE1','PRIVATE2','1234','ABCD','FFFF'):self.assertNotIn(value,json.dumps(facts))
+            self.assertEqual(relay.source_row_diagnostics(rows*2,{'PRIVATE1'},'0100007F:1234','0100007F:ABCD',None)['distinctTuples'],2)
+            self.assertTrue(relay.source_row_diagnostics([('udp',[])],set(),'','',None)['unavailable'])
+        finally:relay.close()
+
+
+class NativeNetLogCaseControlTests(unittest.TestCase):
+    def exercise(self,mutation='wrong-ca',fault=None):
+        # Actual run_case/control/cleanup, explicit product and traffic fixtures.
+        # This is NOT a native handshake or producer acceptance result.
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);binary=root/'sing-box';binary.write_bytes(b'core');(root/'libcronet.so').write_bytes(b'side')
+            row={'core':{'member':'sing-box','bytes':4,'sha256':peer.digest(b'core')},'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
+            calls=[];fixtures=[];real_echo=peer.Echo
+            class Core:
+                def __init__(self,binary,config,directory,role,sha,events,**kwargs):
+                    self.role=role;self.pid={'peer':101,'healthy':102,'negative':103}[role];self.start_identity={'pid':self.pid,'pgrp':self.pid,'session':self.pid,'startTicks':456};self.bound_sha256=sha;self.closed=False
+                    self.native_netlog_path=directory/(role+'.private.netlog.json');self.native_netlog_identity=None
+                    self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':1}
+                    self.log_path=directory/(role+'.private.log');self.log_path.write_bytes(b'')
+                    self.cleanup={'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False,'pid':self.pid,'startIdentity':self.start_identity,'boundCoreSHA256':sha}
+                    calls.append(role+'.created')
+                def wait_tcp(self,p):pass
+                def wait_udp(self,p):pass
+                def close(self):
+                    calls.append(self.role+'.close')
+                    if self.role=='negative' and fault=='close':raise RuntimeError('fixed closure failure')
+                    self.closed=True
+            class Relay:
+                def __init__(self,target):self.port=peer.free_port();self.counts=[1,1]
+                def bind_owner(self,owner):pass
+                def prepare_owner_retirement(self):pass
+                def close(self):calls.append('observer.close')
+                def observation(self):return {'threadJoined':True,'allSocketsClosed':True,'errors':[]}
+            def exchange(*args,**kwargs):
+                if kwargs.get('label')=='negative':
+                    calls.append('negative.attempt')
+                    if fault=='echo':fixtures[0].received+=1
+                    if fault!='accepted':raise EOFError('fixed rejection')
+                return None,mock.Mock()
+            def collect(proc,host,leaf,mode):
+                calls.append(proc.role+'.collect');self.assertTrue(proc.closed);self.assertEqual(leaf,'a'*64)
+                self.assertEqual(host,'wrong.invalid' if mode=='wrong-sni' else 'controlled.invalid')
+                if fault==proc.role:raise ValueError('fixed invalid certificate proof')
+                if fault=='identity' and proc.role=='negative':raise native_log.NativeObservationIdentityError('PRIVATE')
+                return {'result':mode,'process':{'pid':proc.pid,'coreSHA256':proc.bound_sha256}}
+            def echo(*a,**kw):
+                f=real_echo(*a,**kw);fixtures.append(f);return f
+            with contextlib.ExitStack() as stack:
+                for obj,name,kwargs in [(peer,'certificate',{'side_effect':lambda directory,name:('WRONG_CA' if name.endswith('wrong-ca') else 'CA','CERT','KEY')}),(peer,'config_check',{'return_value':{}}),(peer,'CoreProcess',{'new':Core}),(peer,'UDPRelay',{'new':Relay}),(peer,'Echo',{'side_effect':echo}),(peer,'tcp_exchange',{'side_effect':exchange}),(peer,'bound_library',{'return_value':{'verified':True}}),(peer,'naive_protocol_observation',{'return_value':{'observedAllowlistedProtocolAndStatus':[],'successfulExpectedProtocolObserved':True}}),(peer,'verify_h3_only_carrier',{'return_value':{}}),(peer,'retire_old_stream',{'return_value':{'status':'CLOSED'}}),(native_log,'private_identity',{'return_value':(1,2)}),(native_log,'leaf_hash',{'return_value':'a'*64}),(native_log,'collect',{'side_effect':collect})]:stack.enter_context(mock.patch.object(obj,name,**kwargs))
+                if fault=='mutation':stack.enter_context(mock.patch.object(peer,'controlled_mutation',return_value={'negativeConfigurationSHA256':'b'*64}))
+                result=peer.run_case(binary,row,root,'naive-h3',mutation)
+            return result,calls
+    def test_actual_native_case_orders_healthy_negative_attempt_retirement_and_proof(self):
+        for mutation in ('wrong-ca','wrong-sni'):
+            result,calls=self.exercise(mutation)
+            self.assertEqual(result['status'],'PASS',result);self.assertTrue(result['continuationSafe'])
+            for first,second in [('healthy.close','healthy.collect'),('healthy.collect','negative.created'),('negative.created','negative.attempt'),('negative.attempt','negative.close'),('negative.close','negative.collect')]:self.assertLess(calls.index(first),calls.index(second))
+            self.assertFalse(result['negative']['nativeCertificatePending']);self.assertTrue(result['negative']['afterCompleteClientRetirementZeroEchoDelta'])
+            self.assertEqual([e['status'] for e in result['events'] if e['stage'].endswith('.native_certificate.verify')],['PASS','PASS'])
+            self.assertEqual([p['role'] for p in result['nativeCertificateProcesses']],['healthy','negative'])
+            self.assertEqual(result['negative']['nativeCertificate']['process']['pid'],103)
+    def test_actual_native_case_failure_does_not_skip_guards_or_cleanup(self):
+        for fault in ('healthy','negative','accepted','echo','close','mutation'):
+            result,calls=self.exercise(fault=fault)
+            self.assertEqual(result['status'],'FAIL',(fault,result));self.assertIn('peer.close',calls);self.assertIn('observer.close',calls)
+            if fault=='healthy':self.assertNotIn('negative.created',calls)
+            if fault in ('accepted','echo','close','mutation'):self.assertNotIn('negative.collect',calls)
+            if fault in ('close','mutation'):self.assertFalse(result['continuationSafe'])
+            self.assertNotIn('PRIVATE',json.dumps(result))
+    def test_actual_native_case_private_identity_failure_stops_after_all_owned_cleanup(self):
+        result,calls=self.exercise(fault='identity')
+        self.assertTrue(result['identityUncertain']);self.assertFalse(result['continuationSafe']);self.assertEqual(result['status'],'FAIL')
+        self.assertIn('peer.close',calls);self.assertIn('healthy.close',calls);self.assertIn('negative.close',calls);self.assertTrue(result['fixturesJoined']);self.assertNotIn('PRIVATE',json.dumps(result))
 
 if __name__=='__main__':unittest.main()
