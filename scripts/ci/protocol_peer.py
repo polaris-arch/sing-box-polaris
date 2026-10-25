@@ -1,5 +1,7 @@
 """Private controlled-peer runner. Never publishes or accepts user node URLs."""
 import argparse
+import copy
+import errno
 import contextlib
 import ctypes
 import concurrent.futures
@@ -191,58 +193,270 @@ class Echo:
 
 
 class UDPRelay:
-    """Loopback-only datagram observation without packet privileges or decryption."""
+    """Bounded, exact-child-owned UDP observation; never a generic loopback proxy."""
+    MAX_SOURCES = 16
+
     def __init__(self, target):
         self.front = None
-        self.back = None
+        self.target = target
+        self.sources = {}
+        self.counts = [0, 0]  # Successfully forwarded, not merely received.
+        self.received = [0, 0]
+        self.retired_drops = [0, 0]
+        self.errors = []
+        self.stop = threading.Event()
+        self.owner_ready = threading.Event()
+        self.finished = threading.Event()
+        self.owner = None
+        self.identity_uncertain = False
+        self.expected_owner_exit = False
+        self.owner_exit_observed = False
+        self.owner_exit_pending = False
+        self.owner_retirement_confirmed = False
+        self.terminal = 'starting'
+        self.phase = 'setup'
+        self.operation = 'socket'
+        self.direction = 'none'
+        self.failure_class = 'operation_error'
+        self.close_faults = []
         try:
             self.front = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.front.bind(('127.0.0.1', 0))
+            self.front.setblocking(False)
             self.port = self.front.getsockname()[1]
-            self.back = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.back.bind(('127.0.0.1', 0))
-            self.back.connect(('127.0.0.1', target))
-            self.client = None
-            self.counts = [0, 0]
-            self.errors = []
-            self.stop = threading.Event()
             self.thread = threading.Thread(target=self.serve)
             self.thread.start()
         except BaseException:
-            for sock in (self.front, self.back):
-                if sock is not None: sock.close()
+            if self.front is not None: self.front.close()
+            raise
+
+    def bind_owner(self, owner):
+        try:
+            if self.identity_uncertain or self.owner is not None or self.owner_ready.is_set():
+                raise IdentityFailure('UDP observer owner cannot be rebound')
+            if (owner.pidfd is None or owner.process.poll() is not None
+                    or process_identity(owner.pid) != owner.start_identity):
+                raise IdentityFailure('UDP observer exact child identity unavailable')
+            self.owner = owner
+            self.owner_identity = dict(owner.start_identity)
+            self.owner_ready.set()
+        except Exception:
+            self.identity_uncertain = True
+            raise IdentityFailure('UDP observer exact child identity unavailable') from None
+
+    def prepare_owner_retirement(self):
+        # Keep forwarding during SIGTERM. Only an actual successful owned-Popen
+        # exit permits blocking tail traffic without a false unknown-owner claim.
+        try:
+            if self.identity_uncertain:
+                raise IdentityFailure('UDP observer owner identity is uncertain')
+            if self.expected_owner_exit or self.owner is None: return
+            if self.owner.process.poll() is not None or process_identity(self.owner.pid) != self.owner_identity:
+                raise IdentityFailure('UDP observer cannot expect an already exited or changed owner')
+            self.expected_owner_exit = True
+        except Exception:
+            self.identity_uncertain = True
+            raise IdentityFailure('UDP observer owner retirement identity unavailable') from None
+
+    def source_inode(self, address):
+        owner = self.owner
+        if owner is None: raise RuntimeError('UDP observer owner not bound')
+        exit_code = owner.process.poll()
+        if exit_code is not None:
+            if not self.expected_owner_exit or exit_code != 0:
+                raise RuntimeError('UDP observer owner exited unexpectedly')
+            self.owner_exit_observed = True
+            return None
+        try:
+            if process_identity(owner.pid) != self.owner_identity:
+                raise RuntimeError('UDP observer owner identity changed')
+            inodes = set()
+            for index,path in enumerate(Path(f'/proc/{owner.pid}/fd').iterdir()):
+                if index >= 4096: raise RuntimeError('UDP observer owner descriptor bound exceeded')
+                try: target = os.readlink(path)
+                except FileNotFoundError: continue
+                match = re.fullmatch(r'socket:\[(\d+)\]', target)
+                if match: inodes.add(match[1])
+            endpoint = '0100007F:' + format(address[1], '04X')
+            remote = '0100007F:' + format(self.port, '04X')
+            rows = []
+            # Wildcard or udp6 sockets on this port make IPv4 ownership ambiguous.
+            # Do not treat a reused wildcard/dual-stack port as an absent source.
+            for family in ('udp','udp6'):
+                with Path(f'/proc/{owner.pid}/net/{family}').open() as stream: table=stream.read(1048577)
+                if len(table)>1048576: raise RuntimeError('UDP observer socket table bound exceeded')
+                for line in table.splitlines()[1:]:
+                    row=line.split()
+                    if row[1].rsplit(':',1)[1] == format(address[1],'04X'):
+                        rows.append((family,row))
+            if process_identity(owner.pid) != self.owner_identity:
+                raise RuntimeError('UDP observer owner identity changed')
+        except (FileNotFoundError, ProcessLookupError):
+            if self.expected_owner_exit and owner.process.poll() == 0:
+                self.owner_exit_observed = True
+                return None
+            if self.expected_owner_exit:
+                self.owner_exit_pending = True
+                return None
+            raise RuntimeError('UDP observer owner inspection unavailable') from None
+        if not rows: return None
+        if (len(rows) != 1 or rows[0][0] != 'udp' or rows[0][1][1] != endpoint
+                or rows[0][1][9] not in inodes or rows[0][1][2] not in (remote, '00000000:0000')):
+            self.failure_class = 'source_port_occupied_or_unowned'
+            raise RuntimeError('UDP observer source is not the exact child socket')
+        return rows[0][1][9]
+
+    def current_source(self, address, selector, create=False):
+        if address[0] != '127.0.0.1':
+            self.failure_class = 'non_loopback_source'
+            raise RuntimeError('UDP observer source identity rejected')
+        inode = self.source_inode(address)
+        slot = self.sources.get(address)
+        if self.owner_exit_observed or self.owner_exit_pending:
+            # No forwarding while exit evidence is pending; close must confirm
+            # the same owned Popen exited cleanly before this can be retired.
+            if slot is None:
+                self.failure_class = 'unowned_retirement_source'
+                raise RuntimeError('UDP observer unowned source during retirement')
+            return None
+        if slot is not None:
+            if inode is None:
+                slot['retired'] = True
+                slot['retirementReason'] = 'owned_inode_absent_port_unoccupied'
+                return None
+            if slot['retired'] or inode != slot['inode']:
+                self.failure_class = 'source_socket_reused'
+                raise RuntimeError('UDP observer source socket was reused')
+            return slot
+        if not create or inode is None:
+            self.failure_class = 'unowned_source'
+            raise RuntimeError('UDP observer new source identity unavailable')
+        if len(self.sources) >= self.MAX_SOURCES:
+            self.failure_class = 'source_limit'
+            raise RuntimeError('UDP observer source limit exceeded')
+        self.operation = 'back_socket'
+        back = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            back.bind(('127.0.0.1', 0))
+            back.connect(('127.0.0.1', self.target))
+            back.setblocking(False)
+            slot = {'socket':back, 'inode':inode, 'retired':False, 'retirementReason':None, 'received':[0,0], 'forwarded':[0,0]}
+            self.operation = 'back_selector_register'
+            selector.register(back, selectors.EVENT_READ, address)
+            self.sources[address] = slot
+            return slot
+        except BaseException:
+            back.close()
             raise
 
     def serve(self):
-        with selectors.DefaultSelector() as selector:
-            selector.register(self.front, selectors.EVENT_READ, 0)
-            selector.register(self.back, selectors.EVENT_READ, 1)
-            while not self.stop.is_set():
-                for key, _ in selector.select(.1):
-                    try:
-                        data, addr = key.fileobj.recvfrom(65535)
-                        if addr[0] != '127.0.0.1':
-                            raise ValueError('non-loopback relay peer')
-                        self.counts[key.data] += 1
-                        if key.data == 0:
-                            if self.client not in (None, addr):
-                                raise ValueError('unexpected second QUIC client')
-                            self.client = addr
-                            self.back.send(data)
-                        elif self.client:
-                            self.front.sendto(data, self.client)
-                    except Exception as err:
-                        self.errors.append(type(err).__name__)
-                        self.stop.set()
-                        return
+        try:
+            self.operation = 'selector_create'
+            with selectors.DefaultSelector() as selector:
+                self.operation = 'selector_register'
+                selector.register(self.front, selectors.EVENT_READ, None)
+                self.phase = 'active'
+                while not self.stop.is_set():
+                    # CoreProcess binds pidfd/startTicks/ELF before any front packet
+                    # is read or forwarded, including eager MASQUE startup packets.
+                    if not self.owner_ready.wait(.1): continue
+                    self.operation = 'selector_select'; self.direction = 'none'
+                    for key, _ in selector.select(.1):
+                        if self.stop.is_set(): break
+                        side = 0 if key.data is None else 1
+                        self.direction = 'client_to_peer' if side == 0 else 'peer_to_client'
+                        self.operation = 'receive'; self.failure_class = 'operation_error'
+                        data, address = key.fileobj.recvfrom(65535)
+                        self.received[side] += 1
+                        self.operation = 'source_identity'
+                        if side == 0:
+                            slot = self.current_source(address, selector, create=True)
+                        else:
+                            if address != ('127.0.0.1', self.target):
+                                self.failure_class = 'unexpected_peer'
+                                raise RuntimeError('UDP observer peer identity changed')
+                            slot = self.current_source(key.data, selector)
+                        if slot is None:
+                            self.retired_drops[side] += 1
+                            continue
+                        slot['received'][side] += 1
+                        self.operation = 'send'
+                        count = slot['socket'].send(data) if side == 0 else self.front.sendto(data, key.data)
+                        if count != len(data):
+                            self.failure_class = 'short_datagram'
+                            raise RuntimeError('UDP observer datagram send incomplete')
+                        self.counts[side] += 1
+                        slot['forwarded'][side] += 1
+            self.terminal = 'stopped' if self.stop.is_set() else 'unexpected_return'
+        except BaseException as error:
+            allowed = {errno.ECONNREFUSED:'connection_refused', errno.EBADF:'bad_fd', errno.EINTR:'interrupted',
+                       errno.EPERM:'permission', errno.EACCES:'permission', errno.ENETUNREACH:'network_unreachable',
+                       errno.ETIMEDOUT:'timeout'}
+            self.errors.append({'actor':'udp_observer','phase':self.phase,'operation':self.operation,
+                                'direction':self.direction,'category':self.failure_class,
+                                'errnoClass':allowed.get(getattr(error,'errno',None),'other_os_error' if isinstance(error,OSError) else 'not_os_error')})
+            self.terminal = 'failed'
+            self.stop.set()
+        finally:
+            self.finished.set()
+
+    def observation(self):
+        slots=list(self.sources.copy().values())
+        return {'actor':'udp_observer','atomic':False,'identityUncertain':self.identity_uncertain,'maximumSources':self.MAX_SOURCES,'maximumSockets':self.MAX_SOURCES+1,'sourceCount':len(slots),
+                'sourceIdentities':[{'ordinal':i,'inode':slot['inode'],'retired':slot['retired'],'retirementReason':slot.get('retirementReason'),
+                                    'receivedDatagrams':slot.get('received',[0,0])[:],'forwardedDatagrams':slot.get('forwarded',[0,0])[:]} for i,slot in enumerate(slots)],
+                'allSocketsClosed':self.front.fileno()==-1 and all(slot['socket'].fileno()==-1 for slot in slots),
+                'retiredSources':sum(slot['retired'] for slot in self.sources.values()),
+                'receivedDatagrams':self.received[:],'forwardedDatagrams':self.counts[:],
+                'retiredSourceDrops':self.retired_drops[:], 'expectedOwnerExit':self.expected_owner_exit,
+                'ownerExitObserved':self.owner_exit_observed,'ownerExitPending':self.owner_exit_pending,
+                'ownerRetirementConfirmed':self.owner_retirement_confirmed,'ownerPID':self.owner.pid if self.owner else None,
+                'ownerStartTicks':self.owner_identity['startTicks'] if self.owner else None,
+                'terminal':self.terminal,'terminalAcknowledged':self.finished.is_set(),
+                'threadJoined':not self.thread.is_alive(),'errors':[dict(e) for e in self.errors],'closeFaults':self.close_faults[:]}
 
     def close(self):
-        self.stop.set()
-        self.thread.join(3)
-        self.front.close()
-        self.back.close()
-        if self.thread.is_alive() or self.errors:
+        self.stop.set(); self.owner_ready.set()
+        try: self.thread.join(3)
+        except BaseException: self.close_faults.append('join_failed')
+        # A failed individual close must not skip any other owned socket.
+        sockets=[self.front]+[slot['socket'] for slot in self.sources.copy().values()]
+        for sock in sockets:
+            try: sock.close()
+            except BaseException: self.close_faults.append('socket_close_failed')
+        if self.owner_exit_pending and self.expected_owner_exit and self.owner.process.poll() == 0:
+            self.owner_exit_observed = True
+            self.owner_exit_pending = False
+        if self.expected_owner_exit:
+            fact=self.owner.cleanup
+            self.owner_retirement_confirmed = (isinstance(fact,dict)
+                and fact.get('pid')==self.owner.pid and fact.get('startIdentity')==self.owner_identity
+                and fact.get('boundCoreSHA256')==self.owner.bound_sha256
+                and fact.get('exitBeforeTerminate') is None and fact.get('exitCode')==0
+                and fact.get('forcedKill') is False and fact.get('remainingGroup')==[]
+                and fact.get('cleanupErrorLog') is False
+                and len(fact.get('terminationActions',[]))==1
+                and fact['terminationActions'][0].get('signal')=='SIGTERM'
+                and fact['terminationActions'][0].get('pidfdBound') is True)
+            if not self.owner_retirement_confirmed:
+                self.close_faults.append('owner_actual_signaled_retirement_not_proven')
+        self.close_faults=list(dict.fromkeys(self.close_faults))
+        if (self.thread.is_alive() or not self.finished.is_set() or self.terminal != 'stopped'
+                or self.errors or self.owner_exit_pending or self.close_faults or self.identity_uncertain):
             raise RuntimeError('UDP observer cleanup or transport failed')
+
+
+def retire_udp_observer(relay, result):
+    errors=[]
+    try: relay.close()
+    except BaseException: errors.append('UDP observer close or transport failed')
+    try: observation=relay.observation()
+    except BaseException:
+        observation={'actor':'udp_observer','snapshotUnavailable':True}
+        errors.append('UDP observer terminal observation unavailable')
+    result.setdefault('udpObservers',[]).append(observation)
+    result.setdefault('observerCleanupErrors',[]).extend(errors)
+    return errors
 
 
 def process_group_members(group):
@@ -273,6 +487,9 @@ class CoreProcess:
         self.config_fact = private_write(self.config_path, json.dumps(config, separators=(',', ':')))
         self.log = os.fdopen(os.open(self.log_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb')
         env = core_environment(directory)
+        if name == 'peer':
+            # Existing quic-go error logger only in this private controlled peer.
+            env['QUIC_GO_LOG_LEVEL'] = 'error'
         try:
             self.process = subprocess.Popen([str(binary), '--disable-color', 'run', '-c', str(self.config_path)],
                                             cwd=binary.parent, env=env, stdout=self.log, stderr=subprocess.STDOUT,
@@ -697,7 +914,7 @@ def retire_old_stream(conn,events=None):
     return {'nonceSHA256':digest(nonce),'transportClosed':True}
 
 
-def negative_evidence(kind, mutation, client_raw, peer_raw):
+def negative_evidence(kind, mutation, client_raw, peer_raw, *, peer_offset=0, mutation_proof=None):
     patterns = {
         'wrong-auth': r'authorization failed|authentication required|status: 407|407 Proxy Authentication',
         'wrong-ca': r'ERR_CERT_AUTHORITY_INVALID|cert authority invalid|certificate signed by unknown authority|unknown certificate authority',
@@ -706,16 +923,69 @@ def negative_evidence(kind, mutation, client_raw, peer_raw):
     }
     if mutation == 'wrong-auth' and kind.startswith('masque'):
         patterns['wrong-auth'] = r'authentication failed: (?:username=|missing or malformed)|unexpected status: 401'
-    for role, raw in (('client', client_raw), ('peer', peer_raw)):
-        raw = raw if isinstance(raw, bytes) else raw.encode()
+    if kind == 'naive-h3' and mutation in ('wrong-ca','wrong-sni'):
+        if not mutation_proof or mutation_proof.get('singleFieldMutation') != mutation:
+            raise RuntimeError('H3 certificate rejection requires exact mutation proof')
+        proof = peer_certificate_alert(peer_raw, peer_offset)
+        return dict(proof, category=mutation, classificationSource='single-variable-fixture-with-healthy-control')
+    for role, full_raw in (('client', client_raw), ('peer', peer_raw)):
+        full_raw = full_raw if isinstance(full_raw,bytes) else full_raw.encode()
+        offset = peer_offset if role=='peer' else 0
+        raw = full_raw[offset:]
         matched = re.search(patterns[mutation].encode(), raw, re.I)
         if matched:
             fragment = matched.group().decode('ascii', errors='replace')
             if len(fragment) > 256: raise RuntimeError('rejection evidence fragment exceeded bound')
             return {'category':mutation, 'specificRejectionObserved':True, 'logRole':role,
-                    'privateRawLogSHA256':digest(raw), 'privateRawLogBytes':len(raw), 'byteOffset':matched.start(),
+                    'privateRawLogSHA256':digest(full_raw), 'privateRawLogBytes':len(full_raw), 'windowStartByte':offset, 'byteOffset':matched.start()+offset,
                     'matchedAllowlistedFragment':fragment, 'matcher':patterns[mutation]}
     raise RuntimeError('negative lacks actual peer TLS/auth/path rejection evidence')
+
+
+def controlled_mutation(healthy, negative, mutation):
+    baseline, actual = copy.deepcopy(healthy), copy.deepcopy(negative)
+    bucket = 'outbounds' if 'outbounds' in baseline else 'endpoints'
+    paths = {'wrong-ca':('tls','certificate'), 'wrong-sni':('tls','server_name'),
+             'wrong-auth':('password',), 'wrong-path':('path',)}
+    if mutation not in paths or bucket not in actual:
+        raise RuntimeError('negative mutation is not modeled')
+    # Only ephemeral listener/relay ports differ between the two process epochs.
+    actual['inbounds'][0]['listen_port'] = baseline['inbounds'][0]['listen_port']
+    actual[bucket][0]['server_port'] = baseline[bucket][0]['server_port']
+    before, after = baseline[bucket][0], actual[bucket][0]
+    for key in paths[mutation][:-1]: before, after = before[key], after[key]
+    key = paths[mutation][-1]
+    if before[key] == after[key]: raise RuntimeError('negative mutation did not change its field')
+    if mutation == 'wrong-sni' and (before[key],after[key]) != ('controlled.invalid','wrong.invalid'):
+        raise RuntimeError('negative SNI differs from fixed fixture')
+    if mutation == 'wrong-path' and (before[key],after[key]) != ('/controlled-ip/','/wrong-ip/'):
+        raise RuntimeError('negative path differs from fixed fixture')
+    after[key] = copy.deepcopy(before[key])
+    if actual != baseline: raise RuntimeError('negative changed more than its one controlled field')
+    return {'singleFieldMutation':mutation,'healthyTrustSHA256':digest(json.dumps(healthy[bucket][0]['tls']['certificate']).encode()),
+            'negativeTrustSHA256':digest(json.dumps(negative[bucket][0]['tls']['certificate']).encode()),'healthyConfigurationSHA256':digest(json.dumps(healthy,separators=(',',':')).encode()),
+            'negativeConfigurationSHA256':digest(json.dumps(negative,separators=(',',':')).encode()),
+            'operationalPortChangesOnly':True}
+
+
+def peer_certificate_alert(raw, offset):
+    if type(offset) is not int or offset < 0 or offset > len(raw) or (offset and raw[offset-1:offset] != b'\n'):
+        raise RuntimeError('peer certificate observation window is not an exact line boundary')
+    # Ignore arbitrary reason phrases, connection IDs and all other crypto codes.
+    # Pinned utils.DefaultLogger.WithPrefix("server") uses Go log.Printf's
+    # default LstdFlags. Match the complete logger structure, not a reason substring.
+    pattern = rb'^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} server Closing connection with error: CRYPTO_ERROR 0x12e \(remote\)(?: \(frame type: 0x[0-9a-f]{1,4}\))?: [^\r\n]*\r?\n$'
+    position = offset
+    for line in raw[offset:].splitlines(keepends=True):
+        if not line.endswith(b'\n'): break
+        matched = re.fullmatch(pattern,line)
+        if matched:
+            return {'certificateAlert':'certificate_unknown','transportErrorCode':'0x12e','origin':'remote',
+                    'specificRejectionObserved':True,'logRole':'peer','windowStartByte':offset,
+                    'byteOffset':position+matched.start(),'privateRawLogSHA256':digest(raw),'privateRawLogBytes':len(raw),
+                    'proofSource':'pinned-quic-go-remote-tls-alert'}
+        position += len(line)
+    raise RuntimeError('negative lacks exact remote peer certificate alert')
 
 
 def config_check(binary, config_path, directory, name, records=None):
@@ -767,7 +1037,8 @@ def run_case(binary, row, root, kind, mutation=None):
     result = {'kind': kind, 'mutation': mutation, 'status': 'RUNNING', 'cleanup': [],
               'expectedCoreSHA256':row['core']['sha256'],
               'events':[], 'configurationChecks':[], 'fixturesJoined':False, 'identityUncertain':False,
-              'rawConfigurationPubliclyRetained': False, 'privateFilesDeletedAtSuiteEnd': True}
+              'rawConfigurationPubliclyRetained': False, 'privateFilesDeletedAtSuiteEnd': True,
+              'controlledPeerQUICErrorLogLevel':'error'}
     events=result['events']
     primary = None
     peer_port = None; mixed_ports = []
@@ -777,6 +1048,8 @@ def run_case(binary, row, root, kind, mutation=None):
         identity_event['status']='PASS'
         event(events,'case.certificate')
         ca, cert, key = certificate(directory, 'controlled.invalid')
+        result['certificateFixture']={'peerLeafSHA256':digest(cert.encode()),'healthyTrustSHA256':digest(ca.encode()),
+                                      'fixedHealthySNI':'controlled.invalid','fixedNegativeSNI':'wrong.invalid'}
         password = secrets.token_hex(24)
         if descendant_rows(process_snapshot(),os.getpid()):
             result['identityUncertain']=True
@@ -801,13 +1074,18 @@ def run_case(binary, row, root, kind, mutation=None):
         processes.append(peer)
         if kind == 'naive-h2': peer.wait_tcp(peer_port)
         else: peer.wait_udp(peer_port)
+        healthy_config = None
+        result['udpObservers'] = []
         def start_client(label, alter=None):
+            nonlocal healthy_config
             mixed = free_port(); mixed_ports.append(mixed)
             _, cfg = configs(kind, peer_port, relay.port if relay else peer_port, mixed, ca, cert, key,
                              password, [echo.port, udp_echo.port], alter)
             if alter == 'wrong-ca':
                 wrong_ca, _, _ = certificate(directory, label + '-wrong-ca')
                 (cfg.get('outbounds') or cfg['endpoints'])[0]['tls']['certificate'] = [wrong_ca]
+            if label == 'healthy': healthy_config = copy.deepcopy(cfg)
+            if alter: result['mutationProof'] = controlled_mutation(healthy_config,cfg,alter)
             path = directory / (label + '-check.private.json'); private_write(path, json.dumps(cfg))
             event(events,label+'.configuration.check')
             config_check(binary,path,directory,label,result['configurationChecks'])
@@ -815,13 +1093,19 @@ def run_case(binary, row, root, kind, mutation=None):
             except Exception:
                 result['identityUncertain']=True;raise
             processes.append(proc)
+            if alter and result['mutationProof']['negativeConfigurationSHA256'] != proc.config_fact['sha256']:
+                raise IdentityFailure('actual negative configuration differs from mutation proof')
+            if relay: relay.bind_owner(proc)
             proc.wait_tcp(mixed)
-            if kind.startswith('masque') and alter is None: proc.wait_assigned()
+            if kind.startswith('masque') and alter is None and not kind.endswith('on-demand'): proc.wait_assigned()
             return proc, mixed
         target = '127.0.0.1' if kind.startswith('naive') else '198.18.0.1'
         healthy, mixed = start_client('healthy')
         result['healthyTCP']=[]
         _, old_connection = tcp_exchange(mixed,target,echo.port,keep=True,events=events,label='healthy',facts=result['healthyTCP'])
+        if kind.endswith('on-demand'):
+            healthy.wait_assigned()
+            result['onDemandAssignmentAfterFirstFlow'] = True
         if kind.startswith('naive'):
             library_event=event(events,'healthy.native_identity.verify',status='RUNNING')
             result['loadedNativeLibrary'] = bound_library(healthy, binary, row)
@@ -845,19 +1129,26 @@ def run_case(binary, row, root, kind, mutation=None):
             if kind.startswith('masque'):
                 result['applicationUDP']=[]
                 udp_exchange(mixed,target,udp_echo.port,events,'healthy',result['applicationUDP'])
+        if relay: relay.prepare_owner_retirement()
         healthy.close()
         before = echo.received
         retired = retire_old_stream(old_connection,events); old_connection = None
         time.sleep(.2)
         if echo.received != before: raise RuntimeError('retired process old stream still carried new payload')
         result['oldStreamRetired'] = dict(retired, noNewEchoBytes=True)
-        # Relay supports one exact current QUIC source; retire and recreate observer before new client.
+        # One exact client process per observer epoch; bounded retry sockets never cross epochs.
         if relay:
             result['firstCarrierDatagrams'] = relay.counts[:]
-            relay.close(); reserved_tcp.close()
+            if retire_udp_observer(relay,result):
+                raise RuntimeError('UDP observer first epoch retirement failed')
+            reserved_tcp.close()
             relay = UDPRelay(peer_port)
             reserved_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             reserved_tcp.bind(('127.0.0.1', relay.port))
+        peer_log_before_negative = peer.log_path.read_bytes() if mutation else b''
+        peer_offset = len(peer_log_before_negative)
+        if mutation and peer_offset and not peer_log_before_negative.endswith(b'\n'):
+            raise RuntimeError('negative peer window starts inside incomplete log line')
         client, mixed = start_client('negative' if mutation else 'reconnected', mutation)
         baseline = (echo.accepted, echo.received, udp_echo.received)
         if mutation:
@@ -868,7 +1159,10 @@ def run_case(binary, row, root, kind, mutation=None):
             time.sleep(.25)
             if not failed or (echo.accepted, echo.received, udp_echo.received) != baseline:
                 raise RuntimeError('negative reached echo or did not reject')
-            result['negative'] = negative_evidence(kind, mutation, client.log_path.read_bytes(), peer.log_path.read_bytes())
+            result['negative'] = negative_evidence(kind, mutation, client.log_path.read_bytes(), peer.log_path.read_bytes(),
+                                                   peer_offset=peer_offset,mutation_proof=result['mutationProof'])
+            result['negative']['peerIdentity'] = {'pid':peer.pid,'startTicks':peer.start_identity['startTicks'],'coreSHA256':row['core']['sha256']}
+            result['negative']['peerWindowBeforeSHA256'] = digest(peer_log_before_negative)
             result['negative'].update({'tcpAcceptDelta': 0, 'tcpByteDelta': 0, 'udpNegativeAttempted': False})
             if kind.startswith('masque'):
                 control, udp = socks_udp(mixed,events,'negative')
@@ -886,6 +1180,7 @@ def run_case(binary, row, root, kind, mutation=None):
                 finally:
                     udp.close(); control.close()
                 result['negative'].update({'udpNegativeAttempted':True,'udpNonceSHA256':digest(nonce)})
+            if relay: relay.prepare_owner_retirement()
             client.close()
             time.sleep(.2)
             if (echo.accepted, echo.received, udp_echo.received) != baseline:
@@ -894,6 +1189,9 @@ def run_case(binary, row, root, kind, mutation=None):
         else:
             result['freshProcessTCP']=[]
             tcp_exchange(mixed,target,echo.port,(4096,),events=events,label='reconnected',facts=result['freshProcessTCP'])
+            if kind.endswith('on-demand'):
+                client.wait_assigned()
+                result['onDemandFreshAssignmentAfterFirstFlow'] = True
         if echo.errors or udp_echo.errors: raise RuntimeError('echo worker failed')
         result['status'] = 'PASS'
     except Exception as error:
@@ -922,8 +1220,18 @@ def run_case(binary, row, root, kind, mutation=None):
             for fact in connection:
                 if fact.get('status')=='RUNNING':fact['status']='INCOMPLETE_AT_CASE_RETIREMENT'
         if old_connection: old_connection.close()
-        errors = []
-        for proc in reversed(processes):
+        errors = list(result.get('observerCleanupErrors',[]))
+        if relay:
+            try: relay.prepare_owner_retirement()
+            except Exception as error: errors.append('UDP observer owner retirement identity unknown')
+        for proc in reversed([p for p in processes if p.role != 'peer']):
+            try: proc.close()
+            except Exception as error:
+                from protocol_peer_diagnostic import safe_exception
+                errors.append(type(error).__name__+': '+safe_exception(error))
+            result['cleanup'].append(proc.cleanup)
+        if relay: errors.extend(retire_udp_observer(relay,result))
+        for proc in [p for p in processes if p.role == 'peer']:
             try: proc.close()
             except Exception as error:
                 from protocol_peer_diagnostic import safe_exception
@@ -935,7 +1243,7 @@ def run_case(binary, row, root, kind, mutation=None):
                 errors.append('owned descendants required recovery; graceful cleanup failed')
         except Exception as error:
             errors.append('owned descendant cleanup unknown: ' + type(error).__name__)
-        for fixture in (relay, echo, udp_echo):
+        for fixture in (echo, udp_echo):
             if fixture:
                 try: fixture.close()
                 except Exception as error:

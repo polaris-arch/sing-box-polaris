@@ -335,10 +335,10 @@ class ControlledPeerContracts(unittest.TestCase):
         sock.close.assert_called_once()
 
     def test_relay_partial_initialization_closes_each_acquired_socket(self):
-        first=mock.Mock();second=mock.Mock();first.getsockname.return_value=('127.0.0.1',12345)
-        second.connect.side_effect=OSError('connect failed')
-        with mock.patch.object(peer.socket,'socket',side_effect=[first,second]), self.assertRaises(OSError):peer.UDPRelay(12346)
-        first.close.assert_called_once();second.close.assert_called_once()
+        first=mock.Mock();first.bind.side_effect=OSError('bind failed')
+        with mock.patch.object(peer.socket,'socket',return_value=first), self.assertRaises(OSError):peer.UDPRelay(12346)
+        first.close.assert_called_once()
+
 
     def test_descendant_selection_never_includes_unknown_pid_or_ancestor(self):
         rows={1:{'ppid':0},10:{'ppid':1},11:{'ppid':10},12:{'ppid':11},13:{'ppid':1},14:{'ppid':13}}
@@ -788,6 +788,359 @@ class FixedNativeDiagnosticContracts(unittest.TestCase):
         # Incompatible final mode is rejected before calculate_version could bind a release tag.
         calculation=source[source.index('  calculate_version:'):source.index('  prepare_windows7:')]
         self.assertLess(calculation.index('--validate-diagnostic-dispatch'),calculation.index('Bind final evidence'))
+
+
+class PeerNegativeAndObserverContracts(unittest.TestCase):
+    def wait(self, predicate):
+        end=time.monotonic()+3
+        while not predicate():
+            if time.monotonic()>end:self.fail('bounded observer condition not reached')
+            time.sleep(.01)
+
+    def owner(self):
+        owner=mock.Mock(pid=os.getpid(),pidfd=1,start_identity=peer.process_identity(os.getpid()),bound_sha256='a'*64)
+        owner.cleanup={'pid':owner.pid,'startIdentity':owner.start_identity,'boundCoreSHA256':owner.bound_sha256,
+                       'exitBeforeTerminate':None,'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False,
+                       'terminationActions':[{'signal':'SIGTERM','pidfdBound':True}]}
+        owner.process.poll.return_value=None
+        return owner
+
+    def test_peer_alert_is_exact_remote_complete_new_window(self):
+        good=b'2026/10/25 00:00:01 server Closing connection with error: CRYPTO_ERROR 0x12e (remote): SECRET\n'
+        baseline=b'healthy-only\n'
+        result=peer.peer_certificate_alert(baseline+good,len(baseline))
+        self.assertEqual(result['certificateAlert'],'certificate_unknown')
+        self.assertEqual(result['origin'],'remote')
+        self.assertNotIn('SECRET',json.dumps(result))
+        for raw,offset in [(good+b'no new alert\n',len(good)),(good.replace(b'remote',b'local'),0),
+                           (good.replace(b'0x12e',b'0x128'),0),(good[:-1],0),
+                           (b'ERR_QUIC_PROTOCOL_ERROR timeout\n',0),(baseline+good,1),
+                           (b'2026/10/25 00:00:01 server Closing connection with error: INTERNAL_ERROR: '+good,0),
+                           (b'arbitrary '+good,0)]:
+            with self.assertRaises(RuntimeError):peer.peer_certificate_alert(raw,offset)
+        with self.assertRaises(RuntimeError):peer.negative_evidence('naive-h3','wrong-ca',b'',good)
+        for mutation in ('wrong-ca','wrong-sni'):
+            result=peer.negative_evidence('naive-h3',mutation,b'',good,mutation_proof={'singleFieldMutation':mutation})
+            self.assertEqual(result['classificationSource'],'single-variable-fixture-with-healthy-control')
+            self.assertNotIn('authority_invalid',json.dumps(result))
+
+    def test_all_negative_configs_require_one_semantic_field(self):
+        for kind in ('naive-h2','naive-h3','masque-h3'):
+            for mutation in ('wrong-auth','wrong-ca','wrong-sni','wrong-path'):
+                if mutation=='wrong-path' and kind.startswith('naive'):continue
+                _,healthy=peer.configs(kind,100,101,102,'CA','CERT','KEY','SECRET',[103,104])
+                _,bad=peer.configs(kind,100,105,106,'CA','CERT','KEY','SECRET',[103,104],mutation)
+                bucket='outbounds' if kind.startswith('naive') else 'endpoints'
+                if mutation=='wrong-ca':bad[bucket][0]['tls']['certificate']=['WRONG_CA']
+                result=peer.controlled_mutation(healthy,bad,mutation)
+                self.assertEqual(result['singleFieldMutation'],mutation)
+                self.assertNotIn('SECRET',json.dumps(result))
+                extra=copy.deepcopy(bad);extra[bucket][0]['tls']['insecure']=True
+                with self.assertRaises(RuntimeError):peer.controlled_mutation(healthy,extra,mutation)
+                with self.assertRaises(RuntimeError):peer.controlled_mutation(healthy,healthy,mutation)
+
+    def test_peer_error_env_is_private_peer_only(self):
+        source=(ROOT/'scripts/ci/protocol_peer.py').read_text()
+        tree=ast.parse(source);core=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='CoreProcess')
+        init=next(n for n in core.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
+        guards=[n for n in init.body if isinstance(n,ast.If) and "name == 'peer'"==ast.unparse(n.test)]
+        self.assertEqual(len(guards),1)
+        self.assertEqual(ast.unparse(guards[0].body[0]),"env['QUIC_GO_LOG_LEVEL'] = 'error'")
+        self.assertNotIn('QUIC_GO_LOG_LEVEL',peer.core_environment(Path('/private')))
+
+    def test_on_demand_first_flow_precedes_assignment_for_both_epochs(self):
+        source=(ROOT/'scripts/ci/protocol_peer.py').read_text()
+        function=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='run_case')
+        nested=next(n for n in ast.walk(function) if isinstance(n,ast.FunctionDef) and n.name=='start_client')
+        guard=next(n for n in ast.walk(nested) if isinstance(n,ast.If) and any(isinstance(c,ast.Call) and isinstance(c.func,ast.Attribute) and c.func.attr=='wait_assigned' for c in ast.walk(n)))
+        self.assertIn("not kind.endswith('on-demand')",ast.unparse(guard.test))
+        for role,call in [('healthy','keep=True'),('client',"label='reconnected'")]:
+            first=source.index(call,source.index('def run_case'))
+            observed=source.index(role+'.wait_assigned()',first)
+            self.assertGreater(observed,first)
+        self.assertIn("result['onDemandFreshAssignmentAfterFirstFlow'] = True",source)
+
+    def test_actual_relay_owner_gate_two_sources_and_reply_isolation(self):
+        echo=peer.Echo(udp=True);relay=peer.UDPRelay(echo.port);sockets=[]
+        try:
+            for _ in range(2):
+                sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);sock.bind(('127.0.0.1',0));sock.settimeout(2);sockets.append(sock)
+            sockets[0].sendto(b'first',('127.0.0.1',relay.port));time.sleep(.15)
+            self.assertEqual(echo.received,0)
+            relay.bind_owner(self.owner())
+            self.assertEqual(sockets[0].recv(99),b'first')
+            sockets[1].sendto(b'second',('127.0.0.1',relay.port));self.assertEqual(sockets[1].recv(99),b'second')
+            self.assertEqual(len(relay.sources),2);self.assertEqual(relay.counts,[2,2])
+            self.assertEqual(len({slot['socket'].getsockname() for slot in relay.sources.values()}),2)
+            relay.close();fact=relay.observation()
+            self.assertTrue(fact['threadJoined']);self.assertTrue(fact['terminalAcknowledged']);self.assertEqual(fact['terminal'],'stopped')
+        finally:
+            for sock in sockets:sock.close()
+            with contextlib.suppress(RuntimeError):relay.close()
+            echo.close()
+
+    def test_actual_retired_reverse_tail_is_not_sent_to_reusable_port(self):
+        server=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);server.bind(('127.0.0.1',0));server.settimeout(2)
+        relay=peer.UDPRelay(server.getsockname()[1]);client=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        try:
+            client.bind(('127.0.0.1',0));relay.bind_owner(self.owner())
+            client.sendto(b'payload',('127.0.0.1',relay.port));data,back=server.recvfrom(100);self.assertEqual(data,b'payload')
+            client.close();server.sendto(b'old reply',back)
+            self.wait(lambda:relay.retired_drops[1]==1)
+            self.assertEqual(relay.counts,[1,0]);self.assertEqual(relay.received,[1,1])
+            self.assertEqual(sum(x['retired'] for x in relay.sources.values()),1)
+        finally:
+            client.close();relay.close();server.close()
+
+    def test_actual_source_port_reuse_is_sticky_failure(self):
+        echo=peer.Echo(udp=True);relay=peer.UDPRelay(echo.port);first=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);second=None
+        try:
+            first.bind(('127.0.0.1',0));address=first.getsockname();first.settimeout(2);relay.bind_owner(self.owner())
+            first.sendto(b'one',('127.0.0.1',relay.port));self.assertEqual(first.recv(99),b'one');first.close()
+            second=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);second.bind(address);second.sendto(b'not same inode',('127.0.0.1',relay.port))
+            self.wait(relay.finished.is_set)
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertEqual(relay.errors[0]['category'],'source_socket_reused');self.assertEqual(relay.counts,[1,1])
+        finally:
+            first.close()
+            if second:second.close()
+            with contextlib.suppress(RuntimeError):relay.close()
+            echo.close()
+
+    def test_observer_selector_create_register_select_errors_cannot_look_successful(self):
+        for operation in ('selector_create','selector_register','selector_select'):
+            with self.subTest(operation=operation):
+                selector=mock.MagicMock();selector.__enter__.return_value=selector
+                if operation=='selector_register':selector.register.side_effect=RuntimeError('SECRET')
+                if operation=='selector_select':selector.select.side_effect=OSError(peer.errno.ECONNREFUSED,'SECRET')
+                with mock.patch.object(peer.selectors,'DefaultSelector',side_effect=RuntimeError('SECRET') if operation=='selector_create' else None,return_value=selector):
+                    relay=peer.UDPRelay(1)
+                    if operation=='selector_select':relay.bind_owner(self.owner())
+                    self.wait(relay.finished.is_set)
+                    with self.assertRaises(RuntimeError):relay.close()
+                    result=relay.observation();self.assertEqual(result['terminal'],'failed')
+                    self.assertEqual(result['errors'][0]['operation'],operation)
+                    self.assertNotIn('SECRET',json.dumps(result));self.assertTrue(result['threadJoined'])
+
+    def test_owner_exit_expectation_cannot_launder_previous_exit_or_reuse(self):
+        for failure in ('already_exited','pid_changed','permission'):
+            relay=peer.UDPRelay(1);owner=self.owner()
+            try:
+                relay.bind_owner(owner)
+                if failure=='already_exited':owner.process.poll.return_value=0
+                context=mock.patch.object(peer,'process_identity',side_effect=PermissionError('SECRET')) if failure=='permission' else \
+                        mock.patch.object(peer,'process_identity',return_value=dict(owner.start_identity,startTicks=0)) if failure=='pid_changed' else contextlib.nullcontext()
+                with context,self.assertRaises(peer.IdentityFailure):relay.prepare_owner_retirement()
+                self.assertTrue(relay.identity_uncertain);self.assertFalse(relay.expected_owner_exit)
+                owner.process.poll.return_value=None
+                with self.assertRaises(peer.IdentityFailure):relay.prepare_owner_retirement()
+                with self.assertRaises(RuntimeError):relay.close()
+            finally:
+                with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_expected_missing_proc_requires_later_actual_zero_exit(self):
+        for exit_code in (None,1,0):
+            relay=peer.UDPRelay(1);owner=self.owner()
+            try:
+                relay.bind_owner(owner);relay.prepare_owner_retirement()
+                with mock.patch.object(peer,'process_identity',side_effect=FileNotFoundError):
+                    self.assertIsNone(relay.source_inode(('127.0.0.1',1234)))
+                self.assertTrue(relay.owner_exit_pending);self.assertFalse(relay.owner_exit_observed)
+                owner.process.poll.return_value=exit_code
+                if exit_code==0:
+                    relay.close();self.assertTrue(relay.owner_exit_observed)
+                else:
+                    with self.assertRaises(RuntimeError):relay.close()
+            finally:
+                with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_back_socket_registration_failure_closes_acquired_socket(self):
+        relay=peer.UDPRelay(1);sock=mock.Mock();selector=mock.Mock();selector.register.side_effect=RuntimeError('SECRET')
+        try:
+            with mock.patch.object(relay,'source_inode',return_value='123'),mock.patch.object(peer.socket,'socket',return_value=sock):
+                with self.assertRaises(RuntimeError):relay.current_source(('127.0.0.1',1234),selector,True)
+            sock.close.assert_called_once();self.assertEqual(relay.sources,{})
+        finally:relay.close()
+
+    def test_source_limit_includes_tombstones_no_lru_eviction(self):
+        relay=peer.UDPRelay(1)
+        try:
+            relay.sources={('127.0.0.1',i):{'inode':str(i),'retired':True,'socket':mock.Mock()} for i in range(16)}
+            with mock.patch.object(relay,'source_inode',return_value='new'):
+                with self.assertRaisesRegex(RuntimeError,'limit'):relay.current_source(('127.0.0.1',99),mock.Mock(),True)
+            self.assertEqual(len(relay.sources),16)
+        finally:relay.close()
+
+    def test_cleanup_orders_clients_then_observer_then_peer(self):
+        source=(ROOT/'scripts/ci/protocol_peer.py').read_text();cleanup=source[source.index("        errors = list(result.get('observerCleanupErrors',[]))",source.index('def run_case')):]
+        self.assertLess(cleanup.index("p.role != 'peer'"),cleanup.index('retire_udp_observer(relay,result)'))
+        self.assertLess(cleanup.index('retire_udp_observer(relay,result)'),cleanup.index("p.role == 'peer'"))
+        self.assertIn("errors.extend(retire_udp_observer(relay,result))",cleanup)
+        self.assertIn("result['status'] = 'FAIL'; result['cleanupErrors'] = errors",cleanup)
+
+
+class PeerObserverAdditionalBoundaries(unittest.TestCase):
+    wait = PeerNegativeAndObserverContracts.wait
+    owner = PeerNegativeAndObserverContracts.owner
+    def test_actual_foreign_child_udp_source_is_rejected_without_forward(self):
+        echo=peer.Echo(udp=True);relay=peer.UDPRelay(echo.port);child=None
+        try:
+            relay.bind_owner(self.owner())
+            code="import socket,time; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.bind(('127.0.0.1',0)); s.sendto(b'foreign',('127.0.0.1',"+str(relay.port)+")); time.sleep(.4); s.close()"
+            child=subprocess.Popen([sys.executable,'-c',code],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.wait(relay.finished.is_set);self.assertEqual(child.wait(3),0)
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertEqual(echo.received,0);self.assertEqual(relay.counts,[0,0])
+            self.assertEqual(relay.errors[0]['operation'],'source_identity')
+        finally:
+            if child:
+                child.wait(3);child.stdout.close();child.stderr.close()
+            with contextlib.suppress(RuntimeError):relay.close()
+            echo.close()
+
+    def test_proc_permission_and_pid_change_are_fail_closed_even_during_expected_exit(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner);relay.prepare_owner_retirement()
+            for error in (PermissionError('SECRET'),RuntimeError('changed')):
+                with mock.patch.object(peer,'process_identity',side_effect=error):
+                    with self.assertRaises(type(error)):relay.source_inode(('127.0.0.1',1234))
+            with mock.patch.object(peer,'process_identity',return_value=dict(owner.start_identity,startTicks=999)):
+                with self.assertRaises(RuntimeError):relay.source_inode(('127.0.0.1',1234))
+            self.assertFalse(relay.owner_exit_observed);self.assertFalse(relay.owner_exit_pending)
+        finally:relay.close()
+
+    def test_peer_non_h3_window_hash_and_absolute_offset_bind_full_log(self):
+        raw=b'healthy\nold line\nunexpected status: 401\n';offset=len(b'healthy\nold line\n')
+        result=peer.negative_evidence('masque-h3','wrong-auth',b'',raw,peer_offset=offset)
+        self.assertEqual(result['privateRawLogSHA256'],peer.digest(raw))
+        self.assertEqual(result['privateRawLogBytes'],len(raw));self.assertEqual(result['byteOffset'],offset)
+        with self.assertRaises(RuntimeError):peer.negative_evidence('masque-h3','wrong-auth',b'',raw,peer_offset=len(raw))
+
+
+class PeerReviewRegressionContracts(unittest.TestCase):
+    owner = PeerNegativeAndObserverContracts.owner
+    wait = PeerNegativeAndObserverContracts.wait
+
+    def test_actual_wildcard_reuse_cannot_be_tombstoned_as_unoccupied(self):
+        server=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);server.bind(('127.0.0.1',0));server.settimeout(2)
+        relay=peer.UDPRelay(server.getsockname()[1]);client=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);replacement=None
+        try:
+            client.bind(('127.0.0.1',0));port=client.getsockname()[1];relay.bind_owner(self.owner())
+            client.sendto(b'first',('127.0.0.1',relay.port));_,back=server.recvfrom(100);client.close()
+            replacement=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);replacement.bind(('0.0.0.0',port))
+            server.sendto(b'old reply',back);self.wait(relay.finished.is_set)
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertEqual(relay.errors[0]['category'],'source_port_occupied_or_unowned')
+            self.assertEqual(relay.counts,[1,0]);self.assertEqual(relay.retired_drops,[0,0])
+        finally:
+            client.close()
+            if replacement:replacement.close()
+            with contextlib.suppress(RuntimeError):relay.close()
+            server.close()
+
+    def test_udp6_port_occupancy_is_not_ignored(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner)
+            table='header\n 0: '+('0'*32)+':04D2 '+('0'*32)+':0000 07 0 0 0 0 0 123 0\n'
+            real_open=Path.open
+            def opened(path,*args,**kwargs):
+                return io.StringIO(table) if str(path).endswith('/net/udp6') else real_open(path,*args,**kwargs)
+            with mock.patch.object(Path,'open',opened),self.assertRaises(RuntimeError):relay.source_inode(('127.0.0.1',1234))
+            self.assertEqual(relay.failure_class,'source_port_occupied_or_unowned')
+        finally:relay.close()
+
+    def test_expected_but_unsignaled_zero_exit_cannot_pass_retirement(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner);relay.prepare_owner_retirement();owner.process.poll.return_value=0
+            self.assertIsNone(relay.source_inode(('127.0.0.1',1234)))
+            owner.cleanup.update(exitBeforeTerminate=0,terminationActions=[])
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertFalse(relay.owner_retirement_confirmed)
+            self.assertIn('owner_actual_signaled_retirement_not_proven',relay.close_faults)
+        finally:
+            with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_each_socket_close_and_observation_fault_is_retained_without_short_circuit(self):
+        relay=peer.UDPRelay(1);first=mock.Mock();second=mock.Mock();first.close.side_effect=OSError('SECRET')
+        relay.sources={('127.0.0.1',1):{'socket':first},('127.0.0.1',2):{'socket':second}}
+        with self.assertRaises(RuntimeError):relay.close()
+        first.close.assert_called_once();second.close.assert_called_once()
+        self.assertIn('socket_close_failed',relay.close_faults)
+        broken=mock.Mock();broken.close.side_effect=RuntimeError('SECRET');broken.observation.side_effect=RuntimeError('SECRET')
+        result={};errors=peer.retire_udp_observer(broken,result)
+        self.assertEqual(len(errors),2);self.assertNotIn('SECRET',json.dumps(result))
+        self.assertTrue(result['udpObservers'][0]['snapshotUnavailable'])
+
+    def test_actual_case_bind_identity_and_observer_failure_stop_and_still_close_peer(self):
+        for observation_fails in (False,True):
+            with tempfile.TemporaryDirectory() as td:
+                root=Path(td);binary=root/'sing-box';binary.write_bytes(b'core');(root/'libcronet.so').write_bytes(b'side')
+                row={'core':{'member':'sing-box','bytes':4,'sha256':peer.digest(b'core')},
+                     'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
+                closed=[]
+                class FakeCore:
+                    def __init__(self,binary,config,directory,role,core_hash,events):
+                        self.role=role;self.pid=123;self.start_identity={'pid':123,'pgrp':123,'session':123,'startTicks':456}
+                        self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':6}
+                        self.process=mock.Mock();self.process.poll.return_value=None
+                        self.log_path=directory/(role+'.private.log');self.log_path.write_bytes(b'')
+                        self.cleanup={'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False,
+                            'pid':self.pid,'startIdentity':self.start_identity,'boundCoreSHA256':core_hash}
+                    def wait_tcp(self,port):pass
+                    def wait_udp(self,port):pass
+                    def close(self):closed.append(self.role)
+                relay=mock.Mock(port=peer.free_port(),counts=[0,0]);relay.bind_owner.side_effect=peer.IdentityFailure('UDP observer exact child identity unavailable')
+                relay.observation.return_value={'actor':'udp_observer','threadJoined':True}
+                if observation_fails:relay.observation.side_effect=RuntimeError('SECRET')
+                receipt={'cases':[]}
+                with mock.patch.object(peer,'certificate',return_value=('CA','CERT','KEY')),mock.patch.object(peer,'config_check',return_value={}), \
+                     mock.patch.object(peer,'CoreProcess',FakeCore),mock.patch.object(peer,'UDPRelay',return_value=relay), \
+                     mock.patch.object(peer,'process_snapshot',return_value={}), \
+                     mock.patch.object(peer,'drain_owned_children',return_value={'remaining':[],'forcedKill':False,'retired':[]}):
+                    peer.execute_cases(receipt,lambda k,m:peer.run_case(binary,row,root,'naive-h3',m),time.monotonic()+30)
+                case=receipt['cases'][0]
+                self.assertTrue(case['identityUncertain']);self.assertFalse(case['continuationSafe'])
+                self.assertEqual(sum(x['status']=='NOT_RUN' for x in receipt['cases']),13)
+                self.assertEqual(closed,['healthy','peer'])
+                if observation_fails:
+                    self.assertTrue(case['cleanupErrors']);self.assertFalse(case['fixturesJoined'])
+                    self.assertNotIn('SECRET',json.dumps(case))
+
+
+class PeerIdentityBoundaryRegression(unittest.TestCase):
+    def test_actual_run_case_real_bind_proc_failure_stops_after_complete_cleanup(self):
+        for exception in (FileNotFoundError,PermissionError,OSError):
+            with self.subTest(exception=exception.__name__),tempfile.TemporaryDirectory() as td:
+                root=Path(td);binary=root/'sing-box';binary.write_bytes(b'core');(root/'libcronet.so').write_bytes(b'side')
+                row={'core':{'member':'sing-box','bytes':4,'sha256':peer.digest(b'core')},
+                     'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
+                closed=[]
+                class FakeCore:
+                    def __init__(self,binary,config,directory,role,core_hash,events):
+                        self.role=role;self.pid=123;self.pidfd=1;self.start_identity={'pid':123,'pgrp':123,'session':123,'startTicks':456}
+                        self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':6}
+                        self.process=mock.Mock();self.process.poll.return_value=None
+                        self.log_path=directory/(role+'.private.log');self.log_path.write_bytes(b'')
+                        self.cleanup={'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False,
+                            'pid':self.pid,'startIdentity':self.start_identity,'boundCoreSHA256':core_hash}
+                    def wait_tcp(self,port):pass
+                    def wait_udp(self,port):pass
+                    def close(self):closed.append(self.role)
+                receipt={'cases':[]}
+                with mock.patch.object(peer,'certificate',return_value=('CA','CERT','KEY')),mock.patch.object(peer,'config_check',return_value={}), \
+                     mock.patch.object(peer,'CoreProcess',FakeCore),mock.patch.object(peer,'process_identity',side_effect=exception('SECRET')), \
+                     mock.patch.object(peer,'process_snapshot',return_value={}), \
+                     mock.patch.object(peer,'drain_owned_children',return_value={'remaining':[],'forcedKill':False,'retired':[]}):
+                    peer.execute_cases(receipt,lambda k,m:peer.run_case(binary,row,root,'naive-h3',m),time.monotonic()+30)
+                case=receipt['cases'][0]
+                self.assertEqual(case['errorType'],'IdentityFailure');self.assertTrue(case['identityUncertain'])
+                self.assertFalse(case['continuationSafe']);self.assertEqual(sum(x['status']=='NOT_RUN' for x in receipt['cases']),13)
+                self.assertEqual(closed,['healthy','peer'])
+                self.assertTrue(case['udpObservers'][0]['identityUncertain']);self.assertTrue(case['udpObservers'][0]['threadJoined'])
+                self.assertTrue(case['udpObservers'][0]['allSocketsClosed']);self.assertNotIn('SECRET',json.dumps(case))
 
 
 if __name__=='__main__':unittest.main()
