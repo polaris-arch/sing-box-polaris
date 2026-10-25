@@ -249,6 +249,7 @@ class UDPRelay:
         self.identity_read_end = None
         self.identity_signal_at_start = None
         self.identity_gate_wait_start=None;self.identity_gate_wait_end=None
+        self.identity_predicates={}
         try:
             self.front = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.front.bind(('127.0.0.1', 0))
@@ -294,6 +295,10 @@ class UDPRelay:
         owner=self.owner
         if owner is None: raise IdentityFailure('UDP observer owner not bound')
         self.identity_operation='ordering_gate'
+        self.identity_predicates={'slotPresent':known_slot is not None,'priorSlotRetired':known_slot.get('retired') if known_slot else None,
+            'ownerBeforeMatches':None,'ownerAfterMatches':None,'sampledSocketInodes':None,'samePortRows':None,
+            'ipv4Rows':None,'ipv6Rows':None,'uniqueIPv4':None,'localExpected':None,'rowInOwnerFdSet':None,
+            'remoteAllowed':None,'priorInodeMatches':None,'failedPredicate':None}
         self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
         with process_inspection_gate(owner,self):
             self.identity_read_start=time.monotonic()
@@ -308,7 +313,9 @@ class UDPRelay:
                     self.owner_exit_observed=True
                     return None
                 self.identity_operation='owner_stat_before'
-                if process_identity(owner.pid)!=self.owner_identity:
+                self.identity_predicates['ownerBeforeMatches']=process_identity(owner.pid)==self.owner_identity
+                if not self.identity_predicates['ownerBeforeMatches']:
+                    self.identity_predicates['failedPredicate']='owner_birth_before'
                     raise IdentityFailure('UDP observer owner identity changed')
                 inodes=set()
                 self.identity_operation='fd_list'
@@ -321,6 +328,7 @@ class UDPRelay:
                         match=re.fullmatch(r'socket:\[(\d+)\]',target)
                         if match:inodes.add(match[1])
                         self.identity_operation='fd_list'
+                self.identity_predicates['sampledSocketInodes']=len(inodes)
                 endpoint='0100007F:'+format(address[1],'04X')
                 remote='0100007F:'+format(self.port,'04X')
                 rows=[]
@@ -334,13 +342,30 @@ class UDPRelay:
                         row=line.split()
                         if row[1].rsplit(':',1)[1]==format(address[1],'04X'):rows.append((family,row))
                 self.identity_operation='owner_stat_after'
-                if process_identity(owner.pid)!=self.owner_identity:
+                self.identity_predicates['ownerAfterMatches']=process_identity(owner.pid)==self.owner_identity
+                if not self.identity_predicates['ownerAfterMatches']:
+                    self.identity_predicates['failedPredicate']='owner_birth_after'
                     raise IdentityFailure('UDP observer owner identity changed')
+                self.identity_operation='socket_row_cardinality'
+                self.identity_predicates.update(samePortRows=len(rows),ipv4Rows=sum(f=='udp' for f,_ in rows),ipv6Rows=sum(f=='udp6' for f,_ in rows))
                 if not rows:return None
-                if (len(rows)!=1 or rows[0][0]!='udp' or rows[0][1][1]!=endpoint
-                        or rows[0][1][9] not in inodes or rows[0][1][2] not in (remote,'00000000:0000')):
-                    self.failure_class='source_port_occupied_or_unowned'
-                    raise IdentityFailure('UDP observer source is not the exact child socket')
+                # Preserve the original short-circuit rejection, using only the
+                # one existing observation. Null means not evaluated, not PASS.
+                for name,field,check in (
+                    ('single_socket_row',None,lambda:len(rows)==1),
+                    ('socket_family','uniqueIPv4',lambda:rows[0][0]=='udp'),
+                    ('socket_local','localExpected',lambda:rows[0][1][1]==endpoint),
+                    ('socket_owner_inode','rowInOwnerFdSet',lambda:rows[0][1][9] in inodes),
+                    ('socket_remote','remoteAllowed',lambda:rows[0][1][2] in (remote,'00000000:0000'))):
+                    self.identity_operation=name
+                    if name=='socket_owner_inode':
+                        self.identity_predicates['priorInodeMatches']=(rows[0][1][9]==known_slot['inode']) if known_slot else None
+                    passed=check()
+                    if field:self.identity_predicates[field]=passed
+                    if not passed:
+                        self.identity_predicates['failedPredicate']=name
+                        self.failure_class='source_port_occupied_or_unowned'
+                        raise IdentityFailure('UDP observer source is not the exact child socket')
                 return rows[0][1][9]
             except OSError as error:
                 # Never retry or forward through a denied/vanished /proc view.
@@ -364,12 +389,18 @@ class UDPRelay:
                 self.identity_read_end=time.monotonic()
 
     def current_source(self, address, selector, create=False):
+        self.identity_operation='source_address'
+        self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
+        self.identity_gate_wait_start=None;self.identity_gate_wait_end=None
+        self.identity_predicates={'sourceLoopback':address[0]=='127.0.0.1','slotPresent':address in self.sources,'failedPredicate':None}
         if address[0] != '127.0.0.1':
+            self.identity_predicates['failedPredicate']='source_loopback'
             self.failure_class = 'non_loopback_source'
             raise RuntimeError('UDP observer source identity rejected')
         slot = self.sources.get(address)
         if self.inspection_gap is not None:
             if slot is None:
+                self.identity_predicates['failedPredicate']='quarantine_new_source'
                 self.failure_class='unowned_source_during_quarantine'
                 self.identity_operation='quarantine_new_source'
                 self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
@@ -381,22 +412,27 @@ class UDPRelay:
             # No forwarding while exit evidence is pending; close must confirm
             # the same owned Popen exited cleanly before this can be retired.
             if slot is None:
+                self.identity_operation='retirement_source_admission';self.identity_predicates['failedPredicate']='unowned_retirement_source'
                 self.failure_class = 'unowned_retirement_source'
                 raise RuntimeError('UDP observer unowned source during retirement')
             return None
+        self.identity_operation='source_slot_continuity'
         if slot is not None:
             if inode is None:
                 slot['retired'] = True
                 slot['retirementReason'] = 'owned_inode_absent_port_unoccupied'
                 return None
             if slot['retired'] or inode != slot['inode']:
+                self.identity_predicates['failedPredicate']='source_slot_reused'
                 self.failure_class = 'source_socket_reused'
                 raise RuntimeError('UDP observer source socket was reused')
             return slot
         if not create or inode is None:
+            self.identity_predicates['failedPredicate']='new_source_unowned'
             self.failure_class = 'unowned_source'
             raise RuntimeError('UDP observer new source identity unavailable')
         if len(self.sources) >= self.MAX_SOURCES:
+            self.identity_predicates['failedPredicate']='source_limit'
             self.failure_class = 'source_limit'
             raise RuntimeError('UDP observer source limit exceeded')
         self.operation = 'back_socket'
@@ -438,6 +474,10 @@ class UDPRelay:
                             slot = self.current_source(address, selector, create=True)
                         else:
                             if address != ('127.0.0.1', self.target):
+                                self.identity_operation='peer_address'
+                                self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
+                                self.identity_gate_wait_start=None;self.identity_gate_wait_end=None
+                                self.identity_predicates={'peerEndpointMatches':False,'failedPredicate':'peer_endpoint'}
                                 self.failure_class = 'unexpected_peer'
                                 raise RuntimeError('UDP observer peer identity changed')
                             slot = self.current_source(key.data, selector)
@@ -465,7 +505,8 @@ class UDPRelay:
                                 'monotonicSeconds':time.monotonic(),'identityOperation':self.identity_operation,
                                 'identityReadStartedMonotonic':self.identity_read_start,'identityReadFinishedMonotonic':self.identity_read_end,
                                 'sigtermSucceededAtReadStart':self.identity_signal_at_start,'expectedOwnerExit':self.expected_owner_exit,
-                                'identityGateWaitStartedMonotonic':self.identity_gate_wait_start,'identityGateWaitFinishedMonotonic':self.identity_gate_wait_end})
+                                'identityGateWaitStartedMonotonic':self.identity_gate_wait_start,'identityGateWaitFinishedMonotonic':self.identity_gate_wait_end,
+                                'sourcePredicates':dict(self.identity_predicates)})
             self.terminal = 'failed'
             self.stop.set()
         finally:
@@ -1076,6 +1117,47 @@ def controlled_mutation(healthy, negative, mutation):
             'operationalPortChangesOnly':True}
 
 
+def capture_peer_certificate_log_observation(raw, offset, phase, owner):
+    try:return peer_certificate_log_observation(raw,offset,phase,owner)
+    except Exception:return {'phase':phase,'unavailable':True,'reason':'private_observation_failed','notProofAttempt':phase!='proof_attempt','diagnosticOnly':True}
+
+
+def peer_certificate_log_observation(raw, offset, phase, owner):
+    """Diagnostics only. Never a substitute for the unchanged exact proof gate."""
+    result={'phase':phase,'sampledMonotonic':time.monotonic(),'notProofAttempt':phase!='proof_attempt',
+        'peerPID':owner.pid,'peerStartTicks':owner.start_identity['startTicks'],'coreSHA256':owner.bound_sha256,
+        'rawSHA256':digest(raw),'rawBytes':len(raw),'windowStartByte':offset,'diagnosticOnly':True}
+    if type(offset) is not int or offset<0 or offset>len(raw) or (offset and raw[offset-1:offset]!=b'\n'):
+        return dict(result,unavailable=True,reason='invalid_window_boundary')
+    window=raw[offset:];scanned=window[:1048576]
+    result.update(windowSHA256=digest(window),windowBytes=len(window),scannedBytes=len(scanned),
+        scanTruncated=len(scanned)!=len(window),trailingIncompleteLine=bool(scanned and not scanned.endswith(b'\n')),
+        scannedCompleteLines=0,scannedUnknownLines=0,structuredEvents=[],structuredEventOverflow=0)
+    stamp=rb'(?:[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} )?'
+    line_pattern=stamp+rb'server (?P<branch>Closing connection with error|Destroying connection with error|Destroying connection|Error occurred handling initial packet): (?P<body>[^\r\n]*)\r?\n'
+    crypto=rb'CRYPTO_ERROR (?P<code>0x[0-9a-f]{1,4}) \((?P<role>remote|local)\)(?: \(frame type: 0x[0-9a-f]{1,4}\))?: [^\r\n]*'
+    codes={b'0x12a':'bad_certificate',b'0x12b':'unsupported_certificate',b'0x12c':'certificate_revoked',
+        b'0x12d':'certificate_expired',b'0x12e':'certificate_unknown',b'0x12f':'illegal_parameter',b'0x130':'unknown_ca',b'0x150':'internal_error'}
+    branches={b'Closing connection with error':'closing',b'Destroying connection with error':'destroying',b'Destroying connection':'destroying_timeout',b'Error occurred handling initial packet':'initial_packet_error'}
+    position=offset
+    for line in scanned.splitlines(keepends=True):
+        if not line.endswith(b'\n'):break
+        result['scannedCompleteLines']+=1
+        found=re.fullmatch(line_pattern,line)
+        if found:
+            match=re.fullmatch(crypto,found['body'])
+            item={'byteOffset':position,'bytes':len(line),'sha256':digest(line),'branch':branches[found['branch']],
+                'timestampShape':'default_go' if re.match(rb'[0-9]{4}/',line) else 'none',
+                'cryptoCode':match['code'].decode() if match and match['code'] in codes else 'other',
+                'certificateClass':codes.get(match['code'],'other') if match else 'other',
+                'origin':match['role'].decode() if match else 'unknown'}
+            if len(result['structuredEvents'])<32:result['structuredEvents'].append(item)
+            else:result['structuredEventOverflow']+=1
+        else:result['scannedUnknownLines']+=1
+        position+=len(line)
+    return result
+
+
 def peer_certificate_alert(raw, offset):
     if type(offset) is not int or offset < 0 or offset > len(raw) or (offset and raw[offset-1:offset] != b'\n'):
         raise RuntimeError('peer certificate observation window is not an exact line boundary')
@@ -1149,7 +1231,7 @@ def run_case(binary, row, root, kind, mutation=None):
               'controlledPeerQUICErrorLogLevel':'error'}
     events=result['events']
     primary = None
-    peer_port = None; mixed_ports = []
+    peer_port = None; mixed_ports = [];peer_offset=None
     try:
         identity_event=event(events,'case.native_identity.verify',status='RUNNING')
         verify_case_product(binary,row)
@@ -1267,7 +1349,10 @@ def run_case(binary, row, root, kind, mutation=None):
             time.sleep(.25)
             if not failed or (echo.accepted, echo.received, udp_echo.received) != baseline:
                 raise RuntimeError('negative reached echo or did not reject')
-            result['negative'] = negative_evidence(kind, mutation, client.log_path.read_bytes(), peer.log_path.read_bytes(),
+            client_raw=client.log_path.read_bytes();peer_raw=peer.log_path.read_bytes()
+            if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
+                result['negativePeerObservations']=[capture_peer_certificate_log_observation(peer_raw,peer_offset,'proof_attempt',peer)]
+            result['negative'] = negative_evidence(kind, mutation, client_raw, peer_raw,
                                                    peer_offset=peer_offset,mutation_proof=result['mutationProof'])
             result['negative']['peerIdentity'] = {'pid':peer.pid,'startTicks':peer.start_identity['startTicks'],'coreSHA256':row['core']['sha256']}
             result['negative']['peerWindowBeforeSHA256'] = digest(peer_log_before_negative)
@@ -1371,6 +1456,12 @@ def run_case(binary, row, root, kind, mutation=None):
         except OSError: errors.append('owned listening port not released')
         if errors:
             result['status'] = 'FAIL'; result['cleanupErrors'] = errors
+        if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni') and peer_offset is not None:
+            actual_peer=next((proc for proc in processes if proc.role=='peer'),None)
+            if actual_peer is not None:
+                try:observation=capture_peer_certificate_log_observation(actual_peer.log_path.read_bytes(),peer_offset,'post_cleanup',actual_peer)
+                except Exception:observation={'phase':'post_cleanup','unavailable':True,'reason':'private_observation_failed','notProofAttempt':True}
+                result.setdefault('negativePeerObservations',[]).append(observation)
         result['privateLogs']=[{'name':path.name,**safe_log_observation(path.read_bytes(),Path(__file__).resolve().parents[2])} for path in directory.glob('*.private.log')]
         result['continuationSafe']=safe_to_continue(result)
     return result

@@ -1593,4 +1593,161 @@ for line in sys.stdin:
             with self.assertRaises(RuntimeError):owner.close()
 
 
+
+class PeerFinitePredicateDiagnostics(unittest.TestCase):
+    owner=PeerNegativeAndObserverContracts.owner
+
+    def test_five_socket_predicates_preserve_original_short_circuit(self):
+        fields=['uniqueIPv4','localExpected','rowInOwnerFdSet','remoteAllowed']
+        for failure in ('single_socket_row','socket_family','socket_local','socket_owner_inode','socket_remote',None,'zero_rows'):
+            with self.subTest(failure=failure):
+                relay=peer.UDPRelay(1);owner=self.owner();sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                try:
+                    sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];inode=re.fullmatch(r'socket:\[(\d+)\]',os.readlink(f'/proc/self/fd/{sock.fileno()}'))[1]
+                    relay.bind_owner(owner)
+                    local=('00000000' if failure=='socket_local' else '0100007F')+':'+format(port,'04X')
+                    remote=('0100007F:0001' if failure=='socket_remote' else '00000000:0000')
+                    observed_inode='999999999999' if failure=='socket_owner_inode' else inode
+                    row=f'0: {local} {remote} 07 0:0 00:0 0 0 0 {observed_inode} 2\n'
+                    udp='header\n'+(row*2 if failure=='single_socket_row' else row)
+                    udp6='header\n'
+                    if failure=='socket_family':udp,udp6='header\n',udp
+                    if failure=='zero_rows':udp='header\n'
+                    opened=Path.open
+                    def table(path,*a,**kw):
+                        if str(path).endswith('/net/udp'):return io.StringIO(udp)
+                        if str(path).endswith('/net/udp6'):return io.StringIO(udp6)
+                        return opened(path,*a,**kw)
+                    with mock.patch.object(Path,'open',table):
+                        if failure not in (None,'zero_rows'):
+                            with self.assertRaises(peer.IdentityFailure):relay.source_inode(sock.getsockname(),{'inode':inode,'retired':False})
+                        else:self.assertEqual(relay.source_inode(sock.getsockname(),{'inode':inode,'retired':False}),None if failure=='zero_rows' else inode)
+                    facts=relay.identity_predicates;self.assertEqual(facts['failedPredicate'],None if failure=='zero_rows' else failure)
+                    self.assertTrue(facts['ownerBeforeMatches']);self.assertTrue(facts['ownerAfterMatches']);self.assertTrue(facts['slotPresent'])
+                    if failure=='single_socket_row':self.assertEqual(facts['samePortRows'],2)
+                    if failure=='zero_rows':self.assertEqual(facts['samePortRows'],0)
+                    if failure in ('single_socket_row','zero_rows'):self.assertTrue(all(facts[f] is None for f in fields));self.assertIsNone(facts['priorInodeMatches'])
+                    if failure in ('socket_family','socket_local'):self.assertIsNone(facts['rowInOwnerFdSet']);self.assertIsNone(facts['priorInodeMatches'])
+                    if failure=='socket_owner_inode':self.assertFalse(facts['priorInodeMatches']);self.assertIsNone(facts['remoteAllowed'])
+                    if failure in (None,'socket_remote'):self.assertTrue(facts['priorInodeMatches'])
+                    self.assertNotIn(str(port),json.dumps(facts));self.assertNotIn(inode,json.dumps(facts))
+                finally:sock.close();relay.close()
+
+    def test_pid_predicate_reports_birth_before_and_after_not_volatile_state(self):
+        for after in (False,True):
+            relay=peer.UDPRelay(1);owner=self.owner()
+            try:
+                relay.bind_owner(owner);bad=dict(owner.start_identity,startTicks=0)
+                with mock.patch.object(peer,'process_identity',side_effect=[owner.start_identity,bad] if after else [bad]):
+                    with self.assertRaises(peer.IdentityFailure):relay.source_inode(('127.0.0.1',1234))
+                self.assertEqual(relay.identity_predicates['failedPredicate'],'owner_birth_after' if after else 'owner_birth_before')
+                self.assertIsNone(relay.identity_predicates['samePortRows'])
+            finally:relay.close()
+        source=ast.parse((ROOT/'scripts/ci/protocol_peer.py').read_text());function=next(n for n in source.body if isinstance(n,ast.FunctionDef) and n.name=='process_identity')
+        returned=next(n.value for n in ast.walk(function) if isinstance(n,ast.Return))
+        self.assertEqual({ast.literal_eval(k) for k in returned.keys},{'pid','pgrp','session','startTicks'})
+
+    def test_non_proc_source_reject_resets_old_predicates_and_times(self):
+        relay=peer.UDPRelay(1)
+        try:
+            relay.identity_predicates={'failedPredicate':'old'};relay.identity_read_start=1;relay.identity_read_end=2
+            with self.assertRaises(RuntimeError):relay.current_source(('192.0.2.1',1234),mock.Mock(),True)
+            self.assertEqual(relay.identity_predicates['failedPredicate'],'source_loopback');self.assertIsNone(relay.identity_read_start)
+            self.assertIsNone(relay.identity_read_end);self.assertEqual(relay.identity_operation,'source_address')
+        finally:relay.close()
+
+    def test_finite_h3_logger_shapes_codes_and_private_reason_are_only_diagnostics(self):
+        owner=self.owner();old=b'old private line\n'
+        lines=[b'2026/10/25 00:00:01 server Closing connection with error: CRYPTO_ERROR 0x12e (remote): PRIVATE\n',
+               b'server Destroying connection with error: CRYPTO_ERROR 0x130 (local): PRIVATE\n',
+               b'2026/10/25 00:00:02 server Error occurred handling initial packet: CRYPTO_ERROR 0x150 (local): PRIVATE\n',
+               b'2026/10/25 00:00:03 server Closing connection with error: INTERNAL_ERROR: CRYPTO_ERROR 0x12e (remote): PRIVATE\n',
+               b'arbitrary server Closing connection with error: CRYPTO_ERROR 0x12e (remote): PRIVATE\n',
+               b'incomplete PRIVATE']
+        raw=old+b''.join(lines);fact=peer.peer_certificate_log_observation(raw,len(old),'proof_attempt',owner)
+        self.assertTrue(fact['diagnosticOnly']);self.assertEqual(fact['scannedCompleteLines'],5);self.assertEqual(fact['scannedUnknownLines'],1)
+        self.assertEqual([e['cryptoCode'] for e in fact['structuredEvents']],['0x12e','0x130','0x150','other'])
+        self.assertEqual([e['branch'] for e in fact['structuredEvents']],['closing','destroying','initial_packet_error','closing'])
+        self.assertTrue(fact['trailingIncompleteLine']);self.assertNotIn('PRIVATE',json.dumps(fact))
+        self.assertEqual(fact['rawSHA256'],peer.digest(raw));self.assertEqual(fact['windowSHA256'],peer.digest(raw[len(old):]))
+        with self.assertRaises(RuntimeError):peer.peer_certificate_alert(lines[1],0)
+        with self.assertRaises(RuntimeError):peer.peer_certificate_alert(lines[3],0)
+
+    def test_h3_window_boundaries_never_backfill_old_or_partial_lines(self):
+        owner=self.owner();good=b'2026/10/25 00:00:01 server Closing connection with error: CRYPTO_ERROR 0x12e (remote): PRIVATE\n'
+        later=good+b'new line\n';fact=peer.peer_certificate_log_observation(later,len(good),'post_cleanup',owner)
+        self.assertEqual(fact['structuredEvents'],[]);self.assertTrue(fact['notProofAttempt'])
+        for offset in (-1,len(later)+1,1,True):
+            self.assertTrue(peer.peer_certificate_log_observation(later,offset,'post_cleanup',owner)['unavailable'])
+        self.assertTrue(peer.peer_certificate_log_observation(good[:-1],0,'proof_attempt',owner)['trailingIncompleteLine'])
+
+    def test_h3_observation_scanning_and_event_caps_keep_full_hashes(self):
+        owner=self.owner();line=b'2026/10/25 00:00:01 server Closing connection with error: CRYPTO_ERROR 0x12e (remote): PRIVATE\n'
+        raw=line*40+b'x'*1048576+b'\n';fact=peer.peer_certificate_log_observation(raw,0,'proof_attempt',owner)
+        self.assertEqual(len(fact['structuredEvents']),32);self.assertEqual(fact['structuredEventOverflow'],8)
+        self.assertEqual(fact['scannedBytes'],1048576);self.assertTrue(fact['scanTruncated'])
+        self.assertEqual(fact['rawSHA256'],peer.digest(raw));self.assertEqual(fact['windowSHA256'],peer.digest(raw))
+        self.assertTrue(fact['trailingIncompleteLine']);self.assertNotIn('PRIVATE',json.dumps(fact))
+
+    def test_observation_failure_is_unavailable_not_a_new_primary_exception(self):
+        owner=self.owner()
+        with mock.patch.object(peer,'peer_certificate_log_observation',side_effect=PermissionError('PRIVATE')):
+            for phase in ('proof_attempt','post_cleanup'):
+                fact=peer.capture_peer_certificate_log_observation(b'',0,phase,owner)
+                self.assertTrue(fact['unavailable']);self.assertTrue(fact['diagnosticOnly']);self.assertNotIn('PRIVATE',json.dumps(fact))
+        source=(ROOT/'scripts/ci/protocol_peer.py').read_text();start=source.index('def run_case(')
+        self.assertLess(source.index("result['negativePeerObservations']=",start),source.index("result['negative'] = negative_evidence",start))
+        self.assertGreater(source.index("'post_cleanup',actual_peer",start),source.index("result['descendantRetirement'] = drain_owned_children()",start))
+
+
+    def test_timeout_destroy_logger_shape_is_diagnostic_not_certificate_proof(self):
+        raw=b'2026/10/25 00:00:01 server Destroying connection: timeout PRIVATE\n'
+        fact=peer.peer_certificate_log_observation(raw,0,'proof_attempt',self.owner())
+        self.assertEqual(fact['structuredEvents'][0]['branch'],'destroying_timeout')
+        self.assertEqual(fact['structuredEvents'][0]['cryptoCode'],'other')
+        self.assertEqual(fact['structuredEvents'][0]['origin'],'unknown')
+        with self.assertRaises(RuntimeError):peer.peer_certificate_alert(raw,0)
+
+    def test_actual_run_case_diagnostic_fault_preserves_primary_matcher_and_all_cleanup(self):
+        # Control-flow contract only: construction/readiness/traffic are explicit
+        # fixtures, while run_case and its final cleanup execute unchanged.
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);binary=root/'sing-box';binary.write_bytes(b'core');(root/'libcronet.so').write_bytes(b'side')
+            row={'core':{'member':'sing-box','bytes':4,'sha256':peer.digest(b'core')},
+                 'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
+            closed=[]
+            class FixtureCore:
+                def __init__(self,binary,config,directory,role,sha,events):
+                    self.role=role;self.pid=123;self.start_identity={'pid':123,'startTicks':456};self.bound_sha256=sha
+                    self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':1}
+                    self.log_path=directory/(role+'.private.log');self.log_path.write_bytes(b'')
+                    self.cleanup={'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False}
+                def wait_tcp(self,port):pass
+                def wait_udp(self,port):pass
+                def close(self):closed.append(self.role)
+            class FixtureRelay:
+                def __init__(self,target):self.port=peer.free_port();self.counts=[1,1]
+                def bind_owner(self,owner):pass
+                def prepare_owner_retirement(self):pass
+                def close(self):closed.append('observer')
+                def observation(self):return {'threadJoined':True,'allSocketsClosed':True,'errors':[]}
+            def exchange(*args,**kwargs):
+                if kwargs.get('label')=='negative':raise EOFError('fixed rejection')
+                return None,mock.Mock()
+            with mock.patch.object(peer,'certificate',return_value=('CA','CERT','KEY')),mock.patch.object(peer,'config_check',return_value={}), \
+                 mock.patch.object(peer,'CoreProcess',FixtureCore),mock.patch.object(peer,'UDPRelay',FixtureRelay), \
+                 mock.patch.object(peer,'tcp_exchange',side_effect=exchange),mock.patch.object(peer,'bound_library',return_value={}), \
+                 mock.patch.object(peer,'naive_protocol_observation',return_value={'observedAllowlistedProtocolAndStatus':[],'successfulExpectedProtocolObserved':True}), \
+                 mock.patch.object(peer,'verify_h3_only_carrier',return_value={}),mock.patch.object(peer,'retire_old_stream',return_value={'status':'CLOSED'}), \
+                 mock.patch.object(peer,'peer_certificate_log_observation',side_effect=PermissionError('PRIVATE')), \
+                 mock.patch.object(peer,'negative_evidence',side_effect=RuntimeError('negative lacks exact remote peer certificate alert')) as matcher:
+                result=peer.run_case(binary,row,root,'naive-h3','wrong-sni')
+            matcher.assert_called_once();self.assertEqual(result['error'],'negative lacks exact remote peer certificate alert')
+            self.assertEqual(result['status'],'FAIL');self.assertNotIn('PRIVATE',json.dumps(result))
+            self.assertEqual([v['phase'] for v in result['negativePeerObservations']],['proof_attempt','post_cleanup'])
+            self.assertTrue(all(v['unavailable'] for v in result['negativePeerObservations']))
+            self.assertIn('negative',closed);self.assertIn('healthy',closed);self.assertIn('peer',closed);self.assertEqual(closed.count('observer'),2)
+            self.assertTrue(result['fixturesJoined']);self.assertEqual(result['descendantRetirement']['remaining'],[])
+
+
 if __name__=='__main__':unittest.main()
