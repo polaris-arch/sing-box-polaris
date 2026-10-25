@@ -1552,7 +1552,7 @@ def validate_linux_dispatch(env=os.environ):
         raise ValueError('Linux peer build requires its explicit manual selector')
     if env.get('PEER_EVIDENCE_MODE') != 'staging' or env.get('PEER_SOURCE_GENERATE_ONLY') != 'false':
         raise ValueError('Linux peer build cannot select final evidence or source generation')
-    if env.get('PEER_VERSION') != '1.15.0-polaris-alpha.12.3':
+    if env.get('PEER_VERSION') != '1.15.0-polaris-alpha.12.4':
         raise ValueError('Linux peer build version differs')
     if env.get('GITHUB_REPOSITORY') != 'polaris-arch/sing-box-polaris' or env.get('GITHUB_REPOSITORY_ID') != '1421657509':
         raise ValueError('Linux peer build repository differs')

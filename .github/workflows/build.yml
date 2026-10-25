@@ -463,8 +463,8 @@ jobs:
         json.dump({key: os.environ[key] for key in keys}, open(sys.argv[1], 'w'), indent=2)
         PYCONTEXT
         go test -json -trimpath -mod=readonly -p=2 -count=1 -timeout=60s -tags "$BUILD_TAGS" -ldflags "$TEST_LDFLAGS" \
-          -run '^(TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)' \
-          . ./internal/runtimegraph ./route ./protocol/masque ./cmd/sing-box ./adapter/outbound \
+          -run '^(TestRuntimeTLSFailure|TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)' \
+          . ./internal/runtimegraph ./route ./protocol/masque ./cmd/sing-box ./adapter/outbound ./common/tls \
           | tee "$evidence/tests.jsonl"
         python3 - "$evidence/tests.jsonl" <<'PYDIAGNOSTIC'
         import json, sys
@@ -474,6 +474,7 @@ jobs:
             prefix + '/internal/runtimegraph': {'TestCleanupSnapshotDoesNotTakeLeaseOrWaitForMutex', 'TestCleanupSnapshotDistinguishesLeaseDrainNativeCloseAndFailure'},
             prefix + '/route': {'TestCleanupSnapshotConnectionTaskAndContention', 'TestCleanupSnapshotReferenceSignalsAndContention', 'TestFinalLogicalFlowActualTCPAndOwner', 'TestFinalLogicalFlowActualPacketCopyAndOwner', 'TestFinalLogicalFlowActualHalfCloseKeepsDownload', 'TestFinalLogicalFlowRealTCPCloseRace', 'TestFinalLogicalFlowRealTCPHalfClose', 'TestFinalLogicalFlowListenerSocksRuntimeCompletion', 'TestFinalLogicalFlowSealAndLateAttach', 'TestFinalLogicalFlowCopyCompletionsAndStaleContext', 'TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock', 'TestFinalLogicalFlowCloseErrorPanicAndUnknownPending', 'TestFinalLogicalFlowRegisterSealRace', 'TestFinalLogicalFlowResetKeepsAdmissionAndLiveFlow', 'TestFinalLogicalFlowSpliceAbortAndCompletion', 'TestFinalLogicalFlowDifferentManagerRejectsContext', 'TestFinalLogicalFlowWrapperPreservesPrivateJoinAndErrors', 'TestFinalLogicalFlowLateWrappedBothSidesAreJoined', 'TestFinalLogicalFlowPrivateWaitPanicAndCombinedIngress'},
             prefix + '/adapter/outbound': {'TestRuntimeFinalNestedExternalCloseJoinsPending', 'TestRuntimeFinalOwnedWaiterJoinsMethodAndClose', 'TestRuntimeFinalUnknownWrapperHasNoPrivateWaiter', 'TestRuntimeFinalInboundCompletionPreservesAndDeduplicates', 'TestRuntimeFinalPrivateWaiterPanicIsUnknown', 'TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself', 'TestRuntimeNestedOwnedCloseJoinsOneFixedWorker', 'TestRuntimeCarrierUncertainCloseIsStickyAndRetains'},
+            prefix + '/common/tls': {'TestRuntimeTLSFailureRawErrorAndReentrantRequest', 'TestRuntimeTLSFailureRealityUntrustedBeforeFallback', 'TestRuntimeTLSFailurePairJoinsRawMethod', 'TestRuntimeTLSFailurePairRepeatedConcurrentClose', 'TestRuntimeTLSFailureErrorClassification', 'TestRuntimeTLSFailureUnknownTransportNoCompletion', 'TestRuntimeTLSFailureAdmissionReleaseAndPreservedError', 'TestRuntimeTLSFailureKTLSClientServerKeepsCleanupError', 'TestRuntimeTLSFailureRefractionOriginalPendingNegative', 'TestRuntimeTLSFailureRefractionPairBeforeAndAfterClose', 'TestRuntimeTLSFailureRealityTrustedFallbackAndAdmission', 'TestRuntimeTLSFailureActualStandardAndUTLSCancellation'},
             prefix + '/protocol/masque': {'TestCleanupDiagnosticMasquePhaseAndPanic'},
             prefix + '/cmd/sing-box': {'TestNativePeerNetLogFileLimitBound', 'TestNativePeerNetLogStartupPanicsArePrivateAndClosed', 'TestNativePeerNetLogDefaultAndPartialFlags', 'TestNativePeerNetLogPrivatePathAdmission', 'TestNativePeerNetLogLifecycleAndIdempotence', 'TestNativePeerNetLogStartupFailuresAreClosed', 'TestNativePeerNetLogChangedIdentityAndBoundReject', 'TestNativePeerNetLogUncertainFlushNeverDestroysOrSucceeds', 'TestCleanupDiagnosticPanicDoesNotMaskCloseError', 'TestCleanupDiagnosticEncodingFailureIsFixed', 'TestCleanupDiagnosticFiniteSnapshotIsEncoded'},
         }
@@ -481,7 +482,7 @@ jobs:
         if any(e.get('Action') in {'fail', 'skip'} for e in events):
             raise SystemExit('cleanup diagnostic test failure or skip')
         for package, names in required.items():
-            passed = {e.get('Test') for e in events if e.get('Package') == package and e.get('Action') == 'pass' and 'Test' in e}
+            passed = {e.get('Test') for e in events if e.get('Package') == package and e.get('Action') == 'pass' and 'Test' in e and '/' not in e['Test']}
             if passed != names or not any(e.get('Package') == package and e.get('Action') == 'pass' and 'Test' not in e for e in events):
                 raise SystemExit('exact cleanup diagnostic named tests/package PASS missing: ' + package)
         if {e.get('Package') for e in events if e.get('Action') == 'pass' and 'Test' not in e} != set(required):
@@ -2144,7 +2145,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.3
+        default: 1.15.0-polaris-alpha.12.4
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice
