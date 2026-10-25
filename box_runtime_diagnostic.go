@@ -4,10 +4,10 @@ import (
 	"github.com/sagernet/sing-box/route"
 )
 
-const (
-	cleanupDiagnosticCap    uint64 = 1000000
-	cleanupDiagnosticOwners        = 256
-)
+const cleanupDiagnosticCap uint64 = 1000000
+
+// cleanupDiagnosticOwners is an untyped bound for owner snapshot counts.
+const cleanupDiagnosticOwners = 256
 
 // Category order: unknown, stable, endpoint, inbound, outbound, DNS, router,
 // certificate, HTTP, source producer. State order: open,sealed,closing,closed.
