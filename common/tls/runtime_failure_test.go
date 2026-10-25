@@ -133,8 +133,7 @@ func TestRuntimeTLSFailurePairRepeatedConcurrentClose(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make(chan error, 16)
 	for range 16 {
-		wg.Add(1)
-		go func() { defer wg.Done(); results <- outer.RuntimeCloseAndWait() }()
+		wg.Go(func() { results <- outer.RuntimeCloseAndWait() })
 	}
 	wg.Wait()
 	close(results)
