@@ -37,12 +37,14 @@ func (f *peerNetLogFake) StartNetLogToFile(path string, all bool) bool {
 	}
 	return f.start
 }
+
 func (f *peerNetLogFake) StopNetLog() {
 	f.calls = append(f.calls, "stop")
 	if f.panicStop {
 		panic("PRIVATE")
 	}
 }
+
 func (f *peerNetLogFake) Shutdown() cronet.Result {
 	f.calls = append(f.calls, "shutdown")
 	if f.onShutdown != nil {
@@ -50,20 +52,23 @@ func (f *peerNetLogFake) Shutdown() cronet.Result {
 	}
 	return f.shutdown
 }
+
 func (f *peerNetLogFake) Destroy() {
 	f.calls = append(f.calls, "destroy")
 	if f.onDestroy != nil {
 		f.onDestroy()
 	}
 }
+
 func peerNetLogTestDir(t *testing.T) string {
 	t.Helper()
 	p := t.TempDir()
-	if err := os.Chmod(p, 0700); err != nil {
+	if err := os.Chmod(p, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	return p
 }
+
 func peerNetLogStart(t *testing.T, path string, f *peerNetLogFake) (func() error, error) {
 	t.Helper()
 	return startNativePeerNetLogWith(path, func() (nativePeerNetLogEngine, error) { return f, nil }, func() error { return nil })
@@ -87,14 +92,15 @@ func TestNativePeerNetLogDefaultAndPartialFlags(t *testing.T) {
 		t.Fatal("partial opt-in admitted")
 	}
 }
+
 func TestNativePeerNetLogPrivatePathAdmission(t *testing.T) {
 	root := peerNetLogTestDir(t)
 	bad := filepath.Join(root, "bad")
-	if err := os.Mkdir(bad, 0755); err != nil {
+	if err := os.Mkdir(bad, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	existing := filepath.Join(root, "existing")
-	if err := os.WriteFile(existing, []byte("preserve"), 0600); err != nil {
+	if err := os.WriteFile(existing, []byte("preserve"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	link := filepath.Join(root, "link")
@@ -115,6 +121,7 @@ func TestNativePeerNetLogPrivatePathAdmission(t *testing.T) {
 		t.Fatal("existing private file modified")
 	}
 }
+
 func TestNativePeerNetLogLifecycleAndIdempotence(t *testing.T) {
 	f := &peerNetLogFake{start: true}
 	path := filepath.Join(peerNetLogTestDir(t), "netlog")
@@ -132,10 +139,11 @@ func TestNativePeerNetLogLifecycleAndIdempotence(t *testing.T) {
 		t.Fatal(f.calls)
 	}
 	info, err := os.Lstat(path)
-	if err != nil || info.Mode().Perm() != 0600 {
+	if err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatal("private mode")
 	}
 }
+
 func TestNativePeerNetLogStartupFailuresAreClosed(t *testing.T) {
 	f := &peerNetLogFake{start: false}
 	if _, err := peerNetLogStart(t, filepath.Join(peerNetLogTestDir(t), "netlog"), f); err == nil {
@@ -150,16 +158,17 @@ func TestNativePeerNetLogStartupFailuresAreClosed(t *testing.T) {
 		t.Fatal("limit failure masked or native called")
 	}
 }
+
 func TestNativePeerNetLogChangedIdentityAndBoundReject(t *testing.T) {
 	for _, mutate := range []func(string){func(path string) {
-		if err := os.Chmod(path, 0644); err != nil {
+		if err := os.Chmod(path, 0o644); err != nil {
 			panic(err)
 		}
 	}, func(path string) {
 		if err := os.Remove(path); err != nil {
 			panic(err)
 		}
-		if err := os.WriteFile(path, nil, 0600); err != nil {
+		if err := os.WriteFile(path, nil, 0o600); err != nil {
 			panic(err)
 		}
 	}, func(path string) {
@@ -177,6 +186,7 @@ func TestNativePeerNetLogChangedIdentityAndBoundReject(t *testing.T) {
 		}
 	}
 }
+
 func TestNativePeerNetLogUncertainFlushNeverDestroysOrSucceeds(t *testing.T) {
 	if mode := os.Getenv("POLARIS_NETLOG_UNKNOWN_UNIT_CHILD"); mode != "" {
 		f := &peerNetLogFake{start: true, panicStop: mode == "finish", onDestroy: func() { fmt.Fprint(os.Stderr, "UNEXPECTED") }}
@@ -226,7 +236,7 @@ func TestNativePeerNetLogFileLimitBound(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := filepath.Join(peerNetLogTestDir(t), "bounded")
-		err := os.WriteFile(path, make([]byte, nativePeerNetLogMaximum+1), 0600)
+		err := os.WriteFile(path, make([]byte, nativePeerNetLogMaximum+1), 0o600)
 		if err == nil {
 			t.Fatal("file size limit did not reject")
 		}

@@ -32,6 +32,7 @@ type visionTransportDialer struct{ net.Dialer }
 func (d *visionTransportDialer) DialContext(ctx context.Context, network string, addr M.Socksaddr) (net.Conn, error) {
 	return d.Dialer.DialContext(ctx, network, addr.String())
 }
+
 func (*visionTransportDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	return nil, os.ErrInvalid
 }

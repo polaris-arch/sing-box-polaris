@@ -33,6 +33,7 @@ func TestCleanupDiagnosticSaturationAndFiniteKinds(t *testing.T) {
 		t.Fatal("component budget missing")
 	}
 }
+
 func TestCleanupDiagnosticDoesNotExposeIdentityOrWaitForCoordinator(t *testing.T) {
 	id := adapter.RuntimeResourceID{Incarnation: "secret-incarnation", Sequence: 17}
 	owner, err := runtimegraph.NewResourceOwner(context.Background(), id, nil, nil)

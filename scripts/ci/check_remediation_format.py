@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Check the pinned formatter's fixed point without rewriting the checkout."""
 import difflib
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -32,28 +35,155 @@ def emit_diff(path, before, after):
     sys.stdout.buffer.flush()
 
 
+
+# Match the root module's existing lint exclusions, not arbitrary workspace or
+# local replace targets. Nested modules are independent even when tracked here.
+EXCLUDED_PREFIXES = ('vendor/', 'third_party/', 'release/dependency-sources/',
+                     'builtin/', 'examples/', 'transport/simple-obfs/')
+
+
+def checked_path(path, source):
+    if (not isinstance(path, str) or not path or PurePosixPath(path).is_absolute()
+            or '..' in PurePosixPath(path).parts or '\\' in path
+            or any(c in path for c in '\x00\r\n')):
+        raise SystemExit('Invalid ' + source + ' path')
+    return PurePosixPath(path).as_posix()
+
+
+def excluded(path):
+    return path.startswith(EXCLUDED_PREFIXES) or 'testdata' in PurePosixPath(path).parts
+
+
+def regular_source(path):
+    source = Path(path)
+    if (any(p.is_symlink() for p in (source, *source.parents))
+            or not source.exists() or not stat.S_ISREG(source.stat().st_mode)):
+        raise SystemExit('Missing or unsafe owned Go source: ' + path)
+    return source
+
+
+def generated_source(data):
+    # Go's generated-code convention is a standalone line comment before the
+    # first non-comment package clause. Strings, block comments and later text
+    # cannot exempt an owned file from formatting.
+    data = data.removeprefix(b'\xef\xbb\xbf')
+    marked = False
+    while data:
+        data = data.lstrip(b' \t\r\n')
+        if data.startswith(b'//'):
+            line, _, data = data.partition(b'\n')
+            marked |= re.fullmatch(rb'// Code generated .* DO NOT EDIT\.\r?', line) is not None
+        elif data.startswith(b'/*'):
+            end = data.find(b'*/', 2)
+            if end < 0:
+                return False
+            data = data[end + 2:]
+        else:
+            return marked and re.match(rb'package\s', data) is not None
+    return False
+
+
+def tracked_files():
+    top = subprocess.run(['git', 'rev-parse', '--show-toplevel'],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if (top.returncode or top.stderr
+            or Path(os.fsdecode(top.stdout).rstrip('\n')).resolve() != Path.cwd().resolve()):
+        raise SystemExit('Cannot establish tracked owned formatting scope')
+    result = subprocess.run(['git', 'ls-files', '--stage', '-z'],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode or result.stderr or not result.stdout.endswith(b'\0'):
+        raise SystemExit('Cannot establish tracked owned formatting scope')
+    entries = {}
+    for record in result.stdout.split(b'\0'):
+        if not record:
+            continue
+        try:
+            header, raw_path = record.split(b'\t', 1)
+            mode, oid, stage = header.decode('ascii').split(' ')
+            path = raw_path.decode('utf-8')
+        except (ValueError, UnicodeError):
+            raise SystemExit('Invalid tracked index record')
+        if (checked_path(path, 'tracked') != path or stage != '0'
+                or mode not in ('100644', '100755', '120000', '160000')
+                or re.fullmatch('[0-9a-f]{40}', oid) is None or path in entries):
+            raise SystemExit('Conflicting or invalid tracked index record')
+        entries[path] = (mode, oid)
+    if 'go.mod' not in entries:
+        raise SystemExit('Missing tracked root module')
+    return entries
+
+
+def module_boundaries(entries):
+    modules = []
+    for path, (mode, oid) in sorted(entries.items()):
+        if (path != 'go.mod' and not path.endswith('/go.mod')) or excluded(path):
+            continue
+        source = regular_source(path)
+        data = source.read_bytes()
+        actual = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+        if mode not in ('100644', '100755') or actual != oid:
+            raise SystemExit('Tracked module boundary changed: ' + path)
+        # Parse only; no edits, dependency resolution, toolchain download or
+        # module build. Invalid boundaries must not silently hide owned files.
+        result = subprocess.run(['go', 'mod', 'edit', '-json', '-modfile=' + str(source.resolve())], cwd=source.parent,
+                                env=dict(os.environ, GOFLAGS='', GOENV='off', GOWORK='off', GOTOOLCHAIN='local',
+                                         GOPROXY='off', GOSUMDB='off'),
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        try:
+            module = json.loads(result.stdout).get('Module')
+        except (ValueError, AttributeError):
+            module = None
+        if (result.returncode or result.stderr or not isinstance(module, dict)
+                or not isinstance(module.get('Path'), str) or not module['Path']):
+            raise SystemExit('Invalid tracked module boundary: ' + path)
+        if source.read_bytes() != data:
+            raise SystemExit('Module boundary changed while parsing: ' + path)
+        if path != 'go.mod':
+            modules.append(str(PurePosixPath(path).parent) + '/')
+    return tuple(modules)
+
+
+def owned_scope(inventory):
+    historical = set()
+    paths = [row['path'] for row in inventory['files']]
+    paths.extend(inventory.get('dailyHotFormattingScope', {}).get('paths', []))
+    # Preserve explicit historical fail-closed checks without claiming the new
+    # tracked union was covered by that old audit or acceptedTree.
+    for value in paths:
+        path = checked_path(value, 'inventory')
+        if not path.endswith('.go') or path.endswith('.pb.go') or excluded(path):
+            continue
+        regular_source(path)
+        historical.add(path)
+    entries = tracked_files()
+    nested = module_boundaries(entries)
+    if any(path.startswith(nested) for path in historical):
+        raise SystemExit('Historical owned source moved into a nested module')
+    selected = set()
+    for path in sorted(set(entries) | historical):
+        if (not path.endswith('.go') or path.endswith('.pb.go') or excluded(path)
+                or path.startswith(nested)):
+            continue
+        if path not in entries or entries[path][0] not in ('100644', '100755'):
+            raise SystemExit('Untracked or unsafe owned Go source: ' + path)
+        source = regular_source(path)
+        if not generated_source(source.read_bytes()):
+            selected.add(path)
+    print('Owned formatting scope: ' + json.dumps({
+        'historicalSelected': len(selected & historical),
+        'trackedSelected': len(selected),
+        'trackedAdditional': len(selected - historical),
+        'nestedModules': len(nested),
+    }, sort_keys=True), file=sys.stderr)
+    return sorted(selected)
+
+
 def main():
     root = Path.cwd()
     inventory = json.loads(Path('release/audit-remediation-source-inventory.json').read_text())
     if inventory.get('schema') != 'audit-remediation-source-inventory-v1':
         raise SystemExit('Invalid current remediation inventory; historical source is unsupported')
-    files = []
-    paths = [row['path'] for row in inventory['files']]
-    paths.extend(inventory.get('dailyHotFormattingScope', {}).get('paths', []))
-    for path in paths:
-        if (not isinstance(path, str) or PurePosixPath(path).is_absolute()
-                or '..' in PurePosixPath(path).parts or any(c in path for c in '\x00\r\n')):
-            raise SystemExit('Invalid inventory path')
-        path = PurePosixPath(path).as_posix()
-        if not path.endswith('.go') or path.endswith('.pb.go') or path.startswith(('vendor/', 'third_party/', 'release/dependency-sources/')):
-            continue
-        source = Path(path)
-        if not source.is_file() or any(p.is_symlink() for p in (source, *source.parents)):
-            raise SystemExit('Missing or unsafe owned Go source: ' + path)
-        if 'Code generated ' in source.read_text()[:2048]:
-            continue
-        files.append(path)
-    files = sorted(set(files))
+    files = owned_scope(inventory)
     if not files:
         raise SystemExit('Empty owned Go formatting scope')
     original = {path: Path(path).read_bytes() for path in files}

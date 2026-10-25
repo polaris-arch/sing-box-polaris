@@ -1,4 +1,4 @@
-"""Exercise formatter scope and fixed-point checking without native tools."""
+"""Exercise real Git scope and fixed points; formatter/module parser are stubs."""
 import contextlib
 import io
 import json
@@ -13,10 +13,11 @@ from unittest.mock import patch
 
 SCRIPT = Path(__file__).with_name('check_remediation_format.py').resolve()
 TOOL = '/pinned/golangci-lint'
+REAL_RUN = subprocess.run
 
 
 class FormatScopeTests(unittest.TestCase):
-    def check_scope(self, extra=(), transform=None, fixtures=None, version_code=0, setup=None, tool=TOOL):
+    def check_scope(self, extra=(), transform=None, fixtures=None, version_code=0, setup=None, tool=TOOL, post_setup=None, index_result=None, module_error=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             content = {
@@ -36,7 +37,7 @@ class FormatScopeTests(unittest.TestCase):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(value)
-            (root / 'release').mkdir()
+            (root / 'release').mkdir(exist_ok=True)
             (root / 'release/audit-remediation-source-inventory.json').write_text(json.dumps({
                 'schema': 'audit-remediation-source-inventory-v1',
                 'files': [{'path': 'old.go'}],
@@ -44,11 +45,28 @@ class FormatScopeTests(unittest.TestCase):
             }))
             if setup:
                 setup(root)
+            REAL_RUN(['git', 'init', '-q'], cwd=root, check=True)
+            REAL_RUN(['git', 'add', '.'], cwd=root, check=True)
+            if post_setup:
+                post_setup(root)
             before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
             calls = []
             copies = []
 
             def execute(command, **kwargs):
+                if command[:1] == ['git']:
+                    return index_result if index_result is not None and command[1] == 'ls-files' else REAL_RUN(command, **kwargs)
+                if command[:3] == ['go', 'mod', 'edit']:
+                    self.assertEqual(command[:4], ['go', 'mod', 'edit', '-json'])
+                    self.assertEqual(command[4], '-modfile=' + str((Path(kwargs['cwd']) / 'go.mod').resolve()))
+                    self.assertEqual(kwargs['env']['GOFLAGS'], '')
+                    self.assertEqual(kwargs['env']['GOENV'], 'off')
+                    self.assertEqual(kwargs['env']['GOTOOLCHAIN'], 'local')
+                    self.assertEqual(kwargs['env']['GOWORK'], 'off')
+                    self.assertEqual(kwargs['env']['GOPROXY'], 'off')
+                    self.assertEqual(kwargs['env']['GOSUMDB'], 'off')
+                    return subprocess.CompletedProcess(command, int(module_error),
+                        b'{}' if module_error else b'{"Module":{"Path":"fixture"}}', b'')
                 calls.append(command)
                 self.assertFalse(kwargs['check'])
                 self.assertEqual(kwargs['stdout'], subprocess.PIPE)
@@ -205,6 +223,133 @@ class FormatScopeTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertTrue(Path(result.calls[0][0]).is_absolute())
         self.assertEqual(result.calls[0][0], result.calls[-1][0])
+
+
+    def test_new_tracked_file_not_in_historical_inventory_is_checked(self):
+        def transform(copy, number, files):
+            self.assertIn('newly_owned.go', files)
+            (copy / 'newly_owned.go').write_bytes(b'package formatted\n')
+        result = self.check_scope(fixtures={'newly_owned.go': b'package original\n'}, transform=transform)
+        self.assertIn('Owned source formatting differs', result.exit_code)
+        self.assertIn(b'a/newly_owned.go', result.stdout)
+        self.assertIn(b'"historicalSelected": 1', result.stderr)
+        self.assertIn(b'"trackedAdditional": 2', result.stderr)
+
+    def test_untracked_file_is_not_formatted(self):
+        result = self.check_scope(post_setup=lambda root: (root / 'untracked.go').write_text('not go'))
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn('untracked.go', result.calls[-1])
+
+    def test_untracked_historical_file_is_rejected(self):
+        def post(root):
+            REAL_RUN(['git', 'rm', '--cached', 'new.go'], cwd=root, check=True, capture_output=True)
+        result = self.check_scope(['new.go'], post_setup=post)
+        self.assertIn('Untracked or unsafe', result.exit_code)
+        self.assertFalse(result.calls)
+
+    def test_nested_module_and_lint_exclusions_do_not_expand_to_dependencies(self):
+        fixtures = {path: b'package excluded\n' for path in (
+            'nested/a.go', 'third_party/dependency/extra.go', 'vendor/a.go',
+            'release/dependency-sources/a.go', 'builtin/a.go', 'examples/a.go',
+            'transport/simple-obfs/a.go', 'local/testdata/a.go', 'api/known.pb.go')}
+        result = self.check_scope(fixtures=fixtures)
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.calls[-1][5:], ['new.go', 'old.go'])
+
+    def test_missing_or_changed_tracked_module_boundary_fails_closed(self):
+        for name in ('go.mod', 'nested/go.mod'):
+            for remove in (False, True):
+                with self.subTest(name=name, remove=remove):
+                    def post(root):
+                        if remove:
+                            (root / name).unlink()
+                        else:
+                            (root / name).write_text('module changed\n')
+                    result = self.check_scope(post_setup=post)
+                    self.assertTrue('Missing or unsafe' in result.exit_code or 'boundary changed' in result.exit_code)
+                    self.assertFalse(result.calls)
+
+    def test_invalid_module_parser_result_fails_closed(self):
+        result = self.check_scope(module_error=True)
+        self.assertIn('Invalid tracked module boundary', result.exit_code)
+        self.assertFalse(result.calls)
+
+    def test_symlink_tracked_module_boundary_fails_closed(self):
+        def setup(root):
+            (root / 'nested/go.mod').unlink()
+            (root / 'nested/go.mod').symlink_to('../go.mod')
+        result = self.check_scope(setup=setup)
+        self.assertIn('Missing or unsafe', result.exit_code)
+        self.assertFalse(result.calls)
+
+    def test_historical_owned_source_cannot_be_hidden_by_new_nested_module(self):
+        result = self.check_scope(['owned/a.go'], fixtures={
+            'owned/a.go': b'package owned\n', 'owned/go.mod': b'module nested\n'})
+        self.assertIn('Historical owned source moved', result.exit_code)
+        self.assertFalse(result.calls)
+
+    def test_untracked_module_does_not_hide_tracked_go_source(self):
+        def post(root):
+            (root / 'owned/go.mod').write_text('module do_not_hide\n')
+        result = self.check_scope(fixtures={'owned/a.go': b'package owned\n'}, post_setup=post)
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('owned/a.go', result.calls[-1])
+
+    def test_new_tracked_owned_symlink_is_rejected(self):
+        result = self.check_scope(setup=lambda root: (root / 'linked.go').symlink_to('old.go'))
+        self.assertIn('Untracked or unsafe', result.exit_code)
+        self.assertFalse(result.calls)
+
+    def test_git_failure_and_diagnostics_fail_closed(self):
+        for status, stderr in ((1, b''), (0, b'warning')):
+            with self.subTest(status=status):
+                result = self.check_scope(index_result=subprocess.CompletedProcess([], status, b'', stderr))
+                self.assertIn('Cannot establish tracked', result.exit_code)
+                self.assertFalse(result.calls)
+
+    def test_conflicts_duplicate_and_invalid_index_records_fail_closed(self):
+        oid = b'a' * 40
+        for record in (b'100644 ' + oid + b' 1\told.go\0',
+                       (b'100644 ' + oid + b' 0\told.go\0') * 2,
+                       b'100644 invalid 0\told.go\0',
+                       b'100644 ' + oid + b' 0\t../outside.go\0',
+                       b'100644 ' + oid + b' 0\t./alias.go\0',
+                       b'100644 ' + oid + b' 0\tbad\\path.go\0', b'malformed\0'):
+            with self.subTest(record=record):
+                result = self.check_scope(index_result=subprocess.CompletedProcess([], 0, record, b''))
+                self.assertNotEqual(result.exit_code, 0)
+                self.assertFalse(result.calls)
+
+    def test_gitlink_is_never_traversed(self):
+        def post(root):
+            REAL_RUN(['git', 'update-index', '--add', '--cacheinfo',
+                      '160000,' + 'a' * 40 + ',external'], cwd=root, check=True)
+            (root / 'external').mkdir()
+            (root / 'external/rogue.go').write_text('not go')
+        result = self.check_scope(post_setup=post)
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn('external/rogue.go', result.calls[-1])
+
+    def test_external_replace_does_not_expand_scope(self):
+        result = self.check_scope(fixtures={'go.mod': b'module fixture\nreplace external => /not/our/source\n'})
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.calls[-1][5:], ['new.go', 'old.go'])
+
+    def test_generated_marker_requires_actual_leading_line_comment(self):
+        for text in (b'package fixture\nvar s = "Code generated fake DO NOT EDIT."\n',
+                     b'package fixture\n// Code generated after package. DO NOT EDIT.\n',
+                     b'/*\n// Code generated inside block. DO NOT EDIT.\n*/\npackage fixture\n',
+                     b'// Code generated missing required suffix\npackage fixture\n'):
+            with self.subTest(text=text):
+                result = self.check_scope(fixtures={'not_generated.go': text})
+                self.assertEqual(result.exit_code, 0)
+                self.assertIn('not_generated.go', result.calls[-1])
+
+    def test_long_standard_generated_header_is_excluded(self):
+        text = b'/*' + b'license ' * 400 + b'*/\n// Code generated by fixture. DO NOT EDIT.\npackage fixture\n'
+        result = self.check_scope(fixtures={'long_generated.go': text})
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn('long_generated.go', result.calls[-1])
 
 
 if __name__ == '__main__':

@@ -53,6 +53,7 @@ func finalAwaitClose(t *testing.T, m *ConnectionManager) error {
 		return nil
 	}
 }
+
 func finalFlow(t *testing.T, m *ConnectionManager, c io.Closer) (context.Context, *connectionFlow, func()) {
 	t.Helper()
 	ctx, f, done, err := m.reserveFlow(context.Background(), c)
@@ -175,7 +176,7 @@ func TestFinalLogicalFlowCloseErrorPanicAndUnknownPending(t *testing.T) {
 }
 
 func TestFinalLogicalFlowRegisterSealRace(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		m := finalManager()
 		start := make(chan struct{})
 		done := make(chan struct{})
@@ -298,6 +299,7 @@ func (w *finalWrapper) Close() error {
 	}
 	return err
 }
+
 func TestFinalLogicalFlowWrapperPreservesPrivateJoinAndErrors(t *testing.T) {
 	for _, mixed := range []bool{false, true} {
 		raw, peer := net.Pipe()

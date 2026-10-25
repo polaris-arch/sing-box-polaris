@@ -620,11 +620,13 @@ func RuntimeConnectionCloseWaiter(conn io.Closer) (func() error, bool) {
 // The listener captures this completion at the actual private-carrier creation
 // boundary, before protocol wrappers obscure it. It conveys no I/O access or
 // admission authority. Only final Box flow shutdown consumes the waiter.
-type runtimeInboundCloseContextKey struct{}
-type runtimeInboundCloseTarget struct {
-	state *runtimeCarrier
-	wait  func() error
-}
+type (
+	runtimeInboundCloseContextKey struct{}
+	runtimeInboundCloseTarget     struct {
+		state *runtimeCarrier
+		wait  func() error
+	}
+)
 
 func ContextWithRuntimeInboundClose(ctx context.Context, conn io.Closer) context.Context {
 	wait, known := RuntimeConnectionCloseWaiter(conn)

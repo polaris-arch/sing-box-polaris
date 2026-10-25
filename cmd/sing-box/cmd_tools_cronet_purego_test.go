@@ -14,7 +14,7 @@ import (
 func TestCronetDiagnosticRequiresExactLibraryBytes(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "libcronet.so")
 	data := []byte("candidate-a")
-	if err := os.WriteFile(path, data, 0600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	expected := fmt.Sprintf("%x", sha256.Sum256(data))
@@ -30,7 +30,7 @@ func TestCronetDiagnosticRequiresExactLibraryBytes(t *testing.T) {
 	if _, _, err = verifyCronetLibraryFile("", expected); err == nil {
 		t.Fatal("empty path selected a fallback")
 	}
-	if err = os.WriteFile(path, []byte("candidate-b"), 0600); err != nil {
+	if err = os.WriteFile(path, []byte("candidate-b"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err = verifyCronetLibraryFile(path, expected); err == nil {

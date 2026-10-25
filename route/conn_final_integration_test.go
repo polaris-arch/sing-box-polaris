@@ -26,6 +26,7 @@ type finalVirtualDialer struct {
 func (d finalVirtualDialer) DialContext(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
 	return out.DialRuntimeConn(ctx, d.source, func(context.Context) (net.Conn, error) { return d.conn, nil })
 }
+
 func (d finalVirtualDialer) ListenPacket(context.Context, M.Socksaddr) (net.PacketConn, error) {
 	panic("not called")
 }
@@ -164,9 +165,11 @@ type finalPacketDialer struct {
 func (d finalPacketDialer) DialContext(context.Context, string, M.Socksaddr) (net.Conn, error) {
 	panic("not used")
 }
+
 func (d finalPacketDialer) ListenPacket(ctx context.Context, _ M.Socksaddr) (net.PacketConn, error) {
 	return out.ListenRuntimePacket(ctx, d.source, func(context.Context) (net.PacketConn, error) { return d.conn, nil })
 }
+
 func TestFinalLogicalFlowActualPacketCopyAndOwner(t *testing.T) {
 	host, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -235,6 +238,7 @@ type finalHalfRemote struct {
 }
 
 func (c *finalHalfRemote) CloseWrite() error { c.once.Do(func() { close(c.closedWrite) }); return nil }
+
 func TestFinalLogicalFlowActualHalfCloseKeepsDownload(t *testing.T) {
 	raw, peer := net.Pipe()
 	defer raw.Close()
@@ -295,7 +299,7 @@ func finalTCPPair(t *testing.T) (*net.TCPConn, *net.TCPConn) {
 }
 
 func TestFinalLogicalFlowRealTCPCloseRace(t *testing.T) {
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		socket, peer := finalTCPPair(t)
 		m := finalManager()
 		_, _, setup := finalFlow(t, m, socket)
@@ -348,7 +352,7 @@ func TestFinalLogicalFlowRealTCPHalfClose(t *testing.T) {
 }
 
 func TestFinalLogicalFlowListenerSocksRuntimeCompletion(t *testing.T) {
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		socket, _ := finalTCPPair(t)
 		var releases atomic.Int32
 		carrier := out.WrapRuntimeConn(context.Background(), func() { releases.Add(1) }, socket)

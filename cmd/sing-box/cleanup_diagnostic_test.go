@@ -17,12 +17,14 @@ func TestCleanupDiagnosticPanicDoesNotMaskCloseError(t *testing.T) {
 		t.Fatal("diagnostic disclosed panic")
 	}
 }
+
 func TestCleanupDiagnosticEncodingFailureIsFixed(t *testing.T) {
 	message := runtimeCleanupDiagnosticMessage(func() any { return make(chan string) })
 	if message != "runtime cleanup snapshot encoding unavailable" {
 		t.Fatal(message)
 	}
 }
+
 func TestCleanupDiagnosticFiniteSnapshotIsEncoded(t *testing.T) {
 	message := runtimeCleanupDiagnosticMessage(func() any {
 		return struct {

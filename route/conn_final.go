@@ -188,6 +188,7 @@ func newFinalConnectionCloser(closer io.Closer) finalConnectionCloser {
 	wait, _ := outbound.RuntimeConnectionCloseWaiter(closer)
 	return finalConnectionCloser{closer, wait}
 }
+
 func closeFinalConnection(target finalConnectionCloser) (err error) {
 	var completed chan error
 	if target.wait != nil {

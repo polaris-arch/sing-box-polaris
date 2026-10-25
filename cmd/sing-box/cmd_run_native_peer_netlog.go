@@ -111,7 +111,7 @@ func startNativePeerNetLogWith(path string, openEngine func() (nativePeerNetLogE
 		return nil, nativePeerNetLogFailure()
 	}
 	dir, err := os.Lstat(parent)
-	if err != nil || !dir.IsDir() || dir.Mode().Perm() != 0700 {
+	if err != nil || !dir.IsDir() || dir.Mode().Perm() != 0o700 {
 		return nil, nativePeerNetLogFailure()
 	}
 	dirStat, ok := dir.Sys().(*syscall.Stat_t)
@@ -128,7 +128,7 @@ func startNativePeerNetLogWith(path string, openEngine func() (nativePeerNetLogE
 		_ = directoryFile.Close()
 		return nil, nativePeerNetLogFailure()
 	}
-	fd, err := syscall.Openat(directoryFD, filepath.Base(path), syscall.O_WRONLY|syscall.O_CREAT|syscall.O_EXCL|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0600)
+	fd, err := syscall.Openat(directoryFD, filepath.Base(path), syscall.O_WRONLY|syscall.O_CREAT|syscall.O_EXCL|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0o600)
 	_ = directoryFile.Close()
 	if err != nil {
 		return nil, nativePeerNetLogFailure()
@@ -160,7 +160,7 @@ func startNativePeerNetLogWith(path string, openEngine func() (nativePeerNetLogE
 	}
 	valid := func() bool {
 		info, e := os.Lstat(path)
-		if e != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || info.Size() > nativePeerNetLogMaximum || !os.SameFile(original, info) {
+		if e != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() > nativePeerNetLogMaximum || !os.SameFile(original, info) {
 			return false
 		}
 		stat, ok := info.Sys().(*syscall.Stat_t)

@@ -40,6 +40,7 @@ func TestCleanupSnapshotDoesNotTakeLeaseOrWaitForMutex(t *testing.T) {
 		t.Fatal(done)
 	}
 }
+
 func TestCleanupSnapshotDistinguishesLeaseDrainNativeCloseAndFailure(t *testing.T) {
 	entered, unblock := make(chan struct{}), make(chan struct{})
 	failure := errors.New("private owner failure")

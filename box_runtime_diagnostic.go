@@ -4,8 +4,10 @@ import (
 	"github.com/sagernet/sing-box/route"
 )
 
-const cleanupDiagnosticCap uint64 = 1000000
-const cleanupDiagnosticOwners = 256
+const (
+	cleanupDiagnosticCap    uint64 = 1000000
+	cleanupDiagnosticOwners        = 256
+)
 
 // Category order: unknown, stable, endpoint, inbound, outbound, DNS, router,
 // certificate, HTTP, source producer. State order: open,sealed,closing,closed.
@@ -43,6 +45,7 @@ func cleanupDiagnosticAdd(dst *uint64, n uint64, truncated *bool) {
 	}
 	*dst += n
 }
+
 func cleanupDiagnosticKind(r *runtimeResource, budget *int, truncated *bool) int {
 	switch r.kind {
 	case "stable":

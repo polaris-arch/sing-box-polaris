@@ -17,6 +17,7 @@ func (c *realityVisionObservedConn) Read(p []byte) (int, error) {
 	c.reads.Add(1)
 	return c.Conn.Read(p)
 }
+
 func (c *realityVisionObservedConn) Write(p []byte) (int, error) {
 	c.writes.Add(1)
 	return c.Conn.Write(p)

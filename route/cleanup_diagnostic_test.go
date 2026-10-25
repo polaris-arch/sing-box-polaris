@@ -32,6 +32,7 @@ func TestCleanupSnapshotConnectionTaskAndContention(t *testing.T) {
 		t.Fatal(s)
 	}
 }
+
 func TestCleanupSnapshotReferenceSignalsAndContention(t *testing.T) {
 	m := &RuntimeReferenceManager{setupDone: make(chan struct{}), workerDone: make(chan struct{}), stoppedDone: make(chan struct{})}
 	s := m.CleanupSnapshot()

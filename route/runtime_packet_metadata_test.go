@@ -131,6 +131,7 @@ func (c *runtimeCountedMetadataBoundary) ReaderBufferMetadata() N.ReaderBufferMe
 	c.reads++
 	return c.runtimePacketConn.ReaderBufferMetadata()
 }
+
 func (c *runtimeCountedMetadataBoundary) WriterBufferMetadata() N.WriterBufferMetadata {
 	c.writes++
 	return c.runtimePacketConn.WriterBufferMetadata()
@@ -140,7 +141,7 @@ func TestRuntimePacketMetadataNestedTraversalIsLinear(t *testing.T) {
 	base := &runtimePacketMetadataFixture{front: 11, rear: 13, overhead: 17, readMTU: 1200, writeMTU: 1300}
 	var hidden N.PacketConn = base
 	var boundaries []*runtimeCountedMetadataBoundary
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		next := &runtimeCountedMetadataBoundary{runtimePacketConn: &runtimePacketConn{PacketConn: hidden}}
 		boundaries = append(boundaries, next)
 		hidden = next
