@@ -1,0 +1,26 @@
+{
+  "historicalReceiptsUnmodified": true,
+  "legalConclusion": false,
+  "newDownloads": 0,
+  "producerAttempt": 1,
+  "producerRunId": 40164108947,
+  "references": [
+    {
+      "bytes": 3451,
+      "path": "release/dependency-sources/oci/supplements/39791192772-attempt1/source-acquisition.json",
+      "sha256": "5d5582aa5b1d4c2059107e9cd19dec4eb9c423fb80b89a35ddbc9f734f52a4f0"
+    },
+    {
+      "bytes": 3030,
+      "path": "release/dependency-sources/oci/supplements/39791192772-attempt1/http-get-receipts.json",
+      "sha256": "19494493298534845c55b94f5d1a00763876744cc8062cbf6ded251234254367"
+    },
+    {
+      "bytes": 1289,
+      "path": "release/dependency-sources/oci/selections/39887556943-attempt1/source-acquisition.json",
+      "sha256": "2d88b2096705226dace0ec023933c950f27f92fd06ee5113d641410130099116"
+    }
+  ],
+  "schema": "polaris-exact-existing-source-acquisition-reuse-v1",
+  "sourceCommit": "368b2489784dbe06498a18e83cc2257f94868c46"
+}
