@@ -192,6 +192,29 @@ class Echo:
             raise RuntimeError('echo thread did not join')
 
 
+@contextlib.contextmanager
+def process_inspection_gate(owner, observer=None):
+    # QA-only ordering of a bounded /proc observation and our pidfd signal.
+    # Never hold this gate across process.wait, network I/O, or resource Close.
+    if observer is not None:
+        observer.identity_gate_wait_start=time.monotonic();observer.identity_gate_wait_end=None
+    acquired=owner.inspection_gate.acquire(timeout=1)
+    if observer is not None:observer.identity_gate_wait_end=time.monotonic()
+    if not acquired:
+        raise IdentityFailure('owned process inspection and signal ordering unavailable')
+    try: yield
+    finally: owner.inspection_gate.release()
+
+
+def observed_sigterm(owner):
+    fact=owner.sigterm_observation
+    if (not isinstance(fact,dict) or fact.get('signal')!='SIGTERM' or fact.get('pidfdBound') is not True
+            or fact.get('pid')!=owner.pid or fact.get('startTicks')!=owner.start_identity['startTicks']
+            or fact.get('coreSHA256')!=owner.bound_sha256 or not isinstance(fact.get('monotonicSeconds'),(int,float))):
+        return None
+    return fact
+
+
 class UDPRelay:
     """Bounded, exact-child-owned UDP observation; never a generic loopback proxy."""
     MAX_SOURCES = 16
@@ -219,6 +242,13 @@ class UDPRelay:
         self.direction = 'none'
         self.failure_class = 'operation_error'
         self.close_faults = []
+        self.inspection_gap = None
+        self.quarantined_drops = [0,0]
+        self.identity_operation = 'none'
+        self.identity_read_start = None
+        self.identity_read_end = None
+        self.identity_signal_at_start = None
+        self.identity_gate_wait_start=None;self.identity_gate_wait_end=None
         try:
             self.front = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.front.bind(('127.0.0.1', 0))
@@ -234,9 +264,10 @@ class UDPRelay:
         try:
             if self.identity_uncertain or self.owner is not None or self.owner_ready.is_set():
                 raise IdentityFailure('UDP observer owner cannot be rebound')
-            if (owner.pidfd is None or owner.process.poll() is not None
-                    or process_identity(owner.pid) != owner.start_identity):
-                raise IdentityFailure('UDP observer exact child identity unavailable')
+            with process_inspection_gate(owner):
+                if (owner.pidfd is None or owner.process.poll() is not None
+                        or process_identity(owner.pid) != owner.start_identity):
+                    raise IdentityFailure('UDP observer exact child identity unavailable')
             self.owner = owner
             self.owner_identity = dict(owner.start_identity)
             self.owner_ready.set()
@@ -251,67 +282,101 @@ class UDPRelay:
             if self.identity_uncertain:
                 raise IdentityFailure('UDP observer owner identity is uncertain')
             if self.expected_owner_exit or self.owner is None: return
-            if self.owner.process.poll() is not None or process_identity(self.owner.pid) != self.owner_identity:
-                raise IdentityFailure('UDP observer cannot expect an already exited or changed owner')
-            self.expected_owner_exit = True
+            with process_inspection_gate(self.owner):
+                if self.owner.process.poll() is not None or process_identity(self.owner.pid) != self.owner_identity:
+                    raise IdentityFailure('UDP observer cannot expect an already exited or changed owner')
+                self.expected_owner_exit = True
         except Exception:
             self.identity_uncertain = True
             raise IdentityFailure('UDP observer owner retirement identity unavailable') from None
 
-    def source_inode(self, address):
-        owner = self.owner
-        if owner is None: raise RuntimeError('UDP observer owner not bound')
-        exit_code = owner.process.poll()
-        if exit_code is not None:
-            if not self.expected_owner_exit or exit_code != 0:
-                raise RuntimeError('UDP observer owner exited unexpectedly')
-            self.owner_exit_observed = True
-            return None
-        try:
-            if process_identity(owner.pid) != self.owner_identity:
-                raise RuntimeError('UDP observer owner identity changed')
-            inodes = set()
-            for index,path in enumerate(Path(f'/proc/{owner.pid}/fd').iterdir()):
-                if index >= 4096: raise RuntimeError('UDP observer owner descriptor bound exceeded')
-                try: target = os.readlink(path)
-                except FileNotFoundError: continue
-                match = re.fullmatch(r'socket:\[(\d+)\]', target)
-                if match: inodes.add(match[1])
-            endpoint = '0100007F:' + format(address[1], '04X')
-            remote = '0100007F:' + format(self.port, '04X')
-            rows = []
-            # Wildcard or udp6 sockets on this port make IPv4 ownership ambiguous.
-            # Do not treat a reused wildcard/dual-stack port as an absent source.
-            for family in ('udp','udp6'):
-                with Path(f'/proc/{owner.pid}/net/{family}').open() as stream: table=stream.read(1048577)
-                if len(table)>1048576: raise RuntimeError('UDP observer socket table bound exceeded')
-                for line in table.splitlines()[1:]:
-                    row=line.split()
-                    if row[1].rsplit(':',1)[1] == format(address[1],'04X'):
-                        rows.append((family,row))
-            if process_identity(owner.pid) != self.owner_identity:
-                raise RuntimeError('UDP observer owner identity changed')
-        except (FileNotFoundError, ProcessLookupError):
-            if self.expected_owner_exit and owner.process.poll() == 0:
-                self.owner_exit_observed = True
+    def source_inode(self, address, known_slot=None):
+        owner=self.owner
+        if owner is None: raise IdentityFailure('UDP observer owner not bound')
+        self.identity_operation='ordering_gate'
+        self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
+        with process_inspection_gate(owner,self):
+            self.identity_read_start=time.monotonic()
+            signal_fact=observed_sigterm(owner)
+            self.identity_signal_at_start=signal_fact['monotonicSeconds'] if signal_fact else None
+            self.identity_operation='owner_poll'
+            try:
+                exit_code=owner.process.poll()
+                if exit_code is not None:
+                    if not self.expected_owner_exit or signal_fact is None or exit_code!=0:
+                        raise IdentityFailure('UDP observer owner exited without exact requested retirement')
+                    self.owner_exit_observed=True
+                    return None
+                self.identity_operation='owner_stat_before'
+                if process_identity(owner.pid)!=self.owner_identity:
+                    raise IdentityFailure('UDP observer owner identity changed')
+                inodes=set()
+                self.identity_operation='fd_list'
+                with os.scandir(f'/proc/{owner.pid}/fd') as descriptors:
+                    for index,path in enumerate(descriptors):
+                        if index>=4096:raise RuntimeError('UDP observer owner descriptor bound exceeded')
+                        self.identity_operation='fd_readlink'
+                        try:target=os.readlink(path.path)
+                        except FileNotFoundError:continue  # One raced fd, not loss of the whole owner snapshot.
+                        match=re.fullmatch(r'socket:\[(\d+)\]',target)
+                        if match:inodes.add(match[1])
+                        self.identity_operation='fd_list'
+                endpoint='0100007F:'+format(address[1],'04X')
+                remote='0100007F:'+format(self.port,'04X')
+                rows=[]
+                for family in ('udp','udp6'):
+                    self.identity_operation=family+'_open'
+                    with Path(f'/proc/{owner.pid}/net/{family}').open() as stream:
+                        self.identity_operation=family+'_read'
+                        table=stream.read(1048577)
+                    if len(table)>1048576:raise RuntimeError('UDP observer socket table bound exceeded')
+                    for line in table.splitlines()[1:]:
+                        row=line.split()
+                        if row[1].rsplit(':',1)[1]==format(address[1],'04X'):rows.append((family,row))
+                self.identity_operation='owner_stat_after'
+                if process_identity(owner.pid)!=self.owner_identity:
+                    raise IdentityFailure('UDP observer owner identity changed')
+                if not rows:return None
+                if (len(rows)!=1 or rows[0][0]!='udp' or rows[0][1][1]!=endpoint
+                        or rows[0][1][9] not in inodes or rows[0][1][2] not in (remote,'00000000:0000')):
+                    self.failure_class='source_port_occupied_or_unowned'
+                    raise IdentityFailure('UDP observer source is not the exact child socket')
+                return rows[0][1][9]
+            except OSError as error:
+                # Never retry or forward through a denied/vanished /proc view.
+                # Only a previously proven slot, with SIGTERM already successful
+                # BEFORE this read began, can await strict owned-exit resolution.
+                allowed={errno.EACCES:'permission',errno.EPERM:'permission',errno.ENOENT:'not_found',errno.ESRCH:'process_missing'}
+                code=allowed.get(error.errno)
+                if (code is None or known_slot is None or not self.expected_owner_exit
+                        or signal_fact is None or signal_fact['monotonicSeconds']>self.identity_read_start):
+                    raise
+                self.inspection_gap={'actor':'udp_observer','category':'retirement_inspection_unavailable',
+                    'identityOperation':self.identity_operation,'errnoClass':code,'errno':error.errno,
+                    'readStartedMonotonic':self.identity_read_start,'readFinishedMonotonic':time.monotonic(),
+                    'sigtermSucceededMonotonic':signal_fact['monotonicSeconds'],'expectedOwnerExitAtReadStart':True,
+                    'ownerPID':owner.pid,'ownerStartTicks':self.owner_identity['startTicks'],
+                    'previouslyProvenInode':known_slot['inode'],'resolution':'pending_owned_retirement',
+                    'forwardingDisabled':True,'newSourceAdmissionDisabled':True}
+                self.owner_exit_pending=True
                 return None
-            if self.expected_owner_exit:
-                self.owner_exit_pending = True
-                return None
-            raise RuntimeError('UDP observer owner inspection unavailable') from None
-        if not rows: return None
-        if (len(rows) != 1 or rows[0][0] != 'udp' or rows[0][1][1] != endpoint
-                or rows[0][1][9] not in inodes or rows[0][1][2] not in (remote, '00000000:0000')):
-            self.failure_class = 'source_port_occupied_or_unowned'
-            raise RuntimeError('UDP observer source is not the exact child socket')
-        return rows[0][1][9]
+            finally:
+                self.identity_read_end=time.monotonic()
 
     def current_source(self, address, selector, create=False):
         if address[0] != '127.0.0.1':
             self.failure_class = 'non_loopback_source'
             raise RuntimeError('UDP observer source identity rejected')
-        inode = self.source_inode(address)
         slot = self.sources.get(address)
+        if self.inspection_gap is not None:
+            if slot is None:
+                self.failure_class='unowned_source_during_quarantine'
+                self.identity_operation='quarantine_new_source'
+                self.identity_read_start=None;self.identity_read_end=None;self.identity_signal_at_start=None
+                self.identity_gate_wait_start=None;self.identity_gate_wait_end=None
+                raise IdentityFailure('UDP observer new source cannot enter quarantined epoch')
+            return None
+        inode = self.source_inode(address,slot)
         if self.owner_exit_observed or self.owner_exit_pending:
             # No forwarding while exit evidence is pending; close must confirm
             # the same owned Popen exited cleanly before this can be retired.
@@ -377,7 +442,8 @@ class UDPRelay:
                                 raise RuntimeError('UDP observer peer identity changed')
                             slot = self.current_source(key.data, selector)
                         if slot is None:
-                            self.retired_drops[side] += 1
+                            if self.inspection_gap is not None:self.quarantined_drops[side]+=1
+                            else:self.retired_drops[side] += 1
                             continue
                         slot['received'][side] += 1
                         self.operation = 'send'
@@ -394,7 +460,12 @@ class UDPRelay:
                        errno.ETIMEDOUT:'timeout'}
             self.errors.append({'actor':'udp_observer','phase':self.phase,'operation':self.operation,
                                 'direction':self.direction,'category':self.failure_class,
-                                'errnoClass':allowed.get(getattr(error,'errno',None),'other_os_error' if isinstance(error,OSError) else 'not_os_error')})
+                                'errnoClass':allowed.get(getattr(error,'errno',None),'other_os_error' if isinstance(error,OSError) else 'not_os_error'),
+                                'errno':getattr(error,'errno',None) if isinstance(error,OSError) else None,
+                                'monotonicSeconds':time.monotonic(),'identityOperation':self.identity_operation,
+                                'identityReadStartedMonotonic':self.identity_read_start,'identityReadFinishedMonotonic':self.identity_read_end,
+                                'sigtermSucceededAtReadStart':self.identity_signal_at_start,'expectedOwnerExit':self.expected_owner_exit,
+                                'identityGateWaitStartedMonotonic':self.identity_gate_wait_start,'identityGateWaitFinishedMonotonic':self.identity_gate_wait_end})
             self.terminal = 'failed'
             self.stop.set()
         finally:
@@ -408,7 +479,8 @@ class UDPRelay:
                 'allSocketsClosed':self.front.fileno()==-1 and all(slot['socket'].fileno()==-1 for slot in slots),
                 'retiredSources':sum(slot['retired'] for slot in self.sources.values()),
                 'receivedDatagrams':self.received[:],'forwardedDatagrams':self.counts[:],
-                'retiredSourceDrops':self.retired_drops[:], 'expectedOwnerExit':self.expected_owner_exit,
+                'retiredSourceDrops':self.retired_drops[:],'quarantinedDatagramsNotForwarded':self.quarantined_drops[:],
+                'inspectionGap':dict(self.inspection_gap) if self.inspection_gap else None, 'expectedOwnerExit':self.expected_owner_exit,
                 'ownerExitObserved':self.owner_exit_observed,'ownerExitPending':self.owner_exit_pending,
                 'ownerRetirementConfirmed':self.owner_retirement_confirmed,'ownerPID':self.owner.pid if self.owner else None,
                 'ownerStartTicks':self.owner_identity['startTicks'] if self.owner else None,
@@ -435,11 +507,20 @@ class UDPRelay:
                 and fact.get('exitBeforeTerminate') is None and fact.get('exitCode')==0
                 and fact.get('forcedKill') is False and fact.get('remainingGroup')==[]
                 and fact.get('cleanupErrorLog') is False
+                and fact.get('closeOperationFailure') is None and not fact.get('resourceCloseErrors')
                 and len(fact.get('terminationActions',[]))==1
                 and fact['terminationActions'][0].get('signal')=='SIGTERM'
-                and fact['terminationActions'][0].get('pidfdBound') is True)
+                and fact['terminationActions'][0].get('pidfdBound') is True
+                and observed_sigterm(self.owner) is not None
+                and fact['terminationActions'][0]==self.owner.sigterm_observation)
             if not self.owner_retirement_confirmed:
                 self.close_faults.append('owner_actual_signaled_retirement_not_proven')
+        if self.inspection_gap is not None:
+            clean=(self.owner_retirement_confirmed and not self.thread.is_alive() and self.finished.is_set()
+                and self.terminal=='stopped' and not self.errors and not self.close_faults
+                and self.front.fileno()==-1 and all(slot['socket'].fileno()==-1 for slot in self.sources.values()))
+            if clean:self.inspection_gap['resolution']='verified_owned_retirement'
+            else:self.close_faults.append('retirement_inspection_gap_unresolved')
         self.close_faults=list(dict.fromkeys(self.close_faults))
         if (self.thread.is_alive() or not self.finished.is_set() or self.terminal != 'stopped'
                 or self.errors or self.owner_exit_pending or self.close_faults or self.identity_uncertain):
@@ -480,6 +561,8 @@ class CoreProcess:
     def __init__(self, binary, config, directory, name, expected_hash, events=None):
         self.events=events
         self.role=name
+        self.inspection_gate=threading.RLock()
+        self.sigterm_observation=None
         self.source_root=Path(__file__).resolve().parents[2]
         event(events,name+'.process.spawn')
         self.log_path = directory / (name + '.private.log')
@@ -562,46 +645,71 @@ class CoreProcess:
 
     def close(self):
         if self.stopped:
+            if self.cleanup.get('gracefulCleanupProven') is not True:
+                raise RuntimeError('owned process cleanup previously failed')
             return self.cleanup
         forced = False
         pre_terminate=self.process.poll()
-        actions=[]
+        actions=[];failure=None;resource_errors=[];phase='inspection_gate'
         event(self.events,self.role+'.process.close.begin',pid=self.pid,exitBeforeTerminate=pre_terminate)
-        if pre_terminate is None:
-            current_identity = process_identity(self.pid)
-            if self.start_identity is None:
-                # Still our unreaped Popen child in its newly created group.
-                if current_identity['pgrp'] != self.pid or current_identity['session'] != self.pid:
-                    raise RuntimeError('new child group identity unavailable; no signal sent')
-                self.start_identity = current_identity
-            if current_identity != self.start_identity:
-                raise RuntimeError('owned process identity changed; no signal sent')
-            if self.pidfd is None: raise RuntimeError('owned child pidfd unavailable; deferred to exact subreaper cleanup')
-            signal.pidfd_send_signal(self.pidfd, signal.SIGTERM)
-            actions.append(event(self.events,self.role+'.process.signal',signal='SIGTERM',pidfdBound=True))
-            try:
-                self.process.wait(15)
-            except subprocess.TimeoutExpired:
-                forced = True
-                signal.pidfd_send_signal(self.pidfd, signal.SIGKILL)
-                actions.append(event(self.events,self.role+'.process.signal',signal='SIGKILL',pidfdBound=True))
-                self.process.wait(5)
-        self.log.close()
-        if self.pidfd is not None:
-            os.close(self.pidfd)
-            self.pidfd = None
-        remaining = process_group_members(self.pid)
-        raw = self.log_path.read_bytes()
+        try:
+            if pre_terminate is None:
+                with process_inspection_gate(self):
+                    phase='owner_identity'
+                    current_identity = process_identity(self.pid)
+                    if self.start_identity is None:
+                        # Still our unreaped Popen child in its newly created group.
+                        if current_identity['pgrp'] != self.pid or current_identity['session'] != self.pid:
+                            raise IdentityFailure('new child group identity unavailable; no signal sent')
+                        self.start_identity = current_identity
+                    if current_identity != self.start_identity:
+                        raise IdentityFailure('owned process identity changed; no signal sent')
+                    if self.pidfd is None: raise IdentityFailure('owned child pidfd unavailable; deferred to exact subreaper cleanup')
+                    phase='sigterm'
+                    signal.pidfd_send_signal(self.pidfd, signal.SIGTERM)
+                    self.sigterm_observation=event(self.events,self.role+'.process.signal',signal='SIGTERM',pidfdBound=True,
+                        pid=self.pid,startTicks=self.start_identity['startTicks'],coreSHA256=getattr(self,'bound_sha256',None))
+                    actions.append(self.sigterm_observation)
+                phase='wait_sigterm'
+                try:
+                    self.process.wait(15)
+                except subprocess.TimeoutExpired:
+                    forced = True;phase='sigkill'
+                    signal.pidfd_send_signal(self.pidfd, signal.SIGKILL)
+                    actions.append(event(self.events,self.role+'.process.signal',signal='SIGKILL',pidfdBound=True))
+                    phase='wait_sigkill';self.process.wait(5)
+        except Exception as error:
+            failure={'stage':phase,'category':'identity' if isinstance(error,IdentityFailure) else
+                'timeout' if isinstance(error,(TimeoutError,subprocess.TimeoutExpired)) else
+                'os_error' if isinstance(error,OSError) else 'other',
+                'errno':getattr(error,'errno',None) if isinstance(error,OSError) else None}
+        finally:
+            # A failed observation/signal must not leak QA handles. The caller's
+            # existing exact-descendant drain still owns any unreaped live child;
+            # no outside-gate signal or fabricated graceful result is permitted.
+            try:self.log.close()
+            except Exception:resource_errors.append('private_log_close')
+            if self.pidfd is not None:
+                try:os.close(self.pidfd);self.pidfd=None
+                except Exception:resource_errors.append('pidfd_close')
+        try:members = process_group_members(self.pid)
+        except Exception:members=None;resource_errors.append('owned_group_observation')
+        log_exit_before_read=self.process.poll()
+        try:raw=self.log_path.read_bytes();log_available=True
+        except Exception:raw=b'';log_available=False;resource_errors.append('private_log_read')
         close_error = any(s in raw.lower() for s in [b'did not closed properly', b'close timeout', b'close timed out', b'panic:', b'fatal'])
-        self.cleanup = {'role':self.role,'pid': self.pid, 'startIdentity': self.start_identity, 'exitCode': self.process.returncode, 'forcedKill': forced,
+        self.cleanup = {'role':self.role,'pid': self.pid, 'startIdentity': self.start_identity, 'exitCode': self.process.poll(), 'forcedKill': forced,
                         'boundCoreSHA256':getattr(self,'bound_sha256',None),
                         'exitBeforeTerminate':pre_terminate,'terminationActions':actions,
-                        'safeLog':safe_log_observation(raw,self.source_root),
-                        'remainingGroup': remaining, 'cleanupErrorLog': close_error,
-                        'privateLogSHA256': digest(raw), 'privateLogBytes': len(raw)}
+                        'closeOperationFailure':failure,'resourceCloseErrors':resource_errors,
+                        'privateLogObservedAfterExit':log_exit_before_read is not None,
+                        'safeLog':safe_log_observation(raw,self.source_root) if log_available else {'unavailable':True},
+                        'remainingGroup': members, 'cleanupErrorLog': close_error,
+                        'privateLogSHA256': digest(raw) if log_available else None, 'privateLogBytes': len(raw) if log_available else None}
+        self.cleanup['gracefulCleanupProven']=not (failure or resource_errors or forced or members or close_error or self.process.returncode != 0)
         self.stopped = True
         event(self.events,self.role+'.process.close.observed',exitCode=self.process.returncode,forcedKill=forced,cleanupErrorLog=close_error)
-        if forced or remaining or close_error or self.process.returncode != 0:
+        if failure or resource_errors or forced or members or close_error or self.process.returncode != 0:
             raise RuntimeError('core graceful cleanup not proven')
         return self.cleanup
 

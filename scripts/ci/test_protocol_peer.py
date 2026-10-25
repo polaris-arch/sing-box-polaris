@@ -12,6 +12,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
+import select
 import unittest
 import copy
 import re
@@ -802,8 +804,16 @@ class PeerNegativeAndObserverContracts(unittest.TestCase):
         owner.cleanup={'pid':owner.pid,'startIdentity':owner.start_identity,'boundCoreSHA256':owner.bound_sha256,
                        'exitBeforeTerminate':None,'exitCode':0,'forcedKill':False,'remainingGroup':[],'cleanupErrorLog':False,
                        'terminationActions':[{'signal':'SIGTERM','pidfdBound':True}]}
+        owner.inspection_gate=threading.RLock()
+        owner.sigterm_observation=None
         owner.process.poll.return_value=None
         return owner
+
+    def recorded_sigterm(self, owner):
+        owner.sigterm_observation=peer.event([], 'test.process.signal',signal='SIGTERM',pidfdBound=True,pid=owner.pid,
+            startTicks=owner.start_identity['startTicks'],coreSHA256=owner.bound_sha256)
+        owner.cleanup['terminationActions']=[owner.sigterm_observation]
+
 
     def test_peer_alert_is_exact_remote_complete_new_window(self):
         good=b'2026/10/25 00:00:01 server Closing connection with error: CRYPTO_ERROR 0x12e (remote): SECRET\n'
@@ -943,8 +953,9 @@ class PeerNegativeAndObserverContracts(unittest.TestCase):
             relay=peer.UDPRelay(1);owner=self.owner()
             try:
                 relay.bind_owner(owner);relay.prepare_owner_retirement()
-                with mock.patch.object(peer,'process_identity',side_effect=FileNotFoundError):
-                    self.assertIsNone(relay.source_inode(('127.0.0.1',1234)))
+                self.recorded_sigterm(owner)
+                with mock.patch.object(peer,'process_identity',side_effect=FileNotFoundError(peer.errno.ENOENT,'PRIVATE')):
+                    self.assertIsNone(relay.source_inode(('127.0.0.1',1234),{'inode':'123'}))
                 self.assertTrue(relay.owner_exit_pending);self.assertFalse(relay.owner_exit_observed)
                 owner.process.poll.return_value=exit_code
                 if exit_code==0:
@@ -1008,7 +1019,8 @@ class PeerObserverAdditionalBoundaries(unittest.TestCase):
             with mock.patch.object(peer,'process_identity',return_value=dict(owner.start_identity,startTicks=999)):
                 with self.assertRaises(RuntimeError):relay.source_inode(('127.0.0.1',1234))
             self.assertFalse(relay.owner_exit_observed);self.assertFalse(relay.owner_exit_pending)
-        finally:relay.close()
+        finally:
+            with self.assertRaises(RuntimeError):relay.close()
 
     def test_peer_non_h3_window_hash_and_absolute_offset_bind_full_log(self):
         raw=b'healthy\nold line\nunexpected status: 401\n';offset=len(b'healthy\nold line\n')
@@ -1055,7 +1067,7 @@ class PeerReviewRegressionContracts(unittest.TestCase):
         relay=peer.UDPRelay(1);owner=self.owner()
         try:
             relay.bind_owner(owner);relay.prepare_owner_retirement();owner.process.poll.return_value=0
-            self.assertIsNone(relay.source_inode(('127.0.0.1',1234)))
+            with self.assertRaises(peer.IdentityFailure):relay.source_inode(('127.0.0.1',1234))
             owner.cleanup.update(exitBeforeTerminate=0,terminationActions=[])
             with self.assertRaises(RuntimeError):relay.close()
             self.assertFalse(relay.owner_retirement_confirmed)
@@ -1141,6 +1153,444 @@ class PeerIdentityBoundaryRegression(unittest.TestCase):
                 self.assertEqual(closed,['healthy','peer'])
                 self.assertTrue(case['udpObservers'][0]['identityUncertain']);self.assertTrue(case['udpObservers'][0]['threadJoined'])
                 self.assertTrue(case['udpObservers'][0]['allSocketsClosed']);self.assertNotIn('SECRET',json.dumps(case))
+
+
+
+class OwnedRetirementLifecycleContracts(unittest.TestCase):
+    """Actual Python child/pidfd/UDP regression, not native protocol evidence."""
+    wait=PeerNegativeAndObserverContracts.wait
+    owner=PeerNegativeAndObserverContracts.owner
+    recorded_sigterm=PeerNegativeAndObserverContracts.recorded_sigterm
+
+    @contextlib.contextmanager
+    def child_relay(self, exit_code=0, signal_delay=.08):
+        with tempfile.TemporaryDirectory() as td:
+            directory=Path(td);echo=peer.Echo(udp=True);relay=peer.UDPRelay(echo.port)
+            source=r'''
+import socket,signal,sys,time
+s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.bind(('127.0.0.1',0));s.settimeout(2)
+address=('127.0.0.1',int(sys.argv[1]))
+def stop(*_):
+    for i in range(4):s.sendto(b'tail',address);time.sleep(.002)
+    time.sleep(float(sys.argv[3]));s.close();sys.exit(int(sys.argv[2]))
+signal.signal(signal.SIGTERM,stop)
+print(s.getsockname()[1],flush=True)
+for line in sys.stdin:
+    if line.strip()=='send':
+        s.sendto(b'healthy',address);print('OK' if s.recv(100)==b'healthy' else 'BAD',flush=True)
+    elif line.strip()=='exit':sys.exit(0)
+    elif line.strip()=='close':s.close();print('CLOSED',flush=True)
+'''
+            owner=object.__new__(peer.CoreProcess);owner.events=[];owner.role='fixture';owner.source_root=ROOT
+            owner.inspection_gate=threading.RLock();owner.sigterm_observation=None
+            owner.log_path=directory/'owned.private.log';owner.log=owner.log_path.open('wb')
+            owner.process=subprocess.Popen([sys.executable,'-u','-c',source,str(relay.port),str(exit_code),str(signal_delay)],
+                stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=owner.log,start_new_session=True)
+            owner.pid=owner.process.pid;owner.pidfd=os.pidfd_open(owner.pid)
+            owner.start_identity=peer.process_identity(owner.pid);owner.stopped=False;owner.cleanup=None
+            owner.bound_sha256=peer.digest(Path(f'/proc/{owner.pid}/exe').read_bytes())
+            try:
+                port=int(self.line(owner));relay.bind_owner(owner)
+                self.send(owner);self.assertEqual(relay.counts,[1,1])
+                yield owner,relay,echo,('127.0.0.1',port)
+            finally:
+                if not owner.stopped:
+                    with contextlib.suppress(Exception):owner.close()
+                with contextlib.suppress(Exception):relay.close()
+                if owner.process.poll() is None:
+                    # Exact test-owned pidfd only, never a naked PID/PGID.
+                    self.assertEqual(peer.process_identity(owner.pid),owner.start_identity)
+                    fd=os.pidfd_open(owner.pid)
+                    try:signal.pidfd_send_signal(fd,signal.SIGKILL);owner.process.wait(3)
+                    finally:os.close(fd)
+                if owner.pidfd is not None:os.close(owner.pidfd);owner.pidfd=None
+                owner.log.close();owner.process.stdin.close();owner.process.stdout.close();echo.close()
+
+    def line(self, owner):
+        if not select.select([owner.process.stdout],[],[],3)[0]:self.fail('owned fixture reply deadline')
+        value=owner.process.stdout.readline()
+        if not value:self.fail('owned fixture unexpectedly closed output')
+        return value.decode().strip()
+
+    def send(self,owner):
+        owner.process.stdin.write(b'send\n');owner.process.stdin.flush();self.assertEqual(self.line(owner),'OK')
+
+    @contextlib.contextmanager
+    def denied_suboperation(self, relay, operation, error):
+        identity=peer.process_identity;scandir=os.scandir;readlink=os.readlink;opened=Path.open
+        def fail():raise error
+        def identity_read(pid):
+            if relay.identity_operation==operation:fail()
+            return identity(pid)
+        def scan(path):
+            if relay.identity_operation==operation:fail()
+            return scandir(path)
+        def link(path,*a,**kw):
+            if relay.identity_operation==operation:fail()
+            return readlink(path,*a,**kw)
+        def file_open(path,*a,**kw):
+            if relay.identity_operation==operation:fail()
+            stream=opened(path,*a,**kw)
+            if operation in ('udp_read','udp6_read') and str(path).endswith('/'+operation[:-5]):
+                class FailedRead:
+                    def __enter__(self):return self
+                    def __exit__(self,*args):stream.close()
+                    def read(self,*args):fail()
+                return FailedRead()
+            return stream
+        with mock.patch.object(peer,'process_identity',identity_read),mock.patch.object(os,'scandir',scan), \
+             mock.patch.object(os,'readlink',link),mock.patch.object(Path,'open',file_open):yield
+
+    def test_all_proc_suboperations_active_failure_and_post_signal_known_gap(self):
+        operations=('owner_stat_before','fd_list','fd_readlink','udp_open','udp_read','udp6_open','udp6_read','owner_stat_after')
+        for operation in operations:
+            for signaled in (False,True):
+                with self.subTest(operation=operation,signaled=signaled):
+                    relay=peer.UDPRelay(1);owner=self.owner();client=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                    try:
+                        client.bind(('127.0.0.1',0));relay.bind_owner(owner);relay.prepare_owner_retirement()
+                        if signaled:self.recorded_sigterm(owner)
+                        with self.denied_suboperation(relay,operation,PermissionError(peer.errno.EACCES,'PRIVATE')):
+                            if signaled:self.assertIsNone(relay.source_inode(client.getsockname(),{'inode':'123'}))
+                            else:
+                                with self.assertRaises(PermissionError):relay.source_inode(client.getsockname(),{'inode':'123'})
+                        if signaled:
+                            gap=relay.inspection_gap;self.assertEqual(gap['identityOperation'],operation)
+                            self.assertLessEqual(gap['sigtermSucceededMonotonic'],gap['readStartedMonotonic'])
+                            self.assertLessEqual(gap['readStartedMonotonic'],gap['readFinishedMonotonic'])
+                            self.assertNotIn('PRIVATE',json.dumps(gap));owner.process.poll.return_value=0
+                            relay.close();self.assertEqual(gap['resolution'],'verified_owned_retirement')
+                        else:self.assertIsNone(relay.inspection_gap)
+                    finally:
+                        client.close()
+                        with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_only_fixed_errno_and_previously_proven_slot_can_quarantine(self):
+        for code,known,signaled in [(peer.errno.EACCES,False,True),(peer.errno.EACCES,True,False),
+                                    (peer.errno.EIO,True,True),(peer.errno.EBADF,True,True)]:
+            with self.subTest(code=code,known=known,signaled=signaled):
+                relay=peer.UDPRelay(1);owner=self.owner()
+                try:
+                    relay.bind_owner(owner);relay.prepare_owner_retirement()
+                    if signaled:self.recorded_sigterm(owner)
+                    with mock.patch.object(peer,'process_identity',side_effect=OSError(code,'PRIVATE')):
+                        with self.assertRaises(OSError):relay.source_inode(('127.0.0.1',1234),{'inode':'123'} if known else None)
+                    self.assertIsNone(relay.inspection_gap)
+                finally:
+                    with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_real_core_close_and_relay_normal_sigterm_retirement(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();self.send(owner) # Marking alone must not stop healthy traffic.
+            self.assertEqual(relay.counts,[2,2]);fact=owner.close();relay.close()
+            self.assertEqual(fact['exitCode'],0);self.assertFalse(fact['forcedKill'])
+            self.assertTrue(relay.owner_retirement_confirmed);self.assertTrue(relay.observation()['threadJoined'])
+            self.assertEqual(fact['terminationActions'],[owner.sigterm_observation])
+
+    def test_real_post_signal_permission_quarantines_tails_without_rechecking(self):
+        for code in (peer.errno.EACCES,peer.errno.EPERM,peer.errno.ENOENT,peer.errno.ESRCH):
+            with self.subTest(code=code),self.child_relay() as (owner,relay,echo,address):
+                relay.prepare_owner_retirement();real=os.scandir;calls=[]
+                def scan(path):
+                    if threading.current_thread() is relay.thread and owner.sigterm_observation:
+                        calls.append(time.monotonic());raise OSError(code,'PRIVATE')
+                    return real(path)
+                before=relay.counts[:]
+                with mock.patch.object(os,'scandir',scan):
+                    fact=owner.close();self.wait(lambda:relay.quarantined_drops[0]>=1);relay.close()
+                self.assertEqual(len(calls),1);self.assertEqual(relay.counts,before)
+                self.assertEqual(fact['exitCode'],0);self.assertFalse(fact['forcedKill'])
+                self.assertEqual(relay.inspection_gap['resolution'],'verified_owned_retirement')
+                self.assertTrue(relay.observation()['allSocketsClosed'])
+
+    def test_real_pre_signal_permission_remains_sticky_after_later_clean_exit(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();real=os.scandir
+            def scan(path):
+                if threading.current_thread() is relay.thread:raise PermissionError(peer.errno.EACCES,'PRIVATE')
+                return real(path)
+            with mock.patch.object(os,'scandir',scan):
+                owner.process.stdin.write(b'send\n');owner.process.stdin.flush();self.wait(relay.finished.is_set)
+            self.assertIsNone(relay.inspection_gap);owner.close()
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertIsNone(relay.errors[0]['sigtermSucceededAtReadStart']);self.assertTrue(relay.owner_retirement_confirmed)
+            self.assertEqual(relay.errors[0]['identityOperation'],'fd_list')
+
+    def test_real_inspection_signal_overlap_cannot_reclassify_pre_signal_error(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();entered=threading.Event();release=threading.Event();real=os.scandir;result=[]
+            def scan(path):
+                if threading.current_thread() is relay.thread:
+                    entered.set()
+                    if not release.wait(.7):raise RuntimeError('test release deadline')
+                    raise PermissionError(peer.errno.EACCES,'PRIVATE')
+                return real(path)
+            def close():
+                try:result.append(owner.close())
+                except BaseException as error:result.append(error)
+            with mock.patch.object(os,'scandir',scan):
+                owner.process.stdin.write(b'send\n');owner.process.stdin.flush();self.assertTrue(entered.wait(2))
+                worker=threading.Thread(target=close);worker.start();time.sleep(.03)
+                self.assertIsNone(owner.sigterm_observation);release.set();worker.join(3)
+            self.assertFalse(worker.is_alive());self.assertIsInstance(result[0],dict)
+            self.assertIsNone(relay.inspection_gap);self.wait(relay.finished.is_set)
+            with self.assertRaises(RuntimeError):relay.close()
+            error=relay.errors[0];self.assertIsNone(error['sigtermSucceededAtReadStart'])
+            self.assertLessEqual(error['identityReadFinishedMonotonic'],owner.sigterm_observation['monotonicSeconds'])
+
+    def test_real_post_signal_nonzero_exit_does_not_resolve_gap(self):
+        with self.child_relay(exit_code=2) as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();real=os.scandir
+            def scan(path):
+                if threading.current_thread() is relay.thread and owner.sigterm_observation:raise PermissionError(peer.errno.EACCES,'PRIVATE')
+                return real(path)
+            with mock.patch.object(os,'scandir',scan):
+                with self.assertRaises(RuntimeError):owner.close()
+                with self.assertRaises(RuntimeError):relay.close()
+            self.assertEqual(owner.cleanup['exitCode'],2);self.assertFalse(relay.owner_retirement_confirmed)
+            self.assertEqual(relay.inspection_gap['resolution'],'pending_owned_retirement')
+
+    def test_real_natural_exit_cannot_be_relabelled_sigterm_retirement(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();owner.process.stdin.write(b'exit\n');owner.process.stdin.flush();owner.process.wait(3)
+            fact=owner.close();self.assertEqual(fact['exitBeforeTerminate'],0);self.assertIsNone(owner.sigterm_observation)
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertFalse(relay.owner_retirement_confirmed)
+
+    def test_quarantine_rejects_new_sources_and_never_rechecks_bound_sources(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner);relay.prepare_owner_retirement();self.recorded_sigterm(owner)
+            slot={'inode':'123','socket':socket.socket(socket.AF_INET,socket.SOCK_DGRAM),'retired':False}
+            address=('127.0.0.1',1234);relay.sources[address]=slot
+            with mock.patch.object(peer,'process_identity',side_effect=PermissionError(peer.errno.EACCES,'PRIVATE')):
+                self.assertIsNone(relay.source_inode(address,slot))
+            with mock.patch.object(relay,'source_inode',side_effect=AssertionError('must not retry')):
+                self.assertIsNone(relay.current_source(address,mock.Mock()))
+                with self.assertRaises(peer.IdentityFailure):relay.current_source(('127.0.0.1',1235),mock.Mock(),True)
+            owner.process.poll.return_value=0;relay.close()
+        finally:
+            with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_cleanup_mutations_never_resolve_permission_gap(self):
+        for change in ({'forcedKill':True},{'remainingGroup':[123]},{'cleanupErrorLog':True},{'exitBeforeTerminate':0},
+                       {'terminationActions':[]},{'exitCode':2},{'boundCoreSHA256':'b'*64}):
+            with self.subTest(change=change):
+                relay=peer.UDPRelay(1);owner=self.owner()
+                try:
+                    relay.bind_owner(owner);relay.prepare_owner_retirement();self.recorded_sigterm(owner)
+                    with mock.patch.object(peer,'process_identity',side_effect=PermissionError(peer.errno.EACCES,'PRIVATE')):
+                        relay.source_inode(('127.0.0.1',1234),{'inode':'123'})
+                    owner.process.poll.return_value=0;owner.cleanup.update(change)
+                    with self.assertRaises(RuntimeError):relay.close()
+                    self.assertEqual(relay.inspection_gap['resolution'],'pending_owned_retirement')
+                finally:
+                    with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_gate_timeout_is_sticky_and_never_publishes_signal_success(self):
+        owner=self.owner();owner.inspection_gate=mock.Mock();owner.inspection_gate.acquire.return_value=False
+        with self.assertRaises(peer.IdentityFailure):
+            with peer.process_inspection_gate(owner):self.fail('gate admitted')
+        owner.inspection_gate.release.assert_not_called();self.assertIsNone(owner.sigterm_observation)
+
+
+    def test_real_child_fd_close_while_alive_only_tombstones_existing_slot(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            back=relay.sources[address]['socket'].getsockname()
+            owner.process.stdin.write(b'close\n');owner.process.stdin.flush();self.assertEqual(self.line(owner),'CLOSED')
+            echo.socket.sendto(b'late',back);self.wait(lambda:relay.retired_drops[1]==1)
+            self.assertIsNone(owner.process.poll());self.assertIsNone(relay.inspection_gap)
+            self.assertTrue(relay.sources[address]['retired']);self.assertEqual(relay.counts,[1,1])
+            # This fixture intentionally closed its socket; natural exit must
+            # remain an unsignaled outcome, not be presented as graceful core.
+            owner.process.stdin.write(b'exit\n');owner.process.stdin.flush();owner.process.wait(3);owner.close();relay.close()
+
+    def test_real_unknown_source_during_gap_stops_without_any_forward(self):
+        with self.child_relay(signal_delay=.3) as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();real=os.scandir;results=[]
+            def scan(path):
+                if threading.current_thread() is relay.thread and owner.sigterm_observation:raise PermissionError(peer.errno.EACCES,'PRIVATE')
+                return real(path)
+            def close():
+                try:results.append(owner.close())
+                except BaseException as error:results.append(error)
+            stranger=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+            try:
+                with mock.patch.object(os,'scandir',scan):
+                    worker=threading.Thread(target=close);worker.start();self.wait(lambda:relay.inspection_gap is not None)
+                    stranger.bind(('127.0.0.1',0));stranger.sendto(b'unknown',('127.0.0.1',relay.port))
+                    self.wait(relay.finished.is_set);worker.join(3)
+                self.assertFalse(worker.is_alive());self.assertIsInstance(results[0],dict)
+                with self.assertRaises(RuntimeError):relay.close()
+                self.assertEqual(relay.errors[0]['category'],'unowned_source_during_quarantine')
+                self.assertEqual(relay.errors[0]['identityOperation'],'quarantine_new_source')
+                self.assertIsNone(relay.errors[0]['identityReadStartedMonotonic'])
+                self.assertEqual(relay.counts,[1,1]);self.assertEqual(relay.inspection_gap['resolution'],'pending_owned_retirement')
+            finally:stranger.close()
+
+    def test_pid_identity_mismatch_after_signal_never_becomes_gap(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner);relay.prepare_owner_retirement();self.recorded_sigterm(owner)
+            with mock.patch.object(peer,'process_identity',return_value=dict(owner.start_identity,startTicks=0)):
+                with self.assertRaises(peer.IdentityFailure):relay.source_inode(('127.0.0.1',1234),{'inode':'123'})
+            self.assertIsNone(relay.inspection_gap)
+        finally:
+            with contextlib.suppress(RuntimeError):relay.close()
+
+    def test_real_signal_failure_publishes_no_success_and_remains_sticky(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement()
+            with mock.patch.object(signal,'pidfd_send_signal',side_effect=PermissionError(peer.errno.EPERM,'PRIVATE')):
+                with self.assertRaises(RuntimeError):owner.close()
+            self.assertIsNone(owner.sigterm_observation);self.assertIsNone(owner.process.poll())
+            self.assertTrue(owner.log.closed);self.assertIsNone(owner.pidfd)
+            self.assertEqual(owner.cleanup['closeOperationFailure']['stage'],'sigterm')
+            self.assertFalse(owner.cleanup['privateLogObservedAfterExit'])
+            with self.assertRaises(RuntimeError):owner.close()
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertFalse(relay.owner_retirement_confirmed)
+
+    def test_real_signal_deadline_force_remains_failure(self):
+        with self.child_relay(signal_delay=5) as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();real_wait=owner.process.wait;calls=[]
+            def shortened_wait(timeout):
+                calls.append(timeout)
+                if len(calls)==1:raise subprocess.TimeoutExpired('exact test-owned child',timeout)
+                return real_wait(timeout)
+            with mock.patch.object(owner.process,'wait',shortened_wait):
+                with self.assertRaises(RuntimeError):owner.close()
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertEqual(calls,[15,5]);self.assertTrue(owner.cleanup['forcedKill'])
+            self.assertEqual([a['signal'] for a in owner.cleanup['terminationActions']],['SIGTERM','SIGKILL'])
+            self.assertFalse(relay.owner_retirement_confirmed)
+            with self.assertRaises(RuntimeError):owner.close()
+
+    def test_actual_gate_timeout_has_no_signal_and_does_not_leak_owned_child(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement();gate=owner.inspection_gate;entered=threading.Event();release=threading.Event()
+            def hold():
+                with gate:entered.set();release.wait(2)
+            worker=threading.Thread(target=hold);worker.start();self.assertTrue(entered.wait(1))
+            try:
+                with self.assertRaises(RuntimeError):owner.close()
+                self.assertIsNone(owner.sigterm_observation);self.assertIsNone(owner.process.poll())
+                self.assertTrue(owner.log.closed);self.assertIsNone(owner.pidfd)
+                self.assertEqual(owner.cleanup['closeOperationFailure']['stage'],'inspection_gate')
+            finally:release.set();worker.join(2)
+            self.assertFalse(worker.is_alive())
+            with self.assertRaises(RuntimeError):owner.close()
+            with self.assertRaises(RuntimeError):relay.close()
+            self.assertFalse(relay.owner_retirement_confirmed)
+
+
+    def test_cleanup_budget_is_independent_of_expired_suite(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            relay.prepare_owner_retirement()
+            with mock.patch.object(peer,'SUITE_DEADLINE',time.monotonic()-1):
+                fact=owner.close();relay.close()
+            self.assertEqual(fact['exitCode'],0);self.assertTrue(owner.log.closed);self.assertIsNone(owner.pidfd)
+            self.assertIsNone(fact['closeOperationFailure']);self.assertTrue(relay.owner_retirement_confirmed)
+
+    def test_source_gate_failure_does_not_reuse_previous_read_timestamps(self):
+        relay=peer.UDPRelay(1);owner=self.owner()
+        try:
+            relay.bind_owner(owner);relay.source_inode(('127.0.0.1',1234))
+            self.assertIsNotNone(relay.identity_read_start)
+            gate=mock.Mock();gate.acquire.return_value=False;owner.inspection_gate=gate
+            with self.assertRaises(peer.IdentityFailure):relay.source_inode(('127.0.0.1',1234),{'inode':'123'})
+            self.assertEqual(relay.identity_operation,'ordering_gate')
+            self.assertIsNone(relay.identity_read_start);self.assertIsNone(relay.identity_read_end)
+            self.assertIsNone(relay.identity_signal_at_start)
+            self.assertLessEqual(relay.identity_gate_wait_start,relay.identity_gate_wait_end)
+        finally:relay.close()
+
+    def test_real_run_case_gate_failure_closes_all_handles_and_drains_child_once(self):
+        # Actual run_case cleanup and CoreProcess.close, two real Python children;
+        # only product construction/readiness is replaced, never a protocol PASS.
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);binary=root/'sing-box';binary.write_bytes(b'core');(root/'libcronet.so').write_bytes(b'side')
+            row={'core':{'member':'sing-box','bytes':4,'sha256':peer.digest(b'core')},
+                 'sidecar':{'member':'libcronet.so','bytes':4,'sha256':peer.digest(b'side')}}
+            original_core=peer.CoreProcess;original_echo=peer.Echo;original_relay=peer.UDPRelay
+            processes=[];fixtures=[];relays=[];threads=[];release=threading.Event();outer=self
+            class OwnedFixture(original_core):
+                def __init__(self,binary,config,directory,role,expected_hash,events):
+                    self.role=role;self.events=events;self.source_root=ROOT;self.inspection_gate=threading.RLock()
+                    self.sigterm_observation=None;self.stopped=False;self.cleanup=None
+                    self.log_path=directory/(role+'.private.log');self.log=self.log_path.open('wb')
+                    self.config_fact={'sha256':peer.digest(json.dumps(config,separators=(',',':')).encode()),'bytes':1}
+                    code="import signal,sys,time; signal.signal(signal.SIGTERM,lambda *_:sys.exit(0)); print('READY',flush=True); time.sleep(30)"
+                    self.process=subprocess.Popen([sys.executable,'-u','-c',code],stdout=subprocess.PIPE,stderr=self.log,start_new_session=True)
+                    self.pid=self.process.pid;self.pidfd=os.pidfd_open(self.pid);self.start_identity=peer.process_identity(self.pid)
+                    self.bound_sha256=peer.digest(Path(f'/proc/{self.pid}/exe').read_bytes());processes.append(self)
+                    outer.assertEqual(outer.line(self),'READY');self.process.stdout.close()
+                def wait_udp(self,port):pass
+                def wait_tcp(self,port):
+                    entered=threading.Event()
+                    def hold():
+                        with self.inspection_gate:entered.set();release.wait(5)
+                    worker=threading.Thread(target=hold);threads.append(worker);worker.start()
+                    outer.assertTrue(entered.wait(1));raise RuntimeError('fixed fixture readiness stop')
+            def echo(*a,**kw):
+                result=original_echo(*a,**kw);fixtures.append(result);return result
+            def relay(*a,**kw):
+                result=original_relay(*a,**kw);relays.append(result);return result
+            try:
+                with mock.patch.object(peer,'certificate',return_value=('CA','CERT','KEY')), \
+                     mock.patch.object(peer,'config_check',return_value={}),mock.patch.object(peer,'CoreProcess',OwnedFixture), \
+                     mock.patch.object(peer,'Echo',side_effect=echo),mock.patch.object(peer,'UDPRelay',side_effect=relay):
+                    result=peer.run_case(binary,row,root,'naive-h3')
+                self.assertEqual(result['status'],'FAIL');self.assertFalse(result['continuationSafe'])
+                self.assertEqual(len(processes),2);self.assertEqual(len(result['descendantRetirement']['retired']),1)
+                self.assertEqual(result['descendantRetirement']['remaining'],[]);self.assertFalse(result['descendantRetirement']['forcedKill'])
+                self.assertTrue(any('required recovery' in error for error in result['cleanupErrors']))
+                for child in processes:
+                    self.assertIsNotNone(child.process.poll());self.assertTrue(child.log.closed);self.assertIsNone(child.pidfd)
+                    self.assertIsNotNone(child.cleanup)
+                healthy=next(child for child in processes if child.role=='healthy')
+                self.assertEqual(healthy.cleanup['closeOperationFailure']['stage'],'inspection_gate')
+                self.assertIsNone(healthy.cleanup['exitCode']);self.assertFalse(healthy.cleanup['privateLogObservedAfterExit'])
+                self.assertEqual(healthy.cleanup['terminationActions'],[])
+                with self.assertRaises(RuntimeError):healthy.close()
+                for item in fixtures:self.assertFalse(item.thread.is_alive());self.assertEqual(item.socket.fileno(),-1)
+                self.assertTrue(relays[0].observation()['threadJoined']);self.assertTrue(relays[0].observation()['allSocketsClosed'])
+            finally:
+                release.set()
+                for worker in threads:worker.join(2);self.assertFalse(worker.is_alive())
+                # This assertion occurs before any emergency cleanup: passing
+                # cannot depend on the test finally retrying CoreProcess.close.
+                self.assertFalse(any(child.process.poll() is None for child in processes))
+
+
+    def test_log_snapshot_exit_fact_is_sampled_before_read_not_after(self):
+        with tempfile.TemporaryDirectory() as td:
+            owner=object.__new__(peer.CoreProcess);owner.role='fixture';owner.events=[];owner.source_root=ROOT
+            owner.pid=123;owner.pidfd=None;owner.start_identity={'pid':123,'startTicks':456};owner.bound_sha256='a'*64
+            owner.stopped=False;owner.cleanup=None;owner.sigterm_observation=None
+            owner.inspection_gate=mock.Mock();owner.inspection_gate.acquire.return_value=False
+            owner.process=mock.Mock();owner.process.poll.side_effect=[None,None,0];owner.process.returncode=0
+            owner.log_path=Path(td)/'private.log';owner.log_path.write_bytes(b'');owner.log=mock.Mock()
+            with mock.patch.object(peer,'process_group_members',return_value=[]):
+                with self.assertRaises(RuntimeError):owner.close()
+            self.assertEqual(owner.cleanup['exitCode'],0)
+            self.assertFalse(owner.cleanup['privateLogObservedAfterExit'])
+            self.assertFalse(owner.cleanup['gracefulCleanupProven'])
+
+    def test_log_handle_failure_does_not_skip_pidfd_close_or_become_success(self):
+        with tempfile.TemporaryDirectory() as td:
+            owner=object.__new__(peer.CoreProcess);owner.role='fixture';owner.events=[];owner.source_root=ROOT
+            owner.pid=123;owner.pidfd=987;owner.start_identity={'pid':123,'startTicks':456};owner.bound_sha256='a'*64
+            owner.stopped=False;owner.cleanup=None;owner.sigterm_observation=None
+            owner.process=mock.Mock();owner.process.poll.return_value=0;owner.process.returncode=0
+            owner.log_path=Path(td)/'private.log';owner.log_path.write_bytes(b'');owner.log=mock.Mock()
+            owner.log.close.side_effect=OSError(peer.errno.EIO,'PRIVATE')
+            with mock.patch.object(peer,'process_group_members',return_value=[]),mock.patch.object(os,'close') as close:
+                with self.assertRaises(RuntimeError):owner.close()
+            close.assert_called_once_with(987);self.assertIsNone(owner.pidfd)
+            self.assertEqual(owner.cleanup['resourceCloseErrors'],['private_log_close'])
+            self.assertNotIn('PRIVATE',json.dumps(owner.cleanup))
+            with self.assertRaises(RuntimeError):owner.close()
 
 
 if __name__=='__main__':unittest.main()
