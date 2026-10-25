@@ -3,11 +3,13 @@ package tls
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -241,6 +243,19 @@ func TestRuntimeTLSFailureAdmissionReleaseAndPreservedError(t *testing.T) {
 	}
 }
 
+// A raw transport must not also impersonate a TLS provider whose NetConn
+// returns itself. Real pipe endpoints have no descriptor or unwrap interface;
+// this observer keeps that finite transport shape while counting physical close.
+type runtimeFailurePhysicalConn struct {
+	net.Conn
+	closes atomic.Int32
+}
+
+func (c *runtimeFailurePhysicalConn) Close() error {
+	c.closes.Add(1)
+	return c.Conn.Close()
+}
+
 func TestRuntimeTLSFailureKTLSClientServerKeepsCleanupError(t *testing.T) {
 	// The real kTLS constructor can invoke its existing modprobe path as root.
 	// This regression needs only an ordinary unprivileged constructor failure;
@@ -249,7 +264,22 @@ func TestRuntimeTLSFailureKTLSClientServerKeepsCleanupError(t *testing.T) {
 		t.Fatal("kTLS failure regression requires an unprivileged process")
 	}
 	for _, server := range []bool{false, true} {
-		raw := newRuntimeFailureRaw()
+		physical, peer := net.Pipe()
+		defer physical.Close()
+		defer peer.Close()
+		if err := peer.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		raw := &runtimeFailurePhysicalConn{Conn: physical}
+		if _, ok := any(raw).(interface{ NetConn() net.Conn }); ok {
+			t.Fatal("physical fixture exposes TLS NetConn")
+		}
+		if _, ok := any(raw).(interface{ Upstream() any }); ok {
+			t.Fatal("physical fixture exposes an unwrap path")
+		}
+		if _, ok := any(raw).(syscall.Conn); ok {
+			t.Fatal("pipe fixture exposes a descriptor")
+		}
 		guarded, fence := outbound.WrapRuntimeOwnedConn(raw)
 		transport := &runtimeHandshakeConn{Conn: guarded, fence: fence}
 		provider := &runtimeFailureProvider{Conn: transport, closeError: errors.New("controlled provider close failure")}
@@ -263,8 +293,15 @@ func TestRuntimeTLSFailureKTLSClientServerKeepsCleanupError(t *testing.T) {
 		if !IsRuntimeCleanupIncomplete(err) {
 			t.Fatalf("kTLS constructor discarded cleanup error: %v", err)
 		}
+		// Load may reject unavailable kTLS before descriptor validation. Either
+		// actual constructor failure must preserve cleanup uncertainty; this is
+		// not evidence of successful offload or a particular host kernel module.
 		if raw.closes.Load() != 1 || provider.closes.Load() != 1 {
 			t.Fatal("kTLS failed construction not joined once")
+		}
+		var one [1]byte
+		if n, err := peer.Read(one[:]); n != 0 || !errors.Is(err, io.EOF) {
+			t.Fatalf("physical peer did not observe EOF: %d, %v", n, err)
 		}
 	}
 }
