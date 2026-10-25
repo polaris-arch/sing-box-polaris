@@ -1192,7 +1192,7 @@ for line in sys.stdin:
             owner.bound_sha256=peer.digest(Path(f'/proc/{owner.pid}/exe').read_bytes())
             try:
                 port=int(self.line(owner));relay.bind_owner(owner)
-                self.send(owner);self.assertEqual(relay.counts,[1,1])
+                self.send(owner);self.wait(lambda:relay.counts==[1,1]);self.assertEqual(relay.counts,[1,1])
                 yield owner,relay,echo,('127.0.0.1',port)
             finally:
                 if not owner.stopped:
@@ -1610,7 +1610,7 @@ class PeerFinitePredicateDiagnostics(unittest.TestCase):
                     remote=('0100007F:0001' if failure=='socket_remote' else '00000000:0000')
                     observed_inode='999999999999' if failure=='socket_owner_inode' else inode
                     row=f'0: {local} {remote} 07 0:0 00:0 0 0 0 {observed_inode} 2\n'
-                    udp='header\n'+(row*2 if failure=='single_socket_row' else row)
+                    udp='header\n'+(row+row.replace(observed_inode,observed_inode+'1') if failure=='single_socket_row' else row)
                     udp6='header\n'
                     if failure=='socket_family':udp,udp6='header\n',udp
                     if failure=='zero_rows':udp='header\n'
@@ -1757,9 +1757,17 @@ class PeerFinitePredicateDiagnostics(unittest.TestCase):
 class NativeNetLogEvidenceTests(unittest.TestCase):
     PEM='-----BEGIN CERTIFICATE-----\nYWJj\n-----END CERTIFICATE-----\n'
     def document(self,code=0,status=0,host='controlled.invalid',source=7):
-        return {'constants':{'logEventTypes':{'CERT_VERIFY_PROC':9,'OTHER':10},'logEventPhase':{'PHASE_BEGIN':1,'PHASE_END':2}},'events':[
-            {'type':9,'phase':1,'source':{'id':source,'type':3},'time':'12.5','params':{'host':host,'certificates':[self.PEM],'PRIVATE_SECRET':'do-not-return'}},
-            {'type':9,'phase':2,'source':{'id':source,'type':3},'time':'13.5','params':{'net_error':code,'cert_status':status,'PRIVATE_SECRET':'do-not-return'}}]}
+        key={'id':source,'type':3};session={'id':source+1000,'type':4}
+        return {'constants':{'logEventTypes':{'CERT_VERIFY_PROC':9,'OTHER':10,'CERT_VERIFIER_TASK':11,'CERT_VERIFIER_TASK_BOUND':12,
+                'QUIC_SESSION_CERTIFICATE_VERIFIED':13,'QUIC_SESSION_CERTIFICATE_VERIFY_FAILED':14},
+            'logEventPhase':{'PHASE_BEGIN':1,'PHASE_END':2,'PHASE_NONE':0},'logSourceType':{'CERT_VERIFIER_TASK':3,'QUIC_SESSION':4}},'events':[
+            {'type':9,'phase':1,'source':dict(key),'time':'12.5','params':{'host':host,'certificates':[self.PEM],'PRIVATE_SECRET':'do-not-return'}},
+            {'type':9,'phase':2,'source':dict(key),'time':'13.5','params':{'net_error':code,'cert_status':status,'is_issued_by_known_root':code!=-202,'PRIVATE_SECRET':'do-not-return'}},
+            {'type':11,'phase':1,'source':dict(key),'time':'12.0'},
+            {'type':12,'phase':0,'source':dict(session),'time':'12.1','params':{'source_dependency':dict(key)}},
+            {'type':11,'phase':2,'source':dict(key),'time':'14.0'},
+            {'type':14 if type(status) is int and status & native_log.CERT_ERROR_MASK else 13,'phase':0,'source':dict(session),'time':'15.0','params':{'PRIVATE':'do-not-return'}}]}
+
     def parse(self,doc,mutation='healthy',host='controlled.invalid'):
         return native_log.certificate_observation(json.dumps(doc).encode(),host,native_log.leaf_hash(self.PEM),mutation)
     def test_exact_native_certificate_results_and_no_sensitive_fields(self):
@@ -1779,7 +1787,7 @@ class NativeNetLogEvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):self.parse(doc)
     def test_native_retry_results_are_bounded_complete_and_consistent(self):
         doc=self.document(-202,4);other=self.document(-202,4,source=8);doc['events']+=other['events'];self.assertEqual(self.parse(doc,'wrong-ca')['verificationCount'],2)
-        doc['events'][-1]['params']['net_error']=-356
+        doc['events'][7]['params']['net_error']=-356
         with self.assertRaises(ValueError):self.parse(doc,'wrong-ca')
         doc=self.document();doc['events']+=copy.deepcopy(doc['events'])
         with self.assertRaises(ValueError):self.parse(doc)
@@ -1840,7 +1848,7 @@ class NativeNetLogEvidenceTests(unittest.TestCase):
         for code,status,pair in [(0,0,'healthy'),(-200,1,'wrong-sni'),(-356,512,'other')]:
             cases.append((self.document(code,status),'result_mismatch',pair,2,1,1))
         missing=self.document();missing['events']=[];cases.append((missing,'incomplete_or_unrelated',None,0,0,0))
-        missing=self.document();missing['events'].pop();cases.append((missing,'incomplete_or_unrelated',None,1,1,0))
+        missing=self.document();missing['events'].pop(1);cases.append((missing,'incomplete_or_unrelated',None,1,1,0))
         mismatch=self.document(-202,4,host='PRIVATE');cases.append((mismatch,'incomplete_or_unrelated','wrong-ca',2,0,1))
         for doc,category,pair,events,host,complete in cases:
             with self.assertRaises(ValueError) as caught:self.parse(doc,'wrong-ca')
@@ -1848,7 +1856,53 @@ class NativeNetLogEvidenceTests(unittest.TestCase):
             self.assertEqual(native_log.failure_category(error),category)
             self.assertEqual(facts['certificateEvents'],events);self.assertEqual(facts['hostMatches'],host);self.assertEqual(facts['completePairs'],complete)
             if pair:self.assertEqual(facts['resultPairs'][pair],1)
-            for secret in ('PRIVATE','controlled.invalid','BEGIN CERTIFICATE','-356','512'):self.assertNotIn(secret,json.dumps(facts))
+            for secret in ('PRIVATE','controlled.invalid','BEGIN CERTIFICATE'):self.assertNotIn(secret,json.dumps(facts))
+
+    def test_native_cronet_conditional_nonunique_warning_preserves_actual_status(self):
+        for mutation,code,error_bits,host in [('healthy',0,0,'controlled.invalid'),('wrong-ca',-202,4,'controlled.invalid'),('wrong-sni',-200,1,'wrong.invalid')]:
+            doc=self.document(code,error_bits|1024,host);doc['events'][1]['params']['is_issued_by_known_root']=True
+            fact=self.parse(doc,mutation,host)
+            self.assertEqual(fact['certStatus'],error_bits|1024);self.assertEqual(fact['expectedErrorBits'],error_bits)
+            self.assertEqual(fact['fixedObservation']['sessionRelations'][0]['maskEvent'],'mask_error')
+            self.assertTrue(fact['fixedObservation']['nativeResults'][0]['conditionalNonUniqueWarning'])
+            self.assertEqual(fact['netError'],code)
+        for root in (False,None,'true'):
+            doc=self.document(0,1024);doc['events'][1]['params']['is_issued_by_known_root']=root
+            with self.assertRaises(ValueError):self.parse(doc)
+        doc=self.document(0,1024,'some.example.com')
+        with self.assertRaises(ValueError):self.parse(doc,host='some.example.com')
+
+    def test_native_extra_status_bits_and_native_values_are_bounded_not_ignored(self):
+        for bit in range(31):
+            if bit==10:continue
+            doc=self.document(0,1<<bit)
+            with self.assertRaises(ValueError) as caught:self.parse(doc)
+            fixed=caught.exception.native_fixed_observation['nativeResults'][0]
+            self.assertEqual(fixed['certStatus'],1<<bit)
+            self.assertEqual(fixed['unknownBitsPresent'],bit not in native_log.CERT_FLAGS)
+        for error,status in [(None,0),(True,0),(1,0),(-10001,0),(0,None),(0,True),(0,1<<31),(0,-(1<<31)-1)]:
+            with self.assertRaises(ValueError):self.parse(self.document(error,status))
+        doc=self.document();del doc['events'][1]['params']['net_error'];self.assertTrue(self.parse(doc)['fixedObservation']['nativeResults'][0]['netErrorOmitted'])
+        doc=self.document();del doc['events'][1]['params']['is_issued_by_known_root']
+        with self.assertRaises(ValueError):self.parse(doc)
+
+    def test_native_cancelled_background_task_cannot_replace_consumed_proof(self):
+        changes=[lambda d:d['events'].pop(5),lambda d:d['events'].pop(4),lambda d:d['events'].pop(3),
+            lambda d:d['events'][3]['params']['source_dependency'].update(id=100),
+            lambda d:d['events'][5]['source'].update(id=100),lambda d:d['events'][5].update(time='13.0'),
+            lambda d:d['events'][3].update(time='16.0'),lambda d:d['events'][4].update(time='12.0'),
+            lambda d:d['events'].append(copy.deepcopy(d['events'][5]))]
+        for change in changes:
+            d=self.document();change(d)
+            with self.assertRaises(ValueError):self.parse(d)
+
+    def test_native_session_mask_label_is_not_callback_result(self):
+        d=self.document(0,1024);self.assertEqual(self.parse(d)['netError'],0)
+        d=self.document(-202,4);self.assertEqual(self.parse(d,'wrong-ca')['netError'],-202)
+        d=self.document(-202,4);d['events'][5]['type']=13
+        with self.assertRaises(ValueError):self.parse(d,'wrong-ca')
+        d=self.document(-356,1024)
+        with self.assertRaises(ValueError):self.parse(d)
 
     def test_socket_row_diagnostics_full_snapshot_does_not_publish_identifiers(self):
         relay=peer.UDPRelay(1)
@@ -1861,6 +1915,62 @@ class NativeNetLogEvidenceTests(unittest.TestCase):
             for value in ('PRIVATE1','PRIVATE2','1234','ABCD','FFFF'):self.assertNotIn(value,json.dumps(facts))
             self.assertEqual(relay.source_row_diagnostics(rows*2,{'PRIVATE1'},'0100007F:1234','0100007F:ABCD',None)['distinctTuples'],2)
             self.assertTrue(relay.source_row_diagnostics([('udp',[])],set(),'','',None)['unavailable'])
+        finally:relay.close()
+
+
+class DuplicateNamespaceIdentityContracts(unittest.TestCase):
+    child_relay=OwnedRetirementLifecycleContracts.child_relay
+    wait=OwnedRetirementLifecycleContracts.wait
+    line=OwnedRetirementLifecycleContracts.line
+    send=OwnedRetirementLifecycleContracts.send
+
+    @contextlib.contextmanager
+    def duplicate_actual_table(self,owner,address,mutate=None):
+        opened=Path.open;target=f'/proc/{owner.pid}/net/udp'
+        def table(path,*a,**kw):
+            if str(path)!=target:return opened(path,*a,**kw)
+            with opened(path,*a,**kw) as stream:original=stream.read()
+            rows=original.splitlines();selected=[r for r in rows[1:] if r.split()[1].split(':')[1]==format(address[1],'04X')]
+            self.assertTrue(selected)
+            extra=selected[0].split()
+            if mutate:mutate(extra)
+            return io.StringIO(original+' '.join(extra)+'\n')
+        with mock.patch.object(Path,'open',table):yield
+
+    def test_real_owned_child_duplicate_namespace_row_keeps_bidirectional_relay(self):
+        with self.child_relay() as (owner,relay,echo,address):
+            before=list(relay.counts)
+            with self.duplicate_actual_table(owner,address):
+                for _ in range(4):self.send(owner)
+            self.wait(lambda:relay.counts==[x+4 for x in before]);self.assertEqual(relay.counts,[x+4 for x in before]);self.assertFalse(relay.errors)
+            self.assertEqual(relay.identity_predicates['distinctSocketRows'],1)
+            self.assertGreaterEqual(relay.identity_predicates['duplicateSocketRows'],1)
+            self.assertEqual(relay.identity_predicates['failedPredicate'],None)
+
+    def test_real_proc_identity_distinct_inode_tuple_uid_and_state_never_merge(self):
+        mutations=[lambda r:r.__setitem__(9,str(int(r[9])+1)),lambda r:r.__setitem__(1,'0200007F:'+r[1].split(':')[1]),
+            lambda r:r.__setitem__(2,'0100007F:0001'),lambda r:r.__setitem__(7,str(int(r[7])+1)),lambda r:r.__setitem__(3,'01' if r[3]!='01' else '07')]
+        with self.child_relay() as (owner,relay,echo,address):
+            slot=relay.sources[address]
+            for mutate in mutations:
+                with self.duplicate_actual_table(owner,address,mutate):
+                    with self.assertRaises(peer.IdentityFailure):relay.source_inode(address,slot)
+                self.assertEqual(relay.identity_predicates['distinctSocketRows'],2)
+                self.assertEqual(relay.identity_predicates['failedPredicate'],'single_socket_row')
+            self.send(owner)
+
+    def test_socket_dedup_zero_foreign_family_and_dynamic_counter_boundaries(self):
+        relay=peer.UDPRelay(1)
+        try:
+            row=['0','0100007F:1234','0100007F:ABCD','01','0','0','0','1000','0','123']
+            dynamic=list(row);dynamic[4]='12345';self.assertEqual(len(relay.unique_socket_rows([('udp',row),('udp',dynamic)])),1)
+            self.assertEqual(len(relay.unique_socket_rows([('udp',row),('udp6',row)])),2)
+            for value in ('0','-1','not-inode'):
+                bad=list(row);bad[9]=value
+                with self.assertRaises(peer.IdentityFailure):relay.unique_socket_rows([('udp',bad)])
+            self.assertEqual(len(relay.unique_socket_rows([('udp',row)])),1)
+            # De-duplication never supplies owned-FD or endpoint approval.
+            self.assertFalse(row[9] in {'456'})
         finally:relay.close()
 
 

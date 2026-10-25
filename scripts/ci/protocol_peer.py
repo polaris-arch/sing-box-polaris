@@ -305,6 +305,17 @@ class UDPRelay:
             return facts
         except Exception:return {'unavailable':True}
 
+    def unique_socket_rows(self, rows):
+        # /proc namespace seq output can repeat a socket. Deduplicate only its
+        # complete stable identity, never select/filter a convenient contender.
+        unique={}
+        for family,row in rows:
+            if len(row)<10 or not row[9].isdigit() or int(row[9])<=0 or not row[7].isdigit():
+                raise IdentityFailure('UDP observer malformed socket identity')
+            key=(family,row[1],row[2],row[3],row[7],row[9])
+            unique.setdefault(key,(family,row))
+        return list(unique.values())
+
     def source_inode(self, address, known_slot=None):
         owner=self.owner
         if owner is None: raise IdentityFailure('UDP observer owner not bound')
@@ -364,8 +375,11 @@ class UDPRelay:
                 self.identity_predicates.update(samePortRows=len(rows),ipv4Rows=sum(f=='udp' for f,_ in rows),ipv6Rows=sum(f=='udp6' for f,_ in rows))
                 self.identity_predicates['rowDiagnostics']=self.source_row_diagnostics(rows,inodes,endpoint,remote,known_slot)
                 if not rows:return None
-                # Preserve the original short-circuit rejection, using only the
-                # one existing observation. Null means not evaluated, not PASS.
+                self.identity_operation='socket_identity_deduplicate'
+                raw_count=len(rows);rows=self.unique_socket_rows(rows)
+                self.identity_predicates.update(distinctSocketRows=len(rows),duplicateSocketRows=raw_count-len(rows))
+                # Exactly one stable identity, not one textual row. All prior
+                # family/endpoint/ownership gates remain; no contender filtered.
                 for name,field,check in (
                     ('single_socket_row',None,lambda:len(rows)==1),
                     ('socket_family','uniqueIPv4',lambda:rows[0][0]=='udp'),
