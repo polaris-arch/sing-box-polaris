@@ -16,6 +16,7 @@ import (
 	"github.com/sagernet/sing-box/common/trafficcontrol"
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/experimental"
 	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/experimental/clashmode"
@@ -94,7 +95,17 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	}
 	stable := &runtimeResource{id: adapter.RuntimeResourceID{Incarnation: coordinator.active.Incarnation, Sequence: 1}, kind: "stable", components: make(map[string]*runtimeComponent)}
 	coordinator.resourceSequence = 1
-	stable.owner, err = runtimegraph.NewResourceOwner(ctx, stable.id, nil, func() error { return stable.scope.Close() })
+	stable.owner, err = runtimegraph.NewResourceOwner(ctx, stable.id, nil, func() error {
+		// All graph users have drained before this owner callback. The allocator
+		// must finish its final durable writes before the stable cache's child
+		// scope closes the physical DB. A constructor-time Scope.Add would run
+		// after the cache child because that child is registered later at Start.
+		var fakeIPErr error
+		if coordinator.fakeIP != nil {
+			fakeIPErr = lifecycle.CleanupResult("Box fake-IP allocator", coordinator.fakeIP.Close)
+		}
+		return errors.Join(runtimeCleanupResult(fakeIPErr), stable.scope.Close())
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +142,6 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	// Recognition exists even when this revision has no fake-IP server, so
 	// later addition/removal never loses the authority for still-valid answers.
 	coordinator.fakeIP = fakeip.NewEmptyManager(ctx, factory.NewLogger("fakeip"))
-	stable.scope.Add(func() error { return runtimeCleanupResult(coordinator.fakeIP.Close()) })
 	if err := coordinator.fakeIP.Start(); err != nil {
 		return nil, err
 	}
