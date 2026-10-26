@@ -30,7 +30,8 @@ _require = legacy._require
 
 def supports_source(source):
     from oci_material_selection_12_3 import SOURCE as next_source
-    return source in (legacy.SOURCE, SOURCE, next_source)
+    from oci_material_selection_12_5 import SOURCE as latest_source
+    return source in (legacy.SOURCE, SOURCE, next_source, latest_source)
 
 
 def _selector_record():
@@ -225,7 +226,10 @@ def _load(artifacts, source_root, publisher_root):
 
 
 def load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root):
+    import oci_material_selection_12_5 as latest
     import oci_material_selection_12_3 as current
+    if source == latest.SOURCE:
+        return latest.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
     if source == current.SOURCE:
         return current.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
     if source == legacy.SOURCE:
@@ -245,7 +249,10 @@ def _checked(policy):
 
 
 def bundle_name(policy):
+    import oci_material_selection_12_5 as latest
     import oci_material_selection_12_3 as current
+    if policy.get('schema') == latest.SCHEMA:
+        return latest.bundle_name(policy)
     if policy.get('schema') == current.SCHEMA:
         return current.bundle_name(policy)
     if policy.get('schema') != SCHEMA:
@@ -256,7 +263,10 @@ def bundle_name(policy):
 
 
 def check_image(policy, artifact_name, actual_image_path):
+    import oci_material_selection_12_5 as latest
     import oci_material_selection_12_3 as current
+    if policy.get('schema') == latest.SCHEMA:
+        return latest.check_image(policy, artifact_name, actual_image_path)
     if policy.get('schema') == current.SCHEMA:
         return current.check_image(policy, artifact_name, actual_image_path)
     if policy.get('schema') != SCHEMA:
@@ -270,7 +280,10 @@ def check_image(policy, artifact_name, actual_image_path):
 
 
 def write_bundle(policy, path):
+    import oci_material_selection_12_5 as latest
     import oci_material_selection_12_3 as current
+    if policy.get('schema') == latest.SCHEMA:
+        return latest.write_bundle(policy, path)
     if policy.get('schema') == current.SCHEMA:
         return current.write_bundle(policy, path)
     if policy.get('schema') != SCHEMA:
@@ -314,7 +327,10 @@ def write_bundle(policy, path):
 
 
 def record(policy, publisher_sha, bundle_path):
+    import oci_material_selection_12_5 as latest
     import oci_material_selection_12_3 as current
+    if policy.get('schema') == latest.SCHEMA:
+        return latest.record(policy, publisher_sha, bundle_path)
     if policy.get('schema') == current.SCHEMA:
         return current.record(policy, publisher_sha, bundle_path)
     if policy.get('schema') != SCHEMA:

@@ -1,0 +1,15 @@
+{
+  "legalConclusion": false,
+  "newNotices": 0,
+  "producerAttempt": 1,
+  "producerRunId": 40320104873,
+  "references": [
+    {
+      "bytes": 683,
+      "path": "release/dependency-sources/oci/selections/40164108947-attempt1/notice-inventory.json",
+      "sha256": "0fc603dc8d3dbf780a7da17608c8c4f18737cf9051fb9c516d70fb353c68244a"
+    }
+  ],
+  "schema": "polaris-reused-notice-inventory-v1",
+  "sourceCommit": "332935c310e78e15319d434f33a9103329200931"
+}

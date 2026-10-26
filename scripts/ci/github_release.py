@@ -21,7 +21,7 @@ import time
 import zipfile
 import struct
 import zlib
-import publisher_peer_evidence as peer_evidence
+import publisher_peer_registry as peer_evidence
 from contextlib import contextmanager, closing
 
 IO_CHUNK = 1024 * 1024
