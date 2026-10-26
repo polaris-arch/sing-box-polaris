@@ -61,7 +61,7 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_cli_keeps_raw_patch_and_windows_resource_bounds(self):
         script = ROOT / 'scripts/ci/polaris_version.py'
-        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4']:
+        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5']:
             for args in [[value], [value, '65535']]:
                 output = subprocess.check_output([sys.executable, str(script), *args], text=True)
                 self.assertEqual(output, value + '\n')
@@ -79,6 +79,7 @@ class PolarisVersionTests(unittest.TestCase):
                  '1.15.0-polaris-alpha.12.2': '1.15.0_alpha12_p2-r0',
                  '1.15.0-polaris-alpha.12.3': '1.15.0_alpha12_p3-r0',
                  '1.15.0-polaris-alpha.12.4': '1.15.0_alpha12_p4-r0',
+                 '1.15.0-polaris-alpha.12.5': '1.15.0_alpha12_p5-r0',
                  '1.15.0-polaris-alpha.13': '1.15.0_alpha13-r0',
                  '1.15.0-polaris-beta.1.2': '1.15.0_beta1_p2-r0',
                  '1.15.0-polaris-rc.1.2': '1.15.0_rc1_p2-r0'}
@@ -97,7 +98,7 @@ class PolarisVersionTests(unittest.TestCase):
                     v.apk_version(raw)
 
     def test_native_names_and_exact_plan_scope(self):
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.13']:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.13']:
             names = native.expected_native(version)
             self.assertEqual(len(names), 44)
             self.assertTrue(all(name.startswith('sing-box-' + version + '-') for name in names))
@@ -112,13 +113,13 @@ class PolarisVersionTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64')
         self.assertEqual(publisher.VERSION, PLAN['version'])
-        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.13']:
+        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.13']:
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
     def test_full_patch_tag_is_bound_to_actual_source_and_tag_object(self):
         source, obj = 'a' * 40, 'b' * 40
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4']:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5']:
             tag = 'v' + version
             answers = [{'object': {'type': 'tag', 'sha': obj}},
                        {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
