@@ -2145,7 +2145,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.5
+        default: 1.15.0-polaris-alpha.12.6
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

@@ -51,7 +51,7 @@ name: GitHub-only reviewed release
 permissions:
   contents: read
 concurrency:
-  group: polaris-github-release-v1.15.0-polaris-alpha.12.5
+  group: polaris-github-release-v1.15.0-polaris-alpha.12.6
   cancel-in-progress: false
 jobs:
   validate:

@@ -12,6 +12,17 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
+// ContextWithRuntimeTailscaleChildren binds one standalone host census to the
+// caller's outer lifecycle. Callers must reuse this context across Box reloads;
+// creating a fresh census per Box would discard uncertain original children.
+// This only installs the existing registrar: it starts no service or child and
+// grants no managed-directory authority. Construction and retirement keep the
+// same original signals, validation and capacity limits as StartedService.
+func ContextWithRuntimeTailscaleChildren(ctx context.Context) context.Context {
+	host := &StartedService{}
+	return adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, host.registerRuntimeTailscaleChild)
+}
+
 type runtimeChildDirectoryPlan interface {
 	preparedDirectoryResources
 	Acquire(context.Context) error
