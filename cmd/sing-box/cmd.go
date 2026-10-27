@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/sagernet/sing-box/daemon"
 	"github.com/sagernet/sing-box/experimental/deprecated"
 	"github.com/sagernet/sing-box/include"
 	"github.com/sagernet/sing-box/log"
@@ -71,4 +72,6 @@ func preRun(cmd *cobra.Command, args []string) {
 		configPaths = append(configPaths, "config.json")
 	}
 	globalCtx = include.Context(service.ContextWith(globalCtx, deprecated.NewStderrManager(log.StdLogger())))
+	// Retain one original-child census across every create/SIGHUP in this CLI run.
+	globalCtx = daemon.ContextWithRuntimeTailscaleChildren(globalCtx)
 }
