@@ -1,0 +1,39 @@
+# Maintainer: Natanael Copa <ncopa@alpinelinux.org>
+pkgname=jansson
+pkgver=2.15.1
+pkgrel=0
+pkgdesc="lightweight JSON library"
+url="http://www.digip.org/jansson/"
+arch="all"
+license="MIT"
+checkdepends="bash"
+subpackages="$pkgname-static $pkgname-dev"
+source="https://github.com/akheron/jansson/releases/download/v$pkgver/jansson-$pkgver.tar.gz"
+
+# secfixes:
+#   0:
+#     - CVE-2020-36325
+
+build() {
+	./configure \
+		--build=$CBUILD \
+		--host=$CHOST \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--mandir=/usr/share/man \
+		--infodir=/usr/share/info \
+		--localstatedir=/var
+	make
+}
+
+check() {
+	make check
+}
+
+package() {
+	make DESTDIR="$pkgdir" install
+}
+
+sha512sums="
+cb952d51bf0b358f316f36fb925267f3ce7529ef88faca935db73923708269e21733b9682eb64d5478a6d9a3d366b34b42d9b63dd1f510537342c4cc79345740  jansson-2.15.1.tar.gz
+"

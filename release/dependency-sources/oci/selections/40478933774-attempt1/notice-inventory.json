@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "archiveMember": "jansson-2.15.1/LICENSE",
+      "bytes": 1912,
+      "path": "notices/jansson-2.15.1/LICENSE",
+      "sha256": "150d90904cd8de73609bb177b42edd3867b07b4b7b786dbba319f30de39fcda2",
+      "sourceArchiveSHA256": "0c7114dc0b2d22a670724a1f95922029d7077c19dbf79a584cb8084d2f267f2f"
+    }
+  ],
+  "legalConclusion": false,
+  "newNotices": 1,
+  "producerAttempt": 1,
+  "producerRunId": 40478933774,
+  "references": [
+    {
+      "bytes": 458,
+      "path": "release/dependency-sources/oci/selections/40320104873-attempt1/notice-inventory.json",
+      "sha256": "eeaa9d757117f0af3861ea52d7bc6c51f8682a6563fd74aee1efd21b8a937cf9"
+    }
+  ],
+  "schema": "polaris-exact-oci-delta-notice-inventory-v1",
+  "sourceCommit": "bfcdf96b244f63e0fe84736ee4a4edd58f6b209e"
+}

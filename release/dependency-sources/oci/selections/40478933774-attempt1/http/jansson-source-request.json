@@ -1,0 +1,13 @@
+{
+  "UTC": "2026-10-27T11:59:50.891687+00:00",
+  "method": "GET",
+  "url": "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.gz",
+  "assetId": 463527312,
+  "expectedBytes": 623952,
+  "expectedSHA256": "0c7114dc0b2d22a670724a1f95922029d7077c19dbf79a584cb8084d2f267f2f",
+  "expectedSHA512": "cb952d51bf0b358f316f36fb925267f3ce7529ef88faca935db73923708269e21733b9682eb64d5478a6d9a3d366b34b42d9b63dd1f510537342c4cc79345740",
+  "maximumWallSeconds": 180,
+  "socketTimeoutSeconds": 30,
+  "maximumRedirects": 3,
+  "retry": false
+}

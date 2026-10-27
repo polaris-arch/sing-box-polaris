@@ -1,0 +1,37 @@
+{
+  "historicalReceiptsUnmodified": true,
+  "legalConclusion": false,
+  "newDownloads": 1,
+  "newSources": [
+    {
+      "assetId": 463527312,
+      "bytes": 623952,
+      "getReceipt": {
+        "bytes": 1534,
+        "path": "http/jansson-source-result.json",
+        "sha256": "b34413bc5d29b4fd8e4e1d8c39909db193168680944ae02999100a6ccfe9e471"
+      },
+      "getRequest": {
+        "bytes": 555,
+        "path": "http/jansson-source-request.json",
+        "sha256": "aa4b71f58c380452a26ba9d3439433b0160eaafd6268bdc61346312c5f67e988"
+      },
+      "name": "jansson-2.15.1.tar.gz",
+      "path": "sources/jansson-2.15.1.tar.gz",
+      "requestedURL": "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.gz",
+      "sha256": "0c7114dc0b2d22a670724a1f95922029d7077c19dbf79a584cb8084d2f267f2f",
+      "sha512": "cb952d51bf0b358f316f36fb925267f3ce7529ef88faca935db73923708269e21733b9682eb64d5478a6d9a3d366b34b42d9b63dd1f510537342c4cc79345740"
+    }
+  ],
+  "producerAttempt": 1,
+  "producerRunId": 40478933774,
+  "references": [
+    {
+      "bytes": 504,
+      "path": "release/dependency-sources/oci/selections/40320104873-attempt1/source-acquisition.json",
+      "sha256": "678fdd4cf269bc209615ebcf5ac80e09081ec44b2553545a165adfbc2deec462"
+    }
+  ],
+  "schema": "polaris-exact-oci-delta-source-acquisition-v1",
+  "sourceCommit": "bfcdf96b244f63e0fe84736ee4a4edd58f6b209e"
+}
