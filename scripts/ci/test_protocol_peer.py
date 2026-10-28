@@ -106,7 +106,7 @@ class ControlledPeerContracts(unittest.TestCase):
         self.assertIn('-ldflags "$TEST_LDFLAGS"',command)
         self.assertIn('constant.Version=${{ needs.calculate_version.outputs.version }} ${LDFLAGS_SHARED} -s -w -buildid=',command)
         self.assertIn("'TEST_LDFLAGS'",command)
-        self.assertIn("-run '^(TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)'",command)
+        self.assertIn("-run '^(TestRuntimeTLSFailure|TestNativePeerNetLog|TestCleanup(Diagnostic|Snapshot)|TestFinalLogicalFlow|TestRuntimeFinal|TestRuntimeOwnedCloseCallbackCanRequestWithoutJoiningItself|TestRuntimeNestedOwnedCloseJoinsOneFixedWorker|TestRuntimeCarrierUncertainCloseIsStickyAndRetains)'",command)
         self.assertIn('passed != names',command);self.assertIn("{'fail', 'skip'}",command)
         self.assertIn("!= set(required)",command)
         python=command.split("<<'PYDIAGNOSTIC'\n",1)[1].split('\nPYDIAGNOSTIC',1)[0]
@@ -114,13 +114,47 @@ class ControlledPeerContracts(unittest.TestCase):
         names=set()
         for node in ast.walk(assignment.value):
             if isinstance(node,ast.Constant) and isinstance(node.value,str) and node.value.startswith(('TestNativePeerNetLog','TestCleanup','TestFinalLogicalFlow','TestRuntime')):names.add(node.value)
-        self.assertEqual(len(names),43)
+        self.assertEqual(len(names),55)
+        self.assertIn("and '/' not in e['Test']",command)
+        self.assertIn("./adapter/outbound ./common/tls",command)
         for name in names:
             self.assertEqual(sum(bool(re.search(r'^func '+name+r'\(',file.read_text(),re.M)) for file in ROOT.rglob('*_test.go')),1)
         preserve=next(item for item in steps if item.get('name')=='Preserve exact Linux cleanup diagnostic test evidence')
         self.assertEqual(preserve['if'],"always() && inputs.build == 'NativePeerLinux'")
         self.assertEqual(preserve['with']['if-no-files-found'],'error')
         self.assertNotIn('sudo',command)
+
+    def test_tls_failure_named_gate_rejects_missing_and_failed_subtests(self):
+        workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        step = next(item for item in workflow['jobs']['build']['steps'] if item.get('name') == 'Verify exact Linux cleanup diagnostic tests')
+        gate = step['run'].split("<<'PYDIAGNOSTIC'\n", 1)[1].split('\nPYDIAGNOSTIC', 1)[0]
+        tree = ast.parse(gate)
+        assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'required' for t in node.targets))
+        namespace = {'prefix': 'github.com/sagernet/sing-box'}
+        exec(compile(ast.Module(body=[assignment], type_ignores=[]), '<required-names>', 'exec'), namespace)
+        required = namespace['required']
+        self.assertEqual(len(required), 7)
+        self.assertEqual(len(required[namespace['prefix'] + '/common/tls']), 12)
+        events = []
+        for package, names in required.items():
+            events += [{'Action': 'pass', 'Package': package, 'Test': name} for name in names]
+            events.append({'Action': 'pass', 'Package': package})
+        tls_package = namespace['prefix'] + '/common/tls'
+        nested = {'Action': 'pass', 'Package': tls_package, 'Test': 'TestRuntimeTLSFailureErrorClassification/known'}
+        def accepted(rows):
+            with tempfile.TemporaryDirectory() as temp:
+                path = Path(temp)/'synthetic-contract-events.jsonl'
+                path.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+                result = subprocess.run([sys.executable, '-c', gate, str(path)], capture_output=True, text=True)
+                return result.returncode == 0
+        self.assertTrue(accepted(events + [nested]))
+        self.assertFalse(accepted(events[1:] + [nested]))
+        for action in ('fail', 'skip'):
+            self.assertFalse(accepted(events + [dict(nested, Action=action)]))
+        self.assertFalse(accepted(events + [dict(nested, Test='TestRuntimeTLSFailureUnexpected')]))
+        raw = (ROOT/'common/tls/runtime_failure_test.go').read_text()
+        self.assertIn('os.Geteuid() == 0', raw)
+        self.assertIn('kTLS failure regression requires an unprivileged process', raw)
 
     def test_cleanup_snapshot_finite_schema_and_secret_rejection(self):
         snapshot = {'schema':'runtime-cleanup-v1','atomic':False,'available':True,
@@ -233,11 +267,11 @@ class ControlledPeerContracts(unittest.TestCase):
     def test_linux_exact_source_dispatch_is_staging_only(self):
         valid={'GITHUB_ACTIONS':'true','RUNNER_OS':'Linux','GITHUB_EVENT_NAME':'workflow_dispatch',
                'PEER_BUILD':'NativePeerLinux','PEER_EVIDENCE_MODE':'staging','PEER_SOURCE_GENERATE_ONLY':'false',
-               'PEER_VERSION':'1.15.0-polaris-alpha.12.3','GITHUB_REPOSITORY':diagnostic.REPOSITORY,
+               'PEER_VERSION':'1.15.0-polaris-alpha.12.4','GITHUB_REPOSITORY':diagnostic.REPOSITORY,
                'GITHUB_REPOSITORY_ID':str(diagnostic.REPOSITORY_ID)}
         peer.validate_linux_dispatch(valid)
         for key,wrong in [('PEER_BUILD','Binary'),('PEER_EVIDENCE_MODE','final'),('PEER_SOURCE_GENERATE_ONLY','true'),
-                          ('PEER_VERSION','1.15.0-polaris-alpha.12.2'),('GITHUB_EVENT_NAME','push'),
+                          ('PEER_VERSION','1.15.0-polaris-alpha.12.2'),('PEER_VERSION','1.15.0-polaris-alpha.12.3'),('GITHUB_EVENT_NAME','push'),
                           ('GITHUB_REPOSITORY','other/repo'),('GITHUB_REPOSITORY_ID','1'),
                           ('GITHUB_ACTIONS','false'),('RUNNER_OS','Windows')]:
             with self.subTest(key=key),self.assertRaises(ValueError):peer.validate_linux_dispatch(dict(valid,**{key:wrong}))

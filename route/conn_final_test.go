@@ -123,6 +123,89 @@ func TestFinalLogicalFlowCopyCompletionsAndStaleContext(t *testing.T) {
 	}
 }
 
+// A failed TryLock only reports contention, including another test callback
+// or setup completion. Prove actual reentry while Close is still active instead.
+type finalManagerReentryProbe struct {
+	started chan struct{}
+	done    chan struct{}
+	err     error // published by closing done
+}
+
+func newFinalManagerReentryProbe(m *ConnectionManager) *finalManagerReentryProbe {
+	probe := &finalManagerReentryProbe{started: make(chan struct{}), done: make(chan struct{})}
+	go func() {
+		close(probe.started)
+		done, err := m.reserveFlowTask(context.Background())
+		if done != nil {
+			done()
+			err = errors.Join(err, errors.New("unexpected reentry task admitted"))
+		}
+		probe.err = err
+		close(probe.done)
+	}()
+	return probe
+}
+
+func (p *finalManagerReentryProbe) wait(ctx context.Context) error {
+	select {
+	case <-p.done:
+		return p.err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func TestFinalLogicalFlowReentryProbeRejectsHeldManagerLock(t *testing.T) {
+	m := finalManager()
+	m.StopFinal()
+	var probe *finalManagerReentryProbe
+	var observed error
+	closer := &finalTestCloser{check: func() {
+		probe = newFinalManagerReentryProbe(m)
+		managerAwait(t, probe.started)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		// Hold access across the entire observation. A probe that ignores
+		// manager reentry must return early and fail this negative control.
+		observed = probe.wait(ctx)
+		select {
+		case <-probe.done:
+			t.Error("reentry completed while Close caller held manager lock")
+		default:
+		}
+	}}
+	func() {
+		m.access.Lock()
+		defer m.access.Unlock()
+		_ = closer.Close()
+	}()
+	managerAwait(t, probe.done)
+	if observed != context.DeadlineExceeded {
+		t.Fatalf("held manager lock accepted: %v", observed)
+	}
+	if probe.err != net.ErrClosed {
+		t.Fatalf("released probe did not join sealed manager: %v", probe.err)
+	}
+	if err := finalAwaitClose(t, m); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFinalLogicalFlowReentryProbeRejectsUnsealedAdmission(t *testing.T) {
+	m := finalManager()
+	probe := newFinalManagerReentryProbe(m)
+	managerAwait(t, probe.done)
+	if probe.err == nil || probe.err == net.ErrClosed {
+		t.Fatalf("unsealed task admission accepted: %v", probe.err)
+	}
+	if m.diagnosticTasks.Load() != 0 {
+		t.Fatal("unexpected admission task was not returned")
+	}
+	if err := finalAwaitClose(t, m); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock(t *testing.T) {
 	m := finalManager()
 	gate := make(chan struct{})
@@ -131,11 +214,15 @@ func TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock(t *testing.T) {
 	defer release()
 	a := &finalTestCloser{entered: make(chan struct{}), unblock: gate}
 	b := &finalTestCloser{entered: make(chan struct{})}
+	probes := make(chan *finalManagerReentryProbe, 2)
+	var observedProbes []*finalManagerReentryProbe
 	check := func() {
-		if !m.access.TryLock() {
-			t.Error("arbitrary Close under manager lock")
-		} else {
-			m.access.Unlock()
+		probe := newFinalManagerReentryProbe(m)
+		probes <- probe
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := probe.wait(ctx); err != net.ErrClosed {
+			t.Errorf("Close cannot reenter sealed manager: %v", err)
 		}
 	}
 	a.check = check
@@ -144,18 +231,59 @@ func TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock(t *testing.T) {
 	f.replace(1, b)
 	m.StopFinal()
 	setup()
+	defer func() {
+		// Also retire owned workers when a deliberately bad join returns early.
+		release()
+		done := make(chan struct{})
+		go func() { m.tasks.Wait(); close(done) }()
+		managerAwait(t, done)
+		// No counted callback can publish another helper after the join.
+		close(probes)
+		for probe := range probes {
+			observedProbes = append(observedProbes, probe)
+		}
+		for _, probe := range observedProbes {
+			managerAwait(t, probe.done)
+		}
+	}()
 	managerAwait(t, a.entered)
 	managerAwait(t, b.entered)
-	completed := make(chan error, 1)
-	go func() { completed <- m.closeRuntimeTasks() }()
-	select {
-	case <-completed:
-		t.Fatal("blocked Close treated as completed")
-	default:
+	// Each callback has returned from its bounded observation. Join every
+	// helper even if that observation failed; a timeout is never washed out.
+	for range 2 {
+		probe := <-probes
+		observedProbes = append(observedProbes, probe)
+		managerAwait(t, probe.done)
 	}
+	started := make(chan struct{})
+	completed := make(chan error, 1)
+	go func() {
+		close(started)
+		completed <- m.closeRuntimeTasks()
+	}()
+	managerAwait(t, started)
+	// Both Close callbacks have entered, but a is still blocked on gate.
+	// Observe the started waiter, not an immediate select before scheduling.
+	observation := time.NewTimer(100 * time.Millisecond)
+	var closeErr error
+	returned := false
+	select {
+	case closeErr = <-completed:
+		returned = true
+		t.Error("blocked Close treated as completed")
+	case <-observation.C:
+	}
+	observation.Stop()
 	release()
-	if err := <-completed; err != nil {
-		t.Fatal(err)
+	if !returned {
+		select {
+		case closeErr = <-completed:
+		case <-time.After(3 * time.Second):
+			t.Fatal("released final close was not joined")
+		}
+	}
+	if closeErr != nil {
+		t.Fatal(closeErr)
 	}
 	m.StopFinal()
 	if a.calls.Load() != 1 || b.calls.Load() != 1 {

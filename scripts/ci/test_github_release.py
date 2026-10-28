@@ -34,6 +34,13 @@ def historical_release():
 
 
 class BoundedStorageTests(unittest.TestCase):
+    def setUp(self):
+        # These synthetic storage fixtures have no real producer identity. The
+        # exact current peer gate is exercised end-to-end in its own test file.
+        patcher = mock.patch.object(p.peer_evidence, 'select', return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @staticmethod
     def zipped(rows, compression=zipfile.ZIP_DEFLATED):
         stream=io.BytesIO()
@@ -233,7 +240,7 @@ class BoundedStorageTests(unittest.TestCase):
         def associate(result,*_):result['distributionMaterials']={};return result
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);work=root/'work';budget=p.ScratchBudget(work,reserve=0)
-            with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',side_effect=lambda path:runs[path.split('/')[-1]]) as remote, \
+            with mock.patch.object(p.peer_evidence,'select',return_value=None),mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',side_effect=lambda path:runs[path.split('/')[-1]]) as remote, \
                  mock.patch.object(p,'pages',side_effect=lambda path,key:artifacts[path.split('/')[-2]]), \
                  mock.patch.object(p.subprocess,'Popen',side_effect=child),mock.patch.object(p,'client_platform',return_value=None), \
                  mock.patch.object(p,'validate_final_index'),mock.patch.object(p,'associate_distribution_materials',side_effect=associate):
@@ -443,6 +450,13 @@ class BoundedStorageTests(unittest.TestCase):
 
 
 class GateTests(unittest.TestCase):
+    def setUp(self):
+        # Preserve the scope of legacy synthetic package fixtures, rather than
+        # making the production peer gate recognize or bypass fake identities.
+        patcher = mock.patch.object(p.peer_evidence, 'select', return_value=None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_scope_preserved(self):
         s=json.loads(p.SCOPE.read_text())
         self.assertEqual(len(s['all']['matrices']['build']['include'])+len(s['all']['matrices']['build_windows7']['include']),38)
@@ -990,7 +1004,7 @@ class GateTests(unittest.TestCase):
             with zipfile.ZipFile(archive_path) as z:yield z,z.infolist()
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);source_root=root/'reviewed-source'
-            with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',return_value=run), \
+            with mock.patch.object(p.peer_evidence,'select',return_value=None),mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',return_value=run), \
                  mock.patch.object(p,'pages',return_value=artifacts),mock.patch.object(p,'sha',return_value='a'*64), \
                  mock.patch.object(p,'artifact_archive',side_effect=archive_fixture), \
                  mock.patch.object(p,'validate_final_index',side_effect=StopInventory) as validate:
@@ -1040,9 +1054,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.3')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.3')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.3')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.4')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.4')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.4')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
@@ -2598,6 +2612,10 @@ class OciSupplementTests(unittest.TestCase):
 from test_oci_material_registry import RegistryTests
 
 from test_github_read_transport import ReadTransportTests
+
+# Execute the exact nonpublic peer regressions in this existing CI command.
+from publisher_peer_evidence_tests import PeerEvidenceTests
+from oci_material_selection_12_3_tests import CurrentOCISelectionTests
 
 if __name__=='__main__':
     unittest.main()

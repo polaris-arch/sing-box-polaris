@@ -14,7 +14,12 @@ import (
 // The private handshake carrier forwards only guarded descriptor callbacks
 // and TCP controls. Apple duplicates an fd inside Control and owns that duplicate
 // through its native terminal barrier; kTLS retains only this fenced RawConn.
-type runtimeHandshakeConn struct{ net.Conn }
+type runtimeHandshakeConn struct {
+	net.Conn
+	// Captured at construction; this proves completion of this exact raw
+	// carrier only. Close remains request-only for reentrant provider callbacks.
+	fence *outbound.RuntimeIOFence
+}
 
 func (c *runtimeHandshakeConn) SyscallConn() (syscall.RawConn, error) {
 	return outbound.RuntimeSyscallConn(c.Conn)
@@ -62,7 +67,7 @@ func clientHandshakeOwned(ctx context.Context, conn net.Conn, config Config) (Co
 		config = contextual.withRuntimeContext(ctx)
 	}
 	guarded, rawFence := outbound.WrapRuntimeOwnedConn(conn)
-	raw := &runtimeHandshakeConn{Conn: guarded}
+	raw := &runtimeHandshakeConn{Conn: guarded, fence: rawFence}
 	tlsConn, err := aTLS.ClientHandshake(ctx, raw, config)
 	if err != nil {
 		closeErr := rawFence.RuntimeCloseAndWait()
@@ -79,8 +84,30 @@ func clientHandshakeOwned(ctx context.Context, conn net.Conn, config Config) (Co
 }
 
 type runtimeTLSCloser struct {
-	Conn
+	net.Conn
 	raw *outbound.RuntimeIOFence
+}
+
+// runtimeProviderCloseConn composes an opaque provider with the raw completion
+// captured by this package before provider construction. It exposes neither a
+// raw getter nor a generic unwrap; unknown standalone transports are unchanged.
+// The caller must close this from outside any admitted provider/raw method.
+func runtimeProviderCloseConn(provider, transport net.Conn) net.Conn {
+	if raw, ok := transport.(*runtimeHandshakeConn); ok && raw.fence != nil {
+		return &runtimeTLSCloser{Conn: provider, raw: raw.fence}
+	}
+	return provider
+}
+
+// Preserve the original constructor/handshake failure. Only an actual joined
+// provider/raw cleanup can release its caller's failed admission; uncertainty
+// stays opaque so construction scopes cannot filter it as cancellation.
+func runtimeProviderFailure(provider, transport net.Conn, cause error) error {
+	_, fence := outbound.WrapRuntimeOwnedConn(runtimeProviderCloseConn(provider, transport))
+	if closeErr := fence.RuntimeCloseAndWait(); closeErr != nil {
+		return NewRuntimeCleanupError(errors.Join(cause, closeErr))
+	}
+	return cause
 }
 
 func (c *runtimeTLSCloser) Close() error {
@@ -239,7 +266,7 @@ func (c *runtimeTLSRawConn) Write(callback func(uintptr) bool) error {
 // it does not create a second graph lease or expose the native socket.
 func serverHandshakeOwned(ctx context.Context, conn net.Conn, config ServerConfig) (Conn, error) {
 	guarded, rawFence := outbound.WrapRuntimeOwnedConn(conn)
-	raw := &runtimeHandshakeConn{Conn: guarded}
+	raw := &runtimeHandshakeConn{Conn: guarded, fence: rawFence}
 	tlsConn, err := aTLS.ServerHandshake(ctx, raw, config)
 	if err != nil {
 		closeErr := rawFence.RuntimeCloseAndWait()

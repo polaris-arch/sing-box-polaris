@@ -16,6 +16,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	mRand "math/rand"
@@ -39,6 +40,8 @@ import (
 )
 
 var _ ConfigCompat = (*RealityClientConfig)(nil)
+
+var errRealityVerification = E.New("reality verification failed")
 
 type RealityClientConfig struct {
 	ctx       context.Context
@@ -232,10 +235,10 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	if !verifier.verified {
 		// The disguise request remains within the admitted handshake. It must not
 		// borrow e.ctx after the handshake reservation has been released.
-		if closeErr := realityClientFallback(ctx, uConn, e.uClient.ServerName(), e.uClient.id); closeErr != nil {
-			return nil, NewRuntimeCleanupError(E.New("reality fallback cleanup incomplete: ", closeErr))
+		if closeErr := realityClientFallback(ctx, runtimeProviderCloseConn(uConn, conn), e.uClient.ServerName(), e.uClient.id); closeErr != nil {
+			return nil, NewRuntimeCleanupError(errors.Join(errRealityVerification, E.New("reality fallback cleanup incomplete: ", closeErr)))
 		}
-		return nil, E.New("reality verification failed")
+		return nil, errRealityVerification
 	}
 
 	return &realityClientConnWrapper{uConn}, nil

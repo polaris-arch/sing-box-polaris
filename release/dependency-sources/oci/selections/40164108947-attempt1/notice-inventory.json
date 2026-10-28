@@ -1,0 +1,20 @@
+{
+  "legalConclusion": false,
+  "newNotices": 0,
+  "producerAttempt": 1,
+  "producerRunId": 40164108947,
+  "references": [
+    {
+      "bytes": 5856,
+      "path": "release/dependency-sources/oci/supplements/39791192772-attempt1/notice-inventory.json",
+      "sha256": "171ec3e2e23e301b155e179d03a1154cf3e5b38782aa0b6f87265c022346927c"
+    },
+    {
+      "bytes": 2811,
+      "path": "release/dependency-sources/oci/selections/39887556943-attempt1/notice-inventory.json",
+      "sha256": "09d5fc3039a3cb85c7ff8e28e5656df5cd355b3b9f64ce3aa03e8a099e451476"
+    }
+  ],
+  "schema": "polaris-exact-existing-notice-reuse-v1",
+  "sourceCommit": "368b2489784dbe06498a18e83cc2257f94868c46"
+}

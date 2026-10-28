@@ -1,0 +1,70 @@
+{
+  "schema": "polaris-exact-controlled-peer-selection-v1",
+  "repository": "polaris-arch/sing-box-polaris",
+  "repositoryId": 1421657509,
+  "version": "1.15.0-polaris-alpha.12.3",
+  "tag": "v1.15.0-polaris-alpha.12.3",
+  "sourceCommit": "368b2489784dbe06498a18e83cc2257f94868c46",
+  "sourceTree": "b1881f23288fafffd950084e952ffb46ba0f2533",
+  "tagObject": "d8fb7545ae552b3311548624e3576cb8dabd0bc5",
+  "workflow": ".github/workflows/build.yml",
+  "runId": 40164105561,
+  "runAttempt": 1,
+  "artifact": {
+    "id": 12587732884,
+    "name": "native-controlled-peer-368b2489784dbe06498a18e83cc2257f94868c46",
+    "size_in_bytes": 44804,
+    "digest": "sha256:870d374bfbde67ccb8b5dcbba34c0f8da4bd2abb792f4519fd2e1219ba55dc87"
+  },
+  "member": {
+    "path": "receipt.json",
+    "bytes": 429661,
+    "sha256": "0b508f0cac2dd2556bad09b0330ad88799a952b47bdb1752c4233050e8530881"
+  },
+  "nativeIndexSHA256": "633024a5fca4049898d4687a9ead3994f1de5193a02d9ee24b3ab46421ad5174",
+  "smokeRow": {
+    "artifact": "smoke-linux-amd64-purego",
+    "path": "native-row-sing-box-1.15.0-polaris-alpha.12.3-linux-amd64.json",
+    "bytes": 45217,
+    "sha256": "5938c3ae1df96de2d934682374e666bc0e2fdace0a891335063592d3047487c4"
+  },
+  "carrierArtifact": {
+    "id": 12587706797,
+    "name": "binary-linux_amd64-purego",
+    "size_in_bytes": 34348312,
+    "digest": "sha256:53217b606876e35b80a01aec6e103f7bb6de70a91b65018fe745374823220b65"
+  },
+  "identity": {
+    "source": "368b2489784dbe06498a18e83cc2257f94868c46",
+    "version": "1.15.0-polaris-alpha.12.3",
+    "coreSHA256": "0f74bc6168bb269d72a363e9e3ab15f4af514e2dc6264d28ade82b9b18197e13",
+    "nativeRowSHA256": "9ef08b3612cacb29f6b867e8f5fe95fef6a32660ced22b67447b53e3d9135293",
+    "profile": {
+      "linkage": "shared-purego",
+      "libc": "",
+      "goarm": "",
+      "gomips": "",
+      "go386": "",
+      "legacy": false
+    },
+    "sidecar": {
+      "member": "libcronet.so",
+      "bytes": 12370520,
+      "sha256": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4"
+    }
+  },
+  "archive": {
+    "name": "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64.tar.gz",
+    "bytes": 34395759,
+    "sha256": "7fa293a3eb7c63093b1b50c82577e811f4e6d9009e1f445eeee7c879beb29a85",
+    "root": "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64",
+    "members": {
+      "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64/LICENSE": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+      "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64/sing-box": "0f74bc6168bb269d72a363e9e3ab15f4af514e2dc6264d28ade82b9b18197e13",
+      "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64/libcronet.so": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+      "sing-box-1.15.0-polaris-alpha.12.3-linux-amd64/TLS-DEPENDENCY-NOTICES.txt": "5f4124e11c96908b0f13ca0d6747ffb276ffe1846d934818118f6efa362dd730"
+    }
+  },
+  "publicationEligible": false,
+  "publicationDisposition": "controlled-peer-evidence"
+}

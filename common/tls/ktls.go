@@ -23,8 +23,7 @@ func (w *KTLSClientConfig) ClientHandshake(ctx context.Context, conn net.Conn) (
 	}
 	kConn, err := ktls.NewConn(ctx, w.logger, tlsConn, w.kernelTx, w.kernelRx)
 	if err != nil {
-		tlsConn.Close()
-		return nil, E.Cause(err, "initialize kernel TLS")
+		return nil, runtimeProviderFailure(tlsConn, conn, E.Cause(err, "initialize kernel TLS"))
 	}
 	return kConn, nil
 }
@@ -51,8 +50,7 @@ func (w *KTlSServerConfig) ServerHandshake(ctx context.Context, conn net.Conn) (
 	}
 	kConn, err := ktls.NewConn(ctx, w.logger, tlsConn, w.kernelTx, w.kernelRx)
 	if err != nil {
-		tlsConn.Close()
-		return nil, E.Cause(err, "initialize kernel TLS")
+		return nil, runtimeProviderFailure(tlsConn, conn, E.Cause(err, "initialize kernel TLS"))
 	}
 	return kConn, nil
 }
