@@ -18,22 +18,17 @@ func testClientWriteReadServerReadWriteTCPAddr(listenTCPAddr, dialLocalTCPAddr *
 	defer lntcp.Close()
 	t.Log("Started listener on", lntcp.Addr())
 
-	ctrlCh := make(chan struct{})
-	go func() {
-		conn, err := lntcp.AcceptTCP()
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		defer conn.Close()
+	session := newTCPTestSession(t, lntcp)
+	session.start(func(conn *net.TCPConn) {
 		t.Log("Accepted", conn.RemoteAddr())
 
 		readUntilEOF(conn, helloworld, t)
 		write(conn, world, t)
 		write(conn, hello, t)
-		conn.CloseWrite()
-		close(ctrlCh)
-	}()
+		if !closeTCPTestWrite(t, conn) {
+			return
+		}
+	})
 
 	port := lntcp.Addr().(*net.TCPAddr).Port
 	ip := net.IPv6loopback
@@ -48,12 +43,17 @@ func testClientWriteReadServerReadWriteTCPAddr(listenTCPAddr, dialLocalTCPAddr *
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !session.track(tc, "client DialTCP") {
+		t.Fatal("client connected after fixture closed")
+	}
 	defer tc.Close()
 
 	write(tc, world, t)
-	tc.CloseWrite()
+	if !closeTCPTestWrite(t, tc) {
+		return
+	}
 	readUntilEOF(tc, worldhello, t)
-	<-ctrlCh
+	session.wait()
 }
 
 func TestClientWriteReadServerReadWriteTCPAddr(t *testing.T) {

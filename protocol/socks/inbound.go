@@ -73,9 +73,13 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	err := socks.HandleConnectionEx(ctx, conn, std_bufio.NewReader(conn), h.authenticator, adapter.NewUpstreamHandler(metadata, h.newUserConnection, h.streamUserPacketConnection), h.listener, h.udpTimeout, metadata.Source, onClose)
-	N.CloseOnHandshakeFailure(conn, onClose, err)
+	packets := listener.NewSOCKSPacketListener(h.listener.ListenPacket)
+	err := socks.HandleConnectionEx(ctx, conn, std_bufio.NewReader(conn), h.authenticator, adapter.NewUpstreamHandler(metadata, h.newUserConnection, h.streamUserPacketConnection), packets, h.udpTimeout, metadata.Source, onClose)
+	err = packets.Finish(err)
 	if err != nil {
+		// A successful CONNECT or UDP ASSOCIATE transfers the carrier and
+		// terminal callback to the router; returning is not connection close.
+		N.CloseOnHandshakeFailure(conn, onClose, err)
 		if E.IsClosedOrCanceled(err) {
 			h.logger.DebugContext(ctx, "connection closed: ", err)
 		} else {

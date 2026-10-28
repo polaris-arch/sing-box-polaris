@@ -6,6 +6,7 @@ release/dependency-sources/*.patch whitespace=-space-before-tab
 
 # Cross-platform raw client/owned-patch identity inputs, never normalized at use.
 /release/ci/client-overlays.json -text
+/release/ci/apple-swift-package-overlays.json -text
 /release/ci/owned-distribution.json -text
 /release/ci/*.patch -text
 
@@ -13,9 +14,11 @@ release/dependency-sources/*.patch whitespace=-space-before-tab
 /scripts/ci/testdata/desktop-50f50384/** -text
 /scripts/ci/testdata/android-ae93152f/** -text
 /scripts/ci/testdata/apple-e232aaf2/** -text
+/scripts/ci/testdata/go1.27.2/** -text
 
 # Source-owned SHA-pinned patches must retain exact Git blob bytes on every host.
 /.github/patches/** -text
+/.github/patches/go1.27.2/windows7.patch whitespace=-space-before-tab
 /.github/go_ios_cpu_features.patch -text
 
 third_party/metacubex-utls/** -text

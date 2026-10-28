@@ -1,0 +1,13 @@
+{
+  "completedAt": "2026-10-23T04:06:31.546170+00:00",
+  "requestURL": "https://invisible-mirror.net/archives/ncurses/current/ncurses-6.6-20261017.tgz",
+  "HTTP": 200,
+  "effectiveURL": "https://invisible-mirror.net/archives/ncurses/current/ncurses-6.6-20261017.tgz",
+  "curlReturnCode": 0,
+  "bytes": 3828980,
+  "sha256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36",
+  "sha512": "631de8500b72fc716abf16bf0822d822f34167b370658dbc672dba7b456eecb765e5e41cfa1b90d2f967e8bc17b36d717d769e9fc833224e9a34111a89470334",
+  "expectedSha512": "631de8500b72fc716abf16bf0822d822f34167b370658dbc672dba7b456eecb765e5e41cfa1b90d2f967e8bc17b36d717d769e9fc833224e9a34111a89470334",
+  "recipeReference": "Alpine main/ncurses @8b3f794ac226c47c66f0900fa1cd44f8d2c4e116 (caller-supplied; no recipe/license acceptance implied)",
+  "expectedSha512Matched": true
+}

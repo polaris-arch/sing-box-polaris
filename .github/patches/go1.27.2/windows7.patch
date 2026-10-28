@@ -650,7 +650,7 @@ index 41baa31eb97850..e6bec34005f8a9 100644
  	p, _ := GetCurrentProcess()
  	parentProcess := p
  	if sys.ParentProcess != 0 {
-@@ -374,10 +388,18 @@ func StartProcess(argv0 string, argv []string, attr *ProcAttr) (pid int, handle
+@@ -374,11 +388,19 @@ func StartProcess(argv0 string, argv []string, attr *ProcAttr) (pid int, handle
  	fd := make([]Handle, len(attr.Files))
  	for i := range attr.Files {
  		if attr.Files[i] > 0 {
@@ -671,6 +671,7 @@ index 41baa31eb97850..e6bec34005f8a9 100644
 +			defer DuplicateHandle(destinationProcessHandle, fd[i], 0, nil, 0, false, DUPLICATE_CLOSE_SOURCE)
  		}
  	}
+ 	procAttrList, err := newProcThreadAttributeList(2)
 @@ -405,6 +427,14 @@ func StartProcess(argv0 string, argv []string, attr *ProcAttr) (pid int, handle
  
  	fd = append(fd, sys.AdditionalInheritedHandles...)

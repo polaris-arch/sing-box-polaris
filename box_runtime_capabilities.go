@@ -83,7 +83,11 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	}
 	add("log.level", "builtin-level-control", "IN_PLACE", "eligible-started-instance", "valid-level")
 	for _, path := range []string{"inbounds", "services", "experimental.cache_file", "network_namespaces", "log.output", "certificate"} {
-		add(path, "structural-change", "RESTART_REQUIRED", "unchanged-supported-components-may-coexist", "explicit-host-restart-only")
+		conditions := []string{"unchanged-supported-components-may-coexist", "explicit-host-restart-only"}
+		if path == "services" {
+			conditions = append(conditions, "unchanged-plain-loopback-api-may-coexist", "enabled-dashboard-requires-inline-detour-only-http-client", "dashboard-fetch-borrows-current-graph-until-body-close")
+		}
+		add(path, "structural-change", "RESTART_REQUIRED", conditions...)
 	}
 	for _, path := range runtimePendingAdapters() {
 		add(path, "unsupported-dependency", "PENDING_ADAPTER", "presence-may-prevent-initial-runtime-graph")

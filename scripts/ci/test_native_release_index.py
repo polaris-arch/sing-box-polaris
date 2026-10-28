@@ -4,6 +4,18 @@ from unittest.mock import patch
 R=Path(__file__).parent
 spec=importlib.util.spec_from_file_location('n',R/'native_release_index.py');n=importlib.util.module_from_spec(spec);spec.loader.exec_module(n)
 class TestNative(unittest.TestCase):
+ def test_shared_materials_bind_apple_contract_helper_and_original_recipes(self):
+  root=R.parent.parent
+  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic-source'},'platforms':[],'legalFiles':[]}
+  material=n.distribution_materials(index,root)
+  for path in ('release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
+               'scripts/ci/client_source.py','release/dependency-sources/clients/runtime/recipe-index.json'):
+   self.assertEqual(material['inputs'][path],n.sha((root/path).read_bytes()))
+  spec=json.loads((root/'release/ci/apple-swift-package-overlays.json').read_text())
+  recipes={r['path']:r for r in json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text())}
+  for package in spec['packages']:
+   self.assertEqual(recipes[package['originalRecipe']]['sha256'],package['beforeSHA256'])
+   self.assertNotEqual(package['beforeSHA256'],package['afterSHA256'])
  def archive(self,path,entries):
   with tarfile.open(path,'w:gz') as t:
    for name,data in entries:

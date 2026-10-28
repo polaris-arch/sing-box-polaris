@@ -57,7 +57,7 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 		s.tlsConfig = tlsConfig
 	}
 	if options.Dashboard != nil && options.Dashboard.Enabled {
-		s.dashboard = newDashboard(ctx, logger, *options.Dashboard)
+		s.dashboard = newDashboard(ctx, logger, tag, *options.Dashboard)
 	}
 	return s, nil
 }
@@ -78,11 +78,11 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		return nil
 	})
 	if s.dashboard != nil {
+		scope.Add(s.dashboard.close)
 		err := s.dashboard.start(ctx)
 		if err != nil {
 			return E.Cause(err, "start dashboard")
 		}
-		scope.Add(s.dashboard.close)
 	}
 	httpServer := &http.Server{
 		//nolint:staticcheck

@@ -210,6 +210,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
     - name: Setup Go
       if: github.event_name != 'workflow_dispatch'
@@ -1676,20 +1677,20 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.temp }}/SourcePackages
-        key: apple-spm-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
+        key: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
           }}
-        restore-keys: apple-spm-
+        restore-keys: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-
     - name: Cache Xcode build data
       if: matrix.if
       uses: actions/cache@v4
       with:
         path: ${{ matrix.type == 'standalone' && 'clients/apple/build/SFM.System-*.dd' || matrix.type == 'jailbreak' && 'clients/apple/build/jailbreak/DerivedData'
           || format('{0}/DerivedData', runner.temp) }}
-        key: apple-derived-data-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
+        key: polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
           }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{
           github.sha }}
         restore-keys: |
-          apple-derived-data-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
+          polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
     - name: Install jailbreak packaging tools
       if: matrix.if && matrix.type == 'jailbreak'
       run: brew install dpkg ldid
@@ -1729,11 +1730,32 @@ jobs:
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
+    - name: Resolve and apply exact unsigned Apple package overlays
+      if: matrix.if
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 scripts/ci/apple_package_overlays.py check-lock
+        xcodebuild -version
+        xcrun swift --version
+        xcodebuild -resolvePackageDependencies \
+          -disableAutomaticPackageResolution \
+          -project clients/apple/sing-box.xcodeproj \
+          -scheme "$APPLE_RESOLVE_SCHEME" \
+          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+        python3 scripts/ci/apple_package_overlays.py apply --source-packages "$RUNNER_TEMP/SourcePackages"
+      env:
+        APPLE_RESOLVE_SCHEME: ${{ matrix.type == 'standalone' && 'SFM.System' || matrix.type == 'jailbreak' && 'SFI' || matrix.scheme }}
+        DISABLE_SWIFTLINT: '1'
+    - name: Verify actual unsigned Apple sources before build
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py preflight apple --unsigned
     - name: Archive App Store build
       if: matrix.if && matrix.type == 'app-store'
       run: |
         cd clients/apple
         xcodebuild archive \
+          -disableAutomaticPackageResolution \
           -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
           -scheme "${{ matrix.scheme }}" \
@@ -1749,7 +1771,7 @@ jobs:
         make -C clients/apple build_macos_pkg_all
       env:
         DISABLE_SWIFTLINT: '1'
-        XCODEBUILD_FLAGS: -clonedSourcePackagesDirPath ${{ runner.temp }}/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+        XCODEBUILD_FLAGS: -disableAutomaticPackageResolution -clonedSourcePackagesDirPath "${{ runner.temp }}/SourcePackages" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
           CODE_SIGN_IDENTITY=""
     - name: Prepare standalone packages
       if: matrix.if && matrix.type == 'standalone'
@@ -1778,9 +1800,6 @@ jobs:
         du -sh "$RUNNER_TEMP/DerivedData" 2>/dev/null || true
         du -sh clients/apple/build/jailbreak/DerivedData 2>/dev/null || true
         du -sh clients/apple/build/SFM.System-*.dd 2>/dev/null || true
-    - name: Prune Swift package repositories
-      if: matrix.if
-      run: rm -rf "$RUNNER_TEMP/SourcePackages/repositories"
     - name: Record actual unsigned candidate files
       if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
       run: python scripts/ci/record_candidate.py dist
@@ -1793,6 +1812,9 @@ jobs:
         name: binary-apple-${{ matrix.type }}${{ matrix.variant && format('-{0}', matrix.variant) || '' }}
         path: dist
         if-no-files-found: error
+    - name: Diagnose failed unsigned Apple sources
+      if: matrix.if && failure()
+      run: python3 scripts/ci/client_source.py diagnose apple --unsigned
   build_apple_app_store:
     name: Build Apple App Store clients
     runs-on: ${{ matrix.if && 'xcode-27' || 'ubuntu-latest' }}
@@ -1881,20 +1903,20 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ runner.temp }}/SourcePackages
-        key: apple-spm-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
+        key: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
           }}
-        restore-keys: apple-spm-
+        restore-keys: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-
     - name: Cache Xcode build data
       if: matrix.if
       uses: actions/cache@v4
       with:
         path: ${{ matrix.type == 'standalone' && 'clients/apple/build/SFM.System-*.dd' || matrix.type == 'jailbreak' && 'clients/apple/build/jailbreak/DerivedData'
           || format('{0}/DerivedData', runner.temp) }}
-        key: apple-derived-data-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
+        key: polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
           }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{
           github.sha }}
         restore-keys: |
-          apple-derived-data-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
+          polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
     - name: Install jailbreak packaging tools
       if: matrix.if && matrix.type == 'jailbreak'
       run: brew install dpkg ldid
@@ -1934,11 +1956,32 @@ jobs:
     - name: Update version
       if: matrix.if
       run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
+    - name: Resolve and apply exact unsigned Apple package overlays
+      if: matrix.if
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 scripts/ci/apple_package_overlays.py check-lock
+        xcodebuild -version
+        xcrun swift --version
+        xcodebuild -resolvePackageDependencies \
+          -disableAutomaticPackageResolution \
+          -project clients/apple/sing-box.xcodeproj \
+          -scheme "$APPLE_RESOLVE_SCHEME" \
+          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+        python3 scripts/ci/apple_package_overlays.py apply --source-packages "$RUNNER_TEMP/SourcePackages"
+      env:
+        APPLE_RESOLVE_SCHEME: ${{ matrix.type == 'standalone' && 'SFM.System' || matrix.type == 'jailbreak' && 'SFI' || matrix.scheme }}
+        DISABLE_SWIFTLINT: '1'
+    - name: Verify actual unsigned Apple sources before build
+      if: matrix.if
+      run: python3 scripts/ci/client_source.py preflight apple --unsigned
     - name: Archive App Store build
       if: matrix.if && matrix.type == 'app-store'
       run: |
         cd clients/apple
         xcodebuild archive \
+          -disableAutomaticPackageResolution \
           -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
           -derivedDataPath "$RUNNER_TEMP/DerivedData" \
           -scheme "${{ matrix.scheme }}" \
@@ -1954,7 +1997,7 @@ jobs:
         make -C clients/apple build_macos_pkg_all
       env:
         DISABLE_SWIFTLINT: '1'
-        XCODEBUILD_FLAGS: -clonedSourcePackagesDirPath ${{ runner.temp }}/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+        XCODEBUILD_FLAGS: -disableAutomaticPackageResolution -clonedSourcePackagesDirPath "${{ runner.temp }}/SourcePackages" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
           CODE_SIGN_IDENTITY=""
     - name: Prepare standalone packages
       if: matrix.if && matrix.type == 'standalone'
@@ -1983,9 +2026,6 @@ jobs:
         du -sh "$RUNNER_TEMP/DerivedData" 2>/dev/null || true
         du -sh clients/apple/build/jailbreak/DerivedData 2>/dev/null || true
         du -sh clients/apple/build/SFM.System-*.dd 2>/dev/null || true
-    - name: Prune Swift package repositories
-      if: matrix.if
-      run: rm -rf "$RUNNER_TEMP/SourcePackages/repositories"
     - name: Record actual unsigned candidate files
       if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
       run: python scripts/ci/record_candidate.py dist
@@ -2015,6 +2055,9 @@ jobs:
         name: unsigned-apple-${{ matrix.platform }}-archive
         path: dist
         if-no-files-found: error
+    - name: Diagnose failed unsigned Apple sources
+      if: matrix.if && failure()
+      run: python3 scripts/ci/client_source.py diagnose apple --unsigned
   native_smoke:
     name: Native final-package Cronet and gVisor smoke (${{ matrix.id }})
     if: '!inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == ''All'' || inputs.build == ''Binary'')'
@@ -2077,6 +2120,7 @@ jobs:
     - name: Checkout exact source
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
     - name: Install index schema validator
       run: python3 -m pip install jsonschema==4.23.0
@@ -2166,7 +2210,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12
+        default: 1.15.0-polaris-alpha.12.2
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

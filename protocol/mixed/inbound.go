@@ -129,7 +129,9 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 	handler := adapter.NewUpstreamHandler(metadata, h.newUserConnection, h.streamUserPacketConnection)
 	switch headerBytes[0] {
 	case socks4.Version, socks5.Version:
-		err = socks.HandleConnectionEx(ctx, conn, reader.Reader, h.authenticator, handler, h.listener, h.udpTimeout, metadata.Source, onClose)
+		packets := listener.NewSOCKSPacketListener(h.listener.ListenPacket)
+		err = socks.HandleConnectionEx(ctx, conn, reader.Reader, h.authenticator, handler, packets, h.udpTimeout, metadata.Source, onClose)
+		err = packets.Finish(err)
 		if err != nil {
 			N.CloseOnHandshakeFailure(conn, onClose, err)
 			if E.IsClosedOrCanceled(err) {

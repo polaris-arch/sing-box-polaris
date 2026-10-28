@@ -51,7 +51,7 @@ name: GitHub-only reviewed release
 permissions:
   contents: read
 concurrency:
-  group: polaris-github-release-v1.15.0-polaris-alpha.12
+  group: polaris-github-release-v1.15.0-polaris-alpha.12.2
   cancel-in-progress: false
 jobs:
   validate:
@@ -107,15 +107,15 @@ jobs:
         else
           python3 scripts/ci/github_release.py validate "${args[@]}" --inventory-run "$INVENTORY_RUN" --inventory-sha256 "$INVENTORY_SHA256"
         fi
-    - name: Retain actual validation output
+    - name: Retain bounded validation evidence (not a full public payload copy)
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: github-release-validation
         path: |-
           release-inventory-proposal.json
-          github-release-dist
           github-release-audit
-        if-no-files-found: error
+        if-no-files-found: warn
     - name: Retain original receipt and existing producer recovery references before any writes
       if: inputs.mode == 'prepare-reconcile' || inputs.mode == 'prepare-replacement'
       uses: actions/upload-artifact@v4

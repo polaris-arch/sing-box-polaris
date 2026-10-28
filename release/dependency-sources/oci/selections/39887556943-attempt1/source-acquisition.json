@@ -1,0 +1,31 @@
+[
+  {
+    "bytes": 3828980,
+    "effectiveURL": "https://invisible-mirror.net/archives/ncurses/current/ncurses-6.6-20261017.tgz",
+    "getReceipt": {
+      "bytes": 863,
+      "path": "acquisition/SOURCE-RECEIPT.json",
+      "sha256": "064dc66066091602dfd201d92a1e175009ac37ea96ef2c9a1279db750614d85b"
+    },
+    "getRequest": {
+      "bytes": 164,
+      "path": "acquisition/GET-REQUEST.json",
+      "sha256": "58664b08ce480c14c78a28e90519c092a1ef75505de71a52baee04cca595bb6e"
+    },
+    "name": "ncurses-6.6-20261017.tgz",
+    "path": "sources/ncurses-6.6-20261017.tgz",
+    "requestedURL": "https://invisible-mirror.net/archives/ncurses/current/ncurses-6.6-20261017.tgz",
+    "responseHeaders": {
+      "bytes": 230,
+      "path": "acquisition/NECESSARY-RESPONSE-HEADERS.raw",
+      "sha256": "01f8981c1d6f9b06f5576acefadc5e5bbb419ef7f3c44b0c4c1d4d44b871eb0a"
+    },
+    "sha256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36",
+    "sha512": "631de8500b72fc716abf16bf0822d822f34167b370658dbc672dba7b456eecb765e5e41cfa1b90d2f967e8bc17b36d717d769e9fc833224e9a34111a89470334",
+    "transferReceipt": {
+      "bytes": 253,
+      "path": "acquisition/TRANSFER-RECEIPT.json",
+      "sha256": "e9ce9d9bfda846ec6f6f171a6af008e3814a2c957368829370561b3e31f28fcb"
+    }
+  }
+]

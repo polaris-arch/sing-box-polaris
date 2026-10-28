@@ -16,11 +16,11 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+      "$ref": "#/$defs/polarisVersion"
     },
     "tag": {
       "type": "string",
-      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+      "$ref": "#/$defs/polarisTag"
     },
     "tagObject": {
       "type": "string",
@@ -316,11 +316,11 @@
             },
             "version": {
               "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisVersion"
             },
             "tag": {
               "type": "string",
-              "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisTag"
             },
             "sourceCommit": {
               "type": "string",
@@ -802,11 +802,11 @@
             },
             "version": {
               "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisVersion"
             },
             "tag": {
               "type": "string",
-              "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisTag"
             },
             "sourceCommit": {
               "type": "string",
@@ -1288,11 +1288,11 @@
             },
             "version": {
               "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisVersion"
             },
             "tag": {
               "type": "string",
-              "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisTag"
             },
             "sourceCommit": {
               "type": "string",
@@ -1774,11 +1774,11 @@
             },
             "version": {
               "type": "string",
-              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisVersion"
             },
             "tag": {
               "type": "string",
-              "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+              "$ref": "#/$defs/polarisTag"
             },
             "sourceCommit": {
               "type": "string",
@@ -2236,5 +2236,15 @@
     "sourceArchive",
     "platforms"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "polarisVersion": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*))?(?![\\s\\S])"
+    },
+    "polarisTag": {
+      "type": "string",
+      "pattern": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*))?(?![\\s\\S])"
+    }
+  }
 }

@@ -1,0 +1,58 @@
+[
+  {
+    "archiveMember": "ncurses-6.6-20261017/Ada95/package/debian/copyright",
+    "bytes": 3141,
+    "path": "notices/ncurses-6.6-20261017/Ada95/package/debian/copyright",
+    "sha256": "84c16ad7e959cf47be61cbe541736a0d99f8c2b6f16cf0e301b75ce7059cbd4c",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/package/debian-mingw64/copyright",
+    "bytes": 5272,
+    "path": "notices/ncurses-6.6-20261017/package/debian-mingw64/copyright",
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/package/debian-mingw/copyright",
+    "bytes": 5272,
+    "path": "notices/ncurses-6.6-20261017/package/debian-mingw/copyright",
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/package/debian/copyright",
+    "bytes": 5272,
+    "path": "notices/ncurses-6.6-20261017/package/debian/copyright",
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/test/package/debian-mingw64/copyright",
+    "bytes": 3421,
+    "path": "notices/ncurses-6.6-20261017/test/package/debian-mingw64/copyright",
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/test/package/debian-mingw/copyright",
+    "bytes": 3421,
+    "path": "notices/ncurses-6.6-20261017/test/package/debian-mingw/copyright",
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/test/package/debian/copyright",
+    "bytes": 3421,
+    "path": "notices/ncurses-6.6-20261017/test/package/debian/copyright",
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  },
+  {
+    "archiveMember": "ncurses-6.6-20261017/COPYING",
+    "bytes": 1447,
+    "path": "notices/ncurses-6.6-20261017/COPYING",
+    "sha256": "a85ca5bef8ce71f013bc5f4306c681881b248450f3b63722589891f0b69ea52d",
+    "sourceArchiveSHA256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+  }
+]

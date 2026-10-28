@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -46,29 +47,33 @@ func TestReviewPolicySettledSnapshotCannotSkipEarlierPublishedHit(t *testing.T) 
 	}
 	ctx := adapter.WithContext(context.Background(), &adapter.InboundContext{DNSResolverPolicy: testPolicyID, QueryType: mDNS.TypeA})
 	result, _, committed := router.sweepArmedDNSRules(ctx, msg, state, false)
-	if committed {
-		require.Equal(t, "one", result.transport.Tag(), "earlier callback was published before sweep")
-	}
+	require.True(t, committed, "the published HIT must be selected")
+	require.Equal(t, "one", result.transport.Tag(), "earlier callback was published before sweep")
 }
 
 func TestReviewPolicyDeadlineMustConsiderPublishedUnarmedHit(t *testing.T) {
-	one := policyReply("one", 0, 0, "192.0.2.1")
-	raw := policyTestRules(t, []string{"one"})
-	router := policyRouter(t, raw, one)
-	msg := &mDNS.Msg{Question: []mDNS.Question{{Name: "node.example.", Qtype: mDNS.TypeA, Qclass: mDNS.ClassINET}}}
-	ctx, cancel := withDNSPolicyBudget(context.Background(), time.Millisecond)
-	defer cancel()
-	ctx = adapter.WithContext(ctx, &adapter.InboundContext{DNSResolverPolicy: testPolicyID, QueryType: mDNS.TypeA})
-	first := &dnsEvaluatedFuture{tag: "one-reply", transport: one, sequence: 1, completedAt: time.Now(), done: make(chan struct{}), response: FixedResponse(0, msg.Question[0], []netip.Addr{netip.MustParseAddr("192.0.2.1")}, 60)}
-	close(first.done)
-	// Evaluate has just returned and state.ruleIndex advances to its HIT rule.
-	// The walker is descheduled until own deadline before arming that rule.
-	state := &dnsRuleWalkState{policy: true, ruleIndex: 1, futures: []*dnsEvaluatedFuture{first}, namedFutures: map[string]*dnsEvaluatedFuture{"one-reply": first}}
-	<-ctx.Done()
-	result, _ := router.walkDNSRules(ctx, router.rules, msg, state, false)
-	require.NoError(t, result.err)
-	require.NotNil(t, result.response)
-	require.Equal(t, mDNS.RcodeSuccess, result.response.Rcode, "published pre-cutoff HIT must survive deadline")
+	// A virtual clock cannot expire while this setup is runnable, even when
+	// the real worker is descheduled. Waiting on Done advances only that clock.
+	synctest.Test(t, func(t *testing.T) {
+		one := policyReply("one", 0, 0, "192.0.2.1")
+		raw := policyTestRules(t, []string{"one"})
+		router := policyRouter(t, raw, one)
+		msg := &mDNS.Msg{Question: []mDNS.Question{{Name: "node.example.", Qtype: mDNS.TypeA, Qclass: mDNS.ClassINET}}}
+		ctx, cancel := withDNSPolicyBudget(context.Background(), time.Millisecond)
+		defer cancel()
+		ctx = adapter.WithContext(ctx, &adapter.InboundContext{DNSResolverPolicy: testPolicyID, QueryType: mDNS.TypeA})
+		first := &dnsEvaluatedFuture{tag: "one-reply", transport: one, sequence: 1, completedAt: time.Now(), done: make(chan struct{}), response: FixedResponse(0, msg.Question[0], []netip.Addr{netip.MustParseAddr("192.0.2.1")}, 60)}
+		require.True(t, first.completedAt.Before(dnsPolicyBudgetFrom(ctx).deadline), "fixture must publish before cutoff")
+		close(first.done)
+		// Evaluate has just returned and state.ruleIndex advances to its HIT rule.
+		// The walker is descheduled until own deadline before arming that rule.
+		state := &dnsRuleWalkState{policy: true, ruleIndex: 1, futures: []*dnsEvaluatedFuture{first}, namedFutures: map[string]*dnsEvaluatedFuture{"one-reply": first}}
+		<-ctx.Done()
+		result, _ := router.walkDNSRules(ctx, router.rules, msg, state, false)
+		require.NoError(t, result.err)
+		require.NotNil(t, result.response)
+		require.Equal(t, mDNS.RcodeSuccess, result.response.Rcode, "published pre-cutoff HIT must survive deadline")
+	})
 }
 
 func TestReviewPolicyFinalLookupNeverWidensClassifierAddresses(t *testing.T) {

@@ -23,7 +23,7 @@
     "windows7": {
       "target": "go_win7",
       "patch": ".github/patches/go1.27.2/windows7.patch",
-      "patchSHA256": "c7c99ff789601a2d7b446759463a7e63752622a160cdc40451355866498a7350",
+      "patchSHA256": "73402de1628d96195b45e1a4cffb1a3ae8e3c6bdf658ea601c52c24818563ce3",
       "sourceRepository": "MetaCubeX/go",
       "sourceCommits": [
         "5bea096a8d38bcc2f7b29a423a2d7a677e7257b4",

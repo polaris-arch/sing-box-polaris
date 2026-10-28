@@ -572,6 +572,18 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}); err != nil {
 			return prepared, err
 		}
+		clients, err := runtimeDashboardHTTPConfigs(options)
+		if err != nil {
+			return prepared, err
+		}
+		httpComponent.dashboardHTTP = make(map[runtimeDashboardHTTPKey]adapter.HTTPTransport, len(clients))
+		for _, client := range clients {
+			transport, err := httpManager.ResolveTransport(httpContext, s.logFactory.NewLogger("dashboard"), client.Options)
+			if err != nil {
+				return prepared, err
+			}
+			httpComponent.dashboardHTTP[client.Key] = transport
+		}
 		if err := httpManager.FreezeRuntime(); err != nil {
 			return prepared, err
 		}
@@ -700,7 +712,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	if err != nil {
 		return prepared, err
 	}
-	view := &runtimeView{histories: make(map[string]*urltest.HistoryStorage), identity: identity.graphRevision(), router: leaf, dns: dnsLeaf, inbounds: inboundManager, outbounds: outboundManager, endpoints: endpointManager, transports: transportManager, httpClients: httpManager, network: network, ports: make(map[tun.Port]adapter.RuntimeResourceID), componentIDs: make(map[string]adapter.RuntimeResourceID)}
+	view := &runtimeView{histories: make(map[string]*urltest.HistoryStorage), identity: identity.graphRevision(), router: leaf, dns: dnsLeaf, inbounds: inboundManager, outbounds: outboundManager, endpoints: endpointManager, transports: transportManager, httpClients: httpManager, dashboardHTTP: httpComponent.dashboardHTTP, network: network, ports: make(map[tun.Port]adapter.RuntimeResourceID), componentIDs: make(map[string]adapter.RuntimeResourceID)}
 	for name, resource := range bindings {
 		view.componentIDs[name] = resource.id
 		if component := resource.components[name]; component != nil && component.outbound != nil {

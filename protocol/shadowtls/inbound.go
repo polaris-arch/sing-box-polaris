@@ -3,6 +3,7 @@ package shadowtls
 import (
 	"context"
 	"net"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
@@ -30,9 +31,15 @@ type Inbound struct {
 	router     adapter.Router
 	logger     logger.ContextLogger
 	listener   *listener.Listener
-	service    *shadowtls.Service
+	service    inboundService
 	references []string
 }
+
+type inboundService interface {
+	NewConnection(context.Context, net.Conn, M.Socksaddr, M.Socksaddr, N.CloseHandlerFunc) error
+}
+
+var _ inboundService = (*shadowtls.Service)(nil)
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.ShadowTLSInboundOptions) (adapter.Inbound, error) {
 	inbound := &Inbound{
@@ -132,6 +139,9 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	if onClose != nil {
+		onClose = N.OnceClose(onClose)
+	}
 	ctx, release, err := h.runtime.enter(ctx)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
@@ -147,8 +157,10 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 			}
 		}()
 	}
+	handoff := new(inboundConnectionHandoff)
+	ctx = context.WithValue(ctx, inboundConnectionHandoffKey{}, handoff)
 	err = h.service.NewConnection(adapter.WithContext(log.ContextWithNewID(ctx), &metadata), conn, metadata.Source, metadata.Destination, onClose)
-	N.CloseOnHandshakeFailure(conn, onClose, err)
+	handoff.finish(conn, onClose, err)
 	if err != nil {
 		if E.IsClosedOrCanceled(err) {
 			h.logger.DebugContext(ctx, "connection closed: ", err)
@@ -160,7 +172,25 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 
 type inboundHandler Inbound
 
+type inboundConnectionHandoffKey struct{}
+
+// A successful service return can mean either asynchronous proxy handoff or
+// completed synchronous fallback. Only this connection's handler can transfer
+// terminal responsibility; a nil return alone cannot distinguish the two.
+type inboundConnectionHandoff struct{ transferred atomic.Bool }
+
+func (h *inboundConnectionHandoff) finish(conn net.Conn, onClose N.CloseHandlerFunc, err error) {
+	if err != nil || !h.transferred.Load() {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+	}
+}
+
 func (h *inboundHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	if handoff, ok := ctx.Value(inboundConnectionHandoffKey{}).(*inboundConnectionHandoff); ok {
+		// Even rejection below is terminal handling by this callback, rather
+		// than an unclaimed synchronous fallback in the outer service.
+		handoff.transferred.Store(true)
+	}
 	ctx, release, err := h.runtime.enter(ctx)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)

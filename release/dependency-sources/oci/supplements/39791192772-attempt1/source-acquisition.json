@@ -1,0 +1,65 @@
+[
+  {
+    "path": "sources/ca-certificates-20261020.tar.bz2",
+    "bytes": 230531,
+    "sha256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400",
+    "name": "ca-certificates-20261020.tar.bz2",
+    "sha512": "d28eb01751b1a914ffb5d8cb99e662f0a35a95148c21dcf98de1ab3108b54db9714a99472d07715023867f4f76a21f2a79a2bc1c7e9876ce5167fdd865ad2dd7",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20261020.tar.bz2",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/ca-certificates-20261020.tar.bz2",
+    "httpMethod": "GET",
+    "httpStatus": 200,
+    "fullGet": true,
+    "verified": true,
+    "observationDateUTC": "2026-10-22",
+    "observationBasis": "Complete curl HTTP GET saved locally in this preparation session; actual saved bytes hashed. No source/recipe executed.",
+    "newExternalIdentity": true,
+    "fullGetReceiptName": "ca-certificates-20261020.tar.bz2"
+  },
+  {
+    "path": "sources/musl-1.2.6.tar.gz",
+    "bytes": 1082499,
+    "sha256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "name": "musl-1.2.6.tar.gz",
+    "sha512": "1adad96eddb3a2eb0cacb3e363b0046568925fcdd75cf8b0503f2139df1f693d64730779ca0ce8131b7624ab2d37f4247bb1d3393c523de6e30d2b1d7732555c",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/musl-1.2.6.tar.gz",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/musl-1.2.6.tar.gz",
+    "httpMethod": "GET",
+    "httpStatus": 200,
+    "fullGet": true,
+    "verified": true,
+    "observationDateUTC": "2026-10-22",
+    "observationBasis": "Complete curl HTTP GET saved locally in this preparation session; actual saved bytes hashed. No source/recipe executed.",
+    "newExternalIdentity": false,
+    "historicalIdentityReuse": {
+      "path": "release/dependency-sources/oci/source-acquisition.json",
+      "sha256": "69705b5a9f423afaf634644a87a93f0590e78a3f7533f619eba37cc56041c0c8",
+      "name": "musl-1.2.6.tar.gz",
+      "sha512": "1adad96eddb3a2eb0cacb3e363b0046568925fcdd75cf8b0503f2139df1f693d64730779ca0ce8131b7624ab2d37f4247bb1d3393c523de6e30d2b1d7732555c"
+    },
+    "fullGetReceiptName": "musl-1.2.6.tar.gz"
+  },
+  {
+    "path": "sources/zlib-1.3.2.tar.gz",
+    "bytes": 1502830,
+    "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "name": "zlib-1.3.2.tar.gz",
+    "sha512": "70963771ea5d763614278a69b474f09b7d237ef8f53b675a10fe31d9923aeef601504b35d7ebd1b1e7f347e9ebb048e6b3b47fffdf137e7bdc7e8d5eb4ec4692",
+    "requestedURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/zlib-1.3.2.tar.gz",
+    "effectiveURL": "https://distfiles.alpinelinux.org/distfiles/v3.24/zlib-1.3.2.tar.gz",
+    "httpMethod": "GET",
+    "httpStatus": 200,
+    "fullGet": true,
+    "verified": true,
+    "observationDateUTC": "2026-10-22",
+    "observationBasis": "Complete curl HTTP GET saved locally in this preparation session; actual saved bytes hashed. No source/recipe executed.",
+    "newExternalIdentity": false,
+    "historicalIdentityReuse": {
+      "path": "release/dependency-sources/oci/source-acquisition.json",
+      "sha256": "69705b5a9f423afaf634644a87a93f0590e78a3f7533f619eba37cc56041c0c8",
+      "name": "zlib-1.3.2.tar.gz",
+      "sha512": "70963771ea5d763614278a69b474f09b7d237ef8f53b675a10fe31d9923aeef601504b35d7ebd1b1e7f347e9ebb048e6b3b47fffdf137e7bdc7e8d5eb4ec4692"
+    },
+    "fullGetReceiptName": "zlib-1.3.2.tar.gz"
+  }
+]

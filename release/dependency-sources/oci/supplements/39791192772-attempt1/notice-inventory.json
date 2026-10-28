@@ -1,0 +1,114 @@
+[
+  {
+    "path": "notices/ca-certificates-20261020.tar.bz2/certdata.txt.license-header.txt",
+    "bytes": 200,
+    "sha256": "74595f1b77f959c9bd601bd2206af1084dec2b8731ae187ad37d1082bc8eabb5",
+    "sourceArchiveSHA256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400",
+    "sourceMember": "ca-certificates-20261020/certdata.txt",
+    "sourceMemberBytes": 1356175,
+    "sourceMemberSHA256": "3ec2b4d240dc12c747eaf450061db84af757c483bbda302f9e29ceb5d70be510",
+    "byteOffset": 0,
+    "scope": "Original source notice header; complete corresponding source retained in the acquired archive.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/certdata.txt.license-header.txt",
+      "bytes": 200,
+      "sha256": "74595f1b77f959c9bd601bd2206af1084dec2b8731ae187ad37d1082bc8eabb5"
+    }
+  },
+  {
+    "path": "notices/ca-certificates-20261020.tar.bz2/c_rehash.c.license-header.txt",
+    "bytes": 329,
+    "sha256": "97fdd5501244be771a0d8695419b4997dbd742e666015aa7e3c3cc1f2fe022b4",
+    "sourceArchiveSHA256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400",
+    "sourceMember": "ca-certificates-20261020/c_rehash.c",
+    "sourceMemberBytes": 9533,
+    "sourceMemberSHA256": "a68fedc0edd976b9f35ecfdcb252d80dc12084b1bc4e945be7dc42c437d8b540",
+    "byteOffset": 0,
+    "scope": "Original source notice header; complete corresponding source retained in the acquired archive.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/c_rehash.c.license-header.txt",
+      "bytes": 329,
+      "sha256": "97fdd5501244be771a0d8695419b4997dbd742e666015aa7e3c3cc1f2fe022b4"
+    }
+  },
+  {
+    "path": "notices/ca-certificates-20261020.tar.bz2/mk-ca-bundle.pl.license-header.txt",
+    "bytes": 1086,
+    "sha256": "ac8ff1112ed26659be28189d5cec87164c003b569339ebf8517bc1221523e625",
+    "sourceArchiveSHA256": "1048bc7f50fa42a6621bc2f8816173f89a0c0098f26dff072bc8fe40af714400",
+    "sourceMember": "ca-certificates-20261020/mk-ca-bundle.pl",
+    "sourceMemberBytes": 24902,
+    "sourceMemberSHA256": "8e278f4982210b37e4f9a048bd6ed23df41e4a054085bd73f8242628f03d09ca",
+    "byteOffset": 0,
+    "scope": "Original source notice header; complete corresponding source retained in the acquired archive.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/mk-ca-bundle.pl.license-header.txt",
+      "bytes": 1086,
+      "sha256": "ac8ff1112ed26659be28189d5cec87164c003b569339ebf8517bc1221523e625"
+    }
+  },
+  {
+    "path": "notices/musl-1.2.6.tar.gz/musl-1.2.6/COPYRIGHT",
+    "bytes": 6196,
+    "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b",
+    "sourceArchiveSHA256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "sourceMember": "musl-1.2.6/COPYRIGHT",
+    "sourceMemberBytes": 6196,
+    "sourceMemberSHA256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b",
+    "byteOffset": 0,
+    "scope": "Complete original notice file, identical to historical shared source notice.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/musl-1.2.6.tar.gz/musl-1.2.6/COPYRIGHT",
+      "bytes": 6196,
+      "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b"
+    }
+  },
+  {
+    "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/LICENSE",
+    "bytes": 1002,
+    "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourceMember": "zlib-1.3.2/LICENSE",
+    "sourceMemberBytes": 1002,
+    "sourceMemberSHA256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+    "byteOffset": 0,
+    "scope": "Complete original notice file, identical to historical shared source notice.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/LICENSE",
+      "bytes": 1002,
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    }
+  },
+  {
+    "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+    "bytes": 1359,
+    "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourceMember": "zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+    "sourceMemberBytes": 1359,
+    "sourceMemberSHA256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+    "byteOffset": 0,
+    "scope": "Complete original notice file, identical to historical shared source notice.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+      "bytes": 1359,
+      "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951"
+    }
+  },
+  {
+    "path": "notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+    "bytes": 3509,
+    "sha256": "fc686023047ce5ce3a18a9b8a777156f0e475929d3de06bac279f3c025d2b2ca",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourceMember": "zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+    "sourceMemberBytes": 3509,
+    "sourceMemberSHA256": "fc686023047ce5ce3a18a9b8a777156f0e475929d3de06bac279f3c025d2b2ca",
+    "byteOffset": 0,
+    "scope": "Complete original notice file, identical to historical shared source notice.",
+    "identicalHistoricalNotice": {
+      "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+      "bytes": 3509,
+      "sha256": "fc686023047ce5ce3a18a9b8a777156f0e475929d3de06bac279f3c025d2b2ca"
+    }
+  }
+]

@@ -432,6 +432,51 @@ func TestPauseDoesNotCloseEstablishedCarrier(t *testing.T) {
 	}
 }
 
+type terminalHandlerFixture struct{ callback chan N.CloseHandlerFunc }
+
+func (h terminalHandlerFixture) NewConnection(_ context.Context, _ net.Conn, _ adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	h.callback <- onClose
+}
+
+func TestOwnedListenerTerminalCallbackIncludesSuccessfulCompletion(t *testing.T) {
+	for _, failure := range []error{nil, errors.New("terminal route failure")} {
+		a := newAdmissionFixture()
+		acceptor := newAcceptorFixture()
+		l := listenerFixture(a, acceptor, "prepared")
+		handler := terminalHandlerFixture{callback: make(chan N.CloseHandlerFunc, 1)}
+		l.connHandler = handler
+		if err := l.ArmIngress(); err != nil {
+			t.Fatal(err)
+		}
+		if err := l.Activate(); err != nil {
+			t.Fatal(err)
+		}
+		waitFixture(t, acceptor.accepted)
+		physical := &connFixture{}
+		l.dispatchRuntimeConnection(context.Background(), physical, adapter.InboundContext{})
+		var callback N.CloseHandlerFunc
+		select {
+		case callback = <-handler.callback:
+		case <-time.After(5 * time.Second):
+			t.Fatal("handler did not receive terminal ownership")
+		}
+		if physical.closed.Load() {
+			t.Fatal("handler return closed the admitted carrier")
+		}
+		callback(failure)
+		callback(failure)
+		if !physical.closed.Load() {
+			t.Fatal("terminal callback did not close its carrier")
+		}
+		if err := l.RuntimeCloseAndWait(); err != nil {
+			t.Fatal(err)
+		}
+		if a.graphRefs.Load() != 0 || a.resourceRefs.Load() != 0 {
+			t.Fatal("terminal callback left admitted graph/resource ownership")
+		}
+	}
+}
+
 func TestListenerSetPortSwapTransfersByPhysicalEndpoint(t *testing.T) {
 	a := newAdmissionFixture()
 	socketA, socketB := newAcceptorFixture(), newAcceptorFixture()

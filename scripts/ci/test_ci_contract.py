@@ -4,6 +4,135 @@ import contextlib,copy,io,os,shlex,shutil,subprocess,sys,tempfile
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
 class TestCIContract(unittest.TestCase):
+ def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  job=workflow['jobs']['contract']
+  steps=[s for s in job['steps'] if s.get('name')=='Require cold zero-fuzz Go patch controls']
+  self.assertEqual(len(steps),1)
+  step=steps[0]
+  self.assertEqual(step['shell'],'bash')
+  self.assertEqual(step['run'].splitlines(),[
+   'set -euo pipefail','command -v patch',
+   "python -B -m unittest discover -s scripts/ci -p 'test_go_toolchain.py'"])
+  self.assertEqual(job['runs-on'],'ubuntu-latest')
+  for control in (job,step):
+   self.assertNotIn('if',control)
+   self.assertNotIn('continue-on-error',control)
+  self.assertEqual(workflow['permissions'],{'contents':'read'})
+  for event in ('push','pull_request'):
+   self.assertEqual(workflow['on'][event]['branches'],['polaris-main'])
+   for path in ('.github/go-toolchains.json','.github/patches/**'):
+    self.assertIn(path,workflow['on'][event]['paths'])
+ def test_unsigned_apple_package_overlays_cover_all_rows_and_preserve_trust(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  expected={'build_apple':{'macOS-standalone','iOS-jailbreak'},'build_apple_app_store':{'iOS','macOS','tvOS'}}
+  overlay="${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}"
+  for name,rows in expected.items():
+   job=workflow['jobs'][name];steps=job['steps'];by_name={s.get('name'):s for s in steps}
+   self.assertEqual({r['name'] for r in job['strategy']['matrix']['include']},rows)
+   self.assertEqual(sum(s.get('name')=='Resolve and apply exact unsigned Apple package overlays' for s in steps),1)
+   helper=by_name['Resolve and apply exact unsigned Apple package overlays']
+   self.assertEqual(helper['if'],'matrix.if');self.assertEqual(helper['shell'],'bash')
+   self.assertTrue(helper['run'].startswith('set -euo pipefail\n'))
+   self.assertIn('apple_package_overlays.py check-lock\n',helper['run'])
+   self.assertIn('xcodebuild -version\nxcrun swift --version\n',helper['run'])
+   self.assertIn('xcodebuild -resolvePackageDependencies',helper['run'])
+   self.assertEqual(helper['run'].count('-disableAutomaticPackageResolution'),1)
+   self.assertIn('-scheme "$APPLE_RESOLVE_SCHEME"',helper['run'])
+   self.assertIn('-clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"',helper['run'])
+   self.assertTrue(helper['run'].rstrip().endswith('apple_package_overlays.py apply --source-packages "$RUNNER_TEMP/SourcePackages"'))
+   self.assertEqual(helper['env']['APPLE_RESOLVE_SCHEME'],"${{ matrix.type == 'standalone' && 'SFM.System' || matrix.type == 'jailbreak' && 'SFI' || matrix.scheme }}")
+   self.assertEqual(helper['env']['DISABLE_SWIFTLINT'],'1')
+   self.assertNotIn('continue-on-error',helper)
+   self.assertLess(steps.index(by_name['Update version']),steps.index(helper))
+   preflight=by_name['Verify actual unsigned Apple sources before build']
+   self.assertEqual(preflight['if'],'matrix.if')
+   self.assertEqual(preflight['run'],'python3 scripts/ci/client_source.py preflight apple --unsigned')
+   self.assertNotIn('continue-on-error',preflight)
+   self.assertLess(steps.index(helper),steps.index(preflight))
+   self.assertEqual(by_name['Archive App Store build']['run'].count('-disableAutomaticPackageResolution'),1)
+   self.assertEqual(by_name['Build standalone packages']['env']['XCODEBUILD_FLAGS'].count('-disableAutomaticPackageResolution'),1)
+   for build in ('Archive App Store build','Build standalone packages','Build jailbreak package'):
+    self.assertLess(steps.index(helper),steps.index(by_name[build]))
+    self.assertLess(steps.index(preflight),steps.index(by_name[build]))
+   diagnostic=by_name['Diagnose failed unsigned Apple sources']
+   self.assertEqual(diagnostic['if'],'matrix.if && failure()')
+   self.assertEqual(diagnostic['run'],'python3 scripts/ci/client_source.py diagnose apple --unsigned')
+   self.assertNotIn('continue-on-error',diagnostic)
+   records=[s for s in steps if s.get('name')=='Record actual unsigned candidate files']
+   self.assertEqual(len(records),1 if name=='build_apple' else 2)
+   self.assertEqual([s['if'] for s in records],
+                    ["matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')"]+
+                    ([] if name=='build_apple' else ['matrix.if']))
+   for record in records:
+    self.assertIn('scripts/ci/record_candidate.py dist',record['run'])
+    for build in ('Archive App Store build','Build standalone packages','Build jailbreak package'):
+     self.assertLess(steps.index(by_name[build]),steps.index(record))
+    self.assertLess(steps.index(record),steps.index(diagnostic))
+   for upload in [s for s in steps if s.get('uses','').startswith('actions/upload-artifact@')]:
+    self.assertEqual(upload['with']['path'],'dist')
+    self.assertEqual(upload['with']['if-no-files-found'],'error')
+    self.assertTrue(any(steps.index(record)<steps.index(upload) for record in records))
+    self.assertLess(steps.index(upload),steps.index(diagnostic))
+   self.assertNotIn('Prune Swift package repositories',by_name)
+   for step in steps:
+    self.assertNotIn('SourcePackages/repositories',step.get('run',''))
+   self.assertEqual(by_name['Cache Swift packages']['with']['path'],'${{ runner.temp }}/SourcePackages')
+   for step in (helper,*records,by_name['Cache Swift packages']):
+    self.assertNotIn('continue-on-error',step)
+   self.assertNotIn('chmod',helper['run'])
+   self.assertNotIn('sudo',helper['run'])
+   self.assertNotIn('skipPackagePluginValidation',helper['run'])
+   for cache,prefix in [('Cache Swift packages','polaris-unsigned-apple-spm-'),('Cache Xcode build data','polaris-unsigned-apple-derived-data-')]:
+    for key in ('key','restore-keys'):
+     actual=by_name[cache]['with'][key]
+     self.assertTrue(actual.startswith(prefix+overlay+'-'))
+     self.assertNotIn('\napple-',actual)
+  signed=(ROOT/'.github/workflows/signed-release.yml').read_text()
+  self.assertNotIn('apple_package_overlays.py',signed)
+  self.assertNotIn('polaris-unsigned-apple-',signed)
+  contract=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  commands=[s.get('run','') for s in contract['jobs']['contract']['steps']]
+  for suite in ('test_apple_package_overlays.py','test_client_source.py'):
+   self.assertIn("python -B -m unittest discover -s scripts/ci -p '"+suite+"'",commands)
+ def test_unsigned_apple_lifecycle_mutations_are_rejected_for_both_jobs(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  with tempfile.TemporaryDirectory() as temporary:
+   root=Path(temporary);(root/'.github/workflows').mkdir(parents=True)
+   for name in ('signed-release.yml','ci-contract.yml'):
+    shutil.copyfile(ROOT/'.github/workflows'/name,root/'.github/workflows'/name)
+   for job_name in ('build_apple','build_apple_app_store'):
+    for case in ('prune','early-collect','missing-collect','readonly-cache','foreign-cache','ignore-failure','trust-bypass','chmod',
+                 'resolve-unlocked','archive-unlocked','standalone-unlocked','missing-preflight','late-preflight','preflight-ignored',
+                 'missing-diagnostic','diagnostic-always','diagnostic-dump','upload-before-collect'):
+     with self.subTest(job=job_name,case=case):
+      mutated=copy.deepcopy(workflow);steps=mutated['jobs'][job_name]['steps']
+      by_name={s.get('name'):s for s in steps}
+      helper=by_name['Resolve and apply exact unsigned Apple package overlays']
+      if case=='prune':steps.append({'name':'Renamed cleanup','run':'rm -r "$RUNNER_TEMP/SourcePackages/repositories"'})
+      elif case=='early-collect':
+       record=by_name['Record actual unsigned candidate files'];steps.remove(record);steps.insert(0,record)
+      elif case=='missing-collect':steps.remove(by_name['Record actual unsigned candidate files'])
+      elif case=='readonly-cache':by_name['Cache Swift packages']['with']['path']+=' /checkouts'
+      elif case=='foreign-cache':by_name['Cache Swift packages']['with']['restore-keys']='apple-spm-'
+      elif case=='ignore-failure':helper['continue-on-error']=True
+      elif case=='trust-bypass':helper['run']=helper['run'].replace('xcodebuild -resolve','xcodebuild -skipPackagePluginValidation -resolve')
+      elif case=='chmod':helper['run']=helper['run'].replace('set -euo pipefail','set -euo pipefail\nchmod -R u+w "$RUNNER_TEMP/SourcePackages"')
+      elif case=='resolve-unlocked':helper['run']=helper['run'].replace('-disableAutomaticPackageResolution','')
+      elif case=='archive-unlocked':by_name['Archive App Store build']['run']=by_name['Archive App Store build']['run'].replace('-disableAutomaticPackageResolution','')
+      elif case=='standalone-unlocked':by_name['Build standalone packages']['env']['XCODEBUILD_FLAGS']=by_name['Build standalone packages']['env']['XCODEBUILD_FLAGS'].replace('-disableAutomaticPackageResolution','')
+      elif case=='missing-preflight':steps.remove(by_name['Verify actual unsigned Apple sources before build'])
+      elif case=='late-preflight':
+       step=by_name['Verify actual unsigned Apple sources before build'];steps.remove(step);steps.append(step)
+      elif case=='preflight-ignored':by_name['Verify actual unsigned Apple sources before build']['continue-on-error']=True
+      elif case=='missing-diagnostic':steps.remove(by_name['Diagnose failed unsigned Apple sources'])
+      elif case=='diagnostic-always':by_name['Diagnose failed unsigned Apple sources']['if']='always()'
+      elif case=='diagnostic-dump':by_name['Diagnose failed unsigned Apple sources']['run']+='\nenv'
+      elif case=='upload-before-collect':
+       upload=next(s for s in steps if s.get('uses','').startswith('actions/upload-artifact@'));steps.remove(upload);steps.insert(0,upload)
+      (root/'.github/workflows/build.yml').write_text(json.dumps(mutated))
+      with mock.patch.object(sys.modules[__name__],'ROOT',root),self.assertRaises((AssertionError,KeyError)):
+       self.test_unsigned_apple_package_overlays_cover_all_rows_and_preserve_trust()
  def test_signed_all_receipt_has_satisfiable_fail_closed_dependencies(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   jobs=w['jobs'];receipt=jobs['publisher_receipt']
@@ -133,6 +262,31 @@ class TestCIContract(unittest.TestCase):
   self.assertIn("inputs.evidence_mode == 'final'",signed['jobs']['upload']['if'])
   self.assertTrue(any(s.get('if')=='inputs.publish_github || inputs.publish_stores' and s.get('run')=='test \"$EVIDENCE_MODE\" = final' for s in signed['jobs']['calculate_version']['steps']))
   self.assertNotIn('inputs.publish_github',(ROOT/'.github/workflows/build.yml').read_text())
+ def test_unsigned_annotated_identity_checkouts_pin_dispatch_sha(self):
+  self.assert_local_annotated_checkouts('build.yml',{'calculate_version','native_index'})
+ def test_signed_source_annotated_identity_checkouts_pin_dispatch_sha(self):
+  self.assert_local_annotated_checkouts('signed-release.yml',{'calculate_version','native_index','upload'})
+ def assert_local_annotated_checkouts(self,filename,expected):
+  workflow=yaml.safe_load((ROOT/'.github/workflows'/filename).read_text())
+  # Both local annotated-tag gates must keep the full-history tag objects.
+  # An implicit tag ref lets checkout overwrite the tag with the event commit.
+  gates={name:job for name,job in workflow['jobs'].items() if any(
+   'scripts/ci/release_identity.py' in step.get('run','') or
+   'scripts/ci/owned_distribution.py verify-tag' in step.get('run','') or
+   'scripts/ci/native_release_index.py assemble' in step.get('run','')
+   for step in job['steps'])}
+  self.assertEqual(set(gates),expected)
+  for name,job in gates.items():
+   with self.subTest(job=name):
+    checkouts=[step for step in job['steps'] if step.get('uses','').startswith('actions/checkout@')]
+    self.assertEqual(len(checkouts),1)
+    checkout=checkouts[0]
+    self.assertEqual(checkout['uses'],'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8')
+    self.assertEqual(checkout['with'].get('ref'),'${{ github.sha }}')
+    self.assertEqual(checkout['with'].get('fetch-depth'),0)
+    for index,step in enumerate(job['steps']):
+     if any(command in step.get('run','') for command in ('scripts/ci/release_identity.py','scripts/ci/native_release_index.py assemble','scripts/ci/owned_distribution.py verify-tag')):
+      self.assertLess(job['steps'].index(checkout),index)
  def test_staging_never_admits_store_publication(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   pre=workflow['jobs']['calculate_version']
@@ -196,7 +350,7 @@ class TestCIContract(unittest.TestCase):
   for step in standalone:
    # Upstream Makefile defaults include a validation skip: retain this explicit override.
    self.assertEqual(step['env']['XCODEBUILD_FLAGS'],
-                    '-clonedSourcePackagesDirPath ${{ runner.temp }}/SourcePackages CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""')
+                    '-disableAutomaticPackageResolution -clonedSourcePackagesDirPath "${{ runner.temp }}/SourcePackages" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""')
   step=next(s for s in w['jobs']['build']['steps'] if s.get('name')=='Install apk-tools')
   self.assertEqual(step['if'],"fromJSON(toJSON(matrix)).openwrt != '' || fromJSON(toJSON(matrix)).alpine != ''")
   steps=w['jobs']['build']['steps']

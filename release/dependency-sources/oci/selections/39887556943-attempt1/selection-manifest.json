@@ -1,0 +1,305 @@
+{
+  "artifacts": {
+    "oci-linux-386": {
+      "archiveBytes": 39864883,
+      "archiveSHA256": "f63d1d0e332a86d8b55eaf2aa52541c7ac569d945a286555a652967dde126ed5",
+      "artifactAPIDigest": "sha256:f63d1d0e332a86d8b55eaf2aa52541c7ac569d945a286555a652967dde126ed5",
+      "artifactId": 12473113300,
+      "coreBytes": 91595712,
+      "coreSHA256": "da8e14214717cc0aed6b6596a18dba5716c9dbfe96ea4609e0616266274c468a",
+      "imageBytes": 39923712,
+      "imageManifest": "sha256:949559640bda40559edbd48fe9750df2d3bbbb3bca0db2c97e5ba5998e761858",
+      "imageSHA256": "5c439c83a21b12c3f7788a45e95b7cfb5ebfe27fc796ed2a40fff697c3e47145",
+      "installedSHA256": "54a6ee1538570755551a7359458e60bcfad9eb4cf48e9b276e3ee000a809c3f0",
+      "platform": {
+        "architecture": "386",
+        "os": "linux"
+      }
+    },
+    "oci-linux-amd64": {
+      "archiveBytes": 41637941,
+      "archiveSHA256": "17d2a9befefaa0190fa27efc0e162b56f368d2c6301c535ac5492d1f0e52d3fa",
+      "artifactAPIDigest": "sha256:17d2a9befefaa0190fa27efc0e162b56f368d2c6301c535ac5492d1f0e52d3fa",
+      "artifactId": 12473716094,
+      "coreBytes": 97971248,
+      "coreSHA256": "dd25ef3efb80737de0980779ce2e5f744d2d569411124387511eef7f4c6a1a1e",
+      "imageBytes": 41720832,
+      "imageManifest": "sha256:0444dc9bea8d7d17ff4eaa14811ea41463adba7c5872157fba23c716577b8530",
+      "imageSHA256": "e816ca2e3c6373581e836d92e2025a5af750d97b9c0c18c838556895f30325e2",
+      "installedSHA256": "e13b15263644c5a664b3940d9bac03b18eb3f34220ed5fcee69e2d31de5a10d0",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    "oci-linux-arm-v6": {
+      "archiveBytes": 33743653,
+      "archiveSHA256": "164e84dd4c3e85613d023591ebd7a2fb8a594fb2ac5379e29fbe28c9b8b8d905",
+      "artifactAPIDigest": "sha256:164e84dd4c3e85613d023591ebd7a2fb8a594fb2ac5379e29fbe28c9b8b8d905",
+      "artifactId": 12472639008,
+      "coreBytes": 79495292,
+      "coreSHA256": "013241ffd871cbf42df026920d4827e7cd5859c221768ee76cb8a5f743279979",
+      "imageBytes": 33821696,
+      "imageManifest": "sha256:6d9f979c6c0482e8f93bbc60ab45c92dd22b8e6b618c8aa84fdfcb38508d7cb2",
+      "imageSHA256": "75e99bbda1c6cd29fad8122293319cae4b563a1fe90fb4694277963e430b8d25",
+      "installedSHA256": "0cf4729f462f4471a475f01ebdb4f9ac432a6be846b6dc6c859ac6980cb9fa6c",
+      "platform": {
+        "architecture": "arm",
+        "os": "linux",
+        "variant": "v6"
+      }
+    },
+    "oci-linux-arm-v7": {
+      "archiveBytes": 38190816,
+      "archiveSHA256": "92223221a0d04abdcc95a1ed1162096e9d49a592be0b2aa9077935f608e7866c",
+      "artifactAPIDigest": "sha256:92223221a0d04abdcc95a1ed1162096e9d49a592be0b2aa9077935f608e7866c",
+      "artifactId": 12473631847,
+      "coreBytes": 87436004,
+      "coreSHA256": "3aa12c6aee87af1cc3f3ea5e1f34471e2c8fcb90356a8ac34b539b22d96ab7b2",
+      "imageBytes": 38267904,
+      "imageManifest": "sha256:6aa2dc7e68e5b38bb727c788ba57d96688114cadf4bc279fc7ea2834e693976b",
+      "imageSHA256": "5a7faee2a5e48284b2681cfcb402b387479fd44cb0f9abaa68e5afdbd5f31abd",
+      "installedSHA256": "7dea916da6461ab3e6c71cf96e48e2973dcd434674ae2f71905fb7d2a23806ed",
+      "platform": {
+        "architecture": "arm",
+        "os": "linux",
+        "variant": "v7"
+      }
+    },
+    "oci-linux-arm64": {
+      "archiveBytes": 39279582,
+      "archiveSHA256": "e0c1e7d2d98f20530d347ee4f219b8c3f73b9e8f0060d73296523de8379bec68",
+      "artifactAPIDigest": "sha256:e0c1e7d2d98f20530d347ee4f219b8c3f73b9e8f0060d73296523de8379bec68",
+      "artifactId": 12472733724,
+      "coreBytes": 91410440,
+      "coreSHA256": "e316e0d6041995def618303de17a05510c30732b2b42ce8435002441e01eff26",
+      "imageBytes": 39373312,
+      "imageManifest": "sha256:154ae486f6bbaab1466ed6dc3a2b97dbfcbf47e8876cb2e0a1f912ef66874546",
+      "imageSHA256": "19712ba2b65294100ddb24c5ed1b9bc6cf7508e90df585811ae6e50768ed0a20",
+      "installedSHA256": "2da7358a59e01e83bc99bd71618d9d1539387ebe276a8456e847b557cacfa9d2",
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    },
+    "oci-linux-loong64": {
+      "archiveBytes": 42879297,
+      "archiveSHA256": "65912d831a356e6eb437aded5b222bf6d62ca5f1ac8eab8b83f2e7dd6cde7ba8",
+      "artifactAPIDigest": "sha256:65912d831a356e6eb437aded5b222bf6d62ca5f1ac8eab8b83f2e7dd6cde7ba8",
+      "artifactId": 12473063584,
+      "coreBytes": 98763776,
+      "coreSHA256": "eb322fac884a8ceb2cc6b3dc1157e4d7e4ca8918b72ee63249994f0e6c2f1a9c",
+      "imageBytes": 43016192,
+      "imageManifest": "sha256:2766b1af916327d4182b4f8f976e32b56493aec34ca746ba83a44e6045f07726",
+      "imageSHA256": "80d44a9d24dec524cf8a2060345cbb7cf92ab981ca2081277e90278cbccd85ff",
+      "installedSHA256": "7d5f4fff50458c60b3aeea75653f7285a233fa1dc59f552920f5720cd133b656",
+      "platform": {
+        "architecture": "loong64",
+        "os": "linux"
+      }
+    },
+    "oci-linux-ppc64le": {
+      "archiveBytes": 33562121,
+      "archiveSHA256": "e47af0d0bf11bbc06250ebfb0ede85e8ee32c009db744553c30640b575f14dd8",
+      "artifactAPIDigest": "sha256:e47af0d0bf11bbc06250ebfb0ede85e8ee32c009db744553c30640b575f14dd8",
+      "artifactId": 12473148158,
+      "coreBytes": 84803708,
+      "coreSHA256": "59a675c276983004cff3990bc72e31fcefe6cb2d8b635d826511ff2a56c261b7",
+      "imageBytes": 33653760,
+      "imageManifest": "sha256:b61fa18bce3ec01ad5a52f196330c09b626776ade4710d78ddbbf47268f4ddee",
+      "imageSHA256": "1c17c11af50f5f33098078e6ea8ef81c14dccbcf9ec46682468c6ad80a008840",
+      "installedSHA256": "c98614360ec1826701f4f36dc312d3b4c10380318810a994ae11e7b84c944aa3",
+      "platform": {
+        "architecture": "ppc64le",
+        "os": "linux"
+      }
+    },
+    "oci-linux-riscv64": {
+      "archiveBytes": 42064435,
+      "archiveSHA256": "e6f80f8cd06ad494e7f0fdf2e4d7f6c328dffdab2d447bc3748da79e9b8d8deb",
+      "artifactAPIDigest": "sha256:e6f80f8cd06ad494e7f0fdf2e4d7f6c328dffdab2d447bc3748da79e9b8d8deb",
+      "artifactId": 12473417604,
+      "coreBytes": 86217320,
+      "coreSHA256": "71df40966ffa44b1b73ba9e8aa563144264b97f07786829df59b539bfea4d0ee",
+      "imageBytes": 42188800,
+      "imageManifest": "sha256:2eddb278c4e8720db7a6b0db12700b7cb276d9d641c1b044320094d0677f220f",
+      "imageSHA256": "29f16efca1921974ccaccb0c64895fa5cadcf402a215b3c00d2729829bb88f3b",
+      "installedSHA256": "5b7ee89ac02e406d5976c3f78641697d12a17d55c89e7db4c92ff6ce9b99626f",
+      "platform": {
+        "architecture": "riscv64",
+        "os": "linux"
+      }
+    },
+    "oci-linux-s390x": {
+      "archiveBytes": 34944651,
+      "archiveSHA256": "370b2ba9225dd607e6145993b7679613f2b89cb30868faee1e711b9a0883e468",
+      "artifactAPIDigest": "sha256:370b2ba9225dd607e6145993b7679613f2b89cb30868faee1e711b9a0883e468",
+      "artifactId": 12473656730,
+      "coreBytes": 88211580,
+      "coreSHA256": "a0159864fbdcd080a1f29a1a7154781f49398242c068b15b3001a945ef0c89c2",
+      "imageBytes": 35060736,
+      "imageManifest": "sha256:604fec717c4b8735211c169d11362d6e01afaa638577b9e9ff6c1fb17b24e128",
+      "imageSHA256": "620f6e8c2fa936b60d332ce0d83babbe883556db9406d7426ce777aca2a16558",
+      "installedSHA256": "3cd0a214cc035789e438b351c651d58480517bf35ac6e7e2cc252246b88e3cd3",
+      "platform": {
+        "architecture": "s390x",
+        "os": "linux"
+      }
+    }
+  },
+  "binding": {
+    "nativeIndexSHA256": "40bd2c1a48b5ef8129e0fd1d5dcf80f9bd9a77d7639c7f8709f6f49a60c29004",
+    "producerAttempt": 1,
+    "producerRunId": 39887556943,
+    "repository": "polaris-arch/sing-box-polaris",
+    "repositoryId": 1421657509,
+    "sourceArchive": {
+      "bytes": 15545227,
+      "name": "sing-box-polaris-source-c6c0d8b3b83ab4d6e7b953dd2dbdb7efe6f8021a.tar.gz",
+      "sha256": "8ad12706b637d62356a3f8102430ba8727872c9dec3a6faf8e88142695f6b967"
+    },
+    "sourceCommit": "c6c0d8b3b83ab4d6e7b953dd2dbdb7efe6f8021a",
+    "sourceTree": "32c0e3d8c59ad5e41f5ccdbc68e14a644b503e94",
+    "tag": "v1.15.0-polaris-alpha.12.2",
+    "tagObject": "db094db3498ea6982ccc601289acbd0c8adcecac",
+    "workflowPath": ".github/workflows/docker.yml"
+  },
+  "coreBindingPolicy": "Exact observed OCI coreBytes/coreSHA256 only; no assertion of equality with a different independently built product.",
+  "directory": "release/dependency-sources/oci/selections/39887556943-attempt1",
+  "distributionBoundary": {
+    "appendOnlyPublisherDirectory": "release/dependency-sources/oci/supplements/39791192772-attempt1",
+    "auditDelivery": "Existing authorized publisher audit mechanism or immutable GitHub source references to the exact independently reviewed publisher commit; no additional public Release assets.",
+    "ociDistribution": "separate-channel",
+    "publicReleaseAssetSet": "unchanged"
+  },
+  "files": [
+    {
+      "bytes": 164,
+      "path": "acquisition/GET-REQUEST.json",
+      "sha256": "58664b08ce480c14c78a28e90519c092a1ef75505de71a52baee04cca595bb6e"
+    },
+    {
+      "bytes": 230,
+      "path": "acquisition/NECESSARY-RESPONSE-HEADERS.raw",
+      "sha256": "01f8981c1d6f9b06f5576acefadc5e5bbb419ef7f3c44b0c4c1d4d44b871eb0a"
+    },
+    {
+      "bytes": 863,
+      "path": "acquisition/SOURCE-RECEIPT.json",
+      "sha256": "064dc66066091602dfd201d92a1e175009ac37ea96ef2c9a1279db750614d85b"
+    },
+    {
+      "bytes": 253,
+      "path": "acquisition/TRANSFER-RECEIPT.json",
+      "sha256": "e9ce9d9bfda846ec6f6f171a6af008e3814a2c957368829370561b3e31f28fcb"
+    },
+    {
+      "bytes": 4624,
+      "path": "aports/8b3f794ac226c47c66f0900fa1cd44f8d2c4e116/main/ncurses/APKBUILD",
+      "sha256": "e7db427a700a24f27538c3269037617ee513c383b8c85ecc34ee2f8ea2c922dc"
+    },
+    {
+      "bytes": 1025,
+      "path": "aports/8b3f794ac226c47c66f0900fa1cd44f8d2c4e116/main/ncurses/cleanup-pkgconfig-ldflags.patch",
+      "sha256": "c19b803b176a950935893aaa78e6330044ad4e953c2061ecc884857a0cd8b8a8"
+    },
+    {
+      "bytes": 2811,
+      "path": "notice-inventory.json",
+      "sha256": "09d5fc3039a3cb85c7ff8e28e5656df5cd355b3b9f64ce3aa03e8a099e451476"
+    },
+    {
+      "bytes": 3141,
+      "path": "notices/ncurses-6.6-20261017/Ada95/package/debian/copyright",
+      "sha256": "84c16ad7e959cf47be61cbe541736a0d99f8c2b6f16cf0e301b75ce7059cbd4c"
+    },
+    {
+      "bytes": 1447,
+      "path": "notices/ncurses-6.6-20261017/COPYING",
+      "sha256": "a85ca5bef8ce71f013bc5f4306c681881b248450f3b63722589891f0b69ea52d"
+    },
+    {
+      "bytes": 5272,
+      "path": "notices/ncurses-6.6-20261017/package/debian/copyright",
+      "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+    },
+    {
+      "bytes": 5272,
+      "path": "notices/ncurses-6.6-20261017/package/debian-mingw/copyright",
+      "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+    },
+    {
+      "bytes": 5272,
+      "path": "notices/ncurses-6.6-20261017/package/debian-mingw64/copyright",
+      "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+    },
+    {
+      "bytes": 3421,
+      "path": "notices/ncurses-6.6-20261017/test/package/debian/copyright",
+      "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+    },
+    {
+      "bytes": 3421,
+      "path": "notices/ncurses-6.6-20261017/test/package/debian-mingw/copyright",
+      "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+    },
+    {
+      "bytes": 3421,
+      "path": "notices/ncurses-6.6-20261017/test/package/debian-mingw64/copyright",
+      "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+    },
+    {
+      "bytes": 77332,
+      "path": "oci-source-notice-map.json",
+      "sha256": "25dbd1386ff756a6a8e0b033abeb54421f091894bca29e1d3d70c45ad60d77df"
+    },
+    {
+      "bytes": 76653,
+      "path": "reuse-reference.json",
+      "sha256": "2ff9202f7602805a85affe0acec7c4025bb030f2da958f18494bc7fec1337844"
+    },
+    {
+      "bytes": 1289,
+      "path": "source-acquisition.json",
+      "sha256": "2d88b2096705226dace0ec023933c950f27f92fd06ee5113d641410130099116"
+    },
+    {
+      "bytes": 3828980,
+      "path": "sources/ncurses-6.6-20261017.tgz",
+      "sha256": "48c52beb821799bfb8572a3069c490e86423a5c44d6db2fb96ce8ccae9b05a36"
+    }
+  ],
+  "legalConclusion": false,
+  "materialMap": {
+    "bytes": 77332,
+    "path": "oci-source-notice-map.json",
+    "sha256": "25dbd1386ff756a6a8e0b033abeb54421f091894bca29e1d3d70c45ad60d77df"
+  },
+  "materialReference": {
+    "bytes": 76653,
+    "path": "reuse-reference.json",
+    "sha256": "2ff9202f7602805a85affe0acec7c4025bb030f2da958f18494bc7fec1337844"
+  },
+  "noticeInventory": {
+    "bytes": 2811,
+    "path": "notice-inventory.json",
+    "sha256": "09d5fc3039a3cb85c7ff8e28e5656df5cd355b3b9f64ce3aa03e8a099e451476"
+  },
+  "schema": "polaris-shared-oci-material-selection-v1",
+  "sharedMaterials": {
+    "producerAttempt": 1,
+    "producerRunId": 39791192772,
+    "relabelled": false,
+    "selector": {
+      "bytes": 14394,
+      "path": "release/dependency-sources/oci/supplements/39791192772-attempt1/selection-manifest.json",
+      "sha256": "723b6687224eb090b811d7ea820a8827d9f373a5cfe4b8750e7298bae713395d"
+    },
+    "sourceCommit": "814da362838e96e54f904836a92c2b0d8c3ae29b"
+  },
+  "sourceAcquisition": {
+    "bytes": 1289,
+    "path": "source-acquisition.json",
+    "sha256": "2d88b2096705226dace0ec023933c950f27f92fd06ee5113d641410130099116"
+  }
+}

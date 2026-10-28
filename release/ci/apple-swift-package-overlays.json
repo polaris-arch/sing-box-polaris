@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "purpose": "unsigned-apple-disable-unused-lint-invocations",
+  "client": {
+    "repository": "SagerNet/sing-box-for-apple",
+    "commit": "e232aaf22d6d68773196ffc8e6e79684a6be717c",
+    "tree": "ced7c1398c36931c0aa83877ec6c0cf08660618e",
+    "lockfile": "sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    "lockRecipe": "release/dependency-sources/clients/runtime/recipes/sing-box-for-apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    "lockSHA256": "ecf4c6fc36511d2542be625ba2a44aea9710c4561313e11576def9b1351e1654"
+  },
+  "plugin": {
+    "identity": "swiftlintplugin",
+    "repository": "https://github.com/lukepistrol/SwiftLintPlugin",
+    "revision": "b384a67cf45d9989aed5aab23e226cbc7bc2cd54",
+    "version": "0.65.0",
+    "product": "SwiftLint",
+    "role": "build-only-lint-no-code-generation",
+    "reviewedSourceURL": "https://github.com/lukepistrol/SwiftLintPlugin/blob/b384a67cf45d9989aed5aab23e226cbc7bc2cd54/Plugins/SwiftLint/main.swift",
+    "reviewedSourceSHA256": "d2b29315433d51a4084c4b139ea9a61cefd8e7d62f329bc6673b308740ad8c09"
+  },
+  "removedLine": "                .plugin(name: \"SwiftLint\", package: \"SwiftLintPlugin\")\n",
+  "packages": [
+    {
+      "identity": "codeeditsourceeditor",
+      "repository": "https://github.com/nekohasekai/CodeEditSourceEditor",
+      "revision": "0478fd4b8d45f191b6c400d2c7bf6cc648485593",
+      "tree": "c59890e7d51e1937fdf798085f720bc998f3dfba",
+      "originalRecipe": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeeditsourceeditor/Package.swift",
+      "beforeGitBlob": "da9e3832c0b2f79d8e51001ccbd30313a2b82938",
+      "beforeSHA256": "7738e6758a24b442a6c101695f65b2dfc3a6c1fe747c4403298a2673e13d788e",
+      "beforeBytes": 2250,
+      "afterSHA256": "9f11a29239bcdda8a511c0492948045dbfc46d6c5ab8fa90c22b7529d8b48ead",
+      "afterBytes": 2108,
+      "removedInvocationLines": 2
+    },
+    {
+      "identity": "codeedittextview",
+      "repository": "https://github.com/CodeEditApp/CodeEditTextView",
+      "revision": "d7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec",
+      "tree": "d7b1587ed247945ccc6131c6845a6c5b9451d3cc",
+      "originalRecipe": "release/dependency-sources/clients/runtime/recipes/swift-packages/codeedittextview/Package.swift",
+      "beforeGitBlob": "92feef60c2dd067ec243e344db4d64d8f3fab9bd",
+      "beforeSHA256": "a5b2835bbbdb3e3e016ff0f3caf7e25c2978ed7c795cee5ac349d9a11e9cf312",
+      "beforeBytes": 1769,
+      "afterSHA256": "b4a7d078651a50033c7edddff0bcad53e12b45bee91159a77e2c10b28c18b640",
+      "afterBytes": 1627,
+      "removedInvocationLines": 2
+    }
+  ]
+}

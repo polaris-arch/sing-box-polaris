@@ -17,6 +17,229 @@ import subprocess
 import tempfile
 import time
 import zipfile
+import struct
+import zlib
+from contextlib import contextmanager, closing
+
+IO_CHUNK = 1024 * 1024
+SCRATCH_LIMIT = 4 * 1024**3
+SPACE_RESERVE = 128 * 1024**2
+JSON_LIMIT = 32 * 1024**2
+PROPOSAL_LIMIT = 64 * 1024**2
+
+
+class ScratchBudget:
+    """Only invocation-owned bytes; statvfs cannot predict a per-user quota."""
+    def __init__(self, root, limit=SCRATCH_LIMIT, reserve=SPACE_RESERVE, audit=None):
+        self.root, self.limit, self.reserve = Path(root), limit, reserve
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.live = self.peak = 0
+        self.audit = audit
+        self.state = {'phase': 'preflight', 'remoteWriteState': 'none'}
+
+    def admit(self, size, context):
+        require(type(size) is int and size >= 0, 'invalid scratch allocation')
+        free = shutil.disk_usage(self.root).free
+        self.state.update(context=str(context)[:400], requestedBytes=size, liveBytes=self.live,
+                          peakBytes=self.peak, freeBytes=free, limitBytes=self.limit, reserveBytes=self.reserve)
+        require(self.live + size <= self.limit, 'scratch budget exceeded: ' + str(self.state))
+        require(free >= size + self.reserve, 'insufficient free scratch space: ' + str(self.state))
+        self.live += size
+        self.peak = max(self.peak, self.live)
+
+    def release(self, size):
+        self.live -= size
+        require(self.live >= 0, 'scratch accounting underflow')
+
+    def record(self, **fields):
+        self.state.update(fields, liveBytes=self.live, peakBytes=self.peak)
+        # A diagnostic failure must never replace the original quota/network error.
+        record = json.dumps(self.state, indent=2) + '\n'
+        print('Publisher storage: ' + record)
+        if self.audit:
+            try:
+                self.audit.mkdir(parents=True, exist_ok=True)
+                (self.audit / 'storage-status.json').write_text(record, encoding='utf-8', newline='\n')
+            except OSError as error:
+                print('Unable to retain storage diagnostic: ' + str(error)[:400])
+
+    @contextmanager
+    def temporary(self, size, context):
+        self.admit(size, context)
+        primary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=self.root, prefix='publisher-') as f:
+                try:
+                    yield f
+                except BaseException as error:
+                    primary = error
+                    raise
+        except BaseException as error:
+            if primary is not None and error is not primary:
+                primary.add_note('Temporary file cleanup also failed: ' + str(error)[:300])
+                raise primary from error
+            raise
+        finally:
+            self.release(size)
+
+    def copy(self, source, destination):
+        size = source.stat().st_size
+        self.admit(size, 'audit copy ' + destination.name)
+        created = False
+        try:
+            with source.open('rb') as src, destination.open('xb') as dst:
+                created = True
+                shutil.copyfileobj(src, dst, IO_CHUNK)
+        except BaseException as error:
+            if created:
+                try:
+                    destination.unlink(missing_ok=True)
+                except OSError as cleanup:
+                    error.add_note('Audit copy cleanup also failed: ' + str(cleanup)[:300])
+            self.release(size)
+            raise
+
+    def write_json(self, destination, record, limit=JSON_LIMIT):
+        data = (json.dumps(record, indent=2) + '\n').encode()
+        require(len(data) <= limit, 'serialized evidence exceeds budget')
+        self.admit(len(data), 'evidence ' + destination.name)
+        created = False
+        try:
+            with destination.open('xb') as stream:
+                created = True
+                stream.write(data)
+        except BaseException as error:
+            if created:
+                try:
+                    destination.unlink(missing_ok=True)
+                except OSError as cleanup:
+                    error.add_note('Evidence cleanup also failed: ' + str(cleanup)[:300])
+            self.release(len(data))
+            raise
+
+
+def bounded_zip_directory(path):
+    """Bound metadata before ZipFile allocates its central directory (including ZIP64)."""
+    size = path.stat().st_size
+    with path.open('rb') as stream:
+        stream.seek(max(0, size - 65557))
+        tail = stream.read(65557)
+        offset = tail.rfind(b'PK\x05\x06')
+        require(offset >= 0 and len(tail) - offset >= 22, 'ZIP end record missing')
+        end = struct.unpack('<4s4H2LH', tail[offset:offset+22])
+        require(len(tail) - offset == 22 + end[-1] and end[1:3] == (0, 0), 'invalid/multidisk ZIP')
+        count, directory_size, directory_offset = end[4:7]
+        require(end[3] == count, 'multidisk ZIP entry counts')
+        absolute = size - len(tail) + offset
+        if absolute >= 20:
+            stream.seek(absolute - 20)
+            locator = stream.read(20)
+            if locator[:4] == b'PK\x06\x07':
+                _, disk, position, disks = struct.unpack('<4sLQL', locator)
+                require(disk == 0 and disks == 1 and position + 56 <= absolute - 20, 'invalid ZIP64 locator')
+                stream.seek(position)
+                record = struct.unpack('<4sQ2H2L4Q', stream.read(56))
+                require(record[0] == b'PK\x06\x06' and record[1] >= 44 and record[4:6] == (0, 0)
+                        and record[6] == record[7], 'invalid/multidisk ZIP64')
+                count, directory_size, directory_offset = record[7:10]
+        require(0 < count <= 16384 and directory_size <= 32 * 1024**2
+                and directory_offset + directory_size <= absolute, 'ZIP directory exceeds evidence budget')
+
+
+def safe_zip_members(archive):
+    members, files = {}, set()
+    for item in archive.infolist():
+        name = portable(item.filename).as_posix()
+        require(item.orig_filename == item.filename and name == item.filename.rstrip('/'), 'noncanonical ZIP path')
+        require(name.casefold() not in members, 'duplicate ZIP path')
+        kind = stat.S_IFMT(item.external_attr >> 16)
+        require(kind in ((0, stat.S_IFDIR) if item.is_dir() else (0, stat.S_IFREG)), 'non-regular archive entry')
+        require(not item.flag_bits & 1 and item.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED), 'unsupported/encrypted Actions ZIP')
+        require(item.file_size >= 0 and item.compress_size >= 0 and (not item.is_dir() or item.file_size == 0), 'invalid ZIP member size')
+        members[name.casefold()] = item
+        if not item.is_dir():
+            files.add(name.casefold())
+    for name in members:
+        require(not any(parent.as_posix() in files for parent in PurePosixPath(name).parents if parent.as_posix() != '.'), 'ZIP file/directory prefix collision')
+    return list(members.values())
+
+
+def member_chunks(archive, item):
+    """Count real inflated bytes, not ZipExtFile's declared-size-truncated view."""
+    with archive.open(item):  # Validate local name, flags and overlap using stdlib.
+        pass
+    with open(archive.filename, 'rb') as stream:
+        stream.seek(item.header_offset)
+        header = struct.unpack('<4s5H3L2H', stream.read(30))
+        require(header[0] == b'PK\x03\x04' and header[3] == item.compress_type, 'invalid local ZIP header')
+        stream.seek(header[-2] + header[-1], 1)
+        remaining, actual, crc = item.compress_size, 0, 0
+        decoder = zlib.decompressobj(-15) if item.compress_type == zipfile.ZIP_DEFLATED else None
+        while remaining:
+            data = stream.read(min(remaining, IO_CHUNK))
+            require(data, 'truncated compressed ZIP member')
+            remaining -= len(data)
+            while data:
+                if decoder:
+                    chunk = decoder.decompress(data, IO_CHUNK)
+                    data = decoder.unconsumed_tail
+                    require(not decoder.unused_data, 'trailing compressed ZIP member data')
+                else:
+                    chunk, data = data, b''
+                actual += len(chunk)
+                require(actual <= item.file_size, 'actual ZIP member exceeds declared size')
+                crc = zlib.crc32(chunk, crc)
+                if chunk:
+                    yield chunk
+        require(decoder is None or decoder.eof, 'truncated deflated ZIP member')
+        require(actual == item.file_size and crc == item.CRC, 'ZIP member size/CRC mismatch')
+
+
+@contextmanager
+def artifact_archive(artifact, budget):
+    size = artifact.get('size_in_bytes')
+    require(type(size) is int and size > 0, 'Actions artifact ZIP size required')
+    require(re.fullmatch(r'sha256:[0-9a-f]{64}', artifact.get('digest', '')), 'Actions artifact digest missing')
+    with budget.temporary(size, 'ZIP ' + str(artifact['id']) + ' ' + artifact['name']) as zipped:
+        child = subprocess.Popen(['gh', 'api', f'repos/{REPO}/actions/artifacts/{artifact["id"]}/zip'], stdout=subprocess.PIPE)
+        count, digest = 0, hashlib.sha256()
+        try:
+            for chunk in iter(lambda: child.stdout.read(IO_CHUNK), b''):
+                count += len(chunk)
+                require(count <= size, 'Actions artifact ZIP exceeds declared size')
+                digest.update(chunk)
+                zipped.write(chunk)
+            require(child.wait() == 0, 'Actions artifact download failed')
+        finally:
+            child.stdout.close()
+            if child.poll() is None:
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+        require(count == size, 'Actions artifact ZIP size differs')
+        require(artifact['digest'] == 'sha256:' + digest.hexdigest(), 'Actions artifact digest missing or mismatched')
+        zipped.flush()
+        bounded_zip_directory(Path(zipped.name))
+        with zipfile.ZipFile(zipped.name) as archive:
+            members = safe_zip_members(archive)
+            yield archive, members
+
+
+def measure_member(archive, item, destination=None, json_limit=None):
+    if json_limit is not None:
+        require(item.file_size <= json_limit, 'JSON evidence exceeds serialized budget')
+    digest, data, count = hashlib.sha256(), bytearray(), 0
+    for chunk in member_chunks(archive, item):
+        count += len(chunk)
+        digest.update(chunk)
+        if destination is not None:
+            destination.write(chunk)
+        if json_limit is not None:
+            data.extend(chunk)
+    return {'bytes': count, 'sha256': digest.hexdigest()}, json.loads(data) if json_limit is not None else None
 
 REPO = 'polaris-arch/sing-box-polaris'
 RID = 1421657509
@@ -27,6 +250,8 @@ RECONCILIATION = ROOT / 'release/ci/github-release-reconciliation.json'
 CANONICAL_METADATA = 'SFA-version-metadata.json'
 NAME_ALIGNMENT = ROOT / 'release/ci/github-release-name-alignment.json'
 NAME_ALIGNMENT_SHA256 = 'c77f674bddbd0f6f77ee636b1bd93643faf8e6cd62d5d9ce7a6a667c789d8064'
+# One reviewed Apple-only manifest transition, not a general migration allowlist.
+ANDROID_OVERLAY_TRANSITION_SHA256 = '06fdfb3e24a0a6a934ad1ba8660bac3452955894d627d792f0a7317b47d6cd6f'
 VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
 PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
 TAG = 'v' + VERSION
@@ -104,6 +329,9 @@ def identity(source, source_dir):
     require(command('git', '-C', str(source_dir), 'rev-parse', 'HEAD') == source, 'publisher checkout differs from source')
     require(not command('git', '-C', str(source_dir), 'status', '--porcelain', '--untracked-files=no'), 'tracked source is dirty')
     require(sha(ROOT / 'release/ci/client-overlays.json') == sha(source_dir / 'release/ci/client-overlays.json'), 'publisher client overlay contract differs from actual build source')
+    for path in ('release/ci/apple-swift-package-overlays.json', 'scripts/ci/apple_package_overlays.py', 'scripts/ci/client_source.py'):
+        require((ROOT / path).is_file() and (source_dir / path).is_file()
+                and sha(ROOT / path) == sha(source_dir / path), 'publisher Apple package policy differs from actual build source: ' + path)
     owned = Path('release/ci/owned-distribution.json')
     if (ROOT / owned).exists() or (source_dir / owned).exists():
         require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
@@ -314,6 +542,12 @@ def associate_distribution_materials(result, index, index_sha):
                         'sourceArchiveURL': acquired[0]['sourceURL'],
                         'sourceArchiveSHA256': acquired[0]['sourceArchiveSHA256'],
                         'receiptArtifactPath': next(k for k,v in item['files'].items() if 'clientSource' in v)}
+                    if 'swiftPackageOverlays' in c:
+                        packages = c['swiftPackageOverlays']
+                        record['distributionMaterials']['clientSource']['swiftPackageOverlays'] = {
+                            'manifestSHA256': packages['manifestSHA256'],
+                            'lockSHA256': packages['lockSHA256'],
+                            'evidenceSHA256': hashlib.sha256(json.dumps(packages, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
     return result
 
 
@@ -331,7 +565,31 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     require(materials.get('concreteUnresolvedMaterials') == [], 'Android source/notice materials remain unresolved')
     identity_keys = ('repository', 'baseCommit', 'baseTree', 'overlayManifestSHA256', 'platform', 'unsigned')
     require(isinstance(client_source, dict) and all(key in client_source for key in identity_keys), 'missing Android client material identity')
-    require({key: client_source[key] for key in identity_keys} == reference.get('clientSource'), 'Android client source material reference drift')
+    actual_identity = {key: client_source[key] for key in identity_keys}
+    expected_identity = reference.get('clientSource')
+    transition_sha = None
+    if actual_identity != expected_identity:
+        # A separate reviewed Apple-only edit may change the whole overlay manifest.
+        # Never relabel the historical reference or relax Android/runtime byte identity.
+        require(isinstance(expected_identity, dict) and
+                all(actual_identity[key] == expected_identity.get(key) for key in identity_keys if key != 'overlayManifestSHA256'),
+                'Android client source material reference drift')
+        transition_path = root / 'release/ci/android-material-overlay-transition.json'
+        require(transition_path.is_file(), 'Android overlay material reference drift: transition missing')
+        require(sha(transition_path) == ANDROID_OVERLAY_TRANSITION_SHA256, 'Android overlay material reference drift: transition changed')
+        transition = json.loads(transition_path.read_text(encoding='utf-8'))
+        manifest_path = root / 'release/ci/client-overlays.json'
+        require(transition.get('schema') == 'polaris-android-material-overlay-transition-v1' and
+                transition.get('referenceSHA256') == sha(reference_path) and
+                transition.get('previousOverlayManifestSHA256') == expected_identity['overlayManifestSHA256'] and
+                transition.get('currentOverlayManifestSHA256') == actual_identity['overlayManifestSHA256'] == sha(manifest_path) and
+                transition.get('changedPlatforms') == ['apple'] and transition.get('requiresActualRuntimeArtifactComparison') is True,
+                'Android overlay material reference drift: transition identity changed')
+        android = json.loads(manifest_path.read_text(encoding='utf-8'))['platforms']['android']
+        definition_sha = hashlib.sha256(json.dumps(android, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        require(definition_sha == transition.get('unchangedAndroidDefinitionSHA256'),
+                'Android overlay material reference drift: Android definition changed')
+        transition_sha = sha(transition_path)
     actual = validate_android_runtime(record, configuration)
     expected = reference.get('variants', {}).get(configuration)
     require(isinstance(expected, dict), 'missing Android configuration material reference')
@@ -349,18 +607,23 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     require(canonical(actual['artifacts']) == canonical(expected['artifacts']), 'Android actual runtime artifact material drift')
     mapped = set(canonical([item['artifact'] for item in materials['components']]))
     require(set(canonical(actual['artifacts'])) <= mapped, 'Android actual artifact lacks exact source/notice mapping')
-    return {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
-            'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
-            'sourceMaterialsReusable': True, 'legalConclusion': False}
+    evidence = {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
+                'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
+                'sourceMaterialsReusable': True, 'legalConclusion': False}
+    if transition_sha is not None:
+        evidence['overlayTransitionSHA256'] = transition_sha
+    return evidence
 
 
-def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT):
+def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT, reference_paths=None):
     """Read OCI bytes, never execute an image; require exact reviewed source-material identities."""
     import io
     import tarfile
-    reference_path = root / 'release/dependency-sources/oci/reuse-reference.json'
+    reference_path, map_path = reference_paths or (
+        root / 'release/dependency-sources/oci/reuse-reference.json',
+        root / 'release/dependency-sources/oci/oci-source-notice-map.json')
     reference = json.loads(reference_path.read_text(encoding='utf-8'))
-    require(reference['materialMapSHA256'] == sha(root / 'release/dependency-sources/oci/oci-source-notice-map.json'), 'OCI source material map changed')
+    require(reference['materialMapSHA256'] == sha(map_path), 'OCI source material map changed')
     require(artifact in reference['artifacts'], 'OCI material reference lacks expected artifact')
     expected = reference['artifacts'][artifact]
     index_type = 'application/vnd.oci.image.index.v1+json'
@@ -495,11 +758,28 @@ def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=RO
             'platform': expected['platform'], 'baseDependencies': expected['baseDependencies'],
             'packageCount': len(packages), 'installedSHA256': hashlib.sha256(actual_files['lib/apk/db/installed']).hexdigest(),
             'coreSHA256': hashlib.sha256(actual_files['usr/local/bin/sing-box']).hexdigest(),
+            'coreBytes': len(actual_files['usr/local/bin/sing-box']),
             'actualImageManifest': descriptor['digest'], 'sourceCommit': source,
             'sourceMaterialsReusable': True, 'legalConclusion': False}
 
 
-def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT):
+def measure_oci_materials(path, artifact, source, run_id, attempt, policy=None):
+    if policy is None:
+        return validate_oci_material_reuse(path, artifact, source, run_id, attempt)
+    from oci_material_registry import check_image
+    expected = check_image(policy, artifact, path)
+    measured = validate_oci_material_reuse(path, artifact, source, run_id, attempt,
+        reference_paths=(policy['reference_path'], policy['material_map_path']))
+    for actual_key, expected_key in (('coreBytes', 'coreBytes'), ('coreSHA256', 'coreSHA256'),
+                                     ('installedSHA256', 'installedSHA256'), ('actualImageManifest', 'imageManifest')):
+        require(measured[actual_key] == expected[expected_key], 'OCI supplement actual byte identity changed: ' + actual_key)
+    measured['supplementSelectorSHA256'] = policy['selector_sha256']
+    measured['materialSelection'] = 'exact-source-run-attempt-artifact-image-supplement'
+    return measured
+
+
+def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None, materialize=False):
+    budget = budget or ScratchBudget(work)
     scope = release_scope(VERSION)
     require(set(runs) in ({'all', 'linux', 'docker'}, {'all', 'linux', 'docker', 'signed'}), 'all, linux and docker runs are mandatory')
     result = {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'sourceCommit': source,
@@ -515,33 +795,63 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT):
         artifacts = pages(f'repos/{REPO}/actions/runs/{rid}/artifacts', 'artifacts')
         names = [x['name'] for x in artifacts]
         verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
+        oci_policy = None
+        if role == 'docker':
+            from oci_material_registry import supports_source, load_for_run
+            if supports_source(source):
+                oci_policy = load_for_run(source, source_tree, TAG, tag_object, int(rid), run['run_attempt'],
+                    run['path'], [a for a in artifacts if a['name'].startswith('oci-')], source_root, ROOT)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
+        receipt = None
         for a in artifacts:
             require(not a['expired'], 'expired artifact')
             require(datetime.fromisoformat(a['created_at'].replace('Z', '+00:00')) >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')), 'artifact predates current run attempt')
             arun = a.get('workflow_run', {})
             require(arun.get('id') == int(rid) and arun.get('head_sha') == source, 'artifact source mismatch')
-            directory = work / role / a['name']
-            directory.mkdir(parents=True)
-            with tempfile.NamedTemporaryFile() as zipped:
-                subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{a["id"]}/zip'], stdout=zipped, check=True)
-                zipped.flush()
-                digest = 'sha256:' + sha(zipped.name)
-                require(a.get('digest') == digest, 'Actions artifact digest missing or mismatched')
-                extract(zipped.name, directory)
             files = {}
             client_sources = []
-            for p in sorted(directory.rglob('*')):
-                if p.is_file():
-                    relative = p.relative_to(directory).as_posix()
+            with artifact_archive(a, budget) as (archive, members):
+                for item in members:
+                    if item.is_dir():
+                        measure_member(archive, item)
+                        continue
+                    relative = item.filename
+                    budget.state.update(artifactId=a['id'], artifact=a['name'], member=relative)
+                    name = PurePosixPath(relative).name
                     public_name, disposition = publication(role, a['name'], relative)
-                    files[relative] = {'bytes': p.stat().st_size, 'sha256': sha(p), 'releaseName': public_name,
-                                       'publicationDisposition': disposition}
-                    if role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
-                        files[relative]['ociMaterialReuse'] = validate_oci_material_reuse(p, a['name'], source, rid, run['run_attempt'])
-                    if p.name.startswith('polaris-candidate-manifest-'):
-                        require(not client_platform(a['name']) or p.stat().st_size <= 3 * 1024**2, 'client source evidence exceeds its 3MiB serialized budget')
-                        provenance = json.loads(p.read_text(encoding='utf-8'))
+                    candidate = name.startswith('polaris-candidate-manifest-')
+                    evidence = candidate or (a['name'], relative) in {
+                        ('publisher-run-receipt', 'publisher-run-receipt.json'),
+                        ('binary-native-index', 'polaris-upstream-native-assets.json')}
+                    limit = (3 * 1024**2 if candidate and client_platform(a['name']) else JSON_LIMIT) if evidence else None
+                    retained = materialize or a['name'] == 'binary-native-index'
+                    if retained:
+                        target = work / role / a['name'] / relative
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        budget.admit(item.file_size, 'retained ' + relative)
+                        try:
+                            with target.open('xb') as stream:
+                                measured_file, provenance = measure_member(archive, item, stream, limit)
+                            if role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
+                                measured_file['ociMaterialReuse'] = measure_oci_materials(target, a['name'], source, rid, run['run_attempt'], oci_policy)
+                        except BaseException as error:
+                            try:
+                                target.unlink(missing_ok=True)
+                            except OSError as cleanup:
+                                error.add_note('Retained member cleanup also failed: ' + str(cleanup)[:300])
+                            budget.release(item.file_size)
+                            raise
+                    elif role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
+                        with budget.temporary(item.file_size, 'OCI ' + a['name']) as image:
+                            measured_file, provenance = measure_member(archive, item, image, limit)
+                            image.flush()
+                            measured_file['ociMaterialReuse'] = measure_oci_materials(Path(image.name), a['name'], source, rid, run['run_attempt'], oci_policy)
+                    else:
+                        measured_file, provenance = measure_member(archive, item, json_limit=limit)
+                    files[relative] = dict(measured_file, releaseName=public_name, publicationDisposition=disposition)
+                    if (a['name'], relative) == ('publisher-run-receipt', 'publisher-run-receipt.json'):
+                        receipt = provenance
+                    if candidate:
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
                         measured = validate_client_source(provenance, a['name'], role, source)
                         if measured is not None:
@@ -557,13 +867,27 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT):
             require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
             verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
-            entry['artifacts'][a['name']] = {'id': a['id'], 'archiveSha256': digest, 'files': files}
-        receipt = json.loads((work / role / 'publisher-run-receipt' / 'publisher-run-receipt.json').read_text(encoding='utf-8'))
+            entry['artifacts'][a['name']] = {'id': a['id'], 'archiveBytes': a['size_in_bytes'], 'archiveSha256': a['digest'], 'files': files}
         require(receipt == {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
                             'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role,
                             'publishStores': False, 'publishRegistry': False}, 'explicit All/version/run-attempt receipt mismatch')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
+        if oci_policy is not None:
+            from oci_material_registry import write_bundle, record as supplement_record, bundle_name
+            bundle = work / bundle_name(oci_policy)
+            allocation = oci_policy['bundle_maximum_bytes']
+            budget.admit(allocation, 'OCI material supplement audit bundle')
+            try:
+                write_bundle(oci_policy, bundle)
+                result['ociMaterialSupplement'] = supplement_record(oci_policy, os.environ['GITHUB_SHA'], bundle)
+            except BaseException as error:
+                try:
+                    bundle.unlink(missing_ok=True)
+                except OSError as cleanup:
+                    error.add_note('Supplement cleanup also failed: ' + str(cleanup)[:300])
+                budget.release(allocation)
+                raise
         if role in ('all', 'signed'):
             index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
             validate_final_index(index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
@@ -575,12 +899,19 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT):
                 require(len(matches) == 1 and matches[0]['sha256'] == record['sha256'] and matches[0]['bytes'] == record['bytes'], 'native index actual hash mismatch')
     verify_metadata_pair(result)
     shared_index_path = work / 'all' / 'binary-native-index' / 'polaris-upstream-native-assets.json'
+    if 'ociMaterialSupplement' in result:
+        material = result['ociMaterialSupplement']
+        require(sha(shared_index_path) == material['nativeIndexSHA256'], 'OCI supplement native index anchor changed')
+        original_source = work / 'all' / 'binary-native-index' / material['sourceArchive']['name']
+        require(original_source.stat().st_size == material['sourceArchive']['bytes']
+                and sha(original_source) == material['sourceArchive']['sha256'], 'OCI supplement original source archive anchor changed')
     return associate_distribution_materials(result, json.loads(shared_index_path.read_text(encoding='utf-8')), sha(shared_index_path))
 
 
-def assemble(actual, config, work, output, audit=None):
+def assemble(actual, config, work, output, audit=None, materialize=True, budget=None):
     require(config.get('reviewed') is True, 'public release file scope is not reviewed')
     require(actual.get('distributionMaterials') == config.get('distributionMaterials'), 'reviewed shared materials differ')
+    require(actual.get('ociMaterialSupplement') == config.get('ociMaterialSupplement'), 'reviewed OCI supplement differs')
     for field in ('repository', 'repositoryId', 'version', 'sourceCommit', 'sourceTree', 'tag', 'tagObject', 'scopeSha256'):
         require(actual[field] == config[field], 'release contract differs: ' + field)
     require(set(actual['runs']) == set(config['runs']), 'run scope differs')
@@ -599,6 +930,7 @@ def assemble(actual, config, work, output, audit=None):
         for artifact, a in run['artifacts'].items():
             contract = expected['artifacts'][artifact]
             require(a['id'] == contract['id'] and a['archiveSha256'] == contract['archiveSha256'], 'artifact identity changed')
+            require(a.get('archiveBytes') == contract.get('archiveBytes'), 'artifact ZIP size changed')
             require(set(a['files']) == set(contract['files']), 'file scope differs')
             for relative, f in a['files'].items():
                 review = contract['files'][relative]
@@ -613,35 +945,104 @@ def assemble(actual, config, work, output, audit=None):
                         'publication disposition differs from source-owned mapping')
                 if name is None:
                     if disposition == 'audited-source-and-index':
-                        shutil.copyfile(work / role / artifact / relative, audit / PurePosixPath(relative).name)
+                        source_file, target = work / role / artifact / relative, audit / PurePosixPath(relative).name
+                        if budget:
+                            budget.copy(source_file, target)
+                        else:
+                            shutil.copyfile(source_file, target)
                     continue
                 require(len(portable(name).parts) == 1 and name.casefold() not in destinations, 'duplicate release filename')
                 require(PUBLIC_VERSION in name or name == CANONICAL_METADATA, 'public filename lacks upstream version')
                 require(name != RECEIPT, 'receipt name reserved')
                 destinations.add(name.casefold())
-                shutil.copyfile(work / role / artifact / relative, output / name)
+                if materialize:
+                    shutil.copyfile(work / role / artifact / relative, output / name)
                 receipt['assets'].append(dict(f, releaseName=name, role=role, artifact=artifact, artifactPath=relative,
                     signatureState='unverified-signed-build' if role == 'signed' else 'unsigned-candidate'))
     require(receipt['assets'], 'empty release')
-    (audit / RECEIPT).write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8', newline='\n')
+    if actual.get('ociMaterialSupplement'):
+        require(budget is not None, 'supplement audit requires bounded scratch')
+        bundle = actual['ociMaterialSupplement']['auditBundle']
+        path = work / bundle['name']
+        require(path.stat().st_size == bundle['bytes'] and sha(path) == bundle['sha256'], 'OCI audit bundle differs')
+        budget.copy(path, audit / path.name)
+    if budget:
+        budget.write_json(audit / RECEIPT, receipt, PROPOSAL_LIMIT)
+    else:
+        (audit / RECEIPT).write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8', newline='\n')
     return receipt
 
 
-def publish(output, source, audit=None):
+def public_asset_stream(actual, budget):
+    """Second immutable ZIP pass; at most one public member exists on disk."""
+    for role, run in actual['runs'].items():
+        for name, expected in run['artifacts'].items():
+            if not any(f['releaseName'] is not None for f in expected['files'].values()):
+                continue
+            metadata = api(f'repos/{REPO}/actions/artifacts/{expected["id"]}')
+            require((metadata['id'], metadata['name'], metadata.get('digest'), metadata.get('size_in_bytes')) ==
+                    (expected['id'], name, expected['archiveSha256'], expected['archiveBytes']), 'public ZIP identity changed')
+            require(metadata.get('expired') is False and metadata.get('workflow_run', {}).get('id') == int(run['id'])
+                    and metadata['workflow_run'].get('head_sha') == actual['sourceCommit'], 'public ZIP expired or source changed')
+            with artifact_archive(metadata, budget) as (archive, members):
+                require({i.filename for i in members if not i.is_dir()} == set(expected['files']), 'public ZIP member scope changed')
+                for item in members:
+                    budget.state.update(artifactId=metadata['id'], artifact=name, member=item.filename)
+                    if item.is_dir():
+                        measure_member(archive, item)
+                        continue
+                    reviewed = expected['files'][item.filename]
+                    public_name, disposition = publication(role, name, item.filename)
+                    require((public_name, disposition) == (reviewed['releaseName'], reviewed['publicationDisposition']), 'public ZIP mapping changed')
+                    if public_name is None:
+                        measured, _ = measure_member(archive, item)
+                        require(measured == {k: reviewed[k] for k in ('bytes', 'sha256')}, 'discarded ZIP member changed')
+                        continue
+                    with budget.temporary(item.file_size, 'upload ' + public_name) as staged:
+                        measured, _ = measure_member(archive, item, staged)
+                        require(measured == {k: reviewed[k] for k in ('bytes', 'sha256')}, 'public member bytes changed')
+                        staged.flush()
+                        yield public_name, Path(staged.name)
+
+
+def publish(output, source, audit=None, measured=None, budget=None):
     before = tag_identity(source)
     audit = audit or output.with_name(output.name + '-audit')
     index = json.loads((audit / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
     validate_publication_index(index, source, TAG, before)
     # Listing includes drafts visible to the token; no 404-as-absence shortcut.
     require(not any(r['tag_name'] == TAG for r in pages(f'repos/{REPO}/releases')), 'existing Release (including draft) will never be changed')
-    expected = {p.name: {'size': p.stat().st_size, 'digest': 'sha256:'+sha(p)} for p in output.iterdir() if p.is_file()}
+    if measured is None:
+        expected = {p.name: {'size': p.stat().st_size, 'digest': 'sha256:'+sha(p)} for p in output.iterdir() if p.is_file()}
+    else:
+        receipt = json.loads((audit / RECEIPT).read_text(encoding='utf-8'))
+        expected = {f['releaseName']: {'size': f['bytes'], 'digest': 'sha256:' + f['sha256']} for f in receipt['assets']}
+        require(expected and len(expected) == len(receipt['assets']), 'empty/duplicate public receipt')
+        require(budget is not None, 'streamed publication requires bounded scratch')
+        staging_peak = max(a['archiveBytes'] + max(f['bytes'] for f in a['files'].values()
+                                                  if f['releaseName'] is not None)
+                           for run in measured['runs'].values() for a in run['artifacts'].values()
+                           if any(f['releaseName'] is not None for f in a['files'].values()))
+        budget.admit(staging_peak, 'maximum single ZIP plus public member before draft creation')
+        budget.release(staging_peak)
     notes = 'GitHub-only unsigned build/package prerelease from '+source+'. Not a complete signed installable release.\n\nClients are sing-box-polaris derivatives of the fixed SagerNet upstream clients, not official SagerNet releases. Original authors and license texts are retained. The validated producer inventory, source index and publication mapping are retained in the publisher Actions audit artifact.\n\n'+'\n'.join('- '+x for x in BLOCKED)+'\n\nAudit: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']
+    if budget:
+        budget.record(phase='draft', remoteWriteState='draft-create-outcome-unknown')
     release = api(f'repos/{REPO}/releases', 'POST', {'tag_name': TAG, 'target_commitish': source, 'name': TAG, 'body': notes, 'draft': True, 'prerelease': True})
     release_id = release['id']
+    if budget:
+        budget.record(phase='upload', remoteWriteState='draft-created', releaseId=release_id)
     # No --clobber. Any upload/validation error leaves this newly created draft intact.
-    for p in sorted(output.iterdir()):
-        subprocess.run(['gh', 'api', '--method', 'POST', upload_endpoint(release, p.name),
-                        '-H', 'Content-Type: application/octet-stream', '--input', str(p)], check=True, stdout=subprocess.DEVNULL)
+    supplier = ((p.name, p) for p in sorted(output.iterdir())) if measured is None else public_asset_stream(measured, budget)
+    with closing(supplier):
+        for name, path in supplier:
+            require(tag_identity(source) == before, 'tag changed before upload; retained as draft')
+            if budget:
+                budget.record(remoteWriteState='upload-outcome-unknown', member=name)
+            subprocess.run(['gh', 'api', '--method', 'POST', upload_endpoint(release, name),
+                            '-H', 'Content-Type: application/octet-stream', '--input', str(path)], check=True, stdout=subprocess.DEVNULL)
+            if budget:
+                budget.record(remoteWriteState='draft-uploaded-member', member=name)
     checked = api(f'repos/{REPO}/releases/{release_id}')
     assets = pages(f'repos/{REPO}/releases/{release_id}/assets')
     require(checked['draft'] is True and checked['tag_name'] == TAG, 'draft state changed')
@@ -650,8 +1051,21 @@ def publish(output, source, audit=None):
         require(a['state'] == 'uploaded' and a['size'] == expected[a['name']]['size'] and a.get('digest') == expected[a['name']]['digest'], 'remote bytes/hash mismatch; retained as draft')
     require(tag_identity(source) == before, 'tag changed; retained as draft')
     require([r['id'] for r in pages(f'repos/{REPO}/releases') if r['tag_name'] == TAG] == [release_id], 'competing release; retained as draft')
-    published = api(f'repos/{REPO}/releases/{release_id}', 'PATCH', {'draft': False, 'make_latest': 'false'})
+    if budget:
+        budget.record(phase='finalize', remoteWriteState='finalization-outcome-unknown')
+    try:
+        published = api(f'repos/{REPO}/releases/{release_id}', 'PATCH', {'draft': False, 'make_latest': 'false'})
+    except BaseException:
+        if budget:
+            try:
+                observed = api(f'repos/{REPO}/releases/{release_id}')
+                budget.record(remoteWriteState='finalization-readback', observedDraft=observed.get('draft'), observedTag=observed.get('tag_name'))
+            except Exception:
+                budget.record(remoteWriteState='finalization-outcome-unknown')
+        raise
     require(published['draft'] is False, 'publication not confirmed')
+    if budget:
+        budget.record(phase='complete', remoteWriteState='published')
     print(published['html_url'])
 
 
@@ -855,7 +1269,7 @@ def reconcile(plan):
             'complete': not plan['deferRemovalIds'], 'deferredAssetIds': plan['deferRemovalIds']}
 
 
-def reviewed_contract(run_id, digest, source, publisher_commit=None, artifact_identity=None):
+def reviewed_contract(run_id, digest, source, publisher_commit=None, artifact_identity=None, budget=None):
     require(re.fullmatch(r'[1-9][0-9]*', run_id or ''), 'inventory run ID required')
     require(re.fullmatch(r'[0-9a-f]{64}', digest or ''), 'explicit reviewed inventory SHA-256 required')
     run = api(f'repos/{REPO}/actions/runs/{run_id}')
@@ -867,14 +1281,16 @@ def reviewed_contract(run_id, digest, source, publisher_commit=None, artifact_id
     if artifact_identity is not None:
         require((candidates[0]['id'], candidates[0].get('digest')) == artifact_identity, 'original inventory artifact identity changed')
     with tempfile.TemporaryDirectory() as temp:
-        archive = Path(temp)/'inventory.zip'
-        with archive.open('wb') as f:
-            subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{candidates[0]["id"]}/zip'], stdout=f, check=True)
-        require(candidates[0].get('digest') == 'sha256:'+sha(archive), 'inventory archive digest mismatch')
-        extract(archive, Path(temp)/'extracted')
-        proposal = Path(temp)/'extracted/release-inventory-proposal.json'
-        require(sha(proposal) == digest, 'inventory differs from explicitly reviewed hash')
-        contract = json.loads(proposal.read_text(encoding='utf-8'))
+        budget = budget or ScratchBudget(Path(temp))
+        contract = None
+        with artifact_archive(candidates[0], budget) as (archive, members):
+            for item in members:
+                if item.filename == 'release-inventory-proposal.json' and not item.is_dir():
+                    measured, contract = measure_member(archive, item, json_limit=PROPOSAL_LIMIT)
+                    require(measured['sha256'] == digest, 'inventory differs from explicitly reviewed hash')
+                else:
+                    measure_member(archive, item)
+        require(contract is not None, 'reviewed proposal missing')
         require(contract['sourceCommit'] == source, 'inventory source mismatch')
         contract['reviewed'] = True
         return contract
@@ -1248,6 +1664,68 @@ def rename_public_assets(plan, execute=False):
             'complete': remaining == 0, 'assets': current}
 
 
+@contextmanager
+def publisher_scratch(audit):
+    primary = budget = None
+    try:
+        with tempfile.TemporaryDirectory(prefix='polaris-publisher-', dir=os.environ.get('RUNNER_TEMP')) as temp:
+            budget = ScratchBudget(Path(temp), audit=audit)
+            try:
+                yield budget
+            except BaseException as error:
+                primary = error
+                raise
+    except BaseException as error:
+        if primary is not None and error is not primary:
+            primary.add_note('Scratch directory cleanup also failed: ' + str(error)[:300])
+        if budget is not None and error is not primary:
+            original = primary if primary is not None else error
+            budget.record(result='failed', scratchCleanupFailed=True,
+                          errorType=type(original).__name__, error=str(original)[:600],
+                          cleanupNotes=[str(note)[:400] for note in getattr(original, '__notes__', [])[:8]])
+        if primary is not None and error is not primary:
+            raise primary from error
+        raise
+
+
+def bounded_release(args, runs):
+    args.audit.mkdir(parents=True, exist_ok=False)
+    with publisher_scratch(args.audit) as budget:
+        work = budget.root
+        try:
+            budget.admit(16 * 1024, 'bounded storage diagnostic')
+            budget.record(phase='inventory')
+            source_tree = command('git', '-C', str(args.source_dir), 'rev-parse', 'HEAD^{tree}')
+            tag_object = tag_identity(args.source)
+            actual = inventory(runs, args.source, work, source_tree, tag_object, args.source_dir, budget=budget)
+            require(tag_identity(args.source) == tag_object, 'tag changed while collecting release inventory')
+            if args.mode == 'inventory':
+                require(not args.output.exists(), 'inventory output already exists')
+                for material in (work / 'all' / 'binary-native-index').iterdir():
+                    if material.is_file():
+                        budget.copy(material, args.audit / material.name)
+                if actual.get('ociMaterialSupplement'):
+                    bundle = actual['ociMaterialSupplement']['auditBundle']
+                    budget.copy(work / bundle['name'], args.audit / bundle['name'])
+                budget.write_json(args.output, actual, PROPOSAL_LIMIT)
+                budget.record(phase='complete', result='inventory')
+                print('Inventory SHA-256: ' + sha(args.output))
+                return
+            budget.record(phase='reviewed-contract')
+            contract = reviewed_contract(args.inventory_run, args.inventory_sha256, args.source, budget=budget)
+            assemble(actual, contract, work, args.output, args.audit, materialize=False, budget=budget)
+            require(tag_identity(args.source) == tag_object, 'tag changed while validating release contract')
+            if args.mode == 'publish':
+                require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
+                publish(args.output, args.source, args.audit, measured=actual, budget=budget)
+            else:
+                budget.record(phase='complete', result='validated-without-public-payload-copy')
+        except BaseException as error:
+            budget.record(result='failed', errorType=type(error).__name__, error=str(error)[:600],
+                          cleanupNotes=[str(note)[:400] for note in getattr(error, '__notes__', [])[:8]])
+            raise
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('mode', choices=['inventory', 'validate', 'publish', 'prepare-reconcile', 'check-reconcile', 'reconcile', 'prepare-replacement', 'check-stage-replacement', 'stage-replacement', 'check-replacement', 'replace', 'check-names', 'rename-names'])
@@ -1263,6 +1741,9 @@ def main():
     args = p.parse_args()
     public = json.loads(CONFIG.read_text(encoding='utf-8'))
     require(public == {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'tag': TAG, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
+    # Old ID-bound maintenance plans are historical, not a patch-release migration.
+    require(args.mode in ('inventory', 'validate', 'publish') or TAG == 'v1.15.0-polaris-alpha.12',
+            'historical alpha.12 maintenance is unavailable for the current release plan')
     if args.mode in ('check-names', 'rename-names'):
         plan = public_name_plan()
         require(args.source == plan['sourceCommit'], 'public-name source differs from fixed snapshot')
@@ -1323,11 +1804,13 @@ def main():
                 (args.audit / 'reconciliation-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
                 print(json.dumps(result))
         return
+    if args.mode in ('inventory', 'validate', 'publish'):
+        return bounded_release(args, runs)
     with tempfile.TemporaryDirectory() as temp:
         work = Path(temp)
         source_tree = command('git', '-C', str(args.source_dir), 'rev-parse', 'HEAD^{tree}')
         tag_object = tag_identity(args.source)
-        actual = inventory(runs, args.source, work, source_tree, tag_object, args.source_dir)
+        actual = inventory(runs, args.source, work, source_tree, tag_object, args.source_dir, materialize=True)
         require(tag_identity(args.source) == tag_object, 'tag changed while collecting release inventory')
         if args.mode == 'inventory':
             require(not args.output.exists(), 'inventory output already exists')

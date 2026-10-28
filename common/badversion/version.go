@@ -16,6 +16,8 @@ type Version struct {
 	Commit               string
 	PreReleaseIdentifier string
 	PreReleaseVersion    int
+	// Preserve Polaris patch identity without ranking patches within an upstream series.
+	preReleaseVersionString string
 }
 
 func (v Version) LessThan(anotherVersion Version) bool {
@@ -23,11 +25,17 @@ func (v Version) LessThan(anotherVersion Version) bool {
 }
 
 func (v Version) LessThanOrEqual(anotherVersion Version) bool {
-	return v == anotherVersion || anotherVersion.GreaterThan(v)
+	return v.equal(anotherVersion) || anotherVersion.GreaterThan(v)
 }
 
 func (v Version) GreaterThanOrEqual(anotherVersion Version) bool {
-	return v == anotherVersion || v.GreaterThan(anotherVersion)
+	return v.equal(anotherVersion) || v.GreaterThan(anotherVersion)
+}
+
+func (v Version) equal(anotherVersion Version) bool {
+	v.preReleaseVersionString = ""
+	anotherVersion.preReleaseVersionString = ""
+	return v == anotherVersion
 }
 
 func (v Version) GreaterThan(anotherVersion Version) bool {
@@ -89,7 +97,11 @@ func (v Version) VersionString() string {
 func (v Version) String() string {
 	version := F.ToString(v.Major, ".", v.Minor, ".", v.Patch)
 	if v.PreReleaseIdentifier != "" {
-		version = F.ToString(version, "-", v.PreReleaseIdentifier, ".", v.PreReleaseVersion)
+		number := F.ToString(v.PreReleaseVersion)
+		if v.preReleaseVersionString != "" {
+			number = v.preReleaseVersionString
+		}
+		version = F.ToString(version, "-", v.PreReleaseIdentifier, ".", number)
 	}
 	return version
 }
@@ -128,6 +140,11 @@ func Parse(versionName string) (version Version) {
 			if len(identifierParts) >= 2 {
 				version.PreReleaseVersion, _ = strconv.Atoi(identifierParts[1])
 			}
+			if (len(identifierParts) == 2 || len(identifierParts) == 3) &&
+				(identifierParts[0] == "polaris-alpha" || identifierParts[0] == "polaris-beta" || identifierParts[0] == "polaris-rc") &&
+				isCanonicalNumber(identifierParts[1]) && (len(identifierParts) == 2 || isCanonicalNumber(identifierParts[2])) {
+				version.preReleaseVersionString = strings.Join(identifierParts[1:], ".")
+			}
 		} else {
 			if strings.HasPrefix(identifier, "alpha") {
 				version.PreReleaseIdentifier = "alpha"
@@ -152,4 +169,17 @@ func Parse(versionName string) (version Version) {
 		version.Patch, _ = strconv.Atoi(versionElements[2])
 	}
 	return
+}
+
+// isCanonicalNumber does not narrow a valid identity to the machine integer range.
+func isCanonicalNumber(value string) bool {
+	if value == "" || len(value) > 1 && value[0] == '0' {
+		return false
+	}
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
 }
