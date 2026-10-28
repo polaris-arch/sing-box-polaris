@@ -1,0 +1,37 @@
+{
+  "startedUTC": "2026-10-27T11:59:50.891781+00:00",
+  "method": "GET",
+  "requestedURL": "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.gz",
+  "assetId": 463527312,
+  "HTTP": 200,
+  "bytes": 623952,
+  "fullGet": true,
+  "redirects": [
+    {
+      "HTTP": 302,
+      "from": "https://github.com/akheron/jansson/releases/download/v2.15.1/jansson-2.15.1.tar.gz",
+      "to": "https://release-assets.githubusercontent.com/github-production-release-asset/183362/d981e99b-2f07-4756-9fe0-21e0eeed0b21",
+      "headers": {
+        "Date": "Tue, 27 Oct 2026 11:59:51 GMT",
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": "0"
+      },
+      "queryOmitted": true
+    }
+  ],
+  "noArchiveExtractionOrExecution": true,
+  "openResponseAndBodyClosed": true,
+  "responseHeaders": {
+    "Content-Length": "623952",
+    "Last-Modified": "Wed, 01 Jul 2026 18:48:37 GMT",
+    "ETag": "\"0x8DED7A15C5B6762\"",
+    "Date": "Tue, 27 Oct 2026 11:59:52 GMT",
+    "Content-Type": "application/octet-stream"
+  },
+  "effectiveURLRedacted": "https://release-assets.githubusercontent.com/github-production-release-asset/183362/d981e99b-2f07-4756-9fe0-21e0eeed0b21",
+  "sha256": "0c7114dc0b2d22a670724a1f95922029d7077c19dbf79a584cb8084d2f267f2f",
+  "sha512": "cb952d51bf0b358f316f36fb925267f3ce7529ef88faca935db73923708269e21733b9682eb64d5478a6d9a3d366b34b42d9b63dd1f510537342c4cc79345740",
+  "status": "VERIFIED",
+  "completedUTC": "2026-10-27T11:59:52.537067+00:00",
+  "elapsedSeconds": 1.645293
+}

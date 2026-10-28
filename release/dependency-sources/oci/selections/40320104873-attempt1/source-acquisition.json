@@ -1,0 +1,16 @@
+{
+  "historicalReceiptsUnmodified": true,
+  "legalConclusion": false,
+  "newDownloads": 0,
+  "producerAttempt": 1,
+  "producerRunId": 40320104873,
+  "references": [
+    {
+      "bytes": 962,
+      "path": "release/dependency-sources/oci/selections/40164108947-attempt1/source-acquisition.json",
+      "sha256": "58e0da8db61463c33b8e91726ea952246b1c0ebd624c4bf4529b8ba1d50275a0"
+    }
+  ],
+  "schema": "polaris-reused-source-acquisition-v1",
+  "sourceCommit": "332935c310e78e15319d434f33a9103329200931"
+}

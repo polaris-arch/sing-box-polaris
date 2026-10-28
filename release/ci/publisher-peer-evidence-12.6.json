@@ -1,0 +1,70 @@
+{
+  "archive": {
+    "bytes": 34394205,
+    "members": {
+      "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64/LICENSE": "650d5e3b99a446fb38e820fa87a49562e0c79eab868fff58618ac487a58e554c",
+      "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64/TLS-DEPENDENCY-NOTICES.txt": "5f4124e11c96908b0f13ca0d6747ffb276ffe1846d934818118f6efa362dd730",
+      "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64/libcronet.so": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+      "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64/sing-box": "9089e0a78616d714eeb63d052dff8505a8b21ed9ba24285ed7444067cde69988"
+    },
+    "name": "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64.tar.gz",
+    "root": "sing-box-1.15.0-polaris-alpha.12.6-linux-amd64",
+    "sha256": "9592dc51929cc0526dce5badef36ea53f1144dab691fcb09df8d1ea8af23fa96"
+  },
+  "artifact": {
+    "digest": "sha256:170389d403e03568f3a87658002e747bf7e89b5e257b08e97338603918cdb7b2",
+    "id": 12722779678,
+    "name": "native-controlled-peer-bfcdf96b244f63e0fe84736ee4a4edd58f6b209e",
+    "size_in_bytes": 44151
+  },
+  "carrierArtifact": {
+    "digest": "sha256:fd7e38f6299941749606000bf951d42e3c86bfe5b1f5278005a2a3b2b5aa015e",
+    "id": 12721869121,
+    "name": "binary-linux_amd64-purego",
+    "size_in_bytes": 34349307
+  },
+  "identity": {
+    "coreSHA256": "9089e0a78616d714eeb63d052dff8505a8b21ed9ba24285ed7444067cde69988",
+    "nativeRowSHA256": "417863c9d403c81ee581a5a86dbdce99b5573919dc7c33ede78504d8ccf5e18f",
+    "profile": {
+      "go386": "",
+      "goarm": "",
+      "gomips": "",
+      "legacy": false,
+      "libc": "",
+      "linkage": "shared-purego"
+    },
+    "sidecar": {
+      "bytes": 12370520,
+      "member": "libcronet.so",
+      "sha256": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4"
+    },
+    "source": "bfcdf96b244f63e0fe84736ee4a4edd58f6b209e",
+    "version": "1.15.0-polaris-alpha.12.6"
+  },
+  "member": {
+    "bytes": 426296,
+    "path": "receipt.json",
+    "sha256": "ffd18b3ace910a44088641988dbf24d42355bccb8c6b436dd749cdc9bddc5f58"
+  },
+  "nativeIndexSHA256": "5ddcb1b623492bc555d7fcc0bc17798ea16200df21d2207cfd9a228ffc340caa",
+  "publicationDisposition": "controlled-peer-evidence",
+  "publicationEligible": false,
+  "repository": "polaris-arch/sing-box-polaris",
+  "repositoryId": 1421657509,
+  "runAttempt": 1,
+  "runId": 40478887755,
+  "schema": "polaris-exact-controlled-peer-selection-v1",
+  "smokeRow": {
+    "artifact": "smoke-linux-amd64-purego",
+    "bytes": 45217,
+    "path": "native-row-sing-box-1.15.0-polaris-alpha.12.6-linux-amd64.json",
+    "sha256": "77b18dd2a499b98aef8b203d59c43f82e6ac4144d447e6d2418a5d2984ed1343"
+  },
+  "sourceCommit": "bfcdf96b244f63e0fe84736ee4a4edd58f6b209e",
+  "sourceTree": "4c0fdb31d59967f41c808ea6b63f87ca9661c2cf",
+  "tag": "v1.15.0-polaris-alpha.12.6",
+  "tagObject": "8a230c1d34cb4855b261944e2935ce36f9cd14de",
+  "version": "1.15.0-polaris-alpha.12.6",
+  "workflow": ".github/workflows/build.yml"
+}
