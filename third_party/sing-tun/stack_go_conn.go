@@ -63,6 +63,7 @@ var (
 )
 
 type GoConn struct {
+	ownership flowOwnershipSlot
 	engine                *goEngine
 	key                   flowKey
 	peer                  M.Socksaddr

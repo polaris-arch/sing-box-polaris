@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/service/powerreport"
 	"github.com/sagernet/sing-tun"
@@ -29,6 +30,7 @@ import (
 )
 
 type Endpoint struct {
+	runtime        *endpointRuntime
 	options        EndpointOptions
 	peers          []peerConfig
 	ipcConf        string
@@ -43,6 +45,9 @@ type Endpoint struct {
 	stateAccess    sync.Mutex
 	suspended      atomic.Bool
 	networkPaused  bool
+	closeOnce      sync.Once
+	closeDone      chan struct{}
+	closeErr       error
 }
 
 func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
@@ -109,12 +114,19 @@ func NewEndpoint(options EndpointOptions) (*Endpoint, error) {
 	if options.MTU == 0 {
 		options.MTU = 1408
 	}
-	return &Endpoint{
+	endpoint := &Endpoint{
+		closeDone:      make(chan struct{}),
 		options:        options,
 		peers:          peers,
 		ipcConf:        ipcConf,
 		allowedAddress: allowedAddresses,
-	}, nil
+	}
+	if adapter.IsRuntimePreparation(options.Context) {
+		if err := endpoint.initializeRuntime(); err != nil {
+			return nil, err
+		}
+	}
+	return endpoint, nil
 }
 
 func (e *Endpoint) Initialize(memoryPressure func() tun.MemoryPressure) error {
@@ -173,16 +185,19 @@ func (e *Endpoint) Start(postStart bool) error {
 			if recorder != nil {
 				attribution := &powerreport.Attribution{Endpoint: e.options.Tag}
 				counter := recorder.TrafficCounter(powerreport.TrafficEndpoint, e.options.Tag)
-				standardBind.SetIOActivityFuncs(func(size int) {
+				standardBind.SetIOActivityFuncs(e.runtimeActivity(func(size int) {
 					counter.CountIn(int64(size))
 					recorder.Touch(powerreport.DirectionInbound, size, attribution)
-				}, func(size int) {
+				}), e.runtimeActivity(func(size int) {
 					counter.CountOut(int64(size))
 					recorder.Touch(powerreport.DirectionOutbound, size, attribution)
-				})
+				}))
 			}
 		}
 		bind = standardBind
+		if e.runtime != nil {
+			bind = &runtimeStandardBind{StdNetBind: standardBind, owner: e.runtime}
+		}
 	} else {
 		var (
 			isConnect   bool
@@ -196,7 +211,11 @@ func (e *Endpoint) Start(postStart bool) error {
 				connectAddr = e.peers[0].endpoint
 			}
 		}
-		bind = NewClientBind(e.options.Context, e.options.Logger, e.options.Dialer, isConnect, connectAddr, reserved)
+		clientBind := NewClientBind(e.options.Context, e.options.Logger, e.options.Dialer, isConnect, connectAddr, reserved)
+		bind = clientBind
+		if e.runtime != nil {
+			bind = &runtimeClientBind{ClientBind: clientBind, owner: e.runtime}
+		}
 	}
 	if isUDPListener || len(e.peers) > 1 {
 		for _, peer := range e.peers {
@@ -270,6 +289,9 @@ func (e *Endpoint) Start(postStart bool) error {
 	e.device.Store(wgDevice)
 	e.pause = service.FromContext[pause.Manager](e.options.Context)
 	if e.pause != nil {
+		if e.runtime != nil {
+			e.runtime.startPause(e)
+		}
 		e.pauseCallback = e.pause.RegisterCallback(e.onPauseUpdated)
 	}
 	e.allowedIPs = wgDevice.AllowedIPs()
@@ -334,25 +356,46 @@ func (e *Endpoint) resumeLocked(wgDevice *device.Device) {
 }
 
 func (e *Endpoint) Close() error {
+	e.closeOnce.Do(func() {
+		e.closeErr = E.New("device shutdown did not complete")
+		defer close(e.closeDone)
+		e.closeErr = e.close()
+	})
+	return e.closeErr
+}
+
+func (e *Endpoint) close() error {
+	if e.runtime != nil {
+		e.runtime.stop()
+	}
 	if e.pauseCallback != nil {
 		e.pause.UnregisterCallback(e.pauseCallback)
 		e.pauseCallback = nil
 	}
-	if e.egressPool != nil {
-		e.egressPool.Close()
-		e.egressPool = nil
-	}
 	e.stateAccess.Lock()
 	wgDevice := e.device.Swap(nil)
+	e.stateAccess.Unlock()
+	// Native shutdown and its nested Device.Close run outside stateAccess:
+	// copied packet callbacks may need resume, which takes that same guard.
 	if wgDevice != nil {
 		wgDevice.Down()
 		wgDevice.Close()
 	}
-	e.stateAccess.Unlock()
-	if wgDevice != nil {
-		return nil
+	var closeErr error
+	if e.tunDevice != nil {
+		closeErr = E.Errors(e.tunDevice.Close(), e.tunDevice.WaitDetached(context.Background()))
 	}
-	return common.Close(e.tunDevice)
+	if e.runtime != nil {
+		closeErr = E.Errors(closeErr, e.runtime.wait())
+	}
+	// Native bind.Close has already set port zero, waking receives. Terminal
+	// pool disposal comes after every native rebind and pause worker returned;
+	// otherwise a late Open can re-register the shared finder after unregister.
+	if e.egressPool != nil {
+		e.egressPool.Close()
+		e.egressPool = nil
+	}
+	return closeErr
 }
 
 func (e *Endpoint) Lookup(address netip.Addr) *device.Peer {
@@ -371,6 +414,10 @@ func (e *Endpoint) BindUpdate() error {
 }
 
 func (e *Endpoint) onPauseUpdated(event int) {
+	if e.runtime != nil {
+		e.runtime.notifyPause()
+		return
+	}
 	e.stateAccess.Lock()
 	defer e.stateAccess.Unlock()
 	wgDevice := e.device.Load()

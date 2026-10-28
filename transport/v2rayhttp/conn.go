@@ -3,6 +3,7 @@ package v2rayhttp
 import (
 	std_bufio "bufio"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/baderror"
@@ -130,12 +132,14 @@ func (c *HTTPConn) Upstream() any {
 }
 
 type HTTP2Conn struct {
-	reader  io.Reader
-	writer  io.Writer
-	create  chan struct{}
-	err     error
-	cancel  context.CancelFunc
-	onClose func()
+	reader    io.Reader
+	writer    io.Writer
+	create    chan struct{}
+	err       error
+	cancel    context.CancelFunc
+	onClose   func()
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func NewHTTPConn(reader io.Reader, writer io.Writer) HTTP2Conn {
@@ -176,24 +180,22 @@ func (c *HTTP2Conn) Write(b []byte) (n int, err error) {
 }
 
 func (c *HTTP2Conn) Close() error {
-	var reader io.Reader
-	if c.create != nil {
-		select {
-		case <-c.create:
-			reader = c.reader
-		default:
+	c.closeOnce.Do(func() {
+		if c.cancel != nil {
+			c.cancel()
 		}
-	} else {
-		reader = c.reader
-	}
-	err := common.Close(reader, c.writer)
-	if c.cancel != nil {
-		c.cancel()
-	}
-	if c.onClose != nil {
-		c.onClose()
-	}
-	return err
+		// Interrupt the request pipe before joining setup. A setup response
+		// racing cancellation must be observed and closed, never abandoned.
+		c.closeErr = common.Close(c.writer)
+		if c.create != nil {
+			<-c.create
+		}
+		c.closeErr = errors.Join(c.closeErr, common.Close(c.reader))
+		if c.onClose != nil {
+			c.onClose()
+		}
+	})
+	return c.closeErr
 }
 
 func (c *HTTP2Conn) LocalAddr() net.Addr {
@@ -279,6 +281,9 @@ func (w *HTTP2ConnWrapper) Upstream() any {
 }
 
 func DupContext(ctx context.Context) context.Context {
+	if _, ok := adapter.RuntimeLeaseFromContext(ctx); ok {
+		return context.WithoutCancel(ctx)
+	}
 	id, loaded := log.IDFromContext(ctx)
 	if !loaded {
 		return context.Background()

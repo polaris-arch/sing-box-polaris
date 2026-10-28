@@ -178,7 +178,7 @@ func constructAndDisposeConfig(ctx context.Context, options option.Options) (err
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	ctx = service.ContextWith[adapter.PlatformInterface](ctx, (*platformInterfaceStub)(nil))
-	instance, validationErr, report := box.NewWithConstructionReport(box.Options{Context: ctx, Options: options})
+	instance, report, validationErr := box.NewForValidationWithConstructionReport(box.Options{Context: ctx, Options: options})
 	cancel()
 	if validationErr != nil {
 		return validationErr, report.CleanupError

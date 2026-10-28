@@ -20,11 +20,21 @@ import (
 )
 
 type systemBinding struct {
+	interfaces   func() ([]netmon.Interface, error)
 	control      func(network, address string, conn syscall.RawConn) error
 	listenPacket func(ctx context.Context, network, address string) (nettype.PacketConn, error)
 }
 
-func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (systemBinding, error) {
+func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (result systemBinding, resultErr error) {
+	defer func() {
+		if resultErr == nil {
+			if physical, ok := ctx.Value(runtimePhysicalEndpointKey{}).(*runtimeEndpointPhysical); ok {
+				result = physical.wrapSystemBinding(result)
+			}
+		}
+	}()
+	var interfaces func() ([]netmon.Interface, error)
+
 	network := service.FromContext[adapter.NetworkManager](ctx)
 	platformInterface := service.FromContext[adapter.PlatformInterface](ctx)
 	if platformInterface != nil && platformInterface.UsePlatformNetworkInterfaces() {
@@ -32,14 +42,14 @@ func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (systemB
 		if err != nil {
 			return systemBinding{}, err
 		}
-		netmon.RegisterInterfaceGetter(func() ([]netmon.Interface, error) {
+		interfaces = func() ([]netmon.Interface, error) {
 			return common.Map(network.InterfaceFinder().Interfaces(), func(it control.Interface) netmon.Interface {
 				return netmon.Interface{
 					Interface: &net.Interface{
 						Index:        it.Index,
 						MTU:          it.MTU,
 						Name:         it.Name,
-						HardwareAddr: it.HardwareAddr,
+						HardwareAddr: append(net.HardwareAddr(nil), it.HardwareAddr...),
 						Flags:        it.Flags,
 					},
 					AltAddrs: common.Map(it.Addresses, func(it netip.Prefix) net.Addr {
@@ -50,14 +60,14 @@ func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (systemB
 					}),
 				}
 			}), nil
-		})
+		}
 	}
 	if network.AutoRedirectOutputMark() != 0 {
-		return systemBinding{control: network.AutoRedirectOutputMarkFunc()}, nil
+		return systemBinding{interfaces: interfaces, control: network.AutoRedirectOutputMarkFunc()}, nil
 	}
 	if platformInterface != nil && platformInterface.UsePlatformNetworkInterfaces() {
 		if platformInterface.UsePlatformAutoDetectInterfaceControl() {
-			return systemBinding{control: func(network, address string, conn syscall.RawConn) error {
+			return systemBinding{interfaces: interfaces, control: func(network, address string, conn syscall.RawConn) error {
 				return control.Raw(conn, func(fileDescriptor uintptr) error {
 					return platformInterface.AutoDetectInterfaceControl(int(fileDescriptor))
 				})
@@ -66,16 +76,17 @@ func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (systemB
 		// NEPacketTunnelProvider sockets are excluded from tunnel routes by
 		// NECP; the empty override only suppresses tailscale's own
 		// default-interface bind, which would select the sing-box utun.
-		return systemBinding{control: func(string, string, syscall.RawConn) error {
+		return systemBinding{interfaces: interfaces, control: func(string, string, syscall.RawConn) error {
 			return nil
 		}}, nil
 	}
 	bindFunc := network.AutoDetectInterfaceFunc()
 	if bindFunc == nil {
-		return systemBinding{}, nil
+		return systemBinding{interfaces: interfaces}, nil
 	}
 	return systemBinding{
-		control: bindFunc,
+		interfaces: interfaces,
+		control:    bindFunc,
 		listenPacket: func(ctx context.Context, networkName string, address string) (nettype.PacketConn, error) {
 			listenConfig := net.ListenConfig{
 				Control: control.Append(bindFunc, control.DisableUDPNetReset()),
@@ -104,5 +115,5 @@ func newSystemBinding(ctx context.Context, logger logger.ContextLogger) (systemB
 }
 
 func (b systemBinding) hooks(dialer N.Dialer) netmon.Hooks {
-	return netmon.Hooks{Dialer: dialer, Control: b.control, ListenPacket: b.listenPacket}
+	return netmon.Hooks{Interfaces: b.interfaces, Dialer: dialer, Control: b.control, ListenPacket: b.listenPacket}
 }

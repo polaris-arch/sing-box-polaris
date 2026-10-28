@@ -3,6 +3,7 @@ package quic
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -13,8 +14,10 @@ import (
 	"github.com/sagernet/quic-go"
 	"github.com/sagernet/quic-go/http3"
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/badhttp"
 	"github.com/sagernet/sing-box/common/dialer"
+	"github.com/sagernet/sing-box/common/httpclient"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
@@ -39,14 +42,22 @@ func RegisterHTTP3Transport(registry *dns.TransportRegistry) {
 
 type HTTP3Transport struct {
 	dns.TransportAdapter
-	logger          logger.ContextLogger
-	dialer          N.Dialer
-	destination     *url.URL
-	headers         http.Header
-	serverAddr      M.Socksaddr
-	tlsConfig       *tls.STDConfig
-	transportAccess sync.Mutex
-	transport       *http3.Transport
+	logger            logger.ContextLogger
+	dialer            N.Dialer
+	destination       *url.URL
+	headers           http.Header
+	serverAddr        M.Socksaddr
+	tlsConfig         *tls.STDConfig
+	transportAccess   sync.Mutex
+	transport         *dnsHTTP3Epoch
+	transports        []*dnsHTTP3Epoch
+	runtimeResource   adapter.RuntimeResourceSource
+	fence             *outbound.RuntimeIOFence
+	constructionOwned bool
+	stopOnce          sync.Once
+	closed            bool
+	keepIdle          bool // guarded by transportAccess; defaults to true in NewHTTP3
+	closeErr          error
 }
 
 func NewHTTP3(ctx context.Context, logger log.ContextLogger, tag string, options option.RemoteHTTPSDNSServerOptions) (adapter.DNSTransport, error) {
@@ -108,77 +119,185 @@ func NewHTTP3(ctx context.Context, logger log.ContextLogger, tag string, options
 		headers:          headers,
 		serverAddr:       serverAddr,
 		tlsConfig:        stdConfig,
+		keepIdle:         true,
 	}
+	t.runtimeResource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	t.fence = outbound.NewRuntimeIOFence(t.closeOwned)
 	t.transport = t.newTransport()
+	t.transports = append(t.transports, t.transport)
+	if adapter.HasConstructionScope(ctx) {
+		t.constructionOwned = true
+		if err = adapter.DeferConstructionCleanup(ctx, t.RuntimeCloseAndWait); err != nil {
+			return nil, err
+		}
+	}
+	if err = adapter.ConstructionScopeErr(ctx); err != nil {
+		return nil, err
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
-func (t *HTTP3Transport) newTransport() *http3.Transport {
-	return &http3.Transport{
-		Dial: func(ctx context.Context, addr string, tlsCfg *tls.STDConfig, cfg *quic.Config) (*quic.Conn, error) {
-			conn, dialErr := t.dialer.DialContext(ctx, N.NetworkUDP, t.serverAddr)
-			if dialErr != nil {
-				return nil, dialErr
+type dnsHTTP3RoundTripper interface {
+	http.RoundTripper
+	Close() error
+}
+
+type dnsHTTP3Epoch struct {
+	transport dnsHTTP3RoundTripper
+	boundary  *httpclient.RuntimeTransportBoundary
+	// Count a complete DNS exchange, including response-body reads and close.
+	// Both fields are guarded by the enclosing transportAccess mutex.
+	active  int
+	retired bool
+}
+
+func (e *dnsHTTP3Epoch) RoundTrip(r *http.Request) (*http.Response, error) {
+	return e.boundary.RoundTrip(r, e.transport.RoundTrip)
+}
+func (e *dnsHTTP3Epoch) RuntimeCloseAndWait() error { return e.boundary.RuntimeCloseAndWait() }
+func (t *HTTP3Transport) newTransport() *dnsHTTP3Epoch {
+	inner := &http3.Transport{TLSClientConfig: t.tlsConfig.Clone()}
+	e := &dnsHTTP3Epoch{transport: inner}
+	e.boundary = httpclient.NewRuntimeTransportBoundary(inner.Close)
+	inner.Dial = func(ctx context.Context, _ string, config *tls.STDConfig, quicConfig *quic.Config) (*quic.Conn, error) {
+		ctx, leave, err := e.boundary.BeginDial(ctx)
+		if err != nil {
+			return nil, err
+		}
+		defer leave()
+		if t.runtimeResource != nil {
+			ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, t.runtimeResource)
+			if err != nil {
+				return nil, err
 			}
-			quicConn, dialErr := quic.DialEarlyConn(ctx, conn, tlsCfg, cfg)
-			if dialErr != nil {
-				conn.Close()
-				return nil, dialErr
-			}
-			// quic-go does not take ownership of the packet conn passed to
-			// DialEarly: when the connection ends it only stops reading.
-			go func() {
-				<-quicConn.Context().Done()
-				conn.Close()
-			}()
-			return quicConn, nil
-		},
-		TLSClientConfig: t.tlsConfig,
+		}
+		raw, err := t.dialer.DialContext(ctx, N.NetworkUDP, t.serverAddr)
+		if err != nil {
+			return nil, err
+		}
+		session, err := httpclient.DialRuntimeQUIC(ctx, raw, config, quicConfig, e.boundary.RecordClose)
+		if err != nil {
+			return nil, err
+		}
+		if err = e.boundary.RegisterResource(session); err != nil {
+			return nil, err
+		}
+		return session.Conn, nil
 	}
+	return e
 }
 
 func (t *HTTP3Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	scope.Add(func() error {
-		t.transportAccess.Lock()
-		defer t.transportAccess.Unlock()
-		return t.transport.Close()
-	})
+	if !t.constructionOwned {
+		scope.Add(t.RuntimeCloseAndWait)
+	}
 	return dialer.InitializeDetour(t.dialer)
 }
 
 func (t *HTTP3Transport) Reset() {
+	leave, err := t.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
+	t.transportAccess.Lock()
+	if t.closed {
+		t.transportAccess.Unlock()
+		return
+	}
+	old := t.transport
+	if old != nil {
+		old.retired = true
+	}
+	t.transport = t.newTransport()
+	t.transports = append(t.transports, t.transport)
+	t.transportAccess.Unlock()
+	if old != nil {
+		t.recordClose(old.RuntimeCloseAndWait())
+	}
+}
+
+func (t *HTTP3Transport) begin(ctx context.Context) (context.Context, func(), error) {
+	ctx, release, err := adapter.AcquireRuntimeOperation(ctx, t.runtimeResource)
+	if err != nil {
+		return nil, nil, err
+	}
+	leave, err := t.fence.Acquire()
+	if err != nil {
+		release()
+		return nil, nil, err
+	}
+	return ctx, func() { leave(); release() }, nil
+}
+
+func (t *HTTP3Transport) recordClose(err error) {
+	if err != nil {
+		t.transportAccess.Lock()
+		t.closeErr = errors.Join(t.closeErr, err)
+		t.transportAccess.Unlock()
+	}
+}
+
+func (t *HTTP3Transport) closeOwned() error {
+	t.transportAccess.Lock()
+	t.closed = true
+	all := append([]*dnsHTTP3Epoch(nil), t.transports...)
+	t.transportAccess.Unlock()
+	for _, epoch := range all {
+		epoch.boundary.StopRuntimeOperations()
+	}
+	for _, epoch := range all {
+		t.recordClose(epoch.RuntimeCloseAndWait())
+	}
+	return nil
+}
+
+func (t *HTTP3Transport) RuntimeCloseAndWait() error {
+	err := t.fence.RuntimeCloseAndWait()
 	t.transportAccess.Lock()
 	defer t.transportAccess.Unlock()
-	t.transport.Close()
-	t.transport = t.newTransport()
+	if t.closeErr != nil {
+		return E.New("DNS HTTP3 cleanup incomplete: ", errors.Join(err, t.closeErr))
+	}
+	return err
 }
 
 func (t *HTTP3Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	ctx, release, err := t.begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return t.exchangeOwned(ctx, message)
+}
+
+func (t *HTTP3Transport) exchangeOwned(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
 	exMessage := *message
 	exMessage.Id = 0
 	exMessage.Compress = true
-	requestBuffer := buf.NewSize(1 + message.Len())
-	rawMessage, err := exMessage.PackBuffer(requestBuffer.FreeBytes())
+	rawMessage, err := exMessage.Pack()
 	if err != nil {
-		requestBuffer.Release()
 		return nil, err
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, t.destination.String(), bytes.NewReader(rawMessage))
 	if err != nil {
-		requestBuffer.Release()
 		return nil, err
 	}
 	request.Header = t.headers.Clone()
 	request.Header.Set("Content-Type", transport.MimeType)
 	request.Header.Set("Accept", transport.MimeType)
-	t.transportAccess.Lock()
-	currentTransport := t.transport
-	t.transportAccess.Unlock()
+	currentTransport, err := t.acquireTransport()
+	if err != nil {
+		return nil, err
+	}
+	defer t.releaseTransport(currentTransport)
 	response, err := currentTransport.RoundTrip(request)
-	requestBuffer.Release()
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +327,15 @@ func (t *HTTP3Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS
 	return &responseMessage, nil
 }
 
-func (t *HTTP3Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	go func() {
-		callback(t.Exchange(ctx, message))
-	}()
+func (t *HTTP3Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(*mDNS.Msg, error)) {
+	ctx, release, err := t.begin(ctx)
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	go func() { defer release(); callback(t.exchangeOwned(ctx, message)) }()
+}
+
+func (t *HTTP3Transport) StopRuntimeOperations() {
+	t.stopOnce.Do(func() { go func() { _ = t.fence.Close() }() })
 }

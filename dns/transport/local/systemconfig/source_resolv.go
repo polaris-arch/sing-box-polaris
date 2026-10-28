@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	M "github.com/sagernet/sing/common/metadata"
 
 	mDNS "github.com/miekg/dns"
@@ -21,6 +22,8 @@ import (
 const resolvConfPath = "/etc/resolv.conf"
 
 type Source struct {
+	work         lifecycle.Work
+	closeOnce    sync.Once
 	updateAccess sync.Mutex
 	lastChecked  time.Time
 	current      atomic.Pointer[resolvConfig]
@@ -39,6 +42,11 @@ func NewSource(_ context.Context) *Source {
 }
 
 func (s *Source) Configuration() *Config {
+	done, ok := s.work.Reserve()
+	if !ok {
+		return &Config{}
+	}
+	defer done()
 	s.tryUpdate()
 	return s.current.Load().config
 }
@@ -73,12 +81,18 @@ func (s *Source) tryUpdate() {
 }
 
 func (s *Source) Reset() {
+	done, ok := s.work.Reserve()
+	if !ok {
+		return
+	}
+	defer done()
 	s.updateAccess.Lock()
 	s.lastChecked = time.Time{}
 	s.updateAccess.Unlock()
 }
 
 func (s *Source) Close() error {
+	s.closeOnce.Do(func() { s.work.Seal(); s.work.Wait() })
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/endpoint"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/iponly"
 	C "github.com/sagernet/sing-box/constant"
@@ -39,6 +40,8 @@ func RegisterEndpoint(registry *endpoint.Registry) {
 }
 
 type Endpoint struct {
+	runtime         *runtimeEndpointState
+	runtimePhysical *runtimeEndpointPhysical
 	endpoint.Adapter
 	ctx            context.Context
 	router         adapter.Router
@@ -61,6 +64,15 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		localAddresses: options.Address,
 		onDemand:       options.OnDemand,
 	}
+	if physical, ok := ctx.Value(runtimePhysicalEndpointKey{}).(*runtimeEndpointPhysical); ok {
+		ep.runtimePhysical = physical
+	}
+	if adapter.IsRuntimePreparation(ctx) && ep.runtimePhysical == nil {
+		if err := ep.initializeRuntime(options); err != nil {
+			return nil, err
+		}
+		return ep, nil
+	}
 	if options.Detour != "" && options.ListenPort != 0 {
 		return nil, E.New("`listen_port` is conflict with `detour`")
 	}
@@ -74,6 +86,13 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	})
 	if err != nil {
 		return nil, err
+	}
+	var queryOptions adapter.DNSQueryOptions
+	if resolver, ok := outboundDialer.(dialer.ResolveDialer); ok {
+		queryOptions = resolver.QueryOptions()
+	}
+	if ep.runtimePhysical != nil {
+		outboundDialer = ep.runtimePhysical.wrapDialer(outboundDialer)
 	}
 	var udpTimeout time.Duration
 	if options.UDPTimeout != 0 {
@@ -114,7 +133,17 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		PrivateKey: options.PrivateKey,
 		ListenPort: options.ListenPort,
 		ResolvePeer: func(domain string) ([]netip.Addr, error) {
-			return ep.dnsRouter.Lookup(ctx, domain, outboundDialer.(dialer.ResolveDialer).QueryOptions())
+			lookupContext := ctx
+			release := func() {}
+			if ep.runtimePhysical != nil {
+				var err error
+				lookupContext, release, err = ep.runtimePhysical.begin(ctx)
+				if err != nil {
+					return nil, err
+				}
+			}
+			defer release()
+			return ep.dnsRouter.Lookup(lookupContext, domain, queryOptions)
 		},
 		Peers: common.Map(options.Peers, func(it option.WireGuardPeer) wireguard.PeerOptions {
 			return wireguard.PeerOptions{
@@ -132,17 +161,27 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	ep.endpoint = wgEndpoint
+	if ep.runtimePhysical != nil {
+		if err := adapter.DeferConstructionCleanup(ctx, wgEndpoint.Close); err != nil {
+			return nil, err
+		}
+	}
 	return ep, nil
 }
 
 func (w *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if w.runtime != nil {
+		return w.PrepareRuntime(stage, scope)
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		err := w.endpoint.Initialize(oomkiller.MemoryPressure(w.ctx))
 		if err != nil {
 			return err
 		}
-		scope.Add(w.endpoint.Close)
+		if w.runtimePhysical == nil {
+			scope.Add(w.endpoint.Close)
+		}
 	case adapter.StartStateStart:
 		return w.endpoint.Start(false)
 	case adapter.StartStatePostStart:
@@ -162,7 +201,25 @@ func (w *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (w *Endpoint) InterfaceUpdated(ctx context.Context) {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return
+		}
+		defer leave()
+		child.InterfaceUpdated(ctx)
+		return
+	}
+
 	if !w.started.Load() {
+		return
+	}
+	if w.runtimePhysical != nil {
+		leave, err := w.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		go func() { defer leave(); w.updateBind(w.ctx) }()
 		return
 	}
 	go w.updateBind(ctx)
@@ -173,6 +230,16 @@ func (w *Endpoint) OnDemand() bool {
 }
 
 func (w *Endpoint) SetKeepIdleConnections(keep bool) {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return
+		}
+		defer leave()
+		child.SetKeepIdleConnections(keep)
+		return
+	}
+
 	w.endpoint.SetIdle(!keep)
 }
 
@@ -193,26 +260,77 @@ func (w *Endpoint) PreMatchFlow(network string, destination netip.Addr) adapter.
 }
 
 func (w *Endpoint) PortAddresses() (netip.Addr, netip.Addr) {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return netip.Addr{}, netip.Addr{}
+		}
+		defer leave()
+		return child.PortAddresses()
+	}
+
 	return w.endpoint.PortAddresses()
 }
 
 func (w *Endpoint) PortMTU() uint32 {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return 0
+		}
+		defer leave()
+		return child.PortMTU()
+	}
+
 	return w.endpoint.PortMTU()
 }
 
 func (w *Endpoint) UpstreamPort() any {
+	if w.runtime != nil {
+		return w
+	}
+
 	return w.endpoint
 }
 
 func (w *Endpoint) AttachReturn(returnPath tun.Return) error {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.AttachReturn(returnPath)
+	}
+
 	return w.endpoint.AttachReturn(returnPath)
 }
 
 func (w *Endpoint) DetachReturn(returnPath tun.Return) error {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.DetachReturn(returnPath)
+	}
+
 	return w.endpoint.DetachReturn(returnPath)
 }
 
 func (w *Endpoint) JudgeFlow(network uint8, source netip.AddrPort, destination netip.AddrPort, firstPacket []byte) tun.FlowVerdict {
+	if w.runtimePhysical != nil {
+		if !w.runtimePhysical.ingress.Load() {
+			return tun.FlowVerdict{Action: tun.ActionDrop}
+		}
+		leave, err := w.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			return tun.FlowVerdict{Action: tun.ActionDrop}
+		}
+		defer leave()
+	}
+
 	for _, localPrefix := range w.localAddresses {
 		if localPrefix.Contains(destination.Addr()) {
 			return tun.FlowVerdict{Action: tun.ActionAccept}
@@ -222,7 +340,33 @@ func (w *Endpoint) JudgeFlow(network uint8, source netip.AddrPort, destination n
 }
 
 func (w *Endpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
-	ctx := log.ContextWithNewID(w.ctx)
+	w.NewDNSPacketEx(w.ctx, payload, source, destination, writer)
+}
+
+// NewDNSPacketEx forwards the borrowed packet admission synchronously.
+// HijackDNSPacket owns the fork before asynchronous DNS work is published.
+func (w *Endpoint) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
+	if w.runtimePhysical != nil {
+		if !w.runtimePhysical.ingress.Load() {
+			return
+		}
+		leave, err := w.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			return
+		}
+		defer leave()
+	}
+
+	if w.runtimePhysical != nil {
+		owned, release, err := adapter.AcquireRuntimeOperation(ctx, w.runtimePhysical.source)
+		if err != nil {
+			return
+		}
+		defer release()
+		ctx = owned
+	}
+
+	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = w.Tag()
 	metadata.InboundType = w.Type()
@@ -235,6 +379,15 @@ func (w *Endpoint) NewDNSPacket(payload []byte, source M.Socksaddr, destination 
 }
 
 func (w *Endpoint) WritePackets(packets [][]byte) error {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.WritePackets(packets)
+	}
+
 	if !w.started.Load() {
 		return E.New("WireGuard is not ready yet")
 	}
@@ -242,6 +395,28 @@ func (w *Endpoint) WritePackets(packets [][]byte) error {
 }
 
 func (w *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	if w.runtimePhysical != nil {
+		if !w.runtimePhysical.ingress.Load() {
+			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+			return
+		}
+		leave, err := w.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+			return
+		}
+		defer leave()
+	}
+
+	if w.runtimePhysical != nil {
+		var err error
+		ctx, conn, onClose, err = w.runtimePhysical.wrapInboundConn(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
+
 	var metadata adapter.InboundContext
 	metadata.Inbound = w.Tag()
 	metadata.InboundType = w.Type()
@@ -264,6 +439,28 @@ func (w *Endpoint) NewConnectionEx(ctx context.Context, conn net.Conn, source M.
 }
 
 func (w *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	if w.runtimePhysical != nil {
+		if !w.runtimePhysical.ingress.Load() {
+			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+			return
+		}
+		leave, err := w.runtimePhysical.callbacks.Acquire()
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+			return
+		}
+		defer leave()
+	}
+
+	if w.runtimePhysical != nil {
+		var err error
+		ctx, conn, onClose, err = w.runtimePhysical.wrapInboundPacket(ctx, conn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(conn, onClose, err)
+			return
+		}
+	}
+
 	var metadata adapter.InboundContext
 	metadata.Inbound = w.Tag()
 	metadata.InboundType = w.Type()
@@ -286,6 +483,17 @@ func (w *Endpoint) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn,
 }
 
 func (w *Endpoint) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if w.runtime != nil {
+		return outbound.DialRuntimeConn(ctx, w.runtime.source, func(ctx context.Context) (net.Conn, error) {
+			child, leave, err := w.runtimeChild()
+			if err != nil {
+				return nil, err
+			}
+			defer leave()
+			return child.DialContext(ctx, network, destination)
+		})
+	}
+
 	switch network {
 	case N.NetworkTCP:
 		w.logger.InfoContext(ctx, "outbound connection to ", destination)
@@ -308,6 +516,21 @@ func (w *Endpoint) DialContext(ctx context.Context, network string, destination 
 }
 
 func (w *Endpoint) ListenPacketWithDestination(ctx context.Context, destination M.Socksaddr) (net.PacketConn, netip.Addr, error) {
+	if w.runtime != nil {
+		var address netip.Addr
+		packet, err := outbound.ListenRuntimePacket(ctx, w.runtime.source, func(ctx context.Context) (net.PacketConn, error) {
+			child, leave, err := w.runtimeChild()
+			if err != nil {
+				return nil, err
+			}
+			defer leave()
+			var packet net.PacketConn
+			packet, address, err = child.ListenPacketWithDestination(ctx, destination)
+			return packet, err
+		})
+		return packet, address, err
+	}
+
 	w.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	if !w.started.Load() {
 		return nil, netip.Addr{}, E.New("WireGuard is not ready yet")
@@ -349,8 +572,19 @@ func (w *Endpoint) PreferredDomain(metadata *adapter.InboundContext, domain stri
 }
 
 func (w *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address netip.Addr) bool {
+	if w.runtime != nil {
+		child, leave, err := w.runtimeChild()
+		if err != nil {
+			return false
+		}
+		defer leave()
+		return child.PreferredAddress(metadata, address)
+	}
+
 	if !w.started.Load() {
 		return false
 	}
 	return w.endpoint.Lookup(address) != nil
 }
+
+var _ tun.DNSPacketHandlerEx = (*Endpoint)(nil)

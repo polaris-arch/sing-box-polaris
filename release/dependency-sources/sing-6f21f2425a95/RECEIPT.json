@@ -1,0 +1,33 @@
+{
+  "module": "github.com/sagernet/sing",
+  "version": "v0.9.7-0.20260929150544-6f21f2425a95",
+  "commit": "6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "commit_root_tree": "911a1eac17720546561224688ead8aa301a6d9b4",
+  "source_url": "https://github.com/SagerNet/sing/commit/6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "status": "source-only; no code executed, compiled, formatted or tested",
+  "pristine_files": 349,
+  "pristine_bytes": 977000,
+  "post_files": 350,
+  "post_bytes": 982366,
+  "unchanged_files": 348,
+  "changes": [
+    {
+      "path": "common/udpnat/runtime_context_test.go",
+      "pre_sha256": null,
+      "post_sha256": "bfbb36f422e090502ab4e993a8be03698e6e3aee205996b3092851667de01eaf",
+      "post_bytes": 4017,
+      "unchanged": false
+    },
+    {
+      "path": "common/udpnat/service.go",
+      "pre_sha256": "e9f1e7f9fdc0d58f85ecd636bf1fa43b1214ba84c4f0123e5ead4c02f5e1d310",
+      "post_sha256": "74beaf15371370b65a4f83d34c5460b44f3f1637dabc90b9e9555f5860da7884",
+      "post_bytes": 6990,
+      "unchanged": false
+    }
+  ],
+  "license_sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+  "go_mod_sha256": "33f9b3c2b1125a5d252e66b06a51393a107194fceb181577aac5452c71b160d3",
+  "go_sum_sha256": "b568c316ca1b012b1b8164d9315087bd632c908e5130fd71322d8faecc39bcdf",
+  "patch_sha256": "283c0d7dc3c3abf718e1fe333bcd8b0ece222cdb6fbc35615c0f9c633dfffa14"
+}

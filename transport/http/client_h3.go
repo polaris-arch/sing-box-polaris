@@ -37,7 +37,10 @@ type http3ClientImpl struct {
 	transport     *http3.Transport
 	access        sync.Mutex
 	conn          *http3.ClientConn
-	rawConn       net.Conn
+	rawConn       *httpclient.RuntimeQUICSession
+	closed        bool
+	epoch         uint64
+	closeErr      error
 }
 
 func newHTTP3Client(options ClientOptions, authorization string) (http3Client, error) {
@@ -75,14 +78,21 @@ func newHTTP3Client(options ClientOptions, authorization string) (http3Client, e
 
 func (c *http3ClientImpl) acquire(ctx context.Context) (*http3.ClientConn, error) {
 	c.access.Lock()
-	defer c.access.Unlock()
+	if c.closed {
+		c.access.Unlock()
+		return nil, net.ErrClosed
+	}
 	if c.conn != nil && c.conn.Context().Err() == nil {
-		return c.conn, nil
+		connection := c.conn
+		c.access.Unlock()
+		return connection, nil
 	}
-	if c.rawConn != nil {
-		c.rawConn.Close()
-		c.rawConn = nil
-	}
+	previous, previousRaw, epoch := c.conn, c.rawConn, c.epoch
+	c.conn, c.rawConn = nil, nil
+	c.access.Unlock()
+	c.recordClose(closeHTTP3Connection(previous, previousRaw))
+	// Pending creation is owned by the enclosing Client operation. Close seals
+	// publication and cancels/joins that operation without holding this lock.
 	rawConn, err := c.dialer.DialContext(ctx, N.NetworkUDP, c.server)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -90,17 +100,31 @@ func (c *http3ClientImpl) acquire(ctx context.Context) (*http3.ClientConn, error
 		}
 		return nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
-	quicConn, err := qtls.DialEarly(ctx, rawConn, c.tlsConfig, c.quicConfig)
+	stdConfig, err := c.tlsConfig.STDConfig()
 	if err != nil {
-		rawConn.Close()
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
+		c.recordClose(closeHTTPResource(rawConn.Close))
+		return nil, err
+	}
+	quicSession, err := httpclient.DialRuntimeQUIC(ctx, rawConn, stdConfig, c.quicConfig, c.recordClose)
+	if err != nil {
 		return nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
-	c.conn = c.transport.NewClientConn(quicConn)
-	c.rawConn = rawConn
-	return c.conn, nil
+	connection := c.transport.NewClientConn(quicSession.Conn)
+	c.access.Lock()
+	if c.closed || c.epoch != epoch || ctx.Err() != nil {
+		c.access.Unlock()
+		c.recordClose(closeHTTP3Connection(connection, quicSession))
+		return nil, errors.Join(net.ErrClosed, ctx.Err())
+	}
+	if c.conn != nil {
+		existing := c.conn
+		c.access.Unlock()
+		c.recordClose(closeHTTP3Connection(connection, quicSession))
+		return existing, nil
+	}
+	c.conn, c.rawConn = connection, quicSession
+	c.access.Unlock()
+	return connection, nil
 }
 
 func (c *http3ClientImpl) openStream(ctx context.Context, request *http.Request) (*http3.RequestStream, *http3.ClientConn, error) {
@@ -115,7 +139,7 @@ func (c *http3ClientImpl) openStream(ctx context.Context, request *http.Request)
 		}
 		return nil, nil, E.Cause1(ErrHTTP3Unavailable, err)
 	}
-	stop := context.AfterFunc(ctx, func() {
+	stop := joinedAfterFunc(ctx, func() {
 		stream.CancelRead(0)
 		stream.CancelWrite(0)
 	})
@@ -184,31 +208,51 @@ func (c *http3ClientImpl) OpenTunnel(ctx context.Context, request tunnelRequest)
 	return &http3RequestDatagramStream{stream: stream, datagramsEnabled: clientConn.Settings().EnableDatagrams}, nil
 }
 
+func closeHTTP3Connection(connection *http3.ClientConn, raw *httpclient.RuntimeQUICSession) error {
+	var closeErrors []error
+	if raw != nil {
+		closeErrors = append(closeErrors, closeHTTPResource(raw.Close))
+	}
+	if connection != nil {
+		closeErrors = append(closeErrors, closeHTTPResource(func() error { return connection.CloseWithError(0, "") }))
+	}
+	return errors.Join(closeErrors...)
+}
+
+func (c *http3ClientImpl) recordClose(err error) {
+	if err == nil || httpAlreadyClosed(err) {
+		return
+	}
+	c.access.Lock()
+	c.closeErr = errors.Join(c.closeErr, err)
+	c.access.Unlock()
+}
+
 func (c *http3ClientImpl) ResetConnection() {
 	c.access.Lock()
-	defer c.access.Unlock()
-	if c.conn != nil {
-		c.conn.CloseWithError(0, "")
-		c.conn = nil
+	if c.closed {
+		c.access.Unlock()
+		return
 	}
-	if c.rawConn != nil {
-		c.rawConn.Close()
-		c.rawConn = nil
-	}
+	connection, raw := c.conn, c.rawConn
+	c.conn, c.rawConn = nil, nil
+	c.epoch++
+	c.access.Unlock()
+	c.recordClose(closeHTTP3Connection(connection, raw))
 }
 
 func (c *http3ClientImpl) Close() error {
 	c.access.Lock()
+	c.closed = true
+	connection, raw := c.conn, c.rawConn
+	c.conn, c.rawConn = nil, nil
+	c.epoch++
+	c.access.Unlock()
+	c.recordClose(closeHTTP3Connection(connection, raw))
+	c.recordClose(closeHTTPResource(c.transport.Close))
+	c.access.Lock()
 	defer c.access.Unlock()
-	if c.conn != nil {
-		c.conn.CloseWithError(0, "")
-		c.conn = nil
-	}
-	if c.rawConn != nil {
-		c.rawConn.Close()
-		c.rawConn = nil
-	}
-	return c.transport.Close()
+	return c.closeErr
 }
 
 type http3StreamConn struct {
@@ -321,3 +365,5 @@ var (
 	_ N.WriteCloser  = (*http3StreamConn)(nil)
 	_ DatagramStream = (*http3RequestDatagramStream)(nil)
 )
+
+func (c *http3ClientImpl) RuntimeCloseAndWait() error { return c.Close() }

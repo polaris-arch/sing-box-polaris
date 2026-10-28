@@ -223,7 +223,7 @@ func newAppleBenchmarkClientConn(b *testing.B, handler func(*stdtls.Conn) error)
 		MaxVersion:   stdtls.VersionTLS12,
 	}, handler)
 
-	clientConn, err := newAppleTestClientConn(b, serverAddress, option.OutboundTLSOptions{
+	clientConn, err := newAppleEngineTestClientConn(b, serverAddress, option.OutboundTLSOptions{
 		Enabled:     true,
 		Engine:      "apple",
 		ServerName:  "localhost",

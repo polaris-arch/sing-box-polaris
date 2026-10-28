@@ -97,6 +97,7 @@ static box_apple_http_response_t *box_create_response(NSHTTPURLResponse *httpRes
 }
 
 @interface BoxAppleHTTPSessionDelegate : NSObject <NSURLSessionTaskDelegate, NSURLSessionDataDelegate>
+@property(nonatomic, strong) dispatch_semaphore_t invalidated;
 @property(nonatomic, assign) BOOL insecure;
 @property(nonatomic, assign) BOOL anchorOnly;
 @property(nonatomic, strong) NSArray *anchors;
@@ -105,6 +106,10 @@ static box_apple_http_response_t *box_create_response(NSHTTPURLResponse *httpRes
 @end
 
 @implementation BoxAppleHTTPSessionDelegate
+
+- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error {
+	dispatch_semaphore_signal(self.invalidated);
+}
 
 - (void)URLSession:(NSURLSession *)session
               task:(NSURLSessionTask *)task
@@ -211,6 +216,7 @@ box_apple_http_session_t *box_apple_http_session_create(
 			sessionConfig.TLSMaximumSupportedProtocolVersion = (tls_protocol_version_t)config->max_tls_version;
 		}
 		BoxAppleHTTPSessionDelegate *delegate = [[BoxAppleHTTPSessionDelegate alloc] init];
+		delegate.invalidated = dispatch_semaphore_create(0);
 		if (config != NULL) {
 			delegate.insecure = config->insecure;
 			delegate.anchorOnly = config->anchor_only;
@@ -246,6 +252,8 @@ void box_apple_http_session_retire(box_apple_http_session_t *session) {
 	}
 	BoxAppleHTTPSessionHandle *handle = (__bridge_transfer BoxAppleHTTPSessionHandle *)session->handle;
 	[handle.session finishTasksAndInvalidate];
+	dispatch_semaphore_wait(handle.delegate.invalidated, DISPATCH_TIME_FOREVER);
+	[handle.session.delegateQueue waitUntilAllOperationsAreFinished];
 	free(session);
 }
 
@@ -255,6 +263,8 @@ void box_apple_http_session_close(box_apple_http_session_t *session) {
 	}
 	BoxAppleHTTPSessionHandle *handle = (__bridge_transfer BoxAppleHTTPSessionHandle *)session->handle;
 	[handle.session invalidateAndCancel];
+	dispatch_semaphore_wait(handle.delegate.invalidated, DISPATCH_TIME_FOREVER);
+	[handle.session.delegateQueue waitUntilAllOperationsAreFinished];
 	free(session);
 }
 

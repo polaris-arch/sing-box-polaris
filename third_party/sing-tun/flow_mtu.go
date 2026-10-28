@@ -19,7 +19,10 @@ func (s *ForwardStage) resegmentTCP(flow *forwardFlow, packet *forwardPacket, ra
 	}
 	headerLength := len(raw) - len(packet.transport)
 	if packet.ipVersion == 6 && headerLength != header.IPv6MinimumSize {
-		s.writebackBatch = append(s.writebackBatch, buildICMPError(packet, ICMPErrorPacketTooBig, effectiveMTU, s.writeback.ReturnHeadroom()))
+		reply := buildICMPError(packet, ICMPErrorPacketTooBig, effectiveMTU, s.writeback.ReturnHeadroom())
+		s.access.Lock()
+		s.writebackBatch = append(s.writebackBatch, reply)
+		s.access.Unlock()
 		return
 	}
 	tcpHeaderLength := int(header.TCP(packet.transport).DataOffset())
@@ -49,26 +52,16 @@ func (s *ForwardStage) resegmentTCP(flow *forwardFlow, packet *forwardPacket, ra
 		return
 	}
 	for i := range n {
-		s.stagePort(flow.nat, bufs[i][:sizes[i]])
+		s.stagePort(flow, bufs[i][:sizes[i]])
 	}
 }
 
+// Each queued batch owns its packet storage. Reusing a stage-wide slice while
+// Flush runs outside the stage lock would race a concurrent dispatch/Close.
 func (s *ForwardStage) reserveSegments(count, size int) ([][]byte, []int) {
-	start := s.segmentUsed
-	end := start + count
-	for len(s.segmentBuffers) < end {
-		s.segmentBuffers = append(s.segmentBuffers, make([]byte, size))
-		s.segmentSizes = append(s.segmentSizes, 0)
-	}
-	for i := start; i < end; i++ {
-		if cap(s.segmentBuffers[i]) < size {
-			s.segmentBuffers[i] = make([]byte, size)
-		} else {
-			s.segmentBuffers[i] = s.segmentBuffers[i][:size]
-		}
-	}
-	s.segmentUsed = end
-	return s.segmentBuffers[start:end], s.segmentSizes[start:end]
+	buffers := make([][]byte, count)
+	for index := range buffers { buffers[index] = make([]byte, size) }
+	return buffers, make([]int, count)
 }
 
 const synthesizedTTL = 64

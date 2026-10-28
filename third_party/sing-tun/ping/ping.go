@@ -2,6 +2,8 @@ package ping
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"net/netip"
 	"reflect"
@@ -28,6 +30,8 @@ type Conn struct {
 	controlConn  net.Conn
 	destination  netip.Addr
 	source       common.TypedValue[netip.Addr]
+	closeOnce    sync.Once
+	closeErr     error
 	closed       atomic.Bool
 	identFilter  identFilterState
 	readMsg      func(b, oob []byte) (n, oobn int, addr netip.Addr, err error)
@@ -36,7 +40,7 @@ type Conn struct {
 	lastHopLimit int
 }
 
-func Connect(ctx context.Context, privileged bool, controlFunc control.Func, destination netip.Addr, idleTimeout time.Duration) (*Conn, error) {
+func Connect(ctx context.Context, privileged bool, controlFunc control.Func, destination netip.Addr, idleTimeout time.Duration) (result *Conn, err error) {
 	c := &Conn{
 		ctx:          ctx,
 		privileged:   privileged,
@@ -44,7 +48,19 @@ func Connect(ctx context.Context, privileged bool, controlFunc control.Func, des
 		lastTTL:      -1,
 		lastHopLimit: -1,
 	}
-	err := c.connect(controlFunc, idleTimeout)
+	defer func() {
+		if value := recover(); value != nil {
+			err = &cleanupFailure{message: fmt.Sprintf("ping connect panic: %v", value)}
+		}
+		if err != nil && c.conn != nil {
+			err = E.Errors(err, c.Close(), c.Wait(context.Background()))
+			var uncertainty *cleanupFailure
+			if errors.As(err, &uncertainty) {
+				err = &cleanupFailure{message: err.Error(), resource: c}
+			}
+		}
+	}()
+	err = c.connect(controlFunc, idleTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -344,9 +360,21 @@ func (c *Conn) SetReadDeadline(t time.Time) error {
 	return c.conn.SetReadDeadline(t)
 }
 
+// Close only signals socket shutdown; it is safe from the reader's own tail.
+// Wait is the independent joining operation used by the owning Port.
 func (c *Conn) Close() error {
-	defer c.closed.Store(true)
-	return c.conn.Close()
+	c.closeOnce.Do(func() {
+		c.closed.Store(true)
+		c.closeErr = runCleanup("socket close", c.conn.Close)
+	})
+	return c.closeErr
+}
+
+func (c *Conn) Wait(ctx context.Context) error {
+	if waiter, loaded := c.conn.(interface{ Wait(context.Context) error }); loaded {
+		return waiter.Wait(ctx)
+	}
+	return nil
 }
 
 func (c *Conn) IsClosed() bool {

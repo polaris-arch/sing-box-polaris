@@ -6,14 +6,37 @@ from pathlib import Path, PurePosixPath
 import re
 import subprocess
 
+from g4_candidate import SDK, SDK_PACKAGES
+
 
 MODULES = {
     '.': 'github.com/sagernet/sing-box',
     'third_party/sing-tun': 'github.com/sagernet/sing-tun',
     'third_party/metacubex-utls': 'github.com/metacubex/utls',
+    'third_party/cronet-go': 'github.com/sagernet/cronet-go',
+    'third_party/fswatch': 'github.com/sagernet/fswatch',
+    'third_party/sing': 'github.com/sagernet/sing',
+    'third_party/sing-quic': 'github.com/sagernet/sing-quic',
+    'third_party/tailscale': SDK,
+    'third_party/wireguard-go': 'github.com/sagernet/wireguard-go',
+    'third_party/tfo-go': 'github.com/database64128/tfo-go/v2',
 }
 MARKERS = {'third_party/sing-tun': 'sing-tun-selected',
-           'third_party/metacubex-utls': 'metacubex-utls-selected'}
+           'third_party/metacubex-utls': 'metacubex-utls-selected',
+           'third_party/cronet-go': 'cronet-go-selected',
+           'third_party/fswatch': 'fswatch-selected',
+           'third_party/sing': 'sing-selected',
+           'third_party/sing-quic': 'sing-quic-selected',
+           'third_party/tailscale': 'tailscale-selected',
+           'third_party/wireguard-go': 'wireguard-go-selected',
+           'third_party/tfo-go': 'tfo-go-selected'}
+
+# The SDK gate is deliberately bounded and shared with G4. Run these import
+# paths from the root module so its verified replacements remain effective.
+BOUNDED_MODULE_PACKAGES = {
+    'third_party/tailscale': tuple(SDK + '/' + package for package in SDK_PACKAGES),
+}
+SCHEMA_INPUT_PACKAGES = {'daemon/runtime_config.proto': './daemon'}
 
 
 EVIDENCE_ROOT = 'release/dependency-sources/sing-usbip/sing-box-source-evidence'
@@ -82,16 +105,19 @@ def verify_read_only_evidence(root, owner=EVIDENCE_ROOT):
 def selection(root, changed_paths):
     """Account for each changed Go/input path or reject an unowned module.
 
-    Nested modules always run ./... from their own root. Removed root packages
-    and root-input-only changes fall back to full root validation. This keeps
-    deleted directories out of package arguments without silently losing tests.
+    Nested modules run ./... from their own root except the bounded G4 SDK
+    selection. Schema inputs select their generated-code package. Removed root
+    packages and root-input-only changes fall back to full root validation.
+    This keeps deleted directories out of arguments without losing tests.
     """
     root = Path(root).resolve(strict=True)
     selected = {}
     evidence = {}
     for name in sorted(set(changed_paths)):
         path = PurePosixPath(name)
-        if path.suffix != '.go' and path.name not in {'go.mod', 'go.sum'}:
+        schema_package = SCHEMA_INPUT_PACKAGES.get(str(path))
+        if (path.suffix != '.go' and path.name not in {'go.mod', 'go.sum'}
+                and schema_package is None):
             continue
         if (path.is_absolute() or '..' in path.parts or str(path) != name
                 or any(c in name for c in '\r\n\0\\')):
@@ -129,14 +155,19 @@ def selection(root, changed_paths):
                                             'changedPaths': [], 'packages': set(),
                                             'fullValidation': owner != '.'})
         entry['changedPaths'].append(name)
-        if owner == '.' and path.suffix == '.go':
-            if not (root / name).is_file():
+        if owner == '.' and (path.suffix == '.go' or schema_package is not None):
+            if (schema_package is None and not (root / name).is_file()
+                    or schema_package is not None and not (root / path.parent).is_dir()):
                 entry['fullValidation'] = True
             else:
-                entry['packages'].add('.' if path.parent == PurePosixPath('.')
-                                      else './' + str(path.parent))
+                entry['packages'].add(schema_package or
+                                      ('.' if path.parent == PurePosixPath('.')
+                                       else './' + str(path.parent)))
     for owner, entry in selected.items():
-        if entry['fullValidation'] or not entry['packages']:
+        if owner in BOUNDED_MODULE_PACKAGES:
+            entry['packages'] = list(BOUNDED_MODULE_PACKAGES[owner])
+            entry['fullValidation'] = False
+        elif entry['fullValidation'] or not entry['packages']:
             entry['packages'] = ['./...']
             entry['fullValidation'] = True
         else:
@@ -157,6 +188,8 @@ def write_plan(directory, plan):
     (directory / 'selection.json').write_text(json.dumps(plan, indent=2) + '\n')
     packages = plan['modules'].get('.', {}).get('packages', [])
     (directory / 'root-packages.txt').write_text(''.join(p + '\n' for p in packages))
+    packages = plan['modules'].get('third_party/tailscale', {}).get('packages', [])
+    (directory / 'tailscale-packages.txt').write_text(''.join(p + '\n' for p in packages))
     for owner, name in MARKERS.items():
         if owner in plan['modules']:
             (directory / name).write_text(MODULES[owner] + '\n')
@@ -191,3 +224,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

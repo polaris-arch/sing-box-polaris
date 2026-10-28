@@ -3,7 +3,6 @@ package hysteria
 import (
 	"context"
 	"net"
-	"os"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -34,6 +33,8 @@ var (
 )
 
 type Outbound struct {
+	runtime *outboundRuntime
+
 	outbound.Adapter
 	logger logger.ContextLogger
 	client *hysteria.Client
@@ -43,6 +44,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
+	runtime := newOutboundRuntime(ctx)
+	runtime.allowNativeDescriptor = options.Obfs == "" && len(options.ServerPorts) == 0
+	constructed := false
+	defer func() {
+		if !constructed {
+			_ = runtime.close()
+		}
+	}()
 	tlsConfig, err := tls.NewClient(ctx, logger, options.Server, common.PtrValueOrDefault(options.TLS))
 	if err != nil {
 		return nil, err
@@ -69,10 +78,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	} else {
 		receiveBps = uint64(options.DownMbps) * hysteria.MbpsToBps
 	}
+	tlsConfig, err = runtime.guardTLS(tlsConfig)
+	if err != nil {
+		return nil, err
+	}
 	client, err := hysteria.NewClient(hysteria.ClientOptions{
-		Context:       ctx,
-		Dialer:        outboundDialer,
-		Logger:        logger,
+		Context:       runtime.ctx,
+		Dialer:        runtime.guardDialer(outboundDialer),
+		Logger:        outbound.WrapRuntimeLogger(logger, runtime.fence),
 		ServerAddress: options.ServerOptions.Build(),
 		ServerPorts:   options.ServerPorts,
 		HopInterval:   time.Duration(options.HopInterval),
@@ -87,7 +100,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if err != nil {
 		return nil, err
 	}
+	if err = runtime.install(ctx, client); err != nil {
+		return nil, err
+	}
+	constructed = true
 	return &Outbound{
+		runtime: runtime,
 		Adapter: outbound.NewAdapterWithDialerOptions(C.TypeHysteria, tag, networkList, options.DialerOptions),
 		logger:  logger,
 		client:  client,
@@ -95,12 +113,16 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtime.source, func(ctx context.Context) (net.Conn, error) { return h.dialContextOwned(ctx, network, destination) })
+}
+
+func (h *Outbound) dialContextOwned(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
 		return h.client.DialConn(ctx, destination)
 	case N.NetworkUDP:
-		conn, err := h.ListenPacket(ctx, destination)
+		conn, err := h.listenPacketOwned(ctx, destination)
 		if err != nil {
 			return nil, err
 		}
@@ -111,11 +133,20 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtime.source, func(ctx context.Context) (net.PacketConn, error) { return h.listenPacketOwned(ctx, destination) })
+}
+
+func (h *Outbound) listenPacketOwned(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	h.logger.InfoContext(ctx, "outbound packet connection to ", destination)
 	return h.client.ListenPacket(ctx, destination)
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.CloseWithError(E.New("network changed"))
 }
 
@@ -124,10 +155,20 @@ func (h *Outbound) MultiplexEnabled() bool {
 }
 
 func (h *Outbound) SetKeepIdleConnections(keep bool) {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.SetKeepIdleConnections(keep)
 }
 
 func (h *Outbound) CloseIdleConnections() {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.CloseIdleConnections()
 }
 
@@ -135,8 +176,8 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateInitialize {
 		return nil
 	}
-	scope.Add(func() error {
-		return h.client.CloseWithError(os.ErrClosed)
-	})
+	if !h.runtime.registered {
+		scope.Add(h.runtime.close)
+	}
 	return nil
 }

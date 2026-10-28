@@ -118,11 +118,8 @@ func NewDNSQueryOptions(ctx context.Context, domainResolver *option.DomainResolv
 			return adapter.DNSQueryOptions{}, err
 		}
 		if domainResolver.Mode == option.DomainResolverModeRules {
-			if domainResolver.Policy != nil {
-				policyRouter, ok := service.FromContext[adapter.DNSRouter](ctx).(interface{ HasResolverPolicy(string) bool })
-				if !ok || !policyRouter.HasResolverPolicy(*domainResolver.Policy) {
-					return adapter.DNSQueryOptions{}, E.New("unknown DNS resolver policy: ", *domainResolver.Policy)
-				}
+			if err := validateResolverPolicy(ctx, common.PtrValueOrDefault(domainResolver.Policy)); err != nil {
+				return adapter.DNSQueryOptions{}, err
 			}
 			return domainResolveQueryOptions(domainResolver), nil
 		}
@@ -139,6 +136,9 @@ func NewDNSQueryOptions(ctx context.Context, domainResolver *option.DomainResolv
 	}
 	defaultOptions := service.FromContext[adapter.NetworkManager](ctx).DefaultOptions()
 	if defaultOptions.DomainResolveOptions.UseRules {
+		if err := validateResolverPolicy(ctx, defaultOptions.DomainResolveOptions.Policy); err != nil {
+			return adapter.DNSQueryOptions{}, err
+		}
 		return defaultOptions.DomainResolveOptions, nil
 	}
 	if defaultOptions.DomainResolver != "" {
@@ -158,6 +158,19 @@ func NewDNSQueryOptions(ctx context.Context, domainResolver *option.DomainResolv
 	}
 	deprecated.Report(ctx, deprecated.OptionMissingDomainResolver)
 	return adapter.DNSQueryOptions{}, nil
+}
+
+// Policy existence is checked when constructing a dialer, after DNS router
+// initialization, rather than while projecting early network defaults.
+func validateResolverPolicy(ctx context.Context, policy string) error {
+	if policy == "" {
+		return nil
+	}
+	policyRouter, ok := service.FromContext[adapter.DNSRouter](ctx).(interface{ HasResolverPolicy(string) bool })
+	if !ok || !policyRouter.HasResolverPolicy(policy) {
+		return E.New("unknown DNS resolver policy: ", policy)
+	}
+	return nil
 }
 
 func domainResolveQueryOptions(domainResolver *option.DomainResolveOptions) adapter.DNSQueryOptions {

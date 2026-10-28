@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-tun"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
@@ -22,6 +23,7 @@ type serviceBase struct {
 	tunFileDescriptor int
 	forwardingRestore []sysctlState
 
+	monitorFence   *outbound.RuntimeIOFence
 	networkMonitor tun.NetworkUpdateMonitor
 	monitorElement *list.Element[tun.NetworkUpdateCallback]
 
@@ -66,7 +68,8 @@ func (s *serviceBase) syncEgress() {
 }
 
 func (s *serviceBase) startNetworkMonitor() {
-	networkMonitor, err := tun.NewNetworkUpdateMonitor(s.logger)
+	s.monitorFence = outbound.NewRuntimeIOFence(nil)
+	networkMonitor, err := tun.NewNetworkUpdateMonitor(outbound.WrapRuntimeLogger(s.logger, s.monitorFence))
 	if err != nil {
 		s.logger.Debug(E.Cause(err, "create network monitor, egress will not track route changes"))
 		return
@@ -91,11 +94,17 @@ func (s *serviceBase) beginClose() bool {
 	s.networkMonitor = nil
 	s.monitorElement = nil
 	s.access.Unlock()
+	if s.monitorFence != nil {
+		_ = s.monitorFence.Close()
+	}
 	if networkMonitor != nil {
 		if monitorElement != nil {
 			networkMonitor.UnregisterCallback(monitorElement)
 		}
 		_ = networkMonitor.Close()
+	}
+	if s.monitorFence != nil {
+		_ = s.monitorFence.Wait()
 	}
 	return true
 }

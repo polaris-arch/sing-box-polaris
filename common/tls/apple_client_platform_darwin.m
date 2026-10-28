@@ -21,6 +21,7 @@ typedef struct box_apple_tls_client {
 	void *connection;
 	void *queue;
 	void *ready_semaphore;
+	void *cancelled_semaphore;
 	void *anchors;
 	atomic_int ref_count;
 	atomic_bool ready;
@@ -90,6 +91,9 @@ static void box_apple_tls_client_destroy(box_apple_tls_client_t *client) {
 	}
 	if (client->ready_semaphore != NULL) {
 		CFBridgingRelease(client->ready_semaphore);
+	}
+	if (client->cancelled_semaphore != NULL) {
+		CFBridgingRelease(client->cancelled_semaphore);
 	}
 	if (client->connection != NULL) {
 		CFBridgingRelease(client->connection);
@@ -375,6 +379,7 @@ box_apple_tls_client_t *box_apple_tls_client_create(
 	}
 	client->queue = (__bridge_retained void *)dispatch_queue_create("sing-box.apple-private-tls", DISPATCH_QUEUE_SERIAL);
 	client->ready_semaphore = (__bridge_retained void *)dispatch_semaphore_create(0);
+	client->cancelled_semaphore = (__bridge_retained void *)dispatch_semaphore_create(0);
 	atomic_init(&client->ref_count, 1);
 	atomic_init(&client->ready, false);
 	atomic_init(&client->ready_done, false);
@@ -422,6 +427,7 @@ box_apple_tls_client_t *box_apple_tls_client_create(
 		if (client->queue != NULL) {
 			CFBridgingRelease(client->queue);
 		}
+		CFBridgingRelease(client->cancelled_semaphore);
 		free(client);
 		box_set_error_message(error_out, "apple TLS: failed to create connection");
 		return NULL;
@@ -456,6 +462,7 @@ box_apple_tls_client_t *box_apple_tls_client_create(
 				atomic_store(&client->ready_done, true);
 				dispatch_semaphore_signal(box_apple_tls_ready_semaphore(client));
 			}
+			dispatch_semaphore_signal((__bridge dispatch_semaphore_t)client->cancelled_semaphore);
 			box_apple_tls_client_release(client);
 			break;
 		default:
@@ -511,12 +518,14 @@ void box_apple_tls_client_cancel(box_apple_tls_client_t *client) {
 }
 
 void box_apple_tls_client_free(box_apple_tls_client_t *client) {
-	if (client == NULL) {
-		return;
-	}
+	if (client == NULL) { return; }
 	nw_connection_t connection = box_apple_tls_connection(client);
 	if (connection != nil) {
 		nw_connection_cancel(connection);
+		// The caller holds the allocation's owner reference while cancellation
+		// callbacks release their own reference. Cancellation is not completion.
+		dispatch_semaphore_wait((__bridge dispatch_semaphore_t)client->cancelled_semaphore, DISPATCH_TIME_FOREVER);
+		dispatch_sync(box_apple_tls_client_queue(client), ^{});
 	}
 	box_apple_tls_client_release(client);
 }

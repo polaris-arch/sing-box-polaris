@@ -1,0 +1,51 @@
+{
+  "schema": "polaris-fswatch-replacement-v1",
+  "module": "github.com/sagernet/fswatch",
+  "version": "v0.1.2",
+  "repository": "SagerNet/fswatch",
+  "commit": "97bbfafb2e505c88287bbd9f06a67639395fc3f5",
+  "upstream_manifest": "fswatch-v0.1.2/upstream-files.json",
+  "patch": "fswatch-failed-start.patch",
+  "patch_sha256": "dc26c9a69a58d1a1d54228a8636450cf57565e74cfa6e7a90204d00ccf05a6d9",
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+    },
+    {
+      "path": "README.md",
+      "sha256": "78e71c47fcc64b4a278d15ae48c6709f219970eeb3c3e30820fdc108e6da11f8"
+    },
+    {
+      "path": "directory_watch_test.go",
+      "sha256": "d8587df9ce7a99bf2a3fe9ab4ef0ee4bac10abd0c8dc1a1b1698958144afe14c"
+    },
+    {
+      "path": "go.mod",
+      "sha256": "c32fed68937f07d01ffccfcec7c6741363f6737d32858fe2c5911baddd549bd7"
+    },
+    {
+      "path": "go.sum",
+      "sha256": "edc88412225f9595bc4c945bad6ebed781c9e948486f95efde7e017fc3658069"
+    },
+    {
+      "path": "start_cleanup_test.go",
+      "sha256": "d8807597b54255873e904729e03eadcb3ecad012d626d0bf50592794b07f10e2"
+    },
+    {
+      "path": "watcher.go",
+      "sha256": "926567961c0903149724980775c4e56e0520636bad2708a0348f70e49bd51e05"
+    },
+    {
+      "path": "watcher_test.go",
+      "sha256": "ede4033b10695c4fe2af53c154189744a30e683ad95a0b260378a8c72318fdaf"
+    }
+  ],
+  "increments": [
+    {
+      "patch": "fswatch-directory.patch",
+      "sha256": "146cfa2cb492817eac9ef34acaca5b6f05b72629332dedf73b0fa34f681ad48f",
+      "preimage_manifest": "fswatch-failed-start-replacement-v01.json"
+    }
+  ]
+}

@@ -25,7 +25,6 @@ import (
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
-	"github.com/sagernet/sing/common/task"
 	"github.com/sagernet/sing/contrab/freelru"
 	"github.com/sagernet/sing/contrab/maphash"
 	"github.com/sagernet/sing/service"
@@ -40,6 +39,7 @@ var (
 
 type Router struct {
 	ctx                   context.Context
+	runtimeResource       adapter.RuntimeResourceSource
 	logger                logger.ContextLogger
 	transport             adapter.DNSTransportManager
 	outbound              adapter.OutboundManager
@@ -58,7 +58,13 @@ type Router struct {
 }
 
 func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOptions) (*Router, error) {
+	return newRouter(ctx, logFactory, options, nil)
+}
+
+func newRouter(ctx context.Context, logFactory log.Factory, options option.DNSOptions, explicitDependencies *RouterClientDependencies) (*Router, error) {
+	runtimeResource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
 	router := &Router{
+		runtimeResource:       runtimeResource,
 		ctx:                   ctx,
 		logger:                logFactory.NewLogger("dns"),
 		transport:             service.FromContext[adapter.DNSTransportManager](ctx),
@@ -68,7 +74,10 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 		rules:                 make([]adapter.DNSRule, 0, len(options.Rules)),
 		defaultDomainStrategy: C.DomainStrategy(options.Strategy),
 	}
-	encodedPolicyConfig, err := json.Marshal(options.Servers)
+	encodedPolicyConfig, err := json.Marshal(struct {
+		Servers               []option.DNSServerOptions
+		DefaultDomainStrategy C.DomainStrategy
+	}{options.Servers, router.defaultDomainStrategy})
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +99,10 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 			optimisticTimeout = 3 * 24 * time.Hour
 		}
 	}
-	router.client = NewClient(ClientOptions{
-		Context:           ctx,
-		Timeout:           time.Duration(options.DNSClientOptions.Timeout),
-		DisableCache:      options.DNSClientOptions.DisableCache,
-		DisableExpire:     options.DNSClientOptions.DisableExpire,
-		OptimisticTimeout: optimisticTimeout,
-		CacheCapacity:     options.DNSClientOptions.CacheCapacity,
-		ClientSubnet:      options.DNSClientOptions.ClientSubnet.Build(netip.Prefix{}),
-		RDRC: func() adapter.RDRCStore {
+	var rdrcProvider func() adapter.RDRCStore
+	var dnsCacheProvider func() adapter.DNSCacheStore
+	if explicitDependencies == nil {
+		rdrcProvider = func() adapter.RDRCStore {
 			cacheFile := service.FromContext[adapter.CacheFile](ctx)
 			if cacheFile == nil {
 				return nil
@@ -107,8 +111,8 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 				return nil
 			}
 			return cacheFile
-		},
-		DNSCache: func() adapter.DNSCacheStore {
+		}
+		dnsCacheProvider = func() adapter.DNSCacheStore {
 			cacheFile := service.FromContext[adapter.CacheFile](ctx)
 			if cacheFile == nil {
 				return nil
@@ -119,8 +123,28 @@ func NewRouter(ctx context.Context, logFactory log.Factory, options option.DNSOp
 			cacheFile.SetDisableExpire(options.DNSClientOptions.DisableExpire)
 			cacheFile.SetOptimisticTimeout(optimisticTimeout)
 			return cacheFile
-		},
-		Logger: router.logger,
+		}
+	} else {
+		// Bind store values, never an ambient registry lookup. Nil means private
+		// memory DNS cache / disabled RDRC, including when CacheFile exists.
+		if store := explicitDependencies.RDRC; store != nil {
+			rdrcProvider = func() adapter.RDRCStore { return store }
+		}
+		if store := explicitDependencies.DNSCache; store != nil {
+			dnsCacheProvider = func() adapter.DNSCacheStore { return store }
+		}
+	}
+	router.client = NewClient(ClientOptions{
+		Context:           ctx,
+		Timeout:           time.Duration(options.DNSClientOptions.Timeout),
+		DisableCache:      options.DNSClientOptions.DisableCache,
+		DisableExpire:     options.DNSClientOptions.DisableExpire,
+		OptimisticTimeout: optimisticTimeout,
+		CacheCapacity:     options.DNSClientOptions.CacheCapacity,
+		ClientSubnet:      options.DNSClientOptions.ClientSubnet.Build(netip.Prefix{}),
+		RDRC:              rdrcProvider,
+		DNSCache:          dnsCacheProvider,
+		Logger:            router.logger,
 	})
 	if options.ReverseMapping {
 		router.dnsReverseMapping = common.Must1(freelru.New[netip.Addr, string](1024, maphash.NewHasher[netip.Addr]().Hash32, true))
@@ -997,6 +1021,9 @@ func (r *Router) finishPendingExchange(ctx context.Context, message *mDNS.Msg, s
 		}
 	}
 	response, err := r.client.Exchange(adapter.OverrideContext(ctx), pending.transport, message, r.finalizeExchangeOptions(pending.options), nil)
+	if completionErr := dnsPolicyCompletionError(ctx, time.Now()); completionErr != nil {
+		return exchangeWithRulesResult{transport: pending.transport, err: completionErr}
+	}
 	return exchangeWithRulesResult{
 		response:  response,
 		transport: pending.transport,
@@ -1081,22 +1108,9 @@ func (r *Router) lookupWithRules(ctx context.Context, rules []adapter.DNSRule, d
 	if strategy == C.DomainStrategyIPv6Only {
 		return r.lookupWithRulesType(ctx, rules, domain, mDNS.TypeAAAA, lookupOptions)
 	}
-	var (
-		response4 []netip.Addr
-		response6 []netip.Addr
-	)
-	var group task.Group
-	group.Append("exchange4", func(ctx context.Context) error {
-		result, err := r.lookupWithRulesType(ctx, rules, domain, mDNS.TypeA, lookupOptions)
-		response4 = result
-		return err
+	response4, response6, err := runRuntimeLookupPair(ctx, r.runtimeResource, func(workerCtx context.Context, qType uint16) ([]netip.Addr, error) {
+		return r.lookupWithRulesType(workerCtx, rules, domain, qType, lookupOptions)
 	})
-	group.Append("exchange6", func(ctx context.Context) error {
-		result, err := r.lookupWithRulesType(ctx, rules, domain, mDNS.TypeAAAA, lookupOptions)
-		response6 = result
-		return err
-	})
-	err := group.Run(ctx)
 	if len(response4) == 0 && len(response6) == 0 {
 		return nil, err
 	}
@@ -1265,6 +1279,12 @@ func (r *Router) exchangeLegacy(ctx context.Context, exchangeCtx *dnsExchangeCon
 }
 
 func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions) (*mDNS.Msg, error) {
+	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
+	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	defer releaseRuntime()
 	if options.Policy != "" {
 		return r.exchangePolicy(ctx, message, options)
 	}
@@ -1289,11 +1309,31 @@ func (r *Router) Exchange(ctx context.Context, message *mDNS.Msg, options adapte
 	if err != nil {
 		return nil, err
 	}
+	if transport != nil && transport.Type() == C.DNSTypeFakeIP {
+		if err := protectFinalFakeIPAnswer(r.ctx, ctx, transport, response); err != nil {
+			return nil, err
+		}
+	}
 	r.recordReverseMapping(message, response, transport)
 	return response, nil
 }
 
 func (r *Router) ExchangeAsync(ctx context.Context, message *mDNS.Msg, options adapter.DNSQueryOptions, callback func(response *mDNS.Msg, err error)) {
+	ctx = context.WithValue(ctx, fakeIPRouterAdmissionKey{}, true)
+	ctx, releaseCall, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
+	defer releaseCall()
+	ctx, releaseCallback, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	if runtimeErr != nil {
+		callback(nil, runtimeErr)
+		return
+	}
+	originalCallback := callback
+	callback = func(response *mDNS.Msg, err error) { defer releaseCallback(); originalCallback(response, err) }
+
 	if options.Policy != "" {
 		go func() { callback(r.exchangePolicy(ctx, message, options)) }()
 		return
@@ -1307,30 +1347,41 @@ func (r *Router) ExchangeAsync(ctx context.Context, message *mDNS.Msg, options a
 	if options.Transport != nil {
 		transport := options.Transport
 		r.client.ExchangeAsync(ctx, transport, message, r.finalizeExchangeOptions(options), nil, func(response *mDNS.Msg, exchangeErr error) {
-			r.finishExchangeAsync(message, transport, response, exchangeErr, callback)
+			r.finishExchangeAsync(ctx, message, transport, response, exchangeErr, callback)
 		})
 	} else if !exchangeCtx.legacyDNSMode {
 		r.exchangeWithRulesAsync(ctx, exchangeCtx.rules, message, options, true, func(result exchangeWithRulesResult) {
-			r.finishExchangeAsync(message, result.transport, result.response, result.err, callback)
+			r.finishExchangeAsync(ctx, message, result.transport, result.response, result.err, callback)
 		})
 	} else {
 		go func() {
 			response, transport, exchangeErr := r.exchangeLegacy(ctx, exchangeCtx, message, options)
-			r.finishExchangeAsync(message, transport, response, exchangeErr, callback)
+			r.finishExchangeAsync(ctx, message, transport, response, exchangeErr, callback)
 		}()
 	}
 }
 
-func (r *Router) finishExchangeAsync(message *mDNS.Msg, transport adapter.DNSTransport, response *mDNS.Msg, err error, callback func(response *mDNS.Msg, err error)) {
+func (r *Router) finishExchangeAsync(ctx context.Context, message *mDNS.Msg, transport adapter.DNSTransport, response *mDNS.Msg, err error, callback func(response *mDNS.Msg, err error)) {
 	if err != nil {
 		callback(nil, err)
 		return
+	}
+	if transport != nil && transport.Type() == C.DNSTypeFakeIP {
+		if protectionErr := protectFinalFakeIPAnswer(r.ctx, ctx, transport, response); protectionErr != nil {
+			callback(nil, protectionErr)
+			return
+		}
 	}
 	r.recordReverseMapping(message, response, transport)
 	callback(response, nil)
 }
 
 func (r *Router) Lookup(ctx context.Context, domain string, options adapter.DNSQueryOptions) ([]netip.Addr, error) {
+	ctx, releaseRuntime, runtimeErr := adapter.AcquireRuntimeOperation(ctx, r.runtimeResource)
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	defer releaseRuntime()
 	if options.Policy != "" {
 		return r.lookupPolicy(ctx, domain, options)
 	}
@@ -1873,4 +1924,19 @@ func dnsRuleRace(rule option.DNSRule) bool {
 	default:
 		return false
 	}
+}
+
+// StopRuntimeProducers seals refresh roots without joining from a callback.
+// Foreign-lineage calls are covered by the receiving resource, not this Wait.
+func (r *Router) StopRuntimeProducers() {
+	if client, ok := r.client.(*Client); ok {
+		client.stopBackgroundRefreshes()
+	}
+}
+
+func (r *Router) WaitRuntimeProducers(ctx context.Context) error {
+	if client, ok := r.client.(*Client); ok {
+		return client.waitBackgroundRefreshes(ctx)
+	}
+	return nil
 }

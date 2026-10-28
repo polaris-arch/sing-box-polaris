@@ -23,7 +23,7 @@
     "windows7": {
       "target": "go_win7",
       "patch": ".github/patches/go1.27.2/windows7.patch",
-      "patchSHA256": "89219b9b6dd43a368de1dba363b360f83f6ef9ca799f036c06b5e740a6bddfbb",
+      "patchSHA256": "c7c99ff789601a2d7b446759463a7e63752622a160cdc40451355866498a7350",
       "sourceRepository": "MetaCubeX/go",
       "sourceCommits": [
         "5bea096a8d38bcc2f7b29a423a2d7a677e7257b4",
@@ -50,7 +50,7 @@
     "macos1013": {
       "target": "go_osx",
       "patch": ".github/patches/go1.27.2/macos1013.patch",
-      "patchSHA256": "431105096270056e305ebfe9dbcf62113bbcd245db4bf752fea49b310198ffe1",
+      "patchSHA256": "64eb30f3e916fa6375a9a1abf7fe41e89dcd13dd4d2e5a64046bb0370ee1f8b9",
       "sourceRepository": "MetaCubeX/go",
       "sourceCommits": [
         "e515bdaa0a718950bfe427cc8488d1872b25240d",

@@ -168,7 +168,15 @@ func (e *goEngine) handleTCPSyn(parsed *forwardPacket) {
 		e.handleEngage(conn)
 		return
 	}
-	go e.stack.handler.NewConnectionEx(e.stack.ctx, conn, source, destination, nil)
+	verdict := parsed.verdict.Take()
+	conn.ownership.owner = verdict.Ownership
+	launchOwner, err := conn.ownership.retain()
+	if err != nil { e.detachConn(conn, err, goDeathImmediate); return }
+	ctx := bindFlow(e.stack.ctx, launchOwner)
+	go func() {
+		defer releaseFlow(launchOwner)
+		e.stack.handler.NewConnectionEx(ctx, conn, source, destination, nil)
+	}()
 }
 
 func (e *goEngine) initializeSession(conn *GoConn, now int64, peerWindow uint16) {
@@ -1462,6 +1470,7 @@ func (c *GoConn) reclaim() bool {
 	c.descriptors.release()
 	c.scoreboard.entries = nil
 	c.releaseCongestionControl()
+	c.ownership.release()
 	if c.receiveTarget.buffer != nil {
 		c.receiveTarget.buffer.Release()
 		c.receiveTarget.buffer = nil

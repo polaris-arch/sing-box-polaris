@@ -62,6 +62,7 @@ const (
 )
 
 type tailcatNodeOptions struct {
+	OnConstruct    func(*tailcatNode)
 	Context        context.Context
 	Logger         logger.ContextLogger
 	PrivateKey     key.NodePrivate
@@ -103,7 +104,11 @@ type tailcatNode struct {
 	meowed          chan struct{}
 	meowResponses   chan [16]byte
 	meowRequests    chan struct{}
-	meowWait        sync.WaitGroup
+	workers         struct {
+		sync.Mutex
+		closed bool
+		wait   sync.WaitGroup
+	}
 
 	access           sync.Mutex
 	clients          map[key.NodePublic]*tailcfg.Node
@@ -146,6 +151,9 @@ func newTailcatNode(options tailcatNodeOptions) (*tailcatNode, error) {
 		meowResponses:    make(chan [16]byte, 1),
 		meowRequests:     make(chan struct{}, 1),
 		clientsByAddress: make(map[netip.Addr]key.NodePublic),
+	}
+	if options.OnConstruct != nil {
+		options.OnConstruct(node)
 	}
 	if isServer {
 		rand.Read(node.sessionID[:])
@@ -268,15 +276,14 @@ func (n *tailcatNode) start() error {
 	}
 	n.sys.NetMon.Get().Start()
 	if !n.isServer {
-		n.meowWait.Go(n.loopMeow)
+		n.startWorker(n.loopMeow)
 	}
 	return nil
 }
 
 func (n *tailcatNode) close() {
 	n.closeOnce.Do(func() {
-		n.cancel()
-		n.meowWait.Wait()
+		n.stopWorkers()
 		if n.netstack != nil {
 			n.netstack.Close()
 		}
@@ -441,7 +448,7 @@ func (n *tailcatNode) onDERPRecv(regionID int, source key.NodePublic, packet []b
 	if nodeKey.IsZero() || nodeKey != source {
 		return true
 	}
-	go func() {
+	n.startWorker(func() {
 		if !n.onMeow(nodeKey, discoKey) {
 			return
 		}
@@ -449,7 +456,7 @@ func (n *tailcatNode) onDERPRecv(regionID int, source key.NodePublic, packet []b
 		if err != nil {
 			n.logger.Debug(E.Cause(err, "reply meow from ", nodeKey.ShortString()))
 		}
-	}()
+	})
 	return true
 }
 
@@ -501,7 +508,7 @@ func (n *tailcatNode) onMeow(nodeKey key.NodePublic, discoKey key.DiscoPublic) b
 		n.sys.Engine.Get().ResetDevicePeer(nodeKey)
 	}
 	n.netstack.UpdateNetstackIPs(networkMap)
-	go n.advertiseEndpoints()
+	n.startWorker(n.advertiseEndpoints)
 	return true
 }
 
@@ -522,7 +529,7 @@ func (n *tailcatNode) onEngineStatus(status *wgengine.Status, err error) {
 	}
 	n.access.Unlock()
 	if changed && len(endpoints) > 0 {
-		go n.advertiseEndpoints()
+		n.startWorker(n.advertiseEndpoints)
 		if !n.isServer {
 			n.requestMeow()
 		}
@@ -598,7 +605,7 @@ func (n *tailcatNode) loopMeow() {
 			}
 			serverSession = sessionID
 			if !registered || restarted {
-				go n.advertiseEndpoints()
+				n.startWorker(n.advertiseEndpoints)
 			}
 			if !registered {
 				registered = true
@@ -629,4 +636,29 @@ func (n *tailcatNode) interfaceUpdated() {
 	if !n.isServer {
 		n.requestMeow()
 	}
+}
+
+// startWorker owns the original invocation and seals Add before terminal Wait.
+// Native engine callbacks may still arrive during native shutdown; after sealing
+// they cannot launch new node workers against already disposed dependencies.
+func (n *tailcatNode) startWorker(worker func()) bool {
+	n.workers.Lock()
+	if n.workers.closed {
+		n.workers.Unlock()
+		return false
+	}
+	n.workers.wait.Add(1)
+	n.workers.Unlock()
+	go func() { defer n.workers.wait.Done(); worker() }()
+	return true
+}
+
+// stopWorkers is called only by the physical node owner, never from a node
+// worker. It holds neither node.access nor engine locks while joining.
+func (n *tailcatNode) stopWorkers() {
+	n.workers.Lock()
+	n.workers.closed = true
+	n.workers.Unlock()
+	n.cancel()
+	n.workers.wait.Wait()
 }

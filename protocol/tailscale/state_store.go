@@ -363,6 +363,9 @@ func profileMatchesState(content []byte, id, key string) bool {
 // Scope is immutable constructor metadata. Reading it does not create or seal
 // a FileStore and cannot report a positive writer/profile/file terminal.
 func (t *Endpoint) TailscaleStateStoreScope() adapter.TailscaleStoreNode {
+	if t.runtime != nil {
+		return adapter.TailscaleStoreNode{Tag: t.Tag(), WriterState: "Unknown", StateFileState: "Unknown", ProfileState: "Unknown"}
+	}
 	if t.stateStore == nil {
 		return adapter.TailscaleStoreNode{Tag: t.Tag(), WriterState: "Unknown", StateFileState: "Unknown", ProfileState: "Unknown"}
 	}
@@ -370,6 +373,9 @@ func (t *Endpoint) TailscaleStateStoreScope() adapter.TailscaleStoreNode {
 }
 
 func (t *Endpoint) RetireTailscaleStateStore(deadline time.Time) adapter.TailscaleStoreNode {
+	if t.runtime != nil {
+		return t.TailscaleStateStoreScope()
+	}
 	if t.stateStore == nil {
 		return adapter.TailscaleStoreNode{Tag: t.Tag(), WriterState: "Unknown", StateFileState: "Unknown", ProfileState: "Unknown"}
 	}

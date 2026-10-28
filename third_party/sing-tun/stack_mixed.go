@@ -48,7 +48,7 @@ func (m *Mixed) Start() error {
 	if err != nil {
 		return err
 	}
-	udpForwarder := NewUDPForwarder(m.ctx, ipStack, m.handler, m.udpNATOptions)
+	udpForwarder := NewUDPForwarder(m.ctx, ipStack, m.dispatcher.fallbackHandler(), m.udpNATOptions)
 	err = udpForwarder.Start()
 	if err != nil {
 		return err

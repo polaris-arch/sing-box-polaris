@@ -3,6 +3,7 @@
 package tun
 
 import (
+	"context"
 	"net/netip"
 	"sync"
 	"sync/atomic"
@@ -30,7 +31,10 @@ type ICMPForwarder struct {
 	flowAccess    sync.Mutex
 	flows         map[icmpFlowKey]*icmpFlow
 	lastSweep     time.Time
-	attachedPorts map[Port]bool
+	attachments *ForwardDispatcher
+	stop chan struct{}
+	done chan struct{}
+	closeOnce sync.Once
 }
 
 type icmpFlowKey struct {
@@ -41,6 +45,8 @@ type icmpFlowKey struct {
 }
 
 type icmpFlow struct {
+	ownership FlowOwnership
+	attachment *attachmentUse
 	port     Port
 	tracker  FlowTracker
 	deadline time.Time
@@ -66,34 +72,50 @@ func NewICMPForwarder(stack *stack.Stack, handler Handler, logger logger.Logger)
 		handler:       handler,
 		logger:        logger,
 		flows:         make(map[icmpFlowKey]*icmpFlow),
-		attachedPorts: make(map[Port]bool),
+
 	}
+	forwarder.stop, forwarder.done = make(chan struct{}), make(chan struct{})
 	forwarder.returnPath.forwarder = forwarder
+	forwarder.attachments = NewForwardDispatcher(handler, nil, logger, UDPNatOptions{}, defaultICMPTimeout)
+	forwarder.attachments.returnTarget = &forwarder.returnPath
+	go forwarder.expireLoop()
 	return forwarder
 }
 
 func (f *ICMPForwarder) Purge() {
 	f.flowAccess.Lock()
-	for key, flow := range f.flows {
-		flow.close(FlowCloseReset)
-		delete(f.flows, key)
-	}
+	flows := f.flows
+	f.flows = make(map[icmpFlowKey]*icmpFlow)
 	f.flowAccess.Unlock()
+	for _, flow := range flows { flow.remove(FlowCloseReset) }
 }
 
 func (f *ICMPForwarder) Close() error {
 	f.returnPath.closed.Store(true)
-	f.flowAccess.Lock()
-	defer f.flowAccess.Unlock()
-	for key, flow := range f.flows {
-		flow.close(FlowCloseReset)
-		delete(f.flows, key)
-	}
-	for port := range f.attachedPorts {
-		port.DetachReturn(&f.returnPath)
-		delete(f.attachedPorts, port)
-	}
+	f.closeOnce.Do(func() { close(f.stop) })
+	f.Purge()
+	f.attachments.Close()
 	return nil
+}
+
+func (f *icmpFlow) remove(reason FlowCloseReason) {
+	f.close(reason)
+	releaseFlow(f.ownership)
+	f.attachment.release()
+}
+
+type icmpUse struct { flow *icmpFlow; owner FlowOwnership; attachment *attachmentUse }
+func (f *icmpFlow) retain() (*icmpUse, error) {
+	owner, err := retainFlow(f.ownership)
+	if err != nil { return nil, err }
+	attachment, err := f.attachment.returnPath.retainUse()
+	if err != nil { releaseFlow(owner); return nil, err }
+	return &icmpUse{flow: f, owner: owner, attachment: attachment}, nil
+}
+func (u *icmpUse) release() {
+	if u == nil { return }
+	releaseFlow(u.owner)
+	u.attachment.release()
 }
 
 func (f *ICMPForwarder) HandlePacket(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
@@ -118,6 +140,7 @@ func (f *ICMPForwarder) HandlePacket(id stack.TransportEndpointID, pkt *stack.Pa
 			netip.AddrPortFrom(key.destination, identifier),
 			nil,
 		)
+		defer verdict.Release()
 		switch verdict.Action {
 		case ActionReject, ActionDrop:
 			return true
@@ -180,6 +203,7 @@ func (f *ICMPForwarder) HandlePacket(id stack.TransportEndpointID, pkt *stack.Pa
 			netip.AddrPortFrom(key.destination, identifier),
 			nil,
 		)
+		defer verdict.Release()
 		switch verdict.Action {
 		case ActionReject, ActionDrop:
 			return true
@@ -222,73 +246,52 @@ func (f *ICMPForwarder) HandlePacket(id stack.TransportEndpointID, pkt *stack.Pa
 }
 
 func (f *ICMPForwarder) forwardCached(key icmpFlowKey, pkt *stack.PacketBuffer) bool {
-	now := time.Now()
-	f.flowAccess.Lock()
-	flow, loaded := f.flows[key]
-	if loaded {
-		if flow.closed.Load() {
-			delete(f.flows, key)
-			loaded = false
-		} else if now.After(flow.deadline) {
-			delete(f.flows, key)
-			flow.close(FlowCloseTimeout)
-			loaded = false
-		} else {
-			flow.deadline = now.Add(defaultICMPTimeout)
-		}
-	}
-	f.flowAccess.Unlock()
-	if !loaded {
-		return false
-	}
-	f.writeToPort(flow, pkt)
+	use := f.lookupFlow(key)
+	if use == nil { return false }
+	defer use.release()
+	f.writeToPort(use.flow, pkt)
 	return true
 }
 
 func (f *ICMPForwarder) installFlow(key icmpFlowKey, verdict FlowVerdict, pkt *stack.PacketBuffer) bool {
-	port := verdict.Port
-	if port == nil {
-		return false
-	}
-	inet4Address, inet6Address := port.PortAddresses()
+	if verdict.Port == nil || f.returnPath.closed.Load() { return false }
+	owned, err := verdict.CloneForDelivery()
+	if err != nil { return false }
+	defer owned.Release()
+	attachment := f.attachments.natFor(verdict.Port, owned.Ownership)
+	if attachment == nil { return false }
+	keep := false
+	defer func() { if !keep { attachment.release() } }()
+	inet4Address, inet6Address := verdict.Port.PortAddresses()
 	portAddress := inet4Address
-	if key.v6 {
-		portAddress = inet6Address
-	}
-	if !portAddress.IsValid() || !portAddress.IsUnspecified() {
+	if key.v6 { portAddress = inet6Address }
+	if !portAddress.IsValid() || !portAddress.IsUnspecified() { return false }
+	flow := &icmpFlow{port: verdict.Port, ownership: owned.Ownership, attachment: attachment, deadline: time.Now().Add(defaultICMPTimeout)}
+	if verdict.NewTracker != nil { flow.tracker = verdict.NewTracker() }
+	// No tracker or port call is allowed under flowAccess.
+	if flow.tracker != nil { flow.tracker.AttachFlow(flow) }
+	f.flowAccess.Lock()
+	if f.returnPath.closed.Load() {
+		f.flowAccess.Unlock()
+		flow.close(FlowCloseReset)
 		return false
 	}
-	f.flowAccess.Lock()
-	if !f.attachedPorts[port] {
-		err := port.AttachReturn(&f.returnPath)
-		if err != nil {
-			f.flowAccess.Unlock()
-			f.logger.Trace(E.Cause(err, "attach ICMP return path"))
-			return false
-		}
-		f.attachedPorts[port] = true
-	}
-	now := time.Now()
-	if now.Sub(f.lastSweep) >= defaultICMPTimeout {
-		f.lastSweep = now
-		for flowKey, cachedFlow := range f.flows {
-			if cachedFlow.closed.Load() {
-				delete(f.flows, flowKey)
-			} else if now.After(cachedFlow.deadline) {
-				delete(f.flows, flowKey)
-				cachedFlow.close(FlowCloseTimeout)
-			}
-		}
-	}
-	flow := &icmpFlow{port: port, deadline: now.Add(defaultICMPTimeout)}
-	if verdict.NewTracker != nil {
-		flow.tracker = verdict.NewTracker()
+	if existing := f.flows[key]; existing != nil {
+		use, retainErr := existing.retain()
+		f.flowAccess.Unlock()
+		flow.close(FlowCloseReset)
+		if retainErr != nil { return false }
+		defer use.release()
+		f.writeToPort(use.flow, pkt)
+		return true
 	}
 	f.flows[key] = flow
+	use, retainErr := flow.retain()
+	owned.Ownership = nil
+	keep = true
 	f.flowAccess.Unlock()
-	if flow.tracker != nil {
-		flow.tracker.AttachFlow(flow)
-	}
+	if retainErr != nil { return true }
+	defer use.release()
 	f.writeToPort(flow, pkt)
 	return true
 }
@@ -310,25 +313,32 @@ func (f *ICMPForwarder) writeToPort(flow *icmpFlow, pkt *stack.PacketBuffer) {
 	}
 }
 
-func (f *ICMPForwarder) lookupFlow(key icmpFlowKey) *icmpFlow {
+func (f *ICMPForwarder) lookupFlow(key icmpFlowKey) *icmpUse {
 	f.flowAccess.Lock()
-	defer f.flowAccess.Unlock()
-	flow, loaded := f.flows[key]
-	if !loaded {
-		return nil
-	}
-	if flow.closed.Load() {
-		delete(f.flows, key)
-		return nil
-	}
+	flow := f.flows[key]
+	if flow == nil || f.returnPath.closed.Load() { f.flowAccess.Unlock(); return nil }
 	now := time.Now()
-	if now.After(flow.deadline) {
+	if flow.closed.Load() || now.After(flow.deadline) {
 		delete(f.flows, key)
-		flow.close(FlowCloseTimeout)
+		f.flowAccess.Unlock()
+		flow.remove(FlowCloseTimeout)
 		return nil
 	}
 	flow.deadline = now.Add(defaultICMPTimeout)
-	return flow
+	use, err := flow.retain()
+	f.flowAccess.Unlock()
+	if err != nil { return nil }
+	return use
+}
+
+func (f *ICMPForwarder) expireFlows(now time.Time) {
+	f.flowAccess.Lock()
+	var expired []*icmpFlow
+	for key, flow := range f.flows {
+		if flow.closed.Load() || now.After(flow.deadline) { delete(f.flows, key); expired = append(expired, flow) }
+	}
+	f.flowAccess.Unlock()
+	for _, flow := range expired { flow.remove(FlowCloseTimeout) }
 }
 
 type icmpForwarderReturn struct {
@@ -394,10 +404,10 @@ func (f *ICMPForwarder) returnPacket(packet []byte) bool {
 		default:
 			return false
 		}
-		flow := f.lookupFlow(key)
-		if flow == nil {
-			return false
-		}
+		use := f.lookupFlow(key)
+		if use == nil { return false }
+		defer use.release()
+		flow := use.flow
 		if flow.tracker != nil {
 			flow.tracker.CountReverse(len(packet))
 		}
@@ -417,10 +427,10 @@ func (f *ICMPForwarder) returnPacket(packet []byte) bool {
 			destination: AddrFromAddress(ipHdr.SourceAddress()),
 			identifier:  icmpHdr.Ident(),
 		}
-		flow := f.lookupFlow(key)
-		if flow == nil {
-			return false
-		}
+		use := f.lookupFlow(key)
+		if use == nil { return false }
+		defer use.release()
+		flow := use.flow
 		if flow.tracker != nil {
 			flow.tracker.CountReverse(len(packet))
 		}
@@ -451,4 +461,21 @@ func (f *ICMPForwarder) writeBack(packet []byte, protocol tcpip.NetworkProtocolN
 		f.logger.Error(E.Cause(gonet.TranslateNetstackError(gErr), "write ICMP reply"))
 	}
 	return true
+}
+
+func (f *ICMPForwarder) expireLoop() {
+	defer close(f.done)
+	ticker := time.NewTicker(fragmentSweepInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case now := <-ticker.C: f.expireFlows(now)
+		case <-f.stop: return
+		}
+	}
+}
+
+func (f *ICMPForwarder) WaitDetached(ctx context.Context) error {
+	if err := f.attachments.WaitDetached(ctx); err != nil { return err }
+	select { case <-f.done: return nil; case <-ctx.Done(): return ctx.Err() }
 }

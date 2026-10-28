@@ -77,7 +77,9 @@ func (f *TCPForwarder) HandlePacket(id stack.TransportEndpointID, pkt *stack.Pac
 func (f *TCPForwarder) Forward(r *tcp.ForwarderRequest) {
 	source := M.SocksaddrFrom(AddrFromAddress(r.ID().RemoteAddress), r.ID().RemotePort)
 	destination := M.SocksaddrFrom(AddrFromAddress(r.ID().LocalAddress), r.ID().LocalPort)
-	switch f.handler.JudgeFlow(uint8(header.TCPProtocolNumber), source.AddrPort(), destination.AddrPort(), nil).Action {
+	verdict := f.handler.JudgeFlow(uint8(header.TCPProtocolNumber), source.AddrPort(), destination.AddrPort(), nil)
+	defer verdict.Release()
+	switch verdict.Action {
 	case ActionReject:
 		r.Complete(true)
 		return
@@ -92,5 +94,13 @@ func (f *TCPForwarder) Forward(r *tcp.ForwarderRequest) {
 		localAddr:  source.TCPAddr(),
 		remoteAddr: destination.TCPAddr(),
 	}
-	go f.handler.NewConnectionEx(f.ctx, conn, source, destination, nil)
+	owned := verdict.Take()
+	conn.ownership.owner = owned.Ownership
+	launchOwner, err := conn.ownership.retain()
+	if err != nil { conn.Close(); return }
+	ctx := bindFlow(f.ctx, launchOwner)
+	go func() {
+		defer releaseFlow(launchOwner)
+		f.handler.NewConnectionEx(ctx, conn, source, destination, nil)
+	}()
 }

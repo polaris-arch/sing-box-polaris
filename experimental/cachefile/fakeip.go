@@ -2,6 +2,7 @@ package cachefile
 
 import (
 	"bytes"
+	"context"
 	"net/netip"
 	"os"
 
@@ -42,11 +43,11 @@ func (c *CacheFile) FakeIPMetadata() *adapter.FakeIPMetadata {
 func (c *CacheFile) FakeIPSaveMetadata(metadata *adapter.FakeIPMetadata) error {
 	c.pendingAccess.Lock()
 	added := c.pending.fakeIPMetadata == nil
-	c.pending.fakeIPMetadata = metadata
+	copyMetadata := *metadata
+	c.pending.fakeIPMetadata = &copyMetadata
 	c.enqueueLocked(added, 0)
 	c.pendingAccess.Unlock()
-	c.Flush()
-	return nil
+	return c.FlushFakeIP(context.Background())
 }
 
 func putFakeIPMetadata(tx *bbolt.Tx, metadata *adapter.FakeIPMetadata) error {
@@ -63,8 +64,7 @@ func putFakeIPMetadata(tx *bbolt.Tx, metadata *adapter.FakeIPMetadata) error {
 
 func (c *CacheFile) FakeIPStore(address netip.Addr, domain string) error {
 	c.queueFakeIP(address, domain)
-	c.Flush()
-	return nil
+	return c.FlushFakeIP(context.Background())
 }
 
 func (c *CacheFile) FakeIPStoreAsync(address netip.Addr, domain string, logger logger.Logger) {

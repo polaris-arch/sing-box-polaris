@@ -105,7 +105,8 @@ func TestTailscaleStoreCensusRetainsOriginalAndSealsLateEndpoint(t *testing.T) {
 
 func retirementOptions(registry *endpoint.Registry, tags ...string) Options {
 	ctx := Context(context.Background(), inbound.NewRegistry(), outbound.NewRegistry(), registry, dns.NewTransportRegistry(), boxService.NewRegistry(), boxCertificate.NewRegistry())
-	options := option.Options{Log: &option.LogOptions{Disabled: true}}
+	// This fixture tests the legacy physical store owner, not a runtime endpoint.
+	options := option.Options{Log: &option.LogOptions{Disabled: true}, Certificate: &option.CertificateOptions{}}
 	for _, tag := range tags {
 		options.Endpoints = append(options.Endpoints, option.Endpoint{Type: C.TypeTailscale, Tag: tag, Options: &struct{}{}})
 	}

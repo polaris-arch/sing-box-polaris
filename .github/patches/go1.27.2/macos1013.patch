@@ -434,16 +434,19 @@ diff --git a/src/cmd/link/link_test.go b/src/cmd/link/link_test.go
 index 1528b4b1f98d64..c03c1223967e94 100644
 --- a/src/cmd/link/link_test.go
 +++ b/src/cmd/link/link_test.go
-@@ -482,9 +482,9 @@ func TestMachOBuildVersion(t *testing.T) {
+@@ -482,9 +482,12 @@ func TestMachOBuildVersion(t *testing.T) {
  	}
  	found := false
  	checkMin := func(ver uint32) {
 -		major, minor, patch := (ver>>16)&0xff, (ver>>8)&0xff, (ver>>0)&0xff
 -		if major < 11 {
 -			t.Errorf("LC_BUILD_VERSION version %d.%d.%d < 11.0.0", major, minor, patch)
-+		major, minor := (ver>>16)&0xff, (ver>>8)&0xff
-+		if major != 10 || minor < 9 {
-+			t.Errorf("LC_BUILD_VERSION version %d.%d < 10.9", major, minor)
++		want := uint32(11 << 16) // darwin/arm64: macOS 11.0.0
++		if runtime.GOARCH == "amd64" {
++			want = 10<<16 | 13<<8 // darwin/amd64: macOS 10.13.0
++		}
++		if ver != want {
++			t.Errorf("LC_BUILD_VERSION version %#x != %#x for %s", ver, want, runtime.GOARCH)
  		}
  	}
  	for _, cmd := range exem.Loads {

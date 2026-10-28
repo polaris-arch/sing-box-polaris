@@ -21,7 +21,15 @@ type (
 	ClientConstructor[O any] func(ctx context.Context, dialer N.Dialer, serverAddr M.Socksaddr, options O, tlsConfig tls.Config) (adapter.V2RayClientTransport, error)
 )
 
-func NewServerTransport(ctx context.Context, logger logger.ContextLogger, options option.V2RayTransportOptions, tlsConfig tls.ServerConfig, handler adapter.V2RayServerTransportHandler) (adapter.V2RayServerTransport, error) {
+func NewServerTransport(ctx context.Context, logger logger.ContextLogger, options option.V2RayTransportOptions, tlsConfig tls.ServerConfig, handler adapter.V2RayServerTransportHandler) (result adapter.V2RayServerTransport, err error) {
+	if adapter.IsRuntimePreparation(ctx) {
+		handler = &runtimeTransportHandler{handler: handler}
+		defer func() {
+			if err == nil && result != nil {
+				result, err = wrapRuntimeServer(ctx, result)
+			}
+		}()
+	}
 	if options.Type == "" {
 		return nil, nil
 	}

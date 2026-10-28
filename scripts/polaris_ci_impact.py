@@ -11,6 +11,19 @@ import subprocess
 # This instruction guide is not a compiler/schema/install/NOTICE input. All
 # other Markdown, including the licensed root README, remains full validation.
 PROSE = frozenset({'release/POLARIS_PRODUCTION_RELEASE.md'})
+# Only these Python contract tests and historical data are non-runtime inputs.
+# Classifier code, all active workflows, runtime tools and unknown files stay full.
+CI_ONLY = frozenset({
+    'scripts/test_polaris_ci_impact.py',
+    'scripts/test_polaris_runner_resources.py',
+    'scripts/test_polaris_production_release.py',
+    'scripts/ci/test_ci_contract.py',
+    'scripts/testdata/historical-workflows/README.md',
+    'scripts/testdata/historical-workflows/polaris-dns-native-candidate.yml',
+    'scripts/testdata/historical-workflows/polaris-native-candidate.yml',
+    'scripts/testdata/historical-workflows/polaris-production-native.yml',
+    'scripts/testdata/historical-workflows/polaris-production-release.yml',
+})
 SHA = re.compile(r'[0-9a-f]{40}\Z')
 LIMIT = 1024 * 1024
 
@@ -22,7 +35,7 @@ def git(repo, *arguments):
 def classify_changes(changes):
     if not changes:
         return False
-    return all(row['path'] in PROSE and row['status'] in ('A', 'M', 'D')
+    return all(row['path'] in PROSE | CI_ONLY and row['status'] in ('A', 'M', 'D')
                and row['oldMode'] in ('000000', '100644')
                and row['newMode'] in ('000000', '100644') for row in changes)
 
@@ -43,7 +56,7 @@ def parse_raw(raw):
     return rows
 
 
-def embed_may_consume_guide(repo, head):
+def embed_may_consume_guide(repo, head, paths=PROSE):
     """Conservative Go embed check, including directory and all: patterns."""
     files = [name.decode('utf-8') for name in git(repo, 'ls-tree', '-r', '-z', '--name-only', head).split(b'\0') if name]
     for name in files:
@@ -51,7 +64,7 @@ def embed_may_consume_guide(repo, head):
             continue
         package = PurePosixPath(name).parent
         possible = []
-        for guide in PROSE:
+        for guide in paths:
             try:
                 possible.append(str(PurePosixPath(guide).relative_to(package)))
             except ValueError:
@@ -107,8 +120,8 @@ def classify(repo, event, event_name, ref, workflow_sha):
             git(repo, 'fetch', '--no-tags', '--depth=1', 'origin', before)
         changes = parse_raw(git(repo, 'diff', '--raw', '--no-abbrev', '--no-renames', '-z', before, after))
         result['changed'] = changes
-        if classify_changes(changes) and not embed_may_consume_guide(repo, after):
-            result.update(runFull=False, reason='only-audited-prose-guide')
+        if classify_changes(changes) and not embed_may_consume_guide(repo, after, [row['path'] for row in changes]):
+            result.update(runFull=False, reason='only-contract-tests-or-audited-prose')
         else:
             result['reason'] = 'runtime-contract-or-unrecognized-change'
     except (OSError, ValueError, UnicodeError, subprocess.SubprocessError):

@@ -213,6 +213,8 @@ func TestTransientHTTPInboundRejectsMissingAndWrongSpeedtestCredentials(t *testi
 
 type transientTestPlatform struct{ PlatformInterface }
 
+func (transientTestPlatform) UsePlatformAutoRedirect() bool { return false }
+
 func (transientTestPlatform) LocalDNSTransport() LocalDNSTransport        { return nil }
 func (transientTestPlatform) UseProcFS() bool                             { return false }
 func (transientTestPlatform) UsePlatformAutoDetectInterfaceControl() bool { return false }
@@ -386,5 +388,32 @@ func TestTransientCloseAfterCleanFailedStartBlocksLateStart(t *testing.T) {
 	}
 	if err := server.StartOrReloadService(`{}`, &OverrideOptions{}); !errors.Is(err, os.ErrClosed) {
 		t.Fatalf("late start after close = %v, want ErrClosed", err)
+	}
+}
+
+func TestCommandServerRejectedReloadKeepsSharedDiagnostics(t *testing.T) {
+	transientTestSetup(t)
+	sPowerReportEnabled = false
+	defaultLogger := log.StdLogger()
+	t.Cleanup(func() { log.SetStdLogger(defaultLogger) })
+	server, err := NewCommandServer(nil, transientTestPlatform{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { server.CloseService(); server.Close() }()
+	config := `{}`
+	if err := server.StartOrReloadService(config, &OverrideOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	instance := server.Instance()
+	if err := server.StartOrReloadService("invalid replacement configuration", &OverrideOptions{}); err == nil {
+		t.Fatal("invalid configuration accepted")
+	}
+	if server.Instance() != instance {
+		t.Fatal("rejected reload replaced the running instance")
+	}
+	content, err := os.ReadFile(configSnapshotPath())
+	if err != nil || string(content) != config {
+		t.Fatalf("rejected reload overwrote live configuration snapshot: %v", err)
 	}
 }

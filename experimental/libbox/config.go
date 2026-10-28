@@ -36,6 +36,9 @@ func baseContext(platformInterface PlatformInterface) context.Context {
 	}
 	ctx := context.Background()
 	ctx = filemanager.WithDefault(ctx, sWorkingPath, sTempPath, sUserID, sGroupID)
+	// BasePath is the host's durable internal/App Group state root. WorkingPath
+	// may be external/removable Android storage and is not a recovery anchor.
+	ctx = adapter.ContextWithRuntimeRecoveryRoot(ctx, sBasePath)
 	return box.Context(ctx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), dnsRegistry, include.ServiceRegistry(), include.CertificateProviderRegistry())
 }
 

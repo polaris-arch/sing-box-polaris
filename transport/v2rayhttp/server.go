@@ -14,6 +14,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	"github.com/sagernet/sing/common/bufio"
@@ -68,7 +69,7 @@ func NewServer(ctx context.Context, logger logger.ContextLogger, options option.
 			return ctx
 		},
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return log.ContextWithNewID(ctx)
+			return log.ContextWithNewID(runtimeingress.Context(ctx, c))
 		},
 	}
 	//nolint:staticcheck
@@ -77,6 +78,13 @@ func NewServer(ctx context.Context, logger logger.ContextLogger, options option.
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	owned, leave, err := runtimeingress.Acquire(request.Context(), adapter.IsRuntimePreparation(s.ctx))
+	if err != nil {
+		http.Error(writer, "connection retired", http.StatusServiceUnavailable)
+		return
+	}
+	defer leave()
+	request = request.WithContext(owned)
 	if request.Method == "PRI" && len(request.Header) == 0 && request.URL.Path == "*" && request.Proto == "HTTP/2.0" {
 		s.h2cHandler.ServeHTTP(writer, request)
 		return

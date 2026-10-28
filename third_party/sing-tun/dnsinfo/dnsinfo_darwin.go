@@ -120,6 +120,7 @@ import (
 	"net/netip"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -129,8 +130,16 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Serialize the C function-pointer initialization across all logical resolver
+// generations. After successful initialization C never writes these pointers
+// again; each reader observes that success while holding the same mutex.
+var dnsInfoLoadAccess sync.Mutex
+
 func Copy() *Configuration {
-	if C.box_dnsinfo_load() == 0 {
+ dnsInfoLoadAccess.Lock()
+ loaded := C.box_dnsinfo_load()
+ dnsInfoLoadAccess.Unlock()
+	if loaded == 0 {
 		return nil
 	}
 	rawConfig := C.box_dnsinfo_copy()

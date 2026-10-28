@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -30,6 +31,8 @@ var (
 )
 
 type Selector struct {
+	runtimeAccess sync.Mutex
+	runtimeActive bool
 	outbound.Adapter
 	ctx                          context.Context
 	outbound                     adapter.OutboundManager
@@ -130,26 +133,60 @@ func (s *Selector) References() []string {
 }
 
 func (s *Selector) SelectOutbound(tag string) bool {
+	if control, ok := adapter.RuntimeControlFromContext(s.ctx); ok {
+		source, present := adapter.RuntimeResourceSourceFromContext(s.ctx)
+		if !present {
+			return false
+		}
+		return control.SelectRuntimeOutbound(source.ID(), s.Tag(), tag)
+	}
+	_, accepted, effect := s.RuntimeSelect(tag)
+	if effect != nil {
+		effect()
+	}
+	return accepted
+}
+
+// RuntimeSelect mutates only the in-memory selection. The coordinator invokes
+// its returned effects outside admission/lifecycle guards under ordered control
+// persistence. Legacy callers keep identical synchronous effects above.
+func (s *Selector) RuntimeSelect(tag string) (changed bool, accepted bool, effect func()) {
 	detour, loaded := s.outbounds[tag]
 	if !loaded {
-		return false
+		return false, false, nil
 	}
 	if s.selected.Swap(detour) == detour {
-		return true
+		return false, true, nil
 	}
-	if s.Tag() != "" {
-		cacheFile := service.FromContext[adapter.CacheFile](s.ctx)
-		if cacheFile != nil {
-			err := cacheFile.StoreSelected(s.Tag(), tag)
-			if err != nil {
-				s.logger.Error("store selected: ", err)
+	return true, true, func() {
+		if s.Tag() != "" {
+			cacheFile := service.FromContext[adapter.CacheFile](s.ctx)
+			if cacheFile != nil {
+				if err := cacheFile.StoreSelected(s.Tag(), tag); err != nil {
+					s.logger.Error("store selected: ", err)
+				}
 			}
 		}
+		s.interruptGroup.Interrupt(s.interruptExternalConnections)
+		if s.history != nil {
+			s.history.NotifyUpdated()
+		}
 	}
-	s.interruptGroup.Interrupt(s.interruptExternalConnections)
-	if s.history != nil {
-		s.history.NotifyUpdated()
+}
+
+// RuntimeSelectInitial is private candidate-state migration, without cache IO,
+// notifications or connection interruption. It never mutates a published group.
+func (s *Selector) RuntimeSelectInitial(tag string) bool {
+	s.runtimeAccess.Lock()
+	defer s.runtimeAccess.Unlock()
+	if !adapter.IsRuntimePreparation(s.ctx) || s.runtimeActive {
+		return false
 	}
+	detour, exists := s.outbounds[tag]
+	if !exists {
+		return false
+	}
+	s.selected.Store(detour)
 	return true
 }
 
@@ -180,4 +217,10 @@ func RealTag(detour adapter.Outbound, network string) string {
 			return ""
 		}
 	}
+}
+
+func (s *Selector) RuntimeActivate() {
+	s.runtimeAccess.Lock()
+	s.runtimeActive = true
+	s.runtimeAccess.Unlock()
 }

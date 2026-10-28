@@ -480,13 +480,13 @@ class ProductionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'mixed source/run/attempt/version'):
                     production.assemble(REPO, HEAD, inputs,base/'ow',base/'guest', base / 'mixed-output')
 
-    def test_workflow_is_manual_no_publishing_and_does_not_retarget_historical_lanes(self):
-        workflow = (REPO / '.github/workflows/polaris-production-release.yml').read_text()
+    def test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes(self):
+        workflow = (REPO / 'scripts/testdata/historical-workflows/polaris-production-release.yml').read_text()
         self.assertNotIn('max-parallel:', workflow)
         self.assertIn('needs: [plan, native-openwrt]', workflow)
         self.assertIn('needs: [plan, native, native-openwrt, openwrt-guests]', workflow)
         self.assertEqual(workflow.count('uses: ./.github/workflows/polaris-production-native.yml'), 2)
-        runner = (REPO / '.github/workflows/polaris-production-native.yml').read_text()
+        runner = (REPO / 'scripts/testdata/historical-workflows/polaris-production-native.yml').read_text()
         self.assertIn('polaris_runner_resources.py', runner)
         self.assertIn('cancel-in-progress: false', workflow)
         self.assertIn('go-version: \'1.25.5\'', workflow)

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,8 +92,28 @@ func windowsTestSignal(path, nonce string) error {
 	return os.Rename(temporary, path)
 }
 
+// Read only test IPC files, which are published by temp-close-rename. A renamed
+// name can become visible before MoveFileEx closes its DELETE handle. Sharing
+// DELETE here permits that overlap; production directory custody must not do so.
+func windowsTestReadSignal(path string) ([]byte, error) {
+	wide, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	h, err := windows.CreateFile(wide, windows.GENERIC_READ, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	f := os.NewFile(uintptr(h), path)
+	if f == nil {
+		return nil, errors.Join(fmt.Errorf("wrap test signal handle: %s", path), windows.CloseHandle(h))
+	}
+	data, readErr := io.ReadAll(f)
+	return data, errors.Join(readErr, f.Close())
+}
+
 func windowsTestHasSignal(path, nonce string) (bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := windowsTestReadSignal(path)
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -136,6 +157,20 @@ type windowsTestProcess struct {
 	ready       windowsProcessReady
 }
 
+func windowsTestDecodeReady(data []byte, nonce, mode string) (windowsProcessReady, error) {
+	var ready windowsProcessReady
+	if err := json.Unmarshal(data, &ready); err != nil {
+		return ready, err
+	}
+	if ready.Nonce != nonce || ready.Mode != mode {
+		return ready, fmt.Errorf("child ready did not bind request")
+	}
+	if mode != "reject" && (ready.Identity == "" || !validDirectoryNonce(ready.Incarnation) || !validDirectoryNonce(ready.Epoch)) {
+		return ready, fmt.Errorf("child ready lacked physical generation")
+	}
+	return ready, nil
+}
+
 func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *windowsTestProcess {
 	t.Helper()
 	nonce, err := newDirectoryNonce()
@@ -176,16 +211,11 @@ func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		data, err := os.ReadFile(windowsProcessFile(root, nonce, "ready"))
+		data, err := windowsTestReadSignal(windowsProcessFile(root, nonce, "ready"))
 		if err == nil {
-			if err := json.Unmarshal(data, &p.ready); err != nil {
+			p.ready, err = windowsTestDecodeReady(data, nonce, mode)
+			if err != nil {
 				t.Fatal(err)
-			}
-			if p.ready.Nonce != nonce || p.ready.Mode != mode {
-				t.Fatal("child ready did not bind request")
-			}
-			if mode != "reject" && (p.ready.Identity == "" || !validDirectoryNonce(p.ready.Incarnation) || !validDirectoryNonce(p.ready.Epoch)) {
-				t.Fatal("child ready lacked physical generation")
 			}
 			return p
 		}
@@ -202,6 +232,119 @@ func windowsTestStartProcess(t *testing.T, root, mode string, extra ...string) *
 			t.Fatalf("child ready timeout\n%s", output.text())
 		case <-ticker.C:
 		}
+	}
+}
+
+// Hold the DELETE access used during rename without relying on scheduler
+// timing. The ordinary reader must fail while the IPC reader reads all bytes.
+func TestWindowsDirectorySignalReadDuringRename(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ready")
+	nonce := strings.Repeat("1", 32)
+	ready := windowsProcessReady{Nonce: nonce, Mode: "writer", Identity: "fixture", Incarnation: strings.Repeat("2", 32), Epoch: strings.Repeat("3", 32)}
+	data, err := json.Marshal(ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windowsTestSignal(path, string(data)); err != nil {
+		t.Fatal(err)
+	}
+	wide, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := windows.CreateFile(wide, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := windows.CloseHandle(h); err != nil {
+			t.Error(err)
+		}
+	}()
+	if _, err := os.ReadFile(path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+		t.Fatalf("ordinary reader error = %v, want sharing violation", err)
+	}
+	got, err := windowsTestReadSignal(path)
+	if err != nil || !bytes.Equal(got, data) {
+		t.Fatalf("IPC reader did not read complete published bytes: %v", err)
+	}
+	decoded, err := windowsTestDecodeReady(got, nonce, "writer")
+	if err != nil || decoded != ready {
+		t.Fatalf("IPC reader lost ready binding: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(path, string(data)); err != nil || !ok {
+		t.Fatalf("signal reader did not share rename handle: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(path, nonce); err != nil || ok {
+		t.Fatalf("signal reader accepted wrong payload: %v", err)
+	}
+}
+
+func TestWindowsDirectorySignalValidation(t *testing.T) {
+	root := t.TempDir()
+	missing := filepath.Join(root, "missing")
+	if _, err := windowsTestReadSignal(missing); !os.IsNotExist(err) {
+		t.Fatalf("missing signal error = %v, want not exist", err)
+	}
+	if ok, err := windowsTestHasSignal(missing, "nonce"); err != nil || ok {
+		t.Fatalf("missing signal was accepted: %v", err)
+	}
+	nonce := strings.Repeat("1", 32)
+	signal := filepath.Join(root, "signal")
+	if err := windowsTestSignal(signal, nonce); err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := windowsTestHasSignal(signal, nonce); err != nil || !ok {
+		t.Fatalf("valid signal rejected: %v", err)
+	}
+	if ok, err := windowsTestHasSignal(signal, "invalid"); err != nil || ok {
+		t.Fatalf("wrong nonce accepted: %v", err)
+	}
+	if ok, err := windowsTestHasSignal("invalid\x00path", nonce); err == nil || ok {
+		t.Fatal("non-missing open error was suppressed")
+	}
+	rejected := []byte(`{"Nonce":"` + nonce + `","Mode":"reject"}`)
+	if _, err := windowsTestDecodeReady(rejected, nonce, "reject"); err != nil {
+		t.Fatalf("native rejection ready requires no generation: %v", err)
+	}
+	valid := windowsProcessReady{Nonce: nonce, Mode: "writer", Identity: "fixture", Incarnation: strings.Repeat("2", 32), Epoch: strings.Repeat("3", 32)}
+	for _, field := range []string{"json", "nonce", "mode", "identity", "incarnation", "epoch"} {
+		t.Run(field, func(t *testing.T) {
+			ready := valid
+			switch field {
+			case "nonce":
+				ready.Nonce = "invalid"
+			case "mode":
+				ready.Mode = "retirement"
+			case "identity":
+				ready.Identity = ""
+			case "incarnation":
+				ready.Incarnation = "invalid"
+			case "epoch":
+				ready.Epoch = "invalid"
+			}
+			data, err := json.Marshal(ready)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if field == "json" {
+				data = []byte("{")
+			}
+			path := filepath.Join(root, field)
+			if err := windowsTestSignal(path, string(data)); err != nil {
+				t.Fatal(err)
+			}
+			got, err := windowsTestReadSignal(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := windowsTestDecodeReady(got, nonce, "writer"); err == nil {
+				t.Fatal("invalid ready accepted")
+			}
+			if ok, err := windowsTestHasSignal(path, nonce); err != nil || ok {
+				t.Fatalf("invalid signal accepted: %v", err)
+			}
+		})
 	}
 }
 
@@ -354,6 +497,10 @@ func TestWindowsDirectoryProcessChild(t *testing.T) {
 		t.Fatal("invalid process nonce")
 	}
 	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	if mode == "checkpoint-before-rename" || mode == "checkpoint-after-rename" {
+		windowsTestCheckpointCrashChild(t, root, nonce, mode, path)
+		return
+	}
 	var lease *directoryLease
 	var err error
 	switch mode {
@@ -952,5 +1099,305 @@ func TestWindowsDirectoryInteropChild(t *testing.T) {
 			t.Fatal("interop close deadline expired")
 		case <-ticker.C:
 		}
+	}
+}
+
+// Native checkpoint fixtures author real private marker histories under both
+// custody locks. They do not start tsnet or assert full power-loss durability.
+func windowsTestCheckpointCustody(t *testing.T, path string) *directoryLease {
+	t.Helper()
+	l, err := windowsTestRetirementCustody(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.releaseHandles() })
+	// Retirement uses DELETE on the target directory. Maintenance uses the
+	// ordinary retained target handle, allowing checkAnchors' normal reopen.
+	if err := windows.CloseHandle(l.target); err != nil {
+		l.target = 0
+		t.Fatal(err)
+	}
+	l.target = 0
+	l.target, err = l.openPrivate(l.root, l.targetName, true, windows.FILE_OPEN, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.markerName = directoryControlStem(l.targetName) + ".jsonl"
+	l.checkpointExclusive = true
+	return l
+}
+
+func windowsTestFillCheckpointJournal(t *testing.T, path string, partialScratch bool) ([]byte, string) {
+	t.Helper()
+	l := windowsTestCheckpointCustody(t, path)
+	marker, err := l.readMarker(l.markerName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var data []byte
+	for i := 1; ; i++ {
+		marker.DirectoryEpoch = fmt.Sprintf("%032x", i)
+		line := windowsTestMarkerLine(t, *marker)
+		if len(data)+len(line) > windowsMarkerLimit {
+			break
+		}
+		data = append(data, line...)
+	}
+	last, err := windowsDecodeMarkerLog(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fits, err := windowsMarkerAdmissionFits(len(data), *last); err != nil || fits {
+		t.Fatalf("fixture not saturated: %v", err)
+	}
+	h, err := l.openPrivate(l.control, l.markerName, false, windows.FILE_OPEN, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := errors.Join(windowsWriteAll(h, data), windows.CloseHandle(h)); err != nil {
+		t.Fatal(err)
+	}
+	if partialScratch {
+		h, err := windowsCreatePrivateAt(l.control, windowsCheckpointName(l.targetName), false, windows.FILE_CREATE, true, l.ownerSID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := errors.Join(windowsWriteAll(h, []byte("{partial")), windows.CloseHandle(h)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	markerPath := filepath.Join(filepath.Dir(filepath.Dir(path)), l.controlName, l.markerName)
+	if err := l.releaseHandles(); err != nil {
+		t.Fatal(err)
+	}
+	return data, markerPath
+}
+
+func TestWindowsCheckpointColdRepeatedAndScratchRecovery(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	incarnation, identity := l.Incarnation, l.Identity
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		old, markerPath := windowsTestFillCheckpointJournal(t, path, true)
+		previous, err := windowsDecodeMarkerLog(old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := acquireDirectoryLease(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if l.Incarnation != incarnation || l.Identity != identity || l.Epoch == previous.DirectoryEpoch {
+			t.Fatal("checkpoint changed identity or reused epoch")
+		}
+		data, err := os.ReadFile(markerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Count(data, []byte{'\n'}) != 2 {
+			t.Fatal("expected exact old terminal plus fresh Open")
+		}
+		if !bytes.HasPrefix(data, windowsTestMarkerLine(t, *previous)) {
+			t.Fatal("checkpoint did not retain exact terminal")
+		}
+		if _, err := os.Stat(filepath.Join(filepath.Dir(markerPath), windowsCheckpointName("node"))); !os.IsNotExist(err) {
+			t.Fatalf("scratch still exists: %v", err)
+		}
+		if err := l.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestWindowsCheckpointBusyLifetimeDoesNotChangeJournal(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, markerPath := windowsTestFillCheckpointJournal(t, path, false)
+	// Hold only the lifetime SH, with root admission released, as a live owner
+	// would. The candidate must select EX directly and fail without publication.
+	owner := windowsTestCheckpointCustody(t, path)
+	if err := windowsUnlock(owner.lifetime); err != nil {
+		t.Fatal(err)
+	}
+	owner.lifetimeHeld = false
+	if err := windowsLock(owner.lifetime, false); err != nil {
+		t.Fatal(err)
+	}
+	owner.lifetimeHeld = true
+	owner.checkpointExclusive = false
+	if err := windowsUnlock(owner.admission); err != nil {
+		t.Fatal(err)
+	}
+	owner.admissionHeld = false
+	candidate, err := acquireDirectoryLease(path)
+	if err == nil {
+		_ = candidate.Close()
+		t.Fatal("checkpoint ignored live owner")
+	}
+	if !strings.Contains(err.Error(), "lifetime busy") {
+		t.Fatalf("wrong rejection: %v", err)
+	}
+	after, err := os.ReadFile(markerPath)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("busy admission mutated journal: %v", err)
+	}
+	if err := owner.releaseHandles(); err != nil {
+		t.Fatal(err)
+	}
+	candidate, err = acquireDirectoryLease(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := candidate.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func windowsTestCheckpointCrashChild(t *testing.T, root, nonce, mode, path string) {
+	l := windowsTestCheckpointCustody(t, path)
+	data, err := l.readPrivate(l.control, l.markerName, windowsMarkerLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last, compact, err := windowsCheckpointOpenJournal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := windowsCreatePrivateAt(l.control, windowsCheckpointName("node"), false, windows.FILE_CREATE, true, l.ownerSID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode == "checkpoint-before-rename" {
+		if err := errors.Join(windowsWriteAll(h, []byte("{partial")), windows.CloseHandle(h)); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		if err := errors.Join(windowsWriteAll(h, compact), windows.CloseHandle(h)); err != nil {
+			t.Fatal(err)
+		}
+		h, err = l.openCheckpointScratch(windowsCheckpointName("node"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer windows.CloseHandle(h)
+		if err := windowsReplacePrivateFile(h, l.control, l.markerName); err != nil {
+			t.Fatal(err)
+		}
+		if err := windows.FlushFileBuffers(h); err != nil {
+			t.Fatal(err)
+		}
+		// The DELETE handle is intentionally still live when the parent kills
+		// this child. A normal marker reopen must fail until that handle closes.
+		opened, err := l.openPrivate(l.control, l.markerName, false, windows.FILE_OPEN, false)
+		if err == nil {
+			_ = windows.CloseHandle(opened)
+			t.Fatal("normal reopen unexpectedly bypassed DELETE sharing")
+		}
+	}
+	ready := windowsProcessReady{Nonce: nonce, Mode: mode, Identity: l.Identity, Incarnation: last.Incarnation, Epoch: last.DirectoryEpoch, ControlName: l.controlName, LockName: l.lockName}
+	encoded, err := json.Marshal(ready)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windowsTestSignal(windowsProcessFile(root, nonce, "ready"), string(encoded)); err != nil {
+		t.Fatal(err)
+	}
+	// Parent kills and joins this process. This timer is only a failure bound.
+	<-time.After(windowsProcessTimeout)
+	t.Fatal("checkpoint child was not killed")
+}
+
+func TestWindowsCheckpointProcessCrashBeforeAndAfterRename(t *testing.T) {
+	for _, mode := range []string{"checkpoint-before-rename", "checkpoint-after-rename"} {
+		t.Run(mode, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "tailscale-windows-v1", "node")
+			l, err := acquireDirectoryLease(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := l.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before, markerPath := windowsTestFillCheckpointJournal(t, path, false)
+			_, compact, err := windowsCheckpointOpenJournal(before)
+			if err != nil {
+				t.Fatal(err)
+			}
+			child := windowsTestStartProcess(t, root, mode)
+			child.kill(t)
+			after, err := os.ReadFile(markerPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := before
+			if mode == "checkpoint-after-rename" {
+				want = compact
+			}
+			if !bytes.Equal(after, want) {
+				t.Fatal("checkpoint crash altered authoritative state")
+			}
+			l, err = acquireDirectoryLease(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := l.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestWindowsCheckpointOpenMarkerConflictPreservesAuthority(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "tailscale-windows-v1", "node")
+	l, err := acquireDirectoryLease(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := windowsTestFillCheckpointJournal(t, path, false)
+	owner := windowsTestCheckpointCustody(t, path)
+	previous, err := windowsDecodeMarkerLog(before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := owner.openPrivate(owner.control, owner.markerName, false, windows.FILE_OPEN, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A non-sharing reader blocks replacement. Rename failure must not truncate
+	// the active journal or blindly dispose the possibly authoritative source.
+	checkpointErr := owner.checkpointOpenJournal(previous)
+	after, readErr := windowsReadBounded(reader, windowsMarkerLimit)
+	closeErr := windows.CloseHandle(reader)
+	if checkpointErr == nil || readErr != nil || closeErr != nil || !bytes.Equal(before, after) {
+		t.Fatalf("conflict lost authority: checkpoint=%v read=%v close=%v", checkpointErr, readErr, closeErr)
+	}
+	if err := owner.checkpointOpenJournal(previous); err != nil {
+		t.Fatal(err)
+	}
+	after, err = owner.readPrivate(owner.control, owner.markerName, windowsMarkerLimit)
+	if err != nil || !bytes.Equal(after, windowsTestMarkerLine(t, *previous)) {
+		t.Fatalf("recovery mismatch: %v", err)
+	}
+	if err := owner.releaseHandles(); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -27,12 +27,14 @@ func (rulesNetworkTestPlatform) CreateDefaultInterfaceMonitor(logger logger.Logg
 
 func TestDefaultDomainResolverRulesProjection(t *testing.T) {
 	ctx := service.ContextWith[adapter.PlatformInterface](context.Background(), rulesNetworkTestPlatform{})
-	resolver := &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Strategy: option.DomainStrategy(C.DomainStrategyPreferIPv4), Timeout: badoption.Duration(2 * time.Second), DisableCache: true}
+	policy := "bootstrap-policy"
+	resolver := &option.DomainResolveOptions{Policy: &policy, Mode: option.DomainResolverModeRules, Strategy: option.DomainStrategy(C.DomainStrategyPreferIPv4), Timeout: badoption.Duration(2 * time.Second), DisableCache: true}
 	manager, err := NewNetworkManager(ctx, log.NewNOPFactory().Logger(), option.RouteOptions{DefaultDomainResolver: resolver}, option.DNSOptions{})
 	require.NoError(t, err)
 	options := manager.DefaultOptions()
 	require.Empty(t, options.DomainResolver)
 	require.True(t, options.DomainResolveOptions.UseRules)
+	require.Equal(t, policy, options.DomainResolveOptions.Policy)
 	require.Equal(t, C.DomainStrategyPreferIPv4, options.DomainResolveOptions.Strategy)
 	require.Equal(t, 2*time.Second, options.DomainResolveOptions.Timeout)
 	require.True(t, options.DomainResolveOptions.DisableCache)

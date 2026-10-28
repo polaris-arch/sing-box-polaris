@@ -3,15 +3,15 @@ package tf
 import (
 	"context"
 	"errors"
-	"net"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/common/winiphlpapi"
 
 	"golang.org/x/sys/windows"
 )
 
-func writeAndWaitAck(ctx context.Context, conn *net.TCPConn, payload []byte, fallbackDelay time.Duration) error {
+func writeAndWaitAck(ctx context.Context, conn outbound.RuntimeTCPControlConn, payload []byte, fallbackDelay time.Duration) error {
 	start := time.Now()
 	err := winiphlpapi.WriteAndWaitAck(ctx, conn, payload)
 	if err != nil {

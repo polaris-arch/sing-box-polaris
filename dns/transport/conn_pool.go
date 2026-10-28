@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing/common/x/list"
 
 	"golang.org/x/sync/semaphore"
@@ -30,9 +31,12 @@ type ConnPool[T comparable] struct {
 
 	sem *semaphore.Weighted
 
-	access sync.Mutex
-	closed bool
-	state  *connPoolState[T]
+	access         sync.Mutex
+	closed         bool
+	keepIdle       bool
+	state          *connPoolState[T]
+	connectWorkers sync.WaitGroup
+	closeDone      chan struct{}
 }
 
 type connPoolState[T comparable] struct {
@@ -62,7 +66,9 @@ type connPoolConnect[T comparable] struct {
 
 func NewConnPool[T comparable](options ConnPoolOptions[T]) *ConnPool[T] {
 	p := &ConnPool[T]{
-		options: options,
+		options:   options,
+		keepIdle:  true,
+		closeDone: make(chan struct{}),
 	}
 	if options.Mode == ConnPoolOrdered && options.MaxInflight > 0 {
 		p.sem = semaphore.NewWeighted(int64(options.MaxInflight))
@@ -132,7 +138,12 @@ func (p *ConnPool[T]) Release(conn T, reuse bool) {
 			state.idleElements[conn] = state.idle.PushBack(conn)
 		}
 	}
+	var idle []T
+	if !p.keepIdle {
+		idle = p.takeIdleLocked(state)
+	}
 	p.access.Unlock()
+	p.closeIdle(idle)
 }
 
 func (p *ConnPool[T]) Invalidate(conn T, cause error) {
@@ -157,7 +168,7 @@ func (p *ConnPool[T]) acquireSlot(ctx context.Context, state *connPoolState[T]) 
 		return nil
 	}
 	acquireCtx, cancel := context.WithCancel(ctx)
-	stopStateCancel := context.AfterFunc(state.ctx, cancel)
+	stopStateCancel := afterFuncJoined(state.ctx, cancel)
 	err := p.sem.Acquire(acquireCtx, 1)
 	stopStateCancel()
 	cancel()
@@ -202,21 +213,53 @@ func (p *ConnPool[T]) removeConn(state *connPoolState[T], conn T, cause error) {
 	}
 }
 
+// SetKeepIdleConnections changes retention without resetting shared sessions.
+// An active session is closed only after its last user and waiter leave.
+func (p *ConnPool[T]) SetKeepIdleConnections(keep bool) {
+	p.access.Lock()
+	p.keepIdle = keep
+	var idle []T
+	if !p.closed && !keep {
+		idle = p.takeIdleLocked(p.state)
+	}
+	p.access.Unlock()
+	p.closeIdle(idle)
+}
+
 func (p *ConnPool[T]) CloseIdle() {
 	p.access.Lock()
-	if p.closed {
-		p.access.Unlock()
-		return
+	var idle []T
+	if !p.closed {
+		idle = p.takeIdleLocked(p.state)
 	}
-	state := p.state
-	if p.options.Mode != ConnPoolSingle || !state.hasShared || state.sharedUsers > 0 || state.sharedWaiters > 0 {
-		p.access.Unlock()
-		return
-	}
-	conn := state.shared
-	p.removeConn(state, conn, net.ErrClosed)
 	p.access.Unlock()
-	p.options.Close(conn, net.ErrClosed)
+	p.closeIdle(idle)
+}
+
+// takeIdleLocked detaches only unused entries. Dials and shared-session waiters
+// stay admitted; neither their contexts nor active queries are cancelled.
+func (p *ConnPool[T]) takeIdleLocked(state *connPoolState[T]) []T {
+	if p.options.Mode == ConnPoolSingle {
+		if !state.hasShared || state.sharedUsers > 0 || state.sharedWaiters > 0 {
+			return nil
+		}
+		conn := state.shared
+		p.removeConn(state, conn, net.ErrClosed)
+		return []T{conn}
+	}
+	var idle []T
+	for element := state.idle.Front(); element != nil; element = state.idle.Front() {
+		conn := element.Value
+		p.removeConn(state, conn, net.ErrClosed)
+		idle = append(idle, conn)
+	}
+	return idle
+}
+
+func (p *ConnPool[T]) closeIdle(idle []T) {
+	for _, conn := range idle {
+		p.options.Close(conn, net.ErrClosed)
+	}
 }
 
 func (p *ConnPool[T]) Reset() {
@@ -235,7 +278,9 @@ func (p *ConnPool[T]) Reset() {
 func (p *ConnPool[T]) Close() error {
 	p.access.Lock()
 	if p.closed {
+		done := p.closeDone
 		p.access.Unlock()
+		<-done
 		return nil
 	}
 	p.closed = true
@@ -244,6 +289,8 @@ func (p *ConnPool[T]) Close() error {
 	p.access.Unlock()
 
 	p.closeState(oldState, net.ErrClosed)
+	p.connectWorkers.Wait()
+	close(p.closeDone)
 	return nil
 }
 
@@ -281,7 +328,7 @@ func (p *ConnPool[T]) dialAndInstall(ctx context.Context, current *connPoolState
 	}
 	defer p.releaseSlot()
 	dialCtx, dialCancel := context.WithCancelCause(ctx)
-	stopStateCancel := context.AfterFunc(current.ctx, func() {
+	stopStateCancel := afterFuncJoined(current.ctx, func() {
 		dialCancel(context.Cause(current.ctx))
 	})
 	conn, err := dial(dialCtx)
@@ -346,13 +393,23 @@ func (p *ConnPool[T]) acquireShared(ctx context.Context, dial func(context.Conte
 		startDial := current.connecting == nil
 		if startDial {
 			current.connecting = &connPoolConnect[T]{done: make(chan struct{})}
+			p.connectWorkers.Add(1)
 		}
 		state := current.connecting
 		current.sharedWaiters++
 		p.access.Unlock()
 
 		if startDial {
-			go p.connectSingle(current, state, ctx, dial)
+			// Reserve before dispatch: a canceled waiter may return and release its
+			// inherited operation before the worker is first scheduled.
+			workerContext, releaseWorker, reserveErr := adapter.AcquireRuntimeOperation(ctx, nil)
+			if reserveErr != nil {
+				// Resolve the already-published connecting slot and worker counter through
+				// the normal failure path; no dial or new source admission takes place.
+				p.connectSingle(current, state, ctx, func(context.Context) (T, error) { return zero, reserveErr })
+			} else {
+				go func() { defer releaseWorker(); p.connectSingle(current, state, workerContext, dial) }()
+			}
 		}
 
 		select {
@@ -365,7 +422,12 @@ func (p *ConnPool[T]) acquireShared(ctx context.Context, dial func(context.Conte
 		case <-ctx.Done():
 			p.access.Lock()
 			current.sharedWaiters--
+			var idle []T
+			if !p.closed && p.state == current && !p.keepIdle {
+				idle = p.takeIdleLocked(current)
+			}
 			p.access.Unlock()
+			p.closeIdle(idle)
 			return zero, nil, false, ctx.Err()
 		case <-current.ctx.Done():
 			p.access.Lock()
@@ -380,8 +442,9 @@ func (p *ConnPool[T]) acquireShared(ctx context.Context, dial func(context.Conte
 }
 
 func (p *ConnPool[T]) connectSingle(current *connPoolState[T], state *connPoolConnect[T], ctx context.Context, dial func(context.Context) (T, error)) {
+	defer p.connectWorkers.Done()
 	dialCtx, dialCancel := context.WithCancelCause(ctx)
-	stopStateCancel := context.AfterFunc(current.ctx, func() {
+	stopStateCancel := afterFuncJoined(current.ctx, func() {
 		dialCancel(context.Cause(current.ctx))
 	})
 	conn, err := dial(dialCtx)
@@ -417,7 +480,12 @@ func (p *ConnPool[T]) connectSingle(current *connPoolState[T], state *connPoolCo
 		current.sharedCancel = sharedCancel
 		current.all[conn] = struct{}{}
 	}
+	var idle []T
+	if !p.closed && p.state == current && !p.keepIdle {
+		idle = p.takeIdleLocked(current)
+	}
 	p.access.Unlock()
+	p.closeIdle(idle)
 
 	if closeErr != nil {
 		p.options.Close(conn, closeErr)
@@ -432,7 +500,12 @@ func (p *ConnPool[T]) collectShared(current *connPoolState[T], state *connPoolCo
 	current.sharedWaiters--
 	if state.err != nil {
 		err := state.err
+		var idle []T
+		if !p.closed && p.state == current && !p.keepIdle {
+			idle = p.takeIdleLocked(current)
+		}
 		p.access.Unlock()
+		p.closeIdle(idle)
 		if startDial {
 			return zero, nil, false, false, err
 		}
@@ -471,5 +544,23 @@ func (p *ConnPool[T]) closeState(state *connPoolState[T], cause error) {
 	state.cancel(cause)
 	for conn := range state.all {
 		p.options.Close(conn, cause)
+	}
+}
+
+// Used only where the callback cannot join itself. Dial/slot completion includes
+// the actual state-cancel callback, not merely a false AfterFunc stop result.
+func afterFuncJoined(ctx context.Context, callback func()) func() bool {
+	done := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(done); callback() })
+	var once sync.Once
+	var stopped bool
+	return func() bool {
+		once.Do(func() {
+			stopped = stop()
+			if !stopped {
+				<-done
+			}
+		})
+		return stopped
 	}
 }

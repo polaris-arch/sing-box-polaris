@@ -1,0 +1,3275 @@
+{
+  "sha": "6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "url": "https://api.github.com/repos/SagerNet/sing/git/trees/6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "tree": [
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "66ad92045d3262e46ab21b9ad6f8d9a84e264aca",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/66ad92045d3262e46ab21b9ad6f8d9a84e264aca"
+    },
+    {
+      "path": ".github/renovate.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1f6697583aa11bb7d65acb9cceac98e0858d9763",
+      "size": 444,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/1f6697583aa11bb7d65acb9cceac98e0858d9763"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9018dd463d6048083abe422193d35ae62c51bb2a",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/9018dd463d6048083abe422193d35ae62c51bb2a"
+    },
+    {
+      "path": ".github/workflows/lint.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9de14e50111ac6a6b84eb8c4cc5ca9348ce1e4bd",
+      "size": 1596,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9de14e50111ac6a6b84eb8c4cc5ca9348ce1e4bd"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "704d7ff9018eab7829e571630ee3db0c5f9e8d9f",
+      "size": 989,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/704d7ff9018eab7829e571630ee3db0c5f9e8d9f"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2fcfec95f0771751c14e946d3fc36ad4dea8a975",
+      "size": 48,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2fcfec95f0771751c14e946d3fc36ad4dea8a975"
+    },
+    {
+      "path": ".golangci.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "072e28f5fe4235554de6aba06039d51c84af4c8b",
+      "size": 840,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/072e28f5fe4235554de6aba06039d51c84af4c8b"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "size": 674,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3e3e29e359d205307555aa41f19fb2a8415de885"
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3023430a4b040ebb85eeaa34cd7ba4b20f1e795",
+      "size": 303,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c3023430a4b040ebb85eeaa34cd7ba4b20f1e795"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "196adab15eff310c1d54a4d86ec8bb318c1f2264",
+      "size": 195,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/196adab15eff310c1d54a4d86ec8bb318c1f2264"
+    },
+    {
+      "path": "common",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "24e7f52312a6971d89307c49ff40a537143dc0ac",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/24e7f52312a6971d89307c49ff40a537143dc0ac"
+    },
+    {
+      "path": "common/abx",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "80bf2c6d11311607effc9f011f9ed393eb9aee6e",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/80bf2c6d11311607effc9f011f9ed393eb9aee6e"
+    },
+    {
+      "path": "common/abx/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2371b4d09e06b01ef5e550ece504719823a709ad",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/2371b4d09e06b01ef5e550ece504719823a709ad"
+    },
+    {
+      "path": "common/abx/internal/constraints.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fb2573a2bf9207cdce00ae4aca88412f045e15ae",
+      "size": 865,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/fb2573a2bf9207cdce00ae4aca88412f045e15ae"
+    },
+    {
+      "path": "common/abx/reader.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20f772f960bb35f8793b48d28283d4ee373b43e7",
+      "size": 5518,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/20f772f960bb35f8793b48d28283d4ee373b43e7"
+    },
+    {
+      "path": "common/atomic",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a186ac4388516095b21afe7c9627b16cab7dce4f",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a186ac4388516095b21afe7c9627b16cab7dce4f"
+    },
+    {
+      "path": "common/atomic/typed.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed727b083e0fde42bba01fb9aade52812fc03159",
+      "size": 957,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ed727b083e0fde42bba01fb9aade52812fc03159"
+    },
+    {
+      "path": "common/atomic/types.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "587c103cc4d872842625185d966b4eb427af300c",
+      "size": 577,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/587c103cc4d872842625185d966b4eb427af300c"
+    },
+    {
+      "path": "common/auth",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1b3f94ef98ad47d114ff8a03e843606820c9af20",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/1b3f94ef98ad47d114ff8a03e843606820c9af20"
+    },
+    {
+      "path": "common/auth/auth.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1be60d113a10defc8a3da7dde89dc80eaf659ff",
+      "size": 624,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b1be60d113a10defc8a3da7dde89dc80eaf659ff"
+    },
+    {
+      "path": "common/auth/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0899fe41e8976d549b3f3afa7bf69ee0316213c",
+      "size": 319,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c0899fe41e8976d549b3f3afa7bf69ee0316213c"
+    },
+    {
+      "path": "common/baderror",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "74d1333d08c25b8331904b93963872c2e06959bf",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/74d1333d08c25b8331904b93963872c2e06959bf"
+    },
+    {
+      "path": "common/baderror/baderror.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7543ff295ff338390bbb11715425c35b3a4bddd1",
+      "size": 1706,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7543ff295ff338390bbb11715425c35b3a4bddd1"
+    },
+    {
+      "path": "common/batch",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fdab3d483a17fecf69b74907a69d9d0f59c72ef6",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/fdab3d483a17fecf69b74907a69d9d0f59c72ef6"
+    },
+    {
+      "path": "common/batch/batch.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62fd5183b83b048d52c4aadc2de6b82268647f40",
+      "size": 1835,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/62fd5183b83b048d52c4aadc2de6b82268647f40"
+    },
+    {
+      "path": "common/binary",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e4b2914a80a408b5f7f0684fa145a0de85c88eb9",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/e4b2914a80a408b5f7f0684fa145a0de85c88eb9"
+    },
+    {
+      "path": "common/binary/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b82a6ace52d6a5db610c02763204ea787140139",
+      "size": 28,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4b82a6ace52d6a5db610c02763204ea787140139"
+    },
+    {
+      "path": "common/binary/binary.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab7bf847d51e0c88ecf3619fc537f60c2a5e130e",
+      "size": 19788,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ab7bf847d51e0c88ecf3619fc537f60c2a5e130e"
+    },
+    {
+      "path": "common/binary/export.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cdccbeb621d358cfc6abe8ffdb00bd2e30288c09",
+      "size": 357,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cdccbeb621d358cfc6abe8ffdb00bd2e30288c09"
+    },
+    {
+      "path": "common/binary/native_endian_big.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bcc8e30b74a6fd887950490b2f2831ed35cc4db2",
+      "size": 466,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bcc8e30b74a6fd887950490b2f2831ed35cc4db2"
+    },
+    {
+      "path": "common/binary/native_endian_little.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38d3e9b695eec32b7a52318983f52d9b541558b8",
+      "size": 504,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/38d3e9b695eec32b7a52318983f52d9b541558b8"
+    },
+    {
+      "path": "common/binary/varint.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "135d73412d28d606020b4c91c04f8f83c7dc1fea",
+      "size": 4956,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/135d73412d28d606020b4c91c04f8f83c7dc1fea"
+    },
+    {
+      "path": "common/buf",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b8208fc85c009295d8b027ee0daf14b8f0082fe0",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/b8208fc85c009295d8b027ee0daf14b8f0082fe0"
+    },
+    {
+      "path": "common/buf/alloc.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ada80e981e788a2dacff66bbe9f15b68dcbce9bb",
+      "size": 3220,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ada80e981e788a2dacff66bbe9f15b68dcbce9bb"
+    },
+    {
+      "path": "common/buf/buffer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7d8e24490c82a356f3c1e0c1d89573e4f4166b8f",
+      "size": 6791,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7d8e24490c82a356f3c1e0c1d89573e4f4166b8f"
+    },
+    {
+      "path": "common/buf/buffer_low_memory.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81fb10a26460dea3586486118d091a43020284eb",
+      "size": 104,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/81fb10a26460dea3586486118d091a43020284eb"
+    },
+    {
+      "path": "common/buf/buffer_standard.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "608fbf3f13067a7568c491990dba764b81107e87",
+      "size": 106,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/608fbf3f13067a7568c491990dba764b81107e87"
+    },
+    {
+      "path": "common/buf/buffer_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f5694516dbf252352c41d1bf1bae7e4bfa104bb",
+      "size": 197,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6f5694516dbf252352c41d1bf1bae7e4bfa104bb"
+    },
+    {
+      "path": "common/buf/buffer_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7779336560fc52f648507465000bc6bf7d85ba7",
+      "size": 177,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a7779336560fc52f648507465000bc6bf7d85ba7"
+    },
+    {
+      "path": "common/buf/multi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d74ab5c28031dd7959fea76b778ebd78aeb435f",
+      "size": 561,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2d74ab5c28031dd7959fea76b778ebd78aeb435f"
+    },
+    {
+      "path": "common/buf/pool.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "37f1232c62eb515c9492e8e2f3d793255d5815a6",
+      "size": 269,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/37f1232c62eb515c9492e8e2f3d793255d5815a6"
+    },
+    {
+      "path": "common/bufio",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a732b5aad9798eda5ab57a3345f9a6cb7dc1bded",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a732b5aad9798eda5ab57a3345f9a6cb7dc1bded"
+    },
+    {
+      "path": "common/bufio/addr_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d095b517a1043230883db4e5c0a4e0a6a86d7cc",
+      "size": 799,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4d095b517a1043230883db4e5c0a4e0a6a86d7cc"
+    },
+    {
+      "path": "common/bufio/append.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3379b6bec6dc4a7bd7f68a737f1607a7938e90ee",
+      "size": 1538,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3379b6bec6dc4a7bd7f68a737f1607a7938e90ee"
+    },
+    {
+      "path": "common/bufio/bind.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6bbb81d65508c9c7fae6f33245890bdc2553eae1",
+      "size": 4457,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6bbb81d65508c9c7fae6f33245890bdc2553eae1"
+    },
+    {
+      "path": "common/bufio/bind_batch.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4395fbe504cb7ba3da743442eb8d32646621a08b",
+      "size": 4513,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4395fbe504cb7ba3da743442eb8d32646621a08b"
+    },
+    {
+      "path": "common/bufio/bind_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee33800df89fb4468563f7c223178a21467c9163",
+      "size": 1597,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ee33800df89fb4468563f7c223178a21467c9163"
+    },
+    {
+      "path": "common/bufio/buffer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74db53e8bfc4c4650d80134c6d22d839937fab47",
+      "size": 1453,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/74db53e8bfc4c4650d80134c6d22d839937fab47"
+    },
+    {
+      "path": "common/bufio/cache.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8df703438a80e2c4659e9ef6e4ddd70a7a4b661",
+      "size": 4370,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e8df703438a80e2c4659e9ef6e4ddd70a7a4b661"
+    },
+    {
+      "path": "common/bufio/chunk.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbda922c1e62e2adb8c9bd8ac152f52474551942",
+      "size": 2782,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/fbda922c1e62e2adb8c9bd8ac152f52474551942"
+    },
+    {
+      "path": "common/bufio/conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6132fa51658e85aea047c2cb6d3458c575e0819",
+      "size": 5615,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c6132fa51658e85aea047c2cb6d3458c575e0819"
+    },
+    {
+      "path": "common/bufio/conn_stdio.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "07985d142bbbf37106af426c18fdcd98b7781181",
+      "size": 122,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/07985d142bbbf37106af426c18fdcd98b7781181"
+    },
+    {
+      "path": "common/bufio/conn_stdio_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0525b962be9a5e010a1be9dc5ab2a85166e708f4",
+      "size": 65,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0525b962be9a5e010a1be9dc5ab2a85166e708f4"
+    },
+    {
+      "path": "common/bufio/copy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8f55f83123f8df34fcc71dec37e8ff57a7d10d2",
+      "size": 17876,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c8f55f83123f8df34fcc71dec37e8ff57a7d10d2"
+    },
+    {
+      "path": "common/bufio/copy_direct.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0263c22a917345ec7dffaa2ef8ee1e3983aa1679",
+      "size": 7239,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0263c22a917345ec7dffaa2ef8ee1e3983aa1679"
+    },
+    {
+      "path": "common/bufio/copy_direct_posix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d093ae223a62d1f4b4d870b9cd2ccc094cbb17ca",
+      "size": 6656,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d093ae223a62d1f4b4d870b9cd2ccc094cbb17ca"
+    },
+    {
+      "path": "common/bufio/copy_direct_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d472fd26008996b6898c5944c6c12beb8b9661f6",
+      "size": 2646,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d472fd26008996b6898c5944c6c12beb8b9661f6"
+    },
+    {
+      "path": "common/bufio/copy_direct_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1289240e4e633694708f343e1d18beb8fcf1d81",
+      "size": 6783,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d1289240e4e633694708f343e1d18beb8fcf1d81"
+    },
+    {
+      "path": "common/bufio/copy_session.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8c8995b15a74d2c52727f855e1abbb624bb3b67",
+      "size": 1620,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f8c8995b15a74d2c52727f855e1abbb624bb3b67"
+    },
+    {
+      "path": "common/bufio/counter_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91e1d0acf35459d3ab97596d7b3d6030c5b88d45",
+      "size": 2684,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/91e1d0acf35459d3ab97596d7b3d6030c5b88d45"
+    },
+    {
+      "path": "common/bufio/counter_packet_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b85f4dfd9ee2915e9317f94d7624c4dbd4dc758a",
+      "size": 5737,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b85f4dfd9ee2915e9317f94d7624c4dbd4dc758a"
+    },
+    {
+      "path": "common/bufio/deadline",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2ef955c761338bde6b7358ac6ad4100f752c8af9",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/2ef955c761338bde6b7358ac6ad4100f752c8af9"
+    },
+    {
+      "path": "common/bufio/deadline/check.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b4352470bdaa18bbf1fd63116fe1a294b9bde85",
+      "size": 662,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6b4352470bdaa18bbf1fd63116fe1a294b9bde85"
+    },
+    {
+      "path": "common/bufio/deadline/conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "484d2975689ee624b1701220ca98f41b86919e24",
+      "size": 1301,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/484d2975689ee624b1701220ca98f41b86919e24"
+    },
+    {
+      "path": "common/bufio/deadline/packet_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0e980870bf1ba7a911a6ad5fe5bab9ed10587f7",
+      "size": 1373,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a0e980870bf1ba7a911a6ad5fe5bab9ed10587f7"
+    },
+    {
+      "path": "common/bufio/deadline/packet_reader.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c3bd9fbe917f877f6b7720b9cc08a7157f7caf0",
+      "size": 3630,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4c3bd9fbe917f877f6b7720b9cc08a7157f7caf0"
+    },
+    {
+      "path": "common/bufio/deadline/packet_reader_fallback.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d64f878cd505d534cb62a0585fa27a10de2d8a8e",
+      "size": 2597,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d64f878cd505d534cb62a0585fa27a10de2d8a8e"
+    },
+    {
+      "path": "common/bufio/deadline/pipe.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2cccfb42cc2ee4aeacd5079222f043e1925e7ba6",
+      "size": 1836,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2cccfb42cc2ee4aeacd5079222f043e1925e7ba6"
+    },
+    {
+      "path": "common/bufio/deadline/reader.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92da8102ffad819c7e8a852bc61950b67cff3584",
+      "size": 3078,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/92da8102ffad819c7e8a852bc61950b67cff3584"
+    },
+    {
+      "path": "common/bufio/deadline/reader_fallback.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2725507b1731f00d11bc38f476ad8c6ed0b50b2",
+      "size": 2252,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d2725507b1731f00d11bc38f476ad8c6ed0b50b2"
+    },
+    {
+      "path": "common/bufio/deadline/serial.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b6c6890980c63185bf477e6b46347f17f029683b",
+      "size": 1761,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b6c6890980c63185bf477e6b46347f17f029683b"
+    },
+    {
+      "path": "common/bufio/fallback.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd4ab46dfa6e0314da4a2f5755647d247d46e251",
+      "size": 2350,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bd4ab46dfa6e0314da4a2f5755647d247d46e251"
+    },
+    {
+      "path": "common/bufio/io.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a46fb4609ed00fd194f800797e773e8ab59a91fa",
+      "size": 4164,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a46fb4609ed00fd194f800797e773e8ab59a91fa"
+    },
+    {
+      "path": "common/bufio/nat.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12ffcbcb8616b9a4730bdd94cc0448c0e4391766",
+      "size": 8392,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/12ffcbcb8616b9a4730bdd94cc0448c0e4391766"
+    },
+    {
+      "path": "common/bufio/nat_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94a7e05a8db3bc545797b57317f3d89928607d1d",
+      "size": 6194,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/94a7e05a8db3bc545797b57317f3d89928607d1d"
+    },
+    {
+      "path": "common/bufio/net_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d63a08aa4f48ef61e8cfc47d0a72d83ec08af774",
+      "size": 5922,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d63a08aa4f48ef61e8cfc47d0a72d83ec08af774"
+    },
+    {
+      "path": "common/bufio/only.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e757c450fa38334c7e4ef5113b165927b316c333",
+      "size": 1596,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e757c450fa38334c7e4ef5113b165927b316c333"
+    },
+    {
+      "path": "common/bufio/packet_batch.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a796c8602b6278eb8294c1c85557ab8018a3ae4d",
+      "size": 3072,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a796c8602b6278eb8294c1c85557ab8018a3ae4d"
+    },
+    {
+      "path": "common/bufio/packet_batch_mmsg.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "710b710d3ed4e387c5ed5c9bd3c7a21df80d2309",
+      "size": 9630,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/710b710d3ed4e387c5ed5c9bd3c7a21df80d2309"
+    },
+    {
+      "path": "common/bufio/packet_batch_msgx_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e771fce9258fac3d29c4680ffd4212c10c0caf03",
+      "size": 8104,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e771fce9258fac3d29c4680ffd4212c10c0caf03"
+    },
+    {
+      "path": "common/bufio/packet_batch_offload_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c6c6ca49694c375e0e1df8ab0508a77b18c8264",
+      "size": 2486,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2c6c6ca49694c375e0e1df8ab0508a77b18c8264"
+    },
+    {
+      "path": "common/bufio/packet_batch_offload_netbsd.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "427d7000e97980a3fb6c7f0fa4237ea8676c0eb7",
+      "size": 281,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/427d7000e97980a3fb6c7f0fa4237ea8676c0eb7"
+    },
+    {
+      "path": "common/bufio/packet_batch_read.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f38dea0e844790ceb03179cf8dccae4cc19820b7",
+      "size": 253,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f38dea0e844790ceb03179cf8dccae4cc19820b7"
+    },
+    {
+      "path": "common/bufio/packet_batch_sendto_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e650067fec9f2075308451c0eb1c831be9e4826",
+      "size": 2923,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6e650067fec9f2075308451c0eb1c831be9e4826"
+    },
+    {
+      "path": "common/bufio/packet_batch_sendto_darwin_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8431d7590dd8c659870a8c84edf798db88035c8e",
+      "size": 2820,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8431d7590dd8c659870a8c84edf798db88035c8e"
+    },
+    {
+      "path": "common/bufio/packet_batch_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c0021c4e30e7f568381c57da0f126386b063002",
+      "size": 635,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3c0021c4e30e7f568381c57da0f126386b063002"
+    },
+    {
+      "path": "common/bufio/packet_batch_syscall.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "825a71a76ff76021f96b67a879f8e6daf15d1a4d",
+      "size": 1375,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/825a71a76ff76021f96b67a879f8e6daf15d1a4d"
+    },
+    {
+      "path": "common/bufio/packet_batch_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3237a7ef719b28e14c2b682bb40ec450be81eca2",
+      "size": 20291,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3237a7ef719b28e14c2b682bb40ec450be81eca2"
+    },
+    {
+      "path": "common/bufio/race.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "576e9874396dcdbcd915e6fbdead4be2ac1290be",
+      "size": 654,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/576e9874396dcdbcd915e6fbdead4be2ac1290be"
+    },
+    {
+      "path": "common/bufio/splice_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1793fbdd35e85b0275d2106c55d85ec5a4875f7a",
+      "size": 2386,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/1793fbdd35e85b0275d2106c55d85ec5a4875f7a"
+    },
+    {
+      "path": "common/bufio/splice_linux_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d25c7d72a3d211ced1f2e4f50a829dd01121390",
+      "size": 2183,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4d25c7d72a3d211ced1f2e4f50a829dd01121390"
+    },
+    {
+      "path": "common/bufio/splice_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b120284b8aa28ccd431bfbbb94e27e04597dce61",
+      "size": 336,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b120284b8aa28ccd431bfbbb94e27e04597dce61"
+    },
+    {
+      "path": "common/bufio/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e59c5a83be65b0a61712c3ea49cefba95096968",
+      "size": 230,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7e59c5a83be65b0a61712c3ea49cefba95096968"
+    },
+    {
+      "path": "common/bufio/vectorised.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f684a083df601fb8ce2afd5e366dc34923330db9",
+      "size": 4455,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f684a083df601fb8ce2afd5e366dc34923330db9"
+    },
+    {
+      "path": "common/bufio/vectorised_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0abad9da3ed6a5637626f21c85fbd04ce5e108e",
+      "size": 2549,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c0abad9da3ed6a5637626f21c85fbd04ce5e108e"
+    },
+    {
+      "path": "common/bufio/vectorised_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e39b04ce8affa528054264207418f92548396cb",
+      "size": 3097,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6e39b04ce8affa528054264207418f92548396cb"
+    },
+    {
+      "path": "common/bufio/vectorised_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d234991b0c5c3a43be6bc1ca09d7c9200761d0f2",
+      "size": 2358,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d234991b0c5c3a43be6bc1ca09d7c9200761d0f2"
+    },
+    {
+      "path": "common/bufio/wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9fe04d61f58e65e9bed5cc40db00b8e195bd447b",
+      "size": 4675,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9fe04d61f58e65e9bed5cc40db00b8e195bd447b"
+    },
+    {
+      "path": "common/bufio/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1a8898b3f1f4557a2026c3780925b0ed2002bdc",
+      "size": 1178,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b1a8898b3f1f4557a2026c3780925b0ed2002bdc"
+    },
+    {
+      "path": "common/byteformats",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2db5fec17e4728083d5dafcd03dbe39c854dd607",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/2db5fec17e4728083d5dafcd03dbe39c854dd607"
+    },
+    {
+      "path": "common/byteformats/formats.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed75f78a3d2c44272dfe026c8814724df22f9100",
+      "size": 1583,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ed75f78a3d2c44272dfe026c8814724df22f9100"
+    },
+    {
+      "path": "common/byteformats/json.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9b88a89d3fe5ef3da5f4db1c95dad8402aa7e1e",
+      "size": 3774,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e9b88a89d3fe5ef3da5f4db1c95dad8402aa7e1e"
+    },
+    {
+      "path": "common/byteformats/json_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45a4a3b68c9f33210fd3c523fbd446a42db96234",
+      "size": 3130,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/45a4a3b68c9f33210fd3c523fbd446a42db96234"
+    },
+    {
+      "path": "common/cache",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6725e7e4b0ee1ed3c7c0d95503a694a26db65a78",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/6725e7e4b0ee1ed3c7c0d95503a694a26db65a78"
+    },
+    {
+      "path": "common/cache/lrucache.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "664d3a78ca27148f677ec6f8e570a5e332a2b919",
+      "size": 6019,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/664d3a78ca27148f677ec6f8e570a5e332a2b919"
+    },
+    {
+      "path": "common/canceler",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "032819fe7cc1356b8cab7cedeb4859371916804d",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/032819fe7cc1356b8cab7cedeb4859371916804d"
+    },
+    {
+      "path": "common/canceler/instance.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9728a771f24aa0f6fea8c0c5410c72c1b8054461",
+      "size": 1420,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9728a771f24aa0f6fea8c0c5410c72c1b8054461"
+    },
+    {
+      "path": "common/canceler/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11f4c8302b4cdab6ceb51afeca6fca3dde756fe9",
+      "size": 1771,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/11f4c8302b4cdab6ceb51afeca6fca3dde756fe9"
+    },
+    {
+      "path": "common/canceler/packet_timeout.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1d178a79b72e68bdd98270c4d3ceb0628fb17ad",
+      "size": 2132,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f1d178a79b72e68bdd98270c4d3ceb0628fb17ad"
+    },
+    {
+      "path": "common/canceler/packet_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2fb49d5d88256891ffe229e4a88df0d28116a43",
+      "size": 1848,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b2fb49d5d88256891ffe229e4a88df0d28116a43"
+    },
+    {
+      "path": "common/cleanup",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b507bd41e4a259e3024e9d3339e8f76f426e041e",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/b507bd41e4a259e3024e9d3339e8f76f426e041e"
+    },
+    {
+      "path": "common/cleanup/cleanup.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "294efab6fa494662e3df978c829d872017e6055b",
+      "size": 1536,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/294efab6fa494662e3df978c829d872017e6055b"
+    },
+    {
+      "path": "common/cleanup/cleanup_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38111da6da83141b7a5a1ba945f53a1b1ca4c439",
+      "size": 2980,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/38111da6da83141b7a5a1ba945f53a1b1ca4c439"
+    },
+    {
+      "path": "common/clear.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e294b22445bfc1bc7b99cbdbf2b99363c284592b",
+      "size": 231,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e294b22445bfc1bc7b99cbdbf2b99363c284592b"
+    },
+    {
+      "path": "common/closer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc0b6d1a7ce5756929252f9e7e4a49eb8f4d7cd2",
+      "size": 254,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cc0b6d1a7ce5756929252f9e7e4a49eb8f4d7cd2"
+    },
+    {
+      "path": "common/cond.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce654e4e6f6896f0ef3bdcbdcdfe74fda3e110ae",
+      "size": 6516,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ce654e4e6f6896f0ef3bdcbdcdfe74fda3e110ae"
+    },
+    {
+      "path": "common/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a2a669d18ad0778364d3baf77b3ea20bb7a820c",
+      "size": 843,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7a2a669d18ad0778364d3baf77b3ea20bb7a820c"
+    },
+    {
+      "path": "common/control",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a2aa6299a233dcfd7ea4532b311d3aca8b2fbb6a",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a2aa6299a233dcfd7ea4532b311d3aca8b2fbb6a"
+    },
+    {
+      "path": "common/control/bind.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d936de2859b3406d8dc020e224f7cbeda60c1d39",
+      "size": 1521,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d936de2859b3406d8dc020e224f7cbeda60c1d39"
+    },
+    {
+      "path": "common/control/bind_address_no_port_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e99a4d8f1b7d76cbe6fec3c76048c35e18cc7286",
+      "size": 564,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e99a4d8f1b7d76cbe6fec3c76048c35e18cc7286"
+    },
+    {
+      "path": "common/control/bind_address_no_port_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4843e720050b2d3f9884664ae88c4d638c012143",
+      "size": 82,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4843e720050b2d3f9884664ae88c4d638c012143"
+    },
+    {
+      "path": "common/control/bind_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1173a436d90dda875baf0723632ffedacbb90e59",
+      "size": 896,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/1173a436d90dda875baf0723632ffedacbb90e59"
+    },
+    {
+      "path": "common/control/bind_finder.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "089595f2f3cb82597b0d21da33cb0023d68f0809",
+      "size": 1660,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/089595f2f3cb82597b0d21da33cb0023d68f0809"
+    },
+    {
+      "path": "common/control/bind_finder_default.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb33c43845b5638c5409f809205c0c6d15e52e71",
+      "size": 3516,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/eb33c43845b5638c5409f809205c0c6d15e52e71"
+    },
+    {
+      "path": "common/control/bind_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87a648247823be0f04da8536ff714528de61cd30",
+      "size": 1476,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/87a648247823be0f04da8536ff714528de61cd30"
+    },
+    {
+      "path": "common/control/bind_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c49eb54a023a0481433cb9b4493b30d6b3c88f8",
+      "size": 368,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3c49eb54a023a0481433cb9b4493b30d6b3c88f8"
+    },
+    {
+      "path": "common/control/bind_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93bc441b3fa8dfd4753bd0d1d5088221b0236799",
+      "size": 1797,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/93bc441b3fa8dfd4753bd0d1d5088221b0236799"
+    },
+    {
+      "path": "common/control/frag_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a03dc9a1a7e5feac214418a7f2a9f5aeb95f646",
+      "size": 1878,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0a03dc9a1a7e5feac214418a7f2a9f5aeb95f646"
+    },
+    {
+      "path": "common/control/frag_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8429262ec6fd49e78518b6acfcd53d86dc7ecea",
+      "size": 1636,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e8429262ec6fd49e78518b6acfcd53d86dc7ecea"
+    },
+    {
+      "path": "common/control/frag_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "273a008f91d4da19175972e7e51d0958cfeeba2f",
+      "size": 153,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/273a008f91d4da19175972e7e51d0958cfeeba2f"
+    },
+    {
+      "path": "common/control/frag_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a6328ac55fb9824d57becae3c6ad2c9abb947145",
+      "size": 2169,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a6328ac55fb9824d57becae3c6ad2c9abb947145"
+    },
+    {
+      "path": "common/control/interface.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01f07b46bb0a46c45ec1f3740f4f6fb253d7df54",
+      "size": 1346,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/01f07b46bb0a46c45ec1f3740f4f6fb253d7df54"
+    },
+    {
+      "path": "common/control/mark_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da52f02e9c75e4e13e2857da4972a7f0fd410172",
+      "size": 288,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/da52f02e9c75e4e13e2857da4972a7f0fd410172"
+    },
+    {
+      "path": "common/control/mark_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4298f3e296c413c777989725ab739e4dfa4c201",
+      "size": 87,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a4298f3e296c413c777989725ab739e4dfa4c201"
+    },
+    {
+      "path": "common/control/protect_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ce225451e220d4b8e88af1777395c32ceee4546",
+      "size": 93,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2ce225451e220d4b8e88af1777395c32ceee4546"
+    },
+    {
+      "path": "common/control/protect_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ce85b41b5f405960d73f85564ac6c18ebfee0bf",
+      "size": 1023,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6ce85b41b5f405960d73f85564ac6c18ebfee0bf"
+    },
+    {
+      "path": "common/control/redirect_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50db3d837931d05794841ddf3fdaa616b60e143d",
+      "size": 1601,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/50db3d837931d05794841ddf3fdaa616b60e143d"
+    },
+    {
+      "path": "common/control/redirect_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82ab233d55352b7c1f0028f287d4dc8641d23185",
+      "size": 1138,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/82ab233d55352b7c1f0028f287d4dc8641d23185"
+    },
+    {
+      "path": "common/control/redirect_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b0f32972209f2263493312311e0d6b74966e7ff3",
+      "size": 196,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b0f32972209f2263493312311e0d6b74966e7ff3"
+    },
+    {
+      "path": "common/control/reuse_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f08b863760e50d3b4b463476e87aec68d36a712b",
+      "size": 201,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f08b863760e50d3b4b463476e87aec68d36a712b"
+    },
+    {
+      "path": "common/control/reuse_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ab455e97225e1567e99336ad03b595509771cbc",
+      "size": 766,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9ab455e97225e1567e99336ad03b595509771cbc"
+    },
+    {
+      "path": "common/control/reuse_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6be5dd3e2047bed7dbc7d0697d2adc59766f3294",
+      "size": 326,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6be5dd3e2047bed7dbc7d0697d2adc59766f3294"
+    },
+    {
+      "path": "common/control/socket_buffer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9469bd751f20f826f66ccd2099382325ddc5cc38",
+      "size": 353,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9469bd751f20f826f66ccd2099382325ddc5cc38"
+    },
+    {
+      "path": "common/control/socket_buffer_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "05e29e31164517e78308cdc48fdcfcd4b35df929",
+      "size": 446,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/05e29e31164517e78308cdc48fdcfcd4b35df929"
+    },
+    {
+      "path": "common/control/socket_buffer_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3fb52d5dc179e66f2b3dc44982015234ff67ad1",
+      "size": 95,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e3fb52d5dc179e66f2b3dc44982015234ff67ad1"
+    },
+    {
+      "path": "common/control/socket_buffer_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "532e1202733fcfc13a6a95153bec0e37e60e2595",
+      "size": 272,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/532e1202733fcfc13a6a95153bec0e37e60e2595"
+    },
+    {
+      "path": "common/control/socket_buffer_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d38b17ab6bd1dd0c9c142a5e7c1133c91add286",
+      "size": 288,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2d38b17ab6bd1dd0c9c142a5e7c1133c91add286"
+    },
+    {
+      "path": "common/control/tcp_keep_alive_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bede11a4afcd56d1cb96ba36eef7e95aee37e79a",
+      "size": 794,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bede11a4afcd56d1cb96ba36eef7e95aee37e79a"
+    },
+    {
+      "path": "common/control/tcp_keep_alive_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "180d8d3f1237fe758553ab3c162b5d91b90703e2",
+      "size": 145,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/180d8d3f1237fe758553ab3c162b5d91b90703e2"
+    },
+    {
+      "path": "common/control/tproxy_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b296b98e0810e35cc75b8661bfe4241a8d8e81e9",
+      "size": 1896,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b296b98e0810e35cc75b8661bfe4241a8d8e81e9"
+    },
+    {
+      "path": "common/control/tproxy_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cad1808279cfa4a89cee1a93243cc084f66a6a82",
+      "size": 297,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cad1808279cfa4a89cee1a93243cc084f66a6a82"
+    },
+    {
+      "path": "common/control/udp_eof_kqueue.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94972295f8896c88f4a7c3e096c39b32d47ba22c",
+      "size": 512,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/94972295f8896c88f4a7c3e096c39b32d47ba22c"
+    },
+    {
+      "path": "common/control/udp_eof_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3f9906b3af5d074ee428a367de6a0a40ffcb99e",
+      "size": 133,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b3f9906b3af5d074ee428a367de6a0a40ffcb99e"
+    },
+    {
+      "path": "common/control/udp_reset_other.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09a37c51c91e05639580a7e63204d793435e260b",
+      "size": 85,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/09a37c51c91e05639580a7e63204d793435e260b"
+    },
+    {
+      "path": "common/control/udp_reset_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d10607da2fec7424a126ccc528af4271c7ba565",
+      "size": 494,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6d10607da2fec7424a126ccc528af4271c7ba565"
+    },
+    {
+      "path": "common/debug",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3cebc5d305938c52684ed9d214669ab9212c310a",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/3cebc5d305938c52684ed9d214669ab9212c310a"
+    },
+    {
+      "path": "common/debug/debug.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2261d2ca16cd66eaae9a050bc640d5c53cbfaa2a",
+      "size": 54,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2261d2ca16cd66eaae9a050bc640d5c53cbfaa2a"
+    },
+    {
+      "path": "common/debug/stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da3d857b8bee78682df9475872752487ca4db354",
+      "size": 56,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/da3d857b8bee78682df9475872752487ca4db354"
+    },
+    {
+      "path": "common/domain",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "424be85cb1374eec3fe3700eb9d70d94ad4c8304",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/424be85cb1374eec3fe3700eb9d70d94ad4c8304"
+    },
+    {
+      "path": "common/domain/adguard_matcher.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6946bb4fe528af93252fd9662f283fad1f5803b",
+      "size": 4513,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e6946bb4fe528af93252fd9662f283fad1f5803b"
+    },
+    {
+      "path": "common/domain/adguard_matcher_bench_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "738319b3926edb145dbef7edeec7b528811f6b5a",
+      "size": 4928,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/738319b3926edb145dbef7edeec7b528811f6b5a"
+    },
+    {
+      "path": "common/domain/adguard_matcher_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31fb11ded21186bd01f1a4674956960a0cd1a3f3",
+      "size": 7538,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/31fb11ded21186bd01f1a4674956960a0cd1a3f3"
+    },
+    {
+      "path": "common/domain/matcher.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9fb61b6bd0552e4c2536dd4761eb8900e5591759",
+      "size": 3809,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9fb61b6bd0552e4c2536dd4761eb8900e5591759"
+    },
+    {
+      "path": "common/domain/matcher_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b2b7d140404c482db8b5c3266e5c7ec1a7c803a",
+      "size": 1793,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2b2b7d140404c482db8b5c3266e5c7ec1a7c803a"
+    },
+    {
+      "path": "common/domain/set.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c23b373129995da5ddb849c503d1e85b0145f24d",
+      "size": 8673,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c23b373129995da5ddb849c503d1e85b0145f24d"
+    },
+    {
+      "path": "common/domain/set_compat_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a130c4bd81f4aa09ccdbe241853499443d54ec09",
+      "size": 2939,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a130c4bd81f4aa09ccdbe241853499443d54ec09"
+    },
+    {
+      "path": "common/exceptions",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "95b7fe213364d008a8abbc96900006edc0ae87c4",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/95b7fe213364d008a8abbc96900006edc0ae87c4"
+    },
+    {
+      "path": "common/exceptions/cause.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b48b6e23d86bf1a231fdcbfc50cd0ec62b674d38",
+      "size": 437,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b48b6e23d86bf1a231fdcbfc50cd0ec62b674d38"
+    },
+    {
+      "path": "common/exceptions/error.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3cd214373d0c52b6ef80766a74eb2f94173c5558",
+      "size": 1279,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3cd214373d0c52b6ef80766a74eb2f94173c5558"
+    },
+    {
+      "path": "common/exceptions/error_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a4ebfa8f88edaef54cefead4b74680079cd8c85",
+      "size": 186,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9a4ebfa8f88edaef54cefead4b74680079cd8c85"
+    },
+    {
+      "path": "common/exceptions/extend.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45f88430ffc85e007363926b3024eea1a0618aec",
+      "size": 271,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/45f88430ffc85e007363926b3024eea1a0618aec"
+    },
+    {
+      "path": "common/exceptions/inner.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58bcc5acd5a12a2b3f50336f48ec540f77cccf44",
+      "size": 832,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/58bcc5acd5a12a2b3f50336f48ec540f77cccf44"
+    },
+    {
+      "path": "common/exceptions/multi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c66383553c6c3930a3a0206fdc91ee1db0c145d",
+      "size": 1252,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2c66383553c6c3930a3a0206fdc91ee1db0c145d"
+    },
+    {
+      "path": "common/exceptions/timeout.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "222123a115b918cd732c5c66876a3d77d2763ec2",
+      "size": 372,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/222123a115b918cd732c5c66876a3d77d2763ec2"
+    },
+    {
+      "path": "common/format",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b28c83d918dcc6cdcf538433dc71ed4e8a5bee32",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/b28c83d918dcc6cdcf538433dc71ed4e8a5bee32"
+    },
+    {
+      "path": "common/format/fmt.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "80518cf2c050e3b93317cb5a34d996659fef26d3",
+      "size": 1982,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/80518cf2c050e3b93317cb5a34d996659fef26d3"
+    },
+    {
+      "path": "common/json",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a1e0ff834407eb6d18f800a6348ae888389dba22",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a1e0ff834407eb6d18f800a6348ae888389dba22"
+    },
+    {
+      "path": "common/json/badjson",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "895ae7343f88b6e89773fce31cc985caa9c03a20",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/895ae7343f88b6e89773fce31cc985caa9c03a20"
+    },
+    {
+      "path": "common/json/badjson/array.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7d5f70fc3c0f2c3d6eda0355730b80ab46ab922",
+      "size": 1246,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a7d5f70fc3c0f2c3d6eda0355730b80ab46ab922"
+    },
+    {
+      "path": "common/json/badjson/empty.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da8bedf52d8de82ae9808f4dc18d3376fb313f47",
+      "size": 60,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/da8bedf52d8de82ae9808f4dc18d3376fb313f47"
+    },
+    {
+      "path": "common/json/badjson/json.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35f33a8bb0b4e2303c6af104807c139a89896ec4",
+      "size": 1247,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/35f33a8bb0b4e2303c6af104807c139a89896ec4"
+    },
+    {
+      "path": "common/json/badjson/merge.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30bc74d810b82314ccb24001489b8998a20190bf",
+      "size": 4375,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/30bc74d810b82314ccb24001489b8998a20190bf"
+    },
+    {
+      "path": "common/json/badjson/merge_objects.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09347855707adade3c1dbd68ed253514388ab50e",
+      "size": 2763,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/09347855707adade3c1dbd68ed253514388ab50e"
+    },
+    {
+      "path": "common/json/badjson/object.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f5dab41c536b3195dda2a7d0f7bd217b641f0ef",
+      "size": 2795,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3f5dab41c536b3195dda2a7d0f7bd217b641f0ef"
+    },
+    {
+      "path": "common/json/badjson/typed.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aef85c9b548404601da894245c6f64e879271f6d",
+      "size": 2358,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/aef85c9b548404601da894245c6f64e879271f6d"
+    },
+    {
+      "path": "common/json/badoption",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b9f035a97ca718098d07c11bdb9f2c31481acf5b",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/b9f035a97ca718098d07c11bdb9f2c31481acf5b"
+    },
+    {
+      "path": "common/json/badoption/duration.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce009df14fac4235ee2b469d146d5ba19345d41e",
+      "size": 610,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ce009df14fac4235ee2b469d146d5ba19345d41e"
+    },
+    {
+      "path": "common/json/badoption/http.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8f057947c560a3a4cab63b0a5c1d8460a408892",
+      "size": 269,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e8f057947c560a3a4cab63b0a5c1d8460a408892"
+    },
+    {
+      "path": "common/json/badoption/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0a5f6796091739fb123c9120e30988aaf09b4020",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/0a5f6796091739fb123c9120e30988aaf09b4020"
+    },
+    {
+      "path": "common/json/badoption/internal/my_time",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4dd9fb0be00c1f1be3f9882032d90e3780ea4f13",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/4dd9fb0be00c1f1be3f9882032d90e3780ea4f13"
+    },
+    {
+      "path": "common/json/badoption/internal/my_time/format.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aec8a6e1e2eb3fea6d16f908ad2babb7b137eb51",
+      "size": 5575,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/aec8a6e1e2eb3fea6d16f908ad2babb7b137eb51"
+    },
+    {
+      "path": "common/json/badoption/listable.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8d0356fd5b40c57784d1aecbd6b05da8b943b92",
+      "size": 788,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b8d0356fd5b40c57784d1aecbd6b05da8b943b92"
+    },
+    {
+      "path": "common/json/badoption/netip.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f22df4312dafa96ec5fbe6a4a9051f93ce6719c9",
+      "size": 1903,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f22df4312dafa96ec5fbe6a4a9051f93ce6719c9"
+    },
+    {
+      "path": "common/json/badoption/regexp.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67dda5f4ba29d49d52cb1e59171e41b27d9aef40",
+      "size": 554,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/67dda5f4ba29d49d52cb1e59171e41b27d9aef40"
+    },
+    {
+      "path": "common/json/comment.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c65809536c8ca335b9c6d1edd0b8ffa26d029d4e",
+      "size": 4171,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c65809536c8ca335b9c6d1edd0b8ffa26d029d4e"
+    },
+    {
+      "path": "common/json/comment_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "904a0a68c16a179312cc69a58bb47f1b5156b2de",
+      "size": 3188,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/904a0a68c16a179312cc69a58bb47f1b5156b2de"
+    },
+    {
+      "path": "common/json/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1f3ce1beed3b3ef8c09c49066ee14209ad1b6f6",
+      "size": 392,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b1f3ce1beed3b3ef8c09c49066ee14209ad1b6f6"
+    },
+    {
+      "path": "common/json/context_ext.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f80dabfb37f68bee8622970d7bf21b69eed82da",
+      "size": 1495,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4f80dabfb37f68bee8622970d7bf21b69eed82da"
+    },
+    {
+      "path": "common/json/context_ext_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4dd774a2469242a506f140b21172d511c91315ad",
+      "size": 1468,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4dd774a2469242a506f140b21172d511c91315ad"
+    },
+    {
+      "path": "common/json/internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1f7c9c9aa9e9f3b6c494f83103ed9e900b2dfdc3",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/1f7c9c9aa9e9f3b6c494f83103ed9e900b2dfdc3"
+    },
+    {
+      "path": "common/json/internal/contextjson",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d8e990d489fd93eaabcd5a1798e79a56cf9eaf9d",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/d8e990d489fd93eaabcd5a1798e79a56cf9eaf9d"
+    },
+    {
+      "path": "common/json/internal/contextjson/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be0951cb5248fac9e3d9b84cf7e36e6baf7f614d",
+      "size": 334,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/be0951cb5248fac9e3d9b84cf7e36e6baf7f614d"
+    },
+    {
+      "path": "common/json/internal/contextjson/comment.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b55b5d30bcb9a466e17e67fdd92ff219743af862",
+      "size": 13247,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b55b5d30bcb9a466e17e67fdd92ff219743af862"
+    },
+    {
+      "path": "common/json/internal/contextjson/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ded69d7dafdc1b5f10af1f3bd841e795be1ede09",
+      "size": 229,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ded69d7dafdc1b5f10af1f3bd841e795be1ede09"
+    },
+    {
+      "path": "common/json/internal/contextjson/context_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e36cc17972cbe549119a8066eed81c38019317a",
+      "size": 22046,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4e36cc17972cbe549119a8066eed81c38019317a"
+    },
+    {
+      "path": "common/json/internal/contextjson/decode.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1d6c519a3456d11ba9316a8b741a04af4d27e62",
+      "size": 38913,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e1d6c519a3456d11ba9316a8b741a04af4d27e62"
+    },
+    {
+      "path": "common/json/internal/contextjson/decode_context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3bee22793adcf0d8d3b509104e6b8c4badc923f1",
+      "size": 1619,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3bee22793adcf0d8d3b509104e6b8c4badc923f1"
+    },
+    {
+      "path": "common/json/internal/contextjson/encode.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "809bc128657338e0ab89272cc223f6edf10f3b67",
+      "size": 43894,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/809bc128657338e0ab89272cc223f6edf10f3b67"
+    },
+    {
+      "path": "common/json/internal/contextjson/fold.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c4c671b52765a41c66fe6b055ded986c22b469c7",
+      "size": 1089,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c4c671b52765a41c66fe6b055ded986c22b469c7"
+    },
+    {
+      "path": "common/json/internal/contextjson/indent.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6a90986707b9dce85f54d238722b17bf24ea3c9",
+      "size": 12682,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c6a90986707b9dce85f54d238722b17bf24ea3c9"
+    },
+    {
+      "path": "common/json/internal/contextjson/keys.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c180e65b2cfe25191d13e2da814964056518eb56",
+      "size": 384,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c180e65b2cfe25191d13e2da814964056518eb56"
+    },
+    {
+      "path": "common/json/internal/contextjson/keys_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7758c28e8a6944557f551428dfc7460d5342782",
+      "size": 1277,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f7758c28e8a6944557f551428dfc7460d5342782"
+    },
+    {
+      "path": "common/json/internal/contextjson/scanner.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be451c013467a86d6550b80ff11c161be0c079bb",
+      "size": 18705,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/be451c013467a86d6550b80ff11c161be0c079bb"
+    },
+    {
+      "path": "common/json/internal/contextjson/stream.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd6da2cf6a7935ac1a4856ec1a252b6097bdd23a",
+      "size": 15073,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bd6da2cf6a7935ac1a4856ec1a252b6097bdd23a"
+    },
+    {
+      "path": "common/json/internal/contextjson/tables.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10acdc18c6b0b497fb5485db30b28a30163f0ad3",
+      "size": 4260,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/10acdc18c6b0b497fb5485db30b28a30163f0ad3"
+    },
+    {
+      "path": "common/json/internal/contextjson/tags.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b490328f4c46e70aa85413ac5a4ee5a0190592e9",
+      "size": 972,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b490328f4c46e70aa85413ac5a4ee5a0190592e9"
+    },
+    {
+      "path": "common/json/internal/contextjson/unmarshal.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dff33a9fa89a481600663b4f2a8611b12beeffdb",
+      "size": 722,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/dff33a9fa89a481600663b4f2a8611b12beeffdb"
+    },
+    {
+      "path": "common/json/unmarshal.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1d0837d580004eb66a4cd14300d90762e0fbaba",
+      "size": 809,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d1d0837d580004eb66a4cd14300d90762e0fbaba"
+    },
+    {
+      "path": "common/json/unmarshal_context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "821d4684a8cca6535c2df127bda018a60af39969",
+      "size": 165,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/821d4684a8cca6535c2df127bda018a60af39969"
+    },
+    {
+      "path": "common/logger",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d65e90a89fe6808f92f5fb7b52284d4999f0f0b9",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/d65e90a89fe6808f92f5fb7b52284d4999f0f0b9"
+    },
+    {
+      "path": "common/logger/logger.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba4aaba0fe45be46aaae9af1f259c1c07aa8d621",
+      "size": 574,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ba4aaba0fe45be46aaae9af1f259c1c07aa8d621"
+    },
+    {
+      "path": "common/logger/nop.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd630d18d52566c3fc94643e63c0a8f07c4ec1b6",
+      "size": 927,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cd630d18d52566c3fc94643e63c0a8f07c4ec1b6"
+    },
+    {
+      "path": "common/low_memory.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e465d4334fc5c820dc1b09119c1d5911ea2e388a",
+      "size": 67,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e465d4334fc5c820dc1b09119c1d5911ea2e388a"
+    },
+    {
+      "path": "common/low_memory_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b06cb4c1bacc512cf8f1d46b3d644302bd0fe75b",
+      "size": 69,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b06cb4c1bacc512cf8f1d46b3d644302bd0fe75b"
+    },
+    {
+      "path": "common/memory",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4f67a24630fb9bd1b647724a4b842360ce9a4fbf",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/4f67a24630fb9bd1b647724a4b842360ce9a4fbf"
+    },
+    {
+      "path": "common/memory/memory.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e4ec12db7d23e5031b33ab6edbaf1450aaf92a4",
+      "size": 543,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8e4ec12db7d23e5031b33ab6edbaf1450aaf92a4"
+    },
+    {
+      "path": "common/memory/memory_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "096482f1c0e3927c51f48dcd4fd7d7e05958334f",
+      "size": 1578,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/096482f1c0e3927c51f48dcd4fd7d7e05958334f"
+    },
+    {
+      "path": "common/memory/memory_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00954cf3e47238b94bc16fac312a3bd496e445f6",
+      "size": 2626,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/00954cf3e47238b94bc16fac312a3bd496e445f6"
+    },
+    {
+      "path": "common/memory/memory_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "add32f6a2288f11caa6e169188cf99855ca6fca8",
+      "size": 348,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/add32f6a2288f11caa6e169188cf99855ca6fca8"
+    },
+    {
+      "path": "common/memory/memory_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "020c5816a43ddec542785d335253cc1cfcb5a00e",
+      "size": 821,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/020c5816a43ddec542785d335253cc1cfcb5a00e"
+    },
+    {
+      "path": "common/memory/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "069ce0118ccffbfb0dc323169feb489dd4c5f540",
+      "size": 1278,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/069ce0118ccffbfb0dc323169feb489dd4c5f540"
+    },
+    {
+      "path": "common/memory/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33334a3741f94f1ee0bfa0ab6eea7596ac56ac59",
+      "size": 1497,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/33334a3741f94f1ee0bfa0ab6eea7596ac56ac59"
+    },
+    {
+      "path": "common/metadata",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "18fa1e853a676c5d646a3255634e873c31393fcd",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/18fa1e853a676c5d646a3255634e873c31393fcd"
+    },
+    {
+      "path": "common/metadata/addr.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d9441d9550c80ec0382be4ebab063a60bb71cdc",
+      "size": 4825,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/5d9441d9550c80ec0382be4ebab063a60bb71cdc"
+    },
+    {
+      "path": "common/metadata/addr_bsd.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a21a7312b72eeaa466a93b851224869d50f9795a",
+      "size": 871,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a21a7312b72eeaa466a93b851224869d50f9795a"
+    },
+    {
+      "path": "common/metadata/addr_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e085d078cd6b53c75444465ed9982cf09eaec3a9",
+      "size": 735,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e085d078cd6b53c75444465ed9982cf09eaec3a9"
+    },
+    {
+      "path": "common/metadata/addr_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8ab59c196fba435071c23fd3128cdf43ea6b5da",
+      "size": 1904,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f8ab59c196fba435071c23fd3128cdf43ea6b5da"
+    },
+    {
+      "path": "common/metadata/addr_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7eaa148f1bfb2ed55637d2a73091f89cd1cba431",
+      "size": 2010,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7eaa148f1bfb2ed55637d2a73091f89cd1cba431"
+    },
+    {
+      "path": "common/metadata/domain.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30ce411576b5489a5ffa6c82313faaac1f313e74",
+      "size": 135,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/30ce411576b5489a5ffa6c82313faaac1f313e74"
+    },
+    {
+      "path": "common/metadata/family.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c2a5bed2c45adebd80df219fa999839a19c21344",
+      "size": 184,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c2a5bed2c45adebd80df219fa999839a19c21344"
+    },
+    {
+      "path": "common/metadata/metadata.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a67cb6a6d202e80c7493186e78398187350900a4",
+      "size": 137,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a67cb6a6d202e80c7493186e78398187350900a4"
+    },
+    {
+      "path": "common/metadata/network.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c171f7cfdd1f8a22eb9359c38420d0debbb1cd23",
+      "size": 186,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c171f7cfdd1f8a22eb9359c38420d0debbb1cd23"
+    },
+    {
+      "path": "common/metadata/serializer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4814ba3d1c7520680c7aa1bd6e54abe7ff6d776",
+      "size": 4891,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e4814ba3d1c7520680c7aa1bd6e54abe7ff6d776"
+    },
+    {
+      "path": "common/metadata/socksaddr.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8f07050e79547173f8a2b9afe4f492935adaa08",
+      "size": 196,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e8f07050e79547173f8a2b9afe4f492935adaa08"
+    },
+    {
+      "path": "common/minmax.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f3d4e66e0959c68903e8a3a57e2b96c0ab5df35",
+      "size": 242,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3f3d4e66e0959c68903e8a3a57e2b96c0ab5df35"
+    },
+    {
+      "path": "common/native_endian.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "da17dd4681b9cd8ddb8d88ebfbd959355d407e59",
+      "size": 132,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/da17dd4681b9cd8ddb8d88ebfbd959355d407e59"
+    },
+    {
+      "path": "common/network",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "51d95f5681dfbce6fd338658d24ebba45f11a633",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/51d95f5681dfbce6fd338658d24ebba45f11a633"
+    },
+    {
+      "path": "common/network/addr.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b9ada80d198033f5277f3b256b5f75e78c8be36",
+      "size": 831,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0b9ada80d198033f5277f3b256b5f75e78c8be36"
+    },
+    {
+      "path": "common/network/conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab3961f1e491fb70da9284a0bc63bef41b6cfa0b",
+      "size": 6762,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ab3961f1e491fb70da9284a0bc63bef41b6cfa0b"
+    },
+    {
+      "path": "common/network/counter.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8d474d955bbe82cd4e87b1d62e2c65df6abb64b",
+      "size": 4192,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d8d474d955bbe82cd4e87b1d62e2c65df6abb64b"
+    },
+    {
+      "path": "common/network/dialer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0dbebf48a1ec8cc91fbe00b3dfd9a37c34db1119",
+      "size": 1185,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0dbebf48a1ec8cc91fbe00b3dfd9a37c34db1119"
+    },
+    {
+      "path": "common/network/direct.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ccb10c3bd93592d0da11252977ee2e9db7165102",
+      "size": 6704,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ccb10c3bd93592d0da11252977ee2e9db7165102"
+    },
+    {
+      "path": "common/network/duplex.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81b833c280dca0fd78089be424f7bee9361f6213",
+      "size": 572,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/81b833c280dca0fd78089be424f7bee9361f6213"
+    },
+    {
+      "path": "common/network/early.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "422e2f69313f5a4d871153dcbc01f9c45be6d107",
+      "size": 2129,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/422e2f69313f5a4d871153dcbc01f9c45be6d107"
+    },
+    {
+      "path": "common/network/handshake.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c86a1b579b72ce26091c855134996d691dab698a",
+      "size": 2625,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c86a1b579b72ce26091c855134996d691dab698a"
+    },
+    {
+      "path": "common/network/multi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27fa2f2de82fe681f17ac8c1bc766344a6fc8703",
+      "size": 3462,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/27fa2f2de82fe681f17ac8c1bc766344a6fc8703"
+    },
+    {
+      "path": "common/network/name.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d74509916ade3d3457629ad7d7580ae8d6965cfa",
+      "size": 669,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d74509916ade3d3457629ad7d7580ae8d6965cfa"
+    },
+    {
+      "path": "common/network/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b85214413e6a0cbd61bcb809e4afef43ed6cfef",
+      "size": 625,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/5b85214413e6a0cbd61bcb809e4afef43ed6cfef"
+    },
+    {
+      "path": "common/network/packet_offload.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b8c963ac6be975872eb24e0b3bd90455e33219f",
+      "size": 1693,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8b8c963ac6be975872eb24e0b3bd90455e33219f"
+    },
+    {
+      "path": "common/network/thread.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9afc6915912659b1712b39e984637ec34895917",
+      "size": 5532,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d9afc6915912659b1712b39e984637ec34895917"
+    },
+    {
+      "path": "common/network/vectorised.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddbbe3c3cbebb8b7f2632e87664410c12bdcceda",
+      "size": 847,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ddbbe3c3cbebb8b7f2632e87664410c12bdcceda"
+    },
+    {
+      "path": "common/ntp",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7b00e5c81d83d4721b2b888e8017325d233044f3",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/7b00e5c81d83d4721b2b888e8017325d233044f3"
+    },
+    {
+      "path": "common/ntp/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6ed21f846da4c84298fcf2a073bb066a7d4c3151",
+      "size": 274,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6ed21f846da4c84298fcf2a073bb066a7d4c3151"
+    },
+    {
+      "path": "common/ntp/message.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bedb28cd92ae5d8cecb1a0e9fba958b83ccb21e7",
+      "size": 11609,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bedb28cd92ae5d8cecb1a0e9fba958b83ccb21e7"
+    },
+    {
+      "path": "common/ntp/ntp.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "824e555ab49430b98fe6fced9e530eaf0153050a",
+      "size": 1174,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/824e555ab49430b98fe6fced9e530eaf0153050a"
+    },
+    {
+      "path": "common/ntp/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "774ae5a5ecc9ca7ec9fcaca2de14416a4e4c90f0",
+      "size": 3498,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/774ae5a5ecc9ca7ec9fcaca2de14416a4e4c90f0"
+    },
+    {
+      "path": "common/ntp/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee38156245f65feb66eb8ed221021a3a2680f010",
+      "size": 305,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ee38156245f65feb66eb8ed221021a3a2680f010"
+    },
+    {
+      "path": "common/ntp/time_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1686258525e1cc0066e1d329211ca33fb961ebd",
+      "size": 151,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a1686258525e1cc0066e1d329211ca33fb961ebd"
+    },
+    {
+      "path": "common/ntp/time_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b4226f6e1b6325dbf2810eef3e3446e8f0b23eb",
+      "size": 222,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6b4226f6e1b6325dbf2810eef3e3446e8f0b23eb"
+    },
+    {
+      "path": "common/ntp/time_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82d87981a4e779850a86cd5708875fbf09a6c431",
+      "size": 542,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/82d87981a4e779850a86cd5708875fbf09a6c431"
+    },
+    {
+      "path": "common/ntp/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7db91c34340d77f50cd4d5cb6eb5d81d9cc48e80",
+      "size": 1093,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7db91c34340d77f50cd4d5cb6eb5d81d9cc48e80"
+    },
+    {
+      "path": "common/observable",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6484143e1bd3c700485a773071dfdc2c798656f2",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/6484143e1bd3c700485a773071dfdc2c798656f2"
+    },
+    {
+      "path": "common/observable/observer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ce44c8ccfedd00d4811408f33b4094d8b0af116",
+      "size": 1831,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9ce44c8ccfedd00d4811408f33b4094d8b0af116"
+    },
+    {
+      "path": "common/observable/subscriber.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "032ec77b876f0cd7ba5dd996fe249e55736fb0fe",
+      "size": 678,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/032ec77b876f0cd7ba5dd996fe249e55736fb0fe"
+    },
+    {
+      "path": "common/oncefunc.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e91334f5d553c9e263fe878de0450da74bf80238",
+      "size": 398,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e91334f5d553c9e263fe878de0450da74bf80238"
+    },
+    {
+      "path": "common/pipe",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "72cfe4e53e09167e3ab582364bca2dc8f3c10993",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/72cfe4e53e09167e3ab582364bca2dc8f3c10993"
+    },
+    {
+      "path": "common/pipe/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74035cdfc04a6b74097e6d55778c07b7d99e5b30",
+      "size": 25,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/74035cdfc04a6b74097e6d55778c07b7d99e5b30"
+    },
+    {
+      "path": "common/pipe/pipe.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b69fa8e1c9cff7556b4a815001fd367c8221620",
+      "size": 5625,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9b69fa8e1c9cff7556b4a815001fd367c8221620"
+    },
+    {
+      "path": "common/pipe/pipe_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cbd528c8344482c5e73afee5d821d586fedc49ab",
+      "size": 1199,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cbd528c8344482c5e73afee5d821d586fedc49ab"
+    },
+    {
+      "path": "common/random",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fc3728e508a5634390290321a1c696f9ab9fa68c",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/fc3728e508a5634390290321a1c696f9ab9fa68c"
+    },
+    {
+      "path": "common/random/rng.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b1e387d2735ebfeb29a0418c629dc7e278dea94",
+      "size": 676,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6b1e387d2735ebfeb29a0418c629dc7e278dea94"
+    },
+    {
+      "path": "common/random/seed.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67b79c53de1fc2d55d763d22fc7973efdeed9eab",
+      "size": 120,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/67b79c53de1fc2d55d763d22fc7973efdeed9eab"
+    },
+    {
+      "path": "common/ranges",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "39d87848cfa1cc09120ba319fd168ae8a90cb4ee",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/39d87848cfa1cc09120ba319fd168ae8a90cb4ee"
+    },
+    {
+      "path": "common/ranges/range.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "28fdf249ff2849800e5772cf54b32284363c0e7a",
+      "size": 2698,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/28fdf249ff2849800e5772cf54b32284363c0e7a"
+    },
+    {
+      "path": "common/ranges/range_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d6f5f3918cdc601577a64d56cac59bc76e8af8e",
+      "size": 3020,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0d6f5f3918cdc601577a64d56cac59bc76e8af8e"
+    },
+    {
+      "path": "common/replay",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c4133fce8c93163ee9ff29fa4e5fa5b166276865",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/c4133fce8c93163ee9ff29fa4e5fa5b166276865"
+    },
+    {
+      "path": "common/replay/cuckoo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fd72b97a9cd983ad246b0e0d39440bbdf43df43",
+      "size": 861,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7fd72b97a9cd983ad246b0e0d39440bbdf43df43"
+    },
+    {
+      "path": "common/replay/filter.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c82ae9872491d6f5403e0d1d52304908b103ed4",
+      "size": 66,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2c82ae9872491d6f5403e0d1d52304908b103ed4"
+    },
+    {
+      "path": "common/replay/simple.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "788dc90b848acc7d04ff4c79bf12672736193d82",
+      "size": 861,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/788dc90b848acc7d04ff4c79bf12672736193d82"
+    },
+    {
+      "path": "common/rw",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0554b319551f4f00081339bae85c123b56522a11",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/0554b319551f4f00081339bae85c123b56522a11"
+    },
+    {
+      "path": "common/rw/discard.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dee8745ac75a039b0655caa0238ef577fcb7c1f2",
+      "size": 579,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/dee8745ac75a039b0655caa0238ef577fcb7c1f2"
+    },
+    {
+      "path": "common/rw/file.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3600b1ece30b7c9806550baf1736e526970b54e6",
+      "size": 2039,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3600b1ece30b7c9806550baf1736e526970b54e6"
+    },
+    {
+      "path": "common/rw/read.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "80a02673bef48b95e2dceba9867065be161a3cb1",
+      "size": 940,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/80a02673bef48b95e2dceba9867065be161a3cb1"
+    },
+    {
+      "path": "common/rw/varint.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d19f162816d14e77870dc82865022dad1f58dc1c",
+      "size": 1513,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d19f162816d14e77870dc82865022dad1f58dc1c"
+    },
+    {
+      "path": "common/rw/write.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d072ecd841862ce39e8ebac2d3676b494c8d86d0",
+      "size": 949,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d072ecd841862ce39e8ebac2d3676b494c8d86d0"
+    },
+    {
+      "path": "common/shell",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ab2190bb607bd90a89f49c6b8443bf92e84319cd",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/ab2190bb607bd90a89f49c6b8443bf92e84319cd"
+    },
+    {
+      "path": "common/shell/shell.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "122a179c305197fc687f1b34e28e4f21b57ac28e",
+      "size": 1112,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/122a179c305197fc687f1b34e28e4f21b57ac28e"
+    },
+    {
+      "path": "common/string.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d92f22af912393d2d722e6264949b10f069e8cf8",
+      "size": 760,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d92f22af912393d2d722e6264949b10f069e8cf8"
+    },
+    {
+      "path": "common/task",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a7d9063ced82bcab5349a976390c0df53618f08a",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a7d9063ced82bcab5349a976390c0df53618f08a"
+    },
+    {
+      "path": "common/task/task.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1c8cfd0f55eb0af2cc51284079fd4546ed188c9",
+      "size": 2299,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d1c8cfd0f55eb0af2cc51284079fd4546ed188c9"
+    },
+    {
+      "path": "common/task/task_deprecated.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a712eab967939d44b55d667692ce397028e841ec",
+      "size": 613,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a712eab967939d44b55d667692ce397028e841ec"
+    },
+    {
+      "path": "common/tls",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ead17c1f8359d0f9a1333120db34e40cff9446c1",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/ead17c1f8359d0f9a1333120db34e40cff9446c1"
+    },
+    {
+      "path": "common/tls/config.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "587b42c6c37e56201e6210f0aa212ba342b140bf",
+      "size": 2210,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/587b42c6c37e56201e6210f0aa212ba342b140bf"
+    },
+    {
+      "path": "common/tls/listener.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "872e0f2a943076a63649c313c32002d90c6191da",
+      "size": 1599,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/872e0f2a943076a63649c313c32002d90c6191da"
+    },
+    {
+      "path": "common/typed.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e62c9671351e0db6ac191afc0621e49cf10ee77",
+      "size": 858,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9e62c9671351e0db6ac191afc0621e49cf10ee77"
+    },
+    {
+      "path": "common/udpnat",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7d9c2660f66a20b7c8a20ce365b9e88d71661d21",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/7d9c2660f66a20b7c8a20ce365b9e88d71661d21"
+    },
+    {
+      "path": "common/udpnat/conn_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "968d55715c520b8803100b218dbcaedff60721a6",
+      "size": 935,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/968d55715c520b8803100b218dbcaedff60721a6"
+    },
+    {
+      "path": "common/udpnat/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5b491b5120aa008091e2d66e1505288d7be68d93",
+      "size": 5641,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/5b491b5120aa008091e2d66e1505288d7be68d93"
+    },
+    {
+      "path": "common/udpnat2",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "89e3749398bc7dbf1f65c6a4c1944bf6d0b6f3bc",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/89e3749398bc7dbf1f65c6a4c1944bf6d0b6f3bc"
+    },
+    {
+      "path": "common/udpnat2/conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "418e66decde59222184cca08088b8421f6afa555",
+      "size": 4422,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/418e66decde59222184cca08088b8421f6afa555"
+    },
+    {
+      "path": "common/udpnat2/conn_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94d1fb6097abc5d95ab91190df68d3a050e376f8",
+      "size": 2748,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/94d1fb6097abc5d95ab91190df68d3a050e376f8"
+    },
+    {
+      "path": "common/udpnat2/service.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "adb5f2e3ceb5f4a865f6ff786109a44be0258594",
+      "size": 3039,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/adb5f2e3ceb5f4a865f6ff786109a44be0258594"
+    },
+    {
+      "path": "common/unsafe.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "805d0c79aadd885ddb6ed76b1e678c10a63bbe45",
+      "size": 15,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/805d0c79aadd885ddb6ed76b1e678c10a63bbe45"
+    },
+    {
+      "path": "common/uot",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "beed6ae0faa8120602c0c2f16305ae11f95c1dfb",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/beed6ae0faa8120602c0c2f16305ae11f95c1dfb"
+    },
+    {
+      "path": "common/uot/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b05c722d5b8b874be127d95dc032ab82143252b5",
+      "size": 2123,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b05c722d5b8b874be127d95dc032ab82143252b5"
+    },
+    {
+      "path": "common/uot/conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c04a5d74e07147e4ee1d1f492e948353c3179066",
+      "size": 3620,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c04a5d74e07147e4ee1d1f492e948353c3179066"
+    },
+    {
+      "path": "common/uot/conn_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7341c882add226f0ccfb011d3c092b16223c5c5d",
+      "size": 927,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7341c882add226f0ccfb011d3c092b16223c5c5d"
+    },
+    {
+      "path": "common/uot/lazy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb54ecd5297c0c4568a53e2a4199cab5c14d28cd",
+      "size": 1830,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/eb54ecd5297c0c4568a53e2a4199cab5c14d28cd"
+    },
+    {
+      "path": "common/uot/protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f968c7d18c207d440740f347955572188b75b13",
+      "size": 1762,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4f968c7d18c207d440740f347955572188b75b13"
+    },
+    {
+      "path": "common/uot/server.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d60f5970572af6789770057f31d5e895fd724cb7",
+      "size": 2599,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d60f5970572af6789770057f31d5e895fd724cb7"
+    },
+    {
+      "path": "common/upstream.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9af3604fd569bc5016519919952680651d416c73",
+      "size": 723,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9af3604fd569bc5016519919952680651d416c73"
+    },
+    {
+      "path": "common/varbin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4752eea9bbd0a8b8d6eed8ff85b449052f01d8ac",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/4752eea9bbd0a8b8d6eed8ff85b449052f01d8ac"
+    },
+    {
+      "path": "common/varbin/data.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8651ebce14cc71d503cf1805c3f8e48f4a52ea53",
+      "size": 10462,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8651ebce14cc71d503cf1805c3f8e48f4a52ea53"
+    },
+    {
+      "path": "common/varbin/data_if.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50178afaf26a06580519f0077e485252669b54c3",
+      "size": 451,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/50178afaf26a06580519f0077e485252669b54c3"
+    },
+    {
+      "path": "common/varbin/slices.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "979f44e173d0cf56295894c99f93ce0a444b2af2",
+      "size": 876,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/979f44e173d0cf56295894c99f93ce0a444b2af2"
+    },
+    {
+      "path": "common/varbin/uvarint.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c57443819d1900494221c8d7e91ec39bc412d04",
+      "size": 644,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9c57443819d1900494221c8d7e91ec39bc412d04"
+    },
+    {
+      "path": "common/varbin/value_slices_unsafe.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f960854e06f0d78962a9483dc7fb4571485a53a",
+      "size": 2449,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/5f960854e06f0d78962a9483dc7fb4571485a53a"
+    },
+    {
+      "path": "common/varbin/value_slices_unsafe_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ebec9924dddd2101c35ad8e288b1f5dfa3586c3",
+      "size": 983,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8ebec9924dddd2101c35ad8e288b1f5dfa3586c3"
+    },
+    {
+      "path": "common/windnsapi",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "51ec4a94f41934ba9873735d45d6cb2dbde72136",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/51ec4a94f41934ba9873735d45d6cb2dbde72136"
+    },
+    {
+      "path": "common/windnsapi/dnsapi_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "05809328ad6a240b76eb97ee81d6943dfb2030b4",
+      "size": 111,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/05809328ad6a240b76eb97ee81d6943dfb2030b4"
+    },
+    {
+      "path": "common/windnsapi/dnsapi_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5ea8310e5b734eb5057ec60bcb182e9c4187468",
+      "size": 192,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c5ea8310e5b734eb5057ec60bcb182e9c4187468"
+    },
+    {
+      "path": "common/windnsapi/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b41e5257c1d1288f58fdefe9d17660f118f5db11",
+      "size": 256,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b41e5257c1d1288f58fdefe9d17660f118f5db11"
+    },
+    {
+      "path": "common/windnsapi/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "033c01c79f0cd9f019cadde80768b3d23d7ad1b0",
+      "size": 1054,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/033c01c79f0cd9f019cadde80768b3d23d7ad1b0"
+    },
+    {
+      "path": "common/wininet",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1e678335ba5613bd95a46c82637adfd5ec00b3c3",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/1e678335ba5613bd95a46c82637adfd5ec00b3c3"
+    },
+    {
+      "path": "common/wininet/wininet_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b773e1ac5992c9ac7c9ce9da6d289e8682415d4",
+      "size": 3521,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2b773e1ac5992c9ac7c9ce9da6d289e8682415d4"
+    },
+    {
+      "path": "common/winiphlpapi",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "786482187b598505269790e3efc7360a12b6b3cf",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/786482187b598505269790e3efc7360a12b6b3cf"
+    },
+    {
+      "path": "common/winiphlpapi/helper.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ea2e33cf66733626a6ee90d7b0cfd8b96853dba",
+      "size": 10475,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3ea2e33cf66733626a6ee90d7b0cfd8b96853dba"
+    },
+    {
+      "path": "common/winiphlpapi/iphlpapi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f53bf9dc772098c8887001a32f917ac8a703089a",
+      "size": 14727,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f53bf9dc772098c8887001a32f917ac8a703089a"
+    },
+    {
+      "path": "common/winiphlpapi/iphlpapi_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e3b40565e74aa6990b6d37620819b62e1c563d98",
+      "size": 2639,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e3b40565e74aa6990b6d37620819b62e1c563d98"
+    },
+    {
+      "path": "common/winiphlpapi/nsi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1e9c2ed70bf7709dfc05e11f5a2c01f7680f6d25",
+      "size": 2221,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/1e9c2ed70bf7709dfc05e11f5a2c01f7680f6d25"
+    },
+    {
+      "path": "common/winiphlpapi/nsi_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40181e48f730aa8e6a33a923bab63ffedd99209d",
+      "size": 2478,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/40181e48f730aa8e6a33a923bab63ffedd99209d"
+    },
+    {
+      "path": "common/winiphlpapi/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a89288b7f516ae85fd6c06c8617412a9c85d57f1",
+      "size": 3853,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a89288b7f516ae85fd6c06c8617412a9c85d57f1"
+    },
+    {
+      "path": "common/winiphlpapi/tcpinfo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "122463d379a9a90cbd4303113ec29e7cb9d55d20",
+      "size": 1062,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/122463d379a9a90cbd4303113ec29e7cb9d55d20"
+    },
+    {
+      "path": "common/winiphlpapi/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69dbdf548f352af8f37f5697d22fe4f23e8f021b",
+      "size": 7800,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/69dbdf548f352af8f37f5697d22fe4f23e8f021b"
+    },
+    {
+      "path": "common/winpowrprof",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d8dba9d432c090b02bf855b433ec19302442b4ab",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/d8dba9d432c090b02bf855b433ec19302442b4ab"
+    },
+    {
+      "path": "common/winpowrprof/event.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9cfd81570fc0705ca7ae803e89dbad27608cf6c7",
+      "size": 266,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9cfd81570fc0705ca7ae803e89dbad27608cf6c7"
+    },
+    {
+      "path": "common/winpowrprof/event_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ab4773e251a7fbbff7c376129bef3e25caf87ed",
+      "size": 160,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4ab4773e251a7fbbff7c376129bef3e25caf87ed"
+    },
+    {
+      "path": "common/winpowrprof/event_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6155596012c907a83d8f0f73f3c8c66ef931ae40",
+      "size": 382,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6155596012c907a83d8f0f73f3c8c66ef931ae40"
+    },
+    {
+      "path": "common/winpowrprof/event_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70c8f193eb782d4088c56ce8ad60ae6c4c8d6ae5",
+      "size": 1751,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/70c8f193eb782d4088c56ce8ad60ae6c4c8d6ae5"
+    },
+    {
+      "path": "common/winpowrprof/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03e130377b58d72d4bef0fdb74434bcc18b2f6f9",
+      "size": 952,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/03e130377b58d72d4bef0fdb74434bcc18b2f6f9"
+    },
+    {
+      "path": "common/winpowrprof/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40c1f8b53771090cf9a9bee39c8003b7a36c4c1f",
+      "size": 1665,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/40c1f8b53771090cf9a9bee39c8003b7a36c4c1f"
+    },
+    {
+      "path": "common/winwlanapi",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e25c515af321c29e5704b1de39c4f267325f9adf",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/e25c515af321c29e5704b1de39c4f267325f9adf"
+    },
+    {
+      "path": "common/winwlanapi/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8487338913e7e8abb32233f3886661c48f8beff4",
+      "size": 1646,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8487338913e7e8abb32233f3886661c48f8beff4"
+    },
+    {
+      "path": "common/winwlanapi/wlanapi.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d128dcc0a36d66fade12468f4e56bb92b48c7d6a",
+      "size": 4180,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d128dcc0a36d66fade12468f4e56bb92b48c7d6a"
+    },
+    {
+      "path": "common/winwlanapi/wlanapi_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a3e7a803479f7809d4d351ca89a76f970c848da",
+      "size": 2818,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0a3e7a803479f7809d4d351ca89a76f970c848da"
+    },
+    {
+      "path": "common/winwlanapi/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18360c8a4c87847b5f8d551ca7f04435a633ada1",
+      "size": 3282,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/18360c8a4c87847b5f8d551ca7f04435a633ada1"
+    },
+    {
+      "path": "common/x",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fefea849891edc95e378e1985964b9cdcdd51712",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/fefea849891edc95e378e1985964b9cdcdd51712"
+    },
+    {
+      "path": "common/x/collections",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6450d2ad6d85b9f0ccf1a184ae7cb01e06dd3a77",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/6450d2ad6d85b9f0ccf1a184ae7cb01e06dd3a77"
+    },
+    {
+      "path": "common/x/collections/map.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8bae0eb9a1fabbc5ba48d23d559b2d0cadf7543f",
+      "size": 336,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8bae0eb9a1fabbc5ba48d23d559b2d0cadf7543f"
+    },
+    {
+      "path": "common/x/constraints",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cb15080a90d367e755e1ceffaa0d1e6d9cc4a875",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/cb15080a90d367e755e1ceffaa0d1e6d9cc4a875"
+    },
+    {
+      "path": "common/x/constraints/constraints.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3eb1cda55ffbec47afaceed59279ff52dcc0af70",
+      "size": 1507,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3eb1cda55ffbec47afaceed59279ff52dcc0af70"
+    },
+    {
+      "path": "common/x/linkedhashmap",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "99eaa86e65dd0e41d92ebf425dd7df569151eb6b",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/99eaa86e65dd0e41d92ebf425dd7df569151eb6b"
+    },
+    {
+      "path": "common/x/linkedhashmap/map.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d51aafac395c391b30766feb5d237fde3d32d5ad",
+      "size": 2357,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d51aafac395c391b30766feb5d237fde3d32d5ad"
+    },
+    {
+      "path": "common/x/list",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "90d6359d466b1a88693415f249a2604f101fe829",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/90d6359d466b1a88693415f249a2604f101fe829"
+    },
+    {
+      "path": "common/x/list/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0ac5af7108b639ccccf43f80b69b3175561f128a",
+      "size": 52,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0ac5af7108b639ccccf43f80b69b3175561f128a"
+    },
+    {
+      "path": "common/x/list/cond.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39b46abe81b1e19ac5202a6ab994ba5d11effc86",
+      "size": 736,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/39b46abe81b1e19ac5202a6ab994ba5d11effc86"
+    },
+    {
+      "path": "common/x/list/list.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd488435ac1c7766f140661cf391667a1af32eb7",
+      "size": 6523,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/fd488435ac1c7766f140661cf391667a1af32eb7"
+    },
+    {
+      "path": "contrab",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e18751d1fbcf53cf77c91877e1e2548777b6d82a",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/e18751d1fbcf53cf77c91877e1e2548777b6d82a"
+    },
+    {
+      "path": "contrab/freelru",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "91bbcfe28788a369c6fa6f3b5200abd54c7a395c",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/91bbcfe28788a369c6fa6f3b5200abd54c7a395c"
+    },
+    {
+      "path": "contrab/freelru/LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "size": 11357,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64"
+    },
+    {
+      "path": "contrab/freelru/NOTICE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b1c8775c678e2e7ee07eb4dfafd0f99f09a97d8",
+      "size": 49,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9b1c8775c678e2e7ee07eb4dfafd0f99f09a97d8"
+    },
+    {
+      "path": "contrab/freelru/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72bec81ae1f0d5206ffd565c3252a202bf9ab3ba",
+      "size": 139,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/72bec81ae1f0d5206ffd565c3252a202bf9ab3ba"
+    },
+    {
+      "path": "contrab/freelru/cache.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "61565c4dcc55e6fe9a8bb103efc3750ef83d8786",
+      "size": 4793,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/61565c4dcc55e6fe9a8bb103efc3750ef83d8786"
+    },
+    {
+      "path": "contrab/freelru/cache_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63f65dc7bd4c20ea6612cfa09830de5a091059ea",
+      "size": 4216,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/63f65dc7bd4c20ea6612cfa09830de5a091059ea"
+    },
+    {
+      "path": "contrab/freelru/growth_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83dfd8130a6c701c85fc8e9f3fc6a3dca200ac0f",
+      "size": 3572,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/83dfd8130a6c701c85fc8e9f3fc6a3dca200ac0f"
+    },
+    {
+      "path": "contrab/freelru/lru.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c12224d279ad2387f4f3b991426d353b8307b1b2",
+      "size": 26535,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/c12224d279ad2387f4f3b991426d353b8307b1b2"
+    },
+    {
+      "path": "contrab/freelru/lru_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a4fb54bb0dffa948cab5f603fff0b2ec223517c",
+      "size": 5730,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/7a4fb54bb0dffa948cab5f603fff0b2ec223517c"
+    },
+    {
+      "path": "contrab/freelru/shardedlru.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90a11f69633ee7a2ef5d31e77e90cf7eb0d772f8",
+      "size": 10953,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/90a11f69633ee7a2ef5d31e77e90cf7eb0d772f8"
+    },
+    {
+      "path": "contrab/freelru/syncedlru.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b89a1265ba2e2d0788e8145a1318bceaf54a687",
+      "size": 6647,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/8b89a1265ba2e2d0788e8145a1318bceaf54a687"
+    },
+    {
+      "path": "contrab/maphash",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ac9ca41989762934bf99f55901973b60ae35d5de",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/ac9ca41989762934bf99f55901973b60ae35d5de"
+    },
+    {
+      "path": "contrab/maphash/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4cb792ef9cbab82aed19d165b269e376a9b0039",
+      "size": 56,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a4cb792ef9cbab82aed19d165b269e376a9b0039"
+    },
+    {
+      "path": "contrab/maphash/hasher.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc60b2e4c026a1a7beb4231ef87fd7c02f19f248",
+      "size": 1437,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cc60b2e4c026a1a7beb4231ef87fd7c02f19f248"
+    },
+    {
+      "path": "contrab/maphash/runtime.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2aa2e06fb236b284ebb4371ad5ddddcd5ec6fad",
+      "size": 2706,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/f2aa2e06fb236b284ebb4371ad5ddddcd5ec6fad"
+    },
+    {
+      "path": "go.mod",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26872a237e0089077c45480a9512429db6344d97",
+      "size": 266,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/26872a237e0089077c45480a9512429db6344d97"
+    },
+    {
+      "path": "go.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4044816789c5093b070351e7797b5cbb2777776f",
+      "size": 1036,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/4044816789c5093b070351e7797b5cbb2777776f"
+    },
+    {
+      "path": "protocol",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "13ce62944a6fef08aebb40c04e61a35012ebc4de",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/13ce62944a6fef08aebb40c04e61a35012ebc4de"
+    },
+    {
+      "path": "protocol/http",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a5433c6f459dca908a86622ee214fc4242394951",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a5433c6f459dca908a86622ee214fc4242394951"
+    },
+    {
+      "path": "protocol/http/addr.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5aaef124838e40c8eaa00ce58742c307ff5bb1f",
+      "size": 479,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d5aaef124838e40c8eaa00ce58742c307ff5bb1f"
+    },
+    {
+      "path": "protocol/http/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "287e64743d4d7deafea38ac526c39623e0c2a1a2",
+      "size": 3634,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/287e64743d4d7deafea38ac526c39623e0c2a1a2"
+    },
+    {
+      "path": "protocol/http/handshake.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "475a77a7b3f83add9cef520180965bbffd3ae472",
+      "size": 8329,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/475a77a7b3f83add9cef520180965bbffd3ae472"
+    },
+    {
+      "path": "protocol/http/handshake_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89a7961128d300ce6a536b838a1be8b22ade6410",
+      "size": 5155,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/89a7961128d300ce6a536b838a1be8b22ade6410"
+    },
+    {
+      "path": "protocol/http/link.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "554c9c97d928e18c6226d3f0203492f740f85ab4",
+      "size": 415,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/554c9c97d928e18c6226d3f0203492f740f85ab4"
+    },
+    {
+      "path": "protocol/socks",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cbd2bb49529ac10bfd920b3eb414566ff82ef31b",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/cbd2bb49529ac10bfd920b3eb414566ff82ef31b"
+    },
+    {
+      "path": "protocol/socks/client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ccfb6ae89e38771c96d2d3b7d065d26e3d70a545",
+      "size": 4728,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ccfb6ae89e38771c96d2d3b7d065d26e3d70a545"
+    },
+    {
+      "path": "protocol/socks/handshake.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77f4dcb4608fe0053a52d95a4b422512e74203d3",
+      "size": 9535,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/77f4dcb4608fe0053a52d95a4b422512e74203d3"
+    },
+    {
+      "path": "protocol/socks/handshake_tor.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e14ef51e35756c60b25a17e85ee5286aab85d2e4",
+      "size": 4532,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/e14ef51e35756c60b25a17e85ee5286aab85d2e4"
+    },
+    {
+      "path": "protocol/socks/lazy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bfac68f86eb786947f601c99b7fa974b03c0aa84",
+      "size": 4644,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/bfac68f86eb786947f601c99b7fa974b03c0aa84"
+    },
+    {
+      "path": "protocol/socks/packet.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0560ac72e471c016e18a593e795946a91957bca2",
+      "size": 3361,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0560ac72e471c016e18a593e795946a91957bca2"
+    },
+    {
+      "path": "protocol/socks/packet_batch.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c8e503982fb2fd81daa75c2d045c30d7e73ce98",
+      "size": 4746,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/1c8e503982fb2fd81daa75c2d045c30d7e73ce98"
+    },
+    {
+      "path": "protocol/socks/packet_offload.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0c0c6619eebb36c9f0569181f2683e02a7798bc",
+      "size": 1286,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d0c0c6619eebb36c9f0569181f2683e02a7798bc"
+    },
+    {
+      "path": "protocol/socks/packet_vectorised.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b8939bf17863d9fc1dcabfa16aed20b4cb6922d",
+      "size": 1213,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/9b8939bf17863d9fc1dcabfa16aed20b4cb6922d"
+    },
+    {
+      "path": "protocol/socks/packet_wait.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecf673acc8ffb99be71f271122d8bdddd6460a5b",
+      "size": 1268,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/ecf673acc8ffb99be71f271122d8bdddd6460a5b"
+    },
+    {
+      "path": "protocol/socks/socks4",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c7d93721fe29afd37bfb7a49c70a0a291d4d5669",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/c7d93721fe29afd37bfb7a49c70a0a291d4d5669"
+    },
+    {
+      "path": "protocol/socks/socks4/protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14da5284294b20ce14440ce226a5664172e9fc09",
+      "size": 4466,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/14da5284294b20ce14440ce226a5664172e9fc09"
+    },
+    {
+      "path": "protocol/socks/socks5",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a21245745c5b959d01916dd4c4ec95feb8b13ea0",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a21245745c5b959d01916dd4c4ec95feb8b13ea0"
+    },
+    {
+      "path": "protocol/socks/socks5/protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb042270c8534e429772e8ecf28bab49c9292fa9",
+      "size": 7375,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/cb042270c8534e429772e8ecf28bab49c9292fa9"
+    },
+    {
+      "path": "service",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e6feb20fb78d5461a322889507f07ad799d143a1",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/e6feb20fb78d5461a322889507f07ad799d143a1"
+    },
+    {
+      "path": "service/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e991ec7e18038924f85fce747ef2bf2b6acdec3",
+      "size": 2405,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/0e991ec7e18038924f85fce747ef2bf2b6acdec3"
+    },
+    {
+      "path": "service/filemanager",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6ec1213813ad3039e4c2bf08e509a6dd7e828492",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/6ec1213813ad3039e4c2bf08e509a6dd7e828492"
+    },
+    {
+      "path": "service/filemanager/default.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4b8a7cf983727ad052604f173e8ca87aeff146a",
+      "size": 3951,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/a4b8a7cf983727ad052604f173e8ca87aeff146a"
+    },
+    {
+      "path": "service/filemanager/manager.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2286f7f7231af01902284f16820f5d6022049134",
+      "size": 4731,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/2286f7f7231af01902284f16820f5d6022049134"
+    },
+    {
+      "path": "service/pause",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a105fba4755b07e30c7c60c5966f021cf1644f89",
+      "url": "https://api.github.com/repos/SagerNet/sing/git/trees/a105fba4755b07e30c7c60c5966f021cf1644f89"
+    },
+    {
+      "path": "service/pause/context.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b83e01cad131e927cdd2043807a85f35f40e5de7",
+      "size": 556,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/b83e01cad131e927cdd2043807a85f35f40e5de7"
+    },
+    {
+      "path": "service/pause/default.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c292a40c9de55307201d0d6d145e2d87ff6ad15",
+      "size": 2674,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/3c292a40c9de55307201d0d6d145e2d87ff6ad15"
+    },
+    {
+      "path": "service/pause/manager.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f5058ed0e53c939f408a3bfdde15e360eff3797",
+      "size": 471,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/6f5058ed0e53c939f408a3bfdde15e360eff3797"
+    },
+    {
+      "path": "service/pause/timer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eb9260f80eb07b109682ce51344bb2d038eb6cd8",
+      "size": 493,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/eb9260f80eb07b109682ce51344bb2d038eb6cd8"
+    },
+    {
+      "path": "service/registry.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d9d09c33c6be98761c53c1b06abd87a9022ea78d",
+      "size": 945,
+      "url": "https://api.github.com/repos/SagerNet/sing/git/blobs/d9d09c33c6be98761c53c1b06abd87a9022ea78d"
+    }
+  ],
+  "truncated": false
+}

@@ -17,6 +17,7 @@ import (
 )
 
 type gLazyConn struct {
+	ownership flowOwnershipSlot
 	tcpConn         *gTCPConn
 	parentCtx       context.Context
 	stack           *stack.Stack
@@ -61,6 +62,7 @@ func (c *gLazyConn) HandshakeContext(ctx context.Context) error {
 		gErr := gonet.TranslateNetstackError(err)
 		c.handshakeErr = gErr
 		c.request.Complete(true)
+		c.ownership.release()
 		return gErr
 	}
 	c.request.Complete(false)
@@ -71,6 +73,7 @@ func (c *gLazyConn) HandshakeContext(ctx context.Context) error {
 }
 
 func (c *gLazyConn) HandshakeFailure(err error) error {
+	defer c.ownership.release()
 	c.handshakeAccess.Lock()
 	defer c.handshakeAccess.Unlock()
 	if c.handshakeDone {
@@ -147,6 +150,7 @@ func (c *gLazyConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (c *gLazyConn) Close() error {
+	defer c.ownership.release()
 	if c.closeBeforeHandshake() {
 		return nil
 	}
@@ -184,13 +188,13 @@ func (c *gLazyConn) closeBeforeHandshake() bool {
 func (c *gLazyConn) ReaderReplaceable() bool {
 	c.handshakeAccess.Lock()
 	defer c.handshakeAccess.Unlock()
-	return c.handshakeDone && c.handshakeErr == nil
+	return !c.ownership.present() && c.handshakeDone && c.handshakeErr == nil
 }
 
 func (c *gLazyConn) WriterReplaceable() bool {
 	c.handshakeAccess.Lock()
 	defer c.handshakeAccess.Unlock()
-	return c.handshakeDone && c.handshakeErr == nil
+	return !c.ownership.present() && c.handshakeDone && c.handshakeErr == nil
 }
 
 func (c *gLazyConn) Upstream() any {

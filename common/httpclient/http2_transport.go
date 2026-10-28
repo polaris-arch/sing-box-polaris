@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	stdTLS "crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 
@@ -16,6 +17,7 @@ import (
 
 type http2Transport struct {
 	h2Transport *http2.Transport
+	boundary    *RuntimeTransportBoundary
 	h1Transport *http1Transport
 }
 
@@ -28,7 +30,10 @@ func newHTTP2Transport(rawDialer N.Dialer, baseTLSConfig tls.Config, options opt
 	h2Transport.DialTLSContext = func(ctx context.Context, network, addr string, _ *stdTLS.Config) (net.Conn, error) {
 		return dialTLS(ctx, rawDialer, baseTLSConfig, M.ParseSocksaddr(addr), []string{http2.NextProtoTLS}, http2.NextProtoTLS)
 	}
+	boundary := NewRuntimeTransportBoundary(func() error { h2Transport.CloseIdleConnections(); return nil })
+	boundary.BindHTTP2(h2Transport)
 	return &http2Transport{
+		boundary:    boundary,
 		h2Transport: h2Transport,
 		h1Transport: h1,
 	}, nil
@@ -38,7 +43,7 @@ func (t *http2Transport) RoundTrip(request *http.Request) (*http.Response, error
 	if request.URL.Scheme != "https" || requestRequiresHTTP1(request) {
 		return t.h1Transport.RoundTrip(request)
 	}
-	return t.h2Transport.RoundTrip(request)
+	return t.boundary.RoundTrip(request, t.h2Transport.RoundTrip)
 }
 
 func (t *http2Transport) CloseIdleConnections() {
@@ -47,6 +52,11 @@ func (t *http2Transport) CloseIdleConnections() {
 }
 
 func (t *http2Transport) Close() error {
-	t.CloseIdleConnections()
-	return nil
+	t.StopRuntimeOperations()
+	return errors.Join(t.boundary.Close(), t.h1Transport.Close())
+}
+
+func (t *http2Transport) StopRuntimeOperations() {
+	t.boundary.StopRuntimeOperations()
+	t.h1Transport.StopRuntimeOperations()
 }

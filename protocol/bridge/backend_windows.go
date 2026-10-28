@@ -129,7 +129,9 @@ type backendWindows struct {
 
 	icmp4, icmp6 *icmpTable
 
-	diverters []*diverter
+	diverterUpdate   chan struct{} // protected by egressAccess; never held across native calls
+	diverterCloseErr error
+	diverters        []*diverter
 }
 
 func newBackend(ctx context.Context, logger logger.ContextLogger, networkManager adapter.NetworkManager, tag string, options option.BridgeOutboundOptions) (Backend, error) {
@@ -177,18 +179,19 @@ func (b *backendWindows) start(scope *adapter.Scope) error {
 	b.sendBuffer = make([]byte, 0, bridgeBatchBufferSize)
 	b.sendAddrs = make([]windivert.Address, 0, windivert.BatchMax)
 
-	b.egressAccess.Lock()
-	err = b.rebuildDivertersLocked(state)
-	b.egressAccess.Unlock()
+	scope.Add(func() error {
+		finishUpdate := b.beginDiverterUpdate()
+		b.closeDiverters()
+		finishUpdate()
+		return b.diverterCloseErr
+	})
+
+	finishUpdate := b.beginDiverterUpdate()
+	err = b.rebuildDiverters(state)
+	finishUpdate()
 	if err != nil {
 		return err
 	}
-	scope.Add(func() error {
-		b.egressAccess.Lock()
-		b.closeDivertersLocked()
-		b.egressAccess.Unlock()
-		return nil
-	})
 
 	b.registerMonitors(scope, b.syncEgress)
 	b.syncEgress()
@@ -234,8 +237,8 @@ func (b *backendWindows) publishRange(protocol uint8, block tun.SelectorRange) {
 }
 
 func (b *backendWindows) ExpandSelectorRanges(protocol uint8) bool {
-	b.egressAccess.Lock()
-	defer b.egressAccess.Unlock()
+	finishUpdate := b.beginDiverterUpdate()
+	defer finishUpdate()
 	block, err := b.ports.Acquire(protocol)
 	if err != nil {
 		b.logger.Debug(E.Cause(err, "bridge: expand selector range"))
@@ -265,32 +268,61 @@ func transportName(protocol uint8) string {
 	return "TCP"
 }
 
-func (b *backendWindows) rebuildDivertersLocked(state *egressState) error {
-	b.closeDivertersLocked()
+func (b *backendWindows) rebuildDiverters(state *egressState) error {
+	b.closeDiverters()
+	if b.diverterCloseErr != nil {
+		return b.diverterCloseErr
+	}
 
 	if b.inet4Port.IsValid() && state.inet4.IsValid() {
 		err := b.openFamilyDiverters(state.divertAddresses(false), false)
 		if err != nil {
-			b.closeDivertersLocked()
+			b.closeDiverters()
 			return err
 		}
 	}
 	if b.inet6Port.IsValid() && state.inet6.IsValid() {
 		err := b.openFamilyDiverters(state.divertAddresses(true), true)
 		if err != nil {
-			b.closeDivertersLocked()
+			b.closeDiverters()
 			return err
 		}
 	}
 	return nil
 }
 
-func (b *backendWindows) closeDivertersLocked() {
-	for _, existing := range b.diverters {
-		existing.handle.Close()
+// Only mutation transactions are serialized. The short mutex protects this
+// channel; native Close, worker joins and Open execute without a held mutex.
+// Packet readers/writers never wait for this control transaction.
+func (b *backendWindows) beginDiverterUpdate() func() {
+	for {
+		b.egressAccess.Lock()
+		if pending := b.diverterUpdate; pending != nil {
+			b.egressAccess.Unlock()
+			<-pending
+			continue
+		}
+		pending := make(chan struct{})
+		b.diverterUpdate = pending
+		b.egressAccess.Unlock()
+		return func() {
+			b.egressAccess.Lock()
+			b.diverterUpdate = nil
+			close(pending)
+			b.egressAccess.Unlock()
+		}
+	}
+}
+
+func (b *backendWindows) closeDiverters() {
+	diverters := b.diverters
+	b.diverters = nil
+	for _, existing := range diverters {
+		if err := existing.handle.Close(); err != nil {
+			b.diverterCloseErr = errors.Join(b.diverterCloseErr, errors.New("bridge diverter close incomplete: "+err.Error()))
+		}
 		<-existing.done
 	}
-	b.diverters = nil
 }
 
 func (b *backendWindows) openTransportDiverter(addresses []netip.Addr, isV6 bool, protocol uint8, block tun.SelectorRange) error {
@@ -751,8 +783,8 @@ func (b *backendWindows) prepareOutbound(packet []byte, state *egressState) bool
 }
 
 func (b *backendWindows) syncEgress() {
-	b.egressAccess.Lock()
-	defer b.egressAccess.Unlock()
+	finishUpdate := b.beginDiverterUpdate()
+	defer finishUpdate()
 	select {
 	case <-b.closed:
 		return
@@ -771,7 +803,7 @@ func (b *backendWindows) syncEgress() {
 	if (b.inet4Port.IsValid() && !state.inet4.IsValid()) || (b.inet6Port.IsValid() && !state.inet6.IsValid()) {
 		b.logger.Debug("bridge egress address unavailable, dropping affected traffic")
 	}
-	err := b.rebuildDivertersLocked(state)
+	err := b.rebuildDiverters(state)
 	if err != nil {
 		b.egress.Store(&egressState{})
 		b.logger.Debug(E.Cause(err, "bridge rebuild diverters"))

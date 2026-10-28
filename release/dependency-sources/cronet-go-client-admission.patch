@@ -1,0 +1,681 @@
+--- a/naive_client.go
++++ b/naive_client.go
+@@ -47,6 +47,12 @@
+ 
+ type NaiveClient struct {
+ 	state                    atomic.Uint32
++	lifecycle                sync.Mutex
++	pending                  sync.WaitGroup
++	callbacks                sync.WaitGroup
++	closed                   chan struct{}
++	closeError               error
++	connections              map[*BidirectionalConn]struct{}
+ 	ctx                      context.Context
+ 	dialer                   N.Dialer
+ 	logger                   logger.ContextLogger
+@@ -170,12 +176,16 @@
+ 		receiveWindow:            config.ReceiveWindow,
+ 		quicSessionReceiveWindow: config.QUICSessionReceiveWindow,
+ 		started:                  make(chan struct{}),
++		closed:                   make(chan struct{}),
++		connections:              make(map[*BidirectionalConn]struct{}),
+ 	}, nil
+ }
+ 
+-func (c *NaiveClient) Start() error {
++func (c *NaiveClient) Start() (startResult error) {
++	c.lifecycle.Lock()
+ 	if !c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateStarting)) {
+ 		state := clientState(c.state.Load())
++		c.lifecycle.Unlock()
+ 		switch state {
+ 		case clientStateStarting:
+ 			return errors.New("start already in progress")
+@@ -186,20 +196,20 @@
+ 		}
+ 	}
+ 
++	c.lifecycle.Unlock()
++
+ 	var startError error
+ 	var engines []Engine
+ 
+ 	defer func() {
+ 		if startError != nil {
+-			if c.proxyCancel != nil {
+-				c.proxyCancel()
+-			}
+-			for _, engine := range engines {
+-				engine.Shutdown()
+-				engine.Destroy()
+-			}
+-			c.state.Store(uint32(clientStateClosed))
++			c.lifecycle.Lock()
++			c.state.Store(uint32(clientStateClosing))
++			c.engines = engines
+ 			close(c.started)
++			c.lifecycle.Unlock()
++			// Start owns unwind. Concurrent Close waits for this same completion.
++			startResult = errors.Join(startResult, c.doClose())
+ 		}
+ 	}()
+ 
+@@ -222,6 +232,10 @@
+ 	}
+ 
+ 	tcpDialer := Dialer(func(address string, port uint16) int {
++		if !c.beginCallback() {
++			return NetErrorConnectionFailed.Code()
++		}
++		defer c.callbacks.Done()
+ 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
+ 			fd, conn, err := createSocketPair()
+ 			if err != nil {
+@@ -229,7 +243,9 @@
+ 				return NetErrorConnectionFailed.Code()
+ 			}
+ 
++			c.proxyWaitGroup.Add(1)
+ 			go func() {
++				defer c.proxyWaitGroup.Done()
+ 				_ = serveDNSStreamConn(proxyContext, conn, dnsResolver)
+ 			}()
+ 
+@@ -272,6 +288,10 @@
+ 	})
+ 
+ 	udpDialer := UDPDialer(func(address string, port uint16) (fd int, localAddress string, localPort uint16, onClose func()) {
++		if !c.beginCallback() {
++			return NetErrorConnectionFailed.Code(), "", 0, nil
++		}
++		defer c.callbacks.Done()
+ 		if address == dnsServerAddress.AddrString() && port == dnsServerAddress.Port {
+ 			fd, conn, err := createPacketSocketPair(c.testForceUDPLoopback)
+ 			if err != nil {
+@@ -285,7 +305,9 @@
+ 			}
+ 
+ 			dnsContext, dnsCancel := context.WithCancel(proxyContext)
++			c.proxyWaitGroup.Add(1)
+ 			go func() {
++				defer c.proxyWaitGroup.Done()
+ 				defer dnsCancel()
+ 				_ = serveDNSPacketConn(dnsContext, conn, dnsResolver)
+ 			}()
+@@ -345,31 +367,28 @@
+ 	for i := 0; i < engineCount; i++ {
+ 		var engine Engine
+ 		engine, startError = c.startEngine(tcpDialer, udpDialer, dnsServerAddress)
++		engines = append(engines, engine)
+ 		if startError != nil {
+ 			return startError
+ 		}
+-		engines = append(engines, engine)
+ 	}
+ 
+ 	c.engines = engines
+ 	c.streamEngines = common.Map(engines, Engine.StreamEngine)
+ 
++	c.lifecycle.Lock()
+ 	c.state.Store(uint32(clientStateRunning))
+ 	close(c.started)
++	c.lifecycle.Unlock()
+ 	return nil
+ }
+ 
+ func (c *NaiveClient) startEngine(tcpDialer Dialer, udpDialer UDPDialer, dnsServerAddress M.Socksaddr) (Engine, error) {
+ 	engine := NewEngine()
+-	destroyEngine := func() {
+-		engine.Shutdown()
+-		engine.Destroy()
+-	}
+ 
+ 	if c.trustedRootCertificates != "" {
+ 		if !engine.SetTrustedRootCertificates(c.trustedRootCertificates) {
+-			destroyEngine()
+-			return Engine{}, E.New("failed to set trusted CA certificates")
++			return engine, E.New("failed to set trusted CA certificates")
+ 		}
+ 	}
+ 
+@@ -419,19 +438,19 @@
+ 	}
+ 	if paramsError != nil {
+ 		params.Destroy()
+-		destroyEngine()
+-		return Engine{}, paramsError
++		return engine, paramsError
+ 	}
+ 
+ 	result := engine.StartWithParams(params)
+ 	params.Destroy()
+ 	if result != ResultSuccess {
+-		destroyEngine()
+-		return Engine{}, E.New("failed to start engine: ", int(result))
++		return engine, E.New("failed to start engine: ", int(result))
+ 	}
+ 	return engine, nil
+ }
+ 
++// Engine returns a borrowed raw handle. Callers must externally exclude Close
++// for its entire use; prefer guarded client operations such as Version.
+ func (c *NaiveClient) Engine() Engine {
+ 	if clientState(c.state.Load()) != clientStateRunning {
+ 		return Engine{}
+@@ -439,16 +458,38 @@
+ 	return c.engines[0]
+ }
+ 
++func (c *NaiveClient) Version() string {
++	if !c.beginOperation() {
++		return ""
++	}
++	defer c.pending.Done()
++	return c.engines[0].Version()
++}
++
+ func (c *NaiveClient) CloseAllConnections() {
+-	if clientState(c.state.Load()) != clientStateRunning {
++	c.closeAllConnections(Engine.CloseAllConnections)
++}
++
++func (c *NaiveClient) closeAllConnections(closeConnections func(Engine)) {
++	if !c.beginOperation() {
+ 		return
+ 	}
++	defer c.pending.Done()
+ 	for _, engine := range c.engines {
+-		engine.CloseAllConnections()
++		closeConnections(engine)
+ 	}
+ }
+ 
+ func (c *NaiveClient) DialEarly(ctx context.Context, destination M.Socksaddr) (NaiveConn, error) {
++	return c.dialEarly(ctx, destination, StreamEngine.CreateConn, (*BidirectionalConn).Start)
++}
++
++// The function arguments are the exact native operations in production and
++// deterministic barriers in source tests. No process-global mutable test hooks.
++func (c *NaiveClient) dialEarly(ctx context.Context, destination M.Socksaddr,
++	createConn func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn,
++	startConn func(*BidirectionalConn, string, string, map[string]string, int, bool) error,
++) (NaiveConn, error) {
+ 	state := clientState(c.state.Load())
+ 	switch state {
+ 	case clientStateRunning:
+@@ -460,9 +501,18 @@
+ 			if clientState(c.state.Load()) != clientStateRunning {
+ 				return nil, net.ErrClosed
+ 			}
++		case <-ctx.Done():
++			return nil, ctx.Err()
+ 		case <-c.ctx.Done():
+ 			return nil, c.ctx.Err()
+ 		}
++	}
++	if !c.beginOperation() {
++		return nil, net.ErrClosed
++	}
++	defer c.pending.Done()
++	if err := ctx.Err(); err != nil {
++		return nil, err
+ 	}
+ 	headers := map[string]string{
+ 		"-connect-authority": destination.String(),
+@@ -487,17 +537,15 @@
+ 			headers["-network-isolation-key"] = F.ToString("https://pool-", concurrencyIndex, ":443")
+ 		}
+ 	}
+-	conn := streamEngine.CreateConn(ctx, c.logger, true, false)
+-	err := conn.Start("CONNECT", c.serverURL, headers, 0, false)
++	conn := createConn(streamEngine, ctx, c.logger, true, false)
++	c.trackConnection(conn)
++	err := startConn(conn, "CONNECT", c.serverURL, headers, 0, false)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	trackedConn := &trackedNaiveConn{
+ 		NaiveConn: NewNaiveConn(ctx, conn, c.logger),
+-		client:    c,
+-	}
+-	c.activeConnections.Add(1)
+-	conn.setOnTerminate(trackedConn.release)
++	}
+ 	return trackedConn, nil
+ }
+ 
+@@ -523,33 +571,28 @@
+ 
+ func (c *NaiveClient) Close() error {
+ 	for {
+-		state := clientState(c.state.Load())
+-		switch state {
++		c.lifecycle.Lock()
++		switch clientState(c.state.Load()) {
+ 		case clientStateCreated:
+-			if c.state.CompareAndSwap(uint32(clientStateCreated), uint32(clientStateClosed)) {
+-				close(c.started)
+-				return nil
+-			}
+-
++			c.state.Store(uint32(clientStateClosed))
++			close(c.started)
++			close(c.closed)
++			c.lifecycle.Unlock()
++			return nil
+ 		case clientStateStarting:
+-			select {
+-			case <-c.started:
+-				continue
+-			case <-c.ctx.Done():
+-				return c.ctx.Err()
+-			}
+-
++			// Start owns initialization and failure unwind. This waits for true
++			// completion; it does not promise cancellation-bounded startup.
++			c.lifecycle.Unlock()
++			<-c.started
++			continue
+ 		case clientStateRunning:
+-			if !c.state.CompareAndSwap(uint32(clientStateRunning), uint32(clientStateClosing)) {
+-				continue
+-			}
++			c.state.Store(uint32(clientStateClosing))
++			c.lifecycle.Unlock()
+ 			return c.doClose()
+-
+-		case clientStateClosing:
+-			return nil
+-
+-		case clientStateClosed:
+-			return net.ErrClosed
++		default:
++			c.lifecycle.Unlock()
++			<-c.closed
++			return c.closeError
+ 		}
+ 	}
+ }
+@@ -558,19 +601,34 @@
+ 	if c.proxyCancel != nil {
+ 		c.proxyCancel()
+ 	}
+-
++	// Both admission gates were sealed under lifecycle before reaching here.
++	// No lock is held over native calls, callbacks, response waits or joins.
++	c.pending.Wait()
++	c.callbacks.Wait()
++	c.lifecycle.Lock()
++	connections := make([]*BidirectionalConn, 0, len(c.connections))
++	for conn := range c.connections {
++		connections = append(connections, conn)
++	}
++	c.lifecycle.Unlock()
++	for _, conn := range connections {
++		_ = conn.Close()
++	}
+ 	for _, engine := range c.engines {
+ 		engine.CloseAllConnections()
+ 	}
+ 	c.proxyWaitGroup.Wait()
+ 	c.activeConnections.Wait()
++	var closeError error
+ 	for _, engine := range c.engines {
+-		engine.Shutdown()
+-		engine.Destroy()
+-	}
+-
++		closeError = errors.Join(closeError, shutdownNaiveEngine(engine.Shutdown, engine.Destroy))
++	}
++	c.lifecycle.Lock()
++	c.closeError = closeError
+ 	c.state.Store(uint32(clientStateClosed))
+-	return nil
++	close(c.closed)
++	c.lifecycle.Unlock()
++	return closeError
+ }
+ 
+ func (c *NaiveClient) getECHConfigList() []byte {
+@@ -581,19 +639,6 @@
+ 
+ type trackedNaiveConn struct {
+ 	NaiveConn
+-	client    *NaiveClient
+-	closeOnce sync.Once
+-}
+-
+-func (c *trackedNaiveConn) release() {
+-	c.closeOnce.Do(func() {
+-		c.client.activeConnections.Done()
+-	})
+-}
+-
+-func (c *trackedNaiveConn) Close() error {
+-	c.release()
+-	return c.NaiveConn.Close()
+ }
+ 
+ func (c *trackedNaiveConn) Upstream() any {
+@@ -607,3 +652,4 @@
+ func (c *trackedNaiveConn) WriterReplaceable() bool {
+ 	return true
+ }
++
+--- /dev/null
++++ b/naive_client_lifecycle.go
+@@ -0,0 +1,60 @@
++package cronet
++
++import (
++	"fmt"
++	"sync"
++)
++
++// Positive WaitGroup admissions and the transition to Closing share lifecycle.
++// Close waits outside the mutex. An admitted native callback may add a proxy
++// worker until it returns; therefore callbacks must join before proxy workers.
++func (c *NaiveClient) beginOperation() bool {
++	c.lifecycle.Lock()
++	defer c.lifecycle.Unlock()
++	if clientState(c.state.Load()) != clientStateRunning {
++		return false
++	}
++	c.pending.Add(1)
++	return true
++}
++
++func (c *NaiveClient) beginCallback() bool {
++	c.lifecycle.Lock()
++	defer c.lifecycle.Unlock()
++	state := clientState(c.state.Load())
++	if state != clientStateStarting && state != clientStateRunning {
++		return false
++	}
++	c.callbacks.Add(1)
++	return true
++}
++
++// Called with one pending operation held. Close cannot begin its active-stream
++// join until that pending operation has installed this terminal callback.
++func (c *NaiveClient) trackConnection(conn *BidirectionalConn) {
++	c.lifecycle.Lock()
++	c.activeConnections.Add(1)
++	c.connections[conn] = struct{}{}
++	c.lifecycle.Unlock()
++	var once sync.Once
++	conn.setOnTerminate(func() {
++		once.Do(func() {
++			c.lifecycle.Lock()
++			delete(c.connections, conn)
++			c.lifecycle.Unlock()
++			// terminate has queued native stream deletion. Native Shutdown's
++			// later thread join, not this signal, proves final destruction.
++			c.activeConnections.Done()
++		})
++	})
++}
++
++// The native Shutdown join is the completion barrier for previously queued
++// stream destruction. Failure retains the engine; callers preserve the error.
++func shutdownNaiveEngine(shutdown func() Result, destroy func()) error {
++	if result := shutdown(); result != ResultSuccess {
++		return fmt.Errorf("failed to shut down engine: %d", result)
++	}
++	destroy()
++	return nil
++}
+--- /dev/null
++++ b/naive_client_lifecycle_test.go
+@@ -0,0 +1,251 @@
++package cronet
++
++import (
++	"context"
++	"errors"
++	"sync"
++	"testing"
++	"time"
++
++	"github.com/sagernet/sing/common/logger"
++	M "github.com/sagernet/sing/common/metadata"
++)
++
++func lifecycleTestClient(state clientState) *NaiveClient {
++	c := &NaiveClient{ctx: context.Background(), started: make(chan struct{}), closed: make(chan struct{}), connections: make(map[*BidirectionalConn]struct{})}
++	c.state.Store(uint32(state))
++	if state == clientStateRunning {
++		close(c.started)
++	}
++	return c
++}
++
++func awaitLifecycle(t *testing.T, done <-chan struct{}) {
++	t.Helper()
++	select {
++	case <-done:
++	case <-time.After(time.Second):
++		t.Fatal("lifecycle did not finish")
++	}
++}
++
++func TestNaiveAdmissionSealsBeforeJoin(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	if !c.beginOperation() || !c.beginCallback() {
++		t.Fatal("running admission rejected")
++	}
++	// The close authority seals both gates before starting any join.
++	c.lifecycle.Lock()
++	c.state.Store(uint32(clientStateClosing))
++	c.lifecycle.Unlock()
++	if c.beginOperation() || c.beginCallback() {
++		t.Fatal("admission reopened after seal")
++	}
++	finished := make(chan struct{})
++	go func() { _ = c.doClose(); close(finished) }()
++	// An already admitted callback may still register its worker after seal.
++	c.proxyWaitGroup.Add(1)
++	c.pending.Done()
++	c.callbacks.Done()
++	select {
++	case <-finished:
++		t.Fatal("close returned before admitted worker exited")
++	default:
++	}
++	c.proxyWaitGroup.Done()
++	awaitLifecycle(t, finished)
++}
++
++func TestNaiveTerminalRegistrationAndReleaseOnce(t *testing.T) {
++	for _, alreadyDone := range []bool{false, true} {
++		c := lifecycleTestClient(clientStateRunning)
++		if !c.beginOperation() {
++			t.Fatal("admission rejected")
++		}
++		conn := &BidirectionalConn{done: make(chan struct{})}
++		if alreadyDone {
++			close(conn.done)
++		}
++		c.trackConnection(conn)
++		if !alreadyDone {
++			if len(c.connections) != 1 {
++				t.Fatal("stream escaped ownership")
++			}
++			// Simulate the terminal signal after native deletion was queued.
++			conn.onTerminate()
++			conn.onTerminate()
++		}
++		if len(c.connections) != 0 {
++			t.Fatal("terminal stream retained")
++		}
++		c.pending.Done()
++		if err := c.Close(); err != nil {
++			t.Fatal(err)
++		}
++	}
++}
++
++func TestNaiveRepeatedCloseWaitsForOriginalCompletion(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	if !c.beginOperation() {
++		t.Fatal("admission rejected")
++	}
++	c.lifecycle.Lock()
++	c.state.Store(uint32(clientStateClosing))
++	c.lifecycle.Unlock()
++	var wait sync.WaitGroup
++	wait.Add(8)
++	for range 8 {
++		go func() {
++			defer wait.Done()
++			if err := c.Close(); err != nil {
++				t.Error(err)
++			}
++		}()
++	}
++	finished := make(chan struct{})
++	go func() { _ = c.doClose(); close(finished) }()
++	select {
++	case <-c.closed:
++		t.Fatal("close completed while creation admitted")
++	default:
++	}
++	c.pending.Done()
++	awaitLifecycle(t, finished)
++	wait.Wait()
++}
++
++func TestNaiveShutdownFailureNeverDestroys(t *testing.T) {
++	for _, success := range []bool{false, true} {
++		called := false
++		err := shutdownNaiveEngine(func() Result {
++			if success {
++				return ResultSuccess
++			}
++			return Result(-1)
++		}, func() { called = true })
++		if called != success || (err == nil) != success {
++			t.Fatalf("success=%v destroy=%v error=%v", success, called, err)
++		}
++	}
++}
++
++func TestNaiveClosedResultIsSticky(t *testing.T) {
++	c := lifecycleTestClient(clientStateCreated)
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++	if err := c.Close(); err != nil {
++		t.Fatal(err)
++	}
++	c = lifecycleTestClient(clientStateClosing)
++	want := errors.New("native completion uncertain")
++	c.closeError = want
++	c.state.Store(uint32(clientStateClosed))
++	close(c.closed)
++	if err := c.Close(); err != want {
++		t.Fatalf("sticky error = %v", err)
++	}
++}
++
++func TestNaiveDialCreationBarrierAndTerminalOwnership(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	c.streamEngines = []StreamEngine{{}}
++	entered, proceed, dialDone := make(chan struct{}), make(chan struct{}), make(chan struct{})
++	conn := &BidirectionalConn{done: make(chan struct{}), close: make(chan struct{}), cancelled: true}
++	go func() {
++		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++			func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn {
++				close(entered)
++				<-proceed
++				return conn
++			},
++			func(conn *BidirectionalConn, _, _ string, _ map[string]string, _ int, _ bool) error {
++				if conn.onTerminate == nil {
++					t.Error("Start preceded terminal ownership")
++				}
++				return nil
++			})
++		if err != nil {
++			t.Error(err)
++		}
++		close(dialDone)
++	}()
++	awaitLifecycle(t, entered)
++	c.lifecycle.Lock()
++	c.state.Store(uint32(clientStateClosing))
++	c.lifecycle.Unlock()
++	closed := make(chan struct{})
++	go func() { _ = c.doClose(); close(closed) }()
++	if c.beginOperation() {
++		t.Fatal("late creation admitted")
++	}
++	select {
++	case <-closed:
++		t.Fatal("close overtook admitted creation")
++	default:
++	}
++	close(proceed)
++	awaitLifecycle(t, dialDone)
++	awaitLifecycle(t, conn.close) // Close requested cancellation; no native callback yet.
++	select {
++	case <-closed:
++		t.Fatal("cancellation request was treated as terminal completion")
++	default:
++	}
++	conn.onTerminate()
++	awaitLifecycle(t, closed)
++}
++
++func TestNaiveDialStartFailureAndInlineTerminal(t *testing.T) {
++	for _, fail := range []bool{false, true} {
++		c := lifecycleTestClient(clientStateRunning)
++		c.streamEngines = []StreamEngine{{}}
++		conn := &BidirectionalConn{done: make(chan struct{})}
++		want := errors.New("start failed")
++		_, err := c.dialEarly(context.Background(), M.Socksaddr{},
++			func(StreamEngine, context.Context, logger.ContextLogger, bool, bool) *BidirectionalConn { return conn },
++			func(conn *BidirectionalConn, _, _ string, _ map[string]string, _ int, _ bool) error {
++				if conn.onTerminate == nil {
++					t.Fatal("Start preceded terminal ownership")
++				}
++				close(conn.done)
++				conn.onTerminate()
++				if fail {
++					return want
++				}
++				return nil
++			})
++		if fail && err != want || !fail && err != nil {
++			t.Fatalf("start error = %v", err)
++		}
++		if err := c.Close(); err != nil {
++			t.Fatal(err)
++		}
++	}
++}
++
++func TestNaiveControlOperationJoinsBeforeDestruction(t *testing.T) {
++	c := lifecycleTestClient(clientStateRunning)
++	c.engines = []Engine{{}}
++	entered, release, controlDone := make(chan struct{}), make(chan struct{}), make(chan struct{})
++	go func() {
++		c.closeAllConnections(func(Engine) { close(entered); <-release })
++		close(controlDone)
++	}()
++	awaitLifecycle(t, entered)
++	c.lifecycle.Lock()
++	c.state.Store(uint32(clientStateClosing))
++	c.lifecycle.Unlock()
++	c.closeAllConnections(func(Engine) { t.Error("control passed sealed gate") })
++	joined := make(chan struct{})
++	go func() { c.pending.Wait(); close(joined) }()
++	select {
++	case <-joined:
++		t.Fatal("control use was not retained")
++	default:
++	}
++	close(release)
++	awaitLifecycle(t, controlDone)
++	awaitLifecycle(t, joined)
++}

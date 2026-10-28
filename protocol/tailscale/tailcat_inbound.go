@@ -196,7 +196,13 @@ func (i *TailcatInbound) JudgeFlow(network uint8, source netip.AddrPort, destina
 }
 
 func (i *TailcatInbound) NewDNSPacket(payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
-	ctx := log.ContextWithNewID(i.ctx)
+	i.NewDNSPacketEx(i.ctx, payload, source, destination, writer)
+}
+
+// NewDNSPacketEx forwards the borrowed packet admission synchronously.
+// HijackDNSPacket owns the fork before asynchronous DNS work is published.
+func (i *TailcatInbound) NewDNSPacketEx(ctx context.Context, payload []byte, source M.Socksaddr, destination M.Socksaddr, writer N.PacketWriter) {
+	ctx = log.ContextWithNewID(ctx)
 	var metadata adapter.InboundContext
 	metadata.Inbound = i.Tag()
 	metadata.InboundType = i.Type()
@@ -245,3 +251,5 @@ func (i *TailcatInbound) NewPacketConnectionEx(ctx context.Context, conn N.Packe
 	i.logger.InfoContext(ctx, "inbound packet connection to ", metadata.Destination)
 	i.router.RoutePacketConnectionEx(ctx, conn, metadata, onClose)
 }
+
+var _ tun.DNSPacketHandlerEx = (*TailcatInbound)(nil)

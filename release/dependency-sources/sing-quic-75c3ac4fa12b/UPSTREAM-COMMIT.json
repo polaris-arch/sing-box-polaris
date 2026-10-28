@@ -1,0 +1,35 @@
+{
+  "sha": "75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876",
+  "node_id": "C_kwDOKSlXE9oAKDc1YzNhYzRmYTEyYjRkZWQyZGMwMWIzOTJlZDdkNWVhZjNlYTY4NzY",
+  "url": "https://api.github.com/repos/SagerNet/sing-quic/git/commits/75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876",
+  "html_url": "https://github.com/SagerNet/sing-quic/commit/75c3ac4fa12b4ded2dc01b392ed7d5eaf3ea6876",
+  "author": {
+    "name": "\u4e16\u754c",
+    "email": "i@sekai.icu",
+    "date": "2026-10-02T08:41:17Z"
+  },
+  "committer": {
+    "name": "\u4e16\u754c",
+    "email": "i@sekai.icu",
+    "date": "2026-10-02T08:41:17Z"
+  },
+  "tree": {
+    "sha": "cd7ca728a96a2a5c73df5525130996dbda52e0ee",
+    "url": "https://api.github.com/repos/SagerNet/sing-quic/git/trees/cd7ca728a96a2a5c73df5525130996dbda52e0ee"
+  },
+  "message": "Fix idle connection close racing with new streams",
+  "parents": [
+    {
+      "sha": "e702a73535d54797eac67075f1464bb4c4e7a9f3",
+      "url": "https://api.github.com/repos/SagerNet/sing-quic/git/commits/e702a73535d54797eac67075f1464bb4c4e7a9f3",
+      "html_url": "https://github.com/SagerNet/sing-quic/commit/e702a73535d54797eac67075f1464bb4c4e7a9f3"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCar9uLRsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8TjrwD7BP48xluV/v5ZENspskLg\nVWpHJSqsGTlLbd5dBsuiRjgA/1OPIEyUIoLSJOWkQu/2Brpnmwm6VlpFjDrEEvVc\nCKgA\n=dyU0\n-----END PGP SIGNATURE-----",
+    "payload": "tree cd7ca728a96a2a5c73df5525130996dbda52e0ee\nparent e702a73535d54797eac67075f1464bb4c4e7a9f3\nauthor \u4e16\u754c <i@sekai.icu> 1790930477 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1790930477 +0800\n\nFix idle connection close racing with new streams\n",
+    "verified_at": "2026-10-02T08:58:53Z"
+  }
+}

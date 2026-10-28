@@ -6,11 +6,13 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
+	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/dns/transport/local/systemconfig"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -20,7 +22,6 @@ import (
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json/badoption"
 	"github.com/sagernet/sing/common/logger"
-	"github.com/sagernet/sing/common/task"
 	"github.com/sagernet/sing/service"
 
 	mDNS "github.com/miekg/dns"
@@ -65,6 +66,16 @@ var (
 )
 
 type Transport struct {
+	socketErrors      packetSocketErrors
+	work              lifecycle.Work
+	runtimeResource   adapter.RuntimeResourceSource
+	operationCtx      context.Context
+	operationCancel   context.CancelFunc
+	constructionOwned bool
+	startOnce         sync.Once
+	startErr          error
+	closeOnce         sync.Once
+	closeErr          error
 	dns.TransportAdapter
 	ctx            context.Context
 	logger         logger.ContextLogger
@@ -78,26 +89,30 @@ var closeConfigSource = (*systemconfig.Source).Close
 
 func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, options option.MDNSDNSServerOptions) (adapter.DNSTransport, error) {
 	configSource := systemconfig.NewSource(ctx)
-	// The source may hold a system registration from now on, so release it
-	// even if the transport is never started.
-	err := adapter.DeferConstructionCleanup(ctx, func() error {
-		return closeConfigSource(configSource)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &Transport{
+	resource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
+	operationCtx, operationCancel := context.WithCancel(ctx)
+	t := &Transport{
+		runtimeResource: resource, operationCtx: operationCtx, operationCancel: operationCancel,
 		TransportAdapter: dns.NewTransportAdapterWithLocalOptions(C.DNSTypeMDNS, tag, options.LocalDNSServerOptions),
 		ctx:              ctx,
 		logger:           logger,
 		networkManager:   service.FromContext[adapter.NetworkManager](ctx),
 		interfaceNames:   options.Interface,
 		configSource:     configSource,
-	}, nil
+	}
+	var err error
+	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func NewRawTransport(transportAdapter dns.TransportAdapter, ctx context.Context, logger log.ContextLogger) *Transport {
+	resource, _ := adapter.RuntimeResourceSourceFromContext(ctx)
+	operationCtx, operationCancel := context.WithCancel(ctx)
 	return &Transport{
+		runtimeResource: resource, operationCtx: operationCtx, operationCancel: operationCancel,
 		TransportAdapter: transportAdapter,
 		ctx:              ctx,
 		logger:           logger,
@@ -106,13 +121,48 @@ func NewRawTransport(transportAdapter dns.TransportAdapter, ctx context.Context,
 }
 
 func (t *Transport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage == adapter.StartStateInitialize && t.configSource != nil {
-		scope.Add(t.configSource.Close)
+	t.startOnce.Do(func() {
+		if !t.constructionOwned {
+			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
+		}
+	})
+	if t.startErr != nil {
+		return t.startErr
 	}
-	return nil
+	done, ok := t.work.Reserve()
+	if !ok {
+		return lifecycle.ErrStopped
+	}
+	defer done()
+	if scope.Context().Err() != nil {
+		return scope.Context().Err()
+	}
+	if t.work.Sealed() {
+		return lifecycle.ErrStopped
+	}
+	return scope.Context().Err()
+}
+
+func (t *Transport) StopRuntimeProducers()  {}
+func (t *Transport) StopRuntimeOperations() { t.work.Seal(); t.operationCancel() }
+func (t *Transport) close() error {
+	t.closeOnce.Do(func() {
+		t.StopRuntimeOperations()
+		t.work.Wait()
+		if t.configSource != nil {
+			t.closeErr = lifecycle.Uncertain("mDNS configuration source", closeConfigSource(t.configSource))
+		}
+		t.closeErr = E.Errors(t.closeErr, t.socketErrors.result())
+	})
+	return t.closeErr
 }
 
 func (t *Transport) Reset() {
+	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
+	if err != nil {
+		return
+	}
+	defer done()
 	if t.configSource != nil {
 		t.configSource.Reset()
 	}
@@ -123,6 +173,11 @@ func (t *Transport) PreferredDomain(domain string) bool {
 }
 
 func (t *Transport) Environment() []string {
+	_, done, err := t.work.Operation(context.Background(), t.runtimeResource)
+	if err != nil {
+		return nil
+	}
+	defer done()
 	if t.configSource == nil {
 		return nil
 	}
@@ -130,6 +185,17 @@ func (t *Transport) Environment() []string {
 }
 
 func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	ctx, done, err := t.work.Operation(ctx, t.runtimeResource)
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	return t.exchange(ctx, message)
+}
+
+func (t *Transport) exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
+	defer unlink()
 	targets, err := t.queryTargets()
 	if err != nil {
 		return nil, E.Cause(err, "mdns: prepare interfaces")
@@ -146,20 +212,20 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 	exchangeCtx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	results := make(chan exchangeResult, len(targets))
-	var group task.Group
+	var group sync.WaitGroup
 	for _, target := range targets {
-		group.Append0(func(ctx context.Context) error {
-			response, err := t.exchangeTarget(ctx, target, rawMessage, message.Question[0], deadline)
+		group.Add(1)
+		go func(target queryTarget) {
+			defer group.Done()
+			response, err := t.exchangeTarget(exchangeCtx, target, rawMessage, message.Question[0], deadline)
 			if err != nil || response != nil {
-				results <- exchangeResult{
-					response: response,
-					err:      err,
-				}
+				results <- exchangeResult{response: response, err: err}
 			}
-			return nil
-		})
+		}(target)
 	}
-	groupErr := group.Run(exchangeCtx)
+	// A cancelled context is a request to close the sockets. Every actual socket
+	// reader and close callback is joined before the operation reservation ends.
+	group.Wait()
 	close(results)
 	response := newResponse(message)
 	seenRecords := make(map[string]bool)
@@ -178,16 +244,19 @@ func (t *Transport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg,
 	if lastErr != nil {
 		return nil, lastErr
 	}
-	if groupErr != nil && ctx.Err() != nil {
-		return nil, groupErr
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 	return nil, E.New("mdns: query timeout")
 }
 
 func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	go func() {
-		callback(t.Exchange(ctx, message))
-	}()
+	ctx, done, err := t.work.Operation(ctx, t.runtimeResource)
+	if err != nil {
+		callback(nil, err)
+		return
+	}
+	go func() { defer done(); callback(t.exchange(ctx, message)) }()
 }
 
 type exchangeResult struct {
@@ -200,12 +269,23 @@ type queryTarget struct {
 	family string
 }
 
+// listenTargetPacket is replaced by completion-barrier tests.
+var listenTargetPacket = (*Transport).listenPacket
+
 func (t *Transport) exchangeTarget(ctx context.Context, target queryTarget, rawMessage []byte, question mDNS.Question, deadline time.Time) (*mDNS.Msg, error) {
-	packetConn, destination, err := t.listenPacket(ctx, target)
+	packetConn, destination, err := listenTargetPacket(t, ctx, target)
 	if err != nil {
 		return nil, err
 	}
+	packetConn = &ownedPacketConn{PacketConn: packetConn, errors: &t.socketErrors}
 	defer packetConn.Close()
+	closeDone := make(chan struct{})
+	stopClose := context.AfterFunc(ctx, func() { defer close(closeDone); _ = packetConn.Close() })
+	defer func() {
+		if !stopClose() {
+			<-closeDone
+		}
+	}()
 
 	_, err = packetConn.WriteTo(rawMessage, destination)
 	if err != nil {
@@ -260,7 +340,7 @@ func (t *Transport) listenPacket(ctx context.Context, target queryTarget) (net.P
 		ipv4Conn := ipv4.NewPacketConn(packetConn)
 		err = ipv4Conn.SetMulticastInterface(&netInterface)
 		if err != nil {
-			packetConn.Close()
+			t.closeSetupPacket(packetConn)
 			return nil, nil, E.Cause(err, "mdns: set multicast interface on ", target.iface.Name, " udp4")
 		}
 		_ = ipv4Conn.SetMulticastTTL(255)
@@ -273,7 +353,7 @@ func (t *Transport) listenPacket(ctx context.Context, target queryTarget) (net.P
 		ipv6Conn := ipv6.NewPacketConn(packetConn)
 		err = ipv6Conn.SetMulticastInterface(&netInterface)
 		if err != nil {
-			packetConn.Close()
+			t.closeSetupPacket(packetConn)
 			return nil, nil, E.Cause(err, "mdns: set multicast interface on ", target.iface.Name, " udp6")
 		}
 		_ = ipv6Conn.SetMulticastHopLimit(255)

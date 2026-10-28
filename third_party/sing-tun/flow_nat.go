@@ -32,6 +32,7 @@ type portNAT struct {
 	access         sync.RWMutex
 	selectors      map[natSelectorKey]*natSelector
 	mappings       map[natMappingKey]*natMapping
+	pendingMappings map[natMappingKey]chan struct{}
 	counter        uint32
 	mappingCounter uint32
 }
@@ -48,11 +49,13 @@ type natSelectorKey struct {
 }
 
 type natSelector struct {
+	pending bool
 	references uint32
 	mapping    *natMapping
 }
 
 type natMappingKey struct {
+ logicalPort Port // generation-local UDP filtering/mapping authority
 	dispatcher  *ForwardDispatcher
 	portAddress netip.Addr
 	client      netip.AddrPort
@@ -74,6 +77,11 @@ type natReservation struct {
 }
 
 func acquirePortNAT(port Port) *portNAT {
+ // Do not call endpoint code under global storage locks or recursively unwrap
+ // identities. The logical attachment already owns the physical lifetime.
+ if provider, ok := port.(PortWithNATIdentity); ok {
+  if physical := provider.NATIdentity(); physical != nil { port = physical }
+ }
 	portNATAccess.Lock()
 	defer portNATAccess.Unlock()
 	nat, loaded := portNATs[port]
@@ -89,6 +97,7 @@ func acquirePortNAT(port Port) *portNAT {
 			shards:    make([]natShard, shardCount),
 			selectors: make(map[natSelectorKey]*natSelector),
 			mappings:  make(map[natMappingKey]*natMapping),
+			pendingMappings: make(map[natMappingKey]chan struct{}),
 		}
 		for i := range nat.shards {
 			nat.shards[i].flows = make(map[flowKey]*forwardFlow)
@@ -118,6 +127,17 @@ func (n *portNAT) lookup(key flowKey) *forwardFlow {
 	flow := shard.flows[key]
 	shard.access.RUnlock()
 	return flow
+}
+
+func (n *portNAT) lookupOwned(key flowKey) *forwardUse {
+	shard := n.shard(key)
+	shard.access.RLock()
+	defer shard.access.RUnlock()
+	flow := shard.flows[key]
+	if flow == nil { return nil }
+	use, err := retainForward(flow)
+	if err != nil { return nil }
+	return use
 }
 
 func (n *portNAT) insertIfAbsent(key flowKey, flow *forwardFlow) bool {
@@ -202,6 +222,10 @@ func allocateSelector(ranges []SelectorRange, counter *uint32, claim func(candid
 }
 
 func (n *portNAT) reserve(dispatcher *ForwardDispatcher, protocol uint8, portAddress netip.Addr, client netip.AddrPort, server netip.AddrPort) (natReservation, bool) {
+ return n.reserveForPort(dispatcher,n.port,protocol,portAddress,client,server)
+}
+
+func (n *portNAT) reserveForPort(dispatcher *ForwardDispatcher, logicalPort Port, protocol uint8, portAddress netip.Addr, client netip.AddrPort, server netip.AddrPort) (natReservation, bool) {
 	reservation := natReservation{
 		selectorKey: natSelectorKey{protocol: protocol, portAddress: portAddress},
 	}
@@ -209,7 +233,7 @@ func (n *portNAT) reserve(dispatcher *ForwardDispatcher, protocol uint8, portAdd
 	var mappingKey natMappingKey
 	if isUDP {
 		mappingKey = natMappingKey{
-			dispatcher:  dispatcher,
+   logicalPort: logicalPort,			dispatcher:  dispatcher,
 			portAddress: portAddress,
 			client:      client,
 		}
@@ -220,8 +244,22 @@ func (n *portNAT) reserve(dispatcher *ForwardDispatcher, protocol uint8, portAdd
 			mappingKey.server = server
 		}
 	}
+	ranges, ranged := n.selectorRanges(protocol)
+	reserver, hasReserver := portCapability[PortWithSelectorReservation](n.port)
 	n.access.Lock()
-	defer n.access.Unlock()
+	if isUDP {
+		for n.pendingMappings[mappingKey] != nil {
+			pending := n.pendingMappings[mappingKey]
+			n.access.Unlock()
+			<-pending
+			n.access.Lock()
+		}
+		n.pendingMappings[mappingKey] = make(chan struct{})
+	}
+	defer func() {
+		if isUDP { pending := n.pendingMappings[mappingKey]; delete(n.pendingMappings, mappingKey); close(pending) }
+		n.access.Unlock()
+	}()
 	var existingMapping *natMapping
 	if isUDP {
 		existingMapping = n.mappings[mappingKey]
@@ -236,29 +274,31 @@ func (n *portNAT) reserve(dispatcher *ForwardDispatcher, protocol uint8, portAdd
 			}
 		}
 	}
-	ranges, ranged := n.selectorRanges(protocol)
-	reserver, hasReserver := portCapability[PortWithSelectorReservation](n.port)
 	claim := func(candidate uint16) bool {
 		selectorKey := natSelectorKey{protocol: protocol, portAddress: portAddress, selector: candidate}
 		reverseKey := n.reverseKeyFor(protocol, portAddress, server, candidate)
 		entry := n.selectors[selectorKey]
 		if entry != nil {
-			if isUDP || !n.insertIfAbsent(reverseKey, nil) {
+			if entry.pending || isUDP || !n.insertIfAbsent(reverseKey, nil) {
 				return false
 			}
 			entry.references++
 		} else {
-			address := netip.AddrPortFrom(portAddress, candidate)
-			if hasReserver && !reserver.ReserveSelector(protocol, address) {
-				return false
-			}
-			if !n.insertIfAbsent(reverseKey, nil) {
-				if hasReserver {
-					reserver.ReleaseSelector(protocol, address)
+			if !n.insertIfAbsent(reverseKey, nil) { return false }
+			entry = &natSelector{references: 1, pending: true}
+			n.selectors[selectorKey] = entry
+			if hasReserver {
+				address := netip.AddrPortFrom(portAddress, candidate)
+				n.access.Unlock()
+				reserved := reserver.ReserveSelector(protocol, address)
+				n.access.Lock()
+				if !reserved {
+					delete(n.selectors, selectorKey)
+					n.delete(reverseKey, nil)
+					return false
 				}
-				return false
 			}
-			n.selectors[selectorKey] = &natSelector{references: 1}
+			entry.pending = false
 		}
 		reservation.selectorKey = selectorKey
 		reservation.reverseKey = reverseKey
@@ -313,7 +353,6 @@ func (n *portNAT) publish(flow *forwardFlow, reservation natReservation) {
 func (n *portNAT) release(flow *forwardFlow) {
 	n.delete(flow.reverseKey, flow)
 	n.access.Lock()
-	defer n.access.Unlock()
 	entry := n.selectors[flow.selectorKey]
 	mapping := flow.mapping
 	if mapping != nil {
@@ -324,16 +363,17 @@ func (n *portNAT) release(flow *forwardFlow) {
 	}
 	entry.references--
 	if entry.references > 0 {
+		n.access.Unlock()
 		return
 	}
-	delete(n.selectors, flow.selectorKey)
-	if mapping != nil {
-		delete(n.mappings, mapping.key)
-	}
+	entry.pending = true
+	if mapping != nil && n.mappings[mapping.key] == mapping { delete(n.mappings, mapping.key) }
+	n.access.Unlock()
 	reserver, hasReserver := portCapability[PortWithSelectorReservation](n.port)
-	if hasReserver {
-		reserver.ReleaseSelector(flow.protocol, netip.AddrPortFrom(flow.selectorKey.portAddress, flow.selectorKey.selector))
-	}
+	if hasReserver { reserver.ReleaseSelector(flow.protocol, netip.AddrPortFrom(flow.selectorKey.portAddress, flow.selectorKey.selector)) }
+	n.access.Lock()
+	if n.selectors[flow.selectorKey] == entry { delete(n.selectors, flow.selectorKey) }
+	n.access.Unlock()
 }
 
 func (m *natMapping) liveFlowLocked() *forwardFlow {
@@ -347,9 +387,7 @@ func (m *natMapping) liveFlowLocked() *forwardFlow {
 	return fallback
 }
 
-func (n *portNAT) lookupMapping(portAddress netip.Addr, selector uint16, peer netip.Addr) (*natMapping, *forwardFlow) {
-	n.access.RLock()
-	defer n.access.RUnlock()
+func (n *portNAT) lookupMappingLocked(portAddress netip.Addr, selector uint16, peer netip.Addr) (*natMapping, *forwardFlow) {
 	entry := n.selectors[natSelectorKey{protocol: uint8(header.UDPProtocolNumber), portAddress: portAddress, selector: selector}]
 	if entry == nil || entry.mapping == nil {
 		return nil, nil
@@ -371,4 +409,25 @@ func (n *portNAT) lookupMapping(portAddress netip.Addr, selector uint16, peer ne
 		return nil, nil
 	}
 	return mapping, flow
+}
+
+func (n *portNAT) lookupMapping(portAddress netip.Addr, selector uint16, peer netip.Addr) (*natMapping, *forwardFlow) {
+	n.access.RLock()
+	defer n.access.RUnlock()
+	return n.lookupMappingLocked(portAddress, selector, peer)
+}
+
+func (n *portNAT) lookupMappingOwned(portAddress netip.Addr, selector uint16, peer netip.Addr) (*natMapping, *forwardUse) {
+	n.access.RLock()
+	defer n.access.RUnlock()
+	mapping, flow := n.lookupMappingLocked(portAddress, selector, peer)
+	if flow == nil { return nil, nil }
+	use, err := retainForward(flow)
+	if err != nil { return nil, nil }
+	return mapping, use
+}
+
+func (n *portNAT) cancelReservation(protocol uint8, reservation natReservation) {
+	n.delete(reservation.reverseKey, nil)
+	n.release(&forwardFlow{nat: n, protocol: protocol, selectorKey: reservation.selectorKey, reverseKey: reservation.reverseKey, mapping: reservation.mapping})
 }

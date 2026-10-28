@@ -51,7 +51,7 @@ func (d *DefaultDialer) dialParallelInterface(ctx context.Context, dialer net.Di
 		primary bool
 	}
 	results := make(chan dialResult) // unbuffered
-	startRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) {
+	startRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
 		perNetDialer := dialer
 		if defaultInterface == nil || iif.Index != defaultInterface.Index {
 			perNetDialer.Control = control.Append(perNetDialer.Control, control.BindToInterface(nil, iif.Name, iif.Index))
@@ -66,14 +66,25 @@ func (d *DefaultDialer) dialParallelInterface(ctx context.Context, dialer net.Di
 			select {
 			case results <- dialResult{Conn: conn, primary: primary}:
 			case <-returned:
-				conn.Close()
+				return conn.Close()
 			}
 		}
+		return nil
+	}
+	launchRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
+		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned, primary, iif) }, func(err error) {
+			select {
+			case results <- dialResult{error: err, primary: primary}:
+			case <-returned:
+			}
+		})
 	}
 	primaryCtx, primaryCancel := context.WithCancel(ctx)
 	defer primaryCancel()
 	for _, iif := range primaryInterfaces {
-		go startRacer(primaryCtx, true, iif)
+		if err := launchRacer(primaryCtx, true, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	var (
 		fallbackTimer *time.Timer
@@ -87,11 +98,15 @@ func (d *DefaultDialer) dialParallelInterface(ctx context.Context, dialer net.Di
 	var errors []error
 	for {
 		select {
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
 		case <-fallbackChan:
 			fallbackCtx, fallbackCancel := context.WithCancel(ctx)
 			defer fallbackCancel()
 			for _, iif := range fallbackInterfaces {
-				go startRacer(fallbackCtx, false, iif)
+				if err := launchRacer(fallbackCtx, false, iif); err != nil {
+					return nil, false, err
+				}
 			}
 		case res := <-results:
 			if res.error == nil {
@@ -147,7 +162,7 @@ func (d *DefaultDialer) dialParallelInterfaceFastFallback(ctx context.Context, d
 	}
 	startAt := time.Now()
 	results := make(chan dialResult) // unbuffered
-	startRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) {
+	startRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
 		perNetDialer := dialer
 		if defaultInterface == nil || iif.Index != defaultInterface.Index {
 			perNetDialer.Control = control.Append(perNetDialer.Control, control.BindToInterface(nil, iif.Name, iif.Index))
@@ -165,20 +180,39 @@ func (d *DefaultDialer) dialParallelInterfaceFastFallback(ctx context.Context, d
 				if primary && time.Since(startAt) <= fallbackDelay {
 					resetFastFallback(time.Time{})
 				}
-				conn.Close()
+				return conn.Close()
 			}
 		}
+		return nil
+	}
+	launchRacer := func(ctx context.Context, primary bool, iif adapter.NetworkInterface) error {
+		return startRuntimeRacer(ctx, d.runtimeSource, func(owned context.Context) error { return startRacer(owned, primary, iif) }, func(err error) {
+			select {
+			case results <- dialResult{error: err, primary: primary}:
+			case <-returned:
+			}
+		})
 	}
 	for _, iif := range primaryInterfaces {
-		go startRacer(ctx, true, iif)
+		if err := launchRacer(ctx, true, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	fallbackCtx, fallbackCancel := context.WithCancel(ctx)
 	defer fallbackCancel()
 	for _, iif := range fallbackInterfaces {
-		go startRacer(fallbackCtx, false, iif)
+		if err := launchRacer(fallbackCtx, false, iif); err != nil {
+			return nil, false, err
+		}
 	}
 	var errors []error
-	for res := range results {
+	for {
+		var res dialResult
+		select {
+		case res = <-results:
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
+		}
 		if res.error == nil {
 			return res.Conn, res.primary, nil
 		}
@@ -187,7 +221,6 @@ func (d *DefaultDialer) dialParallelInterfaceFastFallback(ctx context.Context, d
 			return nil, false, E.Errors(errors...)
 		}
 	}
-	return nil, false, E.Errors(errors...)
 }
 
 func (d *DefaultDialer) listenSerialInterfacePacket(ctx context.Context, listener net.ListenConfig, network string, addr string, strategy C.NetworkStrategy, interfaceType []C.InterfaceType, fallbackInterfaceType []C.InterfaceType, fallbackDelay time.Duration) (net.PacketConn, error) {

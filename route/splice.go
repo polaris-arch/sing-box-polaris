@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -103,20 +104,35 @@ func unwrapSpliceTarget(conn any, allowOffload bool) (spliceTarget, bool) {
 	}
 }
 
-func (m *ConnectionManager) spliceClose(ctx context.Context, conn io.Closer, remote io.Closer, onClose N.CloseHandlerFunc) N.CloseHandlerFunc {
-	return func(err error) {
-		if err == nil {
-			m.logger.DebugContext(ctx, "connection finished")
-		} else if !E.IsClosedOrCanceled(err) {
-			m.logger.ErrorContext(ctx, "connection closed: ", err)
-		} else {
-			m.logger.TraceContext(ctx, "connection closed")
-		}
-		if onClose != nil {
-			onClose(err)
-		}
-		common.Close(conn, remote)
+func (m *ConnectionManager) spliceClose(ctx context.Context, conn io.Closer, remote io.Closer, onClose N.CloseHandlerFunc) (N.CloseHandlerFunc, func(), error) {
+	done, err := m.reserveTask()
+	if err != nil {
+		return nil, nil, err
 	}
+	owned, release, err := adapter.AcquireRuntimeOperation(ctx, nil)
+	if err != nil {
+		done()
+		return nil, nil, err
+	}
+	var once sync.Once
+	finish := func() { once.Do(func() { release(); done() }) }
+	return func(err error) {
+		once.Do(func() {
+			defer func() { release(); done() }()
+			ctx := owned
+			if err == nil {
+				m.logger.DebugContext(ctx, "connection finished")
+			} else if !E.IsClosedOrCanceled(err) {
+				m.logger.ErrorContext(ctx, "connection closed: ", err)
+			} else {
+				m.logger.TraceContext(ctx, "connection closed")
+			}
+			if onClose != nil {
+				onClose(err)
+			}
+			common.Close(conn, remote)
+		})
+	}, finish, nil
 }
 
 func (m *ConnectionManager) spliceConnection(ctx context.Context, conn net.Conn, remoteConn net.Conn, onClose N.CloseHandlerFunc) (bool, error) {
@@ -157,11 +173,19 @@ func (m *ConnectionManager) spliceConnection(ctx context.Context, conn net.Conn,
 	if !isGoReader || goReader != goConn {
 		return false, nil
 	}
-	return goConn.Splice(target.socket, tun.SpliceOptions{
+	callback, release, err := m.spliceClose(ctx, conn, remoteConn, onClose)
+	if err != nil {
+		return false, err
+	}
+	spliced := goConn.Splice(target.socket, tun.SpliceOptions{
 		ReadCounters:  append(readCounters, target.writeCounters...),
 		WriteCounters: append(target.readCounters, writeCounters...),
-		OnClose:       m.spliceClose(ctx, conn, remoteConn, onClose),
-	}), nil
+		OnClose:       callback,
+	})
+	if !spliced {
+		release()
+	}
+	return spliced, nil
 }
 
 type spliceSource struct {
@@ -267,11 +291,15 @@ func (m *ConnectionManager) splicePacketConnection(ctx context.Context, conn N.P
 		nat.Origin = metadata.Destination
 	}
 	nat.Unidirectional = !isFakeIP && metadata.UDPDisableDomainUnmapping && !metadata.Destination.IsIP()
+	callback, release, err := m.spliceClose(ctx, conn, remote.(io.Closer), onClose)
+	if err != nil {
+		return conn, false
+	}
 	cached := spliceSource.takeCached()
 	if spliceSource.natConn.Splice(target.socket, tun.SplicePacketOptions{
 		ReadCounters:  append(spliceSource.readCounters, target.writeCounters...),
 		WriteCounters: append(target.readCounters, spliceSource.writeCounters...),
-		OnClose:       m.spliceClose(ctx, conn, remote.(io.Closer), onClose),
+		OnClose:       callback,
 		Timeout:       udpTimeout,
 		NAT:           nat,
 		Cached:        cached,
@@ -281,6 +309,7 @@ func (m *ConnectionManager) splicePacketConnection(ctx context.Context, conn N.P
 	}) {
 		return conn, true
 	}
+	release()
 	if len(cached) == 0 {
 		return conn, false
 	}

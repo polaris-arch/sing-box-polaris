@@ -5,6 +5,7 @@ package tailscale
 import (
 	"context"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -15,6 +16,18 @@ import (
 var _ adapter.TailscaleEndpoint = (*Endpoint)(nil)
 
 func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapter.TailscaleEndpointStatus)) error {
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.SubscribeTailscaleStatus(ctx, fn)
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	var workers sync.WaitGroup
+	defer func() { cancel(); workers.Wait() }()
 	localBackend := t.server.ExportLocalBackend()
 	// The notification callback must stay cheap and non-blocking: a
 	// watcher whose queue fills is disconnected by the IPN bus, so
@@ -27,7 +40,8 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		default:
 		}
 	}
-	go func() {
+	workers.Add(1)
+	go runStatusWorker(&workers, func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -52,12 +66,13 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 			}
 			fn(result)
 		}
-	}()
+	})
 	fileSignal := make(chan struct{}, 1)
 	watchErr := t.taildrop.watch(t.taildrop.fileWatchers, fileSignal)
 	if watchErr == nil {
 		defer t.taildrop.unwatch(t.taildrop.fileWatchers, fileSignal)
-		go func() {
+		workers.Add(1)
+		go runStatusWorker(&workers, func() {
 			for {
 				select {
 				case <-ctx.Done():
@@ -66,7 +81,7 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 					scheduleUpdate()
 				}
 			}
-		}()
+		})
 	}
 	scheduleUpdate()
 	for {
@@ -98,6 +113,14 @@ func (t *Endpoint) SubscribeTailscaleStatus(ctx context.Context, fn func(*adapte
 		}
 		scheduleUpdate()
 	}
+}
+
+// runStatusWorker owns subscriber completion even while a callback panic unwinds.
+// WaitGroup.Go deliberately skips Done on panic in Go 1.27, so it cannot own
+// this boundary without changing when the subscription's deferred join returns.
+func runStatusWorker(workers *sync.WaitGroup, worker func()) {
+	defer workers.Done()
+	worker()
 }
 
 func convertTailscaleStatus(status *ipnstate.Status) *adapter.TailscaleEndpointStatus {

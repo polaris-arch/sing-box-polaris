@@ -83,10 +83,10 @@ env:
   BASE_REF: ${{ inputs.base_ref || 'v1.15.0-alpha.12' }}
   BASE_COMMIT: ${{ inputs.base_commit || '25b0d5ea3e466d246c708ac0f20d0448110e566c' }}
   EXPECTED_SYMBOLS: ${{ inputs.expected_symbols || 'mobile' }}
-  # NDK 30.0.16138531-beta3, as pinned by the app's ndk-linux-archive.json.
-  NDK_URL: https://dl.google.com/android/repository/android-ndk-r30-beta3-linux.zip
-  NDK_SHA256: 2698cca1e9f161048ecd84e1e70a556e1aa00b78409473d4c1e87969d40c3efc
-  NDK_ROOT: android-ndk-r30-beta3
+  # NDK 30.0.16248370, as pinned by the app's ndk-linux-archive.json.
+  NDK_URL: https://dl.google.com/android/repository/android-ndk-r30-linux.zip
+  NDK_SHA256: 753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2
+  NDK_ROOT: android-ndk-r30
   # These tests start an instance in process, except the last one, which
   # constructs a TUN inbound without starting it. None of them has run on this
   # baseline yet, so they are kept out of the default gate.
@@ -609,6 +609,7 @@ jobs:
           python -B "$RUNNER_TEMP/polaris-ci-downloads.py" ndk --root "$RUNNER_TEMP/ndk-cache" \
             --url "$NDK_URL" --sha256 "$NDK_SHA256" --output "$RUNNER_TEMP/polaris-ci/ndk-input-check.json"
           unzip -q "$RUNNER_TEMP/ndk-cache/ndk.zip" -d "$RUNNER_TEMP"
+          grep -Eq '^Pkg.Revision[[:space:]]*=[[:space:]]*30\.0\.16248370[[:space:]]*$' "$RUNNER_TEMP/$NDK_ROOT/source.properties"
           echo "ANDROID_NDK_HOME=$RUNNER_TEMP/$NDK_ROOT" >> "$GITHUB_ENV"
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         timeout-minutes: 5
@@ -883,85 +884,28 @@ jobs:
             go.sum
             third_party/sing-tun/go.mod
             third_party/sing-tun/go.sum
-      - name: Authorize fixed PR or explicitly approved governance SHA netns binary
+            third_party/tailscale/go.mod
+            third_party/tailscale/go.sum
+            third_party/wireguard-go/go.mod
+            third_party/wireguard-go/go.sum
+            third_party/tfo-go/go.mod
+            third_party/tfo-go/go.sum
+      - name: Authorize explicitly approved exact SHA netns binary
         id: netns_batch_authorization
         env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_REF: ${{ github.ref }}
-          EVENT_REPOSITORY: ${{ github.repository }}
           # Dormant until the owner explicitly approves/configures this one-SHA window.
           GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
-        shell: python
         run: |
-          import json, os, re, subprocess, urllib.request
-          from pathlib import Path
-          repo = 'polaris-arch/sing-box-polaris'
-          repo_id = 1421657509
-          branch = 'collab/dots-audit-remediation-20261017'
-          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
-          kind = os.environ['EVENT_NAME']
-          ref = os.environ['EVENT_REF']
-          allowed_event = ((kind == 'pull_request' and event.get('number') == 2) or
-                           (kind == 'push' and ref == 'refs/heads/polaris-main'))
-          allowed = False
-          approved = os.environ.get('GOVERNANCE_NETNS_SHA', '')
-          if (re.fullmatch('[0-9a-f]{40}', approved)
-                  and os.environ['EVENT_REPOSITORY'] == repo
-                  and os.environ.get('GITHUB_REPOSITORY_ID') == str(repo_id)
-                  and kind in ('push', 'workflow_dispatch')
-                  and ref in ('refs/heads/polaris-main', 'refs/heads/ci/governance')
-                  and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
-                  and os.environ.get('RUNNER_OS') == 'Linux'
-                  and os.environ.get('GITHUB_SHA') == approved
-                  and os.environ['SOURCE_COMMIT'] == approved):
-              actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-              allowed = actual == approved
-              if allowed and subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
-                  raise SystemExit('Approved governance source is dirty; no elevation')
-          print('Exact governance SHA window authorized=' + str(allowed))
-          print('Netns authorization predicates: event=' + str(allowed_event) + ', repository=' + str(os.environ['EVENT_REPOSITORY'] == repo))
-          if not allowed and allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
-              def get(path):
-                  request = urllib.request.Request('https://api.github.com/repos/' + repo + path,
-                      headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
-                               'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
-                  try:
-                      with urllib.request.urlopen(request, timeout=30) as response:
-                          return json.load(response)
-                  except Exception:
-                      raise SystemExit('Fixed PR #2 authorization read failed; no elevated test was started') from None
-              pr = get('/pulls/2')
-              same_repo = all(pr[side]['repo']['id'] == repo_id and
-                              pr[side]['repo']['full_name'] == repo for side in ['base', 'head'])
-              identity = same_repo and pr['number'] == 2 and pr['head']['ref'] == branch and pr['base']['ref'] == 'polaris-main'
-              print('Netns authorization predicates: fixed_pr_identity=' + str(identity))
-              if identity:
-                  head = pr['head']['sha']
-                  actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-                  if actual != os.environ['SOURCE_COMMIT']:
-                      raise SystemExit('Checkout HEAD differs from SOURCE_COMMIT; no elevation')
-                  allowed = actual == head
-                  print('Netns authorization predicates: checkout_source=True, direct_head=' + str(allowed))
-                  # PR checkouts use a synthetic merge commit. Verify its source identity directly,
-                  # with the current PR head as a parent and an identical tree; event merge metadata may lag.
-                  if not allowed and kind == 'pull_request':
-                      headers = subprocess.check_output(['git', 'cat-file', '-p', 'HEAD'], text=True).split('\n\n', 1)[0].splitlines()
-                      parents = [line[7:] for line in headers if line.startswith('parent ')]
-                      current_tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
-                      head_commit = get('/git/commits/' + head)
-                      allowed = head in parents and head_commit['sha'] == head and current_tree == head_commit['tree']['sha']
-                      print('Netns authorization predicates: head_parent=' + str(head in parents) + ', fetched_head=' + str(head_commit['sha'] == head) + ', identical_tree=' + str(current_tree == head_commit['tree']['sha']))
-                  if kind == 'push':
-                      allowed = allowed and actual == head
-          print('Batch netns binary elevation authorized' if allowed else
-                'No matching batch authorization; netns gate retains its original unprivileged execution')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('authorized=' + str(allowed).lower() + '\n')
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          # Load the guard from the workflow revision, never an independently requested source.
+          git show "$GITHUB_SHA:scripts/ci/netns_authorization.py" > "$RUNNER_TEMP/polaris-netns-authorization.py"
+          python3 -B "$RUNNER_TEMP/polaris-netns-authorization.py"
       - name: Test packages changed by the queue
         timeout-minutes: 77
         env:
           NETNS_BATCH_ELEVATION: ${{ steps.netns_batch_authorization.outputs.authorized }}
+          GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-0.sh" <<'POLARIS_COMMAND'
@@ -978,6 +922,7 @@ jobs:
           selection_dir="$RUNNER_TEMP/polaris-ci/patch-test-packages"
           python3 -B scripts/ci/patch_test_packages.py --base "$BASE_COMMIT" --output-directory "$selection_dir"
           mapfile -t packages < "$selection_dir/root-packages.txt"
+          netns_selected=false
           if [ "${#packages[@]}" -eq 0 ]; then
             echo "no root Go package changed since $BASE_REF"
           else
@@ -988,7 +933,6 @@ jobs:
             mapfile -t resolved_packages < "$selection_dir/resolved-root-packages.txt"
             test "${#resolved_packages[@]}" -gt 0
             ordinary_packages=()
-            netns_selected=false
             for package in "${resolved_packages[@]}"; do
               if [ "$package" = github.com/sagernet/sing-box/common/netns ]; then
                 netns_selected=true
@@ -1001,20 +945,6 @@ jobs:
                 -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
                 "${ordinary_packages[@]}" | tee test.log
               grep -q '^ok' test.log
-            fi
-            if [ "$netns_selected" = true ]; then
-              # Only the selected netns test binary is elevated; compilation remains unprivileged.
-              netns_exec=()
-              if [ "$NETNS_BATCH_ELEVATION" = true ]; then
-                netns_exec=(-exec 'sudo -n --')
-              else
-                echo 'No batch elevation approval; running required netns gate unprivileged'
-              fi
-              go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
-                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
-                github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
-              grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
-              grep -q '^ok' "$selection_dir/netns-test.log"
             fi
           fi
           if [ -f "$selection_dir/sing-tun-selected" ]; then
@@ -1033,6 +963,108 @@ jobs:
             tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
             (cd third_party/metacubex-utls && go test -race -count=1 -tags "$tags" ./...) | tee metacubex-utls-test.log
             grep -q '^ok' metacubex-utls-test.log
+          fi
+          if [ -f "$selection_dir/cronet-go-selected" ]; then
+            grep -qx 'module github.com/sagernet/cronet-go' third_party/cronet-go/go.mod
+            # Fake-native lifetime barriers only; no library loading or native traffic.
+            (cd third_party/cronet-go && go test -race -count=1 -v -tags with_purego ./...) | tee cronet-go-test.log
+            grep -q '^--- PASS: TestNaiveAdmissionSealsBeforeJoin ' cronet-go-test.log
+            grep -q '^--- PASS: TestNaiveDialCreationBarrierAndTerminalOwnership ' cronet-go-test.log
+          fi
+          if [ -f "$selection_dir/fswatch-selected" ]; then
+            grep -qx 'module github.com/sagernet/fswatch' third_party/fswatch/go.mod
+            (cd third_party/fswatch && go test -race -count=1 -v ./...) | tee fswatch-test.log
+            grep -q '^--- PASS: TestFailedAddClosesUnpublishedWatcher ' fswatch-test.log
+            grep -q '^--- PASS: TestSuccessfulAddTransfersWithoutClosing ' fswatch-test.log
+            grep -q '^--- PASS: TestFailedAddPreservesCleanupFailure ' fswatch-test.log
+          fi
+          if [ -f "$selection_dir/sing-selected" ]; then
+            grep -qx 'module github.com/sagernet/sing' third_party/sing/go.mod
+            (cd third_party/sing && go test -race -count=1 -v ./...) | tee sing-test.log
+            grep -q '^--- PASS: TestRuntimePacketContextRetainsBeforeLaunchAndJoinsTerminalTail ' sing-test.log
+            grep -q '^--- PASS: TestRuntimePacketContextFailureDoesNotPublishSession ' sing-test.log
+          fi
+          if [ -f "$selection_dir/sing-quic-selected" ]; then
+            grep -qx 'module github.com/sagernet/sing-quic' third_party/sing-quic/go.mod
+            (cd third_party/sing-quic && go test -race -count=1 -v ./...) | tee sing-quic-test.log
+            grep -q '^--- PASS: TestServerRuntimeLegacyContextIsUnchanged ' sing-quic-test.log
+            grep -q '^--- PASS: TestServerRuntimeRejectsBeforeTaskLaunch ' sing-quic-test.log
+            grep -q '^--- PASS: TestServerRuntimeSuppliesOwnedTaskContext ' sing-quic-test.log
+            grep -q '^--- PASS: TestRejectedRuntimePacketSessionClosesAndRemovesExactEntry ' sing-quic-test.log
+          fi
+          if [ -f "$selection_dir/tailscale-selected" ]; then
+            grep -qx 'github.com/sagernet/tailscale' "$selection_dir/tailscale-selected"
+            grep -qx 'module github.com/sagernet/tailscale' third_party/tailscale/go.mod
+            # Resolve from the product root: the SDK must use the exact verified
+            # local carrier and the product's selected dependency replacements.
+            go list -mod=readonly -m -json github.com/sagernet/tailscale > "$selection_dir/tailscale-module.json"
+            python3 -B - "$selection_dir" <<'PYSDK'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts/ci')
+          from g4_candidate import LOCAL_SDK, SDK, SDK_PACKAGES, require_owned_sdk
+          directory = Path(sys.argv[1])
+          expected = [SDK + '/' + package for package in SDK_PACKAGES]
+          selected = json.loads((directory / 'selection.json').read_text())['modules']['third_party/tailscale']
+          if (not expected or selected['module'] != SDK or selected['packages'] != expected
+                  or selected['fullValidation'] is not False
+                  or (directory / 'tailscale-packages.txt').read_text().splitlines() != expected):
+              raise SystemExit('Tailscale selection differs from the bounded G4 package contract')
+          module = json.loads((directory / 'tailscale-module.json').read_text())
+          if require_owned_sdk(module, Path.cwd())['Path'] != LOCAL_SDK:
+              raise SystemExit('Tailscale patch marker requires the exact selected local carrier')
+          print(json.dumps({'selectedSDK': module}, sort_keys=True))
+          PYSDK
+            mapfile -t tailscale_packages < "$selection_dir/tailscale-packages.txt"
+            test "${#tailscale_packages[@]}" -gt 0
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            go test -mod=readonly -race -count=1 -timeout=10m -v \
+              -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+              "${tailscale_packages[@]}" | tee "$selection_dir/tailscale-test.log"
+            grep -q '^--- PASS: TestSealRequiresActualRelease ' "$selection_dir/tailscale-test.log"
+            grep -q '^--- PASS: TestClosedQueueWaitIsNotJoin ' "$selection_dir/tailscale-test.log"
+            grep -q '^--- PASS: TestRuntimeInterfaceHooksAreMonitorLocal ' "$selection_dir/tailscale-test.log"
+            grep -q '^--- PASS: TestRuntimeInterfaceHookErrorsDoNotFallback ' "$selection_dir/tailscale-test.log"
+            grep -q '^--- PASS: TestRuntimeCGNATUsesOnlyOwnerInterfaces ' "$selection_dir/tailscale-test.log"
+          fi
+          if [ -f "$selection_dir/wireguard-go-selected" ]; then
+            grep -qx 'github.com/sagernet/wireguard-go' "$selection_dir/wireguard-go-selected"
+            grep -qx 'module github.com/sagernet/wireguard-go' third_party/wireguard-go/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            ldflags="$(cat release/LDFLAGS)"
+            (cd third_party/wireguard-go && go test -race -count=1 -timeout=10m -v \
+              -tags "$tags" -ldflags "$ldflags" ./...) | tee "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeTimerDelSyncJoinsOriginalCallback ' "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeWorkerAdmissionClosesBeforeWait ' "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeFinalJoinHoldsNoStateOrNetLocks ' "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeSourceGenerationInvalidatesBeforeSend ' "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeRouteCancellationWithContinuouslyReadyInput ' "$selection_dir/wireguard-go-test.log"
+            grep -q '^--- PASS: TestRuntimeCloseJoinsOriginalCollector ' "$selection_dir/wireguard-go-test.log"
+          fi
+          if [ -f "$selection_dir/tfo-go-selected" ]; then
+            grep -qx 'github.com/database64128/tfo-go/v2' "$selection_dir/tfo-go-selected"
+            grep -qx 'module github.com/database64128/tfo-go/v2' third_party/tfo-go/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            ldflags="$(cat release/LDFLAGS)"
+            (cd third_party/tfo-go && go test -race -count=1 -timeout=10m -v \
+              -tags "$tags" -ldflags "$ldflags" ./...) | tee "$selection_dir/tfo-go-test.log"
+            grep -q '^--- PASS: TestRuntimeWriteCancellationJoinsActualDeadlineMutation ' "$selection_dir/tfo-go-test.log"
+            grep -q '^--- PASS: TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback ' "$selection_dir/tfo-go-test.log"
+          fi
+          if [ "$netns_selected" = true ]; then
+            # Only the selected netns test binary is elevated; compilation remains unprivileged.
+            netns_exec=()
+            # Recheck tracked source after all ordinary and nested package tests.
+            if [ "$NETNS_BATCH_ELEVATION" = true ] && python3 -B "$RUNNER_TEMP/polaris-netns-authorization.py" --check; then
+              netns_exec=(-exec 'sudo -n --')
+            else
+              echo 'No batch elevation approval; running required netns gate unprivileged'
+            fi
+            go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
+              -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+              github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
+            grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
+            grep -q '^ok' "$selection_dir/netns-test.log"
           fi
           POLARIS_COMMAND
           python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-patch-tests-0 \
@@ -1073,3 +1105,4 @@ jobs:
             ${{ runner.temp }}/polaris-runner-budget.json
           if-no-files-found: warn
           retention-days: 14
+

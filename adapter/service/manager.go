@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -12,6 +14,10 @@ import (
 var _ adapter.ServiceManager = (*Manager)(nil)
 
 type Manager struct {
+	runtime      bool
+	frozen       bool
+	owned        map[string]*adapter.Scope
+	stages       map[adapter.StartStage]*runtimeStage
 	registry     adapter.ServiceRegistry
 	access       sync.Mutex
 	services     []adapter.Service
@@ -27,7 +33,11 @@ func NewManager(registry adapter.ServiceRegistry) *Manager {
 
 func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	m.access.Lock()
-	services := m.services
+	if m.runtime {
+		m.access.Unlock()
+		return m.startRuntime(stage)
+	}
+	services := slices.Clone(m.services)
 	m.access.Unlock()
 	for _, service := range services {
 		name := "service/" + service.Type() + "[" + service.Tag() + "]"
@@ -42,7 +52,7 @@ func (m *Manager) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 func (m *Manager) Services() []adapter.Service {
 	m.access.Lock()
 	defer m.access.Unlock()
-	return m.services
+	return slices.Clone(m.services)
 }
 
 func (m *Manager) Get(tag string) (adapter.Service, bool) {
@@ -53,6 +63,12 @@ func (m *Manager) Get(tag string) (adapter.Service, bool) {
 }
 
 func (m *Manager) Create(ctx context.Context, logger log.ContextLogger, tag string, serviceType string, options any) error {
+	m.access.Lock()
+	runtime := m.runtime
+	m.access.Unlock()
+	if runtime {
+		return errors.New("runtime services require prepared insertion")
+	}
 	service, err := m.registry.Create(ctx, logger, tag, serviceType, options)
 	if err != nil {
 		return err

@@ -28,7 +28,7 @@ type ReferenceManager struct {
 	pauseManager           pause.Manager
 	devicePaused           atomic.Bool
 	keepIdle               map[any]bool
-	unreferencedTransports map[string]bool
+	unreferencedTransports map[any]bool
 }
 
 func NewReferenceManager(ctx context.Context, logger log.ContextLogger, options option.Options) *ReferenceManager {
@@ -147,16 +147,52 @@ func (m *ReferenceManager) update() {
 	networkManager := service.FromContext[adapter.NetworkManager](m.ctx)
 	httpClientManager := service.FromContext[adapter.HTTPClientManager](m.ctx)
 
-	transportQueue := slices.Clone(m.staticTransports)
-	outboundQueue := slices.Clone(m.staticOutbounds)
-	if !collectDNSRuleReferences(m.dnsRules, mode, &transportQueue) {
+	m.updateInventory(referenceInventory{
+		rules: m.rules, dnsRules: m.dnsRules,
+		staticOutbounds: m.staticOutbounds, staticTransports: m.staticTransports,
+		mode: mode, devicePaused: m.devicePaused.Load(),
+		outbounds: outboundManager, endpoints: endpointManager,
+		inbounds: inboundManager, services: serviceManager,
+		transports: transportManager, network: networkManager,
+		httpClient: httpClientManager, allowReset: true,
+	})
+}
+
+// All objects in a connected inventory belong to one retained current graph.
+// Only the runtime observer invokes this path for connected graphs, after its
+// publication fence admits the complete census and all resulting idle effects.
+type referenceInventory struct {
+	rules            []option.Rule
+	dnsRules         []option.DNSRule
+	staticOutbounds  []string
+	staticTransports []string
+	mode             string
+	devicePaused     bool
+	outbounds        adapter.OutboundManager
+	endpoints        adapter.EndpointManager
+	inbounds         adapter.InboundManager
+	services         adapter.ServiceManager
+	transports       adapter.DNSTransportManager
+	network          adapter.NetworkManager
+	httpClient       adapter.HTTPClientManager
+	allowReset       bool
+}
+
+func (m *ReferenceManager) updateInventory(inventory referenceInventory) {
+	outboundManager, endpointManager := inventory.outbounds, inventory.endpoints
+	inboundManager, serviceManager := inventory.inbounds, inventory.services
+	transportManager, networkManager := inventory.transports, inventory.network
+	httpClientManager, mode := inventory.httpClient, inventory.mode
+	transportQueue := slices.Clone(inventory.staticTransports)
+	outboundQueue := slices.Clone(inventory.staticOutbounds)
+	if !collectDNSRuleReferences(inventory.dnsRules, mode, &transportQueue) {
 		defaultTransport := transportManager.Default()
 		if defaultTransport != nil {
 			transportQueue = append(transportQueue, defaultTransport.Tag())
 		}
 	}
 	transportQueue = append(transportQueue, networkManager.DefaultOptions().DomainResolver)
-	if !collectRuleReferences(m.rules, mode, &outboundQueue, &transportQueue) {
+	if !collectRuleReferences(inventory.rules, mode, &outboundQueue, &transportQueue) {
 		defaultOutbound := outboundManager.Default()
 		if defaultOutbound != nil {
 			outboundQueue = append(outboundQueue, defaultOutbound.Tag())
@@ -226,7 +262,7 @@ func (m *ReferenceManager) update() {
 		}
 	}
 
-	devicePaused := m.devicePaused.Load()
+	devicePaused := inventory.devicePaused
 	keepIdle := make(map[any]bool)
 	for _, outbound := range outboundManager.Outbounds() {
 		keeper, isKeeper := outbound.(adapter.IdleConnectionKeeper)
@@ -255,7 +291,7 @@ func (m *ReferenceManager) update() {
 			devicePaused: devicePaused,
 		})
 	}
-	unreferencedTransports := make(map[string]bool)
+	unreferencedTransports := make(map[any]bool)
 	for _, transport := range transportManager.Transports() {
 		tag := transport.Tag()
 		referenced := referencedTransports[tag]
@@ -275,8 +311,8 @@ func (m *ReferenceManager) update() {
 		if referenced {
 			continue
 		}
-		unreferencedTransports[tag] = true
-		if m.unreferencedTransports != nil && !m.unreferencedTransports[tag] {
+		unreferencedTransports[transport] = true
+		if inventory.allowReset && m.unreferencedTransports != nil && !m.unreferencedTransports[transport] {
 			m.logger.Debug("dns/", transport.Type(), "[", tag, "] is unreferenced, resetting")
 			transport.Reset()
 		}

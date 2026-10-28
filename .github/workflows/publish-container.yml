@@ -54,8 +54,13 @@ jobs:
         fetch-depth: 0
     - name: Verify reviewed owned distribution and exact source tag
       run: |
+        set -euo pipefail
         python3 scripts/ci/owned_distribution.py verify-tag
         python3 scripts/ci/owned_distribution.py verify-registry
+        SOURCE_REVISION=$(git rev-parse HEAD)
+        test "$SOURCE_REVISION" = "$(git rev-parse "refs/tags/$VERSION^{commit}")"
+        printf 'SOURCE_REVISION=%s\n' "$SOURCE_REVISION" >> "$GITHUB_ENV"
+        printf 'Verified container source revision: %s\n' "$SOURCE_REVISION"
       env:
         VERSION: ${{ inputs.tag }}
     - name: Setup Go
@@ -122,7 +127,7 @@ jobs:
         echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
     - name: Set shared ldflags
       run: |
-        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
+        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$SOURCE_REVISION" >> "${GITHUB_ENV}"
     - name: Build (naive)
       if: matrix.naive
       run: |
@@ -159,11 +164,14 @@ jobs:
         fi
         mv sing-box "${BINARY_NAME}"
         echo "BINARY_NAME=${BINARY_NAME}" >> $GITHUB_ENV
+        printf '%s\n' "$SOURCE_REVISION" > source-revision.txt
     - name: Upload binary
       uses: actions/upload-artifact@v4
       with:
         name: binary-${{ env.PLATFORM_PAIR }}
-        path: ${{ env.BINARY_NAME }}
+        path: |
+          ${{ env.BINARY_NAME }}
+          source-revision.txt
         if-no-files-found: error
         retention-days: 1
     environment: polaris-distribution
@@ -202,8 +210,13 @@ jobs:
         fetch-depth: 0
     - name: Verify reviewed owned distribution and exact source tag
       run: |
+        set -euo pipefail
         python3 scripts/ci/owned_distribution.py verify-tag
         python3 scripts/ci/owned_distribution.py verify-registry
+        SOURCE_REVISION=$(git rev-parse HEAD)
+        test "$SOURCE_REVISION" = "$(git rev-parse "refs/tags/$VERSION^{commit}")"
+        printf 'SOURCE_REVISION=%s\n' "$SOURCE_REVISION" >> "$GITHUB_ENV"
+        printf 'Verified container source revision: %s\n' "$SOURCE_REVISION"
       env:
         VERSION: ${{ inputs.tag }}
     - name: Prepare
@@ -217,6 +230,8 @@ jobs:
         path: .
     - name: Prepare binary
       run: |
+        set -euo pipefail
+        test "$(cat source-revision.txt)" = "$SOURCE_REVISION"
         # Find and make the binary executable
         chmod +x sing-box-*
         ls -la sing-box-*
@@ -235,6 +250,8 @@ jobs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY_IMAGE }}
+        labels: |
+          org.opencontainers.image.revision=${{ env.SOURCE_REVISION }}
     - name: Build and push by digest
       id: build
       uses: docker/build-push-action@v6
@@ -283,8 +300,13 @@ jobs:
         fetch-depth: 0
     - name: Verify reviewed owned distribution and exact source tag
       run: |
+        set -euo pipefail
         python3 scripts/ci/owned_distribution.py verify-tag
         python3 scripts/ci/owned_distribution.py verify-registry
+        SOURCE_REVISION=$(git rev-parse HEAD)
+        test "$SOURCE_REVISION" = "$(git rev-parse "refs/tags/$VERSION^{commit}")"
+        printf 'SOURCE_REVISION=%s\n' "$SOURCE_REVISION" >> "$GITHUB_ENV"
+        printf 'Verified container source revision: %s\n' "$SOURCE_REVISION"
       env:
         VERSION: ${{ inputs.tag }}
     - name: Detect track

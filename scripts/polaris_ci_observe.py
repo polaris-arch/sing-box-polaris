@@ -159,6 +159,7 @@ def observe(command, phase, output, timeout, log_limit=LOG_LIMIT, heartbeat=60, 
         raise ValueError('bounded phase, command and deadline required')
     output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic(); stopped = threading.Event(); chunks = queue.Queue(maxsize=8)
+    reader_eof = threading.Event()
     reason = {'signal': None, 'timeout': False}
     child = job = reader = None; assigned = False; count = retained = 0; digest = hashlib.sha256()
     handlers = {}; error = None; eof = False; code = 127; cleanup_complete = True
@@ -172,6 +173,7 @@ def observe(command, phase, output, timeout, log_limit=LOG_LIMIT, heartbeat=60, 
     def read_stream():
         try:
             while block := child.stdout.read1(64 * 1024): enqueue(block)
+            reader_eof.set()
             enqueue(None)
         except OSError: enqueue(OSError('stream reader failed'))
     def cleanup():
@@ -199,13 +201,6 @@ def observe(command, phase, output, timeout, log_limit=LOG_LIMIT, heartbeat=60, 
                 if drain_deadline is None and (elapsed >= granted or reason['signal'] is not None):
                     reason['timeout'] = elapsed >= granted and reason['signal'] is None
                     cleanup()
-                if child.poll() is not None and drain_deadline is None:
-                    exited_at = now if exited_at is None else exited_at
-                    # Queued bytes from a completed foreground child may still
-                    # drain normally. A live descendant or stalled reader is
-                    # cleaned; no unbounded read or unconditional wait.
-                    if now - exited_at >= 1 and (group_alive(child, job) or chunks.empty()):
-                        error = 'leader-exited-with-open-stream'; cleanup()
                 if drain_deadline is not None and now >= drain_deadline:
                     error = error or 'stream-drain-incomplete'; break
                 if elapsed >= next_heartbeat:
@@ -213,8 +208,20 @@ def observe(command, phase, output, timeout, log_limit=LOG_LIMIT, heartbeat=60, 
                                       'elapsedSeconds': round(elapsed, 2), 'childRunning': child.poll() is None}), flush=True)
                     next_heartbeat += heartbeat
                 try: block = chunks.get(timeout=0.1)
-                except queue.Empty: continue
+                except queue.Empty: block = b''
                 if block is None: eof = True; break
+                if child.poll() is not None and drain_deadline is None:
+                    exited_at = now if exited_at is None else exited_at
+                    if now - exited_at >= 1:
+                        descendants_alive = group_alive(child, job)
+                        if descendants_alive or not block:
+                            # EOF delivery can lag the completed read. Only actual
+                            # reader EOF proves an idle queue is not an open pipe;
+                            # missing sentinel delivery still has the same drain bound.
+                            if descendants_alive or not reader_eof.is_set():
+                                error = 'leader-exited-with-open-stream'
+                            cleanup()
+                if not block: continue
                 if isinstance(block, Exception): raise block
                 digest.update(block); count += len(block)
                 take = max(0, min(len(block), log_limit - retained))

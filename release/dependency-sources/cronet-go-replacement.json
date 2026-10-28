@@ -1,0 +1,1525 @@
+{
+  "repository": "SagerNet/cronet-go",
+  "commit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+  "selection": "Root module blobs excluding .github workflows and all nested Go modules; gitlink naiveproxy recorded separately; source only.",
+  "files": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "29c7b183f4aee26213fd60609e3b84ba295650d7",
+      "size": 186,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/29c7b183f4aee26213fd60609e3b84ba295650d7"
+    },
+    {
+      "path": ".gitmodules",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f077f806335453cb7e54b8740e3c6f595e3fd90d",
+      "size": 114,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f077f806335453cb7e54b8740e3c6f595e3fd90d"
+    },
+    {
+      "path": ".golangci.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "252e89a7893015f65ea083ca489e2f4e84d9be87",
+      "size": 783,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/252e89a7893015f65ea083ca489e2f4e84d9be87"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "size": 674,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/3e3e29e359d205307555aa41f19fb2a8415de885"
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08966bc006060f094f41e5ad6ac3c545e6103015",
+      "size": 1010,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/08966bc006060f094f41e5ad6ac3c545e6103015"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9e7076981d832df17f34d67e9ff60411fb0b322",
+      "size": 4069,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c9e7076981d832df17f34d67e9ff60411fb0b322"
+    },
+    {
+      "path": "bidirectional_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "786ee8dd30f00bfd3e59b7576a9aa1d5a4ba8cbc",
+      "size": 8231,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/786ee8dd30f00bfd3e59b7576a9aa1d5a4ba8cbc"
+    },
+    {
+      "path": "bidirectional_stream_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82b1072d105523f06e40370db1e7e9d47fd2e194",
+      "size": 7093,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/82b1072d105523f06e40370db1e7e9d47fd2e194"
+    },
+    {
+      "path": "bidirectional_stream_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35b3203246d34eb11205f43264f1d4b64491c08c",
+      "size": 5865,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/35b3203246d34eb11205f43264f1d4b64491c08c"
+    },
+    {
+      "path": "bidirectional_stream_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83a18e61d03b1b2f51feb0466eee131f07cb8106",
+      "size": 3964,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/83a18e61d03b1b2f51feb0466eee131f07cb8106"
+    },
+    {
+      "path": "bidirectional_stream_map.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0d4ff964e072002f9cd31f129ab672e980ebb48",
+      "size": 801,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c0d4ff964e072002f9cd31f129ab672e980ebb48"
+    },
+    {
+      "path": "bidirectional_stream_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "143b4648e002d826322fe7b3f17cb0df4b91a024",
+      "size": 3603,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/143b4648e002d826322fe7b3f17cb0df4b91a024"
+    },
+    {
+      "path": "buffer_callback_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "17f8b8c77776bf314323495347fe2596521d3587",
+      "size": 649,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/17f8b8c77776bf314323495347fe2596521d3587"
+    },
+    {
+      "path": "buffer_callback_impl.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "931dc45f5d9a79883ac774481933741c02b4f9f4",
+      "size": 1682,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/931dc45f5d9a79883ac774481933741c02b4f9f4"
+    },
+    {
+      "path": "buffer_callback_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15d75700397707069fd61a80f32f2421fdcbcc0c",
+      "size": 1556,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/15d75700397707069fd61a80f32f2421fdcbcc0c"
+    },
+    {
+      "path": "buffer_callback_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "545cd3e4ee1edc156d6f18c0aad237d7e0150c23",
+      "size": 463,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/545cd3e4ee1edc156d6f18c0aad237d7e0150c23"
+    },
+    {
+      "path": "buffer_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1cc56bf93f0e4f0f35c15e2547ef966f9776253",
+      "size": 1868,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/d1cc56bf93f0e4f0f35c15e2547ef966f9776253"
+    },
+    {
+      "path": "buffer_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e827bf30ce13a13e1183b4841f65d3857e7ec5b2",
+      "size": 2949,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/e827bf30ce13a13e1183b4841f65d3857e7ec5b2"
+    },
+    {
+      "path": "buffer_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12ff88c42565ac5dbaa50e0e86633356ee7844f0",
+      "size": 1546,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/12ff88c42565ac5dbaa50e0e86633356ee7844f0"
+    },
+    {
+      "path": "callback_types.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c9417db9e6be2e06afee1db9b36b1c6b9a3339d1",
+      "size": 2119,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c9417db9e6be2e06afee1db9b36b1c6b9a3339d1"
+    },
+    {
+      "path": "cmd/build-naive/cmd.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f572fa5e16ddc23ae258db9c7590f8399a6c287",
+      "size": 8738,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/5f572fa5e16ddc23ae258db9c7590f8399a6c287"
+    },
+    {
+      "path": "cmd/build-naive/cmd_build.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f34d22a0aada7361f71679c2cdf371ca72da9ac",
+      "size": 11266,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/4f34d22a0aada7361f71679c2cdf371ca72da9ac"
+    },
+    {
+      "path": "cmd/build-naive/cmd_download_toolchain.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fb4a2e6fa8a634bc2b8dbbe29ee378120e831f55",
+      "size": 760,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fb4a2e6fa8a634bc2b8dbbe29ee378120e831f55"
+    },
+    {
+      "path": "cmd/build-naive/cmd_env.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d91f58db62e59cfde10364b7446cabe98585050",
+      "size": 4157,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/5d91f58db62e59cfde10364b7446cabe98585050"
+    },
+    {
+      "path": "cmd/build-naive/cmd_generate_net_errors.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15e141c483551a27d645da30b90ae2108a8473ff",
+      "size": 5224,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/15e141c483551a27d645da30b90ae2108a8473ff"
+    },
+    {
+      "path": "cmd/build-naive/cmd_package.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c269bd5e993ec94b2f117679837ea07150d2d9b",
+      "size": 12873,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/9c269bd5e993ec94b2f117679837ea07150d2d9b"
+    },
+    {
+      "path": "cmd/build-naive/cmd_publish.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89b3192a3617ef50709cb35fb527930298935da7",
+      "size": 8893,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/89b3192a3617ef50709cb35fb527930298935da7"
+    },
+    {
+      "path": "cmd/build-naive/main.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5124029ff83ae285c7121249fa69a85566af72c5",
+      "size": 111,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/5124029ff83ae285c7121249fa69a85566af72c5"
+    },
+    {
+      "path": "date_time_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8571851c9406536e9a036bb88106b9fe60eee093",
+      "size": 720,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/8571851c9406536e9a036bb88106b9fe60eee093"
+    },
+    {
+      "path": "date_time_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c471c6924fb6626b7e1934cccfa6ff682c0a6316",
+      "size": 510,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c471c6924fb6626b7e1934cccfa6ff682c0a6316"
+    },
+    {
+      "path": "dummy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b277ea1aaf26dd142aeab9a7d8269ded9f609fcd",
+      "size": 370,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/b277ea1aaf26dd142aeab9a7d8269ded9f609fcd"
+    },
+    {
+      "path": "engine_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8619a24f4d36e48fe9347b0c508167d6d13d8917",
+      "size": 10190,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/8619a24f4d36e48fe9347b0c508167d6d13d8917"
+    },
+    {
+      "path": "engine_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b6ccd8fa48de5c4f6071e9a63016d3d5f5ba270b",
+      "size": 5342,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/b6ccd8fa48de5c4f6071e9a63016d3d5f5ba270b"
+    },
+    {
+      "path": "engine_params_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "51aec7b57f8b77b22437550f3bbfa6dad42d4bed",
+      "size": 8887,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/51aec7b57f8b77b22437550f3bbfa6dad42d4bed"
+    },
+    {
+      "path": "engine_params_experimental_options.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4bf16f881553a0abd115b4c329c7129d22b8840",
+      "size": 4104,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/a4bf16f881553a0abd115b4c329c7129d22b8840"
+    },
+    {
+      "path": "engine_params_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d8d9525ee02fbc34a19bd38729d7c6c0c48513f",
+      "size": 3955,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/6d8d9525ee02fbc34a19bd38729d7c6c0c48513f"
+    },
+    {
+      "path": "engine_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fafe7cd18e25f74c4e3bcb6a3fe1e45f45b23117",
+      "size": 8652,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fafe7cd18e25f74c4e3bcb6a3fe1e45f45b23117"
+    },
+    {
+      "path": "engine_socket.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30d73318081e08ebb1eb93ff05903877214a27ad",
+      "size": 439,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/30d73318081e08ebb1eb93ff05903877214a27ad"
+    },
+    {
+      "path": "error_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8eec23804ae27d0b3df8c9af084ac99ca98651c9",
+      "size": 2971,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/8eec23804ae27d0b3df8c9af084ac99ca98651c9"
+    },
+    {
+      "path": "error_codes.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "53d1229524d4aafd02fefeff8a5c4883e38c4977",
+      "size": 2065,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/53d1229524d4aafd02fefeff8a5c4883e38c4977"
+    },
+    {
+      "path": "error_go.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "88afa30792c98664963c4a796450f88447c95f93",
+      "size": 701,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/88afa30792c98664963c4a796450f88447c95f93"
+    },
+    {
+      "path": "error_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "351b6c6b19c4db366bbf340d6643374ac40dcd6c",
+      "size": 1173,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/351b6c6b19c4db366bbf340d6643374ac40dcd6c"
+    },
+    {
+      "path": "executor_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14169a254d104672dd0800285f65c3de9ed6d1e5",
+      "size": 649,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/14169a254d104672dd0800285f65c3de9ed6d1e5"
+    },
+    {
+      "path": "executor_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0eb7dd0d500c641cc6e47b6fc2e1a78ed83fdb8b",
+      "size": 1646,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/0eb7dd0d500c641cc6e47b6fc2e1a78ed83fdb8b"
+    },
+    {
+      "path": "executor_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f813648e54ae9310a2117e1ff2fccde2f9cf7885",
+      "size": 1867,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f813648e54ae9310a2117e1ff2fccde2f9cf7885"
+    },
+    {
+      "path": "executor_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0723d2dcb75b45807ef618ca0194c333e6891c6",
+      "size": 445,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/a0723d2dcb75b45807ef618ca0194c333e6891c6"
+    },
+    {
+      "path": "go.mod",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7dc19dc4fd555616b7b3eba24cef0bbe70e56f46",
+      "size": 488,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/7dc19dc4fd555616b7b3eba24cef0bbe70e56f46"
+    },
+    {
+      "path": "go.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60a6839dcf74240cf6ee4009dae2d6d25f67b49e",
+      "size": 3015,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/60a6839dcf74240cf6ee4009dae2d6d25f67b49e"
+    },
+    {
+      "path": "http_header_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c1f56876fcc975e4f12b97eea5af385b1f5c2611",
+      "size": 1072,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c1f56876fcc975e4f12b97eea5af385b1f5c2611"
+    },
+    {
+      "path": "http_header_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4da0f48b4bf35a5c4b545403df1364a49428adbf",
+      "size": 585,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/4da0f48b4bf35a5c4b545403df1364a49428adbf"
+    },
+    {
+      "path": "include/bidirectional_stream_c.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "943fe854e774e3acbc009b76c8e35594245f5835",
+      "size": 9629,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/943fe854e774e3acbc009b76c8e35594245f5835"
+    },
+    {
+      "path": "include/cronet.idl_c.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "988e6efacb0f321bdcb3ae5b9c31f51c251bd058",
+      "size": 57794,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/988e6efacb0f321bdcb3ae5b9c31f51c251bd058"
+    },
+    {
+      "path": "include/cronet_c.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6bdec585fdceb60276414496bdaf0d82c164f9b9",
+      "size": 5264,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/6bdec585fdceb60276414496bdaf0d82c164f9b9"
+    },
+    {
+      "path": "include/cronet_export.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2e746901c6fcea8ffe68ca64297a1ab6cc1b4711",
+      "size": 460,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/2e746901c6fcea8ffe68ca64297a1ab6cc1b4711"
+    },
+    {
+      "path": "include/dummy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f014ff134784c9795ca8f99c9882ba3f03a1db4",
+      "size": 114,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/0f014ff134784c9795ca8f99c9882ba3f03a1db4"
+    },
+    {
+      "path": "include_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e859058212d28ac31183f5c2f35170d374c6822",
+      "size": 88,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/4e859058212d28ac31183f5c2f35170d374c6822"
+    },
+    {
+      "path": "internal/cronet/api_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92259bde56c6e2de76715cd5f6b01fddffe0b30c",
+      "size": 27679,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/92259bde56c6e2de76715cd5f6b01fddffe0b30c"
+    },
+    {
+      "path": "internal/cronet/api_purego_float.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb48e43d5c1f3734df7f325e8f791eff33a2b0af",
+      "size": 398,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/bb48e43d5c1f3734df7f325e8f791eff33a2b0af"
+    },
+    {
+      "path": "internal/cronet/api_purego_float_stub.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6def46c3d9796ee2d3fd87beacd91f8d23a0a170",
+      "size": 651,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/6def46c3d9796ee2d3fd87beacd91f8d23a0a170"
+    },
+    {
+      "path": "internal/cronet/api_purego_nonwindows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a4c08a6fa014bb0a7fa477349eba26535b05f17",
+      "size": 234,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/6a4c08a6fa014bb0a7fa477349eba26535b05f17"
+    },
+    {
+      "path": "internal/cronet/api_purego_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78f510d75b92ef8a8533c58fe6bde01af5f9d62e",
+      "size": 452,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/78f510d75b92ef8a8533c58fe6bde01af5f9d62e"
+    },
+    {
+      "path": "internal/cronet/loader_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd44aa8e9e4b6804be39b2ea7ffb09798dbd203e",
+      "size": 35460,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/cd44aa8e9e4b6804be39b2ea7ffb09798dbd203e"
+    },
+    {
+      "path": "internal/cronet/loader_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59e8aa515910ab342f24073e48ff7e732fd41fa0",
+      "size": 34627,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/59e8aa515910ab342f24073e48ff7e732fd41fa0"
+    },
+    {
+      "path": "internal/cronet/loader_windows_float.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a0be6512836c6e839183fa6c96b28da08e59477",
+      "size": 548,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/0a0be6512836c6e839183fa6c96b28da08e59477"
+    },
+    {
+      "path": "internal/cronet/symbols_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d9abee29c2e1b791855ba55c0687d26fbe439b6",
+      "size": 18288,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/2d9abee29c2e1b791855ba55c0687d26fbe439b6"
+    },
+    {
+      "path": "loader_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8185e3dd2fff89f1d6aa964f5dc5571322e5ebd",
+      "size": 169,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f8185e3dd2fff89f1d6aa964f5dc5571322e5ebd"
+    },
+    {
+      "path": "metrics_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5cb4745a41bfb0b64ca036b88653ae1698cc337",
+      "size": 8450,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/d5cb4745a41bfb0b64ca036b88653ae1698cc337"
+    },
+    {
+      "path": "metrics_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fffd4fd9c7781f36c75faf39cf57431371350334",
+      "size": 3226,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fffd4fd9c7781f36c75faf39cf57431371350334"
+    },
+    {
+      "path": "naive_client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70a3fcf8df50ec03ee805352be66a8ca31636a24",
+      "size": 16390,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/70a3fcf8df50ec03ee805352be66a8ca31636a24"
+    },
+    {
+      "path": "naive_conn.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1ab1b427ef3c92ba420bff84f15b56aef81680f",
+      "size": 6101,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f1ab1b427ef3c92ba420bff84f15b56aef81680f"
+    },
+    {
+      "path": "naive_dns.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15dfc5ba023e1fc592664021e1b825c3ee036ecf",
+      "size": 12353,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/15dfc5ba023e1fc592664021e1b825c3ee036ecf"
+    },
+    {
+      "path": "naive_dns_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c7d1610bfd1df7f7acb704a0e7b8fe8579f7c675",
+      "size": 3513,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c7d1610bfd1df7f7acb704a0e7b8fe8579f7c675"
+    },
+    {
+      "path": "naive_dns_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "194552dbccc73d0f3feb9d5eb607ba88041df2ca",
+      "size": 2276,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/194552dbccc73d0f3feb9d5eb607ba88041df2ca"
+    },
+    {
+      "path": "naive_dns_windows_go125.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3fe6d5b8a4b0d880194c30a02c421a8db909df3",
+      "size": 465,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/d3fe6d5b8a4b0d880194c30a02c421a8db909df3"
+    },
+    {
+      "path": "naive_dns_windows_legacy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f967c4aadffe1b968eb775d9d5d752f3d9b7873e",
+      "size": 200,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f967c4aadffe1b968eb775d9d5d752f3d9b7873e"
+    },
+    {
+      "path": "naive_library_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e442935a145a89ca8f66d465824011b0b8f96261",
+      "size": 83,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/e442935a145a89ca8f66d465824011b0b8f96261"
+    },
+    {
+      "path": "naive_library_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a9fcfd1d2759c483efd3fa3a4539ff6c48339ab",
+      "size": 157,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/9a9fcfd1d2759c483efd3fa3a4539ff6c48339ab"
+    },
+    {
+      "path": "naive_socket_unix.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "86e1b8cadab5b7338af65970f12462d9bb0d5735",
+      "size": 1465,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/86e1b8cadab5b7338af65970f12462d9bb0d5735"
+    },
+    {
+      "path": "naive_socket_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "80e0500990abbbe4af5443736bf4d5a408d24f09",
+      "size": 2214,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/80e0500990abbbe4af5443736bf4d5a408d24f09"
+    },
+    {
+      "path": "naive_socket_windows_go125.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "103f1bebb7f3f0f1d8642e3299846af2bbfe746d",
+      "size": 2633,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/103f1bebb7f3f0f1d8642e3299846af2bbfe746d"
+    },
+    {
+      "path": "naive_socket_windows_legacy.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2aad315f1432468656f8196f7a4f35d69ba225bf",
+      "size": 173,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/2aad315f1432468656f8196f7a4f35d69ba225bf"
+    },
+    {
+      "path": "net_error.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d06fae27666a285a12a15fc802e497c22b24413",
+      "size": 3509,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/3d06fae27666a285a12a15fc802e497c22b24413"
+    },
+    {
+      "path": "net_error_generated.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fdd502c2ca65d7f9d96abcd27c5aa758cd898eac",
+      "size": 72981,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fdd502c2ca65d7f9d96abcd27c5aa758cd898eac"
+    },
+    {
+      "path": "public_key_pins_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5006efcb241f0435ccf8bd348fd517c7583fba7b",
+      "size": 2904,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/5006efcb241f0435ccf8bd348fd517c7583fba7b"
+    },
+    {
+      "path": "public_key_pins_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d910f4b84e81fe0c6b4e141943960f2858cf16cc",
+      "size": 1213,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/d910f4b84e81fe0c6b4e141943960f2858cf16cc"
+    },
+    {
+      "path": "quic_hint_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9dc3e9829f244fbe2ce4047b2017b5cda1c99eb9",
+      "size": 1375,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/9dc3e9829f244fbe2ce4047b2017b5cda1c99eb9"
+    },
+    {
+      "path": "quic_hint_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "497b375bf80e2c457c591e702ffc1b2ec32baa83",
+      "size": 739,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/497b375bf80e2c457c591e702ffc1b2ec32baa83"
+    },
+    {
+      "path": "result.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "891baa1e581fd87e5608c4c3210b6a35e1dfd2c2",
+      "size": 3765,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/891baa1e581fd87e5608c4c3210b6a35e1dfd2c2"
+    },
+    {
+      "path": "runnable_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b4784e653e8047a740d4a45fc6576fb0c0e19301",
+      "size": 574,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/b4784e653e8047a740d4a45fc6576fb0c0e19301"
+    },
+    {
+      "path": "runnable_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae4c773ae709d25ee1c9f232721c442affa00588",
+      "size": 1566,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/ae4c773ae709d25ee1c9f232721c442affa00588"
+    },
+    {
+      "path": "runnable_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1c4809aa11402ef1b123f24d62ab126de147b76",
+      "size": 1423,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/a1c4809aa11402ef1b123f24d62ab126de147b76"
+    },
+    {
+      "path": "runnable_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67b0f68b90d35a6ed7e812918d9bd7ae07e5e0be",
+      "size": 406,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/67b0f68b90d35a6ed7e812918d9bd7ae07e5e0be"
+    },
+    {
+      "path": "transport.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ddd234f52c004206faa344bd26d11c5710d201d",
+      "size": 7460,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/3ddd234f52c004206faa344bd26d11c5710d201d"
+    },
+    {
+      "path": "types.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9f5fcfbd3dcb243142ad8138651e54d1327bf01",
+      "size": 11604,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/e9f5fcfbd3dcb243142ad8138651e54d1327bf01"
+    },
+    {
+      "path": "upload_data_provider_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "136e30d0f558b4f99f0e6767182e871122208a1b",
+      "size": 537,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/136e30d0f558b4f99f0e6767182e871122208a1b"
+    },
+    {
+      "path": "upload_data_provider_handler.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a41c93e5554c89fa3dba142534ea79ca3a9d999a",
+      "size": 2087,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/a41c93e5554c89fa3dba142534ea79ca3a9d999a"
+    },
+    {
+      "path": "upload_data_provider_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fcec704807e9ebc8fe713afbed7f27e5c3bd3775",
+      "size": 3771,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fcec704807e9ebc8fe713afbed7f27e5c3bd3775"
+    },
+    {
+      "path": "upload_data_provider_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "557139f81b49f279eabb397ae5144b335c1d7f1e",
+      "size": 2740,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/557139f81b49f279eabb397ae5144b335c1d7f1e"
+    },
+    {
+      "path": "upload_data_provider_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "02d0b8becfdf115d1a8cb67f51064e1b7249d35f",
+      "size": 390,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/02d0b8becfdf115d1a8cb67f51064e1b7249d35f"
+    },
+    {
+      "path": "upload_data_sink_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0d1f66193c04e8686ca212bacf4ce7a225ded39",
+      "size": 2045,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/a0d1f66193c04e8686ca212bacf4ce7a225ded39"
+    },
+    {
+      "path": "upload_data_sink_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69d600b3950f9cf23c8eb6eeb165f6e12872d579",
+      "size": 3331,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/69d600b3950f9cf23c8eb6eeb165f6e12872d579"
+    },
+    {
+      "path": "upload_data_sink_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "afa7d86ea82caa75711a90e6def265c42ca5fff1",
+      "size": 919,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/afa7d86ea82caa75711a90e6def265c42ca5fff1"
+    },
+    {
+      "path": "url_request_callback_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0683210ee72a533afbec15307613159a64d8903a",
+      "size": 537,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/0683210ee72a533afbec15307613159a64d8903a"
+    },
+    {
+      "path": "url_request_callback_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8264936c98e7459ebac42aa2d95aa5cf080dab53",
+      "size": 6543,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/8264936c98e7459ebac42aa2d95aa5cf080dab53"
+    },
+    {
+      "path": "url_request_callback_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "173e77081133322a47c5cf80fcabf74973d02e34",
+      "size": 4674,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/173e77081133322a47c5cf80fcabf74973d02e34"
+    },
+    {
+      "path": "url_request_callback_impl_purego_32bit.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ef8b2710c4978e9347d4f07a2e50a6cb82d7d1b",
+      "size": 4838,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/4ef8b2710c4978e9347d4f07a2e50a6cb82d7d1b"
+    },
+    {
+      "path": "url_request_callback_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "928ae2f162c586f47ee51bca22417f880106c723",
+      "size": 390,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/928ae2f162c586f47ee51bca22417f880106c723"
+    },
+    {
+      "path": "url_request_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6055646563f68920ba06f566e8397234b77502e1",
+      "size": 5083,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/6055646563f68920ba06f566e8397234b77502e1"
+    },
+    {
+      "path": "url_request_finished_info_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "641bdc2896a96a3533196973e11ffeb16aeeab06",
+      "size": 2637,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/641bdc2896a96a3533196973e11ffeb16aeeab06"
+    },
+    {
+      "path": "url_request_finished_info_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c6c7400e15e8f7e82281e9af5627cf11b0cad335",
+      "size": 2739,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/c6c7400e15e8f7e82281e9af5627cf11b0cad335"
+    },
+    {
+      "path": "url_request_finished_info_listener_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ff27d343698baa72b908d76d30600980c66cbcd",
+      "size": 597,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/2ff27d343698baa72b908d76d30600980c66cbcd"
+    },
+    {
+      "path": "url_request_finished_info_listener_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11d5525a307b3abcb3739d08f79b3a5736161f6c",
+      "size": 2360,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/11d5525a307b3abcb3739d08f79b3a5736161f6c"
+    },
+    {
+      "path": "url_request_finished_info_listener_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "737e839b520a39eba7758f4930180b6946ffc858",
+      "size": 550,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/737e839b520a39eba7758f4930180b6946ffc858"
+    },
+    {
+      "path": "url_request_finished_info_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30fa1184b5cd8055f9402b9d0195c2c5b4c463d5",
+      "size": 893,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/30fa1184b5cd8055f9402b9d0195c2c5b4c463d5"
+    },
+    {
+      "path": "url_request_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "980a0e8685ca15dc972cf47aac44b881854680a9",
+      "size": 5048,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/980a0e8685ca15dc972cf47aac44b881854680a9"
+    },
+    {
+      "path": "url_request_params_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2093a4e307c5132fd9c7ece2e66f420d44c9bc2a",
+      "size": 9234,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/2093a4e307c5132fd9c7ece2e66f420d44c9bc2a"
+    },
+    {
+      "path": "url_request_params_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe87c089a7a6d06ad85240a6ab28859f9ea0562b",
+      "size": 3789,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/fe87c089a7a6d06ad85240a6ab28859f9ea0562b"
+    },
+    {
+      "path": "url_request_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48b36207eb653afbc2e880093819e367b3f8199d",
+      "size": 1330,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/48b36207eb653afbc2e880093819e367b3f8199d"
+    },
+    {
+      "path": "url_request_status_listener_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76e2f1ab5651cc7b2868542c1b87214240e8dcaa",
+      "size": 573,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/76e2f1ab5651cc7b2868542c1b87214240e8dcaa"
+    },
+    {
+      "path": "url_request_status_listener_impl_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ed2cb028a5e5c553106dfe931f891a6362cb3ff",
+      "size": 1911,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/4ed2cb028a5e5c553106dfe931f891a6362cb3ff"
+    },
+    {
+      "path": "url_request_status_listener_impl_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32b67f7d12bd2a8366d4ecc54fc1c124f2316540",
+      "size": 1644,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/32b67f7d12bd2a8366d4ecc54fc1c124f2316540"
+    },
+    {
+      "path": "url_request_status_listener_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8e446300beeb8748f4ee9e699aaa510b2fc006c",
+      "size": 523,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/b8e446300beeb8748f4ee9e699aaa510b2fc006c"
+    },
+    {
+      "path": "url_response_info_cgo.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f68fc423ff72f5d6073b71560004338522329d32",
+      "size": 5878,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/f68fc423ff72f5d6073b71560004338522329d32"
+    },
+    {
+      "path": "url_response_info_purego.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65d766c476a8e195f60db33e286145921eee2e47",
+      "size": 1484,
+      "url": "https://api.github.com/repos/SagerNet/cronet-go/git/blobs/65d766c476a8e195f60db33e286145921eee2e47"
+    }
+  ],
+  "localPath": "third_party/cronet-go",
+  "nativeSourceGitlink": "be1be963131154ba82761a7ed85ba426b2027319",
+  "modified": [
+    "naive_client.go"
+  ],
+  "added": [
+    "naive_client_lifecycle.go",
+    "naive_client_lifecycle_test.go"
+  ],
+  "verification": "All 124 original blobs match the exact Git blob SHA1; source-only, no build/test/native binary attestation.",
+  "candidateFiles": [
+    {
+      "path": ".gitignore",
+      "sha256": "d72cee5dff77b40c8002bd7cb46c84e64a29a9501c4a1b4ca3d10709d4618634"
+    },
+    {
+      "path": ".gitmodules",
+      "sha256": "66cbd75e4526d7209b25aea89d836e776fe9afcde486d5d036ad0eadf6f60f6a"
+    },
+    {
+      "path": ".golangci.yml",
+      "sha256": "d01ac91a254dc87277afb092f5f94351ffcbdab48d57b0ab617862fb49694d5f"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "304b59225a99a0d79915effd245516b71c233b8b1fea973e4f3f9f56237821ae"
+    },
+    {
+      "path": "README.md",
+      "sha256": "4caedf2c835060529290f314001a3b80f75b906acd7fbbcff1a01ec9105ef8bf"
+    },
+    {
+      "path": "bidirectional_conn.go",
+      "sha256": "12743a6f923849c4c822b4a030b5363f70cde95581016815573da97bf1f099af"
+    },
+    {
+      "path": "bidirectional_stream_cgo.go",
+      "sha256": "2f18e45615ecdf6960917fcd27988b3cfeb14c32277757df2cb58f1ff9b4d4e9"
+    },
+    {
+      "path": "bidirectional_stream_impl_cgo.go",
+      "sha256": "cf32f17b7ac85aac7f28112924bbd6c6e4be8d09f01b63bc196b38cacbc94264"
+    },
+    {
+      "path": "bidirectional_stream_impl_purego.go",
+      "sha256": "742f2bdd8ec2d05d6b020bd45fb67021ee63f4efe57a94b64127966f09793824"
+    },
+    {
+      "path": "bidirectional_stream_map.go",
+      "sha256": "781d7199a4fdf97b385b34da57d74c9637a26781c1fb0eed745e3cd262983c7c"
+    },
+    {
+      "path": "bidirectional_stream_purego.go",
+      "sha256": "99165454412c611241c118b5305cf40d846025f570c78e574e7702c68e34bfdf"
+    },
+    {
+      "path": "buffer_callback_cgo.go",
+      "sha256": "9797f590167bf225a2981e1b9665281317d5e42dc7dba61ef6ccf8e6ca8b10f5"
+    },
+    {
+      "path": "buffer_callback_impl.go",
+      "sha256": "bf886c18a0d987dca6d9583a92a601f619efb70d65a0bbabf2ec0b42e8e64585"
+    },
+    {
+      "path": "buffer_callback_impl_purego.go",
+      "sha256": "f89e359a7afdda6794d0064ab8d45c1b17f7a646b04103dd1419b3661cd7eb80"
+    },
+    {
+      "path": "buffer_callback_purego.go",
+      "sha256": "c010605634b00a3d69fcc2e1d45ae3ef8900a43f22761a582571d594a9e26583"
+    },
+    {
+      "path": "buffer_cgo.go",
+      "sha256": "c169dfc0e8150e1d36eb11efa163fea32e03d265480034dc56364b4a3601e018"
+    },
+    {
+      "path": "buffer_impl_cgo.go",
+      "sha256": "b255b19584fcdac5b9202bd0ce1ed0cda93bd92dee76da482625865821969de9"
+    },
+    {
+      "path": "buffer_purego.go",
+      "sha256": "6fd40b7cdf16a3afe621707a8cc9ccd447813f21c955b3b648868f7d1c38a260"
+    },
+    {
+      "path": "callback_types.go",
+      "sha256": "f122cdfd5cd558716e6bd19d460d0b688828ed0ab33ef4128910da23a0e4f572"
+    },
+    {
+      "path": "cmd/build-naive/cmd.go",
+      "sha256": "480c4242e8e1a712ad704948b1802b4f1e9d3a2e41d3e1a9984082511b5ee883"
+    },
+    {
+      "path": "cmd/build-naive/cmd_build.go",
+      "sha256": "f07ff6f4783115d5031c4a9633deb510260c007d0f49f6eef5c0b3eba466c4ea"
+    },
+    {
+      "path": "cmd/build-naive/cmd_download_toolchain.go",
+      "sha256": "2228dd5b75288effb30d464b690b39ed67298fc8cf8fe8bff40987c1f60b9965"
+    },
+    {
+      "path": "cmd/build-naive/cmd_env.go",
+      "sha256": "e53e71cee054879428b909b0aa4785edd2ab1c7c9403c9ab6a89693f6547ed93"
+    },
+    {
+      "path": "cmd/build-naive/cmd_generate_net_errors.go",
+      "sha256": "b6dc5a8e97de7c0821ff4f2f91eb386e74ea822b8e1936345062c06f46ed1697"
+    },
+    {
+      "path": "cmd/build-naive/cmd_package.go",
+      "sha256": "035e56a0687c5473cbeed645b1168b6ebefdca7ba244e92d2a59d682933890bb"
+    },
+    {
+      "path": "cmd/build-naive/cmd_publish.go",
+      "sha256": "e1574fc6d6fd2fa4ab40e9b4fe48eeafa6f1e0dba13215c55c222b46deb6ebd2"
+    },
+    {
+      "path": "cmd/build-naive/main.go",
+      "sha256": "41f46a644bc66ed8c347f6914b2032a731d7bb139066acfa4a9dd2cdd519de73"
+    },
+    {
+      "path": "date_time_cgo.go",
+      "sha256": "053385b09e56215854a8bad9b0c67190fde9f03894a27db50bb197367a3f0bf4"
+    },
+    {
+      "path": "date_time_purego.go",
+      "sha256": "6186728692d84c252db3a2df9024f940751352060fc3c15c68a93408718c64f7"
+    },
+    {
+      "path": "dummy.go",
+      "sha256": "aedaaa8c8cba1b9b231e0c875cf1bb21095cf28218f7e09798c617a20ffe3753"
+    },
+    {
+      "path": "engine_cgo.go",
+      "sha256": "187d7fcfdb0cc5326170293356dceb170030bd130a3cc8c216f79c76e9e6fb86"
+    },
+    {
+      "path": "engine_impl_cgo.go",
+      "sha256": "47fe8a76ffca7fd991b26702187cabb0d3c46f96a8cc1615dac0307dc19f28a2"
+    },
+    {
+      "path": "engine_params_cgo.go",
+      "sha256": "d4614d50650c883b72c126db7480ef322dcbafd5f86ce5d0aefcd7ef4f8da5f7"
+    },
+    {
+      "path": "engine_params_experimental_options.go",
+      "sha256": "868e507b740b2065fdb7c74c214fe27a41ad35f825fa3965de2111af30318620"
+    },
+    {
+      "path": "engine_params_purego.go",
+      "sha256": "1a8667a71700c1208341c814a1134ae010961ddba1f92fb88d693d164c0e5052"
+    },
+    {
+      "path": "engine_purego.go",
+      "sha256": "983f1cc3f79ad719a89c8a42bf2bf14dcdf60fa4f0dc1bfa22136301b3ccad88"
+    },
+    {
+      "path": "engine_socket.go",
+      "sha256": "4e16f9d3fe65e4455d459040dfed23b437488426226bfc8aaec4765263b7eea3"
+    },
+    {
+      "path": "error_cgo.go",
+      "sha256": "ddeeb40b7d251541d3fcf4cfd4c1507f52210c775d42e3469a111628764af1c3"
+    },
+    {
+      "path": "error_codes.go",
+      "sha256": "eb678be5c91a1b1527cdf3bb0bcd175cd38aa19a3ee48284e18c4a37e498891e"
+    },
+    {
+      "path": "error_go.go",
+      "sha256": "d13a29c7a1944086d2ca7b6ebde662c1369925c55855105db9e43fd674d4ca5a"
+    },
+    {
+      "path": "error_purego.go",
+      "sha256": "1bbb869fc1f8ede6825226ff2b54fe20c88803c2c6e33ea2f3b40cdbedf695cd"
+    },
+    {
+      "path": "executor_cgo.go",
+      "sha256": "9945a1b3c26e1955e5ca49957e17d6482445dad423e05f288804aec5a63c8f83"
+    },
+    {
+      "path": "executor_impl_cgo.go",
+      "sha256": "62083f77684740382a7b115dc2c3ae22f0bed7f07469e7443d43a2b1474f4289"
+    },
+    {
+      "path": "executor_impl_purego.go",
+      "sha256": "da6efed643e3ecc3fc7844cb8669b72b889ada79014bd7b79242954c4393db02"
+    },
+    {
+      "path": "executor_purego.go",
+      "sha256": "21e351e0e86dad4b4c2bd810488dfdccfd3ad9b57dc5e12347d9c28e4c678678"
+    },
+    {
+      "path": "go.mod",
+      "sha256": "2d59bb9dded1d7adc52cc948435bded704b78169b16a2d40947862ffbd6a1e5f"
+    },
+    {
+      "path": "go.sum",
+      "sha256": "58d90063d5b7038e4638032a016648d029e422b85e5e367fd02853a9e602a01c"
+    },
+    {
+      "path": "http_header_cgo.go",
+      "sha256": "fa73f8ef868f7c9a0e912ad437874a9382c0381b5a50b85011d3af0708eeb248"
+    },
+    {
+      "path": "http_header_purego.go",
+      "sha256": "78322bde005189f46044250bb0c858499df6d775fa40d339fcccf0ee2216dec5"
+    },
+    {
+      "path": "include/bidirectional_stream_c.h",
+      "sha256": "2c7a0249b7e551738e887bc320ab38cbacfc36ac1ffc7da846fbe293ced25238"
+    },
+    {
+      "path": "include/cronet.idl_c.h",
+      "sha256": "b7e7c90b3810a78ccd6c74a7a4d5f6fedf62fc889da3ad13a82d4d227ee4c096"
+    },
+    {
+      "path": "include/cronet_c.h",
+      "sha256": "959c681d7e046e0c49200d1e7b9116d5a2565b73f0f4761efe6c90ee47fdbdd3"
+    },
+    {
+      "path": "include/cronet_export.h",
+      "sha256": "da526026f0efde8142a39200ca28fdf2973880389be18ed864c5abf6797b3219"
+    },
+    {
+      "path": "include/dummy.go",
+      "sha256": "30593b3357df3d06a37d72d428efd6bfd2f3d63221778e08ae535ef76ac40200"
+    },
+    {
+      "path": "include_cgo.go",
+      "sha256": "33b5d1feb238b3854215c56205dee07522ae2c33e48fa19f80a088f76f553fc5"
+    },
+    {
+      "path": "internal/cronet/api_purego.go",
+      "sha256": "da681c54386afd8e584dedf5cdfe3bb50cbc0dcf4f119afe84eb446842b463bb"
+    },
+    {
+      "path": "internal/cronet/api_purego_float.go",
+      "sha256": "324a030ad5ea78b4bc8a5f8c24b71485a9e733e6e3f257b59a2992aa70f5277e"
+    },
+    {
+      "path": "internal/cronet/api_purego_float_stub.go",
+      "sha256": "a13bcc674fc795a2d6e3361d01767453c9c49be631120a759fef59f43b53d24f"
+    },
+    {
+      "path": "internal/cronet/api_purego_nonwindows.go",
+      "sha256": "5a2011be55b74ffe065c23d8e604ea62cf0d2ff76d1ffe28ea391e0651b61a3b"
+    },
+    {
+      "path": "internal/cronet/api_purego_windows.go",
+      "sha256": "312533dc9f0f6e6b9823593c3761f89194882802b6b05f138ae24aaed1c24f88"
+    },
+    {
+      "path": "internal/cronet/loader_unix.go",
+      "sha256": "93bf42fc3dbba96f803629a4c9552c381c060343100dc88df90e3cae850c2c4f"
+    },
+    {
+      "path": "internal/cronet/loader_windows.go",
+      "sha256": "a391e54851804d8affb771966adc826922ac59b348096993ff4d18e7ea8be068"
+    },
+    {
+      "path": "internal/cronet/loader_windows_float.go",
+      "sha256": "5cc9014eb894f1a76b4f695972b178e076db0594183a433efc794064b947f453"
+    },
+    {
+      "path": "internal/cronet/symbols_purego.go",
+      "sha256": "0ffbce1b36e343eb002cab2f5cbed8282c058d295a12e98818bae70088df1352"
+    },
+    {
+      "path": "loader_purego.go",
+      "sha256": "13fe42186d32e4a32fabbbe0baa3179fdb394c44d29433af205ea195da14fbd0"
+    },
+    {
+      "path": "metrics_cgo.go",
+      "sha256": "6e57ac24416c71054a79640156a1c5cb26c122cb3074fb850ce60cf175db2a1a"
+    },
+    {
+      "path": "metrics_purego.go",
+      "sha256": "04ee1a154c295c970641c616aec0fdbab6ec47818042e72eabfa9e4c4c0c71fc"
+    },
+    {
+      "path": "naive_client.go",
+      "sha256": "c5274db6d92f62ad61a127245045c20e5a5dca2cf7f67faae1a02d7cc42eddb5"
+    },
+    {
+      "path": "naive_client_lifecycle.go",
+      "sha256": "b2f42e65dca8ce811c5d3874fd4971cd9fde9496fad7c079a45b9ab60080341b"
+    },
+    {
+      "path": "naive_client_lifecycle_test.go",
+      "sha256": "a71990e9362e623dfd33f4ad9cdc6fdfe5571d6436bd09de55db5322b2c8dc2c"
+    },
+    {
+      "path": "naive_conn.go",
+      "sha256": "c32bf867819dd773398da7506c25360be55cab887ac31237c1ab48c814b5aed3"
+    },
+    {
+      "path": "naive_dns.go",
+      "sha256": "cd17188905a59b45d88e8dc1fc79db9923c3eb892933ea09d526cfb29427051c"
+    },
+    {
+      "path": "naive_dns_unix.go",
+      "sha256": "a432289c77e5ec2cee0c698da18b04cc20beec5a7cb02106e4bb181db73d069c"
+    },
+    {
+      "path": "naive_dns_windows.go",
+      "sha256": "830bd10922e58af6e280d1b6c4fdd060cd78a2cd823e8ad78ef2829b0718d3dd"
+    },
+    {
+      "path": "naive_dns_windows_go125.go",
+      "sha256": "dade0cae8e00803128859822b86db83815dd7192fc67aa3a16fd1b633f909b60"
+    },
+    {
+      "path": "naive_dns_windows_legacy.go",
+      "sha256": "e23409e62c262b4e8ae67f90e910869329ac5f50b43c55066b83c4e2c11d451d"
+    },
+    {
+      "path": "naive_library_cgo.go",
+      "sha256": "91abae6174ead16e5a487c45ee2bf3eff0df1b3f8a08497d2a0f0e3f533579c1"
+    },
+    {
+      "path": "naive_library_purego.go",
+      "sha256": "2d2d35c4425829d393524bb1671fcda2d967cfa6920142ead4d04987b162425c"
+    },
+    {
+      "path": "naive_socket_unix.go",
+      "sha256": "eed774ed479d909f995ed675f4b4e001ba679554db1d8ebce168e19ee9f12d1e"
+    },
+    {
+      "path": "naive_socket_windows.go",
+      "sha256": "785f4cf10f762893714721f9149381995a78425607072818080e9d0e76dafe88"
+    },
+    {
+      "path": "naive_socket_windows_go125.go",
+      "sha256": "2c00a2a154213037289f4d0217c16662b1ec5012b17cdff7a7bf47f9ac0654d6"
+    },
+    {
+      "path": "naive_socket_windows_legacy.go",
+      "sha256": "0f03b7d45e92955556f463a03554de7e944ee32c728cc8855fccc6f1f8371628"
+    },
+    {
+      "path": "net_error.go",
+      "sha256": "622eb790e1ea68d1446ee8a4e723c2eda6956a2febb46126909fa7f2a1860940"
+    },
+    {
+      "path": "net_error_generated.go",
+      "sha256": "1388a32b9c47691c6466ab7c0e9384b149a6dde91fe2e2e26eabd69e794746da"
+    },
+    {
+      "path": "public_key_pins_cgo.go",
+      "sha256": "044164facc42f6b639f61383e16ba9ebd238436fbaa22982d7e5d4965cb7aafb"
+    },
+    {
+      "path": "public_key_pins_purego.go",
+      "sha256": "7f3aa4fe5e048917b39312ea6d598d7a6464fe90dd6bb8a8366b02f70364c9a4"
+    },
+    {
+      "path": "quic_hint_cgo.go",
+      "sha256": "8939c437a2c953c6b04046c669e2ccefb11784ab899089ad32781350c50bd625"
+    },
+    {
+      "path": "quic_hint_purego.go",
+      "sha256": "ddefc6bdb0d079720e8e5d43e9c58561bd233a5dfa79a7a5f8a19eb991ead10f"
+    },
+    {
+      "path": "result.go",
+      "sha256": "3b23622c1e8b50e46d27f2665e26e6ff1917b57d176b74bc2a0ce7b54bc9c7eb"
+    },
+    {
+      "path": "runnable_cgo.go",
+      "sha256": "51f97361b5dd9ab686e20c2fae09075adf65a46eb8ede555046f00f11eb9ba14"
+    },
+    {
+      "path": "runnable_impl_cgo.go",
+      "sha256": "cfae3de11a7bede7222f8301869862254061f1bbc50db3ecc7651e678dae2db4"
+    },
+    {
+      "path": "runnable_impl_purego.go",
+      "sha256": "6109c02da95d711bea039cfd6aa3e2ff326ea215676dbe0e4c7dd6d4ed1850a4"
+    },
+    {
+      "path": "runnable_purego.go",
+      "sha256": "cd316620b958461d680096bc5662f4ac69203ccd3565ea7535d8d24251b80363"
+    },
+    {
+      "path": "transport.go",
+      "sha256": "e990473e5e0fdb7cba43a64a269edc6723b00495b0b9cccbb5434f30c8cd0334"
+    },
+    {
+      "path": "types.go",
+      "sha256": "b796ece0a31853dcc851f42e91409a44d61224daaf0c73ab2a66f2d1bf08538c"
+    },
+    {
+      "path": "upload_data_provider_cgo.go",
+      "sha256": "4dc8058361171fcfaed9f6262f5678f5a2efaf26eb72ed08a8e43fc1c95fd617"
+    },
+    {
+      "path": "upload_data_provider_handler.go",
+      "sha256": "aaea784b0c63ae8823b0c0408d9b0abf438ff0ed451811292f3290263746035a"
+    },
+    {
+      "path": "upload_data_provider_impl_cgo.go",
+      "sha256": "ce908c3f8addcbb49d7836fa823a7827f3ce639eb5ed1e4610a601dec60d0717"
+    },
+    {
+      "path": "upload_data_provider_impl_purego.go",
+      "sha256": "23351cd8de3e1eb08382b031b39b4b7910af1296cc1156604b603170fa41100a"
+    },
+    {
+      "path": "upload_data_provider_purego.go",
+      "sha256": "78b60589ee851c67c6fa7077f4a8c123562b18d810a5a5832ddc1ceefe99c893"
+    },
+    {
+      "path": "upload_data_sink_cgo.go",
+      "sha256": "5dbbe6354c95b880b35d75ce2a6907f9d9cc17035a51aab584cbc7cb08d4e88d"
+    },
+    {
+      "path": "upload_data_sink_impl_cgo.go",
+      "sha256": "88fd3d85d7154fcba71a02b70865e62e5fe78412e7b7d5abe993154537df5aa0"
+    },
+    {
+      "path": "upload_data_sink_purego.go",
+      "sha256": "d020d76a48799a0798db1340231b8a457ea3287dc6baaad3ee5b3b5ba70894fd"
+    },
+    {
+      "path": "url_request_callback_cgo.go",
+      "sha256": "d3d141496a1d88124d00cf14c251c7bbd9dba481b952ccea03b2d60c6a27b984"
+    },
+    {
+      "path": "url_request_callback_impl_cgo.go",
+      "sha256": "e90c003abaa9b372f2f5bb5e67fd4d6fe926952b294c7a918c01374db6fc9512"
+    },
+    {
+      "path": "url_request_callback_impl_purego.go",
+      "sha256": "ed1a19c8677e2a2cceb31a7e78656c9273020fdf08ef117466151204c2f3c077"
+    },
+    {
+      "path": "url_request_callback_impl_purego_32bit.go",
+      "sha256": "baa68c9639a5c7d7cce730c8fec94d7bf2fdae3aa7d998542039a4aae79dfb7d"
+    },
+    {
+      "path": "url_request_callback_purego.go",
+      "sha256": "1ef148ca4e9a77f547e7dc914dd53f22a33540de0797920150bb7f50da81caf6"
+    },
+    {
+      "path": "url_request_cgo.go",
+      "sha256": "1c65419b6ce80fa390c606231a542b4d2f656f36ad75966a5a1532b78918ac8d"
+    },
+    {
+      "path": "url_request_finished_info_cgo.go",
+      "sha256": "9bc5c62e3dd112af302cf83164e375bcda4fa1c72790a83740d109c0aa156e4a"
+    },
+    {
+      "path": "url_request_finished_info_impl_cgo.go",
+      "sha256": "b0d483c09670596df2773e8230d9a935fa137cef818a9fe4e2715dee1f997aab"
+    },
+    {
+      "path": "url_request_finished_info_listener_cgo.go",
+      "sha256": "d077523d77b0315bf9028fee3de4612334c2149481fd82f61bea8574e8fd84c7"
+    },
+    {
+      "path": "url_request_finished_info_listener_impl_purego.go",
+      "sha256": "e35d969df89af2d16e5f44031dcb79d112008ee7296854fc8f6375603d43914f"
+    },
+    {
+      "path": "url_request_finished_info_listener_purego.go",
+      "sha256": "cf72fcb5982bbff855fd2596c007f1defeaadf92172b432ea523d8337559595d"
+    },
+    {
+      "path": "url_request_finished_info_purego.go",
+      "sha256": "545cd33609d1eb0d11bf34a5971492045145463698e7e0d8401abc718505959b"
+    },
+    {
+      "path": "url_request_impl_cgo.go",
+      "sha256": "781cab6e93c762ba01cd9333818b7859b45139571253c1af898ba6d96356da46"
+    },
+    {
+      "path": "url_request_params_cgo.go",
+      "sha256": "a4586eca9f681410acc7159e5679c6ddd3ed0a4171f9120ccf1180ed8d5f96fa"
+    },
+    {
+      "path": "url_request_params_purego.go",
+      "sha256": "18a9ff56ce9a4e69f86d6439b1f7db8fec9e1147731bbe4253d9fcf5e41e381c"
+    },
+    {
+      "path": "url_request_purego.go",
+      "sha256": "83a05b27acba4764194d71f0d486142e4bd184320142e208c692e46e4104f044"
+    },
+    {
+      "path": "url_request_status_listener_cgo.go",
+      "sha256": "f825cf7ae10eaa9b34f6614ae804a678c3e6e1d30ece458325b49d15cc82a970"
+    },
+    {
+      "path": "url_request_status_listener_impl_cgo.go",
+      "sha256": "648a0dccdd575fc1bc77c1bd01ff9c184bcc2c316a05ba28aff5d5ee626f06ab"
+    },
+    {
+      "path": "url_request_status_listener_impl_purego.go",
+      "sha256": "d6b06f1d8305067e264e9db030ceef87ba3983aa425f9a7bda9d9a9736c6af3d"
+    },
+    {
+      "path": "url_request_status_listener_purego.go",
+      "sha256": "f9265520168a7fa1850bb1a6833e45762d295e6683f64bd180432300ed47ba50"
+    },
+    {
+      "path": "url_response_info_cgo.go",
+      "sha256": "895684984fb6eef2b8b91f033352fa4ab3adc090917c5d2467196e8f3d7c8e19"
+    },
+    {
+      "path": "url_response_info_purego.go",
+      "sha256": "e42bff3b1d9c76bb772cb1bed5f6c7e93a2cf04642a779cea7e1e69e243ce892"
+    }
+  ],
+  "schema": "polaris-source-owned-cronet-replacement-v1",
+  "module": "github.com/sagernet/cronet-go",
+  "upstreamVersion": "v0.0.0-20260929213745-4d18a60dc3a8",
+  "replacementPath": "./third_party/cronet-go",
+  "patch": "release/dependency-sources/cronet-go-client-admission.patch",
+  "patchSHA256": "8595a6da43ef8241cedec593bccf07ab81a0afa8281de21567fc8920445699d4",
+  "unchangedOriginalFiles": 123,
+  "modifiedOriginalFiles": 1,
+  "addedFiles": 2,
+  "nativeBinaryValidation": "Not performed. Native library versions remain unchanged; source ordering proof does not attest prebuilt binary bytes."
+}

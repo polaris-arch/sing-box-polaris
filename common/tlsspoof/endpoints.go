@@ -6,16 +6,16 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 )
 
 // The returned addresses are v4-unmapped and share the same family.
-func tcpEndpoints(conn net.Conn) (*net.TCPConn, netip.AddrPort, netip.AddrPort, error) {
-	tcpConn, isTCP := common.Cast[*net.TCPConn](conn)
-	if !isTCP {
-		return nil, netip.AddrPort{}, netip.AddrPort{}, E.New("tls_spoof: underlying conn is not *net.TCPConn")
+func tcpEndpoints(conn net.Conn) (outbound.RuntimeTCPControlConn, netip.AddrPort, netip.AddrPort, error) {
+	tcpConn, err := outbound.RuntimeTCPControl(conn)
+	if err != nil {
+		return nil, netip.AddrPort{}, netip.AddrPort{}, E.New("tls_spoof: underlying conn has no guarded TCP control")
 	}
 	local := M.AddrPortFromNet(tcpConn.LocalAddr())
 	remote := M.AddrPortFromNet(tcpConn.RemoteAddr())

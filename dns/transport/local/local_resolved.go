@@ -4,10 +4,13 @@ import (
 	"context"
 	"net/netip"
 
+	"github.com/sagernet/sing-box/adapter"
+
 	mDNS "github.com/miekg/dns"
 )
 
 type ResolvedResolver interface {
+	adapter.IdleConnectionKeeper
 	Start() error
 	Close() error
 	Reset()

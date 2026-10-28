@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	C "github.com/sagernet/sing-box/constant"
-	N "github.com/sagernet/sing/common/network"
 
 	"golang.org/x/net/publicsuffix"
 )
 
 type Conn struct {
 	net.Conn
-	tcpConn            *net.TCPConn
+	tcpConn            outbound.RuntimeTCPControlConn
 	ctx                context.Context
 	firstPacketWritten bool
 	splitPacket        bool
@@ -29,7 +29,7 @@ func NewConn(conn net.Conn, ctx context.Context, splitPacket bool, splitRecord b
 	if fallbackDelay == 0 {
 		fallbackDelay = C.TLSFragmentFallbackDelay
 	}
-	tcpConn, _ := N.UnwrapReader(conn).(*net.TCPConn)
+	tcpConn, _ := outbound.RuntimeTCPControl(conn)
 	return &Conn{
 		Conn:          conn,
 		tcpConn:       tcpConn,

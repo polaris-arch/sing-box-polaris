@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -865,5 +866,50 @@ func TestValidationPublicEntryNeverReportsExactDisposal(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// Runtime startup can defer native endpoint construction until staging. Public
+// constructor-only validation must still reject errors from that constructor,
+// without starting the node merely to obtain an original census.
+func TestValidationTailscalePublicEntryRunsOriginalOptionValidation(t *testing.T) {
+	requireValidationTailscaleRegistry(t)
+	for _, test := range []struct {
+		name   string
+		fields map[string]any
+		want   string
+	}{
+		{"default-advertised-route", map[string]any{"advertise_routes": []string{"0.0.0.0/0"}}, "advertise_routes"},
+		{"conflicting-exit-node", map[string]any{"advertise_exit_node": true, "exit_node": "100.100.100.100"}, "cannot advertise an exit node"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			directory := filepath.Join(validationPhysicalTempDir(t), "unstarted")
+			endpoint := map[string]any{"type": "tailscale", "tag": "target", "state_directory": directory}
+			maps.Copy(endpoint, test.fields)
+			content, err := json.Marshal(map[string]any{"log": map[string]any{"disabled": true}, "endpoints": []any{endpoint}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := string(content)
+			legacyErr := CheckConfig(config)
+			if legacyErr == nil || !strings.Contains(legacyErr.Error(), test.want) {
+				t.Fatalf("public validation skipped original constructor: %v", legacyErr)
+			}
+			result := CheckConfigWithResult(config, "original-option-validation", 2000)
+			if result.GetValidation() != "Rejected" || !strings.Contains(result.GetValidationError(), test.want) || result.GetCleanup() != "CleanupUnknown" {
+				t.Fatalf("original constructor failure lost: %+v", result)
+			}
+			digest := sha256.Sum256(content)
+			if result.GetConfigDigest() != hex.EncodeToString(digest[:]) {
+				t.Fatal("validation changed original config identity")
+			}
+			membership := validationMembershipDocument(t, result)
+			if membership.MembershipState != "Unknown" || len(membership.Targets) != 0 {
+				t.Fatalf("failed constructor manufactured membership: %+v", membership)
+			}
+			if _, err = os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("constructor-only validation started native state: %v", err)
+			}
+		})
 	}
 }

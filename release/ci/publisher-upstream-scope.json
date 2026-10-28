@@ -1908,7 +1908,6 @@
       "build_windows",
       "build_android_library",
       "build_android",
-      "publish_android",
       "build_windows_client",
       "build_linux_client",
       "build_apple_library",

@@ -30,6 +30,7 @@ func RegisterInbound(registry *inbound.Registry) {
 var _ adapter.TCPInjectableInbound = (*Inbound)(nil)
 
 type Inbound struct {
+	runtime *inboundRuntime
 	inbound.Adapter
 	router   adapter.ConnectionRouterEx
 	logger   logger.ContextLogger
@@ -41,10 +42,22 @@ type Inbound struct {
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.SnellInboundOptions) (adapter.Inbound, error) {
 	inbound := &Inbound{
 		Adapter: inbound.NewAdapter(C.TypeSnell, tag),
-		router:  uot.NewRouter(router, logger),
+		router:  router,
 		logger:  logger,
-		users:   options.Users,
+		users:   append([]option.SnellUser(nil), options.Users...),
 	}
+
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	inbound.runtime = runtime
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
+	}
+	inbound.router = uot.NewRouter(router, logger)
 	var userList []int
 	var keyList [][]byte
 	if len(options.Users) > 0 {
@@ -120,6 +133,9 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -132,7 +148,13 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	err := h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
+	err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
 		if E.IsClosedOrCanceled(err) {
@@ -144,6 +166,12 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 }
 
 func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	_, metadata := adapter.ExtendContext(ctx)
 	if source.IsValid() {
 		metadata.Source = source
@@ -155,6 +183,12 @@ func (h *Inbound) NewConnectionEx(ctx context.Context, conn net.Conn, source M.S
 }
 
 func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	_, metadata := adapter.ExtendContext(ctx)
 	if source.IsValid() {
 		metadata.Source = source
@@ -166,6 +200,12 @@ func (h *Inbound) NewPacketConnectionEx(ctx context.Context, conn N.PacketConn, 
 }
 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
 	if len(h.users) > 0 {
@@ -188,6 +228,12 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 }
 
 func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
 	// The snell client in Surge rejects UDP responses with domain addresses.

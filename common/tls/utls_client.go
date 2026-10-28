@@ -238,9 +238,11 @@ func (c *utlsALPNWrapper) HandshakeContext(ctx context.Context) (ret error) {
 	}
 	// Install cancellation before waiting for preparation. A canceled concurrent
 	// caller must not remain blocked behind another connection handshake.
-	stop := context.AfterFunc(ctx, func() { _ = c.NetConn().Close() })
+	callbackDone := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(callbackDone); _ = c.NetConn().Close() })
 	defer func() {
 		if !stop() {
+			<-callbackDone
 			ret = ctx.Err()
 		}
 	}()
@@ -509,4 +511,10 @@ func uTLSClientHelloID(name string) (utls.ClientHelloID, error) {
 		return utls.HelloChrome_Auto, nil
 	}
 	return utls.ClientHelloID{}, E.New("unknown uTLS fingerprint: ", name)
+}
+
+func (c *UTLSClientConfig) withRuntimeContext(ctx context.Context) Config {
+	copy := c.Clone().(*UTLSClientConfig)
+	copy.ctx = ctx
+	return copy
 }

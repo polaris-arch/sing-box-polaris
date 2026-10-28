@@ -14,6 +14,31 @@ legacy=importlib.util.module_from_spec(spec);spec.loader.exec_module(legacy)
 
 
 class ToolchainControls(unittest.TestCase):
+    def test_windows_console_duplicate_cleanup_uses_actual_destination(self):
+        patch=(ROOT/'.github/patches/go1.27.2/windows7.patch').read_text()
+        added='\n'.join(line[1:] for line in patch.splitlines() if line.startswith('+') and not line.startswith('+++'))
+        self.assertIn('destinationProcessHandle := parentProcess',added)
+        self.assertIn('if parentProcess != p && isLegacyWin7ConsoleHandle(Handle(attr.Files[i])) {',added)
+        self.assertIn('destinationProcessHandle = p',added)
+        duplicate='DuplicateHandle(p, Handle(attr.Files[i]), destinationProcessHandle, &fd[i], 0, true, DUPLICATE_SAME_ACCESS)'
+        cleanup='defer DuplicateHandle(destinationProcessHandle, fd[i], 0, nil, 0, false, DUPLICATE_CLOSE_SOURCE)'
+        self.assertIn(duplicate,added)
+        self.assertIn(cleanup,added)
+        self.assertLess(added.index(duplicate),added.index(cleanup))
+        self.assertNotIn('defer DuplicateHandle(parentProcess, fd[i]',added)
+        # Inert ownership table: actual Windows handle behavior still requires
+        # native acceptance. Successful duplication installs one defer; later
+        # setup/CreateProcess failure and success must close that same table.
+        for alternate_parent in (False,True):
+            for legacy_console in (False,True):
+                for phase in ('duplicate-failed','later-setup-failed','create-failed','success'):
+                    current=1;parent=2 if alternate_parent else current
+                    destination=current if alternate_parent and legacy_console else parent
+                    deferred=[] if phase=='duplicate-failed' else [(destination,17)]
+                    with self.subTest(alternate=alternate_parent,console=legacy_console,phase=phase):
+                        self.assertEqual(len(deferred),0 if phase=='duplicate-failed' else 1)
+                        if deferred:self.assertEqual(deferred[0][0],destination)
+
     def test_exact_official_version_and_source_owned_patch_hashes(self):
         for mode,host in [('windows7','linux-amd64'),('macos1013','darwin-arm64')]:
             manifest,entry,patch,archive,_=legacy.toolchain_input(mode,host)

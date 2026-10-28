@@ -1,0 +1,18 @@
+{
+  "source_only": true,
+  "instruction": "PROPOSAL ONLY: parent owns third_party/fswatch; no source dependency file was changed by this worker. Exact preimage includes the existing failed-Add fix.",
+  "files": [
+    {
+      "path": "third_party/fswatch/watcher.go",
+      "preimage_sha256": "9da0ffc6d9efd1c947b147da0ac4b01b6aa9aaa78fa851e7a74bffb68bf8e9b4",
+      "postimage_sha256": "926567961c0903149724980775c4e56e0520636bad2708a0348f70e49bd51e05"
+    },
+    {
+      "path": "third_party/fswatch/directory_watch_test.go",
+      "preimage_sha256": null,
+      "postimage_sha256": "d8587df9ce7a99bf2a3fe9ab4ef0ee4bac10abd0c8dc1a1b1698958144afe14c"
+    }
+  ],
+  "patch_sha256": "146cfa2cb492817eac9ef34acaca5b6f05b72629332dedf73b0fa34f681ad48f",
+  "version": "v02"
+}

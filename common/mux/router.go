@@ -20,6 +20,10 @@ type Router struct {
 }
 
 func NewRouterWithOptions(router adapter.ConnectionRouterEx, logger logger.ContextLogger, options option.InboundMultiplexOptions) (adapter.ConnectionRouterEx, error) {
+	return NewRouterWithContext(context.Background(), router, logger, options)
+}
+
+func NewRouterWithContext(ctx context.Context, router adapter.ConnectionRouterEx, logger logger.ContextLogger, options option.InboundMultiplexOptions) (adapter.ConnectionRouterEx, error) {
 	if !options.Enabled {
 		return router, nil
 	}
@@ -37,12 +41,16 @@ func NewRouterWithOptions(router adapter.ConnectionRouterEx, logger logger.Conte
 			return nil, E.New("brutal: invalid download speed")
 		}
 	}
+	handler, wrappedLogger, err := newRuntimeServerHandler(ctx, adapter.NewRouteContextHandler(router), logger)
+	if err != nil {
+		return nil, err
+	}
 	service, err := mux.NewService(mux.ServiceOptions{
 		NewStreamContext: func(ctx context.Context, conn net.Conn) context.Context {
 			return log.ContextWithNewID(ctx)
 		},
-		Logger:    logger,
-		HandlerEx: adapter.NewRouteContextHandler(router),
+		Logger:    wrappedLogger,
+		HandlerEx: handler,
 		Padding:   options.Padding,
 		Brutal:    brutalOptions,
 	})

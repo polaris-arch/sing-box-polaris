@@ -25,8 +25,9 @@ func RegisterOutbound(registry *outbound.Registry) {
 
 type Outbound struct {
 	outbound.Adapter
-	logger logger.ContextLogger
-	client *http.Client
+	logger            logger.ContextLogger
+	client            *http.Client
+	constructionOwned bool
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.HTTPOutboundOptions) (adapter.Outbound, error) {
@@ -49,21 +50,24 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		return nil, err
 	}
 	return &Outbound{
-		Adapter: outbound.NewAdapterWithDialerOptions(C.TypeHTTP, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
-		logger:  logger,
-		client:  client,
+		Adapter:           outbound.NewAdapterWithDialerOptions(C.TypeHTTP, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
+		logger:            logger,
+		client:            client,
+		constructionOwned: adapter.HasConstructionScope(ctx),
 	}, nil
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
-	h.client.ResetConnections()
+	_ = h.client.ResetConnectionsContext(ctx)
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateInitialize {
 		return nil
 	}
-	scope.Add(h.client.Close)
+	if !h.constructionOwned {
+		scope.Add(h.client.Close)
+	}
 	return nil
 }
 

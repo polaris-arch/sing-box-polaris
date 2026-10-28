@@ -77,14 +77,16 @@ func (f *UDPForwarder) PreparePacketConnection(source M.Socksaddr, destination M
 	} else {
 		sourceNetwork = header.IPv6ProtocolNumber
 	}
-	switch f.handler.JudgeFlow(uint8(header.UDPProtocolNumber), source.AddrPort(), destination.AddrPort(), firstPacket).Action {
+	verdict := f.handler.JudgeFlow(uint8(header.UDPProtocolNumber), source.AddrPort(), destination.AddrPort(), firstPacket)
+	defer verdict.Release()
+	switch verdict.Action {
 	case ActionReject:
 		gWriteUnreachable(f.stack, userData.(*stack.PacketBuffer))
 		return false, nil, nil, nil
 	case ActionDrop:
 		return false, nil, nil, nil
 	case ActionHijackDNS:
-		f.handler.NewDNSPacket(firstPacket, source, destination, &UDPBackWriter{
+		deliverDNSPacket(f.handler, f.ctx, &verdict, firstPacket, source, destination, &UDPBackWriter{
 			stack:         f.stack,
 			source:        AddressFromAddr(source.Addr),
 			sourcePort:    source.Port,
@@ -99,10 +101,13 @@ func (f *UDPForwarder) PreparePacketConnection(source M.Socksaddr, destination M
 		sourcePort:    source.Port,
 		sourceNetwork: sourceNetwork,
 	}
-	return true, f.ctx, writer, nil
+	owned := verdict.Take()
+	writer.ownership.owner = owned.Ownership
+	return true, bindFlow(f.ctx, owned.Ownership), writer, nil
 }
 
 type UDPBackWriter struct {
+	ownership flowOwnershipSlot
 	access        sync.Mutex
 	stack         *stack.Stack
 	packet        *stack.PacketBuffer
@@ -134,6 +139,9 @@ func (w *UDPBackWriter) HandshakeFailure(err error) error {
 }
 
 func (w *UDPBackWriter) WritePacket(packetBuffer *buf.Buffer, destination M.Socksaddr) error {
+	owner, ownershipErr := w.ownership.retain()
+	if ownershipErr != nil { packetBuffer.Release(); return ownershipErr }
+	defer releaseFlow(owner)
 	if !destination.IsIP() {
 		return E.Cause(os.ErrInvalid, "invalid destination")
 	} else if destination.IsIPv4() && w.sourceNetwork == header.IPv6ProtocolNumber {
@@ -202,4 +210,14 @@ func gWriteUnreachable(gStack *stack.Stack, packet *stack.PacketBuffer) error {
 	} else {
 		return gonet.TranslateNetstackError(gStack.NetworkProtocolInstance(header.IPv6ProtocolNumber).(stack.RejectIPv6WithHandler).SendRejectionError(packet, stack.RejectIPv6WithICMPPortUnreachable, true))
 	}
+}
+
+func (w *UDPBackWriter) retainFlowOwnership() (FlowOwnership, error) { return w.ownership.retain() }
+
+func (w *UDPBackWriter) Close() error {
+	w.access.Lock()
+	if w.packet != nil { w.packet.DecRef(); w.packet = nil }
+	w.access.Unlock()
+	w.ownership.release()
+	return nil
 }

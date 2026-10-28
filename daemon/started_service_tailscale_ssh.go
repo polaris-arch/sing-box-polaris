@@ -32,13 +32,12 @@ func (s *StartedService) StartTailscaleSSHSession(
 	server grpc.BidiStreamingServer[TailscaleSSHClientMessage, TailscaleSSHServerMessage],
 ) error {
 	ctx := server.Context()
-	err := s.waitForStarted(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
+	ctx = boxService.runtimeOperationContext(ctx)
 
 	firstMessage, err := server.Recv()
 	if err != nil {
@@ -295,10 +294,10 @@ func (s *StartedService) StartTailscaleSSHSession(
 		cancel()
 	})
 
-	go func() {
+	workersWg.Go(func() {
 		<-sessionCtx.Done()
 		common.Close(peerConn, sshSession, sshClient)
-	}()
+	})
 
 	workersWg.Wait()
 	return nil

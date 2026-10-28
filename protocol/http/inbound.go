@@ -126,7 +126,9 @@ func (h *Inbound) startHTTP3(scope *adapter.Scope) error {
 	if err != nil {
 		return err
 	}
-	scope.Add(http3Server.Close)
+	if scope != nil {
+		scope.Add(http3Server.Close)
+	}
 	return nil
 }
 

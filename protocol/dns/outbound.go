@@ -45,9 +45,11 @@ func (d *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 
 func (d *Outbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	metadata.Destination = M.Socksaddr{}
+	conn = NewDNSStreamConn(conn)
+	ctx, queryRouter := adapter.RuntimeDNSCarrierContext(ctx, d.router)
 	for {
 		conn.SetReadDeadline(time.Now().Add(C.DNSTimeout))
-		err := HandleStreamDNSRequest(ctx, d.router, conn, metadata)
+		err := HandleStreamDNSRequest(ctx, queryRouter, conn, metadata)
 		if err != nil {
 			conn.Close()
 			if onClose != nil {
@@ -59,5 +61,6 @@ func (d *Outbound) NewConnection(ctx context.Context, conn net.Conn, metadata ad
 }
 
 func (d *Outbound) NewPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
-	NewDNSPacketConnection(ctx, d.router, conn, nil, metadata)
+	ctx, queryRouter := adapter.RuntimeDNSCarrierContext(ctx, d.router)
+	NewDNSPacketConnection(ctx, queryRouter, conn, nil, metadata)
 }

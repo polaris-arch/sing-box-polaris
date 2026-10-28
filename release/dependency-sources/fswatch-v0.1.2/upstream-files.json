@@ -1,0 +1,43 @@
+{
+  "repository": "SagerNet/fswatch",
+  "version": "v0.1.2",
+  "commit": "97bbfafb2e505c88287bbd9f06a67639395fc3f5",
+  "files": [
+    {
+      "path": "watcher.go",
+      "git_blob": "06ab6d9ca4451922bdaefefb9a07eaaa5a011943",
+      "sha256": "6b830ffa21157fe833f6de24e8dd9957468f2511050f20c0060011ddd80ba811",
+      "stored_path": "upstream/watcher.go.txt"
+    },
+    {
+      "path": "watcher_test.go",
+      "git_blob": "07dc7d11ea748001af6de943786bcfd7d3cfe864",
+      "sha256": "ede4033b10695c4fe2af53c154189744a30e683ad95a0b260378a8c72318fdaf",
+      "stored_path": "upstream/watcher_test.go.txt"
+    },
+    {
+      "path": "LICENSE",
+      "git_blob": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+      "stored_path": "upstream/LICENSE.txt"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "246205afa6015e6d507e2c1982d6c6185d643e4d",
+      "sha256": "78e71c47fcc64b4a278d15ae48c6709f219970eeb3c3e30820fdc108e6da11f8",
+      "stored_path": "upstream/README.md.txt"
+    },
+    {
+      "path": "go.mod",
+      "git_blob": "91dde9fa2e7382d2e725d87e739170a4af261408",
+      "sha256": "c32fed68937f07d01ffccfcec7c6741363f6737d32858fe2c5911baddd549bd7",
+      "stored_path": "upstream/go.mod.txt"
+    },
+    {
+      "path": "go.sum",
+      "git_blob": "6f5179c10417a387bc678854329c0ace81525926",
+      "sha256": "edc88412225f9595bc4c945bad6ebed781c9e948486f95efde7e017fc3658069",
+      "stored_path": "upstream/go.sum.txt"
+    }
+  ]
+}

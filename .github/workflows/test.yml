@@ -3,7 +3,31 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 jobs:
+  classify:
+    name: Audit CI impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      run_full: ${{ steps.impact.outputs.run_full }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prove conservative impact policy
+        run: python3 -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py' -v
+      - id: impact
+        name: Classify exact automatic tip or keep fixed audit full
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+        run: |
+          python3 -B scripts/polaris_ci_impact.py --repo "$GITHUB_WORKSPACE" \
+            --event-file "$GITHUB_EVENT_PATH" --event-name "$EVENT_NAME" --ref "$EVENT_REF" \
+            --workflow-sha "$GITHUB_SHA" --output "$RUNNER_TEMP/ci-impact.json" --github-output "$GITHUB_OUTPUT"
   test:
+    needs: classify
+    if: ${{ needs.classify.outputs.run_full == 'true' }}
     name: Test
     strategy:
       fail-fast: false
@@ -48,17 +72,40 @@ jobs:
         test "$netns_count" -eq 1
         test "${#ordinary_packages[@]}" -gt 0
         go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" "${ordinary_packages[@]}"
+    - name: Authorize explicitly approved exact SHA netns binary
+      if: matrix.os == 'ubuntu-latest'
+      id: netns_batch_authorization
+      env:
+        # Dormant until the owner explicitly approves/configures this one-SHA window.
+        GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
+        SOURCE_COMMIT: ${{ github.sha }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+        git show "$GITHUB_SHA:scripts/ci/netns_authorization.py" > "$RUNNER_TEMP/polaris-netns-authorization.py"
+        python3 -B "$RUNNER_TEMP/polaris-netns-authorization.py"
     - name: Test (Linux netns binary only)
       if: matrix.os == 'ubuntu-latest'
+      env:
+        NETNS_BATCH_ELEVATION: ${{ steps.netns_batch_authorization.outputs.authorized }}
+        GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
+        SOURCE_COMMIT: ${{ github.sha }}
       shell: bash
       run: |
         set -euo pipefail
         binary_dir="$(mktemp -d "$RUNNER_TEMP/netns-test.XXXXXX")"
         trap 'rm -rf "$binary_dir"' EXIT
-        # Compile as the runner user; only this package's resulting test binary is elevated.
+        # Compile as the runner user; only an explicitly approved test binary may be elevated.
         go test -c -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" \
           -o "$binary_dir/netns.test" github.com/sagernet/sing-box/common/netns
-        sudo -n -- "$binary_dir/netns.test" -test.v | tee "$binary_dir/result.log"
+        # Recheck tracked source after compilation, immediately before choosing the runner.
+        if [ "$NETNS_BATCH_ELEVATION" = true ] && python3 -B "$RUNNER_TEMP/polaris-netns-authorization.py" --check; then
+          sudo -n -- "$binary_dir/netns.test" -test.v | tee "$binary_dir/result.log"
+        else
+          echo 'No exact SHA elevation approval; running required netns gate unprivileged'
+          "$binary_dir/netns.test" -test.v | tee "$binary_dir/result.log"
+        fi
         grep -q '^--- PASS: TestUnshareNamespace ' "$binary_dir/result.log"
         grep -qx PASS "$binary_dir/result.log"
     - name: Test (macOS ordinary packages)
@@ -73,10 +120,6 @@ jobs:
   push:
     branches:
     - polaris-main
-    paths-ignore:
-    - '**.md'
-    - .github/**
-    - '!.github/workflows/test.yml'
   pull_request:
     branches:
     - polaris-main

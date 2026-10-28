@@ -3,25 +3,23 @@ package tlsspoof
 import (
 	"net"
 
+	"github.com/sagernet/sing-box/common/tlsspoof/method"
 	E "github.com/sagernet/sing/common/exceptions"
 )
 
-type Method int
+type Method = method.Method
 
 const (
-	MethodWrongSequence Method = iota
-	MethodWrongChecksum
-	MethodWrongAcknowledgment
-	MethodWrongMD5Sig
-	MethodWrongTimestamp
-)
-
-const (
-	MethodNameWrongSequence       = "wrong-sequence"
-	MethodNameWrongChecksum       = "wrong-checksum"
-	MethodNameWrongAcknowledgment = "wrong-ack"
-	MethodNameWrongMD5Sig         = "wrong-md5"
-	MethodNameWrongTimestamp      = "wrong-timestamp"
+	MethodWrongSequence           = method.MethodWrongSequence
+	MethodWrongChecksum           = method.MethodWrongChecksum
+	MethodWrongAcknowledgment     = method.MethodWrongAcknowledgment
+	MethodWrongMD5Sig             = method.MethodWrongMD5Sig
+	MethodWrongTimestamp          = method.MethodWrongTimestamp
+	MethodNameWrongSequence       = method.MethodNameWrongSequence
+	MethodNameWrongChecksum       = method.MethodNameWrongChecksum
+	MethodNameWrongAcknowledgment = method.MethodNameWrongAcknowledgment
+	MethodNameWrongMD5Sig         = method.MethodNameWrongMD5Sig
+	MethodNameWrongTimestamp      = method.MethodNameWrongTimestamp
 )
 
 func ParseOptions(spoof, method string) (string, Method, error) {
@@ -55,23 +53,6 @@ func ParseMethod(s string) (Method, error) {
 		return MethodWrongTimestamp, nil
 	default:
 		return 0, E.New("tls_spoof: unknown method: ", s)
-	}
-}
-
-func (m Method) String() string {
-	switch m {
-	case MethodWrongSequence:
-		return MethodNameWrongSequence
-	case MethodWrongChecksum:
-		return MethodNameWrongChecksum
-	case MethodWrongAcknowledgment:
-		return MethodNameWrongAcknowledgment
-	case MethodWrongMD5Sig:
-		return MethodNameWrongMD5Sig
-	case MethodWrongTimestamp:
-		return MethodNameWrongTimestamp
-	default:
-		return "unknown"
 	}
 }
 

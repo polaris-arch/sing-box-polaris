@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	runtimeEndpoint "github.com/sagernet/sing-box/adapter/endpoint"
 	C "github.com/sagernet/sing-box/constant"
 )
 
@@ -12,6 +13,9 @@ func (s *Box) directoryEndpoints() []adapter.Endpoint {
 	endpoints := s.CaptureTailscaleStateStores()
 	if s.endpoint != nil {
 		for _, current := range s.endpoint.Endpoints() {
+			if _, logical := current.(runtimeEndpoint.RuntimePreparedEndpoint); logical {
+				continue
+			}
 			if current.Type() != C.TypeTailscale {
 				continue
 			}

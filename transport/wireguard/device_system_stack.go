@@ -1,10 +1,10 @@
 package wireguard
 
 import (
+	"context"
 	"net/netip"
 	"sync"
 
-	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing-tun/gtcpip/header"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/wireguard-go/device"
@@ -14,9 +14,11 @@ var _ Device = (*systemStackDevice)(nil)
 
 type systemStackDevice struct {
 	*systemDevice
-	stack     *tun.Go
+	stack     deviceIPStack
 	router    *peerRouter
 	closeOnce sync.Once
+	closeDone chan struct{}
+	closeErr  error
 }
 
 func newSystemStackDevice(options DeviceOptions) (*systemStackDevice, error) {
@@ -31,6 +33,7 @@ func newSystemStackDevice(options DeviceOptions) (*systemStackDevice, error) {
 		return nil, err
 	}
 	return &systemStackDevice{
+		closeDone:    make(chan struct{}),
 		systemDevice: system,
 		stack:        stack,
 		router:       router,
@@ -94,9 +97,15 @@ func (w *systemStackDevice) isLocalDestination(packet []byte) bool {
 }
 
 func (w *systemStackDevice) Close() error {
-	var err error
 	w.closeOnce.Do(func() {
-		err = E.Errors(w.stack.Close(), w.router.close(), w.systemDevice.Close())
+		w.closeErr = E.New("device shutdown did not complete")
+		defer close(w.closeDone)
+		w.closeErr = E.Errors(w.stack.Close(), w.router.close(), w.systemDevice.Close())
 	})
-	return err
+	return w.closeErr
+}
+
+// Uses the actual embedded stack, never the UpstreamPort capability chain.
+func (w *systemStackDevice) WaitDetached(ctx context.Context) error {
+	return waitStackDetached(ctx, w.closeDone, &w.closeErr, w.stack)
 }

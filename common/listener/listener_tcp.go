@@ -21,6 +21,13 @@ import (
 )
 
 func (l *Listener) ListenTCP() (net.Listener, error) {
+	if l.runtime != nil {
+		return nil, ErrRuntimeRawTransport
+	}
+	return l.listenTCP()
+}
+
+func (l *Listener) listenTCP() (net.Listener, error) {
 	//nolint:staticcheck
 	if l.listenOptions.ProxyProtocol || l.listenOptions.ProxyProtocolAcceptNoHeader {
 		return nil, E.New("Proxy Protocol is deprecated and removed in sing-box 1.6.0")
@@ -77,8 +84,17 @@ func (l *Listener) ListenTCP() (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.logger.Info("tcp server started at ", tcpListener.Addr())
+	if l.runtime == nil {
+		l.logger.Info("tcp server started at ", tcpListener.Addr())
+	} else {
+		l.logger.Debug("candidate tcp socket bound at ", tcpListener.Addr())
+	}
 	l.tcpListener = tcpListener
+	if l.runtime != nil {
+		l.runtime.mu.Lock()
+		l.runtime.ownsTCP = true
+		l.runtime.mu.Unlock()
+	}
 	return tcpListener, err
 }
 
@@ -89,8 +105,14 @@ func (l *Listener) loopTCPIn() {
 		acceptDelay time.Duration
 	)
 	for {
+		if !l.runtimeWaitIngress() {
+			return
+		}
 		conn, err := tcpListener.Accept()
 		if err != nil {
+			if l.runtimeIngressStopped() {
+				return
+			}
 			if l.shutdown.Load() && E.IsClosed(err) {
 				return
 			}
@@ -105,7 +127,11 @@ func (l *Listener) loopTCPIn() {
 				time.Sleep(acceptDelay)
 				continue
 			}
-			l.tcpListener.Close()
+			if l.runtime == nil {
+				tcpListener.Close()
+			} else {
+				l.recordRuntimeIngressError(err)
+			}
 			l.logger.Error("tcp listener closed: ", err)
 			return
 		}
@@ -116,6 +142,10 @@ func (l *Listener) loopTCPIn() {
 		metadata.OriginDestination = M.SocksaddrFromNet(conn.LocalAddr()).Unwrap()
 		ctx := log.ContextWithNewID(l.ctx)
 		l.logger.InfoContext(ctx, "inbound connection from ", metadata.Source)
-		go l.connHandler.NewConnection(ctx, conn, metadata, nil)
+		if l.runtime != nil {
+			l.dispatchRuntimeConnection(ctx, conn, metadata)
+		} else {
+			go l.connHandler.NewConnection(ctx, conn, metadata, nil)
+		}
 	}
 }

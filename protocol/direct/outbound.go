@@ -4,7 +4,9 @@ import (
 	"context"
 	"net"
 	"net/netip"
+	"os"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -38,15 +40,16 @@ var (
 
 type Outbound struct {
 	outbound.Adapter
-	ctx            context.Context
-	logger         logger.ContextLogger
-	network        adapter.NetworkManager
-	dialer         dialer.ParallelInterfaceDialer
-	domainStrategy C.DomainStrategy
-	fallbackDelay  time.Duration
-	isEmpty        bool
-	myAddresses    common.TypedValue[[]netip.Prefix]
-	icmpPort       *ping.Port
+	ctx                 context.Context
+	logger              logger.ContextLogger
+	network             adapter.NetworkManager
+	dialer              dialer.ParallelInterfaceDialer
+	domainStrategy      C.DomainStrategy
+	fallbackDelay       time.Duration
+	isEmpty             bool
+	myAddresses         common.TypedValue[[]netip.Prefix]
+	icmpPort            *ping.Port
+	constructionCleanup bool
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.DirectOutboundOptions) (adapter.Outbound, error) {
@@ -85,14 +88,47 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 			return defaultDialer.DialerForICMPDestination(destination).Control
 		}, 0)
 	}
+	if err := outbound.registerICMPCleanup(ctx); err != nil {
+		return nil, err
+	}
 	return outbound, nil
+}
+
+// The construction scope is the existing typed resource owner's cleanup
+// registration. Its close worker performs the actual ICMP worker join.
+func (h *Outbound) registerICMPCleanup(ctx context.Context) error {
+	if h.icmpPort == nil || !adapter.HasConstructionScope(ctx) {
+		return nil
+	}
+	h.constructionCleanup = true
+	var cleanupStarted atomic.Bool
+	if err := adapter.DeferConstructionCleanup(ctx, func() error {
+		cleanupStarted.Store(true)
+		return h.icmpPort.CloseAndWait()
+	}); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if cleanupStarted.Load() {
+		// A closed construction scope may be carried by an otherwise live
+		// context. Immediate cleanup must not publish a sealed outbound.
+		return os.ErrClosed
+	}
+	return nil
 }
 
 func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	switch stage {
 	case adapter.StartStateInitialize:
-		if h.icmpPort != nil {
-			scope.Add(h.icmpPort.Close)
+		if h.icmpPort != nil && !h.constructionCleanup {
+			// Scope.Add only appends, including on a canceled scope. Use the
+			// construction helper here too so late Start cannot strand a port.
+			ctx := adapter.ContextWithConstructionScope(scope.Context(), scope)
+			if err := h.registerICMPCleanup(ctx); err != nil {
+				return err
+			}
 		}
 	case adapter.StartStatePostStart, adapter.StartStateStarted:
 		if len(h.myAddresses.Load()) == 0 {

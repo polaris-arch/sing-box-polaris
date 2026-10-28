@@ -13,6 +13,15 @@ import (
 )
 
 func (t *Endpoint) StartTailscalePing(ctx context.Context, peerIP string, fn func(*adapter.TailscalePingResult)) error {
+	if t.runtime != nil {
+		child, ctx, leave, err := t.runtimeOperation(ctx)
+		if err != nil {
+			return err
+		}
+		defer leave()
+		return child.StartTailscalePing(ctx, peerIP, fn)
+	}
+
 	ip, err := netip.ParseAddr(peerIP)
 	if err != nil {
 		return err

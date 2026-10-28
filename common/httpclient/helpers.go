@@ -31,11 +31,12 @@ func dialTLS(ctx context.Context, rawDialer N.Dialer, baseTLSConfig tls.Config, 
 	}
 	tlsConn, err := tls.ClientHandshake(ctx, conn, tlsConfig)
 	if err != nil {
-		conn.Close()
 		return nil, err
 	}
 	if expectProto != "" && tlsConn.ConnectionState().NegotiatedProtocol != expectProto {
-		tlsConn.Close()
+		if closeErr := tlsConn.Close(); closeErr != nil {
+			return nil, tls.NewRuntimeCleanupError(closeErr)
+		}
 		return nil, errHTTP2Fallback
 	}
 	return tlsConn, nil

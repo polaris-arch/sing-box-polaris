@@ -20,6 +20,7 @@ const (
 var errGoFrameDropped = E.New("go: frame dropped")
 
 type goFrame struct {
+	verdict FlowVerdict
 	buffer *buf.Buffer
 	meta   ForwardFrameMeta
 }

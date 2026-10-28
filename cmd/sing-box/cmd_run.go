@@ -130,7 +130,7 @@ func mergeOptionsList(optionsList []*OptionsEntry) (option.Options, error) {
 	return mergedOptions, nil
 }
 
-func create(options option.Options) (*box.Box, context.CancelFunc, error) {
+func create(options option.Options, persist func(box.RuntimeIdentity, []byte) error) (*box.Box, context.CancelFunc, error) {
 	if disableColor {
 		if options.Log == nil {
 			options.Log = &option.LogOptions{}
@@ -146,6 +146,14 @@ func create(options option.Options) (*box.Box, context.CancelFunc, error) {
 	if err != nil {
 		cancel()
 		return nil, nil, E.Cause(err, "create service")
+	}
+
+	if persist != nil && instance.RuntimeCapabilities().Identity.Incarnation != "" {
+		if err := instance.BindRuntimePersistenceOptions(persist, "exact_configuration_file", true); err != nil {
+			cancel()
+			_ = instance.Close()
+			return nil, nil, E.Cause(err, "bind configuration persistence")
+		}
 	}
 
 	osSignals := make(chan os.Signal, 1)
@@ -188,7 +196,11 @@ func run() error {
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(osSignals)
 	for {
-		instance, cancel, createErr := create(options)
+		persist, persistErr := cliRuntimePersistence(optionsList)
+		if persistErr != nil {
+			return persistErr
+		}
+		instance, cancel, createErr := create(options, persist)
 		if createErr != nil {
 			return createErr
 		}
@@ -215,7 +227,11 @@ func run() error {
 			}
 			break
 		}
-		options, err = readConfigAndMerge()
+		optionsList, err = readConfig()
+		if err != nil {
+			return err
+		}
+		options, err = mergeOptionsList(optionsList)
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,126 @@
+--- /dev/null
++++ b/common/udpnat/runtime_context_test.go
+@@ -0,0 +1,73 @@
++package udpnat
++
++import (
++ "context"
++ "errors"
++ "sync"
++ "sync/atomic"
++ "testing"
++ "time"
++
++ "github.com/sagernet/sing/common/buf"
++ M "github.com/sagernet/sing/common/metadata"
++ N "github.com/sagernet/sing/common/network"
++)
++
++type runtimeLineageKey struct{}
++type runtimeAuthKey struct{}
++type runtimeHandlerFixture struct {
++ refs atomic.Int64
++ retains atomic.Int64
++ reject bool
++ entered chan context.Context
++ proceed chan struct{}
++ errorEntered chan struct{}
++ errorProceed chan struct{}
++ released chan struct{}
++}
++func (h *runtimeHandlerFixture) RetainPacketContext(ctx context.Context) (func(context.Context)context.Context,func(),error) {
++ if h.reject { return nil,nil,errors.New("admission closed") }
++ lineage:=ctx.Value(runtimeLineageKey{})
++ h.retains.Add(1);h.refs.Add(1)
++ var once sync.Once
++ return func(final context.Context)context.Context{return context.WithValue(final,runtimeLineageKey{},lineage)},func(){once.Do(func(){if h.refs.Add(-1)==0{select{case h.released<-struct{}{}:default:}}})},nil
++}
++func (h *runtimeHandlerFixture) NewPacketConnection(ctx context.Context,conn N.PacketConn,_ M.Metadata)error {
++ h.entered<-ctx
++ <-h.proceed
++ for range 2 { packet:=buf.NewSize(1);_,err:=conn.ReadPacket(packet);packet.Release();if err!=nil{return err} }
++ return errors.New("session terminal error")
++}
++func(h *runtimeHandlerFixture)NewError(context.Context,error){close(h.errorEntered);<-h.errorProceed}
++type runtimeWriterFixture struct{}
++func(runtimeWriterFixture)WritePacket(buffer *buf.Buffer,_ M.Socksaddr)error{buffer.Release();return nil}
++func runtimePacketFixture()*buf.Buffer{p:=buf.NewSize(1);_ = p.WriteByte(1);return p}
++func runtimeWaitFixture(t *testing.T,ch <-chan struct{}){t.Helper();select{case <-ch:case <-time.After(5*time.Second):t.Fatal("callback barrier watchdog")}}
++
++func TestRuntimePacketContextRetainsBeforeLaunchAndJoinsTerminalTail(t *testing.T){
++ h:=&runtimeHandlerFixture{entered:make(chan context.Context,1),proceed:make(chan struct{}),errorEntered:make(chan struct{}),errorProceed:make(chan struct{}),released:make(chan struct{},8)}
++ service:=New[int](60,h)
++ initial:=context.WithValue(context.Background(),runtimeLineageKey{},"first graph")
++ initialize:=func(N.PacketConn)(context.Context,N.PacketWriter){return context.WithValue(context.Background(),runtimeAuthKey{},"relay user"),runtimeWriterFixture{}}
++ service.NewContextPacketEx(initial,1,runtimePacketFixture(),M.Socksaddr{},M.Socksaddr{},initialize)
++ var seen context.Context
++ select{case seen=<-h.entered:case <-time.After(5*time.Second):t.Fatal("session not launched")}
++ if seen.Value(runtimeLineageKey{})!="first graph"||seen.Value(runtimeAuthKey{})!="relay user"{t.Fatal("lineage or authenticated context lost")}
++ next:=context.WithValue(context.Background(),runtimeLineageKey{},"later graph")
++ service.NewContextPacketEx(next,1,runtimePacketFixture(),M.Socksaddr{},M.Socksaddr{},initialize)
++ if h.retains.Load()!=2||h.refs.Load()!=1{t.Fatal("loaded packet changed retained association")}
++ select{case <-h.entered:t.Fatal("loaded session relaunched");default:}
++ close(h.proceed);runtimeWaitFixture(t,h.errorEntered)
++ if h.refs.Load()!=1{t.Fatal("error callback tail lost ownership")}
++ close(h.errorProceed);runtimeWaitFixture(t,h.released)
++ if h.refs.Load()!=0{t.Fatal("terminal ownership leaked")}
++}
++func TestRuntimePacketContextFailureDoesNotPublishSession(t *testing.T){
++ h:=&runtimeHandlerFixture{reject:true,entered:make(chan context.Context,1),proceed:make(chan struct{}),errorEntered:make(chan struct{}),errorProceed:make(chan struct{}),released:make(chan struct{},8)}
++ service:=New[int](60,h)
++ calls:=0
++ initialize:=func(N.PacketConn)(context.Context,N.PacketWriter){calls++;return context.Background(),runtimeWriterFixture{}}
++ service.NewContextPacketEx(context.Background(),1,runtimePacketFixture(),M.Socksaddr{},M.Socksaddr{},initialize)
++ if calls!=0||h.refs.Load()!=0{t.Fatal("failed admission published an unowned cache entry")}
++ select{case <-h.entered:t.Fatal("failed admission launched a callback");default:}
++}
+--- a/common/udpnat/service.go
++++ b/common/udpnat/service.go
+@@ -101,6 +101,18 @@
+ }
+ 
+ func (s *Service[T]) NewContextPacketEx(ctx context.Context, key T, buffer *buf.Buffer, source M.Socksaddr, destination M.Socksaddr, init func(natConn N.PacketConn) (context.Context, N.PacketWriter)) {
++ // Legacy packet handlers are synchronous owners: their return plus the
++ // error/close/cache-removal tail ends the session. Retain BEFORE the lookup,
++ // so failure never publishes an unowned cache entry or callback. Existing
++ // sessions release this packet's temporary reservation without changing the
++ // first packet's admitted lineage. Ex handlers retain their existing contract.
++ var bind func(context.Context) context.Context
++ var release func()
++ if owner, ok := s.handler.(RuntimePacketContextOwner); ok {
++  var err error
++  bind, release, err = owner.RetainPacketContext(ctx)
++  if err != nil { buffer.Release(); return }
++ }
+ 	c, loaded := s.nat.LoadOrStore(key, func() *conn {
+ 		c := &conn{
+ 			data:         make(chan packet, 64),
+@@ -111,9 +123,12 @@
+ 		c.ctx, c.cancel = context.WithCancelCause(ctx)
+ 		return c
+ 	})
++	if loaded && release != nil { release() }
+ 	if !loaded {
+ 		ctx, c.source = init(c)
++		if bind != nil { ctx = bind(ctx) }
+ 		go func() {
++			if release != nil { defer release() }
+ 			if s.handlerEx != nil {
+ 				s.handlerEx.NewPacketConnectionEx(ctx, c, source, destination, func(err error) {
+ 					s.nat.Delete(key)
+@@ -216,3 +231,15 @@
+ func (c *conn) Upstream() any {
+ 	return c.source
+ }
++
++
++// RuntimePacketContextOwner is an optional legacy-handler lifecycle boundary.
++// bind copies only retained lifetime into the final protocol context; ordinary
++// values such as relay authentication remain unchanged. release must be once-safe.
++type RuntimePacketContextOwner interface {
++ RetainPacketContext(context.Context) (func(context.Context) context.Context, func(), error)
++}
++
++// RuntimePacketContextSupported prevents an integration silently enabling UDP
++// against a dependency lacking its actual prelaunch ownership boundary.
++func RuntimePacketContextSupported() bool { return true }

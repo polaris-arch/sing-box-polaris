@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -22,6 +23,9 @@ import (
 var _ adapter.CertificateStore = (*Store)(nil)
 
 type Store struct {
+	runtime                   *runtimeStore
+	latest                    *RootSnapshot
+	revision                  uint64
 	ctx                       context.Context
 	access                    sync.RWMutex
 	storeType                 string
@@ -67,20 +71,36 @@ func NewStore(ctx context.Context, logger logger.Logger, options option.Certific
 		storeType:                 storeType,
 		systemPool:                systemPool,
 		certificate:               strings.Join(options.Certificate, "\n"),
-		certificatePaths:          options.CertificatePath,
-		certificateDirectoryPaths: options.CertificateDirectoryPath,
+		certificatePaths:          slices.Clone(options.CertificatePath),
+		certificateDirectoryPaths: slices.Clone(options.CertificateDirectoryPath),
+	}
+	if adapter.IsRuntimePreparation(ctx) {
+		if err := store.initializeRuntime(ctx); err != nil {
+			return nil, err
+		}
+		logger = &runtimeStoreLogger{Logger: logger, fence: store.runtime.callbacks}
 	}
 	var watchPaths []string
-	for _, target := range options.CertificatePath {
-		watchPaths = append(watchPaths, target)
+	for _, target := range store.certificatePaths {
+		path, err := filepath.Abs(filemanager.BasePath(ctx, target))
+		if err != nil {
+			return nil, E.Cause(err, "resolve certificate watch path")
+		}
+		watchPaths = append(watchPaths, path)
 	}
-	for _, target := range options.CertificateDirectoryPath {
-		watchPaths = append(watchPaths, target)
+	var watchDirectories []string
+	for _, target := range store.certificateDirectoryPaths {
+		path, err := filepath.Abs(filemanager.BasePath(ctx, target))
+		if err != nil {
+			return nil, E.Cause(err, "resolve certificate directory watch path")
+		}
+		watchDirectories = append(watchDirectories, path)
 	}
-	if len(watchPaths) > 0 {
+	if len(watchPaths) > 0 || len(watchDirectories) > 0 {
 		watcher, err := fswatch.NewWatcher(fswatch.Options{
-			Path:   watchPaths,
-			Logger: logger,
+			Path:      watchPaths,
+			Directory: watchDirectories,
+			Logger:    logger,
 			Callback: func(_ string) {
 				err := store.update()
 				if err != nil {
@@ -97,6 +117,13 @@ func NewStore(ctx context.Context, logger logger.Logger, options option.Certific
 	if err != nil {
 		return nil, E.Cause(err, "initializing certificate store")
 	}
+	if store.runtime != nil {
+		snapshot, err := newRootSnapshot(store.runtime.source.ID(), 1, storeType, currentPool, anchorPEM)
+		if err != nil {
+			return nil, E.Cause(err, "initializing platform certificate snapshot")
+		}
+		store.latest, store.revision = snapshot, 1
+	}
 	store.currentPool = currentPool
 	store.anchorPEM = anchorPEM
 	return store, nil
@@ -107,6 +134,9 @@ func (s *Store) Name() string {
 }
 
 func (s *Store) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if s.runtime != nil {
+		return s.PrepareRuntime(stage, scope)
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		s.access.Lock()
@@ -131,6 +161,12 @@ func (s *Store) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 func (s *Store) Pool() *x509.CertPool {
 	s.access.RLock()
 	defer s.access.RUnlock()
+	if s.runtime != nil {
+		if s.currentPool == nil {
+			return nil
+		}
+		return s.currentPool.Clone()
+	}
 	return s.currentPool
 }
 
@@ -143,18 +179,26 @@ func (s *Store) ExclusiveAnchors() bool {
 }
 
 func (s *Store) update() error {
+	if s.runtime != nil {
+		return s.reloadRuntime()
+	}
 	currentPool, anchorPEM, err := s.load()
 	if err != nil {
 		return err
 	}
 	s.access.Lock()
 	defer s.access.Unlock()
+	if err := s.updatePlatformLocked(anchorPEM); err != nil {
+		return err
+	}
 	s.currentPool = currentPool
 	s.anchorPEM = anchorPEM
-	return s.updatePlatformLocked(anchorPEM)
+	return nil
 }
 
-func (s *Store) load() (*x509.CertPool, []byte, error) {
+func (s *Store) load() (*x509.CertPool, []byte, error) { return s.loadWithContext(s.ctx) }
+
+func (s *Store) loadWithContext(ctx context.Context) (*x509.CertPool, []byte, error) {
 	currentPool, err := s.newBasePool()
 	if err != nil {
 		return nil, nil, err
@@ -181,7 +225,7 @@ func (s *Store) load() (*x509.CertPool, []byte, error) {
 		appendPEMBlock(pemBuffer, s.certificate)
 	}
 	for _, path := range s.certificatePaths {
-		pemContent, err := filemanager.ReadFile(s.ctx, path)
+		pemContent, err := filemanager.ReadFile(ctx, path)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -192,7 +236,7 @@ func (s *Store) load() (*x509.CertPool, []byte, error) {
 	}
 	var firstErr error
 	for _, directoryPath := range s.certificateDirectoryPaths {
-		directoryEntries, err := readUniqueDirectoryEntries(s.ctx, directoryPath)
+		directoryEntries, err := readUniqueDirectoryEntries(ctx, directoryPath)
 		if err != nil {
 			if firstErr == nil && !os.IsNotExist(err) {
 				firstErr = E.Cause(err, "invalid certificate directory: ", directoryPath)
@@ -200,7 +244,7 @@ func (s *Store) load() (*x509.CertPool, []byte, error) {
 			continue
 		}
 		for _, directoryEntry := range directoryEntries {
-			pemContent, err := filemanager.ReadFile(s.ctx, filepath.Join(directoryPath, directoryEntry.Name()))
+			pemContent, err := filemanager.ReadFile(ctx, filepath.Join(directoryPath, directoryEntry.Name()))
 			if err == nil && currentPool.AppendCertsFromPEM(pemContent) {
 				appendPEMBlock(pemBuffer, string(pemContent))
 			}

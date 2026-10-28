@@ -30,6 +30,7 @@ func RegisterInbound(registry *inbound.Registry) {
 var _ adapter.TCPInjectableInbound = (*Inbound)(nil)
 
 type Inbound struct {
+	runtime *inboundRuntime
 	inbound.Adapter
 	router                   adapter.ConnectionRouterEx
 	logger                   log.ContextLogger
@@ -48,7 +49,18 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		Adapter: inbound.NewAdapter(C.TypeTrojan, tag),
 		router:  router,
 		logger:  logger,
-		users:   options.Users,
+		users:   append([]option.TrojanUser(nil), options.Users...),
+	}
+
+	runtime, finishRuntimeConstruction, runtimeErr := newInboundRuntimeConstruction(ctx, func() error { return inbound.closeRuntimeProtocol() })
+	defer finishRuntimeConstruction()
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	inbound.runtime = runtime
+	if runtime != nil {
+		logger = runtime.wrapLogger(logger)
+		inbound.logger = logger
 	}
 	if options.TLS != nil {
 		tlsConfig, err := tls.NewServerWithOptions(tls.ServerOptions{
@@ -105,22 +117,34 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			return nil, E.Cause(err, "create server transport: ", options.Transport.Type)
 		}
 	}
-	inbound.router, err = mux.NewRouterWithOptions(inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
+	inbound.router, err = mux.NewRouterWithContext(ctx, inbound.router, logger, common.PtrValueOrDefault(options.Multiplex))
 	if err != nil {
 		return nil, err
 	}
 	inbound.service = service
+	network := []string{N.NetworkTCP}
+	if inbound.transport != nil {
+		network = inbound.transport.Network()
+	}
 	inbound.listener = listener.New(listener.Options{
 		Context:           ctx,
 		Logger:            logger,
-		Network:           []string{N.NetworkTCP},
+		Network:           network,
 		Listen:            options.ListenOptions,
 		ConnectionHandler: inbound,
 	})
+	if inbound.runtime != nil {
+		if err := v2ray.BindRuntimeServer(inbound.transport, inbound.listener); err != nil {
+			return nil, err
+		}
+	}
 	return inbound, nil
 }
 
 func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if h.runtime != nil {
+		return h.PrepareRuntime(stage, scope)
+	}
 	if stage != adapter.StartStateStart {
 		return nil
 	}
@@ -169,6 +193,12 @@ func (h *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 }
 
 func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	if h.tlsConfig != nil && h.transport == nil {
 		tlsConn, err := tls.ServerHandshake(ctx, conn, h.tlsConfig)
 		if err != nil {
@@ -178,7 +208,7 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 		}
 		conn = tlsConn
 	}
-	err := h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
+	err = h.service.NewConnection(adapter.WithContext(ctx, &metadata), conn, metadata.Source, onClose)
 	if err != nil {
 		N.CloseOnHandshakeFailure(conn, onClose, err)
 		h.logger.ErrorContext(ctx, E.Cause(err, "process connection from ", metadata.Source))
@@ -186,6 +216,12 @@ func (h *Inbound) NewConnection(ctx context.Context, conn net.Conn, metadata ada
 }
 
 func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
 	userIndex, loaded := auth.UserFromContext[int](ctx)
@@ -204,6 +240,12 @@ func (h *Inbound) newConnection(ctx context.Context, conn net.Conn, metadata ada
 }
 
 func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	metadata.Inbound = h.Tag()
 	metadata.InboundType = h.Type()
 	userIndex, loaded := auth.UserFromContext[int](ctx)
@@ -222,6 +264,12 @@ func (h *Inbound) newPacketConnection(ctx context.Context, conn N.PacketConn, me
 }
 
 func (h *Inbound) fallbackConnection(ctx context.Context, conn net.Conn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	var fallbackAddr M.Socksaddr
 	if len(h.fallbackAddrTLSNextProto) > 0 {
 		if tlsConn, loaded := common.Cast[tls.Conn](conn); loaded {
@@ -255,6 +303,12 @@ var _ adapter.V2RayServerTransportHandler = (*inboundTransportHandler)(nil)
 type inboundTransportHandler Inbound
 
 func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.Conn, source M.Socksaddr, destination M.Socksaddr, onClose N.CloseHandlerFunc) {
+	ctx, release, err := h.runtime.enter(ctx)
+	if err != nil {
+		N.CloseOnHandshakeFailure(conn, onClose, err)
+		return
+	}
+	defer release()
 	var metadata adapter.InboundContext
 	metadata.Source = source
 	metadata.Destination = destination
@@ -266,5 +320,5 @@ func (h *inboundTransportHandler) NewConnectionEx(ctx context.Context, conn net.
 }
 
 func (h *Inbound) References() []string {
-	return h.references
+	return append([]string(nil), h.references...)
 }

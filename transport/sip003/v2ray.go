@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/tls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -92,13 +93,13 @@ func newV2RayPlugin(ctx context.Context, pluginOpts Args, router adapter.Router,
 		return nil, E.New("v2ray-plugin: unknown mode: " + mode)
 	}
 
-	transport, err := v2ray.NewClientTransport(context.Background(), dialer, serverAddr, transportOptions, tlsClient)
+	transport, err := v2ray.NewClientTransport(ctx, dialer, serverAddr, transportOptions, tlsClient)
 	if err != nil {
 		return nil, err
 	}
 
 	if mux > 0 {
-		return &v2rayMuxWrapper{transport}, nil
+		return &v2rayMuxWrapper{V2RayClientTransport: transport, ctx: ctx}, nil
 	}
 
 	return transport, nil
@@ -107,6 +108,7 @@ func newV2RayPlugin(ctx context.Context, pluginOpts Args, router adapter.Router,
 var _ Plugin = (*v2rayMuxWrapper)(nil)
 
 type v2rayMuxWrapper struct {
+	ctx context.Context
 	adapter.V2RayClientTransport
 }
 
@@ -116,4 +118,8 @@ func (w *v2rayMuxWrapper) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, err
 	}
 	return vmess.NewMuxConnWrapper(conn, vmess.MuxDestination), nil
+}
+
+func (w *v2rayMuxWrapper) RuntimeCloseAndWait() error {
+	return outbound.CloseRuntimeResource(w.ctx, "v2ray plugin transport", w.V2RayClientTransport)
 }

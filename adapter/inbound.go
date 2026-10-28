@@ -6,7 +6,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/sagernet/sing-box/common/tlsspoof"
+	tlsspoofmethod "github.com/sagernet/sing-box/common/tlsspoof/method"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -82,7 +82,7 @@ type InboundContext struct {
 	TLSFragmentFallbackDelay  time.Duration
 	TLSRecordFragment         bool
 	TLSSpoof                  string
-	TLSSpoofMethod            tlsspoof.Method
+	TLSSpoofMethod            tlsspoofmethod.Method
 
 	NetworkStrategy     *C.NetworkStrategy
 	NetworkType         []C.InterfaceType

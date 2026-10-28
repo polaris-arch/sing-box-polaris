@@ -10,7 +10,6 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing/service"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -44,7 +43,7 @@ func resolveTailscaleProvider(instance *Instance, tag string) (adapter.Tailscale
 		}
 		return provider, endpoint.Tag(), nil
 	}
-	endpointManager := service.FromContext[adapter.EndpointManager](instance.ctx)
+	endpointManager := instance.endpointManager
 	if endpointManager == nil {
 		return nil, "", status.Error(codes.FailedPrecondition, "endpoint manager not available")
 	}
@@ -147,13 +146,11 @@ func taildropInboxToProto(endpointTag string, inbox *adapter.TaildropInbox) *Tai
 }
 
 func (s *StartedService) MarkTaildropInboxRead(ctx context.Context, request *MarkTaildropInboxReadRequest) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
@@ -170,13 +167,12 @@ func (s *StartedService) SendTaildropFiles(
 	server grpc.BidiStreamingServer[TaildropSendClientMessage, TaildropSendServerMessage],
 ) error {
 	streamCtx := server.Context()
-	err := s.waitForStarted(streamCtx)
+	boxService, release, err := s.startedGraphInstance(streamCtx)
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
+	streamCtx = boxService.runtimeOperationContext(streamCtx)
 
 	firstMessage, err := server.Recv()
 	if err != nil {
@@ -314,13 +310,11 @@ func (s *StartedService) DownloadTaildropFile(
 	request *DownloadTaildropFileRequest,
 	server grpc.ServerStreamingServer[DownloadTaildropFileChunk],
 ) error {
-	err := s.waitForStarted(server.Context())
+	boxService, release, err := s.startedGraphInstance(server.Context())
 	if err != nil {
 		return err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
@@ -354,13 +348,11 @@ func (s *StartedService) DownloadTaildropFile(
 }
 
 func (s *StartedService) DeleteTaildropFile(ctx context.Context, request *DeleteTaildropFileRequest) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {
@@ -374,13 +366,11 @@ func (s *StartedService) DeleteTaildropFile(ctx context.Context, request *Delete
 }
 
 func (s *StartedService) CancelTaildropReceiving(ctx context.Context, request *CancelTaildropReceivingRequest) (*emptypb.Empty, error) {
-	err := s.waitForStarted(ctx)
+	boxService, release, err := s.startedGraphInstance(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.serviceAccess.RLock()
-	boxService := s.instance
-	s.serviceAccess.RUnlock()
+	defer release()
 
 	provider, _, err := resolveTailscaleProvider(boxService, request.EndpointTag)
 	if err != nil {

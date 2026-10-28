@@ -12,6 +12,7 @@ import (
 
 type http1Transport struct {
 	transport *http.Transport
+	boundary  *RuntimeTransportBoundary
 }
 
 func newHTTP1Transport(rawDialer N.Dialer, baseTLSConfig tls.Config) *http1Transport {
@@ -25,11 +26,13 @@ func newHTTP1Transport(rawDialer N.Dialer, baseTLSConfig tls.Config) *http1Trans
 			return dialTLS(ctx, rawDialer, baseTLSConfig, M.ParseSocksaddr(addr), []string{"http/1.1"}, "")
 		}
 	}
-	return &http1Transport{transport: transport}
+	boundary := NewRuntimeTransportBoundary(func() error { transport.CloseIdleConnections(); return nil })
+	boundary.BindHTTP1(transport)
+	return &http1Transport{transport: transport, boundary: boundary}
 }
 
 func (t *http1Transport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return t.transport.RoundTrip(request)
+	return t.boundary.RoundTrip(request, t.transport.RoundTrip)
 }
 
 func (t *http1Transport) CloseIdleConnections() {
@@ -37,6 +40,7 @@ func (t *http1Transport) CloseIdleConnections() {
 }
 
 func (t *http1Transport) Close() error {
-	t.CloseIdleConnections()
-	return nil
+	return t.boundary.Close()
 }
+
+func (t *http1Transport) StopRuntimeOperations() { t.boundary.StopRuntimeOperations() }

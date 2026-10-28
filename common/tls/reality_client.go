@@ -24,14 +24,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/adapter/outbound"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/debug"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
-	"github.com/sagernet/sing/common/ntp"
 	aTLS "github.com/sagernet/sing/common/tls"
 
 	utls "github.com/refraction-networking/utls"
@@ -231,7 +230,11 @@ func (e *RealityClientConfig) ClientHandshake(ctx context.Context, conn net.Conn
 	}
 
 	if !verifier.verified {
-		go realityClientFallback(e.ctx, uConn, e.uClient.ServerName(), e.uClient.id)
+		// The disguise request remains within the admitted handshake. It must not
+		// borrow e.ctx after the handshake reservation has been released.
+		if closeErr := realityClientFallback(ctx, uConn, e.uClient.ServerName(), e.uClient.id); closeErr != nil {
+			return nil, NewRuntimeCleanupError(E.New("reality fallback cleanup incomplete: ", closeErr))
+		}
 		return nil, E.New("reality verification failed")
 	}
 
@@ -255,20 +258,18 @@ func filterRealityKeyShares(uConn *utls.UConn) {
 	}
 }
 
-func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) {
-	defer uConn.Close()
+func realityClientFallback(ctx context.Context, uConn net.Conn, serverName string, fingerprint utls.ClientHelloID) (closeErr error) {
+	guarded, fence := outbound.WrapRuntimeOwnedConn(uConn)
+	defer func() { closeErr = fence.RuntimeCloseAndWait() }()
+	uConn = guarded
 	client := &http.Client{
 		Transport: &http2.Transport{
 			DialTLSContext: func(ctx context.Context, network, addr string, config *tls.Config) (net.Conn, error) {
 				return uConn, nil
 			},
-			TLSClientConfig: &tls.Config{
-				Time:    ntp.TimeFuncFromContext(ctx),
-				RootCAs: adapter.RootPoolFromContext(ctx),
-			},
 		},
 	}
-	request, _ := http.NewRequest("GET", "https://"+serverName, nil)
+	request, _ := http.NewRequestWithContext(ctx, "GET", "https://"+serverName, nil)
 	request.Header.Set("User-Agent", fingerprint.Client)
 	request.AddCookie(&http.Cookie{Name: "padding", Value: strings.Repeat("0", mRand.Intn(32)+30)})
 	response, err := client.Do(request)
@@ -277,6 +278,7 @@ func realityClientFallback(ctx context.Context, uConn net.Conn, serverName strin
 	}
 	_, _ = io.Copy(io.Discard, response.Body)
 	response.Body.Close()
+	return
 }
 
 func (e *RealityClientConfig) Clone() Config {

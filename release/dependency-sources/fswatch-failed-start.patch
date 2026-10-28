@@ -1,0 +1,83 @@
+--- a/watcher.go
++++ b/watcher.go
+@@ -2,6 +2,7 @@
+ 
+ import (
+ 	"os"
++ "errors"
+ 	"path/filepath"
+ 	"strings"
+ 	"sync"
+@@ -92,12 +93,7 @@
+ 	if err != nil {
+ 		return E.Cause(err, "fswatch: create fsnotify watcher")
+ 	}
+-	for _, target := range w.watchTarget {
+-		err = watcher.Add(target)
+-		if err != nil {
+-			return E.Cause(err, "fswatch: watch ", target)
+-		}
+-	}
++	if err = addWatchTargets(watcher, w.watchTarget); err != nil { return err }
+ 	w.watcher = watcher
+ 	go w.loopUpdate()
+ 	return nil
+@@ -187,3 +183,24 @@
+ 
+ 	callback(path)
+ }
++
++// addWatchTargets owns the newly allocated watcher until successful handoff to
++// Watcher.watcher. Every Add failure closes that exact unpublished allocation.
++func addWatchTargets(watcher interface { Add(string) error; Close() error }, targets []string) error {
++ for _, target := range targets {
++  if err := watcher.Add(target); err != nil {
++   cause := E.Cause(err, "fswatch: watch ", target)
++   if closeErr := watcher.Close(); closeErr != nil {
++    return &startCleanupError{cause: errors.Join(cause, E.Cause(closeErr, "fswatch: failed-start cleanup"))}
++   }
++   return cause
++  }
++ }
++ return nil
++}
++// An unsuccessful native Close remains observable by the enclosing lifecycle
++// owner. It must not certify a failed preparation as fully reclaimed.
++type startCleanupError struct { cause error }
++func(e *startCleanupError) Error() string { return e.cause.Error() }
++func(e *startCleanupError) Unwrap() error { return e.cause }
++func(*startCleanupError) RuntimeCleanupIncomplete() bool { return true }
+--- /dev/null
++++ b/start_cleanup_test.go
+@@ -0,0 +1,31 @@
++package fswatch
++
++import (
++ "errors"
++ "testing"
++)
++
++type failedStartWatcher struct{at,adds,closes int;addErr,closeErr error}
++func(w *failedStartWatcher)Add(string)error{w.adds++;if w.adds==w.at{return w.addErr};return nil}
++func(w *failedStartWatcher)Close()error{w.closes++;return w.closeErr}
++func TestFailedAddClosesUnpublishedWatcher(t *testing.T){
++ cause:=errors.New("injected add failure")
++ for _,at:=range []int{1,2,3}{
++  watcher:=&failedStartWatcher{at:at,addErr:cause}
++  err:=addWatchTargets(watcher,[]string{"first","middle","last"})
++  if !errors.Is(err,cause)||watcher.closes!=1||watcher.adds!=at{t.Fatalf("failure %d did not unwind once: %+v / %v",at,watcher,err)}
++ }
++}
++func TestSuccessfulAddTransfersWithoutClosing(t *testing.T){
++ watcher:=&failedStartWatcher{}
++ if err:=addWatchTargets(watcher,[]string{"one","two"});err!=nil{t.Fatal(err)}
++ if watcher.adds!=2||watcher.closes!=0{t.Fatal("successful allocation not transferred")}
++}
++func TestFailedAddPreservesCleanupFailure(t *testing.T){
++ cause,cleanup:=errors.New("add failure"),errors.New("close failure")
++ watcher:=&failedStartWatcher{at:1,addErr:cause,closeErr:cleanup}
++ err:=addWatchTargets(watcher,[]string{"one"})
++ var marker interface{RuntimeCleanupIncomplete()bool}
++ if !errors.Is(err,cause)||!errors.Is(err,cleanup)||!errors.As(err,&marker)||!marker.RuntimeCleanupIncomplete(){t.Fatal("uncertain cleanup was certified successful")}
++ if watcher.closes!=1{t.Fatal("cleanup repeated")}
++}

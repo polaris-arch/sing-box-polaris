@@ -416,7 +416,7 @@ func (w *autoRedirectHandlerWrapper) JudgeFlow(ipProtocol int32, sourceAddress s
 		netip.AddrPortFrom(destination, uint16(destinationPort)),
 		firstPacket,
 	)
-	return int32(verdict.Action), nil
+	return int32(verdict.ClassifyAndRelease()), nil
 }
 
 func (w *autoRedirectHandlerWrapper) WriteLog(level int32, message string) {

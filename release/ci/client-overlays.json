@@ -217,11 +217,16 @@
           "kind": "compatibility",
           "beforeGitBlob": "85b78694cff9584ac23001ac92fa77b083030283",
           "beforeSHA256": "e76bfd75aa002e12c475b4afa85728813497d2fc125c15c8cbe39b956ddd6e69",
-          "afterSHA256": "0f5755f83d7d9d4fbe8fbc9f7c1207ef3f2360ff625718b63c0a04ea32bbbce9",
+          "afterSHA256": "838155bd80f366a79be4ad335cdc1a1114db5f389966fa9c0cebb3817231e529",
           "edits": [
             {
               "old": "    androidTestImplementation(\"androidx.compose.ui:ui-test-junit4\")",
               "new": "    androidTestImplementation(\"androidx.compose.ui:ui-test-junit4\")\n    testImplementation(\"junit:junit:4.13.2\")",
+              "count": 1
+            },
+            {
+              "old": "    ndkVersion = \"28.0.13004108\"\n",
+              "new": "    ndkVersion = \"30.0.16248370\"\n",
               "count": 1
             }
           ],
@@ -232,11 +237,16 @@
           "kind": "compatibility",
           "beforeGitBlob": "e091da284e14b9acdc75e21602579d5799493dcb",
           "beforeSHA256": "8757cf68af1e1684d6b3a5e77fb97541af940293f4fc989155313df6bfbe53b1",
-          "afterSHA256": "d66ff7e31877e99e1d76070cf42c2523be273e680760bdeee7f95ea3c6fad6f1",
+          "afterSHA256": "52bb01d105d7afb51ae8f2880c69697139ec482b60334fa661b82bc9c32332a9",
           "edits": [
             {
               "old": "android.builtInKotlin=false\n",
               "new": "android.builtInKotlin=false\n# AGP 9 generates the release UnitTest tasks used by both APK producers.\nandroid.onlyEnableUnitTestForTheTestedBuildType=false\n",
+              "count": 1
+            },
+            {
+              "old": "ndkVersion=28.0.13004108\n",
+              "new": "ndkVersion=30.0.16248370\n",
               "count": 1
             }
           ],
@@ -245,9 +255,9 @@
         {
           "path": "app/build.gradle.kts",
           "kind": "unsigned",
-          "beforeGitBlob": "987f6d5f5c066708bf5a0f9ffa944ac97bea9e52",
-          "beforeSHA256": "0f5755f83d7d9d4fbe8fbc9f7c1207ef3f2360ff625718b63c0a04ea32bbbce9",
-          "afterSHA256": "351c55557a29da95ef1dc6c1885747b76c84534d2e00dfaf1e0fa3d12e106b1e",
+          "beforeGitBlob": "4a345f0daa69b047ac508f5f0d2263cab4c36c29",
+          "beforeSHA256": "838155bd80f366a79be4ad335cdc1a1114db5f389966fa9c0cebb3817231e529",
+          "afterSHA256": "d95c96fd8f3ea148bbb5656da80482de2f0e2b73e5664bd028faf64c50f4b525",
           "edits": [
             {
               "old": "signingConfig = signingConfigs.getByName(\"release\")",

@@ -26,7 +26,8 @@ func validateRuleSetStatusTags(request *RuleSetStatusRequest) error {
 }
 
 // This read never parses requested content or changes the router. Holding the
-// service lock pins the started instance for the whole bounded response.
+// service lock pins the started instance epoch; a graph lease owns its rules
+// for the whole bounded response.
 func (s *StartedService) GetRuleSetStatus(ctx context.Context, request *RuleSetStatusRequest) (*RuleSetStatusResponse, error) {
 	if err := validateRuleSetStatusTags(request); err != nil {
 		return nil, err
@@ -46,7 +47,16 @@ func (s *StartedService) readStartedRuleSetStatus(tags []string) (*RuleSetStatus
 	if s.serviceStatus == nil || s.serviceStatus.Status != ServiceStatus_STARTED || s.instance == nil || s.startedAt.IsZero() || s.instance.closeStarted.Load() {
 		return nil, status.Error(codes.Unavailable, "no active instance")
 	}
-	router := service.FromContext[adapter.Router](s.instance.ctx)
+	snapshot, _, release, err := s.instance.runtimeSnapshot()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	router := service.FromContext[adapter.Router](snapshot.ctx)
+	if lease, ok := adapter.RuntimeLeaseFromContext(snapshot.ctx); ok {
+		// The stable router intentionally exposes no raw graph rule-set leaves.
+		router = lease.View().Router()
+	}
 	if router == nil {
 		return nil, status.Error(codes.Unavailable, "router unavailable")
 	}

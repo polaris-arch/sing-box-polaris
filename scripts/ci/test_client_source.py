@@ -235,6 +235,30 @@ class ClientSourceControls(unittest.TestCase):
             if builds:self.assertLess(identities[0],min(builds))
 
 
+    def test_android_stable_ndk_matches_both_client_layers_and_producers(self):
+        spec=client.definition('android')
+        raw=(REAL_ROOT/'release/dependency-sources/clients/runtime/recipes/sing-box-for-android/app/build.gradle.kts').read_bytes()
+        for entry in [e for e in spec['files'] if e['path']=='app/build.gradle.kts']:
+            raw=client.edits(raw,entry)
+            self.assertIn(b'ndkVersion = "30.0.16248370"',raw)
+            self.assertNotIn(b'ndkVersion = "28.0.13004108"',raw)
+        properties=(REAL_ROOT/'scripts/ci/testdata/android-ae93152f/gradle.properties').read_bytes()
+        entry=next(e for e in spec['files'] if e['path']=='gradle.properties')
+        self.assertIn(b'ndkVersion=30.0.16248370\n',client.edits(properties,entry))
+        for filename in ['build.yml','signed-release.yml']:
+            workflow=yaml.safe_load((REAL_ROOT/'.github/workflows'/filename).read_text())
+            for job in workflow['jobs'].values():
+                for step in job.get('steps',[]):
+                    if step.get('uses','').startswith('nttld/setup-ndk@'):
+                        self.assertEqual(step['with']['ndk-version'],'r30')
+                        self.assertTrue(step['with']['link-to-sdk'])
+                    if step.get('name')=='Build Android':
+                        self.assertEqual(step['env']['ANDROID_NDK_HOME'],'${{ steps.setup-ndk.outputs.ndk-path }}')
+        workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/polaris-selfcheck.yml').read_text())
+        self.assertEqual(workflow['env']['NDK_ROOT'],'android-ndk-r30')
+        self.assertEqual(workflow['env']['NDK_SHA256'],'753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2')
+        self.assertEqual(workflow['env']['NDK_URL'],'https://dl.google.com/android/repository/android-ndk-r30-linux.zip')
+
     def test_android_release_unit_tests_are_enabled_in_the_complete_pinned_properties(self):
         spec=client.definition('android')
         entry=next(e for e in spec['files'] if e['path']=='gradle.properties')

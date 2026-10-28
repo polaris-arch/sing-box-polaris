@@ -5,6 +5,7 @@ package naive
 import (
 	"context"
 	"encoding/pem"
+	"errors"
 	"net"
 	"strings"
 
@@ -31,6 +32,7 @@ func RegisterOutbound(registry *outbound.Registry) {
 }
 
 type Outbound struct {
+	runtime *outboundRuntime
 	outbound.Adapter
 	ctx       context.Context
 	logger    logger.ContextLogger
@@ -38,7 +40,7 @@ type Outbound struct {
 	uotClient *uot.Client
 }
 
-func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (adapter.Outbound, error) {
+func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.NaiveOutboundOptions) (result adapter.Outbound, resultErr error) {
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
@@ -81,6 +83,14 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	if options.TLS.Reality != nil && options.TLS.Reality.Enabled {
 		return nil, E.New("reality is not supported on naive outbound")
 	}
+
+	runtime := newOutboundRuntime(ctx)
+	constructed := false
+	defer func() {
+		if !constructed {
+			resultErr = errors.Join(resultErr, runtime.close())
+		}
+	}()
 
 	serverAddress := options.ServerOptions.Build()
 
@@ -165,7 +175,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	default:
 		return nil, E.New("unknown quic congestion control: ", options.QUICCongestionControl)
 	}
-	client, err := cronet.NewNaiveClient(cronet.NaiveClientOptions{
+	client, err := cronet.NewNaiveClient(runtime.guardClientOptions(cronet.NaiveClientOptions{
 		Context:                  ctx,
 		Logger:                   logger,
 		ServerAddress:            serverAddress,
@@ -184,8 +194,12 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 		QUIC:                     options.QUIC,
 		QUICCongestionControl:    quicCongestionControl,
 		QUICSessionReceiveWindow: options.QUICSessionReceiveWindow.Value(),
-	})
+	}))
 	if err != nil {
+		return nil, err
+	}
+	runtime.client = client
+	if err = runtime.install(ctx); err != nil {
 		return nil, err
 	}
 	var uotClient *uot.Client
@@ -202,7 +216,9 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	} else {
 		networks = []string{N.NetworkTCP}
 	}
+	constructed = true
 	return &Outbound{
+		runtime:   runtime,
 		Adapter:   outbound.NewAdapterWithDialerOptions(C.TypeNaive, tag, networks, options.DialerOptions),
 		ctx:       ctx,
 		logger:    logger,
@@ -215,16 +231,32 @@ func (h *Outbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStart {
 		return nil
 	}
-	err := h.client.Start()
+	leave, err := h.runtime.fence.Acquire()
 	if err != nil {
 		return err
 	}
-	scope.Add(h.client.Close)
-	h.logger.Info("NaiveProxy started, version: ", h.client.Engine().Version())
+	err = func() error {
+		defer leave()
+		startErr := h.client.Start()
+		if startErr == nil {
+			h.logger.Info("NaiveProxy started, version: ", h.client.Version())
+		}
+		return startErr
+	}()
+	if err != nil {
+		return errors.Join(err, h.runtime.close())
+	}
+	if !h.runtime.registered {
+		scope.Add(h.runtime.close)
+	}
 	return nil
 }
 
 func (h *Outbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return outbound.DialRuntimeConn(ctx, h.runtime.source, func(ctx context.Context) (net.Conn, error) { return h.dialContextOwned(ctx, network, destination) })
+}
+
+func (h *Outbound) dialContextOwned(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
 		h.logger.InfoContext(ctx, "outbound connection to ", destination)
@@ -241,6 +273,10 @@ func (h *Outbound) DialContext(ctx context.Context, network string, destination 
 }
 
 func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return outbound.ListenRuntimePacket(ctx, h.runtime.source, func(ctx context.Context) (net.PacketConn, error) { return h.listenPacketOwned(ctx, destination) })
+}
+
+func (h *Outbound) listenPacketOwned(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
 	if h.uotClient == nil {
 		return nil, E.New("UDP is not supported unless UDP over TCP is enabled")
 	}
@@ -248,10 +284,20 @@ func (h *Outbound) ListenPacket(ctx context.Context, destination M.Socksaddr) (n
 }
 
 func (h *Outbound) InterfaceUpdated(ctx context.Context) {
+	leave, err := h.runtime.fence.Acquire()
+	if err != nil {
+		return
+	}
+	defer leave()
 	h.client.CloseAllConnections()
 }
 
 func (h *Outbound) Client() *cronet.NaiveClient {
+	// Native clients expose Engine and unmanaged entry points. Never export one
+	// from a runtime-owned generation. Standalone test access remains compatible.
+	if h.runtime != nil && h.runtime.source != nil {
+		return nil
+	}
 	return h.client
 }
 
