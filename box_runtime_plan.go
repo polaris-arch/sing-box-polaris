@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -53,55 +54,56 @@ type runtimePlanRecord struct {
 }
 
 type runtimeCoordinator struct {
-	fakeIP                 *fakeip.Manager
-	access                 sync.Mutex
-	controlEffects         runtimeEffectGate
-	ctx                    context.Context
-	store                  *runtimegraph.Store
-	active                 RuntimeIdentity
-	options                option.Options
-	canonical              []byte
-	durableDigest          string
-	durableIdentity        RuntimeIdentity
-	durableDesiredDigest   string
-	durableDesiredRevision string
-	durableOwnerReload     bool
-	persist                func(RuntimeIdentity, []byte) error
-	persistenceMode        string
-	persistenceRetrySafe   bool
-	pendingPersistence     *runtimePlanRecord
-	resources              []*runtimeResource
-	plans                  map[string]*runtimePlanRecord
-	planStorage            int
-	sequence               uint64
-	resourceSequence       uint64
-	catalog                map[adapter.RuntimeResourceID]*runtimeResource
-	stable                 *runtimeResource
-	reference              *route.RuntimeReferenceManager
-	referenceReservation   adapter.RuntimeResourceLease
-	stableReservation      adapter.RuntimeResourceLease
-	ingressScope           *adapter.Scope
-	ingressCloseOnce       sync.Once
-	ingressCloseError      error
-	gateway                *route.RuntimeRouter
-	trackers               route.RuntimeTrackers
-	clashMode              *clashmode.Manager
-	initialSources         []runtimeSourceSnapshot
-	currentSources         []runtimeSourceSnapshot
-	rootDigest             [32]byte
-	initialPhase           int
-	initialRouter          *route.Router
-	platformRequirements   route.RuntimeRequirements
-	tunDependencies        map[string]string
-	initialPrepared        *preparedRuntimeGraph
-	pendingPrepared        *preparedRuntimeGraph
-	stopped                bool
-	preparing              bool
-	workDone               chan struct{}
-	shutdownOnce           sync.Once
-	shutdownDone           chan struct{}
-	shutdownError          error
-	now                    func() time.Time
+	fakeIP                  *fakeip.Manager
+	access                  sync.Mutex
+	controlEffects          runtimeEffectGate
+	ctx                     context.Context
+	store                   *runtimegraph.Store
+	active                  RuntimeIdentity
+	options                 option.Options
+	canonical               []byte
+	durableDigest           string
+	durableIdentity         RuntimeIdentity
+	durableDesiredDigest    string
+	durableDesiredRevision  string
+	durableOwnerReload      bool
+	persist                 func(RuntimeIdentity, []byte) error
+	persistenceMode         string
+	persistenceRetrySafe    bool
+	pendingPersistence      *runtimePlanRecord
+	resources               []*runtimeResource
+	plans                   map[string]*runtimePlanRecord
+	planStorage             int
+	sequence                uint64
+	resourceSequence        uint64
+	catalog                 map[adapter.RuntimeResourceID]*runtimeResource
+	stable                  *runtimeResource
+	reference               *route.RuntimeReferenceManager
+	referenceReservation    adapter.RuntimeResourceLease
+	stableReservation       adapter.RuntimeResourceLease
+	ingressScope            *adapter.Scope
+	ingressCloseOnce        sync.Once
+	ingressCloseError       error
+	gateway                 *route.RuntimeRouter
+	trackers                route.RuntimeTrackers
+	clashMode               *clashmode.Manager
+	initialSources          []runtimeSourceSnapshot
+	currentSources          []runtimeSourceSnapshot
+	rootDigest              [32]byte
+	initialPhase            int
+	initialRouter           *route.Router
+	platformRequirements    route.RuntimeRequirements
+	tunDependencies         map[string]string
+	initialPrepared         *preparedRuntimeGraph
+	pendingPrepared         *preparedRuntimeGraph
+	stopped                 bool
+	preparing               bool
+	workDone                chan struct{}
+	shutdownOnce            sync.Once
+	shutdownDone            chan struct{}
+	shutdownError           error
+	shutdownDiagnosticPhase atomic.Uint32
+	now                     func() time.Time
 }
 
 func newRuntimeCoordinator(ctx context.Context) (*runtimeCoordinator, error) {

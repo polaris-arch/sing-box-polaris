@@ -267,6 +267,6 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.2
+        default: 1.15.0-polaris-alpha.12.3
 permissions:
   contents: read

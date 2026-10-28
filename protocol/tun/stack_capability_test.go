@@ -20,6 +20,7 @@ type capabilityTun struct{ *tun.MemoryTun }
 func (t *capabilityTun) WritePacket(packet *stack.PacketBuffer) (int, error) {
 	return packet.Size(), nil
 }
+
 func (t *capabilityTun) NewEndpoint() (stack.LinkEndpoint, stack.NICOptions, error) {
 	return channel.New(16, 1500, ""), stack.NICOptions{}, nil
 }

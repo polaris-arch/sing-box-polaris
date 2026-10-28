@@ -78,6 +78,16 @@ type LazyHeadroom interface {
 func CalculateFrontHeadroom(writer any) int {
 	var headroom int
 	for writer != nil {
+		// A metadata boundary describes this complete hidden suffix. Consume
+		// its scalar aggregate once; never unwrap or count it again.
+		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
+			value := boundary.WriterBufferMetadata()
+			if value.Lazy {
+				return DefaultHeadroom
+			}
+			return headroom + value.FrontHeadroom
+		}
+
 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
 			return DefaultHeadroom
 		}
@@ -98,6 +108,16 @@ func CalculateFrontHeadroom(writer any) int {
 func CalculateRearHeadroom(writer any) int {
 	var headroom int
 	for writer != nil {
+		// A metadata boundary describes this complete hidden suffix. Consume
+		// its scalar aggregate once; never unwrap or count it again.
+		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
+			value := boundary.WriterBufferMetadata()
+			if value.Lazy {
+				return DefaultHeadroom
+			}
+			return headroom + value.RearHeadroom
+		}
+
 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
 			return DefaultHeadroom
 		}
@@ -122,6 +142,16 @@ type ReaderOverhead interface {
 func CalculateReaderOverhead(reader any) int {
 	var overhead int
 	for reader != nil {
+		// A metadata boundary describes this complete hidden suffix. Consume
+		// its scalar aggregate once; never unwrap or count it again.
+		if boundary, ok := reader.(ReaderBufferMetadataProvider); ok {
+			value := boundary.ReaderBufferMetadata()
+			if value.Lazy {
+				return DefaultHeadroom
+			}
+			return overhead + value.Overhead
+		}
+
 		if lazyRoom, isLazy := reader.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
 			return DefaultHeadroom
 		}
@@ -160,6 +190,19 @@ func CalculateMTU(reader any, writer any) int {
 func calculateReaderMTU(reader any) int {
 	var mtu int
 	for reader != nil {
+		// A metadata boundary describes this complete hidden suffix. Consume
+		// its scalar aggregate once; never unwrap or count it again.
+		if boundary, ok := reader.(ReaderBufferMetadataProvider); ok {
+			value := boundary.ReaderBufferMetadata()
+			if value.Lazy {
+				return 0
+			}
+			if value.MTU > mtu {
+				mtu = value.MTU
+			}
+			return mtu
+		}
+
 		if lazyRoom, isLazy := reader.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
 			return 0
 		}
@@ -183,6 +226,19 @@ func calculateReaderMTU(reader any) int {
 func calculateWriterMTU(writer any) int {
 	var mtu int
 	for writer != nil {
+		// A metadata boundary describes this complete hidden suffix. Consume
+		// its scalar aggregate once; never unwrap or count it again.
+		if boundary, ok := writer.(WriterBufferMetadataProvider); ok {
+			value := boundary.WriterBufferMetadata()
+			if value.Lazy {
+				return 0
+			}
+			if mtu == 0 || value.MTU > 0 && value.MTU < mtu {
+				mtu = value.MTU
+			}
+			return mtu
+		}
+
 		if lazyRoom, isLazy := writer.(LazyHeadroom); isLazy && lazyRoom.LazyHeadroom() {
 			return 0
 		}

@@ -23,7 +23,7 @@ func TestCronetDiagnosticRejectsFIFOWithoutBlocking(t *testing.T) {
 		return
 	}
 	path := filepath.Join(t.TempDir(), "library.fifo")
-	if err := syscall.Mkfifo(path, 0600); err != nil {
+	if err := syscall.Mkfifo(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	executable, err := os.Executable()

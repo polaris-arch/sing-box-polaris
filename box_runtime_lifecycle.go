@@ -250,6 +250,7 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 		}
 		c.access.Unlock()
 		go func() {
+			c.shutdownDiagnosticPhase.Store(1) // preparation join
 			if workDone != nil {
 				<-workDone
 			}
@@ -267,12 +268,14 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 			if c.reference != nil {
 				c.reference.Stop()
 			}
+			c.shutdownDiagnosticPhase.Store(2) // candidate abort
 			if initial != nil {
 				initial.abort()
 			}
 			if pending != nil && pending != initial {
 				pending.abort()
 			}
+			c.shutdownDiagnosticPhase.Store(3) // producer stop / owner seal
 			for _, resource := range resources {
 				if resource.stop != nil {
 					resource.stop()
@@ -282,12 +285,15 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 				}
 				resource.owner.Seal()
 			}
+			c.shutdownDiagnosticPhase.Store(4) // final logical-flow stop and physical close
 			if s.connection != nil {
-				s.connection.CloseAll()
+				s.connection.StopFinal()
 			}
 			// Stop accepting and drain TUN flows before waiting for graph leases.
 			// Waiting for the stable owner first would create a TUN-flow cycle.
+			c.shutdownDiagnosticPhase.Store(5) // ingress join
 			ingressErr := c.closeIngress()
+			c.shutdownDiagnosticPhase.Store(6) // reference observer join
 			var referenceErr error
 			if c.reference != nil {
 				referenceErr = c.reference.WaitStopped(context.Background())
@@ -311,8 +317,10 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 				if reservation != nil {
 					reservation.Release()
 				}
+				c.shutdownDiagnosticPhase.Store(7) // resource owner drain
 				c.shutdownError = waitRuntimeResources(context.Background(), resources)
 			}
+			c.shutdownDiagnosticPhase.Store(8) // actual shutdown worker returned
 			close(c.shutdownDone)
 		}()
 	})

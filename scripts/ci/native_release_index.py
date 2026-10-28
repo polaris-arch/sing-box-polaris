@@ -219,6 +219,8 @@ def distribution_materials(index, root=Path('.')):
  from apple_package_overlays import definition as apple_package_definition
  apple_package_definition(root)
  inputs=['go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
+         'release/dependency-sources/sing-vmess-replacement.json',
+         'release/dependency-sources/sing-vmess-vision.patch','scripts/ci/vision_source.py',
          'release/ci/client-overlays.json','release/ci/distribution-materials.json',
          'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
          'release/ci/current-module-sources.json','release/polaris-public-source-inputs.json',

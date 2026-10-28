@@ -49,7 +49,9 @@ class BoundedStorageTests(unittest.TestCase):
     @contextmanager
     def download(self,data,metadata=None,exit_code=0,limit=p.SCRATCH_LIMIT,reserve=0):
         class Child:
-            def __init__(self):self.stdout=io.BytesIO(data);self.done=False;self.terminated=False;self.reaped=False
+            def __init__(self):
+                self.stdout=tempfile.TemporaryFile();self.stdout.write(b'HTTP/2 200 OK\r\n\r\n'+data);self.stdout.seek(0)
+                self.stderr=tempfile.TemporaryFile();self.done=False;self.terminated=False;self.reaped=False
             def wait(self,timeout=None):self.done=True;self.reaped=True;return exit_code
             def poll(self):return exit_code if self.done else None
             def terminate(self):self.terminated=True;self.done=True
@@ -58,7 +60,10 @@ class BoundedStorageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);budget=p.ScratchBudget(root,limit=limit,reserve=reserve)
             with mock.patch.object(p.subprocess,'Popen',return_value=child) as started:
-                yield metadata or self.metadata(data),budget,child,started
+                try:
+                    yield metadata or self.metadata(data),budget,child,started
+                finally:
+                    child.stdout.close();child.stderr.close()
             self.assertEqual(list(root.iterdir()),[])
             self.assertEqual(budget.live,0)
 
@@ -223,7 +228,8 @@ class BoundedStorageTests(unittest.TestCase):
                 scope[role]['payloadRules'][name]=[{'pattern':re.escape(n),'count':1} for n,_ in rows]
         def child(command,**kwargs):
             data=downloads[int(command[-1].split('/')[-2])]
-            return type('Child',(),{'stdout':io.BytesIO(data),'wait':lambda self,**k:0,'poll':lambda self:0})()
+            out=tempfile.TemporaryFile();out.write(b'HTTP/2 200 OK\r\n\r\n'+data);out.seek(0)
+            return type('Child',(),{'stdout':out,'stderr':tempfile.TemporaryFile(),'wait':lambda self,**k:0,'poll':lambda self:0})()
         def associate(result,*_):result['distributionMaterials']={};return result
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);work=root/'work';budget=p.ScratchBudget(work,reserve=0)
@@ -345,6 +351,65 @@ class BoundedStorageTests(unittest.TestCase):
         job=workflow['jobs']['publish'];self.assertEqual(job['environment'],'polaris-github-release')
         self.assertEqual(job['needs'],'validate');self.assertIn("vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'",job['if'])
         self.assertEqual(job['permissions'],{'contents':'write','actions':'read'})
+
+    def test_reviewed_inventory_failure_precedes_large_producer_downloads(self):
+        with tempfile.TemporaryDirectory() as d:
+            args=p.argparse.Namespace(audit=Path(d)/'audit',source_dir=Path('source'),source='a'*40,
+                mode='validate',inventory_run='77',inventory_sha256='f'*64)
+            with mock.patch.object(p,'command',return_value='b'*40),mock.patch.object(p,'tag_identity',return_value='c'*40), \
+                 mock.patch.object(p,'reviewed_contract',side_effect=ValueError('original hash mismatch')) as reviewed, \
+                 mock.patch.object(p,'inventory') as inventory,mock.patch('builtins.print'):
+                with self.assertRaisesRegex(ValueError,'original hash mismatch'):p.bounded_release(args,{'all':'7','linux':'8','docker':'9'})
+                inventory.assert_not_called();reviewed.assert_called_once()
+
+    def test_reviewed_producer_input_mismatch_precedes_downloads(self):
+        with tempfile.TemporaryDirectory() as d:
+            args=p.argparse.Namespace(audit=Path(d)/'audit',source_dir=Path('source'),source='a'*40,
+                mode='validate',inventory_run='77',inventory_sha256='f'*64)
+            with mock.patch.object(p,'command',return_value='b'*40),mock.patch.object(p,'tag_identity',return_value='c'*40), \
+                 mock.patch.object(p,'reviewed_contract',return_value={'runs':{'all':{'id':'wrong'}}}), \
+                 mock.patch.object(p,'inventory') as inventory,mock.patch('builtins.print'):
+                with self.assertRaisesRegex(ValueError,'producer inputs differ'):p.bounded_release(args,{'all':'7','linux':'8','docker':'9'})
+                inventory.assert_not_called()
+
+    def test_preflight_contract_then_all_producer_validation_still_required(self):
+        calls=[];runs={'all':'7','linux':'8','docker':'9'};contract={'runs':{k:{'id':v} for k,v in runs.items()}}
+        class StopInventory(Exception):pass
+        def reviewed(*args,**kwargs):calls.append('reviewed');return contract
+        def inventory(*args,**kwargs):calls.append('actual-inventory');raise StopInventory()
+        with tempfile.TemporaryDirectory() as d:
+            args=p.argparse.Namespace(audit=Path(d)/'audit',source_dir=Path('source'),source='a'*40,
+                mode='validate',inventory_run='77',inventory_sha256='f'*64)
+            with mock.patch.object(p,'command',return_value='b'*40),mock.patch.object(p,'tag_identity',return_value='c'*40), \
+                 mock.patch.object(p,'reviewed_contract',side_effect=reviewed),mock.patch.object(p,'inventory',side_effect=inventory), \
+                 mock.patch.object(p,'assemble') as assemble,mock.patch('builtins.print'):
+                with self.assertRaises(StopInventory):p.bounded_release(args,runs)
+                self.assertEqual(calls,['reviewed','actual-inventory']);assemble.assert_not_called()
+
+    def test_new_artifact_clears_previous_member_and_read_error(self):
+        data=self.zipped([('x',b'x')])
+        with self.download(data) as (a,budget,_,_):
+            budget.state.update(artifactId=999,artifact='old',member='old.tar',readError='old failure')
+            with p.artifact_archive(a,budget):
+                self.assertEqual(budget.state['artifactId'],31);self.assertEqual(budget.state['artifact'],'test')
+                self.assertNotIn('member',budget.state);self.assertIsNone(budget.state['readError'])
+
+    def test_repository_root_metadata_uses_real_read_admission(self):
+        import github_read_transport as transport
+        def attempt(path,stream,maximum,timeout):
+            self.assertEqual(path,'repos/'+p.REPO)
+            stream.write(b'{"id":1421657509}')
+            return {'status':200,'headers':{},'bytes':17,'sha256':'unused-json-digest'}
+        with mock.patch.object(transport,'_attempt',side_effect=attempt) as call:
+            self.assertEqual(p.api('repos/'+p.REPO),{'id':1421657509})
+            call.assert_called_once()
+
+    def test_only_read_api_uses_retry_transport(self):
+        def read(path,stream,maximum):stream.write(b'{"ok":true}')
+        with mock.patch.object(p,'read_get',side_effect=read) as get,mock.patch.object(p.subprocess,'check_output',return_value=b'{}') as write:
+            self.assertEqual(p.api('rate_limit'),{'ok':True})
+            for method in ('POST','PATCH','DELETE'):p.api('repos/'+p.REPO+'/releases/1',method,{'x':1})
+            self.assertEqual(get.call_count,1);self.assertEqual(write.call_count,3)
 
     def test_entire_release_preserves_primary_when_outer_scratch_cleanup_also_fails(self):
         with tempfile.TemporaryDirectory() as d:
@@ -975,9 +1040,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.2')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.2')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.2')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.3')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.3')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.3')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
@@ -2531,6 +2596,8 @@ class OciSupplementTests(unittest.TestCase):
 
 # Keep the exact current-selection regressions in the existing publisher CI gate.
 from test_oci_material_registry import RegistryTests
+
+from test_github_read_transport import ReadTransportTests
 
 if __name__=='__main__':
     unittest.main()

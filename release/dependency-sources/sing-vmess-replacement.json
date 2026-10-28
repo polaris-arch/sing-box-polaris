@@ -1,0 +1,280 @@
+{
+  "schema": "polaris-repository-module-replacement-v1",
+  "module": "github.com/sagernet/sing-vmess",
+  "upstreamRepository": "https://github.com/SagerNet/sing-vmess",
+  "upstreamCommit": "9b95ab8c9478f8e8ebe5758d325ec8cda8197c5c",
+  "upstreamTree": "a06b7a8c92405026f307860c7172765924209470",
+  "upstreamVersion": "v0.2.9-0.20260929152519-9b95ab8c9478",
+  "upstreamH1": "h1:q2eQn4nq8oWGxRm9zXesXSlPr9GEgPrOGzf4iPtzG9A=",
+  "upstreamGoModH1": "h1:P11scgTxMxVVQ8dlM27yNm3Cro40mD0+gHbnqrNGDuY=",
+  "upstreamModuleZipSHA256": "f315ae8ee5af110d0b9f45de542be3d9bef4cb9f43a368e1adfc69a9ce09cdc5",
+  "upstreamFileCount": 33,
+  "replacementPath": "./third_party/sing-vmess",
+  "replacementTree": "c06c20c35da9997e56b5f6169143e3c0261da672",
+  "replacementFileCount": 36,
+  "patch": "release/dependency-sources/sing-vmess-vision.patch",
+  "patchSHA256": "7d5ac651c31ba8d2cf7bbae58df46cc3a75fa91684d288c0f7f30bc47836a4f6",
+  "files": {
+    ".github/renovate.json": {
+      "beforeSHA256": "93a1651c9727c22d2301f0934605a2235bc9a4126038a4585cfdf923e121d4ea",
+      "afterSHA256": "93a1651c9727c22d2301f0934605a2235bc9a4126038a4585cfdf923e121d4ea",
+      "gitBlob": "66121154f19cac2c9368884d803041712106b4b3",
+      "mode": "100644",
+      "bytes": 349
+    },
+    ".github/update_dependencies.sh": {
+      "beforeSHA256": "c4c5f89f2fd7bfcbb33ed0bd674d23f6b06a3d0f7ade26f9f7601174c4bf1c0f",
+      "afterSHA256": "c4c5f89f2fd7bfcbb33ed0bd674d23f6b06a3d0f7ade26f9f7601174c4bf1c0f",
+      "gitBlob": "4702ddfe01847d03f84468a3f64a2b69c0e8deef",
+      "mode": "100755",
+      "bytes": 135
+    },
+    ".github/workflows/lint.yml": {
+      "beforeSHA256": "d7c7b085849abb14ac9329d1b9d99800e320a932d8e8b6a9882b870402b9f918",
+      "afterSHA256": "d7c7b085849abb14ac9329d1b9d99800e320a932d8e8b6a9882b870402b9f918",
+      "gitBlob": "c682b25861b7c6dc12ff0c3fcc45f6d5525034de",
+      "mode": "100644",
+      "bytes": 774
+    },
+    ".github/workflows/test.yml": {
+      "beforeSHA256": "202d7fa6130fc083493b017dc92a003d7a2e8e36f921b708b06078812837f900",
+      "afterSHA256": "202d7fa6130fc083493b017dc92a003d7a2e8e36f921b708b06078812837f900",
+      "gitBlob": "3afe968438a8c4cef6862a5c03fee7b3dc2a327a",
+      "mode": "100644",
+      "bytes": 2321
+    },
+    ".gitignore": {
+      "beforeSHA256": "619a754b37b7bf159791d2f3af67800e2654d2c211a4706842604b0cbbf15a48",
+      "afterSHA256": "619a754b37b7bf159791d2f3af67800e2654d2c211a4706842604b0cbbf15a48",
+      "gitBlob": "f7f8ac3430768cab865f28157f46200a73829459",
+      "mode": "100644",
+      "bytes": 17
+    },
+    ".golangci.yml": {
+      "beforeSHA256": "6a2b6fe0867c925adf34fc14ca6f39d6eed459ed6161a8c1d259aa005b07e146",
+      "afterSHA256": "6a2b6fe0867c925adf34fc14ca6f39d6eed459ed6161a8c1d259aa005b07e146",
+      "gitBlob": "eecfec351dd4055259726728921d4518a684a06a",
+      "mode": "100644",
+      "bytes": 281
+    },
+    "LICENSE": {
+      "beforeSHA256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+      "afterSHA256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+      "gitBlob": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "mode": "100644",
+      "bytes": 674
+    },
+    "Makefile": {
+      "beforeSHA256": "7bb06130de435e7bcb71c2ce2f56003f7a6fee8e6197573c114ee58c80475385",
+      "afterSHA256": "7bb06130de435e7bcb71c2ce2f56003f7a6fee8e6197573c114ee58c80475385",
+      "gitBlob": "e47456ed76538fc0fcb1b1a93f387eeae9a1fb66",
+      "mode": "100644",
+      "bytes": 531
+    },
+    "README.md": {
+      "beforeSHA256": "c6f7cf4e328c662379465617fbd3fa2326827e02ce24b62f446545c5fee49139",
+      "afterSHA256": "c6f7cf4e328c662379465617fbd3fa2326827e02ce24b62f446545c5fee49139",
+      "gitBlob": "526f8cb0273055bf489b9fdca2faf7b147810fa0",
+      "mode": "100644",
+      "bytes": 318
+    },
+    "chunk_aead.go": {
+      "beforeSHA256": "3fc8f03d391ce7f2ad1ee5f2b103d1a52171862c24997492a97415d1f994ba1f",
+      "afterSHA256": "3fc8f03d391ce7f2ad1ee5f2b103d1a52171862c24997492a97415d1f994ba1f",
+      "gitBlob": "284b747b6af5b2899e01360e674d9d71324d37a0",
+      "mode": "100644",
+      "bytes": 3265
+    },
+    "chunk_length_aead.go": {
+      "beforeSHA256": "bf218390c3c1f5be6bde46e14639552e3ae12d5c5e2d33b1d7ced7b9ec0316a4",
+      "afterSHA256": "bf218390c3c1f5be6bde46e14639552e3ae12d5c5e2d33b1d7ced7b9ec0316a4",
+      "gitBlob": "c1f827f02719e0e396ccba6bc3cd98b4be72f7ab",
+      "mode": "100644",
+      "bytes": 5921
+    },
+    "chunk_length_stream.go": {
+      "beforeSHA256": "f599bc7375e7c37650e4823c1b7ac712931866ccbdf9307497d0c69c93d19161",
+      "afterSHA256": "f599bc7375e7c37650e4823c1b7ac712931866ccbdf9307497d0c69c93d19161",
+      "gitBlob": "71535531b489b158fab630bea572b6803c75deee",
+      "mode": "100644",
+      "bytes": 5407
+    },
+    "chunk_stream.go": {
+      "beforeSHA256": "1bd41234e826e7d55cd175e6da0a3010e5d3f0118fcf5e39e31aebb76ba31223",
+      "afterSHA256": "1bd41234e826e7d55cd175e6da0a3010e5d3f0118fcf5e39e31aebb76ba31223",
+      "gitBlob": "f01459cc53c21c7780d2baa1695f4292872e5939",
+      "mode": "100644",
+      "bytes": 1539
+    },
+    "chunk_stream_checksum.go": {
+      "beforeSHA256": "866930be880547f3eea3d953908c1e9c4b72a836e127e3fc7d91b02ca90183e0",
+      "afterSHA256": "866930be880547f3eea3d953908c1e9c4b72a836e127e3fc7d91b02ca90183e0",
+      "gitBlob": "a245398fa9213cca0fe56dbcd8bd07499fcce7fc",
+      "mode": "100644",
+      "bytes": 1981
+    },
+    "client.go": {
+      "beforeSHA256": "5faad873130c009c19b46c8b8bfec2ddc0703332d70d417f343b2f5b542d01bd",
+      "afterSHA256": "5faad873130c009c19b46c8b8bfec2ddc0703332d70d417f343b2f5b542d01bd",
+      "gitBlob": "f2ecad538fbe9995d1f17f3c23f92a3a8589cbd2",
+      "mode": "100644",
+      "bytes": 14567
+    },
+    "client_option.go": {
+      "beforeSHA256": "628ead967d72de587034a7129c9b38bfdb1940a1b240f905ba754758bfeb5033",
+      "afterSHA256": "628ead967d72de587034a7129c9b38bfdb1940a1b240f905ba754758bfeb5033",
+      "gitBlob": "9cf7cc133a70cf818c78953d348ac3ae90db1f44",
+      "mode": "100644",
+      "bytes": 405
+    },
+    "go.mod": {
+      "beforeSHA256": "9c678f70449c52c57b1bf6dc40ac5bf55c0a61e3336a8dd0d082aa352e510471",
+      "afterSHA256": "f0f4629709f7413be16c74ac3bb1e09ec5deb38e35f68a37f610fb70742471fd",
+      "gitBlob": "d74ad4d2556fa75242b1b0f026c81c4c909aabf0",
+      "mode": "100644",
+      "bytes": 562
+    },
+    "go.sum": {
+      "beforeSHA256": "df22b93446930c1e2de0f45a30736aba069ba0a0c9b745042463dbb54cd0f2bf",
+      "afterSHA256": "7387c6c97c822c71fb33a07dde52c0489af73a293f6af304842556b5f8282a62",
+      "gitBlob": "43c5a892c55607868d9198e6e8b492db0128f722",
+      "mode": "100644",
+      "bytes": 2186
+    },
+    "kdf.go": {
+      "beforeSHA256": "9703b679a50e609223ac46c15723eea987e1188e370dcce1ecd237d597c1be2a",
+      "afterSHA256": "9703b679a50e609223ac46c15723eea987e1188e370dcce1ecd237d597c1be2a",
+      "gitBlob": "8ad241b65756a025f9a7e07369a4f9240bc21759",
+      "mode": "100644",
+      "bytes": 647
+    },
+    "mux.go": {
+      "beforeSHA256": "7061ce5af54ea04c212fb9184733a0f80d7bbcd541d25d097df2611bd02d4e9c",
+      "afterSHA256": "7061ce5af54ea04c212fb9184733a0f80d7bbcd541d25d097df2611bd02d4e9c",
+      "gitBlob": "6e72c2048967f1c0a5ff5aba27b48d869bdcb06a",
+      "mode": "100644",
+      "bytes": 13093
+    },
+    "mux_wrapper.go": {
+      "beforeSHA256": "c569927296dc5cdf191e0e8345d8e7457ff80a7bb65f0ecbb8b33bb28223081d",
+      "afterSHA256": "c569927296dc5cdf191e0e8345d8e7457ff80a7bb65f0ecbb8b33bb28223081d",
+      "gitBlob": "a1cf2f6850907133271ad934cc769820546eec07",
+      "mode": "100644",
+      "bytes": 3557
+    },
+    "packetaddr/conn.go": {
+      "beforeSHA256": "e0f200f63b29d0a3cda6b4f9fb69087fbd77b031835938f40739de9da2a5b706",
+      "afterSHA256": "e0f200f63b29d0a3cda6b4f9fb69087fbd77b031835938f40739de9da2a5b706",
+      "gitBlob": "9590dcbc1df636ad33c6ae5f1c6e15f32a846ca4",
+      "mode": "100644",
+      "bytes": 2542
+    },
+    "packetaddr/packetaddr.go": {
+      "beforeSHA256": "8f0b7b31c692a1a257e607785b50b1191c3b6fd8211ad946805aa3136d3b770c",
+      "afterSHA256": "8f0b7b31c692a1a257e607785b50b1191c3b6fd8211ad946805aa3136d3b770c",
+      "gitBlob": "00fea411b6e9616845b76bae078a2ef533633080",
+      "mode": "100644",
+      "bytes": 390
+    },
+    "protocol.go": {
+      "beforeSHA256": "dc75dbcb9a5fd878fac0ed89dbe1fcbd166c5fbedb0d89122b9867db53cefb64",
+      "afterSHA256": "dc75dbcb9a5fd878fac0ed89dbe1fcbd166c5fbedb0d89122b9867db53cefb64",
+      "gitBlob": "1071b950532ddd3bbbc433dbe30f88207b2b2460",
+      "mode": "100644",
+      "bytes": 11664
+    },
+    "service.go": {
+      "beforeSHA256": "a980891a8b434423d3f3ada560ea7b739a3503dbc3938a00004f4e26cdf6f64e",
+      "afterSHA256": "a980891a8b434423d3f3ada560ea7b739a3503dbc3938a00004f4e26cdf6f64e",
+      "gitBlob": "df5f66a684ecaaf70f22af9fbadd553843b0e486",
+      "mode": "100644",
+      "bytes": 15142
+    },
+    "service_option.go": {
+      "beforeSHA256": "4f4508e8f50842c9df55c95a76dc4bdbf11f0014ae59cdb2f43ff59a61b72b59",
+      "afterSHA256": "4f4508e8f50842c9df55c95a76dc4bdbf11f0014ae59cdb2f43ff59a61b72b59",
+      "gitBlob": "3b412ad0c6d4be63fce6d51fa88636fe14bd71bf",
+      "mode": "100644",
+      "bytes": 341
+    },
+    "vless/client.go": {
+      "beforeSHA256": "51a99417d9d93f58e66f7b79eca3cb3f3242cd68b35ca86efc14a3c10f40c5ea",
+      "afterSHA256": "51a99417d9d93f58e66f7b79eca3cb3f3242cd68b35ca86efc14a3c10f40c5ea",
+      "gitBlob": "a7d1a82def50482c38cac14f6a0cfa0abc6c75da",
+      "mode": "100644",
+      "bytes": 6794
+    },
+    "vless/constant.go": {
+      "beforeSHA256": "9e3bbc91b1044dce44b1601cda6e59f8383cbae51e3ac5dbd171893db5d4610f",
+      "afterSHA256": "9e3bbc91b1044dce44b1601cda6e59f8383cbae51e3ac5dbd171893db5d4610f",
+      "gitBlob": "7d3b7e30fd5a17b975d1612e82d6f2230a0171d7",
+      "mode": "100644",
+      "bytes": 1069
+    },
+    "vless/protocol.go": {
+      "beforeSHA256": "15c4b7d3b657dc726216ff7b1063bf604ba05982f56c348744cbd72d87021521",
+      "afterSHA256": "15c4b7d3b657dc726216ff7b1063bf604ba05982f56c348744cbd72d87021521",
+      "gitBlob": "5ec2d006c03d0622a8582e4fec3b77c31d559e80",
+      "mode": "100644",
+      "bytes": 7207
+    },
+    "vless/service.go": {
+      "beforeSHA256": "2e3a18878ac06cbfc0ec2b7a65876ede9ffe4358affd95fd4fc833a46fa28a80",
+      "afterSHA256": "2e3a18878ac06cbfc0ec2b7a65876ede9ffe4358affd95fd4fc833a46fa28a80",
+      "gitBlob": "9d37f4a84cd7859c4178f8d6280c3df7c8c54860",
+      "mode": "100644",
+      "bytes": 5835
+    },
+    "vless/vision.go": {
+      "beforeSHA256": "f8856ae87df2204a40fa11707cf38f447b9b3eb4c4f439a8a00ea0b51226cbdd",
+      "afterSHA256": "8792efeb3b033ce5e3b7a3d3ef5f1b22b932456cfdfaf95fe0aa91110c35c7d8",
+      "gitBlob": "7a252b215fb310be5f205663896049d38b6e7bbc",
+      "mode": "100644",
+      "bytes": 13351
+    },
+    "vless/vision_buffers_test.go": {
+      "beforeSHA256": null,
+      "afterSHA256": "119c0028305ccabe213b89e81d93274c479bee5c637d8212c9537799bb150109",
+      "gitBlob": "6d28061bd3b349d82b2aca261e7985e3ad9e7449",
+      "mode": "100644",
+      "bytes": 1895
+    },
+    "vless/vision_concurrent_test.go": {
+      "beforeSHA256": null,
+      "afterSHA256": "56e5f7fc336007cecb04bac9aa71b1e693a786a01b1a006b0b011a92dc5db678",
+      "gitBlob": "1646cd78c4591a62527fb7a50663365621e839e9",
+      "mode": "100644",
+      "bytes": 2722
+    },
+    "vless/vision_providers_test.go": {
+      "beforeSHA256": null,
+      "afterSHA256": "9feb9ea399d1dbecd1e34eafe52dcaadcfcf011044acbe4497d449b2fd1b75f2",
+      "gitBlob": "d687b530c0121d7df9fb724a92f946a3c7784f18",
+      "mode": "100644",
+      "bytes": 8731
+    },
+    "vless/vision_utls.go": {
+      "beforeSHA256": "23747cbe4fb6887a20d32f23bd7d4768a12d8d6a2bc4165a50885e3351d35545",
+      "afterSHA256": "ecce779d59f0e25735d2af007d5e0722d7986ce123f97721658154370e58bbec",
+      "gitBlob": "05647ecc1f2f7113bb4a0886fa7b2051a24b3730",
+      "mode": "100644",
+      "bytes": 1114
+    },
+    "xudp.go": {
+      "beforeSHA256": "67b1eede4fa9f3a31ba30dc04b303defe46faf6193023523b772444533ac523b",
+      "afterSHA256": "67b1eede4fa9f3a31ba30dc04b303defe46faf6193023523b772444533ac523b",
+      "gitBlob": "be2f2054481fc0bfc77d42d8fbb60449685abf03",
+      "mode": "100644",
+      "bytes": 4559
+    }
+  },
+  "notice": {
+    "path": "third_party/sing-vmess/LICENSE",
+    "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+    "unchangedUpstream": true,
+    "existingBundle": "release/licenses/CURRENT44-NOTICE-CANDIDATE.txt",
+    "existingByteOffset": 408347,
+    "bytes": 674
+  },
+  "testGraph": "Run github.com/sagernet/sing-vmess/... from the product root with its exact ten replacements; standalone nested-module resolution is not product validation."
+}

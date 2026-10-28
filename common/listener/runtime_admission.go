@@ -169,6 +169,7 @@ func (l *Listener) dispatchRuntimeConnection(ctx context.Context, conn net.Conn,
 		return
 	}
 	carrier := outbound.WrapRuntimeConn(owned, release, conn)
+	invocation = outbound.ContextWithRuntimeInboundClose(invocation, carrier)
 	go func() {
 		defer releaseInvocation()
 		l.connHandler.NewConnection(invocation, carrier, metadata, func(error) { _ = carrier.Close() })

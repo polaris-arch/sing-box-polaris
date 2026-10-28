@@ -71,6 +71,13 @@ class FingerprintProbeControls(unittest.TestCase):
             self.assertIn(required,REQUIRED_LIBBOX)
         self.assertIn('TestChrome155CapturedClientHello',REQUIRED_UPSTREAM)
         self.assertIn('TestRealityUpstreamClientMetaServerActualHandshake',REQUIRED_FORK)
+        self.assertIn('./protocol/vless',items['fork'])
+        self.assertIn('github.com/sagernet/sing-vmess/...',items['fork'])
+        self.assertIn('-gcflags=all=-d=checkptr=2',items['fork'])
+        for required in ('TestRealityVisionActualHandshakeAndDirect', 'TestRuntimeVisionActualTCPAndXUDP',
+                         'TestVisionConcurrentPlainTraffic', 'TestVisionTLSBufferLayoutRejectsUnknownShapes'):
+            self.assertIn(required,REQUIRED_FORK)
+
 
     def test_green_package_does_not_replace_missing_or_skipped_runtime_cases(self):
         with tempfile.TemporaryDirectory() as td:

@@ -16,27 +16,29 @@ import (
 )
 
 type runtimeClientState struct {
-	source        adapter.RuntimeResourceSource
-	scope         *adapter.Scope
-	ctx           context.Context
-	cancel        context.CancelFunc
-	callbacks     *outbound.RuntimeIOFence
-	carriers      *outbound.RuntimeIOFenceSet
-	begin         func(context.Context) (context.Context, func(), error)
-	gate          atomic.Bool
-	ingress       atomic.Bool
-	mu            sync.Mutex
-	staged        bool
-	stageDone     chan struct{}
-	stageErr      error
-	closing       bool
-	closeOnce     sync.Once
-	closeDone     chan struct{}
-	closeErr      error
-	nativeOnce    sync.Once
-	nativeErr     error
-	nativeClose   func() error
-	nativeRelease func()
+	source           adapter.RuntimeResourceSource
+	scope            *adapter.Scope
+	ctx              context.Context
+	cancel           context.CancelFunc
+	callbacks        *outbound.RuntimeIOFence
+	carriers         *outbound.RuntimeIOFenceSet
+	begin            func(context.Context) (context.Context, func(), error)
+	gate             atomic.Bool
+	ingress          atomic.Bool
+	mu               sync.Mutex
+	staged           bool
+	stageDone        chan struct{}
+	stageErr         error
+	closing          bool
+	closeOnce        sync.Once
+	closeDone        chan struct{}
+	closeErr         error
+	nativeOnce       sync.Once
+	nativeErr        error
+	nativeClose      func() error
+	nativeRelease    func()
+	diagnosticPhase  atomic.Uint32
+	diagnosticFailed atomic.Bool
 }
 
 func (e *endpointBase) initializeRuntime(ctx context.Context, system bool) error {
@@ -105,8 +107,10 @@ func (r *runtimeClientState) closeNative() error {
 
 func (r *runtimeClientState) close() error {
 	r.closeOnce.Do(func() {
+		r.diagnosticPhase.Store(1) // cancellation and fence sealing
 		r.closeErr = tls.NewRuntimeCleanupError(errors.New("endpoint cleanup did not complete"))
 		defer close(r.closeDone)
+		defer func() { r.diagnosticFailed.Store(r.closeErr != nil) }()
 		r.mu.Lock()
 		r.closing = true
 		done := r.stageDone
@@ -116,18 +120,27 @@ func (r *runtimeClientState) close() error {
 		r.cancel()
 		_ = r.callbacks.Close()
 		r.carriers.Stop()
+		r.diagnosticPhase.Store(2) // stage join
 		if done != nil {
 			<-done
 		}
+		r.diagnosticPhase.Store(3) // native client close
 		nativeErr := r.closeNative()
+		r.diagnosticPhase.Store(4) // callbacks join
 		callbackErr := r.callbacks.Wait()
-		r.closeErr = errors.Join(nativeErr, callbackErr, r.scope.Close(), r.carriers.Wait())
+		r.diagnosticPhase.Store(5) // endpoint/device scope close
+		scopeErr := r.scope.Close()
+		r.diagnosticPhase.Store(6) // owned carrier join
+		carrierErr := r.carriers.Wait()
+		r.closeErr = errors.Join(nativeErr, callbackErr, scopeErr, carrierErr)
 		if tls.IsRuntimeCleanupIncomplete(r.stageErr) {
 			r.closeErr = errors.Join(r.closeErr, r.stageErr)
 		}
 		if r.closeErr != nil {
 			r.closeErr = tls.NewRuntimeCleanupError(r.closeErr)
 		}
+		r.diagnosticFailed.Store(r.closeErr != nil)
+		r.diagnosticPhase.Store(7) // actual close returned
 	})
 	<-r.closeDone
 	return r.closeErr

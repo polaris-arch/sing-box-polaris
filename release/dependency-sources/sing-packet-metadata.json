@@ -1,0 +1,45 @@
+{
+  "schema": "polaris-owned-packet-metadata-source-v1",
+  "module": "github.com/sagernet/sing",
+  "version": "v0.9.7-0.20260929150544-6f21f2425a95",
+  "upstreamCommit": "6f21f2425a959912c37d2ef43d61e2a663315dea",
+  "replacementPath": "./third_party/sing",
+  "baseProductCommit": "28f848c936608e2ad0fabd0ec5bcc32cf317a526",
+  "baseReplacementTree": "bdc317ad143368210802cba500a414102f677125",
+  "replacementTree": "a2015b78131415904c500b2ea3d76bb8aca12fd5",
+  "replacementFiles": 352,
+  "changes": [
+    {
+      "path": "common/network/thread.go",
+      "beforeSHA256": "e17c18c2be3fdcdbe056cf05b473cf216228c99557c104baec8b5533d0c4c115",
+      "afterSHA256": "f8bf319737f7325f462b793d913f53cee2588f213d008e0483b47c3d6a31f8fb",
+      "bytes": 7281,
+      "mode": "100644"
+    },
+    {
+      "path": "common/network/buffer_metadata.go",
+      "beforeSHA256": null,
+      "afterSHA256": "fbd5af9b122c32efbbc99116cfb7364c15cb15c1f1e506a80675fb12887c7736",
+      "bytes": 3360,
+      "mode": "100644"
+    },
+    {
+      "path": "common/network/buffer_metadata_test.go",
+      "beforeSHA256": null,
+      "afterSHA256": "768e16ffab402f8954e22500d7039c0660c8f3e376b4fecae91ac876e09a4ae6",
+      "bytes": 2781,
+      "mode": "100644"
+    }
+  ],
+  "patch": "release/dependency-sources/sing-packet-metadata.patch",
+  "patchSHA256": "f5614700cc8abcbb807f8bd4b19fd5887fe24c74dd2007b6fc6c69d35536f915",
+  "unchangedUpstreamFiles": {
+    "LICENSE": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+    "go.mod": "33f9b3c2b1125a5d252e66b06a51393a107194fceb181577aac5452c71b160d3",
+    "go.sum": "b568c316ca1b012b1b8164d9315087bd632c908e5130fd71322d8faecc39bcdf"
+  },
+  "historicalOwnershipReceipt": "release/dependency-sources/sing-6f21f2425a95/RECEIPT.json",
+  "historicalReceiptUnmodified": true,
+  "purpose": "Forward complete directional buffer metadata through the opaque route packet ownership boundary without revealing carriers. Preserve Lazy reset, writer minimum MTU, reader maximum MTU, dynamic sampling and outer task lifetime. No new module dependency or runtime privilege.",
+  "evidenceBoundary": "Source provenance only; native protocol and platform execution require receipts from the new exact product commit."
+}

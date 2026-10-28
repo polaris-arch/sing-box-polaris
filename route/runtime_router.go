@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
+	outbound "github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/common"
 	N "github.com/sagernet/sing/common/network"
 )
@@ -84,6 +85,7 @@ func (r *RuntimeRouter) RouteConnectionEx(ctx context.Context, conn net.Conn, me
 			}
 		})
 	}
+	ctx = outbound.ContextWithRuntimeInboundClose(ctx, conn)
 	owned := &runtimeConn{Conn: conn, lease: lease, finish: finish}
 	lease.View().Router().RouteConnectionEx(adapter.ContextWithRuntimeLease(ctx, lease), owned, metadata, finish)
 }
@@ -253,6 +255,18 @@ type runtimePacketConn struct {
 }
 
 func (c *runtimePacketConn) Close() error { err := c.PacketConn.Close(); c.finish(err); return err }
+
+// PacketWriter operates on caller-owned buffers. Preserve the exact allocation
+// contract without exposing an Upstream carrier or a replaceable I/O path.
+// The directional scalar boundary includes lazy reset semantics; ordinary int
+// forwarding alone would incorrectly retain metadata from outer wrappers.
+func (c *runtimePacketConn) ReaderBufferMetadata() N.ReaderBufferMetadata {
+	return N.CalculateReaderBufferMetadata(c.PacketConn)
+}
+
+func (c *runtimePacketConn) WriterBufferMetadata() N.WriterBufferMetadata {
+	return N.CalculateWriterBufferMetadata(c.PacketConn)
+}
 
 func (c *runtimePacketConn) PacketConnHandshakeSuccess(conn net.PacketConn) error {
 	return runtimeHandshake(c.lease, func() error { return N.ReportPacketConnHandshakeSuccess(c.PacketConn, conn) })

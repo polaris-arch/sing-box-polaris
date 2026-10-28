@@ -105,7 +105,7 @@ func unwrapSpliceTarget(conn any, allowOffload bool) (spliceTarget, bool) {
 }
 
 func (m *ConnectionManager) spliceClose(ctx context.Context, conn io.Closer, remote io.Closer, onClose N.CloseHandlerFunc) (N.CloseHandlerFunc, func(), error) {
-	done, err := m.reserveTask()
+	done, err := m.reserveFlowTask(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -40,3 +40,9 @@ third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=
 
 # This fixture revision is a raw-byte SDK/FileStore contract on every checkout.
 /protocol/tailscale/testdata/synthetic-sealed-state.json text eol=lf
+
+# Source-owned Vision closure and byte-offset notice must survive every checkout.
+/third_party/sing-vmess/** -text
+/release/dependency-sources/sing-vmess-replacement.json -text
+/release/dependency-sources/sing-vmess-vision.patch -text
+/release/licenses/CURRENT44-NOTICE-CANDIDATE.txt -text

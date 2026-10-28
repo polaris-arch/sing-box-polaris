@@ -20,6 +20,7 @@ MODULES = {
     'third_party/tailscale': SDK,
     'third_party/wireguard-go': 'github.com/sagernet/wireguard-go',
     'third_party/tfo-go': 'github.com/database64128/tfo-go/v2',
+    'third_party/sing-vmess': 'github.com/sagernet/sing-vmess',
 }
 MARKERS = {'third_party/sing-tun': 'sing-tun-selected',
            'third_party/metacubex-utls': 'metacubex-utls-selected',
@@ -29,7 +30,8 @@ MARKERS = {'third_party/sing-tun': 'sing-tun-selected',
            'third_party/sing-quic': 'sing-quic-selected',
            'third_party/tailscale': 'tailscale-selected',
            'third_party/wireguard-go': 'wireguard-go-selected',
-           'third_party/tfo-go': 'tfo-go-selected'}
+           'third_party/tfo-go': 'tfo-go-selected',
+           'third_party/sing-vmess': 'sing-vmess-selected'}
 
 # The SDK gate is deliberately bounded and shared with G4. Run these import
 # paths from the root module so its verified replacements remain effective.

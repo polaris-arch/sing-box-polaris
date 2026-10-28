@@ -3,7 +3,74 @@ import json,re,unittest,yaml
 import contextlib,copy,io,os,shlex,shutil,subprocess,sys,tempfile
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
+class TestVisionSourceContract(unittest.TestCase):
+ def test_every_source_boundary_rejects_tampering(self):
+  from vision_source import validate, BINDING
+  for kind in ('bytes','mode','extra','missing','link','root-replace','provider-version','patch','notice','tree'):
+   with self.subTest(kind=kind),tempfile.TemporaryDirectory() as tmp:
+    root=Path(tmp)
+    from test_vision_source import fixture,git
+    fixture(root)
+    target=root/'third_party/sing-vmess/vless/vision.go'
+    if kind=='bytes':target.write_bytes(target.read_bytes()+b'\n')
+    elif kind=='mode':
+     if sys.platform=='win32':git(root,'update-index','--chmod=+x','third_party/sing-vmess/vless/vision.go')
+     else:target.chmod(0o755)
+    elif kind=='extra':(target.parent/'foreign.go').write_text('package vless\n')
+    elif kind=='missing':target.unlink()
+    elif kind=='link':target.unlink();target.symlink_to(ROOT/'third_party/sing-vmess/vless/vision.go')
+    elif kind=='root-replace':
+     target=root/'go.mod';target.write_text(target.read_text().replace('=> ./third_party/sing-vmess','=> ../foreign'))
+    elif kind=='provider-version':
+     target=root/'go.mod';target.write_text(target.read_text().replace('ff1b50fbbe9a','000000000000'))
+    elif kind=='patch':
+     target=root/'release/dependency-sources/sing-vmess-vision.patch';target.write_bytes(target.read_bytes()+b'\n')
+    elif kind=='notice':
+     target=root/'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt';target.write_bytes(b'wrong')
+    else:
+     target=root/BINDING;doc=json.loads(target.read_text());doc['replacementTree']='0'*40;target.write_text(json.dumps(doc))
+    expected={'bytes':'worktree bytes|complete source', 'mode':'HEAD/index|complete source',
+              'extra':'worktree bytes|complete source', 'missing':'worktree bytes|complete source',
+              'link':'replacement link', 'root-replace':'root replacement',
+              'provider-version':'provider pin', 'patch':'patch identity', 'notice':'upstream notice',
+              'tree':'complete source'}[kind]
+    with self.assertRaisesRegex(ValueError,expected):validate(root)
+
 class TestCIContract(unittest.TestCase):
+ def test_owned_packet_metadata_source_binding_preserves_history(self):
+  import hashlib
+  document=json.loads((ROOT/'release/dependency-sources/sing-packet-metadata.json').read_bytes())
+  self.assertEqual(document['baseProductCommit'],'28f848c936608e2ad0fabd0ec5bcc32cf317a526')
+  self.assertEqual(document['version'],'v0.9.7-0.20260929150544-6f21f2425a95')
+  self.assertEqual(document['replacementPath'],'./third_party/sing')
+  self.assertEqual({x['path'] for x in document['changes']},{'common/network/thread.go','common/network/buffer_metadata.go','common/network/buffer_metadata_test.go'})
+  self.assertEqual(hashlib.sha256((ROOT/document['patch']).read_bytes()).hexdigest(),document['patchSHA256'])
+  for change in document['changes']:
+   raw=(ROOT/'third_party/sing'/change['path']).read_bytes()
+   self.assertEqual(hashlib.sha256(raw).hexdigest(),change['afterSHA256'])
+   self.assertEqual(len(raw),change['bytes'])
+  historical=json.loads((ROOT/document['historicalOwnershipReceipt']).read_bytes())
+  for path,field in [('LICENSE','license_sha256'),('go.mod','go_mod_sha256'),('go.sum','go_sum_sha256')]:
+   value=hashlib.sha256((ROOT/'third_party/sing'/path).read_bytes()).hexdigest()
+   self.assertEqual(value,document['unchangedUpstreamFiles'][path]);self.assertEqual(value,historical[field])
+  self.assertIn('replace github.com/sagernet/sing => ./third_party/sing',(ROOT/'go.mod').read_text())
+ def test_vision_vendor_source_and_product_graph_gates_are_complete(self):
+  from vision_source import validate
+  identity=validate(ROOT)
+  self.assertEqual(identity['module'],'github.com/sagernet/sing-vmess')
+  workflow=yaml.safe_load((ROOT/'.github/workflows/test.yml').read_text())
+  job=workflow['jobs']['test']
+  step=next(s for s in job['steps'] if s.get('name')=='Test Vision providers through the product dependency graph')
+  self.assertEqual(step['shell'],'bash')
+  for flag in ('-mod=readonly','-race','-gcflags=all=-d=checkptr=2','-count=1','github.com/sagernet/sing-vmess/...'):
+   self.assertIn(flag,step['run'])
+  self.assertNotIn('cd third_party',step['run'])
+  self.assertNotIn('sudo',step['run'])
+  self.assertNotIn('if',step)
+  self.assertNotIn('continue-on-error',step)
+  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
+  source=(ROOT/'scripts/ci/utls_gate.py').read_text()
+  self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)",source)
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
@@ -217,6 +284,9 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(set(w['on']),{'workflow_dispatch'},filename)
    for job,matrix in baseline[up].items():
     actual=copy.deepcopy(w['jobs'][job]['strategy']['matrix'])
+    if filename=='build.yml' and job=='build':
+     from test_protocol_peer import normal_build_matrix
+     actual=normal_build_matrix(actual)
     if job=='build' and filename in ('build.yml','signed-release.yml'):
      actual['include']+=w['jobs']['build_windows7']['strategy']['matrix']['include']
      self.assertCountEqual(actual['include'],matrix['include'],(filename,job))
@@ -370,7 +440,7 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
   self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(w['jobs']['calculate_version']['if'],"inputs.build != 'Source' && !inputs.source_generate_only")
+  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
   gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
