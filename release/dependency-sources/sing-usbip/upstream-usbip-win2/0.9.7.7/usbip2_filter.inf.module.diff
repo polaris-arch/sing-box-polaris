@@ -1,0 +1,46 @@
+--- fixed-upstream
+
++++ exact-module
+
+@@ -12,6 +12,7 @@
+
+ ExtensionId = {c1e0d1fe-d564-596e-4526-71da1249702a}
+ CatalogFile = usbip2_filter.cat
+ PnpLockDown = 1
++DriverVer = 04/19/2026,21.14.27.661
+ 
+ [DestinationDirs]
+ DefaultDestDir = 13 ; DriverStore
+@@ -24,17 +25,17 @@
+
+ 
+ [Manufacturer]
+ ; Windows 10, version 1903 and later
+-%Manufacturer% = Generic, NT$ARCH$.10.0...18362
++%Manufacturer% = Generic, NTamd64.10.0...18362
+ 
+-[Generic.NT$ARCH$.10.0...18362]
++[Generic.NTamd64.10.0...18362]
+ ; HWID of "USB Root Hub (USB 3.0)" located on "USBip 3.X Emulated Host Controller"
+ ; See C:\Windows\INF\usbhub3.inf
+ %DisplayName% = Generic_Inst, USB\ROOT_HUB30
+ 
+-[Generic_Inst.NT$ARCH$]
++[Generic_Inst.NTamd64]
+ CopyFiles = @usbip2_filter.sys
+ 
+-[Generic_Inst.NT$ARCH$.Filters]  
++[Generic_Inst.NTamd64.Filters]  
+ ; this directive is supported in Windows 10 version 1903 and later
+ AddFilter = usbip2_filter,,usbip2_filter_Filter_Inst
+   
+@@ -42,7 +43,7 @@
+
+ ; HKLM\SYSTEM\CurrentControlSet\Enum\USB\ROOT_HUB30\<DEVICE_ID>\Filters\*Upper
+ FilterPosition = Upper
+ 
+-[Generic_Inst.NT$ARCH$.Services]
++[Generic_Inst.NTamd64.Services]
+ AddService = usbip2_filter,,usbip2_filter_Service_Inst
+ 
+ [usbip2_filter_Service_Inst]

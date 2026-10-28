@@ -5,13 +5,14 @@ import (
 
 	"github.com/sagernet/sing-box/schema"
 	"github.com/sagernet/sing/common/json"
+	"github.com/sagernet/sing/common/json/badoption"
 )
 
 type TailcatDERPOptions struct {
-	DERPMapURL  string              `json:"derp_map_url,omitempty"`
-	DERPRegion  int                 `json:"derp_region,omitempty"`
-	DERPServers []TailcatDERPServer `json:"derp_servers,omitempty"`
-	HTTPClient  *HTTPClientOptions  `json:"http_client,omitempty"`
+	DERPMapURL  string                                `json:"derp_map_url,omitempty"`
+	DERPRegion  int                                   `json:"derp_region,omitempty"`
+	DERPServers badoption.Listable[TailcatDERPServer] `json:"derp_servers,omitempty"`
+	HTTPClient  *HTTPClientOptions                    `json:"http_client,omitempty"`
 }
 
 type _TailcatDERPServer struct {

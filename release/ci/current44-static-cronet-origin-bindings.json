@@ -1,0 +1,304 @@
+{
+  "schema": "polaris-current44-static-cronet-origin-binding-v1",
+  "originTree": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+  "originTreeNontruncated": true,
+  "bindings": [
+    {
+      "platform": "linux-386-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_386",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:YKTs7860q5YC+arXDoxuAuCq4Ba7hcJnau7/QtkVgcs=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_386/libcronet.a",
+      "gitBlob": "5d4addc815537a6fb3f80250965a99b4ae46b822",
+      "bytes": 53983112,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_386/libcronet_cgo.go",
+        "gitBlob": "31aa5791fea48199b6beff7170d0f3d9b20a567a",
+        "sha256": "f59c87e30f0d5f5099d8230099e481484e53f7bf00b888bd5b140d166e041030",
+        "text": "//go:build linux && !android && 386 && !with_musl && !with_purego\n\npackage linux_386\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-386-musl",
+      "module": "github.com/sagernet/cronet-go/lib/linux_386_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:GbLerpkeRw1SGLHkwSNZXzR02f4aecpOBscKOp2vRkE=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_386_musl/libcronet.a",
+      "gitBlob": "70b14b62bc24efa16e952d59031f509338eeb3bf",
+      "bytes": 53472594,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_386_musl/libcronet_cgo.go",
+        "gitBlob": "8c7dbef5313daf77b5884ad7eac179934b8d2538",
+        "sha256": "90104015ea448c00f6ed2d4d53e7d532b3ae34ac46b0a9cc47407233d46e55aa",
+        "text": "//go:build linux && !android && 386 && with_musl && !with_purego\n\npackage linux_386_musl\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lresolv -static\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-amd64-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_amd64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_amd64/libcronet.a",
+      "gitBlob": "ebfb30ce18fed7db68d79563a8c2771dbe968b43",
+      "bytes": 60643194,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_amd64/libcronet_cgo.go",
+        "gitBlob": "e2ace41ca67e84ade772eae84e4735c66920448a",
+        "sha256": "bf675c53984698b91be1e9b82a46a41bffb3215a5f912e35656e80079fc57851",
+        "text": "//go:build linux && !android && amd64 && !with_musl && !with_purego\n\npackage linux_amd64\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-arm64-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:ka6fV7nmcXuxxxViMv3lcO1VZQ7og9BWDTsChbdOs5o=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_arm64/libcronet.a",
+      "gitBlob": "0b3cdf5fe2ca41c49868abc38e984cb3d8a8c621",
+      "bytes": 63342644,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_arm64/libcronet_cgo.go",
+        "gitBlob": "5688eecaf4ef364423a77157be0b56d4ec6ea26a",
+        "sha256": "ab9dfdffba2785acca9f291a2c16a8eec9b9e93e51e9bd5f255344da659c674a",
+        "text": "//go:build linux && !android && arm64 && !with_musl && !with_purego\n\npackage linux_arm64\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-armv7-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:1z4WrEbt5eB6Arpltl/x4pL/cooe6sn+grHrXk0lDCw=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_arm/libcronet.a",
+      "gitBlob": "33bbbb09ca7654f26c7ffb6b929071c73d88a783",
+      "bytes": 62108764,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_arm/libcronet_cgo.go",
+        "gitBlob": "590c78d5770e9bc72ca325329bb24d3a1bcb8ce1",
+        "sha256": "f6363fc2e983202b4f9e12726c0e2ec0060c76dc9b27ea0935615769621cca68",
+        "text": "//go:build linux && !android && arm && !with_musl && !with_purego\n\npackage linux_arm\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-armv7-musl",
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:6h/hBfvE9xr+FszN4fvHPlRuMQmkhveOVnlfPiJcNW0=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_arm_musl/libcronet.a",
+      "gitBlob": "7e598899c9169bd6c32e397f6bad8f6efec4eadc",
+      "bytes": 61543888,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_arm_musl/libcronet_cgo.go",
+        "gitBlob": "0ed85232181b23a2cc65aac4541b261defae19dd",
+        "sha256": "9bad649ed1c004e77a3f02ae53d522ccdc7f5d9df6eadc7dfeba5b02a6e858d3",
+        "text": "//go:build linux && !android && arm && with_musl && !with_purego\n\npackage linux_arm_musl\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lresolv -static\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-loong64-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_loong64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:/Vy00lZZkG5usxUMAD/9vRTT93KvJh8NAO4lP1IZEVU=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_loong64/libcronet.a",
+      "gitBlob": "792e8452e5ff4199e89590661c2b5bf7f49adf8b",
+      "bytes": 71017364,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_loong64/libcronet_cgo.go",
+        "gitBlob": "34a23da721774ff82b70a213c372c93a60478683",
+        "sha256": "f03fd209f6e1a399938e72b02cf04af619813357fdf7231ffcb07d36a9159505",
+        "text": "//go:build linux && !android && loong64 && !with_musl && !with_purego\n\npackage linux_loong64\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-loong64-musl",
+      "module": "github.com/sagernet/cronet-go/lib/linux_loong64_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:r6u8oKJ19t4gNtmggIgFgybaMLa3bliALxFTNN/OUy0=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_loong64_musl/libcronet.a",
+      "gitBlob": "a025be8283970c5425f57d09b7491ebbbcb9542d",
+      "bytes": 70168758,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_loong64_musl/libcronet_cgo.go",
+        "gitBlob": "25cc8ba9c5eb818b342403133f7bd7cb7e6fe994",
+        "sha256": "2b23c63343b8ce7205615ee1a47cc55c3e4a1d919ba79a15ca78e8b9e12cce3f",
+        "text": "//go:build linux && !android && loong64 && with_musl && !with_purego\n\npackage linux_loong64_musl\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lresolv -static\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-mips64le-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_mips64le",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:ZWfdGEaOPFCsvX26dQi3ac80nL8HP6hmHtRhy4MsYlI=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_mips64le/libcronet.a",
+      "gitBlob": "c7f9b5384d8dd18cda184380370c554060392931",
+      "bytes": 91099148,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_mips64le/libcronet_cgo.go",
+        "gitBlob": "a3f736c1735002257fadc48abd03bb043cea32fe",
+        "sha256": "9628d71be2ca1a2ddad2345844dec9bee31fe430de20966da0e5ecd0824d04cc",
+        "text": "//go:build linux && !android && mips64le && !with_musl && !with_purego\n\npackage linux_mips64le\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-mipsle-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_mipsle",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:kYGMQ9qe7MyK8qpTuFaleAxVrQx9DAez1jNKFCFMLVQ=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_mipsle/libcronet.a",
+      "gitBlob": "f7d8b53bcddadf26edddd98b312c6749cf5bd5d1",
+      "bytes": 70931316,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_mipsle/libcronet_cgo.go",
+        "gitBlob": "b17ee53fc96f9c7490569a2d951eeb05575456b1",
+        "sha256": "c6408a5bdcb32e51ecedea935b613f72549ee2b42f35d1385abaf439548f4aaf",
+        "text": "//go:build linux && !android && mipsle && !with_musl && !with_purego\n\npackage linux_mipsle\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -latomic -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-mipsle-softfloat-musl",
+      "module": "github.com/sagernet/cronet-go/lib/linux_mipsle_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:a2/KeGNQagO+eexS97/qykr68YLr616QRFot4aV4sJ4=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_mipsle_musl/libcronet.a",
+      "gitBlob": "6e58661ddf3dbc45af1c000f557f7230bc2a2604",
+      "bytes": 70260436,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_mipsle_musl/libcronet_cgo.go",
+        "gitBlob": "618ac60abbec5b9b28a036729365c1ad60255739",
+        "sha256": "8c6854b68148668345a76b15855354b08f4d9f71fcfe2da6ae8ccc0bb138ce91",
+        "text": "//go:build linux && !android && mipsle && with_musl && !with_purego\n\npackage linux_mipsle_musl\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -latomic -ldl -lpthread -lrt -lresolv -static\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-riscv64-glibc",
+      "module": "github.com/sagernet/cronet-go/lib/linux_riscv64",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:lxJLDTBemaS8j+xdOeK+EdxH4FSEndxNG321AO7f/ds=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_riscv64/libcronet.a",
+      "gitBlob": "94a56f749f330655d8931772afd8f888f32b605c",
+      "bytes": 75261976,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_riscv64/libcronet_cgo.go",
+        "gitBlob": "7bfb703a81fb68243c2b16bd7ed97bfb2958e2a5",
+        "sha256": "2f5689e51651307b09bc9a936e65f64b7861b024d609db886419efac5191b4ee",
+        "text": "//go:build linux && !android && riscv64 && !with_musl && !with_purego\n\npackage linux_riscv64\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lm -lresolv\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    },
+    {
+      "platform": "linux-riscv64-musl",
+      "module": "github.com/sagernet/cronet-go/lib/linux_riscv64_musl",
+      "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "h1FromActualCurrentBinary": "h1:1ycIIAvgJsm6opK1nrXgle7QVCo9lOtyUGEDEeDOJQQ=",
+      "originCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "libraryPath": "lib/linux_riscv64_musl/libcronet.a",
+      "gitBlob": "205c5ad456d555a72b8883fb1344dba803effabd",
+      "bytes": 74368678,
+      "libraryGitBlobUnchangedAtWrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+      "linkPath": {
+        "path": "lib/linux_riscv64_musl/libcronet_cgo.go",
+        "gitBlob": "d620ef77a38d9f4c704f02a90125f11157fbbc33",
+        "sha256": "4fa9995a54eb0d52093a7bb6cffeff507b49b0cdf4e4d0c2c31c3fdf0c1a8fb0",
+        "text": "//go:build linux && !android && riscv64 && with_musl && !with_purego\n\npackage linux_riscv64_musl\n\n// #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lresolv -static\nimport \"C\"\n\nconst Version = \"154.0.8037.49\"\n"
+      },
+      "sourceDriverCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "engineCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "sourceScope": "fixed prebuilt module h1 plus original Git blob and direct cgo link input; no rebuilt/replaced libcronet.a in reviewed current producer",
+      "fullLibraryBytesRefetched": false,
+      "actualLibrarySHA256": null
+    }
+  ],
+  "conclusion": "13 static inputs are concretely fixed by actual binary module h1, original-source Git blob/size, same wrapper-tree blob and direct source link path. Lack of separate library SHA256 is not a standalone source/notice blocker. No independent fresh library byte hash or bit-identical rebuild is asserted.",
+  "producerReview": {
+    "sourceCommit": "68ffb209ded1f9337f9115741cba24f9f4c63421",
+    "path": ".github/workflows/build.yml",
+    "steps": [
+      "Clone fixed Cronet Go source and gitlink only to obtain matching toolchain environment",
+      "Download matching Chromium toolchain and export CC/CXX environment",
+      "go build -trimpath with current go.mod/go.sum and with_naive_outbound/with_musl tags; cgo module directly links its own -L${SRCDIR} -l:libcronet.a"
+    ],
+    "libraryMutationStepFound": false
+  }
+}

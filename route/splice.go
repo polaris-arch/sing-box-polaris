@@ -269,11 +269,9 @@ func (m *ConnectionManager) splicePacketConnection(ctx context.Context, conn N.P
 	nat.Unidirectional = !isFakeIP && metadata.UDPDisableDomainUnmapping && !metadata.Destination.IsIP()
 	cached := spliceSource.takeCached()
 	if spliceSource.natConn.Splice(target.socket, tun.SplicePacketOptions{
-		SpliceOptions: tun.SpliceOptions{
-			ReadCounters:  append(spliceSource.readCounters, target.writeCounters...),
-			WriteCounters: append(target.readCounters, spliceSource.writeCounters...),
-			OnClose:       m.spliceClose(ctx, conn, remote.(io.Closer), onClose),
-		},
+		ReadCounters:  append(spliceSource.readCounters, target.writeCounters...),
+		WriteCounters: append(target.readCounters, spliceSource.writeCounters...),
+		OnClose:       m.spliceClose(ctx, conn, remote.(io.Closer), onClose),
 		Timeout:       udpTimeout,
 		NAT:           nat,
 		Cached:        cached,

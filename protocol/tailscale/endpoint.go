@@ -83,6 +83,9 @@ type Endpoint struct {
 	network           adapter.NetworkManager
 	platformInterface adapter.PlatformInterface
 	detour            string
+	stateStore        *guardedStateStore
+	directory         *directoryOwner
+	directoryStartMu  sync.Mutex
 	server            *tsnet.Server
 	stack             *tun.Go
 	returnAccess      sync.Mutex
@@ -178,6 +181,25 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	taildropDirectory = filemanager.BasePath(ctx, os.ExpandEnv(taildropDirectory))
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
+	// Only the trusted original native owner can supply this whole-config plan.
+	// Filesystem selection is atomic under the directory protocol, before any
+	// SDK store/server/taildrop handle can capture a path.
+	var initialLease *directoryLease
+	if mapping := adapter.TailscaleDirectoryMappingFromContext(ctx); mapping != nil {
+		physicalState, physicalTaildrop, allowed := mapping.Resolve(stateDirectory, taildropDirectory)
+		if !allowed {
+			return nil, E.New("managed directory mapping lost authority")
+		}
+		actual, lease, leaseErr := acquireMappedDirectory(stateDirectory, physicalState)
+		if leaseErr != nil {
+			return nil, leaseErr
+		}
+		initialLease = lease
+		if actual == physicalState {
+			taildropDirectory = physicalTaildrop
+		}
+		stateDirectory = actual
+	}
 	tailscaleEndpoint := &Endpoint{
 		Adapter:           endpoint.NewAdapter(C.TypeTailscale, tag, []string{N.NetworkTCP, N.NetworkUDP, N.NetworkICMP}, nil),
 		ctx:               ctx,
@@ -236,7 +258,29 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		keyAuth:                    options.AuthKey != "",
 		onDemand:                   options.OnDemand,
 	}
+	tailscaleEndpoint.directory = newDirectoryOwner(ctx, tag, stateDirectory)
+	if initialLease != nil {
+		d := tailscaleEndpoint.directory
+		d.leaseOnce.Do(func() {
+			d.lease, d.admitted = initialLease, true
+			d.node.DirectoryIdentity, d.node.Incarnation, d.node.DirectoryEpoch = initialLease.Identity, initialLease.Incarnation, initialLease.Epoch
+		})
+	}
+	tailscaleEndpoint.server.DirectoryScope = tailscaleEndpoint.directory.scope
+	tailscaleEndpoint.taildrop.directoryReady = tailscaleEndpoint.directory.ready
+	if options.SSHServer != nil && options.SSHServer.Enabled {
+		// Arbitrary shell/SFTP subprocess IO is not a bounded directory
+		// capability. Preserve SSH behavior but never certify this directory.
+		tailscaleEndpoint.directory.node.Failure = "SSH filesystem capability is not retirement-scoped"
+	}
+	tailscaleEndpoint.stateStore = makeStateStore(ctx, tag, stateDirectory, tailscaleEndpoint.directory.scope)
+	tailscaleEndpoint.stateStore.directoryReady = tailscaleEndpoint.directory.ready
+	tailscaleEndpoint.server.Store = tailscaleEndpoint.stateStore
 	tailscaleEndpoint.server.NetstackHandler = tailscaleEndpoint
+	err = adapter.DeferConstructionCleanup(ctx, tailscaleEndpoint.closeDirectoryAndStore)
+	if err != nil {
+		return nil, err
+	}
 	return tailscaleEndpoint, nil
 }
 
@@ -248,6 +292,24 @@ func (t *Endpoint) References() []string {
 }
 
 func (t *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	t.directoryStartMu.Lock()
+	defer t.directoryStartMu.Unlock()
+	// A permanently sealed Store cannot re-enter Start, including before the
+	// directory owner was initialized. Reject it before acquiring any lease.
+	if t.stateStore != nil && t.stateStore.isSealed() {
+		return os.ErrClosed
+	}
+	release, directoryErr := t.directory.scope.Begin()
+	if directoryErr != nil {
+		return directoryErr
+	}
+	defer release()
+	if err := t.directory.acquire(); err != nil {
+		return err
+	}
+	if t.stateStore != nil && t.stateStore.isSealed() {
+		return os.ErrClosed
+	}
 	switch stage {
 	case adapter.StartStateInitialize:
 		t.server.NetstackMemoryPressure = oomkiller.MemoryPressure(t.ctx)
@@ -256,7 +318,11 @@ func (t *Endpoint) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return E.Cause(mkdirErr, "create state directory")
 		}
 		if !version.IsAppleTV() {
-			mkdirErr = filemanager.MkdirAll(t.ctx, t.taildrop.directory, 0o700)
+			if t.directory.managedPaths {
+				mkdirErr = t.prepareTaildropDirectory()
+			} else {
+				mkdirErr = filemanager.MkdirAll(t.ctx, t.taildrop.directory, 0o700)
+			}
 			if mkdirErr != nil {
 				return E.Cause(mkdirErr, "create taildrop directory")
 			}
@@ -311,9 +377,7 @@ func (t *Endpoint) start(scope *adapter.Scope) error {
 			return err
 		}
 		systemDialer, err := dialer.NewDefault(t.ctx, option.DialerOptions{
-			AbstractDialerOptions: option.AbstractDialerOptions{
-				BindInterface: tunName,
-			},
+			BindInterface: tunName,
 		})
 		if err != nil {
 			return err
@@ -327,9 +391,15 @@ func (t *Endpoint) start(scope *adapter.Scope) error {
 func (t *Endpoint) postStart(scope *adapter.Scope) error {
 	err := t.server.Start()
 	if err != nil {
+		t.directory.scope.Fail(err)
 		return err
 	}
-	scope.Add(t.server.Close)
+	t.directory.mu.Lock()
+	t.directory.serverStarted = true
+	t.directory.mu.Unlock()
+	// This bounded coordinator seals all directory IO and retains the original
+	// shutdown worker after timeout. Construction cleanup also calls it.
+	scope.Add(t.closeDirectory)
 	localBackend := t.server.ExportLocalBackend()
 	t.localBackend.Store(localBackend)
 	scope.Add(func() error {
@@ -337,7 +407,7 @@ func (t *Endpoint) postStart(scope *adapter.Scope) error {
 		return nil
 	})
 	scope.Add(func() error {
-		t.taildrop.close()
+		t.taildrop.seal()
 		return nil
 	})
 	if !version.IsAppleTV() {
@@ -469,11 +539,9 @@ func (t *Endpoint) watchState(ctx context.Context) {
 
 func (t *Endpoint) editPrefs(sshEnabled bool) error {
 	perfs := &ipn.MaskedPrefs{
-		Prefs: ipn.Prefs{
-			RouteAll:        t.acceptRoutes,
-			AdvertiseRoutes: t.advertiseRoutes,
-			RunSSH:          sshEnabled,
-		},
+		RouteAll:                      t.acceptRoutes,
+		AdvertiseRoutes:               t.advertiseRoutes,
+		RunSSH:                        sshEnabled,
 		RouteAllSet:                   true,
 		ExitNodeIPSet:                 true,
 		AdvertiseRoutesSet:            true,
@@ -503,9 +571,7 @@ func (t *Endpoint) applyExitNode() error {
 		return err
 	}
 	perfs := &ipn.MaskedPrefs{
-		Prefs: ipn.Prefs{
-			ExitNodeAllowLANAccess: t.exitNodeAllowLANAccess,
-		},
+		ExitNodeAllowLANAccess:    t.exitNodeAllowLANAccess,
 		ExitNodeIPSet:             true,
 		ExitNodeAllowLANAccessSet: true,
 	}
@@ -525,10 +591,8 @@ func (t *Endpoint) SetTailscaleExitNode(ctx context.Context, stableID string) er
 		return E.New("cannot advertise an exit node and use an exit node at the same time")
 	}
 	perfs := &ipn.MaskedPrefs{
-		Prefs: ipn.Prefs{
-			ExitNodeID:             tailcfg.StableNodeID(stableID),
-			ExitNodeAllowLANAccess: t.exitNodeAllowLANAccess,
-		},
+		ExitNodeID:                tailcfg.StableNodeID(stableID),
+		ExitNodeAllowLANAccess:    t.exitNodeAllowLANAccess,
 		ExitNodeIDSet:             true,
 		ExitNodeIPSet:             true,
 		ExitNodeAllowLANAccessSet: true,
@@ -650,7 +714,7 @@ func (t *Endpoint) suspendLocked() {
 		return
 	}
 	_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
-		Prefs:          ipn.Prefs{WantRunning: false},
+		WantRunning:    false,
 		WantRunningSet: true,
 	})
 	if err != nil {
@@ -678,7 +742,7 @@ func (t *Endpoint) resume(ctx context.Context) error {
 			return E.New("Tailscale is not ready yet")
 		}
 		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
-			Prefs:          ipn.Prefs{WantRunning: true},
+			WantRunning:    true,
 			WantRunningSet: true,
 		})
 		if err != nil {
@@ -723,7 +787,7 @@ func (t *Endpoint) awaitRunning(localBackend *ipnlocal.LocalBackend, resumeDone 
 		}
 	} else {
 		_, err := localBackend.EditPrefs(&ipn.MaskedPrefs{
-			Prefs:          ipn.Prefs{WantRunning: false},
+			WantRunning:    false,
 			WantRunningSet: true,
 		})
 		if err != nil {
@@ -930,10 +994,6 @@ func (t *Endpoint) PreferredAddress(metadata *adapter.InboundContext, address ne
 	}
 	peer, found := t.server.ExportLocalBackend().PeerForIP(address)
 	return found && !peer.IsSelf && peer.Route.Bits() > 0
-}
-
-func (t *Endpoint) Server() *tsnet.Server {
-	return t.server
 }
 
 func (t *Endpoint) onReconfig(cfg *wgcfg.Config, routerCfg *router.Config, dnsCfg *tsDNS.Config) {

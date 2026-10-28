@@ -1,0 +1,9 @@
+{
+  "h1": "h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=",
+  "module": "github.com/sagernet/sing-usbip",
+  "role": "source-module",
+  "version": "v0.0.0-20260817040617-28bd42667eca",
+  "zipBytes": 825692,
+  "zipSha256": "c3cb3fe1d9999fda98a232f813425d7376541f498b1c98e0fd2fe717b19aa7da",
+  "zipUrl": "https://proxy.golang.org/github.com/sagernet/sing-usbip/@v/v0.0.0-20260817040617-28bd42667eca.zip"
+}

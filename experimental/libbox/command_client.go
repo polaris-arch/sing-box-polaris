@@ -788,11 +788,9 @@ func (c *CommandClient) StartNetworkQualityTest(configURL string, outboundTag st
 
 	streamCtx, cancel := context.WithCancel(parentCtx)
 	session := &NetworkQualityTestSession{
-		streamSession: streamSession{
-			ctx:       streamCtx,
-			cancel:    cancel,
-			closeDone: make(chan struct{}),
-		},
+		ctx:       streamCtx,
+		cancel:    cancel,
+		closeDone: make(chan struct{}),
 	}
 
 	failStart := func(cause error, message string) (*NetworkQualityTestSession, error) {
@@ -864,11 +862,9 @@ func (c *CommandClient) StartSTUNTest(server string, outboundTag string, handler
 
 	streamCtx, cancel := context.WithCancel(parentCtx)
 	session := &STUNTestSession{
-		streamSession: streamSession{
-			ctx:       streamCtx,
-			cancel:    cancel,
-			closeDone: make(chan struct{}),
-		},
+		ctx:       streamCtx,
+		cancel:    cancel,
+		closeDone: make(chan struct{}),
 	}
 
 	failStart := func(cause error, message string) (*STUNTestSession, error) {
@@ -1130,11 +1126,9 @@ func (c *CommandClient) StartTailscalePing(endpointTag string, peerIP string, ha
 
 	streamCtx, cancel := context.WithCancel(parentCtx)
 	session := &TailscalePingSession{
-		streamSession: streamSession{
-			ctx:       streamCtx,
-			cancel:    cancel,
-			closeDone: make(chan struct{}),
-		},
+		ctx:       streamCtx,
+		cancel:    cancel,
+		closeDone: make(chan struct{}),
 	}
 
 	failStart := func(cause error, message string) (*TailscalePingSession, error) {
@@ -1395,12 +1389,10 @@ func (c *CommandClient) SendTaildropFiles(options *TaildropSendOptions, handler 
 		return failStart(sendErr, "send taildrop start")
 	}
 	session := &TaildropSendSession{
-		streamSession: streamSession{
-			ctx:       streamCtx,
-			cancel:    cancel,
-			closeDone: make(chan struct{}),
-		},
-		stream: stream,
+		ctx:       streamCtx,
+		cancel:    cancel,
+		closeDone: make(chan struct{}),
+		stream:    stream,
 	}
 
 	standalone := c.standalone
@@ -1470,11 +1462,9 @@ func (c *CommandClient) DownloadTaildropFile(endpointTag string, name string, de
 	}
 
 	session := &TaildropDownloadSession{
-		streamSession: streamSession{
-			ctx:       streamCtx,
-			cancel:    cancel,
-			closeDone: make(chan struct{}),
-		},
+		ctx:       streamCtx,
+		cancel:    cancel,
+		closeDone: make(chan struct{}),
 	}
 
 	standalone := c.standalone

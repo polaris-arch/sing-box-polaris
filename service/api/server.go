@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"errors"
+	"io"
 	"net"
 	"net/http"
 
@@ -106,11 +108,12 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if err != nil {
 		return err
 	}
-	scope.Add(s.listener.Close)
+	scope.Add(func() error {
+		return closeHTTPListener(httpServer, s.listener)
+	})
 	if s.tlsConfig != nil {
 		tcpListener = aTLS.NewListener(tcpListener, s.tlsConfig)
 	}
-	scope.Add(httpServer.Close)
 	go func() {
 		serveErr := httpServer.Serve(tcpListener)
 		if serveErr != nil && ctx.Err() == nil {
@@ -118,4 +121,18 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		}
 	}()
 	return nil
+}
+
+// closeHTTPListener closes the HTTP server and then the listener it serves.
+// http.Server.Close also closes the listener once Serve has registered it, so
+// a net.ErrClosed from the listener only confirms that the socket is gone. The
+// listener is still closed explicitly because Serve runs in its own goroutine
+// and may not have registered the socket yet.
+func closeHTTPListener(httpServer *http.Server, listener io.Closer) error {
+	httpErr := httpServer.Close()
+	listenerErr := listener.Close()
+	if errors.Is(listenerErr, net.ErrClosed) {
+		listenerErr = nil
+	}
+	return E.Errors(httpErr, listenerErr)
 }

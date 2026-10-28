@@ -1,0 +1,298 @@
+[
+  {
+    "package": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/include/freetype/freetype.h",
+    "path": "sources/freetype/version-source/include/freetype/freetype.h",
+    "sha256": "f8405ec80687d9e6c5fddb301288c370fe702f159a98b6152e9d32b3f68c2d46",
+    "bytes": 178794,
+    "versionEvidence": [
+      {
+        "line": 5211,
+        "text": "   *   FREETYPE_MAJOR ::"
+      },
+      {
+        "line": 5213,
+        "text": "   *   FREETYPE_MINOR ::"
+      },
+      {
+        "line": 5215,
+        "text": "   *   FREETYPE_PATCH ::"
+      },
+      {
+        "line": 5223,
+        "text": "#define FREETYPE_MAJOR  2"
+      },
+      {
+        "line": 5224,
+        "text": "#define FREETYPE_MINOR  13"
+      },
+      {
+        "line": 5225,
+        "text": "#define FREETYPE_PATCH  2"
+      },
+      {
+        "line": 5236,
+        "text": "   *   macros @FREETYPE_MAJOR, @FREETYPE_MINOR, and @FREETYPE_PATCH."
+      }
+    ]
+  },
+  {
+    "package": "libpng",
+    "archiveURL": "https://deps.files.ghostty.org/libpng-1220aa013f0c83da3fb64ea6d327f9173fa008d10e28bc9349eac3463457723b1c66.tar.gz",
+    "archiveSHA256": "fecc95b46cf05e8e3fc8a414750e0ba5aad00d89e9fdf175e94ff041caf1a03a",
+    "sourcePath": "libpng-1.6.43/png.h",
+    "path": "sources/libpng/version-source/png.h",
+    "sha256": "4be1482ccb03edbb14998345fa47cfe7ceca0463767032ab728c12f941ae0558",
+    "bytes": 143047,
+    "versionEvidence": [
+      {
+        "line": 278,
+        "text": "#define PNG_LIBPNG_VER_STRING \"1.6.43\""
+      },
+      {
+        "line": 279,
+        "text": "#define PNG_HEADER_VERSION_STRING \" libpng version \" PNG_LIBPNG_VER_STRING \"\\n\""
+      },
+      {
+        "line": 286,
+        "text": "/* These should match the first 3 components of PNG_LIBPNG_VER_STRING: */"
+      },
+      {
+        "line": 2665,
+        "text": "#define PNG_IMAGE_VERSION 1"
+      }
+    ]
+  },
+  {
+    "package": "zlib",
+    "archiveURL": "https://deps.files.ghostty.org/zlib-1220fed0c74e1019b3ee29edae2051788b080cd96e90d56836eea857b0b966742efb.tar.gz",
+    "archiveSHA256": "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
+    "sourcePath": "zlib-1.3.1/zlib.h",
+    "path": "sources/zlib/version-source/zlib.h",
+    "sha256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c",
+    "bytes": 96829,
+    "versionEvidence": [
+      {
+        "line": 40,
+        "text": "#define ZLIB_VERSION \"1.3.1\""
+      },
+      {
+        "line": 221,
+        "text": "/* The application can compare zlibVersion and ZLIB_VERSION for consistency."
+      },
+      {
+        "line": 244,
+        "text": "   with the version assumed by the caller (ZLIB_VERSION).  msg is set to null"
+      },
+      {
+        "line": 606,
+        "text": "   incompatible with the version assumed by the caller (ZLIB_VERSION).  msg is"
+      },
+      {
+        "line": 1800,
+        "text": "          deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1802,
+        "text": "          inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1805,
+        "text": "                        (strategy), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1807,
+        "text": "          inflateInit2_((strm), (windowBits), ZLIB_VERSION, \\"
+      },
+      {
+        "line": 1811,
+        "text": "                           ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1814,
+        "text": "          deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1816,
+        "text": "          inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1819,
+        "text": "                        (strategy), ZLIB_VERSION, (int)sizeof(z_stream))"
+      },
+      {
+        "line": 1821,
+        "text": "          inflateInit2_((strm), (windowBits), ZLIB_VERSION, \\"
+      },
+      {
+        "line": 1825,
+        "text": "                           ZLIB_VERSION, (int)sizeof(z_stream))"
+      }
+    ]
+  },
+  {
+    "package": "oniguruma",
+    "archiveURL": "https://deps.files.ghostty.org/oniguruma-1220c15e72eadd0d9085a8af134904d9a0f5dfcbed5f606ad60edc60ebeccd9706bb.tar.gz",
+    "archiveSHA256": "001aa1202e78448f4c0bf1a48c76e556876b36f16d92ce3207eccfd61d99f2a0",
+    "sourcePath": "oniguruma-6.9.9/src/oniguruma.h",
+    "path": "sources/oniguruma/version-source/src/oniguruma.h",
+    "sha256": "965177c46b965962c6d3f5f7b4f1640e3cff2b44c228660c942ab7bb28e40dca",
+    "bytes": 49077,
+    "versionEvidence": [
+      {
+        "line": 37,
+        "text": "#define ONIGURUMA_VERSION_MAJOR   6"
+      },
+      {
+        "line": 38,
+        "text": "#define ONIGURUMA_VERSION_MINOR   9"
+      },
+      {
+        "line": 39,
+        "text": "#define ONIGURUMA_VERSION_TEENY   9"
+      }
+    ]
+  },
+  {
+    "package": "highway",
+    "archiveURL": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+    "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212",
+    "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/CMakeLists.txt",
+    "path": "sources/highway/version-source/CMakeLists.txt",
+    "sha256": "fc4a13980a1c981ac6d304eec7e6badce94c0e98d5938ecde1477e0261a998fa",
+    "bytes": 30247,
+    "versionEvidence": [
+      {
+        "line": 18,
+        "text": "cmake_minimum_required(VERSION 3.10)"
+      },
+      {
+        "line": 39,
+        "text": "project(hwy VERSION 1.2.0)  # Keep in sync with base.h version"
+      }
+    ]
+  },
+  {
+    "package": "highway",
+    "archiveURL": "https://deps.files.ghostty.org/highway-66486a10623fa0d72fe91260f96c892e41aceb06.tar.gz",
+    "archiveSHA256": "87d4f8893ef4e08f224973608ffebf94268a81380ba79c12e8841968c80aa212",
+    "sourcePath": "highway-66486a10623fa0d72fe91260f96c892e41aceb06/hwy/targets.cc",
+    "path": "sources/highway/version-source/hwy/targets.cc",
+    "sha256": "9c1ab7e9ea4854ce0d3b40664fef1910c54c1a58b13cd30c4146eec4106c3235",
+    "bytes": 25019,
+    "versionEvidence": []
+  },
+  {
+    "package": "wuffs",
+    "archiveURL": "https://deps.files.ghostty.org/wuffs-7411f488fe2e2c205c3d3b3d28638b7356522930.tar.gz",
+    "archiveSHA256": "17877d346f7988651d6c62e45b2e3b05c86809a6442c5e34612374b2a9719a1c",
+    "sourcePath": "N-V-__8AAP5JWgCGP_AD0teWpa4krRvE9VPZzvviGdbmN4jI/release/c/wuffs-v0.4.c",
+    "path": "sources/wuffs/version-source/release/c/wuffs-v0.4.c",
+    "sha256": "1f8039ef82911604c063f6ac2ed57254bdb17d742aebdeae06356530d4a0fde7",
+    "bytes": 3625906,
+    "versionEvidence": [
+      {
+        "line": 59,
+        "text": "// WUFFS_VERSION is the major.minor.patch version, as per https://semver.org/,"
+      },
+      {
+        "line": 65,
+        "text": "// WUFFS_VERSION_PRE_RELEASE_LABEL (such as \"\", \"beta\" or \"rc.1\") being"
+      },
+      {
+        "line": 69,
+        "text": "// WUFFS_VERSION_BUILD_METADATA_XXX, if non-zero, are the number of commits and"
+      },
+      {
+        "line": 73,
+        "text": "// WUFFS_VERSION was overridden by \"wuffs gen -version\" based on revision"
+      },
+      {
+        "line": 75,
+        "text": "#define WUFFS_VERSION 0x000040000"
+      },
+      {
+        "line": 76,
+        "text": "#define WUFFS_VERSION_MAJOR 0"
+      },
+      {
+        "line": 77,
+        "text": "#define WUFFS_VERSION_MINOR 4"
+      },
+      {
+        "line": 78,
+        "text": "#define WUFFS_VERSION_PATCH 0"
+      },
+      {
+        "line": 79,
+        "text": "#define WUFFS_VERSION_PRE_RELEASE_LABEL \"alpha.10\""
+      },
+      {
+        "line": 80,
+        "text": "#define WUFFS_VERSION_BUILD_METADATA_COMMIT_COUNT 3966"
+      },
+      {
+        "line": 81,
+        "text": "#define WUFFS_VERSION_BUILD_METADATA_COMMIT_DATE 20260623"
+      },
+      {
+        "line": 82,
+        "text": "#define WUFFS_VERSION_STRING \"0.4.0-alpha.10+3966.20260623\""
+      },
+      {
+        "line": 7681,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 7910,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 8298,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 8602,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 8825,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 9046,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 9286,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 9576,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 9962,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 10417,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 10657,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 11037,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      },
+      {
+        "line": 11573,
+        "text": "// Pass sizeof(*self) and WUFFS_VERSION for sizeof_star_self and wuffs_version."
+      }
+    ]
+  }
+]

@@ -1,0 +1,358 @@
+{
+  "scope": "Finite acquisition; no builds, patch execution, GitHub writes or final Mach-O linkage test",
+  "verifiedSourceFiles": 61,
+  "allChecksPassed": true,
+  "checks": [
+    {
+      "path": "source/.github/workflows/build.yml",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/.github/workflows/release.yml",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Ghostty.ref",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/LICENSE",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0001-darwin-libghostty-install.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0002-host-managed-io.patch",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0003-prebuilt-framedata.patch",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0004-ios-fixes.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0005-ios-metal-rendering.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0006-disable-custom-shaders.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0007-disable-inspector.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0008-macos-metal-texture-storage.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0009-libcxx-apple-availability.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0010-fix-scroll-remainder-zeroing.patch",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0011-replay-response-suppression.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0012-visionos.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0013-host-toolchain.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0014-preserve-sync-on-resize.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0015-hold-frame-for-prompt-redraw.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0016-maccatalyst.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0017-zig-pkg-apple-targets.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/0018-screen-text-history.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/ghostty/README.md",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Patches/zig/README.md",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/README.md",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/apply-patches.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/build-ghostty.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/build-manifest.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/build-platform.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/build.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/check-licenses.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/merge-xcframework.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/prepare-zig-lib.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/storage-tag.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/support/anchored_edit.py",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "source/Script/support/libcxx-verbose-abort-compat.c",
+      "sha256Verified": true,
+      "gitBlobVerified": true,
+      "sameAtAssetTagRevision": true
+    },
+    {
+      "path": "zig-0.16.0/LICENSE",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/libcxx/LICENSE.TXT",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/libcxxabi/LICENSE.TXT",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/addf3.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/cos.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/log.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/udivmod.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/ubsan_rt.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/libc/musl/COPYRIGHT",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/trig.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/rem_pio2.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/rem_pio2f.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/rem_pio2l.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/sincos.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/exp.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/exp2.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/log2.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/sqrt.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "zig-0.16.0/lib/compiler_rt/fma.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "upstream/src/build/GhosttyLib.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "upstream/src/build/LibsystemOverrideStep.zig",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "upstream/src/build/libsystem_override.sh",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "llvm-port/compiler-rt/LICENSE.TXT",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    },
+    {
+      "path": "llvm-port/compiler-rt/lib/builtins/fp_add_impl.inc",
+      "sha256Verified": true,
+      "gitBlobVerified": true
+    }
+  ],
+  "independentGitBlobVerificationNotClaimed": [
+    "musl-port/log.c",
+    "musl-port/logf.c"
+  ],
+  "remainingAmbiguities": [
+    "No binary reproduction or build attestation",
+    "No final app Mach-O link inclusion proof",
+    "Not exhaustive compiler_rt third-party function/source-header closure",
+    "No proof that full libc++/libc++abi runtime libraries are bundled"
+  ]
+}

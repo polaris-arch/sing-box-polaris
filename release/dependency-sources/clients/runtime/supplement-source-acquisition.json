@@ -1,0 +1,505 @@
+{
+  "scope": "Exact-commit npm missing-license supplements and Android version tags resolved to fixed commits where possible; unresolved tags remain explicit; final artifact inclusion and binary reproducibility not proven",
+  "components": [
+    {
+      "identity": "bufbuild__protobuf-es@04297e762a64",
+      "repository": "bufbuild/protobuf-es",
+      "revision": "04297e762a64dbcafc299c46785dbc5621b4329f",
+      "basis": "Exact npm registry gitHead, tarball identity/integrity verified in desktop-npm/INDEX.json",
+      "role": "License supplement for npm tarballs lacking standalone texts",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c04b4216f1cd4c5a-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/bufbuild/protobuf-es/04297e762a64dbcafc299c46785dbc5621b4329f/LICENSE",
+          "sha256": "c04b4216f1cd4c5a4f7fb2f2a1b0ae70d847e9e0cac7c9dee9bf8cc03177c449",
+          "gitBlob": "0852eae3adf81df4a705737ec733a408a3e9ddc0",
+          "bytes": 11357,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/bufbuild/protobuf-es/archive/04297e762a64dbcafc299c46785dbc5621b4329f.tar.gz",
+      "archiveBytes": 1261451,
+      "archiveSHA256": "a1e9bec7ba5e0233ec470959cd5c2805781033120ce2b5ffbe402cf26595c086"
+    },
+    {
+      "identity": "connectrpc__connect-es@f6682188fdc7",
+      "repository": "connectrpc/connect-es",
+      "revision": "f6682188fdc77fab6e25b5012d44d80d7c4ee77c",
+      "basis": "Exact npm registry gitHead, tarball identity/integrity verified in desktop-npm/INDEX.json",
+      "role": "License supplement for npm tarballs lacking standalone texts",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/445e3398edab2a40-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/connectrpc/connect-es/f6682188fdc77fab6e25b5012d44d80d7c4ee77c/LICENSE",
+          "sha256": "445e3398edab2a40d8d5e5c1a1d533af6464fbae8378ecc0caaf2668e9bbea73",
+          "gitBlob": "8f07cb705b0580cc24d2ea8439a6a44705d058c0",
+          "bytes": 11354,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/connectrpc/connect-es/archive/f6682188fdc77fab6e25b5012d44d80d7c4ee77c.tar.gz",
+      "archiveBytes": 1000143,
+      "archiveSHA256": "dc6e4948b0ebaadf255c377b873b019cf8129b89e651fd52c8c2a9d5a9d65c13"
+    },
+    {
+      "identity": "connectrpc__connect-es@104238c58152",
+      "repository": "connectrpc/connect-es",
+      "revision": "104238c58152e324ac16a99563f5eeea8ae7136d",
+      "basis": "Exact npm registry gitHead, tarball identity/integrity verified in desktop-npm/INDEX.json",
+      "role": "License supplement for npm tarballs lacking standalone texts",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/445e3398edab2a40-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/connectrpc/connect-es/104238c58152e324ac16a99563f5eeea8ae7136d/LICENSE",
+          "sha256": "445e3398edab2a40d8d5e5c1a1d533af6464fbae8378ecc0caaf2668e9bbea73",
+          "gitBlob": "8f07cb705b0580cc24d2ea8439a6a44705d058c0",
+          "bytes": 11354,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/connectrpc/connect-es/archive/104238c58152e324ac16a99563f5eeea8ae7136d.tar.gz",
+      "archiveBytes": 1000078,
+      "archiveSHA256": "5584ddf02cf3233efe52a2a6bda17e756595d33886bfd92385dc60c0e5690a83"
+    },
+    {
+      "identity": "dimfeld__codemirror-json5@cad94e0b097d",
+      "repository": "dimfeld/codemirror-json5",
+      "revision": "cad94e0b097dadbe04946e274645366b7d4c4f72",
+      "basis": "Exact npm registry gitHead, tarball identity/integrity verified in desktop-npm/INDEX.json",
+      "role": "License supplement for npm tarballs lacking standalone texts",
+      "fixedCommit": true,
+      "files": [],
+      "errors": [
+        "No standalone notice found in source archive"
+      ],
+      "sourceURL": "https://github.com/dimfeld/codemirror-json5/archive/cad94e0b097dadbe04946e274645366b7d4c4f72.tar.gz",
+      "archiveBytes": 4059,
+      "archiveSHA256": "0b510acbcc05485cf2d690d0a50c75c50452570b0cc531d522baf41e839d2235"
+    },
+    {
+      "identity": "google__desugar_jdk_libs@2.1.5",
+      "repository": "google/desugar_jdk_libs",
+      "revision": "2.1.5",
+      "basis": "Version-tag candidate corresponding to fixed Android Maven coordinate; immutable content checksum recorded, SCM commit not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": false,
+      "files": [],
+      "errors": [
+        "HTTP Error 404: Not Found"
+      ],
+      "tagRefsSHA256": "5a110fe1ce2262e6807579f379fbddf5d0a515eb4034534d113616a0af35c458",
+      "tagResolutionError": "No exact version or v-prefixed version tag"
+    },
+    {
+      "identity": "zxing__zxing@zxing-3.5.4",
+      "repository": "zxing/zxing",
+      "revision": "zxing-3.5.4",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/3f62881f0566227a-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/zxing/zxing/f651b0a0375676e47144f73397dddff8868b0e4c/LICENSE",
+          "sha256": "3f62881f0566227a24b12e5a754cc79f39aaa94883038e95c94812e1f50af42f",
+          "gitBlob": "510991edab065c65cbbad6a78355f230542348dc",
+          "bytes": 13320,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "tagRefsSHA256": "cd040f8fe961562b878454e0fd526663a595cc47379e52eaf71b3fd9b45eef41",
+      "resolvedTag": "zxing-3.5.4",
+      "resolvedCommit": "f651b0a0375676e47144f73397dddff8868b0e4c",
+      "acquisitionHistory": [
+        "bounded response exceeded"
+      ]
+    },
+    {
+      "identity": "Kotlin__kotlinx.coroutines@1.11.0",
+      "repository": "Kotlin/kotlinx.coroutines",
+      "revision": "1.11.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/b1febe6399dffb10-LICENSE.txt",
+          "originalPath": "LICENSE.txt",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/8564f65764d3d05893cec026c6e94250e2b23874/LICENSE.txt",
+          "sha256": "b1febe6399dffb10d19d35e7663ab16300c93cb0476a94115df1cc0097a8ffd8",
+          "gitBlob": "9c308d958bf91eafe83f66106ca692ff414a4965",
+          "bytes": 11398,
+          "kind": "notice"
+        },
+        {
+          "path": "release/licenses/clients/runtime/1ab6de67ef738bff-NOTICE.txt",
+          "originalPath": "license/NOTICE.txt",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/8564f65764d3d05893cec026c6e94250e2b23874/license/NOTICE.txt",
+          "sha256": "1ab6de67ef738bffae63f9aa6a8798a35e87341c83ea28d09c8dc8ca6993232a",
+          "gitBlob": "fbb2395ad6cc826c73525a1284e26cb40852269f",
+          "bytes": 452,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/Kotlin/kotlinx.coroutines/archive/1.11.0.tar.gz",
+      "archiveBytes": 7290686,
+      "archiveSHA256": "ce94c8f20541ffdd90d764dd3a377cb3f90c62dc862ef68d13269c51319e824a",
+      "tagRefsSHA256": "2cfb95e2b9acf6183be5aff18946f4c0eefcad90d4169599cbea6cf4caece7ca",
+      "resolvedTag": "1.11.0",
+      "resolvedCommit": "8564f65764d3d05893cec026c6e94250e2b23874"
+    },
+    {
+      "identity": "Kotlin__kotlinx.serialization@v1.11.0",
+      "repository": "Kotlin/kotlinx.serialization",
+      "revision": "v1.11.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c5accbbd8546e94c-LICENSE.txt",
+          "originalPath": "LICENSE.txt",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/LICENSE.txt",
+          "sha256": "c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851",
+          "gitBlob": "9c8f3ea0871e0bfe81da0fa6e7c1d7d156dc380e",
+          "bytes": 11356,
+          "kind": "notice"
+        },
+        {
+          "path": "release/licenses/clients/runtime/0eec219eba99cd8d-LICENSE.txt",
+          "originalPath": "license/LICENSE.txt",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/license/LICENSE.txt",
+          "sha256": "0eec219eba99cd8da85c3c781732a515fba284c55e9531739f11762c80a754b4",
+          "gitBlob": "f27c98811419cd02ffb74ed0c930a80ab7610e76",
+          "bytes": 601,
+          "kind": "notice"
+        },
+        {
+          "path": "release/licenses/clients/runtime/ec77bba5c852830a-NOTICE.txt",
+          "originalPath": "license/NOTICE.txt",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/license/NOTICE.txt",
+          "sha256": "ec77bba5c852830abfdefcdefbf4a22577ff4df79ec323a898d5100ca1d6f8d6",
+          "gitBlob": "ee516ec09649791af5ff26c0346e748a881cacb7",
+          "bytes": 497,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/Kotlin/kotlinx.serialization/archive/v1.11.0.tar.gz",
+      "archiveBytes": 1043993,
+      "archiveSHA256": "02fdc43669858e91a07b9a103ce7f846ef51847626ea85ca6c971a37439100ad",
+      "tagRefsSHA256": "cfee2ea0de67e53600f724b54083dcc17a49b27ae1bbb8377e346c8fe526cbcb",
+      "resolvedTag": "v1.11.0",
+      "resolvedCommit": "6956af2e6073347c7832c3c5b374fa3b5a345956"
+    },
+    {
+      "identity": "google__smali@3.0.9",
+      "repository": "google/smali",
+      "revision": "3.0.9",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/f21d7be50c10f0a5-AUTHORS",
+          "originalPath": "AUTHORS",
+          "sourceURL": "https://raw.githubusercontent.com/google/smali/a4d1453dcf40517486739106aa822de4e5152cf3/AUTHORS",
+          "sha256": "f21d7be50c10f0a509f50e4ff6ba0a7d9f1c20b2766403e0e50803e4701cf941",
+          "gitBlob": "c47ffd836745190beee9b077c14583f35d6a29de",
+          "bytes": 227,
+          "kind": "notice"
+        },
+        {
+          "path": "release/licenses/clients/runtime/29da1aadc6709dd2-NOTICE",
+          "originalPath": "third_party/NOTICE",
+          "sourceURL": "https://raw.githubusercontent.com/google/smali/a4d1453dcf40517486739106aa822de4e5152cf3/third_party/NOTICE",
+          "sha256": "29da1aadc6709dd25462efa679a659c74ca397ed69acb2d6094078eaa6d33c9e",
+          "gitBlob": "a4068b9a68c64d12a7f11b7961bdbfea8abe7a64",
+          "bytes": 15994,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/google/smali/archive/3.0.9.tar.gz",
+      "archiveBytes": 718450,
+      "archiveSHA256": "5afe934df7f021bdfb6ddc1cedae5f82a7ff2bd5b406cc0151f1dd39064f9eca",
+      "tagRefsSHA256": "3cd3cd886e89e5c10c94067b3857dfa8a9ce21a5f39464f89f2a30f294d8667f",
+      "resolvedTag": "3.0.9",
+      "resolvedCommit": "a4d1453dcf40517486739106aa822de4e5152cf3"
+    },
+    {
+      "identity": "google__guava@v33.6.0",
+      "repository": "google/guava",
+      "revision": "v33.6.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/cfc7749b96f63bd3-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/google/guava/de1d87eabff93cb4a7fa8e52df5fc46802c95b17/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "gitBlob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+          "bytes": 11358,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/google/guava/archive/v33.6.0.tar.gz",
+      "archiveBytes": 5931909,
+      "archiveSHA256": "bc2480f60c985e1d69998e47e6bd17a347a50093c829dd497cd66cfb7c0461b3",
+      "tagRefsSHA256": "e18d7d794d55e6fcb68e04a61ee474d258bab1c19f2261348f0ac83131158999",
+      "resolvedTag": "v33.6.0",
+      "resolvedCommit": "de1d87eabff93cb4a7fa8e52df5fc46802c95b17"
+    },
+    {
+      "identity": "material-components__material-components-android@1.14.0",
+      "repository": "material-components/material-components-android",
+      "revision": "1.14.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/cfc7749b96f63bd3-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/material-components/material-components-android/66c334b7946dabf33adfe1a2b7cad6bcaa4ea3ad/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "gitBlob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+          "bytes": 11358,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/material-components/material-components-android/archive/1.14.0.tar.gz",
+      "archiveBytes": 59096526,
+      "archiveSHA256": "cbe1cae59007071cec01ea64d8fd72050d2003ed018c8198625bc3d0a1bda4b8",
+      "tagRefsSHA256": "37ae7cd97dc32d60315104d59bd19005dfb39b35abc1dae2c934a81fe177d2fb",
+      "resolvedTag": "1.14.0",
+      "resolvedCommit": "66c334b7946dabf33adfe1a2b7cad6bcaa4ea3ad"
+    },
+    {
+      "identity": "material-components__material-components-android@1.13.0",
+      "repository": "material-components/material-components-android",
+      "revision": "1.13.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/cfc7749b96f63bd3-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/material-components/material-components-android/84c0e6d6d493fcf176d2099683245b78afbeb78d/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "gitBlob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+          "bytes": 11358,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/material-components/material-components-android/archive/1.13.0.tar.gz",
+      "archiveBytes": 47037654,
+      "archiveSHA256": "6bbdb1c10729543f053d6be57b328c37dff632b8c5d52e77e68196e0dfee2ef1",
+      "tagRefsSHA256": "37ae7cd97dc32d60315104d59bd19005dfb39b35abc1dae2c934a81fe177d2fb",
+      "resolvedTag": "1.13.0",
+      "resolvedCommit": "84c0e6d6d493fcf176d2099683245b78afbeb78d"
+    },
+    {
+      "identity": "Rosemoe__sora-editor@0.23.6",
+      "repository": "Rosemoe/sora-editor",
+      "revision": "0.23.6",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/7ffe1954587c77df-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/LICENSE",
+          "sha256": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+          "gitBlob": "bc0390e98c98f2ad3ab7decdb82b4d57d7f850d4",
+          "bytes": 27030,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/Rosemoe/sora-editor/archive/0.23.6.tar.gz",
+      "archiveBytes": 5493036,
+      "archiveSHA256": "346e9bc03ed3e5dc66910126d2fedfceceada7965e50593478db48b78130acbf",
+      "tagRefsSHA256": "50af87ec7a2d1178908b8a2b6e271f153961a797116923994c902ed82bbefd38",
+      "resolvedTag": "0.23.6",
+      "resolvedCommit": "b1777d0d465b42515739ffe529b4ec1634ac2175"
+    },
+    {
+      "identity": "itsaky__android-tree-sitter@4.3.2",
+      "repository": "itsaky/android-tree-sitter",
+      "revision": "4.3.2",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/7ffe1954587c77df-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/LICENSE",
+          "sha256": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+          "gitBlob": "bc0390e98c98f2ad3ab7decdb82b4d57d7f850d4",
+          "bytes": 27030,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "tagRefsSHA256": "8685afa711fedeaf944f2010fd7d35b699119785ef9d33ff9a2cff7ba5e2eb97",
+      "resolvedTag": "v4.3.2",
+      "resolvedCommit": "797150222de664181e31be53e9a5b253056ba9b0",
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    },
+    {
+      "identity": "massivemadness__Squircle-IDE@2.2.0",
+      "repository": "massivemadness/Squircle-IDE",
+      "revision": "2.2.0",
+      "basis": "Version-tag candidate corresponding to fixed Android Maven coordinate; immutable content checksum recorded, SCM commit not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": false,
+      "files": [],
+      "errors": [
+        "HTTP Error 404: Not Found"
+      ],
+      "tagRefsSHA256": "ca2fcbb4b1bb36a27868898169c0443049673a1dd6a42fe914acbf83b9d45008",
+      "tagResolutionError": "No exact version or v-prefixed version tag"
+    },
+    {
+      "identity": "RikkaApps__Shizuku-API@13.1.5",
+      "repository": "RikkaApps/Shizuku-API",
+      "revision": "13.1.5",
+      "basis": "Version-tag candidate corresponding to fixed Android Maven coordinate; immutable content checksum recorded, SCM commit not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": false,
+      "files": [],
+      "errors": [
+        "HTTP Error 404: Not Found"
+      ],
+      "tagRefsSHA256": "bf8b3d869bec2f83c47b2e1cf315d6c6e4ce15257395e5d3cb2800f50f2c5e4f",
+      "tagResolutionError": "No exact version or v-prefixed version tag"
+    },
+    {
+      "identity": "topjohnwu__libsu@v6.0.0",
+      "repository": "topjohnwu/libsu",
+      "revision": "v6.0.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c71d239df91726fc-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/topjohnwu/libsu/8c3e80ffe466b89ff875471e542d77e6a1b480c5/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "gitBlob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+          "bytes": 11357,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "tagRefsSHA256": "8f7f23247c8d2abea949ea06c525e9bd80c8ea0199bb78333e80d366f203fbe7",
+      "resolvedTag": "6.0.0",
+      "resolvedCommit": "8c3e80ffe466b89ff875471e542d77e6a1b480c5",
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    },
+    {
+      "identity": "Calvin-LL__Reorderable@v3.1.0",
+      "repository": "Calvin-LL/Reorderable",
+      "revision": "v3.1.0",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/c71d239df91726fc-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/Calvin-LL/Reorderable/66de5751227c440bcdbd63acc94999231ed67487/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "gitBlob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+          "bytes": 11357,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/Calvin-LL/Reorderable/archive/v3.1.0.tar.gz",
+      "archiveBytes": 5892561,
+      "archiveSHA256": "46efac83c49c2ce9721b9cf53ad9d8806daf310c4dd764035cc40cc8a0f8b8f3",
+      "tagRefsSHA256": "64094c7000eb4b454f950306c9a4d241626c7e1d5c13f73fd7e5bd9c230c0dbb",
+      "resolvedTag": "v3.1.0",
+      "resolvedCommit": "66de5751227c440bcdbd63acc94999231ed67487"
+    },
+    {
+      "identity": "jeziellago__compose-markdown@0.7.2",
+      "repository": "jeziellago/compose-markdown",
+      "revision": "0.7.2",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/54f8997d6148cdfa-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/jeziellago/compose-markdown/587e4129c6d3b7a3b31876a5c49e69cd75838df6/LICENSE",
+          "sha256": "54f8997d6148cdfa55017251833abab7b97e5aa00fd4618b94dda388aef9a49d",
+          "gitBlob": "d55d1f75194359e35030bdfcccf62609df5aa20f",
+          "bytes": 1067,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "sourceURL": "https://github.com/jeziellago/compose-markdown/archive/0.7.2.tar.gz",
+      "archiveBytes": 11356827,
+      "archiveSHA256": "a2f97b3adc19a36c7a27c0c48596592e3c62d56e44da3c64f078cee84fe8ebd0",
+      "tagRefsSHA256": "da930a514bc00840d9f67d9035522098b606db666878c16d0f9c19ece7d377e2",
+      "resolvedTag": "0.7.2",
+      "resolvedCommit": "587e4129c6d3b7a3b31876a5c49e69cd75838df6"
+    },
+    {
+      "identity": "SagerNet__libghostty-android@0.1.0-alpha01",
+      "repository": "SagerNet/libghostty-android",
+      "revision": "0.1.0-alpha01",
+      "basis": "Repository version tag resolved to immutable Git commit; Maven binary reproducibility not proven",
+      "role": "Android direct runtime source notice supplement",
+      "fixedCommit": true,
+      "files": [
+        {
+          "path": "release/licenses/clients/runtime/7b7c2cd596de4081-LICENSE",
+          "originalPath": "LICENSE",
+          "sourceURL": "https://raw.githubusercontent.com/SagerNet/libghostty-android/f23ccb792b9b4a0fafa053d9703ba4fb9e4881ff/LICENSE",
+          "sha256": "7b7c2cd596de4081263e277c4bdaf6c83b0126adff0fc116ef651b5b77af9b69",
+          "gitBlob": "728ded01a26386ba33ef9ab848faee8e5541692a",
+          "bytes": 1068,
+          "kind": "notice"
+        }
+      ],
+      "errors": [],
+      "tagRefsSHA256": "f32dbf05bc4ba82d84a878a0bf717494f5a54a98353e43d691ffb11ced0ee2f7",
+      "resolvedTag": "v0.1.0-alpha01",
+      "resolvedCommit": "f23ccb792b9b4a0fafa053d9703ba4fb9e4881ff",
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    }
+  ]
+}

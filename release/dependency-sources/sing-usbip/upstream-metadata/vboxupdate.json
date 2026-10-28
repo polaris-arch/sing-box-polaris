@@ -1,0 +1,191 @@
+{
+  "sha": "990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+  "node_id": "C_kwDOS2_N9NoAKDk5MGM1YzVhNTUwNGZjYzJjN2VjNTgwZTU1MWIyMGI1MDM5Y2IwOTc",
+  "commit": {
+    "author": {
+      "name": "\u4e16\u754c",
+      "email": "i@sekai.icu",
+      "date": "2026-08-17T04:04:06Z"
+    },
+    "committer": {
+      "name": "\u4e16\u754c",
+      "email": "i@sekai.icu",
+      "date": "2026-08-17T04:04:06Z"
+    },
+    "message": "Update VBoxUSB drivers to VirtualBox 7.2.14",
+    "tree": {
+      "sha": "ae606253647a10a4353e406a087650c7cbc7a41d",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/ae606253647a10a4353e406a087650c7cbc7a41d"
+    },
+    "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\niJEEABYKADkWIQTaVay/3aQIU7/FSW7NEJknw0pjxAUCaoKINhsUgAAAAAAEAA5t\nYW51MiwyLjUrMS4xMiwwLDMACgkQzRCZJ8NKY8RtLQD/ZBXTI3xrURD5s1YN7jca\nqHnppceWhSR8PQ1etcUFb+cA/2le0+fAUzab8q9wAppBInfWeJ6fGhpdUns5YkEL\nlpEH\n=wYZV\n-----END PGP SIGNATURE-----",
+      "payload": "tree ae606253647a10a4353e406a087650c7cbc7a41d\nparent 0c1d97decfe259fa5b148d13d57deb8b2b1836c1\nauthor \u4e16\u754c <i@sekai.icu> 1786939446 +0800\ncommitter \u4e16\u754c <i@sekai.icu> 1786939446 +0800\n\nUpdate VBoxUSB drivers to VirtualBox 7.2.14\n",
+      "verified_at": "2026-08-17T05:11:02Z"
+    }
+  },
+  "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+  "html_url": "https://github.com/SagerNet/sing-usbip/commit/990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+  "comments_url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/990c5c5a5504fcc2c7ec580e551b20b5039cb097/comments",
+  "author": {
+    "login": "nekohasekai",
+    "id": 56506714,
+    "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/nekohasekai",
+    "html_url": "https://github.com/nekohasekai",
+    "followers_url": "https://api.github.com/users/nekohasekai/followers",
+    "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+    "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+    "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+    "repos_url": "https://api.github.com/users/nekohasekai/repos",
+    "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "nekohasekai",
+    "id": 56506714,
+    "node_id": "MDQ6VXNlcjU2NTA2NzE0",
+    "avatar_url": "https://avatars.githubusercontent.com/u/56506714?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/nekohasekai",
+    "html_url": "https://github.com/nekohasekai",
+    "followers_url": "https://api.github.com/users/nekohasekai/followers",
+    "following_url": "https://api.github.com/users/nekohasekai/following{/other_user}",
+    "gists_url": "https://api.github.com/users/nekohasekai/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/nekohasekai/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/nekohasekai/subscriptions",
+    "organizations_url": "https://api.github.com/users/nekohasekai/orgs",
+    "repos_url": "https://api.github.com/users/nekohasekai/repos",
+    "events_url": "https://api.github.com/users/nekohasekai/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/nekohasekai/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "0c1d97decfe259fa5b148d13d57deb8b2b1836c1",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/commits/0c1d97decfe259fa5b148d13d57deb8b2b1836c1",
+      "html_url": "https://github.com/SagerNet/sing-usbip/commit/0c1d97decfe259fa5b148d13d57deb8b2b1836c1"
+    }
+  ],
+  "stats": {
+    "total": 6,
+    "additions": 3,
+    "deletions": 3
+  },
+  "files": [
+    {
+      "sha": "283a0db9c9a852f95e001488c944c16a8938ec3e",
+      "filename": "internal/vboxusb/assets/amd64/VBoxUSB.cat",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.cat",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.cat",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.cat?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "d07a63e9c1171d60a998266c28106e98fdfed126",
+      "filename": "internal/vboxusb/assets/amd64/VBoxUSB.inf",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.inf",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.inf",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.inf?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+      "patch": "@@ -39,7 +39,7 @@ Signature=\"$Windows NT$\"\n Class=USB\n ClassGUID={36FC9E60-C465-11CF-8056-444553540000}\n provider=%ORACLE%\n-DriverVer = 04/18/2026,7.2.8.23730 ; r173730\n+DriverVer = 07/17/2026,7.2.14.24565 ; r174565\n CatalogFile=VBoxUSB.cat\n PnpLockdown=1\n "
+    },
+    {
+      "sha": "580653d739a22b65bfcc8493af02faea09e4bca5",
+      "filename": "internal/vboxusb/assets/amd64/VBoxUSB.sys",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.sys",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.sys",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSB.sys?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "cee77b5850be93f60df53d3cf1bdc6bf9cbacc17",
+      "filename": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSBMon.sys",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSBMon.sys",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Famd64%2FVBoxUSBMon.sys?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "fb6dbeaa730cb7d38e56b50841a6d372878175e1",
+      "filename": "internal/vboxusb/assets/arm64/VBoxUSB.cat",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.cat",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.cat",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.cat?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "38153cea8472aa6fa60b3efeda1be12f831fe049",
+      "filename": "internal/vboxusb/assets/arm64/VBoxUSB.inf",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.inf",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.inf",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.inf?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+      "patch": "@@ -39,7 +39,7 @@ Signature=\"$Windows NT$\"\n Class=USB\n ClassGUID={36FC9E60-C465-11CF-8056-444553540000}\n provider=%ORACLE%\n-DriverVer = 04/18/2026,7.2.8.23730 ; r173730\n+DriverVer = 07/17/2026,7.2.14.24565 ; r174565\n CatalogFile=VBoxUSB.cat\n PnpLockdown=1\n "
+    },
+    {
+      "sha": "5f52b272bb74849da02fc0ef566d545b7f1351f5",
+      "filename": "internal/vboxusb/assets/arm64/VBoxUSB.sys",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.sys",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.sys",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSB.sys?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "de2d0efb2680cdbdf7d863229c259e61b83a21b0",
+      "filename": "internal/vboxusb/assets/arm64/VBoxUSBMon.sys",
+      "status": "modified",
+      "additions": 0,
+      "deletions": 0,
+      "changes": 0,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSBMon.sys",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSBMon.sys",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fassets%2Farm64%2FVBoxUSBMon.sys?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097"
+    },
+    {
+      "sha": "31b43889a3609e43a291b17339bf7feab86f94f0",
+      "filename": "internal/vboxusb/vboxusb.go",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/SagerNet/sing-usbip/blob/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fvboxusb.go",
+      "raw_url": "https://github.com/SagerNet/sing-usbip/raw/990c5c5a5504fcc2c7ec580e551b20b5039cb097/internal%2Fvboxusb%2Fvboxusb.go",
+      "contents_url": "https://api.github.com/repos/SagerNet/sing-usbip/contents/internal%2Fvboxusb%2Fvboxusb.go?ref=990c5c5a5504fcc2c7ec580e551b20b5039cb097",
+      "patch": "@@ -1,6 +1,6 @@\n package vboxusb\n \n-const AssetVersion = \"7.2.8.23730\"\n+const AssetVersion = \"7.2.14.24565\"\n \n const (\n \tDriverMajorVersion = 5"
+    }
+  ]
+}

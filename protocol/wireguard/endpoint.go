@@ -104,9 +104,7 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 		Dialer: outboundDialer,
 		CreateDialer: func(interfaceName string) N.Dialer {
 			return common.Must1(dialer.NewDefault(ctx, option.DialerOptions{
-				AbstractDialerOptions: option.AbstractDialerOptions{
-					BindInterface: interfaceName,
-				},
+				BindInterface: interfaceName,
 			}))
 		},
 		Tag:        tag,

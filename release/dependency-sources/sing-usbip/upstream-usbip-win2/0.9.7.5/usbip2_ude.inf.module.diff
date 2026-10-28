@@ -1,0 +1,36 @@
+--- fixed-upstream
+
++++ exact-module
+
+@@ -10,6 +10,7 @@
+
+ Provider=%Manufacturer%
+ CatalogFile=usbip2_ude.cat ; do not modify, used by setup.iss for searching drivers for uninstallation
+ PnpLockDown=1
++DriverVer = 01/30/2026,8.37.35.720
+ 
+ [DestinationDirs]
+ DefaultDestDir = 13 ; Driver package isolation
+@@ -23,9 +24,9 @@
+
+ [Manufacturer]
+ ; Windows 10, version 1809 and later
+ ; For Windows 10+ you do not need to redistribute WDF or provide a Coinstaller
+-%Manufacturer%=Standard,NT$ARCH$.10.0...17763
++%Manufacturer%=Standard,NTARM64.10.0...17763
+ 
+-[Standard.NT$ARCH$.10.0...17763]
++[Standard.NTARM64.10.0...17763]
+ %DisplayName%=ude_Device, ROOT\USBIP_WIN2\UDE
+ 
+ [ude_Device.NT]
+@@ -69,7 +70,7 @@
+
+ ; The time (in seconds) between individual keepalive probes
+ HKR, Parameters, TCP_KEEPINTVL, %REG_DWORD%, 10
+ 
+-HKR, Parameters, ReattachMaxAttempts, %REG_DWORD%, 20
++HKR, Parameters, ReattachMaxAttempts, %REG_DWORD%, 20; infinite if zero
+ HKR, Parameters, ReattachFirstDelay, %REG_DWORD%, 30 ; seconds
+ HKR, Parameters, ReattachMaxDelay, %REG_DWORD%, 480 ; seconds
+ 

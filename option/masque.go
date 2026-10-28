@@ -28,15 +28,15 @@ type _MASQUEClientEndpointOptions struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	OutboundTLSOptionsContainer
-	Path                   string               `json:"path,omitempty"`
-	Headers                badoption.HTTPHeader `json:"headers,omitempty"`
-	Version                int                  `json:"version,omitempty" enum:"0,1,2,3"`
-	DisableVersionFallback bool                 `json:"disable_version_fallback,omitempty"`
-	AdvertiseRoutes        []netip.Prefix       `json:"advertise_routes,omitempty"`
-	UDPTimeout             badoption.Duration   `json:"udp_timeout,omitempty"`
-	OnDemand               bool                 `json:"on_demand,omitempty"`
-	HTTP2Options           HTTP2Options         `json:"-"`
-	HTTP3Options           QUICOptions          `json:"-"`
+	Path                   string                           `json:"path,omitempty"`
+	Headers                badoption.HTTPHeader             `json:"headers,omitempty"`
+	Version                int                              `json:"version,omitempty" enum:"0,1,2,3"`
+	DisableVersionFallback bool                             `json:"disable_version_fallback,omitempty"`
+	AdvertiseRoutes        badoption.Listable[netip.Prefix] `json:"advertise_routes,omitempty"`
+	UDPTimeout             badoption.Duration               `json:"udp_timeout,omitempty"`
+	OnDemand               bool                             `json:"on_demand,omitempty"`
+	HTTP2Options           HTTP2Options                     `json:"-"`
+	HTTP3Options           QUICOptions                      `json:"-"`
 }
 
 type MASQUEClientEndpointOptions _MASQUEClientEndpointOptions
@@ -49,7 +49,11 @@ func (o MASQUEClientEndpointOptions) ResolvedVersion() int {
 }
 
 func (o MASQUEClientEndpointOptions) MarshalJSON() ([]byte, error) {
-	return badjson.MarshallObjects(_MASQUEClientEndpointOptions(o), httpVersionVariant(o.ResolvedVersion(), o.HTTP2Options, o.HTTP3Options))
+	variant := httpVersionVariant(o.ResolvedVersion(), o.HTTP2Options, o.HTTP3Options)
+	if variant == nil {
+		return json.Marshal(_MASQUEClientEndpointOptions(o))
+	}
+	return badjson.MarshallObjects(_MASQUEClientEndpointOptions(o), variant)
 }
 
 func (o *MASQUEClientEndpointOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {
@@ -81,7 +85,7 @@ type _MASQUEServerEndpointOptions struct {
 	InboundTLSOptionsContainer
 	Path            string                           `json:"path,omitempty"`
 	Address         badoption.Listable[netip.Prefix] `json:"address"`
-	AdvertiseRoutes []netip.Prefix                   `json:"advertise_routes,omitempty"`
+	AdvertiseRoutes badoption.Listable[netip.Prefix] `json:"advertise_routes,omitempty"`
 	HTTP2Options    HTTP2Options                     `json:"-"`
 	HTTP3Options    QUICOptions                      `json:"-"`
 }
@@ -96,7 +100,11 @@ func (o MASQUEServerEndpointOptions) Versions() []int {
 }
 
 func (o MASQUEServerEndpointOptions) MarshalJSON() ([]byte, error) {
-	return badjson.MarshallObjects(_MASQUEServerEndpointOptions(o), httpVersionsVariant(o.Versions(), o.HTTP2Options, o.HTTP3Options))
+	variant := httpVersionsVariant(o.Versions(), o.HTTP2Options, o.HTTP3Options)
+	if variant == nil {
+		return json.Marshal(_MASQUEServerEndpointOptions(o))
+	}
+	return badjson.MarshallObjects(_MASQUEServerEndpointOptions(o), variant)
 }
 
 func (o *MASQUEServerEndpointOptions) UnmarshalJSONContext(ctx context.Context, content []byte) error {

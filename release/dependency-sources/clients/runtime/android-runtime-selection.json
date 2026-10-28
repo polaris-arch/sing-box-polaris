@@ -1,0 +1,2622 @@
+{
+  "scope": "Actual current unsigned matrix: other and otherLegacy. Play-only dependencies excluded.",
+  "components": [
+    {
+      "coordinate": "com.android.tools:desugar_jdk_libs:2.1.5",
+      "declarations": [
+        {
+          "configuration": "coreLibraryDesugaring",
+          "coordinate": "com.android.tools:desugar_jdk_libs:2.1.5",
+          "sourceLine": 181
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/com/android/tools/desugar_jdk_libs/2.1.5/desugar_jdk_libs-2.1.5.pom",
+      "pomSHA256": "2e195880f15d4545c8d60b2d2cac52201ccf98db7a29db2577ad5826a930fcca",
+      "packaging": "jar",
+      "licenses": [
+        {
+          "name": "GNU General Public License, version 2, with the Classpath Exception",
+          "url": "https://github.com/google/desugar_jdk_libs/blob/master/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "\n      https://github.com/google/desugar_jdk_libs\n    ",
+        "tag": null,
+        "connection": null
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/desugar_jdk_libs/2.1.5/desugar_jdk_libs-2.1.5-sources.jar",
+        "error": "HTTP Error 404: Not Found"
+      }
+    },
+    {
+      "coordinate": "androidx.appcompat:appcompat:1.7.1",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.appcompat:appcompat:1.7.1",
+          "sourceLine": 208
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.7.1/appcompat-1.7.1.pom",
+      "pomSHA256": "1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.7.1/appcompat-1.7.1-sources.jar",
+        "bytes": 496096,
+        "sha256": "d3f8371e7b5b61e36450677af4e911c351c9ec625e9a7fc5b44acbb3fbc3a45d",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.constraintlayout:constraintlayout:2.2.1",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.constraintlayout:constraintlayout:2.2.1",
+          "sourceLine": 209
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.constraintlayout__constraintlayout@2.2.1/source-notices/META-INF/androidx/constraintlayout/constraintlayout/LICENSE.txt",
+          "originalPath": "META-INF/androidx/constraintlayout/constraintlayout/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/constraintlayout/constraintlayout/2.2.1/constraintlayout-2.2.1-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/constraintlayout/constraintlayout/2.2.1/constraintlayout-2.2.1.pom",
+      "pomSHA256": "ccccaa27e5658da4734f7e9cd345c1fc4d495bad49c0821279ddba0503dffb91",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/constraintlayout/constraintlayout/2.2.1/constraintlayout-2.2.1-sources.jar",
+        "bytes": 296036,
+        "sha256": "1ef812ab292bc78799dea3fff38ea139ecc1cbb9fec5598d445788aea5922904",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.navigation:navigation-fragment-ktx:2.9.8",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.navigation:navigation-fragment-ktx:2.9.8",
+          "sourceLine": 210
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.navigation__navigation-fragment-ktx@2.9.8/source-notices/META-INF/androidx/navigation/navigation-fragment-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/navigation/navigation-fragment-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-fragment-ktx/2.9.8/navigation-fragment-ktx-2.9.8-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-fragment-ktx/2.9.8/navigation-fragment-ktx-2.9.8.pom",
+      "pomSHA256": "f9261a3d48902a5bc5559aaf00fada309e4045609b41cd8f594102b20dfdf6bb",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-fragment-ktx/2.9.8/navigation-fragment-ktx-2.9.8-sources.jar",
+        "bytes": 4462,
+        "sha256": "4875a0ebc58b264092e4ed155500a9d04a17c0f52fd6466d7710f3c9fc20e27c",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.navigation:navigation-ui-ktx:2.9.8",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.navigation:navigation-ui-ktx:2.9.8",
+          "sourceLine": 211
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.navigation__navigation-ui-ktx@2.9.8/source-notices/META-INF/androidx/navigation/navigation-ui-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/navigation/navigation-ui-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-ui-ktx/2.9.8/navigation-ui-ktx-2.9.8-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-ui-ktx/2.9.8/navigation-ui-ktx-2.9.8.pom",
+      "pomSHA256": "48bf4bc31e326e59401a9eafa3e89444cf85c375928d3e1e241163d799bb9bd7",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-ui-ktx/2.9.8/navigation-ui-ktx-2.9.8-sources.jar",
+        "bytes": 4438,
+        "sha256": "e63a83fb372493336615b76ee8755731a05e312f187f527a6a358f638377b25c",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "com.google.zxing:core:3.5.4",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "com.google.zxing:core:3.5.4",
+          "sourceLine": 212
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/google/zxing/core/3.5.4/core-3.5.4.pom",
+      "pomSHA256": "502c7368ae869f15428c020a2432eec9dde7436454f3edd1816e0d4b3d0609bf",
+      "packaging": "jar",
+      "licenses": [],
+      "scm": {
+        "url": null,
+        "tag": null,
+        "connection": null
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/google/zxing/core/3.5.4/core-3.5.4-sources.jar",
+        "bytes": 509348,
+        "sha256": "a611e3b63b661aeb2a81b8b4f4bde2daace1e2976adbb37917a674a0019c8fac",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.coordinatorlayout:coordinatorlayout:1.3.0",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.coordinatorlayout:coordinatorlayout:1.3.0",
+          "sourceLine": 213
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.coordinatorlayout__coordinatorlayout@1.3.0/source-notices/META-INF/androidx/coordinatorlayout/coordinatorlayout/LICENSE.txt",
+          "originalPath": "META-INF/androidx/coordinatorlayout/coordinatorlayout/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/coordinatorlayout/coordinatorlayout/1.3.0/coordinatorlayout-1.3.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/coordinatorlayout/coordinatorlayout/1.3.0/coordinatorlayout-1.3.0.pom",
+      "pomSHA256": "f5f1092883ddac1d1e7a877bf167e84f67fa76be8661e8606ebb30dabb1e557e",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/coordinatorlayout/coordinatorlayout/1.3.0/coordinatorlayout-1.3.0-sources.jar",
+        "bytes": 36817,
+        "sha256": "a358569133641ec207e21ab05675fab045eb1b07936cdc9cddc54a88605dc970",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.preference:preference-ktx:1.2.1",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "androidx.preference:preference-ktx:1.2.1",
+          "sourceLine": 214
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/preference/preference-ktx/1.2.1/preference-ktx-1.2.1.pom",
+      "pomSHA256": "331b95647f7c1e5002c5a3dd997150828c6d60f9158690a7900fc5c85d31c305",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/preference/preference-ktx/1.2.1/preference-ktx-1.2.1-sources.jar",
+        "bytes": 1780,
+        "sha256": "225d80f9fb06bbd4137a448cdbd094147c9893848e5dbbd959498c2b2b2de700",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0",
+          "sourceLine": 215
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-android/1.11.0/kotlinx-coroutines-android-1.11.0.pom",
+      "pomSHA256": "224567420d3e0ed5fef40f789fded45dfd51b162319e28d77d3c9a8dec4821b8",
+      "packaging": "jar",
+      "licenses": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/Kotlin/kotlinx.coroutines",
+        "tag": null,
+        "connection": null
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-android/1.11.0/kotlinx-coroutines-android-1.11.0-sources.jar",
+        "bytes": 7779,
+        "sha256": "d2760d65fc99c28d140b345163560926975cfe6ca36386c8964041f86eb2f4b6",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0",
+          "sourceLine": 216
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-json/1.11.0/kotlinx-serialization-json-1.11.0.pom",
+      "pomSHA256": "2bd8c5e79d2fee8183a45ed869024e1d74571936960b18125d603b0718f536e3",
+      "packaging": "pom",
+      "licenses": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/Kotlin/kotlinx.serialization",
+        "tag": null,
+        "connection": null
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-serialization-json/1.11.0/kotlinx-serialization-json-1.11.0-sources.jar",
+        "bytes": 89710,
+        "sha256": "b3dd36abd8d06dd2e08eb74cd38dacc6b45182e191f5b8fe51cb5eab7666ba07",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.android.tools.smali:smali-dexlib2:3.0.9",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "sourceLine": 217
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9.pom",
+      "pomSHA256": "670272349e5df90a8444c1be6b6bd8b8d3b8becbd79ca43271869641e6c4d79b",
+      "packaging": "jar",
+      "licenses": [
+        {
+          "name": "The BSD 3-Clause License",
+          "url": "http://opensource.org/licenses/BSD-3-Clause"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/google/smali/tree/master/dexlib2",
+        "tag": null,
+        "connection": "scm:git:git://github.com/google/smali.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar",
+        "bytes": 1007281,
+        "sha256": "7834c32d5bb59f68ce28243fec0e92242f1ca55302c9dfb012bb23000b888ef1",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.google.guava:guava:33.6.0-android",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "com.google.guava:guava:33.6.0-android",
+          "sourceLine": 220
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/google/guava/guava/33.6.0-android/guava-33.6.0-android.pom",
+      "pomSHA256": "37f12cdff04a49e96a4ae1e48d526bbc486cff151a12fe9812d68a49698b8ed9",
+      "packaging": "bundle",
+      "licenses": [],
+      "scm": {
+        "url": null,
+        "tag": null,
+        "connection": null
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/google/guava/guava/33.6.0-android/guava-33.6.0-android-sources.jar",
+        "bytes": 1878860,
+        "sha256": "6617812727fdb3eedc29cb0a4dd3bf4eb61af0975baeb0296aea61afb4ddcbb0",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-livedata-ktx:2.11.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-livedata-ktx:2.11.0",
+          "sourceLine": 238
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-livedata-ktx@2.11.0/source-notices/META-INF/androidx/lifecycle/lifecycle-livedata-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-livedata-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.11.0/lifecycle-livedata-ktx-2.11.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.11.0/lifecycle-livedata-ktx-2.11.0.pom",
+      "pomSHA256": "b279eb2cd4b564809a366ad09aa3825f541a8e4fa240e4eabd97ef5d1c77dddf",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.11.0/lifecycle-livedata-ktx-2.11.0-sources.jar",
+        "bytes": 4452,
+        "sha256": "22c65058f17e1a66f2ee38a203c1ce15204b838692c7b8f7cb4ff8e3c3ef7a92",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0",
+          "sourceLine": 239
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-viewmodel-ktx@2.11.0/source-notices/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.11.0/lifecycle-viewmodel-ktx-2.11.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.11.0/lifecycle-viewmodel-ktx-2.11.0.pom",
+      "pomSHA256": "98cee40062344063eef3f71f9d66032d69e6304ba0858561fc823d73c61b63b4",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.11.0/lifecycle-viewmodel-ktx-2.11.0-sources.jar",
+        "bytes": 4456,
+        "sha256": "f15c9fbd9ade832f04d2deed9cdc1732697e63b8c34ffae0ada712197abcc6ec",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-process:2.11.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-process:2.11.0",
+          "sourceLine": 240
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-process@2.11.0/source-notices/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.11.0/lifecycle-process-2.11.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.11.0/lifecycle-process-2.11.0.pom",
+      "pomSHA256": "63f3303cb0f0ece424fedaba55cd3984e44422e7dd5071debca4a4423216c420",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.11.0/lifecycle-process-2.11.0-sources.jar",
+        "bytes": 9775,
+        "sha256": "c6b0698468374c6f26b817726d85f32ff8b3a4068d7872a9fe88bf85ed856aa4",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.room:room-runtime:2.8.4",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.room:room-runtime:2.8.4",
+          "sourceLine": 241
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.room__room-runtime@2.8.4/source-notices/META-INF/androidx/room/room-runtime/LICENSE.txt",
+          "originalPath": "META-INF/androidx/room/room-runtime/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.8.4/room-runtime-2.8.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.8.4/room-runtime-2.8.4.pom",
+      "pomSHA256": "61b13fd132369dd7c3fb9d0b3076ceefa8e57ec699a8e03fb87aecb81cedd99b",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.8.4/room-runtime-2.8.4-sources.jar",
+        "bytes": 104841,
+        "sha256": "fca3b96c419811c469890006226138071be388a933cc95c23bd0fbe63f7e2c61",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.work:work-runtime-ktx:2.11.2",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.work:work-runtime-ktx:2.11.2",
+          "sourceLine": 242
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.work__work-runtime-ktx@2.11.2/source-notices/META-INF/androidx/work/work-runtime-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/work/work-runtime-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.11.2/work-runtime-ktx-2.11.2-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.11.2/work-runtime-ktx-2.11.2.pom",
+      "pomSHA256": "e23d98c31e5048618b4be584a0e33f30ac427394fbd2c3612dd850b2f1ffa68f",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.11.2/work-runtime-ktx-2.11.2-sources.jar",
+        "bytes": 4398,
+        "sha256": "4a5f293a931444d1cb766fb365bfcc2c286cd8ae43fdedad0cdfa2a69362ed15",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-view:1.6.1",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.camera:camera-view:1.6.1",
+          "sourceLine": 243
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-view@1.6.1/source-notices/META-INF/androidx/camera/camera-view/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-view/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.6.1/camera-view-1.6.1-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.6.1/camera-view-1.6.1.pom",
+      "pomSHA256": "f2ef17a7673ab491de3402a5722d509c503492d7d35b3f9a519271d069812a14",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.6.1/camera-view-1.6.1-sources.jar",
+        "bytes": 92476,
+        "sha256": "dfb710c6d7b08e339a46807f08b609a92aff7988929f91b8f3427a44e5554e31",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-lifecycle:1.6.1",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.camera:camera-lifecycle:1.6.1",
+          "sourceLine": 244
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-lifecycle@1.6.1/source-notices/META-INF/androidx/camera/camera-lifecycle/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-lifecycle/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.6.1/camera-lifecycle-1.6.1-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.6.1/camera-lifecycle-1.6.1.pom",
+      "pomSHA256": "11d06c48fb13cf82eb78c3c08e0d32b03b6c706aebac3a4d1d38d9f6c81ed855",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.6.1/camera-lifecycle-1.6.1-sources.jar",
+        "bytes": 37758,
+        "sha256": "573cdf43f2584f154b83788ab9683affd6124a61b78f6f7a17339c5e8d8d845c",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-camera2:1.6.1",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.camera:camera-camera2:1.6.1",
+          "sourceLine": 245
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-camera2@1.6.1/source-notices/META-INF/androidx/camera/camera-camera2/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-camera2/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.6.1/camera-camera2-1.6.1-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.6.1/camera-camera2-1.6.1.pom",
+      "pomSHA256": "6fc5db84500614f88010b7ef3f517a71d394782389a990dc234f340f848c20b3",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.6.1/camera-camera2-1.6.1-sources.jar",
+        "bytes": 341304,
+        "sha256": "9a43968bb27ff7a6960932b5dffc190930567d8bb52fff59541d372f7331b803",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.browser:browser:1.10.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.browser:browser:1.10.0",
+          "sourceLine": 246
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.browser__browser@1.10.0/source-notices/META-INF/androidx/browser/browser/LICENSE.txt",
+          "originalPath": "META-INF/androidx/browser/browser/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.10.0/browser-1.10.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.10.0/browser-1.10.0.pom",
+      "pomSHA256": "254a898df892f733d06524225039cb5e2324f07e5a0fe90a63ddaf42bff8d8c4",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.10.0/browser-1.10.0-sources.jar",
+        "bytes": 148197,
+        "sha256": "551a046bd8de970a6b44113e2f1e3042705e9c86ba12095ea98fadb19ddf6a86",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.webkit:webkit:1.16.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.webkit:webkit:1.16.0",
+          "sourceLine": 247
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.webkit__webkit@1.16.0/source-notices/META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "originalPath": "META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.16.0/webkit-1.16.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.16.0/webkit-1.16.0.pom",
+      "pomSHA256": "e6686db4a9b05faf40298b67450ebc45395955fa52c585d6922b6bd810ad9302",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.16.0/webkit-1.16.0-sources.jar",
+        "bytes": 282010,
+        "sha256": "5847a6c29951be51c45495c388830e7e9417d121030cda624199966ddae610c8",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.core:core-ktx:1.19.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.core:core-ktx:1.19.0",
+          "sourceLine": 248
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.core__core-ktx@1.19.0/source-notices/META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.19.0/core-ktx-1.19.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.19.0/core-ktx-1.19.0.pom",
+      "pomSHA256": "b8fe1568a1cb462c99c660cebaf80348c2dd1881054be5d9659c1a2589cc3ba8",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.19.0/core-ktx-1.19.0-sources.jar",
+        "bytes": 4366,
+        "sha256": "fb591a23600d0c3dd2b8ad3c330bf830ff607fd9e751303173a8180af211e2d5",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "com.google.android.material:material:1.14.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "com.google.android.material:material:1.14.0",
+          "sourceLine": 249
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/com/google/android/material/material/1.14.0/material-1.14.0.pom",
+      "pomSHA256": "b8d90c94f010f0205e49074321aa449e663ed2e818f8494e1264b2f2f85c08c8",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/material-components/material-components-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/material-components/material-components-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/com/google/android/material/material/1.14.0/material-1.14.0-sources.jar",
+        "bytes": 1361931,
+        "sha256": "fde0310c43bdc6a30a12b6e288113b123769ee78de0327df559d992c26974067",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-livedata-ktx:2.9.4",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-livedata-ktx:2.9.4",
+          "sourceLine": 253
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-livedata-ktx@2.9.4/source-notices/META-INF/androidx/lifecycle/lifecycle-livedata-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-livedata-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.9.4/lifecycle-livedata-ktx-2.9.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.9.4/lifecycle-livedata-ktx-2.9.4.pom",
+      "pomSHA256": "5b373bd09e204f93f75f940f8d5ba3d01bfa132052258695518ad1a4c0824d7d",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.9.4/lifecycle-livedata-ktx-2.9.4-sources.jar",
+        "bytes": 4452,
+        "sha256": "22c65058f17e1a66f2ee38a203c1ce15204b838692c7b8f7cb4ff8e3c3ef7a92",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4",
+          "sourceLine": 254
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-viewmodel-ktx@2.9.4/source-notices/META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.9.4/lifecycle-viewmodel-ktx-2.9.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.9.4/lifecycle-viewmodel-ktx-2.9.4.pom",
+      "pomSHA256": "0ccd0e9d361ad69b6a7253ab4ed2124a3bd4fbf9b338e36c1431b3c5ee7bc794",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.9.4/lifecycle-viewmodel-ktx-2.9.4-sources.jar",
+        "bytes": 4456,
+        "sha256": "f15c9fbd9ade832f04d2deed9cdc1732697e63b8c34ffae0ada712197abcc6ec",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-process:2.9.4",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-process:2.9.4",
+          "sourceLine": 255
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-process@2.9.4/source-notices/META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.9.4/lifecycle-process-2.9.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.9.4/lifecycle-process-2.9.4.pom",
+      "pomSHA256": "5eac5a0a27138477f40f0aa0e749cd07fbf5580d4a9adc6d2d59db64cac49b10",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.9.4/lifecycle-process-2.9.4-sources.jar",
+        "bytes": 9772,
+        "sha256": "3591d371c62f87ff407b3bc303689b33e1fd813aa5a799d02abbec92b8a4f2b0",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.room:room-runtime:2.7.2",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.room:room-runtime:2.7.2",
+          "sourceLine": 256
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.room__room-runtime@2.7.2/source-notices/META-INF/androidx/room/room-runtime/LICENSE.txt",
+          "originalPath": "META-INF/androidx/room/room-runtime/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.7.2/room-runtime-2.7.2-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.7.2/room-runtime-2.7.2.pom",
+      "pomSHA256": "674d71a3b93c8efe252e89bbfbcb767735ce733f2ecf4673dc081821ed057bb2",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.7.2/room-runtime-2.7.2-sources.jar",
+        "bytes": 108310,
+        "sha256": "7f55d17f4de5fba77b4f2b55af288bc07281c37cc9d24b7b2cd26805dc5528eb",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.work:work-runtime-ktx:2.10.5",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.work:work-runtime-ktx:2.10.5",
+          "sourceLine": 257
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.work__work-runtime-ktx@2.10.5/source-notices/META-INF/androidx/work/work-runtime-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/work/work-runtime-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.10.5/work-runtime-ktx-2.10.5-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.10.5/work-runtime-ktx-2.10.5.pom",
+      "pomSHA256": "3cd5f104492a6006b2af578d03fcc15a6c3128217fd1ab7f5a2d4e62ab837cc0",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.10.5/work-runtime-ktx-2.10.5-sources.jar",
+        "bytes": 4398,
+        "sha256": "4a5f293a931444d1cb766fb365bfcc2c286cd8ae43fdedad0cdfa2a69362ed15",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-view:1.4.2",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.camera:camera-view:1.4.2",
+          "sourceLine": 258
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-view@1.4.2/source-notices/META-INF/androidx/camera/camera-view/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-view/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.4.2/camera-view-1.4.2-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.4.2/camera-view-1.4.2.pom",
+      "pomSHA256": "a8191cd41c9007dfcc69772b97449a66ac9eac79664413bf27dbeb16b90354f8",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.4.2/camera-view-1.4.2-sources.jar",
+        "bytes": 92342,
+        "sha256": "6840fac8c2a3769fe8264b781966a9d1ad0cb082eaf7802deef24fd286b50a15",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-lifecycle:1.4.2",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.camera:camera-lifecycle:1.4.2",
+          "sourceLine": 259
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-lifecycle@1.4.2/source-notices/META-INF/androidx/camera/camera-lifecycle/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-lifecycle/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.4.2/camera-lifecycle-1.4.2-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.4.2/camera-lifecycle-1.4.2.pom",
+      "pomSHA256": "184a3639996e4794dcd0e409ae82145cf70a1f4f2d64d8bd104e0903f8fa4743",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.4.2/camera-lifecycle-1.4.2-sources.jar",
+        "bytes": 25507,
+        "sha256": "6859424cdb0ba3cf806ed0a56ae28722cc0a2252b1b9e6e150a23745a805ed07",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.camera:camera-camera2:1.4.2",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.camera:camera-camera2:1.4.2",
+          "sourceLine": 260
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.camera__camera-camera2@1.4.2/source-notices/META-INF/androidx/camera/camera-camera2/LICENSE.txt",
+          "originalPath": "META-INF/androidx/camera/camera-camera2/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.4.2/camera-camera2-1.4.2-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.4.2/camera-camera2-1.4.2.pom",
+      "pomSHA256": "b7ad8ead85dddc10d733fa4267a7c1df3214e0447853f0fbf8500dcffbcbdbf9",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.4.2/camera-camera2-1.4.2-sources.jar",
+        "bytes": 384563,
+        "sha256": "03d02e14d05b5c17560b0bb6159d47e8c924f4c9e44cecd66dd2263dc15bb239",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.browser:browser:1.9.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.browser:browser:1.9.0",
+          "sourceLine": 261
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.browser__browser@1.9.0/source-notices/META-INF/androidx/browser/browser/LICENSE.txt",
+          "originalPath": "META-INF/androidx/browser/browser/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.9.0/browser-1.9.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.9.0/browser-1.9.0.pom",
+      "pomSHA256": "49a0f19913eb6b5a8bca0017ad6379aad87cf0a03da897233dfe6380e48485d7",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.9.0/browser-1.9.0-sources.jar",
+        "bytes": 145899,
+        "sha256": "e95fe3dfd81f2474e2c68a42d140918592271a736b7b8dc26616f72da8cc9163",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.webkit:webkit:1.14.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.webkit:webkit:1.14.0",
+          "sourceLine": 262
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.webkit__webkit@1.14.0/source-notices/META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "originalPath": "META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.14.0/webkit-1.14.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.14.0/webkit-1.14.0.pom",
+      "pomSHA256": "230b7ba1631c5f6baad08f3915f9db6d550d215b3658c82eb38ceb2dff72cad1",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.14.0/webkit-1.14.0-sources.jar",
+        "bytes": 238710,
+        "sha256": "714bc9cebdba29d5e336e026367c50ff235bd0090e1949efcbd81537a213176e",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.core:core-ktx:1.17.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.core:core-ktx:1.17.0",
+          "sourceLine": 263
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.core__core-ktx@1.17.0/source-notices/META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "originalPath": "META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.17.0/core-ktx-1.17.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.17.0/core-ktx-1.17.0.pom",
+      "pomSHA256": "0233d8d0a2ce8ff383502c8c64a42fc1673016402c923795465b6444eacd9939",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.17.0/core-ktx-1.17.0-sources.jar",
+        "bytes": 74641,
+        "sha256": "360e212c1d7926d5eaebcea1eed68e2eff73dabb2ed9f34b4dfcc6e46ce0c0d1",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "com.google.android.material:material:1.13.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "com.google.android.material:material:1.13.0",
+          "sourceLine": 264
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/com/google/android/material/material/1.13.0/material-1.13.0.pom",
+      "pomSHA256": "9c1f3c4600295cc5d7f6d6886aea16d497f13f9af4675442ad271e7c2febf772",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/material-components/material-components-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/material-components/material-components-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/com/google/android/material/material/1.13.0/material-1.13.0-sources.jar",
+        "bytes": 1290700,
+        "sha256": "7b8a89701918165bfa45e9137e07192c02ac85a8d52bbf16b3dec0c329a76045",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "io.github.Rosemoe.sora-editor:editor:0.23.6",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "io.github.Rosemoe.sora-editor:editor:0.23.6",
+          "sourceLine": 274
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/Rosemoe/sora-editor/editor/0.23.6/editor-0.23.6.pom",
+      "pomSHA256": "f84c21ed0e04ff832b400cb56cf1ae8b8f33c4eda9468d7a17bb8170c0303af6",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "LGPL v2.1",
+          "url": "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/Rosemoe/sora-editor/tree/master",
+        "tag": null,
+        "connection": "scm:git:github.com/Rosemoe/sora-editor.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/Rosemoe/sora-editor/editor/0.23.6/editor-0.23.6-sources.jar",
+        "bytes": 502046,
+        "sha256": "b3573309e8e3e4d1006c6a0da7aa94fa0712e87d1d256650a5e39349850c78ce",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "io.github.Rosemoe.sora-editor:language-treesitter:0.23.6",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "io.github.Rosemoe.sora-editor:language-treesitter:0.23.6",
+          "sourceLine": 275
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/Rosemoe/sora-editor/language-treesitter/0.23.6/language-treesitter-0.23.6.pom",
+      "pomSHA256": "153cb503e541fcd6d4a88b4c6a96f96be1d6de9aa7cc1b1096b7bc32a7661198",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "LGPL v2.1",
+          "url": "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/Rosemoe/sora-editor/tree/master",
+        "tag": null,
+        "connection": "scm:git:github.com/Rosemoe/sora-editor.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/Rosemoe/sora-editor/language-treesitter/0.23.6/language-treesitter-0.23.6-sources.jar",
+        "bytes": 37233,
+        "sha256": "05002da141bf04120098850c8ac6b5ee1c4f686946c791eab304974624e4d09b",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.itsaky.androidide.treesitter:android-tree-sitter:4.3.2",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "com.itsaky.androidide.treesitter:android-tree-sitter:4.3.2",
+          "sourceLine": 276
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/itsaky/androidide/treesitter/android-tree-sitter/4.3.2/android-tree-sitter-4.3.2.pom",
+      "pomSHA256": "fe1204882c19ce1a01ffeb002a5fa756156b551dbca0427ab94a6647783dd279",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "LGPL-v2.1",
+          "url": "https://github.com/itsaky/android-tree-sitter/blob/main/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/itsaky/android-tree-sitter/",
+        "tag": null,
+        "connection": "scm:git:git://github.com/itsaky/android-tree-sitter.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/itsaky/androidide/treesitter/android-tree-sitter/4.3.2/android-tree-sitter-4.3.2-sources.jar",
+        "bytes": 55936,
+        "sha256": "82aaa63e621aa111d45dab8faeee4fe3e361e49349c6edaf60159e69e09332b9",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.itsaky.androidide.treesitter:tree-sitter-json:4.3.2",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "com.itsaky.androidide.treesitter:tree-sitter-json:4.3.2",
+          "sourceLine": 277
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/itsaky/androidide/treesitter/tree-sitter-json/4.3.2/tree-sitter-json-4.3.2.pom",
+      "pomSHA256": "624e9cf662609b62145cd93a3d956ff505b690a4dd1c358b965cb4081fcde228",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "LGPL-v2.1",
+          "url": "https://github.com/itsaky/android-tree-sitter/blob/main/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/itsaky/android-tree-sitter/",
+        "tag": null,
+        "connection": "scm:git:git://github.com/itsaky/android-tree-sitter.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/itsaky/androidide/treesitter/tree-sitter-json/4.3.2/tree-sitter-json-4.3.2-sources.jar",
+        "bytes": 1978,
+        "sha256": "66920ce457873e475430d2d691ef4675a9e60e8a9e70d136e073700cf5b5d38a",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.blacksquircle.ui:editorkit:2.2.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "com.blacksquircle.ui:editorkit:2.2.0",
+          "sourceLine": 278
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/editorkit/2.2.0/editorkit-2.2.0.pom",
+      "pomSHA256": "6f7ec7107a2e03e9aabf18b9c1f5e1faf4f1dac7d0541cf565ebb673fd17a8cb",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "Apache 2.0 License",
+          "url": "https://github.com/massivemadness/Squircle-IDE/blob/master/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/massivemadness/Squircle-IDE/tree/master",
+        "tag": null,
+        "connection": "scm:git:github.com/massivemadness/Squircle-IDE.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/editorkit/2.2.0/editorkit-2.2.0-sources.jar",
+        "bytes": 52638,
+        "sha256": "4bbb76e970c2858328788415765fc42728da14a4748c7edf05237bc63e84c859",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.blacksquircle.ui:language-json:2.2.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "com.blacksquircle.ui:language-json:2.2.0",
+          "sourceLine": 279
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/language-json/2.2.0/language-json-2.2.0.pom",
+      "pomSHA256": "358e5b90e1e9070d89658f507a2c3262b9c22a0a683ef34d4ae274c4d2f1b76e",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "Apache 2.0 License",
+          "url": "https://github.com/massivemadness/Squircle-IDE/blob/master/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/massivemadness/Squircle-IDE/tree/master",
+        "tag": null,
+        "connection": "scm:git:github.com/massivemadness/Squircle-IDE.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/language-json/2.2.0/language-json-2.2.0-sources.jar",
+        "bytes": 15673,
+        "sha256": "20235a4fb3bb7a7e50e4615b9003884cb4941fba7f5f607fde4f9939d4fbfae0",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "dev.rikka.shizuku:api:13.1.5",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "dev.rikka.shizuku:api:13.1.5",
+          "sourceLine": 289
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/dev/rikka/shizuku/api/13.1.5/api-13.1.5.pom",
+      "pomSHA256": "1e9d3b6f3a9b95580433f0486f3debb84c42f250e1fdc43a9fdcf121e14bd751",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/RikkaApps/Shizuku-API/blob/master/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/RikkaApps/Shizuku-API",
+        "tag": null,
+        "connection": "scm:git@github.com:RikkaApps/Shizuku-API.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/dev/rikka/shizuku/api/13.1.5/api-13.1.5-sources.jar",
+        "bytes": 14198,
+        "sha256": "93b2f52a40beded05b6521bae3a423380fd1916b543af6be6ef9d292c1b9cebd",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "dev.rikka.shizuku:provider:13.1.5",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "dev.rikka.shizuku:provider:13.1.5",
+          "sourceLine": 290
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/dev/rikka/shizuku/provider/13.1.5/provider-13.1.5.pom",
+      "pomSHA256": "3413e9812ea3c3842212aa6eb04b8a785dfc25a2e114a972a0cead1ca003cd46",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/RikkaApps/Shizuku-API/blob/master/LICENSE"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/RikkaApps/Shizuku-API",
+        "tag": null,
+        "connection": "scm:git@github.com:RikkaApps/Shizuku-API.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/dev/rikka/shizuku/provider/13.1.5/provider-13.1.5-sources.jar",
+        "bytes": 3966,
+        "sha256": "b970c8e3d1354729bbb59f46313180f2bf475a5a619045c6b25a91d8bb7b9d12",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.github.topjohnwu.libsu:core:6.0.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "com.github.topjohnwu.libsu:core:6.0.0",
+          "sourceLine": 296
+        },
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "com.github.topjohnwu.libsu:core:6.0.0",
+          "sourceLine": 298
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://jitpack.io/com/github/topjohnwu/libsu/core/6.0.0/core-6.0.0.pom",
+      "pomSHA256": "16bc770ce1a36c957027c55e150cad31fa9a5b0b140fb6fcaa5fde13e949e587",
+      "packaging": "aar",
+      "licenses": [],
+      "scm": {
+        "url": null,
+        "tag": null,
+        "connection": null
+      },
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    },
+    {
+      "coordinate": "com.github.topjohnwu.libsu:service:6.0.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "com.github.topjohnwu.libsu:service:6.0.0",
+          "sourceLine": 297
+        },
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "com.github.topjohnwu.libsu:service:6.0.0",
+          "sourceLine": 299
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://jitpack.io/com/github/topjohnwu/libsu/service/6.0.0/service-6.0.0.pom",
+      "pomSHA256": "5837c29b3e53270f237306c3e34a1abfb26e000e76274d49eef785e9684b0ca6",
+      "packaging": "aar",
+      "licenses": [],
+      "scm": {
+        "url": null,
+        "tag": null,
+        "connection": null
+      },
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    },
+    {
+      "coordinate": "androidx.compose.material3:material3:1.4.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.material3:material3:1.4.0",
+          "sourceLine": 318,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.material3__material3@1.4.0/source-notices/META-INF/androidx/compose/material3/material3/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/material3/material3/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.4.0/material3-1.4.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.4.0/material3-1.4.0.pom",
+      "pomSHA256": "672b431f59c8e0a8522690b2f46f1b7966710638893c60c31c5f19f8472d62cc",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.4.0/material3-1.4.0-sources.jar",
+        "bytes": 645216,
+        "sha256": "08a23a069407ba2a59685f88d676fd38ede207301a0805ee904ed63735f5d0b5",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.material3.adaptive:adaptive:1.2.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.material3.adaptive:adaptive:1.2.0",
+          "sourceLine": 319,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.material3.adaptive__adaptive@1.2.0/source-notices/META-INF/androidx/compose/material3/adaptive/adaptive/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/material3/adaptive/adaptive/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.2.0/adaptive-1.2.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.2.0/adaptive-1.2.0.pom",
+      "pomSHA256": "88e1af3ca3d2882f9f785276b5e1b768b7ec4a9ad13406e06b2fe6a6c5051c3a",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.2.0/adaptive-1.2.0-sources.jar",
+        "bytes": 15418,
+        "sha256": "c055328d0c140084d98adeb388b509eee4eea15521d4aa7f8aa39a360d1d5dbc",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui:1.11.4",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.ui:ui:1.11.4",
+          "sourceLine": 320,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.ui__ui@1.11.4/source-notices/META-INF/androidx/compose/ui/ui/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/ui/ui/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.11.4/ui-1.11.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.11.4/ui-1.11.4.pom",
+      "pomSHA256": "dd0a7c90f8eb4cc719630aa59d6fab2b7282f98db2c97700d3b81a65bbcaa4b6",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.11.4/ui-1.11.4-sources.jar",
+        "bytes": 648391,
+        "sha256": "868f905d7d05a7ce8acc0f9db2beed8ae82b161833635271ad8c830331b00761",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-tooling-preview:1.11.4",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.ui:ui-tooling-preview:1.11.4",
+          "sourceLine": 321,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.ui__ui-tooling-preview@1.11.4/source-notices/META-INF/androidx/compose/ui/ui-tooling-preview/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/ui/ui-tooling-preview/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.11.4/ui-tooling-preview-1.11.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.11.4/ui-tooling-preview-1.11.4.pom",
+      "pomSHA256": "0ef8a02ef1fbf61c0c695cfa77db425b6fa0f1e61efa5658bbfda3a9d2b7fb3c",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.11.4/ui-tooling-preview-1.11.4-sources.jar",
+        "bytes": 20747,
+        "sha256": "e4eb5aacfa164d98c61fac6d2f293cb5938ec77e198b06e7361c4f572b965375",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.material:material-icons-extended:1.7.8",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.material:material-icons-extended:1.7.8",
+          "sourceLine": 322,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.8/source-notices/commonMain/androidx/compose/material/icons/filled/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/filled/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+          "sha256": "0c4ea5fbb371f1f2ace88fb43ff1c50cc26954129a459ce160e4fd0d99881a39",
+          "bytes": 2599
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.8/source-notices/commonMain/androidx/compose/material/icons/outlined/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/outlined/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+          "sha256": "ad3349e4177e534a4dddd82b845a4e237991738b5a2fc08bc512e12fc131f945",
+          "bytes": 4465
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.8/source-notices/commonMain/androidx/compose/material/icons/rounded/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/rounded/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+          "sha256": "1ab18f3ec096f17ef2bef2da3732177863d9b9a5bca6c9cd1ce7b0a6f2e5e244",
+          "bytes": 4462
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.8/source-notices/commonMain/androidx/compose/material/icons/sharp/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/sharp/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+          "sha256": "ee2d374245327834dae489b4b6a5202a58e1c4924d8fee8b99ede27cdb06983d",
+          "bytes": 4456
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.8/source-notices/commonMain/androidx/compose/material/icons/twotone/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/twotone/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+          "sha256": "19f99ce19a41ea0b55ea1ea5f5cdd5a02b71dbe1787f43e2937b2abd0f29b40e",
+          "bytes": 7626
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8.pom",
+      "pomSHA256": "dad3723163c1b04d0c4cce4d280e7ddc1041b08d73b8c4f8d07a67c755758515",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar",
+        "bytes": 12086044,
+        "sha256": "77b7e782a519a3e074fc91e09d59334ac1b815edd87d2e89c0c9ca7c95678e93",
+        "standaloneNoticeCount": 5
+      }
+    },
+    {
+      "coordinate": "androidx.activity:activity-compose:1.13.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.activity:activity-compose:1.13.0",
+          "sourceLine": 323
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.activity__activity-compose@1.13.0/source-notices/META-INF/androidx/activity/activity-compose/LICENSE.txt",
+          "originalPath": "META-INF/androidx/activity/activity-compose/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.13.0/activity-compose-1.13.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.13.0/activity-compose-1.13.0.pom",
+      "pomSHA256": "cb6a8ff89ffb7f107f214050e9fb32b0d0b0f665d8de7c9e4e2a4d5fea9951e9",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.13.0/activity-compose-1.13.0-sources.jar",
+        "bytes": 21308,
+        "sha256": "968cda8fb2bf4c80f952b442d05657773e6e373507700e621d1092d43b6751c5",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.navigation:navigation-compose:2.9.8",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.navigation:navigation-compose:2.9.8",
+          "sourceLine": 324
+        },
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.navigation:navigation-compose:2.9.8",
+          "sourceLine": 340
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.navigation__navigation-compose@2.9.8/source-notices/META-INF/androidx/navigation/navigation-compose/LICENSE.txt",
+          "originalPath": "META-INF/androidx/navigation/navigation-compose/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-compose/2.9.8/navigation-compose-2.9.8-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-compose/2.9.8/navigation-compose-2.9.8.pom",
+      "pomSHA256": "40423699cedad150405429b85dad0e68896f56eaf5213159e86779ea5a77acca",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-compose/2.9.8/navigation-compose-2.9.8-sources.jar",
+        "bytes": 28866,
+        "sha256": "05a1bedec5be736fc3f44f3baf568cc9fe9ede88b6eaa4cd0356be6de1bbe9d8",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0",
+          "sourceLine": 325
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-viewmodel-compose@2.11.0/source-notices/META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.11.0/lifecycle-viewmodel-compose-2.11.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.11.0/lifecycle-viewmodel-compose-2.11.0.pom",
+      "pomSHA256": "d0d002c9dea943f4fce0b7bcb0bd2770fb80db054be75c33e5817f3e6fb884ea",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.11.0/lifecycle-viewmodel-compose-2.11.0-sources.jar",
+        "bytes": 20747,
+        "sha256": "51f81f7f43f18caac610105972ea21b42448181b148b708304ec4ed8e300897b",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-livedata:1.11.4",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "androidx.compose.runtime:runtime-livedata:1.11.4",
+          "sourceLine": 326,
+          "resolvedBy": "composeBom24"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.runtime__runtime-livedata@1.11.4/source-notices/META-INF/androidx/compose/runtime/runtime-livedata/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/runtime/runtime-livedata/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.11.4/runtime-livedata-1.11.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.11.4/runtime-livedata-1.11.4.pom",
+      "pomSHA256": "7934399a5609ec86c7092ed6780c0935725d7b8827937aff31cd5128f7550a96",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.11.4/runtime-livedata-1.11.4-sources.jar",
+        "bytes": 6327,
+        "sha256": "b4ee50a7e1376bbd9371f3d6b59b04e6fd3fd1baf0bad8d03b7825bf9197c573",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.material3:material3:1.3.1",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.material3:material3:1.3.1",
+          "sourceLine": 334,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.3.1/material3-1.3.1.pom",
+      "pomSHA256": "4dc1c9f39049c264b7126de813c3252381265010d31fd93273167efabb5de602",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.3.1/material3-1.3.1-sources.jar",
+        "bytes": 452882,
+        "sha256": "55bb1ea8e66bcd44adb68524ebc5365fbe1ba26bd174ac93966ed1a1b0315aa4",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.compose.material3.adaptive:adaptive:1.0.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.material3.adaptive:adaptive:1.0.0",
+          "sourceLine": 335,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.material3.adaptive__adaptive@1.0.0/source-notices/META-INF/androidx/compose/material3/adaptive/adaptive/LICENSE.txt",
+          "originalPath": "META-INF/androidx/compose/material3/adaptive/adaptive/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.0.0/adaptive-1.0.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.0.0/adaptive-1.0.0.pom",
+      "pomSHA256": "faa201ef0a8950ee6e1a2833bd1e57882b60ef8ec0b31404149f3c8b6e8e6572",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.0.0/adaptive-1.0.0-sources.jar",
+        "bytes": 9712,
+        "sha256": "183c0152e6b3c47f801797bb0abf2586ebf02930640c54c3946989a84b8081dc",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui:1.7.6",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.ui:ui:1.7.6",
+          "sourceLine": 336,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.7.6/ui-1.7.6.pom",
+      "pomSHA256": "b91bba3d57822b6d74a7775c7ae36d61f26fbd9d2aed92fa42d21017532e3835",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.7.6/ui-1.7.6-sources.jar",
+        "bytes": 497626,
+        "sha256": "743dfcbd19efcda674d1ceab729cecacbb624c72d804878a77c17d089f8cf4b4",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.compose.ui:ui-tooling-preview:1.7.6",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.ui:ui-tooling-preview:1.7.6",
+          "sourceLine": 337,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.7.6/ui-tooling-preview-1.7.6.pom",
+      "pomSHA256": "96842a9cc59ce1175458ddf268f7532a13f679cee7faab77482c6381e11e3928",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.7.6/ui-tooling-preview-1.7.6-sources.jar",
+        "bytes": 261,
+        "sha256": "c6deada2fac53b8ea6523dbda77597b128006674616f140f04df23264c6d1aa3",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "androidx.compose.material:material-icons-extended:1.7.6",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.material:material-icons-extended:1.7.6",
+          "sourceLine": 338,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.6/source-notices/commonMain/androidx/compose/material/icons/filled/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/filled/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+          "sha256": "69b76aa2deffddc9cf34362334c310d70082178a53d754ea6ba287b4096d7ebc",
+          "bytes": 2599
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.6/source-notices/commonMain/androidx/compose/material/icons/outlined/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/outlined/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+          "sha256": "f17ac4d9a212db8afb1f95baf4f9980aff9fd602472fb46bf0b072b0e5379390",
+          "bytes": 4465
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.6/source-notices/commonMain/androidx/compose/material/icons/rounded/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/rounded/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+          "sha256": "c60e142d1cf81e8cb7f8e80ce6e1f452408b6720562cc77b6284417adfd02b95",
+          "bytes": 4462
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.6/source-notices/commonMain/androidx/compose/material/icons/sharp/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/sharp/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+          "sha256": "a3b11a0f48db8f6b7cd4592e56792db1ee390f17c296dd9f4259da0a2549aa84",
+          "bytes": 4456
+        },
+        {
+          "path": "android/androidx.compose.material__material-icons-extended@1.7.6/source-notices/commonMain/androidx/compose/material/icons/twotone/Copyright.kt",
+          "originalPath": "commonMain/androidx/compose/material/icons/twotone/Copyright.kt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+          "sha256": "ff87637136a936573e5ecaebaf4fa782fdbe46f8d3bded8e73aea5eb316f3e21",
+          "bytes": 7626
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6.pom",
+      "pomSHA256": "ac54af03fa805d636c0bfa458be16ac3598bfbb36dbec180f65a0618503fa3bd",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar",
+        "bytes": 12085941,
+        "sha256": "9b22840d9d5ec83fca54783df66640c0e2d76bb164687d654c23bcc6c02f3a96",
+        "standaloneNoticeCount": 5
+      }
+    },
+    {
+      "coordinate": "androidx.activity:activity-compose:1.11.0",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.activity:activity-compose:1.11.0",
+          "sourceLine": 339
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.activity__activity-compose@1.11.0/source-notices/META-INF/androidx/activity/activity-compose/LICENSE.txt",
+          "originalPath": "META-INF/androidx/activity/activity-compose/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.11.0/activity-compose-1.11.0-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.11.0/activity-compose-1.11.0.pom",
+      "pomSHA256": "d4156a6498962c42bd7eb389ccd3f7e0036da5f7add2c84adcfbcb594ad2670b",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.11.0/activity-compose-1.11.0-sources.jar",
+        "bytes": 16146,
+        "sha256": "d90a2c22431fcd2bdad4b2f3637c831ec8ea124376f46a9a341e98c969e0f9e0",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4",
+          "sourceLine": 341
+        }
+      ],
+      "files": [
+        {
+          "path": "android/androidx.lifecycle__lifecycle-viewmodel-compose@2.9.4/source-notices/META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt",
+          "originalPath": "META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt",
+          "archiveURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.9.4/lifecycle-viewmodel-compose-2.9.4-sources.jar",
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "bytes": 10175
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.9.4/lifecycle-viewmodel-compose-2.9.4.pom",
+      "pomSHA256": "88903aa2f881fc75beb1f05480edb0d759d6d0b1bacb5f788e0f13161305dc79",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.9.4/lifecycle-viewmodel-compose-2.9.4-sources.jar",
+        "bytes": 9442,
+        "sha256": "5978c2b17a316ec4418ae8d8c051932e8e7e407e93ec37a899c660872324fef6",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "androidx.compose.runtime:runtime-livedata:1.7.6",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "androidx.compose.runtime:runtime-livedata:1.7.6",
+          "sourceLine": 342,
+          "resolvedBy": "composeBom21"
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.7.6/runtime-livedata-1.7.6.pom",
+      "pomSHA256": "c2116356ac9a500cb45de7ed167626f4234c8ea9f0d4fe23ee36078ea8fe37a0",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://cs.android.com/androidx/platform/frameworks/support",
+        "tag": null,
+        "connection": "scm:git:https://android.googlesource.com/platform/frameworks/support"
+      },
+      "sourceJar": {
+        "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.7.6/runtime-livedata-1.7.6-sources.jar",
+        "bytes": 1983,
+        "sha256": "06963aac7ce10456fd75e839156713f69a0879c40737d58669b2809e4f1033b8",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "sh.calvin.reorderable:reorderable:3.1.0",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "sh.calvin.reorderable:reorderable:3.1.0",
+          "sourceLine": 353
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/sh/calvin/reorderable/reorderable/3.1.0/reorderable-3.1.0.pom",
+      "pomSHA256": "4bc4ffa48185d180dea655ead20239fc613356152888415bcb9c12405af26d96",
+      "packaging": "jar",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/Calvin-LL/Reorderable",
+        "tag": null,
+        "connection": "scm:git:git://github.com/Calvin-LL/Reorderable.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/sh/calvin/reorderable/reorderable/3.1.0/reorderable-3.1.0-sources.jar",
+        "bytes": 25160,
+        "sha256": "71caff203ad0eacff5baea15f79ad1e668a6566c1400dbd36a35e4c12c5e5bc8",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "com.github.jeziellago:compose-markdown:0.7.2",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "com.github.jeziellago:compose-markdown:0.7.2",
+          "sourceLine": 354
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://jitpack.io/com/github/jeziellago/compose-markdown/0.7.2/compose-markdown-0.7.2.pom",
+      "pomSHA256": "0574bada4946058ff3d52ac6e9df5c691ace10c068027fd2f9b6a2c5972f580f",
+      "packaging": "aar",
+      "licenses": [],
+      "scm": {
+        "url": null,
+        "tag": null,
+        "connection": null
+      },
+      "acquisitionHistory": [
+        "HTTP Error 404: Not Found"
+      ]
+    },
+    {
+      "coordinate": "org.kodein.emoji:emoji-kt:2.5.0",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "org.kodein.emoji:emoji-kt:2.5.0",
+          "sourceLine": 355
+        }
+      ],
+      "files": [
+        {
+          "path": "android/org.kodein.emoji__emoji-kt@2.5.0/source-notices/commonMain/symbols/other_symbol/Copyright.kt",
+          "originalPath": "commonMain/symbols/other_symbol/Copyright.kt",
+          "archiveURL": "https://repo.maven.apache.org/maven2/org/kodein/emoji/emoji-kt/2.5.0/emoji-kt-2.5.0-sources.jar",
+          "sha256": "bbd24005ee87fc6722909ea1484de335eaffea25fd00b51af7164997c0827e23",
+          "bytes": 671
+        }
+      ],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/org/kodein/emoji/emoji-kt/2.5.0/emoji-kt-2.5.0.pom",
+      "pomSHA256": "c09840bee45c70b0ae39d43de83ddbb958bfedb62816b179aae6c75e94fa5d57",
+      "packaging": "jar",
+      "licenses": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/licenses/MIT"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/kosi-libs/Emoji.kt",
+        "tag": null,
+        "connection": "https://github.com/kosi-libs/Emoji.kt.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/org/kodein/emoji/emoji-kt/2.5.0/emoji-kt-2.5.0-sources.jar",
+        "bytes": 1130739,
+        "sha256": "85976ad60a9480662457b4bac5bcceefced4c54a5a4bf7ef16383b15f55e7066",
+        "standaloneNoticeCount": 1
+      }
+    },
+    {
+      "coordinate": "io.github.sagernet:libghostty-android:0.1.0-alpha01",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "io.github.sagernet:libghostty-android:0.1.0-alpha01",
+          "sourceLine": 359
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android/0.1.0-alpha01/libghostty-android-0.1.0-alpha01.pom",
+      "pomSHA256": "88bd71f05263e59313d53c91b78f6e97c158e642fe729c40c04e5061134c9dc0",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/SagerNet/libghostty-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/SagerNet/libghostty-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android/0.1.0-alpha01/libghostty-android-0.1.0-alpha01-sources.jar",
+        "bytes": 27615,
+        "sha256": "7b05725f2da59dec24185b760f9f750c9a4f3c784112e6a9d69f373336ecc169",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "io.github.sagernet:libghostty-android-extras:0.1.0-alpha01",
+      "declarations": [
+        {
+          "configuration": "implementation",
+          "coordinate": "io.github.sagernet:libghostty-android-extras:0.1.0-alpha01",
+          "sourceLine": 360
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-extras/0.1.0-alpha01/libghostty-android-extras-0.1.0-alpha01.pom",
+      "pomSHA256": "c2c27e17ab5408e5650f8a9b0db216e481cea8e2ad53f5b021fe4a1bcb331881",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/SagerNet/libghostty-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/SagerNet/libghostty-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-extras/0.1.0-alpha01/libghostty-android-extras-0.1.0-alpha01-sources.jar",
+        "bytes": 3990,
+        "sha256": "ec0af8ef1f81440f124a2c556076e21a9f73d2c5c59ffc3f3f468ea2418ddb10",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "io.github.sagernet:libghostty-android-compose:0.1.0-alpha01",
+      "declarations": [
+        {
+          "configuration": "otherImplementation",
+          "coordinate": "io.github.sagernet:libghostty-android-compose:0.1.0-alpha01",
+          "sourceLine": 362
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-compose/0.1.0-alpha01/libghostty-android-compose-0.1.0-alpha01.pom",
+      "pomSHA256": "14a08a5e946cff0db3732c78aafded3abe0c4ad7dfae3a2e3f2c0463ae4f7c10",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/SagerNet/libghostty-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/SagerNet/libghostty-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-compose/0.1.0-alpha01/libghostty-android-compose-0.1.0-alpha01-sources.jar",
+        "bytes": 7349,
+        "sha256": "553f8dc32455dd42b2438a09b470694c0c635f2afcc53029e6d940efc81eb696",
+        "standaloneNoticeCount": 0
+      }
+    },
+    {
+      "coordinate": "io.github.sagernet:libghostty-android-compose-legacy:0.1.0-alpha01",
+      "declarations": [
+        {
+          "configuration": "otherLegacyImplementation",
+          "coordinate": "io.github.sagernet:libghostty-android-compose-legacy:0.1.0-alpha01",
+          "sourceLine": 363
+        }
+      ],
+      "files": [],
+      "errors": [],
+      "pomURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-compose-legacy/0.1.0-alpha01/libghostty-android-compose-legacy-0.1.0-alpha01.pom",
+      "pomSHA256": "8efd8026f9e7a694002b431e88ce641ca334256461d186c8e916c72a115d67de",
+      "packaging": "aar",
+      "licenses": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/license/mit"
+        }
+      ],
+      "scm": {
+        "url": "https://github.com/SagerNet/libghostty-android",
+        "tag": null,
+        "connection": "scm:git:https://github.com/SagerNet/libghostty-android.git"
+      },
+      "sourceJar": {
+        "sourceURL": "https://repo.maven.apache.org/maven2/io/github/sagernet/libghostty-android-compose-legacy/0.1.0-alpha01/libghostty-android-compose-legacy-0.1.0-alpha01-sources.jar",
+        "bytes": 7349,
+        "sha256": "553f8dc32455dd42b2438a09b470694c0c635f2afcc53029e6d940efc81eb696",
+        "standaloneNoticeCount": 0
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "coordinate": "com.google.android.play:app-update-ktx:2.1.0",
+      "reason": "play-only; current unsigned matrix uses other and otherLegacy"
+    },
+    {
+      "coordinate": "com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1",
+      "reason": "play-only; current unsigned matrix uses other and otherLegacy"
+    }
+  ]
+}

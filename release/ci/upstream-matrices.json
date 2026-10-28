@@ -1,0 +1,631 @@
+{
+  "upstreamCommit": "dfb80349bf5779ec0a3f834c9ec2794345bff8f0",
+  "matrices": {
+    "build.yml": {
+      "build": {
+        "include": [
+          {
+            "os": "linux",
+            "arch": "amd64",
+            "variant": "purego",
+            "naive": true
+          },
+          {
+            "os": "linux",
+            "arch": "amd64",
+            "variant": "glibc",
+            "naive": true
+          },
+          {
+            "os": "linux",
+            "arch": "amd64",
+            "variant": "musl",
+            "naive": true,
+            "debian": "amd64",
+            "rpm": "x86_64",
+            "pacman": "x86_64",
+            "alpine": "x86_64",
+            "openwrt": "x86_64"
+          },
+          {
+            "os": "linux",
+            "arch": "arm64",
+            "variant": "purego",
+            "naive": true
+          },
+          {
+            "os": "linux",
+            "arch": "arm64",
+            "variant": "glibc",
+            "naive": true
+          },
+          {
+            "os": "linux",
+            "arch": "arm64",
+            "variant": "musl",
+            "naive": true,
+            "debian": "arm64",
+            "rpm": "aarch64",
+            "pacman": "aarch64",
+            "alpine": "aarch64",
+            "openwrt": "aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic"
+          },
+          {
+            "os": "linux",
+            "arch": "386",
+            "go386": "sse2"
+          },
+          {
+            "os": "linux",
+            "arch": "386",
+            "variant": "glibc",
+            "naive": true,
+            "go386": "sse2"
+          },
+          {
+            "os": "linux",
+            "arch": "386",
+            "variant": "musl",
+            "naive": true,
+            "go386": "sse2",
+            "debian": "i386",
+            "rpm": "i386",
+            "alpine": "x86",
+            "openwrt": "i386_pentium4"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "goarm": "7"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "variant": "glibc",
+            "naive": true,
+            "goarm": "7"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "variant": "musl",
+            "naive": true,
+            "goarm": "7",
+            "debian": "armhf",
+            "rpm": "armv7hl",
+            "pacman": "armv7hl",
+            "alpine": "armv7",
+            "openwrt": "arm_cortex-a5_vfpv4 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_cortex-a15_neon-vfpv4"
+          },
+          {
+            "os": "linux",
+            "arch": "mipsle",
+            "gomips": "hardfloat",
+            "naive": true,
+            "variant": "glibc"
+          },
+          {
+            "os": "linux",
+            "arch": "mipsle",
+            "gomips": "softfloat",
+            "naive": true,
+            "variant": "musl",
+            "debian": "mipsel",
+            "rpm": "mipsel",
+            "openwrt": "mipsel_24kc mipsel_74kc mipsel_mips32"
+          },
+          {
+            "os": "linux",
+            "arch": "mips64le",
+            "gomips": "hardfloat",
+            "naive": true,
+            "variant": "glibc",
+            "debian": "mips64el",
+            "rpm": "mips64el"
+          },
+          {
+            "os": "linux",
+            "arch": "riscv64",
+            "naive": true,
+            "variant": "glibc"
+          },
+          {
+            "os": "linux",
+            "arch": "riscv64",
+            "naive": true,
+            "variant": "musl",
+            "debian": "riscv64",
+            "rpm": "riscv64",
+            "alpine": "riscv64",
+            "openwrt": "riscv64_generic"
+          },
+          {
+            "os": "linux",
+            "arch": "loong64",
+            "naive": true,
+            "variant": "glibc"
+          },
+          {
+            "os": "linux",
+            "arch": "loong64",
+            "naive": true,
+            "variant": "musl",
+            "debian": "loongarch64",
+            "rpm": "loongarch64",
+            "alpine": "loongarch64",
+            "openwrt": "loongarch64_generic"
+          },
+          {
+            "os": "linux",
+            "arch": "386",
+            "go386": "softfloat",
+            "openwrt": "i386_pentium-mmx"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "goarm": "5",
+            "openwrt": "arm_arm926ej-s arm_cortex-a7 arm_cortex-a9 arm_fa526 arm_xscale"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "goarm": "6",
+            "debian": "armel",
+            "rpm": "armv6hl",
+            "openwrt": "arm_arm1176jzf-s_vfp"
+          },
+          {
+            "os": "linux",
+            "arch": "mips",
+            "gomips": "softfloat",
+            "openwrt": "mips_24kc mips_4kec mips_mips32"
+          },
+          {
+            "os": "linux",
+            "arch": "mipsle",
+            "gomips": "hardfloat",
+            "openwrt": "mipsel_24kc_24kf"
+          },
+          {
+            "os": "linux",
+            "arch": "mipsle",
+            "gomips": "softfloat"
+          },
+          {
+            "os": "linux",
+            "arch": "mips64",
+            "gomips": "softfloat",
+            "openwrt": "mips64_mips64r2 mips64_octeonplus"
+          },
+          {
+            "os": "linux",
+            "arch": "mips64le",
+            "gomips": "hardfloat"
+          },
+          {
+            "os": "linux",
+            "arch": "mips64le",
+            "gomips": "softfloat",
+            "openwrt": "mips64el_mips64r2"
+          },
+          {
+            "os": "linux",
+            "arch": "s390x",
+            "debian": "s390x",
+            "rpm": "s390x"
+          },
+          {
+            "os": "linux",
+            "arch": "ppc64le",
+            "debian": "ppc64el",
+            "rpm": "ppc64le"
+          },
+          {
+            "os": "linux",
+            "arch": "riscv64"
+          },
+          {
+            "os": "linux",
+            "arch": "loong64"
+          },
+          {
+            "os": "windows",
+            "arch": "amd64",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          },
+          {
+            "os": "windows",
+            "arch": "386",
+            "legacy_win7": true,
+            "legacy_name": "windows-7"
+          },
+          {
+            "os": "android",
+            "arch": "arm64",
+            "ndk": "aarch64-linux-android23"
+          },
+          {
+            "os": "android",
+            "arch": "arm",
+            "ndk": "armv7a-linux-androideabi23"
+          },
+          {
+            "os": "android",
+            "arch": "amd64",
+            "ndk": "x86_64-linux-android23"
+          },
+          {
+            "os": "android",
+            "arch": "386",
+            "ndk": "i686-linux-android23"
+          }
+        ]
+      },
+      "build_darwin": {
+        "include": [
+          {
+            "arch": "amd64"
+          },
+          {
+            "arch": "arm64"
+          },
+          {
+            "arch": "amd64",
+            "legacy_osx": true,
+            "legacy_name": "macos-10.13"
+          }
+        ]
+      },
+      "build_windows": {
+        "include": [
+          {
+            "arch": "amd64",
+            "naive": true
+          },
+          {
+            "arch": "386"
+          },
+          {
+            "arch": "arm64",
+            "naive": true
+          }
+        ]
+      },
+      "build_android_library": {
+        "go_arch": [
+          "386",
+          "amd64",
+          "arm",
+          "arm64"
+        ]
+      },
+      "build_android": {
+        "include": [
+          {
+            "variant": "other",
+            "task": ":app:assembleOtherRelease",
+            "output": "app/build/outputs/apk/other/release/*.apk"
+          },
+          {
+            "variant": "other-legacy",
+            "task": ":app:assembleOtherLegacyRelease",
+            "output": "app/build/outputs/apk/otherLegacy/release/*.apk"
+          }
+        ]
+      },
+      "build_windows_client": {
+        "include": [
+          {
+            "desktop_arch": "x64",
+            "rust_target": "x86_64-pc-windows-msvc"
+          },
+          {
+            "desktop_arch": "x86",
+            "rust_target": "i686-pc-windows-msvc"
+          },
+          {
+            "desktop_arch": "arm64",
+            "rust_target": "aarch64-pc-windows-msvc"
+          }
+        ]
+      },
+      "build_linux_client": {
+        "include": [
+          {
+            "desktop_arch": "x64",
+            "go_arch": "amd64",
+            "rust_target": "x86_64-unknown-linux-gnu"
+          },
+          {
+            "desktop_arch": "arm64",
+            "go_arch": "arm64",
+            "rust_target": "aarch64-unknown-linux-gnu"
+          },
+          {
+            "desktop_arch": "armv7l",
+            "go_arch": "arm",
+            "go_arm": "7",
+            "rust_target": "armv7-unknown-linux-gnueabihf"
+          }
+        ]
+      },
+      "build_apple_library": {
+        "include": [
+          {
+            "artifact": "ios-arm64",
+            "platform": "ios/arm64",
+            "build": "${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'iOS-jailbreak' }}"
+          },
+          {
+            "artifact": "tvos-arm64",
+            "platform": "tvos/arm64",
+            "build": "${{ github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'tvOS') }}"
+          },
+          {
+            "artifact": "macos-arm64",
+            "platform": "macos/arm64",
+            "build": "${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'macOS' || inputs.build == 'macOS-standalone' }}"
+          },
+          {
+            "artifact": "macos-amd64",
+            "platform": "macos/amd64",
+            "build": "${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'macOS' || inputs.build == 'macOS-standalone' }}"
+          }
+        ]
+      },
+      "build_apple": {
+        "include": [
+          {
+            "name": "macOS-standalone",
+            "if": "${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' || inputs.build == 'macOS-standalone' }}",
+            "type": "standalone",
+            "platform": "macos",
+            "variant": "all",
+            "library_arch": "*",
+            "scheme": "",
+            "destination": "",
+            "archive": "",
+            "upload": "",
+            "upload_extension": "",
+            "altool_platform": ""
+          },
+          {
+            "name": "iOS-jailbreak",
+            "if": "${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' || inputs.build == 'iOS-jailbreak' }}",
+            "type": "jailbreak",
+            "platform": "ios",
+            "variant": "",
+            "library_arch": "",
+            "scheme": "",
+            "destination": "",
+            "archive": "",
+            "upload": "",
+            "upload_extension": "",
+            "altool_platform": ""
+          }
+        ]
+      },
+      "build_apple_app_store": {
+        "include": [
+          {
+            "name": "iOS",
+            "if": "${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'iOS' }}",
+            "type": "app-store",
+            "platform": "ios",
+            "scheme": "SFI",
+            "destination": "generic/platform=iOS",
+            "archive": "build/SFI.xcarchive",
+            "upload": "SFI/AppStoreExport.plist",
+            "upload_extension": "ipa",
+            "altool_platform": "ios",
+            "variant": "",
+            "library_arch": ""
+          },
+          {
+            "name": "macOS",
+            "if": "${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'macOS' }}",
+            "type": "app-store",
+            "platform": "macos",
+            "scheme": "SFM",
+            "destination": "generic/platform=macOS",
+            "archive": "build/SFM.xcarchive",
+            "upload": "SFI/AppStoreExport.plist",
+            "upload_extension": "pkg",
+            "altool_platform": "macos",
+            "variant": "",
+            "library_arch": ""
+          },
+          {
+            "name": "tvOS",
+            "if": "${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'tvOS' }}",
+            "type": "app-store",
+            "platform": "tvos",
+            "scheme": "SFT",
+            "destination": "generic/platform=tvOS",
+            "archive": "build/SFT.xcarchive",
+            "upload": "SFI/AppStoreExport.plist",
+            "upload_extension": "ipa",
+            "altool_platform": "appletvos",
+            "variant": "",
+            "library_arch": ""
+          }
+        ]
+      }
+    },
+    "linux.yml": {
+      "build": {
+        "include": [
+          {
+            "os": "linux",
+            "arch": "amd64",
+            "naive": true,
+            "debian": "amd64",
+            "rpm": "x86_64",
+            "pacman": "x86_64"
+          },
+          {
+            "os": "linux",
+            "arch": "arm64",
+            "naive": true,
+            "debian": "arm64",
+            "rpm": "aarch64",
+            "pacman": "aarch64"
+          },
+          {
+            "os": "linux",
+            "arch": "386",
+            "naive": true,
+            "debian": "i386",
+            "rpm": "i386"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "goarm": "7",
+            "naive": true,
+            "debian": "armhf",
+            "rpm": "armv7hl",
+            "pacman": "armv7hl"
+          },
+          {
+            "os": "linux",
+            "arch": "mipsle",
+            "gomips": "softfloat",
+            "naive": true,
+            "debian": "mipsel",
+            "rpm": "mipsel"
+          },
+          {
+            "os": "linux",
+            "arch": "riscv64",
+            "naive": true,
+            "debian": "riscv64",
+            "rpm": "riscv64"
+          },
+          {
+            "os": "linux",
+            "arch": "loong64",
+            "naive": true,
+            "debian": "loongarch64",
+            "rpm": "loongarch64"
+          },
+          {
+            "os": "linux",
+            "arch": "arm",
+            "goarm": "6",
+            "debian": "armel",
+            "rpm": "armv6hl"
+          },
+          {
+            "os": "linux",
+            "arch": "mips64le",
+            "debian": "mips64el",
+            "rpm": "mips64el"
+          },
+          {
+            "os": "linux",
+            "arch": "s390x",
+            "debian": "s390x",
+            "rpm": "s390x"
+          },
+          {
+            "os": "linux",
+            "arch": "ppc64le",
+            "debian": "ppc64el",
+            "rpm": "ppc64le"
+          }
+        ]
+      }
+    },
+    "docker.yml": {
+      "build_binary": {
+        "include": [
+          {
+            "arch": "amd64",
+            "naive": true,
+            "docker_platform": "linux/amd64"
+          },
+          {
+            "arch": "arm64",
+            "naive": true,
+            "docker_platform": "linux/arm64"
+          },
+          {
+            "arch": "386",
+            "naive": true,
+            "docker_platform": "linux/386"
+          },
+          {
+            "arch": "arm",
+            "goarm": "7",
+            "naive": true,
+            "docker_platform": "linux/arm/v7"
+          },
+          {
+            "arch": "mipsle",
+            "gomips": "softfloat",
+            "naive": true,
+            "docker_platform": "linux/mipsle"
+          },
+          {
+            "arch": "riscv64",
+            "naive": true,
+            "docker_platform": "linux/riscv64"
+          },
+          {
+            "arch": "loong64",
+            "naive": true,
+            "docker_platform": "linux/loong64"
+          },
+          {
+            "arch": "arm",
+            "goarm": "6",
+            "docker_platform": "linux/arm/v6"
+          },
+          {
+            "arch": "ppc64le",
+            "docker_platform": "linux/ppc64le"
+          },
+          {
+            "arch": "s390x",
+            "docker_platform": "linux/s390x"
+          }
+        ]
+      },
+      "build_docker": {
+        "include": [
+          {
+            "platform": "linux/amd64"
+          },
+          {
+            "platform": "linux/arm/v6"
+          },
+          {
+            "platform": "linux/arm/v7"
+          },
+          {
+            "platform": "linux/arm64"
+          },
+          {
+            "platform": "linux/386"
+          },
+          {
+            "platform": "linux/ppc64le"
+          },
+          {
+            "platform": "linux/riscv64"
+          },
+          {
+            "platform": "linux/s390x"
+          },
+          {
+            "platform": "linux/loong64",
+            "base_image": "ghcr.io/loong64/alpine:edge"
+          }
+        ]
+      }
+    }
+  }
+}

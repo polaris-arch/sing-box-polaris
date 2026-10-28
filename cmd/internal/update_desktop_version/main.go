@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	flagRunInCI    bool
-	flagRunNightly bool
+	flagRunInCI       bool
+	flagRunNightly    bool
+	flagAllowCIUpdate bool
 )
 
 type versionMetadata struct {
@@ -25,6 +26,7 @@ type versionMetadata struct {
 func init() {
 	flag.BoolVar(&flagRunInCI, "ci", false, "Run in CI")
 	flag.BoolVar(&flagRunNightly, "nightly", false, "Run nightly")
+	flag.BoolVar(&flagAllowCIUpdate, "allow-ci-update", false, "Generate version metadata in the isolated CI checkout")
 }
 
 func main() {
@@ -53,7 +55,7 @@ func main() {
 	if goVersionUpdated {
 		log.Info("updated Go version from ", metadata.GoVersion, " to ", newGoVersion)
 	}
-	if flagRunInCI && !flagRunNightly {
+	if requiresCommittedVersion(flagRunInCI, flagRunNightly, flagAllowCIUpdate) {
 		log.Fatal("version changed, commit changes first.")
 	}
 	metadata.Version = newVersion
@@ -63,4 +65,9 @@ func main() {
 	encoder.SetIndent("", "  ")
 	common.Must(encoder.Encode(metadata))
 	common.Must(outputFile.Close())
+}
+
+// An explicit opt-in only relaxes isolated CI metadata generation.
+func requiresCommittedVersion(inCI, nightly, allowCIUpdate bool) bool {
+	return inCI && !nightly && !allowCIUpdate
 }

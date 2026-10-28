@@ -19,13 +19,16 @@ type stackRecord struct {
 }
 
 type memProfileRecord struct {
-	AllocBytes, FreeBytes     int64
+	// Matches Go 1.27 internal/profilerecord.MemProfileRecord.
+	// Bytes are derived from ObjectSize; the previous four-counter layout
+	// interpreted an object count as the stack pointer.
+	ObjectSize                int64
 	AllocObjects, FreeObjects int64
 	Stack                     []uintptr
 }
 
 func (r *memProfileRecord) InUseBytes() int64 {
-	return r.AllocBytes - r.FreeBytes
+	return r.InUseObjects() * r.ObjectSize
 }
 
 func (r *memProfileRecord) InUseObjects() int64 {
@@ -336,12 +339,12 @@ func writeHeapProto(w io.Writer, profile []memProfileRecord, rate int64, default
 			hideRuntime = false
 		}
 
-		values[0], values[1] = scaleHeapSample(record.AllocObjects, record.AllocBytes, rate)
+		values[0], values[1] = scaleHeapSample(record.AllocObjects, record.AllocObjects*record.ObjectSize, rate)
 		values[2], values[3] = scaleHeapSample(record.InUseObjects(), record.InUseBytes(), rate)
 
 		var blockSize int64
 		if record.AllocObjects > 0 {
-			blockSize = record.AllocBytes / record.AllocObjects
+			blockSize = record.ObjectSize
 		}
 		builder.pbSample(values, locs, func() {
 			if blockSize != 0 {

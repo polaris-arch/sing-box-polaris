@@ -6,6 +6,7 @@ option go_package = "github.com/sagernet/sing-box/daemon";
 import "google/protobuf/empty.proto";
 
 service StartedService {
+  rpc GetRuleSetStatus(RuleSetStatusRequest) returns (RuleSetStatusResponse);
   rpc GetVersion(google.protobuf.Empty) returns(Version) {}
   rpc SubscribeServiceStatus(google.protobuf.Empty) returns(stream ServiceStatus) {}
   rpc SubscribeLog(google.protobuf.Empty) returns(stream Log) {}
@@ -805,4 +806,21 @@ message Notification {
 message NotificationCancel {
   string identifier = 1;
   int32 typeID = 2;
+}
+
+
+// Read-only acknowledgement of already loaded rule bytes. No content is accepted
+// by this RPC and no dynamic outbound/resource graph update is implied.
+message RuleSetStatusRequest { repeated string tags = 1; }
+message RuleSetLoadStatus {
+  string tag = 1;
+  string active_digest = 2;
+  uint64 revision = 3;
+  string watcher_state = 4;
+  string last_error = 5;
+  bool closed = 6;
+}
+message RuleSetStatusResponse {
+  int64 instance_started_at_unix_nano = 1;
+  repeated RuleSetLoadStatus rule_sets = 2;
 }

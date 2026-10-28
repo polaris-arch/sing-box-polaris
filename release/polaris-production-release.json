@@ -1,0 +1,197 @@
+{
+  "schema": "polaris-production-release-plan-v1",
+  "repository": "polaris-arch/polaris-box",
+  "repositoryId": 1407705262,
+  "version": "1.15.0-alpha.12",
+  "tag": "v1.15.0-alpha.12",
+  "prerelease": true,
+  "sourceBaseCommit": "797d1d1a50bb99acc2542c45c7a889b3f143ecaf",
+  "upstreamTag": "v1.15.0-alpha.12",
+  "upstreamCommit": "25b0d5ea3e466d246c708ac0f20d0448110e566c",
+  "assetPrefix": "polaris-box",
+  "inputPinsPath": "release/polaris-candidate-inputs.json",
+  "inputPinsSha256": "445ec7ddf37748a72d26be3900cd256875a20e94abf4096dcfff609947083447",
+  "noticeIndexSha256": "b9127a5c25821cca2bce26b24a63b7c114902d36421e131b3e1d9568270f8e97",
+  "noticeSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2",
+  "desktop": [
+    {
+      "target": "linux/amd64",
+      "consumerKey": "linux",
+      "suffix": ".tar.gz",
+      "executable": "sing-box",
+      "sidecar": "libcronet.so",
+      "cronetLinkage": "shared-purego"
+    },
+    {
+      "target": "linux/arm64",
+      "consumerKey": null,
+      "suffix": ".tar.gz",
+      "executable": "sing-box",
+      "sidecar": "libcronet.so",
+      "cronetLinkage": "shared-purego"
+    },
+    {
+      "target": "windows/amd64",
+      "consumerKey": "win",
+      "suffix": ".zip",
+      "executable": "sing-box.exe",
+      "sidecar": "libcronet.dll",
+      "cronetLinkage": "shared-purego"
+    },
+    {
+      "target": "windows/arm64",
+      "consumerKey": null,
+      "suffix": ".zip",
+      "executable": "sing-box.exe",
+      "sidecar": "libcronet.dll",
+      "cronetLinkage": "shared-purego"
+    },
+    {
+      "target": "darwin/amd64",
+      "consumerKey": "mac-x64",
+      "suffix": ".tar.gz",
+      "executable": "sing-box",
+      "sidecar": null,
+      "cronetLinkage": "static-cgo"
+    },
+    {
+      "target": "darwin/arm64",
+      "consumerKey": "mac-arm64",
+      "suffix": ".tar.gz",
+      "executable": "sing-box",
+      "sidecar": null,
+      "cronetLinkage": "static-cgo"
+    }
+  ],
+  "mobile": {
+    "state": "separate-batch; no-mobile-assets-in-desktop-producer-or-publisher",
+    "android": {
+      "format": "AAR",
+      "abis": [
+        "arm64-v8a",
+        "armeabi-v7a",
+        "x86",
+        "x86_64"
+      ],
+      "go": "1.25.5",
+      "gomobile": "v0.1.13",
+      "ndk": "30.0.16138531-beta3",
+      "minimumAPI": 24,
+      "minimumLoadAlignment": 16384
+    },
+    "ios": {
+      "format": "static-XCFramework.zip",
+      "slices": [
+        "ios-arm64",
+        "ios-arm64-simulator",
+        "ios-x86_64-simulator"
+      ],
+      "go": "1.25.5",
+      "gomobile": "v0.1.12",
+      "xcode": "27.0",
+      "minimumOS": "15.0",
+      "consumption": "App build-time download, verification and static link; never install-time static-library loading"
+    },
+    "unverifiedGates": [
+      "new-source API/owner migration signoff",
+      "Android actual four ABI AAR/JNI signatures and runtime linkage",
+      "Android actual minimumAPI and 16KiB PT_LOAD/ZIP/final APK acceptance",
+      "iOS actual three static XCFramework slices and generated Objective-C/Swift API",
+      "iOS actual final App/PacketTunnel link and signature provenance",
+      "actual mobile carrier/device DNS/TUN/network lifecycle checks"
+    ]
+  },
+  "matrixGaps": {
+    "upstreamCLIArchives": 44,
+    "implementedDesktopArchives": 6,
+    "otherCLIArchives": "38 not supported by this producer",
+    "linuxPackages": "31 not produced",
+    "openWrtPackages": "four generic amd64/arm64 APK/IPK produced; remaining upstream variants outside this agreed batch",
+    "upstreamClients": "29 SFA/SFI/SFL/SFM/SFW assets belong to upstream clients; Polaris App packaging is owned separately"
+  },
+  "consumerContract": {
+    "state": "layout-feedback-received-from-App-owner; formal-identity-and-real-release-consumption-signoff-pending",
+    "archiveRoot": "polaris-box-<version>-<os>-<arch>",
+    "requiredIdentity": [
+      "repository",
+      "tagObject",
+      "sourceCommit",
+      "sourceTree",
+      "version",
+      "archiveSha256",
+      "archiveBytes",
+      "memberSha256",
+      "sourceFingerprint",
+      "buildID",
+      "goos",
+      "goarch",
+      "cgo",
+      "tags",
+      "cronetVersion",
+      "cronetLinkage",
+      "signatureObservation",
+      "providerContract",
+      "providerFingerprint",
+      "providerIdentity",
+      "sourceIdentityFingerprint",
+      "portableSourceIdentity",
+      "platformInputFingerprint",
+      "portablePlatformIdentity",
+      "buildGraph",
+      "workflowRun",
+      "workflowAttempt"
+    ],
+    "verification": "Expected hashes come from reviewed frozen manifest, never from the downloaded bytes themselves",
+    "sourceFallback": "forbidden",
+    "acceptance": "actual release download, verification, safe unpack, identity checks, library loading, core/Cronet execution and final Polaris carrier proof",
+    "providerContract": "polaris-box-release-v1",
+    "identityMapping": {
+      "sourceFingerprint": "original fork-source-fingerprint-v1 collector object retained with host observations; not the old App source receipt fingerprint",
+      "sourceIdentityFingerprint": "portableSourceIdentity.fingerprint; canonical stable seven-field source facts as existing DNS contract",
+      "platformInputFingerprint": "portablePlatformIdentity.fingerprint; canonical stable source fingerprint, os/arch/CGO/tags/version/tag/Go/overlay facts",
+      "buildID": "polaris-production-v1-<platformInputFingerprint>; verified against actual binary",
+      "providerFingerprint": "providerIdentity.fingerprint over canonical providerContract/sourceCommit/fileSha256; new producer values, not old 4449 App provider",
+      "AppProvider": "App release adapter code/manifest fingerprint remains separately owned; formal mapping requires owner review"
+    }
+  },
+  "publication": {
+    "state": "pending whole-batch source/license review and exact final platform/package/source/guest outputs",
+    "publicUploadPerformed": false,
+    "deviceAcceptance": false,
+    "moveUsedTags": false,
+    "deleteHistoricalAssets": "only after active fixed consumers migrate and exact cleanup scope is approved"
+  },
+  "testingSynchronization": {
+    "state": "blocked-non-fast-forward; no rewrite authorized in this batch",
+    "forkCommit": "1384c4cfb20198d4a5483dff658f9dd08ce155ba",
+    "upstreamTestingCommit": "e4b7e692f4545890bfc9d43960328e1449fa803b"
+  },
+  "deliveryExits": {
+    "native": "one whole-batch source: six native desktop builds, two musl static cores, four OpenWrt packages and four isolated guest gates; same-run assembly, no publishing",
+    "prepare": "explicit local byte-pinned twelve-asset preparation after parent whole-batch source/license/layout+actual artifact review; raw hashed review evidence, no manufactured approval JSON",
+    "stage": "explicit new annotated tag + draft + immutable missing-only uploads; fork only; never overwrite existing tag/assets",
+    "publish": "explicit inspected complete draft/tag object/manifest digest; public prerelease then twelve-asset anonymous full-byte readback",
+    "App": "separate owner release download-to-final-carrier acceptance; not implemented by fork publisher",
+    "mobile": "separate batch; required artifacts/API/JNI/16KiB/PacketTunnel/signature/device gates not completed"
+  },
+  "publicSourceInputs": {
+    "path": "release/polaris-public-source-inputs.json",
+    "sha256": "fe665bcdd1d65757b51cf323172f252dbab014a02da6cb78457ed395e8d47a0c"
+  },
+  "openwrtInputs": {
+    "path": "release/polaris-openwrt-inputs.json",
+    "sha256": "4a9d156f12e76aa9f71621449bed6222b3069abd019f95b62f0dac9c46cc2dc2"
+  },
+  "openwrt": {
+    "architectures": [
+      "x86_64",
+      "aarch64_generic"
+    ],
+    "formats": [
+      "apk",
+      "ipk"
+    ],
+    "providerContract": "polaris-openwrt-release-v1",
+    "scope": "OpenWrt24.10 opkg and25.12 apk3; fixed CGO musl static Cronet; real devices separate"
+  }
+}

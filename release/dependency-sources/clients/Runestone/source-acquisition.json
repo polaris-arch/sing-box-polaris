@@ -1,0 +1,46 @@
+{
+  "repository": "nekohasekai/Runestone",
+  "commit": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f",
+  "sourceURL": "https://github.com/nekohasekai/Runestone/archive/baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f.tar.gz",
+  "bytes": 56373622,
+  "sha256": "e5afbea461990ae657ab199c669b58e5fe9d159375d76d7eca1242d559fd9ef2",
+  "fullGetVerified": true,
+  "trackedFiles": 527,
+  "noticeAndBuildInputs": [
+    {
+      "path": "Example/Example.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "bytes": 329,
+      "sha256": "b9eba2d6df22eb839dd2b7c44c0fc73bcc9e63839226c8e610bfa395409442ce"
+    },
+    {
+      "path": "Example/Languages/Package.swift",
+      "bytes": 829,
+      "sha256": "2f880acbe119ea882293e8bc6a7a31007bc6737703cccd8aacf894a0c9356089"
+    },
+    {
+      "path": "Example/Themes/Package.swift",
+      "bytes": 1391,
+      "sha256": "bd7a426cbe207d59e60ab23cfc4abe7a9e7d50700e8c751e3c99322f44672c96"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1072,
+      "sha256": "b34c869efe68c5082708d220ec01e7a4531a92b4ab96bf50b7b1e323bdea53c2"
+    },
+    {
+      "path": "Package.resolved",
+      "bytes": 330,
+      "sha256": "e85da1018f368dc86af11acc7fbb2dead6136cf6f439f364d6f1d8b695c1c6ea"
+    },
+    {
+      "path": "Package.swift",
+      "bytes": 1001,
+      "sha256": "24c8ef04d82354f42ef06b2db0fbd68e83e4292e0ad31182e0588731a377303d"
+    },
+    {
+      "path": "UITests/Languages/Package.swift",
+      "bytes": 659,
+      "sha256": "86c24761daff8c51444139e0575b878171e73b32c55864f83af8d099a9549f3a"
+    }
+  ]
+}

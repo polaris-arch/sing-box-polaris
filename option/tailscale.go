@@ -126,7 +126,7 @@ func (d *DERPVerifyClientURLOptions) UnmarshalJSON(bytes []byte) error {
 	err := json.Unmarshal(bytes, &stringValue)
 	if err == nil {
 		*d = DERPVerifyClientURLOptions{
-			_DERPVerifyClientURLBase: _DERPVerifyClientURLBase{URL: stringValue},
+			URL: stringValue,
 		}
 		return nil
 	}
@@ -167,12 +167,10 @@ type _DERPSTUNListenOptions struct {
 type DERPSTUNListenOptions _DERPSTUNListenOptions
 
 func (d DERPSTUNListenOptions) MarshalJSON() ([]byte, error) {
-	portOptions := _DERPSTUNListenOptions{
-		Enabled: d.Enabled,
-		ListenOptions: ListenOptions{
-			ListenPort: d.ListenPort,
-		},
-	}
+	// Project only enabled and port; any other listen option requires object form.
+	var portOptions _DERPSTUNListenOptions
+	portOptions.Enabled = d.Enabled
+	portOptions.ListenPort = d.ListenPort
 	if _DERPSTUNListenOptions(d) == portOptions {
 		return json.Marshal(d.Enabled)
 	} else {

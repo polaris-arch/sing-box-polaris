@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "scope": "Finite source/notice applicability decision proposal for six immutable CLI payloads; independent final review pending",
+  "filenameInventoryAloneIsProof": false,
+  "items": [
+    {
+      "id": "kernel",
+      "status": "covered",
+      "evidence": "Full a01 kernel archive1689 tracked blobs/modes, root GPL notice; three unused client gitlinks are metadata, not CLI inputs."
+    },
+    {
+      "id": "go-module-source",
+      "status": "covered-conservative-superset",
+      "evidence": "All148 code/source module ZIPs are exact SHA256/h1-bound to154 actual BuildInfo union minus six acquisition modules. Whole268-record notice bundle retained, including nested/module texts; full ZIPs retain source-header/generated/embed texts."
+    },
+    {
+      "id": "go-runtime",
+      "status": "covered-conservative-superset",
+      "evidence": "Full Go1.25.5 src plus LICENSE/PATENTS/VERSION retained; includes runtime/assembly/cgo and tracked generated data. Compiler tool executables are not package members."
+    },
+    {
+      "id": "engine",
+      "status": "covered-conservative-superset",
+      "evidence": "Full35452-be1 tracked blobs/modes,133-driver blobs/modes, engine/header/nested notices. Full source is retained irrespective of GN candidate-code/tool classification; no original link map claim."
+    },
+    {
+      "id": "curated-compiler-rt-and-cxxabi",
+      "status": "covered-conservative-superset",
+      "evidence": "Actual curated atomic.c/assembly.h/int_endianness.h retained, atomic assertion delta fixed, LICENSE.TXT/README LLVM-exception included; be1 libc++/libc++abi source/notices retained. Both macOS .a observations show cxa/gxx definitions, not evidence of every archive object entering final core."
+    },
+    {
+      "id": "additional-compiler-injected-runtime",
+      "status": "pending-finite-review",
+      "evidence": "Original compiler pin/build scripts and actual dynamic import observations supplied. Narrow defined-symbol inspection of both macOS .a archives finds cxa/gxx (covered libc++abi) and no selected atomic/divti/multi/emutls/sanitizer helper definitions. Stripping/inlining prevents absence from establishing universal proof. Reviewer must decide whether these bounded observations and conservative source cover any additional shipped runtime; do not require all SDK/compiler binaries."
+    },
+    {
+      "id": "generated-code",
+      "status": "covered-source-and-generators-with-reproducibility-boundary",
+      "evidence": "Tracked generated outputs, generator source, templates/schema and build scripts are retained in full code/module/Naiveproxy/Go archives. Original untracked engine output files not recovered; regeneration uses the supplied fixed driver. Exact reproduction of original build-directory outputs is not asserted. Final applicability review must identify a concrete omitted required input if any."
+    },
+    {
+      "id": "imported-os-libraries",
+      "status": "not-shipped",
+      "evidence": "Package member sets contain only CLI core plus Linux/Windows Cronet sidecar, not the observed system .so/DLL/framework dependencies. OS-provided runtime imports remain recorded in six actual receipts; no OS SDK binary redistribution is added."
+    }
+  ],
+  "remainingFinalReview": [
+    "additional-compiler-injected-runtime bounded applicability decision",
+    "source acquisition/build instructions and whole notice adoption",
+    "final publication workflow and actual archive/member hashes"
+  ],
+  "mobileCarrierAcceptanceIsDesktopGate": false,
+  "completeCorrespondingSource": false,
+  "completeThirdPartyNotices": false,
+  "publicationEligible": false
+}

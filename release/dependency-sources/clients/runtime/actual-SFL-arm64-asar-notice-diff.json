@@ -1,0 +1,2684 @@
+{
+  "actualPackage": "SFL-1.15.0-polaris-alpha.12-arm64.deb",
+  "asarSHA256": "a0cc2fdd969dcbe7ea68fdb2748703c24a62d323947f61664737eb1f47c66b8b",
+  "scope": "Exact notice content comparison against this one real SFL arm64 deb only; absence of a standalone byte-identical notice here is not itself proof of inclusion or a legal violation.",
+  "actualStandaloneNoticeFiles": [
+    {
+      "path": "node_modules/@nornagon/put/LICENSE",
+      "bytes": 1141,
+      "sha256": "05991c2e8f070b69ec5b656c2c12fd07cd0153dd157d39b050b82af59b319a01"
+    },
+    {
+      "path": "node_modules/dbus-next/LICENSE",
+      "bytes": 1073,
+      "sha256": "435a6722c786b0a56fbe7387028f1d9d3f3a2d0fb615bb8fee118727c3f59b7b"
+    },
+    {
+      "path": "node_modules/duplexer/LICENCE",
+      "bytes": 1050,
+      "sha256": "19338d17a974d1c747b3f6c618f08975b8908fdebccbc047c0e72b09daf6ddd3"
+    },
+    {
+      "path": "node_modules/event-stream/LICENCE",
+      "bytes": 1094,
+      "sha256": "900919407441fbbf16819a02db366ac1547f44c293a4ad48f4cf148365d5b940"
+    },
+    {
+      "path": "node_modules/from/LICENSE.APACHE2",
+      "bytes": 586,
+      "sha256": "e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55"
+    },
+    {
+      "path": "node_modules/from/LICENSE.MIT",
+      "bytes": 1088,
+      "sha256": "d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505"
+    },
+    {
+      "path": "node_modules/hexy/LICENSE",
+      "bytes": 1078,
+      "sha256": "2b6330601c13a0754c2c4669e01017b2a5b5a122e0f8f8f5423ac226647103ff"
+    },
+    {
+      "path": "node_modules/jsbi/LICENSE",
+      "bytes": 10174,
+      "sha256": "9568a2b155e66ac3e0ba1fd80b52b827b9460e6cf6f233125e7cbca8e206ddc3"
+    },
+    {
+      "path": "node_modules/long/LICENSE",
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "path": "node_modules/map-stream/LICENCE",
+      "bytes": 1070,
+      "sha256": "8937affb1fac84258c98aa2351eb161405999975b602140c43bcbac23b22f1e9"
+    },
+    {
+      "path": "node_modules/pause-stream/LICENSE",
+      "bytes": 12544,
+      "sha256": "2c2dd540243de136952bd3eaaaa43a9c8bab1a211ce9bf0ff6abe17d3191e261"
+    },
+    {
+      "path": "node_modules/safe-buffer/LICENSE",
+      "bytes": 1081,
+      "sha256": "c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac"
+    },
+    {
+      "path": "node_modules/sax/LICENSE.md",
+      "bytes": 1552,
+      "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004"
+    },
+    {
+      "path": "node_modules/split/LICENCE",
+      "bytes": 1070,
+      "sha256": "8937affb1fac84258c98aa2351eb161405999975b602140c43bcbac23b22f1e9"
+    },
+    {
+      "path": "node_modules/stream-combiner/LICENSE",
+      "bytes": 1073,
+      "sha256": "6d11f0c1826a10e8343e091e4b707ab02e33b9176154e6c15e8900274706c0d9"
+    },
+    {
+      "path": "node_modules/through/LICENSE.APACHE2",
+      "bytes": 586,
+      "sha256": "e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55"
+    },
+    {
+      "path": "node_modules/through/LICENSE.MIT",
+      "bytes": 1088,
+      "sha256": "d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505"
+    },
+    {
+      "path": "node_modules/xml2js/LICENSE",
+      "bytes": 1079,
+      "sha256": "c51452ef1dfd5606c9fe266930fa6bf7e8a534d52973b6475df5bf212cad5b0a"
+    },
+    {
+      "path": "node_modules/xmlbuilder/LICENSE",
+      "bytes": 1101,
+      "sha256": "e368bc4263b466cf98c225af15e300549e00da8859416a4536109e9654d434a8"
+    }
+  ],
+  "alreadyPresentIdentical": [
+    {
+      "sha256": "435a6722c786b0a56fbe7387028f1d9d3f3a2d0fb615bb8fee118727c3f59b7b",
+      "noticePath": "release/licenses/clients/runtime/435a6722c786b0a5-LICENSE",
+      "components": [
+        {
+          "component": "dbus-next@0.10.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/dbus-next/-/dbus-next-0.10.2.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/dbus-next/LICENSE"
+      ]
+    },
+    {
+      "sha256": "c51452ef1dfd5606c9fe266930fa6bf7e8a534d52973b6475df5bf212cad5b0a",
+      "noticePath": "release/licenses/clients/runtime/c51452ef1dfd5606-LICENSE",
+      "components": [
+        {
+          "component": "xml2js@0.4.23",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/xml2js/-/xml2js-0.4.23.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/xml2js/LICENSE"
+      ]
+    },
+    {
+      "sha256": "e368bc4263b466cf98c225af15e300549e00da8859416a4536109e9654d434a8",
+      "noticePath": "release/licenses/clients/runtime/e368bc4263b466cf-LICENSE",
+      "components": [
+        {
+          "component": "xmlbuilder@11.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/xmlbuilder/-/xmlbuilder-11.0.1.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/xmlbuilder/LICENSE"
+      ]
+    },
+    {
+      "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+      "noticePath": "release/licenses/clients/runtime/8a1af140fdfbf5af-LICENSE.md",
+      "components": [
+        {
+          "component": "sax@1.6.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/sax/-/sax-1.6.1.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/sax/LICENSE.md"
+      ]
+    },
+    {
+      "sha256": "c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac",
+      "noticePath": "release/licenses/clients/runtime/c7cc929b57080f4b-LICENSE",
+      "components": [
+        {
+          "component": "safe-buffer@5.2.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/safe-buffer/LICENSE"
+      ]
+    },
+    {
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+      "noticePath": "release/licenses/clients/runtime/3ddf9be5c28fe27d-LICENSE",
+      "components": [
+        {
+          "component": "long@4.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/long/-/long-4.0.0.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/long/LICENSE"
+      ]
+    },
+    {
+      "sha256": "9568a2b155e66ac3e0ba1fd80b52b827b9460e6cf6f233125e7cbca8e206ddc3",
+      "noticePath": "release/licenses/clients/runtime/9568a2b155e66ac3-LICENSE",
+      "components": [
+        {
+          "component": "jsbi@2.0.5",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/jsbi/-/jsbi-2.0.5.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/jsbi/LICENSE"
+      ]
+    },
+    {
+      "sha256": "2b6330601c13a0754c2c4669e01017b2a5b5a122e0f8f8f5423ac226647103ff",
+      "noticePath": "release/licenses/clients/runtime/2b6330601c13a075-LICENSE",
+      "components": [
+        {
+          "component": "hexy@0.2.11",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/hexy/-/hexy-0.2.11.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/hexy/LICENSE"
+      ]
+    },
+    {
+      "sha256": "900919407441fbbf16819a02db366ac1547f44c293a4ad48f4cf148365d5b940",
+      "noticePath": "release/licenses/clients/runtime/900919407441fbbf-LICENCE",
+      "components": [
+        {
+          "component": "event-stream@3.3.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/event-stream/-/event-stream-3.3.4.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/event-stream/LICENCE"
+      ]
+    },
+    {
+      "sha256": "e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55",
+      "noticePath": "release/licenses/clients/runtime/e8734448285a2dd7-LICENSE.APACHE2",
+      "components": [
+        {
+          "component": "through@2.3.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/through/-/through-2.3.8.tgz"
+        },
+        {
+          "component": "from@0.1.7",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/from/-/from-0.1.7.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/from/LICENSE.APACHE2",
+        "node_modules/through/LICENSE.APACHE2"
+      ]
+    },
+    {
+      "sha256": "d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505",
+      "noticePath": "release/licenses/clients/runtime/d72dea1a8cdf3f4d-LICENSE.MIT",
+      "components": [
+        {
+          "component": "through@2.3.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/through/-/through-2.3.8.tgz"
+        },
+        {
+          "component": "from@0.1.7",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/from/-/from-0.1.7.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/from/LICENSE.MIT",
+        "node_modules/through/LICENSE.MIT"
+      ]
+    },
+    {
+      "sha256": "6d11f0c1826a10e8343e091e4b707ab02e33b9176154e6c15e8900274706c0d9",
+      "noticePath": "release/licenses/clients/runtime/6d11f0c1826a10e8-LICENSE",
+      "components": [
+        {
+          "component": "stream-combiner@0.0.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/stream-combiner/-/stream-combiner-0.0.4.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/stream-combiner/LICENSE"
+      ]
+    },
+    {
+      "sha256": "19338d17a974d1c747b3f6c618f08975b8908fdebccbc047c0e72b09daf6ddd3",
+      "noticePath": "release/licenses/clients/runtime/19338d17a974d1c7-LICENCE",
+      "components": [
+        {
+          "component": "duplexer@0.1.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/duplexer/-/duplexer-0.1.2.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/duplexer/LICENCE"
+      ]
+    },
+    {
+      "sha256": "8937affb1fac84258c98aa2351eb161405999975b602140c43bcbac23b22f1e9",
+      "noticePath": "release/licenses/clients/runtime/8937affb1fac8425-LICENCE",
+      "components": [
+        {
+          "component": "split@0.3.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/split/-/split-0.3.3.tgz"
+        },
+        {
+          "component": "map-stream@0.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/map-stream/-/map-stream-0.1.0.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/map-stream/LICENCE",
+        "node_modules/split/LICENCE"
+      ]
+    },
+    {
+      "sha256": "2c2dd540243de136952bd3eaaaa43a9c8bab1a211ce9bf0ff6abe17d3191e261",
+      "noticePath": "release/licenses/clients/runtime/2c2dd540243de136-LICENSE",
+      "components": [
+        {
+          "component": "pause-stream@0.0.11",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/pause-stream/-/pause-stream-0.0.11.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/pause-stream/LICENSE"
+      ]
+    },
+    {
+      "sha256": "05991c2e8f070b69ec5b656c2c12fd07cd0153dd157d39b050b82af59b319a01",
+      "noticePath": "release/licenses/clients/runtime/05991c2e8f070b69-LICENSE",
+      "components": [
+        {
+          "component": "@nornagon/put@0.0.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@nornagon/put/-/put-0.0.8.tgz"
+        }
+      ],
+      "actualPaths": [
+        "node_modules/@nornagon/put/LICENSE"
+      ]
+    }
+  ],
+  "sourceCandidateNotFoundAsIdenticalStandaloneNotice": [
+    {
+      "sha256": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3",
+      "noticePath": "release/licenses/clients/runtime/18aabf190848725e-LICENSE",
+      "components": [
+        {
+          "component": "@fontsource-variable/source-serif-4@5.3.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@fontsource-variable/source-serif-4/-/source-serif-4-5.3.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+      "noticePath": "release/licenses/clients/runtime/da6d3703ed11cbe4-LICENSE",
+      "components": [
+        {
+          "component": "react-dom@19.2.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.8.tgz"
+        },
+        {
+          "component": "scheduler@0.27.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz"
+        },
+        {
+          "component": "react@19.2.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/react/-/react-19.2.8.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "23b0a9d0c6d3f140a0b77e483c5cfa6bba574325ef5cb189ed9f2fec4884533f",
+      "noticePath": "release/licenses/clients/runtime/23b0a9d0c6d3f140-LICENSE",
+      "components": [
+        {
+          "component": "@fontsource/ibm-plex-mono@5.3.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@fontsource/ibm-plex-mono/-/ibm-plex-mono-5.3.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "15222412a95d70042e66e79bfb3b985653e0693e4d41703bc131bee9c5aa1aa7",
+      "noticePath": "release/licenses/clients/runtime/15222412a95d7004-LICENSE",
+      "components": [
+        {
+          "component": "@fontsource-variable/schibsted-grotesk@5.3.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@fontsource-variable/schibsted-grotesk/-/schibsted-grotesk-5.3.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "c04b4216f1cd4c5a4f7fb2f2a1b0ae70d847e9e0cac7c9dee9bf8cc03177c449",
+      "noticePath": "release/licenses/clients/runtime/c04b4216f1cd4c5a-LICENSE",
+      "components": [
+        {
+          "component": "@bufbuild/protobuf@2.14.0",
+          "selectionScope": "npm-exact-gitHead-license-supplement",
+          "sourceURL": "https://raw.githubusercontent.com/bufbuild/protobuf-es/04297e762a64dbcafc299c46785dbc5621b4329f/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "445e3398edab2a40d8d5e5c1a1d533af6464fbae8378ecc0caaf2668e9bbea73",
+      "noticePath": "release/licenses/clients/runtime/445e3398edab2a40-LICENSE",
+      "components": [
+        {
+          "component": "@connectrpc/connect-node@2.1.2",
+          "selectionScope": "npm-exact-gitHead-license-supplement",
+          "sourceURL": "https://raw.githubusercontent.com/connectrpc/connect-es/f6682188fdc77fab6e25b5012d44d80d7c4ee77c/LICENSE"
+        },
+        {
+          "component": "@connectrpc/connect@2.1.2",
+          "selectionScope": "npm-exact-gitHead-license-supplement",
+          "sourceURL": "https://raw.githubusercontent.com/connectrpc/connect-es/104238c58152e324ac16a99563f5eeea8ae7136d/LICENSE"
+        },
+        {
+          "component": "@connectrpc/connect-web@2.1.2",
+          "selectionScope": "npm-exact-gitHead-license-supplement",
+          "sourceURL": "https://raw.githubusercontent.com/connectrpc/connect-es/104238c58152e324ac16a99563f5eeea8ae7136d/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+      "noticePath": "release/licenses/clients/runtime/4ec3d4c66cd87f5c-LICENSE",
+      "components": [
+        {
+          "component": "semver@7.8.5",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "noticePath": "release/licenses/clients/runtime/cfc7749b96f63bd3-LICENSE",
+      "components": [
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        },
+        {
+          "component": "google/guava@de1d87eabff93cb4a7fa8e52df5fc46802c95b17",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/google/guava/de1d87eabff93cb4a7fa8e52df5fc46802c95b17/LICENSE"
+        },
+        {
+          "component": "material-components/material-components-android@66c334b7946dabf33adfe1a2b7cad6bcaa4ea3ad",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/material-components/material-components-android/66c334b7946dabf33adfe1a2b7cad6bcaa4ea3ad/LICENSE"
+        },
+        {
+          "component": "material-components/material-components-android@84c0e6d6d493fcf176d2099683245b78afbeb78d",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/material-components/material-components-android/84c0e6d6d493fcf176d2099683245b78afbeb78d/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "2afedb47f997b860bd2098bac3e32da327bbfda47d7c1e1151d250640c191e08",
+      "noticePath": "release/licenses/clients/runtime/2afedb47f997b860-copyright.svg",
+      "components": [
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "0923291c9f36f5bc1331e71b40165e6f2796be42b65674d472d923d1ad28116b",
+      "noticePath": "release/licenses/clients/runtime/0923291c9f36f5bc-copyright.svg",
+      "components": [
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        },
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        },
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "b6a2cc712b0616c1927620084b2469c6a50551da0a1e7ef1dc71b4cd8e48b9ef",
+      "noticePath": "release/licenses/clients/runtime/b6a2cc712b0616c1-copyright.svg",
+      "components": [
+        {
+          "component": "@material-design-icons/svg@0.14.15",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@material-design-icons/svg/-/svg-0.14.15.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "b39d50e24727f341a0ebdb2ab040c57efaf4076a8ad5b1d0c8c45beb975b4571",
+      "noticePath": "release/licenses/clients/runtime/b39d50e24727f341-LICENSE",
+      "components": [
+        {
+          "component": "uqr@0.1.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/uqr/-/uqr-0.1.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "dd1081884a92952802f4803110a6bb543acea9a814c786d58605b4c1219b5ebb",
+      "noticePath": "release/licenses/clients/runtime/dd1081884a929528-license",
+      "components": [
+        {
+          "component": "remark-gfm@4.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/remark-gfm/-/remark-gfm-4.0.1.tgz"
+        },
+        {
+          "component": "vfile-message@4.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz"
+        },
+        {
+          "component": "mdast-util-to-markdown@2.1.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-to-markdown/-/mdast-util-to-markdown-2.1.2.tgz"
+        },
+        {
+          "component": "micromark-util-decode-string@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-decode-string/-/micromark-util-decode-string-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-symbol@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-symbol/-/micromark-util-symbol-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-decode-numeric-character-reference@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-decode-numeric-character-reference/-/micromark-util-decode-numeric-character-reference-2.0.2.tgz"
+        },
+        {
+          "component": "micromark-util-character@2.1.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-character/-/micromark-util-character-2.1.1.tgz"
+        },
+        {
+          "component": "micromark-util-types@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-types/-/micromark-util-types-2.0.2.tgz"
+        },
+        {
+          "component": "decode-named-character-reference@1.3.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/decode-named-character-reference/-/decode-named-character-reference-1.3.0.tgz"
+        },
+        {
+          "component": "micromark-util-classify-character@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-classify-character/-/micromark-util-classify-character-2.0.1.tgz"
+        },
+        {
+          "component": "mdast-util-from-markdown@2.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-from-markdown/-/mdast-util-from-markdown-2.0.3.tgz"
+        },
+        {
+          "component": "micromark-util-normalize-identifier@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-normalize-identifier/-/micromark-util-normalize-identifier-2.0.1.tgz"
+        },
+        {
+          "component": "micromark@4.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark/-/micromark-4.0.2.tgz"
+        },
+        {
+          "component": "micromark-util-subtokenize@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-subtokenize/-/micromark-util-subtokenize-2.1.0.tgz"
+        },
+        {
+          "component": "micromark-util-chunked@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-chunked/-/micromark-util-chunked-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-sanitize-uri@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-sanitize-uri/-/micromark-util-sanitize-uri-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-encode@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-encode/-/micromark-util-encode-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-resolve-all@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-resolve-all/-/micromark-util-resolve-all-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-util-combine-extensions@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-combine-extensions/-/micromark-util-combine-extensions-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-factory-space@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-factory-space/-/micromark-factory-space-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-core-commonmark@2.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-core-commonmark/-/micromark-core-commonmark-2.0.3.tgz"
+        },
+        {
+          "component": "micromark-util-html-tag-name@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-util-html-tag-name/-/micromark-util-html-tag-name-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-factory-whitespace@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-factory-whitespace/-/micromark-factory-whitespace-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-factory-title@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-factory-title/-/micromark-factory-title-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-factory-label@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-factory-label/-/micromark-factory-label-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-factory-destination@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-factory-destination/-/micromark-factory-destination-2.0.1.tgz"
+        },
+        {
+          "component": "micromark-extension-gfm-table@2.1.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-table/-/micromark-extension-gfm-table-2.1.1.tgz"
+        },
+        {
+          "component": "mdast-util-gfm@3.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm/-/mdast-util-gfm-3.1.0.tgz"
+        },
+        {
+          "component": "markdown-table@3.0.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/markdown-table/-/markdown-table-3.0.4.tgz"
+        },
+        {
+          "component": "mdast-util-gfm-footnote@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm-footnote/-/mdast-util-gfm-footnote-2.1.0.tgz"
+        },
+        {
+          "component": "mdast-util-find-and-replace@3.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-find-and-replace/-/mdast-util-find-and-replace-3.0.2.tgz"
+        },
+        {
+          "component": "remark-rehype@11.1.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/remark-rehype/-/remark-rehype-11.1.2.tgz"
+        },
+        {
+          "component": "hast-util-to-jsx-runtime@2.3.6",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/hast-util-to-jsx-runtime/-/hast-util-to-jsx-runtime-2.3.6.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "05811400116ed61f1a7693b78fe8ca6598c155a12f3978e609db4df648a4cb3d",
+      "noticePath": "release/licenses/clients/runtime/05811400116ed61f-license",
+      "components": [
+        {
+          "component": "unified@11.0.5",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unified/-/unified-11.0.5.tgz"
+        },
+        {
+          "component": "vfile@6.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "ca4662cb5d1b738fbe5350c0d5485ba11773b4b7208974082ae6e129a52d631d",
+      "noticePath": "release/licenses/clients/runtime/ca4662cb5d1b738f-license",
+      "components": [
+        {
+          "component": "unist-util-stringify-position@4.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unist-util-stringify-position/-/unist-util-stringify-position-4.0.0.tgz"
+        },
+        {
+          "component": "zwitch@2.0.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/zwitch/-/zwitch-2.0.4.tgz"
+        },
+        {
+          "component": "unist-util-visit-parents@6.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unist-util-visit-parents/-/unist-util-visit-parents-6.0.2.tgz"
+        },
+        {
+          "component": "mdast-util-to-hast@13.2.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-to-hast/-/mdast-util-to-hast-13.2.1.tgz"
+        },
+        {
+          "component": "space-separated-tokens@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/space-separated-tokens/-/space-separated-tokens-2.0.2.tgz"
+        },
+        {
+          "component": "is-hexadecimal@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/is-hexadecimal/-/is-hexadecimal-2.0.1.tgz"
+        },
+        {
+          "component": "is-decimal@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/is-decimal/-/is-decimal-2.0.1.tgz"
+        },
+        {
+          "component": "is-alphanumerical@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/is-alphanumerical/-/is-alphanumerical-2.0.1.tgz"
+        },
+        {
+          "component": "is-alphabetical@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/is-alphabetical/-/is-alphabetical-2.0.1.tgz"
+        },
+        {
+          "component": "hast-util-whitespace@3.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/hast-util-whitespace/-/hast-util-whitespace-3.0.0.tgz"
+        },
+        {
+          "component": "comma-separated-tokens@2.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/comma-separated-tokens/-/comma-separated-tokens-2.0.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "6c03fd41cfd7c92d8aa8a2fa521b94b2683f059123281dcf921ddea9216b6254",
+      "noticePath": "release/licenses/clients/runtime/6c03fd41cfd7c92d-license",
+      "components": [
+        {
+          "component": "trough@2.2.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/trough/-/trough-2.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3",
+      "noticePath": "release/licenses/clients/runtime/5c932d88256b4ab9-license",
+      "components": [
+        {
+          "component": "is-plain-obj@4.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/is-plain-obj/-/is-plain-obj-4.1.0.tgz"
+        },
+        {
+          "component": "escape-string-regexp@5.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/escape-string-regexp/-/escape-string-regexp-5.0.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "97af7428f93afbab9bf79cd09254da1357161794f4255eb1b4599f04dd2d2e7c",
+      "noticePath": "release/licenses/clients/runtime/97af7428f93afbab-LICENSE",
+      "components": [
+        {
+          "component": "extend@3.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/extend/-/extend-3.0.2.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "6f296a5eccc1dc96714bb94ebaa9cac25b0a1467d74cc5263ac4d0646ab01f62",
+      "noticePath": "release/licenses/clients/runtime/6f296a5eccc1dc96-license",
+      "components": [
+        {
+          "component": "devlop@1.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/devlop/-/devlop-1.1.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "306fa513e39b23a6e8747520de761809d206b99800ef41907b530226574c59ae",
+      "noticePath": "release/licenses/clients/runtime/306fa513e39b23a6-license",
+      "components": [
+        {
+          "component": "dequal@2.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "63cb98b3f6abfb3c3592c16f88253c1bdc834087bf52671e8ce5609e4eb693cf",
+      "noticePath": "release/licenses/clients/runtime/63cb98b3f6abfb3c-license",
+      "components": [
+        {
+          "component": "bail@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/bail/-/bail-2.0.2.tgz"
+        },
+        {
+          "component": "unist-util-visit@5.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unist-util-visit/-/unist-util-visit-5.1.0.tgz"
+        },
+        {
+          "component": "character-entities@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/character-entities/-/character-entities-2.0.2.tgz"
+        },
+        {
+          "component": "mdast-util-to-string@4.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-to-string/-/mdast-util-to-string-4.0.0.tgz"
+        },
+        {
+          "component": "ccount@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/ccount/-/ccount-2.0.1.tgz"
+        },
+        {
+          "component": "unist-util-position@5.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unist-util-position/-/unist-util-position-5.0.0.tgz"
+        },
+        {
+          "component": "character-entities-legacy@3.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/character-entities-legacy/-/character-entities-legacy-3.0.0.tgz"
+        },
+        {
+          "component": "character-entities-html4@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/character-entities-html4/-/character-entities-html4-2.1.0.tgz"
+        },
+        {
+          "component": "character-reference-invalid@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/character-reference-invalid/-/character-reference-invalid-2.0.1.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "413654b0a78b98661dce96d2aff2e4d075603d220b8483e28b1aa010ccc138b4",
+      "noticePath": "release/licenses/clients/runtime/413654b0a78b9866-license",
+      "components": [
+        {
+          "component": "remark-stringify@11.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/remark-stringify/-/remark-stringify-11.0.0.tgz"
+        },
+        {
+          "component": "remark-parse@11.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/remark-parse/-/remark-parse-11.0.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "82974dbf2639d13edab95c32ed9cb6c0867ede272cd2e07ce47ce8548fe55c05",
+      "noticePath": "release/licenses/clients/runtime/82974dbf2639d13e-license",
+      "components": [
+        {
+          "component": "unist-util-is@6.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/unist-util-is/-/unist-util-is-6.0.1.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "b6d1a4e1831b177acc96f22a817d4f0f4c18419355badc3125754445fc69e3a7",
+      "noticePath": "release/licenses/clients/runtime/b6d1a4e1831b177a-license",
+      "components": [
+        {
+          "component": "mdast-util-phrasing@4.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-phrasing/-/mdast-util-phrasing-4.1.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "9f084fac69d8cf1e6ce983ba5a3499c7695ed74a26ec625c38f0fd19fddd5e10",
+      "noticePath": "release/licenses/clients/runtime/9f084fac69d8cf1e-license",
+      "components": [
+        {
+          "component": "longest-streak@3.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/longest-streak/-/longest-streak-3.1.0.tgz"
+        },
+        {
+          "component": "trim-lines@3.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/trim-lines/-/trim-lines-3.0.1.tgz"
+        },
+        {
+          "component": "stringify-entities@4.0.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/stringify-entities/-/stringify-entities-4.0.4.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "3a61c6c96caf5c1d9b623fb9b04c822b783dfcb78aa7e49c76a3f643e6ed7f95",
+      "noticePath": "release/licenses/clients/runtime/3a61c6c96caf5c1d-LICENSE",
+      "components": [
+        {
+          "component": "debug@4.4.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "1662fae9b5314d11cf51284e2dcd1f006a354f7343f08712a730fcff9a359801",
+      "noticePath": "release/licenses/clients/runtime/1662fae9b5314d11-license.md",
+      "components": [
+        {
+          "component": "ms@2.1.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "536804b3adbff17dbbb9ed0d2bf9655b78f07640278581e37e3d7475282d5e61",
+      "noticePath": "release/licenses/clients/runtime/536804b3adbff17d-license",
+      "components": [
+        {
+          "component": "micromark-extension-gfm@3.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm/-/micromark-extension-gfm-3.0.0.tgz"
+        },
+        {
+          "component": "micromark-extension-gfm-task-list-item@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-task-list-item/-/micromark-extension-gfm-task-list-item-2.1.0.tgz"
+        },
+        {
+          "component": "micromark-extension-gfm-tagfilter@2.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-tagfilter/-/micromark-extension-gfm-tagfilter-2.0.0.tgz"
+        },
+        {
+          "component": "micromark-extension-gfm-strikethrough@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-strikethrough/-/micromark-extension-gfm-strikethrough-2.1.0.tgz"
+        },
+        {
+          "component": "micromark-extension-gfm-autolink-literal@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-autolink-literal/-/micromark-extension-gfm-autolink-literal-2.1.0.tgz"
+        },
+        {
+          "component": "mdast-util-gfm-task-list-item@2.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm-task-list-item/-/mdast-util-gfm-task-list-item-2.0.0.tgz"
+        },
+        {
+          "component": "mdast-util-gfm-table@2.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm-table/-/mdast-util-gfm-table-2.0.0.tgz"
+        },
+        {
+          "component": "mdast-util-gfm-strikethrough@2.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm-strikethrough/-/mdast-util-gfm-strikethrough-2.0.0.tgz"
+        },
+        {
+          "component": "mdast-util-gfm-autolink-literal@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-gfm-autolink-literal/-/mdast-util-gfm-autolink-literal-2.0.1.tgz"
+        },
+        {
+          "component": "mdast-util-mdxjs-esm@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-mdxjs-esm/-/mdast-util-mdxjs-esm-2.0.1.tgz"
+        },
+        {
+          "component": "mdast-util-mdx-jsx@3.2.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-mdx-jsx/-/mdast-util-mdx-jsx-3.2.0.tgz"
+        },
+        {
+          "component": "mdast-util-mdx-expression@2.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/mdast-util-mdx-expression/-/mdast-util-mdx-expression-2.0.1.tgz"
+        },
+        {
+          "component": "estree-util-is-identifier-name@3.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/estree-util-is-identifier-name/-/estree-util-is-identifier-name-3.0.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "807a88522a850092aece49486207c17c313c4d5708ac276524840fe1caa0b0fa",
+      "noticePath": "release/licenses/clients/runtime/807a88522a850092-license",
+      "components": [
+        {
+          "component": "micromark-extension-gfm-footnote@2.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/micromark-extension-gfm-footnote/-/micromark-extension-gfm-footnote-2.1.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "8bcb6db133b417da60891d74be6ce583162ba9143be32ccc9e24cea7913ead14",
+      "noticePath": "release/licenses/clients/runtime/8bcb6db133b417da-license",
+      "components": [
+        {
+          "component": "remark-gemoji@8.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/remark-gemoji/-/remark-gemoji-8.0.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "9966260ba3ea9d6a5f839297dca80ddc99735a34b4ae82811cac7b956d2e3afd",
+      "noticePath": "release/licenses/clients/runtime/9966260ba3ea9d6a-license",
+      "components": [
+        {
+          "component": "gemoji@8.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/gemoji/-/gemoji-8.1.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "f6196c64e144f9a6fa9154c3a80bc8b89615a9567934b83a8951879f06ba2aef",
+      "noticePath": "release/licenses/clients/runtime/f6196c64e144f9a6-license",
+      "components": [
+        {
+          "component": "react-markdown@10.1.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/react-markdown/-/react-markdown-10.1.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "dc6d4961d8b6ee747231582ae9c53ce1d66bf76bc9f5a28f554c0e97210953bf",
+      "noticePath": "release/licenses/clients/runtime/dc6d4961d8b6ee74-LICENSE",
+      "components": [
+        {
+          "component": "@ungap/structured-clone@1.3.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@ungap/structured-clone/-/structured-clone-1.3.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "e18cf5173e928f808f0cd208097fee8fbec9d28fc0255213938e4c559e29ff58",
+      "noticePath": "release/licenses/clients/runtime/e18cf5173e928f80-license",
+      "components": [
+        {
+          "component": "html-url-attributes@3.0.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/html-url-attributes/-/html-url-attributes-3.0.1.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "bbb380e5c1a717079378d6ea4d33c8a5a81655d4612b749f882e34e46712aab5",
+      "noticePath": "release/licenses/clients/runtime/bbb380e5c1a71707-LICENSE",
+      "components": [
+        {
+          "component": "style-to-js@1.1.21",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/style-to-js/-/style-to-js-1.1.21.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "896c9fd6b5fc48ac31800b9d29a6e3ffcb0c2d534ed077ebfa5c2fa388cc38b7",
+      "noticePath": "release/licenses/clients/runtime/896c9fd6b5fc48ac-LICENSE",
+      "components": [
+        {
+          "component": "style-to-object@1.0.14",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/style-to-object/-/style-to-object-1.0.14.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "395c95f20598da653ff1eb1cb9d74947c7fac689697147f1d192fd0242a0e635",
+      "noticePath": "release/licenses/clients/runtime/395c95f20598da65-LICENSE",
+      "components": [
+        {
+          "component": "inline-style-parser@0.2.7",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/inline-style-parser/-/inline-style-parser-0.2.7.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "5d0698266086f217bb11ea0499d33453e401fe479fb9126ad04e625e63d3557b",
+      "noticePath": "release/licenses/clients/runtime/5d0698266086f217-license",
+      "components": [
+        {
+          "component": "property-information@7.2.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/property-information/-/property-information-7.2.0.tgz"
+        },
+        {
+          "component": "parse-entities@4.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/parse-entities/-/parse-entities-4.0.2.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "74887e17b7f45ee00743fcabc9a618ececbc9e83cb2999bc564f702d30ce07d3",
+      "noticePath": "release/licenses/clients/runtime/74887e17b7f45ee0-LICENSE",
+      "components": [
+        {
+          "component": "luby-transform@0.2.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/luby-transform/-/luby-transform-0.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539",
+      "noticePath": "release/licenses/clients/runtime/a04665b3b2de56c6-LICENSE",
+      "components": [
+        {
+          "component": "pako@2.2.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/pako/-/pako-2.2.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "f8d98d896580f900839660b738db450d3797ea93260df2a2220cedb3cdde44db",
+      "noticePath": "release/licenses/clients/runtime/f8d98d896580f900-LICENSE",
+      "components": [
+        {
+          "component": "lezer-json5@2.0.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/lezer-json5/-/lezer-json5-2.0.2.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba",
+      "noticePath": "release/licenses/clients/runtime/568902fb66eaf1f1-LICENSE",
+      "components": [
+        {
+          "component": "@lezer/lr@1.4.10",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@lezer/lr/-/lr-1.4.10.tgz"
+        },
+        {
+          "component": "@lezer/common@1.5.2",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@lezer/common/-/common-1.5.2.tgz"
+        },
+        {
+          "component": "@lezer/highlight@1.2.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@lezer/highlight/-/highlight-1.2.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "53e59feb13058722d977c699eb0407c7bce2f93c949b681bbd2ff31698535927",
+      "noticePath": "release/licenses/clients/runtime/53e59feb13058722-LICENSE.md",
+      "components": [
+        {
+          "component": "json5@2.2.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/json5/-/json5-2.2.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07",
+      "noticePath": "release/licenses/clients/runtime/05c6130cda97e760-LICENSE",
+      "components": [
+        {
+          "component": "@codemirror/view@6.43.9",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/view/-/view-6.43.9.tgz"
+        },
+        {
+          "component": "@codemirror/state@6.7.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/state/-/state-6.7.1.tgz"
+        },
+        {
+          "component": "@codemirror/language@6.12.4",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/language/-/language-6.12.4.tgz"
+        },
+        {
+          "component": "@codemirror/search@6.7.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/search/-/search-6.7.1.tgz"
+        },
+        {
+          "component": "@codemirror/commands@6.11.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/commands/-/commands-6.11.0.tgz"
+        },
+        {
+          "component": "@codemirror/autocomplete@6.20.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@codemirror/autocomplete/-/autocomplete-6.20.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "869c30f368eb08735e779027b9f4bc9fea2f39624351856aebe42741f0bc0884",
+      "noticePath": "release/licenses/clients/runtime/869c30f368eb0873-LICENSE",
+      "components": [
+        {
+          "component": "w3c-keyname@2.2.8",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/w3c-keyname/-/w3c-keyname-2.2.8.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "cb4474e26547397169061d3586c00022cda5330a1b64fa13e872319f3b63aff1",
+      "noticePath": "release/licenses/clients/runtime/cb4474e265473971-LICENSE",
+      "components": [
+        {
+          "component": "style-mod@4.1.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/style-mod/-/style-mod-4.1.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "23852ebf6aef7fadffc92514b3c5df163a8651f2c3ed0dbb494cb49d93bd5de5",
+      "noticePath": "release/licenses/clients/runtime/23852ebf6aef7fad-LICENSE",
+      "components": [
+        {
+          "component": "crelt@1.0.7",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/crelt/-/crelt-1.0.7.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "9360b00fdd091f05c783b568bdd46c679c41b72415599252de98949462ea1acb",
+      "noticePath": "release/licenses/clients/runtime/9360b00fdd091f05-LICENSE",
+      "components": [
+        {
+          "component": "@marijn/find-cluster-break@1.0.3",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@marijn/find-cluster-break/-/find-cluster-break-1.0.3.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
+      "noticePath": "release/licenses/clients/runtime/b569f629d00f2626-LICENSE",
+      "components": [
+        {
+          "component": "@xterm/xterm@6.0.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@xterm/xterm/-/xterm-6.0.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f",
+      "noticePath": "release/licenses/clients/runtime/e256f01188af527e-LICENSE",
+      "components": [
+        {
+          "component": "@xterm/addon-fit@0.11.0",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@xterm/addon-fit/-/addon-fit-0.11.0.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "2f94a0638c79b1b4b3aa6e9091ca10cb2ba9813efde09772d942dbd457bad868",
+      "noticePath": "release/licenses/clients/runtime/2f94a0638c79b1b4-LICENSE",
+      "components": [
+        {
+          "component": "@fontsource/noto-color-emoji@5.3.1",
+          "selectionScope": "npm-runtime-source-candidate",
+          "sourceURL": "https://registry.npmjs.org/@fontsource/noto-color-emoji/-/noto-color-emoji-5.3.1.tgz"
+        }
+      ]
+    },
+    {
+      "sha256": "0e952cb110ff6944789fbe47c25b38819a3866c04c7c5cbea8d0c0d8f3a92f0e",
+      "noticePath": "release/licenses/clients/runtime/0e952cb110ff6944-protobuf-es-varint-BSD-3-Clause-original.txt",
+      "components": [
+        {
+          "component": "@bufbuild/protobuf@2.14.0",
+          "selectionScope": "npm-exact-gitHead-runtime-source-notice",
+          "sourceURL": "https://raw.githubusercontent.com/bufbuild/protobuf-es/04297e762a64dbcafc299c46785dbc5621b4329f/packages/protobuf/src/wire/varint.ts"
+        }
+      ]
+    },
+    {
+      "sha256": "6f9a3c664a2a6c8d23bafef7d3ffe385ce9d01acd78ddaee8f4d4b4f9ad9b7d3",
+      "noticePath": "release/licenses/clients/runtime/6f9a3c664a2a6c8d-License.md",
+      "components": [
+        {
+          "component": "binarycodable@9e5ef6ca38f18d0bdfbe134dadbe1517f7468293",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/christophhagen/BinaryCodable/9e5ef6ca38f18d0bdfbe134dadbe1517f7468293/License.md"
+        },
+        {
+          "component": "legacybinarycodable@bf13e2bc2aa27d8b119738054357dd6ab7eb0a95",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/christophhagen/LegacyBinaryCodable/bf13e2bc2aa27d8b119738054357dd6ab7eb0a95/License.md"
+        }
+      ]
+    },
+    {
+      "sha256": "a1c7f7ef3f326384c8edb428c9698654a4df4a4339149b4eccdac532f832678e",
+      "noticePath": "release/licenses/clients/runtime/a1c7f7ef3f326384-LICENSE.md",
+      "components": [
+        {
+          "component": "codeeditsourceeditor@0478fd4b8d45f191b6c400d2c7bf6cc648485593",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/nekohasekai/CodeEditSourceEditor/0478fd4b8d45f191b6c400d2c7bf6cc648485593/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "sha256": "960d8436f97cac8fdf01cb011cee5bda3d292777c41840137b754f1d43f023dc",
+      "noticePath": "release/licenses/clients/runtime/960d8436f97cac8f-LICENSE.md",
+      "components": [
+        {
+          "component": "codeedittextview@d7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/CodeEditApp/CodeEditTextView/d7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "sha256": "725a298bb896f12220f691494f72639f5e4a280627f3222955aed4b441d9b91c",
+      "noticePath": "release/licenses/clients/runtime/725a298bb896f122-LICENSE",
+      "components": [
+        {
+          "component": "devicekit@56b997e8a61707218f9af09f32b2a1d1806fd792",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/devicekit/DeviceKit/56b997e8a61707218f9af09f32b2a1d1806fd792/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "5dffb6c45faaa71f6c393255b135145cc17f0b07e968a705ef58f9c68aeb112d",
+      "noticePath": "release/licenses/clients/runtime/5dffb6c45faaa71f-LICENSE",
+      "components": [
+        {
+          "component": "displaylink@41bea2661e04bebcb1c4f15fc0b6197850100fdd",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/Lakr233/DisplayLink/41bea2661e04bebcb1c4f15fc0b6197850100fdd/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "9853f9dce81365fcc1d9b46004633354450164b8d17904e92e80c444545f7e87",
+      "noticePath": "release/licenses/clients/runtime/9853f9dce81365fc-LICENSE",
+      "components": [
+        {
+          "component": "grdb.swift@b83108d10f42680d78f23fe4d4d80fc88dab3212",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/groue/GRDB.swift/b83108d10f42680d78f23fe4d4d80fc88dab3212/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "1f4b38df6a142e678a85d84c3a7ec4d1db328a556483241df714156134e81615",
+      "noticePath": "release/licenses/clients/runtime/1f4b38df6a142e67-LICENSE",
+      "components": [
+        {
+          "component": "libghostty-spm@cffef22c16dd61d22ebef539ae2ff1624db77363",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "7d36c9d9c0ae6e92e7e7000e3aab7715ab6463997f995e100848740fde29c7cf",
+      "noticePath": "release/licenses/clients/runtime/7d36c9d9c0ae6e92-LICENSE-bash-preexec.md",
+      "components": [
+        {
+          "component": "libghostty-spm@cffef22c16dd61d22ebef539ae2ff1624db77363",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Sources/GhosttyTerminal/Resources/Ghostty/shell-integration/bash/LICENSE-bash-preexec.md"
+        }
+      ]
+    },
+    {
+      "sha256": "ec86fb473b04f6ed4ed9a820f6366355ddbbe69a1673a0d776410971dd0b227c",
+      "noticePath": "release/licenses/clients/runtime/ec86fb473b04f6ed-LICENSE",
+      "components": [
+        {
+          "component": "libghostty-spm@cffef22c16dd61d22ebef539ae2ff1624db77363",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/Lakr233/libghostty-spm/cffef22c16dd61d22ebef539ae2ff1624db77363/Sources/GhosttyTheme/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "4438d8a78e985d37ba3c4db356557423b3739b2b2a0abb2ecefcafda4009c16b",
+      "noticePath": "release/licenses/clients/runtime/4438d8a78e985d37-LICENSE",
+      "components": [
+        {
+          "component": "networkimage@2849f5323265386e200484b0d0f896e73c3411b9",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/gonzalezreal/NetworkImage/2849f5323265386e200484b0d0f896e73c3411b9/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "45f57308a5f95039a6478cf1e47449aa11e28427777d81497bd654c1f41ef5af",
+      "noticePath": "release/licenses/clients/runtime/45f57308a5f95039-LICENSE",
+      "components": [
+        {
+          "component": "plcrashreporter@0254f941c646b1ed17b243654723d0f071e990d0",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/microsoft/plcrashreporter/0254f941c646b1ed17b243654723d0f071e990d0/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d536b3ca0cfd56cf372fd349a38c4e8b7d1304782dd0be6bfc718e9b5e13d342",
+      "noticePath": "release/licenses/clients/runtime/d536b3ca0cfd56cf-LICENSE",
+      "components": [
+        {
+          "component": "qrcode@a8b8a5166e072156baf66ec2fff0850aa14b5297",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/dagronf/qrcode/a8b8a5166e072156baf66ec2fff0850aa14b5297/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "72512faf072d3a4c0d9ae21552e0a3367e87b719ac511d06d2b5a0e427e8796d",
+      "noticePath": "release/licenses/clients/runtime/72512faf072d3a4c-LICENSE",
+      "components": [
+        {
+          "component": "rearrange@4de8be41dba304192e87dc0a11e0aa39e72aa2e8",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/Rearrange/4de8be41dba304192e87dc0a11e0aa39e72aa2e8/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "c22e885f33b821bddb24cf007145e5540655b6c0f403e49e6c76a93c28e6d9a9",
+      "noticePath": "release/licenses/clients/runtime/c22e885f33b821bd-COPYING",
+      "components": [
+        {
+          "component": "swift-cmark@5d9bdaa4228b381639fff09403e39a04926e2dbe",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/swiftlang/swift-cmark/5d9bdaa4228b381639fff09403e39a04926e2dbe/COPYING"
+        }
+      ]
+    },
+    {
+      "sha256": "770af8291f708538d8ff885a0bbc4e045cd700531741c4f99528d435c14d7f55",
+      "noticePath": "release/licenses/clients/runtime/770af8291f708538-LICENSE.txt",
+      "components": [
+        {
+          "component": "swift-collections@a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/apple/swift-collections/a0cb0954ecb21e4e31b0070e6ed5674e8556685a/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "183def18953a1c14583f31c21d07954bc528147750bdd234d452fe4cf7478411",
+      "noticePath": "release/licenses/clients/runtime/183def18953a1c14-LICENSE",
+      "components": [
+        {
+          "component": "swift-markdown-ui@5f613358148239d0292c0cef674a3c2314737f9e",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/gonzalezreal/swift-markdown-ui/5f613358148239d0292c0cef674a3c2314737f9e/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "8b149a719159359e68960c7fada5b9daae23db314f819cbe7c70707e81bdac8d",
+      "noticePath": "release/licenses/clients/runtime/8b149a719159359e-LICENSE",
+      "components": [
+        {
+          "component": "swift-qrcode-generator@2b1980b825f08a81ccc762b0c4d17fcde9d5e953",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/dagronf/swift-qrcode-generator/2b1980b825f08a81ccc762b0c4d17fcde9d5e953/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "635cc3a31a59d85c3d863ec504d243a70cbfdad0aaae16ce882704ca36128022",
+      "noticePath": "release/licenses/clients/runtime/635cc3a31a59d85c-LICENSE",
+      "components": [
+        {
+          "component": "swiftimagereadwrite@42ace2412279f18bc264bc306e96b51c36e12a33",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/dagronf/SwiftImageReadWrite/42ace2412279f18bc264bc306e96b51c36e12a33/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "792197b8debcdecb17f429bab3a43a5911364e2a6e8e7c0f7faf02032212fb5f",
+      "noticePath": "release/licenses/clients/runtime/792197b8debcdecb-LICENSE",
+      "components": [
+        {
+          "component": "swifttreesitter@08ef81eb8620617b55b08868126707ad72bf754f",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/SwiftTreeSitter/08ef81eb8620617b55b08868126707ad72bf754f/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d11b5eea8e9ae2f6dd06545633e8daf0dfcbc7dbb911a20d1504c905e5808775",
+      "noticePath": "release/licenses/clients/runtime/d11b5eea8e9ae2f6-LICENSE",
+      "components": [
+        {
+          "component": "textformation@b1ce9a14bd86042bba4de62236028dc4ce9db6a1",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextFormation/b1ce9a14bd86042bba4de62236028dc4ce9db6a1/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "afbec25c49bc05b3db57755ce2839d578c01319e5c7c29d7ad3781cd97660c9b",
+      "noticePath": "release/licenses/clients/runtime/afbec25c49bc05b3-LICENSE",
+      "components": [
+        {
+          "component": "textstory@a52db1a2eca74d37c8c19bf3165416941632ed45",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/ChimeHQ/TextStory/a52db1a2eca74d37c8c19bf3165416941632ed45/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147",
+      "noticePath": "release/licenses/clients/runtime/5f9cf9fb6acb1972-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter@da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/LICENSE"
+        },
+        {
+          "component": "tree-sitter/tree-sitter@ca7d15add61bf77391d387d26441599b96c0eb9c",
+          "selectionScope": "android-fixed-native-gitlink-runtime-source-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d",
+      "noticePath": "release/licenses/clients/runtime/6a18c5fac70d7860-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter@da6fe9beb4f7f67beb75914ca8e0d48ae48d6406",
+          "selectionScope": "apple-root-fixed-lock-runtime-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/da6fe9beb4f7f67beb75914ca8e0d48ae48d6406/lib/src/unicode/LICENSE"
+        },
+        {
+          "component": "tree-sitter/tree-sitter@ca7d15add61bf77391d387d26441599b96c0eb9c",
+          "selectionScope": "android-fixed-native-gitlink-runtime-source-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/lib/src/unicode/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "ef120ea13e3e543234f3d9a193c99ea512872979802dc0cebaea404c1a47047c",
+      "noticePath": "release/licenses/clients/runtime/ef120ea13e3e5432-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-agda@b9b32fa042c2952a7bfca86847ea325e44ccc897",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-agda/b9b32fa042c2952a7bfca86847ea325e44ccc897/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "49bf33cf78ef5897e4e161ce1517df7de1ae5042a65b6bcfd44401e0fc606559",
+      "noticePath": "release/licenses/clients/runtime/49bf33cf78ef5897-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-bash@49c31006d8307dcb12bc5770f35b6d5b9e2be68e",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-bash/49c31006d8307dcb12bc5770f35b6d5b9e2be68e/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+      "noticePath": "release/licenses/clients/runtime/2e0110e07abef7c2-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-c@212a80f86452bb1316324fa0db730cf52f29e05a",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c/212a80f86452bb1316324fa0db730cf52f29e05a/LICENSE"
+        },
+        {
+          "component": "tree-sitter-cpp@a71474021410973b29bfe99440d57bcd750246b1",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-cpp/a71474021410973b29bfe99440d57bcd750246b1/LICENSE"
+        },
+        {
+          "component": "tree-sitter-go@ff86c7f1734873c8c4874ca4dd95603695686d7a",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-go/ff86c7f1734873c8c4874ca4dd95603695686d7a/LICENSE"
+        },
+        {
+          "component": "tree-sitter-haskell@dd924b8df1eb76261f009e149fc6f3291c5081c2",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/LICENSE"
+        },
+        {
+          "component": "tree-sitter-html@d742025fa2d8e6100f134a6ea990443aa1f074b3",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-html/d742025fa2d8e6100f134a6ea990443aa1f074b3/LICENSE"
+        },
+        {
+          "component": "tree-sitter-javascript@f1e5a09b8d02f8209a68249c93f0ad647b228e6e",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-javascript/f1e5a09b8d02f8209a68249c93f0ad647b228e6e/LICENSE"
+        },
+        {
+          "component": "tree-sitter-json@3fef30de8aee74600f25ec2e319b62a1a870d51e",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3fef30de8aee74600f25ec2e319b62a1a870d51e/LICENSE"
+        },
+        {
+          "component": "tree-sitter-regex@4470c59041416e8a2a9fa343595ca28ed91f38b8",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-regex/4470c59041416e8a2a9fa343595ca28ed91f38b8/LICENSE"
+        },
+        {
+          "component": "tree-sitter/tree-sitter-json@3b129203f4b72d532f58e72c5310c0a7db3b8e6d",
+          "selectionScope": "android-fixed-native-gitlink-runtime-source-candidate",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3b129203f4b72d532f58e72c5310c0a7db3b8e6d/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d4df07bcd39ce18e53b903c724e6f309e49e32fda391a3bdff33c666b62024fd",
+      "noticePath": "release/licenses/clients/runtime/d4df07bcd39ce18e-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-c-sharp@dd5e59721a5f8dae34604060833902b882023aaf",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-c-sharp/dd5e59721a5f8dae34604060833902b882023aaf/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78",
+      "noticePath": "release/licenses/clients/runtime/c5cfb43042b6b720-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-css@98c7b3dceb24f1ee17f1322f3947e55638251c37",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-css/98c7b3dceb24f1ee17f1322f3947e55638251c37/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d270cb3a4985d75033bd77d875ccebff1d66e32788a3f727891e28d76132dd46",
+      "noticePath": "release/licenses/clients/runtime/d270cb3a4985d750-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-dart@e81af6ab94a728ed99c30083be72d88e6d56cf9e",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d4f4a51b5d4dd65e1e05d1499c0366eb27cc6fd57307a2e637565644c85f26d3",
+      "noticePath": "release/licenses/clients/runtime/d4f4a51b5d4dd65e-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-dart@e81af6ab94a728ed99c30083be72d88e6d56cf9e",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/UserNobody14/tree-sitter-dart/e81af6ab94a728ed99c30083be72d88e6d56cf9e/tree_sitter/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "806b8fcd19c1cdf23e178eb25942acc844a38669e36b2c896c7baf5f8bcecbb4",
+      "noticePath": "release/licenses/clients/runtime/806b8fcd19c1cdf2-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-dockerfile@33e22c33bcdbfc33d42806ee84cfd0b1248cc392",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-dockerfile/33e22c33bcdbfc33d42806ee84cfd0b1248cc392/LICENSE"
+        },
+        {
+          "component": "tree-sitter-go-mod@bbe2fe3be4b87e06a613e685250f473d2267f430",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/camdencheek/tree-sitter-go-mod/bbe2fe3be4b87e06a613e685250f473d2267f430/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+      "noticePath": "release/licenses/clients/runtime/a6cba85bc92e0cff-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-elixir@11426c5fd20eef360d5ecaf10729191f6bc5d715",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "119588423fbaa46a6955a044fee5a23338c7de190d8c4651a94c6d0b98ca2cda",
+      "noticePath": "release/licenses/clients/runtime/119588423fbaa46a-NOTICE",
+      "components": [
+        {
+          "component": "tree-sitter-elixir@11426c5fd20eef360d5ecaf10729191f6bc5d715",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/elixir-lang/tree-sitter-elixir/11426c5fd20eef360d5ecaf10729191f6bc5d715/NOTICE"
+        }
+      ]
+    },
+    {
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "noticePath": "release/licenses/clients/runtime/c71d239df91726fc-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-haskell@dd924b8df1eb76261f009e149fc6f3291c5081c2",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-haskell/dd924b8df1eb76261f009e149fc6f3291c5081c2/queries/LICENSE"
+        },
+        {
+          "component": "topjohnwu/libsu@8c3e80ffe466b89ff875471e542d77e6a1b480c5",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/topjohnwu/libsu/8c3e80ffe466b89ff875471e542d77e6a1b480c5/LICENSE"
+        },
+        {
+          "component": "Calvin-LL/Reorderable@66de5751227c440bcdbd63acc94999231ed67487",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Calvin-LL/Reorderable/66de5751227c440bcdbd63acc94999231ed67487/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "52ed137b039cd9c46409bc22e89938af911c95b157feae2d040b51e6084369a7",
+      "noticePath": "release/licenses/clients/runtime/52ed137b039cd9c4-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-java@2b57cd9541f9fd3a89207d054ce8fbe72657c444",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-java/2b57cd9541f9fd3a89207d054ce8fbe72657c444/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "ffaefecad68467134f8c701120a2410a2384ffff7a605b63638cf0b51e7d16cc",
+      "noticePath": "release/licenses/clients/runtime/ffaefecad6846713-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-jsdoc@d01984de49927c979b46ea5c01b78c8ddd79baf9",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-jsdoc/d01984de49927c979b46ea5c01b78c8ddd79baf9/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "74f800107f200f4e28da33e9c3f86230d37d8f4c0a4916f7111e800c395ee3a2",
+      "noticePath": "release/licenses/clients/runtime/74f800107f200f4e-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-julia@0c088d1ad270f02c4e84189247ac7001e86fe342",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-julia/0c088d1ad270f02c4e84189247ac7001e86fe342/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "948495f61768f7de26bcc61113d8cd95f50bbc15adb678c28c941c6c8fcd5903",
+      "noticePath": "release/licenses/clients/runtime/948495f61768f7de-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-kotlin@76f53c48d29e8588934fb55b0240d7bdfe00bfe5",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/fwcd/tree-sitter-kotlin/76f53c48d29e8588934fb55b0240d7bdfe00bfe5/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "9a32b02e4c917b1ce6b5e79d8ea81e25cefd7f27d89c7235f2afb262c06cf32e",
+      "noticePath": "release/licenses/clients/runtime/9a32b02e4c917b1c-LICENSE.md",
+      "components": [
+        {
+          "component": "tree-sitter-lua@34e60e7f45fc313463c68090d88d742a55d1bd7a",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-lua/34e60e7f45fc313463c68090d88d742a55d1bd7a/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "sha256": "52ec8a1bf8256511e2a92613e0bb41ffefba3897f16fa958d7bb28c466dd4804",
+      "noticePath": "release/licenses/clients/runtime/52ec8a1bf8256511-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-markdown@5cdc549ab8f461aff876c5be9741027189299cec",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-markdown/5cdc549ab8f461aff876c5be9741027189299cec/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "099c44248f8cf353123211318680e93465587c005a4b3730ce8cb5334de043d6",
+      "noticePath": "release/licenses/clients/runtime/099c44248f8cf353-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-objc@62e61b6f5c0289c376d61a8c91faf6435cde9012",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-objc/62e61b6f5c0289c376d61a8c91faf6435cde9012/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "f977a20805dd6e275f14bc090a5f8e638401dad4df366841c1060f12c75b74ae",
+      "noticePath": "release/licenses/clients/runtime/f977a20805dd6e27-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-ocaml@4abfdc1c7af2c6c77a370aee974627be1c285b3b",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ocaml/4abfdc1c7af2c6c77a370aee974627be1c285b3b/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "02c343f074753716e9c54fe12e6a27d03a041b54be545af8ecb280a7bb0ee703",
+      "noticePath": "release/licenses/clients/runtime/02c343f074753716-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-perl@15a6914b9b891974c888ba7bf6c432665b920a3f",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/ganezdragon/tree-sitter-perl/15a6914b9b891974c888ba7bf6c432665b920a3f/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "0e6225de0b737b9a3c3a3d52381989cc52025fe689dd036aaeb890beb7a593e5",
+      "noticePath": "release/licenses/clients/runtime/0e6225de0b737b9a-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-php@b569a5f2c0d592e67430520d1a0e1f765d83ceb0",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-php/b569a5f2c0d592e67430520d1a0e1f765d83ceb0/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "d724405ce238a22c0d35769c5a36b386ad5958192efe8bbb304fb2896254575f",
+      "noticePath": "release/licenses/clients/runtime/d724405ce238a22c-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-python@4bfdd9033a2225cc95032ce77066b7aeca9e2efc",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-python/4bfdd9033a2225cc95032ce77066b7aeca9e2efc/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "ee006f02a3d856df282e409be2a86e24a65bb573a98b9c28343771141351bb6b",
+      "noticePath": "release/licenses/clients/runtime/ee006f02a3d856df-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-ruby@4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-ruby/4d9ad3f010fdc47a8433adcf9ae30c8eb8475ae7/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "31d5b6f4243d5c7c6e1c4ebbbb9f6407bd1457a08bcc4f706521710341acba36",
+      "noticePath": "release/licenses/clients/runtime/31d5b6f4243d5c7c-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-rust@79456e6080f50fc1ca7c21845794308fa5d35a51",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-rust/79456e6080f50fc1ca7c21845794308fa5d35a51/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "1f95ed26e1f4074074c9c7083e61c0a9e4c3b9f435745044995f3beb4ed28575",
+      "noticePath": "release/licenses/clients/runtime/1f95ed26e1f40740-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-scala@45b5ba0e749a8477a8fd2666f082f352859bdc3c",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-scala/45b5ba0e749a8477a8fd2666f082f352859bdc3c/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "3b3e4e4252d5d7d1c18e1257005f23242bf0580ad619204fd093c99b8c56748d",
+      "noticePath": "release/licenses/clients/runtime/3b3e4e4252d5d7d1-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-sql@fd70fb358d164cd93fbe2674a9cca276dc5203f7",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/DerekStride/tree-sitter-sql/fd70fb358d164cd93fbe2674a9cca276dc5203f7/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "3533cec129bb4bba015c0d61d86dd7c3b7e82110e4d2ff7837a01eff5bad5ccc",
+      "noticePath": "release/licenses/clients/runtime/3533cec129bb4bba-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-swift@eda05af7ac41adb4eb19c346883c0fa32fe3bdd8",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/alex-pinkus/tree-sitter-swift/eda05af7ac41adb4eb19c346883c0fa32fe3bdd8/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "b727eee929bee836e8102cecf749a795b199f291b58c885bcd81cae727ac5a46",
+      "noticePath": "release/licenses/clients/runtime/b727eee929bee836-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-toml@28db724e8e30920638b46d408c0fbac007ac6a62",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/cengelbart39/tree-sitter-toml/28db724e8e30920638b46d408c0fbac007ac6a62/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "c873307dab492c1ea6e6d26bf43d0ef9aaac09447d25ff017b20e590f9c6ebe2",
+      "noticePath": "release/licenses/clients/runtime/c873307dab492c1e-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-typescript@d847898fec3fe596798c9fda55cb8c05a799001a",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-typescript/d847898fec3fe596798c9fda55cb8c05a799001a/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "8d2ff8d1e308828099436c43dc8bfbb8b6f368ad2a012ab9802a80ca22b03b53",
+      "noticePath": "release/licenses/clients/runtime/8d2ff8d1e3088280-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-verilog@902031343056bc0b11f3e47b33f036a9cf59f58d",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-verilog/902031343056bc0b11f3e47b33f036a9cf59f58d/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "2d181298822a124f6d106118dcc69c8d4d26ac668559be29682c452e712b0947",
+      "noticePath": "release/licenses/clients/runtime/2d181298822a124f-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-yaml@7b03feefd36b5f155465ca736c6304aca983b267",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-yaml/7b03feefd36b5f155465ca736c6304aca983b267/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "0eea8dc45e89deeb03c7799bbbc7b4688f365fb274562f4540ecfebdea82e727",
+      "noticePath": "release/licenses/clients/runtime/0eea8dc45e89deeb-LICENSE",
+      "components": [
+        {
+          "component": "tree-sitter-zig@eb7d58c2dc4fbeea4745019dee8df013034ae66b",
+          "selectionScope": "apple-CodeLanguagesContainer-37-fixed-grammar-source-candidates",
+          "sourceURL": "https://raw.githubusercontent.com/tree-sitter-grammars/tree-sitter-zig/eb7d58c2dc4fbeea4745019dee8df013034ae66b/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+      "noticePath": "release/licenses/clients/runtime/809fa1ed21450f59-LICENSE.txt",
+      "components": [
+        {
+          "component": "androidx.constraintlayout:constraintlayout:2.2.1",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/constraintlayout/constraintlayout/2.2.1/constraintlayout-2.2.1-sources.jar"
+        },
+        {
+          "component": "androidx.navigation:navigation-fragment-ktx:2.9.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-fragment-ktx/2.9.8/navigation-fragment-ktx-2.9.8-sources.jar"
+        },
+        {
+          "component": "androidx.navigation:navigation-ui-ktx:2.9.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-ui-ktx/2.9.8/navigation-ui-ktx-2.9.8-sources.jar"
+        },
+        {
+          "component": "androidx.coordinatorlayout:coordinatorlayout:1.3.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/coordinatorlayout/coordinatorlayout/1.3.0/coordinatorlayout-1.3.0-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-livedata-ktx:2.11.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.11.0/lifecycle-livedata-ktx-2.11.0-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.11.0/lifecycle-viewmodel-ktx-2.11.0-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-process:2.11.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.11.0/lifecycle-process-2.11.0-sources.jar"
+        },
+        {
+          "component": "androidx.room:room-runtime:2.8.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.8.4/room-runtime-2.8.4-sources.jar"
+        },
+        {
+          "component": "androidx.work:work-runtime-ktx:2.11.2",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.11.2/work-runtime-ktx-2.11.2-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-view:1.6.1",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.6.1/camera-view-1.6.1-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-lifecycle:1.6.1",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.6.1/camera-lifecycle-1.6.1-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-camera2:1.6.1",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.6.1/camera-camera2-1.6.1-sources.jar"
+        },
+        {
+          "component": "androidx.browser:browser:1.10.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.10.0/browser-1.10.0-sources.jar"
+        },
+        {
+          "component": "androidx.webkit:webkit:1.16.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.16.0/webkit-1.16.0-sources.jar"
+        },
+        {
+          "component": "androidx.core:core-ktx:1.19.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.19.0/core-ktx-1.19.0-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-livedata-ktx:2.9.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-ktx/2.9.4/lifecycle-livedata-ktx-2.9.4-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.9.4/lifecycle-viewmodel-ktx-2.9.4-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-process:2.9.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.9.4/lifecycle-process-2.9.4-sources.jar"
+        },
+        {
+          "component": "androidx.room:room-runtime:2.7.2",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/2.7.2/room-runtime-2.7.2-sources.jar"
+        },
+        {
+          "component": "androidx.work:work-runtime-ktx:2.10.5",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/work/work-runtime-ktx/2.10.5/work-runtime-ktx-2.10.5-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-view:1.4.2",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-view/1.4.2/camera-view-1.4.2-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-lifecycle:1.4.2",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-lifecycle/1.4.2/camera-lifecycle-1.4.2-sources.jar"
+        },
+        {
+          "component": "androidx.camera:camera-camera2:1.4.2",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/camera/camera-camera2/1.4.2/camera-camera2-1.4.2-sources.jar"
+        },
+        {
+          "component": "androidx.browser:browser:1.9.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/browser/browser/1.9.0/browser-1.9.0-sources.jar"
+        },
+        {
+          "component": "androidx.webkit:webkit:1.14.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/webkit/webkit/1.14.0/webkit-1.14.0-sources.jar"
+        },
+        {
+          "component": "androidx.core:core-ktx:1.17.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.17.0/core-ktx-1.17.0-sources.jar"
+        },
+        {
+          "component": "androidx.compose.material3:material3:1.4.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3/1.4.0/material3-1.4.0-sources.jar"
+        },
+        {
+          "component": "androidx.compose.material3.adaptive:adaptive:1.2.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.2.0/adaptive-1.2.0-sources.jar"
+        },
+        {
+          "component": "androidx.compose.ui:ui:1.11.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui/1.11.4/ui-1.11.4-sources.jar"
+        },
+        {
+          "component": "androidx.compose.ui:ui-tooling-preview:1.11.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview/1.11.4/ui-tooling-preview-1.11.4-sources.jar"
+        },
+        {
+          "component": "androidx.activity:activity-compose:1.13.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.13.0/activity-compose-1.13.0-sources.jar"
+        },
+        {
+          "component": "androidx.navigation:navigation-compose:2.9.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/navigation/navigation-compose/2.9.8/navigation-compose-2.9.8-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.11.0/lifecycle-viewmodel-compose-2.11.0-sources.jar"
+        },
+        {
+          "component": "androidx.compose.runtime:runtime-livedata:1.11.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-livedata/1.11.4/runtime-livedata-1.11.4-sources.jar"
+        },
+        {
+          "component": "androidx.compose.material3.adaptive:adaptive:1.0.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material3/adaptive/adaptive/1.0.0/adaptive-1.0.0-sources.jar"
+        },
+        {
+          "component": "androidx.activity:activity-compose:1.11.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.11.0/activity-compose-1.11.0-sources.jar"
+        },
+        {
+          "component": "androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/2.9.4/lifecycle-viewmodel-compose-2.9.4-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "0c4ea5fbb371f1f2ace88fb43ff1c50cc26954129a459ce160e4fd0d99881a39",
+      "noticePath": "release/licenses/clients/runtime/0c4ea5fbb371f1f2-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "ad3349e4177e534a4dddd82b845a4e237991738b5a2fc08bc512e12fc131f945",
+      "noticePath": "release/licenses/clients/runtime/ad3349e4177e534a-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "1ab18f3ec096f17ef2bef2da3732177863d9b9a5bca6c9cd1ce7b0a6f2e5e244",
+      "noticePath": "release/licenses/clients/runtime/1ab18f3ec096f17e-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "ee2d374245327834dae489b4b6a5202a58e1c4924d8fee8b99ede27cdb06983d",
+      "noticePath": "release/licenses/clients/runtime/ee2d374245327834-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "19f99ce19a41ea0b55ea1ea5f5cdd5a02b71dbe1787f43e2937b2abd0f29b40e",
+      "noticePath": "release/licenses/clients/runtime/19f99ce19a41ea0b-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.8",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.8/material-icons-extended-1.7.8-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "69b76aa2deffddc9cf34362334c310d70082178a53d754ea6ba287b4096d7ebc",
+      "noticePath": "release/licenses/clients/runtime/69b76aa2deffddc9-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.6",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "f17ac4d9a212db8afb1f95baf4f9980aff9fd602472fb46bf0b072b0e5379390",
+      "noticePath": "release/licenses/clients/runtime/f17ac4d9a212db8a-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.6",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "c60e142d1cf81e8cb7f8e80ce6e1f452408b6720562cc77b6284417adfd02b95",
+      "noticePath": "release/licenses/clients/runtime/c60e142d1cf81e8c-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.6",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "a3b11a0f48db8f6b7cd4592e56792db1ee390f17c296dd9f4259da0a2549aa84",
+      "noticePath": "release/licenses/clients/runtime/a3b11a0f48db8f6b-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.6",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "ff87637136a936573e5ecaebaf4fa782fdbe46f8d3bded8e73aea5eb316f3e21",
+      "noticePath": "release/licenses/clients/runtime/ff87637136a93657-Copyright.kt",
+      "components": [
+        {
+          "component": "androidx.compose.material:material-icons-extended:1.7.6",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended/1.7.6/material-icons-extended-1.7.6-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "bbd24005ee87fc6722909ea1484de335eaffea25fd00b51af7164997c0827e23",
+      "noticePath": "release/licenses/clients/runtime/bbd24005ee87fc67-Copyright.kt",
+      "components": [
+        {
+          "component": "org.kodein.emoji:emoji-kt:2.5.0",
+          "selectionScope": "android-other-and-otherLegacy-direct-runtime-source-candidate",
+          "sourceURL": "https://repo.maven.apache.org/maven2/org/kodein/emoji/emoji-kt/2.5.0/emoji-kt-2.5.0-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "3f62881f0566227a24b12e5a754cc79f39aaa94883038e95c94812e1f50af42f",
+      "noticePath": "release/licenses/clients/runtime/3f62881f0566227a-LICENSE",
+      "components": [
+        {
+          "component": "zxing/zxing@f651b0a0375676e47144f73397dddff8868b0e4c",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/zxing/zxing/f651b0a0375676e47144f73397dddff8868b0e4c/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "b1febe6399dffb10d19d35e7663ab16300c93cb0476a94115df1cc0097a8ffd8",
+      "noticePath": "release/licenses/clients/runtime/b1febe6399dffb10-LICENSE.txt",
+      "components": [
+        {
+          "component": "Kotlin/kotlinx.coroutines@8564f65764d3d05893cec026c6e94250e2b23874",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/8564f65764d3d05893cec026c6e94250e2b23874/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "1ab6de67ef738bffae63f9aa6a8798a35e87341c83ea28d09c8dc8ca6993232a",
+      "noticePath": "release/licenses/clients/runtime/1ab6de67ef738bff-NOTICE.txt",
+      "components": [
+        {
+          "component": "Kotlin/kotlinx.coroutines@8564f65764d3d05893cec026c6e94250e2b23874",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/8564f65764d3d05893cec026c6e94250e2b23874/license/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851",
+      "noticePath": "release/licenses/clients/runtime/c5accbbd8546e94c-LICENSE.txt",
+      "components": [
+        {
+          "component": "Kotlin/kotlinx.serialization@6956af2e6073347c7832c3c5b374fa3b5a345956",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "0eec219eba99cd8da85c3c781732a515fba284c55e9531739f11762c80a754b4",
+      "noticePath": "release/licenses/clients/runtime/0eec219eba99cd8d-LICENSE.txt",
+      "components": [
+        {
+          "component": "Kotlin/kotlinx.serialization@6956af2e6073347c7832c3c5b374fa3b5a345956",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/license/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "ec77bba5c852830abfdefcdefbf4a22577ff4df79ec323a898d5100ca1d6f8d6",
+      "noticePath": "release/licenses/clients/runtime/ec77bba5c852830a-NOTICE.txt",
+      "components": [
+        {
+          "component": "Kotlin/kotlinx.serialization@6956af2e6073347c7832c3c5b374fa3b5a345956",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/6956af2e6073347c7832c3c5b374fa3b5a345956/license/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "f21d7be50c10f0a509f50e4ff6ba0a7d9f1c20b2766403e0e50803e4701cf941",
+      "noticePath": "release/licenses/clients/runtime/f21d7be50c10f0a5-AUTHORS",
+      "components": [
+        {
+          "component": "google/smali@a4d1453dcf40517486739106aa822de4e5152cf3",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/google/smali/a4d1453dcf40517486739106aa822de4e5152cf3/AUTHORS"
+        }
+      ]
+    },
+    {
+      "sha256": "29da1aadc6709dd25462efa679a659c74ca397ed69acb2d6094078eaa6d33c9e",
+      "noticePath": "release/licenses/clients/runtime/29da1aadc6709dd2-NOTICE",
+      "components": [
+        {
+          "component": "google/smali@a4d1453dcf40517486739106aa822de4e5152cf3",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/google/smali/a4d1453dcf40517486739106aa822de4e5152cf3/third_party/NOTICE"
+        }
+      ]
+    },
+    {
+      "sha256": "7ffe1954587c77dfba1cf8eb9b2ea743671fa6e63f9e7a2f258119d42e14eefe",
+      "noticePath": "release/licenses/clients/runtime/7ffe1954587c77df-LICENSE",
+      "components": [
+        {
+          "component": "Rosemoe/sora-editor@b1777d0d465b42515739ffe529b4ec1634ac2175",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/LICENSE"
+        },
+        {
+          "component": "itsaky/android-tree-sitter@797150222de664181e31be53e9a5b253056ba9b0",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "54f8997d6148cdfa55017251833abab7b97e5aa00fd4618b94dda388aef9a49d",
+      "noticePath": "release/licenses/clients/runtime/54f8997d6148cdfa-LICENSE",
+      "components": [
+        {
+          "component": "jeziellago/compose-markdown@587e4129c6d3b7a3b31876a5c49e69cd75838df6",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/jeziellago/compose-markdown/587e4129c6d3b7a3b31876a5c49e69cd75838df6/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "7b7c2cd596de4081263e277c4bdaf6c83b0126adff0fc116ef651b5b77af9b69",
+      "noticePath": "release/licenses/clients/runtime/7b7c2cd596de4081-LICENSE",
+      "components": [
+        {
+          "component": "SagerNet/libghostty-android@f23ccb792b9b4a0fafa053d9703ba4fb9e4881ff",
+          "selectionScope": "android-version-source-supplement-fixed-commit-where-resolved",
+          "sourceURL": "https://raw.githubusercontent.com/SagerNet/libghostty-android/f23ccb792b9b4a0fafa053d9703ba4fb9e4881ff/LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "86f15c1e7441ca3f113137865107f649acfd06d5ea5eb40fbd6050b52db89925",
+      "noticePath": "release/licenses/clients/runtime/86f15c1e7441ca3f-8352a2d165e19f8a.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "b3616ac8d72bf72e6fb57c4d68d4df6d7c69135eb6cf48537ed4e1779f5030ff",
+      "noticePath": "release/licenses/clients/runtime/b3616ac8d72bf72e-2487db2816457962.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "e15611fa061c57f4a45275f33d606aa3044b3978122337ace247af83f76b086f",
+      "noticePath": "release/licenses/clients/runtime/e15611fa061c57f4-362b5cb44b5d06e9.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "b2a2dcb0c276efc9fe9cf3ae9248386fb4af62b23c9f194a974e5d7d3b84f4dc",
+      "noticePath": "release/licenses/clients/runtime/b2a2dcb0c276efc9-452af18738fb078a.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "b565b316bca98ffd0396e7f115d18e6d815b65d853c6e20668229359226a5b50",
+      "noticePath": "release/licenses/clients/runtime/b565b316bca98ffd-80a0992135072153.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "015b4b5fa19fb9be824018707d8c6e1bac33a0cc8e9d180b7e7f1e8e9bb17fd0",
+      "noticePath": "release/licenses/clients/runtime/015b4b5fa19fb9be-972b3dcb992b7579.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "8beefde243ff4062c7bee3b54702363ea93e0ff9f05f572adb6ff7232294871a",
+      "noticePath": "release/licenses/clients/runtime/8beefde243ff4062-2b3a602b474cebed.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "0255591fafb75aa9be30868a1efc520c70e2c32740ab310c471b4c3b2dcdaaa3",
+      "noticePath": "release/licenses/clients/runtime/0255591fafb75aa9-8928b0ec8904a331.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "b33722922ab17b65cdc84b3da44d430abefb3f0a1f8f592633f2d8e0de310734",
+      "noticePath": "release/licenses/clients/runtime/b33722922ab17b65-95aaf9816b48de9c.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "637b1b96bf321fee5f97ee472376e5d062d0e80d57f3b4dcf70890cd602316ce",
+      "noticePath": "release/licenses/clients/runtime/637b1b96bf321fee-88fed698aef4047f.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "8b6fb985cf0b0969acaf46e4134e8bc5ce2dccb1be418761ca1b03cc941c74a2",
+      "noticePath": "release/licenses/clients/runtime/8b6fb985cf0b0969-8635b0417919a226.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "b2da0de85e48d2d315d31f9899a7cb8b3a585d0888020ede46a8d1ea8475d83b",
+      "noticePath": "release/licenses/clients/runtime/b2da0de85e48d2d3-ab96f6d2ee45e1ad.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "eba10c610c1972056bc2139ab5a1ce77af9668ed32d00fa0af02d576045d3e0c",
+      "noticePath": "release/licenses/clients/runtime/eba10c610c197205-2e87389464024cc0.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "c44fb1ca83455e74a70392428e4f05daadaae0345009b3b31acaa76bbbba5ad4",
+      "noticePath": "release/licenses/clients/runtime/c44fb1ca83455e74-f983c98fec8488fe.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "18e0dfa188f2630cac16a6a83a2727fd0cd90d5b1b87f89db0067d63fa270c94",
+      "noticePath": "release/licenses/clients/runtime/18e0dfa188f2630c-a2ed51aec922033c.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "0d12c39f9f10cae9ced8b6e5e9a05bbd7c5eb398fb8f72b03dd0f1fdcc9cf65f",
+      "noticePath": "release/licenses/clients/runtime/0d12c39f9f10cae9-3220a495d3e12782.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "350b231721bade6d0a97cdf5e060aee0c8c07cc2c7dc510e0eada4355292c7d6",
+      "noticePath": "release/licenses/clients/runtime/350b231721bade6d-453c7ecaa471ddc1.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "6ac4f193045324dc478a010c39c241e11ae65b064933af990fc58b88d8e19d48",
+      "noticePath": "release/licenses/clients/runtime/6ac4f193045324dc-274c79c22fefbf8c.txt",
+      "components": [
+        {
+          "component": "com.android.tools.smali:smali-dexlib2:3.0.9",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/smali/smali-dexlib2/3.0.9/smali-dexlib2-3.0.9-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "f52830996d6941bcbe5f84f81fe3706f54d00645f5f18f9decfba4cfa3ea40d8",
+      "noticePath": "release/licenses/clients/runtime/f52830996d6941bc-92754378e4037644.txt",
+      "components": [
+        {
+          "component": "com.blacksquircle.ui:editorkit:2.2.0",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/editorkit/2.2.0/editorkit-2.2.0-sources.jar"
+        },
+        {
+          "component": "com.blacksquircle.ui:language-json:2.2.0",
+          "selectionScope": "android-fixed-source-jar-original-license-header",
+          "sourceURL": "https://repo.maven.apache.org/maven2/com/blacksquircle/ui/language-json/2.2.0/language-json-2.2.0-sources.jar"
+        }
+      ]
+    },
+    {
+      "sha256": "2373168614b527494dff99eb393024608216db79f687d58bad420f6c1e0ad192",
+      "noticePath": "release/licenses/clients/runtime/2373168614b52749-iTerm2-Color-Schemes-LICENSE",
+      "components": [
+        {
+          "component": "iTerm2-Color-Schemes@8c84dd1a859f36ec8601b082bd97b4ec888f0f4d",
+          "selectionScope": "generated-terminal-theme-source-attribution",
+          "sourceURL": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/8c84dd1a859f36ec8601b082bd97b4ec888f0f4d/LICENSE"
+        }
+      ]
+    }
+  ],
+  "otherActualEvidence": [
+    "Electron LICENSE.electron.txt and LICENSES.chromium.html already present; verified separately by parent.",
+    "Actual renderer CSS preserves a complete xterm MIT block; original comment retained in actual-SFL-arm64-bundle-license-comments.json.",
+    "NotoColorEmoji-OFL.txt already present at package resources; verified separately by parent.",
+    "Actual terminalThemes-DaljFpjF.js is the generated theme bundle; source generator binds to fixed iTerm2-Color-Schemes gitlink."
+  ]
+}

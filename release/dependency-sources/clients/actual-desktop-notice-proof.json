@@ -1,0 +1,29 @@
+{
+  "artifactId": 12098770717,
+  "artifactArchiveSHA256": "sha256:449e067effe66626f8468b5f961d6d4ccbc5fdbb7871f3129dbee7a5ba531f24",
+  "releaseName": "SFL-1.15.0-polaris-alpha.12-arm64.deb",
+  "packageSHA256": "7b438678d7ed94022226608b1374084776ee5c6e3afcabd00865d32765a73489",
+  "sourceCommit": "68ffb209ded1f9337f9115741cba24f9f4c63421",
+  "files": [
+    {
+      "packagePath": "./opt/sing-box/LICENSE.electron.txt",
+      "retainedFile": "LICENSE.electron.txt",
+      "bytes": 1096,
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+    },
+    {
+      "packagePath": "./opt/sing-box/LICENSES.chromium.html",
+      "retainedFile": "LICENSES.chromium.html",
+      "bytes": 19956019,
+      "sha256": "4fc0507a046b9ecd0738b2dd64119b5ec8bc29ac0221b63edb693fd5fd497c87"
+    },
+    {
+      "packagePath": "./opt/sing-box/resources/licenses/NotoColorEmoji-OFL.txt",
+      "retainedFile": "NotoColorEmoji-OFL.txt",
+      "bytes": 4349,
+      "sha256": "0c2b6b57ab244e94c6113935b33b473c14660e81d146afda35585d3b1a2ace81"
+    }
+  ],
+  "executedBinary": false,
+  "scope": "Actual unsigned Linux arm64 desktop package runtime notices. Same-version other platforms still require conservative applicability review; do not claim observed there."
+}

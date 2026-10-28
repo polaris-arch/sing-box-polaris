@@ -14,7 +14,6 @@ import (
 
 	"github.com/coder/websocket"
 	"golang.org/x/net/http/httpguts"
-	"golang.org/x/net/http2"
 )
 
 const (
@@ -178,7 +177,7 @@ func (w *webSocketResponseWriter) writeTrailerFrame() {
 	w.wroteTrailers = true
 	trailerHeader := make(http.Header)
 	for key, values := range w.header {
-		lowerKey := strings.ToLower(strings.TrimPrefix(key, http2.TrailerPrefix))
+		lowerKey := strings.ToLower(strings.TrimPrefix(key, http.TrailerPrefix))
 		if lowerKey == "trailer" {
 			continue
 		}

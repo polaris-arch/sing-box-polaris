@@ -1,0 +1,22 @@
+// Copyright 2019 Google LLC
+// Copyright 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: BSD-3-Clause
+
+// Vendored from google/highway hwy/abort.cc at commit:
+// 66486a10623fa0d72fe91260f96c892e41aceb06
+//
+// Local modifications:
+// - Removed stdio/stdlib/string/sanitizer-backed formatting and logging paths
+//   so this file no longer pulls in libc/libc++ symbols.
+// - Replaced std::atomic storage with compiler atomics on plain function
+//   pointers to preserve thread-safe handler installation without libc++.
+// - Kept only the Warn/Abort symbol surface Highway's runtime dispatch needs,
+//   with a trap-only fallback when no abort handler is installed.
+//
+// Why:
+// - Ghostty only needs Highway's runtime dispatch support here, not its
+//   formatted stderr diagnostics.
+// - Keeping this translation unit libc/libc++ free lets pkg/highway build as a
+//   small vendored shim around Zig-driven target detection.
+

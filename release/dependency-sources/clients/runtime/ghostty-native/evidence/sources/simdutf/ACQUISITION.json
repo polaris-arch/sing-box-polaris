@@ -1,0 +1,26 @@
+{
+  "tag": "v9.0.0",
+  "commit": "ca7acbcea967b5dcbab490066e99e3a6e6925539",
+  "tagEvidence": {
+    "url": "https://github.com/simdutf/simdutf/tree/v9.0.0",
+    "sha256": "a82b7a28a77850c3bdfd16b5a15d4a7545251c454cdd95fa026e3b99e18e713a"
+  },
+  "files": [
+    {
+      "url": "https://raw.githubusercontent.com/simdutf/simdutf/ca7acbcea967b5dcbab490066e99e3a6e6925539/LICENSE-MIT",
+      "path": "sources/simdutf/LICENSE-MIT",
+      "sha256": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f",
+      "bytes": 1059
+    },
+    {
+      "url": "https://raw.githubusercontent.com/simdutf/simdutf/ca7acbcea967b5dcbab490066e99e3a6e6925539/LICENSE-APACHE",
+      "path": "sources/simdutf/LICENSE-APACHE",
+      "sha256": "3d34610fc6b5e1b0bfe4e2f36171c2d62c28ef05cb8d704f5a0073be41a43b3d",
+      "bytes": 11330
+    },
+    {
+      "url": "https://raw.githubusercontent.com/simdutf/simdutf/ca7acbcea967b5dcbab490066e99e3a6e6925539/LICENSE",
+      "error": "HTTP Error 404: Not Found"
+    }
+  ]
+}

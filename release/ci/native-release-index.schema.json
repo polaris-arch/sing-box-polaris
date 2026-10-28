@@ -1,0 +1,714 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "polaris-upstream-native-assets-v1"
+    },
+    "repository": {
+      "const": "polaris-arch/sing-box-polaris"
+    },
+    "repositoryId": {
+      "const": 1421657509
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+    },
+    "tag": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+    },
+    "tagObject": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "sourceTree": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "const": "polaris-arch/sing-box-polaris"
+        },
+        "repositoryId": {
+          "const": 1421657509
+        },
+        "workflow": {
+          "type": "string",
+          "pattern": "^\\.github/workflows/[^/]+\\.yml$"
+        },
+        "workflowCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "runId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runAttempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nativeJobs": {
+          "type": "object",
+          "properties": {
+            "linux": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "win": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "mac-x64": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "mac-arm64": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "linux",
+            "win",
+            "mac-x64",
+            "mac-arm64"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "repository",
+        "repositoryId",
+        "workflow",
+        "workflowCommit",
+        "runId",
+        "runAttempt",
+        "nativeJobs"
+      ],
+      "additionalProperties": false
+    },
+    "legalFiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._+/-]+$"
+          },
+          "content": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "content",
+          "bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sourceArchive": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._+-]+$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "name",
+        "bytes",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": "polaris-upstream-native-receipt-v1"
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._+-]+$"
+          },
+          "target": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "object",
+            "properties": {
+              "linkage": {
+                "enum": [
+                  "shared-purego",
+                  "static-cgo",
+                  "other"
+                ]
+              },
+              "libc": {
+                "type": "string"
+              },
+              "goarm": {
+                "type": "string"
+              },
+              "gomips": {
+                "type": "string"
+              },
+              "go386": {
+                "type": "string"
+              },
+              "legacy": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "linkage",
+              "libc",
+              "goarm",
+              "gomips",
+              "go386",
+              "legacy"
+            ],
+            "additionalProperties": false
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+          },
+          "tag": {
+            "type": "string",
+            "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)$"
+          },
+          "sourceCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "sourceTree": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+          },
+          "goVersion": {
+            "type": "string",
+            "pattern": "^go1\\.[0-9]+\\.[0-9]+$"
+          },
+          "tags": {
+            "type": "string"
+          },
+          "buildID": {
+            "type": "string",
+            "pattern": "^.{0,512}$"
+          },
+          "rawBuildInfo": {
+            "type": "string"
+          },
+          "buildGraph": {
+            "type": "object",
+            "properties": {
+              "settings": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "normalModules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "module": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "h1": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "module",
+                    "version",
+                    "h1"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "prebuiltAcquisitionModules": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "module": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "h1": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "module",
+                    "version",
+                    "h1"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "localReplacements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "module": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "h1": {
+                      "type": "string"
+                    },
+                    "replacement": {
+                      "type": "object",
+                      "properties": {
+                        "module": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "h1": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "module",
+                        "version",
+                        "h1"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "module",
+                    "version",
+                    "h1",
+                    "replacement"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "settings",
+              "normalModules",
+              "prebuiltAcquisitionModules",
+              "localReplacements"
+            ],
+            "additionalProperties": false
+          },
+          "sourceIdentity": {
+            "type": "object",
+            "properties": {
+              "sourceOverlay": {
+                "const": 0
+              },
+              "goModSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "goSumSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "replacements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "module": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "pattern": "^\\./"
+                    },
+                    "tree": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{40}$"
+                    }
+                  },
+                  "required": [
+                    "module",
+                    "path",
+                    "tree"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "sourceOverlay",
+              "goModSha256",
+              "goSumSha256",
+              "replacements"
+            ],
+            "additionalProperties": false
+          },
+          "archive": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._+-]+$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "root": {
+                "type": "string",
+                "pattern": "^sing-box-[A-Za-z0-9._+-]+$"
+              },
+              "members": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "releaseName": {
+                "type": "string",
+                "pattern": "^sing-box-polaris-[A-Za-z0-9._+-]+$"
+              }
+            },
+            "required": [
+              "name",
+              "bytes",
+              "sha256",
+              "root",
+              "members",
+              "releaseName"
+            ],
+            "additionalProperties": false
+          },
+          "core": {
+            "type": "object",
+            "properties": {
+              "member": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._+-]+$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "member",
+              "bytes",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "sidecar": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "member": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9._+-]+$"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "member",
+                  "bytes",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signatureObservation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "unsigned",
+                      "signed"
+                    ]
+                  },
+                  "cdHash": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{40}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "trustValidated": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "state",
+                  "cdHash",
+                  "trustValidated"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finalPackageCronetSmoke": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "const": "passed"
+                  },
+                  "os": {
+                    "type": "string"
+                  },
+                  "arch": {
+                    "type": "string"
+                  },
+                  "go": {
+                    "type": "string"
+                  },
+                  "gvisorCompiled": {
+                    "const": true
+                  },
+                  "naiveOutbound": {
+                    "const": true
+                  },
+                  "linkage": {
+                    "enum": [
+                      "shared-purego",
+                      "static-cgo"
+                    ]
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^\\d+\\.\\d+\\.\\d+\\.\\d+$"
+                  },
+                  "librarySha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "coreSha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "status",
+                  "os",
+                  "arch",
+                  "go",
+                  "gvisorCompiled",
+                  "naiveOutbound",
+                  "linkage",
+                  "version",
+                  "librarySha256",
+                  "coreSha256"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema",
+          "id",
+          "target",
+          "variant",
+          "version",
+          "tag",
+          "sourceCommit",
+          "sourceTree",
+          "goVersion",
+          "tags",
+          "buildID",
+          "rawBuildInfo",
+          "buildGraph",
+          "sourceIdentity",
+          "archive",
+          "core",
+          "sidecar",
+          "signatureObservation",
+          "finalPackageCronetSmoke"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "distributionMaterials": {
+      "type": "object",
+      "required": [
+        "schema",
+        "sourceCommit",
+        "sourceTree",
+        "sourceArchive",
+        "modules",
+        "nativeArchives",
+        "legalFiles",
+        "assessment",
+        "publicationEligible"
+      ],
+      "properties": {
+        "schema": {
+          "const": "polaris-distribution-materials-v1"
+        },
+        "publicationEligible": {
+          "type": "boolean"
+        },
+        "nativeArchives": {
+          "type": "array",
+          "minItems": 44,
+          "maxItems": 44
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "repository",
+    "repositoryId",
+    "version",
+    "tag",
+    "tagObject",
+    "sourceCommit",
+    "sourceTree",
+    "producer",
+    "legalFiles",
+    "sourceArchive",
+    "platforms",
+    "distributionMaterials"
+  ],
+  "additionalProperties": false
+}

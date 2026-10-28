@@ -1,0 +1,60 @@
+{
+  "repository": "SagerNet/sing-box-for-apple",
+  "commit": "e232aaf22d6d68773196ffc8e6e79684a6be717c",
+  "sourceURL": "https://github.com/SagerNet/sing-box-for-apple/archive/e232aaf22d6d68773196ffc8e6e79684a6be717c.tar.gz",
+  "bytes": 8279937,
+  "sha256": "add239c77c1888577343b912aacf33c75dc798fd5ddc5fc60330d9a70027978d",
+  "fullGetVerified": true,
+  "trackedFiles": 461,
+  "noticeAndBuildInputs": [
+    {
+      "path": "ApplicationLibrary/LubyTransform/EncodedBlock.swift",
+      "bytes": 3778,
+      "sha256": "657b4127b86497d4a0ba4e3fbab9a7e5e2bb6ddcc8cfa9bde5b32b7c94297d9b"
+    },
+    {
+      "path": "Frameworks/TreeSitterJSON5/Package.resolved",
+      "bytes": 330,
+      "sha256": "e85da1018f368dc86af11acc7fbb2dead6136cf6f439f364d6f1d8b695c1c6ea"
+    },
+    {
+      "path": "Frameworks/TreeSitterJSON5/Package.swift",
+      "bytes": 853,
+      "sha256": "fdf85a0e34afd8d5314ddf1ab148caa6f673c99753cc9f0c4a3d1a3cec54eb1e"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 674,
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+    },
+    {
+      "path": "Library/Network/Extension+RunBlocking.swift",
+      "bytes": 922,
+      "sha256": "fdad0d49f6f016628dd1c4d917e280d8f6ca00b30b37d1154e4ec1f127daafd2"
+    },
+    {
+      "path": "Library/Shared/BlockingIO.swift",
+      "bytes": 1225,
+      "sha256": "64de77cd2a05f56326390241fbe8b8d61ff1337933f46aa6192d4a54f1d4b969"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 11143,
+      "sha256": "acd8def858ad2143bdc3bda662ba70bf72e5b27c8c355d268696708c098d2fa2"
+    },
+    {
+      "path": "sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+      "bytes": 6730,
+      "sha256": "ecf4c6fc36511d2542be625ba2a44aea9710c4561313e11576def9b1351e1654"
+    }
+  ],
+  "verifiedTrackedGitBlobs": 461,
+  "gitlinks": [
+    {
+      "path": "Frameworks/Runestone",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "baeb3cbf8332d26b4f7b4c175a01f288ebbf3e7f"
+    }
+  ]
+}

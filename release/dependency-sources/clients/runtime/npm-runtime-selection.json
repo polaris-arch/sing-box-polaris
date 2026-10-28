@@ -1,0 +1,2146 @@
+{
+  "method": "Desktop runtime source imports plus production dependency graph, and dashboard production lock graph plus generated Material icon input; excludes build-only tool graph and @types declarations. Optional dependencies conservatively retained. Tree-shaken final inclusion not proven.",
+  "graphs": [
+    {
+      "client": "sing-box-for-desktop",
+      "roots": {
+        "semver": "7.8.5",
+        "@connectrpc/connect": "2.1.2(@bufbuild/protobuf@2.14.0)",
+        "@connectrpc/connect-node": "2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))",
+        "dbus-next": "0.10.2",
+        "@bufbuild/protobuf": "2.14.0",
+        "@fontsource-variable/schibsted-grotesk": "5.3.0",
+        "@fontsource/ibm-plex-mono": "5.3.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8(react@19.2.8)",
+        "@fontsource-variable/source-serif-4": "5.3.0"
+      },
+      "edges": [
+        {
+          "parent": null,
+          "component": "@fontsource-variable/source-serif-4@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "react-dom@19.2.8"
+        },
+        {
+          "parent": "react-dom@19.2.8",
+          "component": "scheduler@0.27.0"
+        },
+        {
+          "parent": "react-dom@19.2.8",
+          "component": "react@19.2.8"
+        },
+        {
+          "parent": null,
+          "component": "react@19.2.8"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource/ibm-plex-mono@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource-variable/schibsted-grotesk@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "@bufbuild/protobuf@2.14.0"
+        },
+        {
+          "parent": null,
+          "component": "dbus-next@0.10.2"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "xml2js@0.4.23"
+        },
+        {
+          "parent": "xml2js@0.4.23",
+          "component": "xmlbuilder@11.0.1"
+        },
+        {
+          "parent": "xml2js@0.4.23",
+          "component": "sax@1.6.1"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "safe-buffer@5.2.1"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "long@4.0.0"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "jsbi@2.0.5"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "hexy@0.2.11"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "event-stream@3.3.4"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "through@2.3.8"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "stream-combiner@0.0.4"
+        },
+        {
+          "parent": "stream-combiner@0.0.4",
+          "component": "duplexer@0.1.2"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "split@0.3.3"
+        },
+        {
+          "parent": "split@0.3.3",
+          "component": "through@2.3.8"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "pause-stream@0.0.11"
+        },
+        {
+          "parent": "pause-stream@0.0.11",
+          "component": "through@2.3.8"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "map-stream@0.1.0"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "from@0.1.7"
+        },
+        {
+          "parent": "event-stream@3.3.4",
+          "component": "duplexer@0.1.2"
+        },
+        {
+          "parent": "dbus-next@0.10.2",
+          "component": "@nornagon/put@0.0.8"
+        },
+        {
+          "parent": null,
+          "component": "@connectrpc/connect-node@2.1.2"
+        },
+        {
+          "parent": "@connectrpc/connect-node@2.1.2",
+          "component": "@connectrpc/connect@2.1.2"
+        },
+        {
+          "parent": "@connectrpc/connect@2.1.2",
+          "component": "@bufbuild/protobuf@2.14.0"
+        },
+        {
+          "parent": "@connectrpc/connect-node@2.1.2",
+          "component": "@bufbuild/protobuf@2.14.0"
+        },
+        {
+          "parent": null,
+          "component": "@connectrpc/connect@2.1.2"
+        },
+        {
+          "parent": null,
+          "component": "semver@7.8.5"
+        }
+      ],
+      "snapshotCount": 27
+    },
+    {
+      "client": "sing-box-dashboard",
+      "roots": {
+        "@bufbuild/protobuf": "2.14.0",
+        "@codemirror/autocomplete": "6.20.3",
+        "@codemirror/commands": "6.11.0",
+        "@codemirror/language": "6.12.4",
+        "@codemirror/search": "6.7.1",
+        "@codemirror/state": "6.7.1",
+        "@codemirror/view": "6.43.9",
+        "@connectrpc/connect": "2.1.2(@bufbuild/protobuf@2.14.0)",
+        "@connectrpc/connect-web": "2.1.2(@bufbuild/protobuf@2.14.0)(@connectrpc/connect@2.1.2(@bufbuild/protobuf@2.14.0))",
+        "@fontsource-variable/schibsted-grotesk": "5.3.0",
+        "@fontsource-variable/source-serif-4": "5.3.0",
+        "@fontsource/ibm-plex-mono": "5.3.0",
+        "@fontsource/noto-color-emoji": "5.3.1",
+        "@lezer/highlight": "1.2.3",
+        "@xterm/addon-fit": "0.11.0",
+        "@xterm/xterm": "6.0.0",
+        "codemirror-json5": "1.0.3",
+        "luby-transform": "0.2.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8(react@19.2.8)",
+        "react-markdown": "10.1.0(@types/react@19.2.18)(react@19.2.8)",
+        "remark-gemoji": "8.0.0",
+        "remark-gfm": "4.0.1",
+        "uqr": "0.1.3",
+        "@material-design-icons/svg": "0.14.15"
+      },
+      "edges": [
+        {
+          "parent": null,
+          "component": "@material-design-icons/svg@0.14.15"
+        },
+        {
+          "parent": null,
+          "component": "uqr@0.1.3"
+        },
+        {
+          "parent": null,
+          "component": "remark-gfm@4.0.1"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "unified@11.0.5"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "vfile@6.0.3"
+        },
+        {
+          "parent": "vfile@6.0.3",
+          "component": "vfile-message@4.0.3"
+        },
+        {
+          "parent": "vfile-message@4.0.3",
+          "component": "unist-util-stringify-position@4.0.0"
+        },
+        {
+          "parent": "unist-util-stringify-position@4.0.0",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "vfile-message@4.0.3",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "vfile@6.0.3",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "trough@2.2.0"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "is-plain-obj@4.1.0"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "extend@3.0.2"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "devlop@1.1.0",
+          "component": "dequal@2.0.3"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "bail@2.0.2"
+        },
+        {
+          "parent": "unified@11.0.5",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "remark-stringify@11.0.0"
+        },
+        {
+          "parent": "remark-stringify@11.0.0",
+          "component": "unified@11.0.5"
+        },
+        {
+          "parent": "remark-stringify@11.0.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "zwitch@2.0.4"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "unist-util-visit@5.1.0"
+        },
+        {
+          "parent": "unist-util-visit@5.1.0",
+          "component": "unist-util-visit-parents@6.0.2"
+        },
+        {
+          "parent": "unist-util-visit-parents@6.0.2",
+          "component": "unist-util-is@6.0.1"
+        },
+        {
+          "parent": "unist-util-is@6.0.1",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "unist-util-visit-parents@6.0.2",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "unist-util-visit@5.1.0",
+          "component": "unist-util-is@6.0.1"
+        },
+        {
+          "parent": "unist-util-visit@5.1.0",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "micromark-util-decode-string@2.0.1"
+        },
+        {
+          "parent": "micromark-util-decode-string@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-decode-string@2.0.1",
+          "component": "micromark-util-decode-numeric-character-reference@2.0.2"
+        },
+        {
+          "parent": "micromark-util-decode-numeric-character-reference@2.0.2",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-decode-string@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-util-character@2.1.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-util-character@2.1.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-decode-string@2.0.1",
+          "component": "decode-named-character-reference@1.3.0"
+        },
+        {
+          "parent": "decode-named-character-reference@1.3.0",
+          "component": "character-entities@2.0.2"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "micromark-util-classify-character@2.0.1"
+        },
+        {
+          "parent": "micromark-util-classify-character@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-util-classify-character@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-classify-character@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "mdast-util-to-string@4.0.0"
+        },
+        {
+          "parent": "mdast-util-to-string@4.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "mdast-util-phrasing@4.1.0"
+        },
+        {
+          "parent": "mdast-util-phrasing@4.1.0",
+          "component": "unist-util-is@6.0.1"
+        },
+        {
+          "parent": "mdast-util-phrasing@4.1.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "longest-streak@3.1.0"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "mdast-util-to-markdown@2.1.2",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "remark-stringify@11.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "remark-parse@11.0.0"
+        },
+        {
+          "parent": "remark-parse@11.0.0",
+          "component": "unified@11.0.5"
+        },
+        {
+          "parent": "remark-parse@11.0.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "remark-parse@11.0.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "unist-util-stringify-position@4.0.0"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark-util-normalize-identifier@2.0.1"
+        },
+        {
+          "parent": "micromark-util-normalize-identifier@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark-util-decode-string@2.0.1"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark-util-decode-numeric-character-reference@2.0.2"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "micromark@4.0.2"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-subtokenize@2.1.0"
+        },
+        {
+          "parent": "micromark-util-subtokenize@2.1.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-util-subtokenize@2.1.0",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-subtokenize@2.1.0",
+          "component": "micromark-util-chunked@2.0.1"
+        },
+        {
+          "parent": "micromark-util-chunked@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-subtokenize@2.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-sanitize-uri@2.0.1"
+        },
+        {
+          "parent": "micromark-util-sanitize-uri@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-util-sanitize-uri@2.0.1",
+          "component": "micromark-util-encode@2.0.1"
+        },
+        {
+          "parent": "micromark-util-sanitize-uri@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-resolve-all@2.0.1"
+        },
+        {
+          "parent": "micromark-util-resolve-all@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-normalize-identifier@2.0.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-encode@2.0.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-decode-numeric-character-reference@2.0.2"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-combine-extensions@2.0.1"
+        },
+        {
+          "parent": "micromark-util-combine-extensions@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-util-combine-extensions@2.0.1",
+          "component": "micromark-util-chunked@2.0.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-chunked@2.0.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-space@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-factory-space@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "micromark-core-commonmark@2.0.3"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-subtokenize@2.1.0"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-resolve-all@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-normalize-identifier@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-html-tag-name@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-classify-character@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-chunked@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-factory-whitespace@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-whitespace@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-factory-whitespace@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-whitespace@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-factory-whitespace@2.0.1",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-factory-title@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-title@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-factory-title@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-title@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-factory-title@2.0.1",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-factory-label@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-label@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-factory-label@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-label@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-factory-label@2.0.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "micromark-factory-destination@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-destination@2.0.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-factory-destination@2.0.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-factory-destination@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-core-commonmark@2.0.3",
+          "component": "decode-named-character-reference@1.3.0"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "decode-named-character-reference@1.3.0"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "debug@4.4.3"
+        },
+        {
+          "parent": "debug@4.4.3",
+          "component": "ms@2.1.3"
+        },
+        {
+          "parent": "micromark@4.0.2",
+          "component": "@types/debug@4.1.13"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "mdast-util-to-string@4.0.0"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "decode-named-character-reference@1.3.0"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "mdast-util-from-markdown@2.0.3",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "remark-parse@11.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "micromark-extension-gfm@3.0.0"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-util-combine-extensions@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-task-list-item@2.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm-task-list-item@2.1.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm-task-list-item@2.1.0",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-task-list-item@2.1.0",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-task-list-item@2.1.0",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-task-list-item@2.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-tagfilter@2.0.0"
+        },
+        {
+          "parent": "micromark-extension-gfm-tagfilter@2.0.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-table@2.1.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-table@2.1.1",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm-table@2.1.1",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-table@2.1.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-table@2.1.1",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-table@2.1.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-strikethrough@2.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "micromark-util-resolve-all@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "micromark-util-classify-character@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "micromark-util-chunked@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-strikethrough@2.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-footnote@2.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-util-sanitize-uri@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-util-normalize-identifier@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-factory-space@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "micromark-core-commonmark@2.0.3"
+        },
+        {
+          "parent": "micromark-extension-gfm-footnote@2.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm@3.0.0",
+          "component": "micromark-extension-gfm-autolink-literal@2.1.0"
+        },
+        {
+          "parent": "micromark-extension-gfm-autolink-literal@2.1.0",
+          "component": "micromark-util-types@2.0.2"
+        },
+        {
+          "parent": "micromark-extension-gfm-autolink-literal@2.1.0",
+          "component": "micromark-util-symbol@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-autolink-literal@2.1.0",
+          "component": "micromark-util-sanitize-uri@2.0.1"
+        },
+        {
+          "parent": "micromark-extension-gfm-autolink-literal@2.1.0",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "mdast-util-gfm@3.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-gfm-task-list-item@2.0.0"
+        },
+        {
+          "parent": "mdast-util-gfm-task-list-item@2.0.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-gfm-task-list-item@2.0.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-gfm-task-list-item@2.0.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm-task-list-item@2.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-gfm-table@2.0.0"
+        },
+        {
+          "parent": "mdast-util-gfm-table@2.0.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-gfm-table@2.0.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-gfm-table@2.0.0",
+          "component": "markdown-table@3.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm-table@2.0.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm-table@2.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-gfm-strikethrough@2.0.0"
+        },
+        {
+          "parent": "mdast-util-gfm-strikethrough@2.0.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-gfm-strikethrough@2.0.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-gfm-strikethrough@2.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-gfm-footnote@2.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm-footnote@2.1.0",
+          "component": "micromark-util-normalize-identifier@2.0.1"
+        },
+        {
+          "parent": "mdast-util-gfm-footnote@2.1.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-gfm-footnote@2.1.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-gfm-footnote@2.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm-footnote@2.1.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-gfm-autolink-literal@2.0.1"
+        },
+        {
+          "parent": "mdast-util-gfm-autolink-literal@2.0.1",
+          "component": "micromark-util-character@2.1.1"
+        },
+        {
+          "parent": "mdast-util-gfm-autolink-literal@2.0.1",
+          "component": "mdast-util-find-and-replace@3.0.2"
+        },
+        {
+          "parent": "mdast-util-find-and-replace@3.0.2",
+          "component": "unist-util-visit-parents@6.0.2"
+        },
+        {
+          "parent": "mdast-util-find-and-replace@3.0.2",
+          "component": "unist-util-is@6.0.1"
+        },
+        {
+          "parent": "mdast-util-find-and-replace@3.0.2",
+          "component": "escape-string-regexp@5.0.0"
+        },
+        {
+          "parent": "mdast-util-find-and-replace@3.0.2",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm-autolink-literal@2.0.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-gfm-autolink-literal@2.0.1",
+          "component": "ccount@2.0.1"
+        },
+        {
+          "parent": "mdast-util-gfm-autolink-literal@2.0.1",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-gfm@3.1.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "remark-gfm@4.0.1",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": null,
+          "component": "remark-gemoji@8.0.0"
+        },
+        {
+          "parent": "remark-gemoji@8.0.0",
+          "component": "mdast-util-find-and-replace@3.0.2"
+        },
+        {
+          "parent": "remark-gemoji@8.0.0",
+          "component": "gemoji@8.1.0"
+        },
+        {
+          "parent": "remark-gemoji@8.0.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": null,
+          "component": "react-markdown@10.1.0"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "vfile@6.0.3"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "unist-util-visit@5.1.0"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "unified@11.0.5"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "remark-rehype@11.1.2"
+        },
+        {
+          "parent": "remark-rehype@11.1.2",
+          "component": "vfile@6.0.3"
+        },
+        {
+          "parent": "remark-rehype@11.1.2",
+          "component": "unified@11.0.5"
+        },
+        {
+          "parent": "remark-rehype@11.1.2",
+          "component": "mdast-util-to-hast@13.2.1"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "vfile@6.0.3"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "unist-util-visit@5.1.0"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "unist-util-position@5.0.0"
+        },
+        {
+          "parent": "unist-util-position@5.0.0",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "trim-lines@3.0.1"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "micromark-util-sanitize-uri@2.0.1"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "@ungap/structured-clone@1.3.3"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-to-hast@13.2.1",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "remark-rehype@11.1.2",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "remark-rehype@11.1.2",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "remark-parse@11.0.0"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "react@19.2.8"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "mdast-util-to-hast@13.2.1"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "html-url-attributes@3.0.1"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "hast-util-to-jsx-runtime@2.3.6"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "vfile-message@4.0.3"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "unist-util-position@5.0.0"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "style-to-js@1.1.21"
+        },
+        {
+          "parent": "style-to-js@1.1.21",
+          "component": "style-to-object@1.0.14"
+        },
+        {
+          "parent": "style-to-object@1.0.14",
+          "component": "inline-style-parser@0.2.7"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "space-separated-tokens@2.0.2"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "property-information@7.2.0"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "mdast-util-mdxjs-esm@2.0.1"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "mdast-util-mdxjs-esm@2.0.1",
+          "component": "@types/estree-jsx@1.0.5"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "mdast-util-mdx-jsx@3.2.0"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "vfile-message@4.0.3"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "unist-util-stringify-position@4.0.0"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "stringify-entities@4.0.4"
+        },
+        {
+          "parent": "stringify-entities@4.0.4",
+          "component": "character-entities-legacy@3.0.0"
+        },
+        {
+          "parent": "stringify-entities@4.0.4",
+          "component": "character-entities-html4@2.1.0"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "parse-entities@4.0.2"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "is-hexadecimal@2.0.1"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "is-decimal@2.0.1"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "is-alphanumerical@2.0.1"
+        },
+        {
+          "parent": "is-alphanumerical@2.0.1",
+          "component": "is-decimal@2.0.1"
+        },
+        {
+          "parent": "is-alphanumerical@2.0.1",
+          "component": "is-alphabetical@2.0.1"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "decode-named-character-reference@1.3.0"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "character-reference-invalid@2.0.1"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "character-entities-legacy@3.0.0"
+        },
+        {
+          "parent": "parse-entities@4.0.2",
+          "component": "@types/unist@2.0.11"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "ccount@2.0.1"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "mdast-util-mdx-jsx@3.2.0",
+          "component": "@types/estree-jsx@1.0.5"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "mdast-util-mdx-expression@2.0.1"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "mdast-util-to-markdown@2.1.2"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "mdast-util-from-markdown@2.0.3"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "mdast-util-mdx-expression@2.0.1",
+          "component": "@types/estree-jsx@1.0.5"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "hast-util-whitespace@3.0.0"
+        },
+        {
+          "parent": "hast-util-whitespace@3.0.0",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "estree-util-is-identifier-name@3.0.0"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "comma-separated-tokens@2.0.3"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "@types/unist@3.0.3"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": "hast-util-to-jsx-runtime@2.3.6",
+          "component": "@types/estree@1.0.9"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "devlop@1.1.0"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "@types/react@19.2.18"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "@types/mdast@4.0.4"
+        },
+        {
+          "parent": "react-markdown@10.1.0",
+          "component": "@types/hast@3.0.5"
+        },
+        {
+          "parent": null,
+          "component": "react-dom@19.2.8"
+        },
+        {
+          "parent": "react-dom@19.2.8",
+          "component": "scheduler@0.27.0"
+        },
+        {
+          "parent": "react-dom@19.2.8",
+          "component": "react@19.2.8"
+        },
+        {
+          "parent": null,
+          "component": "react@19.2.8"
+        },
+        {
+          "parent": null,
+          "component": "luby-transform@0.2.0"
+        },
+        {
+          "parent": "luby-transform@0.2.0",
+          "component": "pako@2.2.0"
+        },
+        {
+          "parent": null,
+          "component": "codemirror-json5@1.0.3"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "lezer-json5@2.0.2"
+        },
+        {
+          "parent": "lezer-json5@2.0.2",
+          "component": "@lezer/lr@1.4.10"
+        },
+        {
+          "parent": "@lezer/lr@1.4.10",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "json5@2.2.3"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "@lezer/highlight@1.2.3"
+        },
+        {
+          "parent": "@lezer/highlight@1.2.3",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": "@codemirror/view@6.43.9",
+          "component": "w3c-keyname@2.2.8"
+        },
+        {
+          "parent": "@codemirror/view@6.43.9",
+          "component": "style-mod@4.1.3"
+        },
+        {
+          "parent": "@codemirror/view@6.43.9",
+          "component": "crelt@1.0.7"
+        },
+        {
+          "parent": "@codemirror/view@6.43.9",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": "@codemirror/state@6.7.1",
+          "component": "@marijn/find-cluster-break@1.0.3"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": "codemirror-json5@1.0.3",
+          "component": "@codemirror/language@6.12.4"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "style-mod@4.1.3"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "@lezer/lr@1.4.10"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "@lezer/highlight@1.2.3"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": "@codemirror/language@6.12.4",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": null,
+          "component": "@xterm/xterm@6.0.0"
+        },
+        {
+          "parent": null,
+          "component": "@xterm/addon-fit@0.11.0"
+        },
+        {
+          "parent": null,
+          "component": "@lezer/highlight@1.2.3"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource/noto-color-emoji@5.3.1"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource/ibm-plex-mono@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource-variable/source-serif-4@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "@fontsource-variable/schibsted-grotesk@5.3.0"
+        },
+        {
+          "parent": null,
+          "component": "@connectrpc/connect-web@2.1.2"
+        },
+        {
+          "parent": "@connectrpc/connect-web@2.1.2",
+          "component": "@connectrpc/connect@2.1.2"
+        },
+        {
+          "parent": "@connectrpc/connect@2.1.2",
+          "component": "@bufbuild/protobuf@2.14.0"
+        },
+        {
+          "parent": "@connectrpc/connect-web@2.1.2",
+          "component": "@bufbuild/protobuf@2.14.0"
+        },
+        {
+          "parent": null,
+          "component": "@connectrpc/connect@2.1.2"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/search@6.7.1"
+        },
+        {
+          "parent": "@codemirror/search@6.7.1",
+          "component": "crelt@1.0.7"
+        },
+        {
+          "parent": "@codemirror/search@6.7.1",
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": "@codemirror/search@6.7.1",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/language@6.12.4"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/commands@6.11.0"
+        },
+        {
+          "parent": "@codemirror/commands@6.11.0",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "@codemirror/commands@6.11.0",
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": "@codemirror/commands@6.11.0",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": "@codemirror/commands@6.11.0",
+          "component": "@codemirror/language@6.12.4"
+        },
+        {
+          "parent": null,
+          "component": "@codemirror/autocomplete@6.20.3"
+        },
+        {
+          "parent": "@codemirror/autocomplete@6.20.3",
+          "component": "@lezer/common@1.5.2"
+        },
+        {
+          "parent": "@codemirror/autocomplete@6.20.3",
+          "component": "@codemirror/view@6.43.9"
+        },
+        {
+          "parent": "@codemirror/autocomplete@6.20.3",
+          "component": "@codemirror/state@6.7.1"
+        },
+        {
+          "parent": "@codemirror/autocomplete@6.20.3",
+          "component": "@codemirror/language@6.12.4"
+        },
+        {
+          "parent": null,
+          "component": "@bufbuild/protobuf@2.14.0"
+        }
+      ],
+      "snapshotCount": 126
+    }
+  ],
+  "imports": [
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/updates.ts",
+      "import": "semver",
+      "package": "semver"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/worker.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/worker.ts",
+      "import": "@connectrpc/connect-node",
+      "package": "@connectrpc/connect-node"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/x11Tray.ts",
+      "import": "dbus-next",
+      "package": "dbus-next"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/profiles.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/reports.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/state.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/daemon.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/daemon.ts",
+      "import": "@connectrpc/connect-node",
+      "package": "@connectrpc/connect-node"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/bridge.ts",
+      "import": "@bufbuild/protobuf",
+      "package": "@bufbuild/protobuf"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/bridge.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/bridge.ts",
+      "import": "@connectrpc/connect/protocol",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/taildrop.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/main/taildrop.ts",
+      "import": "@connectrpc/connect/protocol",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/host.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/tray.tsx",
+      "import": "@fontsource-variable/schibsted-grotesk/index.css",
+      "package": "@fontsource-variable/schibsted-grotesk"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/tray.tsx",
+      "import": "@fontsource/ibm-plex-mono/400.css",
+      "package": "@fontsource/ibm-plex-mono"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/tray.tsx",
+      "import": "@fontsource/ibm-plex-mono/500.css",
+      "package": "@fontsource/ibm-plex-mono"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/tray.tsx",
+      "import": "react",
+      "package": "react"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/tray.tsx",
+      "import": "react-dom/client",
+      "package": "react-dom"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/api.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "@fontsource-variable/schibsted-grotesk/index.css",
+      "package": "@fontsource-variable/schibsted-grotesk"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "@fontsource-variable/source-serif-4/index.css",
+      "package": "@fontsource-variable/source-serif-4"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "@fontsource/ibm-plex-mono/400.css",
+      "package": "@fontsource/ibm-plex-mono"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "@fontsource/ibm-plex-mono/500.css",
+      "package": "@fontsource/ibm-plex-mono"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "react",
+      "package": "react"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/main.tsx",
+      "import": "react-dom/client",
+      "package": "react-dom"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/transport.ts",
+      "import": "@bufbuild/protobuf",
+      "package": "@bufbuild/protobuf"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/transport.ts",
+      "import": "@connectrpc/connect",
+      "package": "@connectrpc/connect"
+    },
+    {
+      "client": "sing-box-for-desktop",
+      "file": "src/renderer/src/transport.ts",
+      "import": "@connectrpc/connect/protocol",
+      "package": "@connectrpc/connect"
+    }
+  ],
+  "exclusions": [
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/debug@4.1.13",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/estree-jsx@1.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@2.0.11",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/estree-jsx@1.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/estree-jsx@1.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/unist@3.0.3",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/estree@1.0.9",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/react@19.2.18",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/mdast@4.0.4",
+      "reason": "Type declarations only, no emitted runtime code"
+    },
+    {
+      "client": "sing-box-dashboard",
+      "package": "@types/hast@3.0.5",
+      "reason": "Type declarations only, no emitted runtime code"
+    }
+  ],
+  "components": [
+    "@fontsource-variable/source-serif-4@5.3.0",
+    "react-dom@19.2.8",
+    "scheduler@0.27.0",
+    "react@19.2.8",
+    "@fontsource/ibm-plex-mono@5.3.0",
+    "@fontsource-variable/schibsted-grotesk@5.3.0",
+    "@bufbuild/protobuf@2.14.0",
+    "dbus-next@0.10.2",
+    "xml2js@0.4.23",
+    "xmlbuilder@11.0.1",
+    "sax@1.6.1",
+    "safe-buffer@5.2.1",
+    "long@4.0.0",
+    "jsbi@2.0.5",
+    "hexy@0.2.11",
+    "event-stream@3.3.4",
+    "through@2.3.8",
+    "stream-combiner@0.0.4",
+    "duplexer@0.1.2",
+    "split@0.3.3",
+    "pause-stream@0.0.11",
+    "map-stream@0.1.0",
+    "from@0.1.7",
+    "@nornagon/put@0.0.8",
+    "@connectrpc/connect-node@2.1.2",
+    "@connectrpc/connect@2.1.2",
+    "semver@7.8.5",
+    "@material-design-icons/svg@0.14.15",
+    "uqr@0.1.3",
+    "remark-gfm@4.0.1",
+    "unified@11.0.5",
+    "vfile@6.0.3",
+    "vfile-message@4.0.3",
+    "unist-util-stringify-position@4.0.0",
+    "trough@2.2.0",
+    "is-plain-obj@4.1.0",
+    "extend@3.0.2",
+    "devlop@1.1.0",
+    "dequal@2.0.3",
+    "bail@2.0.2",
+    "remark-stringify@11.0.0",
+    "mdast-util-to-markdown@2.1.2",
+    "zwitch@2.0.4",
+    "unist-util-visit@5.1.0",
+    "unist-util-visit-parents@6.0.2",
+    "unist-util-is@6.0.1",
+    "micromark-util-decode-string@2.0.1",
+    "micromark-util-symbol@2.0.1",
+    "micromark-util-decode-numeric-character-reference@2.0.2",
+    "micromark-util-character@2.1.1",
+    "micromark-util-types@2.0.2",
+    "decode-named-character-reference@1.3.0",
+    "character-entities@2.0.2",
+    "micromark-util-classify-character@2.0.1",
+    "mdast-util-to-string@4.0.0",
+    "mdast-util-phrasing@4.1.0",
+    "longest-streak@3.1.0",
+    "remark-parse@11.0.0",
+    "mdast-util-from-markdown@2.0.3",
+    "micromark-util-normalize-identifier@2.0.1",
+    "micromark@4.0.2",
+    "micromark-util-subtokenize@2.1.0",
+    "micromark-util-chunked@2.0.1",
+    "micromark-util-sanitize-uri@2.0.1",
+    "micromark-util-encode@2.0.1",
+    "micromark-util-resolve-all@2.0.1",
+    "micromark-util-combine-extensions@2.0.1",
+    "micromark-factory-space@2.0.1",
+    "micromark-core-commonmark@2.0.3",
+    "micromark-util-html-tag-name@2.0.1",
+    "micromark-factory-whitespace@2.0.1",
+    "micromark-factory-title@2.0.1",
+    "micromark-factory-label@2.0.1",
+    "micromark-factory-destination@2.0.1",
+    "debug@4.4.3",
+    "ms@2.1.3",
+    "micromark-extension-gfm@3.0.0",
+    "micromark-extension-gfm-task-list-item@2.1.0",
+    "micromark-extension-gfm-tagfilter@2.0.0",
+    "micromark-extension-gfm-table@2.1.1",
+    "micromark-extension-gfm-strikethrough@2.1.0",
+    "micromark-extension-gfm-footnote@2.1.0",
+    "micromark-extension-gfm-autolink-literal@2.1.0",
+    "mdast-util-gfm@3.1.0",
+    "mdast-util-gfm-task-list-item@2.0.0",
+    "mdast-util-gfm-table@2.0.0",
+    "markdown-table@3.0.4",
+    "mdast-util-gfm-strikethrough@2.0.0",
+    "mdast-util-gfm-footnote@2.1.0",
+    "mdast-util-gfm-autolink-literal@2.0.1",
+    "mdast-util-find-and-replace@3.0.2",
+    "escape-string-regexp@5.0.0",
+    "ccount@2.0.1",
+    "remark-gemoji@8.0.0",
+    "gemoji@8.1.0",
+    "react-markdown@10.1.0",
+    "remark-rehype@11.1.2",
+    "mdast-util-to-hast@13.2.1",
+    "unist-util-position@5.0.0",
+    "trim-lines@3.0.1",
+    "@ungap/structured-clone@1.3.3",
+    "html-url-attributes@3.0.1",
+    "hast-util-to-jsx-runtime@2.3.6",
+    "style-to-js@1.1.21",
+    "style-to-object@1.0.14",
+    "inline-style-parser@0.2.7",
+    "space-separated-tokens@2.0.2",
+    "property-information@7.2.0",
+    "mdast-util-mdxjs-esm@2.0.1",
+    "mdast-util-mdx-jsx@3.2.0",
+    "stringify-entities@4.0.4",
+    "character-entities-legacy@3.0.0",
+    "character-entities-html4@2.1.0",
+    "parse-entities@4.0.2",
+    "is-hexadecimal@2.0.1",
+    "is-decimal@2.0.1",
+    "is-alphanumerical@2.0.1",
+    "is-alphabetical@2.0.1",
+    "character-reference-invalid@2.0.1",
+    "mdast-util-mdx-expression@2.0.1",
+    "hast-util-whitespace@3.0.0",
+    "estree-util-is-identifier-name@3.0.0",
+    "comma-separated-tokens@2.0.3",
+    "luby-transform@0.2.0",
+    "pako@2.2.0",
+    "codemirror-json5@1.0.3",
+    "lezer-json5@2.0.2",
+    "@lezer/lr@1.4.10",
+    "@lezer/common@1.5.2",
+    "json5@2.2.3",
+    "@lezer/highlight@1.2.3",
+    "@codemirror/view@6.43.9",
+    "w3c-keyname@2.2.8",
+    "style-mod@4.1.3",
+    "crelt@1.0.7",
+    "@codemirror/state@6.7.1",
+    "@marijn/find-cluster-break@1.0.3",
+    "@codemirror/language@6.12.4",
+    "@xterm/xterm@6.0.0",
+    "@xterm/addon-fit@0.11.0",
+    "@fontsource/noto-color-emoji@5.3.1",
+    "@connectrpc/connect-web@2.1.2",
+    "@codemirror/search@6.7.1",
+    "@codemirror/commands@6.11.0",
+    "@codemirror/autocomplete@6.20.3"
+  ]
+}

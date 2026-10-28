@@ -90,6 +90,7 @@ type InboundContext struct {
 	FallbackDelay       time.Duration
 
 	DestinationAddresses                []netip.Addr
+	DNSResolverPolicy                   string
 	DNSResponse                         *dns.Msg
 	NamedDNSResponses                   map[string]*dns.Msg
 	DestinationAddressMatchFromResponse bool

@@ -20,6 +20,8 @@ import (
 	N "github.com/sagernet/sing/common/network"
 	"github.com/sagernet/sing/common/ntp"
 
+	// MetaCubeX supplies RealityConfig/RealityServer, which upstream uTLS lacks.
+	// Keep this server implementation isolated from upstream client types.
 	utls "github.com/metacubex/utls"
 )
 

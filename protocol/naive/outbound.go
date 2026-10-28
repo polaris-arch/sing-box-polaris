@@ -14,7 +14,6 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common"
@@ -25,8 +24,6 @@ import (
 	"github.com/sagernet/sing/common/uot"
 	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/filemanager"
-
-	mDNS "github.com/miekg/dns"
 )
 
 func RegisterOutbound(registry *outbound.Registry) {
@@ -126,14 +123,7 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
 	var dnsResolver cronet.DNSResolverFunc
 	if dnsRouter != nil {
-		dnsResolver = func(dnsContext context.Context, request *mDNS.Msg) *mDNS.Msg {
-			response, err := dnsRouter.Exchange(dnsContext, request, outboundDialer.(dialer.ResolveDialer).QueryOptions())
-			if err != nil {
-				logger.Error("DNS exchange failed: ", err)
-				return dns.FixedResponseStatus(request, mDNS.RcodeServerFailure)
-			}
-			return response
-		}
+		dnsResolver = newDNSResolver(dnsRouter, outboundDialer.(dialer.ResolveDialer).QueryOptions(), logger)
 	}
 
 	var echEnabled bool

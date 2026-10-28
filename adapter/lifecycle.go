@@ -134,7 +134,17 @@ func (s *Scope) Close() error {
 	s.access.Unlock()
 	var cleanupErrors []error
 	for _, cleanup := range slices.Backward(cleanups) {
-		cleanupErrors = append(cleanupErrors, E.Expand(cleanup())...)
+		// Recover each callback separately so a panic cannot abandon the
+		// remaining resources in this detached cleanup stack.
+		cleanupErr := func() (err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = E.New("panic during close: ", recovered)
+				}
+			}()
+			return cleanup()
+		}()
+		cleanupErrors = append(cleanupErrors, E.Expand(cleanupErr)...)
 	}
 	return E.Errors(common.Filter(cleanupErrors, func(it error) bool {
 		return !E.IsClosed(it) && !E.IsCanceled(it)

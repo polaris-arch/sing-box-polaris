@@ -187,6 +187,28 @@ This option uses the same format as the [route DNS rule action](/configuration/d
 
 Setting this option directly to a string is equivalent to setting `server` of this options.
 
+The Polaris fork also supports an opt-in rules mode:
+
+```json
+"domain_resolver": {
+  "mode": "rules",
+  "strategy": "prefer_ipv4",
+  "timeout": "2s"
+}
+```
+
+Rules mode runs the DNS rules instead of selecting a server directly. `server`
+must be omitted or empty. The query strategy and cache options still apply;
+`timeout` bounds the entire lookup, including both A/AAAA queries and all fallback
+layers. The default total timeout is `10s`. An earlier caller deadline takes
+precedence. The same form is supported by `route.default_domain_resolver`.
+Existing string and server object forms continue to select a server directly.
+
+DNS servers cannot use rules mode for their own `domain_resolver`: use an explicit
+bootstrap server to avoid recursive DNS dependencies. Rules used for node address
+resolution must also avoid routing through the node being resolved. In particular,
+place node domain rules before probe inbound rules that use that node as an exit.
+
 | Outbound/Endpoints | Effected domains         |
 |--------------------|--------------------------|
 | `direct`           | Domain in request        | 

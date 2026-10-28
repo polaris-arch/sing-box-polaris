@@ -1,0 +1,304 @@
+[
+  {
+    "path": "LICENSE",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/tag/0.16.0/LICENSE",
+    "bytes": 1080,
+    "sha256": "5c537d6853e005298a285d508cff9ac7192cea23576c840d485b2b586a7ff177",
+    "gitBlob": "9ce01373c89082fd81e8ea0793aab0978140526b",
+    "expectedGitBlob": "9ce01373c89082fd81e8ea0793aab0978140526b",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/tag/0.16.0/lib/compiler_rt.zig",
+    "bytes": 25527,
+    "sha256": "8f518ff1a2d8de659d847c1e366d301d52fbc07cb60c4fb20129cb45a9c6a15e",
+    "gitBlob": "501d35f0a280b79d96ebf0fd7ed993cbeaecdb9c",
+    "expectedGitBlob": "501d35f0a280b79d96ebf0fd7ed993cbeaecdb9c",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "metadata/compiler_rt-dir.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/contents/lib/compiler_rt?ref=0.16.0",
+    "error": "The read operation timed out"
+  },
+  {
+    "path": "metadata/tag.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/tags/0.16.0",
+    "bytes": 488,
+    "sha256": "6aa1cdb683735a23ec027018150e9d824cea22c67a89e635b74d10703fc5e83f",
+    "gitBlob": "adf3577db419d340f12a5aaec273f23617a2bd8e"
+  },
+  {
+    "path": "metadata/LICENSE.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/contents/LICENSE?ref=0.16.0",
+    "bytes": 2328,
+    "sha256": "17a6e847499e370f17bfb42fa93aecc797ab197a1e1b01d6be5527dd62258cf9",
+    "gitBlob": "e0043c8185bdf204481c2c1de207a62f0c35b6c1"
+  },
+  {
+    "path": "metadata/compiler_rt.zig.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/contents/lib/compiler_rt.zig?ref=0.16.0",
+    "bytes": 35005,
+    "sha256": "a83af37e8eb73c2db0e0bca6955c6b7e639c04f74f88c724508e64f1d7c23630",
+    "gitBlob": "a070b1180d9afa7e4e070ed80672d03a1e123408"
+  },
+  {
+    "path": "lib/compiler_rt/LICENSE.TXT",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/LICENSE.TXT",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "path": "lib/compiler_rt/LICENSE",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/LICENSE",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "path": "lib/compiler_rt/README.md",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/README.md",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "path": "lib/libcxx/LICENSE.TXT",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libcxx/LICENSE.TXT",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 16703,
+    "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+    "gitBlob": "e159d283443f92ac78b964d2bccebe8f95d5d445",
+    "expectedGitBlob": "e159d283443f92ac78b964d2bccebe8f95d5d445",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/libcxxabi/LICENSE.TXT",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libcxxabi/LICENSE.TXT",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 16706,
+    "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+    "gitBlob": "b75c0441bcd5be32b5a07e2a1ffc7e67b6d99f16",
+    "expectedGitBlob": "b75c0441bcd5be32b5a07e2a1ffc7e67b6d99f16",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/addf3.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/addf3.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 6364,
+    "sha256": "21c91cf72cb255e6ec7c41e257682669ffb213cf4a704dafdb1ea34ad96598b6",
+    "gitBlob": "91152735f445bbaa8abf459b17f9d597a1a030af",
+    "expectedGitBlob": "91152735f445bbaa8abf459b17f9d597a1a030af",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/cos.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/cos.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 8401,
+    "sha256": "390d99cbbef36e84db6ba193a8fc06185fdefce89503746dd20f074e82ff7d63",
+    "gitBlob": "3620e31835b20461f80a096c4ccc7a59365fd812",
+    "expectedGitBlob": "3620e31835b20461f80a096c4ccc7a59365fd812",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/log.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/log.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 27755,
+    "sha256": "ae3d6e4700a583a76e9a089555e1b8d6e7f86e50a11028aa24995f882b31065d",
+    "gitBlob": "926018f03d71a30ecd88052cbe3d456afb99926d",
+    "expectedGitBlob": "926018f03d71a30ecd88052cbe3d456afb99926d",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/udivmod.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/udivmod.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 10004,
+    "sha256": "f7389862a77d191d9d799426ea31b1e23255c66eb05e73a020277d74cafc446c",
+    "gitBlob": "fdb338c21ac012c786f2fba1c54f9dfc119f0c88",
+    "expectedGitBlob": "fdb338c21ac012c786f2fba1c54f9dfc119f0c88",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/ubsan_rt.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/ubsan_rt.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 21780,
+    "sha256": "eb264da5bb3de29c5ada63f3e4ed239df4f3753175fd4f1eb48faa951fabe79b",
+    "gitBlob": "59278a91161d4ef780539de147c94d54a67aa320",
+    "expectedGitBlob": "59278a91161d4ef780539de147c94d54a67aa320",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "metadata/compiler_rt-dir.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/contents/lib/compiler_rt?ref=24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "error": "The read operation timed out"
+  },
+  {
+    "path": "lib/libc/musl/COPYRIGHT",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libc/musl/COPYRIGHT",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 6204,
+    "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+    "gitBlob": "c1628e9ac84f927fe791124ec172fb61c760bb9b",
+    "expectedGitBlob": "c1628e9ac84f927fe791124ec172fb61c760bb9b",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/libc/musl/src/math/log.c",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libc/musl/src/math/log.c",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "path": "lib/libc/musl/src/math/cos.c",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/libc/musl/src/math/cos.c",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "path": "metadata/TREE-lib-libc.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/git/trees/9f84c0e3e5b7ac142829650912468ceaa2285158",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 2104,
+    "sha256": "3ba9f8ea77c4929bb605f2c96b341dfa8d4e9324add147bae1119ed519f8dc22",
+    "gitBlob": "021eff0e64caf494338506a8fa419b661117c926"
+  },
+  {
+    "path": "metadata/TREE-lib-libcxx.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/git/trees/eed1c5ec81725b2e8bb65529fc0c740f65a9032d",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 1057,
+    "sha256": "df718d82d7ad6afe8a5ad96a4c9c804d010109bbd73153d1812c7b4a80eea6b8",
+    "gitBlob": "32c433c6e6d88fb05297cb7f0c0fbeda11bb74e6"
+  },
+  {
+    "path": "metadata/TREE-lib-libcxxabi.json",
+    "sourceURL": "https://codeberg.org/api/v1/repos/ziglang/zig/git/trees/6e730a0ed2d04ca4d88ca94c531a326f433d5b39",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 848,
+    "sha256": "e79226bfd5aa75dc56a73134fc83f3a75e7352f37785607feb0b5872243ec95e",
+    "gitBlob": "c0ab6d62a77eefb7a179b63d6e7e40f082efdd94"
+  },
+  {
+    "path": "lib/compiler_rt/trig.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/trig.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 20510,
+    "sha256": "1380cd41d9fa7a5ecd7d213f01ed007c98db2e7ab894ec87e552e2b2f0edb9dc",
+    "gitBlob": "e357613948625ca83779ddaa51a6754cc5870218",
+    "expectedGitBlob": "e357613948625ca83779ddaa51a6754cc5870218",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/rem_pio2.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 6045,
+    "sha256": "908c7ee93fc246ce3405fa3a4303b8dbbc9a6c527f5e792fd59d6ab3cff79f27",
+    "gitBlob": "33575b7f65a05df3fb77b2058cc0da711f54ba21",
+    "expectedGitBlob": "33575b7f65a05df3fb77b2058cc0da711f54ba21",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/rem_pio2f.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2f.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 2247,
+    "sha256": "a41741ff67bf8def1d237d62ef07bb0ec7d5198459958eb1420028052727a17a",
+    "gitBlob": "c17ebbd39df4bf0911e8ce9f0bbff7442cebd627",
+    "expectedGitBlob": "c17ebbd39df4bf0911e8ce9f0bbff7442cebd627",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/rem_pio2l.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/rem_pio2l.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 5829,
+    "sha256": "67a3a31c123d46e5acd123e60b88cb151003958bb8a5fcdd588c45bd9f25783c",
+    "gitBlob": "fe878f116d91204b000f6fba1d2e5280b15723da",
+    "expectedGitBlob": "fe878f116d91204b000f6fba1d2e5280b15723da",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/sincos.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/sincos.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 14726,
+    "sha256": "1f0efd70411fb6cfd5e9e320ef77275fb077548d0d7ffac1c40d426bedc5fe71",
+    "gitBlob": "7208325c2b86f65dd6736437572eea3c09235ff3",
+    "expectedGitBlob": "7208325c2b86f65dd6736437572eea3c09235ff3",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/exp.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/exp.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 11191,
+    "sha256": "d1d1b0f564531fc1c7d845493e3ab412a58e5ca0fd3d629baca3aa18fec510cd",
+    "gitBlob": "c5a980ac72f46b5bd945e1accee32e869e546212",
+    "expectedGitBlob": "c5a980ac72f46b5bd945e1accee32e869e546212",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/exp2.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/exp2.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 20463,
+    "sha256": "9dcb2c06afbf9d76812b08e51874e27bc67b0426ef1484d4cae69ca9bc0ce300",
+    "gitBlob": "4e41db2f2d37813a83ae8b38e46f3c805e601e95",
+    "expectedGitBlob": "4e41db2f2d37813a83ae8b38e46f3c805e601e95",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/log2.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/log2.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 8667,
+    "sha256": "f63274b36b3ac26df42b6ec5fc9b5842153b1d0ccf6714ef27576e6aa7fa6091",
+    "gitBlob": "ad17df7f653dbff49570203f79307049926dae74",
+    "expectedGitBlob": "ad17df7f653dbff49570203f79307049926dae74",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/sqrt.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/sqrt.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 29204,
+    "sha256": "1ba7e39f8583d552257b9d37362e9653d4f8f772df5ef4303d91a7f11959de28",
+    "gitBlob": "e765414fb0f418ea9f6d1d71e03c4fa73ff36ca9",
+    "expectedGitBlob": "e765414fb0f418ea9f6d1d71e03c4fa73ff36ca9",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  },
+  {
+    "path": "lib/compiler_rt/fma.zig",
+    "sourceURL": "https://codeberg.org/ziglang/zig/raw/commit/24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8/lib/compiler_rt/fma.zig",
+    "revision": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
+    "bytes": 11101,
+    "sha256": "d1a541207efc31f4f073138be3698679941bcc541e54c103c38505fd095559eb",
+    "gitBlob": "10926e9bde05d36d8cdf16661542df9821621e0c",
+    "expectedGitBlob": "10926e9bde05d36d8cdf16661542df9821621e0c",
+    "gitBlobVerified": true,
+    "resolvedSourceCommit": "24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8"
+  }
+]

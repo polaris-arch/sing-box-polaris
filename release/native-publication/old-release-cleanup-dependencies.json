@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "oldTag": "polaris-v1.15.0-alpha.11-1",
+  "oldTagObject": "343be85a5b4a56a3ed28e9549561a52c490635eb",
+  "oldTagTarget": "052297f735b80bdae5b2536ef2a07d04979a0511",
+  "oldReleaseId": 408984993,
+  "oldReleaseKind": "source-only prerelease, no native binaries",
+  "newProposedTag": "polaris-box-v1.15.0-alpha.11-2",
+  "newTagExists": false,
+  "cleanupPerformed": false,
+  "cleanupAllowed": false,
+  "consumer": {
+    "repository": "polaris-arch/Polaris",
+    "mainReadCommit": "4563b1fc1ecb23cb7f1141a37a2cab144891ecd6",
+    "acceptedDedicatedCommit": "35a496b839456a90c01be793ca661fcd36e64d40",
+    "sourceManifestPath": "scripts/desktop-core/source-manifest.json",
+    "sourceManifestSha256": "9a51f7d9ab2bd0741b9bce31d4743354d4425f17a22cf6bd48631c21a3d36a46",
+    "sourceManifest": {
+      "schema": "polaris-desktop-fork-source-v1",
+      "role": "desktop",
+      "sourceURL": "https://github.com/polaris-arch/polaris-box",
+      "sourceCommit": "052297f735b80bdae5b2536ef2a07d04979a0511",
+      "sourceTree": "9fb6d2f99b996d770ac128cd4ef0cb5255e53398",
+      "sourceTag": "polaris-v1.15.0-alpha.11-1",
+      "sourceTagObject": "343be85a5b4a56a3ed28e9549561a52c490635eb",
+      "upstreamTag": "v1.15.0-alpha.11",
+      "upstreamCommit": "6afeff4c0f7123b5782f888812e96b8c82c7b699",
+      "goVersion": "1.25.5",
+      "patches": [],
+      "dependencyPatches": []
+    }
+  },
+  "blockers": [
+    "Accepted dedicated consumer still pins old source/tag; repin requires its independently reviewed source/receipt contract.",
+    "New release public readback and reviewed rollback/fallback path not completed."
+  ],
+  "policy": "No automatic old-release/tag deletion in this workflow. Fresh fixed-SHA consumer dependency check and separately authorized cleanup are required."
+}

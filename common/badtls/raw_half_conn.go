@@ -119,3 +119,24 @@ func (hc *RawHalfConn) SetTrafficSecret(suite unsafe.Pointer, level int, secret 
 func (hc *RawHalfConn) ExplicitNonceLen() int {
 	return hc.methods.explicitNonceLen(hc.pointer)
 }
+
+// TrafficKey and AdvanceTrafficSecret keep the private cipher-suite pointer in
+// the same library as this half-connection. Meta, upstream and std are distinct.
+func (hc *RawHalfConn) TrafficKey(id uint16, secret []byte) (key, iv []byte, err error) {
+	suite := hc.methods.cipherSuiteTLS13ByID(id)
+	if suite == nil {
+		return nil, nil, E.New("badtls: unknown TLS1.3 cipher suite")
+	}
+	key, iv = hc.methods.trafficKey(suite, secret)
+	return
+}
+
+func (hc *RawHalfConn) AdvanceTrafficSecret(id uint16, level int) error {
+	suite := hc.methods.cipherSuiteTLS13ByID(id)
+	if suite == nil {
+		return E.New("badtls: unknown TLS1.3 cipher suite")
+	}
+	secret := hc.methods.nextTrafficSecret(suite, *hc.TrafficSecret)
+	hc.methods.setTrafficSecret(hc.pointer, suite, level, secret)
+	return nil
+}

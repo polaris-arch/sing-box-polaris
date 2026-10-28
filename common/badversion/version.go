@@ -71,6 +71,7 @@ func (v Version) GreaterThan(anotherVersion Version) bool {
 }
 
 func parsePreReleaseIdentifier(identifier string) int {
+	identifier = strings.TrimPrefix(identifier, "polaris-")
 	if strings.HasPrefix(identifier, "rc") {
 		return 1
 	} else if strings.HasPrefix(identifier, "beta") {
@@ -115,6 +116,10 @@ func Parse(versionName string) (version Version) {
 	versionName = strings.TrimPrefix(versionName, "v")
 	if strings.Contains(versionName, "-") {
 		parts := strings.Split(versionName, "-")
+		// Preserve the fork prerelease family without changing upstream commit suffix parsing.
+		if len(parts) >= 3 && parts[1] == "polaris" {
+			parts = []string{parts[0], "polaris-" + parts[2]}
+		}
 		versionName = parts[0]
 		identifier := parts[1]
 		if strings.Contains(identifier, ".") {

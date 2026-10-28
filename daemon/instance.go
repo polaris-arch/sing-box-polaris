@@ -3,6 +3,7 @@ package daemon
 import (
 	"bytes"
 	"context"
+	"sync/atomic"
 
 	"github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/adapter"
@@ -37,9 +38,18 @@ type Instance struct {
 	outboundManager       adapter.OutboundManager
 	endpointManager       adapter.EndpointManager
 	logFactory            log.Factory
+	tailscaleRetirement   *tailscaleRetirementRun
+	closeStarted          atomic.Bool
+	closeFinished         chan struct{}
+	closeResult           error
 }
 
 func (s *StartedService) CheckConfig(ctx context.Context, configContent string) error {
+	// Construction checks have no retirement run/lease custody. Managed hosts
+	// must not construct an independent writer, including during preparation.
+	if adapter.TailscaleDirectoryDomainFromContext(s.ctx) != nil {
+		return E.New("independent construction check is unavailable in managed directory domain")
+	}
 	selectedLocale := locale.FromContext(ctx)
 	ctx, _ = locale.ContextWithLocale(s.ctx, selectedLocale.Locale)
 	ctx = service.ExtendContext(ctx)
@@ -83,6 +93,17 @@ type OverrideOptions struct {
 }
 
 func (s *StartedService) newInstance(ctx context.Context, profileContent string, overrideOptions *OverrideOptions, reloading bool) (*Instance, error) {
+	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil {
+		if !domain.Activated() {
+			return nil, E.New("managed directory domain is not activated")
+		}
+		if err := domain.FailurePersistenceError(); err != nil {
+			return nil, err
+		}
+	}
+	if err := guardRawDirectoryNamespace(s.ctx, profileContent); err != nil {
+		return nil, err
+	}
 	selectedLocale := locale.FromContext(ctx)
 	ctx, _ = locale.ContextWithLocale(s.ctx, selectedLocale.Locale)
 	ctx = service.ExtendContext(ctx)
@@ -117,13 +138,38 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 			})
 		}
 	}
+	if len(s.tailscaleRetirementRuns) >= maxTailscaleRetirementRuns {
+		cancel()
+		return nil, E.New("Tailscale retirement census capacity reached")
+	}
+	retirement, err := newTailscaleRetirementRun(profileContent, options)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, retirement)
+	ctx = service.ContextWithPtr(ctx, &retirement.binding)
+	ctx, err = prepareTailscaleDirectoryMapping(ctx, options)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
 	i := &Instance{
 		ctx:                   ctx,
 		cancel:                cancel,
 		urlTestHistoryStorage: urlTestHistoryStorage,
+		closeFinished:         make(chan struct{}),
+		tailscaleRetirement:   retirement,
 	}
+	constructed := false
+	defer func() {
+		if !constructed {
+			retirement.freeze(nil, false)
+			retirement.freezeDirectories(nil, false)
+		}
+	}()
 	boxInstance, err := box.New(box.Options{
 		Context:           ctx,
 		Options:           options,
@@ -133,6 +179,10 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 		cancel()
 		return nil, err
 	}
+	constructed = true
+	boxInstance.CaptureTailscaleStateStores()
+	retirement.capture(boxInstance.TailscaleStateStoreScopes())
+	retirement.captureDirectories(boxInstance.TailscaleDirectoryScopes)
 	i.instance = boxInstance
 	i.connectionManager = service.FromContext[adapter.ConnectionManager](ctx)
 	i.clashMode = service.PtrFromContext[clashmode.Manager](ctx)
@@ -143,13 +193,16 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 	i.outboundManager = service.FromContext[adapter.OutboundManager](ctx)
 	i.endpointManager = service.FromContext[adapter.EndpointManager](ctx)
 	i.logFactory = boxInstance.LogFactory()
-	log.SetStdLogger(boxInstance.LogFactory().Logger())
+	if !s.keepDefaultLogger {
+		log.SetStdLogger(boxInstance.LogFactory().Logger())
+	}
 	return i, nil
 }
 
 func attachInstance(ctx context.Context) *Instance {
 	return &Instance{
 		ctx:                   ctx,
+		closeFinished:         make(chan struct{}),
 		connectionManager:     service.FromContext[adapter.ConnectionManager](ctx),
 		clashMode:             service.PtrFromContext[clashmode.Manager](ctx),
 		trafficManager:        service.PtrFromContext[trafficcontrol.Manager](ctx),
@@ -167,13 +220,42 @@ func (i *Instance) Start() error {
 }
 
 func (i *Instance) Close() error {
-	i.cancel()
+	if !i.closeStarted.CompareAndSwap(false, true) {
+		// Like Box.Close, a repeated close returns nil without waiting.
+		return nil
+	}
+	i.finishClose()
+	return i.closeResult
+}
+
+// CloseWithResult lets strict transient cleanup read the original result even
+// if Box.Start already triggered automatic close before the daemon catches up.
+func (i *Instance) CloseWithResult() error {
+	if i.closeStarted.CompareAndSwap(false, true) {
+		i.finishClose()
+	}
+	<-i.closeFinished
+	return i.closeResult
+}
+
+func (i *Instance) finishClose() {
+	i.closeResult = E.New("instance close did not complete")
+	defer close(i.closeFinished)
+	if i.cancel != nil {
+		i.cancel()
+	}
 	if i.pauseCallback != nil {
 		i.pauseManager.UnregisterCallback(i.pauseCallback)
 		i.pauseCallback = nil
 	}
-	i.urlTestHistoryStorage.Close()
-	return i.instance.Close()
+	if i.urlTestHistoryStorage != nil {
+		i.urlTestHistoryStorage.Close()
+	}
+	i.closeResult = i.instance.CloseWithResult()
+	if i.tailscaleRetirement != nil {
+		i.tailscaleRetirement.freeze(i.instance.TailscaleStoreRetirement(), true)
+		i.tailscaleRetirement.freezeDirectories(i.instance.TailscaleDirectoryRetirement(), true)
+	}
 }
 
 func (i *Instance) registerPowerReport(ctx context.Context, reloading bool) {

@@ -1,27 +1,7 @@
 name: Lint
-
-on:
-  push:
-    branches:
-      - oldstable
-      - stable
-      - testing
-      - unstable
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/lint.yml'
-  pull_request:
-    branches:
-      - oldstable
-      - stable
-      - testing
-      - unstable
-
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
-  cancel-in-progress: true
-
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 jobs:
   build:
     name: Lint ${{ matrix.goos }}/${{ matrix.goarch }}
@@ -30,50 +10,63 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: '386'
-          - goos: windows
-            goarch: arm64
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: linux
-            goarch: arm
-          - goos: linux
-            goarch: '386'
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: android
-            goarch: arm64
-        #  - goos: freebsd
-        #    goarch: amd64
+        - goos: windows
+          goarch: amd64
+        - goos: windows
+          goarch: '386'
+        - goos: windows
+          goarch: arm64
+        - goos: linux
+          goarch: amd64
+        - goos: linux
+          goarch: arm64
+        - goos: linux
+          goarch: arm
+        - goos: linux
+          goarch: '386'
+        - goos: darwin
+          goarch: amd64
+        - goos: darwin
+          goarch: arm64
+        - goos: android
+          goarch: arm64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ^1.26
-      - name: Cache go module
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-          key: go-${{ hashFiles('**/go.sum') }}
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        with:
-          version: latest
-          args: --timeout=30m
-          install-mode: binary
-          verify: false
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.27.2
+        cache-dependency-path: |
+          go.mod
+          go.sum
+          third_party/sing-tun/go.mod
+          third_party/sing-tun/go.sum
+          third_party/metacubex-utls/go.mod
+          third_party/metacubex-utls/go.sum
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      with:
+        version: v2.15.0
+        args: --timeout=30m --max-same-issues=0 --max-issues-per-linter=0
+        install-mode: binary
+        verify: false
+'on':
+  workflow_dispatch: {}
+  push:
+    branches:
+    - polaris-main
+    paths-ignore:
+    - '**.md'
+    - .github/**
+    - '!.github/workflows/lint.yml'
+  pull_request:
+    branches:
+    - polaris-main
+permissions:
+  contents: read

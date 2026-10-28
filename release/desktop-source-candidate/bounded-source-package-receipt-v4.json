@@ -1,0 +1,15 @@
+{
+  "filename": "polaris-box-a01-desktop-source-candidate-six-platforms-v4.tar.gz",
+  "bytes": 271716261,
+  "sha256": "70ff6e51660cc8ea140a30513c42c7b842b4fdb62ba41d863b08405db63ea5ed",
+  "verifiedMemberCount": 175,
+  "sourceModuleZipCount": 148,
+  "productSourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "actualAcceptedPlatformCount": 6,
+  "actualNativeSourceUnionComplete": true,
+  "sourceScope": "desktop-six",
+  "completeSixTargetSource": false,
+  "noticeInputsAdoptedByNativeProducer": false,
+  "publicSourceDeliveryPerformed": false,
+  "publicationEligible": false
+}

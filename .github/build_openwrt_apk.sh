@@ -30,7 +30,7 @@ PROJECT=$(cd "$(dirname "$0")/.."; pwd)
 #   1.13.0-beta.8  -> 1.13.0_beta8-r0
 #   1.13.0-rc.3    -> 1.13.0_rc3-r0
 #   1.13.0         -> 1.13.0-r0
-APK_VERSION=$(echo "$VERSION" | sed -E 's/-([a-z]+)\.([0-9]+)/_\1\2/')
+APK_VERSION=$(echo "$VERSION" | sed -E 's/-polaris-(alpha|beta|rc)\./-\1./; s/-([a-z]+)\.([0-9]+)/_\1\2/')
 APK_VERSION="${APK_VERSION}-r0"
 
 ROOT_DIR=$(mktemp -d)

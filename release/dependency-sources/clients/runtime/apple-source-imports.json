@@ -1,0 +1,4277 @@
+[
+  {
+    "path": "Library/Library.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ShareExtension/ShareView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ShareExtension/ShareView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ShareExtension/ShareViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ShareExtension/ShareViewModel.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ShareExtension/ShareViewModel.swift",
+    "line": 3,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ShareExtension/ShareViewController.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ShareExtension/ShareViewController.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ShareExtension/ShareViewController.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ShareExtension/ShareViewController.swift",
+    "line": 37,
+    "text": "import AppKit"
+  },
+  {
+    "path": "SFTUITests/SnapshotTests.swift",
+    "line": 1,
+    "text": "import XCTest"
+  },
+  {
+    "path": "SFTUITests/SnapshotHelper.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFTUITests/SnapshotHelper.swift",
+    "line": 2,
+    "text": "import XCTest"
+  },
+  {
+    "path": "SFM.System/Application.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "SFM.System/Application.swift",
+    "line": 2,
+    "text": "import MacLibrary"
+  },
+  {
+    "path": "SFM.System/Application.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFM.System/StandaloneApplicationDelegate.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "SFM.System/StandaloneApplicationDelegate.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFM.System/StandaloneApplicationDelegate.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFM.System/StandaloneApplicationDelegate.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "SFM.System/StandaloneApplicationDelegate.swift",
+    "line": 5,
+    "text": "import MacLibrary"
+  },
+  {
+    "path": "WidgetExtension/ServiceToggleControl.swift",
+    "line": 1,
+    "text": "import AppIntents"
+  },
+  {
+    "path": "WidgetExtension/ServiceToggleControl.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "WidgetExtension/ServiceToggleControl.swift",
+    "line": 3,
+    "text": "import WidgetKit"
+  },
+  {
+    "path": "WidgetExtension/WidgetTunnelControl.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "WidgetExtension/WidgetTunnelControl.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "WidgetExtension/ExtensionBundle.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "WidgetExtension/ExtensionBundle.swift",
+    "line": 2,
+    "text": "import WidgetKit"
+  },
+  {
+    "path": "SFT/Application.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFT/Application.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFT/Application.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "SFT/Application.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFT/ApplicationDelegate.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFT/ApplicationDelegate.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFT/ApplicationDelegate.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFT/ApplicationDelegate.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "SFT/ApplicationDelegate.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "SFT/MainView.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFT/MainView.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFT/MainView.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFT/MainView.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "SFT/MainView.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/RunestoneTextView.swift",
+    "line": 1,
+    "text": "import Runestone"
+  },
+  {
+    "path": "SFI/RunestoneTextView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/RunestoneTextView.swift",
+    "line": 3,
+    "text": "import TreeSitterJSON5Runestone"
+  },
+  {
+    "path": "SFI/GhosttyConfigEditorWrapperView.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/Application.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFI/Application.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFI/Application.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "SFI/Application.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 2,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 4,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 5,
+    "text": "import Library"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 6,
+    "text": "import Network"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "SFI/ApplicationDelegate.swift",
+    "line": 8,
+    "text": "import UserNotifications"
+  },
+  {
+    "path": "SFI/MainView.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFI/MainView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFI/MainView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "SFI/MainView.swift",
+    "line": 4,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "SFI/MainView.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/ProfileEditorWrapperView.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "SFI/ProfileEditorWrapperView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "SFI/ProfileEditorWrapperView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFI/ProfileEditorTheme.swift",
+    "line": 1,
+    "text": "import Runestone"
+  },
+  {
+    "path": "SFI/ProfileEditorTheme.swift",
+    "line": 2,
+    "text": "import UIKit"
+  },
+  {
+    "path": "SFM/Application.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "SFM/Application.swift",
+    "line": 2,
+    "text": "import MacLibrary"
+  },
+  {
+    "path": "SFM/Application.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "FileProviderExtension/FileProviderExtension.swift",
+    "line": 1,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "FileProviderExtension/FileProviderExtension.swift",
+    "line": 2,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "FileProviderExtension/FileProviderItem.swift",
+    "line": 1,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "FileProviderExtension/FileProviderItem.swift",
+    "line": 2,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "FileProviderExtension/FileProviderEnumerator.swift",
+    "line": 1,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "MacLibrary/EditProfileContentWindow.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/EditProfileContentWindow.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/EditProfileContentWindow.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/GhosttyConfigEditorWrapperView.swift",
+    "line": 1,
+    "text": "import CodeEditLanguages"
+  },
+  {
+    "path": "MacLibrary/GhosttyConfigEditorWrapperView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/JSONCompletionController.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/JSONCompletionController.swift",
+    "line": 2,
+    "text": "import CodeEditTextView"
+  },
+  {
+    "path": "MacLibrary/CompletionInsertion.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/ProfileValidationGate.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 2,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 4,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 5,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/ApplicationDelegate.swift",
+    "line": 6,
+    "text": "import UserNotifications"
+  },
+  {
+    "path": "MacLibrary/WindowAccessor.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/CodeEditTextView.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/CodeEditTextView.swift",
+    "line": 2,
+    "text": "import CodeEditLanguages"
+  },
+  {
+    "path": "MacLibrary/CodeEditTextView.swift",
+    "line": 3,
+    "text": "import CodeEditSourceEditor"
+  },
+  {
+    "path": "MacLibrary/CodeEditTextView.swift",
+    "line": 4,
+    "text": "import CodeEditTextView"
+  },
+  {
+    "path": "MacLibrary/CodeEditTextView.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/MacLibrary.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/CompletionPanel.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/JSONCursorScanner.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/MainView.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/MainView.swift",
+    "line": 2,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/MainView.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/MainView.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/MainView.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/ConfigSchema.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/ConfigSchema.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/MainViewModel.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/MainViewModel.swift",
+    "line": 2,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/MainViewModel.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/MainViewModel.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/MainViewModel.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/ProfileEditorWrapperView.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/ProfileEditorWrapperView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/ProfileEditorWrapperView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 2,
+    "text": "import Combine"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 3,
+    "text": "import CoreText"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 4,
+    "text": "import Foundation"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 5,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/StatusBarController.swift",
+    "line": 6,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/MacApplication.swift",
+    "line": 1,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/MacApplication.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "MacLibrary/MacApplication.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/MacApplication.swift",
+    "line": 4,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "MacLibrary/MacApplication.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "MacLibrary/TailscaleSSHTerminalWindow.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "MacLibrary/TailscaleSSHTerminalWindow.swift",
+    "line": 2,
+    "text": "import ApplicationLibrary"
+  },
+  {
+    "path": "MacLibrary/TailscaleSSHTerminalWindow.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "MacLibrary/TailscaleSSHTerminalWindow.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "SFMUITests/SnapshotTests.swift",
+    "line": 1,
+    "text": "import XCTest"
+  },
+  {
+    "path": "SFMUITests/SnapshotHelper.swift",
+    "line": 1,
+    "text": "import AppKit"
+  },
+  {
+    "path": "SFMUITests/SnapshotHelper.swift",
+    "line": 2,
+    "text": "import CoreGraphics"
+  },
+  {
+    "path": "SFMUITests/SnapshotHelper.swift",
+    "line": 3,
+    "text": "import Darwin"
+  },
+  {
+    "path": "SFMUITests/SnapshotHelper.swift",
+    "line": 4,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFMUITests/SnapshotHelper.swift",
+    "line": 5,
+    "text": "import XCTest"
+  },
+  {
+    "path": "IntentsExtension/Intents.swift",
+    "line": 1,
+    "text": "import AppIntents"
+  },
+  {
+    "path": "IntentsExtension/Intents.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "IntentsExtension/Intents.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "IntentsExtension/IntentsExtension.swift",
+    "line": 1,
+    "text": "import AppIntents"
+  },
+  {
+    "path": "HelperService/main.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "HelperService/main.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "HelperService/main.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "HelperService/RootHelperService.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "HelperService/RootHelperService.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "HelperService/RootHelperService.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "HelperService/RootHelperService.swift",
+    "line": 4,
+    "text": "import Network"
+  },
+  {
+    "path": "HelperService/RootHelperService.swift",
+    "line": 5,
+    "text": "import os"
+  },
+  {
+    "path": "HelperService/UpdateInstaller.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "HelperService/UpdateInstaller.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "HelperService/UpdateInstaller.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "HelperService/UpdateInstaller.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "HelperService/WorkingDirectoryManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "HelperService/WorkingDirectoryManager.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "TVExtension/PacketTunnelProvider.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "TVExtension/PacketTunnelProvider.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "SFIUITests/SnapshotTests.swift",
+    "line": 1,
+    "text": "import XCTest"
+  },
+  {
+    "path": "SFIUITests/SnapshotHelper.swift",
+    "line": 15,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SFIUITests/SnapshotHelper.swift",
+    "line": 16,
+    "text": "import XCTest"
+  },
+  {
+    "path": "ApplicationLibrary/ApplicationLibrary.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "UITests/SnapshotTests.swift",
+    "line": 1,
+    "text": "import XCTest"
+  },
+  {
+    "path": "UITests/UITestsLaunchTests.swift",
+    "line": 8,
+    "text": "import XCTest"
+  },
+  {
+    "path": "UITests/UITests.swift",
+    "line": 8,
+    "text": "import XCTest"
+  },
+  {
+    "path": "JailbreakDaemon/main.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "JailbreakDaemon/main.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "JailbreakDaemon/main.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "JailbreakDaemon/IOSRootHelperService.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "JailbreakDaemon/IOSRootHelperService.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "JailbreakDaemon/IOSRootHelperService.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "JailbreakDaemon/IOSRootHelperService.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "SystemExtension/main.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "SystemExtension/main.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "SystemExtension/main.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "SystemExtension/PacketTunnelProvider.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "SystemExtension/PacketTunnelProvider.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Extension/PacketTunnelProvider.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Extension/PacketTunnelProvider.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "Library/Database/Profile+Share.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile+Share.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Database/SharedPreferences.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/Profile.swift",
+    "line": 3,
+    "text": "import Network"
+  },
+  {
+    "path": "Library/Database/SharedPreferences+Database.swift",
+    "line": 1,
+    "text": "import BinaryCodable"
+  },
+  {
+    "path": "Library/Database/SharedPreferences+Database.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/SharedPreferences+Database.swift",
+    "line": 3,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/SharedPreferences+Database.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Database/RemoteServerManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/RemoteServerManager.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/Profile+Transferable.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile+Transferable.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Database/Profile+Transferable.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Database/Profile+Transferable.swift",
+    "line": 4,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "Library/Database/Profile+Update.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile+Update.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/Profile+Update.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Database/RemoteServer.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/RemoteServer.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/Database.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Database.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/ProfileManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/ProfileManager.swift",
+    "line": 2,
+    "text": "import GRDB"
+  },
+  {
+    "path": "Library/Database/Profile+Date.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile+Hashable.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Database/Profile+RW.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/NEVPNStatus+isConnected.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/NEVPNStatus+isConnected.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/BridgeTunTracker.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/BridgeTunTracker.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/BridgeTunTracker.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/CommandClient.swift",
+    "line": 1,
+    "text": "import Combine"
+  },
+  {
+    "path": "Library/Network/CommandClient.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/CommandClient.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/CommandClient.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/CommandClient.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointRegistry.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionErrors.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/Extension+Iterator.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/Extension+Iterator.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/OutboundGroup.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/OutboundGroup.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/RootHelperXPC.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/RootHelperXPC.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/HelperServiceManager.swift",
+    "line": 2,
+    "text": "import AppKit"
+  },
+  {
+    "path": "Library/Network/HelperServiceManager.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/HelperServiceManager.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/HelperServiceManager.swift",
+    "line": 5,
+    "text": "import ServiceManagement"
+  },
+  {
+    "path": "Library/Network/ExtensionStartOptions.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionEnvironments.swift",
+    "line": 1,
+    "text": "import Combine"
+  },
+  {
+    "path": "Library/Network/ExtensionEnvironments.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionEnvironments.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Network/ExtensionEnvironments.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "Library/Network/ExtensionEnvironments.swift",
+    "line": 7,
+    "text": "import AppKit"
+  },
+  {
+    "path": "Library/Network/Extension+RunBlocking.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/Extension+RunBlocking.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/Extension+RunBlocking.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/ShellHelperXPC.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ShellHelperXPC.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ShellHelperXPC.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/XPCMachServiceBridge.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ScreenStateObserver.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ScreenStateObserver.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ScreenStateObserver.swift",
+    "line": 4,
+    "text": "import notify"
+  },
+  {
+    "path": "Library/Network/HTTPClient.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/HTTPClient.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 5,
+    "text": "import UserNotifications"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 7,
+    "text": "import CoreWLAN"
+  },
+  {
+    "path": "Library/Network/ExtensionPlatformInterface.swift",
+    "line": 10,
+    "text": "import DeviceKit"
+  },
+  {
+    "path": "Library/Network/OnDemandRule.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/OnDemandRule.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/JailbreakHelperManager.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/TaildropSendSession.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/TaildropSendSession.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/MachServiceClient.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/MachServiceClient.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/UserServiceXPC.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/UserServiceXPC.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/UserServiceXPC.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/TaildropTargets.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/TaildropTargets.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointPublisher.swift",
+    "line": 2,
+    "text": "import CoreWLAN"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointPublisher.swift",
+    "line": 3,
+    "text": "import Dispatch"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointPublisher.swift",
+    "line": 4,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointPublisher.swift",
+    "line": 5,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/UserServiceEndpointPublisher.swift",
+    "line": 6,
+    "text": "import UserNotifications"
+  },
+  {
+    "path": "Library/Network/ConnectionOwnerLookup.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ConnectionOwnerLookup.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/SystemExtension.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/SystemExtension.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/SystemExtension.swift",
+    "line": 4,
+    "text": "import SystemExtensions"
+  },
+  {
+    "path": "Library/Network/CommandXPC.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/CommandXPC.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/CommandXPC.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/CommandTarget.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/CommandTarget.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ExtensionProfile.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionProfile.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ExtensionProfile.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/ExtensionProfile.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Network/ExtensionProfile.swift",
+    "line": 6,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 4,
+    "text": "import os.log"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 6,
+    "text": "import WidgetKit"
+  },
+  {
+    "path": "Library/Network/ExtensionProvider.swift",
+    "line": 9,
+    "text": "import CoreLocation"
+  },
+  {
+    "path": "Library/Network/ShellSessionManager.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Network/ShellSessionManager.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Network/ShellSessionManager.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/Logger+Extension.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/Logger+Extension.swift",
+    "line": 2,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/CrashReportManager.swift",
+    "line": 1,
+    "text": "import CrashReporter"
+  },
+  {
+    "path": "Library/Shared/CrashReportManager.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/CrashReportManager.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Shared/CrashReportManager.swift",
+    "line": 4,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/CrashReportManager.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Shared/OOMReportArchive.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/URL+SecurityScopedAccess.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/FilePath.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/TailscaleSSHPresentedSession.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/AppConfiguration.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/TailscaleSSHPeerEntry.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/BinaryCodableCompat.swift",
+    "line": 1,
+    "text": "import BinaryCodable"
+  },
+  {
+    "path": "Library/Shared/BinaryCodableCompat.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/BinaryCodableCompat.swift",
+    "line": 3,
+    "text": "import LegacyBinaryCodable"
+  },
+  {
+    "path": "Library/Shared/ApplicationLocale.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/ApplicationLocale.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Shared/ServiceSetup.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/ServiceSetup.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Shared/CrashReportArchive.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/PlatformMetadata.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/PlatformMetadata.swift",
+    "line": 3,
+    "text": "import DeviceKit"
+  },
+  {
+    "path": "Library/Shared/ImportedFontStore.swift",
+    "line": 2,
+    "text": "import CoreText"
+  },
+  {
+    "path": "Library/Shared/ImportedFontStore.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/ImportedFontStore.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Shared/Color+Extension.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/Color+Extension.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Shared/Color+Extension.swift",
+    "line": 4,
+    "text": "import UIKit"
+  },
+  {
+    "path": "Library/Shared/Color+Extension.swift",
+    "line": 6,
+    "text": "import AppKit"
+  },
+  {
+    "path": "Library/Shared/OOMReportManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/OOMReportManager.swift",
+    "line": 2,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/OOMReportManager.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Shared/URL+SchemeAction.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/ScreenshotLocalization.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/ScreenshotLocalization.swift",
+    "line": 2,
+    "text": "import ObjectiveC"
+  },
+  {
+    "path": "Library/Shared/PowerReportManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/PowerReportManager.swift",
+    "line": 2,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/PowerReportManager.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "Library/Shared/Bundle+Version.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/HangReport.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/HangWatchdog.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/HangWatchdog.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Shared/HangWatchdog.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/HangWatchdog.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "Library/Shared/HangWatchdog.swift",
+    "line": 7,
+    "text": "import AppKit"
+  },
+  {
+    "path": "Library/Shared/Variant.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/Variant.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Library/Shared/JailbreakConfiguration.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/BlockingIO.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/NativeCrashReporter.swift",
+    "line": 1,
+    "text": "import CrashReporter"
+  },
+  {
+    "path": "Library/Shared/NativeCrashReporter.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Shared/NativeCrashReporter.swift",
+    "line": 3,
+    "text": "import os"
+  },
+  {
+    "path": "Library/Shared/PowerReportArchive.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/PKGInstaller.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/PKGInstaller.swift",
+    "line": 4,
+    "text": "import Security"
+  },
+  {
+    "path": "Library/Update/PKGDownloader.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/UpdateInfo.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/UpdateTrack.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/GitHubUpdateChecker.swift",
+    "line": 1,
+    "text": "import Darwin"
+  },
+  {
+    "path": "Library/Update/GitHubUpdateChecker.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Library/Update/GitHubUpdateChecker.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Package.swift",
+    "line": 3,
+    "text": "import PackageDescription"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Sources/TreeSitterJSON5Queries/Query.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Sources/TreeSitterJSON5Runestone/TreeSitterIndentationScopes+Helpers.swift",
+    "line": 1,
+    "text": "import Runestone"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Sources/TreeSitterJSON5Runestone/TreeSitterLanguage+Helpers.swift",
+    "line": 1,
+    "text": "import Runestone"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Sources/TreeSitterJSON5Runestone/TreeSitterLanguage+Helpers.swift",
+    "line": 2,
+    "text": "import TreeSitterJSON5"
+  },
+  {
+    "path": "Frameworks/TreeSitterJSON5/Sources/TreeSitterJSON5Runestone/TreeSitterLanguage+Helpers.swift",
+    "line": 3,
+    "text": "import TreeSitterJSON5Queries"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/QRSImageGenerator.swift",
+    "line": 1,
+    "text": "import CoreGraphics"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/QRSImageGenerator.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/QRSImageGenerator.swift",
+    "line": 3,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/QRSImageGenerator.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/QRSImageGenerator.swift",
+    "line": 8,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/LubyTransformEncoder.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/LubyTransformEncoder.swift",
+    "line": 2,
+    "text": "import zlib"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/CRC32.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/EncodedBlock.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/LubyTransformDecoder.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/LubyTransformDecoder.swift",
+    "line": 2,
+    "text": "import zlib"
+  },
+  {
+    "path": "ApplicationLibrary/LubyTransform/BinaryMeta.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/NavigationPage.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/NavigationPage.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/NavigationPage.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/EnvironmentValues.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/EnvironmentValues.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/EnvironmentValues.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/EnvironmentValues.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/SidebarView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/SidebarView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileServer.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileServer.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileServer.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileServer.swift",
+    "line": 4,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileServer.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileUpdateTask.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ProfileUpdateTask.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UIProfileUpdateTask.swift",
+    "line": 1,
+    "text": "import BackgroundTasks"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UIProfileUpdateTask.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UIProfileUpdateTask.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UIProfileUpdateTask.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransfer.swift",
+    "line": 1,
+    "text": "import BinaryCodable"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransfer.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransfer.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransferServer.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransferServer.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransferServer.swift",
+    "line": 5,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransferServer.swift",
+    "line": 6,
+    "text": "import os"
+  },
+  {
+    "path": "ApplicationLibrary/Service/ReportTransferServer.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Service/NWSocket.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/NWSocket.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Service/NWSocket.swift",
+    "line": 3,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 3,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 4,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 5,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 6,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 7,
+    "text": "import os"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 8,
+    "text": "import Security"
+  },
+  {
+    "path": "ApplicationLibrary/Service/UpdateManager.swift",
+    "line": 9,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleSSHPeerStore.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleSSHPeerStore.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/PowerReportListView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/PowerReportListView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectEndpointView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectEndpointView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePingViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePingViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePingViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePingViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OutboundPickerView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OutboundPickerView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OutboundPickerView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPStatusViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPStatusViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPStatusViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPStatusViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropSendManager.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropSendManager.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropSendManager.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropSendManager.swift",
+    "line": 4,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropSendManager.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPServerView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPServerView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ExportReportView.swift",
+    "line": 3,
+    "text": "import DeviceDiscoveryUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ExportReportView.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ExportReportView.swift",
+    "line": 5,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ExportReportView.swift",
+    "line": 6,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 5,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 8,
+    "text": "import QuickLook"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 9,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropView.swift",
+    "line": 11,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OOMReportListView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OOMReportListView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OOMReportListView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectBrowserView.swift",
+    "line": 2,
+    "text": "import CryptoKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectBrowserView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectBrowserView.swift",
+    "line": 4,
+    "text": "import WebKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectBrowserView.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectBrowserView.swift",
+    "line": 9,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBInfo.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBInfo.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleExitNodePickerView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleExitNodePickerView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleExitNodePickerView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/PowerReportDetailView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/PowerReportDetailView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNEndpointView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNEndpointView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectStatusViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectStatusViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectStatusViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenConnectStatusViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ReportShared.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ReportShared.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ReportShared.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ReportShared.swift",
+    "line": 4,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ReportShared.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPProviderViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPProviderViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPProviderViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityViewModel.swift",
+    "line": 4,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/NetworkQualityViewModel.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusSubscription.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusSubscription.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNStatusViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNStatusViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNStatusViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OpenVPNStatusViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/STUNTestView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ToolsView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ToolsView.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/ToolsView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPDeviceView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/USBIPDeviceView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/CrashReportListView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/CrashReportListView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/CrashReportListView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleStatusViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleEndpointView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleEndpointView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePeerView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePeerView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePeerView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePeerView.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscalePeerView.swift",
+    "line": 8,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OOMReportDetailView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/OOMReportDetailView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/CrashReportDetailView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/CrashReportDetailView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropInboxViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropInboxViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropInboxViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TaildropInboxViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleSSHPromptView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Tools/TailscaleSSHPromptView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/GlobalChecksModifier.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/GlobalChecksModifier.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/GlobalChecksModifier.swift",
+    "line": 3,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/GlobalChecksModifier.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/GlobalChecksModifier.swift",
+    "line": 6,
+    "text": "import CoreLocation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ViewCompat.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/NavigationSheetContent.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/NavigationSheetContent.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/StringCompat.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/StringCompat.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/MetadataFormView.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ConnectionLifecycleObserver.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ConnectionLifecycleObserver.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/AlertState.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/AlertState.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/RequestReviewButton.swift",
+    "line": 3,
+    "text": "import StoreKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/RequestReviewButton.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/DeleteButton.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/DeleteButton.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/FormItem.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/FormItem.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/SidebarLayout.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/NavigationButtonsView.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/PlainTextView.swift",
+    "line": 2,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/PlainTextView.swift",
+    "line": 4,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/PlainTextView.swift",
+    "line": 7,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/NavigationDestinationCompat.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/BaseViewModel.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/DeviceCensorship.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/DeviceCensorship.swift",
+    "line": 3,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/DeviceCensorship.swift",
+    "line": 5,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/TVToolbarButton.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/TVToolbarButton.swift",
+    "line": 3,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/Binding+Setter.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/Binding+Setter.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ShareButton.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ShareButton.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ShareButton.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ShareButton.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ShareButton.swift",
+    "line": 7,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/TabViewBottomAccessoryCompat.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/TabViewBottomAccessoryCompat.swift",
+    "line": 4,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/Binding+Unwrap.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/BackButton.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/BackButton.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/NavigationStackCompat.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Abstract/ViewModifiers.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileSheetHelpers.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileSheetHelpers.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileEditorEnvironment.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRSDisplayView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRSDisplayView.swift",
+    "line": 2,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRSDisplayView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRCodeSheet.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRCodeSheet.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRCodeSheet.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRCodeSheet.swift",
+    "line": 4,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/QRCodeSheet.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileViewModel.swift",
+    "line": 3,
+    "text": "import DeviceDiscoveryUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileViewModel.swift",
+    "line": 4,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileViewModel.swift",
+    "line": 5,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileViewModel.swift",
+    "line": 6,
+    "text": "import Network"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileViewModel.swift",
+    "line": 7,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileActionToolbar.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileActionToolbar.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileActionToolbar.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileContentViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ExternalQRCodeView.swift",
+    "line": 1,
+    "text": "import CoreGraphics"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ExternalQRCodeView.swift",
+    "line": 2,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ExternalQRCodeView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileMenuView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileMenuView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileMenuView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileMenuView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileMenuView.swift",
+    "line": 5,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/NewProfileViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileViewModel.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileViewModel.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditProfileViewModel.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileView.swift",
+    "line": 3,
+    "text": "import DeviceDiscoveryUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileView.swift",
+    "line": 4,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileView.swift",
+    "line": 5,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ImportProfileView.swift",
+    "line": 6,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileType+Presentation.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/ProfileType+Presentation.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Profile/EditorToolbarView.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ButtonVisibilityState.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ButtonVisibilityState.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 4,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 5,
+    "text": "import os"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 6,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/DashboardViewModel.swift",
+    "line": 9,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/RemoteDashboardView.swift",
+    "line": 1,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/RemoteDashboardView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/RemoteDashboardView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ActiveDashboardView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ActiveDashboardView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ActiveDashboardView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/ActiveDashboardView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/ANSIColors.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/ANSIColors.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogTextView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogTextView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogTextView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogTextView.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogTextView.swift",
+    "line": 8,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 1,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 2,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 3,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogViewModel.swift",
+    "line": 9,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogView.swift",
+    "line": 4,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogView.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Log/LogView.swift",
+    "line": 8,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupListView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupListView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupItemView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupItemView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupListViewModel.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupListViewModel.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/GroupListViewModel.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/OutboundGroupItem+SwiftUI.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Groups/OutboundGroupItem+SwiftUI.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteControlView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteControlView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteControlMenuItems.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteControlMenuItems.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/EditRemoteServerView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/EditRemoteServerView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteUptimeText.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/RemoteControl/RemoteUptimeText.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionDetailsView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionDetailsView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionDetailsView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListPage.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListPage.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/Connection.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListViewModel.swift",
+    "line": 1,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Connections/ConnectionListView.swift",
+    "line": 4,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/JailbreakView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/JailbreakView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/OnDemandRulesView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/OnDemandRulesView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/OnDemandRulesView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/EditGhosttyConfigView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/EditGhosttyConfigView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/EditGhosttyConfigView.swift",
+    "line": 3,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/GhosttyConfigurationView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/GhosttyConfigurationView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/PacketTunnelView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/PacketTunnelView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/UpdateSheet.swift",
+    "line": 3,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/UpdateSheet.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/UpdateSheet.swift",
+    "line": 5,
+    "text": "import MarkdownUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/UpdateSheet.swift",
+    "line": 6,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/FontPickerView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/FontPickerView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/FontPickerView.swift",
+    "line": 4,
+    "text": "import UniformTypeIdentifiers"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/FontPickerView.swift",
+    "line": 7,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/FontPickerView.swift",
+    "line": 9,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/MacAppView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/MacAppView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/MacAppView.swift",
+    "line": 5,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/MacAppView.swift",
+    "line": 6,
+    "text": "import ServiceManagement"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/ProfileOverrideView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/ProfileOverrideView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/GhosttyConfigEditorEnvironment.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SettingView.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SettingView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SponsorsView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SponsorsView.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SettingViewModel.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/SettingViewModel.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 5,
+    "text": "import FileProvider"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 6,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Setting/CoreView.swift",
+    "line": 8,
+    "text": "import ServiceManagement"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+iOS.swift",
+    "line": 3,
+    "text": "import AVFoundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+iOS.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+iOS.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerView.swift",
+    "line": 3,
+    "text": "import AVFoundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerView.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerView.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerView.swift",
+    "line": 8,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScanner.swift",
+    "line": 1,
+    "text": "import AVFoundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScanner.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+macOS.swift",
+    "line": 3,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+macOS.swift",
+    "line": 4,
+    "text": "import AVFoundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+macOS.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Scanner/QRScannerController+macOS.swift",
+    "line": 6,
+    "text": "import Vision"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalExtras.swift",
+    "line": 2,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalExtras.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalExtras.swift",
+    "line": 4,
+    "text": "import GhosttyKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalExtras.swift",
+    "line": 5,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalCommands.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalCommands.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionMenuButton.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionMenuButton.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionMenuButton.swift",
+    "line": 4,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/ThemePickerView.swift",
+    "line": 2,
+    "text": "import GhosttyTheme"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/ThemePickerView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 2,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 4,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 5,
+    "text": "import GhosttyTheme"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 6,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 7,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 8,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperViewModel.swift",
+    "line": 9,
+    "text": "import UserNotifications"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionManager.swift",
+    "line": 2,
+    "text": "import Combine"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionManager.swift",
+    "line": 3,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionManager.swift",
+    "line": 4,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionManager.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContainerView.swift",
+    "line": 2,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContainerView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContainerView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperView.swift",
+    "line": 2,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalWrapperView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalPresentation.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalPresentation.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalPresentation.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalSurfaceView.swift",
+    "line": 2,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalSurfaceView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalSurfaceView.swift",
+    "line": 6,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalSurfaceView.swift",
+    "line": 8,
+    "text": "import GameController"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TailsshTerminalSurfaceView.swift",
+    "line": 9,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContentView.swift",
+    "line": 2,
+    "text": "import GhosttyTerminal"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContentView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Terminal/TerminalSessionContentView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/InstallProfileButton.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/InstallProfileButton.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/StartStopButton.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/StartStopButton.swift",
+    "line": 2,
+    "text": "import NetworkExtension"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/StartStopButton.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/RuntimeDurationText.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/RuntimeDurationText.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/InstallSystemExtensionButton.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/InstallSystemExtensionButton.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/ExtensionStatusView.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/ExtensionStatusView.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/ExtensionStatusView.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Components/ExtensionStatusView.swift",
+    "line": 5,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewView.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewView.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewView.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewView.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewViewModel.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewViewModel.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewViewModel.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Overview/OverviewViewModel.swift",
+    "line": 4,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/StatusCard.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/StatusCard.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/StatusCard.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfilePickerSheet.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfilePickerSheet.swift",
+    "line": 2,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfilePickerSheet.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfilePickerSheet.swift",
+    "line": 5,
+    "text": "import AppKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCard.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCard.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DownloadTrafficCard.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DownloadTrafficCard.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DownloadTrafficCard.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCardHeader.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/HTTPProxyCard.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/HTTPProxyCard.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCardView.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ClashModeCard.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ClashModeCard.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ClashModeCard.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/TrafficLineChart.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ConnectionsCard.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ConnectionsCard.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ConnectionsCard.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileSelectorButton.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileSelectorButton.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/UploadTrafficCard.swift",
+    "line": 1,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/UploadTrafficCard.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/UploadTrafficCard.swift",
+    "line": 3,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCardLine.swift",
+    "line": 1,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/CardManagementSheet.swift",
+    "line": 1,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/CardManagementSheet.swift",
+    "line": 2,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCardConfiguration.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/DashboardCardConfiguration.swift",
+    "line": 2,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 1,
+    "text": "import Foundation"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 2,
+    "text": "import Libbox"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 3,
+    "text": "import Library"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 4,
+    "text": "import QRCode"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 5,
+    "text": "import SwiftUI"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 7,
+    "text": "import UIKit"
+  },
+  {
+    "path": "ApplicationLibrary/Views/Dashboard/Cards/ProfileCard.swift",
+    "line": 9,
+    "text": "import AppKit"
+  }
+]

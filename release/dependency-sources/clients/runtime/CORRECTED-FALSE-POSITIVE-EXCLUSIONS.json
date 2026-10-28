@@ -1,0 +1,197 @@
+{
+  "correction": "Prior unanchored ofl filename substring incorrectly selected Java OfLong class files as OFL notices. All such binaries are excluded. Earlier 27-desugar-notice and 193-total-notice assertions are invalid.",
+  "deletedDeliveryPaths": [
+    "release/licenses/clients/runtime/bcc8e4d294eba36e-FindOps_FindSink_OfLong.class",
+    "release/licenses/clients/runtime/7d1aceb19042d444-StreamSpliterators_UnorderedSliceSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/f775cfcf00541cdd-StreamSpliterators_DelegatingSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/cc1dea8dbfce658c-Spliterators_EmptySpliterator_OfLong.class",
+    "release/licenses/clients/runtime/80839e654581d224-WhileOps_UnorderedWhileSpliterator_OfLong_Dropping.class",
+    "release/licenses/clients/runtime/7f0679c2d7b40577-ForEachOps_ForEachOp_OfLong.class",
+    "release/licenses/clients/runtime/20287016d928df0c-StreamSpliterators_SliceSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/887260522012412a-Nodes_ToArrayTask_OfLong.class",
+    "release/licenses/clients/runtime/1f54fdfe54c63cc5-Nodes_SizedCollectorTask_OfLong.class",
+    "release/licenses/clients/runtime/1ab39f6f5f7be5c0-Nodes_InternalNodeSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/2b11139615d3de8d-SpinedBuffer_OfLong.class",
+    "release/licenses/clients/runtime/954cf590976b800d-Nodes_ConcNode_OfLong.class",
+    "release/licenses/clients/runtime/0932658f789e797a-Node_Builder_OfLong.class",
+    "release/licenses/clients/runtime/a09807c5415e117f-SortedOps_OfLong.class",
+    "release/licenses/clients/runtime/de4698eb27eaccfb-Nodes_CollectorTask_OfLong.class",
+    "release/licenses/clients/runtime/374d7e034ff2119c-SpinedBuffer_OfLong_1Splitr.class",
+    "release/licenses/clients/runtime/0c694633d2915ba7-StreamSpliterators_InfiniteSupplyingSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/31b35c8f1d2bafe2-Spliterator_OfLong.class",
+    "release/licenses/clients/runtime/6dfaef13b54ba16e-ReduceOps_CountingSink_OfLong.class",
+    "release/licenses/clients/runtime/f74a077b150677dc-PrimitiveIterator_OfLong.class",
+    "release/licenses/clients/runtime/fd00039c33c07f4b-Streams_ConcatSpliterator_OfLong.class",
+    "release/licenses/clients/runtime/e8646bc308b8b15a-Sink_OfLong.class",
+    "release/licenses/clients/runtime/0c95b5c412444be7-Node_OfLong.class",
+    "release/licenses/clients/runtime/47d3ad97a6c3b7af-Nodes_EmptyNode_OfLong.class",
+    "release/licenses/clients/runtime/c6307fc1ae17573c-StreamSpliterators_ArrayBuffer_OfLong.class",
+    "release/licenses/clients/runtime/8e49924873ce24e7-WhileOps_UnorderedWhileSpliterator_OfLong_Taking.class",
+    "release/licenses/clients/runtime/67d7dee58bbe554b-WhileOps_UnorderedWhileSpliterator_OfLong.class"
+  ],
+  "discardedEntries": [
+    {
+      "originalPath": "java/util/PrimitiveIterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/PrimitiveIterator$OfLong.class",
+      "sha256": "f74a077b150677dc7284cdb2cc667594f3f84439bf9743a59aadbbd659469472",
+      "bytes": 2474
+    },
+    {
+      "originalPath": "java/util/Spliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/Spliterator$OfLong.class",
+      "sha256": "31b35c8f1d2bafe2990ed4b39ce4992d70515c9163e0aa70581b1b1633d9495b",
+      "bytes": 2862
+    },
+    {
+      "originalPath": "java/util/Spliterators$EmptySpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/Spliterators$EmptySpliterator$OfLong.class",
+      "sha256": "cc1dea8dbfce658c50251ef714e5c49b7d88c7bcf92eec30ddbcfdbffee9af04",
+      "bytes": 1327
+    },
+    {
+      "originalPath": "java/util/stream/SpinedBuffer$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/SpinedBuffer$OfLong.class",
+      "sha256": "2b11139615d3de8d4e3cb615302ecc312c38bb28234cd21c86d1ddabf4a6eaa0",
+      "bytes": 4489
+    },
+    {
+      "originalPath": "java/util/stream/Node$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Node$OfLong.class",
+      "sha256": "0c95b5c412444be7a811eb775da1aeeda283339e3f9cb9dd76191926541a4680",
+      "bytes": 4474
+    },
+    {
+      "originalPath": "java/util/stream/SpinedBuffer$OfLong$1Splitr.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/SpinedBuffer$OfLong$1Splitr.class",
+      "sha256": "374d7e034ff2119cee5d4d48b60a34b4ec8c1643dc7455ea453e206540982c7d",
+      "bytes": 2824
+    },
+    {
+      "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong.class",
+      "sha256": "67d7dee58bbe554bb46a2d380f18e26c430e7228dd31c7041e5eb88da53c1fd8",
+      "bytes": 2007
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$CollectorTask$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$CollectorTask$OfLong.class",
+      "sha256": "de4698eb27eaccfb752348431a954d7d87e55056f6e5161839b08b8a9346d0de",
+      "bytes": 2757
+    },
+    {
+      "originalPath": "java/util/stream/StreamSpliterators$DelegatingSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/StreamSpliterators$DelegatingSpliterator$OfLong.class",
+      "sha256": "f775cfcf00541cdd33daa145acd7151d10b2c3a12cf4ba7c78f9e7de0c35659f",
+      "bytes": 1636
+    },
+    {
+      "originalPath": "java/util/stream/ReduceOps$CountingSink$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/ReduceOps$CountingSink$OfLong.class",
+      "sha256": "6dfaef13b54ba16e81414a0508118fe7893c362937eeef02b0632c448548dd79",
+      "bytes": 1149
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$ConcNode$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$ConcNode$OfLong.class",
+      "sha256": "954cf590976b800d02204d922b5623992ca4ba4291917317af2b514c6b52e1c3",
+      "bytes": 1666
+    },
+    {
+      "originalPath": "java/util/stream/Sink$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Sink$OfLong.class",
+      "sha256": "e8646bc308b8b15add201ff447925882ae10ef0a2ac8535203042e91472f4b4b",
+      "bytes": 996
+    },
+    {
+      "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Dropping.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Dropping.class",
+      "sha256": "80839e654581d2242b504de19bd48555e5ca43fb2a0ec73e0796ab96d1867e83",
+      "bytes": 2632
+    },
+    {
+      "originalPath": "java/util/stream/StreamSpliterators$InfiniteSupplyingSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/StreamSpliterators$InfiniteSupplyingSpliterator$OfLong.class",
+      "sha256": "0c694633d2915ba785037a4a90dcc74cea9d8f188511a11ac41047be4947c24c",
+      "bytes": 1889
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$EmptyNode$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$EmptyNode$OfLong.class",
+      "sha256": "47d3ad97a6c3b7af86f3b921f1b755925fc363339dd70e8d01b04a873592fbf0",
+      "bytes": 1356
+    },
+    {
+      "originalPath": "java/util/stream/Streams$ConcatSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Streams$ConcatSpliterator$OfLong.class",
+      "sha256": "fd00039c33c07f4bd156430fd48a799d4156af8e767c5f6061040da55531455c",
+      "bytes": 1538
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$SizedCollectorTask$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$SizedCollectorTask$OfLong.class",
+      "sha256": "1f54fdfe54c63cc52b78fb12502b9ef6643af6ead53f9becbf2e8a3b85186c42",
+      "bytes": 2710
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$ToArrayTask$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$ToArrayTask$OfLong.class",
+      "sha256": "887260522012412ab2fefce95346068d50e69a5a849f91c062baed41d9e5148b",
+      "bytes": 1078
+    },
+    {
+      "originalPath": "java/util/stream/FindOps$FindSink$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/FindOps$FindSink$OfLong.class",
+      "sha256": "bcc8e4d294eba36e734e90be00a44982bb68affd536cca9c8a0884ae4ca41489",
+      "bytes": 2577
+    },
+    {
+      "originalPath": "java/util/stream/Node$Builder$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Node$Builder$OfLong.class",
+      "sha256": "0932658f789e797a9e7460b54f4ca91e48f1bbd7cb26c1413998da7abff18ec5",
+      "bytes": 741
+    },
+    {
+      "originalPath": "java/util/stream/SortedOps$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/SortedOps$OfLong.class",
+      "sha256": "a09807c5415e117f0677708af14ffee88f9058f1821422f0b4eaf36f1890d3ab",
+      "bytes": 3238
+    },
+    {
+      "originalPath": "java/util/stream/StreamSpliterators$ArrayBuffer$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/StreamSpliterators$ArrayBuffer$OfLong.class",
+      "sha256": "c6307fc1ae17573c496a99d70a6ae6940383b37b02eeb7ac55833809b12668f6",
+      "bytes": 1364
+    },
+    {
+      "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Taking.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Taking.class",
+      "sha256": "8e49924873ce24e75243a882beab3500940aa72ec3b4edd5f15f719959f960e1",
+      "bytes": 2662
+    },
+    {
+      "originalPath": "java/util/stream/ForEachOps$ForEachOp$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/ForEachOps$ForEachOp$OfLong.class",
+      "sha256": "7f0679c2d7b4057763f3521827a233720423c570683028160c0caadf21a086aa",
+      "bytes": 1604
+    },
+    {
+      "originalPath": "java/util/stream/Nodes$InternalNodeSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/Nodes$InternalNodeSpliterator$OfLong.class",
+      "sha256": "1ab39f6f5f7be5c0a3c0e547ad63da8532d830c948a4c9c9829446f35fd005ce",
+      "bytes": 1561
+    },
+    {
+      "originalPath": "java/util/stream/StreamSpliterators$UnorderedSliceSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/StreamSpliterators$UnorderedSliceSpliterator$OfLong.class",
+      "sha256": "7d1aceb19042d4443c6d9b4beba1a263d285521673fc0c92d74eb5870257e2db",
+      "bytes": 3261
+    },
+    {
+      "originalPath": "java/util/stream/StreamSpliterators$SliceSpliterator$OfLong.class",
+      "path": "android-embedded-notices/com.android.tools__desugar_jdk_libs@2.1.5/java/util/stream/StreamSpliterators$SliceSpliterator$OfLong.class",
+      "sha256": "20287016d928df0cdf799a87389be7e681b15d0d27c26b546e64e8945cdd20be",
+      "bytes": 2903
+    }
+  ],
+  "correctedDesugarStandaloneNoticeCount": 0
+}

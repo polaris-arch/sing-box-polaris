@@ -1,0 +1,649 @@
+{
+  "schema": "polaris-fork-maintenance-v1",
+  "repository": "polaris-arch/polaris-box",
+  "upstreamRepository": "SagerNet/sing-box",
+  "baselineTag": "v1.15.0-alpha.12",
+  "baselineCommit": "25b0d5ea3e466d246c708ac0f20d0448110e566c",
+  "reviewedRuntimeReference": "797d1d1a50bb99acc2542c45c7a889b3f143ecaf",
+  "originalProductPatchCount": 14,
+  "additionalDialSideDNS": true,
+  "features": [
+    {
+      "id": "original-1",
+      "feature": "Fix API service closing its listener twice",
+      "introducedCommit": "791036549ad5443ed41919bc4fa6af5ec49531f0",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "service/api/server.go",
+        "service/api/server_close_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-2",
+      "feature": "Add QUIC keep-alive to naive HTTP/3 inbound",
+      "introducedCommit": "4b439528b2fb828f0d81bd7222cde0a58a0cc447",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "protocol/naive/quic/inbound_init.go",
+        "protocol/naive/quic/inbound_init_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-3",
+      "feature": "Fix clash mode data race and cached mode overriding default_mode",
+      "introducedCommit": "bd1380f55a4bcdeb722f84d5e6fa0f3e8b472baf",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "experimental/clashmode/manager.go",
+        "experimental/clashmode/manager_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-4",
+      "feature": "Fix Windows DNS configuration not refreshing without interface events",
+      "introducedCommit": "a9d7903492588c3de91ef1256040e98b347d3071",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "dns/transport/local/systemconfig/source_windows.go",
+        "dns/transport/local/systemconfig/source_windows_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-5",
+      "feature": "Fix local DNS server never applying system search domains",
+      "introducedCommit": "8ca08860a9ca89ca27382af950789605d966478a",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "dns/transport/local/local.go",
+        "dns/transport/local/local_shared.go",
+        "dns/transport/local/search_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "dial-side-dns-rules",
+      "feature": "Add opt-in DNS rules for dial-side domain resolution",
+      "introducedCommit": "c793dec1cdbe1c8aa751bb3eb9c17dab7e7c648a",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "adapter/dns.go",
+        "common/dialer/dialer.go",
+        "common/dialer/domain_resolver_rules_test.go",
+        "dns/router.go",
+        "dns/router_rules_lookup_test.go",
+        "docs/configuration/shared/dial.md",
+        "option/domain_resolver_rules_test.go",
+        "option/outbound.go",
+        "route/network.go",
+        "route/network_domain_resolver_rules_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-6",
+      "feature": "Preserve the first close result of a box",
+      "introducedCommit": "bea99bf2d3a9004f996ecef67df0c4473296ac8d",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "box.go",
+        "box_close_result_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-7",
+      "feature": "Release construction resources of a box that fails or never starts",
+      "introducedCommit": "24ca16d98dde532554f25d14fe68b6fab63f2e66",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "adapter/construction.go",
+        "adapter/construction_test.go",
+        "box.go",
+        "box_construction_leak_test.go",
+        "box_construction_test.go",
+        "dns/transport/local/construction_test.go",
+        "dns/transport/local/local.go",
+        "dns/transport/mdns/construction_test.go",
+        "dns/transport/mdns/mdns.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-8",
+      "feature": "Add Tailscale state store retirement",
+      "introducedCommit": "57de15884f44f8987f96a8c700f110f23fda2dfe",
+      "role": "desktop-and-mobile",
+      "paths": [
+        "adapter/tailscale_state_store.go",
+        "box.go",
+        "box_tailscale_state_store.go",
+        "box_tailscale_state_store_test.go",
+        "protocol/tailscale/endpoint.go",
+        "protocol/tailscale/state_store.go",
+        "protocol/tailscale/state_store_test.go",
+        "protocol/tailscale/testdata/synthetic-sealed-state.expected.json",
+        "protocol/tailscale/testdata/synthetic-sealed-state.json"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-9",
+      "feature": "Add transient command server",
+      "introducedCommit": "0bdb544a7044c231ff4e44a35077ec3b691de392",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "daemon/instance.go",
+        "daemon/started_service.go",
+        "experimental/libbox/command_server.go",
+        "experimental/libbox/command_server_transient_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-10",
+      "feature": "Add platform interface binding control on Android",
+      "introducedCommit": "e7ff29a33779e75998220c011fb9a209e68f1ae8",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "adapter/platform.go",
+        "common/dialer/default.go",
+        "common/dialer/interface_binding.go",
+        "common/dialer/interface_binding_test.go",
+        "experimental/libbox/config.go",
+        "experimental/libbox/interface_binding_test.go",
+        "experimental/libbox/platform.go",
+        "experimental/libbox/service.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-11",
+      "feature": "Isolate the platform default interface monitor per instance",
+      "introducedCommit": "359f2fe5d050bd702116b79a43847a7f675c88fa",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "experimental/libbox/monitor.go",
+        "experimental/libbox/monitor_lifecycle_test.go",
+        "experimental/libbox/service.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-12",
+      "feature": "Cancel and seal platform DNS calls on close",
+      "introducedCommit": "66803d172a76b2519fefe4370e00908fedb21fe1",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "experimental/libbox/dns.go",
+        "experimental/libbox/dns_lifecycle.go",
+        "experimental/libbox/dns_lifecycle_test.go",
+        "experimental/libbox/dns_platform_lifecycle_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-13",
+      "feature": "Add strict command server",
+      "introducedCommit": "677e67f8d43914f775ef21e624ec1764a6c02255",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "daemon/instance.go",
+        "daemon/started_service.go",
+        "daemon/started_service_strict_cleanup_test.go",
+        "daemon/tailscale_state_store.go",
+        "daemon/tailscale_state_store_test.go",
+        "experimental/libbox/command_server.go",
+        "experimental/libbox/command_server_transient_test.go",
+        "experimental/libbox/tailscale_state_store_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    },
+    {
+      "id": "original-14",
+      "feature": "Add config validation result",
+      "introducedCommit": "076915bb6c5f87cb562b260181f0fe1a110f79de",
+      "role": "mobile-and-shared-daemon",
+      "paths": [
+        "experimental/libbox/config.go",
+        "experimental/libbox/config_construction_persistence_test.go",
+        "experimental/libbox/config_optional_persistence_test.go",
+        "experimental/libbox/config_validation.go",
+        "experimental/libbox/config_validation_test.go",
+        "experimental/libbox/tailscale_state_store_test.go"
+      ],
+      "upstreamRetirement": {
+        "decision": "retain at pinned alpha12 baseline",
+        "basis": "actual alpha11-to-alpha12 upstream endpoint delta touches none of these paths; prior reviewed runtime retained",
+        "futureReview": "new upstream changes require semantic review; file presence/delta alone does not prove replacement"
+      }
+    }
+  ],
+  "runtimeFiles": {
+    "adapter/construction.go": {
+      "gitBlob": "f6ebbbf2583242c57eb946fe6cf8e617563b42a9",
+      "bytes": 1270,
+      "sha256": "5c67123ce584a1335380952be18d446044276d65a2663e628e65dba2cede6af5"
+    },
+    "adapter/construction_test.go": {
+      "gitBlob": "fa3158c91b82d6eb27a8790facf944d889c7f2ed",
+      "bytes": 3338,
+      "sha256": "63035122c04956af64fbb9d5ba899f2e67fc29db082c1f957c18b653a8b8c82c"
+    },
+    "adapter/dns.go": {
+      "gitBlob": "7fba8a77d5be8fc50bd40946b255c1e6f97e8487",
+      "bytes": 3614,
+      "sha256": "e5ea7fdc10ca4aaecec95d7b705ed2d7aac69ed1a93ee019fec46a865194c860"
+    },
+    "adapter/platform.go": {
+      "gitBlob": "d4db464a9ee7adea73f4487b0bd5e8dd4f6870d2",
+      "bytes": 3605,
+      "sha256": "cbc6942db9e25f834da6f64305fe069e372dbcaf6fece2be1c3d649889f181d3"
+    },
+    "adapter/tailscale_state_store.go": {
+      "gitBlob": "d4115087b03d1b7ba75f1f9bc99a083577815b69",
+      "bytes": 2277,
+      "sha256": "95402f4b5a3ec40b38614c5476d1ac70f70ad36d3bfeaadf31ec41685834396e"
+    },
+    "box.go": {
+      "gitBlob": "937bf7767f2cb08dbccbe19a10ca481f72eb9574",
+      "bytes": 27119,
+      "sha256": "9ad951fdcefeb192c069891c3b2d4d4cfae9706d5e4449923a6f8e1239a3d173"
+    },
+    "box_close_result_test.go": {
+      "gitBlob": "90cb5b46948b70d10f038415bce66140d169f2c6",
+      "bytes": 5655,
+      "sha256": "d3a1624d146fd979913f4812437146d1b965f5cf89704776fa3a818c4c6c0cdd"
+    },
+    "box_construction_leak_test.go": {
+      "gitBlob": "8bb42daf772682c90b21103a056484f3f1dc42d6",
+      "bytes": 7275,
+      "sha256": "4890d9f6786a18c62804906b87626c3eefb0ee0fb1321bdf2b9e973d16864028"
+    },
+    "box_construction_test.go": {
+      "gitBlob": "d7b4ee5a9cb0add82cf986bd91d519aa9879e59e",
+      "bytes": 10459,
+      "sha256": "971f0841ae734d419804be9501d76055554f3539f39bc126b5e021d7432e4598"
+    },
+    "box_tailscale_state_store.go": {
+      "gitBlob": "993340d8f0b5c24d2ef1d30f64e25fe209e884f3",
+      "bytes": 2392,
+      "sha256": "48712c97d0bb09a957d10961d3e0a183113b2930597d185bb32663473072fa33"
+    },
+    "box_tailscale_state_store_test.go": {
+      "gitBlob": "816d1b37add34c5cced35a804529a2cac8546086",
+      "bytes": 6085,
+      "sha256": "487d3fd58f3848c581aeedcf81712e12c4d894c2a40876f4668deac8e21f4f1a"
+    },
+    "common/dialer/default.go": {
+      "gitBlob": "1f941463915f5a6afb813429e0207adc7cbfb65d",
+      "bytes": 20964,
+      "sha256": "f1130140eac11fba92e567047519727ec736984bc5bec48e4c394c92fc49a22f"
+    },
+    "common/dialer/dialer.go": {
+      "gitBlob": "eeceaaf485a28a0c76e15755d7d6b9497a6de21f",
+      "bytes": 7332,
+      "sha256": "a91611da6a3b203ec55ea690e3a87959c73c6e529081ce1faed9c6f317536410"
+    },
+    "common/dialer/domain_resolver_rules_test.go": {
+      "gitBlob": "34e22e106d6c7e3f0a45b98de377097e8f755e47",
+      "bytes": 6458,
+      "sha256": "33931fcbe7fb952502eb2caf0147a94c6d38f8846a2b2eeeb620ca77bc19f43c"
+    },
+    "common/dialer/interface_binding.go": {
+      "gitBlob": "66cc3444553780d93f500783a37c9fa73ca404ee",
+      "bytes": 1030,
+      "sha256": "8d2182545c2bd6109f8e48561ff145bab502d9aadf532f3da2ff6e3c0920d84e"
+    },
+    "common/dialer/interface_binding_test.go": {
+      "gitBlob": "dfcd7650bb89adb914c5b57b6170edd4a23394c1",
+      "bytes": 5057,
+      "sha256": "d9060c5d793e98d9da36d87a0cde432c9c459a63bb285d3a55d1b59eef0e7b35"
+    },
+    "daemon/instance.go": {
+      "gitBlob": "7777d66b5ce87a3ea438030ce993931807c7f617",
+      "bytes": 9780,
+      "sha256": "2be0379ae1cf5802134bf1a8b04b84478a1d164a2a58120237873aa14bc218c5"
+    },
+    "daemon/started_service.go": {
+      "gitBlob": "4e997a3f74605c044b5d0101b71cf188fcd82118",
+      "bytes": 64971,
+      "sha256": "58b003f5256a5de76891affc40b91b67ca99955c3c5169c85b62d80f0079f1b8"
+    },
+    "daemon/started_service_strict_cleanup_test.go": {
+      "gitBlob": "b0417ae75f32ea810b7f85d9a1fa64e1c5fe97b3",
+      "bytes": 3705,
+      "sha256": "ca046fd893a48681423ba28ff1879ceb198e2b6e08eab2419bcc4e556d86894c"
+    },
+    "daemon/tailscale_state_store.go": {
+      "gitBlob": "ed065f2988e3473e96696132a4b462c1340d7384",
+      "bytes": 4549,
+      "sha256": "d30fec3d376021aaf84e2571e15fad1e8847ddf1271ce557784dfecb22dcc097"
+    },
+    "daemon/tailscale_state_store_test.go": {
+      "gitBlob": "42296b228262c916ada1eb8e435226fd588787f4",
+      "bytes": 9164,
+      "sha256": "111c5cf29e52e67aa950cfe9ed0e67113aaded5def62fd6323c9f559f9ac2858"
+    },
+    "dns/router.go": {
+      "gitBlob": "43852286892b60225cf85d07e585d9f733a49905",
+      "bytes": 58813,
+      "sha256": "1724264ab0509cfd48b0671b2a6008933fc9523b3e2688f8554d329a6e24976d"
+    },
+    "dns/router_rules_lookup_test.go": {
+      "gitBlob": "7ef4ce99bb912e8d778fd31536b5b8794529ff32",
+      "bytes": 10882,
+      "sha256": "f65ded9c62ff0750a789318bcf1b5ade678460ceb8ff8b470023bd7551b04e0e"
+    },
+    "dns/transport/local/construction_test.go": {
+      "gitBlob": "9b03256ebc09927ac5717632b78fe4088de7fbbb",
+      "bytes": 1134,
+      "sha256": "c1dfe8e5f01e6ff97685bf470119ea85390118f86116213596dff4ce550580e2"
+    },
+    "dns/transport/local/local.go": {
+      "gitBlob": "81e8dd60268e805da63580014aa9bc098f9007c0",
+      "bytes": 5674,
+      "sha256": "7ce7afe97ba16fb3cf5397fed7c7d37d6512d83812788a0273598d595317246c"
+    },
+    "dns/transport/local/local_shared.go": {
+      "gitBlob": "7566c5ccb51fe71f484b626421744466d9e9f44a",
+      "bytes": 4204,
+      "sha256": "8eecad9f6ca748d069464cd304d2a3efeda5a9ae1ddfaf5d02c43ef726359890"
+    },
+    "dns/transport/local/search_test.go": {
+      "gitBlob": "ac499a9eeb649da203753192cd3b7e6820407a7b",
+      "bytes": 6757,
+      "sha256": "903736f18cd36d4cff3b8a8d4d6953a15ba0ebf3126d8155b167320e1d23e5fc"
+    },
+    "dns/transport/local/systemconfig/source_windows.go": {
+      "gitBlob": "e6c5c0a777d202875220ff318698516208b1607c",
+      "bytes": 5024,
+      "sha256": "01c87f9ad1277e28f37474f2860158c34da7a11c9006957833607c395ccd8063"
+    },
+    "dns/transport/local/systemconfig/source_windows_test.go": {
+      "gitBlob": "1d6e410337f610726283ac261e98390ce81d8ad9",
+      "bytes": 2648,
+      "sha256": "5c78b4f5e38c722ba7e01415690f0d65f628ab36e51fbe386427eaae62c4dfd4"
+    },
+    "dns/transport/mdns/construction_test.go": {
+      "gitBlob": "78a275af576e48daf8fb03a32ed0566ea738c45c",
+      "bytes": 1131,
+      "sha256": "850d9a0a8096e93feadf0a949f0e0d3b0036e3248eeda3468e194dab12440bae"
+    },
+    "dns/transport/mdns/mdns.go": {
+      "gitBlob": "0aea614bed7207193c0e0c2becb79f0b7f4f651d",
+      "bytes": 13791,
+      "sha256": "5749cc66723bc1a38d7efd8dde50e56e3952df730a2ba9ddacac0caa046c4fc0"
+    },
+    "docs/configuration/shared/dial.md": {
+      "gitBlob": "761eae3aae997c17280eb60d4b8c58d9d792fbfd",
+      "bytes": 8487,
+      "sha256": "68cd1e148f8a24dfbc695d2ec8bac0ab600a5d51c6c25c524de3371cc774d187"
+    },
+    "experimental/clashmode/manager.go": {
+      "gitBlob": "801aef6ac7031f1a4fe9de18187ba901e9e8e15b",
+      "bytes": 2612,
+      "sha256": "dfe3e24eaf69713da0c1c84c7d7d2e7d8b2c2405efc0fa24bc220998037554fb"
+    },
+    "experimental/clashmode/manager_test.go": {
+      "gitBlob": "1da6f04215d2dff4807cf99d696a1b76a5983f15",
+      "bytes": 3095,
+      "sha256": "c5d2dc2417526d9d57cde4d56bd86d3b913b71a61fb5e834182b14bc29e614b9"
+    },
+    "experimental/libbox/command_server.go": {
+      "gitBlob": "6f89467149e989fe6f7f8808a0086266adcc45ed",
+      "bytes": 14571,
+      "sha256": "30099f70e5eba4bb829b9895d23d9c4a90b6fe6abe4ccf3895028a22daa2f0bc"
+    },
+    "experimental/libbox/command_server_transient_test.go": {
+      "gitBlob": "f9d7a095b82cfc9019b5a478ff5655abe5769371",
+      "bytes": 13838,
+      "sha256": "ce3ea942e1c069bbea592d6b61da24d403bb04345a00956642f5b1693ff1f0d4"
+    },
+    "experimental/libbox/config.go": {
+      "gitBlob": "22e92cdcf296ab46952eabd90eeb7c0da219f69c",
+      "bytes": 8005,
+      "sha256": "6e137967557cc7681e10dc39609a7460e32f2fd42f4534a39d63476da7a5edb2"
+    },
+    "experimental/libbox/config_construction_persistence_test.go": {
+      "gitBlob": "7b997e79d7e903fbe7024c52ba4aa1b0e0a11836",
+      "bytes": 5106,
+      "sha256": "1d3fb1b021c398445552bdc76cdaa8b3d81589b7c0ebaa91e1c4fab29f523c6a"
+    },
+    "experimental/libbox/config_optional_persistence_test.go": {
+      "gitBlob": "14dac0d7f7c81485be9d9ed7bffa34bd857a8dd3",
+      "bytes": 3406,
+      "sha256": "47713cf6cc1625f5089098b43b31dc7b0425c02e790634695c3734a9b15d784b"
+    },
+    "experimental/libbox/config_validation.go": {
+      "gitBlob": "83ae3cda5549f17206baf7c956c02bd70f1def2a",
+      "bytes": 17867,
+      "sha256": "4297d01d97da3583d689209f92bd2e8848918d9a52f9997a810d126a0deeb362"
+    },
+    "experimental/libbox/config_validation_test.go": {
+      "gitBlob": "9507189ae846ad6b1dcbfc1203ca95c7feead81f",
+      "bytes": 39699,
+      "sha256": "276b6072fb4922079f075086e09be691ae704bbd6031e4ce0a8415c776666f0f"
+    },
+    "experimental/libbox/dns.go": {
+      "gitBlob": "652c5e4fdc16e753c45fd0aed5b8af5abed7982c",
+      "bytes": 9640,
+      "sha256": "0bee0e732544ee37bb243a4a8354d91296479e604b107748bd960c58621381c7"
+    },
+    "experimental/libbox/dns_lifecycle.go": {
+      "gitBlob": "76a4aa9c26d436c69fe6c7b4c0f7060591b0f62b",
+      "bytes": 5839,
+      "sha256": "94e418dce2376ac269cc663e15033eda800006208501e02714ebea43caec4fe7"
+    },
+    "experimental/libbox/dns_lifecycle_test.go": {
+      "gitBlob": "a74fc1e900b370476638b81d4c4ca290b9c362be",
+      "bytes": 8957,
+      "sha256": "11bb8f0d2ef94d5065c87bd1846b1db709f875d73ec296e5aac8fd75184c2097"
+    },
+    "experimental/libbox/dns_platform_lifecycle_test.go": {
+      "gitBlob": "5092d818f4231fae82b862c6e289a16fc4badde0",
+      "bytes": 13061,
+      "sha256": "3caa1dfb0b1846b3b84a4123e8498a9cfcd3dac654eeae2a201a969b4ec8af4a"
+    },
+    "experimental/libbox/interface_binding_test.go": {
+      "gitBlob": "6502d30f3917b982d87a1456791ed5869569e314",
+      "bytes": 1172,
+      "sha256": "1eb8e01b049c12a44c4893a58070d3a8963348637ae8362c6bfcda07fc8425f1"
+    },
+    "experimental/libbox/monitor.go": {
+      "gitBlob": "e094b45c18e163b0645ea4e9a88e1d78326647cf",
+      "bytes": 12967,
+      "sha256": "691274ed88abfe7e40d0ab041742dd531695c6d0b32081180e686d015864a445"
+    },
+    "experimental/libbox/monitor_lifecycle_test.go": {
+      "gitBlob": "e5eed4357961d4c786798bbb01f5d06dd22a90e1",
+      "bytes": 15185,
+      "sha256": "2bef177f7051a1cd8d437678916b7c02007e6d440d41a3e3f6a42c8f45b157c8"
+    },
+    "experimental/libbox/platform.go": {
+      "gitBlob": "e63d40598db027bc55141ef5b469a55ad62e82c3",
+      "bytes": 4777,
+      "sha256": "b32f07edc6b3846805a82c9a9f6c1e472297f21cf2fdf6b514d115c4cf2bb1f0"
+    },
+    "experimental/libbox/service.go": {
+      "gitBlob": "33cb2d1c2174d5dc4db59e6f2d29d1f1e4f60d3c",
+      "bytes": 15466,
+      "sha256": "49e5d615a88e44c76474a21850b335a6000b8df933eccf1993b95b7f0639753f"
+    },
+    "experimental/libbox/tailscale_state_store_test.go": {
+      "gitBlob": "f1e10746e31aa385670491b7c0d2e2823b6cb33a",
+      "bytes": 1500,
+      "sha256": "6c3f7d83c6d994d17902b516b982fc6d23caa836f9dd6a20c7dc4ee0c1135a35"
+    },
+    "option/domain_resolver_rules_test.go": {
+      "gitBlob": "61808a888dd8b5ad777f8a2f8a9e6d21c4d210d0",
+      "bytes": 2704,
+      "sha256": "28356d1d99eb5887484066304aa32752b1560f9bcfc90e842bbcd17ce262b6f1"
+    },
+    "option/outbound.go": {
+      "gitBlob": "1fb168ae41f226077841ac2386c528c5aaa8873a",
+      "bytes": 8836,
+      "sha256": "bf0caf6f735cec0fcf686b921009734079b594c1adb1fd04d804c81baaeb1fed"
+    },
+    "protocol/naive/quic/inbound_init.go": {
+      "gitBlob": "12c43183361871555d439ca8772c3c8f26710f6b",
+      "bytes": 3300,
+      "sha256": "062e45df6a662af1a74e5b8d1270d0f414b9952b9a000160e229dec120a2b539"
+    },
+    "protocol/naive/quic/inbound_init_test.go": {
+      "gitBlob": "86ab48853bc3a702b0892fb6b912984ecece216b",
+      "bytes": 399,
+      "sha256": "45013fed9614e466de0107989288e92ba731236688f07b6afc9379b488317dad"
+    },
+    "protocol/tailscale/endpoint.go": {
+      "gitBlob": "0309527ea20290d4d44959df5330e0e07b7d181e",
+      "bytes": 34114,
+      "sha256": "0c354536aaed7e737992e9584c71fd241552a43c71839eb0c8a282c6c0f1d321"
+    },
+    "protocol/tailscale/state_store.go": {
+      "gitBlob": "3620ab7cca25cb350b8e490c97f3321a935003ae",
+      "bytes": 12969,
+      "sha256": "b81ec99a5ac1a785fa49c677ec5ec85e1e2754ef9cf853929c728fb36ec28247"
+    },
+    "protocol/tailscale/state_store_test.go": {
+      "gitBlob": "2fac14c42613cf042c17c1df741561c3757bdf31",
+      "bytes": 17956,
+      "sha256": "2726c444a119c56c50c072c44a0f2094d168f35f95a87f5ccfdc7a99517b10b0"
+    },
+    "protocol/tailscale/testdata/synthetic-sealed-state.expected.json": {
+      "gitBlob": "6642a65e3621373ce29b62a1ebddc62933df9549",
+      "bytes": 631,
+      "sha256": "277fba41b12c032ae30c1df34ef6691b76acf61df857cde133e1d7693478dc14"
+    },
+    "protocol/tailscale/testdata/synthetic-sealed-state.json": {
+      "gitBlob": "d0a8edfc001e926ecd6befb53c0dde5c3d466d6f",
+      "bytes": 733,
+      "sha256": "cb330f842c694336d53e225db936e7bc0ebc85763c71cbfa1fef8da824c47e03"
+    },
+    "route/network.go": {
+      "gitBlob": "9522e59b2f3960c824ae0ecb945e62062f4cc240",
+      "bytes": 20607,
+      "sha256": "e693f89c31d5bc3b365a3a67f92f43e8ca1802495649deb47e57ed18f04119a7"
+    },
+    "route/network_domain_resolver_rules_test.go": {
+      "gitBlob": "2bdeb874012ee83712c1e9a9ebe55770c30fd58f",
+      "bytes": 1955,
+      "sha256": "5cf62c466f011a57191d63b8f2b8ea01e1b78a0b3765647961ca148b23260e37"
+    },
+    "service/api/server.go": {
+      "gitBlob": "e57c509a440dfd046eb1012284a64a07aa60b0e5",
+      "bytes": 4007,
+      "sha256": "8f73b43906b7a1960508da25c6b72f3b1311660f1c3d5cff4da10356e8330b9d"
+    },
+    "service/api/server_close_test.go": {
+      "gitBlob": "bae3701e3d5800bb4c47c402942270677b323614",
+      "bytes": 3758,
+      "sha256": "83b204509dba56ce71621d573ee8074e4cabe971710d88ca60519f4f9754ba91"
+    }
+  },
+  "scope": "current original14 runtime fixes plus dial-side DNS; subsequent Windows sing-tun replacement and packaging remain separate source-owned contracts",
+  "invalidatedReceipts": [
+    {
+      "id": "source-fingerprints",
+      "owner": "fork producer",
+      "reacquire": "fresh exact clean source/tree, root/module/replacement hashes and complete actual module graph"
+    },
+    {
+      "id": "native-core-and-library",
+      "owner": "fork producer",
+      "reacquire": "accurate-source six desktop/two musl producers; BuildInfo/BuildID/archive/core/sidecar pins and signature observations"
+    },
+    {
+      "id": "openwrt-guests",
+      "owner": "fork producer",
+      "reacquire": "four same-source/run/attempt guest install/lifecycle/Naive-CA/gvisor receipts"
+    },
+    {
+      "id": "corresponding-source",
+      "owner": "fork producer and sole parent reviewer",
+      "reacquire": "fresh actual source byte access, licenses/NOTICE and final source/index-bound raw review"
+    },
+    {
+      "id": "published-index-and-assets",
+      "owner": "fork publisher",
+      "reacquire": "actual immutable tag/source/index bytes and anonymous release/asset IDs/URL/full-byte readback"
+    },
+    {
+      "id": "app-consumer-and-carriers",
+      "owner": "App owner",
+      "reacquire": "new actual public pins, App adapter/download/load/function/carrier gates; no producer substitution"
+    },
+    {
+      "id": "android-and-apple-libbox",
+      "owner": "mobile/App owner",
+      "reacquire": "six binding symbols, effective Go/gomobile/NDK/SDK, JNI/framework slices and final carrier link; historical ARM/ARM64/device compilation is insufficient"
+    }
+  ],
+  "previousReleasedBaseline": "6afeff4c0f7123b5782f888812e96b8c82c7b699",
+  "upstreamDeltaExpected": [
+    ".github/workflows/build.yml",
+    "docs/changelog.md"
+  ],
+  "currentSourceInventory": "release/audit-remediation-source-inventory.json",
+  "currentSourceIdentityNote": "runtimeFiles tracks these actual source bytes. baselineCommit, reviewedRuntimeReference, introducedCommit and historical receipts are provenance only; none assert validation of this reconstructed batch.",
+  "currentSourceEntry": "scripts/ci/native_release_index.py -> upstream-native receipts/assets -> App polaris-reviewed-kernel-source-v1 source_policy.py and upstream-release.mjs. Legacy fork-source-fingerprint-v1 producer remains historical-only and unsupported for this current source."
+}

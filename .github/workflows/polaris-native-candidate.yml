@@ -1,0 +1,133 @@
+name: Polaris native CLI candidate (no publication)
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: all or comma-separated os/arch from the six fixed native targets
+        type: string
+        required: true
+        default: all
+permissions:
+  contents: read
+concurrency:
+  group: polaris-native-candidate-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  select_targets:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          path: producer
+          persist-credentials: false
+      - id: matrix
+        env:
+          CANDIDATE_PLATFORM: ${{ inputs.platform }}
+        run: python3 producer/scripts/polaris_native_matrix.py
+  native_cli:
+    timeout-minutes: 120
+    needs: select_targets
+    name: Native ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include: ${{ fromJSON(needs.select_targets.outputs.matrix) }}
+    env:
+      SOURCE_COMMIT: 'a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932'
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+      # Apply before both checkouts; byte-pinned licenses must remain Git blob bytes.
+      GIT_CONFIG_COUNT: '2'
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+      GIT_CONFIG_KEY_1: core.eol
+      GIT_CONFIG_VALUE_1: lf
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - name: Checkout producer revision
+        timeout-minutes: 5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          path: producer
+          persist-credentials: false
+      - name: Checkout immutable source input
+        timeout-minutes: 5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        timeout-minutes: 5
+        with:
+          go-version: '1.25.5'
+          architecture: ${{ matrix.tool_arch }}
+          cache: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        timeout-minutes: 5
+        with:
+          python-version: '3.12'
+          # Windows ARM64 can use an x64 Python interpreter; native kernel,
+          # Go host and final PE machine are independently checked by the script.
+          architecture: ${{ matrix.os == 'windows' && 'x64' || matrix.tool_arch }}
+      - name: Build, inspect, load, package and reload on native host
+        timeout-minutes: 92
+        shell: bash
+        env:
+          CANDIDATE_OS: ${{ matrix.os }}
+          CANDIDATE_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-historical-native.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          python producer/scripts/polaris_native_candidate.py \
+            --source "$GITHUB_WORKSPACE/source" \
+            --output "$RUNNER_TEMP/polaris-native-candidate" \
+            --os "$CANDIDATE_OS" --arch "$CANDIDATE_ARCH"
+          POLARIS_COMMAND
+          python -B producer/scripts/polaris_ci_observe.py --phase historical-native \
+            --output "$RUNNER_TEMP/polaris-ci/historical-native" --timeout-seconds 5400 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-historical-native.sh"
+      - name: Preserve candidate and receipts; never publish a release
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-candidate-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-native-candidate
+          if-no-files-found: warn
+          retention-days: 3
+      - name: Preserve separate command observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-history-a01-${{ matrix.os }}-${{ matrix.arch }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/polaris-ci
+          if-no-files-found: warn
+          retention-days: 14

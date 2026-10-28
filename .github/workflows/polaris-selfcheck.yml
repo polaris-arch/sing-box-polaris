@@ -1,0 +1,1075 @@
+# Answers one question for a commit of the Polaris patch queue: can it be
+# built for the five targets the app consumes, and do the patches' own tests
+# pass. Nothing built here is released or consumed.
+#
+# Select source_role=desktop for the four desktop targets and Windows/patch
+# tests, or source_role=mobile for Android/iOS and patch tests. Each role uses
+# its own source_commit; all preserves the complete default push gate.
+#
+# Expected libbox symbols: a push always expects the six mobile symbols. The
+# desktop consumption point and the bare upstream baseline do not have them,
+# so check those with a manual run, source_commit set to their full SHA, and
+# expected_symbols set to none. source_commit pins every checkout; github.sha
+# identifies the workflow revision, not necessarily the source under test.
+#
+# The macOS and iOS jobs run on macos-latest, while upstream builds its Apple
+# library on a different runner image. Their first run result is still to be
+# confirmed.
+#
+# Go, JDK and NDK follow the app's source manifest, not the upstream workflows.
+name: Polaris self-check
+
+on:
+  push:
+    branches:
+      - polaris-main
+    tags:
+      - 'polaris-*'
+  pull_request:
+    branches: [polaris-main]
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: 'Full 40-hex source commit in this fork; empty tests the workflow revision'
+        type: string
+        default: ''
+      expected_symbols:
+        description: 'Expected libbox symbols: mobile, or none for the desktop point and the bare baseline'
+        type: choice
+        default: mobile
+        options:
+          - mobile
+          - none
+      source_role:
+        description: 'Platform gates for this source role; all retains the default complete self-check'
+        type: choice
+        default: all
+        options:
+          - all
+          - desktop
+          - mobile
+      base_ref:
+        description: 'Upstream baseline tag the queue is stacked on'
+        type: string
+        default: v1.15.0-alpha.12
+      base_commit:
+        description: 'Exact peeled upstream baseline commit; historical base_ref requires its matching SHA'
+        type: string
+        default: '25b0d5ea3e466d246c708ac0f20d0448110e566c'
+      patch_only:
+        description: 'Manual dispatch only: run the unchanged Patch tests job without platform builds'
+        type: boolean
+        default: false
+      run_instance_tests:
+        description: 'Also run the tests that start an instance in process'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: polaris-selfcheck-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SOURCE_COMMIT: ${{ inputs.source_commit || github.sha }}
+  GO_VERSION: '1.27.2'
+  GOTOOLCHAIN: local
+  BASE_REF: ${{ inputs.base_ref || 'v1.15.0-alpha.12' }}
+  BASE_COMMIT: ${{ inputs.base_commit || '25b0d5ea3e466d246c708ac0f20d0448110e566c' }}
+  EXPECTED_SYMBOLS: ${{ inputs.expected_symbols || 'mobile' }}
+  # NDK 30.0.16138531-beta3, as pinned by the app's ndk-linux-archive.json.
+  NDK_URL: https://dl.google.com/android/repository/android-ndk-r30-beta3-linux.zip
+  NDK_SHA256: 2698cca1e9f161048ecd84e1e70a556e1aa00b78409473d4c1e87969d40c3efc
+  NDK_ROOT: android-ndk-r30-beta3
+  # These tests start an instance in process, except the last one, which
+  # constructs a TUN inbound without starting it. None of them has run on this
+  # baseline yet, so they are kept out of the default gate.
+  INSTANCE_TESTS: >-
+    TestTransientCommandServerPreservesSharedState|TestCommandServerRetainsSharedDiagnostics|TestTransientCommandServerCloseKeepsPrimaryService|TestStrictPrimaryReloadThenFinalCloseIsTerminal|TestStrictPrimaryCloseWaitsForInFlightCommandStartBeforeAcknowledging|TestStrictPrimaryFailedOldCloseBlocksReloadAndRepeatsStickyFailure|TestTransientHTTPInboundRejectsMissingAndWrongSpeedtestCredentials|TestStrictTransientEarlyStartCleanupFailureBecomesSticky|TestUnstartedTUNValidationCannotDeleteOtherInstanceRules
+
+  # These nested tests create real TUNs (including the memory-link fixtures),
+  # modify OS networking, or need ICMP permissions (including TestIsClosed's
+  # Linux raw-socket ConnectDestination path). Default compilation
+  # still includes every test; execution requires run_instance_tests. TestPing's
+  # unprivileged cases are run separately in the default gate.
+  SING_TUN_INSTANCE_TESTS: >-
+    TestAddDeleteIPAddress|TestAddDeleteRoute|TestFlushDNS|TestGoConnBuffers|TestGoConnKeepalive|TestGoConnLinger|TestGoConnNoDelay|TestGoKernelBidirectionalLoss|TestGoKernelClose|TestGoKernelDeadline|TestGoKernelDeviceBackpressure|TestGoKernelFlowControl|TestGoKernelHalfClose|TestGoKernelHandshake|TestGoKernelHandshakeLoss|TestGoKernelLinkInterruption|TestGoKernelPacket|TestGoKernelPacketBatchIdle|TestGoKernelPacketBuffer|TestGoKernelPacketFragments|TestGoKernelPacketLifetime|TestGoKernelPacketMapping|TestGoKernelPacketOffload|TestGoKernelPacketRead|TestGoKernelPacketTimeout|TestGoKernelPacketWriteAfterClose|TestGoKernelReceiveWindowUpdateLoss|TestGoKernelSACKReneging|TestGoKernelSequenceWrap|TestGoKernelSpliceOwnership|TestGoKernelStream|TestGoKernelTCPLifecycle|TestGoKernelTCPRecovery|TestGoKernelTCPSendBudget|TestGoKernelTCPTransmitLifetime|TestGoKernelTCPWaiting|TestGoKernelWindowClamp|TestGoKernelWindowLimitedRecovery|TestGoKernelZeroWindow|TestGoKernelZeroWindowHalfClose|TestGoListenPrecedence|TestGoListenTCP|TestGoListenUDPPort|TestGoMemoryControlPriority|TestGoMemoryDial|TestGoMemoryMTUUpdate|TestGoMemoryNoHandler|TestGoMemoryOutboundBound|TestGoMemoryOutboundReply|TestGoMemoryPathMTU|TestGoMemoryUDP|TestGoUDPReadBuffer|TestIPChangeMTU|TestIPChangeMetric|TestIsClosed|TestNetworkUpdateMonitorReceiveOverrun|TestPing|TestSetDNS
+
+jobs:
+  classify:
+    name: Audit CI impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      run_full: ${{ steps.impact.outputs.run_full }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Prove conservative impact policy
+        run: python3 -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py' -v
+      - id: impact
+        name: Classify exact automatic tip or keep fixed audit full
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+        run: |
+          python3 -B scripts/polaris_ci_impact.py --repo "$GITHUB_WORKSPACE" \
+            --event-file "$GITHUB_EVENT_PATH" --event-name "$EVENT_NAME" --ref "$EVENT_REF" \
+            --workflow-sha "$GITHUB_SHA" --output "$RUNNER_TEMP/ci-impact.json" --github-output "$GITHUB_OUTPUT"
+      - name: Checkout exact source for cheap formatting
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          path: .polaris-format-source
+          persist-credentials: false
+      - name: Restore pinned official formatter archive
+        if: steps.impact.outputs.run_full == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/polaris-format-archive
+          key: polaris-format-linux-amd64-v2.15.0-9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
+      - name: Verify and extract pinned official formatter (no product compilation)
+        if: steps.impact.outputs.run_full == 'true'
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/polaris-format-archive/golangci-lint.tar.gz"
+          mkdir -p "$(dirname "$archive")" "$RUNNER_TEMP/polaris-format-bin"
+          if [ ! -f "$archive" ]; then
+            curl --fail --location --retry 2 --max-time 120 --output "$archive" https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
+          fi
+          printf '%s  %s\n' 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea "$archive" | sha256sum -c -
+          tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/polaris-format-bin" golangci-lint-2.15.0-linux-amd64/golangci-lint
+      - name: Check owned remediation formatting before platform builds
+        if: steps.impact.outputs.run_full == 'true'
+        env:
+          GOLANGCI_LINT: ${{ runner.temp }}/polaris-format-bin/golangci-lint
+        working-directory: .polaris-format-source
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          python3 -B "$GITHUB_WORKSPACE/scripts/ci/check_remediation_format.py"
+      - name: Preserve exact impact decision
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-impact-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-impact.json
+          if-no-files-found: warn
+          retention-days: 14
+  linux:
+    needs: classify
+    timeout-minutes: 90
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    name: Linux amd64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':5400,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Build
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-linux-0.sh" <<'POLARIS_COMMAND'
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /dev/null \
+            -tags "$(cat release/DEFAULT_BUILD_TAGS),with_gvisor,with_purego" \
+            -ldflags "$(cat release/LDFLAGS)" ./cmd/sing-box
+
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-linux-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-linux-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-linux-0.sh"
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-linux-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+  windows_build:
+    needs: classify
+    timeout-minutes: 90
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    name: Windows amd64 (cross)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':5400,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Build
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-windows-build-0.sh" <<'POLARIS_COMMAND'
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -o /dev/null \
+            -tags "$(cat release/DEFAULT_BUILD_TAGS_WINDOWS)" \
+            -ldflags "$(cat release/LDFLAGS)" ./cmd/sing-box
+
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-windows-build-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-windows-build-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-windows-build-0.sh"
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-windows_build-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+  windows_test:
+    needs: classify
+    timeout-minutes: 90
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    name: Windows DNS regression
+    runs-on: windows-latest
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':5400,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Validate observer controls on the actual Windows host
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/polaris-ci-control-tools"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-control-tools/polaris_ci_observe.py"
+          git show "$GITHUB_SHA:scripts/test_polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-control-tools/test_polaris_ci_observe.py"
+          python -B -m unittest discover -s "$RUNNER_TEMP/polaris-ci-control-tools" -p 'test_polaris_ci_observe.py' -v
+      - name: Test
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-windows-test-0.sh" <<'POLARIS_COMMAND'
+          go test -count=20 -tags "$(cat release/DEFAULT_BUILD_TAGS_WINDOWS)" \
+            -ldflags "$(cat release/LDFLAGS)" ./dns/transport/local/systemconfig/ | tee test.log
+          grep -q '^ok' test.log
+
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-windows-test-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-windows-test-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-windows-test-0.sh"
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-windows_test-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+  macos:
+    needs: classify
+    timeout-minutes: 90
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    name: macOS ${{ matrix.arch }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, amd64]
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':5400,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Build
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-macos-0.sh" <<'POLARIS_COMMAND'
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" CGO_ENABLED=1 GOOS=darwin GOARCH=${{ matrix.arch }} /usr/bin/time -l go build -trimpath -o /dev/null \
+            -tags "$(cat release/DEFAULT_BUILD_TAGS),with_gvisor" \
+            -ldflags "$(cat release/LDFLAGS)" ./cmd/sing-box
+
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-macos-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-macos-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-macos-0.sh"
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-macos-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+  android:
+    needs: classify
+    timeout-minutes: 120
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop') }}
+    name: Android libbox (${{ matrix.go_arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go_arch: [arm64, arm]
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':1500,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Admit optional cache within remaining job work time
+        id: ndk_restore_budget
+        if: success()
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Restore fixed NDK archive only
+        if: success() && steps.ndk_restore_budget.outputs.allowed == 'true'
+        id: ndk_restore
+        timeout-minutes: ${{ fromJSON(steps.ndk_restore_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ runner.temp }}/ndk-cache/ndk.zip
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.NDK_SHA256 }}
+      - name: Setup Android NDK
+        id: ndk_acquire
+        timeout-minutes: 25
+        run: |
+          python -B "$RUNNER_TEMP/polaris-ci-downloads.py" ndk --root "$RUNNER_TEMP/ndk-cache" \
+            --url "$NDK_URL" --sha256 "$NDK_SHA256" --output "$RUNNER_TEMP/polaris-ci/ndk-input-check.json"
+          unzip -q "$RUNNER_TEMP/ndk-cache/ndk.zip" -d "$RUNNER_TEMP"
+          echo "ANDROID_NDK_HOME=$RUNNER_TEMP/$NDK_ROOT" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        timeout-minutes: 5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-android-0.sh" <<'POLARIS_COMMAND'
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" make lib_install
+          gopath=$(go env GOPATH)
+          export PATH="$PATH:$gopath/bin"
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" go run ./cmd/internal/build_libbox -target android -platform android/${{ matrix.go_arch }}
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-android-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-android-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-android-0.sh"
+      - name: Check symbols
+        timeout-minutes: 5
+        run: |
+          unzip -q -o libbox.aar classes.jar
+          javap -cp classes.jar io.nekohasekai.libbox.Libbox io.nekohasekai.libbox.CommandServer io.nekohasekai.libbox.PlatformInterface > symbols.txt
+          test -s symbols.txt
+          missing=0
+          present=0
+          for symbol in newTransientCommandServer newStrictCommandServer interfaceUpdateListenerIdentity checkConfigWithResult exportTailscaleStoreRetirement bindInterfaceControl; do
+            if grep -q " $symbol(" symbols.txt; then
+              present=$((present + 1))
+              echo "present $symbol"
+            else
+              missing=$((missing + 1))
+              echo "missing $symbol"
+            fi
+          done
+          if [ "$EXPECTED_SYMBOLS" = mobile ]; then
+            test "$missing" -eq 0
+          else
+            test "$present" -eq 0
+          fi
+      - name: Name fork diagnostic AAR
+        timeout-minutes: 5
+        env:
+          GO_ARCH: ${{ matrix.go_arch }}
+        run: |
+          asset="polaris-box-${SOURCE_COMMIT}-android-${GO_ARCH}.aar"
+          cp libbox.aar "$asset"
+          echo "POLARIS_BOX_AAR=$asset" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        timeout-minutes: 5
+        with:
+          name: polaris-box-selfcheck-android-${{ matrix.go_arch }}-${{ env.SOURCE_COMMIT }}
+          path: ${{ env.POLARIS_BOX_AAR }}
+          retention-days: 3
+          compression-level: 0
+
+      - name: Preserve command, failure and resource observations
+        id: ci_evidence_upload
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-android-${{ matrix.go_arch }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Admit optional cache within remaining job work time
+        id: optional_cache_12_budget
+        if: always() && steps.ndk_acquire.outcome == 'success' && steps.ndk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success'
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --cache-window --cache-cap-minutes 2 --github-output "$GITHUB_OUTPUT"
+      - name: Save verified NDK acquisition input only
+        id: optional_cache_12
+        if: always() && steps.ndk_acquire.outcome == 'success' && steps.ndk_restore.outputs.cache-hit != 'true' && steps.ci_evidence_upload.outcome == 'success' && steps.optional_cache_12_budget.outputs.allowed == 'true'
+        timeout-minutes: ${{ fromJSON(steps.optional_cache_12_budget.outputs.minutes) }}
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: '1'
+        with:
+          path: ${{ runner.temp }}/ndk-cache/ndk.zip
+          key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.NDK_SHA256 }}
+  ios:
+    needs: classify
+    timeout-minutes: 120
+    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop') }}
+    name: iOS libbox
+    runs-on: macos-latest
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':7200,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Native monitor lifecycle regressions
+        timeout-minutes: 47
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-ios-0.sh" <<'POLARIS_COMMAND'
+          CGO_ENABLED=1 /usr/bin/time -l go test -p "$POLARIS_GO_JOBS" -parallel 2 -race -count=1 \
+            -run '^(TestMonitor|TestConstructionScope)' \
+            -tags "$(cat release/DEFAULT_BUILD_TAGS),with_purego" \
+            -ldflags "$(cat release/LDFLAGS)" ./experimental/libbox/ ./adapter/
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-ios-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-ios-0" --timeout-seconds 2700 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-ios-0.sh"
+      - name: Patch Go for iOS
+        timeout-minutes: 5
+        run: .github/patch_go_for_ios.sh
+      - name: Build
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-ios-1.sh" <<'POLARIS_COMMAND'
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" /usr/bin/time -l make lib_install
+          gopath=$(go env GOPATH)
+          export PATH="$PATH:$gopath/bin"
+          GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" /usr/bin/time -l go run ./cmd/internal/build_libbox -target apple -platform ios/arm64
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-ios-1 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-ios-1" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-ios-1.sh"
+      - name: Check symbols
+        timeout-minutes: 5
+        run: |
+          find Libbox.xcframework -name '*.h' -exec cat {} + > symbols.txt
+          test -s symbols.txt
+          missing=0
+          present=0
+          for symbol in 'LibboxNewTransientCommandServer(' 'LibboxNewStrictCommandServer(' 'LibboxInterfaceUpdateListenerIdentity(' 'LibboxCheckConfigWithResult(' 'exportTailscaleStoreRetirement' 'bindInterfaceControl'; do
+            if grep -qF "$symbol" symbols.txt; then
+              present=$((present + 1))
+              echo "present $symbol"
+            else
+              missing=$((missing + 1))
+              echo "missing $symbol"
+            fi
+          done
+          if [ "$EXPECTED_SYMBOLS" = mobile ]; then
+            test "$missing" -eq 0
+          else
+            test "$present" -eq 0
+          fi
+
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-ios-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14
+  patch_tests:
+    needs: classify
+    if: ${{ needs.classify.outputs.run_full == 'true' }}
+    timeout-minutes: 90
+    name: Patch tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start shared job clock before checkout and preparation
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_bash="$BASH"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            runner_bash="$(cygpath -w "$BASH")"
+          fi
+          test -n "$runner_bash"
+          POLARIS_RUNNER_BASH="$runner_bash" python -B - <<'PYBUDGET'
+          import json, os, time
+          from pathlib import Path
+          path=Path(os.environ['RUNNER_TEMP'])/'polaris-ci-job-budget.json'
+          path.write_text(json.dumps({'schema':'polaris-ci-job-budget-v1','startedMonotonic':time.monotonic(),
+              'jobSeconds':5400,'evidenceReserveSeconds':900,'safetySeconds':60})+'\n')
+          with open(os.environ['GITHUB_ENV'],'a') as stream:
+              stream.write('POLARIS_JOB_BUDGET='+str(path)+'\n')
+              stream.write('POLARIS_RUNNER_BASH='+os.environ['POLARIS_RUNNER_BASH']+'\n')
+          PYBUDGET
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        timeout-minutes: 5
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 0
+      - name: Verify fixed source commit
+        timeout-minutes: 5
+        run: |
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'source_commit must be a full lowercase 40-hex SHA' >&2; exit 1; }
+          actual=$(git rev-parse HEAD)
+          test "$actual" = "$SOURCE_COMMIT"
+          echo "workflow_commit=$GITHUB_SHA source_commit=$actual"
+      - name: Bound runner work using the fixed workflow-owned resource tool
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          if ! git cat-file -e "$GITHUB_SHA^{commit}"; then
+            git fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          fi
+          git show "$GITHUB_SHA:scripts/polaris_runner_resources.py" > "$RUNNER_TEMP/polaris-runner-resources.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-observe.py"
+          git show "$GITHUB_SHA:scripts/polaris_ci_downloads.py" > "$RUNNER_TEMP/polaris-ci-downloads.py"
+          python -B "$RUNNER_TEMP/polaris-runner-resources.py" \
+            --kind selfcheck --scratch "$RUNNER_TEMP" \
+            --output "$RUNNER_TEMP/polaris-runner-budget.json" --github-env "$GITHUB_ENV"
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        timeout-minutes: 5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            go.mod
+            go.sum
+            third_party/sing-tun/go.mod
+            third_party/sing-tun/go.sum
+      - name: Authorize fixed PR or explicitly approved governance SHA netns binary
+        id: netns_batch_authorization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_REPOSITORY: ${{ github.repository }}
+          # Dormant until the owner explicitly approves/configures this one-SHA window.
+          GOVERNANCE_NETNS_SHA: ${{ vars.POLARIS_CI_GOVERNANCE_NETNS_SHA }}
+        shell: python
+        run: |
+          import json, os, re, subprocess, urllib.request
+          from pathlib import Path
+          repo = 'polaris-arch/sing-box-polaris'
+          repo_id = 1421657509
+          branch = 'collab/dots-audit-remediation-20261017'
+          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+          kind = os.environ['EVENT_NAME']
+          ref = os.environ['EVENT_REF']
+          allowed_event = ((kind == 'pull_request' and event.get('number') == 2) or
+                           (kind == 'push' and ref == 'refs/heads/polaris-main'))
+          allowed = False
+          approved = os.environ.get('GOVERNANCE_NETNS_SHA', '')
+          if (re.fullmatch('[0-9a-f]{40}', approved)
+                  and os.environ['EVENT_REPOSITORY'] == repo
+                  and os.environ.get('GITHUB_REPOSITORY_ID') == str(repo_id)
+                  and kind in ('push', 'workflow_dispatch')
+                  and ref in ('refs/heads/polaris-main', 'refs/heads/ci/governance')
+                  and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
+                  and os.environ.get('RUNNER_OS') == 'Linux'
+                  and os.environ.get('GITHUB_SHA') == approved
+                  and os.environ['SOURCE_COMMIT'] == approved):
+              actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+              allowed = actual == approved
+              if allowed and subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
+                  raise SystemExit('Approved governance source is dirty; no elevation')
+          print('Exact governance SHA window authorized=' + str(allowed))
+          print('Netns authorization predicates: event=' + str(allowed_event) + ', repository=' + str(os.environ['EVENT_REPOSITORY'] == repo))
+          if not allowed and allowed_event and os.environ['EVENT_REPOSITORY'] == repo:
+              def get(path):
+                  request = urllib.request.Request('https://api.github.com/repos/' + repo + path,
+                      headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                               'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
+                  try:
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          return json.load(response)
+                  except Exception:
+                      raise SystemExit('Fixed PR #2 authorization read failed; no elevated test was started') from None
+              pr = get('/pulls/2')
+              same_repo = all(pr[side]['repo']['id'] == repo_id and
+                              pr[side]['repo']['full_name'] == repo for side in ['base', 'head'])
+              identity = same_repo and pr['number'] == 2 and pr['head']['ref'] == branch and pr['base']['ref'] == 'polaris-main'
+              print('Netns authorization predicates: fixed_pr_identity=' + str(identity))
+              if identity:
+                  head = pr['head']['sha']
+                  actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+                  if actual != os.environ['SOURCE_COMMIT']:
+                      raise SystemExit('Checkout HEAD differs from SOURCE_COMMIT; no elevation')
+                  allowed = actual == head
+                  print('Netns authorization predicates: checkout_source=True, direct_head=' + str(allowed))
+                  # PR checkouts use a synthetic merge commit. Verify its source identity directly,
+                  # with the current PR head as a parent and an identical tree; event merge metadata may lag.
+                  if not allowed and kind == 'pull_request':
+                      headers = subprocess.check_output(['git', 'cat-file', '-p', 'HEAD'], text=True).split('\n\n', 1)[0].splitlines()
+                      parents = [line[7:] for line in headers if line.startswith('parent ')]
+                      current_tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+                      head_commit = get('/git/commits/' + head)
+                      allowed = head in parents and head_commit['sha'] == head and current_tree == head_commit['tree']['sha']
+                      print('Netns authorization predicates: head_parent=' + str(head in parents) + ', fetched_head=' + str(head_commit['sha'] == head) + ', identical_tree=' + str(current_tree == head_commit['tree']['sha']))
+                  if kind == 'push':
+                      allowed = allowed and actual == head
+          print('Batch netns binary elevation authorized' if allowed else
+                'No matching batch authorization; netns gate retains its original unprivileged execution')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('authorized=' + str(allowed).lower() + '\n')
+      - name: Test packages changed by the queue
+        timeout-minutes: 77
+        env:
+          NETNS_BATCH_ELEVATION: ${{ steps.netns_batch_authorization.outputs.authorized }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-0.sh" <<'POLARIS_COMMAND'
+          # Product tags share the upstream spelling; keep upstream baseline refs private.
+          [[ "$BASE_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?$ ]] || exit 1
+          [[ "$BASE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          git fetch --no-tags https://github.com/SagerNet/sing-box.git "refs/tags/$BASE_REF:refs/polaris/upstream-baseline"
+          actual_baseline=$(git rev-parse --verify "refs/polaris/upstream-baseline^{commit}")
+          test "$actual_baseline" = "$BASE_COMMIT"
+          git merge-base --is-ancestor "$BASE_COMMIT" HEAD
+          # Partition every changed Go/input path by its actual go.mod owner.
+          # Unknown modules fail closed instead of silently losing coverage.
+          python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
+          selection_dir="$RUNNER_TEMP/polaris-ci/patch-test-packages"
+          python3 -B scripts/ci/patch_test_packages.py --base "$BASE_COMMIT" --output-directory "$selection_dir"
+          mapfile -t packages < "$selection_dir/root-packages.txt"
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "no root Go package changed since $BASE_REF"
+          else
+            printf '%s\n' "${packages[@]}"
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            # Resolve ./... before partitioning; go list failure must not lose packages.
+            go list -tags "$tags" "${packages[@]}" > "$selection_dir/resolved-root-packages.txt"
+            mapfile -t resolved_packages < "$selection_dir/resolved-root-packages.txt"
+            test "${#resolved_packages[@]}" -gt 0
+            ordinary_packages=()
+            netns_selected=false
+            for package in "${resolved_packages[@]}"; do
+              if [ "$package" = github.com/sagernet/sing-box/common/netns ]; then
+                netns_selected=true
+              else
+                ordinary_packages+=("$package")
+              fi
+            done
+            if [ "${#ordinary_packages[@]}" -gt 0 ]; then
+              go test -race -count=1 -skip "^($INSTANCE_TESTS)\$" \
+                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+                "${ordinary_packages[@]}" | tee test.log
+              grep -q '^ok' test.log
+            fi
+            if [ "$netns_selected" = true ]; then
+              # Only the selected netns test binary is elevated; compilation remains unprivileged.
+              netns_exec=()
+              if [ "$NETNS_BATCH_ELEVATION" = true ]; then
+                netns_exec=(-exec 'sudo -n --')
+              else
+                echo 'No batch elevation approval; running required netns gate unprivileged'
+              fi
+              go test -race -count=1 -v "${netns_exec[@]}" -skip "^($INSTANCE_TESTS)\$" \
+                -tags "$tags" -ldflags "$(cat release/LDFLAGS)" \
+                github.com/sagernet/sing-box/common/netns | tee "$selection_dir/netns-test.log"
+              grep -q '^--- PASS: TestUnshareNamespace ' "$selection_dir/netns-test.log"
+              grep -q '^ok' "$selection_dir/netns-test.log"
+            fi
+          fi
+          if [ -f "$selection_dir/sing-tun-selected" ]; then
+            grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            (cd third_party/sing-tun && go test -race -count=1 \
+              -skip "^($SING_TUN_INSTANCE_TESTS)\$" -tags "$tags" ./...) | tee sing-tun-test.log
+            grep -q '^ok' sing-tun-test.log
+            # Retain unprivileged ping coverage without running its raw-socket cases.
+            (cd third_party/sing-tun && go test -race -count=1 -v -tags "$tags" \
+              -run '^TestPing$/^(ipv4|ipv6)$/^unprivileged$' ./ping) | tee sing-tun-unprivileged-ping.log
+            grep -q '^ok' sing-tun-unprivileged-ping.log
+          fi
+          if [ -f "$selection_dir/metacubex-utls-selected" ]; then
+            grep -qx 'module github.com/metacubex/utls' third_party/metacubex-utls/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            (cd third_party/metacubex-utls && go test -race -count=1 -tags "$tags" ./...) | tee metacubex-utls-test.log
+            grep -q '^ok' metacubex-utls-test.log
+          fi
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-patch-tests-0 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-patch-tests-0" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-0.sh"
+      - name: Test instances in process
+        timeout-minutes: 77
+        if: ${{ inputs.run_instance_tests }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-1.sh" <<'POLARIS_COMMAND'
+          go test -race -count=1 -v -run "^($INSTANCE_TESTS)\$" \
+            -tags "$(cat release/DEFAULT_BUILD_TAGS),with_purego" \
+            -ldflags "$(cat release/LDFLAGS)" ./experimental/libbox/ ./daemon/ | tee instance.log
+          grep -q '^--- PASS' instance.log
+          if [ -f third_party/sing-tun/go.mod ]; then
+            grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            # This explicit opt-in supplies neither sudo nor device permissions.
+            # Its real network operations require a separately authorized runner.
+            (cd third_party/sing-tun && go test -race -count=1 -v \
+              -run "^($SING_TUN_INSTANCE_TESTS)\$" -tags "$tags" ./...) | tee sing-tun-instance.log
+            grep -q '^--- PASS' sing-tun-instance.log
+          fi
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-patch-tests-1 \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-patch-tests-1" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-patch-tests-1.sh"
+      - name: Preserve command, failure and resource observations
+        timeout-minutes: 5
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: polaris-box-ci-patch_tests-host-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-job-budget.json
+            ${{ runner.temp }}/polaris-runner-budget.json
+          if-no-files-found: warn
+          retention-days: 14

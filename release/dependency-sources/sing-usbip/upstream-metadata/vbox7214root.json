@@ -1,0 +1,207 @@
+{
+  "sha": "51d188f0a2a40015663041baa29f7aa0c10af5e5",
+  "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/51d188f0a2a40015663041baa29f7aa0c10af5e5",
+  "tree": [
+    {
+      "path": ".dir-locals.el",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "947a1025852aedd032e1720e95cd78a8f268822c",
+      "size": 405,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/947a1025852aedd032e1720e95cd78a8f268822c"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4ebaeb85aeb5737692b071238f4ee5af67a67b64",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/4ebaeb85aeb5737692b071238f4ee5af67a67b64"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "472dcf2458abf05e6b3832051070a7288e94a8da",
+      "size": 174,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/472dcf2458abf05e6b3832051070a7288e94a8da"
+    },
+    {
+      "path": ".gitmodules",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "898516125a3875fe2d44d5ef7683f014beb052dd",
+      "size": 84,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/898516125a3875fe2d44d5ef7683f014beb052dd"
+    },
+    {
+      "path": ".scm-settings",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc3b512f00aefb743e810a171bb01844deecf8c3",
+      "size": 2731,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/dc3b512f00aefb743e810a171bb01844deecf8c3"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "637430b5950eb14c40a68ec77afed6f10f5bc147",
+      "size": 2129,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/637430b5950eb14c40a68ec77afed6f10f5bc147"
+    },
+    {
+      "path": "COPYING",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "65dcfb4a4698d43a54c1c11bbf2def150a09a524",
+      "size": 36037,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/65dcfb4a4698d43a54c1c11bbf2def150a09a524"
+    },
+    {
+      "path": "COPYING.CDDL",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc0bd96a179a058900a865fc9fd5ce1346db595d",
+      "size": 19020,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/cc0bd96a179a058900a865fc9fd5ce1346db595d"
+    },
+    {
+      "path": "Config.kmk",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d1c460c29a3b49d612d4176e7cc9976c1ed8b67",
+      "size": 468694,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/1d1c460c29a3b49d612d4176e7cc9976c1ed8b67"
+    },
+    {
+      "path": "Doxyfile.Core",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "90fd43669a4a14e4e8c0cc23dade03693a27dc82",
+      "size": 36308,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/90fd43669a4a14e4e8c0cc23dade03693a27dc82"
+    },
+    {
+      "path": "LICENSE.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f288702d2fa16d3cdf0035b15a9fcbc552cd88e7",
+      "size": 35149,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/f288702d2fa16d3cdf0035b15a9fcbc552cd88e7"
+    },
+    {
+      "path": "Maintenance.kmk",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3edb981ad181e10ffae8ceb2a8d44ace53a42d1b",
+      "size": 2443,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/3edb981ad181e10ffae8ceb2a8d44ace53a42d1b"
+    },
+    {
+      "path": "Makefile.kmk",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b22c3e134a0de3430b5957fdf3f34c253f9f1d8",
+      "size": 110837,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/7b22c3e134a0de3430b5957fdf3f34c253f9f1d8"
+    },
+    {
+      "path": "README.GuestAdditionsPackaging",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9bd5affe8229e1fbd3dfa5e80d947b159ed150a7",
+      "size": 924,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/9bd5affe8229e1fbd3dfa5e80d947b159ed150a7"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "51a4df1e2514523d54e49986c1c342d90f5b6540",
+      "size": 3909,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/51a4df1e2514523d54e49986c1c342d90f5b6540"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc08bf5142115d54df52a5bf1734ac7bc3a9951d",
+      "size": 1738,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/bc08bf5142115d54df52a5bf1734ac7bc3a9951d"
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06a4b5fa0793be14da4251403d9dc60a0876e3ed",
+      "size": 81,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/06a4b5fa0793be14da4251403d9dc60a0876e3ed"
+    },
+    {
+      "path": "Version.kmk",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3ad6cdb5c17e2bdad466d32d1ead7db6233df6c3",
+      "size": 1870,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/3ad6cdb5c17e2bdad466d32d1ead7db6233df6c3"
+    },
+    {
+      "path": "configure",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "158ea61defbf4a8bd035859fbc523195f1994153",
+      "size": 85306,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/158ea61defbf4a8bd035859fbc523195f1994153"
+    },
+    {
+      "path": "configure.vbs",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03880d8b0ca9c16b7ab645c42cd8f48149f061df",
+      "size": 93202,
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/blobs/03880d8b0ca9c16b7ab645c42cd8f48149f061df"
+    },
+    {
+      "path": "debian",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a0d98a23b21aec7468ed0b18796f09bb8c05eddb",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/a0d98a23b21aec7468ed0b18796f09bb8c05eddb"
+    },
+    {
+      "path": "doc",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d22556e9976481202cac3f3b1dbb7bd8ce7eb19b",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/d22556e9976481202cac3f3b1dbb7bd8ce7eb19b"
+    },
+    {
+      "path": "include",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2ef42e66f3937909def0c87ac287cf41f0bb5ee2",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/2ef42e66f3937909def0c87ac287cf41f0bb5ee2"
+    },
+    {
+      "path": "kBuild",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "1ecbb9a1e3c92212ee52dd16c8064dbcb0e51e7e"
+    },
+    {
+      "path": "src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7eef0215b1759dc2ddc4707a4099cac27a9f2308",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/7eef0215b1759dc2ddc4707a4099cac27a9f2308"
+    },
+    {
+      "path": "tools",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d849ace8a7d36e3090a6c03b1facc193f59d79b9",
+      "url": "https://api.github.com/repos/VirtualBox/virtualbox/git/trees/d849ace8a7d36e3090a6c03b1facc193f59d79b9"
+    }
+  ],
+  "truncated": false
+}

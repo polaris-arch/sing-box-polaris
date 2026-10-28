@@ -1,0 +1,116 @@
+[
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/bdf/README",
+    "path": "sources/freetype/source-context/src/bdf/README",
+    "sha256": "7984455e7e5a9faba3797c8bf095fbe10cc846316b7320aff8c58402e22b82fe",
+    "bytes": 5972
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/pcf/README",
+    "path": "sources/freetype/source-context/src/pcf/README",
+    "sha256": "18d9782898d9eac04476e2f744678137b2a889689ed3e923e052fc396a86f86b",
+    "bytes": 3311
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/base/fthash.c",
+    "path": "sources/freetype/source-context/src/base/fthash.c",
+    "sha256": "73fca7e875ea7bfc7496dc9eb84abe9f16844ebd7589f0e4eafd9b1d1df137e3",
+    "bytes": 6657
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/include/freetype/internal/fthash.h",
+    "path": "sources/freetype/source-context/include/freetype/internal/fthash.h",
+    "sha256": "351299f86d56190d44c829deb70256c3343b9da416f0451c6aabd4586b174dbe",
+    "bytes": 3242
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/gzip/zlib.h",
+    "path": "sources/freetype/source-context/src/gzip/zlib.h",
+    "sha256": "b3bff4c483860d26cec9587c3b287b79b0d40b5f5fe6bb6000deb663b03955bb",
+    "bytes": 98004
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/autofit/ft-hb.c",
+    "path": "sources/freetype/source-context/src/autofit/ft-hb.c",
+    "sha256": "65c23597427a2954bed2145191d2f129fe26b6f290d371b900628ac0c6b5af37",
+    "bytes": 3310
+  },
+  {
+    "component": "freetype",
+    "archiveURL": "https://deps.files.ghostty.org/freetype-1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d.tar.gz",
+    "archiveSHA256": "427201f5d5151670d05c1f5b45bef5dda1f2e7dd971ef54f0feaaa7ffd2ab90c",
+    "sourcePath": "freetype-VER-2-13-2/src/autofit/ft-hb.h",
+    "path": "sources/freetype/source-context/src/autofit/ft-hb.h",
+    "sha256": "6f21bd19ea7d53accc407a3dbd18648de36940cfabf235e4970f009f7a4def04",
+    "bytes": 1463
+  },
+  {
+    "component": "libintl",
+    "archiveURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+    "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+    "sourcePath": "gettext-0.24/gettext-runtime/intl/plural.c",
+    "path": "sources/libintl/source-context/gettext-runtime/intl/plural.c",
+    "sha256": "03b94b30e89b737d882cccbf6c961c16c002502e2e15628aa5d20501b235e75f",
+    "bytes": 49408
+  },
+  {
+    "component": "libintl",
+    "archiveURL": "https://deps.files.ghostty.org/gettext-0.24.tar.gz",
+    "archiveSHA256": "c918503d593d70daf4844d175a13d816afacb667c06fba1ec9dcd5002c1518b7",
+    "sourcePath": "gettext-0.24/gettext-runtime/intl/plural.y",
+    "path": "sources/libintl/source-context/gettext-runtime/intl/plural.y",
+    "sha256": "dd8fa4fd8285b4019881c4a9ee9371b720d41cdb8373bb5edf2f7ae7432bbbe2",
+    "bytes": 7289
+  },
+  {
+    "component": "stb",
+    "sourcePath": "src/stb/stb_image.h",
+    "sourceSHA256": "7fb1521970dc268639ed95ab9808ef3b47aa0800fd2d0e9250b1b90be03ee75b",
+    "extraction": "exact original block comment",
+    "byteStart": 282059,
+    "byteEnd": 284732,
+    "path": "source-license-evidence/src_stb_stb_image.h.block31.txt",
+    "sha256": "10ed5a55912965c9846c947486fc42a537c6e7f92dbabd68bf26963da320e46d",
+    "bytes": 2673
+  },
+  {
+    "component": "stb",
+    "sourcePath": "src/stb/stb_image_resize.h",
+    "sourceSHA256": "6a0e75adbabb48df9031c2e39ccd97437bb226fe31e7d4a01c7bf70a18d32ec6",
+    "extraction": "exact original block comment",
+    "byteStart": 113842,
+    "byteEnd": 116515,
+    "path": "source-license-evidence/src_stb_stb_image_resize.h.block1.txt",
+    "sha256": "10ed5a55912965c9846c947486fc42a537c6e7f92dbabd68bf26963da320e46d",
+    "bytes": 2673
+  },
+  {
+    "component": "simdutf",
+    "sourcePath": "pkg/simdutf/vendor/simdutf.h",
+    "sourceSHA256": "d3501fc2143f0edc5c84e6bb013a7fdb8ccd95514f7fd0816669248e62676301",
+    "extraction": "exact original block comment",
+    "byteStart": 33238,
+    "byteEnd": 35554,
+    "path": "source-license-evidence/pkg_simdutf_vendor_simdutf.h.block34.txt",
+    "sha256": "acffdbe9983f5996c4bd096132ffdd745a074ed8c9ba9b26b0d09c654fd45e43",
+    "bytes": 2316
+  }
+]

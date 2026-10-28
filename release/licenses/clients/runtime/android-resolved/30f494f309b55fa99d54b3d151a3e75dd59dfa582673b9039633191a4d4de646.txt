@@ -1,0 +1,2 @@
+    // channel_configuration (2 bits) +  originality (1 bit), home (1 bit),
+    // copyrighted_stream (1 bit), copyright_start (1 bit) + frame_length (2 bits).

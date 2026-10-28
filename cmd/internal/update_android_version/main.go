@@ -14,13 +14,15 @@ import (
 )
 
 var (
-	flagRunInCI    bool
-	flagRunNightly bool
+	flagRunInCI       bool
+	flagRunNightly    bool
+	flagAllowCIUpdate bool
 )
 
 func init() {
 	flag.BoolVar(&flagRunInCI, "ci", false, "Run in CI")
 	flag.BoolVar(&flagRunNightly, "nightly", false, "Run nightly")
+	flag.BoolVar(&flagAllowCIUpdate, "allow-ci-update", false, "Generate version metadata in the isolated CI checkout")
 }
 
 func main() {
@@ -65,7 +67,7 @@ func main() {
 	if !(versionUpdated || goVersionUpdated) {
 		log.Info("version not changed")
 		return
-	} else if flagRunInCI && !flagRunNightly {
+	} else if requiresCommittedVersion(flagRunInCI, flagRunNightly, flagAllowCIUpdate) {
 		log.Fatal("version changed, commit changes first.")
 	}
 	for _, propPair := range propsList {
@@ -81,4 +83,9 @@ func main() {
 		newProps = append(newProps, strings.Join(propPair, "="))
 	}
 	common.Must(os.WriteFile("version.properties", []byte(strings.Join(newProps, "\n")), 0o644))
+}
+
+// An explicit opt-in only relaxes isolated CI metadata generation.
+func requiresCommittedVersion(inCI, nightly, allowCIUpdate bool) bool {
+	return inCI && !nightly && !allowCIUpdate
 }

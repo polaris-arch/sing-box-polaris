@@ -1,0 +1,3831 @@
+{
+  "schemaVersion": 1,
+  "publicationEligible": false,
+  "sourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "producerReviewCommit": "720ead161c71415e23f38a82c29d314a4754ab9c",
+  "cronetBuildSourceCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+  "naiveproxySourceCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+  "route": "Existing fixed prebuilt Cronet libraries are reused; no Chromium compilation.",
+  "reconstructedLinuxAmd64Gn": {
+    "generation": {
+      "source": "be1be963131154ba82761a7ed85ba426b2027319",
+      "command": [
+        "/home/sway/Documents/Codex/2026-10-10/task-12/cronet-gn-source/SagerNet-naiveproxy-be1be96/src/gn/out/gn",
+        "gen",
+        "out/cronet-linux-x64",
+        "--args=is_official_build=true is_debug=false is_clang=true use_clang_modules=false use_thin_lto=false fatal_linker_warnings=false treat_warnings_as_errors=false is_cronet_build=true use_udev=false use_aura=false use_ozone=false use_gio=false use_glib=false use_kerberos=false disable_zstd_filter=false enable_reporting=false enable_bracketed_proxy_uris=true enable_quic_proxy_support=true use_nss_certs=false enable_backup_ref_ptr_support=false enable_dangling_raw_ptr_checks=false exclude_unwind_tables=true enable_resource_allowlist_generation=false symbol_level=0 enable_dsyms=false optimize_for_size=true target_os=\"linux\" target_cpu=\"x64\" use_sysroot=true target_sysroot=\"//out/sysroot-build/bullseye/bullseye_amd64_staging\" use_cfi_icall=false is_cfi=false"
+      ],
+      "args": "is_official_build=true is_debug=false is_clang=true use_clang_modules=false use_thin_lto=false fatal_linker_warnings=false treat_warnings_as_errors=false is_cronet_build=true use_udev=false use_aura=false use_ozone=false use_gio=false use_glib=false use_kerberos=false disable_zstd_filter=false enable_reporting=false enable_bracketed_proxy_uris=true enable_quic_proxy_support=true use_nss_certs=false enable_backup_ref_ptr_support=false enable_dangling_raw_ptr_checks=false exclude_unwind_tables=true enable_resource_allowlist_generation=false symbol_level=0 enable_dsyms=false optimize_for_size=true target_os=\"linux\" target_cpu=\"x64\" use_sysroot=true target_sysroot=\"//out/sysroot-build/bullseye/bullseye_amd64_staging\" use_cfi_icall=false is_cfi=false",
+      "compilerRevisionStampReconstructedFromOfficialLog": true,
+      "actualCompilerDownloaded": false,
+      "compilerWrapperOmitted": true,
+      "exitCode": 0,
+      "stdout": "Done. Made 1968 targets from 275 files in 330ms\n",
+      "stderr": "",
+      "reconstructionMatchesExistingLibraryBuildInputs": false
+    },
+    "fixedGnTool": {
+      "sourcePin": "be1be963131154ba82761a7ed85ba426b2027319",
+      "gnSourceRevision": "150a9d6ba0aa7f407aa4feeabc5f03ce9aa7e04b",
+      "officialPinnedURL": "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:150a9d6ba0aa7f407aa4feeabc5f03ce9aa7e04b",
+      "zipSHA256": "7f05124cf22efb2e4a38f50cc9efcda91f11c2a271fbf1f37a6f10a73a140cae",
+      "executableSHA256": "34aab9f2f40bae4302c6827df25dff6d7b571483ac0e17797f6c70012937ee5c",
+      "versionOutput": "2540 (150a9d6ba0aa)",
+      "installedGlobally": false
+    },
+    "rawAllTargetsSha256": "3aa767da2dffe3e5d33afd1fd46ba59b6a550244fcc6b6624cf17a65e89063b3",
+    "rawReachableGraphSha256": "aff8f16ef913b8aa0705b778993fac8313b2d141352b6e4007e2faad7b6e9275",
+    "graphs": [
+      {
+        "rootTarget": "//components/cronet:cronet",
+        "reachableTargets": 625,
+        "targetTypes": {
+          "source_set": 277,
+          "static_library": 99,
+          "action": 108,
+          "group": 134,
+          "executable": 5,
+          "shared_library": 1,
+          "copy": 1
+        },
+        "sourcePaths": 5329,
+        "unresolvedTargetLabels": [],
+        "candidateComponents": [
+          {
+            "sourceDirectory": "base/third_party/cityhash",
+            "readmeGitBlob": "46bed48caf0baecf16c5a72d21cc7ac77ae4b617",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/cityhash:cityhash"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/cityhash_v103",
+            "readmeGitBlob": "45a3dc42edbd39f309d5eb58c1542e6441612fa3",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/cityhash_v103:cityhash_v103"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/double_conversion",
+            "readmeGitBlob": "902815ef0fbc2d6bf336bb0a4e382400539e883c",
+            "sourceCount": 20,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/double_conversion:double_conversion"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/icu",
+            "readmeGitBlob": "1c270bdc344c2c78cedbac33515c29573db01e5a",
+            "sourceCount": 1,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/icu:icu"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/nspr",
+            "readmeGitBlob": "2cabff688fcf307e47e4c7bfeabcda5939972634",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base:base"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/superfasthash",
+            "readmeGitBlob": "60c21a9fb170206d27dd022d6ae5e20686dd2e03",
+            "sourceCount": 1,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/superfasthash:superfasthash"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/symbolize",
+            "readmeGitBlob": "805f6cb374237f9952418de47e880641521f9621",
+            "sourceCount": 8,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/symbolize:symbolize"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/xdg_user_dirs",
+            "readmeGitBlob": "6d4da4202aaf231d94042b30f2036962853a563a",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/xdg_user_dirs:xdg_user_dirs"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "net/third_party/quiche",
+            "readmeGitBlob": "f03216758ecc333603afac285f1e6a707dd08a44",
+            "sourceCount": 756,
+            "reachableTargetsReferencingSources": [
+              "//net/third_party/quiche:net_quic_proto_gen",
+              "//net/third_party/quiche:net_quic_test_tools_proto_gen",
+              "//net/third_party/quiche:quiche"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "net/third_party/uri_template",
+            "readmeGitBlob": "3cfb99837489509b18d43610a29f742ac85801ec",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//net/third_party/uri_template:uri_template"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/abseil-cpp",
+            "readmeGitBlob": "ff16d9c85b33f969a09cc51f3b336bfb2938fc35",
+            "sourceCount": 188,
+            "reachableTargetsReferencingSources": [
+              "//third_party/abseil-cpp/absl/base:base",
+              "//third_party/abseil-cpp/absl/base:cpu_detect",
+              "//third_party/abseil-cpp/absl/base:log_severity",
+              "//third_party/abseil-cpp/absl/base:malloc_internal",
+              "//third_party/abseil-cpp/absl/base:raw_logging_internal",
+              "//third_party/abseil-cpp/absl/base:spinlock_wait",
+              "//third_party/abseil-cpp/absl/base:strerror",
+              "//third_party/abseil-cpp/absl/base:throw_delegate",
+              "//third_party/abseil-cpp/absl/base:tracing_internal",
+              "//third_party/abseil-cpp/absl/container:btree",
+              "//third_party/abseil-cpp/absl/container:chunked_queue",
+              "//third_party/abseil-cpp/absl/container:hashtablez_sampler",
+              "//third_party/abseil-cpp/absl/container:raw_hash_set",
+              "//third_party/abseil-cpp/absl/crc:crc32c",
+              "//third_party/abseil-cpp/absl/crc:crc_cord_state",
+              "//third_party/abseil-cpp/absl/crc:crc_internal",
+              "//third_party/abseil-cpp/absl/debugging:debugging_internal",
+              "//third_party/abseil-cpp/absl/debugging:decode_rust_punycode",
+              "//third_party/abseil-cpp/absl/debugging:demangle_internal",
+              "//third_party/abseil-cpp/absl/debugging:demangle_rust",
+              "//third_party/abseil-cpp/absl/debugging:examine_stack",
+              "//third_party/abseil-cpp/absl/debugging:failure_signal_handler",
+              "//third_party/abseil-cpp/absl/debugging:leak_check",
+              "//third_party/abseil-cpp/absl/debugging:stacktrace",
+              "//third_party/abseil-cpp/absl/debugging:symbolize",
+              "//third_party/abseil-cpp/absl/debugging:utf8_for_code_point",
+              "//third_party/abseil-cpp/absl/functional:any_invocable",
+              "//third_party/abseil-cpp/absl/functional:bind_back",
+              "//third_party/abseil-cpp/absl/functional:bind_front",
+              "//third_party/abseil-cpp/absl/functional:function_ref",
+              "//third_party/abseil-cpp/absl/hash:city",
+              "//third_party/abseil-cpp/absl/hash:hash",
+              "//third_party/abseil-cpp/absl/log/internal:check_op",
+              "//third_party/abseil-cpp/absl/log/internal:conditions",
+              "//third_party/abseil-cpp/absl/log/internal:fnmatch",
+              "//third_party/abseil-cpp/absl/log/internal:format",
+              "//third_party/abseil-cpp/absl/log/internal:globals",
+              "//third_party/abseil-cpp/absl/log/internal:log_message",
+              "//third_party/abseil-cpp/absl/log/internal:log_sink_set",
+              "//third_party/abseil-cpp/absl/log/internal:nullguard",
+              "//third_party/abseil-cpp/absl/log/internal:proto",
+              "//third_party/abseil-cpp/absl/log/internal:structured_proto",
+              "//third_party/abseil-cpp/absl/log/internal:vlog_config",
+              "//third_party/abseil-cpp/absl/log:die_if_null",
+              "//third_party/abseil-cpp/absl/log:globals",
+              "//third_party/abseil-cpp/absl/log:initialize",
+              "//third_party/abseil-cpp/absl/log:log_entry",
+              "//third_party/abseil-cpp/absl/log:log_sink",
+              "//third_party/abseil-cpp/absl/numeric:int128",
+              "//third_party/abseil-cpp/absl/profiling:exponential_biased",
+              "//third_party/abseil-cpp/absl/random/internal:entropy_pool",
+              "//third_party/abseil-cpp/absl/random/internal:platform",
+              "//third_party/abseil-cpp/absl/random/internal:randen",
+              "//third_party/abseil-cpp/absl/random/internal:randen_hwaes",
+              "//third_party/abseil-cpp/absl/random/internal:randen_hwaes_impl",
+              "//third_party/abseil-cpp/absl/random/internal:randen_slow",
+              "//third_party/abseil-cpp/absl/random/internal:seed_material",
+              "//third_party/abseil-cpp/absl/random:distributions",
+              "//third_party/abseil-cpp/absl/random:seed_gen_exception",
+              "//third_party/abseil-cpp/absl/random:seed_sequences",
+              "//third_party/abseil-cpp/absl/status:status",
+              "//third_party/abseil-cpp/absl/status:status_builder",
+              "//third_party/abseil-cpp/absl/status:statusor",
+              "//third_party/abseil-cpp/absl/strings:cord",
+              "//third_party/abseil-cpp/absl/strings:cord_internal",
+              "//third_party/abseil-cpp/absl/strings:cordz_functions",
+              "//third_party/abseil-cpp/absl/strings:cordz_handle",
+              "//third_party/abseil-cpp/absl/strings:cordz_info",
+              "//third_party/abseil-cpp/absl/strings:internal",
+              "//third_party/abseil-cpp/absl/strings:str_format_internal",
+              "//third_party/abseil-cpp/absl/strings:strings",
+              "//third_party/abseil-cpp/absl/synchronization:graphcycles_internal",
+              "//third_party/abseil-cpp/absl/synchronization:kernel_timeout_internal",
+              "//third_party/abseil-cpp/absl/synchronization:synchronization",
+              "//third_party/abseil-cpp/absl/time/internal/cctz:civil_time",
+              "//third_party/abseil-cpp/absl/time/internal/cctz:time_zone",
+              "//third_party/abseil-cpp/absl/time:clock_interface",
+              "//third_party/abseil-cpp/absl/time:time",
+              "//third_party/abseil-cpp/absl/types:any_span",
+              "//third_party/abseil-cpp/absl/types:source_location",
+              "//third_party/abseil-cpp/absl/types:span"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/boringssl",
+            "readmeGitBlob": "0634134e871058e2c482437e3a362065a6c3be92",
+            "sourceCount": 585,
+            "reachableTargetsReferencingSources": [
+              "//third_party/boringssl:boringssl",
+              "//third_party/boringssl:boringssl_asm"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/boringssl/src/third_party/fiat",
+            "readmeGitBlob": "3d117325680a70a2d4e94df16eb25244a560300e",
+            "sourceCount": 17,
+            "reachableTargetsReferencingSources": [
+              "//third_party/boringssl:boringssl",
+              "//third_party/boringssl:boringssl_asm"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/brotli",
+            "readmeGitBlob": "bee4db5fa3e9f79e6f485978db70901087efe660",
+            "sourceCount": 31,
+            "reachableTargetsReferencingSources": [
+              "//third_party/brotli:common",
+              "//third_party/brotli:dec",
+              "//third_party/brotli:headers"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/libc++",
+            "readmeGitBlob": "6ad264e76871440f7b5cc651e99faeaedf2c9fbb",
+            "sourceCount": 49,
+            "reachableTargetsReferencingSources": [
+              "//buildtools/third_party/libc++:libc++"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/libc++abi",
+            "readmeGitBlob": "4c5a04ced4b2bec55a8c47497dc5048311aea0c0",
+            "sourceCount": 15,
+            "reachableTargetsReferencingSources": [
+              "//buildtools/third_party/libc++abi:libc++abi"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/modp_b64",
+            "readmeGitBlob": "616d5844176a48d463035b0253bcd0717b9920e3",
+            "sourceCount": 3,
+            "reachableTargetsReferencingSources": [
+              "//third_party/modp_b64:modp_b64"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/simdutf",
+            "readmeGitBlob": "003c53476cc0e4a9f0460d0664480b622e7552bb",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//third_party/simdutf:header",
+              "//third_party/simdutf:simdutf"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/zlib",
+            "readmeGitBlob": "232ef66aeb2b4442e327d2cca67ba19fc48833cd",
+            "sourceCount": 40,
+            "reachableTargetsReferencingSources": [
+              "//third_party/zlib:zlib",
+              "//third_party/zlib:zlib_adler32_simd",
+              "//third_party/zlib:zlib_common_headers",
+              "//third_party/zlib:zlib_crc32_simd",
+              "//third_party/zlib:zlib_data_chunk_simd",
+              "//third_party/zlib:zlib_slide_hash_simd"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/zstd",
+            "readmeGitBlob": "b0a7d9c90412383098244f8cf73a57e5a92ccb43",
+            "sourceCount": 35,
+            "reachableTargetsReferencingSources": [
+              "//third_party/zstd:common",
+              "//third_party/zstd:decompress",
+              "//third_party/zstd:headers"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "url/third_party/mozilla",
+            "readmeGitBlob": "0ff29b64861045e90c506c0e8e7d092e66180e75",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//url:url"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          }
+        ],
+        "componentsWithoutCuratedReadme": [
+          {
+            "sourceDirectory": "third_party/compiler-rt",
+            "sourceCount": 3,
+            "sourcePathListSha256": "b0b67b920295c1887de9297805ad696aaf78ffeb713a58c539a0d3af23c13f36"
+          },
+          {
+            "sourceDirectory": "third_party/perfetto",
+            "sourceCount": 588,
+            "sourcePathListSha256": "aa838e9bdf97c647d1c767ee76acc3b08a68876fa98b277a2b514abac247ef54"
+          },
+          {
+            "sourceDirectory": "third_party/protobuf",
+            "sourceCount": 203,
+            "sourcePathListSha256": "49e41285a82f71641049d80aa6dbc916fa88488648e80f95aff8cfcc98a724c0"
+          }
+        ],
+        "existingLibraryGraphMatched": false
+      },
+      {
+        "rootTarget": "//components/cronet:cronet_static",
+        "reachableTargets": 625,
+        "targetTypes": {
+          "source_set": 277,
+          "static_library": 100,
+          "action": 108,
+          "group": 134,
+          "executable": 5,
+          "copy": 1
+        },
+        "sourcePaths": 5329,
+        "unresolvedTargetLabels": [],
+        "candidateComponents": [
+          {
+            "sourceDirectory": "base/third_party/cityhash",
+            "readmeGitBlob": "46bed48caf0baecf16c5a72d21cc7ac77ae4b617",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/cityhash:cityhash"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/cityhash_v103",
+            "readmeGitBlob": "45a3dc42edbd39f309d5eb58c1542e6441612fa3",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/cityhash_v103:cityhash_v103"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/double_conversion",
+            "readmeGitBlob": "902815ef0fbc2d6bf336bb0a4e382400539e883c",
+            "sourceCount": 20,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/double_conversion:double_conversion"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/icu",
+            "readmeGitBlob": "1c270bdc344c2c78cedbac33515c29573db01e5a",
+            "sourceCount": 1,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/icu:icu"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/nspr",
+            "readmeGitBlob": "2cabff688fcf307e47e4c7bfeabcda5939972634",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base:base"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/superfasthash",
+            "readmeGitBlob": "60c21a9fb170206d27dd022d6ae5e20686dd2e03",
+            "sourceCount": 1,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/superfasthash:superfasthash"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/symbolize",
+            "readmeGitBlob": "805f6cb374237f9952418de47e880641521f9621",
+            "sourceCount": 8,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/symbolize:symbolize"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "base/third_party/xdg_user_dirs",
+            "readmeGitBlob": "6d4da4202aaf231d94042b30f2036962853a563a",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//base/third_party/xdg_user_dirs:xdg_user_dirs"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "net/third_party/quiche",
+            "readmeGitBlob": "f03216758ecc333603afac285f1e6a707dd08a44",
+            "sourceCount": 756,
+            "reachableTargetsReferencingSources": [
+              "//net/third_party/quiche:net_quic_proto_gen",
+              "//net/third_party/quiche:net_quic_test_tools_proto_gen",
+              "//net/third_party/quiche:quiche"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "net/third_party/uri_template",
+            "readmeGitBlob": "3cfb99837489509b18d43610a29f742ac85801ec",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//net/third_party/uri_template:uri_template"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/abseil-cpp",
+            "readmeGitBlob": "ff16d9c85b33f969a09cc51f3b336bfb2938fc35",
+            "sourceCount": 188,
+            "reachableTargetsReferencingSources": [
+              "//third_party/abseil-cpp/absl/base:base",
+              "//third_party/abseil-cpp/absl/base:cpu_detect",
+              "//third_party/abseil-cpp/absl/base:log_severity",
+              "//third_party/abseil-cpp/absl/base:malloc_internal",
+              "//third_party/abseil-cpp/absl/base:raw_logging_internal",
+              "//third_party/abseil-cpp/absl/base:spinlock_wait",
+              "//third_party/abseil-cpp/absl/base:strerror",
+              "//third_party/abseil-cpp/absl/base:throw_delegate",
+              "//third_party/abseil-cpp/absl/base:tracing_internal",
+              "//third_party/abseil-cpp/absl/container:btree",
+              "//third_party/abseil-cpp/absl/container:chunked_queue",
+              "//third_party/abseil-cpp/absl/container:hashtablez_sampler",
+              "//third_party/abseil-cpp/absl/container:raw_hash_set",
+              "//third_party/abseil-cpp/absl/crc:crc32c",
+              "//third_party/abseil-cpp/absl/crc:crc_cord_state",
+              "//third_party/abseil-cpp/absl/crc:crc_internal",
+              "//third_party/abseil-cpp/absl/debugging:debugging_internal",
+              "//third_party/abseil-cpp/absl/debugging:decode_rust_punycode",
+              "//third_party/abseil-cpp/absl/debugging:demangle_internal",
+              "//third_party/abseil-cpp/absl/debugging:demangle_rust",
+              "//third_party/abseil-cpp/absl/debugging:examine_stack",
+              "//third_party/abseil-cpp/absl/debugging:failure_signal_handler",
+              "//third_party/abseil-cpp/absl/debugging:leak_check",
+              "//third_party/abseil-cpp/absl/debugging:stacktrace",
+              "//third_party/abseil-cpp/absl/debugging:symbolize",
+              "//third_party/abseil-cpp/absl/debugging:utf8_for_code_point",
+              "//third_party/abseil-cpp/absl/functional:any_invocable",
+              "//third_party/abseil-cpp/absl/functional:bind_back",
+              "//third_party/abseil-cpp/absl/functional:bind_front",
+              "//third_party/abseil-cpp/absl/functional:function_ref",
+              "//third_party/abseil-cpp/absl/hash:city",
+              "//third_party/abseil-cpp/absl/hash:hash",
+              "//third_party/abseil-cpp/absl/log/internal:check_op",
+              "//third_party/abseil-cpp/absl/log/internal:conditions",
+              "//third_party/abseil-cpp/absl/log/internal:fnmatch",
+              "//third_party/abseil-cpp/absl/log/internal:format",
+              "//third_party/abseil-cpp/absl/log/internal:globals",
+              "//third_party/abseil-cpp/absl/log/internal:log_message",
+              "//third_party/abseil-cpp/absl/log/internal:log_sink_set",
+              "//third_party/abseil-cpp/absl/log/internal:nullguard",
+              "//third_party/abseil-cpp/absl/log/internal:proto",
+              "//third_party/abseil-cpp/absl/log/internal:structured_proto",
+              "//third_party/abseil-cpp/absl/log/internal:vlog_config",
+              "//third_party/abseil-cpp/absl/log:die_if_null",
+              "//third_party/abseil-cpp/absl/log:globals",
+              "//third_party/abseil-cpp/absl/log:initialize",
+              "//third_party/abseil-cpp/absl/log:log_entry",
+              "//third_party/abseil-cpp/absl/log:log_sink",
+              "//third_party/abseil-cpp/absl/numeric:int128",
+              "//third_party/abseil-cpp/absl/profiling:exponential_biased",
+              "//third_party/abseil-cpp/absl/random/internal:entropy_pool",
+              "//third_party/abseil-cpp/absl/random/internal:platform",
+              "//third_party/abseil-cpp/absl/random/internal:randen",
+              "//third_party/abseil-cpp/absl/random/internal:randen_hwaes",
+              "//third_party/abseil-cpp/absl/random/internal:randen_hwaes_impl",
+              "//third_party/abseil-cpp/absl/random/internal:randen_slow",
+              "//third_party/abseil-cpp/absl/random/internal:seed_material",
+              "//third_party/abseil-cpp/absl/random:distributions",
+              "//third_party/abseil-cpp/absl/random:seed_gen_exception",
+              "//third_party/abseil-cpp/absl/random:seed_sequences",
+              "//third_party/abseil-cpp/absl/status:status",
+              "//third_party/abseil-cpp/absl/status:status_builder",
+              "//third_party/abseil-cpp/absl/status:statusor",
+              "//third_party/abseil-cpp/absl/strings:cord",
+              "//third_party/abseil-cpp/absl/strings:cord_internal",
+              "//third_party/abseil-cpp/absl/strings:cordz_functions",
+              "//third_party/abseil-cpp/absl/strings:cordz_handle",
+              "//third_party/abseil-cpp/absl/strings:cordz_info",
+              "//third_party/abseil-cpp/absl/strings:internal",
+              "//third_party/abseil-cpp/absl/strings:str_format_internal",
+              "//third_party/abseil-cpp/absl/strings:strings",
+              "//third_party/abseil-cpp/absl/synchronization:graphcycles_internal",
+              "//third_party/abseil-cpp/absl/synchronization:kernel_timeout_internal",
+              "//third_party/abseil-cpp/absl/synchronization:synchronization",
+              "//third_party/abseil-cpp/absl/time/internal/cctz:civil_time",
+              "//third_party/abseil-cpp/absl/time/internal/cctz:time_zone",
+              "//third_party/abseil-cpp/absl/time:clock_interface",
+              "//third_party/abseil-cpp/absl/time:time",
+              "//third_party/abseil-cpp/absl/types:any_span",
+              "//third_party/abseil-cpp/absl/types:source_location",
+              "//third_party/abseil-cpp/absl/types:span"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/boringssl",
+            "readmeGitBlob": "0634134e871058e2c482437e3a362065a6c3be92",
+            "sourceCount": 585,
+            "reachableTargetsReferencingSources": [
+              "//third_party/boringssl:boringssl",
+              "//third_party/boringssl:boringssl_asm"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/boringssl/src/third_party/fiat",
+            "readmeGitBlob": "3d117325680a70a2d4e94df16eb25244a560300e",
+            "sourceCount": 17,
+            "reachableTargetsReferencingSources": [
+              "//third_party/boringssl:boringssl",
+              "//third_party/boringssl:boringssl_asm"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/brotli",
+            "readmeGitBlob": "bee4db5fa3e9f79e6f485978db70901087efe660",
+            "sourceCount": 31,
+            "reachableTargetsReferencingSources": [
+              "//third_party/brotli:common",
+              "//third_party/brotli:dec",
+              "//third_party/brotli:headers"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/libc++",
+            "readmeGitBlob": "6ad264e76871440f7b5cc651e99faeaedf2c9fbb",
+            "sourceCount": 49,
+            "reachableTargetsReferencingSources": [
+              "//buildtools/third_party/libc++:libc++"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/libc++abi",
+            "readmeGitBlob": "4c5a04ced4b2bec55a8c47497dc5048311aea0c0",
+            "sourceCount": 15,
+            "reachableTargetsReferencingSources": [
+              "//buildtools/third_party/libc++abi:libc++abi"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/modp_b64",
+            "readmeGitBlob": "616d5844176a48d463035b0253bcd0717b9920e3",
+            "sourceCount": 3,
+            "reachableTargetsReferencingSources": [
+              "//third_party/modp_b64:modp_b64"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/simdutf",
+            "readmeGitBlob": "003c53476cc0e4a9f0460d0664480b622e7552bb",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//third_party/simdutf:header",
+              "//third_party/simdutf:simdutf"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/zlib",
+            "readmeGitBlob": "232ef66aeb2b4442e327d2cca67ba19fc48833cd",
+            "sourceCount": 40,
+            "reachableTargetsReferencingSources": [
+              "//third_party/zlib:zlib",
+              "//third_party/zlib:zlib_adler32_simd",
+              "//third_party/zlib:zlib_common_headers",
+              "//third_party/zlib:zlib_crc32_simd",
+              "//third_party/zlib:zlib_data_chunk_simd",
+              "//third_party/zlib:zlib_slide_hash_simd"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "third_party/zstd",
+            "readmeGitBlob": "b0a7d9c90412383098244f8cf73a57e5a92ccb43",
+            "sourceCount": 35,
+            "reachableTargetsReferencingSources": [
+              "//third_party/zstd:common",
+              "//third_party/zstd:decompress",
+              "//third_party/zstd:headers"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          },
+          {
+            "sourceDirectory": "url/third_party/mozilla",
+            "readmeGitBlob": "0ff29b64861045e90c506c0e8e7d092e66180e75",
+            "sourceCount": 2,
+            "reachableTargetsReferencingSources": [
+              "//url:url"
+            ],
+            "scope": "candidate metadata, not a final linked-code notice determination"
+          }
+        ],
+        "componentsWithoutCuratedReadme": [
+          {
+            "sourceDirectory": "third_party/compiler-rt",
+            "sourceCount": 3,
+            "sourcePathListSha256": "b0b67b920295c1887de9297805ad696aaf78ffeb713a58c539a0d3af23c13f36"
+          },
+          {
+            "sourceDirectory": "third_party/perfetto",
+            "sourceCount": 588,
+            "sourcePathListSha256": "aa838e9bdf97c647d1c767ee76acc3b08a68876fa98b277a2b514abac247ef54"
+          },
+          {
+            "sourceDirectory": "third_party/protobuf",
+            "sourceCount": 203,
+            "sourcePathListSha256": "49e41285a82f71641049d80aa6dbc916fa88488648e80f95aff8cfcc98a724c0"
+          }
+        ],
+        "existingLibraryGraphMatched": false
+      }
+    ],
+    "linuxArm64Generation": {
+      "args": "is_official_build=true is_debug=false is_clang=true use_clang_modules=false use_thin_lto=false fatal_linker_warnings=false treat_warnings_as_errors=false is_cronet_build=true use_udev=false use_aura=false use_ozone=false use_gio=false use_glib=false use_kerberos=false disable_zstd_filter=false enable_reporting=false enable_bracketed_proxy_uris=true enable_quic_proxy_support=true use_nss_certs=false enable_backup_ref_ptr_support=false enable_dangling_raw_ptr_checks=false exclude_unwind_tables=true enable_resource_allowlist_generation=false symbol_level=0 enable_dsyms=false optimize_for_size=true target_os=\"linux\" target_cpu=\"arm64\" use_sysroot=true target_sysroot=\"//out/sysroot-build/bullseye/bullseye_arm64_staging\"",
+      "exitCode": 1,
+      "stdout": "ERROR at //build/config/sysroot.gni:60:7 (//build/toolchain/linux:clang_x64): Assertion failed.\n      assert(\n      ^-----\nMissing sysroot (//build/linux/debian_bullseye_amd64-sysroot). To fix, run: build/linux/sysroot_scripts/install-sysroot.py --arch=amd64\nSee //build/config/sysroot.gni:61:11: \n          path_exists(sysroot),\n          ^------------------\nThis is where it was set.\nSee //build/config/clang/clang.gni:23:3: whence //build/config/sysroot.gni was imported.\n  import(\"//build/config/sysroot.gni\")\n  ^----------------------------------\nSee //build/config/c++/c++.gni:5:1: whence //build/config/clang/clang.gni was imported.\nimport(\"//build/config/clang/clang.gni\")\n^--------------------------------------\nSee //build/config/compiler/compiler.gni:5:1: whence //build/config/c++/c++.gni was imported.\nimport(\"//build/config/c++/c++.gni\")\n^----------------------------------\nSee //build/config/BUILDCONFIG.gn:415:11: which caused the file to be included.\n        [ \"//build/config/gcc:symbol_visibility_hidden\" ]\n          ^--------------------------------------------\n",
+      "stderr": "",
+      "compilerDownloaded": false,
+      "compilerWrapperOmitted": true,
+      "source": "be1be963131154ba82761a7ed85ba426b2027319"
+    },
+    "limits": [
+      "Fresh GN metadata includes actions and build tools; no Ninja build or Chromium compile was run.",
+      "Compiler revision stamp was reconstructed; actual compiler bytes and original wrapper were not recovered.",
+      "This graph is not the original link graph of the existing library bytes."
+    ]
+  },
+  "supplementalUpstreamNotices": [
+    {
+      "component": "perfetto",
+      "upstreamRevisionFromFixedDEPS": "5dbeaad4ceb91470a835426b52e0cb43a3e5ef10",
+      "sourceURL": "https://chromium.googlesource.com/external/github.com/google/perfetto/+/5dbeaad4ceb91470a835426b52e0cb43a3e5ef10/LICENSE?format=TEXT",
+      "bytes": 14990,
+      "sha256": "9a682a56cffc9524dfa9b0b1c0dca9cb81a19e96d5bd0793aaf02c08a95ee7ca",
+      "gitBlob": "681d40008ee32ddb7e4e1413d6bf82c4f68c5b5b",
+      "repositoryPath": "release/licenses/cronet-upstream-supplement/perfetto/LICENSE"
+    },
+    {
+      "component": "perfetto",
+      "upstreamRevisionFromFixedDEPS": "5dbeaad4ceb91470a835426b52e0cb43a3e5ef10",
+      "sourceURL": "https://chromium.googlesource.com/external/github.com/google/perfetto/+/5dbeaad4ceb91470a835426b52e0cb43a3e5ef10/README.chromium?format=TEXT",
+      "bytes": 350,
+      "sha256": "eb9573fc984cfa5f2d411c6c48a88c6033e050ef4aec210e371af405f0fbf2bf",
+      "gitBlob": "336893eaa6ce02d3a8e203aa72072be6bbf0af84",
+      "repositoryPath": "release/licenses/cronet-upstream-supplement/perfetto/README.chromium"
+    },
+    {
+      "component": "compiler-rt",
+      "upstreamRevisionFromFixedDEPS": "949185fe89d2c78514ddaa6b8874de9415036491",
+      "sourceURL": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/compiler-rt.git/+/949185fe89d2c78514ddaa6b8874de9415036491/LICENSE.TXT?format=TEXT",
+      "bytes": 16708,
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d",
+      "gitBlob": "5a79a1b9d5cb0af9a779751f07033e44ca3b14d8",
+      "repositoryPath": "release/licenses/cronet-upstream-supplement/compiler-rt/LICENSE.TXT"
+    },
+    {
+      "name": "protobuf-readme",
+      "url": "https://chromium.googlesource.com/chromium/src/+/154.0.8037.49/third_party/protobuf/README.chromium?format=TEXT",
+      "bytes": 12592,
+      "sha256": "fab03deeb2a607da6bde8bea16308e32b64dceb8168e284b736d9927867e0e64",
+      "gitBlob": "c1cc318bb8a7a190c91a228dea725bf21efb99f6",
+      "repositoryPath": "release/licenses/cronet-upstream-supplement/protobuf/README.chromium"
+    },
+    {
+      "name": "protobuf-license",
+      "url": "https://chromium.googlesource.com/chromium/src/+/154.0.8037.49/third_party/protobuf/LICENSE?format=TEXT",
+      "bytes": 1732,
+      "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d",
+      "gitBlob": "19b305b00060a774a9180fb916c14b49edb2008f",
+      "repositoryPath": "release/licenses/cronet-upstream-supplement/protobuf/LICENSE"
+    }
+  ],
+  "supplementalSourceBinding": {
+    "chromiumTag": "154.0.8037.49",
+    "resolvedChromiumCommit": "ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92",
+    "tagResolutionURL": "https://chromium.googlesource.com/chromium/src/+/154.0.8037.49?format=JSON",
+    "representativeChecks": [
+      {
+        "component": "protobuf",
+        "fixedUpstreamCommit": "ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92",
+        "url": "https://chromium.googlesource.com/chromium/src/+/ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92/third_party/protobuf/src/google/protobuf/stubs/common.h?format=TEXT",
+        "localSourcePath": "third_party/protobuf/src/google/protobuf/stubs/common.h",
+        "bytes": 3102,
+        "sha256": "9163d7ed8a0cbccece384e9aa8e5fd34ac22f8e6c39ae3c53c1a60bae27fa3e0",
+        "representativeSourceBytesMatch": true
+      },
+      {
+        "component": "perfetto",
+        "fixedUpstreamCommit": "5dbeaad4ceb91470a835426b52e0cb43a3e5ef10",
+        "url": "https://chromium.googlesource.com/external/github.com/google/perfetto/+/5dbeaad4ceb91470a835426b52e0cb43a3e5ef10/include/perfetto/base/logging.h?format=TEXT",
+        "localSourcePath": "third_party/perfetto/include/perfetto/base/logging.h",
+        "bytes": 9844,
+        "sha256": "58db9c363fc9f00f2a217399a44cd389c2f3f2adfd2ad956df947f0935f36e67",
+        "representativeSourceBytesMatch": true
+      },
+      {
+        "component": "compiler-rt",
+        "fixedUpstreamCommit": "949185fe89d2c78514ddaa6b8874de9415036491",
+        "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/compiler-rt.git/+/949185fe89d2c78514ddaa6b8874de9415036491/lib/builtins/atomic.c?format=TEXT",
+        "localSourcePath": "third_party/compiler-rt/src/lib/builtins/atomic.c",
+        "bytes": 18592,
+        "sha256": "49460e687fa4d9c32321ade9d06f70740f9389183028922d97d06db97e9c581d",
+        "representativeSourceBytesMatch": false
+      }
+    ],
+    "scope": "Representative file checks supplement pins; do not assert all component files or original link graph match."
+  },
+  "actualLocalLinuxAmd64KernelSource": {
+    "scope": "Actual fixed local Linux amd64 kernel BuildInfo only; hosted six-platform builds require separate receipt comparisons",
+    "buildInfoSha256": "67ee31b4c3c6f2c81ae99d43352116fbd8f7a72ee9f5079b433745bcfa37b8c5",
+    "modules": [
+      {
+        "module": "filippo.io/edwards25519",
+        "version": "v1.2.0",
+        "sum": "h1:crnVqOiS4jqYleHd9vaKZ+HKtHfllngJIiOpNpoJsjo=",
+        "zipSha256": "98f2d3ca9b88daa031b0fb2fb521b7ea386af1fed61b6f445a20bef7fa381c17",
+        "zipBytes": 56057,
+        "fileCount": 28,
+        "recomputedH1": "h1:crnVqOiS4jqYleHd9vaKZ+HKtHfllngJIiOpNpoJsjo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "filippo.io/edwards25519@v1.2.0/LICENSE",
+            "bytes": 1479,
+            "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/RyuaNerin/go-krypto",
+        "version": "v1.3.0",
+        "sum": "h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=",
+        "zipSha256": "4f98d5d243e2706b588fba752dd8a75c0e2e76542a990a3c6494fc0aac3e9a9b",
+        "zipBytes": 933829,
+        "fileCount": 318,
+        "recomputedH1": "h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/RyuaNerin/go-krypto@v1.3.0/LICENSE",
+            "bytes": 1071,
+            "sha256": "c2d2b9696b1303056e763bf9669bfdb956deb2d30dc5503ae9cdab8ee228e59f"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/ajg/form",
+        "version": "v1.5.1",
+        "sum": "h1:t9c7v8JUKu/XxOGBU0yjNpaMloxGEJhUkqFRq0ibGeU=",
+        "zipSha256": "b063b07639670ce9b6a0065b4dc35ef9e4cebc0c601be27f5494a3e6a87eb78b",
+        "zipBytes": 19661,
+        "fileCount": 13,
+        "recomputedH1": "h1:t9c7v8JUKu/XxOGBU0yjNpaMloxGEJhUkqFRq0ibGeU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/ajg/form@v1.5.1/LICENSE",
+            "bytes": 1481,
+            "sha256": "a66b5c17a29c5b28713fc55662593eb22fab1332d0060bdae5ff8c890e821c67"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/anchore/go-lzo",
+        "version": "v0.1.0",
+        "sum": "h1:NgAacnzqPeGH49Ky19QKLBZEuFRqtTG9cdaucc3Vncs=",
+        "zipSha256": "74e5636203039daeb2339a7953b653d39a1d15c23856e74135e6c5f9fe749216",
+        "zipBytes": 32415,
+        "fileCount": 33,
+        "recomputedH1": "h1:NgAacnzqPeGH49Ky19QKLBZEuFRqtTG9cdaucc3Vncs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/anchore/go-lzo@v0.1.0/LICENSE",
+            "bytes": 1069,
+            "sha256": "08fe5bad51f49efda971e7b602e5b3442fc31ee6c8f85b5248749ca916213d76"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/andybalholm/brotli",
+        "version": "v1.1.0",
+        "sum": "h1:eLKJA0d02Lf0mVpIDgYnqXcUn0GqVmEFny3VuID1U3M=",
+        "zipSha256": "61bc9b753662e2101c63bfc9562f660e9ceca9866010948f1aaccb05cf9e263a",
+        "zipBytes": 1882316,
+        "fileCount": 75,
+        "recomputedH1": "h1:eLKJA0d02Lf0mVpIDgYnqXcUn0GqVmEFny3VuID1U3M=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/andybalholm/brotli@v1.1.0/LICENSE",
+            "bytes": 1084,
+            "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/anmitsu/go-shlex",
+        "version": "v0.0.0-20200514113438-38f4b401e2be",
+        "sum": "h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=",
+        "zipSha256": "2a5cf7c9a2709f649fd508cbacb2be96e4fba4d534a28a122ee4d7574af40b5e",
+        "zipBytes": 5367,
+        "fileCount": 7,
+        "recomputedH1": "h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/anmitsu/go-shlex@v0.0.0-20200514113438-38f4b401e2be/LICENSE",
+            "bytes": 1068,
+            "sha256": "8ff2b7cdb75693173319e65a691da7b9a065cf3fd643264fe8b6ec9e362627f4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/anthropics/anthropic-sdk-go",
+        "version": "v1.26.0",
+        "sum": "h1:oUTzFaUpAevfuELAP1sjL6CQJ9HHAfT7CoSYSac11PY=",
+        "zipSha256": "9c3249d5270113d5a24a2b5bc65298289a879310bf0930fbd8d0542228029205",
+        "zipBytes": 377919,
+        "fileCount": 143,
+        "recomputedH1": "h1:oUTzFaUpAevfuELAP1sjL6CQJ9HHAfT7CoSYSac11PY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/anthropics/anthropic-sdk-go@v1.26.0/LICENSE",
+            "bytes": 1056,
+            "sha256": "8bf96984ff8bcfae7e48cae76a529e8a25317ba9e02abf7fd3cc64fdf95657a6"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/axiomhq/hyperloglog",
+        "version": "v0.0.0-20240319100328-84253e514e02",
+        "sum": "h1:bXAPYSbdYbS5VTy92NIUbeDI1qyggi+JYh5op9IFlcQ=",
+        "zipSha256": "94d387d574deadfc4e719503149fafdcddaf04c06a323966781a41026d2ba493",
+        "zipBytes": 19393,
+        "fileCount": 15,
+        "recomputedH1": "h1:bXAPYSbdYbS5VTy92NIUbeDI1qyggi+JYh5op9IFlcQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/axiomhq/hyperloglog@v0.0.0-20240319100328-84253e514e02/LICENSE",
+            "bytes": 1055,
+            "sha256": "23c37f1226d190d522b7e802ca94e8fbf1e00a331abee11c636815ac6191d025"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/caddyserver/certmagic",
+        "version": "v0.25.3-0.20260421143802-60d9d8b415d6",
+        "sum": "h1:LYSB6VgWzKtNrcxElw3c97BP40Oc7bizKxA9K1Vi/5k=",
+        "zipSha256": "84893e0d9edffc2deb8577de98c029ce932aaa876f5e9c189eb17817eb57c0e6",
+        "zipBytes": 179237,
+        "fileCount": 51,
+        "recomputedH1": "h1:LYSB6VgWzKtNrcxElw3c97BP40Oc7bizKxA9K1Vi/5k=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/caddyserver/certmagic@v0.25.3-0.20260421143802-60d9d8b415d6/LICENSE.txt",
+            "bytes": 11357,
+            "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/caddyserver/zerossl",
+        "version": "v0.1.5",
+        "sum": "h1:dkvOjBAEEtY6LIGAHei7sw2UgqSD6TrWweXpV7lvEvE=",
+        "zipSha256": "96e5fc179f77464888efe39d426151797b003171076ea451e3ca4132b18b7b4e",
+        "zipBytes": 8841,
+        "fileCount": 9,
+        "recomputedH1": "h1:dkvOjBAEEtY6LIGAHei7sw2UgqSD6TrWweXpV7lvEvE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/caddyserver/zerossl@v0.1.5/LICENSE",
+            "bytes": 1068,
+            "sha256": "1ef7b0f3816510e2c4727a6e45b770ddb5ab123d73074e7f0b424767db0f9f7b"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/clipperhouse/uax29/v2",
+        "version": "v2.2.0",
+        "sum": "h1:ChwIKnQN3kcZteTXMgb1wztSgaU+ZemkgWdohwgs8tY=",
+        "zipSha256": "0b26d739ddde86a3bd2c0cc4ce8ca711696a523499a9b26732fb25fc8b9531ab",
+        "zipBytes": 283496,
+        "fileCount": 62,
+        "recomputedH1": "h1:ChwIKnQN3kcZteTXMgb1wztSgaU+ZemkgWdohwgs8tY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/clipperhouse/uax29/v2@v2.2.0/LICENSE",
+            "bytes": 1069,
+            "sha256": "07e9e3daaccc707c9b7d535ed1405a65d37919fdd42197fe55e68820e974688c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/coder/websocket",
+        "version": "v1.8.14",
+        "sum": "h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=",
+        "zipSha256": "b729277821461eb21a816c16e29a02029dd6abbb1a43b526c1e0a6b794942de0",
+        "zipBytes": 74829,
+        "fileCount": 62,
+        "recomputedH1": "h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/coder/websocket@v1.8.14/LICENSE.txt",
+            "bytes": 720,
+            "sha256": "cc0975a5f6305145bdd7b41ce9479632fdac3870e6ac4281f28017f18c767c4e"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/coreos/go-iptables",
+        "version": "v0.7.1-0.20240112124308-65c67c9f46e6",
+        "sum": "h1:8h5+bWd7R6AYUslN6c6iuZWTKsKxUFDlpnmilO6R2n0=",
+        "zipSha256": "6d0ae6344f1d355f72e6aaba583ce73822861511337ca92cc1c4727fc8ba66dd",
+        "zipBytes": 22092,
+        "fileCount": 13,
+        "recomputedH1": "h1:8h5+bWd7R6AYUslN6c6iuZWTKsKxUFDlpnmilO6R2n0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/coreos/go-iptables@v0.7.1-0.20240112124308-65c67c9f46e6/LICENSE",
+            "bytes": 10273,
+            "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68"
+          },
+          {
+            "path": "github.com/coreos/go-iptables@v0.7.1-0.20240112124308-65c67c9f46e6/NOTICE",
+            "bytes": 126,
+            "sha256": "572b159624f1898b40e9f09c9e4cfb65a595044960982aa95126bc28f7d1e6c0"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/coreos/go-oidc/v3",
+        "version": "v3.17.0",
+        "sum": "h1:hWBGaQfbi0iVviX4ibC7bk8OKT5qNr4klBaCHVNvehc=",
+        "zipSha256": "fba667f687448a228315d6f0cfd00a5fa9ab8ad9b511e38575a699afc0b30aeb",
+        "zipBytes": 43678,
+        "fileCount": 23,
+        "recomputedH1": "h1:hWBGaQfbi0iVviX4ibC7bk8OKT5qNr4klBaCHVNvehc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/coreos/go-oidc/v3@v3.17.0/LICENSE",
+            "bytes": 11325,
+            "sha256": "cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14"
+          },
+          {
+            "path": "github.com/coreos/go-oidc/v3@v3.17.0/NOTICE",
+            "bytes": 126,
+            "sha256": "dccd26c6fd9c296daf44d0bc56bb4efc566edd4880381b3331c9a63e6e471338"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/creack/pty",
+        "version": "v1.1.24",
+        "sum": "h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=",
+        "zipSha256": "754e25253e76a5583b80d57d3add3afe68fc4d9f2a490968a9d1eda8c8fd8815",
+        "zipBytes": 40880,
+        "fileCount": 65,
+        "recomputedH1": "h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/creack/pty@v1.1.24/LICENSE",
+            "bytes": 1056,
+            "sha256": "a2a1cea59d9c2d71908082f516f86bb560abf857646ecf69d70c121ead14aef4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/cretz/bine",
+        "version": "v0.2.0",
+        "sum": "h1:8GiDRGlTgz+o8H9DSnsl+5MeBK4HsExxgl6WgzOCuZo=",
+        "zipSha256": "ca84127199d440ffb7937f31dac06f8e362b5def4c9bf09b687429e37575124a",
+        "zipBytes": 1976279,
+        "fileCount": 59,
+        "recomputedH1": "h1:8GiDRGlTgz+o8H9DSnsl+5MeBK4HsExxgl6WgzOCuZo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/cretz/bine@v0.2.0/LICENSE",
+            "bytes": 1065,
+            "sha256": "9808ceffe450ef163ae04ba0d42149c3742a55ddd8da580c2471f23a7f79a405"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/database64128/netx-go",
+        "version": "v0.1.1",
+        "sum": "h1:dT5LG7Gs7zFZBthFBbzWE6K8wAHjSNAaK7wCYZT7NzM=",
+        "zipSha256": "802ced24f0bfa5530723625d2d36b012340185d6cef42d5d3cb58e644b2a23d8",
+        "zipBytes": 9032,
+        "fileCount": 15,
+        "recomputedH1": "h1:dT5LG7Gs7zFZBthFBbzWE6K8wAHjSNAaK7wCYZT7NzM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/database64128/netx-go@v0.1.1/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/database64128/tfo-go/v2",
+        "version": "v2.3.2",
+        "sum": "h1:UhZMKiMq3swZGUiETkLBDzQnZBPSAeBMClpJGlnJ5Fw=",
+        "zipSha256": "4904e23e365ed31913ef986cda7833140702e6aeb27fc341f0e35aac0fe89c69",
+        "zipBytes": 37701,
+        "fileCount": 41,
+        "recomputedH1": "h1:UhZMKiMq3swZGUiETkLBDzQnZBPSAeBMClpJGlnJ5Fw=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/database64128/tfo-go/v2@v2.3.2/LICENSE",
+            "bytes": 1070,
+            "sha256": "092daaeb0ef37d1e9870febdaa8e2e19f263128bf4351f811bd5181d0f4a1081"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/dgryski/go-camellia",
+        "version": "v0.0.0-20191119043421-69a8a13fb23d",
+        "sum": "h1:CPqTNIigGweVPT4CYb+OO2E6XyRKFOmvTHwWRLgCAlE=",
+        "zipSha256": "be22e00ee49e337febae1dc49c0df536b729304f2e8f00473c12fd4e59a2ef28",
+        "zipBytes": 5586,
+        "fileCount": 4,
+        "recomputedH1": "h1:CPqTNIigGweVPT4CYb+OO2E6XyRKFOmvTHwWRLgCAlE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/dgryski/go-camellia@v0.0.0-20191119043421-69a8a13fb23d/LICENSE",
+            "bytes": 1063,
+            "sha256": "d4f57fcddf72f284b3a234902879e165a782cb3cea3308102ad16ee0b106534b"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/dgryski/go-metro",
+        "version": "v0.0.0-20180109044635-280f6062b5bc",
+        "sum": "h1:8WFBn63wegobsYAX0YjD+8suexZDga5CctH4CCTx2+8=",
+        "zipSha256": "3f97b3cdeaee7b4fbf4fa06b7c52e3ee6bca461a100077892e861c6c8fc03722",
+        "zipBytes": 6592,
+        "fileCount": 8,
+        "recomputedH1": "h1:8WFBn63wegobsYAX0YjD+8suexZDga5CctH4CCTx2+8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/dgryski/go-metro@v0.0.0-20180109044635-280f6062b5bc/LICENSE",
+            "bytes": 1220,
+            "sha256": "4c9aa4187a0088cc5fd5914f89276463d0e1dc1c01d49bdac6fd5bd3d38db476"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/ebitengine/purego",
+        "version": "v0.10.0",
+        "sum": "h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=",
+        "zipSha256": "df60829d7715bf609e78ebb6c945bdb865ccdfec56a71603d6e12346f98065c9",
+        "zipBytes": 219025,
+        "fileCount": 153,
+        "recomputedH1": "h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/ebitengine/purego@v0.10.0/LICENSE",
+            "bytes": 11357,
+            "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/florianl/go-nfqueue/v2",
+        "version": "v2.1.0",
+        "sum": "h1:Fywt30TY/evxyDySpXjxQ1jsRW7nQbLpOhELqpr4068=",
+        "zipSha256": "899df093b356670468db3cc9ec01581643511980c8f10b06613d6a1c8033bc2c",
+        "zipBytes": 19151,
+        "fileCount": 19,
+        "recomputedH1": "h1:Fywt30TY/evxyDySpXjxQ1jsRW7nQbLpOhELqpr4068=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/florianl/go-nfqueue/v2@v2.1.0/LICENSE",
+            "bytes": 1108,
+            "sha256": "5425254065e61bfe5f0b686aebe1132b4a1596e0e14ede729cfc52cc3e187af6"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/fsnotify/fsnotify",
+        "version": "v1.9.0",
+        "sum": "h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=",
+        "zipSha256": "94e64824b23591b7aa504e3321d5ec3f57de88f4d49882eaefbbf6820dab746e",
+        "zipBytes": 116946,
+        "fileCount": 119,
+        "recomputedH1": "h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/fsnotify/fsnotify@v1.9.0/LICENSE",
+            "bytes": 1531,
+            "sha256": "2dfbe6d2b5eb18b55148f3805d88648a09e0d17e38428123259afb08c8996e37"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/fxamacker/cbor/v2",
+        "version": "v2.9.0",
+        "sum": "h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=",
+        "zipSha256": "5b0ec6424bd522aeeeab30cbdcad6f40bf976a9a2ddf125ab27b97826140d97a",
+        "zipBytes": 203310,
+        "fileCount": 48,
+        "recomputedH1": "h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/fxamacker/cbor/v2@v2.9.0/LICENSE",
+            "bytes": 1076,
+            "sha256": "78cad457d5ea7318230f3d969d4cdf29cef45524a1fc8ca3a97646da1ad7a841"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/gaissmai/bart",
+        "version": "v0.26.1",
+        "sum": "h1:+w4rnLGNlA2GDVn382Tfe3jOsK5vOr5n4KmigJ9lbTo=",
+        "zipSha256": "7cead7fb3f4be36f3864efaf1344d72ca7ba03ab5a557338c80ca6d4bda59cca",
+        "zipBytes": 2985018,
+        "fileCount": 71,
+        "recomputedH1": "h1:+w4rnLGNlA2GDVn382Tfe3jOsK5vOr5n4KmigJ9lbTo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/gaissmai/bart@v0.26.1/LICENSE",
+            "bytes": 1072,
+            "sha256": "12d27746d111da33969df0ecaa9b799e22c42db7d0b6a5164f383ec934233a41"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/go-chi/chi/v5",
+        "version": "v5.2.5",
+        "sum": "h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=",
+        "zipSha256": "f78c1525f8b3af815bcf3406c0aba1f272eff96413ff51874677bf8a314fcad8",
+        "zipBytes": 112316,
+        "fileCount": 84,
+        "recomputedH1": "h1:Eg4myHZBjyvJmAFjFvWgrqDTXFyOzjj7YIm3L3mu6Ug=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/go-chi/chi/v5@v5.2.5/LICENSE",
+            "bytes": 1123,
+            "sha256": "a2d51b7515acfaff2f7a88688650f2fc4fd99561383e72bba2305e3db59a1647"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/go-chi/render",
+        "version": "v1.0.3",
+        "sum": "h1:AsXqd2a1/INaIfUSKq3G5uA8weYx20FOsM7uSoCyyt4=",
+        "zipSha256": "6d0bfe49b2b06e125acd7b348aba5eb255891018b3cd7ff86b62599c33922be7",
+        "zipBytes": 8362,
+        "fileCount": 10,
+        "recomputedH1": "h1:AsXqd2a1/INaIfUSKq3G5uA8weYx20FOsM7uSoCyyt4=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/go-chi/render@v1.0.3/LICENSE",
+            "bytes": 1098,
+            "sha256": "98e196bb920eee8b82b0ee2001d609b2cfe57cb83ee1d15f315f327e5599d6df"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/go-jose/go-jose/v4",
+        "version": "v4.1.3",
+        "sum": "h1:CVLmWDhDVRa6Mi/IgCgaopNosCaHz7zrMeF9MlZRkrs=",
+        "zipSha256": "ec019b110f6cdc3f55f067f52573be4474d5051b9b7c7fc11eb846b13c56beb4",
+        "zipBytes": 368633,
+        "fileCount": 87,
+        "recomputedH1": "h1:CVLmWDhDVRa6Mi/IgCgaopNosCaHz7zrMeF9MlZRkrs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/go-jose/go-jose/v4@v4.1.3/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          },
+          {
+            "path": "github.com/go-jose/go-jose/v4@v4.1.3/json/LICENSE",
+            "bytes": 1479,
+            "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/go4org/hashtriemap",
+        "version": "v0.0.0-20251130024219-545ba229f689",
+        "sum": "h1:0psnKZ+N2IP43/SZC8SKx6OpFJwLmQb9m9QyV9BC2f8=",
+        "zipSha256": "700297f21d2b96537dc99217716d2ae148c5e82a01cd5f4c608e69526e6b9f1f",
+        "zipBytes": 12155,
+        "fileCount": 6,
+        "recomputedH1": "h1:0psnKZ+N2IP43/SZC8SKx6OpFJwLmQb9m9QyV9BC2f8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/go4org/hashtriemap@v0.0.0-20251130024219-545ba229f689/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/gobwas/httphead",
+        "version": "v0.1.0",
+        "sum": "h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=",
+        "zipSha256": "a4646f1d12786fee639c489219e7c667b10f7dc19578a4e7222bd17c5d9bdf8a",
+        "zipBytes": 22450,
+        "fileCount": 15,
+        "recomputedH1": "h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/gobwas/httphead@v0.1.0/LICENSE",
+            "bytes": 1082,
+            "sha256": "7d168561ad5212bf5b3023d55cba37c9594eb011ba74445d99f82055be662589"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/gobwas/pool",
+        "version": "v0.2.1",
+        "sum": "h1:xfeeEhW7pwmX8nuLVlqbzVc7udMDrwetjEv+TZIz1og=",
+        "zipSha256": "79b505a9f42b141affca1eedd2edc87ae922482d052e16e3b6e5e3c9dcec89e1",
+        "zipBytes": 13438,
+        "fileCount": 18,
+        "recomputedH1": "h1:xfeeEhW7pwmX8nuLVlqbzVc7udMDrwetjEv+TZIz1og=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/gobwas/pool@v0.2.1/LICENSE",
+            "bytes": 1106,
+            "sha256": "bcc745631c0144db2c601650c55d108172c80d601cf2346c71594a0bc32f6f1c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/godbus/dbus/v5",
+        "version": "v5.2.2",
+        "sum": "h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=",
+        "zipSha256": "5c6f37c725a481fb0f1e7866ae273429525d8cc6a6cace87da28e53370f5596a",
+        "zipBytes": 112993,
+        "fileCount": 92,
+        "recomputedH1": "h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/godbus/dbus/v5@v5.2.2/LICENSE",
+            "bytes": 1328,
+            "sha256": "e4646a82a976369d7ae8f6ed5c11d35dc0af18433a8ccc24c85b459ad8b95128"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/gofrs/uuid/v5",
+        "version": "v5.5.1",
+        "sum": "h1:z1Ce19/JwNidXpy3tOQc3241lnJLKdKyq/xlNvlD4Ng=",
+        "zipSha256": "1f3a1af9f73c5934482bccfeb3bca76779d0ea6668e1f21d7e8771052c6c8ada",
+        "zipBytes": 48728,
+        "fileCount": 22,
+        "recomputedH1": "h1:z1Ce19/JwNidXpy3tOQc3241lnJLKdKyq/xlNvlD4Ng=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/gofrs/uuid/v5@v5.5.1/LICENSE",
+            "bytes": 1082,
+            "sha256": "92a328e1d5f3269b42e2ce32b4494eafdb3132f204a911c5c95cf3d8465490e4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/golang/groupcache",
+        "version": "v0.0.0-20241129210726-2c02b8208cf8",
+        "sum": "h1:f+oWsMOmNPc8JmEHVZIycC7hBoQxHH9pNKQORJNozsQ=",
+        "zipSha256": "163367355442a630b12b0b452892cd98e99fcfdf7e40b68d358be73479cc1c23",
+        "zipBytes": 40748,
+        "fileCount": 24,
+        "recomputedH1": "h1:f+oWsMOmNPc8JmEHVZIycC7hBoQxHH9pNKQORJNozsQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/golang/groupcache@v0.0.0-20241129210726-2c02b8208cf8/LICENSE",
+            "bytes": 10273,
+            "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/google/btree",
+        "version": "v1.1.3",
+        "sum": "h1:CVpQJjYgC4VbzxeGVHfvZrv1ctoYCAI8vbl07Fcxlyg=",
+        "zipSha256": "11b736bc8252b52fecdf346d3707ccf3a2b6d458ba21b4f843616fc12eeb30b2",
+        "zipBytes": 31297,
+        "fileCount": 9,
+        "recomputedH1": "h1:CVpQJjYgC4VbzxeGVHfvZrv1ctoYCAI8vbl07Fcxlyg=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/google/btree@v1.1.3/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/google/certificate-transparency-go",
+        "version": "v1.3.2",
+        "sum": "h1:9ahSNZF2o7SYMaKaXhAumVEzXB2QaayzII9C8rv7v+A=",
+        "zipSha256": "3ed01f6ab05444275466dd46a6c2ce7593c58ffa8c0563528dbc2499e6c1100a",
+        "zipBytes": 1661535,
+        "fileCount": 435,
+        "recomputedH1": "h1:9ahSNZF2o7SYMaKaXhAumVEzXB2QaayzII9C8rv7v+A=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/google/certificate-transparency-go@v1.3.2/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          },
+          {
+            "path": "github.com/google/certificate-transparency-go@v1.3.2/third_party/prometheus/LICENSE",
+            "bytes": 11357,
+            "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/google/gopacket",
+        "version": "v1.1.19",
+        "sum": "h1:ves8RnFZPGiFnTS0uPQStjwru6uO6h+nlr9j6fL7kF8=",
+        "zipSha256": "fc8cbe2239683199e677cb39f9303ae8d4a365f3c8cd8a2dcfa1f14c41bcff88",
+        "zipBytes": 1104735,
+        "fileCount": 285,
+        "recomputedH1": "h1:ves8RnFZPGiFnTS0uPQStjwru6uO6h+nlr9j6fL7kF8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/google/gopacket@v1.1.19/LICENSE",
+            "bytes": 1555,
+            "sha256": "8025b28cd71e0a486b173d4a29a05478c003d197a907f99b61a05e181e90b92d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/google/nftables",
+        "version": "v0.2.1-0.20240414091927-5e242ec57806",
+        "sum": "h1:wG8RYIyctLhdFk6Vl1yPGtSRtwGpVkWyZww1OCil2MI=",
+        "zipSha256": "ceb96b39a6f9004d8c217a6ae61b91a69c250bc30fbf3a04cd87cbbfddea73c8",
+        "zipBytes": 149720,
+        "fileCount": 89,
+        "recomputedH1": "h1:wG8RYIyctLhdFk6Vl1yPGtSRtwGpVkWyZww1OCil2MI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/google/nftables@v0.2.1-0.20240414091927-5e242ec57806/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/google/uuid",
+        "version": "v1.6.0",
+        "sum": "h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=",
+        "zipSha256": "d0f02f377217f42702e259684e06441edbf5140dddcc34ba9bea56038b38a6ed",
+        "zipBytes": 31981,
+        "fileCount": 31,
+        "recomputedH1": "h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/google/uuid@v1.6.0/LICENSE",
+            "bytes": 1480,
+            "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/hashicorp/yamux",
+        "version": "v0.1.2",
+        "sum": "h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8=",
+        "zipSha256": "8ba2b4b2d37260d4aeabf85ac9c26841a287a264c02bc629f40f19d2bd977df4",
+        "zipBytes": 36992,
+        "fileCount": 20,
+        "recomputedH1": "h1:XtB8kyFOyHXYVFnwT5C3+Bdo8gArse7j2AQ0DA0Uey8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/hashicorp/yamux@v0.1.2/LICENSE",
+            "bytes": 15956,
+            "sha256": "ba36895caa0717b51eacc64ad50ef0b399482e1b82b93cfcdd065307409b3d9d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/hdevalence/ed25519consensus",
+        "version": "v0.2.0",
+        "sum": "h1:37ICyZqdyj0lAZ8P4D1d1id3HqbbG1N3iBb1Tb4rdcU=",
+        "zipSha256": "111cafade3ba9c7c3adf66b6a424386e30829c46c60b80dabe288e1837d30e33",
+        "zipBytes": 10170,
+        "fileCount": 11,
+        "recomputedH1": "h1:37ICyZqdyj0lAZ8P4D1d1id3HqbbG1N3iBb1Tb4rdcU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/hdevalence/ed25519consensus@v0.2.0/LICENSE",
+            "bytes": 1537,
+            "sha256": "789be8b214a1871d8d1a5ab157f8f4ad74cd889087762bd5cced07ed589b6bc7"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/huin/goupnp",
+        "version": "v1.3.0",
+        "sum": "h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=",
+        "zipSha256": "df663b90b9b3bf16e1cfa810a6c3dd904993e8c1155dbf65566ce0361f163dce",
+        "zipBytes": 110666,
+        "fileCount": 44,
+        "recomputedH1": "h1:UvLUlWDNpoUdYzb2TCn+MuTWtcjXKSza2n6CBdQ0xXc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/huin/goupnp@v1.3.0/LICENSE",
+            "bytes": 1321,
+            "sha256": "440688406aeb546bad566031c8a01531a01a683166f7010380fcc0f68d830311"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/insomniacslk/dhcp",
+        "version": "v0.0.0-20260220084031-5adc3eb26f91",
+        "sum": "h1:u9i04mGE3iliBh0EFuWaKsmcwrLacqGmq1G3XoaM7gY=",
+        "zipSha256": "911962b5821178a49b95922452f66bae6f350ad1c4da84475ea3cd0ad2bba7e9",
+        "zipBytes": 240896,
+        "fileCount": 186,
+        "recomputedH1": "h1:u9i04mGE3iliBh0EFuWaKsmcwrLacqGmq1G3XoaM7gY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/insomniacslk/dhcp@v0.0.0-20260220084031-5adc3eb26f91/LICENSE",
+            "bytes": 1515,
+            "sha256": "d034f64d0e3a12eec92e6d98ee6a0b1ee36f2a751aa96e9485fdd3a1280a6af1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/jackpal/go-nat-pmp",
+        "version": "v1.0.2",
+        "sum": "h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7BdWus=",
+        "zipSha256": "f778f0f492597d7158e2d6abbac3850bdf8a669c296790eba85c95152872ddfb",
+        "zipBytes": 6553,
+        "fileCount": 7,
+        "recomputedH1": "h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7BdWus=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/jackpal/go-nat-pmp@v1.0.2/LICENSE",
+            "bytes": 591,
+            "sha256": "1596ea320a3d9e5180576b2c6dd28aa34b9edcef27693fcd0474e24bda3fdcab"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/jsimonetti/rtnetlink",
+        "version": "v1.4.1",
+        "sum": "h1:JfD4jthWBqZMEffc5RjgmlzpYttAVw1sdnmiNaPO3hE=",
+        "zipSha256": "b27130e80a69c0fab7e071bc90dd30288628ae7e1003dff727e5d49f3d99087d",
+        "zipBytes": 425289,
+        "fileCount": 981,
+        "recomputedH1": "h1:JfD4jthWBqZMEffc5RjgmlzpYttAVw1sdnmiNaPO3hE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/jsimonetti/rtnetlink@v1.4.1/LICENSE.md",
+            "bytes": 1085,
+            "sha256": "1f61baf667aacf74c2d17abcfc0ba6e9267265460a508629307c08020dcae39c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/klauspost/compress",
+        "version": "v1.19.1",
+        "sum": "h1:VsB4HPswih7mmZ8WleSFQ75c/Ui1M4trX5oAsJnhSlk=",
+        "zipSha256": "a77e019f60dff8bdf00ad137985c808957cc657381daa4281824843bc6b46910",
+        "zipBytes": 39237053,
+        "fileCount": 446,
+        "recomputedH1": "h1:VsB4HPswih7mmZ8WleSFQ75c/Ui1M4trX5oAsJnhSlk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/LICENSE",
+            "bytes": 16733,
+            "sha256": "0d9e582ee4bff57bf1189c9e514e6da7ce277f9cd3bc2d488b22fbb39a6d87cf"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/gzhttp/LICENSE",
+            "bytes": 11361,
+            "sha256": "2252a5b1e2b1d3663b53ea77051b8ed065cb9270a3d1174d5d6ead8a2de051b6"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/internal/lz4ref/LICENSE",
+            "bytes": 1477,
+            "sha256": "6a358d2540ca14048f02d366f23787c0a480157e58f058113f0e27168dd4e447"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/internal/snapref/LICENSE",
+            "bytes": 1486,
+            "sha256": "f69f157b0be75da373605dbc8bbf142e8924ee82d8f44f11bcaf351335bf98cf"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/s2/LICENSE",
+            "bytes": 1538,
+            "sha256": "08683b14bda8ae3538abf19e1879e853a39e3b8276a8d673363b529d15a61c1a"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/s2/cmd/internal/filepathx/LICENSE",
+            "bytes": 1061,
+            "sha256": "8582c87d9a6baa28f7827c5205b7d16c3179bc794ebd4c7cc287c49a89b7eaa1"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/s2/cmd/internal/readahead/LICENSE",
+            "bytes": 1100,
+            "sha256": "10fa24a602fde465db603cd5d546e37e33642a73cd24ddf5910be81724fec8b2"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/snappy/LICENSE",
+            "bytes": 1486,
+            "sha256": "f69f157b0be75da373605dbc8bbf142e8924ee82d8f44f11bcaf351335bf98cf"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/snappy/xerial/LICENSE",
+            "bytes": 1106,
+            "sha256": "d4ff111fa30ac75e28dca3868de957a3b73ff50b76bc4b8fe5c3a1f008d26703"
+          },
+          {
+            "path": "github.com/klauspost/compress@v1.19.1/zstd/internal/xxhash/LICENSE.txt",
+            "bytes": 1068,
+            "sha256": "f566a9f97bacdaf00d9f21dd991e81dc11201c4e016c86b470799429a1c9a79c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/klauspost/cpuid/v2",
+        "version": "v2.3.0",
+        "sum": "h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=",
+        "zipSha256": "e6766f75ecfadf12fd045e4bdd9383f2a5bd3f9bd4c88a6db72861c84cf41486",
+        "zipBytes": 55006,
+        "fileCount": 27,
+        "recomputedH1": "h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/klauspost/cpuid/v2@v2.3.0/LICENSE",
+            "bytes": 1078,
+            "sha256": "5d966570d7a442d4e969892860a914e542c97f262c873baee8f0aa48e1f40212"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/koron/go-ssdp",
+        "version": "v0.0.4",
+        "sum": "h1:1IDwrghSKYM7yLf7XCzbByg2sJ/JcNOZRXS2jczTwz0=",
+        "zipSha256": "4a4c4a048c0ac4632d8e9f0be4fd64804a2cb872e660be4b79d83a29bc347ad4",
+        "zipBytes": 24683,
+        "fileCount": 33,
+        "recomputedH1": "h1:1IDwrghSKYM7yLf7XCzbByg2sJ/JcNOZRXS2jczTwz0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/koron/go-ssdp@v0.0.4/LICENSE",
+            "bytes": 1105,
+            "sha256": "19bf6375dd79e92e109f5f2603f824a14056d051a5f9ef77ea02c573668fd0d1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/kr/fs",
+        "version": "v0.1.0",
+        "sum": "h1:Jskdu9ieNAYnjxsi0LbQp1ulIKZV1LAFgK1tWhpZgl8=",
+        "zipSha256": "d376bd98e81aea34585fc3b04bab76363e9e87cde69383964e57e9779f2af81e",
+        "zipBytes": 5552,
+        "fileCount": 7,
+        "recomputedH1": "h1:Jskdu9ieNAYnjxsi0LbQp1ulIKZV1LAFgK1tWhpZgl8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/kr/fs@v0.1.0/LICENSE",
+            "bytes": 1479,
+            "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libdns/acmedns",
+        "version": "v0.5.0",
+        "sum": "h1:5pRtmUj4Lb/QkNJSl1xgOGBUJTWW7RjpNaIhjpDXjPE=",
+        "zipSha256": "8313f998d0aa1e450c64d5987060228055d559a087b925164bebf686acd63d8c",
+        "zipBytes": 5560,
+        "fileCount": 6,
+        "recomputedH1": "h1:5pRtmUj4Lb/QkNJSl1xgOGBUJTWW7RjpNaIhjpDXjPE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libdns/acmedns@v0.5.0/LICENSE",
+            "bytes": 1061,
+            "sha256": "3be396ae13cbab58db6c282da20fef911e30cd14a596d749d41f57ea720b0d17"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libdns/alidns",
+        "version": "v1.0.6",
+        "sum": "h1:/Ii428ty6WHFJmE24rZxq2taq++gh7rf9jhgLfp8PmM=",
+        "zipSha256": "d6fa4379b355786ba150ccac23da83f69592e169cd28e1f62554ce04392cb5a5",
+        "zipBytes": 16718,
+        "fileCount": 15,
+        "recomputedH1": "h1:/Ii428ty6WHFJmE24rZxq2taq++gh7rf9jhgLfp8PmM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libdns/alidns@v1.0.6/LICENSE",
+            "bytes": 1062,
+            "sha256": "065daa5aa741362f0ca598d8be206f0df0eeea8373aea1c23f430164d6f7e1ca"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libdns/cloudflare",
+        "version": "v0.2.2",
+        "sum": "h1:XWHv+C1dDcApqazlh08Q6pjytYLgR2a+Y3xrXFu0vsI=",
+        "zipSha256": "eedcf4aa400cac994e2b8c4378f683c57199f40e41cb7e75f1a54eb45fdd9c98",
+        "zipBytes": 10855,
+        "fileCount": 8,
+        "recomputedH1": "h1:XWHv+C1dDcApqazlh08Q6pjytYLgR2a+Y3xrXFu0vsI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libdns/cloudflare@v0.2.2/LICENSE",
+            "bytes": 1069,
+            "sha256": "e75b5c81dc881b74f84c306c2d0b7db1affbe78d9c0feb5722eb432fd534bea5"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libdns/libdns",
+        "version": "v1.1.1",
+        "sum": "h1:wPrHrXILoSHKWJKGd0EiAVmiJbFShguILTg9leS/P/U=",
+        "zipSha256": "3122839648415fd29ffeec46014a54e040611775ad696e0345502b9fe6011263",
+        "zipBytes": 23530,
+        "fileCount": 10,
+        "recomputedH1": "h1:wPrHrXILoSHKWJKGd0EiAVmiJbFShguILTg9leS/P/U=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libdns/libdns@v1.1.1/LICENSE",
+            "bytes": 1069,
+            "sha256": "e75b5c81dc881b74f84c306c2d0b7db1affbe78d9c0feb5722eb432fd534bea5"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libp2p/go-nat",
+        "version": "v1.0.1-0.20250821073202-01afc089f138",
+        "sum": "h1:YohuNPT/1k3VcThCQlBZ43PCPWPfMRS1zcxWBF2SLK8=",
+        "zipSha256": "88d5bf91c45e056adb4bc4763fda3260b70d6c6f70d7bf758eb6b1d5e35aa0df",
+        "zipBytes": 15986,
+        "fileCount": 17,
+        "recomputedH1": "h1:YohuNPT/1k3VcThCQlBZ43PCPWPfMRS1zcxWBF2SLK8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libp2p/go-nat@v1.0.1-0.20250821073202-01afc089f138/LICENSE",
+            "bytes": 10273,
+            "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/libp2p/go-netroute",
+        "version": "v0.2.1",
+        "sum": "h1:V8kVrpD8GK0Riv15/7VN6RbUQ3URNZVosw7H2v9tksU=",
+        "zipSha256": "65067a36378b786df40a578bf4450269c4371cf415123c71c0847df0062b8ebd",
+        "zipBytes": 20537,
+        "fileCount": 20,
+        "recomputedH1": "h1:V8kVrpD8GK0Riv15/7VN6RbUQ3URNZVosw7H2v9tksU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/libp2p/go-netroute@v0.2.1/LICENSE",
+            "bytes": 1607,
+            "sha256": "84a049e0389f2118af2538e74523a7f76967f94bbfc93e43688cd4dfd4b89e95"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/logrusorgru/aurora",
+        "version": "v2.0.3+incompatible",
+        "sum": "h1:tOpm7WcpBTn4fjmVfgpQq0EfczGlG91VSDkswnjF5A8=",
+        "zipSha256": "d921c42a82279d0ee2b15068660e600897b4141826a9f9fb06998da3c0c9ab41",
+        "zipBytes": 149692,
+        "fileCount": 31,
+        "recomputedH1": "h1:tOpm7WcpBTn4fjmVfgpQq0EfczGlG91VSDkswnjF5A8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/logrusorgru/aurora@v2.0.3+incompatible/LICENSE",
+            "bytes": 1211,
+            "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/mattn/go-runewidth",
+        "version": "v0.0.27",
+        "sum": "h1:Feg/Oou5zI/wnpgDF6omIU0OokC9GxLC/WRknhVlIR0=",
+        "zipSha256": "78b1690bd2506faeeecff9cce615e5710c12fe25a5393abe3c2503d0ea4ee2ea",
+        "zipBytes": 29985,
+        "fileCount": 20,
+        "recomputedH1": "h1:Feg/Oou5zI/wnpgDF6omIU0OokC9GxLC/WRknhVlIR0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/mattn/go-runewidth@v0.0.27/LICENSE",
+            "bytes": 1085,
+            "sha256": "88a2379b3ca34bf5c57127aff9dcb802bbb60ece0805cdbda65b3bd115f971d9"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/mdlayher/netlink",
+        "version": "v1.11.2",
+        "sum": "h1:HKh2jqe+omdSWcQ88nrT7INE61B0NXfiSPFdgL4YbNI=",
+        "zipSha256": "2fbb8a5962c22dfdeaecd18bc2a1215e863bfcfa2ba1a28a3703ce0ae014ba4a",
+        "zipBytes": 75541,
+        "fileCount": 48,
+        "recomputedH1": "h1:HKh2jqe+omdSWcQ88nrT7INE61B0NXfiSPFdgL4YbNI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/mdlayher/netlink@v1.11.2/LICENSE.md",
+            "bytes": 1075,
+            "sha256": "756eb71e459f59a9d187b8f6d09181157f8a5fb2b1d30ca359e1d7f35f91cb9d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/mdlayher/socket",
+        "version": "v0.6.0",
+        "sum": "h1:ScZPaAGyO1icQnbFrhPM8mnXyMu9qukC1K4ZoM2IQKU=",
+        "zipSha256": "0b6d1f9f64462bcf94a8dc7dc9fc0084f35af3434ab67a724464a95d47bc87af",
+        "zipBytes": 29741,
+        "fileCount": 24,
+        "recomputedH1": "h1:ScZPaAGyO1icQnbFrhPM8mnXyMu9qukC1K4ZoM2IQKU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/mdlayher/socket@v0.6.0/LICENSE.md",
+            "bytes": 1070,
+            "sha256": "7ac20f598f63dfd35c7c6c3844073af0bebfa436cfe58b91af9ac17cd727ea42"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/metacubex/utls",
+        "version": "v1.8.7",
+        "sum": "h1:Cp+yWkNTFkSihETgGWq34hlVFds5HpYWVOR1xovUVTs=",
+        "zipSha256": "2c29de950b4778b9d47b0a3cb02b8a50766c2cc3de622a5f12fdf9f5a785711e",
+        "zipBytes": 1042854,
+        "fileCount": 351,
+        "recomputedH1": "h1:Cp+yWkNTFkSihETgGWq34hlVFds5HpYWVOR1xovUVTs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/metacubex/utls@v1.8.7/LICENSE",
+            "bytes": 1479,
+            "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+          },
+          {
+            "path": "github.com/metacubex/utls@v1.8.7/dicttls/LICENSE",
+            "bytes": 1498,
+            "sha256": "ac089a3cb515b32ba1c8c2b401646527f55815a9022013693d515f2e2e4fb6ec"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/mholt/acmez/v3",
+        "version": "v3.1.6",
+        "sum": "h1:eGVQNObP0pBN4sxqrXeg7MYqTOWyoiYpQqITVWlrevk=",
+        "zipSha256": "e122eb1244f36260351913a688fca9ff6aa75e17cd62946718e79fd308932acf",
+        "zipBytes": 92226,
+        "fileCount": 33,
+        "recomputedH1": "h1:eGVQNObP0pBN4sxqrXeg7MYqTOWyoiYpQqITVWlrevk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/mholt/acmez/v3@v3.1.6/LICENSE",
+            "bytes": 11357,
+            "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/miekg/dns",
+        "version": "v1.1.72",
+        "sum": "h1:vhmr+TF2A3tuoGNkLDFK9zi36F2LS+hKTRW0Uf8kbzI=",
+        "zipSha256": "092608d919335ff22154862c59abe8b4d651be3ef0b75d22001a07c03106a3b6",
+        "zipBytes": 260654,
+        "fileCount": 105,
+        "recomputedH1": "h1:vhmr+TF2A3tuoGNkLDFK9zi36F2LS+hKTRW0Uf8kbzI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/miekg/dns@v1.1.72/LICENSE",
+            "bytes": 1568,
+            "sha256": "f200ff9bad73385db2ed81e23ee2c1fe069eb5776e17fae4ee85ad0a9e1361a5"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/mitchellh/go-ps",
+        "version": "v1.0.0",
+        "sum": "h1:i6ampVEEF4wQFF+bkYfwYgY+F/uYJDktmvLPf7qIgjc=",
+        "zipSha256": "f2f0400b1d5e136419daed275c27a930b0f5447ac12bb8acd3ddbe39547b2834",
+        "zipBytes": 11977,
+        "fileCount": 16,
+        "recomputedH1": "h1:i6ampVEEF4wQFF+bkYfwYgY+F/uYJDktmvLPf7qIgjc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/mitchellh/go-ps@v1.0.0/LICENSE.md",
+            "bytes": 1085,
+            "sha256": "3c377fad2e5ae1d7081c7c2f16da867a87cca1d1f5f1aa7ed0b8a16bb553142a"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/openai/openai-go/v3",
+        "version": "v3.26.0",
+        "sum": "h1:bRt6H/ozMNt/dDkN4gobnLqaEGrRGBzmbVs0xxJEnQE=",
+        "zipSha256": "7ede21b06a6725e7e87414a3406ee3de508b715a247b9e8a63a0dd3db2cdee87",
+        "zipBytes": 627763,
+        "fileCount": 204,
+        "recomputedH1": "h1:bRt6H/ozMNt/dDkN4gobnLqaEGrRGBzmbVs0xxJEnQE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/openai/openai-go/v3@v3.26.0/LICENSE",
+            "bytes": 11336,
+            "sha256": "636eb7d79da9bb6d515a4b3fd417aa26679eb3cf16396ddab4bc55fa74e616e4"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/oschwald/maxminddb-golang",
+        "version": "v1.13.1",
+        "sum": "h1:G3wwjdN9JmIK2o/ermkHM+98oX5fS+k5MbwsmL4MRQE=",
+        "zipSha256": "717e0e89131541827935e02a76aed474247009bae9653a76b0c0a9152ba49e20",
+        "zipBytes": 37582,
+        "fileCount": 30,
+        "recomputedH1": "h1:G3wwjdN9JmIK2o/ermkHM+98oX5fS+k5MbwsmL4MRQE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/oschwald/maxminddb-golang@v1.13.1/LICENSE",
+            "bytes": 772,
+            "sha256": "cb89cb8d744d4890187eb3e98fa36f644adf2e56866faba0af891f55493ac522"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pierrec/lz4/v4",
+        "version": "v4.1.26",
+        "sum": "h1:GrpZw1gZttORinvzBdXPUXATeqlJjqUG/D87TKMnhjY=",
+        "zipSha256": "cf67f99d8d4ed84775a51de3167b70907e5436dd2f501f37deffac46c0a51ae1",
+        "zipBytes": 33076506,
+        "fileCount": 71,
+        "recomputedH1": "h1:GrpZw1gZttORinvzBdXPUXATeqlJjqUG/D87TKMnhjY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pierrec/lz4/v4@v4.1.26/LICENSE",
+            "bytes": 1477,
+            "sha256": "6a358d2540ca14048f02d366f23787c0a480157e58f058113f0e27168dd4e447"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pion/dtls/v3",
+        "version": "v3.1.5",
+        "sum": "h1:9xJtVsHwMYeSjPp5Hh1FTis4DchnQWtnOa5o+6ygqfc=",
+        "zipSha256": "447358c3191774c809538a061ecb89effb4a7257b22213e19f35a62faa37cdf5",
+        "zipBytes": 475776,
+        "fileCount": 473,
+        "recomputedH1": "h1:9xJtVsHwMYeSjPp5Hh1FTis4DchnQWtnOa5o+6ygqfc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pion/dtls/v3@v3.1.5/LICENSE",
+            "bytes": 1093,
+            "sha256": "6483daf6c8aa2c8192528e60be098aa82dd18f6d7b96dc8246f4f7c3333fbf3f"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pion/logging",
+        "version": "v0.2.4",
+        "sum": "h1:tTew+7cmQ+Mc1pTBLKH2puKsOvhm32dROumOZ655zB8=",
+        "zipSha256": "b904074dd76009e71b4e4e0e004a2c7862bff0a8690b4f47410c46b172b3830c",
+        "zipBytes": 20167,
+        "fileCount": 25,
+        "recomputedH1": "h1:tTew+7cmQ+Mc1pTBLKH2puKsOvhm32dROumOZ655zB8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pion/logging@v0.2.4/LICENSE",
+            "bytes": 1093,
+            "sha256": "87272dba8c4fcf57101a3195f4f53f7b010b6e153b9b0977bb1a3f91acddf691"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pion/transport/v4",
+        "version": "v4.0.2",
+        "sum": "h1:ifYlPqNwsy6aKQ9y8yzxXlHae5431ZrH2avkD/Rn6Tk=",
+        "zipSha256": "5c44f0562179e9e2761f7d3c2d68ac030fdbd3be565771e536e88444666d73b5",
+        "zipBytes": 154802,
+        "fileCount": 110,
+        "recomputedH1": "h1:ifYlPqNwsy6aKQ9y8yzxXlHae5431ZrH2avkD/Rn6Tk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pion/transport/v4@v4.0.2/LICENSE",
+            "bytes": 1093,
+            "sha256": "6483daf6c8aa2c8192528e60be098aa82dd18f6d7b96dc8246f4f7c3333fbf3f"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pires/go-proxyproto",
+        "version": "v0.8.1",
+        "sum": "h1:9KEixbdJfhrbtjpz/ZwCdWDD2Xem0NZ38qMYaASJgp0=",
+        "zipSha256": "a979a2f26160bfcb6f3829dd546d5f53c8b1879e7ad84466e359cf3f6237aa4c",
+        "zipBytes": 61160,
+        "fileCount": 40,
+        "recomputedH1": "h1:9KEixbdJfhrbtjpz/ZwCdWDD2Xem0NZ38qMYaASJgp0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pires/go-proxyproto@v0.8.1/LICENSE",
+            "bytes": 11341,
+            "sha256": "666f1951be1d543e744818d232bb311a4a310fd1d344288642c796fca39af3c7"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/pkg/sftp",
+        "version": "v1.13.10",
+        "sum": "h1:+5FbKNTe5Z9aspU88DPIKJ9z2KZoaGCu6Sr6kKR/5mU=",
+        "zipSha256": "390185d4b33cb550ebd27381b4aa80f245a9bda1ccb4dac65685bf94eeb81470",
+        "zipBytes": 176475,
+        "fileCount": 113,
+        "recomputedH1": "h1:+5FbKNTe5Z9aspU88DPIKJ9z2KZoaGCu6Sr6kKR/5mU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/pkg/sftp@v1.13.10/LICENSE",
+            "bytes": 1289,
+            "sha256": "f5b5087b8e596d015cfea7db26527fe67a196c18ca37415c288dd2534ff74c37"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/quic-go/qpack",
+        "version": "v0.6.0",
+        "sum": "h1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=",
+        "zipSha256": "3ac037cd1747420bc00bd6a793b4b197a2359fc354de12dc2187477417564914",
+        "zipBytes": 48205,
+        "fileCount": 30,
+        "recomputedH1": "h1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/quic-go/qpack@v0.6.0/LICENSE.md",
+            "bytes": 1054,
+            "sha256": "1b6a897efd39b20b3cdce8cd306160d115dbded39d855ceeffe21dc11e4d53df"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/safchain/ethtool",
+        "version": "v0.3.0",
+        "sum": "h1:gimQJpsI6sc1yIqP/y8GYgiXn/NjgvpM0RNoWLVVmP0=",
+        "zipSha256": "bfa1a3fe314a3f2ac4c4385a6c4694708e4881bfd86c34668eca92656e398590",
+        "zipBytes": 20352,
+        "fileCount": 17,
+        "recomputedH1": "h1:gimQJpsI6sc1yIqP/y8GYgiXn/NjgvpM0RNoWLVVmP0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/safchain/ethtool@v0.3.0/LICENSE",
+            "bytes": 11358,
+            "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/bbolt",
+        "version": "v0.0.0-20260915102804-500ee1e84832",
+        "sum": "h1:KDXMGbzqLmDdKcld0T3wuMuqf1iezZq+DemgtZ/vhtQ=",
+        "zipSha256": "851d37235ef87da3f68204dbcba165fe6e2de1264a5328b0df72f2e34c8dec05",
+        "zipBytes": 275996,
+        "fileCount": 159,
+        "recomputedH1": "h1:KDXMGbzqLmDdKcld0T3wuMuqf1iezZq+DemgtZ/vhtQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/bbolt@v0.0.0-20260915102804-500ee1e84832/LICENSE",
+            "bytes": 1078,
+            "sha256": "c15d721c37e277a11584547de6d618541501f7aa10c4e32a945a4f9ff36cb0f6"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/cors",
+        "version": "v1.2.1",
+        "sum": "h1:Cv5Z8y9YSD6Gm+qSpNrL3LO4lD3eQVvbFYJSG7JCMHQ=",
+        "zipSha256": "5f4124cdeddbc6b55d65899df6b47782a59afe0e8ca54800286cc2a45f61703f",
+        "zipBytes": 6088,
+        "fileCount": 5,
+        "recomputedH1": "h1:Cv5Z8y9YSD6Gm+qSpNrL3LO4lD3eQVvbFYJSG7JCMHQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/cors@v1.2.1/LICENSE",
+            "bytes": 1154,
+            "sha256": "df53da8b4f70a2d6e360b9c86ba7b9cc284654c126686656cbe9029809fca25f"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/cronet-go",
+        "version": "v0.0.0-20260929213745-4d18a60dc3a8",
+        "sum": "h1:yW/KNhSxWxllsPjLx5EUPohHLa4Kvzl2Qt9kHkB0ZIc=",
+        "zipSha256": "ddab986f912902062306865b46ad84d17a1c86acd2b3683ab86444d5e3dc1a9b",
+        "zipBytes": 187045,
+        "fileCount": 125,
+        "recomputedH1": "h1:yW/KNhSxWxllsPjLx5EUPohHLa4Kvzl2Qt9kHkB0ZIc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/cronet-go@v0.0.0-20260929213745-4d18a60dc3a8/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/cronet-go/all",
+        "version": "v0.0.0-20260929213745-4d18a60dc3a8",
+        "sum": "h1:xhh9UrPFncqI8r2mr+bybgZyJICtV4GKOSJuhnEx75g=",
+        "zipSha256": "04e86d13de48f2e0e3a07ef833c97ae414443f6466634ed31d280d1bb88b313c",
+        "zipBytes": 16109,
+        "fileCount": 32,
+        "recomputedH1": "h1:xhh9UrPFncqI8r2mr+bybgZyJICtV4GKOSJuhnEx75g=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/cronet-go/all@v0.0.0-20260929213745-4d18a60dc3a8/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/cronet-go/lib/linux_amd64",
+        "version": "v0.0.0-20260929213014-a1cafd93eb1f",
+        "sum": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+        "zipSha256": "8c61a39c339bd04f348d2850b32b0959a1a6e4f9a1a07a31d1b8bc187bcc996c",
+        "zipBytes": 19740580,
+        "fileCount": 6,
+        "recomputedH1": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/cronet-go/lib/linux_amd64@v0.0.0-20260929213014-a1cafd93eb1f/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "binary input archive; Chromium source recovered separately"
+      },
+      {
+        "module": "github.com/sagernet/fswatch",
+        "version": "v0.1.2",
+        "sum": "h1:/TT7k4mkce1qFPxamLO842WjqBgbTBiXP2mlUjp9PFk=",
+        "zipSha256": "657ff3190c4c9583c855c0c1d9cd73ea56eb3933b29b2ce1a549cab1af065aac",
+        "zipBytes": 7921,
+        "fileCount": 12,
+        "recomputedH1": "h1:/TT7k4mkce1qFPxamLO842WjqBgbTBiXP2mlUjp9PFk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/fswatch@v0.1.2/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/gliderssh",
+        "version": "v0.3.4-0.20260531100337-2194faca5648",
+        "sum": "h1:IWVjKBARzVjdmH0VUaeTBOBli1qkwKmTG4XfbkpSS20=",
+        "zipSha256": "2ff787549fa55459def9f0cc2dd66b429cd79c36dc0c21c155ddbf7dd1f8dbca",
+        "zipBytes": 30728,
+        "fileCount": 18,
+        "recomputedH1": "h1:IWVjKBARzVjdmH0VUaeTBOBli1qkwKmTG4XfbkpSS20=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/gliderssh@v0.3.4-0.20260531100337-2194faca5648/LICENSE",
+            "bytes": 1476,
+            "sha256": "ac32cbd9c0f04259c839d9ae01f039c1ee777a8add1a89fdafc6006237f66650"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/gvisor",
+        "version": "v0.0.0-20260727.0-sing-box-mod.1",
+        "sum": "h1:IdQ7yTKkB2wv8txwshxUroPlO4npOYAV71xb7xQ7Lys=",
+        "zipSha256": "4948bbbcd3d1f409e3a7c6c6a9a7ff3a872e54a852239bc9d18f25894d072329",
+        "zipBytes": 1646945,
+        "fileCount": 727,
+        "recomputedH1": "h1:IdQ7yTKkB2wv8txwshxUroPlO4npOYAV71xb7xQ7Lys=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/gvisor@v0.0.0-20260727.0-sing-box-mod.1/LICENSE",
+            "bytes": 14110,
+            "sha256": "0fbab5c58efbdf6d31e8085214f2dd821659c03d73cff3ed2b08e98826ea1cd9"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/netlink",
+        "version": "v0.0.0-20260814022025-64455d367bbf",
+        "sum": "h1:b/3rm+KvxzuYRcnMdLq/hmcqX6/2B8k24l6SDHL2Piw=",
+        "zipSha256": "0e3e454ff092407426a72b635b62b2ce113e06f6868bb68acad07a69e205bf65",
+        "zipBytes": 253504,
+        "fileCount": 124,
+        "recomputedH1": "h1:b/3rm+KvxzuYRcnMdLq/hmcqX6/2B8k24l6SDHL2Piw=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/netlink@v0.0.0-20260814022025-64455d367bbf/LICENSE",
+            "bytes": 10796,
+            "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/nftables",
+        "version": "v0.3.0-mod.4",
+        "sum": "h1:vnOtcDYeSXv2e5RoRuGH0lrpttQFJ8iC4ICS2nhlDSo=",
+        "zipSha256": "5771be1d9de33519fe36158c2e9fb9925df9480ca782467addf561a3e33c3a40",
+        "zipBytes": 112132,
+        "fileCount": 77,
+        "recomputedH1": "h1:vnOtcDYeSXv2e5RoRuGH0lrpttQFJ8iC4ICS2nhlDSo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/nftables@v0.3.0-mod.4/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/quic-go",
+        "version": "v0.61.0-sing-box-mod.9",
+        "sum": "h1:Lojx77uC63TxZO38Z1OSo6aOoBSXY+ueH0/IKKeTZuI=",
+        "zipSha256": "0523191a90bd11b280f0ebd02a55a58f3013a0189d39d773506716c98733a31e",
+        "zipBytes": 527272,
+        "fileCount": 229,
+        "recomputedH1": "h1:Lojx77uC63TxZO38Z1OSo6aOoBSXY+ueH0/IKKeTZuI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/quic-go@v0.61.0-sing-box-mod.9/LICENSE",
+            "bytes": 1091,
+            "sha256": "77d0b7b53e8abb84cf4dd3f9945a7fdf27044240d2e8023966a721a9a46fe96e"
+          },
+          {
+            "path": "github.com/sagernet/quic-go@v0.61.0-sing-box-mod.9/assets/LICENSE.md",
+            "bytes": 1413,
+            "sha256": "2c8d4ff4244edf09d99dcd428d278e47a059d24f0030b38c1ab38e93b1c8030c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing",
+        "version": "v0.9.7-0.20260929150544-6f21f2425a95",
+        "sum": "h1:taM2SOI5HK/Ubpi3FO0Bc7bKHsFVdGe4YS/jjXD4kAM=",
+        "zipSha256": "85fa6e996d117609ae3a182f3e46fd38eb2ee8883d8f137b6ee68ddaecd6e4ee",
+        "zipBytes": 372452,
+        "fileCount": 349,
+        "recomputedH1": "h1:taM2SOI5HK/Ubpi3FO0Bc7bKHsFVdGe4YS/jjXD4kAM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing@v0.9.7-0.20260929150544-6f21f2425a95/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          },
+          {
+            "path": "github.com/sagernet/sing@v0.9.7-0.20260929150544-6f21f2425a95/contrab/freelru/LICENSE",
+            "bytes": 11357,
+            "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          },
+          {
+            "path": "github.com/sagernet/sing@v0.9.7-0.20260929150544-6f21f2425a95/contrab/freelru/NOTICE",
+            "bytes": 49,
+            "sha256": "0ff9ab6ed7706295e43814a14122085ea139755d065f0ad835317403d4043b00"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-anytls",
+        "version": "v0.0.0-20260928104022-580984e4d8cb",
+        "sum": "h1:n4sF2zv0CR1gcb4awh61t11t0FZmcP40x5enB8HARjE=",
+        "zipSha256": "71274e394b5b7c939ed57672ec61a4aa584b2d0544b9f5dbec0ccc8dc563ae64",
+        "zipBytes": 18748,
+        "fileCount": 15,
+        "recomputedH1": "h1:n4sF2zv0CR1gcb4awh61t11t0FZmcP40x5enB8HARjE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-anytls@v0.0.0-20260928104022-580984e4d8cb/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-cloudflared",
+        "version": "v0.1.4-0.20261002084126-c1255ae368f2",
+        "sum": "h1:+AfbAXGEV8tezIYHeShzwHm7IMUE5kYGVFLo0ly7W24=",
+        "zipSha256": "9bc347c1ef628c2915263c9e711ddfb7789401f90e73162aea7697016b502c84",
+        "zipBytes": 220231,
+        "fileCount": 117,
+        "recomputedH1": "h1:+AfbAXGEV8tezIYHeShzwHm7IMUE5kYGVFLo0ly7W24=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-cloudflared@v0.1.4-0.20261002084126-c1255ae368f2/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-mux",
+        "version": "v0.3.10-0.20260929204512-caf09fe32475",
+        "sum": "h1:aG0DqHEOjax7DyfE1GTAXZotOg3QGVCz3/8rCSua2kg=",
+        "zipSha256": "38c6e7dc80d93082da3cdd62c24b5e2c5e94f9fdb8e73a35353286efab797db7",
+        "zipBytes": 25242,
+        "fileCount": 26,
+        "recomputedH1": "h1:aG0DqHEOjax7DyfE1GTAXZotOg3QGVCz3/8rCSua2kg=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-mux@v0.3.10-0.20260929204512-caf09fe32475/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-openconnect",
+        "version": "v0.1.1-0.20260929151226-29757281a247",
+        "sum": "h1:Ui4XtxNgQiEquK+ch4dYhthKsVlGQpdCdKIpOuJVyog=",
+        "zipSha256": "fd56fcf8a611b521c0cb035e9a11e185bcd3aa82409166ad4b6c747027b83f74",
+        "zipBytes": 307009,
+        "fileCount": 90,
+        "recomputedH1": "h1:Ui4XtxNgQiEquK+ch4dYhthKsVlGQpdCdKIpOuJVyog=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-openconnect@v0.1.1-0.20260929151226-29757281a247/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-openvpn",
+        "version": "v0.1.1-0.20260929151220-f330676d6d4a",
+        "sum": "h1:Q16Twlwk9fssoCSUTDo5WqPg0EZHG9JSV9SC3zRy9M0=",
+        "zipSha256": "5730726dff6da4c4f5b93d15b23103e3dc2182e7c2b28acdbe6f4383640a6d81",
+        "zipBytes": 195196,
+        "fileCount": 78,
+        "recomputedH1": "h1:Q16Twlwk9fssoCSUTDo5WqPg0EZHG9JSV9SC3zRy9M0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-openvpn@v0.1.1-0.20260929151220-f330676d6d4a/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-quic",
+        "version": "v0.7.2-0.20261002084117-75c3ac4fa12b",
+        "sum": "h1:2Jx/URJAPt32MEbLmAR5nzH87tO6NQZLRfRFvFqBWuk=",
+        "zipSha256": "255b652362a34402e16579a3dc5d1d8dbae94d9108336e839b50c13aa6c3bf99",
+        "zipBytes": 126815,
+        "fileCount": 70,
+        "recomputedH1": "h1:2Jx/URJAPt32MEbLmAR5nzH87tO6NQZLRfRFvFqBWuk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-quic@v0.7.2-0.20261002084117-75c3ac4fa12b/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-shadowsocks",
+        "version": "v0.2.9-0.20260929204512-65740e0f0e3e",
+        "sum": "h1:LKgE/uuqp/D2kgxYViOz8vf4slaCUfpFywXjtuwD5gU=",
+        "zipSha256": "a559e290eb6362a1fe35c9f8478d7a5420517b3abe236253ef3e1db455311c4a",
+        "zipBytes": 38970,
+        "fileCount": 27,
+        "recomputedH1": "h1:LKgE/uuqp/D2kgxYViOz8vf4slaCUfpFywXjtuwD5gU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-shadowsocks@v0.2.9-0.20260929204512-65740e0f0e3e/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-shadowsocks2",
+        "version": "v0.2.2-0.20260929152114-a69d1086332b",
+        "sum": "h1:VH65QNqSHat2b+N3Rlzo5Qe44gRmQGwzY5atuy3D0A8=",
+        "zipSha256": "9cabba1c449cb3f5280ea1a89240849d894123ad7fac2e2272819b35fde5cf8d",
+        "zipBytes": 28354,
+        "fileCount": 30,
+        "recomputedH1": "h1:VH65QNqSHat2b+N3Rlzo5Qe44gRmQGwzY5atuy3D0A8=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-shadowsocks2@v0.2.2-0.20260929152114-a69d1086332b/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-shadowtls",
+        "version": "v0.2.2-0.20260928201441-a9c0127d5c99",
+        "sum": "h1:l/tdZjaoDp3iqEG4NVrFHtphy1+Qjt9bpWAgNbF8iGg=",
+        "zipSha256": "a728d8e8394b096fdbe8ac28e0076017321edfe9000f61e17c43e9d30781e5e4",
+        "zipBytes": 20667,
+        "fileCount": 23,
+        "recomputedH1": "h1:l/tdZjaoDp3iqEG4NVrFHtphy1+Qjt9bpWAgNbF8iGg=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-shadowtls@v0.2.2-0.20260928201441-a9c0127d5c99/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-snell",
+        "version": "v0.0.0-20260904135315-bc5a12ac736f",
+        "sum": "h1:tbTCI+iis5sTmua7a6Q7vebcSRURok/LGgnEafnQAsc=",
+        "zipSha256": "3f2602328866e0262ca1c302702c7a9b0e62d8f320fdbbc18c896d302e25d6ba",
+        "zipBytes": 76618,
+        "fileCount": 36,
+        "recomputedH1": "h1:tbTCI+iis5sTmua7a6Q7vebcSRURok/LGgnEafnQAsc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-snell@v0.0.0-20260904135315-bc5a12ac736f/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-tun",
+        "version": "v0.9.7-0.20261009022811-5c2edb183cc9",
+        "sum": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+        "zipSha256": "d30c485149d53a88d3d31dd2312b5e4ca97649169ac4d0ed81a918fa80c9bcaf",
+        "zipBytes": 1342818,
+        "fileCount": 253,
+        "recomputedH1": "h1:VBWPwC1CM/9ULXCtl120Nh64tmjFsybhBvB3IWzF+Mc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-tun@v0.9.7-0.20261009022811-5c2edb183cc9/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-usbip",
+        "version": "v0.0.0-20260817040617-28bd42667eca",
+        "sum": "h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=",
+        "zipSha256": "c3cb3fe1d9999fda98a232f813425d7376541f498b1c98e0fd2fe717b19aa7da",
+        "zipBytes": 825692,
+        "fileCount": 115,
+        "recomputedH1": "h1:5wA+IE0Fq1CGVLOgSpm0gKKZ03HzugcJ2JyhmDqeX6A=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-usbip@v0.0.0-20260817040617-28bd42667eca/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          },
+          {
+            "path": "github.com/sagernet/sing-usbip@v0.0.0-20260817040617-28bd42667eca/internal/usbipvhci/assets/LICENSE.txt",
+            "bytes": 1356,
+            "sha256": "4a4d332cbf1c623639df7ffc756243d86462beb4c79c8b11081cb44a4792eda2"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/sing-vmess",
+        "version": "v0.2.9-0.20260929152519-9b95ab8c9478",
+        "sum": "h1:q2eQn4nq8oWGxRm9zXesXSlPr9GEgPrOGzf4iPtzG9A=",
+        "zipSha256": "f315ae8ee5af110d0b9f45de542be3d9bef4cb9f43a368e1adfc69a9ce09cdc5",
+        "zipBytes": 42581,
+        "fileCount": 33,
+        "recomputedH1": "h1:q2eQn4nq8oWGxRm9zXesXSlPr9GEgPrOGzf4iPtzG9A=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/sing-vmess@v0.2.9-0.20260929152519-9b95ab8c9478/LICENSE",
+            "bytes": 674,
+            "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/smux",
+        "version": "v1.5.50-sing-box-mod.1",
+        "sum": "h1:XkJcivBC9V4wBjiGXIXZ229aZCU1hzcbp6kSkkyQ478=",
+        "zipSha256": "43df443a40c24b561fb7509a8d0074443368f860e73cec2046e80654d1aec06f",
+        "zipBytes": 31136,
+        "fileCount": 14,
+        "recomputedH1": "h1:XkJcivBC9V4wBjiGXIXZ229aZCU1hzcbp6kSkkyQ478=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/smux@v1.5.50-sing-box-mod.1/LICENSE",
+            "bytes": 1067,
+            "sha256": "4d853d6e64790ccada70727c25334c50529b25ce57048129aaf6f8b0f2208516"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/tailscale",
+        "version": "v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd",
+        "sum": "h1:PzEFeBqDaSUdoWE77NptloLTd1sNT1JAiFThgGq5rlo=",
+        "zipSha256": "38dfd0bf2e194a7cb4394f965d61c8dc650cc7b24a7f86b68628ca48a1872640",
+        "zipBytes": 3853309,
+        "fileCount": 1497,
+        "recomputedH1": "h1:PzEFeBqDaSUdoWE77NptloLTd1sNT1JAiFThgGq5rlo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/LICENSE",
+            "bytes": 1515,
+            "sha256": "a7ca6186a7963a0a60740f6047760eecd7a0234e8c38bd7e1e0bbcb324bda45b"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/PATENTS",
+            "bytes": 1377,
+            "sha256": "debc5ca73d082a6c7de743fecdba6f75deafdf9200acfbddeb8ca32d66e6e128"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/derp/xdp/headers/LICENSE.BSD-2-Clause",
+            "bytes": 1649,
+            "sha256": "e1638b9a0c68ca90fad3df1d6b4e430804d2fbdc15e58d02cffddfae38953bbf"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/internal/godown/github.com/go-json-experiment/json/LICENSE",
+            "bytes": 1479,
+            "sha256": "14a34c4db2d21bf9cf80d028b802cd22fed9bf597a6c2db7ce30ee6ffd04967a"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/license_test.go",
+            "bytes": 2733,
+            "sha256": "3896d49f5a6de055f36273d76669eb4d2b2c299d0e44e82b8e591756c81f6cf7"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/licenses/licenses.go",
+            "bytes": 634,
+            "sha256": "7c3b3ec700df78e56eb955df2c5c9140ed79e2b736e03d272d27d585f3d40339"
+          },
+          {
+            "path": "github.com/sagernet/tailscale@v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd/tempfork/spf13/cobra/LICENSE.txt",
+            "bytes": 10140,
+            "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/wireguard-go",
+        "version": "v0.0.8-0.20260929150556-ca3bc60c4ce7",
+        "sum": "h1:MiffQUqKBKoAHz7nkHqh4EmjJsz2M8FHeUdPUdnNyvs=",
+        "zipSha256": "92e246752e72b4d0aa5a06ec6cb151cf5cb09bed018ec0664ee9dfa97f518235",
+        "zipBytes": 146283,
+        "fileCount": 82,
+        "recomputedH1": "h1:MiffQUqKBKoAHz7nkHqh4EmjJsz2M8FHeUdPUdnNyvs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/wireguard-go@v0.0.8-0.20260929150556-ca3bc60c4ce7/LICENSE",
+            "bytes": 1023,
+            "sha256": "91276db973f25602d1aa43491f59cbc84cb88e6f151e1d0cc82a755563ce0195"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/sagernet/ws",
+        "version": "v0.0.0-20231204124109-acfe8907c854",
+        "sum": "h1:6uUiZcDRnZSAegryaUGwPC/Fj13JSHwiTftrXhMmYOc=",
+        "zipSha256": "b68f73fdda63af79356083de31029bafee27492c5f0013a23fb563e37fe60b66",
+        "zipBytes": 75099,
+        "fileCount": 49,
+        "recomputedH1": "h1:6uUiZcDRnZSAegryaUGwPC/Fj13JSHwiTftrXhMmYOc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/sagernet/ws@v0.0.0-20231204124109-acfe8907c854/LICENSE",
+            "bytes": 1106,
+            "sha256": "db823214b3ef18274418accda3812faac38a1545b8bd589aeb613a849b949c7a"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/smallstep/pkcs7",
+        "version": "v0.1.1",
+        "sum": "h1:x+rPdt2W088V9Vkjho4KtoggyktZJlMduZAtRHm68LU=",
+        "zipSha256": "bc9cd16c7d8306edc4a7b0ca0d841236e6f9e7481ec6ccc5c460a86468cd7b42",
+        "zipBytes": 111290,
+        "fileCount": 33,
+        "recomputedH1": "h1:x+rPdt2W088V9Vkjho4KtoggyktZJlMduZAtRHm68LU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/smallstep/pkcs7@v0.1.1/LICENSE",
+            "bytes": 1080,
+            "sha256": "d01c6d371866b3c7a1a7e20994d88d2ce83f22974ec6d3596a6125b44495813d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/spf13/cobra",
+        "version": "v1.10.2",
+        "sum": "h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=",
+        "zipSha256": "a00aae6fcd631e0fde52c98604452ff70e1b73c3b8a560d68db15aff5e26872d",
+        "zipBytes": 241429,
+        "fileCount": 66,
+        "recomputedH1": "h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/spf13/cobra@v1.10.2/LICENSE.txt",
+            "bytes": 10140,
+            "sha256": "5e3400b93bbb099e83e52bab885e7441750673c21f97988ca3f1240639b63283"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/spf13/pflag",
+        "version": "v1.0.10",
+        "sum": "h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=",
+        "zipSha256": "a246b8c9d3daa87d6c634cdfee1bdf7fa53d5817eeef4fa0c6da43edd12de4ca",
+        "zipBytes": 108741,
+        "fileCount": 88,
+        "recomputedH1": "h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/spf13/pflag@v1.0.10/LICENSE",
+            "bytes": 1531,
+            "sha256": "b8514c577c1c4b46cee454d5a882b15fa411e72c5bd7f801f241591789fce61a"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tailscale/hujson",
+        "version": "v0.0.0-20260302212456-ecc657c15afd",
+        "sum": "h1:Rf9uhF1+VJ7ZHqxrG8pJ6YacmHvVCmByDmGbAWCc/gA=",
+        "zipSha256": "9f9c320dd90c86880b26107b931d6c056e99642d4c4e50fafcdf7de8ea0989e6",
+        "zipBytes": 34388,
+        "fileCount": 19,
+        "recomputedH1": "h1:Rf9uhF1+VJ7ZHqxrG8pJ6YacmHvVCmByDmGbAWCc/gA=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tailscale/hujson@v0.0.0-20260302212456-ecc657c15afd/LICENSE",
+            "bytes": 1478,
+            "sha256": "a125b6c2721809b6c2a8761771932611833008ed8697d752b3e35d36e4bbd83e"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tailscale/netlink",
+        "version": "v1.1.1-0.20240822203006-4d49adab4de7",
+        "sum": "h1:uFsXVBE9Qr4ZoF094vE6iYTLDl0qCiKzYXlL6UeWObU=",
+        "zipSha256": "a5195ef600f8d9a0fb8501eea85e4fe0321a74bd57dec88f07b8569d0ee4f55e",
+        "zipBytes": 243062,
+        "fileCount": 122,
+        "recomputedH1": "h1:uFsXVBE9Qr4ZoF094vE6iYTLDl0qCiKzYXlL6UeWObU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tailscale/netlink@v1.1.1-0.20240822203006-4d49adab4de7/LICENSE",
+            "bytes": 10796,
+            "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tailscale/peercred",
+        "version": "v0.0.0-20250107143737-35a0c7bd7edc",
+        "sum": "h1:24heQPtnFR+yfntqhI3oAu9i27nEojcQ4NuBQOo5ZFA=",
+        "zipSha256": "87d0f4f3b1d59ea45c9a87b775b615bebd721a5870dafedc63cc860ec4aac281",
+        "zipBytes": 8179,
+        "fileCount": 12,
+        "recomputedH1": "h1:24heQPtnFR+yfntqhI3oAu9i27nEojcQ4NuBQOo5ZFA=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tailscale/peercred@v0.0.0-20250107143737-35a0c7bd7edc/LICENSE",
+            "bytes": 1522,
+            "sha256": "8e0db394107481655ef6a46baace86aaead5fc9b4c5ce83b9fa16037e891d03c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tailscale/web-client-prebuilt",
+        "version": "v0.0.0-20250124233751-d4cd19a26976",
+        "sum": "h1:UBPHPtv8+nEAy2PD8RyAhOYvau1ek0HDJqLS/Pysi14=",
+        "zipSha256": "1d02f0804bb41e0743b7d889b8e2dbd8466a89793f03997f4c1fd10f9e8974c3",
+        "zipBytes": 144283,
+        "fileCount": 10,
+        "recomputedH1": "h1:UBPHPtv8+nEAy2PD8RyAhOYvau1ek0HDJqLS/Pysi14=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tailscale/web-client-prebuilt@v0.0.0-20250124233751-d4cd19a26976/LICENSE",
+            "bytes": 1510,
+            "sha256": "d1ee1c7947d4b2c1963ea214d5324f1d4c89f2f1d0f0224889b4dfb868dad725"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tidwall/gjson",
+        "version": "v1.18.0",
+        "sum": "h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=",
+        "zipSha256": "ab8092b3e42f83f003466757c63ec819a45d1e83caa63c6c131cebbe760f1df2",
+        "zipBytes": 78914,
+        "fileCount": 10,
+        "recomputedH1": "h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tidwall/gjson@v1.18.0/LICENSE",
+            "bytes": 1077,
+            "sha256": "be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tidwall/match",
+        "version": "v1.1.1",
+        "sum": "h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=",
+        "zipSha256": "2ba41f7f27330d49e0e432cbf96bf90720a33e4a97be58fe53f63a7e66f04d37",
+        "zipBytes": 6893,
+        "fileCount": 6,
+        "recomputedH1": "h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tidwall/match@v1.1.1/LICENSE",
+            "bytes": 1077,
+            "sha256": "be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tidwall/pretty",
+        "version": "v1.2.1",
+        "sum": "h1:qjsOFOWWQl+N3RsoF5/ssm1pHmJJwhjlSbZ51I6wMl4=",
+        "zipSha256": "9327579bf9e610de753eeb7c35c8cf1e3f56e6e5623cbf65e47bc8076023d1ab",
+        "zipBytes": 12501,
+        "fileCount": 6,
+        "recomputedH1": "h1:qjsOFOWWQl+N3RsoF5/ssm1pHmJJwhjlSbZ51I6wMl4=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tidwall/pretty@v1.2.1/LICENSE",
+            "bytes": 1077,
+            "sha256": "0ca70311227fe097c662dece3f359e3317fa7f9d41f8d29eb45fc5135e216139"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tidwall/sjson",
+        "version": "v1.2.5",
+        "sum": "h1:kLy8mja+1c9jlljvWTlSazM7cKDRfJuR/bOJhcY5NcY=",
+        "zipSha256": "fc40fda87c7de55362f6386e069d674772f25c9d76411ee823acb9ac78b20565",
+        "zipBytes": 28719,
+        "fileCount": 8,
+        "recomputedH1": "h1:kLy8mja+1c9jlljvWTlSazM7cKDRfJuR/bOJhcY5NcY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tidwall/sjson@v1.2.5/LICENSE",
+            "bytes": 1078,
+            "sha256": "dbf5e2aa91aee5f19a1ce2cc7891e2ac37204b6461c0adc539426636e27b208e"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/tjfoc/gmsm",
+        "version": "v1.4.1",
+        "sum": "h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=",
+        "zipSha256": "ba1f3ccf698a62bcb28c594d995f21587021ad759e777aa64367c8a7332cc10b",
+        "zipBytes": 287473,
+        "fileCount": 91,
+        "recomputedH1": "h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/tjfoc/gmsm@v1.4.1/LICENSE",
+            "bytes": 11357,
+            "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/u-root/uio",
+        "version": "v0.0.0-20240224005618-d2acac8f3701",
+        "sum": "h1:pyC9PaHYZFgEKFdlp3G8RaCKgVpHZnecvArXvPXcFkM=",
+        "zipSha256": "f6e8f912e968744999d508c3df54f0308aaf337052a8d0bd3edd72583adfd9cd",
+        "zipBytes": 41020,
+        "fileCount": 43,
+        "recomputedH1": "h1:pyC9PaHYZFgEKFdlp3G8RaCKgVpHZnecvArXvPXcFkM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/u-root/uio@v0.0.0-20240224005618-d2acac8f3701/LICENSE",
+            "bytes": 1519,
+            "sha256": "babfb29ac285c50579ef027c197805f288be53a2fdea58adbf8f69a5e296d3ef"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/vishvananda/netns",
+        "version": "v0.0.5",
+        "sum": "h1:DfiHV+j8bA32MFM7bfEunvT8IAqQ/NzSJHtcmW5zdEY=",
+        "zipSha256": "07804b88c922c2a6780efe392ffef9d126eac584384eb3eb17bcadd34cfa9422",
+        "zipBytes": 13843,
+        "fileCount": 15,
+        "recomputedH1": "h1:DfiHV+j8bA32MFM7bfEunvT8IAqQ/NzSJHtcmW5zdEY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/vishvananda/netns@v0.0.5/LICENSE",
+            "bytes": 10796,
+            "sha256": "04cf148229e562c643203d1ee8c43aae2022e5130e95ceb8ba8357a27c1a9abe"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/x448/float16",
+        "version": "v0.8.4",
+        "sum": "h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=",
+        "zipSha256": "73b24a41037ea999ab66851e3798a0973dbb1f214925915b01f0820f7b2f1500",
+        "zipBytes": 14960,
+        "fileCount": 7,
+        "recomputedH1": "h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/x448/float16@v0.8.4/LICENSE",
+            "bytes": 1102,
+            "sha256": "a555f1194fdac34da70fb416968f7e2217b02352c26c1eac2fa45fcb4290ae8d"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/youmark/pkcs8",
+        "version": "v0.0.0-20240726163527-a2c0da244d78",
+        "sum": "h1:ilQV1hzziu+LLM3zUTJ0trRztfwgjqKnBWNtSRkbmwM=",
+        "zipSha256": "cdcf5e96850f9f60bc96ab512e4bd06ee19dd2dbe855260c3589c6c79a1bcfb5",
+        "zipBytes": 18519,
+        "fileCount": 14,
+        "recomputedH1": "h1:ilQV1hzziu+LLM3zUTJ0trRztfwgjqKnBWNtSRkbmwM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/youmark/pkcs8@v0.0.0-20240726163527-a2c0da244d78/LICENSE",
+            "bytes": 1073,
+            "sha256": "6d13d89b6c33df37f92553cc95cec278d8770ddc78c9de84620cc16dfb48cef6"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "github.com/zeebo/blake3",
+        "version": "v0.2.4",
+        "sum": "h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=",
+        "zipSha256": "65aaa3487c097fa0140f52041e8e6fe8214c244a29223fd4caaa60986192a08f",
+        "zipBytes": 111107,
+        "fileCount": 40,
+        "recomputedH1": "h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "github.com/zeebo/blake3@v0.2.4/LICENSE",
+            "bytes": 7189,
+            "sha256": "0589f544f68ffc436e6e21efec2cf7cc2dbb2ac09ce6cb8a8cdb75ab74489716"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "go.uber.org/multierr",
+        "version": "v1.11.0",
+        "sum": "h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=",
+        "zipSha256": "2249b5d2fdce61f6ee661a679d8552599af084a761cbbc871da77641bddce0c3",
+        "zipBytes": 25681,
+        "fileCount": 19,
+        "recomputedH1": "h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "go.uber.org/multierr@v1.11.0/LICENSE.txt",
+            "bytes": 1072,
+            "sha256": "dcdabe03bef2382a130640d1c3a4cd5ec42aba1035095c38272fde694eb72405"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "go.uber.org/zap",
+        "version": "v1.27.1",
+        "sum": "h1:08RqriUEv8+ArZRYSTXy1LeBScaMpVSTBhCeaZYfMYc=",
+        "zipSha256": "38760227142d38369069374c005707bc6b3c270a75f34fa3f17c48c863143cdc",
+        "zipBytes": 289619,
+        "fileCount": 144,
+        "recomputedH1": "h1:08RqriUEv8+ArZRYSTXy1LeBScaMpVSTBhCeaZYfMYc=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "go.uber.org/zap@v1.27.1/LICENSE",
+            "bytes": 1072,
+            "sha256": "c2b97b3281be272711909076c8402499b4b5a3216196af47a25b1d3674d86152"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "go.uber.org/zap/exp",
+        "version": "v0.3.0",
+        "sum": "h1:6JYzdifzYkGmTdRR59oYH+Ng7k49H9qVpWwNSsGJj3U=",
+        "zipSha256": "1a71ce6ea8df554dc002af9d18d6f1083a9b2782ee0c971b929314e86e8aebd3",
+        "zipBytes": 15842,
+        "fileCount": 11,
+        "recomputedH1": "h1:6JYzdifzYkGmTdRR59oYH+Ng7k49H9qVpWwNSsGJj3U=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "go.uber.org/zap/exp@v0.3.0/LICENSE",
+            "bytes": 1072,
+            "sha256": "c2b97b3281be272711909076c8402499b4b5a3216196af47a25b1d3674d86152"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "go4.org/mem",
+        "version": "v0.0.0-20240501181205-ae6ca9944745",
+        "sum": "h1:Tl++JLUCe4sxGu8cTpDzRLd3tN7US4hOxG5YpKCzkek=",
+        "zipSha256": "9b5037a57122457fdc5c2c0a31e3996b44cf9dfcdee5c53ed72adfd88d077795",
+        "zipBytes": 15347,
+        "fileCount": 9,
+        "recomputedH1": "h1:Tl++JLUCe4sxGu8cTpDzRLd3tN7US4hOxG5YpKCzkek=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "go4.org/mem@v0.0.0-20240501181205-ae6ca9944745/LICENSE",
+            "bytes": 11358,
+            "sha256": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "go4.org/netipx",
+        "version": "v0.0.0-20231129151722-fdeea329fbba",
+        "sum": "h1:0b9z3AuHCjxk0x/opv64kcgZLBseWJUpBw5I82+2U4M=",
+        "zipSha256": "e15f57de368c92b826010181906f26112ba3a0d7fde7d94c8a8c60c525dc4044",
+        "zipBytes": 29600,
+        "fileCount": 18,
+        "recomputedH1": "h1:0b9z3AuHCjxk0x/opv64kcgZLBseWJUpBw5I82+2U4M=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "go4.org/netipx@v0.0.0-20231129151722-fdeea329fbba/LICENSE",
+            "bytes": 1487,
+            "sha256": "1bfc4f32f4ec8ca8fce54bd2d97784f003786753a69a78ca74ffae1574037fb9"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/crypto",
+        "version": "v0.54.0",
+        "sum": "h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=",
+        "zipSha256": "ecf4030c1c6b55b897826b95f01d7416cf2785b4675b0f9ac218ddf754a03abb",
+        "zipBytes": 2245311,
+        "fileCount": 373,
+        "recomputedH1": "h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/crypto@v0.54.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/crypto@v0.54.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/exp",
+        "version": "v0.0.0-20260410095643-746e56fc9e2f",
+        "sum": "h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=",
+        "zipSha256": "de285d08489fcd4d420a8561501e75b5124db0a48121dfc26e811959f518db4e",
+        "zipBytes": 647077,
+        "fileCount": 517,
+        "recomputedH1": "h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/exp@v0.0.0-20260410095643-746e56fc9e2f/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/exp@v0.0.0-20260410095643-746e56fc9e2f/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/mod",
+        "version": "v0.37.0",
+        "sum": "h1:vF1DjpVEshcIqoEaauuHebaLk1O1forxjxBaVn884JQ=",
+        "zipSha256": "91e8e4e9b74a8706dae808b66538d4ab22befd00c11f34134eb97ff572d52e85",
+        "zipBytes": 174531,
+        "fileCount": 133,
+        "recomputedH1": "h1:vF1DjpVEshcIqoEaauuHebaLk1O1forxjxBaVn884JQ=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/mod@v0.37.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/mod@v0.37.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/net",
+        "version": "v0.57.0",
+        "sum": "h1:K5+3DljvIuDG9/Jv9rvyMywYNFCQ9RSUY6OOTTkT+tE=",
+        "zipSha256": "f8d652c629374b43846ef4f2efd419e8d1c81779eb728306d09f0de1cc1bab80",
+        "zipBytes": 1870963,
+        "fileCount": 864,
+        "recomputedH1": "h1:K5+3DljvIuDG9/Jv9rvyMywYNFCQ9RSUY6OOTTkT+tE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/net@v0.57.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/net@v0.57.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/oauth2",
+        "version": "v0.36.0",
+        "sum": "h1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=",
+        "zipSha256": "15bf65ff103e5dafc809d78cd037a1d1e88ccb8451824e851156002a13304504",
+        "zipBytes": 155804,
+        "fileCount": 106,
+        "recomputedH1": "h1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/oauth2@v0.36.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/sync",
+        "version": "v0.22.0",
+        "sum": "h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=",
+        "zipSha256": "4bc67d258ce7867cfc1a43765c43d98b4c49b90c46dd0b86f896a5a4909fade0",
+        "zipBytes": 25790,
+        "fileCount": 19,
+        "recomputedH1": "h1:SZjpbeLmrCk4xhRSZFNZW5gFUeCeFgjekvI/+gfScek=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/sync@v0.22.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/sync@v0.22.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/sys",
+        "version": "v0.47.0",
+        "sum": "h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=",
+        "zipSha256": "cdac013ddced0262926ec29ffcda645da39670e61c7e5b761e572b6b1809bb1b",
+        "zipBytes": 2022425,
+        "fileCount": 549,
+        "recomputedH1": "h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/sys@v0.47.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/sys@v0.47.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/term",
+        "version": "v0.45.0",
+        "sum": "h1:NwWyBmoJCbfTHpxrWoZ9C6/VxOf7ic219I8xZZFdrf0=",
+        "zipSha256": "b3a3af689728b43012ae1b21482571a35c033c545e98e021606bd4fcf1f79108",
+        "zipBytes": 21694,
+        "fileCount": 17,
+        "recomputedH1": "h1:NwWyBmoJCbfTHpxrWoZ9C6/VxOf7ic219I8xZZFdrf0=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/term@v0.45.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/term@v0.45.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/text",
+        "version": "v0.40.0",
+        "sum": "h1:Ub2Z6/xjgF1WrYQz2nuITOEegKFtiIy+rieRJ5lHZKs=",
+        "zipSha256": "07757384728d0f52dd85c1f3f163405e6396b2b0fb7eb7d6b610f2a711d69ee3",
+        "zipBytes": 7015236,
+        "fileCount": 488,
+        "recomputedH1": "h1:Ub2Z6/xjgF1WrYQz2nuITOEegKFtiIy+rieRJ5lHZKs=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/text@v0.40.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/text@v0.40.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.org/x/time",
+        "version": "v0.15.0",
+        "sum": "h1:bbrp8t3bGUeFOx08pvsMYRTCVSMk89u4tKbNOZbp88U=",
+        "zipSha256": "8cfb20e915fa5d6c3fd264304233f8d71a3385e48a37819239c532ad9da27f84",
+        "zipBytes": 15014,
+        "fileCount": 9,
+        "recomputedH1": "h1:bbrp8t3bGUeFOx08pvsMYRTCVSMk89u4tKbNOZbp88U=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.org/x/time@v0.15.0/LICENSE",
+            "bytes": 1453,
+            "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+          },
+          {
+            "path": "golang.org/x/time@v0.15.0/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "golang.zx2c4.com/wireguard/wgctrl",
+        "version": "v0.0.0-20241231184526-a9ab2273dd10",
+        "sum": "h1:3GDAcqdIg1ozBNLgPy4SLT84nfcBjr6rhGtXYtrkWLU=",
+        "zipSha256": "891d7800e23b98615e60cbe3016ffa05bd58826673b62bf3c30d2d13d7bdc954",
+        "zipBytes": 92509,
+        "fileCount": 75,
+        "recomputedH1": "h1:3GDAcqdIg1ozBNLgPy4SLT84nfcBjr6rhGtXYtrkWLU=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "golang.zx2c4.com/wireguard/wgctrl@v0.0.0-20241231184526-a9ab2273dd10/LICENSE.md",
+            "bytes": 1075,
+            "sha256": "e386a66ee99a45d00b07eb636c934bfb5d3c34b580b9404aaae8a9135ee400f7"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "google.golang.org/genproto/googleapis/rpc",
+        "version": "v0.0.0-20251202230838-ff82c1b0f217",
+        "sum": "h1:gRkg/vSppuSQoDjxyiGfN4Upv/h/DQmIR10ZU8dh4Ww=",
+        "zipSha256": "29f02d8e0e2f6e9cc0ee24abc29989e5e44d168eec35c12046efee3fea201aef",
+        "zipBytes": 39792,
+        "fileCount": 9,
+        "recomputedH1": "h1:gRkg/vSppuSQoDjxyiGfN4Upv/h/DQmIR10ZU8dh4Ww=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "google.golang.org/genproto/googleapis/rpc@v0.0.0-20251202230838-ff82c1b0f217/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "google.golang.org/grpc",
+        "version": "v1.79.1",
+        "sum": "h1:zGhSi45ODB9/p3VAawt9a+O/MULLl9dpizzNNpq7flY=",
+        "zipSha256": "df09b5b9369cb149e9219224e9622736bd67c435380e9f09cb0723660fd58d44",
+        "zipBytes": 2776029,
+        "fileCount": 1030,
+        "recomputedH1": "h1:zGhSi45ODB9/p3VAawt9a+O/MULLl9dpizzNNpq7flY=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "google.golang.org/grpc@v1.79.1/LICENSE",
+            "bytes": 11358,
+            "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+          },
+          {
+            "path": "google.golang.org/grpc@v1.79.1/NOTICE.txt",
+            "bytes": 554,
+            "sha256": "693ff28ec216d5112ac1bbfe64ef539005867d1c7bd427b57d579683293b947f"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "google.golang.org/protobuf",
+        "version": "v1.36.11",
+        "sum": "h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=",
+        "zipSha256": "14983d36c56a814ed91b6d652f2b8f895baba1b84eb43b28a0b132c8637cd274",
+        "zipBytes": 2273786,
+        "fileCount": 642,
+        "recomputedH1": "h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "google.golang.org/protobuf@v1.36.11/LICENSE",
+            "bytes": 1479,
+            "sha256": "4835612df0098ca95f8e7d9e3bffcb02358d435dbb38057c844c99d7f725eb20"
+          },
+          {
+            "path": "google.golang.org/protobuf@v1.36.11/PATENTS",
+            "bytes": 1303,
+            "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "lukechampine.com/blake3",
+        "version": "v1.3.0",
+        "sum": "h1:sJ3XhFINmHSrYCgl958hscfIa3bw8x4DqMP3u1YvoYE=",
+        "zipSha256": "2fb0c0a64de6f558aadf0fc161caaf1d477adaed6b8ee60648e0fb44376de32b",
+        "zipBytes": 53722,
+        "fileCount": 19,
+        "recomputedH1": "h1:sJ3XhFINmHSrYCgl958hscfIa3bw8x4DqMP3u1YvoYE=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "lukechampine.com/blake3@v1.3.0/LICENSE",
+            "bytes": 1080,
+            "sha256": "7a576402565d51f9c0c7ee5a639aa91d49ed1a54c21a8d0b56f0d25e72d8b2f1"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      },
+      {
+        "module": "zombiezen.com/go/capnproto2",
+        "version": "v2.18.2+incompatible",
+        "sum": "h1:v3BD1zbruvffn7zjJUU5Pn8nZAB11bhZSQC4W+YnnKo=",
+        "zipSha256": "b0109f13110df4d243b5d1cc49b875bcc07c4c9713eeecc42e16a2b5022f4082",
+        "zipBytes": 430732,
+        "fileCount": 314,
+        "recomputedH1": "h1:v3BD1zbruvffn7zjJUU5Pn8nZAB11bhZSQC4W+YnnKo=",
+        "buildInfoSumMatches": true,
+        "frozenGoSumMatches": true,
+        "noticeCandidates": [
+          {
+            "path": "zombiezen.com/go/capnproto2@v2.18.2+incompatible/LICENSE",
+            "bytes": 1328,
+            "sha256": "f5f5124c151039ac196596a42b07c880b93bdeeb2dd1d523036b32d0c15cfd8c"
+          }
+        ],
+        "sourceCoverage": "module source ZIP verified; linked-file and notice completeness not inferred"
+      }
+    ],
+    "moduleCount": 140,
+    "kernelGitArchive": {
+      "bytes": 10414080,
+      "sha256": "c31a496eaf8b7f8fd731f661376dc95b456f518061caa58dfb7186e42e85f63e",
+      "verifiedGitBlobAndModeCount": 1689,
+      "clientGitlinks": [
+        {
+          "path": "clients/android",
+          "commit": "ae93152f21457723af77d144f28c1f7be7362aec",
+          "archiveCoverage": "gitlink metadata only; client source not included in CLI source archive"
+        },
+        {
+          "path": "clients/apple",
+          "commit": "e232aaf22d6d68773196ffc8e6e79684a6be717c",
+          "archiveCoverage": "gitlink metadata only; client source not included in CLI source archive"
+        },
+        {
+          "path": "clients/desktop",
+          "commit": "50f503849148dd73fa4f4bc231119acf5b2f3d7a",
+          "archiveCoverage": "gitlink metadata only; client source not included in CLI source archive"
+        }
+      ]
+    },
+    "localGoToolchain": {
+      "zipSha256": "8cea6783dab64d68b38f5b81ecd38d45155a3c06638991acc6af19e0fca80edb",
+      "zipBytes": 64327977,
+      "fileCount": 11041,
+      "recomputedH1": "h1:IkknVKy/4hLMR+ZwWfP4Oqhjz2sKqNtEXz1meP8P3Nc=",
+      "noticeCandidates": [
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/compile/internal/ssa/_gen/vendor/golang.org/x/tools/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/compile/internal/ssa/_gen/vendor/golang.org/x/tools/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/github.com/google/pprof/LICENSE",
+          "bytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/github.com/google/pprof/third_party/svgpan/LICENSE",
+          "bytes": 1754,
+          "sha256": "154c946c17de61ca71d28e13673d76a5798e6e25995a7397fbae157afc8f62b4"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/github.com/ianlancetaylor/demangle/LICENSE",
+          "bytes": 1479,
+          "sha256": "b73277f7730993ef8e7f80aed83e5309762fed4d77eced982abb2c00657c074d"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/arch/LICENSE",
+          "bytes": 1453,
+          "sha256": "8cda009bd927676a95ee7ce2dae921442ac4d9584d041b56ecfcba6839032f0b"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/arch/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/build/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/build/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/mod/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/mod/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/sync/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/sync/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/sys/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/sys/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/telemetry/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/telemetry/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/term/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/term/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/text/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/text/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/tools/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/golang.org/x/tools/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/cmd/vendor/rsc.io/markdown/LICENSE",
+          "bytes": 1479,
+          "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/crypto/internal/boring/LICENSE",
+          "bytes": 9714,
+          "sha256": "56210f826b8f0fbac3160dfe55c97f4019eb6cdda3963b5a0eab8a8bdb62360e"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/crypto/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/crypto/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/net/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/net/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/sys/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/sys/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/text/LICENSE",
+          "bytes": 1453,
+          "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+        },
+        {
+          "path": "golang.org/toolchain@v0.0.1-go1.25.5.linux-amd64/src/vendor/golang.org/x/text/PATENTS",
+          "bytes": 1303,
+          "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+        }
+      ],
+      "cacheH1Matches": true,
+      "role": "exact cached local Go 1.25.5 toolchain including standard library source; hosted platform toolchain bytes pending"
+    },
+    "limits": [
+      "Notice filenames are an inventory, not a linked-code license audit.",
+      "Cronet binary input ZIPs do not replace separately recovered fixed Chromium source.",
+      "Original compiler/sysroot/SDK/PGO byte identity and final package notice completeness remain open."
+    ]
+  },
+  "remainingWork": [
+    "Compare each hosted final kernel BuildInfo and per-package notices separately.",
+    "Resolve compiler-rt representative atomic.c mismatch instead of claiming an exact DEPS-source match.",
+    "Recover original external compiler/runtime/sysroot/SDK/PGO source and byte identity where required.",
+    "Review inline/nested notices and bind actual platform link inputs to the thirteen existing libraries.",
+    "Final mobile carriers require a separate producer; seven Cronet mobile libraries are not final carriers."
+  ]
+}

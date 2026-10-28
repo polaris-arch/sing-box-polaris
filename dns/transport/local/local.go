@@ -49,12 +49,24 @@ type Transport struct {
 	serverSetAccess   sync.Mutex
 }
 
+// closeConfigSource is replaced by tests.
+var closeConfigSource = (*systemconfig.Source).Close
+
 func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, options option.LocalDNSServerOptions) (adapter.DNSTransport, error) {
 	transportDialer, err := dns.NewLocalDialer(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 	preferredResolver, err := NewPreferredDomainResolver(ctx, logger, options)
+	if err != nil {
+		return nil, err
+	}
+	configSource := systemconfig.NewSource(ctx)
+	// The source may hold a system registration from now on, so release it
+	// even if the transport is never started.
+	err = adapter.DeferConstructionCleanup(ctx, func() error {
+		return closeConfigSource(configSource)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +77,7 @@ func NewTransport(ctx context.Context, logger log.ContextLogger, tag string, opt
 		preferredResolver: preferredResolver,
 		dialer:            transportDialer,
 		preferGo:          options.PreferGo,
-		configSource:      systemconfig.NewSource(ctx),
+		configSource:      configSource,
 	}, nil
 }
 
@@ -190,5 +202,5 @@ func (t *Transport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callba
 		t.resolved.ExchangeAsync(ctx, message, callback)
 		return
 	}
-	t.exchangeAsync(ctx, message, question.Name, callback)
+	t.exchangeAsync(ctx, message, searchName(question.Name), callback)
 }

@@ -40,14 +40,12 @@ func NewService(options ServiceOptions) (*Service, error) {
 		serviceLogger = logger.NOP()
 	}
 	instance := &Service{
-		serviceBase: serviceBase{
-			logger:            serviceLogger,
-			mtu:               options.MTU,
-			inet4Port:         options.Inet4Port,
-			inet6Port:         options.Inet6Port,
-			tunFileDescriptor: -1,
-		},
-		boundInterface: options.Interface,
+		logger:            serviceLogger,
+		mtu:               options.MTU,
+		inet4Port:         options.Inet4Port,
+		inet6Port:         options.Inet6Port,
+		tunFileDescriptor: -1,
+		boundInterface:    options.Interface,
 	}
 	instance.applyEgress = instance.syncEgressLocked
 	index, err := bridgeIndexOf(options.Inet4Port)

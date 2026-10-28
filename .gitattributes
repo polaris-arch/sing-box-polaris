@@ -1,0 +1,39 @@
+release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-SUPERSET.txt -text -diff
+release/desktop-source-candidate/receipts/windows-amd64-producer720ead-run38072592310.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+release/desktop-source-candidate/receipts/windows-arm64-producer226e88-run38074825396.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+third_party/sing-tun/** -text
+release/dependency-sources/*.patch whitespace=-space-before-tab
+
+# Cross-platform raw client/owned-patch identity inputs, never normalized at use.
+/release/ci/client-overlays.json -text
+/release/ci/owned-distribution.json -text
+/release/ci/*.patch -text
+
+# Exact upstream baseline fixture bytes used by the source overlay regression.
+/scripts/ci/testdata/desktop-50f50384/** -text
+/scripts/ci/testdata/android-ae93152f/** -text
+/scripts/ci/testdata/apple-e232aaf2/** -text
+
+# Source-owned SHA-pinned patches must retain exact Git blob bytes on every host.
+/.github/patches/** -text
+/.github/go_ios_cpu_features.patch -text
+
+third_party/metacubex-utls/** -text
+
+/release/dependency-sources/metacubex-utls-reality-alpn.patch -text whitespace=-blank-at-eol,-space-before-tab
+
+# Preserve exact, H1-inventoried upstream baseline assets. No allowance for the
+# modified reality.go or other product code is added.
+third_party/metacubex-utls/CONTRIBUTORS_GUIDE.md whitespace=-blank-at-eol
+third_party/metacubex-utls/README.md whitespace=-blank-at-eol
+third_party/metacubex-utls/SECURITY.md whitespace=-blank-at-eol
+third_party/metacubex-utls/dicttls/README.md whitespace=-blank-at-eol
+third_party/metacubex-utls/internal/cpu/cpu_s390x.s whitespace=-blank-at-eof
+third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=-space-before-tab
+
+# Source-identity module files must have identical raw bytes on every checkout.
+/go.mod text eol=lf
+/go.sum text eol=lf
+
+# This fixture revision is a raw-byte SDK/FileStore contract on every checkout.
+/protocol/tailscale/testdata/synthetic-sealed-state.json text eol=lf

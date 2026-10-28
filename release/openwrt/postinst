@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+root=${IPKG_INSTROOT:-}
+backup="$root/etc/polaris-box/install-snapshot"
+if [ -f "$backup/uci" ]; then
+	mkdir -p "$root/etc/config"
+	cp -p "$backup/uci" "$root/etc/config/sing-box"
+	rm -f "$backup/uci"
+fi
+if [ -f "$backup/config.json" ]; then
+	mkdir -p "$root/etc/sing-box"
+	cp -p "$backup/config.json" "$root/etc/sing-box/config.json"
+	rm -f "$backup/config.json"
+fi
+# Deliberately do not enable or start the service. The administrator does so.
+if [ -z "$root" ] && [ -f "$backup/was-running" ]; then
+	rm -f "$backup/was-running"
+	/etc/init.d/sing-box start
+fi

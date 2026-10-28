@@ -1,0 +1,2605 @@
+{
+  "sha": "e1ffd3f974755a70e2290d585486bfbdb11304bf",
+  "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/e1ffd3f974755a70e2290d585486bfbdb11304bf",
+  "tree": [
+    {
+      "path": ".editorconfig",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "79a488292bb66d247f600c746a68277445e76980",
+      "size": 236,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/79a488292bb66d247f600c746a68277445e76980"
+    },
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "def1eeca107e4e58b66656a28976d7acaaa1238c",
+      "size": 75,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/def1eeca107e4e58b66656a28976d7acaaa1238c"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "38787adb39b6efe31cccfb7bb82c02f751e5e4bf",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/38787adb39b6efe31cccfb7bb82c02f751e5e4bf"
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8d29c6d856fbc52054e9ea87333073032acc0a3",
+      "size": 83,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b8d29c6d856fbc52054e9ea87333073032acc0a3"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14e38d9197f160dc708e6c6cc84c4c31d495841b",
+      "size": 223,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/14e38d9197f160dc708e6c6cc84c4c31d495841b"
+    },
+    {
+      "path": ".gitmodules",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64c89744dabac50995b94868f5c53998effaacba",
+      "size": 97,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/64c89744dabac50995b94868f5c53998effaacba"
+    },
+    {
+      "path": "Directory.Build.props",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e63a5e6561d76c045331ccd7bbd18c25b8c9ab2",
+      "size": 116,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3e63a5e6561d76c045331ccd7bbd18c25b8c9ab2"
+    },
+    {
+      "path": "Directory.Build.targets",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8417de469f62c30919566a41f2efe76bde14b289",
+      "size": 118,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8417de469f62c30919566a41f2efe76bde14b289"
+    },
+    {
+      "path": "LICENSE.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5195cc72381089a19d80587877c07a23c12f9b85",
+      "size": 1332,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5195cc72381089a19d80587877c07a23c12f9b85"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "89084bf7e023a9f4e3e6be21ea102645059638b4",
+      "size": 12515,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/89084bf7e023a9f4e3e6be21ea102645059638b4"
+    },
+    {
+      "path": "bin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "82a079782715e0ae352fdd63c3be29798cb473aa",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/82a079782715e0ae352fdd63c3be29798cb473aa"
+    },
+    {
+      "path": "bin/attach_loop.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db69e8f10055be6c7d2b36f3971aac9549588a45",
+      "size": 1784,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/db69e8f10055be6c7d2b36f3971aac9549588a45"
+    },
+    {
+      "path": "bin/boot_start.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b52bf7b182475d7869c8717d4a95cf496869c1d",
+      "size": 1111,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7b52bf7b182475d7869c8717d4a95cf496869c1d"
+    },
+    {
+      "path": "bin/boot_stop.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bba1e244a5702a0f8acbceae152901bc05cf8cdb",
+      "size": 781,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/bba1e244a5702a0f8acbceae152901bc05cf8cdb"
+    },
+    {
+      "path": "bin/dbg.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71533769ea3c39d925e11b370c88449de3059c43",
+      "size": 36,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/71533769ea3c39d925e11b370c88449de3059c43"
+    },
+    {
+      "path": "bin/di.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e12f02cff290ddcbd22a58dcfe535d89e32bff60",
+      "size": 116,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e12f02cff290ddcbd22a58dcfe535d89e32bff60"
+    },
+    {
+      "path": "bin/dr.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "366cce3ac09bf191c1e8d53af50e3bf1a959466d",
+      "size": 102,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/366cce3ac09bf191c1e8d53af50e3bf1a959466d"
+    },
+    {
+      "path": "bin/uninstall.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c504e8af589c82fad30f0896e6d01617ca4e2c88",
+      "size": 458,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c504e8af589c82fad30f0896e6d01617ca4e2c88"
+    },
+    {
+      "path": "bin/usbtrace-start.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41e8ecd0911972aca9fd12246b06e6c387128b6c",
+      "size": 664,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/41e8ecd0911972aca9fd12246b06e6c387128b6c"
+    },
+    {
+      "path": "bin/usbtrace-stop.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14f557ab82b4f18b048c957f4776ff6266110d25",
+      "size": 243,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/14f557ab82b4f18b048c957f4776ff6266110d25"
+    },
+    {
+      "path": "bin/va.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1dbaa7c78a7a31e337c5793bb0e50c3f83f14121",
+      "size": 507,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1dbaa7c78a7a31e337c5793bb0e50c3f83f14121"
+    },
+    {
+      "path": "bin/vz.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "122b99300954ccc0710e6e963355acbb3a93897d",
+      "size": 635,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/122b99300954ccc0710e6e963355acbb3a93897d"
+    },
+    {
+      "path": "bootstrap.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5919c13125c14398e31667265640009818262790",
+      "size": 140,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5919c13125c14398e31667265640009818262790"
+    },
+    {
+      "path": "drivers",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f361ab133035805637b61050e90f775968d98678",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/f361ab133035805637b61050e90f775968d98678"
+    },
+    {
+      "path": "drivers/libdrv",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "778620813e3c6250cff99567e7cb8ab4a45aea21",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/778620813e3c6250cff99567e7cb8ab4a45aea21"
+    },
+    {
+      "path": "drivers/libdrv/ch11.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "283bd3a884c51be84a327eacdf6d8ea6e6444cca",
+      "size": 565,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/283bd3a884c51be84a327eacdf6d8ea6e6444cca"
+    },
+    {
+      "path": "drivers/libdrv/ch9.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2196c8c712dbee2682eceea7304d7820525a1621",
+      "size": 3902,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/2196c8c712dbee2682eceea7304d7820525a1621"
+    },
+    {
+      "path": "drivers/libdrv/codeseg.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1585751936960dd8390f35c4702d8abad2c5be27",
+      "size": 462,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1585751936960dd8390f35c4702d8abad2c5be27"
+    },
+    {
+      "path": "drivers/libdrv/dbgcommon.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1ddeed6d896f96688e86ecc3c5c8f7c82d680f04",
+      "size": 17493,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1ddeed6d896f96688e86ecc3c5c8f7c82d680f04"
+    },
+    {
+      "path": "drivers/libdrv/dbgcommon.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac1465f5edbb6979ed162ba5a652921cb13138b3",
+      "size": 1198,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ac1465f5edbb6979ed162ba5a652921cb13138b3"
+    },
+    {
+      "path": "drivers/libdrv/ioctl.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70076dc316a64ddf8256320e4e7eadc74014aab1",
+      "size": 940,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/70076dc316a64ddf8256320e4e7eadc74014aab1"
+    },
+    {
+      "path": "drivers/libdrv/irp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76e8d8dcb269dab299f307b8a4f6de60c0b73592",
+      "size": 902,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/76e8d8dcb269dab299f307b8a4f6de60c0b73592"
+    },
+    {
+      "path": "drivers/libdrv/irp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dbc8ca875558514b05b1d0481d51213062adae3c",
+      "size": 2131,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dbc8ca875558514b05b1d0481d51213062adae3c"
+    },
+    {
+      "path": "drivers/libdrv/libdrv.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f6f24969b7ef640f1653b0c3f7b93ec42e54490",
+      "size": 17347,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8f6f24969b7ef640f1653b0c3f7b93ec42e54490"
+    },
+    {
+      "path": "drivers/libdrv/libdrv.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0a8aeea3472a37e2bcc1666d3dd7a1933eb95b7",
+      "size": 2024,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d0a8aeea3472a37e2bcc1666d3dd7a1933eb95b7"
+    },
+    {
+      "path": "drivers/libdrv/mdl_cpp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66bf8bcc57d70979331135317867adde70961091",
+      "size": 3322,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/66bf8bcc57d70979331135317867adde70961091"
+    },
+    {
+      "path": "drivers/libdrv/mdl_cpp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c0490a60cc837a6aa04563c6e917cfd465a3ded",
+      "size": 1897,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5c0490a60cc837a6aa04563c6e917cfd465a3ded"
+    },
+    {
+      "path": "drivers/libdrv/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff",
+      "size": 556,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff"
+    },
+    {
+      "path": "drivers/libdrv/pair.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "846637aaf4ac35c09f1b5ebacbdec39cd5abae68",
+      "size": 2218,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/846637aaf4ac35c09f1b5ebacbdec39cd5abae68"
+    },
+    {
+      "path": "drivers/libdrv/pdu.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a569e1b3fe61ea109b56907a03255f026daf15f",
+      "size": 3497,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9a569e1b3fe61ea109b56907a03255f026daf15f"
+    },
+    {
+      "path": "drivers/libdrv/pdu.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5147a55a8491a42b46e156a01a26446fb9eddbc9",
+      "size": 660,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5147a55a8491a42b46e156a01a26446fb9eddbc9"
+    },
+    {
+      "path": "drivers/libdrv/remove_lock.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "475dc669eb45eb9817392188b96afd4053259c89",
+      "size": 1475,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/475dc669eb45eb9817392188b96afd4053259c89"
+    },
+    {
+      "path": "drivers/libdrv/select.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04231b6543eaba65634897e24cdf38e2e3bfb597",
+      "size": 4582,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/04231b6543eaba65634897e24cdf38e2e3bfb597"
+    },
+    {
+      "path": "drivers/libdrv/select.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcb828cb346643b71bde52364304bcb09a159f4e",
+      "size": 838,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dcb828cb346643b71bde52364304bcb09a159f4e"
+    },
+    {
+      "path": "drivers/libdrv/strconv.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ef3381f53d61d8ff61f2d4b18d50d2cb9951a1a",
+      "size": 4288,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9ef3381f53d61d8ff61f2d4b18d50d2cb9951a1a"
+    },
+    {
+      "path": "drivers/libdrv/strconv.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2faf66357ca17616b3c14cd75c41b0f1b8fbe03e",
+      "size": 1838,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/2faf66357ca17616b3c14cd75c41b0f1b8fbe03e"
+    },
+    {
+      "path": "drivers/libdrv/unique_ptr.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0322b34d5315cf00356df8632def36c3cdf69b6d",
+      "size": 1972,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0322b34d5315cf00356df8632def36c3cdf69b6d"
+    },
+    {
+      "path": "drivers/libdrv/urb_ptr.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01c8960b486eae63936f26000292e1212fb4d48c",
+      "size": 924,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/01c8960b486eae63936f26000292e1212fb4d48c"
+    },
+    {
+      "path": "drivers/libdrv/usb_util.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "96abb4e02d73741feba2723117714181a1603090",
+      "size": 429,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/96abb4e02d73741feba2723117714181a1603090"
+    },
+    {
+      "path": "drivers/libdrv/usbd_helper.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e3f9142b771dbbb2f5a1443dccc8824364e6230",
+      "size": 5443,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0e3f9142b771dbbb2f5a1443dccc8824364e6230"
+    },
+    {
+      "path": "drivers/libdrv/usbd_helper.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ccc89ce979cca818060ade973ed9dc62c6b0be46",
+      "size": 2616,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ccc89ce979cca818060ade973ed9dc62c6b0be46"
+    },
+    {
+      "path": "drivers/libdrv/usbdsc.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6840fc2ec5677d00f8f75c5f3017a5a618fd0c03",
+      "size": 1121,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6840fc2ec5677d00f8f75c5f3017a5a618fd0c03"
+    },
+    {
+      "path": "drivers/libdrv/usbdsc.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab5b82e94a3758f2ba7335d31d6c302b155cc317",
+      "size": 2201,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ab5b82e94a3758f2ba7335d31d6c302b155cc317"
+    },
+    {
+      "path": "drivers/libdrv/wait_timeout.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5ac21cd6cdbebcbd7f8247e8572ccf19747adba",
+      "size": 734,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e5ac21cd6cdbebcbd7f8247e8572ccf19747adba"
+    },
+    {
+      "path": "drivers/libdrv/wdf_cpp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "47f8ee0085539b24c65a8b02b8a362819eb8d9ff",
+      "size": 1601,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/47f8ee0085539b24c65a8b02b8a362819eb8d9ff"
+    },
+    {
+      "path": "drivers/libdrv/wdf_cpp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77a1d5001607f4acfd89df41aa8035c62bb8e1d4",
+      "size": 5216,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/77a1d5001607f4acfd89df41aa8035c62bb8e1d4"
+    },
+    {
+      "path": "drivers/libdrv/wdm_cpp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ee47b2cbffd08f4ca975cbf87f1dd4a2979ffb4b",
+      "size": 1512,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ee47b2cbffd08f4ca975cbf87f1dd4a2979ffb4b"
+    },
+    {
+      "path": "drivers/libdrv/wdm_cpp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f1658eb996d01da6b843ad1a9dbddc4f8cf679c",
+      "size": 1445,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5f1658eb996d01da6b843ad1a9dbddc4f8cf679c"
+    },
+    {
+      "path": "drivers/libdrv/wsk_cpp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "08f41ecc2956a70900ba716df6c44b0128d99724",
+      "size": 24299,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/08f41ecc2956a70900ba716df6c44b0128d99724"
+    },
+    {
+      "path": "drivers/libdrv/wsk_cpp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03eed32625a2edc8f1b4603d10283ba7dfb243a6",
+      "size": 3978,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/03eed32625a2edc8f1b4603d10283ba7dfb243a6"
+    },
+    {
+      "path": "drivers/package",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7868feec10f73548545c36ed443289473310e385",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/7868feec10f73548545c36ed443289473310e385"
+    },
+    {
+      "path": "drivers/package/package.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f00c282aaea60fca2708c7d496fd20fca32b0ca3",
+      "size": 12896,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f00c282aaea60fca2708c7d496fd20fca32b0ca3"
+    },
+    {
+      "path": "drivers/package/package.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d055fe027610bba90a1fd351bba9b8c6f2dd77f",
+      "size": 209,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1d055fe027610bba90a1fd351bba9b8c6f2dd77f"
+    },
+    {
+      "path": "drivers/package/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff",
+      "size": 556,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff"
+    },
+    {
+      "path": "drivers/package/readme.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8d2cdb760bec60c4c051079aed01f4819e50b8d",
+      "size": 377,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e8d2cdb760bec60c4c051079aed01f4819e50b8d"
+    },
+    {
+      "path": "drivers/package/usbip.pfx",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a8c4bdf2b72f61c7ff27b1df77c177984420c433",
+      "size": 2566,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a8c4bdf2b72f61c7ff27b1df77c177984420c433"
+    },
+    {
+      "path": "drivers/ude",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "610b713c7b60190356a4211a76d10edae531cd29",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/610b713c7b60190356a4211a76d10edae531cd29"
+    },
+    {
+      "path": "drivers/ude/context.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c523d4079c1a904a168e6c7f08f74283b51c0318",
+      "size": 4611,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c523d4079c1a904a168e6c7f08f74283b51c0318"
+    },
+    {
+      "path": "drivers/ude/context.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "626ff7cd911a46b498980df1caa293b6902b7dbd",
+      "size": 8403,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/626ff7cd911a46b498980df1caa293b6902b7dbd"
+    },
+    {
+      "path": "drivers/ude/custom_wpp.ini",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57be8e6163154468f4d5dc2b65ea8d7d0bd26dc6",
+      "size": 1811,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/57be8e6163154468f4d5dc2b65ea8d7d0bd26dc6"
+    },
+    {
+      "path": "drivers/ude/device.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d7e389f7f8d959fe3306eb9a5afdaf7afdb854c9",
+      "size": 29584,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d7e389f7f8d959fe3306eb9a5afdaf7afdb854c9"
+    },
+    {
+      "path": "drivers/ude/device.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ceb39803dce28eca82f69badc0fe6e44d0e2b4ea",
+      "size": 1133,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ceb39803dce28eca82f69badc0fe6e44d0e2b4ea"
+    },
+    {
+      "path": "drivers/ude/device_ioctl.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31d0c3eb5d31e9a383de89498c42cba25b844c95",
+      "size": 22731,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/31d0c3eb5d31e9a383de89498c42cba25b844c95"
+    },
+    {
+      "path": "drivers/ude/device_ioctl.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4997381b81d39946837ce7b947fdb84f7a7dfe67",
+      "size": 2207,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4997381b81d39946837ce7b947fdb84f7a7dfe67"
+    },
+    {
+      "path": "drivers/ude/driver.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "897e1e437a2fa81c923b8e6b63d333542ace3cb6",
+      "size": 1976,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/897e1e437a2fa81c923b8e6b63d333542ace3cb6"
+    },
+    {
+      "path": "drivers/ude/driver.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45aa0de5da3a15ea4517ea40fd39ad4e2c2c3fd1",
+      "size": 239,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/45aa0de5da3a15ea4517ea40fd39ad4e2c2c3fd1"
+    },
+    {
+      "path": "drivers/ude/endpoint_list.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4bd65c9d9ff28da8ba6f5a12142bd140b27e3648",
+      "size": 2228,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4bd65c9d9ff28da8ba6f5a12142bd140b27e3648"
+    },
+    {
+      "path": "drivers/ude/endpoint_list.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30497f52a62a74ba78c34335968d1be47fa3f6ae",
+      "size": 1190,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/30497f52a62a74ba78c34335968d1be47fa3f6ae"
+    },
+    {
+      "path": "drivers/ude/filter_request.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "197daf27f3684f3e5c48256dfb883eea3ea9e068",
+      "size": 8058,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/197daf27f3684f3e5c48256dfb883eea3ea9e068"
+    },
+    {
+      "path": "drivers/ude/filter_request.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "846a06c63fc9f3c10dea1b4462b6946d070fc6bf",
+      "size": 405,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/846a06c63fc9f3c10dea1b4462b6946d070fc6bf"
+    },
+    {
+      "path": "drivers/ude/ioctl.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b14f9f158a11f4f782ccf8be58b944bc8fb77853",
+      "size": 774,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b14f9f158a11f4f782ccf8be58b944bc8fb77853"
+    },
+    {
+      "path": "drivers/ude/network.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1aeda721ffcbd4da49d336e0e9b7bef214b7e421",
+      "size": 6582,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1aeda721ffcbd4da49d336e0e9b7bef214b7e421"
+    },
+    {
+      "path": "drivers/ude/network.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c137b83f3663898b2ee8ebdd8bc6ae5e540d212f",
+      "size": 1324,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c137b83f3663898b2ee8ebdd8bc6ae5e540d212f"
+    },
+    {
+      "path": "drivers/ude/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff",
+      "size": 556,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff"
+    },
+    {
+      "path": "drivers/ude/persistent.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb8c9a8e68f9eff9b1f8e25b011e6e35a3cd8159",
+      "size": 20538,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/bb8c9a8e68f9eff9b1f8e25b011e6e35a3cd8159"
+    },
+    {
+      "path": "drivers/ude/persistent.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d0751ee1f840278683f63ec9979213dccb3ae56",
+      "size": 1893,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8d0751ee1f840278683f63ec9979213dccb3ae56"
+    },
+    {
+      "path": "drivers/ude/proto.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18903d1d5852890ee9fe0119869bf1cd4fd501a3",
+      "size": 2815,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/18903d1d5852890ee9fe0119869bf1cd4fd501a3"
+    },
+    {
+      "path": "drivers/ude/proto.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ad4eb2f8eb7cd221d8444d1c88b65f2276f1b5f",
+      "size": 1544,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7ad4eb2f8eb7cd221d8444d1c88b65f2276f1b5f"
+    },
+    {
+      "path": "drivers/ude/request_list.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dd4142818911851b384b44d81c140c56a216ccb2",
+      "size": 4542,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dd4142818911851b384b44d81c140c56a216ccb2"
+    },
+    {
+      "path": "drivers/ude/request_list.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b083efd5ada758e512231f64b533b86ed2e0ce50",
+      "size": 1658,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b083efd5ada758e512231f64b533b86ed2e0ce50"
+    },
+    {
+      "path": "drivers/ude/trace.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04a3689021876908ed78e527049038aa2e6e47e8",
+      "size": 1872,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/04a3689021876908ed78e527049038aa2e6e47e8"
+    },
+    {
+      "path": "drivers/ude/urbtransfer.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7076afb70ae2ab3de251ae2800c7d47ae3ddf415",
+      "size": 4452,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7076afb70ae2ab3de251ae2800c7d47ae3ddf415"
+    },
+    {
+      "path": "drivers/ude/urbtransfer.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "566f1f45723e7e14742b35c7ae622eb45cb306a3",
+      "size": 2312,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/566f1f45723e7e14742b35c7ae622eb45cb306a3"
+    },
+    {
+      "path": "drivers/ude/usbip2_ude.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b22aea1afc6976f2e3f7dfd387abea84c2094e3c",
+      "size": 2757,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b22aea1afc6976f2e3f7dfd387abea84c2094e3c"
+    },
+    {
+      "path": "drivers/ude/usbip2_ude.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "080baef088a4d1a2c32bfb013928724257856121",
+      "size": 17762,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/080baef088a4d1a2c32bfb013928724257856121"
+    },
+    {
+      "path": "drivers/ude/usbip2_ude.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b22cdb832dfc8b7493842ee3ccceea80608efcdb",
+      "size": 2406,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b22cdb832dfc8b7493842ee3ccceea80608efcdb"
+    },
+    {
+      "path": "drivers/ude/vhci.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcfab1fa52acbc370c16477e51ad43c2457b95f1",
+      "size": 33283,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dcfab1fa52acbc370c16477e51ad43c2457b95f1"
+    },
+    {
+      "path": "drivers/ude/vhci.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c09e83c515731945f1707de29819a8c3d3caba29",
+      "size": 1752,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c09e83c515731945f1707de29819a8c3d3caba29"
+    },
+    {
+      "path": "drivers/ude/vhci_ioctl.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5740800821b97b44d8c589b5824a522d8e24b26a",
+      "size": 33554,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5740800821b97b44d8c589b5824a522d8e24b26a"
+    },
+    {
+      "path": "drivers/ude/vhci_ioctl.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3f21694983ac58c9320285e367ceac0e604d804",
+      "size": 301,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b3f21694983ac58c9320285e367ceac0e604d804"
+    },
+    {
+      "path": "drivers/ude/wsk_context.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd38072042735351d4b4aa337ff06fc0d07bc56c",
+      "size": 6543,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/cd38072042735351d4b4aa337ff06fc0d07bc56c"
+    },
+    {
+      "path": "drivers/ude/wsk_context.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3978891eb60f6418d675824f2c4c6eb2afee6d4",
+      "size": 2495,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d3978891eb60f6418d675824f2c4c6eb2afee6d4"
+    },
+    {
+      "path": "drivers/ude/wsk_receive.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "db266121dfe44899ae3d178d762d812d8bafdc2b",
+      "size": 21250,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/db266121dfe44899ae3d178d762d812d8bafdc2b"
+    },
+    {
+      "path": "drivers/ude/wsk_receive.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a02f2ddc930f627bf739b13c49c022a109edacd2",
+      "size": 670,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a02f2ddc930f627bf739b13c49c022a109edacd2"
+    },
+    {
+      "path": "drivers/ude_filter",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8fe4c9c4205351fd6757226a1d379c1e6864ef42",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/8fe4c9c4205351fd6757226a1d379c1e6864ef42"
+    },
+    {
+      "path": "drivers/ude_filter/device.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b67d3498d6a97a959252634e2c7f00650cc9692",
+      "size": 6913,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7b67d3498d6a97a959252634e2c7f00650cc9692"
+    },
+    {
+      "path": "drivers/ude_filter/device.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6d6f8a23669b8b0b846228b4b8714bb9d0cacd1",
+      "size": 1406,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e6d6f8a23669b8b0b846228b4b8714bb9d0cacd1"
+    },
+    {
+      "path": "drivers/ude_filter/driver.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8a5d454abdbb7a78cfb7ccd50453149e8f738480",
+      "size": 1938,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8a5d454abdbb7a78cfb7ccd50453149e8f738480"
+    },
+    {
+      "path": "drivers/ude_filter/driver.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d585f156b6f1072b856ab0553b03b9eab24d33a",
+      "size": 239,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9d585f156b6f1072b856ab0553b03b9eab24d33a"
+    },
+    {
+      "path": "drivers/ude_filter/int_dev_ctrl.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9572770b3df269c82c03bacc4ce2d57949f1cfdc",
+      "size": 7944,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9572770b3df269c82c03bacc4ce2d57949f1cfdc"
+    },
+    {
+      "path": "drivers/ude_filter/int_dev_ctrl.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f40e4c3a0dd2761e768316f07a5c48979d792f8",
+      "size": 352,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8f40e4c3a0dd2761e768316f07a5c48979d792f8"
+    },
+    {
+      "path": "drivers/ude_filter/irp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae9f59a5a5d17fb30bd01843b2dbcd24dc5498d2",
+      "size": 458,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ae9f59a5a5d17fb30bd01843b2dbcd24dc5498d2"
+    },
+    {
+      "path": "drivers/ude_filter/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff",
+      "size": 556,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ecdb4940c49904a4f08b15b5e06b4c9764d9a7ff"
+    },
+    {
+      "path": "drivers/ude_filter/pnp.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ef5959abf15ef43372cd893224d30084a043b7c",
+      "size": 6726,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8ef5959abf15ef43372cd893224d30084a043b7c"
+    },
+    {
+      "path": "drivers/ude_filter/pnp.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0179a549e1dea386a658f37751db4dc8c0500d7e",
+      "size": 335,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0179a549e1dea386a658f37751db4dc8c0500d7e"
+    },
+    {
+      "path": "drivers/ude_filter/query_interface.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9af426854ab6f0b80dd2f4fdbb6328c59572043d",
+      "size": 2312,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9af426854ab6f0b80dd2f4fdbb6328c59572043d"
+    },
+    {
+      "path": "drivers/ude_filter/query_interface.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2aea2c188b88c07953c3dc54104fc3166304462f",
+      "size": 362,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/2aea2c188b88c07953c3dc54104fc3166304462f"
+    },
+    {
+      "path": "drivers/ude_filter/readme.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "681c0f45e7f4517ce55958544ba4832ac93cf486",
+      "size": 5009,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/681c0f45e7f4517ce55958544ba4832ac93cf486"
+    },
+    {
+      "path": "drivers/ude_filter/request.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e2938a8a78e892ecaf9f351246f4e68140fb859",
+      "size": 977,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7e2938a8a78e892ecaf9f351246f4e68140fb859"
+    },
+    {
+      "path": "drivers/ude_filter/request.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "54a6139fa658f320bcac248956177b8f8b336466",
+      "size": 2194,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/54a6139fa658f320bcac248956177b8f8b336466"
+    },
+    {
+      "path": "drivers/ude_filter/trace.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c3552beb6cb43a478e1633921b9caf272125bf96",
+      "size": 1762,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c3552beb6cb43a478e1633921b9caf272125bf96"
+    },
+    {
+      "path": "drivers/ude_filter/ude_filter.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32efe517ab841f736b57fc618930cecc74714325",
+      "size": 13900,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/32efe517ab841f736b57fc618930cecc74714325"
+    },
+    {
+      "path": "drivers/ude_filter/ude_filter.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "005b7348aa57c4aad7ad1557a2d2faa09123647f",
+      "size": 888,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/005b7348aa57c4aad7ad1557a2d2faa09123647f"
+    },
+    {
+      "path": "drivers/ude_filter/usbip2_filter.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "499ed4b063d32daecd7da8fc729fb409c12d65e3",
+      "size": 1957,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/499ed4b063d32daecd7da8fc729fb409c12d65e3"
+    },
+    {
+      "path": "include",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b394f56a14c20bb1bfbe72ac1ccf847118ed8687",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/b394f56a14c20bb1bfbe72ac1ccf847118ed8687"
+    },
+    {
+      "path": "include/usbip",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "49cf06209703e4142d3a04bcaf6ce0dbb989e59f",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/49cf06209703e4142d3a04bcaf6ce0dbb989e59f"
+    },
+    {
+      "path": "include/usbip/ch9.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2efead72c1111b29ec3b61e018d6299999c8a47",
+      "size": 616,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a2efead72c1111b29ec3b61e018d6299999c8a47"
+    },
+    {
+      "path": "include/usbip/consts.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41dc5efb6c7d1eab7bfb370b9296de9b5badd75d",
+      "size": 676,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/41dc5efb6c7d1eab7bfb370b9296de9b5badd75d"
+    },
+    {
+      "path": "include/usbip/proto.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8cecfa1910ea78eb0ef69674150cfef3e7e9b3c8",
+      "size": 1688,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8cecfa1910ea78eb0ef69674150cfef3e7e9b3c8"
+    },
+    {
+      "path": "include/usbip/proto_op.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff1663710ebfc61dafdb459ad0bfcf42e1e50979",
+      "size": 2408,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ff1663710ebfc61dafdb459ad0bfcf42e1e50979"
+    },
+    {
+      "path": "include/usbip/vhci.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6993c3dfd45d8ea23d3494748c9b050713761c36",
+      "size": 3221,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6993c3dfd45d8ea23d3494748c9b050713761c36"
+    },
+    {
+      "path": "tools",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "aa5888bcf0684dc437a121492dc19c27f6f496dc",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/aa5888bcf0684dc437a121492dc19c27f6f496dc"
+    },
+    {
+      "path": "tools/pathc.exe",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b22a07288d83ca548b068f124d979e696883189",
+      "size": 112128,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1b22a07288d83ca548b068f124d979e696883189"
+    },
+    {
+      "path": "tools/pathc.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed033761eeed46b56e52fa49201333c28f545443",
+      "size": 61,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ed033761eeed46b56e52fa49201333c28f545443"
+    },
+    {
+      "path": "usbip_win2.sln",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c906a6a428df6ffa1b447ac62e9cda60e2f9b85d",
+      "size": 11581,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c906a6a428df6ffa1b447ac62e9cda60e2f9b85d"
+    },
+    {
+      "path": "userspace",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5d3e5b35896e636d652dfb4e247c1a62b00ba2a5",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/5d3e5b35896e636d652dfb4e247c1a62b00ba2a5"
+    },
+    {
+      "path": "userspace/CLI11",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4f200361d2d39d6515f9b8ecb13723e89085ecaf",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/4f200361d2d39d6515f9b8ecb13723e89085ecaf"
+    },
+    {
+      "path": "userspace/CLI11/CLI11.hpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "993823959456fd6d2b2f267924cbe8dad4c0134c",
+      "size": 465599,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/993823959456fd6d2b2f267924cbe8dad4c0134c"
+    },
+    {
+      "path": "userspace/CLI11/CLI11.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59448238857d0a1c6670405f65df977ec28c8a13",
+      "size": 61,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/59448238857d0a1c6670405f65df977ec28c8a13"
+    },
+    {
+      "path": "userspace/devnode",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d72bb1734b180b7f7ac7cfc2e541fa75e9bda307",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/d72bb1734b180b7f7ac7cfc2e541fa75e9bda307"
+    },
+    {
+      "path": "userspace/devnode/devnode.rc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "840c7b4992aa355616f0c93a002e2388f64205b6",
+      "size": 2250,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/840c7b4992aa355616f0c93a002e2388f64205b6"
+    },
+    {
+      "path": "userspace/devnode/devnode.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "874e0a7bf5dc79eacd1e6ba249f7935d0652eaff",
+      "size": 9762,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/874e0a7bf5dc79eacd1e6ba249f7935d0652eaff"
+    },
+    {
+      "path": "userspace/devnode/devnode.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "007dd405774fb0e36af198fe081bbf03ae58ccb8",
+      "size": 349,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/007dd405774fb0e36af198fe081bbf03ae58ccb8"
+    },
+    {
+      "path": "userspace/devnode/main.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "60de0ab59ed173805c24058bcef71cfec144b3cb",
+      "size": 10131,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/60de0ab59ed173805c24058bcef71cfec144b3cb"
+    },
+    {
+      "path": "userspace/devnode/resource.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff601809ef33a3b4556545abab20d7267b0dcfc0",
+      "size": 387,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ff601809ef33a3b4556545abab20d7267b0dcfc0"
+    },
+    {
+      "path": "userspace/innosetup",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5365d502ea9684ef9480d211a0e1dd83fb2d7692",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/5365d502ea9684ef9480d211a0e1dd83fb2d7692"
+    },
+    {
+      "path": "userspace/innosetup/128.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dfe03d1b761cc76d19356190c758e829d3866a7c",
+      "size": 65674,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dfe03d1b761cc76d19356190c758e829d3866a7c"
+    },
+    {
+      "path": "userspace/innosetup/164.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78f724264fcfdeb488c8c4ac024e5edfe9bdcbdb",
+      "size": 107722,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/78f724264fcfdeb488c8c4ac024e5edfe9bdcbdb"
+    },
+    {
+      "path": "userspace/innosetup/192.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3395ec99e8c2df9163bbdabca91c83e771fe9907",
+      "size": 147594,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3395ec99e8c2df9163bbdabca91c83e771fe9907"
+    },
+    {
+      "path": "userspace/innosetup/256.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e48b1c961fee495544b7eaf16573597ecacea1d3",
+      "size": 262282,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e48b1c961fee495544b7eaf16573597ecacea1d3"
+    },
+    {
+      "path": "userspace/innosetup/384.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bd303f8c4dee4f737985018d83550902d2fd74ec",
+      "size": 589962,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/bd303f8c4dee4f737985018d83550902d2fd74ec"
+    },
+    {
+      "path": "userspace/innosetup/48.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a5d376d76c9022de1ab63e07af9df24eb30d8b92",
+      "size": 9354,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a5d376d76c9022de1ab63e07af9df24eb30d8b92"
+    },
+    {
+      "path": "userspace/innosetup/512.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f687eb0dd0d5b73a58c784b42497ecc47512f0f7",
+      "size": 1048714,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f687eb0dd0d5b73a58c784b42497ecc47512f0f7"
+    },
+    {
+      "path": "userspace/innosetup/64.bmp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cfb703720e1b2ebde39b11d3e584e0b0da147b46",
+      "size": 16522,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/cfb703720e1b2ebde39b11d3e584e0b0da147b46"
+    },
+    {
+      "path": "userspace/innosetup/PathMgr.dll",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "992425e32634b0a10cd02a28e7ba6c889d1cf8ac",
+      "size": 58272,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/992425e32634b0a10cd02a28e7ba6c889d1cf8ac"
+    },
+    {
+      "path": "userspace/innosetup/UninsIS.dll",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d75c3aabe4a703d308e4e8b2cbcf9163b96beef",
+      "size": 61168,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6d75c3aabe4a703d308e4e8b2cbcf9163b96beef"
+    },
+    {
+      "path": "userspace/innosetup/innosetup.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04082683d98a63a05968fb1301971445b5c1c73f",
+      "size": 9727,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/04082683d98a63a05968fb1301971445b5c1c73f"
+    },
+    {
+      "path": "userspace/innosetup/innosetup.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6db7db38e31d2ef39eb8cd232f5de04774dafd69",
+      "size": 242,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6db7db38e31d2ef39eb8cd232f5de04774dafd69"
+    },
+    {
+      "path": "userspace/innosetup/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d4013032febf476bf71fef79d3800cecd3bbe48",
+      "size": 140,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6d4013032febf476bf71fef79d3800cecd3bbe48"
+    },
+    {
+      "path": "userspace/innosetup/setup.iss",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43f4ecf26b91f9efc2240c4eb3dd8cc2c6a5e06a",
+      "size": 13517,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/43f4ecf26b91f9efc2240c4eb3dd8cc2c6a5e06a"
+    },
+    {
+      "path": "userspace/libusbip",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e5b83ec92d4dcdc9886cce4a091265419537f1b6",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/e5b83ec92d4dcdc9886cce4a091265419537f1b6"
+    },
+    {
+      "path": "userspace/libusbip/dllspec.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "000f6986941b275bc21d81ead58f978b094d4496",
+      "size": 206,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/000f6986941b275bc21d81ead58f978b094d4496"
+    },
+    {
+      "path": "userspace/libusbip/format_message.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74188a6b30a59393c7529ba7e12115e9161c4e58",
+      "size": 1142,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/74188a6b30a59393c7529ba7e12115e9161c4e58"
+    },
+    {
+      "path": "userspace/libusbip/generic_handle.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43d98b5eafd9b0e8ce2412a03b4981b4db40ace6",
+      "size": 527,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/43d98b5eafd9b0e8ce2412a03b4981b4db40ace6"
+    },
+    {
+      "path": "userspace/libusbip/generic_handle_ex.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc54a27040df97b9fc97d89464969f6b2fcf6fc6",
+      "size": 2403,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/fc54a27040df97b9fc97d89464969f6b2fcf6fc6"
+    },
+    {
+      "path": "userspace/libusbip/libusbip.rc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a87d1f3adddbac32336728cc629dee66cecac4c3",
+      "size": 2253,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a87d1f3adddbac32336728cc629dee66cecac4c3"
+    },
+    {
+      "path": "userspace/libusbip/libusbip.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "75f9ef7e5ac2b4714f6f549fc4df9588d2e2b998",
+      "size": 10456,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/75f9ef7e5ac2b4714f6f549fc4df9588d2e2b998"
+    },
+    {
+      "path": "userspace/libusbip/libusbip.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fec1b7bfa49addf52d0ec05e294808e4f222e760",
+      "size": 2722,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/fec1b7bfa49addf52d0ec05e294808e4f222e760"
+    },
+    {
+      "path": "userspace/libusbip/output.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4766f3d88e94f755f4c1455267dbdad678fee722",
+      "size": 539,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4766f3d88e94f755f4c1455267dbdad678fee722"
+    },
+    {
+      "path": "userspace/libusbip/persistent.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "007e8304003271a9a5c8bb127338134ae7c10b80",
+      "size": 804,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/007e8304003271a9a5c8bb127338134ae7c10b80"
+    },
+    {
+      "path": "userspace/libusbip/remote.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a885a1abd7ed385ec346bc351f06971cea1e63ad",
+      "size": 3262,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a885a1abd7ed385ec346bc351f06971cea1e63ad"
+    },
+    {
+      "path": "userspace/libusbip/resource.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9c8587fe512cc88c46b81c164e3ea58ef1053f1",
+      "size": 391,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e9c8587fe512cc88c46b81c164e3ea58ef1053f1"
+    },
+    {
+      "path": "userspace/libusbip/src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3111c9b49277f106d34a3ee9bbd32d0ba766047f",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/3111c9b49277f106d34a3ee9bbd32d0ba766047f"
+    },
+    {
+      "path": "userspace/libusbip/src/device_speed.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c1f9c16f49f0ff6f0133cf74b7d5d0101c72514",
+      "size": 651,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6c1f9c16f49f0ff6f0133cf74b7d5d0101c72514"
+    },
+    {
+      "path": "userspace/libusbip/src/device_speed.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8890be764973555da34b6508d20f9d5eb858d66a",
+      "size": 241,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8890be764973555da34b6508d20f9d5eb858d66a"
+    },
+    {
+      "path": "userspace/libusbip/src/dllmain.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a43fe59c9c362d94a4a2f3d5db6edc68a98fac88",
+      "size": 395,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a43fe59c9c362d94a4a2f3d5db6edc68a98fac88"
+    },
+    {
+      "path": "userspace/libusbip/src/file_ver.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b9c54b4a3a1a0d236131f99b5b1e349f05cbf45",
+      "size": 9382,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9b9c54b4a3a1a0d236131f99b5b1e349f05cbf45"
+    },
+    {
+      "path": "userspace/libusbip/src/file_ver.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "137ec717602676824414168e800e53d3c530139d",
+      "size": 1945,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/137ec717602676824414168e800e53d3c530139d"
+    },
+    {
+      "path": "userspace/libusbip/src/format_message.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b41d554a6649daef0d5385eb7955a97295b2740",
+      "size": 1242,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4b41d554a6649daef0d5385eb7955a97295b2740"
+    },
+    {
+      "path": "userspace/libusbip/src/hkey.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fd11f68de7df7b52e36546411d27a35f4f43e7d",
+      "size": 472,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4fd11f68de7df7b52e36546411d27a35f4f43e7d"
+    },
+    {
+      "path": "userspace/libusbip/src/last_error.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "738a9141b4908a2cba6ffa423e2d8a89174feb82",
+      "size": 789,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/738a9141b4908a2cba6ffa423e2d8a89174feb82"
+    },
+    {
+      "path": "userspace/libusbip/src/op_common.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0cf9afdfa0b281ebc6fd7a0e7968c8ae57bf91b7",
+      "size": 976,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0cf9afdfa0b281ebc6fd7a0e7968c8ae57bf91b7"
+    },
+    {
+      "path": "userspace/libusbip/src/output.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ba6745a4601d5043fb2bd817c9bba548908b2fb",
+      "size": 331,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5ba6745a4601d5043fb2bd817c9bba548908b2fb"
+    },
+    {
+      "path": "userspace/libusbip/src/output.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "639320e50edbfd688cfe75fe9ceb4615769115f6",
+      "size": 751,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/639320e50edbfd688cfe75fe9ceb4615769115f6"
+    },
+    {
+      "path": "userspace/libusbip/src/persistent.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1731e8230e6eff3635cf7de375ab9bd79b0bf4fa",
+      "size": 3977,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1731e8230e6eff3635cf7de375ab9bd79b0bf4fa"
+    },
+    {
+      "path": "userspace/libusbip/src/proto_op.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2dff9b0b3d9acb3aa974f8010f455b8d707fc48f",
+      "size": 812,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/2dff9b0b3d9acb3aa974f8010f455b8d707fc48f"
+    },
+    {
+      "path": "userspace/libusbip/src/remote.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d88ddece84407142f8024105286db5071c39365",
+      "size": 13563,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5d88ddece84407142f8024105286db5071c39365"
+    },
+    {
+      "path": "userspace/libusbip/src/setupapi.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "07f8c782692b57b8c421f7d06059907626589324",
+      "size": 981,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/07f8c782692b57b8c421f7d06059907626589324"
+    },
+    {
+      "path": "userspace/libusbip/src/strconv.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "31eeb0d8f28fc730148d8027e9815a9319673b19",
+      "size": 2326,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/31eeb0d8f28fc730148d8027e9815a9319673b19"
+    },
+    {
+      "path": "userspace/libusbip/src/strconv.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22d6a1ba054dfe1c541401788bef3271b7c5adb5",
+      "size": 1186,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/22d6a1ba054dfe1c541401788bef3271b7c5adb5"
+    },
+    {
+      "path": "userspace/libusbip/src/usb_ids.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4df4149fd01904936fc57dcecff48fb395b29b7",
+      "size": 11587,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e4df4149fd01904936fc57dcecff48fb395b29b7"
+    },
+    {
+      "path": "userspace/libusbip/src/usb_ids.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f49922f194aef9755894147d12a2fbecec00bedb",
+      "size": 1916,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f49922f194aef9755894147d12a2fbecec00bedb"
+    },
+    {
+      "path": "userspace/libusbip/src/vhci.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ae2593dd7349469cab3dc8d278c2abf86e31421",
+      "size": 12788,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7ae2593dd7349469cab3dc8d278c2abf86e31421"
+    },
+    {
+      "path": "userspace/libusbip/src/win_socket.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d253ca4b544a748f5b869668a3ec44760353f24",
+      "size": 1085,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5d253ca4b544a748f5b869668a3ec44760353f24"
+    },
+    {
+      "path": "userspace/libusbip/vhci.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcb48ee437523fd57a301b8e195769a37050ca6a",
+      "size": 3459,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/dcb48ee437523fd57a301b8e195769a37050ca6a"
+    },
+    {
+      "path": "userspace/libusbip/win_handle.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "864a8ac417cc2dcb7bc8d937f0ea9e9a1cb7d403",
+      "size": 977,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/864a8ac417cc2dcb7bc8d937f0ea9e9a1cb7d403"
+    },
+    {
+      "path": "userspace/libusbip/win_socket.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70bc6b575a34858d3a170353fe250954d2c827bb",
+      "size": 1221,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/70bc6b575a34858d3a170353fe250954d2c827bb"
+    },
+    {
+      "path": "userspace/libusbip_check",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "25669ed1612086787d590e800955647e227f4ebc",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/25669ed1612086787d590e800955647e227f4ebc"
+    },
+    {
+      "path": "userspace/libusbip_check/libusbip_check.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "300a6a65da62401fecaf825151a37b68367da81c",
+      "size": 8695,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/300a6a65da62401fecaf825151a37b68367da81c"
+    },
+    {
+      "path": "userspace/libusbip_check/libusbip_check.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4327830c9ccb32896bd72ecfc308093b7af8423f",
+      "size": 207,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4327830c9ccb32896bd72ecfc308093b7af8423f"
+    },
+    {
+      "path": "userspace/libusbip_check/main.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1fe23584e6d51b5976dd82f8d0a0327153b6f6d",
+      "size": 650,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a1fe23584e6d51b5976dd82f8d0a0327153b6f6d"
+    },
+    {
+      "path": "userspace/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d58bf8d004ffe809616ba66e40c7ee93e4dca140",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/d58bf8d004ffe809616ba66e40c7ee93e4dca140"
+    },
+    {
+      "path": "userspace/resources/messages.mc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1733a5214a2eea8528b6cf7467837238e03fc0a",
+      "size": 2573,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f1733a5214a2eea8528b6cf7467837238e03fc0a"
+    },
+    {
+      "path": "userspace/resources/resource.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "530759a93c098b140c842a94a5658421c4b54232",
+      "size": 394,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/530759a93c098b140c842a94a5658421c4b54232"
+    },
+    {
+      "path": "userspace/resources/resources.rc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13420ad93a79107e3a8dec9652e4bb16bb02bea2",
+      "size": 2916,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/13420ad93a79107e3a8dec9652e4bb16bb02bea2"
+    },
+    {
+      "path": "userspace/resources/resources.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18d58fbd4716db157c85a2fd556bd8011bd06494",
+      "size": 11124,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/18d58fbd4716db157c85a2fd556bd8011bd06494"
+    },
+    {
+      "path": "userspace/resources/resources.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1a2bdca103c6a6173cdc6f693129d4928b4c50d6",
+      "size": 395,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1a2bdca103c6a6173cdc6f693129d4928b4c50d6"
+    },
+    {
+      "path": "userspace/usbip",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8845a4639a891bbd7922301950ee8d1bb19c4185",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/8845a4639a891bbd7922301950ee8d1bb19c4185"
+    },
+    {
+      "path": "userspace/usbip/attach.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f798ff6799ab73c264b34463e9772a03a61ba3a",
+      "size": 2114,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/2f798ff6799ab73c264b34463e9772a03a61ba3a"
+    },
+    {
+      "path": "userspace/usbip/detach.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fccadcee3d135e2a61efcca27b3a2f1acf1468cb",
+      "size": 581,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/fccadcee3d135e2a61efcca27b3a2f1acf1468cb"
+    },
+    {
+      "path": "userspace/usbip/list.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b1f262662b7bb3b2905be40a7a5cda3f7abccaa",
+      "size": 2004,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9b1f262662b7bb3b2905be40a7a5cda3f7abccaa"
+    },
+    {
+      "path": "userspace/usbip/packages.config",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c1880082c9ae0af62d77a5e312f0ceb6bbe29f08",
+      "size": 138,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c1880082c9ae0af62d77a5e312f0ceb6bbe29f08"
+    },
+    {
+      "path": "userspace/usbip/port.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "503bbf64bfa1def825bc046e8e74eaa06f2163ad",
+      "size": 2394,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/503bbf64bfa1def825bc046e8e74eaa06f2163ad"
+    },
+    {
+      "path": "userspace/usbip/resource.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "beca52cf90b02e5572ea16b927440b5920c6ad14",
+      "size": 432,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/beca52cf90b02e5572ea16b927440b5920c6ad14"
+    },
+    {
+      "path": "userspace/usbip/strings.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "379afcddacefce23797e5a75e46907e7ff528f10",
+      "size": 1718,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/379afcddacefce23797e5a75e46907e7ff528f10"
+    },
+    {
+      "path": "userspace/usbip/strings.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "15965259ff57c23446d9851ee1af0993aa631eb1",
+      "size": 417,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/15965259ff57c23446d9851ee1af0993aa631eb1"
+    },
+    {
+      "path": "userspace/usbip/usb.ids",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fa798e65ed9acdc7b1ab826730d5a72a74760d23",
+      "size": 730519,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/fa798e65ed9acdc7b1ab826730d5a72a74760d23"
+    },
+    {
+      "path": "userspace/usbip/usb.ids.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6cad39c8aa2ea4a8a24b774cbfe4e82692fffad0",
+      "size": 88,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6cad39c8aa2ea4a8a24b774cbfe4e82692fffad0"
+    },
+    {
+      "path": "userspace/usbip/usbip.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1879c4583d33892508b8557ce95d29c1145fb71",
+      "size": 5558,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f1879c4583d33892508b8557ce95d29c1145fb71"
+    },
+    {
+      "path": "userspace/usbip/usbip.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "35b0c7d671c769b53951adbc76919aed55efdcef",
+      "size": 989,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/35b0c7d671c769b53951adbc76919aed55efdcef"
+    },
+    {
+      "path": "userspace/usbip/usbip.rc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe573b7bc2f457da04151f7cc7128d42c8723b9e",
+      "size": 2762,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/fe573b7bc2f457da04151f7cc7128d42c8723b9e"
+    },
+    {
+      "path": "userspace/usbip/usbip.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3fd630fd9767783cf0c541cbc7fd8ac7d7830c94",
+      "size": 11809,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3fd630fd9767783cf0c541cbc7fd8ac7d7830c94"
+    },
+    {
+      "path": "userspace/wusbip",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "50280a867a235f04916db4d7ed97e76d57e27e42",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/50280a867a235f04916db4d7ed97e76d57e27e42"
+    },
+    {
+      "path": "userspace/wusbip/app.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d1dcec3b974a55264dab41413e4564a5267aa21",
+      "size": 2480,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6d1dcec3b974a55264dab41413e4564a5267aa21"
+    },
+    {
+      "path": "userspace/wusbip/app.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c78e2836f5fbee277aebe0514290d796eecb9d11",
+      "size": 451,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c78e2836f5fbee277aebe0514290d796eecb9d11"
+    },
+    {
+      "path": "userspace/wusbip/device_columns.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b4c341738fee67a1ad06e30389a67e340f6427d",
+      "size": 3744,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3b4c341738fee67a1ad06e30389a67e340f6427d"
+    },
+    {
+      "path": "userspace/wusbip/device_columns.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1462f52147ecc7682e9eeaa4a9f8905a125ca10d",
+      "size": 2398,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1462f52147ecc7682e9eeaa4a9f8905a125ca10d"
+    },
+    {
+      "path": "userspace/wusbip/font.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9912d1dcd92218c6664ae733b64f0494839b95c2",
+      "size": 3205,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9912d1dcd92218c6664ae733b64f0494839b95c2"
+    },
+    {
+      "path": "userspace/wusbip/font.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ed59f5caff19ceca3c455b73e27af457825d9fd0",
+      "size": 768,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ed59f5caff19ceca3c455b73e27af457825d9fd0"
+    },
+    {
+      "path": "userspace/wusbip/frame.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74b55049557555252535bcf6ff1a864466415974",
+      "size": 41706,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/74b55049557555252535bcf6ff1a864466415974"
+    },
+    {
+      "path": "userspace/wusbip/frame.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c568e64b547cd11917db7bc1046692911abfdb4",
+      "size": 5893,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5c568e64b547cd11917db7bc1046692911abfdb4"
+    },
+    {
+      "path": "userspace/wusbip/log.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8138339afee5eda172d1c245994487236e3bc5c6",
+      "size": 4354,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8138339afee5eda172d1c245994487236e3bc5c6"
+    },
+    {
+      "path": "userspace/wusbip/log.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f9516edb6bdf60f8f4d6a246e543d16a3af26b47",
+      "size": 1171,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f9516edb6bdf60f8f4d6a246e543d16a3af26b47"
+    },
+    {
+      "path": "userspace/wusbip/persist.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb39fb6010eb9cdbbb8883720cc8100b97356752",
+      "size": 3776,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/cb39fb6010eb9cdbbb8883720cc8100b97356752"
+    },
+    {
+      "path": "userspace/wusbip/persist.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "68b061888f32eeed7196d20198c225951e2260ac",
+      "size": 1217,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/68b061888f32eeed7196d20198c225951e2260ac"
+    },
+    {
+      "path": "userspace/wusbip/resource.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e6feb71d8bf0c1b62f91f7e0ee87e3e9b2106de",
+      "size": 459,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3e6feb71d8bf0c1b62f91f7e0ee87e3e9b2106de"
+    },
+    {
+      "path": "userspace/wusbip/resources",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "9512e1a446906c85210270363c3c405ed4bf2a0e",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/9512e1a446906c85210270363c3c405ed4bf2a0e"
+    },
+    {
+      "path": "userspace/wusbip/resources/Add.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d2119d1b89b3cda9cad549f6f690f6bdcb438fa",
+      "size": 585,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3d2119d1b89b3cda9cad549f6f690f6bdcb438fa"
+    },
+    {
+      "path": "userspace/wusbip/resources/Add_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0b38448c3ad59a3f57ea203ebaeed75be329cf8",
+      "size": 585,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/c0b38448c3ad59a3f57ea203ebaeed75be329cf8"
+    },
+    {
+      "path": "userspace/wusbip/resources/Comment_Edit.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ecc27d1b7570a85ae01777adc3251a13eba2cec5",
+      "size": 941,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ecc27d1b7570a85ae01777adc3251a13eba2cec5"
+    },
+    {
+      "path": "userspace/wusbip/resources/Comment_Edit_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4af048ffb1bb6306330ba0a2fa3558c4d952765d",
+      "size": 1963,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4af048ffb1bb6306330ba0a2fa3558c4d952765d"
+    },
+    {
+      "path": "userspace/wusbip/resources/Info.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "593747b5c9e25281cd855c807f2d4655f8e3692d",
+      "size": 647,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/593747b5c9e25281cd855c807f2d4655f8e3692d"
+    },
+    {
+      "path": "userspace/wusbip/resources/Info_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e43d72b6d950e1eab8bbc85dcabf7882637707c4",
+      "size": 1647,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e43d72b6d950e1eab8bbc85dcabf7882637707c4"
+    },
+    {
+      "path": "userspace/wusbip/resources/Save.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac0db6d6dac61edb25fba95f6f63bd7dd8f7e1ce",
+      "size": 938,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ac0db6d6dac61edb25fba95f6f63bd7dd8f7e1ce"
+    },
+    {
+      "path": "userspace/wusbip/resources/Save_Multiple.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a576a0896fb8c066c28d529f9cd7205ca813bad",
+      "size": 1146,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0a576a0896fb8c066c28d529f9cd7205ca813bad"
+    },
+    {
+      "path": "userspace/wusbip/resources/Save_Multiple_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f01585654fe24127f185e58ec5f57bad5c20a88",
+      "size": 2154,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3f01585654fe24127f185e58ec5f57bad5c20a88"
+    },
+    {
+      "path": "userspace/wusbip/resources/Save_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ce36eaa6fb8e401b1d634350f9deebc03149c019",
+      "size": 1941,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ce36eaa6fb8e401b1d634350f9deebc03149c019"
+    },
+    {
+      "path": "userspace/wusbip/resources/Select_All_On.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "abf865ad717f8b9d73adebe28f791b17e6c8e2be",
+      "size": 1124,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/abf865ad717f8b9d73adebe28f791b17e6c8e2be"
+    },
+    {
+      "path": "userspace/wusbip/resources/Select_All_On_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d3d69342e8d3c4cb68bebdb29e4c4572657ef10",
+      "size": 2132,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3d3d69342e8d3c4cb68bebdb29e4c4572657ef10"
+    },
+    {
+      "path": "userspace/wusbip/resources/USBip-small.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d2e81f65872fc8c6060b371164b878f36a36fa1",
+      "size": 400912,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6d2e81f65872fc8c6060b371164b878f36a36fa1"
+    },
+    {
+      "path": "userspace/wusbip/resources/USBip.ico",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff4646c8f661b6a2722a58237d6692c011e2cf1e",
+      "size": 35459,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ff4646c8f661b6a2722a58237d6692c011e2cf1e"
+    },
+    {
+      "path": "userspace/wusbip/resources/USBip.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8e238defe752942efc7c7c5381958895a8197f4",
+      "size": 293203,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d8e238defe752942efc7c7c5381958895a8197f4"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_dark_checked.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0e487f922bca47520bff4d1bef9205a747c67bb",
+      "size": 518,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d0e487f922bca47520bff4d1bef9205a747c67bb"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_dark_checked_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "402866bae882189a37d96eb60da706299ac4a0dc",
+      "size": 518,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/402866bae882189a37d96eb60da706299ac4a0dc"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_dark_unchecked.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "40cdf85f877720a494ba3866d4db32a5a64e722c",
+      "size": 832,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/40cdf85f877720a494ba3866d4db32a5a64e722c"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_dark_unchecked_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0abf4599d056784151d54ebd34c480de177732a1",
+      "size": 832,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0abf4599d056784151d54ebd34c480de177732a1"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_light_checked.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f9d91e133fd3217de4b657d9a0b705f30906742",
+      "size": 2123,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6f9d91e133fd3217de4b657d9a0b705f30906742"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_light_checked_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "926b08167aab9d0e58d949dda12a42f235ac7d6d",
+      "size": 2123,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/926b08167aab9d0e58d949dda12a42f235ac7d6d"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_light_unchecked.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0a8825b873134f47ce8d2730df980e213603149",
+      "size": 2328,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a0a8825b873134f47ce8d2730df980e213603149"
+    },
+    {
+      "path": "userspace/wusbip/resources/app_light_unchecked_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a555db8b4dc446b7063dc934b9a38202e1fa246",
+      "size": 2328,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/6a555db8b4dc446b7063dc934b9a38202e1fa246"
+    },
+    {
+      "path": "userspace/wusbip/resources/appearance.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5442558f147207b0326e0528fc942dd928e9a4ca",
+      "size": 1053,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5442558f147207b0326e0528fc942dd928e9a4ca"
+    },
+    {
+      "path": "userspace/wusbip/resources/appearance_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83f9f4dba2e93f9138ff9d9611d94bad5e2e0889",
+      "size": 2028,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/83f9f4dba2e93f9138ff9d9611d94bad5e2e0889"
+    },
+    {
+      "path": "userspace/wusbip/resources/attach_stop.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06b33947d7e99019a5f15606206a1252d850af52",
+      "size": 747,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/06b33947d7e99019a5f15606206a1252d850af52"
+    },
+    {
+      "path": "userspace/wusbip/resources/attach_stop_all.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b3e0491dc5bc926a40c3b884d1119efd81eaaea",
+      "size": 1106,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0b3e0491dc5bc926a40c3b884d1119efd81eaaea"
+    },
+    {
+      "path": "userspace/wusbip/resources/attach_stop_all_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f0007a6820a19cb691edfd440a57b278f96ca589",
+      "size": 1106,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f0007a6820a19cb691edfd440a57b278f96ca589"
+    },
+    {
+      "path": "userspace/wusbip/resources/attach_stop_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8bda1661f10a9b988a9f1bfe72c78ce63492927a",
+      "size": 747,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8bda1661f10a9b988a9f1bfe72c78ce63492927a"
+    },
+    {
+      "path": "userspace/wusbip/resources/check.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a9551fadca1f015f4f628309c10dab2f4377892",
+      "size": 743,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/7a9551fadca1f015f4f628309c10dab2f4377892"
+    },
+    {
+      "path": "userspace/wusbip/resources/check_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a66921ffe9eda304f0dcc1a08e97fb0ab59a242e",
+      "size": 743,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a66921ffe9eda304f0dcc1a08e97fb0ab59a242e"
+    },
+    {
+      "path": "userspace/wusbip/resources/close.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19b9537fe4b0e22b17e005f3bffff04768ef84c9",
+      "size": 822,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/19b9537fe4b0e22b17e005f3bffff04768ef84c9"
+    },
+    {
+      "path": "userspace/wusbip/resources/close_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f86a1d6dbe6bab7a092caac8e2b11b464c1a4650",
+      "size": 822,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f86a1d6dbe6bab7a092caac8e2b11b464c1a4650"
+    },
+    {
+      "path": "userspace/wusbip/resources/computer.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea5268cb9ea53990b0368e25b8852ee4c1065fca",
+      "size": 844,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ea5268cb9ea53990b0368e25b8852ee4c1065fca"
+    },
+    {
+      "path": "userspace/wusbip/resources/computer_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "02ba63ea3766bc30c02d22cb4b7946274f8f05a5",
+      "size": 1832,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/02ba63ea3766bc30c02d22cb4b7946274f8f05a5"
+    },
+    {
+      "path": "userspace/wusbip/resources/copy.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a80c995a122bdae6e77cdceffd0e14ca911ebf02",
+      "size": 706,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a80c995a122bdae6e77cdceffd0e14ca911ebf02"
+    },
+    {
+      "path": "userspace/wusbip/resources/copy_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5de91dc92827c4ea669e9d1c80356543d4b1d44c",
+      "size": 1703,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5de91dc92827c4ea669e9d1c80356543d4b1d44c"
+    },
+    {
+      "path": "userspace/wusbip/resources/dismiss.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f78d99abb162349bb35b7eeabe300e07fca3f43",
+      "size": 2065,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4f78d99abb162349bb35b7eeabe300e07fca3f43"
+    },
+    {
+      "path": "userspace/wusbip/resources/power_settings_new.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "736a1412d81bb46f7edef56a1cb74e04f47f965f",
+      "size": 479,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/736a1412d81bb46f7edef56a1cb74e04f47f965f"
+    },
+    {
+      "path": "userspace/wusbip/resources/power_settings_new_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f28f90aa360ada5cedaefc70fa008e16e556ba32",
+      "size": 1487,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f28f90aa360ada5cedaefc70fa008e16e556ba32"
+    },
+    {
+      "path": "userspace/wusbip/resources/readme.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c2da9d56ab51633a7caaa2b964540f59d952f4c",
+      "size": 1148,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/1c2da9d56ab51633a7caaa2b964540f59d952f4c"
+    },
+    {
+      "path": "userspace/wusbip/resources/refresh.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3248fe7278b1fc82f7d0072a249544d9cb8bbf3f",
+      "size": 1118,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3248fe7278b1fc82f7d0072a249544d9cb8bbf3f"
+    },
+    {
+      "path": "userspace/wusbip/resources/refresh_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "58e72040b7f10f6fe51a056340d1af720a635b0a",
+      "size": 1118,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/58e72040b7f10f6fe51a056340d1af720a635b0a"
+    },
+    {
+      "path": "userspace/wusbip/resources/replay.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "82147b8290114492b3d6436d4bc78929d334dc9b",
+      "size": 395,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/82147b8290114492b3d6436d4bc78929d334dc9b"
+    },
+    {
+      "path": "userspace/wusbip/resources/replay_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "234cbb4fea198dc421332d595b4cf3802b1c0a4c",
+      "size": 1391,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/234cbb4fea198dc421332d595b4cf3802b1c0a4c"
+    },
+    {
+      "path": "userspace/wusbip/resources/save_alt.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cda5f0b94885670af7a368117cb86662fe9b7033",
+      "size": 390,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/cda5f0b94885670af7a368117cb86662fe9b7033"
+    },
+    {
+      "path": "userspace/wusbip/resources/save_alt_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba69fccac0185110c32a2c393f5bc1bc942c2dea",
+      "size": 1388,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ba69fccac0185110c32a2c393f5bc1bc942c2dea"
+    },
+    {
+      "path": "userspace/wusbip/resources/text_decrease.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2f47504a847ad95d30cfdc1315173a325128101",
+      "size": 399,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a2f47504a847ad95d30cfdc1315173a325128101"
+    },
+    {
+      "path": "userspace/wusbip/resources/text_decrease_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "97d07e810c28cbf3e5e388d08749bc1640f52972",
+      "size": 1402,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/97d07e810c28cbf3e5e388d08749bc1640f52972"
+    },
+    {
+      "path": "userspace/wusbip/resources/text_increase.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38988da1ed5a8d1a9440c54bdeae3efbcc292e89",
+      "size": 465,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/38988da1ed5a8d1a9440c54bdeae3efbcc292e89"
+    },
+    {
+      "path": "userspace/wusbip/resources/text_increase_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e8983b26b94ec927b0d71c76eaeb81b33d3d9da1",
+      "size": 1468,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e8983b26b94ec927b0d71c76eaeb81b33d3d9da1"
+    },
+    {
+      "path": "userspace/wusbip/resources/usb.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b2268d15de807472a9638fcc144fbfd51c29996e",
+      "size": 353,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/b2268d15de807472a9638fcc144fbfd51c29996e"
+    },
+    {
+      "path": "userspace/wusbip/resources/usb_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "542bf291a0c4196c74f2a62a39371cdda18ebf98",
+      "size": 1346,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/542bf291a0c4196c74f2a62a39371cdda18ebf98"
+    },
+    {
+      "path": "userspace/wusbip/resources/view_columns.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "347a9a10569ef2d09bd6d0bef370506ba423fa63",
+      "size": 1357,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/347a9a10569ef2d09bd6d0bef370506ba423fa63"
+    },
+    {
+      "path": "userspace/wusbip/resources/view_columns_dark.svg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5c2a31d4fbb43afcea162ef84ecb2be8d6c27ebb",
+      "size": 2348,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5c2a31d4fbb43afcea162ef84ecb2be8d6c27ebb"
+    },
+    {
+      "path": "userspace/wusbip/taskbaricon.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13a9d31ca6d6f252a9f8bd3c292087a077be8971",
+      "size": 2366,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/13a9d31ca6d6f252a9f8bd3c292087a077be8971"
+    },
+    {
+      "path": "userspace/wusbip/taskbaricon.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de6f52f370b3ab16ed914effba4c7188d73f8336",
+      "size": 705,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/de6f52f370b3ab16ed914effba4c7188d73f8336"
+    },
+    {
+      "path": "userspace/wusbip/testing.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ce3aa5f5361d4df9976ef1a25f29cb1306ce8cd",
+      "size": 1725,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4ce3aa5f5361d4df9976ef1a25f29cb1306ce8cd"
+    },
+    {
+      "path": "userspace/wusbip/tree_comparator.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f628565e7c2adcdc087fa585b508f829b428f4b",
+      "size": 1584,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/4f628565e7c2adcdc087fa585b508f829b428f4b"
+    },
+    {
+      "path": "userspace/wusbip/tree_comparator.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "683551826dfda205e4f8155583a68a2e0c51db7e",
+      "size": 311,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/683551826dfda205e4f8155583a68a2e0c51db7e"
+    },
+    {
+      "path": "userspace/wusbip/triplets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fa207a15499fd2d507d60f9e0a8f7d227fdb2d79",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/fa207a15499fd2d507d60f9e0a8f7d227fdb2d79"
+    },
+    {
+      "path": "userspace/wusbip/triplets/arm64-windows-static-md.cmake",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "783c12c8fd27c13f21b55ce40a90bb30f2a6a6c8",
+      "size": 164,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/783c12c8fd27c13f21b55ce40a90bb30f2a6a6c8"
+    },
+    {
+      "path": "userspace/wusbip/triplets/readme.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea7c641acaa61b4bb3d73326e0ec117c92b0ee89",
+      "size": 69,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ea7c641acaa61b4bb3d73326e0ec117c92b0ee89"
+    },
+    {
+      "path": "userspace/wusbip/triplets/x64-windows-static-md.cmake",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e5044e02f52ef5812e702f5a106d8332ce2e2ed",
+      "size": 162,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5e5044e02f52ef5812e702f5a106d8332ce2e2ed"
+    },
+    {
+      "path": "userspace/wusbip/update-baseline.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba3a982e2a3f9f298de328bfb0399dc7c9daa8c7",
+      "size": 40,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ba3a982e2a3f9f298de328bfb0399dc7c9daa8c7"
+    },
+    {
+      "path": "userspace/wusbip/utils.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2515df90dd6d1b1422e5934fcaa8b23420a13c7",
+      "size": 5070,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/d2515df90dd6d1b1422e5934fcaa8b23420a13c7"
+    },
+    {
+      "path": "userspace/wusbip/utils.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b5f8dcee9b883090f2f3d01bc6b271fd9a0bf32",
+      "size": 1910,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/0b5f8dcee9b883090f2f3d01bc6b271fd9a0bf32"
+    },
+    {
+      "path": "userspace/wusbip/vcpkg-configuration.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87013041b25d9ab221f54315d94d8587be53f7a8",
+      "size": 342,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/87013041b25d9ab221f54315d94d8587be53f7a8"
+    },
+    {
+      "path": "userspace/wusbip/vcpkg.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fc195b944cf89bc8719163db9a19dccb9e21aaf",
+      "size": 297,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8fc195b944cf89bc8719163db9a19dccb9e21aaf"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "97392725f151208a0b71c050666ea94d7f3c2f5a",
+      "size": 47622,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/97392725f151208a0b71c050666ea94d7f3c2f5a"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.fbp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3070f8a9e82ff5bd30c82566f2dbb34e000397f5",
+      "size": 76537,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/3070f8a9e82ff5bd30c82566f2dbb34e000397f5"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.fbp.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9109f6ac47746075cfe5c201aeecb1a0a9cd4edf",
+      "size": 131,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/9109f6ac47746075cfe5c201aeecb1a0a9cd4edf"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ac7dc93d833604dd8ea440d085ac276d0d768817",
+      "size": 5888,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/ac7dc93d833604dd8ea440d085ac276d0d768817"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.rc",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e48cc9651e969b889607e323397c1b5a48b85fa7",
+      "size": 6839,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/e48cc9651e969b889607e323397c1b5a48b85fa7"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.vcxproj",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a842c1501a8d628a5ba8ea75c535e91c58d169dd",
+      "size": 16090,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a842c1501a8d628a5ba8ea75c535e91c58d169dd"
+    },
+    {
+      "path": "userspace/wusbip/wusbip.vcxproj.filters",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "899eaca76f44ca34a577df12af6a8ccd2281579c",
+      "size": 5016,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/899eaca76f44ca34a577df12af6a8ccd2281579c"
+    },
+    {
+      "path": "userspace/wusbip/wxpatch.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f3f82575ffe26d76d81692a34aa0609035c1d66",
+      "size": 345,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5f3f82575ffe26d76d81692a34aa0609035c1d66"
+    },
+    {
+      "path": "userspace/wusbip/wxpatch.diff",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eccabce733c1485076a55ad500195cc3cc6e91bc",
+      "size": 1845,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/eccabce733c1485076a55ad500195cc3cc6e91bc"
+    },
+    {
+      "path": "userspace/wusbip/wxutils.cpp",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0407ee376fd14522c099d39bb11721914f4b46d",
+      "size": 4115,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/a0407ee376fd14522c099d39bb11721914f4b46d"
+    },
+    {
+      "path": "userspace/wusbip/wxutils.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f599b42daee07d4279b48078995f51a71d057b5b",
+      "size": 876,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/f599b42daee07d4279b48078995f51a71d057b5b"
+    },
+    {
+      "path": "vcpkg",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "6d332a018c433fad20822ff4b536e4ccdc3413bd"
+    },
+    {
+      "path": "whlk",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "53758bf3cf95ac86120ece5127f4e3cfedec8919",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/53758bf3cf95ac86120ece5127f4e3cfedec8919"
+    },
+    {
+      "path": "whlk/Hyper-V.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ee9c1daef752eaca794f9dce5fcad3ff66b2040",
+      "size": 307,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5ee9c1daef752eaca794f9dce5fcad3ff66b2040"
+    },
+    {
+      "path": "whlk/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b56dc045ed1c74b798baba6b42a7e20572fc33f",
+      "size": 5506,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8b56dc045ed1c74b798baba6b42a7e20572fc33f"
+    },
+    {
+      "path": "whlk/codeql.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e5c9fceb36226fa5f695776e3402c8c1c0cfa54",
+      "size": 936,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/5e5c9fceb36226fa5f695776e3402c8c1c0cfa54"
+    },
+    {
+      "path": "whlk/fix_shares.bat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "062b089ef32c2857b3dd89eff1fe16a13709c770",
+      "size": 458,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/062b089ef32c2857b3dd89eff1fe16a13709c770"
+    },
+    {
+      "path": "whlk/jpg",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "752c73c9211ef1354c7f72abf1f0e967d474a995",
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/trees/752c73c9211ef1354c7f72abf1f0e967d474a995"
+    },
+    {
+      "path": "whlk/jpg/hyperv-network-adapter.jpg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "81ededa29d31bb5fc9be347e42019ab5ddb0c6e8",
+      "size": 1340392,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/81ededa29d31bb5fc9be347e42019ab5ddb0c6e8"
+    },
+    {
+      "path": "whlk/jpg/paypal_donate_qrcode.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "55cfc9807c12022f721fbb631dfc256210745e8a",
+      "size": 6802,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/55cfc9807c12022f721fbb631dfc256210745e8a"
+    },
+    {
+      "path": "whlk/jpg/vm_settings.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ba501153b48bcdd7802e0170aab6d91d43da5a3",
+      "size": 221073,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/8ba501153b48bcdd7802e0170aab6d91d43da5a3"
+    },
+    {
+      "path": "whlk/jpg/wifi.jpg",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34298b23f15ba2c14f63321acd1a1cc851b61e43",
+      "size": 1389935,
+      "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/blobs/34298b23f15ba2c14f63321acd1a1cc851b61e43"
+    }
+  ],
+  "truncated": false
+}

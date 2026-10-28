@@ -1,0 +1,1744 @@
+{
+  "schema": 1,
+  "candidateOnly": true,
+  "publicationEligible": false,
+  "sourceCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932",
+  "sourceTree": "0bd19d8461347887c884f10250a402aa85decfe6",
+  "producerReviewCommit": "720ead161c71415e23f38a82c29d314a4754ab9c",
+  "materialSliceBase": "756e27371fccf99f9cd355c574591fa4c485fbf3",
+  "materialBranchIsCiDispatchTarget": false,
+  "wrapperCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+  "wrapperVersion": "v0.0.0-20260929213745-4d18a60dc3a8",
+  "libraryOriginCommit": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+  "originalBuildSourceCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+  "naiveproxyCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+  "cronetVersion": "154.0.8037.49",
+  "officialBuildRun": {
+    "id": 36628634540,
+    "attempt": 1,
+    "url": "https://github.com/SagerNet/cronet-go/actions/runs/36628634540",
+    "sourceCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+    "workflowGitBlob": "111a69ef1985b39ca6c4dd8f9d2658c460d1e618",
+    "conclusion": "success",
+    "scope": "recovered upstream run; does not validate a Polaris native candidate",
+    "logArchiveSHA256": "9481542770fba8b1f12385450c068dbbac64259304ae5dc202fb9c9e4f6d6b63"
+  },
+  "lineageEvidence": [
+    "Library origin commit message Build from abcdebeb resolves to the full original build source commit.",
+    "Official run head and workflow blob match the original build source.",
+    "All 13 selected official artifact digests and library bytes/Git blobs match fixed candidate inputs.",
+    "Official publish log records Build from abcdebeb at a1cafd9 and Generate all package at 4d18a60."
+  ],
+  "libraries": [
+    {
+      "target": "linux_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/linux_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:dAbYhebHYrOBOvJux8hcuj4yTEIT+UqZmuTBKsLs6cQ=",
+      "file": "libcronet.so",
+      "bytes": 12370520,
+      "sha256": "99eb98eb47102c7418c7fed1e666d27e2bfb67c6b5517f7ae6b033748d657ed4",
+      "gitBlob": "d6bb81f26828e7abb6e3a103e3f14f9fd91a64ac",
+      "officialArtifactId": 11061461158,
+      "officialArtifactName": "cronet-linux-amd64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11061461158/zip",
+      "officialArtifactSHA256": "356fdf5830b2c10ca755258eb8a4bae7471bd1dda56f69eb277c4ff726c5237e",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "21_linux (amd64).txt",
+      "originalJobLogSHA256": "a36263182051e96b6b78296f38973f2f2777f57c731ca926e546c7bbf78f96aa",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:48:25.7728735Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:48:37.5515716Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-linux-amd64",
+        "2026-09-29T20:48:58.6039566Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:48:58.6741264Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:48:58.6813551Z [build] Running: gn gen out/cronet-linux-x64",
+        "2026-09-29T20:48:59.0198648Z [build] Running: ninja -C out/cronet-linux-x64 cronet_static",
+        "2026-09-29T20:49:24.9972920Z [build] Running: ninja -C out/cronet-linux-x64 cronet",
+        "2026-09-29T20:49:25.8647890Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:49:25.9414490Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "linux_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/linux_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:ka6fV7nmcXuxxxViMv3lcO1VZQ7og9BWDTsChbdOs5o=",
+      "file": "libcronet.so",
+      "bytes": 12870832,
+      "sha256": "598e4c45370c684f1a5c6fa00032e07326392b882127357753288acc30e66826",
+      "gitBlob": "2b80981fcb5e20cb1bc2b02ee94462b8855fbe87",
+      "officialArtifactId": 11062115549,
+      "officialArtifactName": "cronet-linux-arm64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062115549/zip",
+      "officialArtifactSHA256": "a48381050c7a04bcf3cddf9ddc2130afc5c4e2211db0e0de2bd5df41d46e7a20",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "38_linux (arm64).txt",
+      "originalJobLogSHA256": "a4361cc4e9aa3315429fb1143cfa3be006a5178ab832bf65c2b024da9a49399e",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:18.0635604Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:46:28.9467524Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-linux-arm64",
+        "2026-09-29T20:46:44.0052934Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:46:44.0772699Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:46:44.0846963Z [build] Running: gn gen out/cronet-linux-arm64",
+        "2026-09-29T20:46:44.4696671Z [build] Running: ninja -C out/cronet-linux-arm64 cronet_static",
+        "2026-09-29T20:47:19.6683501Z [build] Running: ninja -C out/cronet-linux-arm64 cronet",
+        "2026-09-29T20:47:20.5654110Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:20.6358160Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "windows_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/windows_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:0Z4FyS1oD2Cl/Shp10UYHki8x/2VxCRGbYJi09pWGPU=",
+      "file": "libcronet.dll",
+      "bytes": 9889280,
+      "sha256": "8b005a933ac0d0899c047617a9cd18418810d9426d0919c824520094a2c893f5",
+      "gitBlob": "8c28531fa686b0f70625fbf75cfb7b6c68af114b",
+      "officialArtifactId": 11061947526,
+      "officialArtifactName": "cronet-windows-amd64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11061947526/zip",
+      "officialArtifactSHA256": "733509c77957afb54b4be7818204f659bec30fe6e49d17cf56e8ee1b97416bed",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "18_windows (amd64).txt",
+      "originalJobLogSHA256": "fb1f199f43bacdf7d34b43d7c51ef8de3cc835abafaf02388129d2abdabe9eef",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:47:19.7795615Z go version go1.26.8 windows/amd64",
+        "2026-09-29T20:47:21.7136488Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-7ddaf2eb7b69c41b4456e9ebfecbdb852085ded50ef581316bb5b8f624a62160-windows-amd64",
+        "2026-09-29T20:48:38.2067440Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:50:07.6667528Z [build] Running: gn gen out/cronet-win-x64",
+        "2026-09-29T20:50:18.4217835Z [build] Running: ninja -C out/cronet-win-x64 cronet"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "windows_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/windows_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:AswvqGrtVC1XfOPbzGjWLgoy9huASLRcheKTrD/l31E=",
+      "file": "libcronet.dll",
+      "bytes": 8756224,
+      "sha256": "b840b9e23bb71be434722cadf47feed45f364fd33c180d827c70500022b81077",
+      "gitBlob": "6e675510ba18661db9fd009bfc492d6163cc9651",
+      "officialArtifactId": 11061492725,
+      "officialArtifactName": "cronet-windows-arm64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11061492725/zip",
+      "officialArtifactSHA256": "70a29263c2042045361193424aa362411a413be335dd609a721725980187683f",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "22_windows (arm64).txt",
+      "originalJobLogSHA256": "5a3f79841c62d71c0635ba349269927d0009b8615ffaecc6d9e6e893db7379ee",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:59.3579158Z go version go1.26.8 windows/amd64",
+        "2026-09-29T20:47:00.4794984Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-7ddaf2eb7b69c41b4456e9ebfecbdb852085ded50ef581316bb5b8f624a62160-windows-arm64",
+        "2026-09-29T20:47:49.5188870Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:49:18.6749591Z [build] Running: gn gen out/cronet-win-arm64",
+        "2026-09-29T20:49:30.7180779Z [build] Running: ninja -C out/cronet-win-arm64 cronet"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "darwin_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/darwin_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:xenAxIaoocXqtaNECC1iNOqtdzYRYxhXyE+o+m2ExSw=",
+      "file": "libcronet.a",
+      "bytes": 50784080,
+      "sha256": "4bf67c6b1b3f629a582e0f6ac897fb2faaf58551b08244af29091c7068c13ad1",
+      "gitBlob": "d8ce6f0b70a549a0383897e66018379275ea0c71",
+      "officialArtifactId": 11061556045,
+      "officialArtifactName": "cronet-darwin-amd64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11061556045/zip",
+      "officialArtifactSHA256": "21cc98796ee6e44ca81736e76d3df5b64875e28855ce6df2217a810d7c905e49",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "39_darwin (darwin_amd64, darwin-amd64).txt",
+      "originalJobLogSHA256": "1b022bc27e5df7c519839723ac4e514e31029940b6ec8443e5e280182d202cf3",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:31.0499180Z go version go1.26.8 darwin/arm64",
+        "2026-09-29T20:46:35.0903790Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-darwin-amd64",
+        "2026-09-29T20:46:45.2869380Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:21.5777490Z [build] Running: gn gen out/cronet-mac-x64",
+        "2026-09-29T20:47:26.8125040Z [build] Running: ninja -C out/cronet-mac-x64 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "darwin_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/darwin_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:SpLjX7QCXhKInRzT0hiYCpt+kOmcCVsrJvUV9RRUy2c=",
+      "file": "libcronet.a",
+      "bytes": 48112080,
+      "sha256": "9e2d603eb6c99855fe1528888a70080834728d00793e465a39c77548434a20d0",
+      "gitBlob": "e588a66271dc6b35b874323c89abc4d0e3a20973",
+      "officialArtifactId": 11062190674,
+      "officialArtifactName": "cronet-darwin-arm64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062190674/zip",
+      "officialArtifactSHA256": "ae3da594eb5bd50e3c911ebb5bf5eba6ddf3a45893da49db2c53512b047c8fa3",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "32_darwin (darwin_arm64, darwin-arm64).txt",
+      "originalJobLogSHA256": "2297e2bf704989c22bc47dd61c40ed868d32946376c4e4349035a75f7eaea819",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:29.7877760Z go version go1.26.8 darwin/arm64",
+        "2026-09-29T20:46:33.6090940Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-darwin-arm64",
+        "2026-09-29T20:46:43.1135980Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:18.2459850Z [build] Running: gn gen out/cronet-mac-arm64",
+        "2026-09-29T20:47:25.6864870Z [build] Running: ninja -C out/cronet-mac-arm64 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "android_386",
+      "module": "github.com/sagernet/cronet-go/lib/android_386",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:IHDPaQoYGwB6k2GU6noC5ck6ECgR38EB3niEfUpR6Cc=",
+      "file": "libcronet.a",
+      "bytes": 74782660,
+      "sha256": "ab6aaf01a5b5429c9ec2bacc001171e41d00b5bfcac2af3d471edf0f164fae68",
+      "gitBlob": "d44d3d8695c4a8e84ce7fa08a5fae6a2d61558d6",
+      "officialArtifactId": 11062420637,
+      "officialArtifactName": "cronet-android-386",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062420637/zip",
+      "officialArtifactSHA256": "b6e85bd83b10825ed6373fbfbde61763a735eded8f4b5ec538ce98a12d598de7",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "35_android (386, i686-linux-android23-clang).txt",
+      "originalJobLogSHA256": "47695e6512e08bcdfb8ba863f39719eb15466244c8e413e70a87794ec1c6e7fb",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:29.3114810Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:46:29.9379400Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-android-386",
+        "2026-09-29T20:47:03.5263653Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:39.7528093Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:48:03.2692237Z + android_ndk_version=r24",
+        "2026-09-29T20:48:36.7710353Z [build] Running: gn gen out/cronet-android-x86",
+        "2026-09-29T20:48:37.1283785Z [build] Running: ninja -C out/cronet-android-x86 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "android_amd64",
+      "module": "github.com/sagernet/cronet-go/lib/android_amd64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:oP1VRyWRk+M5nxJ6em64Xoqn+jkNEo7PNYlb0oshlVk=",
+      "file": "libcronet.a",
+      "bytes": 67098472,
+      "sha256": "28f68f9538572e42b7870568420a855da6d2dc07648b170314fa67a85a95b904",
+      "gitBlob": "d17a9e8f26891eaa5ab58595ecbd419f0c9c1295",
+      "officialArtifactId": 11061376273,
+      "officialArtifactName": "cronet-android-amd64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11061376273/zip",
+      "officialArtifactSHA256": "955e47c8445c4d374f17fdd401067abf49b35f4934c2834e9279849c44790c77",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "20_android (amd64, x86_64-linux-android23-clang).txt",
+      "originalJobLogSHA256": "d92d5ad32f523d72f6d28cf4cfe17999630a3a45ca6109c6b1303ce0cb8223f7",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:31.8986704Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:46:32.4524979Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-android-amd64",
+        "2026-09-29T20:46:59.8898903Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:36.0244065Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:48:00.4228380Z + android_ndk_version=r24",
+        "2026-09-29T20:48:27.8022712Z [build] Running: gn gen out/cronet-android-x64",
+        "2026-09-29T20:48:28.1748734Z [build] Running: ninja -C out/cronet-android-x64 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "android_arm",
+      "module": "github.com/sagernet/cronet-go/lib/android_arm",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:c/ly9vxBpzLy2PWpYlfY5Ey1ul1xWjpaIPHW2lF9VBk=",
+      "file": "libcronet.a",
+      "bytes": 85777100,
+      "sha256": "045bdf499bbc704a722122e29155782a18bf9f1fd135f379d69d9fe099e850ce",
+      "gitBlob": "16e8e16a9685bb83622aea6d31a4fd1cca31ea67",
+      "officialArtifactId": 11062340776,
+      "officialArtifactName": "cronet-android-arm",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062340776/zip",
+      "officialArtifactSHA256": "eb1b49500ec79a2b8ded31c348e43d82c5f08561983d656f568cfb6f864511fa",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "28_android (arm, armv7a-linux-androideabi23-clang).txt",
+      "originalJobLogSHA256": "abd5ce84d9e763dab542f7a16d4c683556f14047b97a3c368899f43e2c017bdd",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:29.9679774Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:46:30.7601398Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-android-arm",
+        "2026-09-29T20:47:11.9765029Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:48.0496563Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:48:11.6778783Z + android_ndk_version=r24",
+        "2026-09-29T20:48:35.4661172Z [build] Running: gn gen out/cronet-android-arm",
+        "2026-09-29T20:48:35.8294708Z [build] Running: ninja -C out/cronet-android-arm cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "android_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/android_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:mmItB2/i9mrPuiqIrZm0UjcQ+m1RRhC+ayj+scOAvaw=",
+      "file": "libcronet.a",
+      "bytes": 70980790,
+      "sha256": "b79f6b2dd686797e618644fc38d2be20a6f74a4324d22da22e2d73be1f778e4b",
+      "gitBlob": "6beb0704fbba72185562512f2cde92013c0d0f89",
+      "officialArtifactId": 11062455408,
+      "officialArtifactName": "cronet-android-arm64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062455408/zip",
+      "officialArtifactSHA256": "5d60e923230357334c39d344fff26f01de1e0178415ca5b14bdefc8829fb17fd",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "37_android (arm64, aarch64-linux-android23-clang).txt",
+      "originalJobLogSHA256": "13ecae286a1bd8710915fd037542a539b97f0463fc7a627e96a03b1c8d31c6ea",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:18.8684867Z go version go1.26.8 linux/amd64",
+        "2026-09-29T20:46:19.4915311Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-android-arm64",
+        "2026-09-29T20:46:58.0349759Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:34.6147395Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:47:55.5210628Z + android_ndk_version=r24",
+        "2026-09-29T20:48:31.0764838Z [build] Running: gn gen out/cronet-android-arm64",
+        "2026-09-29T20:48:31.4232053Z [build] Running: ninja -C out/cronet-android-arm64 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "ios_arm64",
+      "module": "github.com/sagernet/cronet-go/lib/ios_arm64",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:EtYMGvDsx49tlOpjnKG4YmHMJ8yorAatxJht7MRhIzA=",
+      "file": "libcronet.a",
+      "bytes": 46282448,
+      "sha256": "aa95321e7aa092d700b31442315d2d4d01805be7b86fc8e099e7bcb29ecf0c2a",
+      "gitBlob": "fa689fd3492c595508c18f2a7d9052d74fda297d",
+      "officialArtifactId": 11062210493,
+      "officialArtifactName": "cronet-ios-arm64",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11062210493/zip",
+      "officialArtifactSHA256": "6e7c408fa103860e272f8d6fde1352a7f12e24c728406ddfc1e2f8e9e02d9ec7",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "25_darwin (ios_arm64, ios-arm64).txt",
+      "originalJobLogSHA256": "f69950c3f63d7cbd241972bb5da983d883a628e86cd7cce49b2bc8fa5154a299",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:46:31.8128120Z go version go1.26.8 darwin/arm64",
+        "2026-09-29T20:46:35.4562160Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-ios-arm64",
+        "2026-09-29T20:46:49.1235480Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:46:54.0120750Z [build] Running: gn gen out/cronet-iphoneos-arm64",
+        "2026-09-29T20:47:01.8603320Z [build] Running: ninja -C out/cronet-iphoneos-arm64 cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "ios_amd64_simulator",
+      "module": "github.com/sagernet/cronet-go/lib/ios_amd64_simulator",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:v4aEyRqDsLeh/QOOTY0NzxnwC/maUwr05Af4e3Wg94A=",
+      "file": "libcronet.a",
+      "bytes": 48697968,
+      "sha256": "051d960ed1a4e631ffcc1dbf605344f4e85f290a1d5264b5744c71b38fe104f1",
+      "gitBlob": "7ac6bba2c05f2f16b9527bfb9b9820a5d6c74866",
+      "officialArtifactId": 11063125986,
+      "officialArtifactName": "cronet-ios-amd64-simulator",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11063125986/zip",
+      "officialArtifactSHA256": "e0df491f1c6c91abc84b446aa7121148afbe3709b9ccf315980be9aaaf537c49",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "13_darwin (ios_amd64, ios-amd64-simulator).txt",
+      "originalJobLogSHA256": "df7fc28c95a7ef0dc079532589b0f3a6421fe391fe5722d5e1d129e74b9d7ad9",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:49:06.9714520Z go version go1.26.8 darwin/arm64",
+        "2026-09-29T20:49:10.3054620Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-ios-amd64-simulator",
+        "2026-09-29T20:49:19.4426020Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:49:24.4498160Z [build] Running: gn gen out/cronet-iphoneos-x64-simulator",
+        "2026-09-29T20:49:35.1295750Z [build] Running: ninja -C out/cronet-iphoneos-x64-simulator cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    },
+    {
+      "target": "ios_arm64_simulator",
+      "module": "github.com/sagernet/cronet-go/lib/ios_arm64_simulator",
+      "moduleVersion": "v0.0.0-20260929213014-a1cafd93eb1f",
+      "moduleOrigin": "a1cafd93eb1f748f354378309f84de3e2d4a71e4",
+      "moduleSum": "h1:4nh4xShjL66bCWWhUDThGIZ2NgSO/2dzLtihPspdpZM=",
+      "file": "libcronet.a",
+      "bytes": 46284856,
+      "sha256": "4a3809f6307cb7145c3343e85c11911eac7f27d111d0fdf215d4f084b2a4c56d",
+      "gitBlob": "88305703293501a89c09564edcede57b8c91072e",
+      "officialArtifactId": 11063051948,
+      "officialArtifactName": "cronet-ios-arm64-simulator",
+      "officialArtifactURL": "https://api.github.com/repos/SagerNet/cronet-go/actions/artifacts/11063051948/zip",
+      "officialArtifactSHA256": "d6418c6969b86409f3931f27c3ef9f2149213a5e6aa61bfedc62df5f8eee664a",
+      "officialArtifactDigestMatched": true,
+      "officialLibraryBytesAndGitBlobMatched": true,
+      "officialArtifactNoticeOrBuildMetadataMembers": [],
+      "originalJobLog": "16_darwin (ios_arm64_simulator, ios-arm64-simulator).txt",
+      "originalJobLogSHA256": "c3d53fc773f32139fd9ddb5ca1318f9a89aa8c9f660b8ed903a4223fc0704378",
+      "observedOriginalBuildLines": [
+        "2026-09-29T20:49:43.4679950Z go version go1.26.8 darwin/arm64",
+        "2026-09-29T20:49:46.9283220Z Cache not found for input keys: naive-build-be1be963131154ba82761a7ed85ba426b2027319-a80dfc0ae6d62c9a5a28abedce1ad73f27a790d711c653567ca5edb5f009cd1a-ios-arm64-simulator",
+        "2026-09-29T20:50:00.1252870Z + CLANG_REVISION=llvmorg-24-init-3796-g20e97c4b-27",
+        "2026-09-29T20:50:05.8588090Z [build] Running: gn gen out/cronet-iphoneos-arm64-simulator",
+        "2026-09-29T20:50:18.3631210Z [build] Running: ninja -C out/cronet-iphoneos-arm64-simulator cronet_static"
+      ],
+      "sourceNoticeInventory": "noticeCandidates",
+      "linkedNoticeGraphMatched": false,
+      "completeBuildInputReceipt": false
+    }
+  ],
+  "sourceAvailability": {
+    "naiveproxy": {
+      "file": "naiveproxy-fixed-source-git-bytes.tar.gz",
+      "sha256": "3fdec5a9e290a7600038824ba9130c01f35bb4604014bccac1ff203b4826ef55",
+      "bytes": 54938955,
+      "sourceCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+      "trackedBlobs": 35452,
+      "allTrackedBlobBytesAndModesMatched": true,
+      "officialDownload": false,
+      "derivedFromOfficialArchive": "naiveproxy-fixed-source.tar.gz",
+      "normalizations": [
+        {
+          "path": "src/third_party/zstd/src/build/VS2008/fullbench/fullbench.vcproj",
+          "verifiedGitBlob": "5e349dce95644ff02f7bf4177ef0c5cd29e0e2c5",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2008/zstd.sln",
+          "verifiedGitBlob": "97b88c8d02078443fdee2895e6e1804894a6d215",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2008/zstd/zstd.vcproj",
+          "verifiedGitBlob": "fc87625a950507e7cc9337fd981a95f0feb92a84",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2008/zstdlib/zstdlib.vcproj",
+          "verifiedGitBlob": "61c88f5bcb4f900526bd1df3ba7a30f0e59eb26b",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/datagen/datagen.vcxproj",
+          "verifiedGitBlob": "aaba4788b9c62c3faad156d7d84d838f79871af8",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/fullbench/fullbench.vcxproj",
+          "verifiedGitBlob": "c78a72eccddda16a6ba776be8f2c989f30ad82cc",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/libzstd-dll/libzstd-dll.rc",
+          "verifiedGitBlob": "13e8746ffb5bed68a685ff39ca696ef22ce6d08e",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/libzstd-dll/libzstd-dll.vcxproj",
+          "verifiedGitBlob": "ddb8e3216f5028b92f1ca544d2cec9e2a27a0ea1",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/libzstd/libzstd.vcxproj",
+          "verifiedGitBlob": "09ead245a64d3370fe63a7e25fe1abfa4927dd1a",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/zstd.sln",
+          "verifiedGitBlob": "528aae8aa01c1e90df746cdc54df292fdcd2ef18",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/zstd/zstd.rc",
+          "verifiedGitBlob": "a2118c2df1009239048b6e4d701a987ffce1e66b",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS2010/zstd/zstd.vcxproj",
+          "verifiedGitBlob": "230fd7d09e71e01fda88816a5c43ece6a67a2de0",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2010.cmd",
+          "verifiedGitBlob": "c3bc1763e265ef6d6e938ba0bb721435b1c4366a",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2012.cmd",
+          "verifiedGitBlob": "d7399a9d677a744529230d550a1d866ae0526c4c",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2013.cmd",
+          "verifiedGitBlob": "486ba6cf0a57007f60c207b8f6fe04c74623a66c",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2015.cmd",
+          "verifiedGitBlob": "abc41c9a0080570165ee0aebee755a3cf411de49",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017.cmd",
+          "verifiedGitBlob": "a810faa532e7dc3ca0cd357433b3ff5956d79e6e",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Community.cmd",
+          "verifiedGitBlob": "133e1b4565d5f92551304c487c321070964defbd",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Enterprise.cmd",
+          "verifiedGitBlob": "6a70932052bc2f90b021dd8c7a7b879caf42f332",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Professional.cmd",
+          "verifiedGitBlob": "d183519dff275ded399466bafab8af42c8a70264",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.VSPreview.cmd",
+          "verifiedGitBlob": "c594bb12c2b338cc4cf4d62491d66243432b47a5",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/build/VS_scripts/build.generic.cmd",
+          "verifiedGitBlob": "0912d2347a8e91ef07dda64be487ec616e8ca583",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/contrib/VS2005/fullbench/fullbench.vcproj",
+          "verifiedGitBlob": "98f8593769a93fa9c4e5a6e5ae1ba1fadeac4c80",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/contrib/VS2005/zstd.sln",
+          "verifiedGitBlob": "0c31ae126c01ab01a33cb7e88f29f35004c6d59d",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/contrib/VS2005/zstd/zstd.vcproj",
+          "verifiedGitBlob": "e37ebee391128b777a6469d7ca78927ab34ca50e",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/contrib/VS2005/zstdlib/zstdlib.vcproj",
+          "verifiedGitBlob": "67ddd2dba3a2d030bdd1ab82a024ebebe5c471c3",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/lib/dll/example/build_package.bat",
+          "verifiedGitBlob": "bd3103de5bd70e68489f85d7dff9a3538743514a",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/lib/dll/example/fullbench-dll.sln",
+          "verifiedGitBlob": "72e302e7f5d4dcbffa24b8495fd4eab1c712b11b",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/lib/dll/example/fullbench-dll.vcxproj",
+          "verifiedGitBlob": "44bbaf788e76b540770a83577ef9837f7d1439b4",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        },
+        {
+          "path": "src/third_party/zstd/src/programs/windres/zstd.rc",
+          "verifiedGitBlob": "a2118c2df1009239048b6e4d701a987ffce1e66b",
+          "operation": "CRLF to LF; required expected Git blob equality"
+        }
+      ],
+      "originalDownload": {
+        "archive": "naiveproxy-fixed-source.tar.gz",
+        "sha256": "aaa328238a4ec04d8fcf425898f0e1df3e5f4cd01be6e14bfa3aa9350a5db3c0",
+        "sourceCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+        "treeTruncated": false,
+        "trackedBlobs": 35452,
+        "verifiedBlobs": 35452,
+        "missing": [],
+        "mismatches": [
+          {
+            "path": "src/third_party/zstd/src/build/VS2008/fullbench/fullbench.vcproj",
+            "actualBlob": "82d5fba0fa6cbd597e68eea9bdaab8029df584d7",
+            "expectedBlob": "5e349dce95644ff02f7bf4177ef0c5cd29e0e2c5",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2008/zstd.sln",
+            "actualBlob": "89b6993ba4e3ec81e801ae1a2e97e8bc36804c9a",
+            "expectedBlob": "97b88c8d02078443fdee2895e6e1804894a6d215",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2008/zstd/zstd.vcproj",
+            "actualBlob": "c7235b18715d59d6fddf09b7d9b153da82b11207",
+            "expectedBlob": "fc87625a950507e7cc9337fd981a95f0feb92a84",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2008/zstdlib/zstdlib.vcproj",
+            "actualBlob": "13b7381c097fd7494e1198ebf2e750bcfd713f0c",
+            "expectedBlob": "61c88f5bcb4f900526bd1df3ba7a30f0e59eb26b",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/datagen/datagen.vcxproj",
+            "actualBlob": "4e90a45d67418cc42065dd699051e5b70a528e13",
+            "expectedBlob": "aaba4788b9c62c3faad156d7d84d838f79871af8",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/fullbench/fullbench.vcxproj",
+            "actualBlob": "0d16fed96b116f9b2afc213c8e5297f95ee048a4",
+            "expectedBlob": "c78a72eccddda16a6ba776be8f2c989f30ad82cc",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/libzstd-dll/libzstd-dll.rc",
+            "actualBlob": "63631037d860f29b5351ae488cc02e1a4b40f075",
+            "expectedBlob": "13e8746ffb5bed68a685ff39ca696ef22ce6d08e",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/libzstd-dll/libzstd-dll.vcxproj",
+            "actualBlob": "463e047bc208073c1ecdd9c3f18302f1f5189547",
+            "expectedBlob": "ddb8e3216f5028b92f1ca544d2cec9e2a27a0ea1",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/libzstd/libzstd.vcxproj",
+            "actualBlob": "935021a92677e857e7ef02042b2b144cd717302e",
+            "expectedBlob": "09ead245a64d3370fe63a7e25fe1abfa4927dd1a",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/zstd.sln",
+            "actualBlob": "b36b9547fdc099f088fd2e101b6b781ce4ea46b7",
+            "expectedBlob": "528aae8aa01c1e90df746cdc54df292fdcd2ef18",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/zstd/zstd.rc",
+            "actualBlob": "99d4912893eeef216bbac2732e0d4b8d6d2f5d40",
+            "expectedBlob": "a2118c2df1009239048b6e4d701a987ffce1e66b",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS2010/zstd/zstd.vcxproj",
+            "actualBlob": "5e850a4f95930c62f1af7ddea4bf3a968ac9642e",
+            "expectedBlob": "230fd7d09e71e01fda88816a5c43ece6a67a2de0",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2010.cmd",
+            "actualBlob": "60fbbf69e327d667cdf1dfae2fb20799a1c40b50",
+            "expectedBlob": "c3bc1763e265ef6d6e938ba0bb721435b1c4366a",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2012.cmd",
+            "actualBlob": "4328bae921af6c74150f6390bc94bf428688b9b0",
+            "expectedBlob": "d7399a9d677a744529230d550a1d866ae0526c4c",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2013.cmd",
+            "actualBlob": "f906d90258385b939aee12939fa2e4078104607f",
+            "expectedBlob": "486ba6cf0a57007f60c207b8f6fe04c74623a66c",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2015.cmd",
+            "actualBlob": "798e9dcb06b5d529534bc8c1fada00cb72a2009d",
+            "expectedBlob": "abc41c9a0080570165ee0aebee755a3cf411de49",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017.cmd",
+            "actualBlob": "aa2011671d56000841a801c63ea97b03eb8741db",
+            "expectedBlob": "a810faa532e7dc3ca0cd357433b3ff5956d79e6e",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Community.cmd",
+            "actualBlob": "90b69a80bf1f0587a9412ea799ec78765798ee68",
+            "expectedBlob": "133e1b4565d5f92551304c487c321070964defbd",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Enterprise.cmd",
+            "actualBlob": "99863ff6cab7934314c0dd8ae30431ff3a7cda7d",
+            "expectedBlob": "6a70932052bc2f90b021dd8c7a7b879caf42f332",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VS2017Professional.cmd",
+            "actualBlob": "d56ccabae715e823ac35e770e5e998d227fc61c7",
+            "expectedBlob": "d183519dff275ded399466bafab8af42c8a70264",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.VSPreview.cmd",
+            "actualBlob": "2b5adc302422c552b0ec9ae545ac943f0538dd65",
+            "expectedBlob": "c594bb12c2b338cc4cf4d62491d66243432b47a5",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/build/VS_scripts/build.generic.cmd",
+            "actualBlob": "702cf3e00cbb1ab1e10391d36cc6b2eae7ec9dc3",
+            "expectedBlob": "0912d2347a8e91ef07dda64be487ec616e8ca583",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/contrib/VS2005/fullbench/fullbench.vcproj",
+            "actualBlob": "94e288f71f7cedcb8a9492b3685d4629afc7a3bc",
+            "expectedBlob": "98f8593769a93fa9c4e5a6e5ae1ba1fadeac4c80",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/contrib/VS2005/zstd.sln",
+            "actualBlob": "dfc73b4685aa3319e5528ad4904fd61b2a00618b",
+            "expectedBlob": "0c31ae126c01ab01a33cb7e88f29f35004c6d59d",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/contrib/VS2005/zstd/zstd.vcproj",
+            "actualBlob": "cd8f852ba81894b5fbab9a74f9b07b7a8e65ed80",
+            "expectedBlob": "e37ebee391128b777a6469d7ca78927ab34ca50e",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/contrib/VS2005/zstdlib/zstdlib.vcproj",
+            "actualBlob": "0ad30b6a517416c57d1559556fd9c027d2ab6dfd",
+            "expectedBlob": "67ddd2dba3a2d030bdd1ab82a024ebebe5c471c3",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/lib/dll/example/build_package.bat",
+            "actualBlob": "3cf1920ffd99f22a1ecaab20a118763fab5620a6",
+            "expectedBlob": "bd3103de5bd70e68489f85d7dff9a3538743514a",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/lib/dll/example/fullbench-dll.sln",
+            "actualBlob": "ef8d4c024629f30593e253f844b1ce9eadeff2a1",
+            "expectedBlob": "72e302e7f5d4dcbffa24b8495fd4eab1c712b11b",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/lib/dll/example/fullbench-dll.vcxproj",
+            "actualBlob": "fbea7832c8063e19614a984ed79f49dcebea7f2f",
+            "expectedBlob": "44bbaf788e76b540770a83577ef9837f7d1439b4",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          },
+          {
+            "path": "src/third_party/zstd/src/programs/windres/zstd.rc",
+            "actualBlob": "99d4912893eeef216bbac2732e0d4b8d6d2f5d40",
+            "expectedBlob": "a2118c2df1009239048b6e4d701a987ffce1e66b",
+            "actualMode": "100644",
+            "expectedMode": "100644"
+          }
+        ],
+        "unexpected": [],
+        "unsafe": [],
+        "gitlinks": [],
+        "completeTrackedBlobAndModeMatch": false
+      },
+      "downloadURL": "https://api.github.com/repos/SagerNet/naiveproxy/tarball/be1be963131154ba82761a7ed85ba426b2027319"
+    },
+    "buildDriver": {
+      "archive": "cronet-build-driver-fixed-source.tar.gz",
+      "sha256": "38d6f4ac148c44480ce076ee3b7aa3ff7108f678c9889961e79cc44f9c22aac5",
+      "sourceCommit": "abcdebebd23da6e74cf9c55ab63024ce66fc0f7b",
+      "treeTruncated": false,
+      "trackedBlobs": 133,
+      "verifiedBlobs": 133,
+      "missing": [],
+      "mismatches": [],
+      "unexpected": [],
+      "unsafe": [],
+      "gitlinks": [
+        {
+          "path": "naiveproxy",
+          "mode": "160000",
+          "type": "commit",
+          "sha": "be1be963131154ba82761a7ed85ba426b2027319"
+        }
+      ],
+      "completeTrackedBlobAndModeMatch": true,
+      "downloadURL": "https://api.github.com/repos/SagerNet/cronet-go/tarball/abcdebebd23da6e74cf9c55ab63024ce66fc0f7b"
+    },
+    "localArchivesCommittedToRepository": false,
+    "completeCorrespondingSourceBundle": false
+  },
+  "noticeCandidates": [
+    {
+      "sourcePath": "LICENSE",
+      "gitBlob": "a32e00ce6be3620adca152e53734f7de8fda38cf",
+      "bytes": 1559,
+      "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/LICENSE"
+    },
+    {
+      "sourcePath": "src/LICENSE",
+      "gitBlob": "2249a28657f86c645f8978b75babc1bd52aca318",
+      "bytes": 1536,
+      "sha256": "368cca1106be99d39ecd32a38d8305585d802a475effb66380b91ffc9bcf709b",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/LICENSE",
+      "gitBlob": "9fb3c2cee31bc64eb33081a9b816476b30f0eb46",
+      "bytes": 20089,
+      "sha256": "b23e682fda7310afe43505ed6041919ccff8f9e0c6799ebd7542cbcef11102e3",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/README.chromium",
+      "gitBlob": "21ef4cd2ce782ddc31db45ae61dd27c9f50315dd",
+      "bytes": 1610,
+      "sha256": "03f95f6eb0a301644e45bf709f1d50c41a20dc13008c709e4e1f79591b1428c2",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/cityhash/COPYING",
+      "gitBlob": "bf15194dd5a08b1a9bdac71ae19a3271d600089e",
+      "bytes": 1110,
+      "sha256": "3ed00dd93c75655599456c83cba2f69c6824fd53f24fc24206ba27b65057709d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/cityhash/COPYING",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/cityhash/COPYING"
+    },
+    {
+      "sourcePath": "src/base/third_party/cityhash/README.chromium",
+      "gitBlob": "46bed48caf0baecf16c5a72d21cc7ac77ae4b617",
+      "bytes": 959,
+      "sha256": "745ca65d7762e565ec910d38a88badf817006e790c2cea3b8566b20a86de3fca",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/cityhash/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/cityhash/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/cityhash_v103/COPYING",
+      "gitBlob": "bf15194dd5a08b1a9bdac71ae19a3271d600089e",
+      "bytes": 1110,
+      "sha256": "3ed00dd93c75655599456c83cba2f69c6824fd53f24fc24206ba27b65057709d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/cityhash_v103/COPYING",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/cityhash_v103/COPYING"
+    },
+    {
+      "sourcePath": "src/base/third_party/cityhash_v103/README.chromium",
+      "gitBlob": "45a3dc42edbd39f309d5eb58c1542e6441612fa3",
+      "bytes": 971,
+      "sha256": "c37810ed4d957b2a4170232ca189b9d723abc7ee9e9c2caa329e836c27516c6c",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/cityhash_v103/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/cityhash_v103/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/double_conversion/LICENSE",
+      "gitBlob": "933718a9ef9dae4cb4afa56e490211760d8a949f",
+      "bytes": 1527,
+      "sha256": "4af93c12062c58058378de2397dc1c92bbff9ddfb1d583a01c84127557ce97ca",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/double_conversion/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/double_conversion/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/double_conversion/README.chromium",
+      "gitBlob": "902815ef0fbc2d6bf336bb0a4e382400539e883c",
+      "bytes": 500,
+      "sha256": "5b6f2a88485bb23f66708ad038c44ddaacea27a92699ec2cc332aea6f539d7e5",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/double_conversion/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/double_conversion/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/icu/LICENSE",
+      "gitBlob": "2882e4ebda99a6b2b665f728e51f1711eb002c0b",
+      "bytes": 3674,
+      "sha256": "5d85142a5609ad177a2d7a2e7cae060b886b8b42f25c5b9803cf0cb5ee04ad2f",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/icu/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/icu/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/icu/README.chromium",
+      "gitBlob": "1c270bdc344c2c78cedbac33515c29573db01e5a",
+      "bytes": 778,
+      "sha256": "1cd292a23b3e59b9537a60c619b5e1c607340a73325f9bcb5f6ac028eaed3df9",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/icu/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/icu/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/nspr/LICENSE",
+      "gitBlob": "d0a1fa1482eea82e19510e7920cbe3a03e41f691",
+      "bytes": 16726,
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/nspr/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/nspr/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/nspr/README.chromium",
+      "gitBlob": "2cabff688fcf307e47e4c7bfeabcda5939972634",
+      "bytes": 576,
+      "sha256": "a3034c7a0fce7516f961624b22d8cf9cbc70fd323d8c90b131bcfb2d841e1d2d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/nspr/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/nspr/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/superfasthash/LICENSE",
+      "gitBlob": "3c40a3ecd791a2137e466ffd216e9813d0e98e90",
+      "bytes": 1527,
+      "sha256": "90b2201c340cee36b40a443f949d9eb416f0a0d204c32d350aff87fedeb67ae8",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/superfasthash/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/superfasthash/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/superfasthash/README.chromium",
+      "gitBlob": "60c21a9fb170206d27dd022d6ae5e20686dd2e03",
+      "bytes": 948,
+      "sha256": "483c058040c840bcc8ad350255b654db90bc0c4d2f8005a7c6f0ba86c0d62b13",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/superfasthash/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/superfasthash/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/symbolize/LICENSE",
+      "gitBlob": "433a3d1512c7ac9ca9d9fb997e1d1b43e85e73f5",
+      "bytes": 1560,
+      "sha256": "538edc6f52c563cf06eca1bac8dd785ff60ef5a371a950265700d5d40386db6e",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/symbolize/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/symbolize/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/symbolize/README.chromium",
+      "gitBlob": "805f6cb374237f9952418de47e880641521f9621",
+      "bytes": 2080,
+      "sha256": "fe4fb0b625846d3fd90eff8155a82f1b1e316445bc6bd7e49814724dc6a678d6",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/symbolize/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/symbolize/README.chromium"
+    },
+    {
+      "sourcePath": "src/base/third_party/xdg_user_dirs/LICENSE",
+      "gitBlob": "540e8031c74359508a7038b69bdee24b1a2a692a",
+      "bytes": 1094,
+      "sha256": "18351de3d7e2dc469cc83e77d38a3e25d010251e34eb348bbd1a76275e313997",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/xdg_user_dirs/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/xdg_user_dirs/LICENSE"
+    },
+    {
+      "sourcePath": "src/base/third_party/xdg_user_dirs/README.chromium",
+      "gitBlob": "6d4da4202aaf231d94042b30f2036962853a563a",
+      "bytes": 499,
+      "sha256": "0e12f8eb866392eccc0e2dd86cacb9e6f46c789ca7b38ecab79bc4c6664bf347",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/base/third_party/xdg_user_dirs/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/base/third_party/xdg_user_dirs/README.chromium"
+    },
+    {
+      "sourcePath": "src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/LICENSE",
+      "gitBlob": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/LICENSE"
+    },
+    {
+      "sourcePath": "src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/README.chromium",
+      "gitBlob": "0b36bdeb8fa6776c62193bae80b22ce55317ce58",
+      "bytes": 577,
+      "sha256": "c749b388ec0d9fb19e6cc8427b2c9a51835b43f405ed21f5e6e988ccdab97018",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/README.chromium"
+    },
+    {
+      "sourcePath": "src/build/internal/README.chromium",
+      "gitBlob": "4624830d218bbb4b7e33e2a280d5ddf5b43abbbe",
+      "bytes": 2189,
+      "sha256": "f67b4c4b4f467e9c80feca1995e02ea185fd44ba422611f8704e62fed7db1d31",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/build/internal/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/build/internal/README.chromium"
+    },
+    {
+      "sourcePath": "src/net/third_party/mozilla_security_manager/LICENSE",
+      "gitBlob": "c51d6493cfb39c4bf44615bf4b7528349bb95ea5",
+      "bytes": 26847,
+      "sha256": "a718a32ad435b316ce3a9e871e05421d6ca784c435f8ef5715c1b6e289381f04",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/mozilla_security_manager/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/mozilla_security_manager/LICENSE"
+    },
+    {
+      "sourcePath": "src/net/third_party/mozilla_security_manager/README.chromium",
+      "gitBlob": "2e21250a53c5e28d654d17477ad4085a88c1949b",
+      "bytes": 603,
+      "sha256": "8f01b4b89bbac7c0f8e83de0ca690867fa256ff88577195f9afa0188f5f7c552",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/mozilla_security_manager/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/mozilla_security_manager/README.chromium"
+    },
+    {
+      "sourcePath": "src/net/third_party/mozilla_win/LICENSE",
+      "gitBlob": "0c53cdf58cb1737c12a931d1f23ee912f1a9e8db",
+      "bytes": 18122,
+      "sha256": "6d29b685206b28617dd9ac13818ccc943e57df68aeea1db0f4a5539f4507a9aa",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/mozilla_win/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/mozilla_win/LICENSE"
+    },
+    {
+      "sourcePath": "src/net/third_party/mozilla_win/README.chromium",
+      "gitBlob": "37de0b1ec8ec27c22c32c2fc8c981fc4da47e78a",
+      "bytes": 735,
+      "sha256": "8f005dca02332234b4cff36245efa653e2c402717476e6ae162970d74c66543d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/mozilla_win/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/mozilla_win/README.chromium"
+    },
+    {
+      "sourcePath": "src/net/third_party/quiche/README.chromium",
+      "gitBlob": "f03216758ecc333603afac285f1e6a707dd08a44",
+      "bytes": 320,
+      "sha256": "6fc4d642b988875a923c9cbeb7e08a02dec2b22378c9d542c4d6907fe74fa756",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/quiche/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/quiche/README.chromium"
+    },
+    {
+      "sourcePath": "src/net/third_party/quiche/src/LICENSE",
+      "gitBlob": "a32e00ce6be3620adca152e53734f7de8fda38cf",
+      "bytes": 1559,
+      "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/quiche/src/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/quiche/src/LICENSE"
+    },
+    {
+      "sourcePath": "src/net/third_party/uri_template/LICENSE",
+      "gitBlob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/uri_template/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/uri_template/LICENSE"
+    },
+    {
+      "sourcePath": "src/net/third_party/uri_template/README.chromium",
+      "gitBlob": "3cfb99837489509b18d43610a29f742ac85801ec",
+      "bytes": 921,
+      "sha256": "30e024609bce7f4087acc20b368b219271c1801d6f871bcfc684aa0772c47bfa",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/net/third_party/uri_template/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/net/third_party/uri_template/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/abseil-cpp/LICENSE",
+      "gitBlob": "ccd61dcfe3dbcdf77a72794d7794b1e112a39e0b",
+      "bytes": 11361,
+      "sha256": "c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/abseil-cpp/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/abseil-cpp/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/abseil-cpp/README.chromium",
+      "gitBlob": "ff16d9c85b33f969a09cc51f3b336bfb2938fc35",
+      "bytes": 2316,
+      "sha256": "ec52224d880bda213e659315be7c2d5c9ec35335f480bd6f812baf23c9a7f23d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/abseil-cpp/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/abseil-cpp/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/apple_apsl/LICENSE",
+      "gitBlob": "9fb3c2cee31bc64eb33081a9b816476b30f0eb46",
+      "bytes": 20089,
+      "sha256": "b23e682fda7310afe43505ed6041919ccff8f9e0c6799ebd7542cbcef11102e3",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/apple_apsl/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/apple_apsl/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/apple_apsl/README.chromium",
+      "gitBlob": "9d83121782ed94824d734212a292a386b8d021cf",
+      "bytes": 764,
+      "sha256": "c1bbe888fc909a4c418a4be24d6d720e0acca29c8596aaf53a91265317479370",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/apple_apsl/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/apple_apsl/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/boringssl/README.chromium",
+      "gitBlob": "0634134e871058e2c482437e3a362065a6c3be92",
+      "bytes": 445,
+      "sha256": "dd371a5a46e36c76a82f9bf3a89cc8ced96ba7b6dfa22700826f60367d479865",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/boringssl/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/boringssl/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/boringssl/src/LICENSE",
+      "gitBlob": "37a5b7439bf6d245179326da069fa561e20067ef",
+      "bytes": 13115,
+      "sha256": "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/boringssl/src/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/boringssl/src/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/boringssl/src/third_party/benchmark/LICENSE",
+      "gitBlob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/boringssl/src/third_party/benchmark/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/boringssl/src/third_party/benchmark/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/boringssl/src/third_party/fiat/LICENSE",
+      "gitBlob": "3bc4b882eb49636a5d0a154867a8325becbff0ab",
+      "bytes": 638,
+      "sha256": "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/boringssl/src/third_party/fiat/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/boringssl/src/third_party/fiat/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/boringssl/src/third_party/fiat/README.chromium",
+      "gitBlob": "3d117325680a70a2d4e94df16eb25244a560300e",
+      "bytes": 412,
+      "sha256": "11e67716c1d2cd9c340c2eb6be1b435089b8a325801eb0027a90092968382f68",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/boringssl/src/third_party/fiat/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/boringssl/src/third_party/fiat/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/brotli/LICENSE",
+      "gitBlob": "33b7cdd2dbaeddce1e35aa1a13f63d71154dc42f",
+      "bytes": 1084,
+      "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/brotli/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/brotli/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/brotli/README.chromium",
+      "gitBlob": "bee4db5fa3e9f79e6f485978db70901087efe660",
+      "bytes": 1156,
+      "sha256": "227ddaffa9d6c90b6fb33b7d141726cc655ee1ce82c1a8aa2c09717434850470",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/brotli/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/brotli/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/cpu_features/README.chromium",
+      "gitBlob": "376a08ac87bcbb849e99601c3299fd28c95f7e70",
+      "bytes": 581,
+      "sha256": "08010573ca27db7cb74f712f3bef3be27f399f46a3977593beeef18368514ea2",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/cpu_features/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/cpu_features/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/cpu_features/src/LICENSE",
+      "gitBlob": "a7043c6fdedacc991803384333201058ea1a8865",
+      "bytes": 12876,
+      "sha256": "af272c1b4dd08dd61d43e001d3134119d03ca7a2b057a64f7355fdf27fbea3dd",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/cpu_features/src/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/cpu_features/src/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/jni_zero/LICENSE",
+      "gitBlob": "3e34df65794d8467d50b4690fb42fee83d3c2579",
+      "bytes": 1458,
+      "sha256": "57faf03e216d5628169a779df31a842347e55c8e6567e1107b6cb8fb90175b59",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/jni_zero/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/jni_zero/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/jni_zero/README.chromium",
+      "gitBlob": "ce347fcf992039dc6ba8a5edd23986b89d3c7c72",
+      "bytes": 489,
+      "sha256": "ce77235b508cceb4b5dfcd1903cf28262f902f5a2312fe8248658aec049873b7",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/jni_zero/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/jni_zero/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/libc++/README.chromium",
+      "gitBlob": "6ad264e76871440f7b5cc651e99faeaedf2c9fbb",
+      "bytes": 360,
+      "sha256": "d862ed75ac465f2133ab7f85f896b64460c87086d86d4d8a3186c89f0cd6c713",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libc++/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libc++/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/libc++/src/LICENSE.TXT",
+      "gitBlob": "e159d283443f92ac78b964d2bccebe8f95d5d445",
+      "bytes": 16703,
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libc++/src/LICENSE.TXT",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libc++/src/LICENSE.TXT"
+    },
+    {
+      "sourcePath": "src/third_party/libc++abi/README.chromium",
+      "gitBlob": "4c5a04ced4b2bec55a8c47497dc5048311aea0c0",
+      "bytes": 311,
+      "sha256": "9119fd0655345657d134549459974cf20300dde14a1bd4c996945061fbaceda0",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libc++abi/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libc++abi/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/libc++abi/src/LICENSE.TXT",
+      "gitBlob": "b75c0441bcd5be32b5a07e2a1ffc7e67b6d99f16",
+      "bytes": 16706,
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libc++abi/src/LICENSE.TXT",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libc++abi/src/LICENSE.TXT"
+    },
+    {
+      "sourcePath": "src/third_party/libunwind/README.chromium",
+      "gitBlob": "db1f891f984fe38ccc009f9ed5e2aa07ac0d13da",
+      "bytes": 529,
+      "sha256": "44c5d8fa78a5d0b4a43209c2bd879be304c50bc25a5ce7dac7a70dfb1ff79bf4",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libunwind/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libunwind/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/libunwind/src/LICENSE.TXT",
+      "gitBlob": "1e3120621caeb62648745a42f7a9a25d1e2731ab",
+      "bytes": 16706,
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/libunwind/src/LICENSE.TXT",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/libunwind/src/LICENSE.TXT"
+    },
+    {
+      "sourcePath": "src/third_party/llvm-libc/README.chromium",
+      "gitBlob": "06e1933d3137e0cdb1c40da0c96deb6f388d777a",
+      "bytes": 338,
+      "sha256": "b12d3cbb24d91eb0a01685690d5f9a77b6ad17f61a7d79e07282a85c358b5d37",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/llvm-libc/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/llvm-libc/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/llvm-libc/src/LICENSE.TXT",
+      "gitBlob": "24806ab4c9eb291db4d28e159901f7a0901b9fd1",
+      "bytes": 15140,
+      "sha256": "ebcd9bbf783a73d05c53ba4d586b8d5813dcdf3bbec50265860ccc885e606f47",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/llvm-libc/src/LICENSE.TXT",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/llvm-libc/src/LICENSE.TXT"
+    },
+    {
+      "sourcePath": "src/third_party/modp_b64/LICENSE",
+      "gitBlob": "55af76f3eb690dd59e74f3e8f3cc9ef7523cf384",
+      "bytes": 1721,
+      "sha256": "d47e8390fb0d7ad4a18f26aedd6283c7ab6b5b4fabab536ccb4db7f9f6d90c08",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/modp_b64/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/modp_b64/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/modp_b64/README.chromium",
+      "gitBlob": "616d5844176a48d463035b0253bcd0717b9920e3",
+      "bytes": 976,
+      "sha256": "a728c6fd7330bd52bd392f1a0072de2433627fba0854a076ecb826ad7a77d8ee",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/modp_b64/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/modp_b64/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/nasm/LICENSE",
+      "gitBlob": "5425798463e7229a333bbc82a3dc035d32ae0690",
+      "bytes": 1554,
+      "sha256": "7436a7c46b6e4d969b41e1ce387885ae4ced25710662189ff2983665253729ac",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/nasm/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/nasm/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/nasm/README.chromium",
+      "gitBlob": "6420336726bf6317c6df6481b63d1b3cf148e611",
+      "bytes": 2978,
+      "sha256": "a5e12d92820f96082cfa934fca007c7f9fe63bcb868a5eee873715b270e25bdd",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/nasm/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/nasm/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/nasm/zlib/LICENSE",
+      "gitBlob": "ab8ee6f71428c3e4646b12b64ad387cde33462e5",
+      "bytes": 1002,
+      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/nasm/zlib/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/nasm/zlib/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/protobuf/src/google/protobuf/compiler/notices.h",
+      "gitBlob": "a37ae10ee8e24c015abbb41bc4e70231335f0c54",
+      "bytes": 12928,
+      "sha256": "b47ca1ea743623d50c6e02faa136dea4f6574a98e200666f859dbf57fb491721",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/protobuf/src/google/protobuf/compiler/notices.h",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/protobuf/src/google/protobuf/compiler/notices.h"
+    },
+    {
+      "sourcePath": "src/third_party/protobuf/third_party/utf8_range/LICENSE",
+      "gitBlob": "e59f14fa55de789cc2aa634e9788e0514be74611",
+      "bytes": 1091,
+      "sha256": "02de69b64fc36d9e938f418e52723e42f0b2b226d58a9cb3c8dcbdf7059f5074",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/protobuf/third_party/utf8_range/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/protobuf/third_party/utf8_range/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/simdutf/LICENSE",
+      "gitBlob": "74c8302ba92830e170dfae35957468edd2e25271",
+      "bytes": 1059,
+      "sha256": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/simdutf/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/simdutf/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/simdutf/README.chromium",
+      "gitBlob": "003c53476cc0e4a9f0460d0664480b622e7552bb",
+      "bytes": 1120,
+      "sha256": "6473dd8c53339fc113f3c5de62a3a74b3b25fc222e986a1fe43daa49ccb2bb80",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/simdutf/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/simdutf/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/zlib/LICENSE",
+      "gitBlob": "b7a69d058e616651eae27b3f90c0b7fd36c099b2",
+      "bytes": 1002,
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zlib/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zlib/LICENSE"
+    },
+    {
+      "sourcePath": "src/third_party/zlib/README.chromium",
+      "gitBlob": "232ef66aeb2b4442e327d2cca67ba19fc48833cd",
+      "bytes": 1654,
+      "sha256": "18f3b809738eb94ac818546ca8a67563691697aecaa77f052610264dee8ba5b7",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zlib/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zlib/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/zlib/contrib/minizip/README.chromium",
+      "gitBlob": "78cbd20018b1ad7ac5b1e95ef80c190e84e8a4e3",
+      "bytes": 1599,
+      "sha256": "1c994e86bedc619e79566df1b09bf1d0888f176608ff67c68803e5e1ad20f17f",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zlib/contrib/minizip/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zlib/contrib/minizip/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/zstd/README.chromium",
+      "gitBlob": "b0a7d9c90412383098244f8cf73a57e5a92ccb43",
+      "bytes": 713,
+      "sha256": "8419ae9dad2471136abdfcc7e7c15157dad74508880355665f10e75ff6bc4298",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zstd/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zstd/README.chromium"
+    },
+    {
+      "sourcePath": "src/third_party/zstd/src/COPYING",
+      "gitBlob": "ecbc0593737be657aef92e3adcf3bcbd6fdb812e",
+      "bytes": 18091,
+      "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zstd/src/COPYING",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zstd/src/COPYING"
+    },
+    {
+      "sourcePath": "src/third_party/zstd/src/LICENSE",
+      "gitBlob": "75800288cc243f164b9d130f125e2ffae28f8e39",
+      "bytes": 1549,
+      "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/third_party/zstd/src/LICENSE",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/third_party/zstd/src/LICENSE"
+    },
+    {
+      "sourcePath": "src/url/third_party/mozilla/LICENSE.txt",
+      "gitBlob": "ac40837824a53cc81e012577d8036abb829c7438",
+      "bytes": 3200,
+      "sha256": "284545e873c704952e5b1b39d457dd83a3b115a51d9f1eb5175137bd69b8fa1b",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/url/third_party/mozilla/LICENSE.txt",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/url/third_party/mozilla/LICENSE.txt"
+    },
+    {
+      "sourcePath": "src/url/third_party/mozilla/README.chromium",
+      "gitBlob": "0ff29b64861045e90c506c0e8e7d092e66180e75",
+      "bytes": 391,
+      "sha256": "0f6c477c8205103963e989309c0dc6f6b369398d5dfc65b4ad80792443cd715b",
+      "sourceURL": "https://github.com/SagerNet/naiveproxy/blob/be1be963131154ba82761a7ed85ba426b2027319/src/url/third_party/mozilla/README.chromium",
+      "repositoryPath": "release/licenses/cronet-source-candidate/src/url/third_party/mozilla/README.chromium"
+    }
+  ],
+  "readmeLicenseReferences": [
+    {
+      "readme": "src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/README.chromium",
+      "name": "CF",
+      "license": "APSL-2.0",
+      "revision": "387a5a03c017801ecdfe9cbe7f8d69a9b427df68",
+      "shippedField": "yes",
+      "licenseFile": "src/base/allocator/partition_allocator/src/partition_alloc/third_party/apple_apsl/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/cityhash/README.chromium",
+      "name": "CityHash",
+      "license": "MIT",
+      "revision": "8af9b8c",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/cityhash/COPYING",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/cityhash_v103/README.chromium",
+      "name": "CityHash",
+      "license": "MIT",
+      "revision": "00b9287e8c1255b5922ef90e304d5287361b2c2a",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/cityhash_v103/COPYING",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/double_conversion/README.chromium",
+      "name": "Google Double Conversion",
+      "license": "BSD-3-Clause",
+      "revision": "32bc443c60c860eb6b4843533a614766d611172e",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/double_conversion/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/icu/README.chromium",
+      "name": "ICU",
+      "license": "Unicode-DFS-2016, ICU",
+      "revision": null,
+      "shippedField": "no",
+      "licenseFile": "src/base/third_party/icu/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/nspr/README.chromium",
+      "name": "Netscape Portable Runtime (NSPR)",
+      "license": "MPL-2.0",
+      "revision": "488a7a069c8d7405696fd8171ec8fc369834158b",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/nspr/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/superfasthash/README.chromium",
+      "name": "Paul Hsieh's SuperFastHash",
+      "license": "BSD-3-Clause",
+      "revision": null,
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/superfasthash/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/symbolize/README.chromium",
+      "name": "google-glog's symbolization library",
+      "license": "BSD-3-Clause",
+      "revision": "130a3e1",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/symbolize/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/base/third_party/xdg_user_dirs/README.chromium",
+      "name": "xdg-user-dirs",
+      "license": "MIT",
+      "revision": "2f28f353ec3cf9288da70bab3ca963f2144808f0",
+      "shippedField": "yes",
+      "licenseFile": "src/base/third_party/xdg_user_dirs/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/README.chromium",
+      "name": "AndroidHiddenApiBypass",
+      "license": "Apache-2.0",
+      "revision": "71aaad4ce558530b4788da67d0e3d9bb3596e9d3",
+      "shippedField": "no",
+      "licenseFile": "src/build/android/incremental_install/third_party/AndroidHiddenApiBypass/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/net/third_party/mozilla_security_manager/README.chromium",
+      "name": "Mozilla Personal Security Manager",
+      "license": "MPL-1.1",
+      "revision": null,
+      "shippedField": "yes",
+      "licenseFile": "src/net/third_party/mozilla_security_manager/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/net/third_party/mozilla_win/README.chromium",
+      "name": "Mozilla Windows Cert code",
+      "license": "MPL-2.0",
+      "revision": "0fec57c05d3996cc00c55a66f20dd5793a9bfb5d",
+      "shippedField": "yes",
+      "licenseFile": "src/net/third_party/mozilla_win/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/net/third_party/quiche/README.chromium",
+      "name": "QUICHE",
+      "license": "BSD-3-Clause",
+      "revision": "80bf9559d3a4c08dde4b85abc46d190a88ffef64",
+      "shippedField": "yes",
+      "licenseFile": "src/net/third_party/quiche/src/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/net/third_party/uri_template/README.chromium",
+      "name": "URI Template Parser",
+      "license": "Apache-2.0",
+      "revision": "d0bbe169d81a50936ec5fcea4e6dbcfb97303f13",
+      "shippedField": "yes",
+      "licenseFile": "src/net/third_party/uri_template/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/abseil-cpp/README.chromium",
+      "name": "Abseil",
+      "license": "Apache-2.0",
+      "revision": "1c84143fb79e6041f3e0596df51c3ae7d7e46a8a",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/abseil-cpp/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/apple_apsl/README.chromium",
+      "name": "Darwin configd",
+      "license": "APSL-2.0",
+      "revision": "ec7c204acf07ba74de84d990ece345f42eb8f258",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/apple_apsl/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/boringssl/README.chromium",
+      "name": "BoringSSL",
+      "license": "Apache-2.0, BSD-3-Clause",
+      "revision": "ac39ea6853833c1f18fd23614091d11855e71752",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/boringssl/src/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/boringssl/src/third_party/fiat/README.chromium",
+      "name": "Fiat-Crypto: Synthesizing Correct-by-Construction Code for Cryptographic Primitives",
+      "license": "Apache-2.0",
+      "revision": "6ccc6638716d4632304baf1adbb5c47c3a12ea6f",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/boringssl/src/third_party/fiat/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/brotli/README.chromium",
+      "name": "Brotli",
+      "license": "MIT",
+      "revision": "cfa184a997ac19454d5a3ae97f6d600aac2445a6",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/brotli/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/cpu_features/README.chromium",
+      "name": "cpu_features",
+      "license": "BSD-2-Clause, Apache-2.0",
+      "revision": "81d13c49649f0714dd41fb56bb246398b6584085",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/cpu_features/src/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/jni_zero/README.chromium",
+      "name": "JNI Zero",
+      "license": "BSD-3-Clause",
+      "revision": null,
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/jni_zero/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/libc++/README.chromium",
+      "name": "libcxx",
+      "license": "NCSA, Apache-with-LLVM-Exception, MIT",
+      "revision": "97b436da4c33663581d394f4ee0a5977fc38c2f4",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/libc++/src/LICENSE.TXT",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/libc++abi/README.chromium",
+      "name": "libcxxabi",
+      "license": "NCSA, Apache-with-LLVM-Exception, MIT",
+      "revision": "fc1897a2c12aa27e703c3ed48b62eba8abf4ce19",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/libc++abi/src/LICENSE.TXT",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/libunwind/README.chromium",
+      "name": "libunwind",
+      "license": "NCSA, Apache-with-LLVM-Exception, MIT",
+      "revision": "45120ee2331193c3650acc9c427ed267fab31d62",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/libunwind/src/LICENSE.TXT",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/llvm-libc/README.chromium",
+      "name": "llvm-libc",
+      "license": "Apache-with-LLVM-Exception, NCSA",
+      "revision": "43a9a99ce4b5a04954090f8a0e74bf2786f59379",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/llvm-libc/src/LICENSE.TXT",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/modp_b64/README.chromium",
+      "name": "modp base64 decoder",
+      "license": "BSD-3-Clause",
+      "revision": "26701a1c1fcb98ae43eefcaee23abc58459a6e59",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/modp_b64/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/nasm/README.chromium",
+      "name": "Netwide Assembler",
+      "license": "BSD-2-Clause",
+      "revision": null,
+      "shippedField": "no",
+      "licenseFile": "src/third_party/nasm/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/simdutf/README.chromium",
+      "name": "simdutf unicode transcoder",
+      "license": "MIT",
+      "revision": "da645ece",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/simdutf/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/zlib/README.chromium",
+      "name": "zlib",
+      "license": "Zlib",
+      "revision": "09a1572aa624e5ddb6c075dc013880de70b1b9b9",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/zlib/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/zlib/contrib/minizip/README.chromium",
+      "name": "ZIP file API for reading file entries in a ZIP archive",
+      "license": "Zlib",
+      "revision": "09a1572aa624e5ddb6c075dc013880de70b1b9b9",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/zlib/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/third_party/zstd/README.chromium",
+      "name": "Zstandard",
+      "license": "BSD-3-Clause",
+      "revision": "10da6ba6de05e29169261fa4b68eb99239f770dd",
+      "shippedField": "yes",
+      "licenseFile": "src/third_party/zstd/src/LICENSE",
+      "recoveredAndBlobMatched": true
+    },
+    {
+      "readme": "src/url/third_party/mozilla/README.chromium",
+      "name": "url_parse",
+      "license": "BSD-3-Clause, MPL-1.1",
+      "revision": "c7df6606be1bfdf6d6cec37a4ff644a9841c3ec2",
+      "shippedField": "yes",
+      "licenseFile": "src/url/third_party/mozilla/LICENSE.txt",
+      "recoveredAndBlobMatched": true
+    }
+  ],
+  "noticeSelection": "all tracked source filename-based license/notice/copyright materials and README metadata across the complete curated repository, excluding Python license utilities and empty test fixture metadata",
+  "runtimeDependencyGraphMatched": false,
+  "buildInputCoverage": {
+    "originalGoObserved": "1.26.8",
+    "plannedPolarisGo": "1.25.5",
+    "originalClangRevisionObserved": "llvmorg-24-init-3796-g20e97c4b-27",
+    "originalAndroidNativeBuildNdkObserved": "r24",
+    "originalCompilerSysrootSdkPgoDownloadedBytesRecovered": false,
+    "originalGeneratedGnArgsNinjaGraphOrLinkMapRecovered": false,
+    "fixedBuildDriverAndToolDownloadScriptsRecovered": true,
+    "curatedSourceHasGenericToolsLicensesPy": false,
+    "curatedSourceHasAndroidGn2bpLicenseGenerator": true,
+    "androidGn2bpDefaultTargetsMatchTheseLibraries": false
+  },
+  "remainingGates": [
+    "Bind notices to the actual per-target cronet/cronet_static dependency graph, including inline licenses and nested third_party directories; filename inventory and Shipped metadata are not linkage proof.",
+    "Recover or reconstruct exact per-target generated GN/Ninja/link-input metadata at the fixed build source, with provenance linking it to each existing official library hash.",
+    "Complete content identities and required source/notice material for external compiler/runtime, NDK/sysroot, SDK and PGO inputs; log labels alone do not supply those bytes.",
+    "Assemble the required Corresponding Source and build instructions for the actual distributed Polaris kernel and linked dependencies, preserving fixed commits and external input receipts; these two source archives cover only Cronet driver/Naiveproxy.",
+    "Independently review producer/source increments and execute the six hosted native gates; upstream success and local checks do not replace those gates.",
+    "Build and validate final mobile libbox AAR/Apple carriers separately; this six-platform CLI producer does not deliver them."
+  ],
+  "notPerformed": [
+    "new hosted CI dispatch",
+    "tag creation",
+    "Release publication",
+    "source-only prerelease cleanup",
+    "mobile carrier build",
+    "upstream write"
+  ]
+}

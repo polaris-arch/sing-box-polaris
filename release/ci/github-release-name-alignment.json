@@ -1,0 +1,1198 @@
+{
+  "schema": "polaris-alpha12-public-name-alignment-v1",
+  "repository": "polaris-arch/sing-box-polaris",
+  "repositoryId": 1421657509,
+  "releaseId": 416392475,
+  "sourceCommit": "a4d0858605b51b7f5b3c29a9969a6f2c3ae5a0ae",
+  "sourceTree": "830f7256af499e5ad3e7da9a79f0a377ca38fc77",
+  "tag": "v1.15.0-polaris-alpha.12",
+  "tagObject": "916d9533ba0a6092e34bc53f63dace63e11fa85e",
+  "assetLabel": "polaris-alpha12-replacement:a4d0858605b51b7f5b3c29a9969a6f2c3ae5a0ae:49db69a4220eb3f84e89dc241b0f0dafb5ecad93593c62873229f39912084c29",
+  "release": {
+    "tag_name": "v1.15.0-polaris-alpha.12",
+    "target_commitish": "a4d0858605b51b7f5b3c29a9969a6f2c3ae5a0ae",
+    "name": "v1.15.0-polaris-alpha.12",
+    "draft": false,
+    "immutable": false,
+    "prerelease": true,
+    "body": "GitHub-only unsigned build/package prerelease from a4d0858605b51b7f5b3c29a9969a6f2c3ae5a0ae.\n\nPublic products follow the upstream All Release selection. Client packages are sing-box-polaris derivatives, not official SagerNet releases. Original authors, license texts and package contents are retained. APK/EXE/PKG and DEB/RPM signing and macOS notarization are not supplied by this repair.\n\n- Signed installable iOS and tvOS IPA exports require owned signing and provisioning.\n- Signed macOS App Store PKG and Developer ID signed/notarized standalone PKG require owned signing.\n- Store/TestFlight submissions and registry pushes are outside this GitHub-only release.\n\nProducer inventory, original source/index and recoverable asset references are retained in the reviewed publisher Actions audit: https://github.com/polaris-arch/sing-box-polaris/actions/workflows/publish-github.yml\n\nChanges in this alpha.12 rebuild:\n- Fix GitHub public-product selection to match the upstream All release: 168 uploaded products.\n- Restore canonical DEB/RPM filenames and a single Android version-metadata file.\n- Keep SDK, container, unsigned xcarchive and source/index/receipt audit outputs out of public Assets.\n- Replace the same-name release from one reviewed source, with verified staging and interrupted-run recovery.\nThese publication fixes do not claim new device/runtime acceptance or signing.\n\nRebuilt inventory SHA-256: 49db69a4220eb3f84e89dc241b0f0dafb5ecad93593c62873229f39912084c29. All public files were freshly validated for this source; original asset IDs are retired."
+  },
+  "operations": [
+    {
+      "id": 653551275,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-android-386.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-android-386.tar.gz",
+      "bytes": 29313168,
+      "digest": "sha256:1ecc29de9a3b128e36a9ebc0ac25431e80b9e334fc4193a5062477c42dab6a1a"
+    },
+    {
+      "id": 653551350,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-android-amd64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-android-amd64.tar.gz",
+      "bytes": 28376475,
+      "digest": "sha256:b083df05585eaa584db3130e4e1f8758a5b603e6ce3112444f0220e8014d5932"
+    },
+    {
+      "id": 653551407,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-android-arm.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-android-arm.tar.gz",
+      "bytes": 26981562,
+      "digest": "sha256:4869f8e9a4b705a7334e3de21ac5ea335ab37ea9cc4cef4517d085732f6b7750"
+    },
+    {
+      "id": 653551474,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-android-arm64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-android-arm64.tar.gz",
+      "bytes": 26332418,
+      "digest": "sha256:e4e0821b441963dd4dcb293c3c415d7bb8c57a93f7f9166c27c5f4882c383160"
+    },
+    {
+      "id": 653551517,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-darwin-amd64-legacy-macos-10.13.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-darwin-amd64-legacy-macos-10.13.tar.gz",
+      "bytes": 26911654,
+      "digest": "sha256:3d5cbf83402f97d983dbf50b22c3aaf39c538af08fb514864fc2bfc8716c3d2d"
+    },
+    {
+      "id": 653551589,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-darwin-amd64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-darwin-amd64.tar.gz",
+      "bytes": 32431843,
+      "digest": "sha256:944bd54de9efb9a09bab8a1495fb7e7da12d35f0f58771018f34a36578d7c548"
+    },
+    {
+      "id": 653551672,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-darwin-arm64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-darwin-arm64.tar.gz",
+      "bytes": 29953451,
+      "digest": "sha256:09bc8db6475e8317577baa3ab31954671224d24f7f3c3cde7b6077eaca4e86c5"
+    },
+    {
+      "id": 653551753,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-386-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-386-glibc.tar.gz",
+      "bytes": 32089713,
+      "digest": "sha256:fccb85f88a718c9d2fd0b9bc165c34eb630b803718b5aed9c57a9514d059f8e4"
+    },
+    {
+      "id": 653551805,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-386-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-386-musl.tar.gz",
+      "bytes": 32103845,
+      "digest": "sha256:35ab991cd094d834c889d9ac324d4947675c204525453a7ab8f381180cf0293b"
+    },
+    {
+      "id": 653551852,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-386-softfloat.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-386-softfloat.tar.gz",
+      "bytes": 26518294,
+      "digest": "sha256:562b52a9625e0f052b2f90c1d571f0e5078095f4c40aa43eaa7cd34119f70586"
+    },
+    {
+      "id": 653551936,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-386.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-386.tar.gz",
+      "bytes": 26507752,
+      "digest": "sha256:1c07bcdd134baf3801cb03c0bfe1bbb8e84ce58fa60d7e094350bf0e0c91a9d3"
+    },
+    {
+      "id": 653552008,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-amd64-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-amd64-glibc.tar.gz",
+      "bytes": 33463200,
+      "digest": "sha256:c0ed468d6980f27004fcf10fe8420c480aa02210c4a8034804ba3efb7f7dd730"
+    },
+    {
+      "id": 653552093,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-amd64-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-amd64-musl.tar.gz",
+      "bytes": 33486766,
+      "digest": "sha256:82a1b4201dda1df0e298dc2cf5ece558df52413685e58faeefada3086ed3f342"
+    },
+    {
+      "id": 653552247,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-amd64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-amd64.tar.gz",
+      "bytes": 32630733,
+      "digest": "sha256:530de5441ad070ce6bfc61e7db7fa1c2c67a0ee179cfb36916d0ff2d1804884a"
+    },
+    {
+      "id": 653552367,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-arm64-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-arm64-glibc.tar.gz",
+      "bytes": 30517126,
+      "digest": "sha256:4a5a5e0995ba93ad0960c7770cdfbebc492b69e0d7af397105cec1b52f58f893"
+    },
+    {
+      "id": 653552471,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-arm64-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-arm64-musl.tar.gz",
+      "bytes": 30556584,
+      "digest": "sha256:67d2b84f10fe2c49406051225968bbb1e8c5bf473337aaf1f8dcd8ccce2f5b28"
+    },
+    {
+      "id": 653552575,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-arm64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-arm64.tar.gz",
+      "bytes": 29916688,
+      "digest": "sha256:d9878a857c4a45a58d3c41a5a5e4a5de01dc28d5f803a1fc9408e0363215acb2"
+    },
+    {
+      "id": 653552641,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-armv5.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-armv5.tar.gz",
+      "bytes": 26118279,
+      "digest": "sha256:ad930741478829853f7655958925602f6c8d244dfc521209e13f08a09d5f7544"
+    },
+    {
+      "id": 653552734,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-armv6.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-armv6.tar.gz",
+      "bytes": 26106723,
+      "digest": "sha256:d8efa7a21c350ad3f778772d4a1ccdd15473675535ea23d9e2c364ac6ff05a31"
+    },
+    {
+      "id": 653552789,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-armv7-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-armv7-glibc.tar.gz",
+      "bytes": 30787441,
+      "digest": "sha256:239998832bb74cf9d39d1861444c18a194d6aa129f18fde25adfe5a1f9601cec"
+    },
+    {
+      "id": 653552886,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-armv7-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-armv7-musl.tar.gz",
+      "bytes": 30811754,
+      "digest": "sha256:a5f1e164d6529efbc02545032e021793e54b7131820ca0b4c25bb4caa8d025ce"
+    },
+    {
+      "id": 653552998,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-armv7.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-armv7.tar.gz",
+      "bytes": 26077266,
+      "digest": "sha256:2e7ce25e14054cd0dd51e16d8f228af145d1afdc1333f72be83e16579cbff4b3"
+    },
+    {
+      "id": 653553068,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-loong64-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-loong64-glibc.tar.gz",
+      "bytes": 32182409,
+      "digest": "sha256:3430689ca01ae7e779fd45d49b51d0d0fdfad1821ff4bf409cb8d4c3ee5d8019"
+    },
+    {
+      "id": 653553128,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-loong64-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-loong64-musl.tar.gz",
+      "bytes": 32211517,
+      "digest": "sha256:ad62830c5b7e7224619c737081aee129cd2b741e0017fa855c6589800b814480"
+    },
+    {
+      "id": 653553229,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-loong64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-loong64.tar.gz",
+      "bytes": 26863015,
+      "digest": "sha256:b36a20b2c39f18c918fc92bd580df7a3161ebe1ae296f45fcd0297fefa3ebcd7"
+    },
+    {
+      "id": 653553310,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mips-softfloat.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mips-softfloat.tar.gz",
+      "bytes": 25288029,
+      "digest": "sha256:690d45bdd3bc714e92bc4caa55ec39ada077f151abd7b38e5d578fdcf6495c03"
+    },
+    {
+      "id": 653553378,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mips64-softfloat.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mips64-softfloat.tar.gz",
+      "bytes": 24631292,
+      "digest": "sha256:94d321da6c3f564621ce75c043f3077fb43c96db67d7c455392400018344fc2f"
+    },
+    {
+      "id": 653553454,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mips64le-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mips64le-glibc.tar.gz",
+      "bytes": 29861067,
+      "digest": "sha256:2566f0b765ee74be73be836ea9cf0f067531c08e3e2904811807773c169b7e95"
+    },
+    {
+      "id": 653553539,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mips64le-softfloat.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mips64le-softfloat.tar.gz",
+      "bytes": 24072444,
+      "digest": "sha256:3e0ef41a6925b34cecc13b7a23ede0b58a905425ab7e7bab6532d4599504935f"
+    },
+    {
+      "id": 653553619,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mips64le.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mips64le.tar.gz",
+      "bytes": 24062528,
+      "digest": "sha256:6382316054415b43775e711cbdb553169526b659ebdc7396a8ce2a1cf00b17a8"
+    },
+    {
+      "id": 653553723,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mipsle-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mipsle-glibc.tar.gz",
+      "bytes": 31039779,
+      "digest": "sha256:462eac214c6d1803aa71a555ab344d3dfa8a5f350be1991f5461c0c05ae8e740"
+    },
+    {
+      "id": 653553831,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mipsle-softfloat-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mipsle-softfloat-musl.tar.gz",
+      "bytes": 31051602,
+      "digest": "sha256:bd1a873da79f7afd3447f7e9df677217f22c5c177654bbf8fc9a4055d94a0baa"
+    },
+    {
+      "id": 653553932,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mipsle-softfloat.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mipsle-softfloat.tar.gz",
+      "bytes": 24790711,
+      "digest": "sha256:5c0e5725295f44f1286b34a8b7b5f0071600501e82e0bd78d7502548f6c6a100"
+    },
+    {
+      "id": 653554015,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-mipsle.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-mipsle.tar.gz",
+      "bytes": 24798551,
+      "digest": "sha256:c731e8a63e6636f7f5b1240ed758d9c7b51d322bb42dc9e6028ec33236e09f48"
+    },
+    {
+      "id": 653554086,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-ppc64le.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-ppc64le.tar.gz",
+      "bytes": 25529342,
+      "digest": "sha256:cd5756853ad30d0743f2cc1f07f03556456f65331ebf2448e1852750eddef68c"
+    },
+    {
+      "id": 653554226,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-riscv64-glibc.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-riscv64-glibc.tar.gz",
+      "bytes": 31499065,
+      "digest": "sha256:9f2cfef7d69ff7e9663ebce12d7e8ca8111978c2623c941607cab138501a240b"
+    },
+    {
+      "id": 653554343,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-riscv64-musl.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-riscv64-musl.tar.gz",
+      "bytes": 31534397,
+      "digest": "sha256:db321c3941ee1e4d707359f47322716decee46f16009b51e4c57fa9f99516aec"
+    },
+    {
+      "id": 653554447,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-riscv64.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-riscv64.tar.gz",
+      "bytes": 26614181,
+      "digest": "sha256:00ed82f18d24381b81ec27e57fc11e329f4534e294f152bb3b02f3d1e252da86"
+    },
+    {
+      "id": 653554514,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-linux-s390x.tar.gz",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-linux-s390x.tar.gz",
+      "bytes": 27536202,
+      "digest": "sha256:3b165d46b444939cbfb9a93b1a4ca5a38ccb1495c7c74d8be62d5b5095dac418"
+    },
+    {
+      "id": 653554589,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-windows-386-legacy-windows-7.zip",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-windows-386-legacy-windows-7.zip",
+      "bytes": 26953915,
+      "digest": "sha256:2a02ae63a728b8d18aac5bdfe2ac5aaf126d0bb7f399a258be7978a38e212838"
+    },
+    {
+      "id": 653554656,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-windows-386.zip",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-windows-386.zip",
+      "bytes": 27441601,
+      "digest": "sha256:959ed0c2c66839bdc5f4fd26ed23a4c5334ae0b80874067891f54103397378e6"
+    },
+    {
+      "id": 653554719,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7.zip",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-windows-amd64-legacy-windows-7.zip",
+      "bytes": 28349252,
+      "digest": "sha256:790ed17417c0a12cb454bf89858c4876dd1ac950e02a549bc8c61ba28e152c7e"
+    },
+    {
+      "id": 653554803,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-windows-amd64.zip",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-windows-amd64.zip",
+      "bytes": 33831397,
+      "digest": "sha256:9c043724da1e74788fa6be76b849678b934f3be892d295b8f85133007fec5f9c"
+    },
+    {
+      "id": 653554904,
+      "oldName": "sing-box-polaris-1.15.0-polaris-alpha.12-windows-arm64.zip",
+      "newName": "sing-box-polaris-1.15.0-alpha.12-windows-arm64.zip",
+      "bytes": 30238016,
+      "digest": "sha256:9fbff448c31d1ca41e066353e016eeff614c2a52e575d5516d337d5cdbce1032"
+    },
+    {
+      "id": 653554971,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-arm64-v8a-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-arm64-v8a.apk",
+      "bytes": 37664511,
+      "digest": "sha256:1329084e7ec64d916ff1f260cfadb35f36856748b7fbc1314994566fd05900e8"
+    },
+    {
+      "id": 653555098,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-armeabi-v7a-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-armeabi-v7a.apk",
+      "bytes": 37668537,
+      "digest": "sha256:086fe43d40172d3b219801e95c3a46d6d9a25326050fa2b02eb0b3d1a46bdbc9"
+    },
+    {
+      "id": 653555172,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-legacy-android-5-arm64-v8a-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-legacy-android-5-arm64-v8a.apk",
+      "bytes": 31924971,
+      "digest": "sha256:a66a2c782ec7d73dc5cdacca55929a7b0abbb2df3fd5dcd0340137c2c5b511fb"
+    },
+    {
+      "id": 653555253,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-legacy-android-5-armeabi-v7a-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-legacy-android-5-armeabi-v7a.apk",
+      "bytes": 32603389,
+      "digest": "sha256:4865424fee23d2a75f881ae4ba949bb66a272caf1cbd2741e27b2b6442feea29"
+    },
+    {
+      "id": 653555332,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-legacy-android-5-universal-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-legacy-android-5-universal.apk",
+      "bytes": 110542961,
+      "digest": "sha256:556df180df2e010ba96d0cf0360642325c5136a484a880ab864fa21edb6d2cf9"
+    },
+    {
+      "id": 653555470,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-legacy-android-5-x86-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-legacy-android-5-x86.apk",
+      "bytes": 34659845,
+      "digest": "sha256:cb66751de7a0dc6412e8223bce98143c3ab4468a14662cd4728035dac85d3c9b"
+    },
+    {
+      "id": 653555565,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-legacy-android-5-x86_64-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-legacy-android-5-x86_64.apk",
+      "bytes": 33841432,
+      "digest": "sha256:9bad3c20ef824bf6a86b6908310bd5472636c58fdf2a40db15437332d998f401"
+    },
+    {
+      "id": 653555696,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-universal-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-universal.apk",
+      "bytes": 131811768,
+      "digest": "sha256:5de253245331d79c2931e283b58365064c717a322d1f121b1fbc7bc5c8493d52"
+    },
+    {
+      "id": 653555871,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-x86-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-x86.apk",
+      "bytes": 40842925,
+      "digest": "sha256:4ed35f30304e79ddc07eece958300d6ac58b95d333ef907aa03515ac454a84a2"
+    },
+    {
+      "id": 653555961,
+      "oldName": "sing-box-polaris-SFA-1.15.0-polaris-alpha.12-x86_64-unsigned.apk",
+      "newName": "SFA-1.15.0-alpha.12-x86_64.apk",
+      "bytes": 39747902,
+      "digest": "sha256:699947968656d9b1b398689ab7d02cb1772cdc172c9ec34d667e52f3e1bee187"
+    },
+    {
+      "id": 653556073,
+      "oldName": "sing-box-polaris-SFA-version-metadata.json",
+      "newName": "SFA-version-metadata.json",
+      "bytes": 71,
+      "digest": "sha256:ab5b04c194ff082fa588c11d7a3e2f701f9b77d55410371c437a0840e50710a9"
+    },
+    {
+      "id": 653556125,
+      "oldName": "sing-box-polaris-SFI-1.15.0-polaris-alpha.12-iphoneos-arm64.deb",
+      "newName": "SFI-1.15.0-alpha.12-iphoneos-arm64.deb",
+      "bytes": 30618512,
+      "digest": "sha256:fb513370e63fd96b7b1ee5297e68b1ed0e47f6d2c2b4c2ab4f63e8eb6c2a231e"
+    },
+    {
+      "id": 653556194,
+      "oldName": "sing-box-polaris-SFI-1.15.0-polaris-alpha.12-iphoneos-arm64e.deb",
+      "newName": "SFI-1.15.0-alpha.12-iphoneos-arm64e.deb",
+      "bytes": 30618840,
+      "digest": "sha256:af4c0897d61a5f5e3028b9e8c4dfc5d2142036ce00361440e5500beae2f65b3b"
+    },
+    {
+      "id": 653556257,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-aarch64.pkg.tar.zst",
+      "newName": "SFL-1.15.0-alpha.12-aarch64.pkg.tar.zst",
+      "bytes": 117878178,
+      "digest": "sha256:7c659401fc4f7d98ee55162edb0f4ecece81d8a3c4bf5a4ba9f501ed256570d8"
+    },
+    {
+      "id": 653556419,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-aarch64.rpm",
+      "newName": "SFL-1.15.0-alpha.12-aarch64.rpm",
+      "bytes": 102891481,
+      "digest": "sha256:9a9fb36f962f8a87c541ac4b02ce398dbcb70382262ef066cff2513405a5aaf0"
+    },
+    {
+      "id": 653556601,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-amd64.deb",
+      "newName": "SFL-1.15.0-alpha.12-amd64.deb",
+      "bytes": 112056260,
+      "digest": "sha256:9a59723d201a2ce2822fd3dfac97fec87c381a8ed896688c7901e094b64a559d"
+    },
+    {
+      "id": 653556743,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-arm64.deb",
+      "newName": "SFL-1.15.0-alpha.12-arm64.deb",
+      "bytes": 102904732,
+      "digest": "sha256:d14f5d38a361792a883b4b0c35259f281539e7833a15e99aadcb5a03569a8dcf"
+    },
+    {
+      "id": 653556917,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-armv7l.deb",
+      "newName": "SFL-1.15.0-alpha.12-armv7l.deb",
+      "bytes": 107928408,
+      "digest": "sha256:732ba25a25143feef3477a72f90f2a6b77a93f7d3c827cefd642d6716e49bf98"
+    },
+    {
+      "id": 653557076,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-armv7l.pkg.tar.zst",
+      "newName": "SFL-1.15.0-alpha.12-armv7l.pkg.tar.zst",
+      "bytes": 121327823,
+      "digest": "sha256:41a47b6859211aa1b69d4bff9a03cd2a7fb365522348c3bff43d46d7a868a37f"
+    },
+    {
+      "id": 653557242,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-armv7l.rpm",
+      "newName": "SFL-1.15.0-alpha.12-armv7l.rpm",
+      "bytes": 107932629,
+      "digest": "sha256:1e119ddd94319fc0ddf6fcf19a73d348263965560679e56cd1d2db2d22b554aa"
+    },
+    {
+      "id": 653557398,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-x64.pkg.tar.zst",
+      "newName": "SFL-1.15.0-alpha.12-x64.pkg.tar.zst",
+      "bytes": 121803342,
+      "digest": "sha256:02607926b9bab75c1cce2b2c166a89c4a90b4233ffee88940f1ba14950ceecfd"
+    },
+    {
+      "id": 653557569,
+      "oldName": "sing-box-polaris-SFL-1.15.0-polaris-alpha.12-x86_64.rpm",
+      "newName": "SFL-1.15.0-alpha.12-x86_64.rpm",
+      "bytes": 112074869,
+      "digest": "sha256:7bec39003a77d1b03c62c50777339e9b4d502d07ab8021944f52afec5554f9ee"
+    },
+    {
+      "id": 653557726,
+      "oldName": "sing-box-polaris-SFM-1.15.0-polaris-alpha.12-Apple.pkg",
+      "newName": "SFM-1.15.0-alpha.12-Apple.pkg",
+      "bytes": 50856384,
+      "digest": "sha256:e915fc7db69d3ce7a60597943fe1ab1706140ced9d7ff139aa19c20eca18ffe3"
+    },
+    {
+      "id": 653557816,
+      "oldName": "sing-box-polaris-SFM-1.15.0-polaris-alpha.12-Intel.pkg",
+      "newName": "SFM-1.15.0-alpha.12-Intel.pkg",
+      "bytes": 56807159,
+      "digest": "sha256:d7ae1ad8fdfd366915336168bae3cb918be1e7d2498d96c9fea05c7d89794f72"
+    },
+    {
+      "id": 653557935,
+      "oldName": "sing-box-polaris-SFM-1.15.0-polaris-alpha.12-Universal.pkg",
+      "newName": "SFM-1.15.0-alpha.12-Universal.pkg",
+      "bytes": 105703812,
+      "digest": "sha256:703fe32d1fd5c69dfcdda6ae6c1e22269200e35db58232b2fc609c0e2dedc25d"
+    },
+    {
+      "id": 653558092,
+      "oldName": "sing-box-polaris-SFM-1.15.0-polaris-alpha.12.dSYMs.zip",
+      "newName": "SFM-1.15.0-alpha.12.dSYMs.zip",
+      "bytes": 28058932,
+      "digest": "sha256:83b8c925c02a9d780081629c44e7bf3487cd34baaed710f034ecaef8b4a4bff5"
+    },
+    {
+      "id": 653558160,
+      "oldName": "sing-box-polaris-SFW-1.15.0-polaris-alpha.12-arm64.exe",
+      "newName": "SFW-1.15.0-alpha.12-arm64.exe",
+      "bytes": 117123417,
+      "digest": "sha256:450f5abbaaeb192932bd2fd34fbf9b46506b65c92021f6f9e3f5bcf7d1e2673a"
+    },
+    {
+      "id": 653558272,
+      "oldName": "sing-box-polaris-SFW-1.15.0-polaris-alpha.12-x64.exe",
+      "newName": "SFW-1.15.0-alpha.12-x64.exe",
+      "bytes": 115413333,
+      "digest": "sha256:43225f9664a9d417b0c8662742e54a5df9085b70db888adfdbd0a50f5ae59a82"
+    },
+    {
+      "id": 653558394,
+      "oldName": "sing-box-polaris-SFW-1.15.0-polaris-alpha.12-x86.exe",
+      "newName": "SFW-1.15.0-alpha.12-x86.exe",
+      "bytes": 97904837,
+      "digest": "sha256:1614c12940e93b7052dc98c0bf849aab6d0efa5bd1b742c6a9551e648867d00f"
+    },
+    {
+      "id": 653558570,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_aarch64.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_aarch64.apk",
+      "bytes": 30369337,
+      "digest": "sha256:0b68103a46c6464de5fe53fc0fac645791fbb77098f2ac2cf99e9935d9805046"
+    },
+    {
+      "id": 653558663,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_aarch64.pkg.tar.zst",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_aarch64.pkg.tar.zst",
+      "bytes": 29442026,
+      "digest": "sha256:84df40e4056dff61a701fb7f1b2012b2701b5fcdd776462b4da1b0c53d18ed01"
+    },
+    {
+      "id": 653558720,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_aarch64.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_aarch64.rpm",
+      "bytes": 30376273,
+      "digest": "sha256:316e4ebb10ad9bcca0f086155059110d9d55c9772a164e9e3864362be906f5ad"
+    },
+    {
+      "id": 653558808,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_amd64.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_amd64.deb",
+      "bytes": 33271366,
+      "digest": "sha256:8e19718d5c474ad0369c028717bd7a246d58d6b35a3b2be0217a43e3318f265e"
+    },
+    {
+      "id": 653558911,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_arm64.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_arm64.deb",
+      "bytes": 30401908,
+      "digest": "sha256:9806ece1f7fcf8968837f9343218153f46feba213331ec987bbbde04bb0ec620"
+    },
+    {
+      "id": 653559000,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armel.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armel.deb",
+      "bytes": 25909604,
+      "digest": "sha256:cf3e75352f0a425ff0531c7370bc0314668a03c7626f5f34ecc35cc2ca6c4284"
+    },
+    {
+      "id": 653559061,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armhf.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armhf.deb",
+      "bytes": 30612952,
+      "digest": "sha256:055a6d8905c2758dca591b3cd815a9a0d420ffe8e42ea1901fb082984238bcaa"
+    },
+    {
+      "id": 653559248,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armv6hl.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armv6hl.rpm",
+      "bytes": 25854971,
+      "digest": "sha256:2434acbb57cad4f2354523e0d9e7c3b513dde319184c93214bc4b11aeb2e0116"
+    },
+    {
+      "id": 653559325,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armv7.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armv7.apk",
+      "bytes": 30547840,
+      "digest": "sha256:82dc173b15fb07e281900ec29e1d3b2cf10e7031b09b96549ce70958cf62d022"
+    },
+    {
+      "id": 653559410,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armv7hl.pkg.tar.zst",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armv7hl.pkg.tar.zst",
+      "bytes": 29643719,
+      "digest": "sha256:20a60737a8bbb077b490cd1ca8a65c4270b607d18d42ad7d3a4c4dffd9311f55"
+    },
+    {
+      "id": 653559512,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_armv7hl.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_armv7hl.rpm",
+      "bytes": 30556028,
+      "digest": "sha256:f0e7d9bdbf82479a70100e5fa8231bcc54773e14b058f23bc34776274030b013"
+    },
+    {
+      "id": 653559591,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_i386.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_i386.deb",
+      "bytes": 31884892,
+      "digest": "sha256:9ad4e0296f80ded81b9bbf581bcb64654d114077f2e58e959dc00e49d7762783"
+    },
+    {
+      "id": 653559690,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_i386.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_i386.rpm",
+      "bytes": 31814296,
+      "digest": "sha256:9da394f18c6637cb70e97984d0440734c06b7510cc9d6c4d71b830c1393f35c7"
+    },
+    {
+      "id": 653559808,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_loongarch64.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_loongarch64.apk",
+      "bytes": 31963679,
+      "digest": "sha256:6b8037d5fbf1837d4734d7a7a3d93f8c5e9ba7fcd61ed2231cbd2053e9ab71a4"
+    },
+    {
+      "id": 653559882,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_loongarch64.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_loongarch64.deb",
+      "bytes": 32026304,
+      "digest": "sha256:71b9ed905189720d77511fedba9d4a3b3e228be85be96d6ce6516285ec90c4ba"
+    },
+    {
+      "id": 653559962,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_loongarch64.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_loongarch64.rpm",
+      "bytes": 31970264,
+      "digest": "sha256:cffca9cf19604a74f10c3f37e63b68acd0d1813098dd71dbf64817eeac869193"
+    },
+    {
+      "id": 653560041,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_mips64el.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_mips64el.deb",
+      "bytes": 29621966,
+      "digest": "sha256:28412041f7084e4e5c791be1b895c24bd60eb49968d82ce11bc29c2e710c97b0"
+    },
+    {
+      "id": 653560093,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_mips64el.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_mips64el.rpm",
+      "bytes": 29508031,
+      "digest": "sha256:758ad56a87459c32853ca2a585a50011c0ece8918f83025d3544f460a09aaf19"
+    },
+    {
+      "id": 653560153,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_mipsel.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_mipsel.deb",
+      "bytes": 30830764,
+      "digest": "sha256:41be3262bf126947b59a7bbbb33c443f331efc353f467e97fbad65d66fc042c4"
+    },
+    {
+      "id": 653560241,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_mipsel.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_mipsel.rpm",
+      "bytes": 30709557,
+      "digest": "sha256:ec4ce7e4a122fa935e5b2c82c000259f2edd6ab9a9e34a936b58afed1df7c799"
+    },
+    {
+      "id": 653560299,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_ppc64el.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_ppc64el.deb",
+      "bytes": 25371348,
+      "digest": "sha256:549005b237e0e797dfeb76452c3ac6dab0868c248d4878852bda7cd2acfe50ea"
+    },
+    {
+      "id": 653560375,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_ppc64le.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_ppc64le.rpm",
+      "bytes": 25295563,
+      "digest": "sha256:965434cc0b6c271f47d1bb6e487c2174e7d683653b67f4eaa7ad62d0ca454c6e"
+    },
+    {
+      "id": 653560446,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_riscv64.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_riscv64.apk",
+      "bytes": 31371120,
+      "digest": "sha256:78bee937516f01d3efd55cf7096d9bdfbdbba25dc486ca40270e95214ada1432"
+    },
+    {
+      "id": 653560549,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_riscv64.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_riscv64.deb",
+      "bytes": 31394140,
+      "digest": "sha256:67a20d2d0310c94fa48169d9156b5e0cb3eb3b0c3282814922eb86ac80356702"
+    },
+    {
+      "id": 653560659,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_riscv64.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_riscv64.rpm",
+      "bytes": 31381830,
+      "digest": "sha256:a7b032fe95242c3141c61fb16889b51059d4e04831e4e1e205a0c6584059af3b"
+    },
+    {
+      "id": 653560716,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_s390x.deb",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_s390x.deb",
+      "bytes": 27095744,
+      "digest": "sha256:f61226a662ee1c979b60ed54ef181c0045644b411a86054e794ac3a7b3ef37e5"
+    },
+    {
+      "id": 653560785,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_s390x.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_s390x.rpm",
+      "bytes": 27026638,
+      "digest": "sha256:75427c5b28168a1462ca4a8f8a446bf01a2d40da2abdac4d5a98847b183316ac"
+    },
+    {
+      "id": 653560854,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_x86.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_x86.apk",
+      "bytes": 31806349,
+      "digest": "sha256:638ddeeef6c5174b819d1fc931166bedc4a1a19a093bf5b3c48bfe81a9c21239"
+    },
+    {
+      "id": 653560912,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_x86_64.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_x86_64.apk",
+      "bytes": 33202855,
+      "digest": "sha256:88c24daa3bba7c4046e8635ee2ac02d511ecc3d0e8bd9540ba19070bc0f57d7c"
+    },
+    {
+      "id": 653560987,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_x86_64.pkg.tar.zst",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_x86_64.pkg.tar.zst",
+      "bytes": 32321399,
+      "digest": "sha256:2202d6eedde1a3a6c16dbc07b1c2be54c05240af09ada8d2227dcf0462e28be2"
+    },
+    {
+      "id": 653561051,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_linux_x86_64.rpm",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_linux_x86_64.rpm",
+      "bytes": 33211552,
+      "digest": "sha256:ff7779e1b4795126d7808f7f682127e37920755cefef55f3e4de8254e0026e8e"
+    },
+    {
+      "id": 653561093,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a53.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a53.apk",
+      "bytes": 30368985,
+      "digest": "sha256:d1bc066540634b922cf79d7a84c46db70d68878a95e00096ccba7281b3264bdb"
+    },
+    {
+      "id": 653561184,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a53.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a53.ipk",
+      "bytes": 30331117,
+      "digest": "sha256:b2444c2d0fd147b70472e63d005dc1c63865fadeb9e1994dfff616b477269688"
+    },
+    {
+      "id": 653561243,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a72.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a72.apk",
+      "bytes": 30368985,
+      "digest": "sha256:71546d3a8f400bb1b918c47ffa64490f5667888805d42d7ca4f610df6f6ea2b4"
+    },
+    {
+      "id": 653561323,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a72.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a72.ipk",
+      "bytes": 30331125,
+      "digest": "sha256:2def8a60369193936a8d57b7cf0a6e34ccfe670db614802ca0133d82570318cc"
+    },
+    {
+      "id": 653561407,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a76.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a76.apk",
+      "bytes": 30368985,
+      "digest": "sha256:3e977869b38b08540deacd2acbc626d6491d5fc83c53eb3fb8a353447227aadb"
+    },
+    {
+      "id": 653561476,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_cortex-a76.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_cortex-a76.ipk",
+      "bytes": 30331121,
+      "digest": "sha256:e353f0e43719b9870c28d9f86f71c2fcc668d4fc3584fd94d56e8d3ece98ab43"
+    },
+    {
+      "id": 653561559,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_generic.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_generic.apk",
+      "bytes": 30368986,
+      "digest": "sha256:c6b32986cc5334dffa7a1ee8e7208ebdaeee94966c53114314d4410088ce8d15"
+    },
+    {
+      "id": 653561633,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_aarch64_generic.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_aarch64_generic.ipk",
+      "bytes": 30331115,
+      "digest": "sha256:3b1d4f54896f46b67d8099351eceedad05f04322424b1eb927f0ddce2cec8876"
+    },
+    {
+      "id": 653561720,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_arm1176jzf-s_vfp.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_arm1176jzf-s_vfp.apk",
+      "bytes": 25846906,
+      "digest": "sha256:b4ace953e6809783909b6462ffd43c786cc5aa837e0813d29d82ce63745d33d6"
+    },
+    {
+      "id": 653561784,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_arm1176jzf-s_vfp.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_arm1176jzf-s_vfp.ipk",
+      "bytes": 25868960,
+      "digest": "sha256:219370167d9785ccde2e6882d92fa9d168a5b14ef0d42fc9a41cbcb083992fa0"
+    },
+    {
+      "id": 653561874,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_arm926ej-s.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_arm926ej-s.apk",
+      "bytes": 25856598,
+      "digest": "sha256:8c706fbb3e9b6b8786dc5ea13e237c755df804492ea752301891952a49a2c657"
+    },
+    {
+      "id": 653561949,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_arm926ej-s.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_arm926ej-s.ipk",
+      "bytes": 25881668,
+      "digest": "sha256:45db8620d161535bea8234a3f304d9afe28d5a7df75f2e78b4d04b0d731d0aa0"
+    },
+    {
+      "id": 653562005,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a15_neon-vfpv4.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a15_neon-vfpv4.apk",
+      "bytes": 30547417,
+      "digest": "sha256:0906486f21cb242636ff9a67ba034c8e2a33cf714a2afec0db6348318bbc4787"
+    },
+    {
+      "id": 653562104,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a15_neon-vfpv4.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a15_neon-vfpv4.ipk",
+      "bytes": 30571939,
+      "digest": "sha256:29925990d0fe1159ded6febb950ed8f0a159deabcdc1f43c33c85d247be7c285"
+    },
+    {
+      "id": 653562206,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a5_vfpv4.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a5_vfpv4.apk",
+      "bytes": 30547406,
+      "digest": "sha256:6f6353024930c2fad16f8c61b4df606f1c7cb7bd3f83665c630e3fa8312a4549"
+    },
+    {
+      "id": 653562296,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a5_vfpv4.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a5_vfpv4.ipk",
+      "bytes": 30571952,
+      "digest": "sha256:3e57ce1d5863c7ec9cdb4b839c03193b7668dfb6e6af54835b9b27dceca6bb93"
+    },
+    {
+      "id": 653562392,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7.apk",
+      "bytes": 25856586,
+      "digest": "sha256:1bb1e586970f32333617f45b0a21a4a984e050996a6237b14494c61a4ed4e75c"
+    },
+    {
+      "id": 653562490,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7.ipk",
+      "bytes": 25881673,
+      "digest": "sha256:0567483ba055054d216483b608606c0502ace05550406b46b22e73bfac2de770"
+    },
+    {
+      "id": 653562559,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7_neon-vfpv4.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7_neon-vfpv4.apk",
+      "bytes": 30547410,
+      "digest": "sha256:0030cc6c330aa122f29c2eef297ef5071f2210b0184f3ad0e0e3a7c8428a7288"
+    },
+    {
+      "id": 653562642,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7_neon-vfpv4.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7_neon-vfpv4.ipk",
+      "bytes": 30571933,
+      "digest": "sha256:43fb6ff7d5399774ffa0afe591da5932983d86c9c3efa2685b21d43646e6d636"
+    },
+    {
+      "id": 653562728,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7_vfpv4.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7_vfpv4.apk",
+      "bytes": 30547407,
+      "digest": "sha256:796f6f7b08742468ecbf3f32fe4c9c43d90f05137e9c964ad54cf8b308be33b2"
+    },
+    {
+      "id": 653562822,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a7_vfpv4.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a7_vfpv4.ipk",
+      "bytes": 30571950,
+      "digest": "sha256:e645f6fed306fbe7b815b74e0c9200374dc1fbb4236e6e246f0d03d36a867cf0"
+    },
+    {
+      "id": 653562899,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a8_vfpv3.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a8_vfpv3.apk",
+      "bytes": 30547404,
+      "digest": "sha256:90b89a05ec0b8d41ddd3113be413387ce76180374539870533319d6dc7d398a6"
+    },
+    {
+      "id": 653562983,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a8_vfpv3.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a8_vfpv3.ipk",
+      "bytes": 30571946,
+      "digest": "sha256:847c279b164783927c4752dcf548c4416cb23be8d7ce01b6b929680b3f6a1917"
+    },
+    {
+      "id": 653563066,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9.apk",
+      "bytes": 25856587,
+      "digest": "sha256:5efa4493b5d5678e8b1fad4e996eb9ddc3706eab50efcf4451e1510b1c853706"
+    },
+    {
+      "id": 653563138,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9.ipk",
+      "bytes": 25881678,
+      "digest": "sha256:b2a89aeae2b90b4c6f64fc11d85e4c02dee70825016b0776b4b31d2fab74cb18"
+    },
+    {
+      "id": 653563219,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9_neon.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9_neon.apk",
+      "bytes": 30547409,
+      "digest": "sha256:33acef3f4c855502316aaff3d4d05a98c0b1afb2eae0a074b5bb1eaa282cffa6"
+    },
+    {
+      "id": 653563298,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9_neon.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9_neon.ipk",
+      "bytes": 30571932,
+      "digest": "sha256:94b904368634b883d0cbfe5a0b9562e2b61706e32ded92301e6e303562991a17"
+    },
+    {
+      "id": 653563414,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9_vfpv3-d16.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9_vfpv3-d16.apk",
+      "bytes": 30547407,
+      "digest": "sha256:9fc6453ab7381bcb38970a3bbf6104394b1996c846b6a75f025ee6a404f5d43b"
+    },
+    {
+      "id": 653563507,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_cortex-a9_vfpv3-d16.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_cortex-a9_vfpv3-d16.ipk",
+      "bytes": 30571948,
+      "digest": "sha256:6a4c1ec056a84724c51e6d8088fd48dd5512b3a876706b4c7789bb8b04fdc7cc"
+    },
+    {
+      "id": 653563576,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_fa526.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_fa526.apk",
+      "bytes": 25856598,
+      "digest": "sha256:a0dc49105affae7ad13947222b6916d1be08dede097df2a271d32f8ac0f087fe"
+    },
+    {
+      "id": 653563669,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_fa526.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_fa526.ipk",
+      "bytes": 25881667,
+      "digest": "sha256:eacc156ea421ae1a1383539a6046d4916b5aa08123eefa4dd8a5bcc789eb751b"
+    },
+    {
+      "id": 653563746,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_xscale.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_xscale.apk",
+      "bytes": 25856570,
+      "digest": "sha256:2be4ff0d7565fc5dfaa57e833cec1330d89c5b29fcc04542321f0349bae11320"
+    },
+    {
+      "id": 653563859,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_arm_xscale.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_arm_xscale.ipk",
+      "bytes": 25881674,
+      "digest": "sha256:b4bfa6a827395e7a1903d19d6110ef3e0a8374207fd63e0c88385f44796f96bb"
+    },
+    {
+      "id": 653563988,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_i386_pentium-mmx.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_i386_pentium-mmx.apk",
+      "bytes": 26236505,
+      "digest": "sha256:cfc7d59bc67f77e0361bf9de2d060249e83a8b3f72084bf1a6dff54b2efdcd0b"
+    },
+    {
+      "id": 653564122,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_i386_pentium-mmx.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_i386_pentium-mmx.ipk",
+      "bytes": 26279531,
+      "digest": "sha256:b9b37419254e8a07914d6759364afa7b291572b2a7c6319703639ac3538331e2"
+    },
+    {
+      "id": 653564199,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_i386_pentium4.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_i386_pentium4.apk",
+      "bytes": 31805901,
+      "digest": "sha256:b25901fa05c3367aef0d8e742acd9cd9b71ad19830a4fe100817da49cc2eda6d"
+    },
+    {
+      "id": 653564267,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_i386_pentium4.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_i386_pentium4.ipk",
+      "bytes": 31846829,
+      "digest": "sha256:64402a677e78c451ce4a86a6a1fa5dc1c45d25b509494f6d91e1bbfeffc32d35"
+    },
+    {
+      "id": 653564329,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_loongarch64_generic.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_loongarch64_generic.apk",
+      "bytes": 31963308,
+      "digest": "sha256:d1dea31d39c8c8c4ed0d0aae9edbdd19753fda8754717da259c99d9d650daa8a"
+    },
+    {
+      "id": 653564435,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_loongarch64_generic.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_loongarch64_generic.ipk",
+      "bytes": 31883559,
+      "digest": "sha256:d4046f928912041e031a91d14f831de266c39c272a32d7b8521a410c771a9f3a"
+    },
+    {
+      "id": 653564514,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64_mips64r2.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64_mips64r2.apk",
+      "bytes": 24003712,
+      "digest": "sha256:817b55e08abfcaefa9c97a24718287ab7dc26406b6a4d83d26ffadb314083e4b"
+    },
+    {
+      "id": 653564582,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64_mips64r2.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64_mips64r2.ipk",
+      "bytes": 23997982,
+      "digest": "sha256:69dafbebead11fcd43837697115a6075bccebbf6fc9f6b531a91a149d1bb7766"
+    },
+    {
+      "id": 653564678,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64_octeonplus.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64_octeonplus.apk",
+      "bytes": 24003708,
+      "digest": "sha256:0ef31fcbbf5419e46956d19e64b052e734eb6abc2939676f27b12ae222fd6ef3"
+    },
+    {
+      "id": 653564755,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64_octeonplus.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64_octeonplus.ipk",
+      "bytes": 23997989,
+      "digest": "sha256:c4564581da9ab78fd857a6631c456223d48a0db787b7afb4c46614f6796d2abf"
+    },
+    {
+      "id": 653564866,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64el_mips64r2.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64el_mips64r2.apk",
+      "bytes": 23763666,
+      "digest": "sha256:61673a63c34376b79b7b094d8590f12f935b8945b61d385654d2740cceac3351"
+    },
+    {
+      "id": 653564967,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips64el_mips64r2.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips64el_mips64r2.ipk",
+      "bytes": 23788724,
+      "digest": "sha256:61cbf8d2d2dab872bd9351b577504e695e5215bb31f4e16a657ac5644e14c15f"
+    },
+    {
+      "id": 653565058,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_24kc.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_24kc.apk",
+      "bytes": 24721586,
+      "digest": "sha256:940b0c2ae110111da827485c978adab78255bba90759cbbcd817631c2ec2f1cd"
+    },
+    {
+      "id": 653565210,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_24kc.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_24kc.ipk",
+      "bytes": 24752270,
+      "digest": "sha256:775538ca22cbc304f1d3635c8705ef559d9f9d422226afc55882caa01351bacb"
+    },
+    {
+      "id": 653565299,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_4kec.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_4kec.apk",
+      "bytes": 24721602,
+      "digest": "sha256:9c40169e7c859b63a6dafec41b93dc32886df2cd796b17e5cad20a7117b3f5b6"
+    },
+    {
+      "id": 653565401,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_4kec.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_4kec.ipk",
+      "bytes": 24752272,
+      "digest": "sha256:f34cccd6a6e02906b84cfb10e19909fd1c29a64f371f2bccce3d555d59188008"
+    },
+    {
+      "id": 653565501,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_mips32.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_mips32.apk",
+      "bytes": 24721590,
+      "digest": "sha256:91a90bc36f5cfa1a979414949eeed5f1a68fc19438e7302c0e7711d5ba8ef8e6"
+    },
+    {
+      "id": 653565601,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mips_mips32.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mips_mips32.ipk",
+      "bytes": 24752270,
+      "digest": "sha256:74e32bbe3992a43b7580a8ce28eb3f6244b8369af20bacf983bbebfed48d5d08"
+    },
+    {
+      "id": 653565670,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_24kc.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_24kc.apk",
+      "bytes": 30701916,
+      "digest": "sha256:483c747fa0fb892fd0b0043939455398b9013c5777b5a8f52680666e52996d54"
+    },
+    {
+      "id": 653565742,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_24kc.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_24kc.ipk",
+      "bytes": 30777982,
+      "digest": "sha256:d9c35ad7626c755cf8d2ffd883c9e8bfbfe8f8d90ac5b14168506e7335e0bf4b"
+    },
+    {
+      "id": 653565808,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_24kc_24kf.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_24kc_24kf.apk",
+      "bytes": 24510120,
+      "digest": "sha256:c637aad8fa23c1e269727e2b4b421b138b6e8303f0e7cef7539d9b5e170647bb"
+    },
+    {
+      "id": 653565879,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_24kc_24kf.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_24kc_24kf.ipk",
+      "bytes": 24562935,
+      "digest": "sha256:0d9c79aa21baf3eb897658d599713a6cbe324382d96cff0bb15de89993c24c88"
+    },
+    {
+      "id": 653566045,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_74kc.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_74kc.apk",
+      "bytes": 30701937,
+      "digest": "sha256:b87d397f867022947be3df58e9b1ba01f37d753397ea902646575cae0b886719"
+    },
+    {
+      "id": 653566127,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_74kc.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_74kc.ipk",
+      "bytes": 30777973,
+      "digest": "sha256:2c4929b31c7f6f4b1dfc5f60952236cc6f2c4ba529bc84cad38a2381bd955734"
+    },
+    {
+      "id": 653566213,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_mips32.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_mips32.apk",
+      "bytes": 30701914,
+      "digest": "sha256:9a35c6e0c1aaab365ee77ca2a8f2a084aed1c61eb9fd8c3073a883bd8eb4892a"
+    },
+    {
+      "id": 653566311,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_mipsel_mips32.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_mipsel_mips32.ipk",
+      "bytes": 30777974,
+      "digest": "sha256:5764388c40d86721d633bd55800b4c0d10ce70440f97da2c0503a515f275cbf6"
+    },
+    {
+      "id": 653566416,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_riscv64_generic.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_riscv64_generic.apk",
+      "bytes": 31371000,
+      "digest": "sha256:870bb681a7cabd75b4512f9c3c6c8b86754a2ec770ce567588938af9c6d81623"
+    },
+    {
+      "id": 653566536,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_riscv64_generic.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_riscv64_generic.ipk",
+      "bytes": 31295626,
+      "digest": "sha256:0b5d1f4575662ea5d9c14efc5ba689eee379c244f97769e72233a1108447378c"
+    },
+    {
+      "id": 653566649,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_x86_64.apk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_x86_64.apk",
+      "bytes": 33202567,
+      "digest": "sha256:677ce2a9c0d8d51031d959342352b30f69bce65efc756a3fe8bdc2a9ec2849af"
+    },
+    {
+      "id": 653566753,
+      "oldName": "sing-box-polaris_1.15.0-polaris-alpha.12_openwrt_x86_64.ipk",
+      "newName": "sing-box-polaris_1.15.0-alpha.12_openwrt_x86_64.ipk",
+      "bytes": 33203704,
+      "digest": "sha256:04fbd46cad2bbf01c9fc78558486c59f14ee431a02f12b9bcf59021774c3b0fa"
+    }
+  ]
+}

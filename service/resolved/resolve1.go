@@ -252,9 +252,7 @@ func (t *resolve1Manager) ResolveAddress(sender dbus.Sender, ifIndex int32, fami
 		return
 	}
 	request := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			RecursionDesired: true,
-		},
+		RecursionDesired: true,
 		Question: []mDNS.Question{
 			{
 				Name:   common.Must1(mDNS.ReverseAddr(addr.String())),
@@ -287,9 +285,7 @@ func (t *resolve1Manager) ResolveAddress(sender dbus.Sender, ifIndex int32, fami
 
 func (t *resolve1Manager) ResolveRecord(sender dbus.Sender, ifIndex int32, hostname string, qClass uint16, qType uint16, flags uint64) (records []ResourceRecord, outflags uint64, err *dbus.Error) {
 	request := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			RecursionDesired: true,
-		},
+		RecursionDesired: true,
 		Question: []mDNS.Question{
 			{
 				Name:   mDNS.Fqdn(hostname),
@@ -341,9 +337,7 @@ func (t *resolve1Manager) ResolveService(sender dbus.Sender, ifIndex int32, host
 	ctx := t.logRequest(sender, "ResolveService", t.interfaceName(ifIndex), hostname, sType, domain, familyToString(family), flags)
 
 	srvRequest := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			RecursionDesired: true,
-		},
+		RecursionDesired: true,
 		Question: []mDNS.Question{
 			{
 				Name:   serviceName,
@@ -363,9 +357,7 @@ func (t *resolve1Manager) ResolveService(sender dbus.Sender, ifIndex int32, host
 	}
 
 	txtRequest := &mDNS.Msg{
-		MsgHdr: mDNS.MsgHdr{
-			RecursionDesired: true,
-		},
+		RecursionDesired: true,
 		Question: []mDNS.Question{
 			{
 				Name:   serviceName,
@@ -615,8 +607,7 @@ func wrapError(err error) *dbus.Error {
 	if err == nil {
 		return nil
 	}
-	var rcode dns.RcodeError
-	if errors.As(err, &rcode) {
+	if rcode, ok := errors.AsType[dns.RcodeError](err); ok {
 		return rcodeError(int(rcode))
 	}
 	return dbus.MakeFailedError(err)

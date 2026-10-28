@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+root=${IPKG_INSTROOT:-}
+backup="$root/etc/polaris-box/install-snapshot"
+mkdir -p "$backup"
+# Preserve pre-existing user files even on a first install from another package.
+[ ! -f "$root/etc/config/sing-box" ] || cp -p "$root/etc/config/sing-box" "$backup/uci"
+[ ! -f "$root/etc/sing-box/config.json" ] || cp -p "$root/etc/sing-box/config.json" "$backup/config.json"
+# Restart only a service that was running before this explicit upgrade/install.
+if [ -z "$root" ] && [ -x /etc/init.d/sing-box ] && /etc/init.d/sing-box running; then
+	: > "$backup/was-running"
+	/etc/init.d/sing-box stop
+fi

@@ -22,7 +22,6 @@ import (
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
-	"github.com/sagernet/sing/service"
 	"github.com/sagernet/sing/service/filemanager"
 )
 
@@ -54,17 +53,8 @@ func CheckConfig(configContent string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	ctx = service.ContextWith[adapter.PlatformInterface](ctx, (*platformInterfaceStub)(nil))
-	instance, err := box.New(box.Options{
-		Context: ctx,
-		Options: options,
-	})
-	if err == nil {
-		instance.Close()
-	}
-	return err
+	validationErr, _ := constructAndDisposeConfig(ctx, options)
+	return validationErr
 }
 
 type platformInterfaceStub struct{}
@@ -79,6 +69,11 @@ func (s *platformInterfaceStub) UsePlatformAutoDetectInterfaceControl() bool {
 
 func (s *platformInterfaceStub) AutoDetectInterfaceControl(fd int) error {
 	return nil
+}
+
+// CheckConfig constructs but never starts sockets. An accidental socket use must fail.
+func (s *platformInterfaceStub) BindInterfaceControl(fd int, interfaceName string) error {
+	return os.ErrInvalid
 }
 
 func (s *platformInterfaceStub) UsePlatformInterface() bool {

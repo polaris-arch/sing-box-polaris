@@ -1,27 +1,7 @@
 name: Test
-
-on:
-  push:
-    branches:
-      - oldstable
-      - stable
-      - testing
-      - unstable
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/test.yml'
-  pull_request:
-    branches:
-      - oldstable
-      - stable
-      - testing
-      - unstable
-
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.build }}
-  cancel-in-progress: true
-
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'push' && github.ref_type == 'branch' && format('tip-{0}', github.ref) || format('audit-{0}', github.run_id)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}
 jobs:
   test:
     name: Test
@@ -29,29 +9,76 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
         go:
-          - ~1.25
-          - ~1.26
+        - 1.27.2
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go }}
-      - name: Set build tags and ldflags
-        shell: bash
-        run: |
-          echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)" >> "$GITHUB_ENV"
-          echo "LDFLAGS_SHARED=$(cat release/LDFLAGS)" >> "$GITHUB_ENV"
-      - name: Test (unix)
-        if: matrix.os != 'windows-latest'
-        run: go test -v -exec sudo -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
-      - name: Test (windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
+    - name: Checkout
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Set build tags and ldflags
+      shell: bash
+      run: |
+        echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)" >> "$GITHUB_ENV"
+        echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "$GITHUB_ENV"
+    - name: Test (Linux ordinary packages)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        set -euo pipefail
+        selection_dir="$(mktemp -d "$RUNNER_TEMP/root-tests.XXXXXX")"
+        trap 'rm -rf "$selection_dir"' EXIT
+        go list -tags "$BUILD_TAGS" ./... > "$selection_dir/packages.txt"
+        mapfile -t packages < "$selection_dir/packages.txt"
+        ordinary_packages=()
+        netns_count=0
+        for package in "${packages[@]}"; do
+          if [[ "$package" == github.com/sagernet/sing-box/common/netns ]]; then
+            netns_count=$((netns_count + 1))
+          else
+            ordinary_packages+=("$package")
+          fi
+        done
+        test "$netns_count" -eq 1
+        test "${#ordinary_packages[@]}" -gt 0
+        go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" "${ordinary_packages[@]}"
+    - name: Test (Linux netns binary only)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        set -euo pipefail
+        binary_dir="$(mktemp -d "$RUNNER_TEMP/netns-test.XXXXXX")"
+        trap 'rm -rf "$binary_dir"' EXIT
+        # Compile as the runner user; only this package's resulting test binary is elevated.
+        go test -c -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" \
+          -o "$binary_dir/netns.test" github.com/sagernet/sing-box/common/netns
+        sudo -n -- "$binary_dir/netns.test" -test.v | tee "$binary_dir/result.log"
+        grep -q '^--- PASS: TestUnshareNamespace ' "$binary_dir/result.log"
+        grep -qx PASS "$binary_dir/result.log"
+    - name: Test (macOS ordinary packages)
+      if: matrix.os == 'macos-latest'
+      run: go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
+    - name: Test (windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
+'on':
+  workflow_dispatch: {}
+  push:
+    branches:
+    - polaris-main
+    paths-ignore:
+    - '**.md'
+    - .github/**
+    - '!.github/workflows/test.yml'
+  pull_request:
+    branches:
+    - polaris-main
+permissions:
+  contents: read

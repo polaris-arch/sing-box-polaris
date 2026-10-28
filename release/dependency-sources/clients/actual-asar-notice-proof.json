@@ -1,0 +1,102 @@
+{
+  "package": "SFL-1.15.0-polaris-alpha.12-arm64.deb",
+  "asarBytes": 10998501,
+  "asarSHA256": "a0cc2fdd969dcbe7ea68fdb2748703c24a62d323947f61664737eb1f47c66b8b",
+  "noticeFiles": [
+    {
+      "path": "node_modules/@nornagon/put/LICENSE",
+      "bytes": 1141,
+      "sha256": "05991c2e8f070b69ec5b656c2c12fd07cd0153dd157d39b050b82af59b319a01"
+    },
+    {
+      "path": "node_modules/dbus-next/LICENSE",
+      "bytes": 1073,
+      "sha256": "435a6722c786b0a56fbe7387028f1d9d3f3a2d0fb615bb8fee118727c3f59b7b"
+    },
+    {
+      "path": "node_modules/duplexer/LICENCE",
+      "bytes": 1050,
+      "sha256": "19338d17a974d1c747b3f6c618f08975b8908fdebccbc047c0e72b09daf6ddd3"
+    },
+    {
+      "path": "node_modules/event-stream/LICENCE",
+      "bytes": 1094,
+      "sha256": "900919407441fbbf16819a02db366ac1547f44c293a4ad48f4cf148365d5b940"
+    },
+    {
+      "path": "node_modules/from/LICENSE.APACHE2",
+      "bytes": 586,
+      "sha256": "e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55"
+    },
+    {
+      "path": "node_modules/from/LICENSE.MIT",
+      "bytes": 1088,
+      "sha256": "d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505"
+    },
+    {
+      "path": "node_modules/hexy/LICENSE",
+      "bytes": 1078,
+      "sha256": "2b6330601c13a0754c2c4669e01017b2a5b5a122e0f8f8f5423ac226647103ff"
+    },
+    {
+      "path": "node_modules/jsbi/LICENSE",
+      "bytes": 10174,
+      "sha256": "9568a2b155e66ac3e0ba1fd80b52b827b9460e6cf6f233125e7cbca8e206ddc3"
+    },
+    {
+      "path": "node_modules/long/LICENSE",
+      "bytes": 11560,
+      "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "path": "node_modules/map-stream/LICENCE",
+      "bytes": 1070,
+      "sha256": "8937affb1fac84258c98aa2351eb161405999975b602140c43bcbac23b22f1e9"
+    },
+    {
+      "path": "node_modules/pause-stream/LICENSE",
+      "bytes": 12544,
+      "sha256": "2c2dd540243de136952bd3eaaaa43a9c8bab1a211ce9bf0ff6abe17d3191e261"
+    },
+    {
+      "path": "node_modules/safe-buffer/LICENSE",
+      "bytes": 1081,
+      "sha256": "c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac"
+    },
+    {
+      "path": "node_modules/sax/LICENSE.md",
+      "bytes": 1552,
+      "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004"
+    },
+    {
+      "path": "node_modules/split/LICENCE",
+      "bytes": 1070,
+      "sha256": "8937affb1fac84258c98aa2351eb161405999975b602140c43bcbac23b22f1e9"
+    },
+    {
+      "path": "node_modules/stream-combiner/LICENSE",
+      "bytes": 1073,
+      "sha256": "6d11f0c1826a10e8343e091e4b707ab02e33b9176154e6c15e8900274706c0d9"
+    },
+    {
+      "path": "node_modules/through/LICENSE.APACHE2",
+      "bytes": 586,
+      "sha256": "e8734448285a2dd773d40136ed5d5e8163a70701dd540cdc796cfca232f67d55"
+    },
+    {
+      "path": "node_modules/through/LICENSE.MIT",
+      "bytes": 1088,
+      "sha256": "d72dea1a8cdf3f4dfa2f594253d0c5b37baefc76e806f5ecb0e426393edcd505"
+    },
+    {
+      "path": "node_modules/xml2js/LICENSE",
+      "bytes": 1079,
+      "sha256": "c51452ef1dfd5606c9fe266930fa6bf7e8a534d52973b6475df5bf212cad5b0a"
+    },
+    {
+      "path": "node_modules/xmlbuilder/LICENSE",
+      "bytes": 1101,
+      "sha256": "e368bc4263b466cf98c225af15e300549e00da8859416a4536109e9654d434a8"
+    }
+  ]
+}

@@ -2,8 +2,10 @@ package libbox
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -31,6 +33,7 @@ type platformTransport struct {
 	iif               LocalDNSTransport
 	preferredResolver *local.PreferredDomainResolver
 	networkManager    adapter.NetworkManager
+	calls             dnsCallGate
 }
 
 func newPlatformTransport(ctx context.Context, logger log.ContextLogger, iif LocalDNSTransport, tag string, options option.LocalDNSServerOptions) (*platformTransport, error) {
@@ -47,7 +50,24 @@ func newPlatformTransport(ctx context.Context, logger log.ContextLogger, iif Loc
 }
 
 func (p *platformTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	if stage == adapter.StartStateInitialize {
+		// Start runs once per stage; register the close only once.
+		scope.Add(p.close)
+	}
 	p.preferredResolver.Start(stage)
+	return nil
+}
+
+func (p *platformTransport) close() error {
+	p.calls.access.Lock()
+	cancels, _ := p.calls.sealAndSnapshotLocked()
+	p.iif = nil
+	p.calls.access.Unlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+	// Cancellation and local counts do not change the operational close result.
+	// Existing workers and registration drain tasks still own in-flight leases.
 	return nil
 }
 
@@ -98,38 +118,86 @@ func (p *platformTransport) Environment() []string {
 	return defaultInterface.DNSServers
 }
 
-func (p *platformTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
-	localResponse := p.preferredResolver.Lookup(message)
-	if localResponse != nil {
-		return localResponse, nil
+type dnsPlatformResult struct {
+	response *mDNS.Msg
+	err      error
+}
+
+func (p *platformTransport) startExchange(ctx context.Context, message *mDNS.Msg) (<-chan dnsPlatformResult, <-chan struct{}, error) {
+	p.calls.access.Lock()
+	lease, err := p.calls.beginLocked(ctx)
+	iif, preferredResolver := p.iif, p.preferredResolver
+	p.calls.access.Unlock()
+	if err != nil {
+		return nil, nil, err
 	}
-	response := &ExchangeContext{
-		context: ctx,
+	callCtx := lease.ctx
+	if message == nil {
+		lease.returned()
+		return nil, nil, E.New("nil DNS query")
 	}
-	if p.iif.Raw() {
-		messageBytes, err := message.Pack()
-		if err != nil {
-			return nil, err
-		}
-		done := make(chan error, 1)
-		go func() {
-			exchangeErr := p.iif.Exchange(response, messageBytes)
-			if exchangeErr == nil {
-				exchangeErr = response.error
+	request := message.Copy()
+	response := &ExchangeContext{context: callCtx}
+	done := make(chan dnsPlatformResult, 1)
+	// The interface reference is captured under the admission gate; this worker
+	// keeps it even if Close detaches the transport's reference.
+	go func() {
+		result := dnsPlatformResult{}
+		raw := false
+		var question mDNS.Question
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				result.err = fmt.Errorf("platform DNS call panicked: %v", recovered)
 			}
-			done <- exchangeErr
+			snapshot, registrations := response.complete()
+			lease.returned(registrations...)
+			if result.err == nil {
+				result.err = snapshot.err
+			}
+			if result.err == nil && result.response == nil {
+				if raw {
+					result.response = snapshot.message
+				} else {
+					result.response = dns.FixedResponse(request.Id, question, snapshot.addresses, C.DefaultDNSTTL)
+				}
+			}
+			// A canceled upper caller may already be gone; delivery never blocks drain.
+			done <- result
 		}()
-		select {
-		case err = <-done:
-			if err != nil {
-				return nil, err
-			}
-			return &response.message, nil
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		if err := callCtx.Err(); err != nil {
+			result.err = err
+			return
 		}
-	} else {
-		question := message.Question[0]
+		if preferredResolver != nil {
+			result.response = preferredResolver.Lookup(request)
+			if result.response != nil {
+				return
+			}
+		}
+		if iif == nil {
+			result.err = E.New("missing platform DNS transport")
+			return
+		}
+		// Raw is itself a platform call, covered by this lease and outside the gate.
+		raw = iif.Raw()
+		if err := callCtx.Err(); err != nil {
+			result.err = err
+			return
+		}
+		if raw {
+			messageBytes, err := request.Pack()
+			if err != nil {
+				result.err = err
+				return
+			}
+			result.err = iif.Exchange(response, messageBytes)
+			return
+		}
+		if len(request.Question) == 0 {
+			result.err = E.New("DNS query has no question")
+			return
+		}
+		question = request.Question[0]
 		var network string
 		switch question.Qtype {
 		case mDNS.TypeA:
@@ -137,31 +205,41 @@ func (p *platformTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*m
 		case mDNS.TypeAAAA:
 			network = "ip6"
 		default:
-			return nil, E.New("only IP queries are supported by current version of Android")
+			result.err = E.New("only IP queries are supported by current version of Android")
+			return
 		}
-		done := make(chan error, 1)
-		go func() {
-			lookupErr := p.iif.Lookup(response, network, question.Name)
-			if lookupErr == nil {
-				lookupErr = response.error
-			}
-			done <- lookupErr
-		}()
-		select {
-		case err := <-done:
-			if err != nil {
-				return nil, err
-			}
-			return dns.FixedResponse(message.Id, question, response.addresses, C.DefaultDNSTTL), nil
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
+		result.err = iif.Lookup(response, network, question.Name)
+	}()
+	return done, lease.aborted, nil
+}
+
+func waitPlatformDNS(done <-chan dnsPlatformResult, ctx context.Context, aborted <-chan struct{}) (*mDNS.Msg, error) {
+	select {
+	case result := <-done:
+		return result.response, result.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-aborted:
+		return nil, context.Canceled
 	}
 }
 
+func (p *platformTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.Msg, error) {
+	done, aborted, err := p.startExchange(ctx, message)
+	if err != nil {
+		return nil, err
+	}
+	return waitPlatformDNS(done, ctx, aborted)
+}
+
 func (p *platformTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
+	done, aborted, err := p.startExchange(ctx, message)
 	go func() {
-		callback(p.Exchange(ctx, message))
+		if err != nil {
+			callback(nil, err)
+			return
+		}
+		callback(waitPlatformDNS(done, ctx, aborted))
 	}()
 }
 
@@ -170,40 +248,111 @@ type Func interface {
 }
 
 type ExchangeContext struct {
-	context   context.Context
-	message   mDNS.Msg
+	access        sync.Mutex
+	context       context.Context
+	message       mDNS.Msg
+	addresses     []netip.Addr
+	error         error
+	registrations []*dnsCancelRegistration
+	completed     bool
+}
+
+// The cancellation holder contains only the callable capability. In particular
+// it never captures an ExchangeContext, transport or host through our closure.
+type dnsCancelHolder struct {
+	access   sync.Mutex
+	callback Func
+}
+
+func (h *dnsCancelHolder) invoke() error {
+	h.access.Lock()
+	callback := h.callback
+	h.callback = nil
+	h.access.Unlock()
+	if callback == nil {
+		return nil
+	}
+	return callback.Invoke()
+}
+
+type dnsExchangeSnapshot struct {
+	message   *mDNS.Msg
 	addresses []netip.Addr
-	error     error
+	err       error
+}
+
+func (c *ExchangeContext) complete() (dnsExchangeSnapshot, []*dnsCancelRegistration) {
+	c.access.Lock()
+	defer c.access.Unlock()
+	if c.completed {
+		return dnsExchangeSnapshot{}, nil
+	}
+	c.completed = true
+	snapshot := dnsExchangeSnapshot{message: c.message.Copy(), addresses: append([]netip.Addr(nil), c.addresses...), err: c.error}
+	registrations := c.registrations
+	c.context, c.registrations = nil, nil
+	c.message, c.addresses, c.error = mDNS.Msg{}, nil, nil
+	return snapshot, registrations
 }
 
 func (c *ExchangeContext) OnCancel(callback Func) {
-	go func() {
-		<-c.context.Done()
-		callback.Invoke()
-	}()
+	holder := &dnsCancelHolder{callback: callback}
+	registration := makeDNSCancelRegistration(holder.invoke)
+	c.access.Lock()
+	if c.completed || c.context == nil {
+		c.access.Unlock()
+		registration.stopAndDetach()
+		return
+	}
+	ctx := c.context
+	c.registrations = append(c.registrations, registration)
+	c.access.Unlock()
+	// complete can win this gap. An already stopped registration refuses arm.
+	registration.arm(ctx)
 }
 
 func (c *ExchangeContext) Success(result string) {
-	c.addresses = common.Map(common.Filter(strings.Split(result, "\n"), func(it string) bool {
+	addresses := common.Map(common.Filter(strings.Split(result, "\n"), func(it string) bool {
 		return !common.IsEmpty(it)
 	}), func(it string) netip.Addr {
 		return M.ParseSocksaddrHostPort(it, 0).Unwrap().Addr
 	})
+	c.access.Lock()
+	defer c.access.Unlock()
+	if !c.completed {
+		c.addresses = addresses
+	}
 }
 
 func (c *ExchangeContext) RawSuccess(result []byte) {
-	err := c.message.Unpack(result)
+	message := new(mDNS.Msg)
+	err := message.Unpack(result)
+	c.access.Lock()
+	defer c.access.Unlock()
+	if c.completed {
+		return
+	}
 	if err != nil {
 		c.error = E.Cause(err, "parse response")
+	} else {
+		c.message = *message
 	}
 }
 
 func (c *ExchangeContext) ErrorCode(code int32) {
-	c.error = dns.RcodeError(code)
+	c.access.Lock()
+	defer c.access.Unlock()
+	if !c.completed {
+		c.error = dns.RcodeError(code)
+	}
 }
 
 func (c *ExchangeContext) ErrnoCode(code int32) {
-	c.error = syscall.Errno(code)
+	c.access.Lock()
+	defer c.access.Unlock()
+	if !c.completed {
+		c.error = syscall.Errno(code)
+	}
 }
 
 var (

@@ -1,0 +1,455 @@
+{
+  "sourceArchives": [
+    {
+      "repository": "Rosemoe/sora-editor",
+      "revision": "b1777d0d465b42515739ffe529b4ec1634ac2175",
+      "sourceURL": "https://github.com/Rosemoe/sora-editor/archive/b1777d0d465b42515739ffe529b4ec1634ac2175.tar.gz",
+      "files": [
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/README.md",
+          "originalPath": "README.md",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/README.md",
+          "sha256": "fee705f489016a6fe177adc6067de3a5d90df8c2f14aaa2b4d136e9355a3f5c3",
+          "bytes": 3925
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/bom/build.gradle.kts",
+          "originalPath": "bom/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/bom/build.gradle.kts",
+          "sha256": "0ab0a892ab38d46bf530b3c62fdb2d0f340c5c05391417bb9010c2e99e213cc5",
+          "bytes": 1632
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/build-logic/convention/build.gradle.kts",
+          "originalPath": "build-logic/convention/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/convention/build.gradle.kts",
+          "sha256": "0c874303751a84a0f3d4e0fb9b7479cdd06fc56d192b0272963ad8c50d09accd",
+          "bytes": 1466
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/build-logic/gradle.properties",
+          "originalPath": "build-logic/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/gradle.properties",
+          "sha256": "cc216d74183ddee2e3ff0f61a367445c72a803a247d7e3b3afd3a322a8bdfc2d",
+          "bytes": 1382
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "originalPath": "build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "sha256": "019b00ec5b99b698462be222d67b2f9e8e10d2c44205e635e25f4445bf717b54",
+          "bytes": 1403
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/build-logic/settings.gradle.kts",
+          "originalPath": "build-logic/settings.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build-logic/settings.gradle.kts",
+          "sha256": "1ee6a94a34ec9ebd46555a1b897f93c386fb362bed91b854064149d3ac84f102",
+          "bytes": 1549
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/build.gradle.kts",
+          "originalPath": "build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/build.gradle.kts",
+          "sha256": "e002feb677e81c7909252074f6abf64f87f1654b64a85c6252d8de3158ae4aa5",
+          "bytes": 4078
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/editor-lsp/README.md",
+          "originalPath": "editor-lsp/README.md",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor-lsp/README.md",
+          "sha256": "7d8a412f64d7389604e2259c0e7f9801db4e7d0abf3ba4f32a1e15f81c8ad0e7",
+          "bytes": 889
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/editor-lsp/build.gradle.kts",
+          "originalPath": "editor-lsp/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor-lsp/build.gradle.kts",
+          "sha256": "01c9e1acfd65801ebdeff36290387b2104d18cf09ff10199d7d659ba753b62fb",
+          "bytes": 1875
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/editor/build.gradle.kts",
+          "originalPath": "editor/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor/build.gradle.kts",
+          "sha256": "e8c3d581620c8a0aebb85346e1d2a2c4710bbcde11e4461e3f7dddce0359bcb2",
+          "bytes": 2189
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/editor/gradle.properties",
+          "originalPath": "editor/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/editor/gradle.properties",
+          "sha256": "983434c260f6e555082910292cf691f6173135b56d30bf7af52e5136e3784a33",
+          "bytes": 1315
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/gradle.properties",
+          "originalPath": "gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle.properties",
+          "sha256": "774da2966847f0d2cec80f8d49ff1b64d051dd9191921e4c69091135612c68d6",
+          "bytes": 3051
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/gradle/libs.versions.toml",
+          "originalPath": "gradle/libs.versions.toml",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle/libs.versions.toml",
+          "sha256": "4109b87a2d2fe9cd4761e6735cf605f17033cff7fcb8f471ad2932a66baf5d66",
+          "bytes": 3064
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/gradle/wrapper/gradle-wrapper.properties",
+          "originalPath": "gradle/wrapper/gradle-wrapper.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/gradle/wrapper/gradle-wrapper.properties",
+          "sha256": "4734f84218fe3f8f4cad02ab6e4404749dae3861cc2606e7886201965e764359",
+          "bytes": 283
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-java/build.gradle.kts",
+          "originalPath": "language-java/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-java/build.gradle.kts",
+          "sha256": "8abfae4acbd378948e8951f9d0112a12e73dc6384d6f8cd7f7d053d2c5aaf1b4",
+          "bytes": 2030
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-java/gradle.properties",
+          "originalPath": "language-java/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-java/gradle.properties",
+          "sha256": "ce098ecb2c6c9316fff071a16d0caade9455f38577965c4a11b5fa4d846e6b30",
+          "bytes": 1329
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-monarch/README.md",
+          "originalPath": "language-monarch/README.md",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/README.md",
+          "sha256": "ff92a9b013ff0f6f9a72585260408e8514015b0c080b1deaaed482b0c9e30331",
+          "bytes": 2163
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-monarch/build.gradle.kts",
+          "originalPath": "language-monarch/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/build.gradle.kts",
+          "sha256": "c25f5b5aa4edeba9f00a42ea0eba9284fc25874f40fbf58372e1dfb12d40e59f",
+          "bytes": 2211
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-monarch/gradle.properties",
+          "originalPath": "language-monarch/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-monarch/gradle.properties",
+          "sha256": "f3b0557333f18aff631154574a2a0d80863c74a849ff69db5f391158157f0ab4",
+          "bytes": 1335
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-textmate/README.md",
+          "originalPath": "language-textmate/README.md",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/README.md",
+          "sha256": "b6fb87aaf0beb35418c3b9e96d01404b3385d1a96ebcaa388e25192ced039585",
+          "bytes": 1053
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-textmate/build.gradle.kts",
+          "originalPath": "language-textmate/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/build.gradle.kts",
+          "sha256": "feeca94b7b0452e5ae53de3cf5c9b73966b39a0f4e3d01e56878c24f1c89d88b",
+          "bytes": 2454
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-textmate/gradle.properties",
+          "originalPath": "language-textmate/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-textmate/gradle.properties",
+          "sha256": "caee1b1273ae51ac2132475cfedc10656872c7457f708784e14360d51929a7ff",
+          "bytes": 1337
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/language-treesitter/build.gradle.kts",
+          "originalPath": "language-treesitter/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/language-treesitter/build.gradle.kts",
+          "sha256": "427503f1015f1bdb33cb17401b92d52c277a81978773cce75442c485b722e942",
+          "bytes": 2038
+        },
+        {
+          "path": "copyleft-source-recipes/Rosemoe__sora-editor/settings.gradle.kts",
+          "originalPath": "settings.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/Rosemoe/sora-editor/b1777d0d465b42515739ffe529b4ec1634ac2175/settings.gradle.kts",
+          "sha256": "51223ac8d7f104d3611d21091ca98c1b89288db471cf485d0852f291e3f835fc",
+          "bytes": 1960
+        }
+      ],
+      "archiveBytes": 5493112,
+      "archiveSHA256": "3ecc25697bb91d597afb87fa19c143ee9f1cc0153a0bbafcdaf1dfc2ac060424",
+      "fullGetVerified": true
+    },
+    {
+      "repository": "itsaky/android-tree-sitter",
+      "revision": "797150222de664181e31be53e9a5b253056ba9b0",
+      "sourceURL": "https://github.com/itsaky/android-tree-sitter/archive/797150222de664181e31be53e9a5b253056ba9b0.tar.gz",
+      "files": [
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/.gitmodules",
+          "originalPath": ".gitmodules",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/.gitmodules",
+          "sha256": "71b9bc3805bbd87b2e4033e6dbf5e296cdfbfed8e74488db19678691574a0497",
+          "bytes": 1220
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/README.md",
+          "originalPath": "README.md",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/README.md",
+          "sha256": "4020b2cdb2d68f00d97d3c24671964b2f4756188f90e0ab12099ac8f25fce4a2",
+          "bytes": 9474
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/android-tree-sitter/build.gradle.kts",
+          "originalPath": "android-tree-sitter/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/android-tree-sitter/build.gradle.kts",
+          "sha256": "126b2146354bc4c8a6237b74cb910ccc8a21ec42b087afd7c3ec1f3388e2be24",
+          "bytes": 1605
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/android-tree-sitter/src/main/cpp/CMakeLists.txt",
+          "originalPath": "android-tree-sitter/src/main/cpp/CMakeLists.txt",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/android-tree-sitter/src/main/cpp/CMakeLists.txt",
+          "sha256": "abcc651945113b5f353958cebb07aec4b73056b99a2e50ac6a5659fa9f4e4ad8",
+          "bytes": 2067
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/annotation-processors/build.gradle.kts",
+          "originalPath": "annotation-processors/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/annotation-processors/build.gradle.kts",
+          "sha256": "7259575df8696705362b22411378e706c80c642720de0e8292062f6ee0f56059",
+          "bytes": 1221
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/annotations/build.gradle.kts",
+          "originalPath": "annotations/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/annotations/build.gradle.kts",
+          "sha256": "8457e8e13abd90d97fffc6f8769dbe885b45f212f2aacd0d94a712b1a4e0fe6d",
+          "bytes": 970
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/build-logic/ats/build.gradle.kts",
+          "originalPath": "build-logic/ats/build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/ats/build.gradle.kts",
+          "sha256": "48923d76b479c6ee0ede7e087f2eb83d343e8daa420008237c115eeab3699b7c",
+          "bytes": 1979
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/build-logic/gradle.properties",
+          "originalPath": "build-logic/gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/gradle.properties",
+          "sha256": "308e353782a58420931c9c99f282301bec9a0915e4446cd588aa74c9fdaf945b",
+          "bytes": 834
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "originalPath": "build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/gradle/wrapper/gradle-wrapper.properties",
+          "sha256": "55fbb41e499214b5efbabf03bcdb440d93296665570bf6688f4cd44c320d9e5e",
+          "bytes": 200
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/build-logic/settings.gradle.kts",
+          "originalPath": "build-logic/settings.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build-logic/settings.gradle.kts",
+          "sha256": "fb5431c44bfb098a70358a6eb8d84eef95f8a17674e6b654471c553456a4a3fb",
+          "bytes": 1095
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/build.gradle.kts",
+          "originalPath": "build.gradle.kts",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/build.gradle.kts",
+          "sha256": "23b9d1e68f47d8b6a6927a7c2f5a08671aa26b964c3d563129fd32027dca8c5e",
+          "bytes": 6016
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/gradle.properties",
+          "originalPath": "gradle.properties",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle.properties",
+          "sha256": "a042b7a4e1306263d9f8c21986928ce3c245563b11f9da96708617b53e6bff3b",
+          "bytes": 109
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/gradle/libs.versions.toml",
+          "originalPath": "gradle/libs.versions.toml",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle/libs.versions.toml",
+          "sha256": "a865e045480638cc45a3f5855d7c8e07c6be5d5ea04838272ef615353201972d",
+          "bytes": 2214
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/gradle/wrapper/gradle-wrapper.properties",
+          "originalPath": "gradle/wrapper/gradle-wrapper.properties",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/gradle/wrapper/gradle-wrapper.properties",
+          "sha256": "cdab1ffb439219b1db125e3c99a86cf2424f8762b9b3faa404ed061e3635ecde",
+          "bytes": 251
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/grammars/README.md",
+          "originalPath": "grammars/README.md",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/grammars/README.md",
+          "sha256": "7a384a3dd63b1ea5530b87844137fae6551a0dcea2750be672d4e77ebe8f0d54",
+          "bytes": 870
+        },
+        {
+          "path": "copyleft-source-recipes/itsaky__android-tree-sitter/settings.gradle",
+          "originalPath": "settings.gradle",
+          "sourceURL": "https://raw.githubusercontent.com/itsaky/android-tree-sitter/797150222de664181e31be53e9a5b253056ba9b0/settings.gradle",
+          "sha256": "b3e9bc0a39d0f0f30e5f621843b15997ae091334f3fd83c7d404feebaa3c025b",
+          "bytes": 1619
+        }
+      ],
+      "archiveBytes": 854614,
+      "archiveSHA256": "1134d825ea0b3e76f4a111b87f65e7d3b826850739344e81dc618a3d0d2b456d",
+      "fullGetVerified": true
+    }
+  ],
+  "desugarFixedRuntimeJar": {
+    "coordinate": "com.android.tools:desugar_jdk_libs:2.1.5",
+    "sourceURL": "https://dl.google.com/dl/android/maven2/com/android/tools/desugar_jdk_libs/2.1.5/desugar_jdk_libs-2.1.5.jar",
+    "files": [],
+    "archiveBytes": 6113073,
+    "archiveSHA256": "d8044befae095781b9a80bf1faa92edc30382d75d437476784c1bf991598a976",
+    "discardedNonNoticeEntries": [
+      {
+        "originalPath": "java/util/PrimitiveIterator$OfLong.class",
+        "sha256": "f74a077b150677dc7284cdb2cc667594f3f84439bf9743a59aadbbd659469472",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/Spliterator$OfLong.class",
+        "sha256": "31b35c8f1d2bafe2990ed4b39ce4992d70515c9163e0aa70581b1b1633d9495b",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/Spliterators$EmptySpliterator$OfLong.class",
+        "sha256": "cc1dea8dbfce658c50251ef714e5c49b7d88c7bcf92eec30ddbcfdbffee9af04",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/SpinedBuffer$OfLong.class",
+        "sha256": "2b11139615d3de8d4e3cb615302ecc312c38bb28234cd21c86d1ddabf4a6eaa0",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Node$OfLong.class",
+        "sha256": "0c95b5c412444be7a811eb775da1aeeda283339e3f9cb9dd76191926541a4680",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/SpinedBuffer$OfLong$1Splitr.class",
+        "sha256": "374d7e034ff2119cee5d4d48b60a34b4ec8c1643dc7455ea453e206540982c7d",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong.class",
+        "sha256": "67d7dee58bbe554bb46a2d380f18e26c430e7228dd31c7041e5eb88da53c1fd8",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$CollectorTask$OfLong.class",
+        "sha256": "de4698eb27eaccfb752348431a954d7d87e55056f6e5161839b08b8a9346d0de",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/StreamSpliterators$DelegatingSpliterator$OfLong.class",
+        "sha256": "f775cfcf00541cdd33daa145acd7151d10b2c3a12cf4ba7c78f9e7de0c35659f",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/ReduceOps$CountingSink$OfLong.class",
+        "sha256": "6dfaef13b54ba16e81414a0508118fe7893c362937eeef02b0632c448548dd79",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$ConcNode$OfLong.class",
+        "sha256": "954cf590976b800d02204d922b5623992ca4ba4291917317af2b514c6b52e1c3",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Sink$OfLong.class",
+        "sha256": "e8646bc308b8b15add201ff447925882ae10ef0a2ac8535203042e91472f4b4b",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Dropping.class",
+        "sha256": "80839e654581d2242b504de19bd48555e5ca43fb2a0ec73e0796ab96d1867e83",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/StreamSpliterators$InfiniteSupplyingSpliterator$OfLong.class",
+        "sha256": "0c694633d2915ba785037a4a90dcc74cea9d8f188511a11ac41047be4947c24c",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$EmptyNode$OfLong.class",
+        "sha256": "47d3ad97a6c3b7af86f3b921f1b755925fc363339dd70e8d01b04a873592fbf0",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Streams$ConcatSpliterator$OfLong.class",
+        "sha256": "fd00039c33c07f4bd156430fd48a799d4156af8e767c5f6061040da55531455c",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$SizedCollectorTask$OfLong.class",
+        "sha256": "1f54fdfe54c63cc52b78fb12502b9ef6643af6ead53f9becbf2e8a3b85186c42",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$ToArrayTask$OfLong.class",
+        "sha256": "887260522012412ab2fefce95346068d50e69a5a849f91c062baed41d9e5148b",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/FindOps$FindSink$OfLong.class",
+        "sha256": "bcc8e4d294eba36e734e90be00a44982bb68affd536cca9c8a0884ae4ca41489",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Node$Builder$OfLong.class",
+        "sha256": "0932658f789e797a9e7460b54f4ca91e48f1bbd7cb26c1413998da7abff18ec5",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/SortedOps$OfLong.class",
+        "sha256": "a09807c5415e117f0677708af14ffee88f9058f1821422f0b4eaf36f1890d3ab",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/StreamSpliterators$ArrayBuffer$OfLong.class",
+        "sha256": "c6307fc1ae17573c496a99d70a6ae6940383b37b02eeb7ac55833809b12668f6",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/WhileOps$UnorderedWhileSpliterator$OfLong$Taking.class",
+        "sha256": "8e49924873ce24e75243a882beab3500940aa72ec3b4edd5f15f719959f960e1",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/ForEachOps$ForEachOp$OfLong.class",
+        "sha256": "7f0679c2d7b4057763f3521827a233720423c570683028160c0caadf21a086aa",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/Nodes$InternalNodeSpliterator$OfLong.class",
+        "sha256": "1ab39f6f5f7be5c0a3c0e547ad63da8532d830c948a4c9c9829446f35fd005ce",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/StreamSpliterators$UnorderedSliceSpliterator$OfLong.class",
+        "sha256": "7d1aceb19042d4443c6d9b4beba1a263d285521673fc0c92d74eb5870257e2db",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      },
+      {
+        "originalPath": "java/util/stream/StreamSpliterators$SliceSpliterator$OfLong.class",
+        "sha256": "20287016d928df0cdf799a87389be7e681b15d0d27c26b546e64e8945cdd20be",
+        "reason": "Not an exact notice basename or not UTF-8 text; OfLong.class matched previous unanchored ofl pattern"
+      }
+    ],
+    "standaloneNoticeFileCount": 0
+  },
+  "limits": [
+    "Source research made no modifications to third-party source.",
+    "Sora and android-tree-sitter source archives were fetched fully at immutable version-tag commits; source bytes/hashes and Gradle/CMake inputs retained, no Android build or relinking test run.",
+    "desugar_jdk_libs 2.1.5 exact runtime JAR was fetched and hashed; zero standalone notice files were identified after excluding Java class-name false positives. Its POM declares GPL-2.0 with Classpath exception, but that declaration is not an acquired original license text. Its sources.jar returned 404 and no exact 2.1.5 tag was exposed in the examined GitHub tag refs; this pass does not supply a source-revision-to-binary reproducibility claim.",
+    "Actual Android minified APK retained classes/native code and any recipient relinking requirements must be assessed against each artifact, not inferred from declared dependencies."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "module": "github.com/sagernet/gomobile",
+  "version": "v0.1.13",
+  "h1": "h1:foTOGKJetah9VwaJl1XJx5TswIAVg8NfYmHOhrOc95I=",
+  "sourceArchiveURL": "https://proxy.golang.org/github.com/sagernet/gomobile/@v/v0.1.13.zip",
+  "sourceArchiveBytes": 295211,
+  "sourceArchiveSHA256": "7f188ea14db951a0fb68db1d727248cc7bf9e705689cedebaa916a4880029b6e",
+  "fullGetAndH1Verified": true,
+  "noticeFiles": [
+    {
+      "sourcePath": "LICENSE",
+      "path": "release/licenses/gomobile-v0.1.13/LICENSE",
+      "bytes": 1479,
+      "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+    },
+    {
+      "sourcePath": "PATENTS",
+      "path": "release/licenses/gomobile-v0.1.13/PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc"
+    }
+  ],
+  "appliesTo": [
+    "Android libbox AAR/clients",
+    "Apple libbox/clients"
+  ],
+  "buildInput": "cmd/internal/build_libbox/main.go",
+  "scope": "Exact go.sum-pinned binding generator/runtime source; additional to CLI44 BuildInfo union, not falsely assigned as linked by all CLI44."
+}

@@ -3,6 +3,8 @@ package box
 import (
 	"context"
 	"io"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -59,6 +61,13 @@ type Box struct {
 	internalService     []adapter.LifecycleService
 	ntpService          *ntp.Service
 	scope               *adapter.Scope
+	tsStoreMu           sync.Mutex
+	tsStores            []adapter.Endpoint
+	tsCaptured          bool
+	tsRetirement        []adapter.TailscaleStoreNode
+	closeStarted        atomic.Bool
+	closeOnce           sync.Once
+	closeResult         error
 }
 
 type Options struct {
@@ -107,13 +116,63 @@ func Context(
 	return ctx
 }
 
+// ConstructionReport describes what constructing a box left behind.
+type ConstructionReport struct {
+	// Attempted is true once construction got far enough to acquire resources.
+	Attempted bool
+	// CleanupError is the result of releasing those resources after a failed
+	// construction.
+	CleanupError error
+}
+
+// New constructs a box. When construction fails, the resources acquired so
+// far are released in the background, so the error or panic is propagated
+// without waiting for cleanup.
 func New(options Options) (*Box, error) {
+	var (
+		scope    *adapter.Scope
+		instance *Box
+	)
+	defer func() {
+		if instance == nil && scope != nil {
+			go func() {
+				err := closeRecovering(scope.Close)
+				if err != nil {
+					log.Error(E.Cause(err, "release failed construction"))
+				}
+			}()
+		}
+	}()
+	instance, err := newBox(options, &scope)
+	return instance, err
+}
+
+// NewWithConstructionReport is like New, but waits for the cleanup of a
+// failed construction and reports its result.
+func NewWithConstructionReport(options Options) (instance *Box, err error, report ConstructionReport) {
+	var scope *adapter.Scope
+	defer func() {
+		report.Attempted = scope != nil
+		if instance == nil && scope != nil {
+			report.CleanupError = closeRecovering(scope.Close)
+		}
+	}()
+	instance, err = newBox(options, &scope)
+	return
+}
+
+func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 	createdAt := time.Now()
 	ctx := options.Context
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	ctx = service.ContextWithDefaultRegistry(ctx)
+	preparedContext, directoryErr := prepareWindowsDirectoryDomain(ctx, options.Options)
+	if directoryErr != nil {
+		return nil, directoryErr
+	}
+	ctx = preparedContext
 
 	endpointRegistry := service.FromContext[adapter.EndpointRegistry](ctx)
 	inboundRegistry := service.FromContext[adapter.InboundRegistry](ctx)
@@ -183,6 +242,12 @@ func New(options Options) (*Box, error) {
 		return nil, E.Cause(err, "create log factory")
 	}
 	service.MustRegister[log.Factory](ctx, logFactory)
+	// The scope is shared by construction and runtime: constructors register
+	// cleanup through adapter.DeferConstructionCleanup, components register
+	// theirs when they start, and closing it releases both.
+	scope := adapter.NewScope(ctx, logFactory.Logger())
+	*constructionScope = scope
+	ctx = adapter.ContextWithConstructionScope(ctx, scope)
 
 	var internalServices []adapter.LifecycleService
 	routeOptions := common.PtrValueOrDefault(options.Route)
@@ -484,14 +549,14 @@ func New(options Options) (*Box, error) {
 		logger:              logFactory.Logger(),
 		internalService:     internalServices,
 		ntpService:          ntpService,
-		scope:               adapter.NewScope(ctx, logFactory.Logger()),
+		scope:               scope,
 	}, nil
 }
 
 func (s *Box) PreStart() error {
 	err := s.preStart()
 	if err != nil {
-		s.Close()
+		s.closeAfterStartFailure()
 		return err
 	}
 	s.logger.Info("sing-box pre-started (", F.Seconds(time.Since(s.createdAt).Seconds()), "s)")
@@ -501,7 +566,7 @@ func (s *Box) PreStart() error {
 func (s *Box) Start() error {
 	err := s.start()
 	if err != nil {
-		s.Close()
+		s.closeAfterStartFailure()
 		return err
 	}
 	s.logger.Info("sing-box started (", F.Seconds(time.Since(s.createdAt).Seconds()), "s)")
@@ -653,7 +718,54 @@ func (s *Box) start() error {
 	return nil
 }
 
+// closeAfterStartFailure closes the box after a failed start. If the box was
+// already closed, for example by a Close racing with the start, the start may
+// have registered cleanup after that close ran, so the scope is closed again
+// to run it.
+func (s *Box) closeAfterStartFailure() {
+	s.Close()
+	closeRecovering(s.scope.Close)
+}
+
+// closeRecovering runs closeFunc and turns a panic raised by one of its
+// cleanups into an error.
+func closeRecovering(closeFunc func() error) (err error) {
+	defer func() {
+		recovered := recover()
+		if recovered != nil {
+			err = E.New("panic during close: ", recovered)
+		}
+	}()
+	return closeFunc()
+}
+
+// Close closes the box. Only the first close returns the cleanup result;
+// later calls return nil without waiting for it.
 func (s *Box) Close() error {
+	if s.closeStarted.Swap(true) {
+		return nil
+	}
+	return s.CloseWithResult()
+}
+
+// CloseWithResult closes the box if it is not closed yet and returns the
+// result of the first close, waiting for it to complete if necessary. It
+// preserves the cleanup result that Start and PreStart discard when they
+// close the box after a failure.
+func (s *Box) CloseWithResult() error {
+	s.closeStarted.Store(true)
+	s.closeOnce.Do(func() {
+		s.closeResult = closeRecovering(s.finishClose)
+	})
+	return s.closeResult
+}
+
+func (s *Box) finishClose() error {
+	// Seal the Tailscale state stores before anything is closed. A writer whose
+	// retirement stays unknown is reported by the endpoint's construction
+	// cleanup, which the scope runs last.
+	s.retireTailscaleStateStores()
+	s.sealTailscaleDirectories()
 	return s.scope.Close()
 }
 

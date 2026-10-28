@@ -1,0 +1,653 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true,
+    "disabled": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-bootstrap",
+        "type": "https",
+        "server": "223.5.5.5",
+        "server_port": 443,
+        "path": "/dns-query",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-node",
+        "type": "https",
+        "server": "1.12.12.12",
+        "server_port": 443,
+        "path": "/dns-query"
+      },
+      {
+        "tag": "dns-local",
+        "type": "local"
+      },
+      {
+        "tag": "dns-domestic",
+        "type": "https",
+        "server": "doh.pub",
+        "server_port": 443,
+        "path": "/dns-query",
+        "domain_resolver": "dns-bootstrap"
+      },
+      {
+        "tag": "dns-remote",
+        "type": "https",
+        "server": "dns.google",
+        "server_port": 443,
+        "path": "/dns-query",
+        "domain_resolver": "dns-bootstrap",
+        "detour": "proxy-selector"
+      },
+      {
+        "tag": "fakeip",
+        "type": "fakeip",
+        "inet4_range": "198.18.0.0/15"
+      },
+      {
+        "tag": "dns-mdns",
+        "type": "mdns"
+      },
+      {
+        "tag": "dns-node-native-1-0",
+        "type": "https",
+        "server": "223.5.5.5",
+        "server_port": 443,
+        "path": "/dns-query"
+      },
+      {
+        "tag": "dns-node-native-1-1",
+        "type": "https",
+        "server": "1.12.12.12",
+        "server_port": 443,
+        "path": "/dns-query"
+      },
+      {
+        "tag": "dns-node-native-2-0",
+        "type": "udp",
+        "server": "9.9.9.9",
+        "server_port": 5353
+      },
+      {
+        "tag": "dns-node-native-2-1",
+        "type": "local"
+      }
+    ],
+    "rules": [
+      {
+        "domain_suffix": [
+          "local",
+          "254.169.in-addr.arpa",
+          "8.e.f.ip6.arpa",
+          "9.e.f.ip6.arpa",
+          "a.e.f.ip6.arpa",
+          "b.e.f.ip6.arpa"
+        ],
+        "server": "dns-mdns"
+      },
+      {
+        "domain_suffix": [
+          "arpa",
+          "lan",
+          "home.arpa",
+          "home",
+          "internal"
+        ],
+        "domain_regex": [
+          "^[^.]+\\.?$"
+        ],
+        "action": "predefined",
+        "rcode": "SERVFAIL"
+      },
+      {
+        "domain": [
+          "node.native.test"
+        ],
+        "domain_suffix": [
+          "node.native.test",
+          ".node.native.test"
+        ],
+        "server": "dns-domestic"
+      },
+      {
+        "domain": [
+          "doh.pub",
+          "dns.google"
+        ],
+        "server": "dns-bootstrap"
+      },
+      {
+        "domain_suffix": [
+          ".microdone.cn",
+          ".icbc.com.cn",
+          ".boc.cn",
+          ".ccb.com",
+          ".abchina.com",
+          ".abchina.com.cn",
+          ".bankcomm.com",
+          ".cmbchina.com",
+          ".psbc.com",
+          ".spdb.com.cn",
+          ".cebbank.com",
+          ".citicbank.com",
+          ".pingan.com",
+          ".cib.com.cn",
+          ".hxb.com.cn",
+          ".cmbc.com.cn",
+          ".hzbank.com.cn",
+          ".10jqka.com.cn",
+          ".thsi.cn",
+          ".eastmoney.com",
+          ".1234567.com.cn",
+          ".gw.com.cn",
+          ".tdx.com.cn"
+        ],
+        "server": "dns-local"
+      },
+      {
+        "domain": [
+          "captive.apple.com",
+          "connectivitycheck.gstatic.com",
+          "connectivitycheck.android.com",
+          "msftconnecttest.com",
+          "www.msftconnecttest.com",
+          "msftncsi.com",
+          "www.msftncsi.com",
+          "dns.msftncsi.com",
+          "detectportal.firefox.com",
+          "network-test.debian.org",
+          "connect.rom.miui.com"
+        ],
+        "server": "dns-local"
+      },
+      {
+        "domain_suffix": [
+          "ntp.org",
+          ".ntp.org",
+          "time.windows.com",
+          ".time.windows.com",
+          "time.apple.com",
+          ".time.apple.com",
+          "time.cloudflare.com",
+          ".time.cloudflare.com",
+          "time.nist.gov",
+          ".time.nist.gov",
+          "time.android.com",
+          ".time.android.com"
+        ],
+        "domain_keyword": [
+          "ntp",
+          "stun"
+        ],
+        "server": "dns-domestic"
+      },
+      {
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "server": "fakeip",
+        "rewrite_ttl": 60
+      },
+      {
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "server": "dns-remote"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "domain_suffix": [
+          "local",
+          "254.169.in-addr.arpa",
+          "8.e.f.ip6.arpa",
+          "9.e.f.ip6.arpa",
+          "a.e.f.ip6.arpa",
+          "b.e.f.ip6.arpa"
+        ],
+        "action": "route",
+        "server": "dns-mdns"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "domain_suffix": [
+          "arpa",
+          "lan",
+          "home.arpa",
+          "home",
+          "internal"
+        ],
+        "domain_regex": [
+          "^[^.]+\\.?$"
+        ],
+        "action": "predefined",
+        "rcode": "SERVFAIL"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "timeout": "1500ms",
+        "disable_optimistic_cache": true,
+        "action": "evaluate",
+        "server": "dns-node-native-1-0",
+        "disable_cache": true,
+        "tag": "node-native-1-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "hit",
+        "response_reject_ip_cidr": [
+          "31.13.0.0/16",
+          "66.220.0.0/16",
+          "69.63.0.0/16",
+          "69.171.0.0/16",
+          "157.240.0.0/16",
+          "173.252.0.0/16",
+          "179.60.192.0/22",
+          "185.60.216.0/22",
+          "104.244.40.0/21",
+          "199.59.148.0/22",
+          "202.160.128.0/22",
+          "162.125.0.0/16",
+          "185.45.7.0/24",
+          "45.114.11.0/24",
+          "8.7.198.45/32",
+          "46.82.174.68/32",
+          "59.24.3.173/32",
+          "93.46.8.89/32",
+          "203.98.7.65/32",
+          "2a03:2880::/29"
+        ],
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-1-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "empty",
+        "mode": "defer",
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-1-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "timeout": "1500ms",
+        "disable_optimistic_cache": true,
+        "action": "evaluate",
+        "server": "dns-node-native-1-1",
+        "disable_cache": true,
+        "tag": "node-native-1-1-response",
+        "speculative": true
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "hit",
+        "response_reject_ip_cidr": [
+          "31.13.0.0/16",
+          "66.220.0.0/16",
+          "69.63.0.0/16",
+          "69.171.0.0/16",
+          "157.240.0.0/16",
+          "173.252.0.0/16",
+          "179.60.192.0/22",
+          "185.60.216.0/22",
+          "104.244.40.0/21",
+          "199.59.148.0/22",
+          "202.160.128.0/22",
+          "162.125.0.0/16",
+          "185.45.7.0/24",
+          "45.114.11.0/24",
+          "8.7.198.45/32",
+          "46.82.174.68/32",
+          "59.24.3.173/32",
+          "93.46.8.89/32",
+          "203.98.7.65/32",
+          "2a03:2880::/29"
+        ],
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-1-1-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "empty",
+        "mode": "defer",
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-1-1-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "timeout": "1500ms",
+        "disable_optimistic_cache": true,
+        "action": "evaluate",
+        "server": "dns-node-native-2-0",
+        "disable_cache": true,
+        "tag": "node-native-2-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "hit",
+        "response_reject_ip_cidr": [
+          "31.13.0.0/16",
+          "66.220.0.0/16",
+          "69.63.0.0/16",
+          "69.171.0.0/16",
+          "157.240.0.0/16",
+          "173.252.0.0/16",
+          "179.60.192.0/22",
+          "185.60.216.0/22",
+          "104.244.40.0/21",
+          "199.59.148.0/22",
+          "202.160.128.0/22",
+          "162.125.0.0/16",
+          "185.45.7.0/24",
+          "45.114.11.0/24",
+          "8.7.198.45/32",
+          "46.82.174.68/32",
+          "59.24.3.173/32",
+          "93.46.8.89/32",
+          "203.98.7.65/32",
+          "2a03:2880::/29"
+        ],
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-2-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "empty",
+        "mode": "defer",
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-2-0-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "timeout": "1500ms",
+        "disable_optimistic_cache": true,
+        "query_type": [
+          "A"
+        ],
+        "action": "evaluate",
+        "server": "dns-node-native-2-1",
+        "disable_cache": true,
+        "tag": "node-native-2-1-response",
+        "speculative": true
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "hit",
+        "response_reject_ip_cidr": [
+          "31.13.0.0/16",
+          "66.220.0.0/16",
+          "69.63.0.0/16",
+          "69.171.0.0/16",
+          "157.240.0.0/16",
+          "173.252.0.0/16",
+          "179.60.192.0/22",
+          "185.60.216.0/22",
+          "104.244.40.0/21",
+          "199.59.148.0/22",
+          "202.160.128.0/22",
+          "162.125.0.0/16",
+          "185.45.7.0/24",
+          "45.114.11.0/24",
+          "8.7.198.45/32",
+          "46.82.174.68/32",
+          "59.24.3.173/32",
+          "93.46.8.89/32",
+          "203.98.7.65/32",
+          "2a03:2880::/29"
+        ],
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-2-1-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "response_class": "empty",
+        "mode": "defer",
+        "action": "respond",
+        "race": true,
+        "match_response": "node-native-2-1-response"
+      },
+      {
+        "resolver_policy": "node-bootstrap",
+        "fallback_rcode": "SERVFAIL",
+        "mode": "fallback",
+        "action": "respond"
+      }
+    ],
+    "final": "dns-domestic",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 7890
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "Native test node",
+      "server": "node.native.test",
+      "server_port": 443,
+      "uuid": "00000000-0000-4000-8000-000000000001",
+      "packet_encoding": "xudp",
+      "domain_resolver": {
+        "mode": "rules",
+        "policy": "node-bootstrap",
+        "strategy": "prefer_ipv4",
+        "timeout": "2s"
+      }
+    },
+    {
+      "type": "selector",
+      "tag": "proxy-selector",
+      "outbounds": [
+        "Native test node",
+        "direct"
+      ],
+      "default": "Native test node",
+      "interrupt_exist_connections": false
+    },
+    {
+      "type": "direct",
+      "tag": "direct",
+      "domain_resolver": "dns-domestic"
+    }
+  ],
+  "route": {
+    "rule_set": [],
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "process_name": [
+          "sing-box",
+          "sing-box.exe"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "223.5.5.5/32",
+          "223.6.6.6/32",
+          "1.12.12.12/32",
+          "119.29.29.29/32",
+          "119.28.28.28/32",
+          "114.114.114.114/32"
+        ],
+        "port": [
+          53,
+          443
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "port": [
+          53
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "process_name": [
+          "Surge",
+          "Surge 4",
+          "Surge 5",
+          "Clash",
+          "Clash for Windows",
+          "ClashX",
+          "ClashX Pro",
+          "clash-meta",
+          "Quantumult X",
+          "sing-box",
+          "sing-box.exe",
+          "mDNSResponder",
+          "apsd",
+          "nsurlsessiond",
+          "airportd",
+          "syspolicyd",
+          "trustd",
+          "ocspd",
+          "securityd",
+          "taskgated",
+          "findmydeviced",
+          "cloudd"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "domain": [
+          "node.native.test"
+        ],
+        "domain_suffix": [
+          ".node.native.test"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "domain_suffix": [
+          ".microdone.cn"
+        ],
+        "action": "route",
+        "outbound": "direct",
+        "override_address": "127.0.0.1"
+      },
+      {
+        "domain_suffix": [
+          ".icbc.com.cn",
+          ".boc.cn",
+          ".ccb.com",
+          ".abchina.com",
+          ".abchina.com.cn",
+          ".bankcomm.com",
+          ".cmbchina.com",
+          ".psbc.com",
+          ".spdb.com.cn",
+          ".cebbank.com",
+          ".citicbank.com",
+          ".pingan.com",
+          ".cib.com.cn",
+          ".hxb.com.cn",
+          ".cmbc.com.cn",
+          ".hzbank.com.cn",
+          ".10jqka.com.cn",
+          ".thsi.cn",
+          ".eastmoney.com",
+          ".1234567.com.cn",
+          ".gw.com.cn",
+          ".tdx.com.cn"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "127.0.0.0/8",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.0.0.0/24",
+          "192.88.99.0/24",
+          "192.168.0.0/16",
+          "224.0.0.0/4",
+          "233.252.0.0/24",
+          "240.0.0.0/4",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "network": [
+          "icmp"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "protocol": "dns",
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "223.5.5.5/32",
+          "1.12.12.12/32"
+        ],
+        "port": [
+          53,
+          443
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "domain_suffix": [
+          "doh.pub"
+        ],
+        "action": "route",
+        "outbound": "direct"
+      },
+      {
+        "domain_keyword": [
+          "google",
+          "gmail",
+          "youtube",
+          "gstatic",
+          "googleapis",
+          "googlevideo"
+        ],
+        "action": "route",
+        "outbound": "proxy-selector"
+      }
+    ],
+    "default_domain_resolver": "dns-bootstrap",
+    "final": "proxy-selector"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "/fake/cache.db",
+      "cache_id": "polaris-dns-v2",
+      "store_fakeip": true,
+      "store_dns": true
+    }
+  }
+}

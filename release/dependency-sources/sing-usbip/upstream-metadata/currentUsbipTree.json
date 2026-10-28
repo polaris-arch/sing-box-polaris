@@ -1,0 +1,1118 @@
+{
+  "sha": "28bd42667ecac597d3e19492b9e81ee04e22792f",
+  "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/28bd42667ecac597d3e19492b9e81ee04e22792f",
+  "tree": [
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5e901bc9cd6ec99ab9a25bc7f05726a95ea68f9a",
+      "size": 68,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/5e901bc9cd6ec99ab9a25bc7f05726a95ea68f9a"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f00f632094686fd0c5a5a60a07ef75b80689ad17",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/f00f632094686fd0c5a5a60a07ef75b80689ad17"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a95a5e0558e2c220dd71adb38e237b373362a86f",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/a95a5e0558e2c220dd71adb38e237b373362a86f"
+    },
+    {
+      "path": ".github/workflows/lint.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cedb1691c13751ff8f70ad88d35dc774915aa96a",
+      "size": 487,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cedb1691c13751ff8f70ad88d35dc774915aa96a"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e1abd105a595dafaf8b51b92a3e0e4be552b0534",
+      "size": 5724,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e1abd105a595dafaf8b51b92a3e0e4be552b0534"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2fa6ad73ebe908681472f6fe967166b06cad393f",
+      "size": 82,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/2fa6ad73ebe908681472f6fe967166b06cad393f"
+    },
+    {
+      "path": ".golangci.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e48422359bf574a8771454ac6af485d0bcb5b51d",
+      "size": 799,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e48422359bf574a8771454ac6af485d0bcb5b51d"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e3e29e359d205307555aa41f19fb2a8415de885",
+      "size": 674,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/3e3e29e359d205307555aa41f19fb2a8415de885"
+    },
+    {
+      "path": "Makefile",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2294c412fd5e6994dbec8523637f6cfa1e6d20b3",
+      "size": 600,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/2294c412fd5e6994dbec8523637f6cfa1e6d20b3"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0fe677f7670bbc781860e2f961b8515f638ccabb",
+      "size": 1689,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0fe677f7670bbc781860e2f961b8515f638ccabb"
+    },
+    {
+      "path": "client.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cb44ddceafd4506fc1df055ad698ae3380ec67f2",
+      "size": 6570,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cb44ddceafd4506fc1df055ad698ae3380ec67f2"
+    },
+    {
+      "path": "client_assignment.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "521ff89ffcdc5ad75fa46a18d3670d3628ba2285",
+      "size": 6461,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/521ff89ffcdc5ad75fa46a18d3670d3628ba2285"
+    },
+    {
+      "path": "client_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "39d668a164af889fc3a0115d589d682631651ee4",
+      "size": 8384,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/39d668a164af889fc3a0115d589d682631651ee4"
+    },
+    {
+      "path": "client_shared.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fd3129f0f949dec8cfcbe6790ace7249a737b40",
+      "size": 11994,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4fd3129f0f949dec8cfcbe6790ace7249a737b40"
+    },
+    {
+      "path": "client_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bdaba3187fcb307f0a3205a81bbc0f0b844c0d6e",
+      "size": 8312,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/bdaba3187fcb307f0a3205a81bbc0f0b844c0d6e"
+    },
+    {
+      "path": "cmd",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0d1ba33219d3aa7e8300cec1016726e16cf0bbcc",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/0d1ba33219d3aa7e8300cec1016726e16cf0bbcc"
+    },
+    {
+      "path": "cmd/go.mod",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7595f2a44f7498f57d2c581ce2d9844a6edc826c",
+      "size": 2822,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/7595f2a44f7498f57d2c581ce2d9844a6edc826c"
+    },
+    {
+      "path": "cmd/go.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "715f50f1f21f507afe486fc80f7b1b1248218fa8",
+      "size": 10432,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/715f50f1f21f507afe486fc80f7b1b1248218fa8"
+    },
+    {
+      "path": "cmd/sing-usbip",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1bff0b3648bf08c8b3a7d6a7b6574732d87fd0d3",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/1bff0b3648bf08c8b3a7d6a7b6574732d87fd0d3"
+    },
+    {
+      "path": "cmd/sing-usbip/address.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8fb302d16ef0697dacebaaca954f7804952bc93",
+      "size": 1206,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/f8fb302d16ef0697dacebaaca954f7804952bc93"
+    },
+    {
+      "path": "cmd/sing-usbip/command.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e75d3f158bec43419c6a0d8317cec2f68c08efaf",
+      "size": 1407,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e75d3f158bec43419c6a0d8317cec2f68c08efaf"
+    },
+    {
+      "path": "cmd/sing-usbip/list.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4b82a0a0ca77e7f20135ec1e47b1112d766b4f76",
+      "size": 3442,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4b82a0a0ca77e7f20135ec1e47b1112d766b4f76"
+    },
+    {
+      "path": "cmd/sing-usbip/main.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e377fd1bd0a1d8a0770711f767e1f5ce8710ef5",
+      "size": 188,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0e377fd1bd0a1d8a0770711f767e1f5ce8710ef5"
+    },
+    {
+      "path": "cmd/sing-usbip/match.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ebc92fba722ed7c883795f21eb66108e66e43e70",
+      "size": 3103,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/ebc92fba722ed7c883795f21eb66108e66e43e70"
+    },
+    {
+      "path": "cmd/sing-usbip/run.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef77e5454d7d72edf1fe077905466bf84cdec35d",
+      "size": 2701,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/ef77e5454d7d72edf1fe077905466bf84cdec35d"
+    },
+    {
+      "path": "cmd/sing-usbip/unsupported.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fc77e7281a4ef2b4906e2620ca5198578a5b6870",
+      "size": 205,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/fc77e7281a4ef2b4906e2620ca5198578a5b6870"
+    },
+    {
+      "path": "control_protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7016a0befdfdc63c336c5151f7457595e856b8fc",
+      "size": 9223,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/7016a0befdfdc63c336c5151f7457595e856b8fc"
+    },
+    {
+      "path": "control_protocol_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5861e4d6e2e36f0657d46a4af71335200b83d2f7",
+      "size": 2652,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/5861e4d6e2e36f0657d46a4af71335200b83d2f7"
+    },
+    {
+      "path": "darwin_integration_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "422032f1e74756dc5c58a825d9f7ecff66539173",
+      "size": 15476,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/422032f1e74756dc5c58a825d9f7ecff66539173"
+    },
+    {
+      "path": "data_protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "008efdfe09ba8ca6cc1b47d9e4a3939c0b86aa04",
+      "size": 12122,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/008efdfe09ba8ca6cc1b47d9e4a3939c0b86aa04"
+    },
+    {
+      "path": "driverassets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4dcd846466101cdab8d2009261ba522cc4dd5465",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/4dcd846466101cdab8d2009261ba522cc4dd5465"
+    },
+    {
+      "path": "driverassets/digests.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf19d286fbabad368da5c0fce14f53f8f507b71b",
+      "size": 2234,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cf19d286fbabad368da5c0fce14f53f8f507b71b"
+    },
+    {
+      "path": "driverassets/driverassets.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "69319a0267cb2134971f7f97685153af40178291",
+      "size": 458,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/69319a0267cb2134971f7f97685153af40178291"
+    },
+    {
+      "path": "driverassets/generate",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0c202fba8a5b70358aaaf3265982a1c4dd2a8ed0",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/0c202fba8a5b70358aaaf3265982a1c4dd2a8ed0"
+    },
+    {
+      "path": "driverassets/generate/main.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e5ec417a38c1797d4b799591aa3f2c07846ffc5e",
+      "size": 1973,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e5ec417a38c1797d4b799591aa3f2c07846ffc5e"
+    },
+    {
+      "path": "dynamic_host.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b5e61ae51a4a04d71f751bac4c992130234346e3",
+      "size": 5102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/b5e61ae51a4a04d71f751bac4c992130234346e3"
+    },
+    {
+      "path": "endpoint_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cab1ca64c7138fce6169f9547795314ea132e7e6",
+      "size": 12312,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cab1ca64c7138fce6169f9547795314ea132e7e6"
+    },
+    {
+      "path": "engine_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10b4698cc21387dc3dce16457df58f80b74ecf11",
+      "size": 1230,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/10b4698cc21387dc3dce16457df58f80b74ecf11"
+    },
+    {
+      "path": "engine_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6b42c09972a086868b9ec0378aa78fb8409c4127",
+      "size": 9781,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/6b42c09972a086868b9ec0378aa78fb8409c4127"
+    },
+    {
+      "path": "export_ledger.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a9c30e9892bc74bc62a11eb095754716c1cc4484",
+      "size": 7022,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/a9c30e9892bc74bc62a11eb095754716c1cc4484"
+    },
+    {
+      "path": "export_ledger_darwin_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eef975c64cd28a78b9f7b444e01c8aa19dd6b16e",
+      "size": 1344,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/eef975c64cd28a78b9f7b444e01c8aa19dd6b16e"
+    },
+    {
+      "path": "go.mod",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94f1a496d84c5576d81004b4da16f8cb59f95030",
+      "size": 393,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/94f1a496d84c5576d81004b4da16f8cb59f95030"
+    },
+    {
+      "path": "go.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bc01bc578df637d1b25a7599647e99e5f96262f2",
+      "size": 1480,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/bc01bc578df637d1b25a7599647e99e5f96262f2"
+    },
+    {
+      "path": "go.work",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5bb4fdcce92537a5f65b0d449b5514ff4f294531",
+      "size": 29,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/5bb4fdcce92537a5f65b0d449b5514ff4f294531"
+    },
+    {
+      "path": "go.work.sum",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "62317c52b57e38f13d126ccf1a83aca1dbd841c2",
+      "size": 13217,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/62317c52b57e38f13d126ccf1a83aca1dbd841c2"
+    },
+    {
+      "path": "handoff_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12ee41049886671ab4d28f06d802a8ae2c2d3ff3",
+      "size": 5939,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/12ee41049886671ab4d28f06d802a8ae2c2d3ff3"
+    },
+    {
+      "path": "host.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45b915664d115bd4112d70b52c396e759fed3a8a",
+      "size": 1044,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/45b915664d115bd4112d70b52c396e759fed3a8a"
+    },
+    {
+      "path": "host_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3e3dc0f7bfd92570fb40458e53aa417aa0455071",
+      "size": 9304,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/3e3dc0f7bfd92570fb40458e53aa417aa0455071"
+    },
+    {
+      "path": "host_ios.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f77b2ed928fb5d4ca0d982618d203d27bf2f062b",
+      "size": 1184,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/f77b2ed928fb5d4ca0d982618d203d27bf2f062b"
+    },
+    {
+      "path": "host_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "853d9f758795f9db751fdb82fc96693c7bcff7e7",
+      "size": 24493,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/853d9f758795f9db751fdb82fc96693c7bcff7e7"
+    },
+    {
+      "path": "host_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0ddc4d4006f606fbdfb891d7da38e4276e1340b",
+      "size": 16011,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/a0ddc4d4006f606fbdfb891d7da38e4276e1340b"
+    },
+    {
+      "path": "internal",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2a5b48d87a74f55b48f6dc4da5e35fca9d254e84",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/2a5b48d87a74f55b48f6dc4da5e35fca9d254e84"
+    },
+    {
+      "path": "internal/usbipvhci",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7f9e7fff9f84b0ebe0d6da53e9b48cdd4cf8e3d8",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/7f9e7fff9f84b0ebe0d6da53e9b48cdd4cf8e3d8"
+    },
+    {
+      "path": "internal/usbipvhci/assets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "565aa675302c2904620c47da6ab5b35c15b68b5f",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/565aa675302c2904620c47da6ab5b35c15b68b5f"
+    },
+    {
+      "path": "internal/usbipvhci/assets/LICENSE.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c98b224bc2ff8fc65dbff482b83edff1a1dec42",
+      "size": 1356,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/1c98b224bc2ff8fc65dbff482b83edff1a1dec42"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "33f62d08913c383f17da1a9dc79e8f008d0b8a0b",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/33f62d08913c383f17da1a9dc79e8f008d0b8a0b"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6beb2801f0102d4f96a10093fd289db635bbe552",
+      "size": 11938,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/6beb2801f0102d4f96a10093fd289db635bbe552"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95a142f2834a103fdeb97b043593fa9fce99ee58",
+      "size": 2052,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/95a142f2834a103fdeb97b043593fa9fce99ee58"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_filter.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ddd0ec108e57e625bfca037592487aff2435e023",
+      "size": 54352,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/ddd0ec108e57e625bfca037592487aff2435e023"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a1f2a059f47736825ab46f342a30a6c0e274e758",
+      "size": 11915,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/a1f2a059f47736825ab46f342a30a6c0e274e758"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bb71e0f50ab74a41b3ea3e79b2fc3ba74dd3c36",
+      "size": 3041,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0bb71e0f50ab74a41b3ea3e79b2fc3ba74dd3c36"
+    },
+    {
+      "path": "internal/usbipvhci/assets/amd64/usbip2_ude.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f8b3b9112227d061347e7aa661f423b476dff0e",
+      "size": 137752,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4f8b3b9112227d061347e7aa661f423b476dff0e"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3c94be5caac1b92709f80b85a78f41968122f033",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/3c94be5caac1b92709f80b85a78f41968122f033"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbcc0a9210c571daf744554cc4e0f55b647f32a7",
+      "size": 11985,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/fbcc0a9210c571daf744554cc4e0f55b647f32a7"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fb5d1201ed647c29130dfa44436692222f42f83",
+      "size": 2051,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/7fb5d1201ed647c29130dfa44436692222f42f83"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_filter.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "330f8870a1215f0fc9d820db8446157268e89bbb",
+      "size": 59504,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/330f8870a1215f0fc9d820db8446157268e89bbb"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fcd43253e07598fd263973c1c8a2e86901ed5afc",
+      "size": 11967,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/fcd43253e07598fd263973c1c8a2e86901ed5afc"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "844ad8293fd61ee61f217bf84423227625cb3667",
+      "size": 2891,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/844ad8293fd61ee61f217bf84423227625cb3667"
+    },
+    {
+      "path": "internal/usbipvhci/assets/arm64/usbip2_ude.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d03131127bd61eda8bad72dd051573c025af69b",
+      "size": 136224,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/6d03131127bd61eda8bad72dd051573c025af69b"
+    },
+    {
+      "path": "internal/usbipvhci/assets_external_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2760122529616672df3fd4f681581f7d6abc161e",
+      "size": 1121,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/2760122529616672df3fd4f681581f7d6abc161e"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_amd64.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4643bb71b73aea9e94708e253431b6b37f059328",
+      "size": 734,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4643bb71b73aea9e94708e253431b6b37f059328"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_arm64.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03f9a2239fb6130d5cb73ec2345828f41ff0b8fa",
+      "size": 734,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/03f9a2239fb6130d5cb73ec2345828f41ff0b8fa"
+    },
+    {
+      "path": "internal/usbipvhci/assets_windows_unsupported.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "98e938c9b3285e625b4d64d6ab2060e508f79975",
+      "size": 150,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/98e938c9b3285e625b4d64d6ab2060e508f79975"
+    },
+    {
+      "path": "internal/usbipvhci/controller_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa67263c31be6964a7434fae51e3590d48d576db",
+      "size": 6694,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/aa67263c31be6964a7434fae51e3590d48d576db"
+    },
+    {
+      "path": "internal/usbipvhci/driver_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "164cdd28239229051b09664405ebd0b375f2e355",
+      "size": 7928,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/164cdd28239229051b09664405ebd0b375f2e355"
+    },
+    {
+      "path": "internal/usbipvhci/usbipvhci.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d63183e6c4018b9f5e81a9df017e0da01a81c47d",
+      "size": 1958,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/d63183e6c4018b9f5e81a9df017e0da01a81c47d"
+    },
+    {
+      "path": "internal/vboxusb",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fc7f7106ec3477aec8c0116cea586ed68e6df237",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/fc7f7106ec3477aec8c0116cea586ed68e6df237"
+    },
+    {
+      "path": "internal/vboxusb/assets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1628e89cd1751ddabe570d8eca0a812df6862ea5",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/1628e89cd1751ddabe570d8eca0a812df6862ea5"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "13b1d42cd5be62830270f65a4dc2a65d52ef2e45",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/13b1d42cd5be62830270f65a4dc2a65d52ef2e45"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "283a0db9c9a852f95e001488c944c16a8938ec3e",
+      "size": 12014,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/283a0db9c9a852f95e001488c944c16a8938ec3e"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.cat.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d91c23ad163a47677bd944f605b36913a82cbb4a",
+      "size": 85,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/d91c23ad163a47677bd944f605b36913a82cbb4a"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71f67cbf6a1fbd81c5de97aa6be4f15c97adf45e",
+      "size": 2944,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/71f67cbf6a1fbd81c5de97aa6be4f15c97adf45e"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.inf.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fb909335403a1cbfd9fd3e73acbf243d2d5d63b",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4fb909335403a1cbfd9fd3e73acbf243d2d5d63b"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "580653d739a22b65bfcc8493af02faea09e4bca5",
+      "size": 182792,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/580653d739a22b65bfcc8493af02faea09e4bca5"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSB.sys.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22ff2d8b6e1188e7e8f47faa80217e516f0d78de",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/22ff2d8b6e1188e7e8f47faa80217e516f0d78de"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cee77b5850be93f60df53d3cf1bdc6bf9cbacc17",
+      "size": 197232,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cee77b5850be93f60df53d3cf1bdc6bf9cbacc17"
+    },
+    {
+      "path": "internal/vboxusb/assets/amd64/VBoxUSBMon.sys.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22ff2d8b6e1188e7e8f47faa80217e516f0d78de",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/22ff2d8b6e1188e7e8f47faa80217e516f0d78de"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c1b9b56019871c2dbb7c6bbc66959784fe302741",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/c1b9b56019871c2dbb7c6bbc66959784fe302741"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.cat",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fb6dbeaa730cb7d38e56b50841a6d372878175e1",
+      "size": 11927,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/fb6dbeaa730cb7d38e56b50841a6d372878175e1"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.cat.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d91c23ad163a47677bd944f605b36913a82cbb4a",
+      "size": 85,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/d91c23ad163a47677bd944f605b36913a82cbb4a"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.inf",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d699e6ce05e30f01a261cd83a0d33cf88401fabc",
+      "size": 2944,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/d699e6ce05e30f01a261cd83a0d33cf88401fabc"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.inf.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4fb909335403a1cbfd9fd3e73acbf243d2d5d63b",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4fb909335403a1cbfd9fd3e73acbf243d2d5d63b"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f52b272bb74849da02fc0ef566d545b7f1351f5",
+      "size": 180704,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/5f52b272bb74849da02fc0ef566d545b7f1351f5"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSB.sys.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22ff2d8b6e1188e7e8f47faa80217e516f0d78de",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/22ff2d8b6e1188e7e8f47faa80217e516f0d78de"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSBMon.sys",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "de2d0efb2680cdbdf7d863229c259e61b83a21b0",
+      "size": 195696,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/de2d0efb2680cdbdf7d863229c259e61b83a21b0"
+    },
+    {
+      "path": "internal/vboxusb/assets/arm64/VBoxUSBMon.sys.license",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "22ff2d8b6e1188e7e8f47faa80217e516f0d78de",
+      "size": 102,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/22ff2d8b6e1188e7e8f47faa80217e516f0d78de"
+    },
+    {
+      "path": "internal/vboxusb/assets_external_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4ca075bd0eb1263bed400204fc27d59190dd32f",
+      "size": 1113,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/f4ca075bd0eb1263bed400204fc27d59190dd32f"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_amd64.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0addc15b37691bc7c8b0aede64545907a858813c",
+      "size": 540,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0addc15b37691bc7c8b0aede64545907a858813c"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_arm64.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c00d7dbdc292defd3e785370e2b8c21a56c4023",
+      "size": 540,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/4c00d7dbdc292defd3e785370e2b8c21a56c4023"
+    },
+    {
+      "path": "internal/vboxusb/assets_windows_unsupported.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9828e727a5e282a769adee5b3cc680e0113490eb",
+      "size": 148,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/9828e727a5e282a769adee5b3cc680e0113490eb"
+    },
+    {
+      "path": "internal/vboxusb/device_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8d93337ecde08cdd83902d28fc168b04ca2dcd7",
+      "size": 8252,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/f8d93337ecde08cdd83902d28fc168b04ca2dcd7"
+    },
+    {
+      "path": "internal/vboxusb/driver_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd6b919cd630cb3a7f33b4757eb524e5823fdcc9",
+      "size": 7316,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/cd6b919cd630cb3a7f33b4757eb524e5823fdcc9"
+    },
+    {
+      "path": "internal/vboxusb/monitor_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "509a8576ee7c9ce430a01a80bcc640399ed25945",
+      "size": 4871,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/509a8576ee7c9ce430a01a80bcc640399ed25945"
+    },
+    {
+      "path": "internal/vboxusb/pnp_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c227627c343b17d25552d55b527921af65169dca",
+      "size": 8466,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/c227627c343b17d25552d55b527921af65169dca"
+    },
+    {
+      "path": "internal/vboxusb/privilege_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91520e75b3c5bc998fec433f3dd93a8d5f67582c",
+      "size": 2349,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/91520e75b3c5bc998fec433f3dd93a8d5f67582c"
+    },
+    {
+      "path": "internal/vboxusb/restart_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae40eca44d3110f3ee27d714fc3ad544b9124542",
+      "size": 4559,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/ae40eca44d3110f3ee27d714fc3ad544b9124542"
+    },
+    {
+      "path": "internal/vboxusb/speed_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0f119e5d79c1fa83a14ce9f9e321bda1f1fd4958",
+      "size": 7210,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0f119e5d79c1fa83a14ce9f9e321bda1f1fd4958"
+    },
+    {
+      "path": "internal/vboxusb/vboxusb.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b50eb7209e75923a77bc63ed22c3aa8d6abc938",
+      "size": 2681,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/2b50eb7209e75923a77bc63ed22c3aa8d6abc938"
+    },
+    {
+      "path": "internal/wincfgmgr32",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e5847fa05ab4c412b20e3ee869b782c99b764c79",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/e5847fa05ab4c412b20e3ee869b782c99b764c79"
+    },
+    {
+      "path": "internal/wincfgmgr32/notification_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f4ea988fce672059de4842d26dff59ca23e40ac",
+      "size": 1464,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/6f4ea988fce672059de4842d26dff59ca23e40ac"
+    },
+    {
+      "path": "internal/wincfgmgr32/syscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e9a16b9ebfb3b9c24ed299c1b46cd4022ba0d9ee",
+      "size": 1162,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e9a16b9ebfb3b9c24ed299c1b46cd4022ba0d9ee"
+    },
+    {
+      "path": "internal/wincfgmgr32/zsyscall_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3c0a7de82f491ea35f97646b7dc8a03bc0d62012",
+      "size": 1545,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/3c0a7de82f491ea35f97646b7dc8a03bc0d62012"
+    },
+    {
+      "path": "internal/winsetupapi",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5262d51e3fe65ec4064734711e14d4cc42031aaa",
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/trees/5262d51e3fe65ec4064734711e14d4cc42031aaa"
+    },
+    {
+      "path": "internal/winsetupapi/errors_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f1617baadba8544523f7270e210c11d00c17793",
+      "size": 1550,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/5f1617baadba8544523f7270e210c11d00c17793"
+    },
+    {
+      "path": "iso_scheduler.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57c8a17d5407ab06dd17ec29c5ff7dc4eb25b6f3",
+      "size": 2124,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/57c8a17d5407ab06dd17ec29c5ff7dc4eb25b6f3"
+    },
+    {
+      "path": "linux_interop_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "50c8349c4cd69096c85447f3a7fcde5c8a38389a",
+      "size": 32375,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/50c8349c4cd69096c85447f3a7fcde5c8a38389a"
+    },
+    {
+      "path": "linux_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b698c803ab792bf0b3cd3b14e1e344b2870196b",
+      "size": 11410,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/8b698c803ab792bf0b3cd3b14e1e344b2870196b"
+    },
+    {
+      "path": "local_device.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "170600269ad9195f651997a8b2b6fab433f22b6a",
+      "size": 842,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/170600269ad9195f651997a8b2b6fab433f22b6a"
+    },
+    {
+      "path": "local_device_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d539dbbdc0841682f0a9352b756b80f903145084",
+      "size": 2078,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/d539dbbdc0841682f0a9352b756b80f903145084"
+    },
+    {
+      "path": "local_device_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9397cea2b335838094a1e35ec8fb21a69b7ba4ff",
+      "size": 2009,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/9397cea2b335838094a1e35ec8fb21a69b7ba4ff"
+    },
+    {
+      "path": "local_device_windows.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaa1a836b152879490f38f336ba73a27fdae1ccb",
+      "size": 6244,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/aaa1a836b152879490f38f336ba73a27fdae1ccb"
+    },
+    {
+      "path": "match.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c95bea58d3866e82e787098b2160f131b916f37",
+      "size": 958,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/7c95bea58d3866e82e787098b2160f131b916f37"
+    },
+    {
+      "path": "options.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "09073bcf118790672d306578a4714fdd19d88f6b",
+      "size": 759,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/09073bcf118790672d306578a4714fdd19d88f6b"
+    },
+    {
+      "path": "protocol.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "455f3ec821dc8ed8af8bf334b97c8ffc377e2271",
+      "size": 5633,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/455f3ec821dc8ed8af8bf334b97c8ffc377e2271"
+    },
+    {
+      "path": "server.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83af6ae99ecd873a45adadb66e65d05d5a8c1891",
+      "size": 9758,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/83af6ae99ecd873a45adadb66e65d05d5a8c1891"
+    },
+    {
+      "path": "server_shared.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26d440e05e01aa02fe440b2706ebc7ad050dd641",
+      "size": 1852,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/26d440e05e01aa02fe440b2706ebc7ad050dd641"
+    },
+    {
+      "path": "session_userspace.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e713a1051b48d2d392cb752925e70670dae601df",
+      "size": 13731,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/e713a1051b48d2d392cb752925e70670dae601df"
+    },
+    {
+      "path": "session_userspace_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2255e9b8c0690787c78394e7e27114b84347f16",
+      "size": 1897,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/f2255e9b8c0690787c78394e7e27114b84347f16"
+    },
+    {
+      "path": "shared.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d806850b2d34c4c542198066f413d635f30a1a6",
+      "size": 1046,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/3d806850b2d34c4c542198066f413d635f30a1a6"
+    },
+    {
+      "path": "sysfs_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b41df96fdf65f56b69c2695cbe59e0db7cb8ee99",
+      "size": 10346,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/b41df96fdf65f56b69c2695cbe59e0db7cb8ee99"
+    },
+    {
+      "path": "uevent_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06f7935b89944d443b3b95b8cbe083037cc29a0a",
+      "size": 1741,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/06f7935b89944d443b3b95b8cbe083037cc29a0a"
+    },
+    {
+      "path": "unsupported.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7dee9d975a99af8bfc320313a8363afe7189140",
+      "size": 803,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/a7dee9d975a99af8bfc320313a8363afe7189140"
+    },
+    {
+      "path": "urb_engine.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "886b58657c332dd11039d722abbf914cc1ca4195",
+      "size": 455,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/886b58657c332dd11039d722abbf914cc1ca4195"
+    },
+    {
+      "path": "urb_transaction.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c937b0bed730bf19b18138d3cf16497dd805a486",
+      "size": 1099,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/c937b0bed730bf19b18138d3cf16497dd805a486"
+    },
+    {
+      "path": "urb_transaction_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bb4efd28ae716f668b8ddba7699f42b9c698bb5",
+      "size": 4082,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/0bb4efd28ae716f668b8ddba7699f42b9c698bb5"
+    },
+    {
+      "path": "usbfs_linux.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fbea38ac589b6503e0ac75787969d1b32f5b8c02",
+      "size": 8242,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/fbea38ac589b6503e0ac75787969d1b32f5b8c02"
+    },
+    {
+      "path": "usbhost_darwin.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2075e95a81d2d03dbb32371ac3c39089abd9d74f",
+      "size": 17472,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/2075e95a81d2d03dbb32371ac3c39089abd9d74f"
+    },
+    {
+      "path": "usbhost_darwin.h",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3783206876300a8908e5a96332391d9d286b1d7",
+      "size": 6107,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/b3783206876300a8908e5a96332391d9d286b1d7"
+    },
+    {
+      "path": "usbhost_darwin.m",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "af6b36cf3bec76f01fb1b8124641ef7e4eb8f0a0",
+      "size": 44791,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/af6b36cf3bec76f01fb1b8124641ef7e4eb8f0a0"
+    },
+    {
+      "path": "usbip_peer.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "628b5d4bfa8e9af9bc8dd0457e27c4073666d502",
+      "size": 6502,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/628b5d4bfa8e9af9bc8dd0457e27c4073666d502"
+    },
+    {
+      "path": "usbip_peer_test.go",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "830618f75160390b717c4c6a32764bbddb28b565",
+      "size": 6759,
+      "url": "https://api.github.com/repos/SagerNet/sing-usbip/git/blobs/830618f75160390b717c4c6a32764bbddb28b565"
+    }
+  ],
+  "truncated": false
+}

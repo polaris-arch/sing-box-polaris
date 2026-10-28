@@ -1,0 +1,57 @@
+{
+  "fixedDEPSRevision": "949185fe89d2c78514ddaa6b8874de9415036491",
+  "fixedChromiumCommit": "ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92",
+  "sourceCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+  "results": [
+    {
+      "name": "upstream-atomic.c",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/compiler-rt.git/+/949185fe89d2c78514ddaa6b8874de9415036491/lib/builtins/atomic.c?format=TEXT",
+      "bytes": 18592,
+      "sha256": "49460e687fa4d9c32321ade9d06f70740f9389183028922d97d06db97e9c581d",
+      "gitBlob": "fab70413b0f73995523fc719f2c584dcc60f64ec",
+      "localSourcePath": "third_party/compiler-rt/src/lib/builtins/atomic.c",
+      "localBytes": 18596,
+      "localSha256": "17e72d62c71b74291f23daba77d9a5452eae1e8dd09e54c872b9f0566292b162",
+      "localGitBlob": "62cfc07db9d68ed81e2509e0095996a6f44e1608",
+      "matches": false,
+      "diff": "--- upstream-atomic.c\n+++ vendored/third_party/compiler-rt/src/lib/builtins/atomic.c\n@@ -102,8 +102,8 @@\n static Lock locks[SPINLOCK_COUNT]; // initialized to OS_SPINLOCK_INIT which is 0\n \n #else\n-_Static_assert(__atomic_always_lock_free(sizeof(uintptr_t), 0),\n-               \"Implementation assumes lock-free pointer-size cmpxchg\");\n+//_Static_assert(__atomic_always_lock_free(sizeof(uintptr_t), 0),\n+//               \"Implementation assumes lock-free pointer-size cmpxchg\");\n typedef _Atomic(uintptr_t) Lock;\n /// Unlock a lock.  This is a release operation.\n __inline static void unlock(Lock *l) {\n"
+    },
+    {
+      "name": "upstream-assembly.h",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/compiler-rt.git/+/949185fe89d2c78514ddaa6b8874de9415036491/lib/builtins/assembly.h?format=TEXT",
+      "bytes": 13632,
+      "sha256": "1bb51fc4748e44a6026c5546fa0526e71e5cf7c5111d46a8bbcd9dcb5c125cef",
+      "gitBlob": "2eddbf468c149d398a08f8b745f0d5de27e93cb1",
+      "localSourcePath": "third_party/compiler-rt/src/lib/builtins/assembly.h",
+      "localBytes": 13632,
+      "localSha256": "1bb51fc4748e44a6026c5546fa0526e71e5cf7c5111d46a8bbcd9dcb5c125cef",
+      "localGitBlob": "2eddbf468c149d398a08f8b745f0d5de27e93cb1",
+      "matches": true
+    },
+    {
+      "name": "upstream-int_endianness.h",
+      "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/compiler-rt.git/+/949185fe89d2c78514ddaa6b8874de9415036491/lib/builtins/int_endianness.h?format=TEXT",
+      "bytes": 2804,
+      "sha256": "ec5175561075845b7b16a92ad5ecdfd42a284de2736dd07e4ca7011b75c37709",
+      "gitBlob": "291c6b58c8ed9ed2ff2cc970bbfc0b486cc338ec",
+      "localSourcePath": "third_party/compiler-rt/src/lib/builtins/int_endianness.h",
+      "localBytes": 2804,
+      "localSha256": "ec5175561075845b7b16a92ad5ecdfd42a284de2736dd07e4ca7011b75c37709",
+      "localGitBlob": "291c6b58c8ed9ed2ff2cc970bbfc0b486cc338ec",
+      "matches": true
+    },
+    {
+      "name": "chromium-atomic",
+      "url": "https://chromium.googlesource.com/chromium/src/+/ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92/third_party/compiler-rt/src/lib/builtins/atomic.c?format=TEXT",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "chromium-readme",
+      "url": "https://chromium.googlesource.com/chromium/src/+/ba187acfd59909f7d8d4fe0b5e9faa3a71ff0e92/third_party/compiler-rt/README.chromium?format=TEXT",
+      "bytes": 357,
+      "sha256": "9dfa823ca9d62e94e1f0b8d333d05166e2173115faa5eec6aaa24067406ff0d4",
+      "gitBlob": "f68a43e6959ff6389c80fc4d285eb443ee17720f",
+      "text": "Name: compiler-rt\nShort Name: compiler-rt\nURL: https://compiler-rt.llvm.org/\nVersion: N/A\nRevision: 949185fe89d2c78514ddaa6b8874de9415036491\nUpdate Mechanism: Autoroll\nLicense: NCSA, Apache-with-LLVM-Exception, MIT\nLicense File: src/LICENSE.TXT\nSecurity Critical: yes\nShipped: yes\nCPEPrefix: cpe:/a:llvm:compiler-rt\n\nDescription:\n\ncompiler-rt for Chromium.\n"
+    }
+  ]
+}

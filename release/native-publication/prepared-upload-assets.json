@@ -1,0 +1,59 @@
+{
+  "assets": [
+    {
+      "bytes": 1165,
+      "name": "SHA256SUMS",
+      "sha256": "6fc28a2d60a59d674bc6fd70d75d6af5de3bf95ed7a9cd06fcf836c4d173194a"
+    },
+    {
+      "bytes": 32657269,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-amd64.tar.gz",
+      "sha256": "2c550bbe6d11dde66430c1ae4024949e819df7d991659399b860f236dd3029d7"
+    },
+    {
+      "bytes": 30355507,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-darwin-arm64.tar.gz",
+      "sha256": "a14006bfe576c9612747e09c70c085f37d1509ff62bbf1b194b6829cac3e351f"
+    },
+    {
+      "bytes": 32675477,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-amd64.tar.gz",
+      "sha256": "7c5be2ae50bd5c01366f485eabcc7a560a64e0ebb6620d1c15041cfe839d2f25"
+    },
+    {
+      "bytes": 30099514,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-linux-arm64.tar.gz",
+      "sha256": "65b87586212504a18ac94e0a08735225c3f7167c2069224c578409d0cacbb5d9"
+    },
+    {
+      "bytes": 33123352,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-amd64.zip",
+      "sha256": "8d9d707f7f05aeb2853b53a7091a8e838150a9a0d1de16c76188339a73677de0"
+    },
+    {
+      "bytes": 29542719,
+      "name": "polaris-box-1.15.0-alpha.11.polaris.candidate-a01da7a9-windows-arm64.zip",
+      "sha256": "71c22247e99046f5919e68481f7019e693c0aa7c8879165ef27c0ee413f9ac4e"
+    },
+    {
+      "bytes": 271716261,
+      "name": "polaris-box-a01-desktop-source-candidate-six-platforms-v4.tar.gz",
+      "sha256": "70ff6e51660cc8ea140a30513c42c7b842b4fdb62ba41d863b08405db63ea5ed"
+    },
+    {
+      "bytes": 1674,
+      "name": "polaris-box-release-notes.md",
+      "sha256": "a25138639c8181fbacf021f8617f28016a3e5dda2ad0d1870860eef2c6a415ce"
+    },
+    {
+      "bytes": 35412,
+      "name": "polaris-box-release-receipt.json",
+      "sha256": "31a29b5dd39ba970274320b9de0cd1337a5067e14639f40ff13284af95038ac8"
+    }
+  ],
+  "publicUploadPerformed": false,
+  "repository": "polaris-arch/polaris-box",
+  "schemaVersion": 1,
+  "tag": "polaris-box-v1.15.0-alpha.11-2",
+  "tagTargetCommit": "a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932"
+}

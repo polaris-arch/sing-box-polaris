@@ -1,0 +1,72 @@
+[
+  {
+    "path": "tree-sitter-lib",
+    "repository": "tree-sitter/tree-sitter",
+    "revision": "ca7d15add61bf77391d387d26441599b96c0eb9c",
+    "parentRepository": "itsaky/android-tree-sitter",
+    "parentRevision": "797150222de664181e31be53e9a5b253056ba9b0",
+    "gitlinkEvidenceURL": "https://github.com/itsaky/android-tree-sitter/tree/797150222de664181e31be53e9a5b253056ba9b0/grammars",
+    "gitlinkEvidenceSHA256": "cec34333368e2615883923d36d4cb6e359420dbaa3fd0fe31e309efbd851fdcf",
+    "files": [
+      {
+        "path": "android-native-gitlinks/tree-sitter-lib/LICENSE",
+        "originalPath": "LICENSE",
+        "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/LICENSE",
+        "bytes": 1085,
+        "sha256": "5f9cf9fb6acb1972b35ae29119ce563bb60ec097656bc4b69b9bac2d04c7a147",
+        "kind": "notice"
+      },
+      {
+        "path": "android-native-gitlinks/tree-sitter-lib/Makefile",
+        "originalPath": "Makefile",
+        "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/Makefile",
+        "bytes": 3333,
+        "sha256": "c2b358f164f2b16359fe626c4efac63464c6985e20c08838f3d07adab1b60992",
+        "kind": "build-manifest"
+      },
+      {
+        "path": "android-native-gitlinks/tree-sitter-lib/lib/src/unicode/LICENSE",
+        "originalPath": "lib/src/unicode/LICENSE",
+        "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter/ca7d15add61bf77391d387d26441599b96c0eb9c/lib/src/unicode/LICENSE",
+        "bytes": 21001,
+        "sha256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d",
+        "kind": "notice"
+      }
+    ],
+    "sourceURL": "https://github.com/tree-sitter/tree-sitter/archive/ca7d15add61bf77391d387d26441599b96c0eb9c.tar.gz",
+    "archiveBytes": 3039338,
+    "archiveSHA256": "cf2b0dc6bc81839a519420b9ec6e78913db90e199d4b32468149d137ec7ef9c0",
+    "fullGetVerified": true
+  },
+  {
+    "path": "grammars/json",
+    "repository": "tree-sitter/tree-sitter-json",
+    "revision": "3b129203f4b72d532f58e72c5310c0a7db3b8e6d",
+    "parentRepository": "itsaky/android-tree-sitter",
+    "parentRevision": "797150222de664181e31be53e9a5b253056ba9b0",
+    "gitlinkEvidenceURL": "https://github.com/itsaky/android-tree-sitter/tree/797150222de664181e31be53e9a5b253056ba9b0/grammars",
+    "gitlinkEvidenceSHA256": "cec34333368e2615883923d36d4cb6e359420dbaa3fd0fe31e309efbd851fdcf",
+    "files": [
+      {
+        "path": "android-native-gitlinks/grammars/json/LICENSE",
+        "originalPath": "LICENSE",
+        "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3b129203f4b72d532f58e72c5310c0a7db3b8e6d/LICENSE",
+        "bytes": 1080,
+        "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1",
+        "kind": "notice"
+      },
+      {
+        "path": "android-native-gitlinks/grammars/json/Makefile",
+        "originalPath": "Makefile",
+        "sourceURL": "https://raw.githubusercontent.com/tree-sitter/tree-sitter-json/3b129203f4b72d532f58e72c5310c0a7db3b8e6d/Makefile",
+        "bytes": 3966,
+        "sha256": "10c6cf81904734707c2f2bbfb84b7f46601d9c3e8fdc9bb09cef617b971a0211",
+        "kind": "build-manifest"
+      }
+    ],
+    "sourceURL": "https://github.com/tree-sitter/tree-sitter-json/archive/3b129203f4b72d532f58e72c5310c0a7db3b8e6d.tar.gz",
+    "archiveBytes": 15580,
+    "archiveSHA256": "45e87321f626af23d974252406f0cad42920094217fcb7995131719d1a5ab82b",
+    "fullGetVerified": true
+  }
+]

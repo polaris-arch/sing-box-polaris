@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"strings"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -57,8 +58,23 @@ func (t *Transport) serverSetFor(systemConfig *systemconfig.Config) (*localServe
 	return newServerSet, nil
 }
 
+// searchName returns the name to build the search list from. A question name
+// is always rooted, so whether the caller wrote the trailing dot is not known
+// here. Only a single label is treated as unrooted: any other name is queried
+// as is, which keeps it from being sent with a search domain appended.
+func searchName(fqdn string) string {
+	name := dns.FqdnToDomain(fqdn)
+	if name == "" || strings.Contains(name, ".") {
+		return fqdn
+	}
+	return name
+}
+
+// loadConfiguration is replaced by tests.
+var loadConfiguration = (*systemconfig.Source).Configuration
+
 func (t *Transport) exchangeAsync(ctx context.Context, message *mDNS.Msg, domain string, callback func(response *mDNS.Msg, err error)) {
-	systemConfig := t.configSource.Configuration()
+	systemConfig := loadConfiguration(t.configSource)
 	serverSet, err := t.serverSetFor(systemConfig)
 	if err != nil {
 		callback(nil, err)

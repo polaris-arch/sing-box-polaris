@@ -1,0 +1,74 @@
+{
+  "sourceRepository": "basil00/WinDivert",
+  "tagObserved": "v2.2.2",
+  "sourceCommit": "1789526ecfb9ff5397c94f9f54c1a3dc2fb60440",
+  "archiveUrl": "https://github.com/basil00/WinDivert/archive/1789526ecfb9ff5397c94f9f54c1a3dc2fb60440.tar.gz",
+  "bytes": 164828,
+  "sha256": "2955621df8f6ef32ad65170f0c0f11bd2f261cf5a960624f416d0b9c6343e99c",
+  "allTrackedGitBlobsVerified": 47,
+  "truncatedTree": false,
+  "retainedSourceNoticeBuildInstructions": [
+    {
+      "path": "LICENSE",
+      "bytes": 61349,
+      "sha256": "14a0cb5214d536e4fdae6aa3f5696f981eeda106cd026e9794bba489ee79d628",
+      "gitBlob": "8489a8e773c33fd6f91eb67276e2d82a2d7547c3"
+    },
+    {
+      "path": "README",
+      "bytes": 3360,
+      "sha256": "6a208efac504974e1bdfe075584fa1dc49db0a4d18ca1ceaa2d45e65934a02e4",
+      "gitBlob": "14e9055d20cdf1159ab73b53fb8772c8d8981044"
+    },
+    {
+      "path": "doc/windivert.html",
+      "bytes": 107537,
+      "sha256": "96023d4730459b9dc10d42ff4c2cda29cf3afd9d6085bcdc24e3d9790f066066",
+      "gitBlob": "85a870a9c501ea3e22fb0715903d667f14044353"
+    },
+    {
+      "path": "mingw-build.sh",
+      "bytes": 5241,
+      "sha256": "419714edf46265449d7b620489511ae128a182c003f87e7bac81815492a2b558",
+      "gitBlob": "c231bbddfb4ac3d402e6776d00cfaae43f51c3e4"
+    },
+    {
+      "path": "msvc-build.bat",
+      "bytes": 4693,
+      "sha256": "c1a89a9730ee1c6e35cb85e2fbdfb6dcfa1a33378b007806bfe44b8dcffce524",
+      "gitBlob": "509243fd8ae83e7f1fdd57ad1c2e0dc0ab413052"
+    },
+    {
+      "path": "release-build.sh",
+      "bytes": 5773,
+      "sha256": "9c38d2b9b00a1696d6093da8be0ed55911db6c89fdef9c7bc7f702ff348d1876",
+      "gitBlob": "a4faf2484e692b7dfbf319d0ecfaee54cfb232e8"
+    },
+    {
+      "path": "sys/Makefile",
+      "bytes": 36,
+      "sha256": "272431810da48231039ac4fcfa245628b6b6c3dc39054b908c26c97d313ccf97",
+      "gitBlob": "53b9a3d6d0c6fa98a65de47c9fa45dc0d34f7e52"
+    },
+    {
+      "path": "sys/Makefile.inc",
+      "bytes": 264,
+      "sha256": "c0305539cd98a07bc2e9743b31fe119034b3d229ae756b80b166461076adc5db",
+      "gitBlob": "2a2feeb3204c10d1407d8de3b0a3f8c0de651576"
+    },
+    {
+      "path": "sys/sources",
+      "bytes": 522,
+      "sha256": "94cf8370368b1336bf593b4784fab021883ada2df4e5ddb301eff8a8d96d13c9",
+      "gitBlob": "1461d7a6957ea51d056a09f05acb4575dafb026f"
+    },
+    {
+      "path": "wddk-build.bat",
+      "bytes": 1676,
+      "sha256": "57d5b276e9065f2f40e9b25bc207dcce33de01416e67ac9a5d713265e48601f6",
+      "gitBlob": "b8829db42d97fd822674cb7b79aa74e69a7e145d"
+    }
+  ],
+  "selectedLicenseRoute": "LGPLv3 as declared by current common/windivert/windivert.go",
+  "scope": "Fixed source and exact upstream prebuilt driver bytes are separately verified; no signature key reproduction or original build bit-identical claim."
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "polaris-current-Go-runtime-notice-mapping-v1",
+  "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+  "version": "go1.27.2",
+  "completeNontruncatedFilenameNoticeInventory": "research/fixed-current-go/current-nested-notices.json",
+  "runtimeStandardLibraryNotices": [
+    {
+      "path": "LICENSE",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/LICENSE",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/LICENSE"
+    },
+    {
+      "path": "PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/PATENTS",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/PATENTS"
+    },
+    {
+      "path": "src/vendor/golang.org/x/crypto/LICENSE",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/crypto/LICENSE",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/crypto/LICENSE"
+    },
+    {
+      "path": "src/vendor/golang.org/x/crypto/PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/crypto/PATENTS",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/crypto/PATENTS"
+    },
+    {
+      "path": "src/vendor/golang.org/x/net/LICENSE",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/net/LICENSE",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/net/LICENSE"
+    },
+    {
+      "path": "src/vendor/golang.org/x/net/PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/net/PATENTS",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/net/PATENTS"
+    },
+    {
+      "path": "src/vendor/golang.org/x/sys/LICENSE",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/sys/LICENSE",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/sys/LICENSE"
+    },
+    {
+      "path": "src/vendor/golang.org/x/sys/PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/sys/PATENTS",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/sys/PATENTS"
+    },
+    {
+      "path": "src/vendor/golang.org/x/text/LICENSE",
+      "bytes": 1453,
+      "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad",
+      "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/text/LICENSE",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/text/LICENSE"
+    },
+    {
+      "path": "src/vendor/golang.org/x/text/PATENTS",
+      "bytes": 1303,
+      "sha256": "96f408bfae65bf137fc2525d3ecb030271c50c1e90799f87abf8846d8dd505cc",
+      "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
+      "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/vendor/golang.org/x/text/PATENTS",
+      "scope": "runtime-stdlib-source-candidate",
+      "retainedPath": "fixed-current-go/source-notices/src/vendor/golang.org/x/text/PATENTS"
+    }
+  ],
+  "conditionalNotice": {
+    "path": "src/crypto/internal/boring/LICENSE",
+    "suppliedPath": "conditional-boringcrypto-LICENSE",
+    "buildConstraintSource": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/src/crypto/internal/boring/boring.go",
+    "buildConstraintSHA256": "66adc819323017980492fc054cd052e89d145bc66a1f3f45f425576c4d913b76",
+    "current44BoringcryptoEnabled": false,
+    "basis": "All44 actual binary BuildInfo settings checked; official toolchain default has no boringcrypto experiment."
+  },
+  "excluded": [
+    "src/cmd/** compiler/tool-only notice files",
+    "src/runtime/testdata/** fixture notice",
+    "src/internal/copyright/copyright_test.go test code matched filename prefix but is not a license document"
+  ],
+  "conclusion": "All current official root and vendored standard-library LICENSE/PATENTS texts are verified and retained; eight nested vendor texts duplicate current verified root texts. Conditional BoringSSL notice retained with explicit non-applicability for current44. No complete compiler/toolchain binary archive is needed for this notice collection."
+}

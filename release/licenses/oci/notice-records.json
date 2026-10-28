@@ -1,0 +1,508 @@
+[
+  {
+    "sourceArchive": "apk-tools-v3.0.8.tar.gz",
+    "sourceArchiveSHA256": "e81c64a6e7c3806d45d4622c253e757aee970be84048554fa0eed79310e9453e",
+    "sourcePath": "apk-tools-v3.0.8/AUTHORS",
+    "path": "release/licenses/oci/notices/apk-tools-v3.0.8.tar.gz/apk-tools-v3.0.8/AUTHORS",
+    "bytes": 61,
+    "sha256": "c238557e70557a79ea0ac30ea6d05342144f02b07ae4e9988171f70de3d66f2e"
+  },
+  {
+    "sourceArchive": "apk-tools-v3.0.8.tar.gz",
+    "sourceArchiveSHA256": "e81c64a6e7c3806d45d4622c253e757aee970be84048554fa0eed79310e9453e",
+    "sourcePath": "apk-tools-v3.0.8/LICENSE",
+    "path": "release/licenses/oci/notices/apk-tools-v3.0.8.tar.gz/apk-tools-v3.0.8/LICENSE",
+    "bytes": 17622,
+    "sha256": "b3c87315aae4c9f276c37168f2655dd8bd990544d7a0bbfb929664155c7ab257"
+  },
+  {
+    "sourceArchive": "bash-5.3-1.tar.gz",
+    "sourceArchiveSHA256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "sourcePath": "bash-5.3/AUTHORS",
+    "path": "release/licenses/oci/notices/bash-5.3-1.tar.gz/bash-5.3/AUTHORS",
+    "bytes": 17220,
+    "sha256": "8ea258e958e649cd29f8094c23e6f58efb83fa0745adb5943d811735a627983a"
+  },
+  {
+    "sourceArchive": "bash-5.3-1.tar.gz",
+    "sourceArchiveSHA256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "sourcePath": "bash-5.3/COPYING",
+    "path": "release/licenses/oci/notices/bash-5.3-1.tar.gz/bash-5.3/COPYING",
+    "bytes": 35147,
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "sourceArchive": "bash-5.3-1.tar.gz",
+    "sourceArchiveSHA256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "sourcePath": "bash-5.3/lib/readline/COPYING",
+    "path": "release/licenses/oci/notices/bash-5.3-1.tar.gz/bash-5.3/lib/readline/COPYING",
+    "bytes": 35147,
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "sourceArchive": "bash-5.3-1.tar.gz",
+    "sourceArchiveSHA256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "sourcePath": "bash-5.3/examples/shellmath/LICENSE",
+    "path": "release/licenses/oci/notices/bash-5.3-1.tar.gz/bash-5.3/examples/shellmath/LICENSE",
+    "bytes": 35281,
+    "sha256": "5908bd3b6f430bffa4f8a20290eebdd933b62e2213908b83da1230355f3e9c1a"
+  },
+  {
+    "sourceArchive": "bash-5.3-1.tar.gz",
+    "sourceArchiveSHA256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "sourcePath": "bash-5.3/tests/COPYRIGHT",
+    "path": "release/licenses/oci/notices/bash-5.3-1.tar.gz/bash-5.3/tests/COPYRIGHT",
+    "bytes": 367,
+    "sha256": "e649815d1b6becdc545dda87c91f1b65497ddf6461240b904b2d8511a63476fb"
+  },
+  {
+    "sourceArchive": "musl-1.2.6.tar.gz",
+    "sourceArchiveSHA256": "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+    "sourcePath": "musl-1.2.6/COPYRIGHT",
+    "path": "release/licenses/oci/notices/musl-1.2.6.tar.gz/musl-1.2.6/COPYRIGHT",
+    "bytes": 6196,
+    "sha256": "b870108ec5e7790e9f9919064f1b9421d62d5f9b0e6c230c6adf7ea2da62e97b"
+  },
+  {
+    "sourceArchive": "busybox-1.38.0.tar.bz2",
+    "sourceArchiveSHA256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+    "sourcePath": "busybox-1.38.0/AUTHORS",
+    "path": "release/licenses/oci/notices/busybox-1.38.0.tar.bz2/busybox-1.38.0/AUTHORS",
+    "bytes": 5386,
+    "sha256": "384fc3a9cfc7c435bdd9d169e5ec60a7d898d9ef9557ec859394d7f97b4b6f07"
+  },
+  {
+    "sourceArchive": "busybox-1.38.0.tar.bz2",
+    "sourceArchiveSHA256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+    "sourcePath": "busybox-1.38.0/LICENSE",
+    "path": "release/licenses/oci/notices/busybox-1.38.0.tar.bz2/busybox-1.38.0/LICENSE",
+    "bytes": 18348,
+    "sha256": "bbfc9843646d483c334664f651c208b9839626891d8f17604db2146962f43548"
+  },
+  {
+    "sourceArchive": "busybox-1.38.0.tar.bz2",
+    "sourceArchiveSHA256": "34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2",
+    "sourcePath": "busybox-1.38.0/archival/libarchive/bz/LICENSE",
+    "path": "release/licenses/oci/notices/busybox-1.38.0.tar.bz2/busybox-1.38.0/archival/libarchive/bz/LICENSE",
+    "bytes": 1999,
+    "sha256": "b5a136ed67798e51fe2e0ca0b2a21cb01b904ff0c9f7d563a6292e276607e58f"
+  },
+  {
+    "sourceArchive": "nftables-1.1.6.tar.xz",
+    "sourceArchiveSHA256": "372931bda8556b310636a2f9020adc710f9bab66f47efe0ce90bff800ac2530c",
+    "sourcePath": "nftables-1.1.6/COPYING",
+    "path": "release/licenses/oci/notices/nftables-1.1.6.tar.xz/nftables-1.1.6/COPYING",
+    "bytes": 18341,
+    "sha256": "4ee1e51baf5f3166712fa0c3e01338c7257e50ddef245d28bb14ad68f6070ba5"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/Ada95/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/Ada95/package/debian/copyright",
+    "bytes": 3141,
+    "sha256": "84c16ad7e959cf47be61cbe541736a0d99f8c2b6f16cf0e301b75ce7059cbd4c"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/package/debian-mingw64/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/package/debian-mingw64/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/package/debian-mingw/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/package/debian-mingw/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/package/debian/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/AUTHORS",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/AUTHORS",
+    "bytes": 2651,
+    "sha256": "94ee3c58154b9fe6c800e4d3801d95cde5f8fa409241f4ed661afffe4a892b11"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/test/package/debian-mingw64/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/test/package/debian-mingw64/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/test/package/debian-mingw/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/test/package/debian-mingw/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/test/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/test/package/debian/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260516.tgz",
+    "sourceArchiveSHA256": "933438009f594f54656c53c7bc347a7e0ff21881700fc3db811086f7a3fd3b60",
+    "sourcePath": "ncurses-6.6-20260516/COPYING",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260516.tgz/ncurses-6.6-20260516/COPYING",
+    "bytes": 1447,
+    "sha256": "a85ca5bef8ce71f013bc5f4306c681881b248450f3b63722589891f0b69ea52d"
+  },
+  {
+    "sourceArchive": "tzcode2026e.tar.gz",
+    "sourceArchiveSHA256": "cc3d27ca2a0d8399504551b920970d80af83bfb9c216e8082a15491921935d54",
+    "sourcePath": "LICENSE",
+    "path": "release/licenses/oci/notices/tzcode2026e.tar.gz/LICENSE",
+    "bytes": 252,
+    "sha256": "0613408568889f5739e5ae252b722a2659c02002839ad970a63dc5e9174b27cf"
+  },
+  {
+    "sourceArchive": "tzdata2026e.tar.gz",
+    "sourceArchiveSHA256": "b26882805f26aac59d5b222978e6580484b834ccdc98be89df2f05a6dc53a652",
+    "sourcePath": "LICENSE",
+    "path": "release/licenses/oci/notices/tzdata2026e.tar.gz/LICENSE",
+    "bytes": 252,
+    "sha256": "0613408568889f5739e5ae252b722a2659c02002839ad970a63dc5e9174b27cf"
+  },
+  {
+    "sourceArchive": "gmp-6.3.0.tar.xz",
+    "sourceArchiveSHA256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "sourcePath": "gmp-6.3.0/COPYING",
+    "path": "release/licenses/oci/notices/gmp-6.3.0.tar.xz/gmp-6.3.0/COPYING",
+    "bytes": 35147,
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "sourceArchive": "gmp-6.3.0.tar.xz",
+    "sourceArchiveSHA256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "sourcePath": "gmp-6.3.0/COPYING.LESSERv3",
+    "path": "release/licenses/oci/notices/gmp-6.3.0.tar.xz/gmp-6.3.0/COPYING.LESSERv3",
+    "bytes": 7639,
+    "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+  },
+  {
+    "sourceArchive": "gmp-6.3.0.tar.xz",
+    "sourceArchiveSHA256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "sourcePath": "gmp-6.3.0/AUTHORS",
+    "path": "release/licenses/oci/notices/gmp-6.3.0.tar.xz/gmp-6.3.0/AUTHORS",
+    "bytes": 4098,
+    "sha256": "da5870e2f0482c5dc15b4cfed8bbfb51ce1279c8f8fc52bdb8c13c7cee949c32"
+  },
+  {
+    "sourceArchive": "gmp-6.3.0.tar.xz",
+    "sourceArchiveSHA256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "sourcePath": "gmp-6.3.0/COPYINGv3",
+    "path": "release/licenses/oci/notices/gmp-6.3.0.tar.xz/gmp-6.3.0/COPYINGv3",
+    "bytes": 35150,
+    "sha256": "e6037104443f9a7829b2aa7c5370d0789a7bda3ca65a0b904cdc0c2e285d9195"
+  },
+  {
+    "sourceArchive": "gmp-6.3.0.tar.xz",
+    "sourceArchiveSHA256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "sourcePath": "gmp-6.3.0/COPYINGv2",
+    "path": "release/licenses/oci/notices/gmp-6.3.0.tar.xz/gmp-6.3.0/COPYINGv2",
+    "bytes": 18092,
+    "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+  },
+  {
+    "sourceArchive": "libnftnl-1.3.2.tar.xz",
+    "sourceArchiveSHA256": "c97abc3409f8fa396b4462b2bb7f147a3a47a4ddc97cfa0b2f18890c9cfde8b0",
+    "sourcePath": "libnftnl-1.3.2/COPYING",
+    "path": "release/licenses/oci/notices/libnftnl-1.3.2.tar.xz/libnftnl-1.3.2/COPYING",
+    "bytes": 18008,
+    "sha256": "98193898c663001eff2fdcfb676e210c13042bc1a05e8d570c363efa396f8e24"
+  },
+  {
+    "sourceArchive": "pax-utils-1.3.9.tar.xz",
+    "sourceArchiveSHA256": "7409f246b3c59b3e2d459d2232a6f7374469637ae6cf616c115b8d5830cab840",
+    "sourcePath": "pax-utils-1.3.9/COPYING",
+    "path": "release/licenses/oci/notices/pax-utils-1.3.9.tar.xz/pax-utils-1.3.9/COPYING",
+    "bytes": 18011,
+    "sha256": "e6d6a009505e345fe949e1310334fcb0747f28dae2856759de102ab66b722cb4"
+  },
+  {
+    "sourceArchive": "readline-8.3.tar.gz",
+    "sourceArchiveSHA256": "fe5383204467828cd495ee8d1d3c037a7eba1389c22bc6a041f627976f9061cc",
+    "sourcePath": "readline-8.3/COPYING",
+    "path": "release/licenses/oci/notices/readline-8.3.tar.gz/readline-8.3/COPYING",
+    "bytes": 35147,
+    "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+  },
+  {
+    "sourceArchive": "openssl-3.5.9.tar.gz",
+    "sourceArchiveSHA256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+    "sourcePath": "openssl-3.5.9/LICENSE.txt",
+    "path": "release/licenses/oci/notices/openssl-3.5.9.tar.gz/openssl-3.5.9/LICENSE.txt",
+    "bytes": 10175,
+    "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+  },
+  {
+    "sourceArchive": "openssl-3.5.9.tar.gz",
+    "sourceArchiveSHA256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+    "sourcePath": "openssl-3.5.9/external/perl/Text-Template-1.56/LICENSE",
+    "path": "release/licenses/oci/notices/openssl-3.5.9.tar.gz/openssl-3.5.9/external/perl/Text-Template-1.56/LICENSE",
+    "bytes": 18412,
+    "sha256": "9837f05336ef3cbacb6a96e1672a0426d81ad01191f214b8d48e22ca62338181"
+  },
+  {
+    "sourceArchive": "openssl-3.5.9.tar.gz",
+    "sourceArchiveSHA256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+    "sourcePath": "openssl-3.5.9/util/perl/OpenSSL/copyright.pm",
+    "path": "release/licenses/oci/notices/openssl-3.5.9.tar.gz/openssl-3.5.9/util/perl/OpenSSL/copyright.pm",
+    "bytes": 1145,
+    "sha256": "04213b69dbebc8ba0dd8a6216af1d9422f9b63619c1cf2f1d8aa107b83bbb608"
+  },
+  {
+    "sourceArchive": "busybox-1.37.0.tar.bz2",
+    "sourceArchiveSHA256": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+    "sourcePath": "busybox-1.37.0/AUTHORS",
+    "path": "release/licenses/oci/notices/busybox-1.37.0.tar.bz2/busybox-1.37.0/AUTHORS",
+    "bytes": 5386,
+    "sha256": "384fc3a9cfc7c435bdd9d169e5ec60a7d898d9ef9557ec859394d7f97b4b6f07"
+  },
+  {
+    "sourceArchive": "busybox-1.37.0.tar.bz2",
+    "sourceArchiveSHA256": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+    "sourcePath": "busybox-1.37.0/LICENSE",
+    "path": "release/licenses/oci/notices/busybox-1.37.0.tar.bz2/busybox-1.37.0/LICENSE",
+    "bytes": 18348,
+    "sha256": "bbfc9843646d483c334664f651c208b9839626891d8f17604db2146962f43548"
+  },
+  {
+    "sourceArchive": "busybox-1.37.0.tar.bz2",
+    "sourceArchiveSHA256": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+    "sourcePath": "busybox-1.37.0/archival/libarchive/bz/LICENSE",
+    "path": "release/licenses/oci/notices/busybox-1.37.0.tar.bz2/busybox-1.37.0/archival/libarchive/bz/LICENSE",
+    "bytes": 1999,
+    "sha256": "b5a136ed67798e51fe2e0ca0b2a21cb01b904ff0c9f7d563a6292e276607e58f"
+  },
+  {
+    "sourceArchive": "jansson-2.15.0.tar.gz",
+    "sourceArchiveSHA256": "070a629590723228dc3b744ae90e965a569efb9c535b3309b52e80e75d8eb3be",
+    "sourcePath": "jansson-2.15.0/LICENSE",
+    "path": "release/licenses/oci/notices/jansson-2.15.0.tar.gz/jansson-2.15.0/LICENSE",
+    "bytes": 1912,
+    "sha256": "150d90904cd8de73609bb177b42edd3867b07b4b7b786dbba319f30de39fcda2"
+  },
+  {
+    "sourceArchive": "nftables-1.1.7.tar.xz",
+    "sourceArchiveSHA256": "a6fbf060d8d4fff001517a2b94f356bb4366bfbf0ba366366f9d27cc38caa58f",
+    "sourcePath": "nftables-1.1.7/COPYING",
+    "path": "release/licenses/oci/notices/nftables-1.1.7.tar.xz/nftables-1.1.7/COPYING",
+    "bytes": 18341,
+    "sha256": "4ee1e51baf5f3166712fa0c3e01338c7257e50ddef245d28bb14ad68f6070ba5"
+  },
+  {
+    "sourceArchive": "libnftnl-1.3.1.tar.xz",
+    "sourceArchiveSHA256": "607da28dba66fbdeccf8ef1395dded9077e8d19f2995f9a4d45a9c2f0bcffba8",
+    "sourcePath": "libnftnl-1.3.1/COPYING",
+    "path": "release/licenses/oci/notices/libnftnl-1.3.1.tar.xz/libnftnl-1.3.1/COPYING",
+    "bytes": 18008,
+    "sha256": "98193898c663001eff2fdcfb676e210c13042bc1a05e8d570c363efa396f8e24"
+  },
+  {
+    "sourceArchive": "apk-tools-v3.0.7.tar.gz",
+    "sourceArchiveSHA256": "97f6169715a8dac1cce056fb5bcaf5416694972674b2460fe56fea928ca876d0",
+    "sourcePath": "apk-tools-v3.0.7/AUTHORS",
+    "path": "release/licenses/oci/notices/apk-tools-v3.0.7.tar.gz/apk-tools-v3.0.7/AUTHORS",
+    "bytes": 61,
+    "sha256": "c238557e70557a79ea0ac30ea6d05342144f02b07ae4e9988171f70de3d66f2e"
+  },
+  {
+    "sourceArchive": "apk-tools-v3.0.7.tar.gz",
+    "sourceArchiveSHA256": "97f6169715a8dac1cce056fb5bcaf5416694972674b2460fe56fea928ca876d0",
+    "sourcePath": "apk-tools-v3.0.7/LICENSE",
+    "path": "release/licenses/oci/notices/apk-tools-v3.0.7.tar.gz/apk-tools-v3.0.7/LICENSE",
+    "bytes": 17622,
+    "sha256": "b3c87315aae4c9f276c37168f2655dd8bd990544d7a0bbfb929664155c7ab257"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/Ada95/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/Ada95/package/debian/copyright",
+    "bytes": 3141,
+    "sha256": "84c16ad7e959cf47be61cbe541736a0d99f8c2b6f16cf0e301b75ce7059cbd4c"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/package/debian-mingw64/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/package/debian-mingw64/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/package/debian-mingw/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/package/debian-mingw/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/package/debian/copyright",
+    "bytes": 5272,
+    "sha256": "06ec2240345d458b57ccac0a9a608f3decb0764f4e4eae63156a3b95ba73c813"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/AUTHORS",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/AUTHORS",
+    "bytes": 2651,
+    "sha256": "94ee3c58154b9fe6c800e4d3801d95cde5f8fa409241f4ed661afffe4a892b11"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/test/package/debian-mingw64/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/test/package/debian-mingw64/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/test/package/debian-mingw/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/test/package/debian-mingw/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/test/package/debian/copyright",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/test/package/debian/copyright",
+    "bytes": 3421,
+    "sha256": "b541099ff7201d84f42a7bce043b186080d3029c4161a4690d27b28ab61dabdb"
+  },
+  {
+    "sourceArchive": "ncurses-6.6-20260822.tgz",
+    "sourceArchiveSHA256": "0f3fbd9253ad2cd4a5451319bb15dfd93ede108a76733aa1fa60e36b1b87f8cf",
+    "sourcePath": "ncurses-6.6-20260822/COPYING",
+    "path": "release/licenses/oci/notices/ncurses-6.6-20260822.tgz/ncurses-6.6-20260822/COPYING",
+    "bytes": 1447,
+    "sha256": "a85ca5bef8ce71f013bc5f4306c681881b248450f3b63722589891f0b69ea52d"
+  },
+  {
+    "sourceArchive": "libmnl-1.0.5.tar.bz2",
+    "sourceArchiveSHA256": "274b9b919ef3152bfb3da3a13c950dd60d6e2bcd54230ffeca298d03b40d0525",
+    "sourcePath": "libmnl-1.0.5/COPYING",
+    "path": "release/licenses/oci/notices/libmnl-1.0.5.tar.bz2/libmnl-1.0.5/COPYING",
+    "bytes": 26530,
+    "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+  },
+  {
+    "sourceArchive": "zlib-1.3.2.tar.gz",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourcePath": "zlib-1.3.2/LICENSE",
+    "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/LICENSE",
+    "bytes": 1002,
+    "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+  },
+  {
+    "sourceArchive": "zlib-1.3.2.tar.gz",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourcePath": "zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+    "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/dotzlib/LICENSE_1_0.txt",
+    "bytes": 1359,
+    "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951"
+  },
+  {
+    "sourceArchive": "zlib-1.3.2.tar.gz",
+    "sourceArchiveSHA256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+    "sourcePath": "zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+    "path": "release/licenses/oci/notices/zlib-1.3.2.tar.gz/zlib-1.3.2/contrib/minizip/LICENSE.Info-Zip",
+    "bytes": 3509,
+    "sha256": "fc686023047ce5ce3a18a9b8a777156f0e475929d3de06bac279f3c025d2b2ca"
+  },
+  {
+    "sourceArchive": "ca-certificates-20260611.tar.bz2",
+    "sourceArchiveSHA256": "32ca73f2e81e2b88dc614f12e1ee04a82b1ec5a8e29d9f359ddf8905a0afcbb0",
+    "sourcePath": "ca-certificates-20260611/certdata.txt",
+    "sourceFileSHA256": "e57912808daef7b2b0fa4df2ccf17e47aeaf26c839a38f85c76003ebafd866bd",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260611.tar.bz2/certdata.txt.license-header.txt",
+    "bytes": 200,
+    "sha256": "74595f1b77f959c9bd601bd2206af1084dec2b8731ae187ad37d1082bc8eabb5",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  },
+  {
+    "sourceArchive": "ca-certificates-20260611.tar.bz2",
+    "sourceArchiveSHA256": "32ca73f2e81e2b88dc614f12e1ee04a82b1ec5a8e29d9f359ddf8905a0afcbb0",
+    "sourcePath": "ca-certificates-20260611/c_rehash.c",
+    "sourceFileSHA256": "a68fedc0edd976b9f35ecfdcb252d80dc12084b1bc4e945be7dc42c437d8b540",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260611.tar.bz2/c_rehash.c.license-header.txt",
+    "bytes": 329,
+    "sha256": "97fdd5501244be771a0d8695419b4997dbd742e666015aa7e3c3cc1f2fe022b4",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  },
+  {
+    "sourceArchive": "ca-certificates-20260611.tar.bz2",
+    "sourceArchiveSHA256": "32ca73f2e81e2b88dc614f12e1ee04a82b1ec5a8e29d9f359ddf8905a0afcbb0",
+    "sourcePath": "ca-certificates-20260611/mk-ca-bundle.pl",
+    "sourceFileSHA256": "0c66ca4c5418e2137d20e65bd10df0b193bf9578f7e7a947e5413e198652b4bd",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260611.tar.bz2/mk-ca-bundle.pl.license-header.txt",
+    "bytes": 1086,
+    "sha256": "ac8ff1112ed26659be28189d5cec87164c003b569339ebf8517bc1221523e625",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  },
+  {
+    "sourceArchive": "ca-certificates-20260909.tar.bz2",
+    "sourceArchiveSHA256": "dc460c535f3833432be4e561d214a5fe816b05ede5a2ade64787e501671cd082",
+    "sourcePath": "ca-certificates-20260909/certdata.txt",
+    "sourceFileSHA256": "beb7e6dfe6499926e52c075c27bcfbe4c957f8609c575b3860273ae2806f63eb",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/certdata.txt.license-header.txt",
+    "bytes": 200,
+    "sha256": "74595f1b77f959c9bd601bd2206af1084dec2b8731ae187ad37d1082bc8eabb5",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  },
+  {
+    "sourceArchive": "ca-certificates-20260909.tar.bz2",
+    "sourceArchiveSHA256": "dc460c535f3833432be4e561d214a5fe816b05ede5a2ade64787e501671cd082",
+    "sourcePath": "ca-certificates-20260909/c_rehash.c",
+    "sourceFileSHA256": "a68fedc0edd976b9f35ecfdcb252d80dc12084b1bc4e945be7dc42c437d8b540",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/c_rehash.c.license-header.txt",
+    "bytes": 329,
+    "sha256": "97fdd5501244be771a0d8695419b4997dbd742e666015aa7e3c3cc1f2fe022b4",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  },
+  {
+    "sourceArchive": "ca-certificates-20260909.tar.bz2",
+    "sourceArchiveSHA256": "dc460c535f3833432be4e561d214a5fe816b05ede5a2ade64787e501671cd082",
+    "sourcePath": "ca-certificates-20260909/mk-ca-bundle.pl",
+    "sourceFileSHA256": "8e278f4982210b37e4f9a048bd6ed23df41e4a054085bd73f8242628f03d09ca",
+    "byteOffset": 0,
+    "path": "release/licenses/oci/notices/ca-certificates-20260909.tar.bz2/mk-ca-bundle.pl.license-header.txt",
+    "bytes": 1086,
+    "sha256": "ac8ff1112ed26659be28189d5cec87164c003b569339ebf8517bc1221523e625",
+    "scope": "Original inline license header; full source remains available via checksum-verified source archive."
+  }
+]

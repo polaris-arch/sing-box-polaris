@@ -1,0 +1,10 @@
+{
+  "ref": "refs/tags/v.0.9.7.5",
+  "node_id": "MDM6UmVmMzc5NTk0NTExOnJlZnMvdGFncy92LjAuOS43LjU=",
+  "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/refs/tags/v.0.9.7.5",
+  "object": {
+    "sha": "e1ffd3f974755a70e2290d585486bfbdb11304bf",
+    "type": "commit",
+    "url": "https://api.github.com/repos/vadimgrn/usbip-win2/git/commits/e1ffd3f974755a70e2290d585486bfbdb11304bf"
+  }
+}

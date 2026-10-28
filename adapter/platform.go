@@ -62,6 +62,12 @@ type PlatformInterface interface {
 	CreateAutoRedirect(options AutoRedirectOptions) (AutoRedirectSession, error)
 }
 
+// PlatformInterfaceBinder supplies per-socket named-interface binding on Android.
+// Other platform adapters retain their existing PlatformInterface contract.
+type PlatformInterfaceBinder interface {
+	BindInterfaceControl(fd int, interfaceName string) error
+}
+
 type AutoRedirectOptions struct {
 	TunOptions                     *tun.Options
 	TableName                      string

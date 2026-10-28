@@ -12,22 +12,23 @@ import (
 )
 
 type _Options struct {
-	RawMessage           json.RawMessage       `json:"-"`
-	CommentsSet          *json.CommentSet      `json:"-"`
-	Schema               string                `json:"$schema,omitempty" examples:"https://sing-box.sagernet.org/schema.json"`
-	Log                  *LogOptions           `json:"log,omitempty"`
-	DNS                  *DNSOptions           `json:"dns,omitempty"`
-	NTP                  *NTPOptions           `json:"ntp,omitempty"`
-	Certificate          *CertificateOptions   `json:"certificate,omitempty"`
-	CertificateProviders []CertificateProvider `json:"certificate_providers,omitempty"`
-	HTTPClients          []HTTPClient          `json:"http_clients,omitempty"`
-	NetworkNamespaces    []NetworkNamespace    `json:"network_namespaces,omitempty"`
-	Endpoints            []Endpoint            `json:"endpoints,omitempty"`
-	Inbounds             []Inbound             `json:"inbounds,omitempty"`
-	Outbounds            []Outbound            `json:"outbounds,omitempty"`
-	Route                *RouteOptions         `json:"route,omitempty"`
-	Services             []Service             `json:"services,omitempty"`
-	Experimental         *ExperimentalOptions  `json:"experimental,omitempty"`
+	PolarisWindowsDirectory *WindowsDirectoryOptions `json:"polaris_windows_directory,omitempty"`
+	RawMessage              json.RawMessage          `json:"-"`
+	CommentsSet             *json.CommentSet         `json:"-"`
+	Schema                  string                   `json:"$schema,omitempty" examples:"https://sing-box.sagernet.org/schema.json"`
+	Log                     *LogOptions              `json:"log,omitempty"`
+	DNS                     *DNSOptions              `json:"dns,omitempty"`
+	NTP                     *NTPOptions              `json:"ntp,omitempty"`
+	Certificate             *CertificateOptions      `json:"certificate,omitempty"`
+	CertificateProviders    []CertificateProvider    `json:"certificate_providers,omitempty"`
+	HTTPClients             []HTTPClient             `json:"http_clients,omitempty"`
+	NetworkNamespaces       []NetworkNamespace       `json:"network_namespaces,omitempty"`
+	Endpoints               []Endpoint               `json:"endpoints,omitempty"`
+	Inbounds                []Inbound                `json:"inbounds,omitempty"`
+	Outbounds               []Outbound               `json:"outbounds,omitempty"`
+	Route                   *RouteOptions            `json:"route,omitempty"`
+	Services                []Service                `json:"services,omitempty"`
+	Experimental            *ExperimentalOptions     `json:"experimental,omitempty"`
 }
 
 type Options _Options

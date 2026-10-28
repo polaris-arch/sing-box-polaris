@@ -1,0 +1,1782 @@
+{
+  "schemaVersion": 1,
+  "module": "github.com/sagernet/sing-tun",
+  "version": "v0.9.7-0.20261013140216-9ffa5391a2ad",
+  "originCommit": "9ffa5391a2adc292182ffbeac089e795b1a3190d",
+  "zipSha256": "99bc3fd54c62dbe3d78dc2fa3b6427827cd3ceb526b312d4be4e86c03ece7d56",
+  "moduleSum": "h1:1IrvHXjYfOFIqmfaj6GObeyZ7/M3fGn7rb9tVOo8o1A=",
+  "modePolicy": "ZIP mode 0 records no permissions; readable regular Git files 100644 selected for this source snapshot. No executable modes inferred.",
+  "files": [
+    {
+      "path": ".github/renovate.json",
+      "bytes": 349,
+      "sha256": "93a1651c9727c22d2301f0934605a2235bc9a4126038a4585cfdf923e121d4ea",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": ".github/update_dependencies.sh",
+      "bytes": 135,
+      "sha256": "c4c5f89f2fd7bfcbb33ed0bd674d23f6b06a3d0f7ade26f9f7601174c4bf1c0f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": ".github/workflows/lint.yml",
+      "bytes": 1596,
+      "sha256": "47a9f03156f1295074b2d4b5b6abf3192ea2423f49eec621fdfd9ffba955f76c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": ".github/workflows/test.yml",
+      "bytes": 1391,
+      "sha256": "cfcda0c8076c792cd76f8e5f74f7fd162b5eaf266384acb49c24f1a5fff7f6d8",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 74,
+      "sha256": "fec91a027292261d57e7ba002fa1237f3c7c78e67f76d2c7772fba482991a924",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": ".golangci.yml",
+      "bytes": 688,
+      "sha256": "ae4fada7d0b17c09e1fbfba6eb6585ab3fc3f1b864b5ba54090e611bffb2ab3a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 674,
+      "sha256": "2f02b7486bcfa90d115c71a20437f3906b6fd5bef81c5dc0efd341399e89d0fd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 1008,
+      "sha256": "d5bdffae66c7f61f1c84b3a146d0b492cd29ff3019ace11f8e6bf479febf1973",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "README.md",
+      "bytes": 777,
+      "sha256": "a50c4529c2d35cdfb9c76dd07055394c453d7ff143822bdde4315fc0ee4e3c11",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "dnsinfo/dnsinfo.go",
+      "bytes": 733,
+      "sha256": "e628f948d9be42352058a890e5724edbba16459209a65bf6214502f62474d87a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "dnsinfo/dnsinfo_darwin.go",
+      "bytes": 7707,
+      "sha256": "973718866d39ec96f694e94837d7656486b8ae7b724d8f3725e7eed199d25b26",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "dnsinfo/dnsinfo_stub.go",
+      "bytes": 311,
+      "sha256": "2abf815c805afa3f459fbe999f59d05ae749962d9e3262a0a4ed80a21db31470",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow.go",
+      "bytes": 1863,
+      "sha256": "0c6934773dfc9b7c93354f4899f0b888ca12607075a273ee05b49b64be996e50",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_dispatch.go",
+      "bytes": 26687,
+      "sha256": "3afc582a52a1c1bfa5d0ce19988aba7140660b495e66fd6c4d49d81313a2581b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_dns.go",
+      "bytes": 2983,
+      "sha256": "4750fd4c1afdfdb396d457b2cde926d8b682a881db929304eae9ffec50aded93",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_fragment.go",
+      "bytes": 3884,
+      "sha256": "f80d2b231c4b2a84aaf4e58e38a8939da1e7f9f06929c10e4d5f0764e4dffccd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_mtu.go",
+      "bytes": 5161,
+      "sha256": "60d3ebf86ed56cd3b83407da4b0732647210c30b99002df14c0fe857e47ae16f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_nat.go",
+      "bytes": 9881,
+      "sha256": "be1bca2f864d500c7fde5a28c6cd09516a6b6221845d897b07f70a26a21f8ad0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_parse.go",
+      "bytes": 8519,
+      "sha256": "be76ef6eeded3deed144f584d37f914c6484a20a3dc97ac80b1b7a1cc748e6c0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_reject.go",
+      "bytes": 3312,
+      "sha256": "965c725c8cd049525d46a09471b8e6278c1ac3f303ec549f6853bf902f40fc73",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "flow_rewrite.go",
+      "bytes": 10950,
+      "sha256": "830b58d947dc5a881be8e1628e34e2051a36570e3f2a6bf31094a56a97903fcd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "go.mod",
+      "bytes": 1079,
+      "sha256": "0dde4758a9da6cfd3e570c73d62390d49dbe24b7bed4c8960c98150916d3a2c6",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "go.sum",
+      "bytes": 4594,
+      "sha256": "e19a1f452b60aaf09180bfdc5120223ee6e4ef327725a7d3b306b16b9ab7257d",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/README.md",
+      "bytes": 70,
+      "sha256": "ce35aefa023c1d1ac71ad81951adb166e5e442d799e64a076df2a7df4d41a0b1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/checksum/checksum.go",
+      "bytes": 1384,
+      "sha256": "f67d8bb25a5042f7bef916e9b55e9ae8744c02da955e458adaf6189986eb9312",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/checksum/checksum_default.go",
+      "bytes": 389,
+      "sha256": "d43c852cea6997d5ae60bd9db33b6a8fa556a759b07ddeddebca0af0dd0c9370",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/checksum/checksum_ts.go",
+      "bytes": 199,
+      "sha256": "670f699069cacdfb66dacfed44d8573eeb69411c7170fa7e00a7429c2e52dc37",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/checksum/checksum_unsafe.go",
+      "bytes": 6340,
+      "sha256": "a9d1d3bede38a6ca18e134abfaacbf4e0e65bc688da0048b65abaec1a68aedaa",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/errors.go",
+      "bytes": 1314,
+      "sha256": "1154569a5846b43d1e8f77c9df30b98a361fc8ff78b5895a889ee82b9fe3250e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/checksum.go",
+      "bytes": 4071,
+      "sha256": "bbc9c0b7b1b6a12325928a53da305585320073bf4fcb84ccced74fac1044c9e5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/eth.go",
+      "bytes": 6742,
+      "sha256": "3a82fe5ed289f7056e5be35a0ba6a0c5d8d17eaace9afe91a8befa67060d1cf1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/icmpv4.go",
+      "bytes": 7781,
+      "sha256": "69d0b0a2a0a4cd8db66c94943709cd796cfd2fcda1e79cb247ab34004a759d42",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/icmpv6.go",
+      "bytes": 10145,
+      "sha256": "8642da4450643d8cbd3058c97634149105d7d6279cfc8ea03c9eeec234ac172a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/interfaces.go",
+      "bytes": 4665,
+      "sha256": "b28e81f9c8ff2a687d1b3f1523304d5570111f4b0b93712bc8af79870ca6cd60",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ipv4.go",
+      "bytes": 43460,
+      "sha256": "386040abbaf0e2de7dd15638c1968f54638e5015e87d4096d42e7e4ea532f445",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ipv6.go",
+      "bytes": 21215,
+      "sha256": "a24b7cf8cbb066338837988e2cb209c15a87051a5ecd0b2aca8a3ad57f07f2fe",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ipv6_extension_headers.go",
+      "bytes": 20156,
+      "sha256": "7477112680ad8b0ababb2135c11816815cbae72b3b0718313fffe65dd94bff22",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ipv6_fragment.go",
+      "bytes": 4807,
+      "sha256": "55a5c5c5bef25a0d2bc826af867142069fa4094006b3a42241ff5c4591fce974",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndp_neighbor_advert.go",
+      "bytes": 3619,
+      "sha256": "c8ae232427824d6c40592e2b957acf3e2bd74fa7abbde23cba86ffae2c298a73",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndp_neighbor_solicit.go",
+      "bytes": 1857,
+      "sha256": "a3f213b5963bda5bdbfe26e4e6511240d51b9e820f86895180c7105b9d010453",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndp_options.go",
+      "bytes": 37909,
+      "sha256": "399c5bdea45563ad26f58a78ba7b7e92f4e4a943ea840460d4356045904913d4",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndp_router_advert.go",
+      "bytes": 7514,
+      "sha256": "49a57987673a430a212fb8eef02f8087ff2d019b2e53712b18e214b2338403b7",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndp_router_solicit.go",
+      "bytes": 1210,
+      "sha256": "0c5d8bc8fa62dc70ab4cae6adf1f7435fa8dcab4109fdb99dd3911eb211e075b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/ndpoptionidentifier_string.go",
+      "bytes": 1944,
+      "sha256": "279d5a33f5ab06a784385be2aef49677e90fbf86d307adf484d44b584bae0a97",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/netip.go",
+      "bytes": 931,
+      "sha256": "c95cd2e687db58fd4b001a7373e8ed44694d75aab2a46e2f25df42aab366c896",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/tcp.go",
+      "bytes": 22509,
+      "sha256": "629b331d94154fefee1a7072bd31166fa6c8d99c142ca7b96f9850103249a971",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/header/udp.go",
+      "bytes": 6243,
+      "sha256": "1b54a7c7d349063df96e66868e0f83c73f61274a0d77e40417b035f1ca0abf05",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/seqnum/seqnum.go",
+      "bytes": 1885,
+      "sha256": "b9c830adb9cb3aebc470d0039a59bcbab03b7bfa926d3b779630f48c2a15cc62",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "gtcpip/tcpip.go",
+      "bytes": 16412,
+      "sha256": "4e0a8add07c62ac796653f9e429e06950ec8f9faec61aea1720385917e48467a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "icmp_error.go",
+      "bytes": 6862,
+      "sha256": "65ad9ba7ad74d83ec609e6570187710edf16ddcc55500d221d10b9454b078c0b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/afd/afd_windows.go",
+      "bytes": 5638,
+      "sha256": "9e5cab8d55f5f216bfe7c858bea96401f3360cf23f8f7e36d5d93f21479cd31e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/afd/zsyscall_windows.go",
+      "bytes": 4119,
+      "sha256": "b97fda0e2e8d2730f2d40679e644e11e5c67c1aa3889d1afb798c77c931535cc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/checksum_test/sum_bench_test.go",
+      "bytes": 1306,
+      "sha256": "b7e876002deaac888f37807162dd747eaceea9c4c1c250d220ebe9e84d476da0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/checksum_test/sum_test.go",
+      "bytes": 1059,
+      "sha256": "36c105c5dc5f9e65f89dc7a40e953c626b3245687b63e127267fea74e12c1985",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/endpoint.go",
+      "bytes": 20058,
+      "sha256": "684222fe3ef97b1173811961be3c0d0d3222edaabfc223f47235259bfb74caa0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/endpoint_mutex.go",
+      "bytes": 2484,
+      "sha256": "8e15ab9a957d90d522869504502e5149c799e175793d867c7235c52f7839d93d",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/errno.go",
+      "bytes": 1402,
+      "sha256": "e0c9e2d093a297be026c087aca6713b3d5dfd6b9f6b4f301d361bf2639ebf06e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/packet_dispatchers.go",
+      "bytes": 5499,
+      "sha256": "01057240eab4579f38adcc713dbb4d461eb20a44c6049fd27183566984e4d396",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/processor_mutex.go",
+      "bytes": 1728,
+      "sha256": "67497f7518e06eb4c60ae6f8b90d7cea78a9e33365a3bc69527286a586caec78",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/fdbased_darwin/processors.go",
+      "bytes": 7967,
+      "sha256": "555935cf6d92c74403a3842f62bdbebbeec64433685ddca046ac08283dfc9af1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/rawfile_darwin/rawfile.go",
+      "bytes": 4248,
+      "sha256": "280b6a629bbb576215ff850520afdea18ea5d9fab0fb43b6f36ddcd68412739e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/stopfd_darwin/stopfd.go",
+      "bytes": 1302,
+      "sha256": "d247fbeb89b8df99b5736d5d597c42e37734e14f145daa8620336356f0604d00",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum.go",
+      "bytes": 28233,
+      "sha256": "538309634de7d39288641785c22c2d15f3ba9d043b1b27f967ffe1128049a482",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_amd64.go",
+      "bytes": 557,
+      "sha256": "c9cca9fea584188b28c93a3ed4073cadc656ad24d31f65af01f015d4d54b264c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_arm64.go",
+      "bytes": 176,
+      "sha256": "037c35df0151bc452cafe27934d4234c91de745701ecad49ac63dbe027410c3a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_arm64.s",
+      "bytes": 2440,
+      "sha256": "ced8e5da3df8bb08e06fbb1f3dcca604c023ae53a0f3a5000723314ec337954c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_generated_amd64.go",
+      "bytes": 601,
+      "sha256": "9dfcdd96fa6064085e0cb4f9eb7c45379371539a8e2a6f0577724855e6249efa",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_generated_amd64.s",
+      "bytes": 17941,
+      "sha256": "983e4f30fb0170c8956cdaa1443c7851157dab763a81c9ec43eeca770d945744",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/checksum_generic.go",
+      "bytes": 362,
+      "sha256": "338c6f309a242fd7a3038bd0c34bbfcb965a4e66b4c995105e9ef5bb646911d8",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/tschecksum/generate_amd64.go",
+      "bytes": 18982,
+      "sha256": "80d5b2c917c967500c01ed8e6e0579bfcbe24008b70f3c19ec10e79af55ec76f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winfw/winfw.go",
+      "bytes": 9557,
+      "sha256": "56d30ce74e3e8d6696fb45896929c8ddd6c6ca7f79f5f789fa885dd965eb9cc5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/interface_change_handler.go",
+      "bytes": 2477,
+      "sha256": "f1ae39a34050df34f70b3c847d436d1371e3a2d979ae2b65e5df7463a4c1a801",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/luid.go",
+      "bytes": 12007,
+      "sha256": "86c54c2acb15b3bbf8b22d06bfbbf59afc58d4cf2d62ceb880cf24317ffa4291",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/mksyscall.go",
+      "bytes": 241,
+      "sha256": "2a9430884b06d680693b99dbd85416884b6afed8ddf6597fe5304556424b791e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/netsh.go",
+      "bytes": 3984,
+      "sha256": "9c26e3850de7192b212d614cd1391128e0d889a981c99d472cab1ae48e3ba69f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/route_change_handler.go",
+      "bytes": 2313,
+      "sha256": "a5f440b0cce7d3d0c6bd1f03dc1664af9f4941b13d08c4942198c162f7b24dc6",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types.go",
+      "bytes": 41159,
+      "sha256": "93a5a7011091f2f041e55f188640e990ed6fd8ff01484ae00170e1a725a55424",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types_32.go",
+      "bytes": 9197,
+      "sha256": "ae1c4552eb963b1e2deeaa04c7a185c612ed5aa4d5de36419082c20678439a22",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types_64.go",
+      "bytes": 8900,
+      "sha256": "99435f61f7e78bd3d5bae247c6e79c25b66f61d2a12d59151064577f3ac57269",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types_test.go",
+      "bytes": 48574,
+      "sha256": "c3e63d9aa645c7785562bcc285f62c387d2d9f40e02b9c47801b83dd3139e212",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types_test_32.go",
+      "bytes": 2487,
+      "sha256": "37f31364b249ad5d596936b03669ddde45cbf0c13263b86f0c0dfebbacc646ac",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/types_test_64.go",
+      "bytes": 2495,
+      "sha256": "2f4c3ef57ef42430a8d1b5fab9cad73e7ebdfbff0976298437da62151fd73c64",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/unicast_address_change_handler.go",
+      "bytes": 2711,
+      "sha256": "b39e86092744a32c36a7380ca74b74d9b38c1634043b73bbe8681a25acfd5015",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/winipcfg.go",
+      "bytes": 8825,
+      "sha256": "5c675714824841a4363b34b8186f9f4330096f4547fa5b70bee4cb51dd869a71",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/winipcfg_test.go",
+      "bytes": 18045,
+      "sha256": "01b62a10645d55eb6587a331e5341934e4bed44ee7570894849d6370348051f8",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winipcfg/zwinipcfg_windows.go",
+      "bytes": 12262,
+      "sha256": "9ecf455c964bf43a7965c561646ec785a63eb399f87b0726c7dd8c17504b57e2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/constants.go",
+      "bytes": 6206,
+      "sha256": "8018933afeaf1193d3bd1682c2d5d61d1b8933a194b6d18eec00eda04219c4af",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/helper.go",
+      "bytes": 857,
+      "sha256": "fbbb4bbc84935f501edece384373d5787a46d84459dd5ab30e7f1b1e5f15d378",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/mksyscall.go",
+      "bytes": 142,
+      "sha256": "d11e2d7a9534e53abb05cf4e78a7920664e51806c9024cd76c5eb03dda5afbb5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/syscall_windows.go",
+      "bytes": 1342,
+      "sha256": "498c6d2c681c6cbc1b91c9e1857c2060fedc06097b19bb0aae87c71145b942f2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/types_windows.go",
+      "bytes": 2168,
+      "sha256": "144bd74b2d9694e9d4930a36835017a0033d957fcb5adc90fe2b9bcab81dd6bd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/winsys/zsyscall_windows.go",
+      "bytes": 2852,
+      "sha256": "d7ce5bd3d764319862b6a6f2686233c76f1eeda5c78a5f3d1a5a867c8a5b9260",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/README.md",
+      "bytes": 29,
+      "sha256": "733fe39f0a936289c6641b43f5fec8a315ed61fea8e73fd5f7c38b34ecb5e175",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/amd64/wintun.dll",
+      "bytes": 427552,
+      "sha256": "e5da8447dc2c320edc0fc52fa01885c103de8c118481f683643cacc3220dafce",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/arm/wintun.dll",
+      "bytes": 364552,
+      "sha256": "daad267411ecdc70a0535e274d2c3e9da3d0084bdac7662cb8424dd4a031b4d9",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/arm64/wintun.dll",
+      "bytes": 222488,
+      "sha256": "f7ba89005544be9d85231a9e0d5f23b2d15b3311667e2dad0debd344918a3f80",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/dll_windows.go",
+      "bytes": 1891,
+      "sha256": "1a332593019fe17c3d929672cd1e37236c1be88efbafe2cbdcbfcf8e3e615c36",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/dll_windows_386.go",
+      "bytes": 190,
+      "sha256": "cffa15ebcb0265a1cfbbaf2a16f9ae433e18647283e20f922feea6a9372301d5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/dll_windows_amd64.go",
+      "bytes": 192,
+      "sha256": "2510bebfe4eabfdbeddaeece4ed91b53d84950108af6432b8e1c39cef33d1c83",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/dll_windows_arm.go",
+      "bytes": 190,
+      "sha256": "49ea1b2157c7f577f0a3648afaaae4d34dccf66849cfb1135ece82b78f62c656",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/dll_windows_arm64.go",
+      "bytes": 192,
+      "sha256": "48597e59944801a0bdb22cf919253b0bf5833963915503907ab7434fdb6bb2a1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows.go",
+      "bytes": 26417,
+      "sha256": "1387fe82b0d67c3096f5b63951778b9d6a70e7b49263a8616114edea4f8a6f4e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_32.go",
+      "bytes": 333,
+      "sha256": "f5dfbda39decda2491edc0075d0b2f68d24946e2519bbeb7f414d454556b94bc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_386.go",
+      "bytes": 168,
+      "sha256": "5ecf7a033d81a78866b24e4fc5eea8a38bb8184fa7e28fe927a8868920eb8857",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_64.go",
+      "bytes": 857,
+      "sha256": "3a193bd70b491fddaf151eb9627fb6fe860599f4697277a63f6a098be3bcb91c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_amd64.go",
+      "bytes": 169,
+      "sha256": "0e8e4864a554a907e7f28916796ad3bac915a032bfc1391686d16b57f32e86f3",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_arm.go",
+      "bytes": 169,
+      "sha256": "07fa0e4cc17688f40b39ab85350e0cf4112a777c759e73eb7f0197fb9121f601",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/memmod_windows_arm64.go",
+      "bytes": 169,
+      "sha256": "9669c70c1890fa9316f1bd0c51fbe43c87b1f36adeeff220d6390fce9fe2276a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/syscall_windows.go",
+      "bytes": 15387,
+      "sha256": "d22098a12af7b5effd84763779a4b1ddbdd90f9a9ac9f9246ec268dd1991e512",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/syscall_windows_32.go",
+      "bytes": 3869,
+      "sha256": "0161982002d9f2ce65f6b07b0f56e6685da9f182b896d4c31e1569371cce25bc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/memmod/syscall_windows_64.go",
+      "bytes": 3845,
+      "sha256": "236d97e309a2f99d6d328af648908eba85b81018dd4f248536e6d8467eaf2a6a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/session_windows.go",
+      "bytes": 2726,
+      "sha256": "57db55a5a7633843c5a6746201f5f19b61ee39813b8122140275c17f1222ec65",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/wintun_windows.go",
+      "bytes": 3319,
+      "sha256": "b20c036332f305d8a6e207becd05b9763a8868e78682101922e388111cceb985",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "internal/wintun/x86/wintun.dll",
+      "bytes": 550928,
+      "sha256": "d694fa46ab4cfebcb2632d094c7aa97278eef2f8052438621766d863ae98a931",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor.go",
+      "bytes": 1172,
+      "sha256": "6b5667eb5ea0124e40fa37ffda1c09a46cd8eaf44bd9610e22dce7edee45f764",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_android.go",
+      "bytes": 1658,
+      "sha256": "e31377ff47bed8bc0bfd9f60fa3921c3b1797784236ffc0b1f919735a5119502",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_darwin.go",
+      "bytes": 5689,
+      "sha256": "0c7aa7670d5c6aed48e47094327554ceb570957814389e409c7c354e7562c958",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_linux.go",
+      "bytes": 3415,
+      "sha256": "40eb027de0f3cb968d47e41b60deef6de53ee09c9eb784b41fbe8808a0465877",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_linux_default.go",
+      "bytes": 977,
+      "sha256": "96552c190a65ccf3e1659a725fe9c9cf42c01fc8e911026722f68eb50994e10b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_linux_test.go",
+      "bytes": 2772,
+      "sha256": "19ba0bf0b51912a140bfcf92c6079326670a7bf263af9c96d13d5e1653a43dd6",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_other.go",
+      "bytes": 424,
+      "sha256": "072dc462e924991d0adfc32b476982353791af17f89fdf451d2ae58299ca076b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_shared.go",
+      "bytes": 5318,
+      "sha256": "c1e8f12cfb246c2ef0100e4ccd5acef932e876f530134866d4c8c1d9d5d8f458",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "monitor_windows.go",
+      "bytes": 5538,
+      "sha256": "92ffb06c86c37ad114e9525287c1bab56a104a0cba882dcb647ef8f25e5df375",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "netns_linux.go",
+      "bytes": 1893,
+      "sha256": "22281a10ef370dd0094c135c729cebc07bed3c777ec83e6f865dca92b70c39b4",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "netns_other.go",
+      "bytes": 251,
+      "sha256": "d264c9c481511698e91b8f45b53be6f2425025668eabb3e14bfff83ec77e91f2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "nfqueue_linux.go",
+      "bytes": 8716,
+      "sha256": "c7fe003dcbd0d3ea528dbd2bb0000367cb51f85a9ffb34479e536ae8f8ebf172",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "packages.go",
+      "bytes": 596,
+      "sha256": "12f238cd7c2f37fcf5b90f67263fdfdbd3bb98cce4e87bac0e61a7025d1fc0d7",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "packages_android.go",
+      "bytes": 4314,
+      "sha256": "dc774ff8c5e709517df134e3661ea2e9e3f53448072e20db550c6b2bebbd8a83",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "packages_stub.go",
+      "bytes": 156,
+      "sha256": "e5c353974404abc63750acf289791f38d9c364d9c43a2b865ece5e73e6dadb6c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/cmsg_unix.go",
+      "bytes": 290,
+      "sha256": "b84f329026f29ef25156f42c3f198cf407260e7052e76531b75d8a81b67442a5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/cmsg_windows.go",
+      "bytes": 1259,
+      "sha256": "c8f044d44aa51f50bf189833dfc34e4f7c6b0f8c074ae23e3fc888edd583c07b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/destination.go",
+      "bytes": 10167,
+      "sha256": "d9af54ea7ddc220f1c7bfbed597010eb86882883030ab1d967df47abd21ee788",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/destination_test.go",
+      "bytes": 3187,
+      "sha256": "3e978dff1b6923fcc92a41c5990bfe72da664a9cc73b0c959dd48531e340b987",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/filter_linux.go",
+      "bytes": 3124,
+      "sha256": "f417ba796882502dccfb1dd4a1fd50d07e0ab2f3e337141b38b5bd54c98937fb",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/filter_other.go",
+      "bytes": 125,
+      "sha256": "73b8667ee4e9009a487a5045bbf69332d7a5549c2606b42f6ea267a2263eb77a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/ping.go",
+      "bytes": 10444,
+      "sha256": "abeb30628fa3ab2bbe6c5f50b8701341b17a44bb28dfae9096a3ddf2ad84c381",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/ping_test.go",
+      "bytes": 9962,
+      "sha256": "a7a4c7c89c7e2dde8323ac00a27f836d299f1a9c09367d6fcf213b90ecd3fa2a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/port.go",
+      "bytes": 4889,
+      "sha256": "853ed23a290c733176865147feb46d0476f6b1f15f0ad5bff79615f1d92c682a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/socket_linux_unprivileged.go",
+      "bytes": 4822,
+      "sha256": "2cc7e16dfd9fe31470dd6342fbb983e38903ee42e89d65fecb3da8a0da5fdb0a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/socket_unix.go",
+      "bytes": 3285,
+      "sha256": "e8b69bed02332c757ca435b79a473939ead35d3552a0465cb643a5debc16a99f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "ping/socket_windows.go",
+      "bytes": 1318,
+      "sha256": "c5829fd6e599cb6e2130cc22176d8c9b1a045209630dea5dcee760347072235b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect.go",
+      "bytes": 2080,
+      "sha256": "799d465a550418d91d3d5b562b3af77b8afa9ba156182d95dc55728c15c0377c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_ingress_discard_android.go",
+      "bytes": 5255,
+      "sha256": "8651d1baced0daf48bfaed40766f6e30aea8838294ae5194f5dff43bad56cd14",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_iptables.go",
+      "bytes": 31856,
+      "sha256": "7aa7f110c211d7e9accf2e0bc82c474f8759e536030a8a610438d381fc4ffefc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_linux.go",
+      "bytes": 13857,
+      "sha256": "cee405e6f0a16896b8cbeb7042e587300c64a132ccfda166b6159352c8328f80",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_nftables.go",
+      "bytes": 18256,
+      "sha256": "b8e750a8d707920be5bf167ca5b97f95f82d86d549eb1c625d69a38780af7a31",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_nftables_docker.go",
+      "bytes": 8060,
+      "sha256": "febefefd584c168263277a7a26c6313661b37a4338b156d6561e3ae1ee86c87c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_nftables_exprs.go",
+      "bytes": 5114,
+      "sha256": "ced41eecbe47213987d96dfb018aba5f74432d74e379891b422088b929280524",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_nftables_rules.go",
+      "bytes": 29321,
+      "sha256": "d749416bacd2630e1b18c6b6002314fa17d8229796582100cd9306c523d80fd1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_nftables_rules_openwrt.go",
+      "bytes": 1516,
+      "sha256": "cd8543955c68288f518f00d4503fbfb1cbb18f90ccd52c5b28317696fb2fa41a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_route_bypass_android.go",
+      "bytes": 10072,
+      "sha256": "28d1c4cb55d5a0ba0dc7e6550569ac63a4f75b171ee8cfc4ac3426bc694b8fe5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_route_linux.go",
+      "bytes": 9720,
+      "sha256": "1115f363e1ac507cf711704eb1d61fd3a1f129a6d56da1f7a2e577130f3998a6",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_route_vpnservice_android.go",
+      "bytes": 8188,
+      "sha256": "2cbd404b0ca97a3ad3a6074430dee7468dc33906fb3499b9f3231d74083d14ba",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_route_vpnservice_stub.go",
+      "bytes": 487,
+      "sha256": "ca7b697d2d296ce63d186aee894ca15c3db5229cba3e66ca391a548151d24515",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_server.go",
+      "bytes": 3607,
+      "sha256": "922577648c8405606c1359f6c4e8cee666b9e3b9d5a0157ed9a855606d5c82cd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "redirect_stub.go",
+      "bytes": 153,
+      "sha256": "c4918d2884e057a6df2bf50ff63d7dd8ade0cab9f128a8a74ba9f169dadef1eb",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack.go",
+      "bytes": 1999,
+      "sha256": "05d1af6b47293c271144ee2ec1ea6af94d319b180f4e73aae8ce938c86043847",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go.go",
+      "bytes": 9994,
+      "sha256": "750e9e8178a68804118792700599a02b93c02e486b82b085263580b7b7c8ba4c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_conn.go",
+      "bytes": 20337,
+      "sha256": "39cc6fd90e6c6286efa5fde7dff62c627a6fbc371386be3d0ded88770759c33d",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_conn_options.go",
+      "bytes": 1902,
+      "sha256": "4932ae0c7a0b54c23c1198dc6d17ff16fc6402e425535bfa17be6f1b5a1d21f2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_dial.go",
+      "bytes": 10332,
+      "sha256": "7d7e13c7b61b6eadea602eaca1a6c50eaaaf56a2b9fe47dd155433a74c2fc2ea",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_engine.go",
+      "bytes": 30326,
+      "sha256": "a42032587cd30fa4a07dbef7c8125e51cde64d2c633035a0ce940604249e2591",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_cc_test.go",
+      "bytes": 17706,
+      "sha256": "a0f927b834900f09e28b06e74e49c60496563467722460bd1ebb29f68e05fda9",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_cpu_unix_test.go",
+      "bytes": 358,
+      "sha256": "38c0d2602b9b7f6e049c47d5fa0c4fff504e0afb575916b1b8c2f2f81a84b529",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_cpu_windows_test.go",
+      "bytes": 518,
+      "sha256": "adb42ffb773c939cebeb0dc41fbf0cc5b89ca628760f6d4a0de8091931f9fa5e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_darwin_test.go",
+      "bytes": 5678,
+      "sha256": "39c5f599772409d88a9e386026cc968ea66e8d8e2d2f8da5fcba8e1139095a4a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_flow_linux_test.go",
+      "bytes": 16105,
+      "sha256": "01e6ac4f262a4ace3b2c1fd9e6657b7f4e9fbc82ba26042b604dc21db3b94bca",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_lifecycle_linux_test.go",
+      "bytes": 11167,
+      "sha256": "47e88560467e391eb9d5fc977dd3763ef802ed6ac4b1a6278be808660fc6ed82",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_lifecycle_test.go",
+      "bytes": 15240,
+      "sha256": "67156c84da636a49474fb19f2bb601f58624dee5af662283d3bbe74db32dc6de",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_linux_test.go",
+      "bytes": 1557,
+      "sha256": "7fcca2022903be1a42bf5c54cbb5031c950215c25699eb06276ff06717fc4125",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_listen_test.go",
+      "bytes": 5787,
+      "sha256": "fc0170230edae1a6f861603b76a4a636a52edb61f8ad04e2ffcd9f1ce75ce8f8",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_memory_darwin_test.go",
+      "bytes": 253,
+      "sha256": "1db4d5256e46e2fbea9a7e688bc4ab4a71d437b337e1b49821ddcaea044200cc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_memory_linux_test.go",
+      "bytes": 558,
+      "sha256": "f92d5d0359c247508971227f1121eddd5e6549971af9b1f5276af5876f53ac2e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_memory_test.go",
+      "bytes": 19245,
+      "sha256": "348ac2551a4efdf5041bf44ac26b55b8a3ec61ed39e1ededa5ca078c09528768",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_options_test.go",
+      "bytes": 13931,
+      "sha256": "d91ee7b21287dfe43bcad79b785eb8ab8452c5a18095532a6af119079c0d5410",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_packet_flow_test.go",
+      "bytes": 12619,
+      "sha256": "211165bc415ee68da52d1f7f5636941b0124c5d618ae2023b76c8b0644607d4a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_packet_offload_linux_test.go",
+      "bytes": 6751,
+      "sha256": "d3195087234c5d01a4b8241d29bddd54e4a45ed9b8188801ee8fbb2aa2f8ad54",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_packet_test.go",
+      "bytes": 26090,
+      "sha256": "b03c5de8d79c4cbff72f5acc25f27a0796df9a9e6af52a8ff1d5b3ef8504f7a3",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_splice_test.go",
+      "bytes": 5774,
+      "sha256": "98ebc0f295865197deed3bcf1baad86e5b12781417b6a63356bd81292787b5cb",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_tcp_test.go",
+      "bytes": 14717,
+      "sha256": "a84570534841a4d7b718921c634899e6f887e7cd0cc65c441f7203c2ca819ed0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_test.go",
+      "bytes": 23510,
+      "sha256": "d4c5529778756f074dd9c0f14bff642ae18eb7203c63647a92e361822cfd9283",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_integration_windows_test.go",
+      "bytes": 1250,
+      "sha256": "aa1a47899c38d0f2f4c652658f652098513df4a02b5e296ecae7b8f6285b81d2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io.go",
+      "bytes": 2837,
+      "sha256": "83cadb184ed63d27f3b327924b434b0d46a71fae2f6d2fad5334c1104a42fe73",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io_darwin.go",
+      "bytes": 26839,
+      "sha256": "9819a866f6cfb5679d46c427a1dd1dde43872854f0e7db2a47913a98dc82e835",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io_linux.go",
+      "bytes": 17991,
+      "sha256": "d07d35ecbd0fb42a19602fca1168869a0ac57c60ec9c3c4786b64b1dd3cc2908",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io_memory.go",
+      "bytes": 6160,
+      "sha256": "891a4fe3edf57b8c3ed5d4b7c23bfb13531d304266756066c7545061d9f83ca3",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io_other.go",
+      "bytes": 1676,
+      "sha256": "06cfe949016be5ebda9cb6c9c7d3b29ffa668b98b54a9f61a41c5147ba2a1b3a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_io_windows.go",
+      "bytes": 13153,
+      "sha256": "d26b93f3b90174bdcb1848191da98e2b3107d390a069b4cc6bf3ff4633e45687",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_listen.go",
+      "bytes": 5479,
+      "sha256": "a828b2c46573bf9328c649cfafaa29e0fae8dfdbb3cacbdf766803410c18dca4",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_memory.go",
+      "bytes": 2087,
+      "sha256": "a4a9c149a4a255904bedd5cc8ab3bdcfd5cd322a942090a2c48ef225283db03b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_memory_arena.go",
+      "bytes": 4687,
+      "sha256": "4a4204919729e236b1d38f53d479b428c310b89aa8e010f5504eacee75f00092",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_memory_darwin.go",
+      "bytes": 316,
+      "sha256": "3ab528e5f6ab1449c920c7f8254ed709ac5428ddc21019aa19007d0bca2f2b3b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_memory_linux.go",
+      "bytes": 500,
+      "sha256": "1f0dfe3331a1d12952a47ced4f8120e7026900cb4a8599d86e270593896f0704",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_memory_other.go",
+      "bytes": 332,
+      "sha256": "b75a5ea69493d196b03d802f683a443ccd3f607b327cbc12af0bb33950009adb",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_profile_default.go",
+      "bytes": 430,
+      "sha256": "aff80ea04b95ac1b7f29e5c9c7224026bc052c6cc294274fb4ffed21f8dc08c2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_profile_ios.go",
+      "bytes": 426,
+      "sha256": "1e4e9d8f1b675b8d9ce71022566b1572fa16498be3173b9b8d8be46b6ba41077",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_ring.go",
+      "bytes": 17121,
+      "sha256": "77f57f60648e79fe3caa66ff2b8acb30825663b4e24372f6e38e14fcfcba4188",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_socket_darwin.go",
+      "bytes": 5178,
+      "sha256": "602cf13834c3e9eb5ee05a4c36c19971e7059e29105e397bad762916a55b6b2a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_socket_linux.go",
+      "bytes": 7830,
+      "sha256": "454ad04ba7a9c11a3a31d5f5dc6bc91c1bac0193e1a13ba9c5ae32bbe83cb2e2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_socket_nonunix.go",
+      "bytes": 961,
+      "sha256": "bd1e2f4d481ebaf83314fb814634862d2f3b924dd669e7dcd08169e96ddf57c0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_socket_unix.go",
+      "bytes": 2530,
+      "sha256": "d685db46087258ec2f147a0250e5cd8a2b254a025cece49208c8114fbc258c7c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_socket_windows.go",
+      "bytes": 6577,
+      "sha256": "44b7c25baf817fb98582925985ed5ba3e221be45cf995e58cf3904f86479abb7",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_splice.go",
+      "bytes": 26130,
+      "sha256": "1d8624ad73cc7d24a95ca8a18fdeb7f818751ae184bfa4214ff5060c880d5708",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_ack.go",
+      "bytes": 36885,
+      "sha256": "2d68cf2f5de82a7a496e6f4266be1988db6960dee19a78da1795d7b90e14f815",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_bbr.go",
+      "bytes": 18032,
+      "sha256": "c2fa3974b69e1c35b7efd68e70627dc57f2c7b622923df1081e3e7512aec206e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_cong.go",
+      "bytes": 19497,
+      "sha256": "69ab7a05f88771e77175e465bdf4d60268d5ad115c58ccb2c5f2283b8fd2f2b2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_cubic.go",
+      "bytes": 7578,
+      "sha256": "7bbd46319635aa769eabb6812f0a6ebb64c35fac750a23ccca253488c70d77f2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_input.go",
+      "bytes": 41114,
+      "sha256": "97deaa2517f59fd01b0139c0c04feeb2848e2bd6bb5b923c9c71467e18dcf0c3",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_output.go",
+      "bytes": 27353,
+      "sha256": "d2924187785c74e8514c9bd73673221f96917a0407d7d3c603ae5940f346d89b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_tcp_rate.go",
+      "bytes": 4221,
+      "sha256": "04862ffb15ce7bcbd6e6bb7d6357f0e26e8f9b496ab9a318f3d21fa325f8c7b9",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_udp.go",
+      "bytes": 15963,
+      "sha256": "5d9294a3c7cdfbfe2b1c8d03b21b135929dc5ea8dac64d0aba4d72aad5578416",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_udp_socket.go",
+      "bytes": 12508,
+      "sha256": "d40554efea9ddadaf6e2584c6657093b98c471eac0f3b8075e2bd946866b9360",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_udp_test.go",
+      "bytes": 5715,
+      "sha256": "2404eeb9634420091a3dc1d480ef6b60c48e8070ce1e5ddbe209fe0bab1cece4",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_go_wheel.go",
+      "bytes": 4262,
+      "sha256": "7a371a65efb76c7c483c69a6aeb6d4f337613f15db6a6bc6e1d397957841f324",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor.go",
+      "bytes": 8946,
+      "sha256": "feb34e499edc4793439e09219c58cf943eafecc1a48dfd263ecee046dac67d49",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_filter.go",
+      "bytes": 3271,
+      "sha256": "e9121cd6857f48e765446e54b23f56063f85b940c51df1272e5abfe5e5a5752a",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_icmp.go",
+      "bytes": 12686,
+      "sha256": "8aef45cc66a5b773063f27a49afe2ac650d4505adc185c681e53174b9d1ce47c",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_lazy.go",
+      "bytes": 4210,
+      "sha256": "0c571fe42ed50872b9ad07de165820cae7f1931803c5d3476f1153c43d859899",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_log.go",
+      "bytes": 293,
+      "sha256": "13f6781d0aa3e73623ccad185f873ebbdbf5ea297e491973c3b61f3b1b5c3937",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_stub.go",
+      "bytes": 413,
+      "sha256": "2019c48ed36efd83b7becc2a95d9ba1658f0a85c6304b75b0ceb13f34a59b7e0",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_tcp.go",
+      "bytes": 3499,
+      "sha256": "418df41fb175d37e7dc8eccea85b5e75052dee29c39c527f6be58a837982e955",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_tcp_conn.go",
+      "bytes": 6923,
+      "sha256": "0b91ed5cc6b92fa4371490d01a72c9da33251781ecbd4ee9a8180b66cbab1b83",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_tcpbuf_default.go",
+      "bytes": 437,
+      "sha256": "3f355daa293370a3f349fe7573b4533e2760e4ba150a1dd33d259f2025a4ee05",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_tcpbuf_ios.go",
+      "bytes": 611,
+      "sha256": "eb51fdd6eafcfbf4354e2b8090f3075b5b427a341b48dbb7530ec9e4186d0e52",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_gvisor_udp.go",
+      "bytes": 6248,
+      "sha256": "97761855b0b91918f32c3c869897e9602a292ec8d29b4f694744e0d7854753ff",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_mixed.go",
+      "bytes": 8221,
+      "sha256": "0da73a2822ce030f5adca7ad5c4cec8835f08affa8b5301af9b5dd437f0d91dc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_system.go",
+      "bytes": 30571,
+      "sha256": "cc4b38675634ebe9472ed3b54d60307a796c621fbbe6dffb953002fb539c7c22",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_system_nat.go",
+      "bytes": 3219,
+      "sha256": "386e938c2e73820b3ff9ffb99929538a65650a5d397b768379420d09127c4884",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_system_nonwindows.go",
+      "bytes": 220,
+      "sha256": "e24d0c9323d26d1ea07c13ee956864cb9f8893b9e6080f93bc341614a86dd789",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_system_packet.go",
+      "bytes": 712,
+      "sha256": "ca071a43807379b5e46126168e3dbbb175d2058e3351e463569277e9b39ba5e6",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "stack_system_windows.go",
+      "bytes": 714,
+      "sha256": "8f63d402e70818c288a54b8cfe23986fcb45bc2f1516e99052eb1ab65cb5e45b",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun.go",
+      "bytes": 7962,
+      "sha256": "7dfbec33282cb077eade500449275b175480638822d3037894c4910f59be0c28",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_darwin.go",
+      "bytes": 17139,
+      "sha256": "c639ac632f78e0092d5e48cb681660484a7f708301905e400792e7f355e402dd",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_darwin_gvisor.go",
+      "bytes": 1625,
+      "sha256": "db0a417d6a076ef683bc43faa5885e139bff47da4b569ad44d60ab8e70f347ed",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_linux.go",
+      "bytes": 33707,
+      "sha256": "90dbedfb5ffd07a1165797c40a8b444144f4d12409f37c456d4e837b6719e2aa",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_linux_flags.go",
+      "bytes": 2198,
+      "sha256": "e35951b7715b8cd10edbda0b619bd88f9a3a86d03979619899ac3bbc2183bd4f",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_linux_gvisor.go",
+      "bytes": 4401,
+      "sha256": "80775ee328401a89b693148ce925214b545a74401e6b59e191b0d376e79c6628",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_memory.go",
+      "bytes": 3923,
+      "sha256": "6f5f37ba23be5b457674a19dcf770d88f6bd39a913923907a1c213c8e7ecd1c5",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_memory_queue.go",
+      "bytes": 5577,
+      "sha256": "a01678354493c0864878bc296b673f366777daa4bebd4dc56d3be8ea97277b93",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_nondarwin.go",
+      "bytes": 56,
+      "sha256": "ebb610db1e5c27e2a130b4076ed10264b4d94df7b29a4ce1be7297f77cf0b760",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_nonlinux.go",
+      "bytes": 56,
+      "sha256": "cd7b781add95c0322bb09b0f2e51b7cf39a00a4e5202f161400cf8c9c75fdc72",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_offload.go",
+      "bytes": 7710,
+      "sha256": "18f914c06fd2383ffb3a73ce0054243abdf1fe27df8ffb7dd0809cbb916063bc",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_offload_errors.go",
+      "bytes": 253,
+      "sha256": "cccc752b9ab03799786550b791eeb57617a347d459feafa4fedf4ea4ca962fad",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_offload_linux.go",
+      "bytes": 30728,
+      "sha256": "e139e10f9614be93c41795b298545850c46acf82d20f986690ccc180454e29df",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_other.go",
+      "bytes": 142,
+      "sha256": "fe35108b0b1f86d2a4a01ab3a29b1b0b9a3a4dca26d344c2589b430407356820",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_read_error.go",
+      "bytes": 590,
+      "sha256": "097e567d0c65775b769f1f1b4c290bcf12f97a745f7d110eef281ff73da2f5c2",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_rules.go",
+      "bytes": 6898,
+      "sha256": "4a6bb9baab420a57293669a2a51d779fcd3b0a7fb02e14388bebfbe1b9ba25d9",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_windows.go",
+      "bytes": 23208,
+      "sha256": "fbf5747b36b4f205c716fa9a6814ba060597b9c74e5c7e00b75dccdefd92b102",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "tun_windows_gvisor.go",
+      "bytes": 3131,
+      "sha256": "9cb119008d085e4f76d23b6234fcf2c95905715ca4df5a156dd90114f1c3a0de",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "udp_egress.go",
+      "bytes": 7328,
+      "sha256": "69edcde61696f79dbff16f472dd74fcb22d05df4eab982290c166ddd99eec371",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "udp_egress_conn.go",
+      "bytes": 2747,
+      "sha256": "0a8d64ac841c20040d363fc329723653852ab53d7d2a05dbf79aba131614e417",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "udp_nat.go",
+      "bytes": 21392,
+      "sha256": "72ecf2cfd062a6dc34944a5a911e78fee2845c263478b831ee9d5b826601791e",
+      "zipMode": 0,
+      "gitMode": "100644"
+    },
+    {
+      "path": "udp_nat_cleanup.go",
+      "bytes": 4205,
+      "sha256": "cca6ccc610c40e86bd7f236f2aa9c1ae030ed4fa07fff6965b15075050d46bc1",
+      "zipMode": 0,
+      "gitMode": "100644"
+    }
+  ]
+}
