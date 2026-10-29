@@ -12,7 +12,7 @@ SDK = 'github.com/sagernet/tailscale'
 OWNED_SDK = 'github.com/polaris-arch/tailscale'
 LOCAL_SDK = './third_party/tailscale'
 LOCAL_MANIFEST = 'release/dependency-sources/tailscale-runtime-manifest.json'
-LOCAL_MANIFEST_SHA256 = '1e48bfa3d0df0acd8d55e1b20456397e5de6a883e6e0a996a1bf18f0c5388a35'
+LOCAL_MANIFEST_SHA256 = '25394ab3321f36dcf117cf1027bf89adaa529f5f27a7921eab3a9e7e31fc0ec6'
 GO_VERSION = (Path(__file__).resolve().parents[2] / 'release/GO_VERSION').read_text().strip()
 # This is the product's existing linker contract (including its reviewed
 # runtime linkname use), not a new test-only relaxation.

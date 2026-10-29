@@ -1014,6 +1014,13 @@
       "original_git_blob": "99d3f057f332a0ff4ab80030e4adb2d8443430e9"
     },
     {
+      "path": "clientupdate/distsign/roots.go",
+      "mode": "100644",
+      "sha256": "0b86a243b144054ac9bdd5a36ba062a17d802eba3a8ad9eb7e957bb458295116",
+      "symlink_target": null,
+      "original_git_blob": "2fab3aab90373de3109f5a8a205e28a36c9f3765"
+    },
+    {
       "path": "clientupdate/distsign/roots/crawshaw-root.pem",
       "mode": "100755",
       "sha256": "25cadde70e28c127f12e05ac83debe633eda91387fabd52a3bf3bdae0ab30400",
@@ -1026,13 +1033,6 @@
       "sha256": "e9a093f82395348dffc3f376a135a26330447c016249a3932e155f6b95bee120",
       "symlink_target": null,
       "original_git_blob": "d5d6516ab03681ccc3e5ee5480a9c913512b9663"
-    },
-    {
-      "path": "clientupdate/distsign/roots.go",
-      "mode": "100644",
-      "sha256": "0b86a243b144054ac9bdd5a36ba062a17d802eba3a8ad9eb7e957bb458295116",
-      "symlink_target": null,
-      "original_git_blob": "2fab3aab90373de3109f5a8a205e28a36c9f3765"
     },
     {
       "path": "clientupdate/distsign/url.go",
@@ -3688,6 +3688,13 @@
       "original_git_blob": "e32dc1aa66a3f4f564a6a4fe24ee9371b0ab2561"
     },
     {
+      "path": "feature/sdnotify.go",
+      "mode": "100644",
+      "sha256": "9b4a6e60afa65317b45eea3a13aece711d07ede972f5cdb3fb2ac9b3910396ac",
+      "symlink_target": null,
+      "original_git_blob": "983c8a7ad08afdd87cdaa72f72dc0e887ea960b0"
+    },
+    {
       "path": "feature/sdnotify/sdnotify.go",
       "mode": "100644",
       "sha256": "2a8898b289fe9a0625b8e700482acc6c96507cbebc1440d0f8381d5ca488fd1a",
@@ -3700,13 +3707,6 @@
       "sha256": "ae00643727503c3eacc97762ed8249e121925121fc52416291d88c9ee81d3012",
       "symlink_target": null,
       "original_git_blob": "136796e91c7a3f4112bea62ffb3e6afeacd1cc28"
-    },
-    {
-      "path": "feature/sdnotify.go",
-      "mode": "100644",
-      "sha256": "9b4a6e60afa65317b45eea3a13aece711d07ede972f5cdb3fb2ac9b3910396ac",
-      "symlink_target": null,
-      "original_git_blob": "983c8a7ad08afdd87cdaa72f72dc0e887ea960b0"
     },
     {
       "path": "feature/serviceclientprefs/local_api.go",
@@ -5053,6 +5053,13 @@
       "original_git_blob": "f5cf2870fae0e3d30a8b6f048afad449ac4dafb1"
     },
     {
+      "path": "ipn/store.go",
+      "mode": "100644",
+      "sha256": "2fb9d94307a3ff68c2177de5363176545bb64d5d3aaa554dfbd6ac7180d36e9b",
+      "symlink_target": null,
+      "original_git_blob": "a63df1e7ec5307848ad63724db57b0d321d0f7b3"
+    },
+    {
       "path": "ipn/store/kubestore/store_kube.go",
       "mode": "100644",
       "sha256": "c57d2241db67ca54731c5163f8a1cbc8e6b8d55b0bf2618b0bd19a5f357f2ac1",
@@ -5086,13 +5093,6 @@
       "sha256": "b147991048a0598794c2384093e587a5907f5bfae37790ec60ac2455fd1bea05",
       "symlink_target": null,
       "original_git_blob": "2ab183397f9b2959bb844191da81c63c9af5889e"
-    },
-    {
-      "path": "ipn/store.go",
-      "mode": "100644",
-      "sha256": "2fb9d94307a3ff68c2177de5363176545bb64d5d3aaa554dfbd6ac7180d36e9b",
-      "symlink_target": null,
-      "original_git_blob": "a63df1e7ec5307848ad63724db57b0d321d0f7b3"
     },
     {
       "path": "jsondb/db.go",
@@ -5643,9 +5643,16 @@
     {
       "path": "net/dns/flush_windows.go",
       "mode": "100644",
-      "sha256": "5451075d873e8900f1e044689d547250c9797ddafd81f3d45c1fc1be1192e6a9",
+      "sha256": "e7378ed7d37edcdeb702fcd13edd6f3db0f25f344fdb0d4153105b9802a0f85e",
       "symlink_target": null,
       "original_git_blob": "a3b1f6b3116afe44fac43f3b0cb26d6cb16f27f5"
+    },
+    {
+      "path": "net/dns/flush_windows_test.go",
+      "mode": "100644",
+      "sha256": "c81476f12c860e0379ceabeda59d722bbb9be9e588c35c5219874bc2c0cf6666",
+      "symlink_target": null,
+      "original_git_blob": null
     },
     {
       "path": "net/dns/ini.go",
@@ -10016,6 +10023,13 @@
       "original_git_blob": "69fe3ee4017df5d88916082af73536d6c628d31b"
     },
     {
+      "path": "version-embed.go",
+      "mode": "100644",
+      "sha256": "ca232c31c78dc1d3220cf45391eb926314936c096f6bcee74c4d2c1bca8cd1d5",
+      "symlink_target": null,
+      "original_git_blob": "c368186ab3a7f3bf76aba797caa30ff470c8e1c0"
+    },
+    {
       "path": "version/.gitignore",
       "mode": "100644",
       "sha256": "8ca33c3c43395e676ac94c2a25d07963bf4627c75377123324dde25c8333d2c9",
@@ -10119,13 +10133,6 @@
       "sha256": "2a86bf9cf1d916c74808a59d1847cbda677be6837ff8e6675c9c109b2b4e055a",
       "symlink_target": null,
       "original_git_blob": "fd72af7d4a733a0cf7769196529bf7c265cfc01c"
-    },
-    {
-      "path": "version-embed.go",
-      "mode": "100644",
-      "sha256": "ca232c31c78dc1d3220cf45391eb926314936c096f6bcee74c4d2c1bca8cd1d5",
-      "symlink_target": null,
-      "original_git_blob": "c368186ab3a7f3bf76aba797caa30ff470c8e1c0"
     },
     {
       "path": "version_tailscale_test.go",
