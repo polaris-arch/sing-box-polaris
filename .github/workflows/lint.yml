@@ -84,9 +84,6 @@ jobs:
         verify: false
 'on':
   workflow_dispatch: {}
-  push:
-    branches:
-    - polaris-main
   pull_request:
     branches:
     - polaris-main
