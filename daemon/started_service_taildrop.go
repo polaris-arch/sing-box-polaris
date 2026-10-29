@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -187,6 +188,12 @@ func (s *StartedService) SendTaildropFiles(
 	}
 	provider, _, err := resolveTailscaleProvider(boxService, start.EndpointTag)
 	if err != nil {
+		return err
+	}
+
+	// Establish the response before resume verification can request input bytes.
+	// These headers acknowledge transport admission, not file progress or receipt.
+	if err = server.SendHeader(metadata.MD{}); err != nil {
 		return err
 	}
 

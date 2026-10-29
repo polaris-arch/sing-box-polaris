@@ -9,11 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
     - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
     - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
+    - run: python -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
     - name: Require cold zero-fuzz Go patch controls
       shell: bash
       run: |
@@ -33,21 +37,33 @@ jobs:
     - run: python -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py'
     - run: python -B -m unittest discover -s scripts -p 'test_polaris_runner_resources.py'
     - run: PYTHONPATH=scripts python -B -m unittest test_polaris_production_release.ProductionTests.test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes
+    - name: Restore pinned official formatter archive
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/polaris-format-archive
+        key: polaris-format-linux-amd64-v2.15.0-9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
+    - name: Verify and extract pinned official formatter (no product compilation)
+      run: |
+        set -euo pipefail
+        archive="$RUNNER_TEMP/polaris-format-archive/golangci-lint.tar.gz"
+        mkdir -p "$(dirname "$archive")" "$RUNNER_TEMP/polaris-format-bin"
+        if [ ! -f "$archive" ]; then
+          curl --fail --location --retry 2 --max-time 120 --output "$archive" https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
+        fi
+        printf '%s  %s\n' 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea "$archive" | sha256sum -c -
+        tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/polaris-format-bin" golangci-lint-2.15.0-linux-amd64/golangci-lint
+    - name: Check pinned owned-source formatting without product compilation
+      env:
+        GOLANGCI_LINT: ${{ runner.temp }}/polaris-format-bin/golangci-lint
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        python3 -B scripts/ci/check_remediation_format.py
 'on':
   push:
     branches:
     - polaris-main
-    paths:
-    - .github/workflows/**
-    - .github/go-toolchains.json
-    - .github/patches/**
-    - scripts/ci/**
-    - scripts/polaris_ci_impact.py
-    - scripts/test_polaris_ci_impact.py
-    - scripts/test_polaris_runner_resources.py
-    - scripts/test_polaris_production_release.py
-    - scripts/testdata/historical-workflows/**
-    - release/ci/**
   pull_request:
     branches:
     - polaris-main

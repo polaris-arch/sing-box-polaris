@@ -49,9 +49,8 @@ func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, opti
 	ruleSet.watcherState = "not-started"
 	if options.Type == C.RuleSetTypeInline {
 		ruleSet.watcherState = "inline"
-		if len(options.InlineOptions.Rules) == 0 {
-			return nil, E.New("empty inline rule-set")
-		}
+		// Frozen local sources can be empty. Publish an empty, non-matching
+		// snapshot through the same validation path as any other rule-set.
 		err := ruleSet.reloadRules(options.InlineOptions.Rules)
 		if err != nil {
 			return nil, err

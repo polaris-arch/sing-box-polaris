@@ -915,6 +915,7 @@ class PeerNegativeAndObserverContracts(unittest.TestCase):
             relay.bind_owner(self.owner())
             self.assertEqual(sockets[0].recv(99),b'first')
             sockets[1].sendto(b'second',('127.0.0.1',relay.port));self.assertEqual(sockets[1].recv(99),b'second')
+            self.wait(lambda:relay.counts==[2,2])
             self.assertEqual(len(relay.sources),2);self.assertEqual(relay.counts,[2,2])
             self.assertEqual(len({slot['socket'].getsockname() for slot in relay.sources.values()}),2)
             relay.close();fact=relay.observation()
@@ -1317,6 +1318,7 @@ for line in sys.stdin:
     def test_real_core_close_and_relay_normal_sigterm_retirement(self):
         with self.child_relay() as (owner,relay,echo,address):
             relay.prepare_owner_retirement();self.send(owner) # Marking alone must not stop healthy traffic.
+            self.wait(lambda:relay.counts==[2,2])
             self.assertEqual(relay.counts,[2,2]);fact=owner.close();relay.close()
             self.assertEqual(fact['exitCode'],0);self.assertFalse(fact['forcedKill'])
             self.assertTrue(relay.owner_retirement_confirmed);self.assertTrue(relay.observation()['threadJoined'])

@@ -61,7 +61,7 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_cli_keeps_raw_patch_and_windows_resource_bounds(self):
         script = ROOT / 'scripts/ci/polaris_version.py'
-        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
+        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7']:
             for args in [[value], [value, '65535']]:
                 output = subprocess.check_output([sys.executable, str(script), *args], text=True)
                 self.assertEqual(output, value + '\n')
@@ -81,6 +81,7 @@ class PolarisVersionTests(unittest.TestCase):
                  '1.15.0-polaris-alpha.12.4': '1.15.0_alpha12_p4-r0',
                  '1.15.0-polaris-alpha.12.5': '1.15.0_alpha12_p5-r0',
                  '1.15.0-polaris-alpha.12.6': '1.15.0_alpha12_p6-r0',
+                 '1.15.0-polaris-alpha.12.7': '1.15.0_alpha12_p7-r0',
                  '1.15.0-polaris-alpha.13': '1.15.0_alpha13-r0',
                  '1.15.0-polaris-beta.1.2': '1.15.0_beta1_p2-r0',
                  '1.15.0-polaris-rc.1.2': '1.15.0_rc1_p2-r0'}
@@ -99,7 +100,7 @@ class PolarisVersionTests(unittest.TestCase):
                     v.apk_version(raw)
 
     def test_native_names_and_exact_plan_scope(self):
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.13']:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', '1.15.0-polaris-alpha.13']:
             names = native.expected_native(version)
             self.assertEqual(len(names), 44)
             self.assertTrue(all(name.startswith('sing-box-' + version + '-') for name in names))
@@ -114,13 +115,13 @@ class PolarisVersionTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64')
         self.assertEqual(publisher.VERSION, PLAN['version'])
-        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.13']:
+        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.13']:
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
     def test_full_patch_tag_is_bound_to_actual_source_and_tag_object(self):
         source, obj = 'a' * 40, 'b' * 40
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7']:
             tag = 'v' + version
             answers = [{'object': {'type': 'tag', 'sha': obj}},
                        {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
@@ -152,7 +153,7 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_producer_receipts_keep_patch_and_reject_unreviewed_rotation(self):
         source = 'a' * 40
-        for version in [PLAN['version'], '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5']:
+        for version in [PLAN['version'], '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
             plan = dict(PLAN, version=version, tag='v' + version)
             for role in ['all', 'linux', 'docker', 'signed']:
                 with tempfile.TemporaryDirectory() as directory, chdir(directory):
@@ -169,7 +170,10 @@ class PolarisVersionTests(unittest.TestCase):
                     receipt = json.loads(Path('publisher-run-receipt.json').read_text())
                     self.assertEqual(receipt['version'], version)
                     self.assertEqual(receipt['sourceCommit'], source)
-                    for wrong in ['1.15.0-polaris-alpha.12', version + '0']:
+                    rejected = ['1.15.0-polaris-alpha.12', version + '0']
+                    if version == PLAN['version']:
+                        rejected.append('1.15.0-polaris-alpha.12.6')
+                    for wrong in rejected:
                         with patch.dict(os.environ, dict(env, RELEASE_VERSION=wrong)), self.assertRaises(AssertionError):
                             runpy.run_path(str(script))
 

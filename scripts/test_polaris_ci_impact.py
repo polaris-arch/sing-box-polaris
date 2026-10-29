@@ -252,7 +252,8 @@ class ImpactTests(unittest.TestCase):
                 text = (ROOT / '.github/workflows' / name).read_text()
                 self.assertIn('contents: read', text)
                 if name in {'lint.yml', 'test.yml', 'ci-contract.yml'}:
-                    self.assertEqual(events(text) - {'workflow_dispatch'}, {'push', 'pull_request'})
+                    expected = {'pull_request'} if name in {'lint.yml', 'test.yml'} else {'push', 'pull_request'}
+                    self.assertEqual(events(text) - {'workflow_dispatch'}, expected)
                     self.assertIn('- polaris-main', text)
                 else:
                     self.assertEqual(events(text), {'workflow_dispatch'})

@@ -153,7 +153,9 @@ class RunnerResourceTests(unittest.TestCase):
         expected = {
             'linux': ['go build'], 'windows_build': ['go build'], 'macos': ['go build'],
             'android': ['make lib_install', 'go run android'],
-            'ios': ['make lib_install', 'go run apple'], 'patch_tests': ['go test -c'],
+            'ios': ['make lib_install', 'go run apple'],
+            # Original feature-off compile precedes the selected netns compile.
+            'patch_tests': ['go test -c', 'go test -c'],
         }
         resource_jobs = set(expected) | {'windows_test'}
         metadata_queries = {
@@ -209,6 +211,12 @@ class RunnerResourceTests(unittest.TestCase):
                     self.assertEqual(assignments, ['GOMAXPROCS=$POLARIS_COMPILE_GOMAXPROCS'] if compile_only else [], (name, command))
                     if compile_only:
                         actual.setdefault(name, []).append(signature)
+                    if command[-1] == 'github.com/sagernet/sing-box/common/netns':
+                        self.assertEqual(name, 'patch_tests')
+                        self.assertTrue(compile_only)
+                        self.assertEqual(command[:4], ['go', 'test', '-p', '$POLARIS_GO_JOBS'])
+                        self.assertIn('-race', command)
+                        self.assertNotIn('-exec', command)
             if name in resource_jobs:
                 self.assertIsNotNone(setup, name)
         self.assertEqual(initialized, resource_jobs)
@@ -236,12 +244,25 @@ class RunnerResourceTests(unittest.TestCase):
         makefile = (repo / 'Makefile').read_text()
         libbox = (repo / 'cmd/internal/build_libbox/main.go').read_text()
         self.assert_selfcheck_command_closure(workflow, makefile, libbox)
-        for change in ['missing cap', 'wrong cap', 'uncovered build', 'ordinary test cap', 'late setup', 'job cap', 'step flags', 'command flags', 'export cap', 'unknown command', 'compiled list', 'metadata cap', 'missing metadata']:
+        for change in ['missing cap', 'wrong cap', 'uncovered build', 'ordinary test cap', 'late setup', 'job cap', 'step flags', 'command flags', 'export cap', 'unknown command', 'compiled list', 'metadata cap', 'missing metadata',
+                       'netns missing cap', 'netns wrong cap', 'netns missing jobs', 'netns wrong jobs', 'netns missing compile']:
             with self.subTest(change=change):
                 broken = copy.deepcopy(workflow)
                 steps = broken['jobs']['linux']['steps']
                 build = next(s for s in steps if s.get('name') == 'Build')
-                if change == 'missing cap':
+                if change.startswith('netns '):
+                    queue = next(s for s in broken['jobs']['patch_tests']['steps']
+                                 if s.get('name') == 'Test packages changed by the queue')
+                    before, after = {
+                        'netns missing cap': ('GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" ', ''),
+                        'netns wrong cap': ('GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS"', 'GOMAXPROCS=99'),
+                        'netns missing jobs': ('-p "$POLARIS_GO_JOBS" ', ''),
+                        'netns wrong jobs': ('-p "$POLARIS_GO_JOBS"', '-p 99'),
+                        'netns missing compile': ('-v -c -skip', '-v -skip'),
+                    }[change]
+                    self.assertEqual(queue['run'].count(before), 1)
+                    queue['run'] = queue['run'].replace(before, after)
+                elif change == 'missing cap':
                     build['run'] = build['run'].replace('GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" ', '')
                 elif change == 'wrong cap':
                     build['run'] = build['run'].replace('GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS"', 'GOMAXPROCS=99')
@@ -479,6 +500,16 @@ class RunnerResourceTests(unittest.TestCase):
         self.assert_selfcheck_command_closure(yaml.safe_load(selfcheck),
                                              (repo / 'Makefile').read_text(),
                                              (repo / 'cmd/internal/build_libbox/main.go').read_text())
+        ordinary = yaml.safe_load((repo / '.github/workflows/test.yml').read_text())
+        compile_step = next(s for s in ordinary['jobs']['test']['steps']
+                            if s.get('name', '').startswith('Compile Linux netns tests'))
+        self.assertEqual(compile_step['env'], {'GOMAXPROCS': '2'})
+        commands = list(go_test_commands(compile_step['run']))
+        self.assertEqual(len(commands), 1)
+        prefix, arguments = commands[0]
+        self.assertEqual(prefix, [])
+        self.assertEqual(arguments[:4], ['-p', '2', '-c', '-tags'])
+        self.assertEqual(arguments[-1], 'github.com/sagernet/sing-box/common/netns')
 
 
 if __name__ == '__main__':

@@ -2,14 +2,19 @@ package box
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"sort"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/common/ipset"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route"
 	"github.com/sagernet/sing/common"
+	"github.com/sagernet/sing/common/domain"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
 )
@@ -113,6 +118,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		if err != nil {
 			return nil, nil, err
 		}
+		// Frozen SRS predicates live in private matcher fields, not JSON. Bind
+		// their contents to this resource before looking up reusable owners.
+		node.fingerprint = runtimeDigest([]byte(node.fingerprint + ":" + runtimeRuleSetPrivateFingerprint(set.InlineOptions.Rules)))
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime source")
 		}
@@ -563,6 +571,78 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].name < nodes[j].name })
 	return nodes, configs, nil
+}
+
+// Hash the persisted matcher data without expanding IP ranges into prefixes or
+// dumping domains. Derived indexes and storage addresses are not predicates.
+func runtimeRuleSetPrivateFingerprint(rules []option.HeadlessRule) string {
+	h := sha256.New()
+	runtimeHashField(h, "rule-set-private-conditions-v1")
+	var word [8]byte
+	number := func(value uint64) {
+		binary.BigEndian.PutUint64(word[:], value)
+		h.Write(word[:])
+	}
+	matcher := func(name string, data domain.Mmap) {
+		runtimeHashField(h, name)
+		for _, values := range [][]uint64{data.Leaves, data.LabelBitmap} {
+			number(uint64(len(values)))
+			for _, value := range values {
+				number(value)
+			}
+		}
+		number(uint64(len(data.Labels)))
+		h.Write(data.Labels)
+	}
+	addresses := func(name string, set *ipset.Set) {
+		runtimeHashField(h, name)
+		number(uint64(len(set.Ranges4())))
+		for _, value := range set.Ranges4() {
+			number(uint64(value.From))
+			number(uint64(value.To))
+		}
+		number(uint64(len(set.Ranges6())))
+		for _, value := range set.Ranges6() {
+			h.Write(value.From[:])
+			h.Write(value.To[:])
+		}
+	}
+	var visit func([]option.HeadlessRule)
+	visit = func(rules []option.HeadlessRule) {
+		number(uint64(len(rules)))
+		for _, rule := range rules {
+			if rule.Type == C.RuleTypeLogical {
+				runtimeHashField(h, C.RuleTypeLogical)
+				visit(rule.LogicalOptions.Rules)
+				continue
+			}
+			runtimeHashField(h, C.RuleTypeDefault)
+			options := rule.DefaultOptions
+			// These precedence rules mirror NewDefaultHeadlessRule: a public
+			// predicate takes precedence over its private compiled equivalent.
+			if len(options.Domain) == 0 && len(options.DomainSuffix) == 0 && options.DomainMatcher != nil {
+				matcher("domain", options.DomainMatcher.Mmap())
+			}
+			if len(options.SourceIPCIDR) == 0 && options.SourceIPSet != nil {
+				addresses("source-ip", options.SourceIPSet)
+			}
+			if len(options.IPCIDR) == 0 && options.IPSet != nil {
+				addresses("destination-ip", options.IPSet)
+			}
+			if len(options.AdGuardDomain) > 0 {
+				// AdGuard source predicates are also excluded from JSON.
+				runtimeHashField(h, "adguard-source")
+				number(uint64(len(options.AdGuardDomain)))
+				for _, value := range options.AdGuardDomain {
+					runtimeHashField(h, value)
+				}
+			} else if options.AdGuardDomainMatcher != nil {
+				matcher("adguard", options.AdGuardDomainMatcher.Mmap())
+			}
+		}
+	}
+	visit(rules)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // TUN captures stable host services and constructor capabilities, not the

@@ -17,7 +17,16 @@ func NewHeadlessRule(ctx context.Context, options option.HeadlessRule) (adapter.
 		if !options.DefaultOptions.IsValid() {
 			return nil, E.New("missing conditions")
 		}
-		return NewDefaultHeadlessRule(ctx, options.DefaultOptions)
+		rule, err := NewDefaultHeadlessRule(ctx, options.DefaultOptions)
+		if err != nil {
+			return nil, err
+		}
+		// Explicit empty slices can pass IsValid's comparison with nil fields.
+		// An empty container is valid; a condition-free rule would match all.
+		if len(rule.allItems) == 0 {
+			return nil, E.New("missing conditions")
+		}
+		return rule, nil
 	case C.RuleTypeLogical:
 		if !options.LogicalOptions.IsValid() {
 			return nil, E.New("missing conditions")
