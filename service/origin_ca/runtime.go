@@ -12,6 +12,8 @@ import (
 	"github.com/sagernet/sing-box/adapter/certificate"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing/service/filemanager"
+
+	"github.com/caddyserver/certmagic"
 )
 
 var (
@@ -34,6 +36,7 @@ type runtimeOriginCA struct {
 	ready         bool
 	done          chan struct{}
 	closeErr      error
+	storage       *originRootStorage
 }
 
 func (s *Service) initializeRuntime(ctx context.Context) error {
@@ -66,6 +69,9 @@ func (s *Service) initializeRuntime(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("origin CA cleanup incomplete: %v", err)
 		}
+		if r.storage != nil {
+			return r.storage.Close()
+		}
 		return nil
 	})
 	begin, err := outbound.RegisterRuntimeOwnedFence(ctx, r.fence)
@@ -85,6 +91,10 @@ func (s *Service) RuntimeResourceID() adapter.RuntimeResourceID {
 }
 
 func (s *Service) RuntimeValidate() error {
+	if !certificate.RuntimeDirectoryStorageAvailable {
+		return errors.New("runtime certificate storage cannot retain a directory identity on this platform")
+	}
+
 	if s.runtime == nil {
 		return errors.New("origin CA provider was not privately constructed")
 	}
@@ -147,16 +157,31 @@ func (s *Service) StageRuntime(ctx context.Context) error {
 }
 
 func (s *Service) stageCertificate(ctx context.Context) error {
+	if storage, ok := s.storage.(*certmagic.FileStorage); ok {
+		if err := filemanager.MkdirAll(ctx, storage.Path, 0o700); err != nil {
+			return errors.Join(err, certificate.BindRuntimeStorage(s.ctx, nil))
+		}
+		root, err := originOpenStorageRoot(storage.Path)
+		if err != nil {
+			return errors.Join(err, certificate.BindRuntimeStorage(s.ctx, nil))
+		}
+		bound := &originRootStorage{root: root}
+		s.runtime.storage = bound
+		identity, err := certificate.RuntimeRootIdentity(root, ".")
+		if err != nil {
+			return errors.Join(err, certificate.BindRuntimeStorage(s.ctx, nil))
+		}
+		if err := certificate.BindRuntimeStorage(s.ctx, identity); err != nil {
+			return err
+		}
+		s.storage = bound
+	}
+
 	ctx, leave, err := s.runtime.beginOwned(ctx)
 	if err != nil {
 		return err
 	}
 	defer leave()
-	if s.dataDirectory != "" {
-		if err := filemanager.MkdirAll(ctx, s.dataDirectory, 0o700); err != nil {
-			return err
-		}
-	}
 	err = s.initializeCertificate(ctx)
 	s.runtime.mu.Lock()
 	cleanupErr := s.runtime.closeErr
@@ -226,3 +251,6 @@ func (s *Service) GetCertificateWithContext(ctx context.Context, _ *tls.ClientHe
 }
 
 func (s *Service) RuntimeExternalEffects() bool { return true }
+
+// RuntimeClockBootstrapRequired preserves synchronous first-certificate TLS validation.
+func (*Service) RuntimeClockBootstrapRequired() bool { return true }

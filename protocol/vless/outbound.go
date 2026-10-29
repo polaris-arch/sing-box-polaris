@@ -252,6 +252,9 @@ func (h *vlessDialer) DialContext(ctx context.Context, network string, destinati
 	metadata.Destination = destination
 	var conn net.Conn
 	defer func() {
+		if resultErr == nil && result != nil && conn != nil {
+			result = outbound.PreserveRuntimeConnClose(result, conn)
+		}
 		if resultErr != nil && conn != nil {
 			resultErr = errors.Join(resultErr, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 		}
@@ -302,6 +305,9 @@ func (h *vlessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	metadata.Destination = destination
 	var conn net.Conn
 	defer func() {
+		if resultErr == nil && result != nil && conn != nil {
+			result = outbound.PreserveRuntimePacketConnClose(result, conn)
+		}
 		if resultErr != nil && conn != nil {
 			resultErr = errors.Join(resultErr, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 		}

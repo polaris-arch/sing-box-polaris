@@ -133,17 +133,10 @@ func (b *RuntimeTransportBoundary) GuardConnection(conn net.Conn) (net.Conn, err
 		return nil, err
 	}
 	if tlsConn, ok := conn.(interface{ ConnectionState() tls.ConnectionState }); ok {
-		return &runtimeStateConn{Conn: guarded, state: tlsConn.ConnectionState()}, nil
+		return outbound.PreserveRuntimeTLSState(guarded, tlsConn.ConnectionState()), nil
 	}
 	return guarded, nil
 }
-
-type runtimeStateConn struct {
-	net.Conn
-	state tls.ConnectionState
-}
-
-func (c *runtimeStateConn) ConnectionState() tls.ConnectionState { return c.state }
 
 // The non-zero size gives concurrent dial reservations distinct pointer identities.
 type runtimeDialBoundary struct{ _ byte }

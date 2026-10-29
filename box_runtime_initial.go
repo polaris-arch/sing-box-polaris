@@ -49,6 +49,13 @@ func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []Run
 	pending := func(path, message string) {
 		problems = append(problems, RuntimePlanError{Code: "PENDING_ADAPTER", Path: path, Message: message})
 	}
+	if claims, claimErr := runtimeCertificateClaims(ctx, options.Options); claimErr != nil {
+		pending("certificate_providers", "initial certificate resource identity could not be validated")
+	} else {
+		for _, problem := range runtimeCertificateClaimProblems(claims, nil, nil) {
+			pending(problem.Path, problem.Message)
+		}
+	}
 	if options.Certificate != nil {
 		pending("certificate", "initial certificate configuration requires a runtime adapter")
 	}

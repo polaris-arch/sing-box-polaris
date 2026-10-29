@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sagernet/sing-box/adapter/certificate"
 	C "github.com/sagernet/sing-box/constant"
 )
 
@@ -36,7 +37,7 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	}
 	add("runtime.protocol", "polaris-daily-runtime-v1", "RUNTIME_UPDATE_UNSPECIFIED",
 		"GetRuntimeCapabilities", "PlanRuntimeConfig", "ApplyRuntimeConfig", "GetRuntimeConfigStatus", "RetryRuntimePersistence", "AcknowledgeRuntimePersistence")
-	for _, path := range []string{"outbounds", "endpoints", "dns", "route.rules", "route.rule_set", "route.final", "route.default_domain_resolver", "route.default_interface", "route.default_mark", "route.default_network_strategy", "route.default_network_type", "route.default_fallback_network_type", "route.default_fallback_delay"} {
+	for _, path := range []string{"outbounds", "endpoints", "dns", "route.rules", "route.rule_set", "route.final", "route.default_domain_resolver", "route.default_http_client", "route.default_interface", "route.default_mark", "route.default_network_strategy", "route.default_network_type", "route.default_fallback_network_type", "route.default_fallback_delay"} {
 		add(path, "daily-graph", "LOCAL_REPLACE", "eligible-started-instance", "build-enabled-concrete-adapter; registered-stub-is-not-support", "immutable-plan-and-control-CAS", "physical-resource-preflight", "captured-TUN-egress-dependencies-unchanged")
 	}
 	features := runtimeCapabilityBuildFeatures(tags, known, quic, cgo)
@@ -81,6 +82,23 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	} {
 		variant("dns.servers", item.name, item.tag, "platform-transport-available", "exact-endpoint-dependency-if-required")
 	}
+	variant("http_clients", "go-http1-http2", "", "unique-nonempty-tags", "captured-detour-default-and-resolver-closure", "old-request-and-body-epoch-retained", "remote-source-download-routing-change-requires-restart")
+	variant("http_clients", "go-http3", "with_quic", "owned-QUIC-fallback-and-TLS-callback-join")
+	appleClass := "RUNTIME_UPDATE_UNSPECIFIED"
+	if runtime.GOOS == "darwin" && cgo {
+		appleClass = "LOCAL_REPLACE"
+	}
+	add("http_clients", "apple", appleClass, "requires-darwin-cgo", "concrete-Apple-session-guardrails", "owned-native-callback-and-bridge-join")
+	variant("inbounds.tls.certificate_provider", "named-or-inline", "", "only-provider-reference-may-change", "all-other-listener-and-TLS-fields-unchanged", "dependent-listener-handoff-may-reconnect")
+	originClass := "LOCAL_REPLACE"
+	if !certificate.RuntimeDirectoryStorageAvailable {
+		originClass = "PENDING_ADAPTER"
+	}
+	add("certificate_providers", "cloudflare-origin-ca", originClass, "named-or-inline-TLS-reference", "exact-provider-HTTP-clock-closure", "inode-bound-directory-root-and-joined-compatible-cache-lease", "directory-root-unavailable-on-js-plan9", "overlapping-cache-or-challenge-owner-requires-restart", "issuance-may-precede-publication-and-remain-after-abort")
+	add("certificate_providers", "acme", "PENDING_ADAPTER", "required-build-tag=with_acme", "build-tag-state="+features["with_acme"], "requires-owned-certmagic-DNS-OCSP-challenge-and-handshake-workers", "ordinary-cold-start-retained")
+	variant("certificate_providers", "tailscale", "with_tailscale", "exact-staged-Tailscale-endpoint-and-directory", "endpoint-identity-overlap-preflight")
+	variant("ntp", "offset-only", "", "enable-disable-source-change", "rebuild-all-captured-clock-consumers", "no-construction-plan-or-prepare-sampling", "synchronous-certificate-effect-may-bootstrap-one-private-offset-sample", "joined-ordinary-sample-failure-retains-best-effort-time", "retired-owner-cannot-write-system-time")
+	add("ntp.write_to_system", "irreversible", "RESTART_REQUIRED", "explicit-host-managed-restart-only", "never-downgrade-to-offset-only", "security-feature-check-preserved")
 	add("log.level", "builtin-level-control", "IN_PLACE", "eligible-started-instance", "valid-level")
 	for _, path := range []string{"inbounds", "services", "experimental.cache_file", "network_namespaces", "log.output", "certificate"} {
 		conditions := []string{"unchanged-supported-components-may-coexist", "explicit-host-restart-only"}
@@ -106,7 +124,7 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 // explicitly unknown; registry stubs are never evidence of feature inclusion.
 func runtimeCapabilityBuildFeatures(tags string, known, quic, cgo bool) map[string]string {
 	states := make(map[string]string)
-	for _, tag := range []string{"with_quic", "with_wireguard", "with_tailscale", "with_openconnect", "with_openvpn", "with_naive_outbound", "with_dhcp", "with_utls", "with_purego"} {
+	for _, tag := range []string{"with_quic", "with_acme", "with_wireguard", "with_tailscale", "with_openconnect", "with_openvpn", "with_naive_outbound", "with_dhcp", "with_utls", "with_purego"} {
 		states[tag] = "unknown"
 		if known {
 			states[tag] = "disabled"
@@ -131,7 +149,7 @@ func runtimeCapabilityBuildFeatures(tags string, known, quic, cgo bool) map[stri
 }
 
 func runtimePendingAdapters() []string {
-	return []string{"outbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "http_clients", "certificate_providers", "ntp"}
+	return []string{"outbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "certificate_providers[acme]", "ntp[write_to_system]"}
 }
 
 func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {

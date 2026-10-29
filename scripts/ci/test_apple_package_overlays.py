@@ -240,6 +240,7 @@ class ApplePackageOverlayControls(unittest.TestCase):
         with fixture() as (root, packages, spec):
             paths = [packages / 'checkouts' / p['identity'] / 'Package.swift' for p in spec['packages']]
             paths[0].chmod(0o444)
+            paths[1].chmod(0o644)
             apple.apply(packages, root)
             self.assertEqual([stat.S_IMODE(p.stat().st_mode) for p in paths], [0o444, 0o644])
             # Real forced checkout stands in for a resolver refresh, not an Xcode archive.
@@ -256,6 +257,20 @@ class ApplePackageOverlayControls(unittest.TestCase):
                 apple.collect(SOURCE, packages, root)
             self.assertEqual(paths[0].read_bytes(), reset)
             self.assertEqual(stat.S_IMODE(paths[0].stat().st_mode), 0o444)
+
+    def test_group_writable_input_mode_is_preserved(self):
+        with fixture() as (root, packages, spec):
+            paths = [packages / 'checkouts' / p['identity'] / 'Package.swift' for p in spec['packages']]
+            paths[0].chmod(0o444)
+            paths[1].chmod(0o664)
+            identities = [apple.file_identity(p.stat()) for p in paths]
+            apple.apply(packages, root)
+            apple.collect(SOURCE, packages, root)
+            self.assertEqual([stat.S_IMODE(p.stat().st_mode) for p in paths], [0o444, 0o664])
+            self.assertEqual([apple.file_identity(p.stat()) for p in paths], identities)
+            with patch.object(apple.os, 'fchmod', side_effect=AssertionError('warm overlay must preserve modes')), \
+                 patch.object(apple, 'write_descriptor', side_effect=AssertionError('warm overlay must not rewrite')):
+                apple.apply(packages, root)
 
     def test_real_shared_object_store_cache_snapshot_restores_and_pruned_store_fails_closed(self):
         with fixture() as (root, packages, spec):

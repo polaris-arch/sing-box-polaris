@@ -45,3 +45,11 @@ func (h *Outbound) closeRuntimeResources() error {
 	}
 	return errors.Join(result...)
 }
+
+// Final shutdown only. Ordinary retirement seals producer roots while old
+// foreground streams retain the transport; it must not invoke this hook.
+func (h *Outbound) StopRuntimeOperations() {
+	if transport, ok := h.transport.(interface{ StopRuntimeOperations() }); ok {
+		transport.StopRuntimeOperations()
+	}
+}

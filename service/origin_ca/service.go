@@ -196,6 +196,10 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 func (s *Service) initializeCertificate(ctx context.Context) error {
 	cachedCertificate, cachedLeaf, err := s.loadCachedCertificate(ctx)
 	if err != nil {
+		if originStorageIsUnsafe(err) {
+			s.recordRuntimeCleanup(err)
+			return err
+		}
 		s.logger.Warn(E.Cause(err, "load cached Cloudflare Origin CA certificate"))
 	} else if cachedCertificate != nil {
 		s.setCurrentCertificate(cachedCertificate, cachedLeaf)
@@ -208,6 +212,10 @@ func (s *Service) initializeCertificate(ctx context.Context) error {
 	} else if s.shouldRenew(cachedLeaf, s.timeFunc()) {
 		err = s.issueAndStoreCertificate(ctx)
 		if err != nil {
+			if originStorageIsUnsafe(err) {
+				s.recordRuntimeCleanup(err)
+				return err
+			}
 			s.logger.Warn(E.Cause(err, "renew cached Cloudflare Origin CA certificate"))
 		}
 	}
@@ -296,6 +304,7 @@ func (s *Service) effectiveRenewBefore(leaf *x509.Certificate) time.Duration {
 func (s *Service) issueAndStoreCertificate(ctx context.Context) (resultErr error) {
 	err := s.storage.Lock(ctx, s.storageLockKey)
 	if err != nil {
+		s.recordRuntimeCleanup(err)
 		return E.Cause(err, "lock Cloudflare Origin CA certificate storage")
 	}
 	defer func() {
@@ -307,6 +316,10 @@ func (s *Service) issueAndStoreCertificate(ctx context.Context) (resultErr error
 	}()
 	cachedCertificate, cachedLeaf, err := s.loadCachedCertificate(ctx)
 	if err != nil {
+		if originStorageIsUnsafe(err) {
+			s.recordRuntimeCleanup(err)
+			return err
+		}
 		s.logger.Warn(E.Cause(err, "load cached Cloudflare Origin CA certificate"))
 	} else if cachedCertificate != nil && !s.shouldRenew(cachedLeaf, s.timeFunc()) {
 		s.setCurrentCertificate(cachedCertificate, cachedLeaf)
@@ -438,6 +451,9 @@ func (s *Service) requestCertificate(ctx context.Context) ([]byte, []byte, *tls.
 func (s *Service) loadCachedCertificate(ctx context.Context) (*tls.Certificate, *x509.Certificate, error) {
 	certificateResource, err := loadCertificateResource(ctx, s.storage, s.storageIssuerKey, s.storageNamesKey)
 	if err != nil {
+		if originStorageIsUnsafe(err) {
+			return nil, nil, err
+		}
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil, nil
 		}
@@ -568,6 +584,9 @@ func storeCertificateResource(ctx context.Context, storage certmagic.Storage, is
 	before := make([]preimage, len(keyValueList))
 	for i, item := range keyValueList {
 		value, loadErr := storage.Load(ctx, item.key)
+		if originStorageIsUnsafe(loadErr) {
+			return loadErr
+		}
 		if loadErr != nil && !errors.Is(loadErr, fs.ErrNotExist) {
 			return loadErr
 		}
@@ -686,8 +705,11 @@ func (s *Service) recordRuntimeCleanup(err error) {
 	if s.runtime == nil || err == nil {
 		return
 	}
-	var incomplete *originCACompensationError
-	if !errors.As(err, &incomplete) {
+	var incomplete interface {
+		error
+		RuntimeCleanupIncomplete() bool
+	}
+	if !errors.As(err, &incomplete) || !incomplete.RuntimeCleanupIncomplete() {
 		return
 	}
 	s.runtime.mu.Lock()

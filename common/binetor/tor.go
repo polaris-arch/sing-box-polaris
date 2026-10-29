@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/textproto"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -22,7 +22,8 @@ type Tor struct {
 	Process process.Process
 
 	// Control is the Tor controller connection.
-	Control *control.Conn
+	Control        *control.Conn
+	runtimeControl *runtimeControl
 
 	// ProcessCancelFunc is the context cancellation func for the Tor process.
 	// It is used by Close and should not be called directly. This can be nil.
@@ -301,8 +302,7 @@ func (t *Tor) startProcess(ctx context.Context, conf *StartConf) error {
 		if err != nil {
 			return fmt.Errorf("unable to get embedded control conn: %v", err)
 		}
-		t.Control = control.NewConn(textproto.NewConn(conn))
-		t.Control.DebugWriter = t.DebugWriter
+		t.bindRuntimeControl(ctx, conn)
 	}
 	// Start process with the args
 	t.Debugf("Starting tor with args %v", args)
@@ -345,12 +345,11 @@ func (t *Tor) connectController(ctx context.Context, conf *StartConf) error {
 		return nil
 	}
 	t.Debugf("Connecting to control port %v", t.ControlPort)
-	textConn, err := textproto.Dial("tcp", "127.0.0.1:"+strconv.Itoa(t.ControlPort))
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", "127.0.0.1:"+strconv.Itoa(t.ControlPort))
 	if err != nil {
 		return err
 	}
-	t.Control = control.NewConn(textConn)
-	t.Control.DebugWriter = t.DebugWriter
+	t.bindRuntimeControl(ctx, conn)
 	return nil
 }
 
@@ -369,7 +368,7 @@ func (t *Tor) EnableNetwork(ctx context.Context, wait bool) error {
 	}
 	// Enable the network
 	if err := t.Control.SetConf(control.KeyVals("DisableNetwork", "0")...); err != nil {
-		return nil
+		return err
 	}
 	// If not waiting, leave
 	if !wait {
@@ -406,7 +405,7 @@ func (t *Tor) Close() error {
 			}
 		}
 		// Now close the controller
-		if err := t.Control.Close(); err != nil {
+		if err := t.InterruptControl(); err != nil {
 			errs = append(errs, fmt.Errorf("unable to close contrlller: %v", err))
 		} else {
 			t.Control = nil

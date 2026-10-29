@@ -35,5 +35,27 @@
       "sha256": "a6697197f94856800ea3425d2ccdc3207bef97c5770e5edb1d9bb01360a6d608"
     }
   ],
-  "patched_tor_sha256": "944eadaeb2ffd886553f41746888fd4f69d533f2516d2a818557cefe63227995"
+  "patched_tor_sha256": "74f8a5ed19109a916a96327926547a44a0d41cb0c31542086a9708fe4f785dba",
+  "local_patches": [
+    {
+      "path": "tor.go",
+      "sha256": "74f8a5ed19109a916a96327926547a44a0d41cb0c31542086a9708fe4f785dba",
+      "changes": "capture original process in Close; context-aware control socket dialing/cancellation with callback join; SetConf errors propagate"
+    },
+    {
+      "path": "dialer.go",
+      "sha256": "09040a7d511c08f495868afe596f48caecf7f55a074e78c58e2bfe4defb39870",
+      "changes": "error-message capitalization"
+    },
+    {
+      "path": "listen.go",
+      "sha256": "bef77bbc9a34eab50f702664835999e22c7741cbaf86e0054e639d997e49df1b",
+      "changes": "local error wording, ED25519 case ordering, maps.Copy and keyed ED25519Key.KeyPair literals"
+    },
+    {
+      "path": "log.go",
+      "sha256": "64d346b118ae290793874654a85dc96faec9b58970ea977c0bb32998c1e67634",
+      "changes": "any instead of interface{}"
+    }
+  ]
 }

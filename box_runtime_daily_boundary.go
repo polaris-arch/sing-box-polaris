@@ -23,9 +23,13 @@ func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) 
 			continue
 		}
 		switch key {
-		case "outbounds", "endpoints", "dns":
+		case "outbounds", "endpoints", "dns", "http_clients", "certificate_providers", "ntp":
 			// Concrete protocol/range support is checked separately. Endpoints
 			// include ordinary userspace nodes, not only host interfaces.
+		case "inbounds":
+			if !runtimeOnlyInboundProviderChanges(before[key], after[key]) {
+				runtimeChangedLeaves(key, before[key], after[key], paths)
+			}
 		case "log":
 			var oldLog, newLog map[string]stdjson.RawMessage
 			_ = stdjson.Unmarshal(before[key], &oldLog)
@@ -58,13 +62,26 @@ func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) 
 					continue
 				}
 				switch field {
-				case "rules", "rule_set", "final", "default_domain_resolver", "default_interface", "default_mark", "default_network_strategy", "default_network_type", "default_fallback_network_type", "default_fallback_delay":
+				case "rules", "rule_set", "final", "default_http_client", "default_domain_resolver", "default_interface", "default_mark", "default_network_strategy", "default_network_type", "default_fallback_network_type", "default_fallback_delay":
 				default:
 					runtimeChangedLeaves("route."+field, oldRoute[field], newRoute[field], paths)
 				}
 			}
 		default:
 			runtimeChangedLeaves(key, before[key], after[key], paths)
+		}
+	}
+	// A system clock write cannot be compensated. Presence on either side is
+	// intentionally restart-only, including true -> false and source replacement.
+	var oldNTP, newNTP struct {
+		Enabled bool `json:"enabled"`
+		Write   bool `json:"write_to_system"`
+	}
+	_ = stdjson.Unmarshal(before["ntp"], &oldNTP)
+	_ = stdjson.Unmarshal(after["ntp"], &newNTP)
+	if (oldNTP.Enabled && oldNTP.Write) || (newNTP.Enabled && newNTP.Write) {
+		if !bytes.Equal(before["ntp"], after["ntp"]) {
+			paths["ntp.write_to_system"] = true
 		}
 	}
 	ordered := make([]string, 0, len(paths))
@@ -104,4 +121,43 @@ func runtimeChangedLeaves(path string, before, after stdjson.RawMessage, paths m
 	// Arrays are reported as one field. Index churn must not pretend to
 	// identify a stable resource, and diagnostics never include tag secrets.
 	paths[path] = true
+}
+
+// Provider references belong to the staged TLS consumer. Keep every other
+// listener/transport field structural, including count/order/tag/TLS enablement.
+func runtimeOnlyInboundProviderChanges(before, after stdjson.RawMessage) bool {
+	var left, right []map[string]stdjson.RawMessage
+	if stdjson.Unmarshal(before, &left) != nil || stdjson.Unmarshal(after, &right) != nil || len(left) != len(right) {
+		return false
+	}
+	strip := func(item map[string]stdjson.RawMessage) ([]byte, bool) {
+		var tls map[string]stdjson.RawMessage
+		if stdjson.Unmarshal(item["tls"], &tls) != nil || tls == nil {
+			return nil, false
+		}
+		delete(tls, "certificate_provider")
+		encoded, err := stdjson.Marshal(tls)
+		if err != nil {
+			return nil, false
+		}
+		item["tls"] = encoded
+		encoded, err = stdjson.Marshal(item)
+		return encoded, err == nil
+	}
+	for i := range left {
+		leftBytes, _ := stdjson.Marshal(left[i])
+		rightBytes, _ := stdjson.Marshal(right[i])
+		if bytes.Equal(leftBytes, rightBytes) {
+			continue
+		}
+		a, ok := strip(left[i])
+		if !ok {
+			return false
+		}
+		b, ok := strip(right[i])
+		if !ok || !bytes.Equal(a, b) {
+			return false
+		}
+	}
+	return len(left) != 0
 }

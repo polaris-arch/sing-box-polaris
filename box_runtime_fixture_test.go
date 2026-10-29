@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"fmt"
+	"net"
 	"runtime"
 	"sync"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
+	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/service"
 )
 
@@ -93,6 +95,14 @@ type runtimeTestSocks struct {
 	closeHook     func() error
 	idleHook      func(bool)
 	closeIdleHook func()
+	dialHook      func(context.Context, string, M.Socksaddr) (net.Conn, error)
+}
+
+func (o *runtimeTestSocks) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if o.dialHook != nil {
+		return o.dialHook(ctx, network, destination)
+	}
+	return o.Outbound.DialContext(ctx, network, destination)
 }
 
 func (o *runtimeTestSocks) SetKeepIdleConnections(keep bool) {

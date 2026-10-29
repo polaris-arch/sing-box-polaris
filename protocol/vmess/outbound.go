@@ -247,6 +247,9 @@ func (h *vmessDialer) DialContext(ctx context.Context, network string, destinati
 	metadata.Destination = destination
 	var conn net.Conn
 	defer func() {
+		if resultErr == nil && result != nil && conn != nil {
+			result = outbound.PreserveRuntimeConnClose(result, conn)
+		}
 		if resultErr != nil && conn != nil {
 			resultErr = errors.Join(resultErr, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 		}
@@ -261,6 +264,11 @@ func (h *vmessDialer) DialContext(ctx context.Context, network string, destinati
 	}
 	if err != nil {
 		return nil, err
+	}
+	if h.transport == nil {
+		// Capture direct TCP/TLS close at construction, before VMess hides it.
+		// Its fixed fence interrupts the parent before joining protocol methods.
+		conn, _ = outbound.WrapRuntimeOwnedConn(conn)
 	}
 	switch N.NetworkName(network) {
 	case N.NetworkTCP:
@@ -281,6 +289,9 @@ func (h *vmessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	metadata.Destination = destination
 	var conn net.Conn
 	defer func() {
+		if resultErr == nil && result != nil && conn != nil {
+			result = outbound.PreserveRuntimePacketConnClose(result, conn)
+		}
 		if resultErr != nil && conn != nil {
 			resultErr = errors.Join(resultErr, outbound.CloseRuntimeCreation(ctx, h.runtimeSource, conn.Close))
 		}
@@ -295,6 +306,9 @@ func (h *vmessDialer) ListenPacket(ctx context.Context, destination M.Socksaddr)
 	}
 	if err != nil {
 		return nil, err
+	}
+	if h.transport == nil {
+		conn, _ = outbound.WrapRuntimeOwnedConn(conn)
 	}
 	if h.packetAddr {
 		if destination.IsDomain() {

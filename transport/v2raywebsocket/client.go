@@ -100,13 +100,14 @@ func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 		return nil, err
 	}
 	if c.maxEarlyData > 0 {
-		return &EarlyWebsocketConn{Client: c, rawConn: conn, create: make(chan struct{})}, nil
+		closed, _ := outbound.RuntimeConnectionCloseSignal(conn)
+		return outbound.PreserveRuntimeConnClose(&EarlyWebsocketConn{Client: c, rawConn: conn, create: make(chan struct{}), rawClosed: closed}, conn), nil
 	}
 	websocketConn, err := c.upgrade(conn, &c.requestURL, c.headers)
 	if err != nil {
 		return nil, err
 	}
-	return websocketConn, nil
+	return outbound.PreserveRuntimeConnClose(websocketConn, conn), nil
 }
 
 func (c *Client) upgrade(conn net.Conn, requestURL *url.URL, headers http.Header) (*WebsocketConn, error) {
@@ -137,7 +138,7 @@ func (c *Client) upgrade(conn net.Conn, requestURL *url.URL, headers http.Header
 			conn.Close()
 			return nil, err
 		}
-		conn = bufio.NewCachedConn(conn, buffer)
+		conn = outbound.PreserveRuntimeConnClose(bufio.NewCachedConn(conn, buffer), conn)
 	}
 	return NewConn(conn, nil, ws.StateClientSide), nil
 }

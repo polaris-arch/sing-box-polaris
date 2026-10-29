@@ -216,6 +216,9 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				publication.listeners, prepareErr = prepared.listenerTransaction.PreparePublication()
 			}
 		}
+		if prepareErr == nil {
+			prepareErr = prepared.validateRuntimeCertificateClaims()
+		}
 		coordinator.access.Lock()
 		defer coordinator.access.Unlock()
 		if prepareErr == nil && (coordinator.stopped || coordinator.active != request.Expected) {

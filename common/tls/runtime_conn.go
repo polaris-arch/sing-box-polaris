@@ -77,8 +77,8 @@ func clientHandshakeOwned(ctx context.Context, conn net.Conn, config Config) (Co
 		return nil, err
 	}
 	state := tlsConn.ConnectionState()
-	// TLS.Close retains the provider close-notify behavior; its raw Close is
-	// cached and joined before the final fence joins admitted TLS methods.
+	// The fixed raw close interrupts provider I/O, including close-notify writes,
+	// and is joined before the final fence joins admitted TLS methods.
 	wrapped, fence := outbound.WrapRuntimeOwnedConn(&runtimeTLSCloser{Conn: tlsConn, raw: rawFence})
 	return &runtimeTLSConn{Conn: wrapped, tlsConn: tlsConn, raw: guarded, fence: fence, state: state}, nil
 }
@@ -111,6 +111,9 @@ func runtimeProviderFailure(provider, transport net.Conn, cause error) error {
 }
 
 func (c *runtimeTLSCloser) Close() error {
+	// A provider's Close can itself write close-notify. Request the actual raw
+	// interruption first, rather than waiting for that write to unblock itself.
+	_ = c.raw.Close()
 	tlsErr := c.Conn.Close()
 	rawErr := c.raw.RuntimeCloseAndWait()
 	if rawErr == nil && runtimeTLSAlreadyClosed(tlsErr) {

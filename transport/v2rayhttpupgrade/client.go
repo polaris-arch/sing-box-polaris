@@ -139,7 +139,7 @@ func (c *Client) dialContextOwned(ctx context.Context) (net.Conn, error) {
 			conn.Close()
 			return nil, err
 		}
-		conn = bufio.NewCachedConn(conn, buffer)
+		conn = outbound.PreserveRuntimeConnClose(bufio.NewCachedConn(conn, buffer), conn)
 	}
 	return conn, nil
 }

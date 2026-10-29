@@ -274,6 +274,16 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		}
 		return cloneRuntimePlan(plan), nil
 	}
+	if problems, certErr := s.preflightRuntimeCertificates(ctx, options, selectorIntents, plannedRootDigest); certErr != nil {
+		plan.Errors = []RuntimePlanError{{Code: "CERTIFICATE_PREFLIGHT_FAILED", Path: "certificate_providers", Message: "certificate resource identities could not be validated"}}
+		return cloneRuntimePlan(plan), nil
+	} else if len(problems) != 0 {
+		plan.Errors = problems
+		for _, problem := range problems {
+			plan.Impacts = append(plan.Impacts, RuntimeImpact{Path: problem.Path, UpdateClass: "RESTART_REQUIRED", Reason: problem.Message, ReconnectRequired: true})
+		}
+		return cloneRuntimePlan(plan), nil
+	}
 	if endpointErr := s.preflightRuntimeEndpoints(ctx, options, selectorIntents, plannedRootDigest); endpointErr != nil {
 		var structured interface{ RuntimePlanError() RuntimePlanError }
 		if errors.As(endpointErr, &structured) {

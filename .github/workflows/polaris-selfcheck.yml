@@ -892,6 +892,24 @@ jobs:
             third_party/tfo-go/go.sum
             third_party/sing-vmess/go.mod
             third_party/sing-vmess/go.sum
+      - name: Compile resource adapter test sources with certificate features disabled
+        timeout-minutes: 77
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/polaris-command-selfcheck-feature-off-compile.sh" <<'POLARIS_COMMAND'
+          set -euo pipefail
+          off_tags="$(tr ',' '\n' < release/DEFAULT_BUILD_TAGS | grep -v -E '^with_(tailscale|acme)$' | paste -sd, -),with_purego"
+          case ",$off_tags," in *,with_tailscale,*|*,with_acme,*) exit 1;; esac
+          printf 'feature-off-tags=%s\n' "$off_tags"
+          for package in . ./adapter/certificate ./common/httpclient ./common/runtimeclock ./option ./service/origin_ca; do
+            printf 'compile-test-source=%s\n' "$package"
+            GOMAXPROCS="$POLARIS_COMPILE_GOMAXPROCS" go test -p "$POLARIS_GO_JOBS" \
+              -c -o /dev/null -tags "$off_tags" -ldflags "$(cat release/LDFLAGS)" "$package"
+          done
+          POLARIS_COMMAND
+          python -B "$RUNNER_TEMP/polaris-ci-observe.py" --phase selfcheck-feature-off-compile \
+            --output "$RUNNER_TEMP/polaris-ci/selfcheck-feature-off-compile" --timeout-seconds 4500 \
+            -- "$POLARIS_RUNNER_BASH" --noprofile --norc -e -o pipefail "$RUNNER_TEMP/polaris-command-selfcheck-feature-off-compile.sh"
       - name: Authorize explicitly approved exact SHA netns binary
         id: netns_batch_authorization
         env:

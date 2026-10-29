@@ -2,6 +2,7 @@ package outbound
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -79,7 +80,11 @@ func runtimeBound(ctx context.Context, source adapter.RuntimeResourceSource) boo
 // their component's sole close worker, without external self-leases.
 func DialRuntimeConn(ctx context.Context, source adapter.RuntimeResourceSource, dial func(context.Context) (net.Conn, error)) (net.Conn, error) {
 	if !runtimeBound(ctx, source) {
-		return dial(ctx)
+		conn, err := dial(ctx)
+		if err == nil {
+			conn = runtimeLegacyConn(conn)
+		}
+		return conn, err
 	}
 	internal, err := ValidateRuntimeOwnedSession(ctx, source)
 	if err != nil {
@@ -117,7 +122,13 @@ func DialRuntimeConn(ctx context.Context, source adapter.RuntimeResourceSource, 
 
 func ListenRuntimePacket(ctx context.Context, source adapter.RuntimeResourceSource, listen func(context.Context) (net.PacketConn, error)) (net.PacketConn, error) {
 	if !runtimeBound(ctx, source) {
-		return listen(ctx)
+		conn, err := listen(ctx)
+		if err == nil {
+			if wait, known := RuntimeConnectionCloseWaiter(conn); known {
+				conn = &runtimeLegacyPacketConn{PacketConn: conn, wait: wait, state: runtimeCarrierState(conn)}
+			}
+		}
+		return conn, err
 	}
 	internal, err := ValidateRuntimeOwnedSession(ctx, source)
 	if err != nil {
@@ -583,6 +594,14 @@ func runtimeCarrierState(conn io.Closer) *runtimeCarrier {
 		return c.state
 	case *runtimePacketConn:
 		return c.state
+	case *runtimeTLSStateConn:
+		return c.state
+	case *runtimeLegacyJoinedConn:
+		return c.state
+	case *runtimeLegacyJoinedConnPacket:
+		return c.state
+	case *runtimeLegacyPacketConn:
+		return c.state
 	default:
 		return nil
 	}
@@ -615,6 +634,95 @@ func RuntimeConnectionCloseWaiter(conn io.Closer) (func() error, bool) {
 		state.mu.Unlock()
 		return err
 	}, true
+}
+
+// RuntimeConnectionCloseSignal is a close-request signal, never completion.
+// Known lazy wrappers use it only to wake local waits which have not begun I/O.
+func RuntimeConnectionCloseSignal(conn io.Closer) (<-chan struct{}, bool) {
+	state := runtimeCarrierState(conn)
+	if state == nil {
+		return nil, false
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.sealedSignal == nil {
+		state.sealedSignal = make(chan struct{})
+		if state.closing {
+			close(state.sealedSignal)
+		}
+	}
+	return state.sealedSignal, true
+}
+
+// PreserveRuntimeTLSState keeps a cached TLS observation on the exact private
+// carrier. It grants no provider I/O or raw socket access, and remains one of
+// this package's private, explicitly recognized completion-bearing wrappers.
+func PreserveRuntimeTLSState(conn net.Conn, tlsState tls.ConnectionState) net.Conn {
+	return &runtimeTLSStateConn{Conn: conn, state: runtimeCarrierState(conn), tlsState: tlsState}
+}
+
+type runtimeTLSStateConn struct {
+	net.Conn
+	state    *runtimeCarrier
+	tlsState tls.ConnectionState
+}
+
+func (c *runtimeTLSStateConn) ConnectionState() tls.ConnectionState { return c.tlsState }
+
+// PreserveRuntimeConnClose is called at a known wrapper's construction site,
+// with the exact carrier supplied to that constructor. It does not traverse
+// Upstream or trust an arbitrary implementation of a completion interface.
+// The private wrapper joins its own methods, its Close, and the captured parent.
+func PreserveRuntimeConnClose(conn net.Conn, parent io.Closer) net.Conn {
+	wait, known := RuntimeConnectionCloseWaiter(parent)
+	if !known {
+		return conn
+	}
+	wrapped, _ := WrapRuntimeOwnedConn(conn)
+	state := runtimeCarrierState(wrapped)
+	state.ownedClose = runtimeWrappedClose(conn, wait, state.methods.Wait)
+	return wrapped
+}
+
+func PreserveRuntimePacketConnClose(conn net.PacketConn, parent io.Closer) net.PacketConn {
+	wait, known := RuntimeConnectionCloseWaiter(parent)
+	if !known {
+		return conn
+	}
+	wrapped, _ := WrapRuntimeOwnedPacketConn(conn)
+	state := runtimeCarrierState(wrapped)
+	state.ownedClose = runtimeWrappedClose(conn, wait, state.methods.Wait)
+	return wrapped
+}
+
+func runtimeWrappedClose(conn io.Closer, wait func() error, methodsDone func()) func() error {
+	return func() error {
+		completed := make(chan error, 1)
+		// Interrupt the exact carrier even if the wrapper's own Close blocks
+		// on a protocol write or a reader. Both calls remain owned by this worker.
+		go func() { completed <- waitRuntimeCloseRecovering(wait) }()
+		// The parent close interrupts I/O first. Only after all guarded wrapper
+		// methods leave may Close release mutable protocol/cache buffers.
+		methodsDone()
+		err := waitRuntimeCloseRecovering(conn.Close)
+		return errors.Join(runtimeWithoutClosePending(err), <-completed)
+	}
+}
+
+func runtimeWithoutClosePending(err error) error {
+	if err == ErrRuntimeClosePending {
+		return nil
+	}
+	// Known wrappers may join repeated close requests. Preserve every other
+	// error, including a foreign error which merely wraps the pending sentinel.
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		var result error
+		for _, child := range joined.Unwrap() {
+			result = errors.Join(result, runtimeWithoutClosePending(child))
+		}
+		return result
+	}
+	return err
 }
 
 // The listener captures this completion at the actual private-carrier creation

@@ -79,7 +79,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			return nil, false
 		}
 		resolved := common.PtrValueOrDefault(client)
-		if resolved.Tag == "" {
+		if resolved.Tag == "" || resolved.ResolveOnDetour {
 			providerHTTP = append(providerHTTP, resolved)
 		}
 		return []string{"http-manager"}, true
@@ -91,7 +91,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		}
 		name := "certificate-provider:" + provider.Tag
 		deps, defaults := providerDependencies(provider.Options)
-		node, nodeErr := makeNode(name, provider, deps, defaults)
+		node, nodeErr := makeNode(name, &provider, deps, defaults)
 		if nodeErr != nil {
 			return nil, nil, nodeErr
 		}
@@ -170,7 +170,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 				}
 			}
 		}
-		node, err := makeNode(name, server, deps, true)
+		node, err := makeNode(name, &server, deps, true)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -448,6 +448,18 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		allHTTP = append(allHTTP, client.Options)
 	}
 	for _, value := range allHTTP {
+		if value.Tag != "" && value.ResolveOnDetour {
+			for _, definition := range options.HTTPClients {
+				if definition.Tag == value.Tag {
+					value = definition.Options()
+					value.ResolveOnDetour = true
+					break
+				}
+			}
+		}
+		if value.DefaultOutbound && value.Detour == "" && routeOptions.Final != "" {
+			httpDeps = append(httpDeps, "outbound:"+routeOptions.Final)
+		}
 		if value.Detour != "" {
 			httpDeps = append(httpDeps, "outbound:"+value.Detour)
 		}
@@ -469,6 +481,11 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	httpNode, err := makeNode("http-manager", httpConfig, httpDeps, true)
 	if err != nil {
 		return nil, nil, err
+	}
+	// These are constructor-only controls intentionally omitted from option JSON.
+	// They must still invalidate a programmatically constructed receiving owner.
+	for _, client := range allHTTP {
+		httpNode.fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:%t:%t:%t:%t", httpNode.fingerprint, client.DefaultOutbound, client.ResolveOnDetour, client.DirectResolver, client.DisableEmptyDirectCheck)))
 	}
 	configs["http-manager"] = runtimeNodeOptions{node: httpNode}
 	dnsDeps := append(append([]string(nil), sets...), transports...)

@@ -153,6 +153,9 @@ func (s *Box) startRuntime() error {
 			return err
 		}
 	}
+	if err := prepared.validateRuntimeCertificateClaims(); err != nil {
+		return err
+	}
 	c.access.Lock()
 	if c.stopped {
 		c.access.Unlock()

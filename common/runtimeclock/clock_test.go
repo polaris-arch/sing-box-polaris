@@ -6,9 +6,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -598,4 +601,178 @@ func TestClockTimeFuncUsesItsOwnAtomicOffset(t *testing.T) {
 		a.offset.Store(int64(time.Duration(i)))
 	}
 	readers.Wait()
+}
+
+func TestClockCertificateBootstrapIsOncePrivateAndOffsetOnly(t *testing.T) {
+	f := newClockFixture(t, option.NTPOptions{}, nil, nil, nil)
+	s := f.s
+	var dials atomic.Int32
+	s.newDialer = clockFactory(clockDialer{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) {
+		dials.Add(1)
+		return newClockConn(false, false), nil
+	}})
+	if s.BootstrapOffset(context.Background()) == nil || dials.Load() != 0 {
+		t.Fatal("unprepared bootstrap performed IO")
+	}
+	if err := s.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := s.BootstrapOffset(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if dials.Load() != 1 || s.offset.Load() < int64(time.Second) || s.activated {
+		t.Fatal("bootstrap was not one private offset-only sample")
+	}
+	s.RuntimeStop()
+	if s.BootstrapOffset(context.Background()) == nil {
+		t.Fatal("retired owner accepted bootstrap")
+	}
+}
+
+func TestClockCertificateBootstrapCancellationJoinsLateCarrierAndCannotWriteSystem(t *testing.T) {
+	for _, privileged := range []bool{false, true} {
+		t.Run(fmt.Sprint(privileged), func(t *testing.T) {
+			var writes, dials atomic.Int32
+			f := newClockFixture(t, option.NTPOptions{WriteToSystem: privileged}, nil, func(context.Context, time.Time) error { writes.Add(1); return nil }, nil)
+			s := f.s
+			c := newClockConn(false, true)
+			release := cleanupClockGate(t, c.closeRelease, nil)
+			s.newDialer = clockFactory(clockDialer{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) { dials.Add(1); return c, nil }})
+			if err := s.Prepare(); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			result := make(chan error, 1)
+			go func() { result <- s.BootstrapOffset(ctx) }()
+			if privileged {
+				if err := <-result; err == nil || dials.Load() != 0 || writes.Load() != 0 {
+					t.Fatal("privileged bootstrap crossed the irreversible boundary", err)
+				}
+				return
+			}
+			awaitClock(t, c.closeEntered, "bootstrap carrier close")
+			cancel()
+			select {
+			case <-result:
+				t.Fatal("bootstrap reported cancellation before actual carrier join")
+			default:
+			}
+			release()
+			select {
+			case err := <-result:
+				if err == nil {
+					t.Fatal("canceled bootstrap succeeded")
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("bootstrap did not join")
+			}
+			if s.offset.Load() != 0 || writes.Load() != 0 {
+				t.Fatal("canceled/late bootstrap mutated clock")
+			}
+			if c.closes.Load() != 1 || s.bootstrapAttempted {
+				t.Fatal("canceled bootstrap lost its sole close or became a successful sample")
+			}
+		})
+	}
+}
+
+func TestClockBootstrapOwnerStopBeforeJoinedCommit(t *testing.T) {
+	var writes atomic.Int32
+	f := newClockFixture(t, option.NTPOptions{}, nil, func(context.Context, time.Time) error { writes.Add(1); return nil }, nil)
+	s := f.s
+	c := newClockConn(false, true)
+	release := cleanupClockGate(t, c.closeRelease, nil)
+	sampleContext := make(chan context.Context, 1)
+	s.newDialer = clockFactory(clockDialer{dial: func(ctx context.Context, _ string, _ M.Socksaddr) (net.Conn, error) {
+		sampleContext <- ctx
+		return c, nil
+	}})
+	if err := s.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan error, 1)
+	go func() { result <- s.BootstrapOffset(context.Background()) }()
+	awaitClock(t, c.closeEntered, "owner-stop bootstrap carrier close")
+	s.RuntimeStop()
+	select {
+	case <-result:
+		t.Fatal("owner stop bypassed the actual carrier join")
+	default:
+	}
+	release()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, net.ErrClosed) {
+			t.Fatalf("stopped bootstrap returned %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("owner-stop bootstrap did not join")
+	}
+	if s.offset.Load() != 0 || writes.Load() != 0 || s.bootstrapAttempted || c.closes.Load() != 1 {
+		t.Fatal("owner stop admitted an offset commit, writer or duplicate close")
+	}
+	if (<-sampleContext).Err() == nil {
+		t.Fatal("bootstrap returned before the actual sample context was canceled")
+	}
+}
+
+func TestClockBootstrapOnlyKnownJoinedSamplingFailuresAreBestEffort(t *testing.T) {
+	ownerErr := errors.New("fixture owner identity mismatch")
+	ordinary := []error{syscall.ENETUNREACH, io.EOF, io.ErrUnexpectedEOF, os.ErrDeadlineExceeded, &net.DNSError{Err: "no such host", Name: "ntp.invalid"}, fmt.Errorf("UDP read: %w", syscall.ECONNREFUSED), errors.Join(io.ErrUnexpectedEOF, syscall.ECONNRESET)}
+	fatal := []error{context.Canceled, context.DeadlineExceeded, net.ErrClosed, ownerErr, &net.OpError{Op: "dial", Net: "udp", Err: ownerErr}, errors.Join(syscall.ENETUNREACH, ownerErr), errors.Join(io.EOF, &cleanupError{cause: ownerErr})}
+	for _, err := range ordinary {
+		if !ordinaryBootstrapSampleFailure(err) {
+			t.Error("known ordinary sample failure was upgraded", err)
+		}
+	}
+	for _, err := range fatal {
+		if ordinaryBootstrapSampleFailure(err) {
+			t.Error("ownership/cancellation/unknown failure was downgraded", err)
+		}
+	}
+	for _, err := range []error{syscall.ENETUNREACH, ownerErr} {
+		t.Run(err.Error(), func(t *testing.T) {
+			f := newClockFixture(t, option.NTPOptions{}, nil, nil, nil)
+			s := f.s
+			var dials atomic.Int32
+			s.newDialer = clockFactory(clockDialer{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) { dials.Add(1); return nil, err }})
+			if err := s.Prepare(); err != nil {
+				t.Fatal(err)
+			}
+			result := s.BootstrapOffset(context.Background())
+			if (result == nil) != (err == syscall.ENETUNREACH) {
+				t.Fatal("bootstrap conflated IO and ownership failure", result)
+			}
+			if s.offset.Load() != 0 || s.activated {
+				t.Fatal("failed sample mutated private offset or activated worker")
+			}
+			if err == syscall.ENETUNREACH {
+				if result = s.BootstrapOffset(context.Background()); result != nil || dials.Load() != 1 {
+					t.Fatal("ordinary failure re-entered one-shot bootstrap", result, dials.Load())
+				}
+			}
+		})
+	}
+}
+
+func TestClockBootstrapShortPacketDoesNotHideActualCloseUncertainty(t *testing.T) {
+	f := newClockFixture(t, option.NTPOptions{}, nil, nil, nil)
+	f.allowCloseError = true
+	s := f.s
+	c := newClockConn(false, false)
+	c.closeErr = errors.New("fixture close completion unknown")
+	s.newDialer = clockFactory(clockDialer{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) { return c, io.ErrUnexpectedEOF }})
+	if err := s.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BootstrapOffset(context.Background()); err == nil {
+		t.Fatal("joined error hid uncertain close")
+	}
+	awaitClock(t, c.closed, "uncertain bootstrap carrier terminal return")
+	if s.offset.Load() != 0 || s.bootstrapAttempted || !s.hasCleanupError() {
+		t.Fatal("UnknownCleanup was accepted as ordinary unavailable sample")
+	}
 }

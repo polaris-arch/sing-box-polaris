@@ -100,6 +100,14 @@ func NewManager(ctx context.Context, logger log.ContextLogger, clients []option.
 	m.fence = outbound.NewRuntimeIOFence(m.closeOwned)
 	m.admitOwned, m.setupErr = outbound.RegisterRuntimeOwnedFence(ctx, m.fence)
 	for _, client := range clients {
+		if client.Tag == "" {
+			m.setupErr = errors.Join(m.setupErr, errors.New("HTTP client definition requires a tag"))
+			continue
+		}
+		if _, duplicate := m.defines[client.Tag]; duplicate {
+			m.setupErr = errors.Join(m.setupErr, errors.New("duplicate HTTP client definition"))
+			continue
+		}
 		copy, err := cloneHTTPClientOptions(ctx, client.Options())
 		if err != nil {
 			m.setupErr = errors.Join(m.setupErr, err)

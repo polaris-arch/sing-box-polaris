@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
@@ -26,6 +27,7 @@ type WebsocketConn struct {
 	reader         *wsutil.Reader
 	controlHandler wsutil.FrameHandlerFunc
 	remoteAddr     net.Addr
+	closeWait      func() error
 }
 
 func NewConn(conn net.Conn, remoteAddr net.Addr, state ws.State) *WebsocketConn {
@@ -36,9 +38,11 @@ func NewConn(conn net.Conn, remoteAddr net.Addr, state ws.State) *WebsocketConn 
 		}
 		return defaultControlHandler(header, reader)
 	}
+	wait, _ := outbound.RuntimeConnectionCloseWaiter(conn)
 	return &WebsocketConn{
-		Conn:  conn,
-		state: state,
+		closeWait: wait,
+		Conn:      conn,
+		state:     state,
 		reader: &wsutil.Reader{
 			Source:          conn,
 			State:           state,
@@ -60,7 +64,15 @@ func (c *WebsocketConn) Close() error {
 		frame = ws.MaskFrameInPlace(frame)
 	}
 	ws.WriteFrame(c.Conn, frame)
-	return c.Conn.Close()
+	err := c.Conn.Close()
+	if c.closeWait != nil {
+		waitErr := c.closeWait()
+		if err == outbound.ErrRuntimeClosePending {
+			err = nil
+		}
+		return errors.Join(err, waitErr)
+	}
+	return err
 }
 
 func (c *WebsocketConn) Read(b []byte) (n int, err error) {
@@ -134,17 +146,22 @@ func (c *WebsocketConn) Upstream() any {
 
 type EarlyWebsocketConn struct {
 	*Client
-	rawConn net.Conn
-	conn    atomic.Pointer[WebsocketConn]
-	access  sync.Mutex
-	create  chan struct{}
-	err     error
+	rawConn   net.Conn
+	conn      atomic.Pointer[WebsocketConn]
+	access    sync.Mutex
+	create    chan struct{}
+	rawClosed <-chan struct{}
+	err       error
 }
 
 func (c *EarlyWebsocketConn) Read(b []byte) (n int, err error) {
 	conn := c.conn.Load()
 	if conn == nil {
-		<-c.create
+		select {
+		case <-c.create:
+		case <-c.rawClosed:
+			return 0, net.ErrClosed
+		}
 		if c.err != nil {
 			return 0, c.err
 		}

@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -61,16 +62,17 @@ func (v *runtimeView) RuntimePortResource(port tun.Port) (adapter.RuntimeResourc
 }
 
 type runtimeResource struct {
-	postBindEffects []runtimePostBindRecord
-	sourceProducer  *runtimeSourceProducer
-	rootStore       *roots.Store
-	id              adapter.RuntimeResourceID
-	kind            string
-	fingerprint     string
-	owner           *runtimegraph.ResourceOwner
-	scope           *adapter.Scope
-	networkReady    bool // guarded by coordinator.access; components immutable once true
-	components      map[string]*runtimeComponent
+	certificateClaims []runtimeCertificateClaim
+	postBindEffects   []runtimePostBindRecord
+	sourceProducer    *runtimeSourceProducer
+	rootStore         *roots.Store
+	id                adapter.RuntimeResourceID
+	kind              string
+	fingerprint       string
+	owner             *runtimegraph.ResourceOwner
+	scope             *adapter.Scope
+	networkReady      bool // guarded by coordinator.access; components immutable once true
+	components        map[string]*runtimeComponent
 	// stop seals producer roots, without canceling existing foreground work.
 	stop      func()
 	stopFinal func()
@@ -93,6 +95,10 @@ type runtimeComponent struct {
 }
 
 type preparedRuntimeGraph struct {
+	checkCertificateClaims   func([]runtimeCertificateClaim) error
+	bindCertificateStorage   func(string, os.FileInfo) error
+	certificateClaimContext  context.Context
+	certificateClaims        []runtimeCertificateClaim
 	dnsStores                []*cachefile.DNSRuntimeView
 	published                bool // written at commit; cleanup reads after the preparing operation joins
 	postBindNext             []runtimePostBindRecord

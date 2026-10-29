@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -52,6 +51,9 @@ type Outbound struct {
 	options             map[string]string
 	events              chan control.Event
 	socksClient         *socks.Client
+	bootstrapDone       chan struct{}
+	bootstrapErr        error
+	bootstrapUncertain  error
 }
 
 func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.TorOutboundOptions) (adapter.Outbound, error) {
@@ -221,39 +223,27 @@ func (t *Outbound) start(scope *adapter.Scope) error {
 			}
 		}
 	}
-	// Bine EventWait can return while a hidden relay still sends to its
-	// soon-closed channel. Poll through synchronous control requests instead;
-	// each response still relays log events to our joined receiver.
-	err = torInstance.EnableNetwork(t.ctx, false)
+	// Managed readiness is independent of graph startup. The process and its
+	// authenticated control channel already belong to this outbound; selected
+	// dials still wait for actual bootstrap and the SOCKS listener.
+	release, err := t.runtimeWork.Acquire()
 	if err != nil {
 		return err
 	}
-	for {
-		phase, phaseErr := torInstance.Control.GetInfo("status/bootstrap-phase")
-		if phaseErr != nil {
-			return phaseErr
+	go func() {
+		defer release()
+		defer close(t.bootstrapDone)
+		defer func() {
+			if recover() != nil {
+				t.bootstrapUncertain = E.New("tor bootstrap task panicked; completion unknown")
+				t.bootstrapErr = t.bootstrapUncertain
+			}
+		}()
+		t.bootstrapErr = t.bootstrap()
+		if t.bootstrapErr != nil && t.ctx.Err() == nil {
+			t.logger.Error("tor network bootstrap: ", t.bootstrapErr)
 		}
-		if len(phase) == 1 && strings.Contains(phase[0].Val, "PROGRESS=100") {
-			break
-		}
-		timer := time.NewTimer(200 * time.Millisecond)
-		select {
-		case <-timer.C:
-		case <-t.ctx.Done():
-			timer.Stop()
-			return t.ctx.Err()
-		}
-	}
-	info, err := torInstance.Control.GetInfo("net/listeners/socks")
-	if err != nil {
-		return err
-	}
-	if len(info) != 1 || info[0].Key != "net/listeners/socks" {
-		return E.New("get socks proxy address")
-	}
-	t.logger.Trace("obtained tor socks5 address ", info[0].Val)
-	// TODO: set password for tor socks5 server if supported
-	t.socksClient = socks.NewClient(N.SystemDialer, M.ParseSocksaddr(info[0].Val), socks.Version5, "", "")
+	}()
 	return nil
 }
 
@@ -288,6 +278,19 @@ func (t *Outbound) DialContext(ctx context.Context, network string, destination 
 
 func (t *Outbound) dialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
 	t.logger.InfoContext(ctx, "outbound connection to ", destination)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-t.ctx.Done():
+		return nil, t.ctx.Err()
+	case <-t.bootstrapDone:
+	}
+	if t.bootstrapErr != nil {
+		return nil, E.Cause(t.bootstrapErr, "tor network bootstrap")
+	}
+	if err := t.ctx.Err(); err != nil {
+		return nil, err
+	}
 	return t.socksClient.DialContext(ctx, network, destination)
 }
 

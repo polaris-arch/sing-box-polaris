@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"reflect"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -213,6 +214,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			bindings[name] = resource
 		}
 	}
+	if err := s.reserveRuntimeCertificateClaims(prepared, bindings, owned); err != nil {
+		return prepared, err
+	}
 	stableMembership, stableErr := c.stable.owner.Acquire()
 	if stableErr != nil {
 		return prepared, stableErr
@@ -264,6 +268,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		resource.scope.Add(func() error { snapshot.Release(); return nil })
 		service.MustRegister[adapter.CertificateStore](ctx, snapshot)
 		ctx = adapter.ContextWithRuntimePreparation(ctx)
+		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error { return prepared.bindCertificateStorage(name, info) })
 		ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, canonical)
 		ctx = adapter.ContextWithRuntimePreparedResourceCheck(ctx, func(id adapter.RuntimeResourceID) bool { return preparedIDs[id] })
 		ctx = adapter.ContextWithRuntimeControl(ctx, c)
@@ -540,6 +545,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			}
 			component.outbound = value
 			scope = bindings[node.name].scope
+			if operations, ok := value.(interface{ StopRuntimeOperations() }); ok {
+				bindings[node.name].addRuntimeStop(nil, operations.StopRuntimeOperations)
+			}
 			if producer, ok := value.(interface {
 				RuntimeActivate()
 				RuntimeStop()

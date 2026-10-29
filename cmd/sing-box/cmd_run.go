@@ -225,29 +225,14 @@ func run() (runErr error) {
 			return createErr
 		}
 		runtimeDebug.FreeOSMemory()
-		for {
-			osSignal := <-osSignals
-			if osSignal == syscall.SIGHUP {
-				err = check()
-				if err != nil {
-					log.Error(E.Cause(err, "reload service"))
-					continue
-				}
-			}
-			cancel()
-			closeCtx, closed := context.WithCancel(context.Background())
-			go closeMonitor(closeCtx)
-			err = instance.Close()
-			closed()
-			if osSignal != syscall.SIGHUP {
-				if err != nil {
-					log.Error(runtimeCleanupDiagnosticMessage(func() any { return instance.RuntimeCleanupSnapshot() }))
-					log.Error(E.Cause(err, "sing-box did not closed properly"))
-				}
-				return nil
-			}
-			break
+		reload, closeErr := runUntilSignal(osSignals, check, cancel, instance.Close, func() any { return instance.RuntimeCleanupSnapshot() })
+		if closeErr != nil {
+			return closeErr
 		}
+		if !reload {
+			return nil
+		}
+
 		optionsList, err = readConfig()
 		if err != nil {
 			return err
@@ -259,12 +244,36 @@ func run() (runErr error) {
 	}
 }
 
+// A failed close never permits the caller to create a replacement owner.
+func runUntilSignal(signals <-chan os.Signal, checkReload func() error, cancel context.CancelFunc, closeInstance func() error, snapshot func() any) (bool, error) {
+	for {
+		osSignal := <-signals
+		if osSignal == syscall.SIGHUP {
+			if err := checkReload(); err != nil {
+				log.Error(E.Cause(err, "reload service"))
+				continue
+			}
+		}
+		cancel()
+		closeCtx, closed := context.WithCancel(context.Background())
+		go closeMonitor(closeCtx)
+		err := closeInstance()
+		closed()
+		if err != nil {
+			log.Error(runtimeCleanupDiagnosticMessage(snapshot))
+			return false, E.Cause(err, "sing-box did not close properly")
+		}
+		return osSignal == syscall.SIGHUP, nil
+	}
+}
+
 func closeMonitor(ctx context.Context) {
-	time.Sleep(C.FatalStopTimeout)
+	timer := time.NewTimer(C.FatalStopTimeout)
+	defer timer.Stop()
 	select {
 	case <-ctx.Done():
 		return
-	default:
+	case <-timer.C:
+		log.Fatal("sing-box did not close!")
 	}
-	log.Fatal("sing-box did not close!")
 }

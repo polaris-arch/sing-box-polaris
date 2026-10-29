@@ -12,7 +12,13 @@ import (
 // Certificate issuance is an explicit pre-publication external effect. It must
 // never run inside the graph publication guard or be described as reversible
 // merely because the candidate graph itself was never published.
-func (g *preparedRuntimeGraph) stageRuntimeCertificates(ctx context.Context) error {
+func (g *preparedRuntimeGraph) stageRuntimeCertificates(ctx context.Context) (resultErr error) {
+	if err := g.validateRuntimeCertificateClaims(); err != nil {
+		return err
+	}
+	// Retain newly created directory identities on partial issuance as well as
+	// success; an uncertain cleanup must continue to exclude renamed aliases.
+	defer func() { resultErr = errors.Join(resultErr, g.validateRuntimeCertificateClaims()) }()
 	var providers []adapter.RuntimeStagedEffect
 	if g.certificateManager != nil {
 		named, err := g.certificateManager.PreparedProviders()
@@ -26,6 +32,26 @@ func (g *preparedRuntimeGraph) stageRuntimeCertificates(ctx context.Context) err
 	g.effectAccess.Lock()
 	providers = append(providers, g.inlineEffects...)
 	g.effectAccess.Unlock()
+	// Issuance is the explicit effect boundary. A fresh offset-only clock may
+	// take one owned synchronous sample here so TLS can validate the issuer;
+	// background polling and all system writes still require publication.
+	needsClock := false
+	for _, provider := range providers {
+		if consumer, ok := provider.(interface{ RuntimeClockBootstrapRequired() bool }); ok && consumer.RuntimeClockBootstrapRequired() {
+			needsClock = true
+		}
+	}
+	if needsClock {
+		for _, resource := range g.created {
+			for _, component := range resource.components {
+				if component.clock != nil {
+					if err := component.clock.BootstrapOffset(ctx); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
 	for _, provider := range providers {
 		if err := ctx.Err(); err != nil {
 			return err

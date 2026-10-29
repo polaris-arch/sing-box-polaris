@@ -153,3 +153,37 @@ func TestRuntimeLegacyCapabilityRequiresActualStartCompletion(t *testing.T) {
 		t.Fatal("closed legacy instance claimed ready")
 	}
 }
+
+func TestRuntimeResourceAdapterManifestRetainsExactUnsupportedVariants(t *testing.T) {
+	fields := runtimeCapabilityFieldsForBuild("with_acme,with_tailscale,with_quic", true, true, false)
+	find := func(path, variant string) RuntimeFieldCapability {
+		t.Helper()
+		for _, field := range fields {
+			if field.Path == path && field.Variant == variant {
+				return field
+			}
+		}
+		t.Fatalf("missing capability %s/%s", path, variant)
+		return RuntimeFieldCapability{}
+	}
+	for _, item := range [][2]string{{"http_clients", "go-http1-http2"}, {"http_clients", "go-http3"}, {"certificate_providers", "cloudflare-origin-ca"}, {"certificate_providers", "tailscale"}, {"ntp", "offset-only"}, {"inbounds.tls.certificate_provider", "named-or-inline"}} {
+		if field := find(item[0], item[1]); field.UpdateClass != "LOCAL_REPLACE" {
+			t.Fatal("concrete adapter not exposed", field)
+		}
+	}
+	if field := find("certificate_providers", "acme"); field.UpdateClass != "PENDING_ADAPTER" {
+		t.Fatal("unowned certmagic tasks were advertised as closed", field)
+	}
+	if field := find("ntp.write_to_system", "irreversible"); field.UpdateClass != "RESTART_REQUIRED" {
+		t.Fatal("system clock write was advertised as reversible", field)
+	}
+	capability := (*Box)(nil).RuntimeCapabilities()
+	if capability.FullConfiguration {
+		t.Fatal("resource adapters claimed full schema")
+	}
+	for _, pending := range capability.PendingAdapters {
+		if pending == "http_clients" || pending == "certificate_providers" || pending == "ntp" {
+			t.Fatal("category-wide pending hid actual variant support", pending)
+		}
+	}
+}

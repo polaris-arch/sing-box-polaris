@@ -137,20 +137,27 @@ func unmarshalHTTPVersionsOptions(ctx context.Context, content []byte, baseStruc
 }
 
 func httpVersionsVariant(versions []int, http2Options HTTP2Options, http3Options QUICOptions) any {
+	for _, version := range versions {
+		if version < 1 || version > 3 {
+			return nil
+		}
+	}
 	switch {
 	case slices.Contains(versions, 3):
 		return http3Options
 	case slices.Contains(versions, 2):
 		return http2Options
 	default:
-		return nil
+		// HTTP/1 has no additional fields, but is a valid object variant.
+		// nil encodes to null and the object merger intentionally rejects it.
+		return struct{}{}
 	}
 }
 
 func httpVersionVariant(version int, http2Options HTTP2Options, http3Options QUICOptions) any {
 	switch version {
 	case 1:
-		return nil
+		return struct{}{}
 	case 0, 2:
 		return http2Options
 	case 3:

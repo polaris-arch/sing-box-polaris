@@ -49,7 +49,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 			continue
 		}
 		switch key {
-		case "log", "outbounds", "endpoints", "dns", "route", "inbounds":
+		case "log", "outbounds", "endpoints", "dns", "route", "inbounds", "http_clients", "certificate_providers", "ntp":
 			changed = append(changed, key)
 		default:
 			pending(key)
@@ -72,15 +72,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 			break
 		}
 	}
-	if len(options.HTTPClients) != 0 {
-		pending("http_clients")
-	}
-	if len(options.CertificateProviders) != 0 {
-		pending("certificate_providers")
-	}
-	if options.NTP != nil && options.NTP.Enabled {
-		pending("ntp")
-	}
+	problems = append(problems, runtimeResourceEligibility(ctx, options)...)
 
 	for i, inbound := range options.Inbounds {
 		switch inbound.Type {
@@ -104,7 +96,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		if wrapper, ok := inbound.Options.(option.InboundTLSOptionsWrapper); ok {
 			value := wrapper.TakeInboundTLSOptions()
 			if value != nil && value.Enabled {
-				if value.CertificateProvider != nil || value.HasLegacyACME() {
+				if value.HasLegacyACME() {
 					pending(fmt.Sprintf("inbounds[%d].tls.certificate_provider", i))
 				}
 				if value.Reality != nil && value.Reality.Enabled {
@@ -112,7 +104,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 				}
 			}
 		}
-		encoded, err := json.MarshalContext(ctx, inbound)
+		encoded, err := json.MarshalContext(ctx, &inbound)
 		if err != nil {
 			pending(fmt.Sprintf("inbounds[%d]", i))
 			continue
@@ -180,7 +172,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 	var oldRoute, newRoute map[string]stdjson.RawMessage
 	_ = stdjson.Unmarshal(before["route"], &oldRoute)
 	_ = stdjson.Unmarshal(after["route"], &newRoute)
-	for _, key := range []string{"find_process", "find_neighbor", "dhcp_lease_files", "auto_detect_interface", "override_android_vpn", "default_http_client"} {
+	for _, key := range []string{"find_process", "find_neighbor", "dhcp_lease_files", "auto_detect_interface", "override_android_vpn"} {
 		if !bytes.Equal(oldRoute[key], newRoute[key]) {
 			pending("route." + key)
 		}
@@ -194,6 +186,19 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 			impact.ReconnectRequired = true
 			impact.Reason = "local listener handoff may require exclusive socket rebind; compensation can require reconnect"
 			impact.AffectedSessionClasses = []string{"changed ingress admissions", "affected UDP associations"}
+		}
+		if path == "http_clients" || path == "route" {
+			impact.Reason = "replace captured HTTP, DNS and route consumers; admitted requests and bodies retain their original resource closure"
+		}
+		if path == "certificate_providers" {
+			impact.Reason = "replace exact provider and TLS consumers; issuance, account and challenge/cache effects may remain after abort"
+			impact.AffectedSessionClasses = []string{"new TLS admissions", "captured provider consumers", "dependent listener handoff"}
+			impact.ReconnectRequired = len(options.Inbounds) != 0
+		}
+		if path == "ntp" {
+			impact.Reason = "replace clock and captured TLS/HTTP consumers; synchronous certificate effects may bootstrap one private offset sample before publication"
+			impact.AffectedSessionClasses = []string{"new clock consumers", "dependent listener handoff"}
+			impact.ReconnectRequired = len(options.Inbounds) != 0
 		}
 		impacts = append(impacts, impact)
 	}

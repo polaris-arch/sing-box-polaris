@@ -187,12 +187,12 @@ func (t *Tor) Listen(ctx context.Context, conf *ListenConf) (*OnionService, erro
 	case ed25519.KeyPair:
 		svc.Key = key
 		svc.Version3 = true
-		req.Key = &control.ED25519Key{key}
+		req.Key = &control.ED25519Key{KeyPair: key}
 	case othered25519.PrivateKey:
 		properKey := ed25519.FromCryptoPrivateKey(key)
 		svc.Key = properKey
 		svc.Version3 = true
-		req.Key = &control.ED25519Key{properKey}
+		req.Key = &control.ED25519Key{KeyPair: properKey}
 	default:
 		err = fmt.Errorf("unrecognized key type: %T", key)
 	}

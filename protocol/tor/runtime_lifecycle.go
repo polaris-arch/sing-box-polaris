@@ -3,7 +3,6 @@ package tor
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -16,6 +15,7 @@ import (
 
 func (t *Outbound) initRuntime(ctx context.Context) error {
 	t.runtimeSource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
+	t.bootstrapDone = make(chan struct{})
 	t.runtimeWork = outbound.NewRuntimeIOFence(nil)
 	admit, err := outbound.RegisterRuntimeOwnedFence(ctx, t.runtimeWork)
 	if err != nil {
@@ -43,6 +43,11 @@ func (t *Outbound) initRuntime(ctx context.Context) error {
 			return err
 		}
 		var result []error
+		// Cancel/interrupt before joining the task: GetInfo may be blocked.
+		t.processOwner.stop()
+		if t.torInstance != nil {
+			result = append(result, t.torInstance.InterruptControl())
+		}
 		_ = t.runtimeWork.Close()
 		if t.proxy != nil {
 			result = append(result, t.proxy.RuntimeCloseAndWait())
@@ -50,15 +55,9 @@ func (t *Outbound) initRuntime(ctx context.Context) error {
 		result = append(result, t.runtimeWork.Wait())
 		processErr := t.processOwner.closeAndWait()
 		result = append(result, processErr)
-		if t.torInstance != nil && t.torInstance.Control != nil {
-			// The process has exited; this only closes the controller socket.
-			// Never call bine Tor.Close: its 300ms observer is not completion.
-			if err := t.torInstance.Control.Close(); err != nil {
-				result = append(result, fmt.Errorf("tor control close incomplete: %v", err))
-			}
-		}
+
 		// We never call bine HandleEvents/EventWait. All event sends occur
-		// within the Start/control methods joined above, so closing is safe.
+		// within the Start/bootstrap methods joined above, so closing is safe.
 		if t.eventsDone != nil {
 			close(t.events)
 			<-t.eventsDone
@@ -66,7 +65,7 @@ func (t *Outbound) initRuntime(ctx context.Context) error {
 		if processErr == nil && t.torInstance != nil && t.startConf.DataDir == "" && t.torInstance.DataDir != "" {
 			result = append(result, os.RemoveAll(t.torInstance.DataDir))
 		}
-		return errors.Join(result...)
+		return errors.Join(append(result, t.bootstrapUncertain)...)
 	})
 	return nil
 }
@@ -93,6 +92,15 @@ func (c *runtimeProcessCreator) New(ctx context.Context, args ...string) (proces
 	c.processes = append(c.processes, owned)
 	c.mu.Unlock()
 	return owned, nil
+}
+
+func (c *runtimeProcessCreator) stop() {
+	c.mu.Lock()
+	processes := append([]*runtimeProcess(nil), c.processes...)
+	c.mu.Unlock()
+	for _, owned := range processes {
+		owned.cancel()
+	}
 }
 
 func (c *runtimeProcessCreator) closeAndWait() error {
@@ -141,3 +149,7 @@ func (p *runtimeProcess) Wait() error { <-p.done; return errors.Join(p.waitErr, 
 func (p *runtimeProcess) EmbeddedControlConn() (net.Conn, error) {
 	return p.inner.EmbeddedControlConn()
 }
+
+// Only final Box shutdown cancels readiness/selected dials. Ordinary retirement
+// retains the process while old foreground operations still own it.
+func (t *Outbound) StopRuntimeOperations() { _ = t.runtimeStarts.Close() }

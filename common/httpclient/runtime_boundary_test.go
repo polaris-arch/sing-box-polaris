@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -206,5 +208,45 @@ func TestRuntimeBoundaryRetainsCleanupPanic(t *testing.T) {
 	}
 	if err := b.Close(); err == nil {
 		t.Fatal("cleanup uncertainty was not sticky")
+	}
+}
+
+type runtimeTLSStateBarrierConn struct{ *runtimeBarrierConn }
+
+func (*runtimeTLSStateBarrierConn) ConnectionState() tls.ConnectionState {
+	return tls.ConnectionState{HandshakeComplete: true}
+}
+
+func TestRuntimeBoundaryTLSStateWrapperJoinsExactFence(t *testing.T) {
+	boundary := NewRuntimeTransportBoundary(nil)
+	raw := &runtimeTLSStateBarrierConn{newRuntimeBarrierConn()}
+	guarded, err := boundary.GuardConnection(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state := guarded.(interface{ ConnectionState() tls.ConnectionState }).ConnectionState(); !state.HandshakeComplete {
+		t.Fatal("TLS state lost")
+	}
+	wait, known := outbound.RuntimeConnectionCloseWaiter(guarded)
+	if !known {
+		t.Fatal("TLS state wrapper lost exact completion")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- wait() }()
+	<-raw.closeEntered
+	select {
+	case err = <-closed:
+		t.Fatalf("TLS state wrapper returned public pending rather than joining: %v", err)
+	default:
+	}
+	close(raw.closeReturn)
+	if err = <-closed; err != nil {
+		t.Fatal(err)
+	}
+	if err = boundary.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if raw.closes.Load() != 1 {
+		t.Fatal("TLS wrapper duplicated physical close")
 	}
 }

@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"net/http"
+	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
 
 	"github.com/caddyserver/certmagic"
 )
@@ -220,5 +224,103 @@ func TestOriginCACloseWaitsForActualStageStorageCall(t *testing.T) {
 	defer cancel()
 	if err := owner.WaitClosed(wait); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type originRequestCountFixture struct{ calls atomic.Int64 }
+
+func (f *originRequestCountFixture) RoundTrip(*http.Request) (*http.Response, error) {
+	f.calls.Add(1)
+	return nil, errors.New("fixture issuance reached HTTP")
+}
+
+func originServiceWithStorageFixture(storage certmagic.Storage, transport *originRequestCountFixture) *Service {
+	resource := certmagic.CertificateResource{SANs: []string{"example.invalid"}}
+	return &Service{
+		storage: storage, httpClient: &http.Client{Transport: transport},
+		logger: log.NewNOPFactory().Logger(), ctx: context.Background(), timeFunc: time.Now,
+		storageIssuerKey: "fixture", storageNamesKey: resource.NamesKey(), storageLockKey: "issuer",
+		domain: resource.SANs, requestType: option.CloudflareOriginCARequestTypeOriginECC,
+		runtime: new(runtimeOriginCA),
+	}
+}
+
+type originCacheReadFailureFixture struct {
+	certmagic.Storage
+	err       error
+	afterLock bool
+	locked    bool
+}
+
+func (f *originCacheReadFailureFixture) Load(ctx context.Context, key string) ([]byte, error) {
+	if !f.afterLock || f.locked {
+		return nil, f.err
+	}
+	return f.Storage.Load(ctx, key)
+}
+
+func (f *originCacheReadFailureFixture) Lock(ctx context.Context, key string) error {
+	if err := f.Storage.Lock(ctx, key); err != nil {
+		return err
+	}
+	f.locked = true
+	return nil
+}
+
+func TestOriginCAUnsafeCacheNeverReachesHTTPBeforeOrAfterLock(t *testing.T) {
+	for _, afterLock := range []bool{false, true} {
+		t.Run(map[bool]string{false: "initial", true: "held-lock"}[afterLock], func(t *testing.T) {
+			base := &originStorageFixture{values: map[string][]byte{}}
+			// Even a join containing an external NotExist must prioritize the
+			// opaque safety marker rather than silently turning it into a miss.
+			err := errors.Join(os.ErrNotExist, originStorageUnsafe(errors.Join(context.Canceled, os.ErrClosed)))
+			storage := &originCacheReadFailureFixture{Storage: base, err: err, afterLock: afterLock}
+			transport := new(originRequestCountFixture)
+			s := originServiceWithStorageFixture(storage, transport)
+			if err = s.initializeCertificate(t.Context()); !originStorageIsUnsafe(err) || transport.calls.Load() != 0 {
+				t.Fatal("unsafe cache proceeded to actual issuance", err, transport.calls.Load())
+			}
+			if s.runtime.closeErr == nil {
+				t.Fatal("runtime owner forgot cache safety uncertainty")
+			}
+			scope := adapter.NewScope(t.Context(), log.NewNOPFactory().Logger())
+			scope.Add(func() error { return s.runtime.closeErr })
+			if err = scope.Close(); !originStorageIsUnsafe(err) {
+				t.Fatal("Scope erased safety error as canceled/closed", err)
+			}
+			if base.writes != 0 {
+				t.Fatal("unsafe cache modified preimages")
+			}
+		})
+	}
+}
+
+func TestOriginCAOrdinaryMissingOrCorruptCacheStillAttemptsRefresh(t *testing.T) {
+	for _, corrupt := range []bool{false, true} {
+		t.Run(map[bool]string{false: "missing", true: "corrupt"}[corrupt], func(t *testing.T) {
+			storage := &originStorageFixture{values: map[string][]byte{}}
+			resource := certmagic.CertificateResource{SANs: []string{"example.invalid"}}
+			if corrupt {
+				for _, key := range originStorageKeys(resource) {
+					storage.values[key] = []byte("bad key pair")
+				}
+			}
+			transport := new(originRequestCountFixture)
+			s := originServiceWithStorageFixture(storage, transport)
+			err := s.initializeCertificate(t.Context())
+			if err == nil || originStorageIsUnsafe(err) || transport.calls.Load() != 1 || s.runtime.closeErr != nil {
+				t.Fatal("ordinary cache retry policy changed", err, transport.calls.Load(), s.runtime.closeErr)
+			}
+		})
+	}
+}
+
+func TestOriginCAUnsafePreimageNeverBecomesNotExistOrWrites(t *testing.T) {
+	base := &originStorageFixture{values: map[string][]byte{}}
+	storage := &originCacheReadFailureFixture{Storage: base, err: errors.Join(os.ErrNotExist, originStorageUnsafe(os.ErrClosed))}
+	resource := certmagic.CertificateResource{SANs: []string{"example.invalid"}, CertificatePEM: []byte("new-cert"), PrivateKeyPEM: []byte("new-key")}
+	err := storeCertificateResource(t.Context(), storage, "fixture", resource)
+	if !originStorageIsUnsafe(err) || base.writes != 0 {
+		t.Fatal("unsafe preimage was ignored as missing", err, base.writes)
 	}
 }

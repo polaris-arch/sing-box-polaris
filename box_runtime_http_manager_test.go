@@ -105,3 +105,19 @@ func TestRuntimeNamedProviderHTTPReferenceDoesNotCreateInlineTransport(t *testin
 		t.Fatal("reference lacks manager ownership")
 	}
 }
+
+func TestRuntimeHTTPResolveOnDetourCapturesNamedDefinitionAndProgrammaticFlags(t *testing.T) {
+	client := &option.HTTPClientOptions{Tag: "issuer", ResolveOnDetour: true}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{HTTPClient: client}}}}
+	before := runtimeHTTPNode(t, options, "http-manager")
+	for _, dependency := range []string{"outbound:proxy", "dns-router"} {
+		if !slices.Contains(before.dependencies, dependency) {
+			t.Fatal("named ResolveOnDetour omitted receiving-manager capture", before.dependencies)
+		}
+	}
+	client.ResolveOnDetour = false
+	after := runtimeHTTPNode(t, options, "http-manager")
+	if after.fingerprint == before.fingerprint {
+		t.Fatal("constructor-only ResolveOnDetour did not invalidate HTTP owner")
+	}
+}

@@ -27,6 +27,9 @@ func newManagedTransport(ctx context.Context, logger logger.ContextLogger, tag s
 	if ownerAdmission != nil {
 		ctx = adapter.ContextWithConstructionScope(ctx, nil)
 	}
+	if err := ValidateRuntimeOptions(options); err != nil {
+		return nil, err
+	}
 	options, cloneErr := cloneHTTPClientOptions(ctx, options)
 	if cloneErr != nil {
 		return nil, cloneErr

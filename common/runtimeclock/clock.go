@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"slices"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -45,19 +48,22 @@ type Service struct {
 	changed     chan struct{}
 	pause       pause.Manager
 	// The private factory is fixed by New; fixtures replace it before Prepare.
-	newDialer         func(context.Context, option.DialerOptions, bool) (N.Dialer, error)
-	mu                sync.Mutex
-	stopped           bool
-	activated         bool
-	prepared          bool
-	prepareDone       chan struct{}
-	prepareReturned   bool
-	prepareErr        error
-	dialer            N.Dialer
-	pauseCallback     *list.Element[pause.Callback]
-	loopDone          chan struct{}
-	cleanupErr        error
-	failedConnections []*exchangeConnection
+	newDialer          func(context.Context, option.DialerOptions, bool) (N.Dialer, error)
+	mu                 sync.Mutex
+	stopped            bool
+	activated          bool
+	bootstrapDone      chan struct{}
+	bootstrapErr       error
+	bootstrapAttempted bool
+	prepared           bool
+	prepareDone        chan struct{}
+	prepareReturned    bool
+	prepareErr         error
+	dialer             N.Dialer
+	pauseCallback      *list.Element[pause.Callback]
+	loopDone           chan struct{}
+	cleanupErr         error
+	failedConnections  []*exchangeConnection
 }
 
 // New is inert: no dialer construction, socket, timer, callback registration,
@@ -184,6 +190,64 @@ func (s *Service) RuntimeValidate() error {
 	return nil
 }
 
+// BootstrapOffset performs the one synchronous sample needed by a staged
+// certificate issuer. It never activates periodic work or invokes a system
+// writer, and only a fresh prepared clock may make this attempt. Construction,
+// Plan and Prepare remain inert. The same exact owner fences/join cover this IO.
+// A joined ordinary sample failure preserves the legacy best-effort offset (or
+// system time); cancellation, ownership and unknown cleanup still fail staging.
+func (s *Service) BootstrapOffset(request context.Context) error {
+	leave, err := s.fence.Acquire()
+	if err != nil {
+		return err
+	}
+	defer leave()
+	s.mu.Lock()
+	if !s.prepared || s.stopped || s.activated || s.options.WriteToSystem {
+		s.mu.Unlock()
+		return errors.New("clock offset bootstrap requires a private prepared offset-only owner")
+	}
+	if s.bootstrapDone != nil {
+		done := s.bootstrapDone
+		s.mu.Unlock()
+		select {
+		case <-request.Done():
+			return request.Err()
+		case <-done:
+		}
+		s.mu.Lock()
+		err := s.bootstrapErr
+		s.mu.Unlock()
+		return err
+	}
+	s.bootstrapDone = make(chan struct{})
+	done := s.bootstrapDone
+	s.bootstrapErr = errors.New("clock bootstrap did not complete")
+	s.mu.Unlock()
+	defer close(done)
+	ctx, cancel := context.WithCancel(s.ctx)
+	cancelDone := make(chan struct{})
+	stop := context.AfterFunc(request, func() { defer close(cancelDone); cancel() })
+	defer func() {
+		if !stop() {
+			<-cancelDone
+		}
+		cancel()
+	}()
+	if err = request.Err(); err == nil {
+		var release func()
+		ctx, release, err = s.beginOwned(ctx)
+		if err == nil {
+			defer release()
+			err = s.updateClock(ctx, request)
+		}
+	}
+	s.mu.Lock()
+	s.bootstrapErr, s.bootstrapAttempted = err, err == nil
+	s.mu.Unlock()
+	return err
+}
+
 // RuntimeActivate only opens the preallocated gate. It is safe for the
 // publication participant; all effects execute on the already prepared worker.
 func (s *Service) RuntimeActivate() {
@@ -289,8 +353,9 @@ func (s *Service) run(done chan struct{}) {
 		return
 	}
 	defer leave()
-	// Discard notifications from private preparation. The initial sample, like
-	// the previous Start, happens once even if the device was already paused.
+	// Discard preparation notifications. A synchronous certificate effect may
+	// already have completed the one initial offset-only attempt. Otherwise
+	// preserve the initial sample even if the device was already paused.
 	select {
 	case <-s.changed:
 	default:
@@ -298,7 +363,12 @@ func (s *Service) run(done chan struct{}) {
 	if ctx.Err() != nil {
 		return
 	}
-	s.updateOnce(ctx, true)
+	s.mu.Lock()
+	bootstrapAttempted := s.bootstrapAttempted
+	s.mu.Unlock()
+	if !bootstrapAttempted {
+		s.updateOnce(ctx, true)
+	}
 	if ctx.Err() != nil || s.hasCleanupError() {
 		return
 	}
@@ -362,13 +432,43 @@ func (s *Service) updateOnce(ctx context.Context, initial bool) {
 	}
 }
 
-func (s *Service) update(ctx context.Context) error {
+func (s *Service) update(ctx context.Context) error { return s.updateClock(ctx, nil) }
+
+func (s *Service) updateClock(ctx context.Context, bootstrapRequest context.Context) error {
 	ctx, err := outbound.ContextForRuntimeOwnedSession(ctx, s.source)
 	if err != nil {
 		return err
 	}
 	response, err := s.exchange(ctx)
+	if bootstrapRequest != nil {
+		// Exchange has joined the actual carrier. The original request must be
+		// checked synchronously: its AfterFunc may still be forwarding cancel.
+		// This lock orders the private offset commit against RuntimeStop. Once
+		// committed, a later cancellation cannot turn it into a failed attempt.
+		s.mu.Lock()
+		cancelErr := errors.Join(bootstrapRequest.Err(), s.ctx.Err(), ctx.Err())
+		if cancelErr == nil && s.stopped {
+			cancelErr = net.ErrClosed
+		}
+		if cancelErr == nil && err == nil {
+			s.offset.Store(int64(response.ClockOffset))
+		}
+		s.mu.Unlock()
+		if cancelErr != nil {
+			return errors.Join(err, cancelErr)
+		}
+		if err == nil {
+			return nil // bootstrap never crosses the system-writer boundary
+		}
+	}
 	if err != nil {
+		// Exchange has already joined its sole carrier before this branch. Only
+		// identified network IO failures can retain the legacy best-effort time;
+		// admission errors above and unknown/closed/canceled owners cannot.
+		if bootstrapRequest != nil && ctx.Err() == nil && !s.hasCleanupError() && ordinaryBootstrapSampleFailure(err) {
+			s.logger.Error("initialize time (using current offset): ", err)
+			return nil
+		}
 		return err
 	}
 	var marker interface{ RuntimeCleanupIncomplete() bool }
@@ -415,6 +515,46 @@ func (s *Service) exchange(ctx context.Context) (response *ntp.Response, err err
 		err = errors.Join(err, closeErr)
 	}()
 	return ntp.Exchange(ctx, d, s.server)
+}
+
+// Inspect every wrapped/joined leaf; a network wrapper cannot launder an owner
+// identity failure or a sibling cleanup/cancellation error. Pinned Exchange
+// only returns dial/write/read failures: parseTime has no error return and the
+// legacy service does not call Response.Validate. Do not widen that protocol.
+func ordinaryBootstrapSampleFailure(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, net.ErrClosed) || errors.Is(err, os.ErrClosed) {
+		return false
+	}
+	var incomplete interface{ RuntimeCleanupIncomplete() bool }
+	if errors.As(err, &incomplete) && incomplete.RuntimeCleanupIncomplete() {
+		return false
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		children := joined.Unwrap()
+		if len(children) == 0 {
+			return false
+		}
+		for _, child := range children {
+			if !ordinaryBootstrapSampleFailure(child) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		if child := wrapped.Unwrap(); child != nil {
+			return ordinaryBootstrapSampleFailure(child)
+		}
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.ErrShortWrite) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, os.ErrDeadlineExceeded) {
+		return true
+	}
+	switch err.(type) {
+	case syscall.Errno, *net.DNSError, *net.AddrError, net.InvalidAddrError:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) recordCleanup(err error, conn *exchangeConnection) {
