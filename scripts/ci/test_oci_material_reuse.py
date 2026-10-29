@@ -21,6 +21,7 @@ class OCIMaterialReuseTests(unittest.TestCase):
             return output.getvalue()
         actual=dict(package)
         if mutation=='package':actual['V']='2'
+        if mutation and mutation.startswith('package-'):actual[mutation.removeprefix('package-')]='unreviewed'
         entries=[('lib/apk/db/installed',('\n'.join(k+':'+v for k,v in actual.items())+'\n\n').encode(),tarfile.REGTYPE),('etc/apk/repositories',reference['artifacts']['oci-linux-amd64']['repositories'].encode(),tarfile.REGTYPE),('usr/local/bin/sing-box',b'fixture core bytes',tarfile.REGTYPE)]
         if mutation=='repositories':entries[1]=(entries[1][0],b'changed\n',tarfile.REGTYPE)
         if mutation=='whiteout':entries.append(('lib/apk/db/.wh.installed',b'',tarfile.REGTYPE))
@@ -89,6 +90,19 @@ class OCIMaterialReuseTests(unittest.TestCase):
     def test_rejects_package_and_repository_drift(self):
         for mutation in ['package','repositories']:
             with self.subTest(mutation=mutation),self.assertRaises(ValueError):self.check(mutation)
+    def test_resolved_reference_keeps_actual_graph_and_all_seven_package_fields_strict(self):
+        for mutation in [None] + ['package-' + field for field in ('P', 'V', 'A', 'L', 'o', 'c', 'C')] + ['base', 'repositories', 'attempt', 'hash']:
+            with tempfile.TemporaryDirectory() as tmp, self.subTest(mutation=mutation):
+                root=Path(tmp);path,source=self.fixture(root,mutation)
+                reference=json.loads((root/'release/dependency-sources/oci/reuse-reference.json').read_text())
+                if mutation is None:
+                    result=g.validate_oci_material_reuse(path,'oci-linux-amd64',source,'123',1,root,
+                                                       resolved_reference=reference)
+                    self.assertEqual(result['packageCount'],1)
+                else:
+                    with self.assertRaises(ValueError):
+                        g.validate_oci_material_reuse(path,'oci-linux-amd64',source,'123',1,root,
+                                                      resolved_reference=reference)
     def test_reviewed_receipt_cannot_change_derived_material_evidence(self):
         for field in ('ociMaterialReuse','androidRuntimeMaterials','androidMaterialReuse'):
             actual={key:'fixture' for key in ('repository','repositoryId','version','sourceCommit','sourceTree','tag','tagObject','scopeSha256')}

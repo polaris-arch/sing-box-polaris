@@ -170,6 +170,40 @@ class PeerEvidenceTests(unittest.TestCase):
                 self.assertIsNone(e.select(p.ROOT, 'a' * 40, current, 'v' + current))
         self.assertEqual((p.ROOT / e.PATH).read_bytes(), original_selection)
 
+    def test_nested_numeric_identity_types_never_coerce_bool_or_float(self):
+        # This shared suite runs unchanged for 12.3, 12.5, 12.6 and 12.7 adapters.
+        actual = self.inventory(); real_load = e.load
+        for convert in (float, bool):
+            for path in (('artifact', 'id'), ('artifact', 'size_in_bytes'), ('archive', 'bytes'),
+                         ('identity', 'sidecar', 'bytes'), ('identity', 'profile', 'legacy')):
+                receipt = copy.deepcopy(self.r); target = receipt
+                for key in path[:-1]: target = target[key]
+                value = target[path[-1]]
+                target[path[-1]] = convert(value) if type(value) is not bool else (0.0 if convert is float else 0)
+                with self.subTest(receipt=path, conversion=convert.__name__), self.assertRaises(ValueError):
+                    e.validate_receipt(self.policy, self.measured(), receipt)
+            measured = self.measured(); measured['bytes'] = convert(measured['bytes'])
+            with self.assertRaises(ValueError): e.validate_receipt(self.policy, measured, self.r)
+            for path in (('id',), ('size_in_bytes',), ('workflow_run', 'id'), ('workflow_run', 'repository_id')):
+                api = copy.deepcopy(self.artifacts[str(self.s['runId'])][-1]); target = api
+                for key in path[:-1]: target = target[key]
+                target[path[-1]] = convert(target[path[-1]])
+                with self.subTest(api=path, conversion=convert.__name__), self.assertRaises(ValueError):
+                    e.check_api(self.policy, 'all', self.runs[str(self.s['runId'])], api)
+            for path in (('controlledPeerEvidence', 'evidence', 'caseCount'),
+                         ('runs', 'all', 'attempt'), ('runs', 'all', 'artifacts', self.s['artifact']['name'], 'archiveBytes')):
+                changed = copy.deepcopy(actual); target = changed
+                for key in path[:-1]: target = target[key]
+                target[path[-1]] = convert(target[path[-1]])
+                with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), self.assertRaises(ValueError):
+                    e.check_inventory(p.ROOT, changed, self.publisher)
+        for path in (('pid',), ('terminationActions', 0, 'pid'), ('terminationActions', 0, 'startTicks')):
+            receipt = copy.deepcopy(self.r); target = receipt['cases'][0]['cleanup'][0]
+            for key in path[:-1]: target = target[key]
+            target[path[-1]] = float(target[path[-1]])
+            with self.subTest(process=path), self.assertRaises(ValueError):
+                e.validate_receipt(self.policy, self.measured(), receipt)
+
     def test_exact_selection_current_identity_and_no_wrong_run_fallback(self):
         self.assertIsNone(e.select(self.root, 'a' * 40, 'old', 'vold'))
         for source, version, tag in [('a' * 40, e.VERSION, 'v' + e.VERSION), (e.SOURCE, 'old', 'vold')]:

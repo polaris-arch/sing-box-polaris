@@ -20,6 +20,19 @@ CONTRACT = json.loads((ROOT / 'scripts/ci/testdata/polaris-versions.json').read_
 PLAN = json.loads((ROOT / 'release/ci/github-release.json').read_text())
 
 
+class IdentityComparisonTests(unittest.TestCase):
+    def test_nested_json_identity_preserves_scalar_types_order_and_paths(self):
+        self.assertTrue(identity.same_identity({'id': 1, 'flags': [False], 'path': Path('/identity')},
+                                               {'path': Path('/identity'), 'flags': [False], 'id': 1}))
+        for a, b in ((1, 1.0), (1, True), (0, False), (0, 0.0), (False, 0.0)):
+            with self.subTest(a=a, b=b):
+                self.assertFalse(identity.same_identity({'nested': [a]}, {'nested': [b]}))
+        self.assertFalse(identity.same_identity([1, 2], [2, 1]))
+        self.assertFalse(identity.same_identity(Path('/identity'), '/identity'))
+        for value in (float('nan'), float('inf'), float('-inf')):
+            self.assertFalse(identity.same_identity({'value': value}, {'value': value}))
+
+
 class PolarisVersionTests(unittest.TestCase):
     def test_shared_parser_roundtrip_and_rejections(self):
         for value in CONTRACT['valid']:
