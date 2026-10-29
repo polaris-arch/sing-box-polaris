@@ -46,7 +46,12 @@ func (r RuleSet) MarshalJSON() ([]byte, error) {
 	switch r.Type {
 	case "", C.RuleSetTypeInline:
 		r.Type = ""
-		v = r.InlineOptions
+		// Keep nonempty arrays even if every rule is invalid/empty. Resource
+		// fingerprints must not equate those rules with a valid empty set.
+		return json.Marshal(struct {
+			_RuleSet
+			PlainRuleSet
+		}{_RuleSet: _RuleSet(r), PlainRuleSet: r.InlineOptions})
 	case C.RuleSetTypeLocal:
 		v = r.LocalOptions
 	case C.RuleSetTypeRemote:
@@ -69,7 +74,6 @@ func (r *RuleSet) UnmarshalJSON(bytes []byte) error {
 	switch r.Type {
 	case "", C.RuleSetTypeInline:
 		r.Type = C.RuleSetTypeInline
-		v = &r.InlineOptions
 	case C.RuleSetTypeLocal:
 		v = &r.LocalOptions
 	case C.RuleSetTypeRemote:
@@ -77,7 +81,18 @@ func (r *RuleSet) UnmarshalJSON(bytes []byte) error {
 	default:
 		return E.New("unknown rule-set type: " + r.Type)
 	}
-	err = badjson.UnmarshallExcluded(bytes, (*_RuleSet)(r), v)
+	if r.Type == C.RuleSetTypeInline {
+		// Do not round-trip rule arrays through JSONObject: it removes arrays
+		// containing only empty objects before per-rule validation can run.
+		var wire struct {
+			_RuleSet
+			PlainRuleSet
+		}
+		err = json.UnmarshalDisallowUnknownFields(bytes, &wire)
+		r.InlineOptions = wire.PlainRuleSet
+	} else {
+		err = badjson.UnmarshallExcluded(bytes, (*_RuleSet)(r), v)
+	}
 	if err != nil {
 		return err
 	}
@@ -329,19 +344,24 @@ func (r *PlainRuleSetCompat) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	var v any
 	switch r.Version {
 	case C.RuleSetVersion1, C.RuleSetVersion2, C.RuleSetVersion3, C.RuleSetVersion4, C.RuleSetVersion5:
-		v = &r.Options
 	case 0:
 		return E.New("missing rule-set version")
 	default:
 		return E.New("unknown rule-set version: ", r.Version)
 	}
-	err = badjson.UnmarshallExcluded(bytes, (*_PlainRuleSetCompat)(r), v)
+	// Preserve every declared rule, including an empty object or condition.
+	// The headless factory must reject it; it is not an empty rule-set.
+	var wire struct {
+		_PlainRuleSetCompat
+		PlainRuleSet
+	}
+	err = json.UnmarshalDisallowUnknownFields(bytes, &wire)
 	if err != nil {
 		return err
 	}
+	r.Options = wire.PlainRuleSet
 	r.RawMessage = bytes
 	return nil
 }

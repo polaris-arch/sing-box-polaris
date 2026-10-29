@@ -11,9 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing/common/json"
+	"github.com/sagernet/sing/common/logger"
 )
 
 type runtimeSourceTestTransport func(*http.Request) (*http.Response, error)
@@ -45,41 +48,70 @@ func runtimeRemoteTestSession(digest string, transport http.RoundTripper, close 
 }
 
 func TestRuntimeRemoteSourceClosesBodyBeforeReleasingOriginalOwner(t *testing.T) {
-	options := runtimeRemoteTestOptions()
-	digest := runtimeRemoteTestDigest(t, options)
-	var closed atomic.Bool
-	original := runtimeTestSourceBytes("first.example")
-	transport := runtimeSourceTestTransport(func(request *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: &runtimeSourceTestBody{Reader: bytes.NewReader(original), closed: &closed}}, nil
-	})
-	joined := false
-	session := runtimeRemoteTestSession(digest, transport, func() error {
-		if !closed.Load() {
-			t.Error("owner released before original response body close")
-		}
-		joined = true
-		return nil
-	})
-	batch, err := runtimePrepareRemoteSources(context.Background(), options, digest, session)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !joined {
-		t.Fatal("original owner not joined")
-	}
-	frozen, snapshots, _, failures := runtimeSnapshotSources(context.Background(), context.Background(), options, batch)
-	if len(failures) != 0 {
-		t.Fatal(failures)
-	}
-	if frozen.Route.RuleSet[0].Type != C.RuleSetTypeInline || len(snapshots) != 1 {
-		t.Fatal("remote source not frozen")
-	}
-	for key, value := range batch {
-		value.content[0] = '!'
-		batch[key] = value
-	}
-	if snapshots[0].content[0] != '{' {
-		t.Fatal("immutable plan bytes alias download batch")
+	for _, test := range []struct {
+		name     string
+		original []byte
+		empty    bool
+	}{
+		{"nonempty", runtimeTestSourceBytes("first.example"), false},
+		{"empty", []byte(`{"version":3,"rules":[]}`), true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			options := runtimeRemoteTestOptions()
+			digest := runtimeRemoteTestDigest(t, options)
+			var closed atomic.Bool
+			original := test.original
+			transport := runtimeSourceTestTransport(func(request *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: 200, Body: &runtimeSourceTestBody{Reader: bytes.NewReader(original), closed: &closed}}, nil
+			})
+			joined := false
+			session := runtimeRemoteTestSession(digest, transport, func() error {
+				if !closed.Load() {
+					t.Error("owner released before original response body close")
+				}
+				joined = true
+				return nil
+			})
+			batch, err := runtimePrepareRemoteSources(context.Background(), options, digest, session)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !joined {
+				t.Fatal("original owner not joined")
+			}
+			frozen, snapshots, _, failures := runtimeSnapshotSources(context.Background(), context.Background(), options, batch)
+			if len(failures) != 0 {
+				t.Fatal(failures)
+			}
+			if frozen.Route.RuleSet[0].Type != C.RuleSetTypeInline || len(snapshots) != 1 {
+				t.Fatal("remote source not frozen")
+			}
+			if snapshots[0].digest != runtimeDigest(original) || !bytes.Equal(snapshots[0].content, original) {
+				t.Fatal("frozen digest/bytes changed after original owner close")
+			}
+			set, err := R.NewRuleSet(context.Background(), logger.NOP(), "sites", frozen.Route.RuleSet[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := set.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			if set.Match(&adapter.InboundContext{Domain: "first.example"}) == test.empty {
+				t.Fatal("empty/nonempty frozen source has wrong matching semantics")
+			}
+			if test.empty && set.Metadata() != (adapter.RuleSetMetadata{}) {
+				t.Fatal("empty frozen source retained nonempty metadata")
+			}
+			for key, value := range batch {
+				value.content[0] = '!'
+				batch[key] = value
+			}
+			if snapshots[0].content[0] != '{' {
+				t.Fatal("immutable plan bytes alias download batch")
+			}
+		})
 	}
 }
 
