@@ -2,6 +2,7 @@ package hysteria2
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/netip"
@@ -47,22 +48,18 @@ type Outbound struct {
 	client *hysteria2.Client
 }
 
-func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.Hysteria2OutboundOptions) (adapter.Outbound, error) {
+func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.Hysteria2OutboundOptions) (result adapter.Outbound, resultErr error) {
 	if options.TLS == nil || !options.TLS.Enabled {
 		return nil, C.ErrTLSRequired
 	}
 	runtime := newOutboundRuntime(ctx)
-	runtime.allowNativeDescriptor = options.Obfs == nil && len(options.ServerPorts) == 0
+	runtime.allowNativeDescriptor = options.Realm == nil && options.Obfs == nil && len(options.ServerPorts) == 0
 	constructed := false
 	defer func() {
 		if !constructed {
-			_ = runtime.close()
+			resultErr = errors.Join(resultErr, runtime.close())
 		}
 	}()
-	if options.Realm != nil && runtime.source != nil {
-		return nil, E.New("optional Realm remote registration is outside ordinary node HOT scope")
-	}
-	runtime.legacyRealm = options.Realm != nil
 	tlsServerAddress, tlsOptions, err := outboundTLSOptions(options)
 	if err != nil {
 		return nil, err
@@ -103,22 +100,36 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 	var realmOptions *realm.Options
 	if options.Realm != nil {
 		var queryOptions adapter.DNSQueryOptions
+		var dnsRouter adapter.DNSRouter
+		if realmSTUNServersIsDomain || (options.Realm.PortMapping != nil && options.Realm.PortMapping.Enabled) {
+			dnsRouter = service.FromContext[adapter.DNSRouter](ctx)
+			if dnsRouter == nil {
+				return nil, E.New("Realm hostname discovery requires its captured DNS router")
+			}
+		}
 		if realmSTUNServersIsDomain {
 			queryOptions = outboundDialer.(dialer.ResolveDialer).QueryOptions()
+		} else if options.Realm.PortMapping != nil && options.Realm.PortMapping.Enabled {
+			queryOptions, err = dialer.NewDNSQueryOptions(ctx, options.DomainResolver, true)
+			if err != nil {
+				return nil, err
+			}
 		}
 		var httpClientTransport adapter.HTTPTransport
 		httpClientTransport, err = service.FromContext[adapter.HTTPClientManager](ctx).ResolveTransport(ctx, logger, common.PtrValueOrDefault(options.Realm.HTTPClient))
 		if err != nil {
 			return nil, E.Cause(err, "create realm http client")
 		}
-		dnsRouter := service.FromContext[adapter.DNSRouter](ctx)
 		realmOptions = &realm.Options{
 			ServerURL:   options.Realm.ServerURL,
 			Token:       options.Realm.Token,
 			RealmID:     options.Realm.RealmID,
 			STUNServers: options.Realm.STUNServers,
-			HTTPClient:  &http.Client{Transport: httpClientTransport},
+			HTTPClient:  &http.Client{Transport: &outboundRealmHTTPTransport{owner: runtime, transport: httpClientTransport}},
 			Resolver: func(ctx context.Context, host string, ipv4, ipv6 bool) ([]netip.Addr, error) {
+				if dnsRouter == nil {
+					return nil, E.New("literal-only Realm discovery has no captured hostname resolver")
+				}
 				dnsOptions := queryOptions
 				switch {
 				case ipv4 && !ipv6:
@@ -126,15 +137,19 @@ func NewOutbound(ctx context.Context, router adapter.Router, logger log.ContextL
 				case !ipv4 && ipv6:
 					dnsOptions.Strategy = C.DomainStrategyIPv6Only
 				}
-				return dnsRouter.Lookup(ctx, host, dnsOptions)
+				return runtime.realmLookup(ctx, func(ctx context.Context) ([]netip.Addr, error) {
+					return dnsRouter.Lookup(ctx, host, dnsOptions)
+				})
 			},
 			Logger:    logger,
 			IPVersion: options.Realm.IPVersion,
 		}
 		if options.Realm.PortMapping != nil && options.Realm.PortMapping.Enabled {
 			realmOptions.PortMapping = &realm.PortMappingOptions{
-				Timeout:  time.Duration(options.Realm.PortMapping.Timeout),
-				Lifetime: time.Duration(options.Realm.PortMapping.Lifetime),
+				HTTPClient: runtime.realmMappingHTTP(httpClientTransport),
+				Resolver:   realmOptions.Resolver,
+				Timeout:    time.Duration(options.Realm.PortMapping.Timeout),
+				Lifetime:   time.Duration(options.Realm.PortMapping.Lifetime),
 			}
 		}
 	}

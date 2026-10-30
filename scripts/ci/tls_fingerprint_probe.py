@@ -4,6 +4,8 @@ No network handshake is claimed here. Handshakes belong to the raced Go suite.
 Native callers supply the original producer row and retain its schema unchanged.
 """
 import hashlib
+import os
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import re
@@ -22,18 +24,18 @@ def sha(path):
     return digest.hexdigest()
 
 
-def expected_profiles():
-    source = (ROOT / 'option/tls.go').read_text()
+def expected_profiles(root=ROOT):
+    source = (root / 'option/tls.go').read_text()
     match = re.search(r'Fingerprint\s+string\s+`[^`]*enum:"([^"]+)"', source)
     if not match:
         raise ValueError('source-owned fingerprint enum missing')
     return set(match[1].split(','))
 
 
-def source_module_pins():
-    source = (ROOT / 'go.mod').read_text()
+def source_module_pins(root=ROOT):
+    source = (root / 'go.mod').read_text()
     sums = {}
-    for line in (ROOT / 'go.sum').read_text().splitlines():
+    for line in (root / 'go.sum').read_text().splitlines():
         path, version, value = line.split()
         sums[path, version] = value
     result = {}
@@ -45,22 +47,23 @@ def source_module_pins():
     return result
 
 
-def linked_module_pins():
+def linked_module_pins(root=ROOT):
     """Actual BuildInfo identities, including the source-owned Meta delta.
 
     The upstream h1 is baseline provenance, not the checksum of modified code.
     The producer's sourceCommit/tree and localReplacement tree bind those bytes.
     """
-    pins=source_module_pins()
+    pins=source_module_pins(root)
     expected={path:{'path':path,'version':version,'sum':checksum} for path,(version,checksum) in pins.items()}
     module='github.com/metacubex/utls';local='./third_party/metacubex-utls'
-    manifest=json.loads((ROOT/'release/dependency-sources/metacubex-utls-replacement.json').read_text())
+    manifest=json.loads((root/'release/dependency-sources/metacubex-utls-replacement.json').read_text())
     if (manifest['schema'],manifest['module'],manifest['upstreamVersion'],manifest['upstreamH1'],manifest['replacementPath']) != (
             'polaris-repository-module-replacement-v1',module,*pins[module],local):
         raise ValueError('source-owned Meta baseline/replacement differs from direct source pins')
-    if not re.search(r'^replace '+re.escape(module)+r' => '+re.escape(local)+r'$',(ROOT/'go.mod').read_text(),re.M):
+    if not re.search(r'^replace '+re.escape(module)+r' => '+re.escape(local)+r'$',(root/'go.mod').read_text(),re.M):
         raise ValueError('missing exact source-owned Meta replacement')
-    root=ROOT/local[2:]
+    source_root=root
+    root=root/local[2:]
     if root.is_symlink() or not root.is_dir():
         raise ValueError('source-owned Meta root must be a real directory')
     actual={p.relative_to(root).as_posix():p for p in root.rglob('*') if p.is_file()}
@@ -69,7 +72,7 @@ def linked_module_pins():
     for name,p in actual.items():
         if sha(p)!=manifest['files'][name]['afterSHA256'] or p.stat().st_size!=manifest['files'][name]['bytes']:
             raise ValueError('source-owned Meta bytes differ: '+name)
-    if sha(ROOT/manifest['patch'])!=manifest['patchSHA256']:
+    if sha(source_root/manifest['patch'])!=manifest['patchSHA256']:
         raise ValueError('source-owned Meta delta digest differs')
     expected[module]={'path':module,'version':pins[module][0],'sum':'',
                       'replace':{'path':local,'version':'(devel)','sum':''}}
@@ -89,13 +92,13 @@ def producer_module_identities(graph):
     return identities
 
 
-def validate(document, *, source, version, go_version, target, enabled=True, expected_modules=None):
+def validate(document, *, source, version, go_version, target, enabled=True, expected_modules=None, source_root=ROOT):
     import jsonschema
-    schema = json.loads((ROOT / 'release/ci/tls-fingerprint-capabilities.schema.json').read_text())
+    schema = json.loads((source_root / 'release/ci/tls-fingerprint-capabilities.schema.json').read_text())
     jsonschema.Draft202012Validator(schema).validate(document)
     osname, arch = target.split('/')
     for key, expected in [('sourceCommit', source), ('coreVersion', version),
-                          ('goVersion', go_version), ('requiredGoVersion', 'go' + (ROOT / 'release/GO_VERSION').read_text().strip()),
+                          ('goVersion', go_version), ('requiredGoVersion', 'go' + (source_root / 'release/GO_VERSION').read_text().strip()),
                           ('os', osname), ('arch', arch), ('enabled', enabled), ('sourceModified', False)]:
         # bool is not an interchangeable integer in this contract.
         if type(document[key]) is not type(expected) or document[key] != expected:
@@ -104,7 +107,7 @@ def validate(document, *, source, version, go_version, target, enabled=True, exp
     aliases = document['legacyChromeAliases']
     if len(set(ids)) != len(ids) or set(ids).intersection(aliases):
         raise ValueError('duplicate/ambiguous runtime profile IDs')
-    if enabled and (set(ids) | set(aliases)) != expected_profiles():
+    if enabled and (set(ids) | set(aliases)) != expected_profiles(source_root):
         raise ValueError('actual capabilities differ from source-owned accepted IDs')
     if not enabled and (ids or aliases):
         raise ValueError('stub advertises fingerprint support')
@@ -128,7 +131,7 @@ def validate(document, *, source, version, go_version, target, enabled=True, exp
             if module['path'] in modules:
                 raise ValueError('duplicate uTLS module')
             modules[module['path']] = module
-        pins = linked_module_pins()
+        pins = linked_module_pins(source_root)
         if expected_modules is not None and expected_modules != pins:
             raise ValueError('producer module graph differs from source-owned direct pins')
         if modules != pins:
@@ -145,48 +148,115 @@ def outbound_config(fingerprint=None, enabled=True):
             'tls': {'enabled': True, 'server_name': 'tls.invalid', 'utls': utls}}]}
 
 
-def check_configs(core, document):
+def configuration_cases(document):
+    """The same finite local admission controls drive execution and receipt validation."""
     accepted = [p['id'] for p in document['profiles']] + document['legacyChromeAliases'] if document['enabled'] else []
     cases = [(name, True, True) for name in accepted]
     cases += [(None, True, document['enabled']), ('', True, document['enabled']), (None, False, True)]
     cases += [(name, True, False) for name in ['polaris_unknown_profile', 'default', 'disabled', 'follow', 'safari_15_3', 'safari_15_5']]
-    observations = []
-    with tempfile.TemporaryDirectory(prefix='tls-admission-') as temporary:
-        config = Path(temporary) / 'config.json'
-        for name, enabled, passes in cases:
-            config.write_text(json.dumps(outbound_config(name, enabled)))
-            result = subprocess.run([str(core), 'check', '-c', str(config)], text=True,
-                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
-            observations.append({'fingerprint': name, 'enabled': enabled, 'expectedPass': passes,
-                                 'exitCode': result.returncode, 'output': result.stdout})
-            if (result.returncode == 0) != passes:
-                raise ValueError('actual core configuration admission mismatch: ' + json.dumps(observations[-1]))
-            if not passes and document['enabled'] and 'unknown uTLS fingerprint' not in result.stdout:
-                raise ValueError('negative control failed for an unrelated reason: ' + result.stdout)
-        # Exercise the real outbound construction entry, not just a JSON enum.
-        if document['enabled']:
-            for ech in [False, True]:
-                candidate = outbound_config('chrome')
-                out = candidate['outbounds'][0];out['type'] = 'shadowtls';out['version'] = 3
-                if ech: out['tls']['ech'] = {'enabled': True}
-                config.write_text(json.dumps(candidate))
-                result = subprocess.run([str(core), 'check', '-c', str(config)], text=True,
-                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
-                observations.append({'outbound': 'shadowtls', 'version': 3, 'realECH': ech,
-                                     'expectedPass': not ech, 'exitCode': result.returncode, 'output': result.stdout})
-                if (result.returncode == 0) != (not ech) or (ech and 'cannot be combined with real ECH' not in result.stdout):
-                    raise ValueError('ShadowTLS ECH boundary mismatch: ' + result.stdout)
+    result = []
+    for name, enabled, passes in cases:
+        error = 'unknown uTLS fingerprint' if not passes and document['enabled'] else None
+        result.append(({'fingerprint': name, 'enabled': enabled, 'expectedPass': passes}, outbound_config(name, enabled), error))
+    if document['enabled']:
+        for ech in [False, True]:
+            config = outbound_config('chrome')
+            out = config['outbounds'][0]; out['type'] = 'shadowtls'; out['version'] = 3
+            if ech: out['tls']['ech'] = {'enabled': True}
+            result.append(({'outbound': 'shadowtls', 'version': 3, 'realECH': ech, 'expectedPass': not ech}, config,
+                           'cannot be combined with real ECH' if ech else None))
+    return result
+
+
+def validate_configuration_checks(document, observations):
+    cases = configuration_cases(document)
+    if not isinstance(observations, list) or len(observations) != len(cases):
+        raise ValueError('incomplete sealed configuration controls')
+    for observation, (expected, _, error) in zip(observations, cases):
+        if not isinstance(observation, dict) or set(observation) != set(expected) | {'exitCode', 'output'}:
+            raise ValueError('configuration observation fields differ')
+        if any(type(observation[k]) is not type(v) or observation[k] != v for k, v in expected.items()):
+            raise ValueError('configuration observation identity differs')
+        code, output = observation['exitCode'], observation['output']
+        if type(code) is not int or not isinstance(output, str) or (code == 0) != expected['expectedPass']:
+            raise ValueError('actual core configuration admission mismatch')
+        if error and error not in output:
+            raise ValueError('negative configuration control failed for an unrelated reason')
     return observations
 
 
-def probe(core, *, source, version, go_version, target, enabled=True, expected_sha=None, expected_modules=None):
+def invoke(core, arguments, execution=None, **kwargs):
+    if execution is None:
+        return subprocess.run([str(core), *arguments], **kwargs)
+    return execution.run(arguments, **kwargs)
+
+
+class SealedExecution:
+    """Invocation-owned exact core/sidecar objects; no namespace lookup at child birth."""
+    def __init__(self, core_fd, library_fd):
+        self.core_fd, self.library_fd = core_fd, library_fd
+
+    def run(self, arguments, **kwargs):
+        return subprocess.run(['/proc/self/fd/' + str(self.core_fd), *arguments],
+                              pass_fds=(self.core_fd, self.library_fd),
+                              env={'PATH': os.defpath, 'POLARIS_CRONET_LIBRARY_FD': str(self.library_fd)}, **kwargs)
+
+
+@contextmanager
+def sealed_execution(core, library, core_pin, library_pin):
+    """Copy, seal, then hash the exact executable and loader inputs used by every child."""
+    import fcntl
+    descriptors = []
+    try:
+        for path, pin, mode in [(core, core_pin, 0o500), (library, library_pin, 0o400)]:
+            fd = os.memfd_create('polaris-native-smoke', os.MFD_ALLOW_SEALING | os.MFD_CLOEXEC)
+            descriptors.append(fd)
+            size = 0
+            with open(path, 'rb') as source:
+                for block in iter(lambda: source.read(1024 * 1024), b''):
+                    size += len(block)
+                    if size > 96 * 1024**2:
+                        raise ValueError('sealed native member exceeds budget')
+                    remaining = memoryview(block)
+                    while remaining:
+                        written = os.write(fd, remaining)
+                        if written <= 0: raise OSError('short memfd write')
+                        remaining = remaining[written:]
+            os.fchmod(fd, mode)
+            seals = fcntl.F_SEAL_WRITE | fcntl.F_SEAL_GROW | fcntl.F_SEAL_SHRINK | fcntl.F_SEAL_SEAL
+            fcntl.fcntl(fd, fcntl.F_ADD_SEALS, seals)
+            if fcntl.fcntl(fd, fcntl.F_GET_SEALS) != seals:
+                raise ValueError('native member seals differ')
+            digest = hashlib.sha256()
+            for offset in range(0, size, 1024 * 1024):
+                digest.update(os.pread(fd, min(1024 * 1024, size - offset), offset))
+            if size != pin['bytes'] or digest.hexdigest() != pin['sha256']:
+                raise ValueError('sealed native bytes differ from final archive')
+        yield SealedExecution(*descriptors)
+    finally:
+        for fd in descriptors: os.close(fd)
+
+
+def check_configs(core, document, execution=None):
+    observations = []
+    with tempfile.TemporaryDirectory(prefix='tls-admission-') as temporary:
+        config = Path(temporary) / 'config.json'
+        for expected, value, _ in configuration_cases(document):
+            config.write_text(json.dumps(value))
+            result = invoke(core, ['check', '-c', str(config)], execution, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+            observations.append(dict(expected, exitCode=result.returncode, output=result.stdout))
+    return validate_configuration_checks(document, observations)
+
+
+def probe(core, *, source, version, go_version, target, enabled=True, expected_sha=None, expected_modules=None, execution=None):
     core = Path(core).resolve(strict=True)
     digest = sha(core)
     if expected_sha is not None and digest != expected_sha:
         raise ValueError('actual selected core bytes differ from producer row')
     command = [str(core), 'tools', 'tls-fingerprints']
     try:
-        result = subprocess.run(command, text=True, capture_output=True, timeout=30)
+        result = invoke(core, command[1:], execution, text=True, capture_output=True, timeout=30)
         query = {'command': command, 'exitCode': result.returncode,
                  'stdout': result.stdout, 'stderr': result.stderr, 'timedOut': False}
     except subprocess.TimeoutExpired as error:
@@ -200,7 +270,7 @@ def probe(core, *, source, version, go_version, target, enabled=True, expected_s
     document = json.loads(query['stdout'])
     validate(document, source=source, version=version, go_version=go_version, target=target,
              enabled=enabled, expected_modules=expected_modules)
-    observations = check_configs(core, document)
+    observations = check_configs(core, document, execution)
     if sha(core) != digest:
         raise ValueError('selected core changed during capability/configuration probe')
     receipt = {'schema': 'polaris-tls-fingerprint-runtime-probe-v1', 'coreSHA256': digest,

@@ -4,8 +4,55 @@ import (
 	"encoding/hex"
 	stdjson "encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 )
+
+func TestRuntimeRealmCapabilityUsesExistingProtocolAndConcreteBuild(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		tags := ""
+		if enabled {
+			tags = "with_quic"
+		}
+		fields := runtimeCapabilityFieldsForBuild(tags, true, enabled, false)
+		var realm, protocol *RuntimeFieldCapability
+		for i := range fields {
+			field := &fields[i]
+			if field.Path == "outbounds" && field.Variant == "hysteria2-realm" {
+				realm = field
+			}
+			if field.Path == "runtime.protocol" {
+				protocol = field
+			}
+		}
+		if realm == nil || (realm.UpdateClass == "LOCAL_REPLACE") != enabled || realm.AdapterVersion != "1" {
+			t.Fatalf("Realm capability disagrees with its concrete adapter: %+v", realm)
+		}
+		for _, condition := range []string{
+			"captured-named-default-inline-HTTP-and-STUN-resolver-detour-closure",
+			"discovery-XML-SOAP-and-delete-borrow-the-captured-HTTP-closure",
+			"UPnP-device-hostnames-captured-once-in-the-discovery-generation",
+			"joined-workers-late-results-and-mapper-retirement",
+			"uncancelable-native-NAT-calls-remain-owned-until-return",
+			"unknown-mapping-or-delete-failure-remains-cleanup-debt",
+		} {
+			if !slices.Contains(realm.Conditions, condition) {
+				t.Fatal("Realm capability omitted its real boundary", condition)
+			}
+		}
+		if protocol == nil || protocol.Variant != "polaris-daily-runtime-v1" || protocol.AdapterVersion != "1" || !reflect.DeepEqual(protocol.Conditions, []string{
+			"GetRuntimeCapabilities", "PlanRuntimeConfig", "ApplyRuntimeConfig", "GetRuntimeConfigStatus", "RetryRuntimePersistence", "AcknowledgeRuntimePersistence",
+		}) {
+			t.Fatal("Realm changed the shared wire contract", protocol)
+		}
+	}
+	if capability := (*Box)(nil).RuntimeCapabilities(); capability.FullConfiguration || slices.Contains(capability.PendingAdapters, "outbounds[hysteria2.realm]") {
+		t.Fatal("Realm completion widened FullConfig or remained category-pending", capability)
+	}
+	if !slices.Contains(runtimePendingAdapters(), "inbounds[hysteria2.realm]") {
+		t.Fatal("outbound Realm completion advertised inbound remote activation")
+	}
+}
 
 func TestRuntimeCapabilitiesDashboardCoexistenceIsNotServiceHotUpdate(t *testing.T) {
 	capability := (*Box)(nil).RuntimeCapabilities()

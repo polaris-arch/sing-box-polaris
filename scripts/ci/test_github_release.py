@@ -2675,3 +2675,90 @@ from oci_material_selection_12_7_tests import Alpha127OCISelectionTests
 
 if __name__=='__main__':
     unittest.main()
+
+
+class TrustedExecutionPublisherTests(unittest.TestCase):
+    def index(self):
+        import test_native_release_index as fixtures
+        index=GateTests().final_index();row=fixtures.sealed_row_fixture(version=p.VERSION)
+        index['platforms']=[row if old['id']==row['id'] else old for old in index['platforms']]
+        from native_release_index import distribution_materials
+        index['distributionMaterials']=distribution_materials(index,p.ROOT)
+        return index
+
+    def check(self,index):
+        p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+
+    def test_final_index_accepts_bound_synthetic_sealed_proof_and_keeps_original_row(self):
+        index=self.index();before=copy.deepcopy(index)
+        self.check(index);self.assertEqual(index,before)
+
+    def test_final_index_rejects_policy_injection_missing_proof_and_mixed_bindings(self):
+        mutations=[lambda r:r.pop('trustedExecution'),lambda r:r['finalPackageCronetSmoke'].pop('sealedExecution'),
+                   lambda r:r['trustedExecution'].update(extra=True),lambda r:r['trustedExecution'].update(sourceTree='f'*40),
+                   lambda r:r['trustedExecution'].update(loader='path-loader'),lambda r:r['trustedExecution']['purposes'].append('invented'),
+                   lambda r:r['trustedExecution']['purposes'].append(r['trustedExecution']['purposes'][0]),
+                   lambda r:r['finalPackageCronetSmoke']['sealedExecution'].update(runId=43),
+                   lambda r:r['finalPackageCronetSmoke']['sealedExecution'].update(runAttempt=2),
+                   lambda r:r['archive'].update(sha256='f'*64),lambda r:r['core'].update(sha256='f'*64),
+                   lambda r:r['sidecar'].update(sha256='f'*64)]
+        index=self.index()
+        for mutate in mutations:
+            candidate=copy.deepcopy(index);row=next(r for r in candidate['platforms'] if 'trustedExecution' in r);mutate(row)
+            with self.subTest(mutate=mutate),self.assertRaises((ValueError,jsonschema.ValidationError)):self.check(candidate)
+
+    def test_materials_cannot_omit_or_relabel_execution_observation_binding(self):
+        index=self.index()
+        selected=next(r for r in index['distributionMaterials']['nativeArchives'] if 'sealedExecutionSHA256' in r)
+        for field in ('sealedExecutionSHA256','trustedExecutionSHA256'):
+            candidate=copy.deepcopy(index)
+            row=next(r for r in candidate['distributionMaterials']['nativeArchives'] if r['archive']==selected['archive'])
+            row.pop(field)
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'source/notice bindings'):self.check(candidate)
+
+    def test_existing_assembly_entry_rejects_injected_or_mixed_run_proof_before_any_archive_work(self):
+        import native_release_index as native
+        import test_native_release_index as fixtures
+        for field,value in [('runId',43),('runAttempt',2),('sourceTree','f'*40)]:
+            row=fixtures.sealed_row_fixture();row['finalPackageCronetSmoke']['sealedExecution'][field]=value
+            with self.subTest(field=field),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);(root/'native-row-synthetic.json').write_text(json.dumps(row))
+                with mock.patch.object(native,'identity',return_value=('a'*40,'b'*40)), \
+                     mock.patch.dict(os.environ,{'VERSION':p.VERSION,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','REQUIRE_RELEASE_TAG':'false'}), \
+                     mock.patch.object(native.subprocess,'check_output',side_effect=AssertionError('archive work escaped')):
+                    with self.assertRaises(ValueError):native.assemble(root)
+                self.assertFalse((root/'polaris-upstream-native-assets.json').exists())
+
+    def test_existing_assembly_entry_preserves_one_proven_policy_across_all_44_receipts(self):
+        import native_release_index as native
+        index=self.index();rows=index['platforms'];source='a'*40;tree='b'*40
+        payload=b'synthetic-final-archive';archive_sha=hashlib.sha256(payload).hexdigest()
+        for row in rows:
+            row['archive']['sha256']=archive_sha
+            if 'trustedExecution' in row:row['finalPackageCronetSmoke']['sealedExecution']['archiveSha256']=archive_sha
+        selected=next(r for r in rows if 'trustedExecution' in r)
+        jobs=[{'id':i+1,'name':'Native final-package Cronet and gVisor smoke ('+ident+')','conclusion':'success','status':'completed',
+               'head_sha':source,'run_id':42,'run_attempt':1}
+              for i,ident in enumerate(['linux-amd64-purego','windows-amd64','darwin-amd64','darwin-arm64'])]
+        # Source tar/member identity is independently covered by the original 44-row tests.
+        # Keep this fixture small and exercise the actual duplicate/assembly/policy bridge.
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for i,row in enumerate(rows):
+                (root/('native-row-'+str(i)+'.json')).write_text(json.dumps(row))
+                (root/row['archive']['name']).write_bytes(payload)
+            # A pre-smoke collector row can coexist, but cannot replace the proven smoke row.
+            plain=copy.deepcopy(selected);plain.pop('trustedExecution');plain['finalPackageCronetSmoke']=None
+            (root/'native-row-z-collector.json').write_text(json.dumps(plain))
+            env={'VERSION':p.VERSION,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','GITHUB_WORKFLOW_SHA':source,
+                 'GITHUB_WORKFLOW_REF':native.REPO+'/.github/workflows/build.yml@refs/heads/synthetic','REQUIRE_RELEASE_TAG':'false'}
+            with mock.patch.object(native,'identity',return_value=(source,tree)),mock.patch.dict(os.environ,env), \
+                 mock.patch.object(native.subprocess,'check_output',return_value=b'synthetic-source-tar'), \
+                 mock.patch.object(native,'validate_archived_source_identity') as archived, \
+                 mock.patch.object(native,'run',return_value=json.dumps([{'jobs':jobs}])), \
+                 mock.patch.object(native,'distribution_materials',return_value={'synthetic':True}):
+                native.assemble(root)
+            output=json.loads((root/'polaris-upstream-native-assets.json').read_text())
+            self.assertEqual(len(output['platforms']),44);self.assertEqual(sum('trustedExecution' in r for r in output['platforms']),1)
+            actual=next(r for r in output['platforms'] if 'trustedExecution' in r)
+            self.assertEqual(actual,selected);archived.assert_called_once()

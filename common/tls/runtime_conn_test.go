@@ -5,12 +5,17 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	"github.com/sagernet/sing-box/log"
 )
 
 type runtimeTLSBarrier struct {
@@ -111,6 +116,114 @@ func TestRuntimeCleanupErrorDoesNotUnwrapCancellation(t *testing.T) {
 	}
 	if errors.Is(err, context.Canceled) {
 		t.Fatal("Scope would filter cleanup uncertainty")
+	}
+}
+
+func TestRuntimeCleanupErrorPreservesTypedCauseWithoutBenignScopeFiltering(t *testing.T) {
+	for _, signal := range []error{
+		context.Canceled, context.DeadlineExceeded, io.EOF, net.ErrClosed,
+		io.ErrClosedPipe, os.ErrClosed, syscall.EPIPE, syscall.ECONNRESET, syscall.ENOTCONN,
+		http.ErrServerClosed, outbound.ErrRuntimeClosePending,
+	} {
+		t.Run(signal.Error(), func(t *testing.T) {
+			original := &net.OpError{Op: "close", Net: "tls", Err: signal}
+			err := NewRuntimeCleanupError(original)
+			var typed *net.OpError
+			if !errors.Is(err, original) || !errors.As(err, &typed) || typed != original || errors.Is(err, signal) || !IsRuntimeCleanupIncomplete(err) {
+				t.Fatal("typed cause or opaque completion contract lost", err)
+			}
+			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+			scope.Add(func() error { return err })
+			if result := scope.Close(); result == nil || !errors.Is(result, original) || errors.Is(result, signal) || !IsRuntimeCleanupIncomplete(result) {
+				t.Fatal("Scope filtered failed TLS cleanup", result)
+			}
+		})
+	}
+}
+
+type runtimeOwnedHandshakeFailureConfig struct {
+	ServerConfig
+	failure    error
+	raw        *runtimeHandshakeConn
+	handshakes atomic.Int32
+}
+
+func (*runtimeOwnedHandshakeFailureConfig) HandshakeTimeout() time.Duration { return 0 }
+func (c *runtimeOwnedHandshakeFailureConfig) failedProvider(conn net.Conn) (Conn, error) {
+	var ok bool
+	c.raw, ok = conn.(*runtimeHandshakeConn)
+	if !ok {
+		return nil, errors.New("TLS fixture did not receive the actual owned handshake carrier")
+	}
+	return &runtimeOwnedHandshakeFailureConn{runtimeFailureProvider: &runtimeFailureProvider{Conn: conn}, failure: c.failure, calls: &c.handshakes}, nil
+}
+
+func (c *runtimeOwnedHandshakeFailureConfig) Client(conn net.Conn) (Conn, error) {
+	return c.failedProvider(conn)
+}
+
+func (c *runtimeOwnedHandshakeFailureConfig) Server(conn net.Conn) (Conn, error) {
+	return c.failedProvider(conn)
+}
+
+type runtimeOwnedHandshakeFailureConn struct {
+	*runtimeFailureProvider
+	failure error
+	calls   *atomic.Int32
+}
+
+func (c *runtimeOwnedHandshakeFailureConn) HandshakeContext(context.Context) error {
+	c.calls.Add(1)
+	return c.failure
+}
+
+func TestRuntimeActualClientAndServerDoubleFailurePreservesCausesAndOwner(t *testing.T) {
+	signals := []error{
+		context.Canceled, context.DeadlineExceeded, io.EOF, net.ErrClosed,
+		io.ErrClosedPipe, os.ErrClosed, syscall.EPIPE, syscall.ECONNRESET, syscall.ENOTCONN,
+		http.ErrServerClosed, outbound.ErrRuntimeClosePending,
+	}
+	for _, side := range []string{"client", "server"} {
+		t.Run(side, func(t *testing.T) {
+			handshakeFailure := errors.New("actual controlled TLS handshake business failure")
+			closeFailure := &net.OpError{Op: "close", Net: "tls", Err: errors.New("actual controlled raw close business failure")}
+			config := &runtimeOwnedHandshakeFailureConfig{failure: errors.Join(append([]error{handshakeFailure}, signals...)...)}
+			base := newRuntimeFailureRaw()
+			raw := &runtimeFailureProvider{Conn: base, closeError: errors.Join(append([]error{closeFailure}, signals...)...)}
+			source := &runtimeFailureSource{}
+			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+			ctx := adapter.ContextWithRuntimeResourceSource(adapter.ContextWithConstructionScope(scope.Context(), scope), source)
+			conn, err := outbound.DialRuntimeConn(ctx, source, func(ctx context.Context) (net.Conn, error) {
+				if side == "client" {
+					return clientHandshakeOwned(ctx, raw, config)
+				}
+				return serverHandshakeOwned(ctx, raw, config)
+			})
+			var typed *net.OpError
+			if conn != nil || !errors.Is(err, handshakeFailure) || !errors.Is(err, closeFailure) || !errors.As(err, &typed) || typed != closeFailure || !IsRuntimeCleanupIncomplete(err) {
+				t.Fatal("actual owned handshake/raw close branch lost a cause or debt", err)
+			}
+			if config.handshakes.Load() != 1 || config.raw == nil || raw.closes.Load() != 1 || base.closes.Load() != 1 || source.refs.Load() != 1 {
+				t.Fatal("failed handshake/raw close was not executed once or released its exact owner")
+			}
+			terminal := config.raw.fence.RuntimeCloseAndWait()
+			if !errors.Is(terminal, closeFailure) || config.raw.fence.RuntimeCloseAndWait() != terminal || raw.closes.Load() != 1 {
+				t.Fatal("raw close failure was not sticky and joined", terminal)
+			}
+			registered, registerErr := outbound.RegisterRuntimeCleanup(ctx, func() error { return errors.Join(err, config.raw.fence.RuntimeCloseAndWait()) })
+			if !registered || registerErr != nil {
+				t.Fatal("actual construction cleanup was not registered", registerErr)
+			}
+			result := scope.Close()
+			if !errors.Is(result, handshakeFailure) || !errors.Is(result, closeFailure) || !errors.As(result, &typed) || typed != closeFailure || !IsRuntimeCleanupIncomplete(result) || source.refs.Load() != 1 {
+				t.Fatal("Scope lost either real cause or failed resource ownership", result)
+			}
+			for _, signal := range signals {
+				if errors.Is(err, signal) || errors.Is(terminal, signal) || errors.Is(result, signal) {
+					t.Fatal("actual failed cleanup became filterable as a benign completion", signal, result)
+				}
+			}
+		})
 	}
 }
 

@@ -3,11 +3,14 @@ package tls
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"os"
 	"syscall"
 
 	"github.com/sagernet/sing-box/adapter/outbound"
-	E "github.com/sagernet/sing/common/exceptions"
 	aTLS "github.com/sagernet/sing/common/tls"
 )
 
@@ -72,7 +75,7 @@ func clientHandshakeOwned(ctx context.Context, conn net.Conn, config Config) (Co
 	if err != nil {
 		closeErr := rawFence.RuntimeCloseAndWait()
 		if closeErr != nil {
-			return nil, NewRuntimeCleanupError(E.New("TLS handshake cleanup incomplete: ", err, ": ", closeErr))
+			return nil, NewRuntimeCleanupError(fmt.Errorf("TLS handshake cleanup incomplete: %w", errors.Join(err, closeErr)))
 		}
 		return nil, err
 	}
@@ -164,13 +167,23 @@ func WithRuntimeTLSInspection(conn net.Conn, inspect func(net.Conn) error) error
 	return inspect(conn)
 }
 
-// Runtime cleanup uncertainty is opaque to errors.Is: construction Scope must
-// not filter it as cancellation. Enclosing owners retain their exact dependency
-// closure when this marker crosses an unsuccessful creation boundary.
+// Cleanup debt is opaque to error expansion and benign completion sentinels,
+// while preserving genuine cause identity and typed diagnostics. Scope must not
+// filter a failed cleanup merely because one cause is canceled or already closed.
 type runtimeCleanupError struct{ cause error }
 
 func (e *runtimeCleanupError) Error() string                { return e.cause.Error() }
 func (*runtimeCleanupError) RuntimeCleanupIncomplete() bool { return true }
+func (e *runtimeCleanupError) Is(target error) bool {
+	switch target {
+	case context.Canceled, context.DeadlineExceeded, io.EOF, net.ErrClosed,
+		io.ErrClosedPipe, os.ErrClosed, syscall.EPIPE, syscall.ECONNRESET,
+		syscall.ENOTCONN, http.ErrServerClosed, outbound.ErrRuntimeClosePending:
+		return false
+	}
+	return errors.Is(e.cause, target)
+}
+func (e *runtimeCleanupError) As(target any) bool { return errors.As(e.cause, target) }
 func NewRuntimeCleanupError(err error) error {
 	if err == nil {
 		return nil
@@ -274,7 +287,7 @@ func serverHandshakeOwned(ctx context.Context, conn net.Conn, config ServerConfi
 	if err != nil {
 		closeErr := rawFence.RuntimeCloseAndWait()
 		if closeErr != nil {
-			return nil, NewRuntimeCleanupError(E.New("TLS server handshake cleanup incomplete: ", err, ": ", closeErr))
+			return nil, NewRuntimeCleanupError(fmt.Errorf("TLS server handshake cleanup incomplete: %w", errors.Join(err, closeErr)))
 		}
 		return nil, err
 	}

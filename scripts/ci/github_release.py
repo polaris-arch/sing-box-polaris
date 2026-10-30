@@ -359,10 +359,11 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     require((producer['repository'], producer['repositoryId'], producer['workflow'], producer['workflowCommit'],
              producer['runId'], producer['runAttempt']) == (REPO, RID, workflow, source, int(run_id), attempt),
             'final native producer identity mismatch')
-    from native_release_index import expected_native
+    from native_release_index import expected_native, validate_trusted_execution
     expected = expected_native(VERSION)
     require(len(index['platforms']) == 44 and {x['id'] for x in index['platforms']} == set(expected), 'exact 44 native identities required')
     for row in index['platforms']:
+        validate_trusted_execution(row, producer, source_root)
         require((row['sourceCommit'], row['sourceTree'], row['version'], row['tag']) == (source, tree, VERSION, TAG), 'mixed source native row')
         require((row['target'], row['variant']) == (expected[row['id']]['target'], expected[row['id']]['variant']), 'native row matrix mismatch')
         require(row['archive'].get('releaseName') == public_product_name(row['archive']['name']), 'native public archive name mismatch')

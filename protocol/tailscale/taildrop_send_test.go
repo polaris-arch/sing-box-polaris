@@ -146,6 +146,7 @@ func (s *cancelResumeSource) Read([]byte) (int, error) {
 	<-s.ctx.Done()
 	return 0, s.ctx.Err()
 }
+
 func TestTaildropResumeCancellationJoinsTheActualLocalPrefixRead(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -203,6 +204,7 @@ func (r *taildropInterruptedBody) Read(p []byte) (int, error) {
 	<-r.ctx.Done()
 	return 0, r.ctx.Err()
 }
+
 func TestTaildropOutgoingInterruptionRetainsPartialButReceiverCancelRemovesIt(t *testing.T) {
 	for _, receiverCancel := range []bool{false, true} {
 		t.Run(fmt.Sprint(receiverCancel), func(t *testing.T) {

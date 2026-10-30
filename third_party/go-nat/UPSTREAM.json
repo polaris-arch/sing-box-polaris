@@ -1,0 +1,131 @@
+{
+  "module": "github.com/libp2p/go-nat",
+  "version": "v1.0.1-0.20250821073202-01afc089f138",
+  "repository": "https://github.com/libp2p/go-nat",
+  "commit": "01afc089f138bf26b9f467ccba7f53ac34e0c679",
+  "moduleH1": "h1:YohuNPT/1k3VcThCQlBZ43PCPWPfMRS1zcxWBF2SLK8=",
+  "goModH1": "h1:TXQg5tfSy+bUjnhT5728j5j/MBj7keIYqqZ1+8k/ui8=",
+  "zip": {
+    "url": "https://proxy.golang.org/github.com/libp2p/go-nat/@v/v1.0.1-0.20250821073202-01afc089f138.zip",
+    "bytes": 15986,
+    "sha256": "88d5bf91c45e056adb4bc4763fda3260b70d6c6f70d7bf758eb6b1d5e35aa0df"
+  },
+  "scope": "The original four production source files, original module metadata/full license, and local caller-HTTP ownership glue/tests. Local changes close the Realm NAT discovery/create/renew/delete ownership chain. The public NAT interface and internal-port/protocol selection remain unchanged; the optional caller-HTTP gateway entry is a compatible source API. Upstream CI, examples and release tools are omitted.",
+  "upstreamFiles": [
+    {
+      "path": "nat.go",
+      "bytes": 3088,
+      "sha256": "94141c0f3d0cd4119614f2a69091dffeba8a84ed7aad0f6078efb4bd8f6774a6"
+    },
+    {
+      "path": "natpmp.go",
+      "bytes": 2633,
+      "sha256": "a03aad05ffef390c96e0705a92267a096ee0f73e4eb046cf50818589888e4a54"
+    },
+    {
+      "path": "upnp.go",
+      "bytes": 7827,
+      "sha256": "e6357c0e29f80dd20cffb2a68c3b5b05cbe519a4e2df197623957b35a6352978"
+    },
+    {
+      "path": "gateway.go",
+      "bytes": 242,
+      "sha256": "4dc1a5fe381ea45ff05a5bee2655d0be9ca450a2ce05bbcab65e294785801650"
+    },
+    {
+      "path": "go.mod",
+      "bytes": 368,
+      "sha256": "491ac6c1813a27894e9374b591087afe55bb476da61afbf922fb2a2206872ca4"
+    },
+    {
+      "path": "go.sum",
+      "bytes": 2695,
+      "sha256": "7a5c771cba1b8d9040c8b79d1bc4964a5892dacbe026d37d960a216bfe10fc8d"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 10273,
+      "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68"
+    }
+  ],
+  "localChanges": [
+    "DiscoverNATs explicitly joins all four synchronous producers before closing the aggregate channel; uncancelable native discovery stays owned until return.",
+    "Gateway selection returns context errors after cancellation, including after native selection calls, while retaining normal preference ordering.",
+    "NAT-PMP creation validates real acknowledgments/assigned ports and retains attempted internal-port identity for cleanup; deletion sends external-port/lifetime zero and retires records only after exact matching acknowledgment and actual native completion; elapsed cancellation is retained separately as operation diagnosis.",
+    "UPnP address errors propagate; renewal failures retain their original lease; only explicit conflict responses retry onto another external port. Ambiguous creation stays charged and cannot be deleted as if its external-port ownership were confirmed.",
+    "UPnP deletion checks current internal-client/internal-port identity before destructive deletion. Confirmed absence or foreign ownership clears only the prior local obligation; query uncertainty, renewed conflict without ownership proof and real deletion failures remain debt. Parsed terminal success/714 resolves the remote obligation even after cancellation, with cancellation retained separately.",
+    "Concurrent mapper instances serialize the existing shared random-port generator; port-selection algorithm and key model are unchanged.",
+    "Controlled package tests cover completion, late cancellation, acknowledgment identity, failed/unknown effects and retry ownership without real NAT traffic.",
+    "The compatible DiscoverGatewayWithHTTPClient entry captures an explicit caller-owned client; UPnP XML and all SOAP services use it without changing global HTTP defaults. Existing non-injected entries retain their upstream client choice.",
+    "The injected UPnP discovery path uses the already-required synchronous koron SSDP provider for the same IG1/IG2 URNs and three joined discovery requests; generic gateway discovery retains its existing synchronous search. Cancellation discards late results only after all native calls have returned.",
+    "Context-aware UPnP external-address queries use the generated SOAP context API; context-free native gateway APIs remain synchronously joined. The caller retains the captured HTTP closure through terminal deletion.",
+    "UPnP records the acknowledged internal client/protocol and revokes blind deletion authority after renewal conflict 718. Uncertain initial creation cannot be adopted or destructively deleted merely because a current entry has the same target. All normal deletion also verifies current identity; the UPnP protocol does not provide atomic compare-and-delete.",
+    "Explicit defined SOAP argument/capability/authorization rejections own no new mapping; generic failure, unknown/combined errors and runtime cleanup markers remain uncertain. Generated SOAP 724/725 and terminal 714 paths are covered by source tests.",
+    "The optional caller resolver runs synchronously inside owned discovery and numeric device metadata is copied into each injected gateway. Selection, renewal and internal-address lookup never fall back to the process DNS resolver on the injected path; legacy non-injected entry choice is preserved.",
+    "Valid late NAT-PMP terminal ACKs are validated after joining and resolve the remote mapping; absent/mismatched/negative ACKs retain debt. PortMapper preserves elapsed-delete context as diagnosis rather than cleanup uncertainty.",
+    "Controlled generated-SOAP tests validate the raw case-insensitive SOAPAction header against the actual XML action and mapping parameters, then use the real generated response/fault parser, including fresh identity queries and terminal deletion."
+  ],
+  "protocolReferences": [
+    "https://www.rfc-editor.org/rfc/rfc6886#section-3.4",
+    "https://upnp.org/specs/gw/UPnP-gw-WANIPConnection-v1-Service.pdf",
+    "https://upnp.org/specs/gw/UPnP-gw-WANIPConnection-v2-Service.pdf",
+    "https://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf"
+  ],
+  "localFiles": [
+    {
+      "path": "LICENSE",
+      "sha256": "73ba74dfaa520b49a401b5d21459a8523a146f3b7518a833eea5efa85130bf68",
+      "bytes": 10273
+    },
+    {
+      "path": "gateway.go",
+      "sha256": "4dc1a5fe381ea45ff05a5bee2655d0be9ca450a2ce05bbcab65e294785801650",
+      "bytes": 242
+    },
+    {
+      "path": "go.mod",
+      "sha256": "491ac6c1813a27894e9374b591087afe55bb476da61afbf922fb2a2206872ca4",
+      "bytes": 368
+    },
+    {
+      "path": "go.sum",
+      "sha256": "7a5c771cba1b8d9040c8b79d1bc4964a5892dacbe026d37d960a216bfe10fc8d",
+      "bytes": 2695
+    },
+    {
+      "path": "mapping_test.go",
+      "sha256": "b310fe746cda577f73d81873b4dcc0ace4c5f1ef2a72c1236cd6bcdb4c3263c1",
+      "bytes": 23075
+    },
+    {
+      "path": "nat.go",
+      "sha256": "edc22475f9d2e188551e3d01888bf059db7ba12a32eba920ae384afc319df7b4",
+      "bytes": 5192
+    },
+    {
+      "path": "nat_test.go",
+      "sha256": "25037c81cde16ede17b3b5ff767c042a3a0d8126355182887fec578f50b0c1e9",
+      "bytes": 8072
+    },
+    {
+      "path": "natpmp.go",
+      "sha256": "17a2e36dc898264d0c28193bb9705d7bc48a821d47c6120412c5bc3d4c3ad7e0",
+      "bytes": 5223
+    },
+    {
+      "path": "upnp.go",
+      "sha256": "68816b259133dd6ddf6c89fc1c4a74a6231186996b0f51b94062053dabd2ea96",
+      "bytes": 14923
+    },
+    {
+      "path": "upnp_http.go",
+      "sha256": "d3f02e5cb25380ce300efb94135e4e785289c98f5e7b1cf8a18589656730423b",
+      "bytes": 5317
+    },
+    {
+      "path": "upnp_http_test.go",
+      "sha256": "bc0a3b9255df291e166d75f0f645436c5c9ed2e043ad4e292c59176ef865a746",
+      "bytes": 18562
+    }
+  ]
+}

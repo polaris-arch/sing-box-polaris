@@ -105,40 +105,72 @@ func TestRuntimeBoxHistoryFollowsActualPublicationAndBorrowedIncarnation(t *test
 }
 
 func TestRuntimeHistoryFailedPrepareKeepsPublishedAuthority(t *testing.T) {
-	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
-	f.start(t)
-	root := service.PtrFromContext[urltest.HistoryStorage](f.box.runtime.ctx)
-	probe, connected, err := f.box.AcquireRuntimeURLTest(context.Background(), "a")
-	if !connected || err != nil {
-		t.Fatal(err)
-	}
-	defer probe.Release()
-	urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), "a", &adapter.URLTestHistory{Time: time.Unix(1, 0), Delay: 10})
-	before := f.identity()
-	var candidate *urltest.HistoryStorage
-	f.setConstructorHook(func(outbound *runtimeTestSocks) error {
-		if outbound.Tag() != "a" {
-			return nil
-		}
-		candidate = service.PtrFromContext[urltest.HistoryStorage](outbound.ctx)
-		if candidate == nil || candidate == root || candidate == probe.History() {
-			return errors.New("candidate has no private history")
-		}
-		candidate.StoreIfCurrent(candidate.Epoch(), "a", &adapter.URLTestHistory{Time: time.Unix(2, 0), Delay: 99})
-		if got := root.LoadURLTestHistory("a"); got == nil || got.Delay != 10 {
-			t.Error("unpublished candidate changed visible history")
-		}
-		return errors.New("injected actual constructor failure")
-	})
-	_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
-	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
-	if err != nil || operation.State != "ABORTING_UNAPPLIED" {
-		t.Fatalf("unexpected prepare result: %+v %v", operation, err)
-	}
-	if candidate == nil || f.identity() != before || !probe.IsCurrent() {
-		t.Fatal("failed candidate displaced current history authority")
-	}
-	if got := root.LoadURLTestHistory("a"); got == nil || got.Delay != 10 {
-		t.Fatal("abort erased old current history")
+	for _, blockedCleanup := range []bool{false, true} {
+		t.Run(map[bool]string{false: "immediate-cleanup", true: "blocked-cleanup"}[blockedCleanup], func(t *testing.T) {
+			f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
+			f.start(t)
+			root := service.PtrFromContext[urltest.HistoryStorage](f.box.runtime.ctx)
+			probe, connected, err := f.box.AcquireRuntimeURLTest(context.Background(), "a")
+			if !connected || err != nil {
+				t.Fatal(err)
+			}
+			defer probe.Release()
+			urltest.PublishRuntimeResult(probe.Context(), probe.Epoch(), "a", &adapter.URLTestHistory{Time: time.Unix(1, 0), Delay: 10})
+			before := f.identity()
+			cleanup := newRuntimeTestBarrier()
+			t.Cleanup(cleanup.open)
+			var candidate *urltest.HistoryStorage
+			f.setConstructorHook(func(outbound *runtimeTestSocks) error {
+				if outbound.Tag() != "a" {
+					return nil
+				}
+				if blockedCleanup {
+					outbound.closeHook = func() error { cleanup.block(); return nil }
+				}
+				candidate = service.PtrFromContext[urltest.HistoryStorage](outbound.ctx)
+				if candidate == nil || candidate == root || candidate == probe.History() {
+					return errors.New("candidate has no private history")
+				}
+				candidate.StoreIfCurrent(candidate.Epoch(), "a", &adapter.URLTestHistory{Time: time.Unix(2, 0), Delay: 99})
+				if got := root.LoadURLTestHistory("a"); got == nil || got.Delay != 10 {
+					t.Error("unpublished candidate changed visible history")
+				}
+				return errors.New("injected actual constructor failure")
+			})
+			_, request := f.plan(t, runtimeTestConfig(1081, "example.org"))
+			operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+			if err != nil {
+				t.Fatalf("unexpected prepare result: %+v %v", operation, err)
+			}
+			if operation.Before != before || operation.Active != before {
+				t.Fatalf("abort changed authority: %+v", operation)
+			}
+			if blockedCleanup {
+				runtimeTestWait(t, cleanup.entered, "actual candidate history cleanup")
+				if operation.State != "ABORTING_UNAPPLIED" {
+					t.Fatalf("blocked candidate already reported terminal: %+v", operation)
+				}
+			}
+			if candidate == nil || f.identity() != before || !probe.IsCurrent() {
+				t.Fatal("failed candidate displaced current history authority")
+			}
+			if got := root.LoadURLTestHistory("a"); got == nil || got.Delay != 10 {
+				t.Fatal("abort erased old current history")
+			}
+			cleanup.open()
+			runtimeTestRequireCleanSourceAbort(t, f, operation, before)
+			if current := root.LoadURLTestHistory("a"); !probe.IsCurrent() || current == nil || current.Delay != 10 {
+				t.Fatal("terminal abort changed history authority")
+			}
+			f.setConstructorHook(nil)
+			_, retry := f.plan(t, runtimeTestConfig(1082, "example.org"))
+			committed, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", retry)
+			if err != nil || committed.Before != before || committed.Active.Revision != before.Revision+1 || f.identity() != committed.Active {
+				t.Fatalf("retry did not publish a new history authority: %+v %v", committed, err)
+			}
+			if private := probe.History().LoadURLTestHistory("a"); probe.IsCurrent() || root.LoadURLTestHistory("a") != nil || private == nil || private.Delay != 10 {
+				t.Fatal("retry aliased old private history with the replacement")
+			}
+		})
 	}
 }

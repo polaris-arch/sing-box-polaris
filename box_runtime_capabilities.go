@@ -65,8 +65,22 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 		variant("outbounds", name, "")
 	}
 	for _, name := range []string{C.TypeHysteria, C.TypeHysteria2, C.TypeTUIC} {
-		variant("outbounds", name, "with_quic", "hysteria2-Realm-not-supported")
+		if name == C.TypeHysteria2 {
+			variant("outbounds", name, "with_quic", "Realm-requires-hysteria2-realm-adapter")
+		} else {
+			variant("outbounds", name, "with_quic")
+		}
 	}
+	variant("outbounds", "hysteria2-realm", "with_quic",
+		"IPv4-IPv6-dual;port-mapping-requires-IPv4",
+		"captured-named-default-inline-HTTP-and-STUN-resolver-detour-closure",
+		"discovery-XML-SOAP-and-delete-borrow-the-captured-HTTP-closure",
+		"UPnP-device-hostnames-captured-once-in-the-discovery-generation",
+		"demand-only-control-STUN-punch-and-optional-NAT-mapping",
+		"standard-QUIC-TLS;salamander-gecko-owned-selected-peer-carrier",
+		"joined-workers-late-results-and-mapper-retirement",
+		"uncancelable-native-NAT-calls-remain-owned-until-return",
+		"unknown-mapping-or-delete-failure-remains-cleanup-debt")
 	variant("outbounds", C.TypeNaive, "with_naive_outbound", "selected-cronet-backend-required")
 	variant("outbounds", C.TypeTailcat, "with_tailscale", "shared-identity-resource-preflight")
 	for _, item := range []struct{ name, tag string }{
@@ -149,7 +163,7 @@ func runtimeCapabilityBuildFeatures(tags string, known, quic, cgo bool) map[stri
 }
 
 func runtimePendingAdapters() []string {
-	return []string{"outbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "certificate_providers[acme]", "ntp[write_to_system]"}
+	return []string{"inbounds[hysteria2.realm]", "services[non-api-or-api-dependent-listener]", "certificate_providers[acme]", "ntp[write_to_system]"}
 }
 
 func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {

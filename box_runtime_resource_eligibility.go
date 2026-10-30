@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/sagernet/sing-box/adapter/certificate"
 	"github.com/sagernet/sing-box/common/httpclient"
@@ -39,6 +40,43 @@ func runtimeResourceEligibility(_ context.Context, options option.Options) []Run
 	}
 	if options.Route != nil && options.Route.DefaultHTTPClient != "" && !clients[options.Route.DefaultHTTPClient] {
 		add("INVALID_DEPENDENCY_GRAPH", "route.default_http_client", "default HTTP client is absent from the candidate")
+	}
+	for index, outbound := range options.Outbounds {
+		if value, ok := outbound.Options.(*option.Hysteria2OutboundOptions); ok && value != nil && value.Realm != nil {
+			path := fmt.Sprintf("outbounds[%d]", index)
+			if !C.WithQUIC {
+				add("PENDING_ADAPTER", path+".realm", "Realm requires the concrete with_quic build")
+			}
+			if value.Server != "" || value.ServerPort != 0 || len(value.ServerPorts) != 0 {
+				add("INVALID_DEPENDENCY_GRAPH", path+".realm", "Realm and ordinary server/port-hopping options are mutually exclusive")
+			}
+			if value.Realm.IPVersion != 0 && value.Realm.IPVersion != 4 && value.Realm.IPVersion != 6 {
+				add("INVALID_DEPENDENCY_GRAPH", path+".realm.ip_version", "Realm IP version must select IPv4, IPv6 or dual stack")
+			}
+			if value.Realm.IPVersion == 6 && value.Realm.PortMapping != nil && value.Realm.PortMapping.Enabled {
+				add("INVALID_DEPENDENCY_GRAPH", path+".realm.port_mapping", "Realm port mapping requires IPv4")
+			}
+			server, err := url.Parse(value.Realm.ServerURL)
+			if err != nil || server.Hostname() == "" || (server.Scheme != "http" && server.Scheme != "https") {
+				add("INVALID_DEPENDENCY_GRAPH", path+".realm.server_url", "Realm control requires an HTTP or HTTPS server URL with a host")
+			}
+			if value.TLS == nil || !value.TLS.Enabled {
+				add("INVALID_DEPENDENCY_GRAPH", path+".tls", "Realm requires enabled QUIC TLS")
+			} else {
+				if value.TLS.Engine != "" && value.TLS.Engine != "go" {
+					add("PENDING_ADAPTER", path+".tls.engine", "Realm requires the standard QUIC TLS completion adapter")
+				}
+				if value.TLS.UTLS != nil && value.TLS.UTLS.Enabled {
+					add("PENDING_ADAPTER", path+".tls.utls", "Realm custom QUIC TLS engine completion is unavailable")
+				}
+				if value.TLS.Reality != nil && value.TLS.Reality.Enabled {
+					add("PENDING_ADAPTER", path+".tls.reality", "Realm custom QUIC TLS engine completion is unavailable")
+				}
+			}
+			if value.Realm.HTTPClient != nil {
+				checkHTTP(path+".realm.http_client", *value.Realm.HTTPClient)
+			}
+		}
 	}
 	checkProvider := func(path, kind string, value any) {
 		switch kind {

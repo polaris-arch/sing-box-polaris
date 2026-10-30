@@ -46,13 +46,13 @@ func runtimeTestProducer(t *testing.T, f *runtimeTestFixture) *runtimeSourceProd
 
 func runtimeTestRequireCleanSourceAbort(t *testing.T, f *runtimeTestFixture, operation RuntimeConfigOperation, expected RuntimeIdentity) {
 	t.Helper()
-	if (operation.State != "ABORTING_UNAPPLIED" && operation.State != "ABORTED_UNAPPLIED") || f.identity() != expected {
+	if (operation.State != "ABORTING_UNAPPLIED" && operation.State != "ABORTED_UNAPPLIED") || operation.Before != expected || operation.Active != expected || f.identity() != expected {
 		t.Fatalf("source candidate did not abort without publication: %+v", operation)
 	}
 	ctx := runtimeTestContext(t)
 	for {
 		status, err := f.box.GetRuntimeConfigStatus("actor-a", expected.Incarnation, operation.TransactionID)
-		if err != nil || status.LookupState != "FOUND" || status.Operation == nil || status.Active != expected {
+		if err != nil || status.LookupState != "FOUND" || status.Operation == nil || status.Active != expected || status.Operation.Before != expected || status.Operation.Active != expected || status.Operation.TransactionID != operation.TransactionID {
 			t.Fatalf("source abort lost its original identity or receipt: %+v / %v", status, err)
 		}
 		switch status.Operation.State {

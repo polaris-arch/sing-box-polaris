@@ -80,6 +80,7 @@ type Client struct {
 	bbrProfile         congestion_meta2.Profile
 	realmOptions       *realm.Options
 	controlClient      *realm.ControlClient
+	realmHooks         *realmClientHooks
 
 	connAccess sync.Mutex
 	conn       *clientQUICConnection
@@ -133,13 +134,24 @@ func NewClient(options ClientOptions) (*Client, error) {
 			return nil, E.New("gecko: invalid packet size range")
 		}
 	}
-	var controlClient *realm.ControlClient
 	if options.RealmOptions != nil {
-		var err error
-		controlClient, err = realm.NewControlClient(options.RealmOptions.ServerURL, options.RealmOptions.Token, options.RealmOptions.HTTPClient)
-		if err != nil {
-			return nil, E.Cause(err, "create control client")
+		copyOptions := *options.RealmOptions
+		copyOptions.STUNServers = slices.Clone(options.RealmOptions.STUNServers)
+		if options.RealmOptions.PortMapping != nil {
+			mapping := *options.RealmOptions.PortMapping
+			if mapping.Resolver == nil {
+				mapping.Resolver = options.RealmOptions.Resolver
+			}
+			if mapping.HTTPClient != nil {
+				mappingHTTP := *mapping.HTTPClient
+				if mappingHTTP.Transport == nil {
+					return nil, E.New("realm port mapping requires explicit captured HTTP transport")
+				}
+				mapping.HTTPClient = &mappingHTTP
+			}
+			copyOptions.PortMapping = &mapping
 		}
+		options.RealmOptions = &copyOptions
 	}
 	var serverPorts []uint16
 	if len(options.ServerPorts) > 0 {
@@ -170,15 +182,38 @@ func NewClient(options ClientOptions) (*Client, error) {
 		udpDisabled:        options.UDPDisabled,
 		bbrProfile:         bbrProfile,
 		realmOptions:       options.RealmOptions,
-		controlClient:      controlClient,
 	}
 	client.initRuntime()
+	if options.RealmOptions != nil {
+		clientHTTP := options.RealmOptions.HTTPClient
+		if clientHTTP == nil {
+			clientHTTP = http.DefaultClient
+		}
+		capturedHTTP := *clientHTTP
+		transport := capturedHTTP.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
+		capturedHTTP.Transport = &realmOwnedHTTPTransport{transport: transport, runtime: &client.runtime}
+		client.realmOptions.HTTPClient = &capturedHTTP
+		if mapping := client.realmOptions.PortMapping; mapping != nil && mapping.HTTPClient != nil {
+			mapping.HTTPClient.Transport = &realmOwnedHTTPTransport{transport: mapping.HTTPClient.Transport, runtime: &client.runtime}
+		}
+		var err error
+		client.controlClient, err = realm.NewControlClient(options.RealmOptions.ServerURL, options.RealmOptions.Token, &capturedHTTP)
+		if err != nil {
+			return nil, errors.Join(E.Cause(err, "create control client"), client.RuntimeCloseAndWait())
+		}
+	}
 	return client, nil
 }
 
 func (c *Client) offer(ctx context.Context) (*clientQUICConnection, error) {
 	c.connAccess.Lock()
-	if c.runtime.closed.Load() { c.connAccess.Unlock(); return nil, net.ErrClosed }
+	if c.runtime.closed.Load() {
+		c.connAccess.Unlock()
+		return nil, net.ErrClosed
+	}
 	conn := c.conn
 	if conn != nil && conn.active() {
 		c.connAccess.Unlock()
@@ -213,7 +248,13 @@ func (c *Client) offer(ctx context.Context) (*clientQUICConnection, error) {
 
 	if !c.runtime.run(func() { c.completeOffer(pending, offerCtx) }) {
 		pending.cancel(net.ErrClosed)
-		c.connAccess.Lock(); pending.err = net.ErrClosed; if c.pending == pending { c.pending = nil }; close(pending.done); c.connAccess.Unlock()
+		c.connAccess.Lock()
+		pending.err = net.ErrClosed
+		if c.pending == pending {
+			c.pending = nil
+		}
+		close(pending.done)
+		c.connAccess.Unlock()
 	}
 
 	select {
@@ -278,7 +319,11 @@ func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
 	}
 	hopCtx, cancelHop := context.WithCancel(hopCtx)
 	hopAdopted := false
-	defer func(){if !hopAdopted{cancelHop()}}()
+	defer func() {
+		if !hopAdopted {
+			cancelHop()
+		}
+	}()
 	firstDial := true
 	dialFunc := func(serverAddr M.Socksaddr) (net.Conn, error) {
 		currentCtx := hopCtx
@@ -318,7 +363,7 @@ func (c *Client) offerNew(ctx context.Context) (*clientQUICConnection, error) {
 			return nil, err
 		}
 	}
-	rawConn = &clientCancelableConn{Conn:rawConn,cancel:cancelHop}
+	rawConn = &clientCancelableConn{Conn: rawConn, cancel: cancelHop}
 	hopAdopted = true
 	return c.authenticateAndWrap(ctx, rawConn, func(quicConnPtr **quic.Conn) (http.RoundTripper, error) {
 		return qtls.CreateTransport(rawConn, quicConnPtr, c.tlsConfig, c.quicConfig)
@@ -332,70 +377,97 @@ type realmFamilyConn struct {
 	localAddresses []netip.AddrPort
 }
 
-func (c *Client) offerNewRealm(ctx context.Context) (*clientQUICConnection, error) {
+func (c *Client) offerNewRealm(ctx context.Context) (resultConn *clientQUICConnection, resultErr error) {
 	families, err := c.realmOpenFamilies(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var (
-		portMapper   *realm.PortMapper
-		mappedFamily *realmFamilyConn
-	)
+	session := &clientRealmSession{client: c, families: families}
+	adopted := false
+	defer func() {
+		if !adopted {
+			resultErr = errors.Join(resultErr, session.Close())
+		}
+	}()
+	var mappedFamily *realmFamilyConn
+	joinMapperPrepare := func() {}
 	if c.realmOptions.PortMapping != nil {
 		for _, family := range families {
 			if !family.ipv4 {
 				continue
 			}
-			// The mapping is established before STUN discovery: with the pinhole
-			// in place, in a double-NAT setup, the address STUN observes
-			// corresponds to a path whose inner leg goes through the static
-			// mapping rather than a filtered dynamic one.
-			mapper, mapErr := realm.NewPortMapper(ctx, c.logger, M.SocksaddrFromNet(family.conn.LocalAddr()).Port, *c.realmOptions.PortMapping)
-			if mapErr != nil {
-				c.logger.Warn(E.Cause(mapErr, "port mapping unavailable; continuing without it"))
+			// Establish the IPv4 pinhole before STUN, preserving double-NAT
+			// discovery semantics. The renewal belongs to this session already.
+			var mapper realmPortMapper
+			var mapErr error
+			port := M.SocksaddrFromNet(family.conn.LocalAddr()).Port
+			if c.realmHooks != nil && c.realmHooks.newMapper != nil {
+				mapper, mapErr = c.realmHooks.newMapper(ctx, port, *c.realmOptions.PortMapping)
 			} else {
-				portMapper = mapper
+				var nativeMapper *realm.PortMapper
+				nativeMapper, mapErr = realm.NewPortMapper(ctx, c.logger, port, *c.realmOptions.PortMapping)
+				if nativeMapper != nil {
+					mapper = nativeMapper
+				}
+			}
+			if mapErr != nil {
+				var incomplete interface{ RuntimeCleanupIncomplete() bool }
+				if errors.As(mapErr, &incomplete) && incomplete.RuntimeCleanupIncomplete() {
+					c.runtime.recordClose(mapErr)
+				}
+				if mapper != nil {
+					cleanupErr := mapper.Close()
+					c.runtime.recordClose(cleanupErr)
+					mapErr = errors.Join(mapErr, cleanupErr)
+				}
+				c.logger.Warn(E.Cause(mapErr, "port mapping unavailable; continuing without it"))
+			} else if mapper == nil {
+				return nil, errors.New("port mapper returned no mapping")
+			} else {
+				if err = session.startMapper(mapper); err != nil {
+					return nil, err
+				}
+				joinMapperPrepare = linkRealmOfferCancellation(ctx, session.mapperCancel)
+				defer joinMapperPrepare()
 				mappedFamily = family
 			}
 			break
 		}
 	}
-	mapperAdopted := false
-	if portMapper != nil {
-		defer func() {
-			if !mapperAdopted {
-				_ = portMapper.Close()
-			}
-		}()
+	if err = ctx.Err(); err != nil {
+		return nil, err
 	}
 	surviving, localAddresses, err := c.realmDiscoverFamilies(ctx, families)
 	if err != nil {
 		return nil, err
 	}
-	if portMapper != nil && slices.Contains(surviving, mappedFamily) {
-		externalAddr := portMapper.ExternalAddr()
+	if session.mapper != nil && slices.Contains(surviving, mappedFamily) {
+		externalAddr := session.mapper.ExternalAddr()
 		if !slices.Contains(localAddresses, externalAddr) {
 			localAddresses = append(localAddresses, externalAddr)
 		}
-	}
-	closeSurviving := func() {
-		for _, family := range surviving {
-			_ = family.conn.Close()
-		}
+	} else if err = session.stopMapper(); err != nil {
+		return nil, err
 	}
 	localMetadata, err := realm.GeneratePunchMetadata()
 	if err != nil {
-		closeSurviving()
 		return nil, E.Cause(err, "generate punch metadata")
 	}
 	response, err := c.controlClient.Connect(ctx, c.realmOptions.RealmID, localAddresses, localMetadata)
 	if err != nil {
-		closeSurviving()
 		return nil, E.Cause(err, "realm connect")
 	}
-	winner, result, err := c.realmRacePunch(ctx, surviving, response.Addresses, response.PunchMetadata)
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	winner, punchResult, err := c.realmRacePunch(ctx, surviving, response.Addresses, response.PunchMetadata)
 	if err != nil {
 		return nil, err
+	}
+	if winner != mappedFamily {
+		if err = session.stopMapper(); err != nil {
+			return nil, err
+		}
 	}
 	packetConn := winner.conn
 	if c.geckoPassword != "" || c.salamanderPassword != "" {
@@ -406,17 +478,25 @@ func (c *Client) offerNewRealm(ctx context.Context) (*clientQUICConnection, erro
 	} else if c.salamanderPassword != "" {
 		packetConn = NewSalamanderConn(packetConn, []byte(c.salamanderPassword))
 	}
-	peerAddr := M.SocksaddrFromNetIP(result.PeerAddr)
-	conn, err := c.authenticateAndWrap(ctx, packetConn, func(quicConnPtr **quic.Conn) (http.RoundTripper, error) {
-		return qtls.CreatePacketTransport(packetConn, peerAddr.UDPAddr(), quicConnPtr, c.tlsConfig, c.quicConfig)
-	})
+	packetConn = &realmSessionPacketConn{PacketConn: packetConn, session: session}
+	peerAddr := M.SocksaddrFromNetIP(punchResult.PeerAddr)
+	var conn *clientQUICConnection
+	if c.realmHooks != nil && c.realmHooks.authenticate != nil {
+		conn, err = c.realmHooks.authenticate(ctx, packetConn, peerAddr.UDPAddr())
+	} else {
+		conn, err = c.authenticateAndWrap(ctx, packetConn, func(quicConnPtr **quic.Conn) (http.RoundTripper, error) {
+			return qtls.CreatePacketTransport(packetConn, peerAddr.UDPAddr(), quicConnPtr, c.tlsConfig, c.quicConfig)
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
-	if winner == mappedFamily {
-		mapperAdopted = true
-		go portMapper.KeepAlive(conn.connDone)
+	joinMapperPrepare()
+	if err = ctx.Err(); err != nil {
+		conn.closeWithError(err)
+		return nil, err
 	}
+	adopted = true
 	return conn, nil
 }
 
@@ -443,7 +523,19 @@ func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, err
 		go func() {
 			defer wg.Done()
 			conn, listenErr := c.dialer.ListenPacket(ctx, spec.addr)
-			if listenErr != nil {
+			if conn != nil {
+				conn = &realmOwnedPacketConn{PacketConn: conn, runtime: &c.runtime}
+			}
+			if ctx.Err() != nil {
+				listenErr = errors.Join(listenErr, ctx.Err())
+			}
+			if listenErr != nil || conn == nil {
+				if conn != nil {
+					listenErr = errors.Join(listenErr, conn.Close())
+				}
+				if listenErr == nil {
+					listenErr = errors.New("Realm listener returned no carrier")
+				}
 				listenErrs[i] = E.Cause(listenErr, spec.family)
 				return
 			}
@@ -460,8 +552,8 @@ func (c *Client) realmOpenFamilies(ctx context.Context) ([]*realmFamilyConn, err
 		}
 		errs = append(errs, listenErrs[i])
 	}
-	if len(families) == 0 {
-		return nil, E.Cause(E.Errors(errs...), "listen UDP for realm")
+	if len(families) == 0 || ctx.Err() != nil {
+		return nil, errors.Join(E.Cause(E.Errors(errs...), "listen UDP for realm"), ctx.Err(), closeRealmFamilies(families))
 	}
 	return families, nil
 }
@@ -477,10 +569,7 @@ func (c *Client) realmDiscoverFamilies(ctx context.Context, families []*realmFam
 	}
 	stunServers, err := realm.ResolveSTUNServers(ctx, c.realmOptions.STUNServers, c.realmOptions.Resolver, needIPv4, needIPv6)
 	if err != nil {
-		for _, family := range families {
-			_ = family.conn.Close()
-		}
-		return nil, nil, E.Cause(err, "resolve STUN servers")
+		return nil, nil, errors.Join(E.Cause(err, "resolve STUN servers"), closeRealmFamilies(families))
 	}
 	type discoverResult struct {
 		addrs []netip.AddrPort
@@ -498,7 +587,7 @@ func (c *Client) realmDiscoverFamilies(ctx context.Context, families []*realmFam
 					servers = append(servers, server)
 				}
 			}
-			addrs, discoverErr := realm.Discover(ctx, family.conn, servers)
+			addrs, discoverErr := c.realmDiscover(ctx, family.conn, servers)
 			results[i] = discoverResult{addrs: addrs, err: discoverErr}
 		}()
 	}
@@ -506,19 +595,20 @@ func (c *Client) realmDiscoverFamilies(ctx context.Context, families []*realmFam
 	var surviving []*realmFamilyConn
 	var union []netip.AddrPort
 	var errs []error
+	var cleanupErr error
 	for i, family := range families {
 		result := results[i]
 		if result.err != nil {
 			errs = append(errs, E.Cause(result.err, family.family))
-			_ = family.conn.Close()
+			cleanupErr = errors.Join(cleanupErr, family.conn.Close())
 			continue
 		}
 		family.localAddresses = result.addrs
 		surviving = append(surviving, family)
 		union = append(union, result.addrs...)
 	}
-	if len(surviving) == 0 {
-		return nil, nil, E.Cause(E.Errors(errs...), "realm STUN discovery")
+	if len(surviving) == 0 || ctx.Err() != nil || cleanupErr != nil {
+		return nil, nil, errors.Join(E.Cause(E.Errors(errs...), "realm STUN discovery"), ctx.Err(), cleanupErr, closeRealmFamilies(surviving))
 	}
 	return surviving, union, nil
 }
@@ -541,39 +631,51 @@ func (c *Client) realmRacePunch(
 		go func() {
 			peers := make([]netip.AddrPort, 0, len(peerAddresses))
 			for _, peer := range peerAddresses {
+				if !peer.IsValid() {
+					continue
+				}
+				peer = netip.AddrPortFrom(peer.Addr().Unmap(), peer.Port())
 				if peer.Addr().Is4() == family.ipv4 {
 					peers = append(peers, peer)
 				}
 			}
-			punchResult, punchErr := realm.Punch(raceCtx, family.conn, peers, metadata)
+			punchResult, punchErr := c.realmPunch(raceCtx, family.conn, peers, metadata)
 			out <- outcome{family: family, result: punchResult, err: punchErr}
 		}()
 	}
 	var errs []error
+	var winner *realmFamilyConn
+	var winnerResult realm.PunchResult
+	var cleanupErr error
 	for pending := len(families); pending > 0; pending-- {
 		result := <-out
-		if result.err == nil {
+		if winner == nil && result.err == nil && ctx.Err() == nil {
+			winner, winnerResult = result.family, result.result
+			raceCancel()
+			// Interrupt every losing native read before waiting for any late
+			// punch result. The channel is drained below: no detached losers.
+			var losers []*realmFamilyConn
 			for _, family := range families {
-				if family != result.family {
-					_ = family.conn.Close()
+				if family != winner {
+					losers = append(losers, family)
 				}
 			}
-			return result.family, result.result, nil
+			cleanupErr = errors.Join(cleanupErr, closeRealmFamilies(losers))
+		} else if result.err != nil {
+			errs = append(errs, E.Cause(result.err, result.family.family))
 		}
-		errs = append(errs, E.Cause(result.err, result.family.family))
 	}
-	for _, family := range families {
-		_ = family.conn.Close()
+	if winner != nil && ctx.Err() == nil && cleanupErr == nil {
+		return winner, winnerResult, nil
 	}
-	return nil, realm.PunchResult{}, E.Cause(E.Errors(errs...), "realm punch")
+	return nil, realm.PunchResult{}, errors.Join(E.Cause(E.Errors(errs...), "realm punch"), ctx.Err(), cleanupErr, closeRealmFamilies(families))
 }
 
 func (c *Client) authenticateAndWrap(ctx context.Context, rawConn io.Closer, createTransport func(quicConnPtr **quic.Conn) (http.RoundTripper, error)) (*clientQUICConnection, error) {
 	var quicConn *quic.Conn
 	http3Transport, err := createTransport(&quicConn)
 	if err != nil {
-		rawConn.Close()
-		return nil, err
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, quicConn, nil, err)
 	}
 	request := &http.Request{
 		Method: http.MethodPost,
@@ -592,20 +694,25 @@ func (c *Client) authenticateAndWrap(ctx context.Context, rawConn io.Closer, cre
 	authCtx, authCancel := context.WithTimeout(ctx, handshakeTimeout)
 	defer authCancel()
 	response, err := http3Transport.RoundTrip(request.WithContext(authCtx))
-	if err != nil {
-		if quicConn != nil {
-			quicConn.CloseWithError(0, "")
-		}
-		rawConn.Close()
-		return nil, err
+	var body io.ReadCloser
+	if response != nil && response.Body != nil {
+		body = newRealmHTTPBody(authCtx, response.Body, &c.runtime)
+		response.Body = body
 	}
-	response.Body.Close()
+	if err != nil {
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, quicConn, body, err)
+	}
+	if response == nil || body == nil {
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, quicConn, body, errors.New("authentication returned no response body"))
+	}
+	if closeErr := body.Close(); closeErr != nil {
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, quicConn, nil, c.runtime.recordClose(closeErr))
+	}
 	if response.StatusCode != protocol.StatusAuthOK {
-		if quicConn != nil {
-			quicConn.CloseWithError(0, "")
-		}
-		rawConn.Close()
-		return nil, E.New("authentication failed, status code: ", response.StatusCode)
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, quicConn, nil, E.New("authentication failed, status code: ", response.StatusCode))
+	}
+	if quicConn == nil {
+		return nil, c.closeFailedAuthentication(rawConn, http3Transport, nil, nil, errors.New("authentication returned no QUIC connection"))
 	}
 	authResponse := protocol.AuthResponseFromHeader(response.Header)
 	actualTx := authResponse.Rx
@@ -621,12 +728,13 @@ func (c *Client) authenticateAndWrap(ctx context.Context, rawConn io.Closer, cre
 		))
 	}
 	conn := &clientQUICConnection{
-		quicConn:    quicConn,
-		rawConn:     rawConn,
-		connDone:    make(chan struct{}),
-		udpDisabled: !authResponse.UDPEnabled,
-		udpConnMap:  make(map[uint32]*udpPacketConn),
-		closeIdle:   &c.closeIdle,
+		quicConn:      quicConn,
+		rawConn:       rawConn,
+		httpTransport: http3Transport,
+		connDone:      make(chan struct{}),
+		udpDisabled:   !authResponse.UDPEnabled,
+		udpConnMap:    make(map[uint32]*udpPacketConn),
+		closeIdle:     &c.closeIdle,
 	}
 	c.runtime.register(conn)
 	if !c.udpDisabled {
@@ -703,6 +811,8 @@ func (c *Client) CloseWithError(err error) error {
 	}
 	if conn != nil {
 		conn.closeWithError(err)
+		conn.closeTransport()
+		return conn.transportErr
 	}
 	return nil
 }
@@ -739,20 +849,21 @@ type clientOffer struct {
 }
 
 type clientQUICConnection struct {
-	runtimeOwner *clientRuntime
+	runtimeOwner  *clientRuntime
 	transportOnce sync.Once
-	transportErr error
+	transportErr  error
 
-	quicConn     *quic.Conn
-	rawConn      io.Closer
-	connDone     chan struct{}
-	connErr      error
-	udpDisabled  bool
-	access       sync.RWMutex
-	udpConnMap   map[uint32]*udpPacketConn
-	udpSessionID uint32
-	streams      int
-	closeIdle    *atomic.Bool
+	quicConn      *quic.Conn
+	rawConn       io.Closer
+	httpTransport http.RoundTripper
+	connDone      chan struct{}
+	connErr       error
+	udpDisabled   bool
+	access        sync.RWMutex
+	udpConnMap    map[uint32]*udpPacketConn
+	udpSessionID  uint32
+	streams       int
+	closeIdle     *atomic.Bool
 }
 
 func (c *clientQUICConnection) active() bool {
@@ -829,8 +940,20 @@ func (c *clientQUICConnection) closeWithError(err error) {
 
 func (c *clientQUICConnection) closeTransport() {
 	c.transportOnce.Do(func() {
-		c.transportErr = errors.Join(c.quicConn.CloseWithError(0, ""), c.rawConn.Close())
-		if c.runtimeOwner!=nil{c.runtimeOwner.retire(c,c.transportErr)}
+		var closers []func() error
+		if c.quicConn != nil {
+			closers = append(closers, func() error { return c.quicConn.CloseWithError(0, "") })
+		}
+		if closer, ok := c.httpTransport.(io.Closer); ok {
+			closers = append(closers, closer.Close)
+		}
+		if c.rawConn != nil {
+			closers = append(closers, c.rawConn.Close)
+		}
+		c.transportErr = joinClientClosers(closers...)
+		if c.runtimeOwner != nil {
+			c.runtimeOwner.retire(c, c.transportErr)
+		}
 	})
 }
 

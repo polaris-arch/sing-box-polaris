@@ -126,10 +126,8 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		case C.TypeDirect, C.TypeSelector, C.TypeURLTest, C.TypeShadowsocks, C.TypeVMess, C.TypeVLESS, C.TypeTrojan, C.TypeAnyTLS, C.TypeSnell, C.TypeShadowTLS, C.TypeSSH, C.TypeHysteria, C.TypeTUIC, C.TypeNaive, C.TypeTor, C.TypeTailcat:
 		case C.TypeHysteria2:
 			value, ok := outbound.Options.(*option.Hysteria2OutboundOptions)
-			if !ok {
+			if !ok || value == nil {
 				pending(path)
-			} else if value.Realm != nil {
-				pending(path + ".realm")
 			}
 		case C.TypeSOCKS:
 			if _, ok := outbound.Options.(*option.SOCKSOutboundOptions); !ok {

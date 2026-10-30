@@ -1,5 +1,8 @@
 module github.com/sagernet/sing-quic
 
+// Keep standalone native checks on the same pinned NAT completion delta as the parent module.
+replace github.com/libp2p/go-nat => ../go-nat
+
 go 1.25.0
 
 require (

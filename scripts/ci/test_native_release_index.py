@@ -8,6 +8,7 @@ class TestNative(unittest.TestCase):
   root=R.parent.parent
   index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic-source'},'platforms':[],'legalFiles':[]}
   material=n.distribution_materials(index,root)
+  self.assertNotIn('scripts/ci/tls_fingerprint_probe.py',material['inputs'])
   for path in ('release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
                'scripts/ci/client_source.py','release/dependency-sources/clients/runtime/recipe-index.json'):
    self.assertEqual(material['inputs'][path],n.sha((root/path).read_bytes()))
@@ -235,3 +236,151 @@ class TestWin7ReceiptMatrix(unittest.TestCase):
       if matrix['arch']=='386':
        with self.assertRaisesRegex(ValueError,'binary setting differs from matrix: GO386'):
         n.collect(td,{**matrix,'go386':''})
+
+
+def sealed_row_fixture(source='a'*40, tree='b'*40, version=None):
+ """Synthetic source-control receipt, never native acceptance evidence."""
+ import tls_fingerprint_probe as tls
+ import test_tls_fingerprint_probe as controls
+ version=version or json.loads((R.parents[1]/'release/ci/github-release.json').read_text())['version']
+ ident='sing-box-'+version+'-linux-amd64'
+ graph={'settings':{},'normalModules':[],'prebuiltAcquisitionModules':[],'localReplacements':[]}
+ for item in tls.linked_module_pins().values():
+  row={'module':item['path'],'version':item['version'],'h1':item['sum']}
+  if 'replace' in item:
+   r=item['replace'];row['replacement']={'module':r['path'],'version':r['version'],'h1':r['sum']};graph['localReplacements'].append(row)
+  else:graph['normalModules'].append(row)
+ document=controls.FingerprintProbeControls().fixture();document.update(sourceCommit=source,coreVersion=version)
+ checks=[dict(descriptor,exitCode=0 if descriptor['expectedPass'] else 1,output=error or '') for descriptor,_,error in tls.configuration_cases(document)]
+ row={'schema':'polaris-upstream-native-receipt-v1','id':ident,'target':'linux/amd64',
+      'variant':{'linkage':'shared-purego','libc':'','goarm':'','gomips':'','go386':'','legacy':False},
+      'version':version,'tag':'v'+version,'sourceCommit':source,'sourceTree':tree,'goVersion':'go1.27.2',
+      'tags':'with_naive_outbound,with_utls,with_gvisor,with_purego','buildID':'synthetic','rawBuildInfo':'synthetic',
+      'buildGraph':graph,'sourceIdentity':{'sourceOverlay':0,'goModSha256':'0'*64,'goSumSha256':'1'*64,'replacements':[]},
+      'archive':{'name':ident+'.tar.gz','releaseName':n.public_product_name(ident+'.tar.gz'),'bytes':1,'sha256':'2'*64,'root':ident,
+                 'members':{ident+'/sing-box':'3'*64,ident+'/libcronet.so':'4'*64}},
+      'core':{'member':'sing-box','bytes':7,'sha256':'3'*64},'sidecar':{'member':'libcronet.so','bytes':11,'sha256':'4'*64},'signatureObservation':None}
+ graph['settings'].update(GOOS='linux',GOARCH='amd64',CGO_ENABLED='0',**{'-tags':row['tags']})
+ document['buildTags']=row['tags']
+ cronet_version=json.loads((R.parents[1]/'release/polaris-candidate-inputs.json').read_text())['cronetVersion']
+ row['finalPackageCronetSmoke']={'status':'passed','os':'linux','arch':'amd64','go':row['goVersion'],'gvisorCompiled':True,'naiveOutbound':True,
+                               'linkage':'shared-purego','version':cronet_version,'librarySha256':'4'*64,'coreSha256':'3'*64}
+ proof={**{key:row[key] for key in ('sourceCommit','sourceTree','version','target')},'runId':42,'runAttempt':1,
+        'archiveSha256':'2'*64,'core':dict(row['core']),'sidecar':dict(row['sidecar']),'coreSeals':15,'sidecarSeals':15,
+        'tlsProbe':{'schema':'polaris-tls-fingerprint-runtime-probe-v1','coreSHA256':'3'*64,'coreBytes':7,'capabilities':document,
+                    'configurationChecks':checks,'networkHandshakeValidated':False},
+        'cronet':{'os':'linux','arch':'amd64','go':row['goVersion'],'linkage':'shared-purego','library':'/proc/self/fd/17',
+                  'sha256':'4'*64,'libraryBytes':11,'librarySelection':'captured-sealed-fd','version':cronet_version,'gvisorCompiled':True}}
+ row['finalPackageCronetSmoke']['sealedExecution']=proof
+ row['trustedExecution']=n.derive_trusted_execution(row,proof,{'runId':42,'runAttempt':1})
+ return row
+
+
+class TrustedExecutionControls(unittest.TestCase):
+ def check(self,row,producer=None):
+  return n.validate_trusted_execution(row,producer or {'runId':42,'runAttempt':1})
+ def test_native_observation_is_the_only_policy_source(self):
+  row=sealed_row_fixture();self.assertEqual(self.check(row),row['trustedExecution'])
+  self.assertEqual(set(row['trustedExecution']),{'schema','sourceCommit','sourceTree','loader','purposes'})
+  self.assertEqual(len(row['trustedExecution']['purposes']),5)
+  del row['trustedExecution'];del row['finalPackageCronetSmoke']['sealedExecution']
+  self.assertIsNone(self.check(row))
+ def test_policy_and_proof_are_both_required_in_existing_validator(self):
+  for missing in ('policy','proof'):
+   row=sealed_row_fixture()
+   if missing=='policy':del row['trustedExecution']
+   else:del row['finalPackageCronetSmoke']['sealedExecution']
+   with self.subTest(missing=missing),self.assertRaisesRegex(ValueError,'both policy and native sealed proof'):self.check(row)
+ def test_exact_policy_rejects_injection_malformed_source_loader_and_purposes(self):
+  mutations=[lambda p:p.update(extra=True),lambda p:p.pop('sourceTree'),lambda p:p.update(sourceCommit='c'*40),
+             lambda p:p.update(sourceTree='c'*40),lambda p:p.update(loader='path-loader'),lambda p:p['purposes'].pop(),
+             lambda p:p['purposes'].append(p['purposes'][0]),lambda p:p['purposes'].append('invented'),lambda p:p.update(purposes=[])]
+  for mutate in mutations:
+   row=sealed_row_fixture();mutate(row['trustedExecution'])
+   with self.subTest(mutate=mutate),self.assertRaises(ValueError):self.check(row)
+ def test_source_run_attempt_and_all_final_object_identities_are_bound(self):
+  import copy,jsonschema
+  row=sealed_row_fixture()
+  mutations=[lambda p:p.update(sourceCommit='c'*40),lambda p:p.update(sourceTree='c'*40),lambda p:p.update(version='other'),
+             lambda p:p.update(target='windows/amd64'),lambda p:p.update(runId=43),lambda p:p.update(runAttempt=2),
+             lambda p:p.update(archiveSha256='f'*64),lambda p:p['core'].update(sha256='f'*64),lambda p:p['sidecar'].update(sha256='f'*64),
+             lambda p:p.update(coreSeals=0),lambda p:p.update(sidecarSeals=0),lambda p:p['tlsProbe'].update(coreBytes=8),
+             lambda p:p['tlsProbe']['capabilities'].update(sourceCommit='c'*40),lambda p:p['tlsProbe']['configurationChecks'].pop(),
+             lambda p:p['cronet'].update(librarySelection='standalone-path'),lambda p:p['cronet'].update(libraryBytes=12),
+             lambda p:p['cronet'].update(sha256='f'*64),lambda p:p['cronet'].update(library='/tmp/original.so')]
+  for mutate in mutations:
+   candidate=copy.deepcopy(row);mutate(candidate['finalPackageCronetSmoke']['sealedExecution'])
+   with self.subTest(mutate=mutate),self.assertRaises((ValueError,jsonschema.ValidationError)):self.check(candidate)
+  for key in ('runId','runAttempt'):
+   with self.subTest(key=key),self.assertRaises(ValueError):self.check(row,{**{'runId':42,'runAttempt':1},key:True})
+ def test_go_graph_tags_and_vcs_identity_cannot_relabel_the_sealed_receipt(self):
+  mutations=[lambda r:r['buildGraph']['settings'].update(CG0_ENABLED='1',CGO_ENABLED='1'),
+             lambda r:r['buildGraph']['settings'].update(GOOS='darwin'),
+             lambda r:r['buildGraph']['settings'].update(**{'-tags':'with_utls'}),
+             lambda r:r['buildGraph']['settings'].update(**{'vcs.revision':'f'*40}),
+             lambda r:r['buildGraph']['settings'].update(**{'vcs.modified':'true'}),
+             lambda r:r['finalPackageCronetSmoke']['sealedExecution']['tlsProbe']['capabilities'].update(buildTags='with_utls')]
+  for mutate in mutations:
+   row=sealed_row_fixture();mutate(row)
+   with self.subTest(mutate=mutate),self.assertRaisesRegex(ValueError,'sealed execution'):self.check(row)
+ def test_platform_and_archive_member_mutations_cannot_reuse_proof(self):
+  import jsonschema
+  for platform in ('darwin/amd64','windows/amd64','linux/arm64'):
+   row=sealed_row_fixture();row['target']=platform;row['finalPackageCronetSmoke']['sealedExecution']['target']=platform
+   with self.subTest(platform=platform),self.assertRaises((ValueError,jsonschema.ValidationError)):self.check(row)
+  row=sealed_row_fixture();row['archive']['members'][row['id']+'/libcronet.so']='f'*64
+  self.assertRaisesRegex(ValueError,'archive member binding',self.check,row)
+ def test_closed_native_and_consumer_schemas_preserve_five_field_policy(self):
+  import copy,jsonschema
+  native=json.loads((R.parents[1]/'release/ci/native-release-index.schema.json').read_text())
+  consumer=json.loads((R.parents[1]/'release/ci/native-release-contract.schema.json').read_text())
+  for name in ('trustedExecution','sealedExecution'):self.assertEqual(native['$defs'][name],consumer['$defs'][name])
+  row=sealed_row_fixture()
+  for schema,shape in [(native,native['properties']['platforms']['items']), (consumer,consumer['properties']['platforms']['properties']['linux'])]:
+   # Existing consumer adds releaseAsset, so exercise its exact shared policy/proof definitions and closed smoke.
+   jsonschema.Draft202012Validator({'$defs':schema['$defs'],**schema['$defs']['trustedExecution']}).validate(row['trustedExecution'])
+   jsonschema.Draft202012Validator({'$defs':schema['$defs'],**schema['$defs']['sealedExecution']}).validate(row['finalPackageCronetSmoke']['sealedExecution'])
+   self.assertFalse(shape['additionalProperties'])
+  validator=jsonschema.Draft202012Validator({'$defs':native['$defs'],**native['properties']['platforms']['items']})
+  validator.validate(row)
+  for missing in ('policy','proof'):
+   bad=copy.deepcopy(row)
+   if missing=='policy':del bad['trustedExecution']
+   else:del bad['finalPackageCronetSmoke']['sealedExecution']
+   with self.subTest(missing=missing),self.assertRaises(jsonschema.ValidationError):validator.validate(bad)
+ def test_distribution_materials_bind_policy_and_sealed_observation(self):
+  row=sealed_row_fixture();index={'sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],
+      'sourceArchive':{'name':'synthetic-source'},'platforms':[row],'legalFiles':[]}
+  material=n.distribution_materials(index,R.parents[1]);record=material['nativeArchives'][0]
+  self.assertEqual(material['inputs']['scripts/ci/tls_fingerprint_probe.py'],n.sha((R.parents[1]/'scripts/ci/tls_fingerprint_probe.py').read_bytes()))
+  for field,value in [('trustedExecutionSHA256',row['trustedExecution']),('sealedExecutionSHA256',row['finalPackageCronetSmoke']['sealedExecution'])]:
+   self.assertEqual(record[field],n.sha(json.dumps(value,sort_keys=True,separators=(',',':')).encode()))
+ def test_real_smoke_entry_uses_two_held_sealed_objects_and_emits_only_after_success(self):
+  import copy,os
+  import tls_fingerprint_probe as tls
+  from types import SimpleNamespace
+  row=sealed_row_fixture();data={'sing-box':b'core','libcronet.so':b'library'}
+  row['archive']['members']={row['id']+'/'+k:n.sha(v) for k,v in data.items()}
+  for pin in (row['core'],row['sidecar']):pin.update(bytes=len(data[pin['member']]),sha256=n.sha(data[pin['member']]))
+  proof=row['finalPackageCronetSmoke']['sealedExecution'];receipt=copy.deepcopy(proof['tlsProbe']);receipt.update(coreBytes=row['core']['bytes'],coreSHA256=row['core']['sha256'])
+  observed=copy.deepcopy(proof['cronet']);observed.update(sha256=row['sidecar']['sha256'],libraryBytes=row['sidecar']['bytes'])
+  row['finalPackageCronetSmoke']=None;row.pop('trustedExecution')
+  for fail in (False,True):
+   with self.subTest(fail=fail),tempfile.TemporaryDirectory() as directory:
+    d=Path(directory);archive=d/row['archive']['name'];archive.write_bytes(b'archive');row['archive']['sha256']=n.sha(b'archive')
+    target=d/'native-row-synthetic.json';target.write_text(json.dumps(row));original=target.read_bytes()
+    def probe(core,**kwargs):
+     execution=kwargs['execution'];self.assertTrue(Path(core).is_file())
+     self.assertEqual(os.pread(execution.core_fd,4,0),b'core');self.assertEqual(os.pread(execution.library_fd,7,0),b'library')
+     return receipt
+    def child(execution,args,**kwargs):
+     self.assertNotIn('--library',args);self.assertIn('--sha256',args)
+     self.assertTrue(os.fstat(execution.core_fd).st_size);self.assertTrue(os.fstat(execution.library_fd).st_size)
+     return SimpleNamespace(returncode=1 if fail else 0,stdout=json.dumps(observed),stderr='synthetic failure')
+    with patch.object(n,'read_archive',return_value=(row['id'],data)),patch.object(n.platform,'system',return_value='Linux'), \
+         patch.dict(os.environ,{'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}),patch.object(tls,'probe',side_effect=probe), \
+         patch.object(tls.SealedExecution,'run',autospec=True,side_effect=child):
+     if fail:self.assertRaisesRegex(ValueError,'sealed Cronet native smoke failed',n.smoke,d)
+     else:n.smoke(d)
+    if fail:self.assertEqual(target.read_bytes(),original)
+    else:self.check(json.loads(target.read_text()))

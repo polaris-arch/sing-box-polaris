@@ -45,6 +45,10 @@ func ResolveSTUNServers(ctx context.Context, servers []string, resolver Resolver
 			}
 			entries := make([]netip.AddrPort, 0, len(addresses))
 			for _, address := range addresses {
+				address = address.Unmap()
+				if !address.IsValid() || (address.Is4() && !ipv4) || (address.Is6() && !ipv6) {
+					continue
+				}
 				entries = append(entries, netip.AddrPortFrom(address, uint16(portNumber)))
 			}
 			return entries, nil

@@ -101,8 +101,14 @@ func (c *outboundRuntimeTLS) CreateTransport(raw net.Conn, connection **quic.Con
 	return transport
 }
 
-func (c *outboundRuntimeTLS) CreatePacketTransport(net.PacketConn, net.Addr, **quic.Conn, *quic.Config) http.RoundTripper {
-	return outboundFailedRoundTripper{errors.New("realm packet transport has no ordinary-node runtime contract")}
+func (c *outboundRuntimeTLS) CreatePacketTransport(raw net.PacketConn, remote net.Addr, connection **quic.Conn, config *quic.Config) http.RoundTripper {
+	carrier, err := newOutboundRealmPacketCarrier(raw, remote)
+	if err != nil {
+		return outboundFailedRoundTripper{err}
+	}
+	// Reuse the native socket/provider callback fences and HTTP3 registration.
+	// The carrier writes through Realm obfuscation and never exports its raw fd.
+	return c.CreateTransport(carrier, connection, config)
 }
 
 type outboundHTTP3Closer struct{ transport *http3.Transport }

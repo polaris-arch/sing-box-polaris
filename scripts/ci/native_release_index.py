@@ -112,6 +112,87 @@ def expected_native(version):
  if len(result)!=44:raise ValueError('baseline native matrix no longer has 44 unique rows')
  return result
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def trusted_execution_definition():
+ # The native schema owns the vocabulary; all producer/publisher calls use this validator.
+ return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())['$defs']['trustedExecution']
+
+
+def execution_run():
+ values = [os.environ.get('GITHUB_RUN_ID', ''), os.environ.get('GITHUB_RUN_ATTEMPT', '')]
+ if any(not re.fullmatch('[1-9][0-9]*', value) for value in values):
+  raise ValueError('sealed execution requires actual workflow run/attempt')
+ return dict(zip(('runId', 'runAttempt'), map(int, values)))
+
+
+def derive_trusted_execution(row, proof, producer, source_root=ROOT):
+ """Only exact-object native observations can yield the five-field App policy."""
+ import jsonschema
+ from tls_fingerprint_probe import validate, validate_configuration_checks, producer_module_identities
+ schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
+ jsonschema.Draft202012Validator(schema['$defs']['sealedExecution']).validate(proof)
+ if row['target'] != 'linux/amd64' or row['variant']['linkage'] != 'shared-purego' or row['variant']['legacy'] or row['variant']['libc']:
+  raise ValueError('trusted execution exact-object platform is unsupported')
+ settings = row['buildGraph']['settings']
+ tags = set(row['tags'].split(','))
+ if (settings.get('GOOS'), settings.get('GOARCH'), settings.get('CGO_ENABLED')) != ('linux','amd64','0') or set(settings.get('-tags','').split(',')) != tags or not {'with_purego','with_naive_outbound','with_utls','with_gvisor'} <= tags:
+  raise ValueError('sealed execution actual Go build settings differ')
+ if settings.get('vcs.revision', row['sourceCommit']) != row['sourceCommit'] or settings.get('vcs.modified', 'false') != 'false':
+  raise ValueError('sealed execution Go source identity differs')
+ if row['core'].get('member') != 'sing-box' or not row['sidecar'] or row['sidecar'].get('member') != 'libcronet.so':
+  raise ValueError('sealed execution requires the selected Linux core and sidecar')
+ for key in ('sourceCommit', 'sourceTree', 'version', 'target'):
+  if proof[key] != row[key]: raise ValueError('sealed execution source/target binding differs: '+key)
+ for key in ('runId', 'runAttempt'):
+  if type(producer[key]) is not int or proof[key] != producer[key]:
+   raise ValueError('sealed execution workflow run/attempt differs')
+ if proof['archiveSha256'] != row['archive']['sha256'] or proof['core'] != row['core'] or proof['sidecar'] != row['sidecar']:
+  raise ValueError('sealed execution final package bytes differ')
+ for pin in (row['core'], row['sidecar']):
+  if not pin or row['archive']['members'].get(row['archive']['root']+'/'+pin['member']) != pin['sha256']:
+   raise ValueError('sealed execution archive member binding differs')
+ receipt = proof['tlsProbe']
+ if set(receipt['capabilities']['buildTags'].split(',')) != tags:
+  raise ValueError('sealed execution capability/Go tags differ')
+ if receipt['coreSHA256'] != row['core']['sha256'] or receipt['coreBytes'] != row['core']['bytes']:
+  raise ValueError('sealed TLS core identity differs')
+ validate(receipt['capabilities'], source=row['sourceCommit'], version=row['version'], go_version=row['goVersion'],
+          target=row['target'], expected_modules=producer_module_identities(row['buildGraph']), source_root=source_root)
+ validate_configuration_checks(receipt['capabilities'], receipt['configurationChecks'])
+ observed = proof['cronet']
+ expected = {'os':'linux', 'arch':'amd64', 'go':row['goVersion'], 'linkage':'shared-purego',
+             'gvisorCompiled':True, 'sha256':row['sidecar']['sha256'], 'libraryBytes':row['sidecar']['bytes'],
+             'librarySelection':'captured-sealed-fd'}
+ if any(type(observed.get(k)) is not type(v) or observed[k] != v for k,v in expected.items()):
+  raise ValueError('captured sealed Cronet observation differs')
+ if not re.fullmatch('/proc/self/fd/[0-9]+', observed['library']):
+  raise ValueError('captured Cronet object observation is not an owned FD')
+ smoke = row['finalPackageCronetSmoke']
+ if not smoke or any(smoke.get(k) != v for k,v in {
+     'status':'passed','os':'linux','arch':'amd64','go':row['goVersion'],'gvisorCompiled':True,
+     'naiveOutbound':True,'linkage':'shared-purego','version':observed['version'],
+     'librarySha256':row['sidecar']['sha256'],'coreSha256':row['core']['sha256']}.items()):
+  raise ValueError('sealed execution and native smoke differ')
+ definition = trusted_execution_definition()['properties']
+ return {'schema':definition['schema']['const'], 'sourceCommit':row['sourceCommit'], 'sourceTree':row['sourceTree'],
+         'loader':definition['loader']['const'], 'purposes':list(definition['purposes']['items']['enum'])}
+
+
+def validate_trusted_execution(row, producer, source_root=ROOT):
+ smoke = row.get('finalPackageCronetSmoke')
+ proof = smoke.get('sealedExecution') if isinstance(smoke, dict) else None
+ present = 'trustedExecution' in row
+ has_proof = isinstance(smoke, dict) and 'sealedExecution' in smoke
+ if not has_proof and not present: return None # historical/unsupported rows never acquire authority
+ if proof is None or not present: raise ValueError('trusted execution requires both policy and native sealed proof')
+ expected = derive_trusted_execution(row, proof, producer, source_root)
+ if row['trustedExecution'] != expected:
+  raise ValueError('trusted execution policy differs from native proof')
+ return expected
+
+
 def collect(directory,matrix):
  commit,tree=identity();d=Path(directory);row_count=0
  for p in sorted(d.iterdir()):
@@ -138,6 +219,7 @@ def collect(directory,matrix):
    if value is not None and settings.get(key,'').split(',')[0]!=str(value):raise ValueError('binary setting differs from matrix: '+key)
   def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
   row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':commit,'sourceTree':tree,'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source_identity(),'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
+  validate_trusted_execution(row, {})
   (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n');row_count+=1
  if row_count!=1:raise ValueError(f'expected one native archive, got {row_count}')
  for glob,expected in [('*.deb',int('debian' in matrix)),('*.rpm',int('rpm' in matrix)),('*.pkg.tar.zst',int('pacman' in matrix)),('*_linux_*.apk',int('alpine' in matrix)),('*.ipk',len(matrix.get('openwrt','').split())),('*_openwrt_*.apk',len(matrix.get('openwrt','').split()))]:
@@ -180,6 +262,9 @@ def smoke(directory):
  if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
  pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
  if Path('.github/CRONET_GO_VERSION').read_text(encoding='utf-8').strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
+ # Never reuse a policy/proof from an earlier invocation or different final bytes.
+ row.pop('trustedExecution', None)
+ protected = platform.system() == 'Linux' and row['target'] == 'linux/amd64' and row['variant']['linkage'] == 'shared-purego' and not row['variant'].get('legacy') and not row['variant'].get('libc')
  with smoke_temp_directory() as td:
   if root!=row['archive']['root'] or {root+'/'+k for k in members}!=set(row['archive']['members']):raise ValueError('archive member inventory changed')
   for name,data in members.items():
@@ -188,17 +273,40 @@ def smoke(directory):
   core=Path(td)/row['core']['member'];core.chmod(0o755)
   from tls_fingerprint_probe import probe, producer_module_identities
   modules=producer_module_identities(row['buildGraph'])
-  probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules)
-  args=[str(core),'tools','cronet','--expected-version',pins['cronetVersion']]
-  if row['sidecar']:args+=['--library',str(Path(td)/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']]
-  observed=json.loads(run(*args,cwd=td))
+  proof = None
+  if protected:
+   from tls_fingerprint_probe import sealed_execution
+   import fcntl
+   context = execution_run()
+   with sealed_execution(core, Path(td)/row['sidecar']['member'], row['core'], row['sidecar']) as execution:
+    receipt = probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules,execution=execution)
+    result = execution.run(['tools','cronet','--expected-version',pins['cronetVersion'],'--sha256',row['sidecar']['sha256']],cwd=td,text=True,capture_output=True,timeout=30)
+    if result.returncode != 0: raise ValueError('sealed Cronet native smoke failed: '+result.stderr)
+    observed = json.loads(result.stdout)
+    proof = {**{key:row[key] for key in ('sourceCommit','sourceTree','version','target')}, **context,
+             'archiveSha256':row['archive']['sha256'],'core':row['core'],'sidecar':row['sidecar'],
+             'coreSeals':fcntl.fcntl(execution.core_fd, fcntl.F_GET_SEALS),
+             'sidecarSeals':fcntl.fcntl(execution.library_fd, fcntl.F_GET_SEALS),
+             'tlsProbe':receipt,'cronet':observed}
+  else:
+   probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules)
+   args=[str(core),'tools','cronet','--expected-version',pins['cronetVersion']]
+   if row['sidecar']:args+=['--library',str(Path(td)/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']]
+   observed=json.loads(run(*args,cwd=td))
   expected_os,expected_arch=row['target'].split('/')
   for k,v in [('os',expected_os),('arch',expected_arch),('go',row['goVersion']),('linkage',row['variant']['linkage']),('gvisorCompiled',True),('version',pins['cronetVersion'])]:
    if observed.get(k)!=v:raise ValueError('Cronet smoke mismatch '+k)
   if row['sidecar'] and observed.get('sha256')!=row['sidecar']['sha256']:raise ValueError('Cronet sidecar mismatch')
   if 'with_naive_outbound' not in row['tags'].split(','):raise ValueError('Naive tag missing')
   row['finalPackageCronetSmoke']={'status':'passed','os':expected_os,'arch':expected_arch,'go':observed['go'],'gvisorCompiled':True,'naiveOutbound':True,'linkage':observed['linkage'],'version':observed['version'],'librarySha256':row['sidecar']['sha256'] if row['sidecar'] else None,'coreSha256':row['core']['sha256']}
+  if proof:
+   row['finalPackageCronetSmoke']['sealedExecution'] = proof
+   row['trustedExecution'] = derive_trusted_execution(row, proof, context)
+   validate_trusted_execution(row, context)
+ # No result survives a changed final archive or failed cleanup.
+ if sha(p.read_bytes()) != row['archive']['sha256']: raise ValueError('archive changed during native smoke')
  rows[0].write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n')
+
 
 def validate_distribution_assessment(catalog):
  if not isinstance(catalog,dict) or catalog.get('schema')!=1:
@@ -252,6 +360,9 @@ def distribution_materials(index, root=Path('.')):
          'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
          'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
          '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
+ if any('trustedExecution' in row for row in index['platforms']):
+  inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json',
+             'release/ci/native-release-contract.schema.json']
  toolchain=json.loads((root/'.github/go-toolchains.json').read_text(encoding='utf-8'))
  inputs += [x['patch'] for x in toolchain['legacy'].values()]+[toolchain['iosCPU']['patch']]
  catalog=json.loads((root/'release/ci/distribution-materials.json').read_text(encoding='utf-8'))
@@ -330,6 +441,9 @@ def distribution_materials(index, root=Path('.')):
                  'windivertSourceEvidence':'release/dependency-sources/windivert/' if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else None,
                  'repositoryNoticePaths':['licenses/repository-components/JA3-LICENSE'] +
                      (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else [])})
+  if 'trustedExecution' in row:
+   native[-1]['trustedExecutionSHA256']=sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',', ':')).encode())
+   native[-1]['sealedExecutionSHA256']=sha(json.dumps(row['finalPackageCronetSmoke']['sealedExecution'],sort_keys=True,separators=(',', ':')).encode())
  return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
          'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],
          'sourceURL':'https://github.com/'+REPO+'/tree/'+index['sourceCommit'],
@@ -353,13 +467,15 @@ def assemble(directory):
   expected_object=os.environ.get('EXPECTED_RELEASE_TAG_OBJECT')
   if not expected_object or not re.fullmatch(r'[0-9a-f]{40}',expected_object):raise ValueError('final index requires preflight tag object')
   tag_object=verify_checkout(tag,commit,expected_object)
+ context=execution_run()
  rows={}
  for p in d.rglob('native-row-*.json'):
-  r=json.loads(p.read_text(encoding='utf-8'));old=rows.get(r['id'])
+  r=json.loads(p.read_text(encoding='utf-8'));validate_trusted_execution(r, context);old=rows.get(r['id'])
   if old:
-   copy=dict(r);copy['finalPackageCronetSmoke']=old['finalPackageCronetSmoke']
-   if copy!=old:raise ValueError('conflicting native receipt')
+   plain=lambda row:{k:v for k,v in row.items() if k not in ('trustedExecution','finalPackageCronetSmoke')}
+   if plain(r)!=plain(old):raise ValueError('conflicting native receipt')
    if r['finalPackageCronetSmoke'] is None:continue
+   if old['finalPackageCronetSmoke'] is not None and r != old:raise ValueError('conflicting native smoke receipt')
   rows[r['id']]=r
  expected=expected_native(v)
  if set(rows)!=set(expected):raise ValueError('full upstream native index differs from exact 44 expected archive identities')
@@ -397,7 +513,9 @@ def assemble(directory):
   if len(matches)!=1:raise ValueError('missing unique successful native smoke API evidence: '+name)
   native_jobs[key]={'id':matches[0]['id'],'name':name}
  # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
- for row in rows.values():row['archive']['releaseName']=public_product_name(row['archive']['name'])
+ for row in rows.values():
+  validate_trusted_execution(row, context)
+  row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
  index['distributionMaterials']=distribution_materials(index)
  if final:

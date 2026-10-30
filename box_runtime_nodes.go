@@ -67,6 +67,8 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	// Its fingerprint must include them, rather than merely retaining a provider
 	// edge to an unchanged manager with stale captured detours/defaults.
 	var providerHTTP []option.HTTPClientOptions
+	var realmHTTP []option.HTTPClientOptions
+	var realmNodes []string
 	dashboardHTTP, err := runtimeDashboardHTTPConfigs(options)
 	if err != nil {
 		return nil, nil, err
@@ -354,6 +356,48 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 					deps = append(deps, "dns-router")
 				}
 			}
+			if hysteria, ok := outbound.Options.(*option.Hysteria2OutboundOptions); ok && hysteria != nil && hysteria.Realm != nil {
+				// Control HTTP always belongs to the captured manager. Literal-only
+				// STUN without mapping never consults Realm's resolver; keeping that
+				// unused router would manufacture a bootstrap cycle. Mapping still
+				// needs DNS for hostnames learned later from device discovery.
+				deps = append(deps, "http-manager")
+				if hysteria.Realm.STUNServersIsDomain() || (hysteria.Realm.PortMapping != nil && hysteria.Realm.PortMapping.Enabled) {
+					deps = append(deps, "dns-router")
+					// Realm resolves STUN and discovered mapping-device hostnames on
+					// its captured resolver. Empty Server/literal STUN cannot hide it.
+					resolver := hysteria.DomainResolver
+					if resolver == nil || (resolver.Server == "" && resolver.Mode != option.DomainResolverModeRules) {
+						resolver = routeOptions.DefaultDomainResolver
+					}
+					if resolver != nil && resolver.Server != "" {
+						deps = append(deps, "dns-transport:"+resolver.Server)
+					} else if (resolver == nil || resolver.Mode != option.DomainResolverModeRules) && len(dnsOptions.Servers) > 1 {
+						return nil, nil, fmt.Errorf("runtime Realm STUN/device lookup requires an explicit or default domain resolver: %s", name)
+					}
+				}
+				client := common.PtrValueOrDefault(hysteria.Realm.HTTPClient)
+				for _, tag := range []string{client.Tag, routeOptions.DefaultHTTPClient} {
+					if tag == "" {
+						continue
+					}
+					matches := 0
+					for _, definition := range options.HTTPClients {
+						if definition.Tag == tag {
+							matches++
+						}
+					}
+					if matches != 1 {
+						return nil, nil, fmt.Errorf("runtime Realm HTTP client requires one definition: %s", tag)
+					}
+				}
+				if client.Tag == "" || client.ResolveOnDetour {
+					// ResolveTransport creates an inline owner in this manager.
+					// A plain named reference borrows its existing named definition.
+					realmHTTP = append(realmHTTP, client)
+				}
+				realmNodes = append(realmNodes, name)
+			}
 		}
 		_, capturesDialerDefaults := outbound.Options.(option.DialerOptionsWrapper)
 		node, err := makeNode(name, &outbound, deps, capturesDialerDefaults)
@@ -452,6 +496,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		allHTTP = append(allHTTP, client.Options())
 	}
 	allHTTP = append(allHTTP, providerHTTP...)
+	allHTTP = append(allHTTP, realmHTTP...)
 	for _, client := range dashboardHTTP {
 		allHTTP = append(allHTTP, client.Options)
 	}
@@ -475,6 +520,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		hasResolver := resolver != nil && (resolver.Server != "" || resolver.Mode == option.DomainResolverModeRules)
 		if value.Detour == "" || value.ResolveOnDetour || hasResolver {
 			httpDeps = append(httpDeps, "dns-router")
+			if !hasResolver {
+				resolver = routeOptions.DefaultDomainResolver
+			}
 			if resolver != nil && resolver.Server != "" {
 				httpDeps = append(httpDeps, "dns-transport:"+resolver.Server)
 			}
@@ -483,9 +531,10 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	httpConfig := struct {
 		Clients        []option.HTTPClient
 		ProviderInline []option.HTTPClientOptions
+		RealmInline    []option.HTTPClientOptions
 		Dashboard      []runtimeDashboardHTTPConfig
 		Default        string
-	}{options.HTTPClients, providerHTTP, dashboardHTTP, routeOptions.DefaultHTTPClient}
+	}{options.HTTPClients, providerHTTP, realmHTTP, dashboardHTTP, routeOptions.DefaultHTTPClient}
 	httpNode, err := makeNode("http-manager", httpConfig, httpDeps, true)
 	if err != nil {
 		return nil, nil, err
@@ -564,6 +613,37 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			}
 		}
 		configs[name] = config
+	}
+	for _, name := range realmNodes {
+		// Ordinary ownership SCCs (e.g. DNS/direct) remain valid. A Realm
+		// consumer cannot bootstrap through its own HTTP/STUN/detour closure,
+		// directly or through another consumer/default/endpoint.
+		seen := make(map[string]bool)
+		var visit func(string) error
+		visit = func(dependency string) error {
+			if dependency == name {
+				return fmt.Errorf("runtime Realm dependency cycle: %s", name)
+			}
+			if seen[dependency] {
+				return nil
+			}
+			config, exists := configs[dependency]
+			if !exists {
+				return fmt.Errorf("missing runtime Realm dependency: %s", dependency)
+			}
+			seen[dependency] = true
+			for _, next := range config.node.dependencies {
+				if err := visit(next); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		for _, dependency := range configs[name].node.dependencies {
+			if err := visit(dependency); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 	var nodes []runtimeDependencyNode
 	for _, config := range configs {

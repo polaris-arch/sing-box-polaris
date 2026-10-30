@@ -672,6 +672,9 @@
                 "coreSha256": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
+                },
+                "sealedExecution": {
+                  "$ref": "#/$defs/sealedExecution"
                 }
               },
               "required": [
@@ -725,6 +728,9 @@
                 "url"
               ],
               "additionalProperties": false
+            },
+            "trustedExecution": {
+              "$ref": "#/$defs/trustedExecution"
             }
           },
           "required": [
@@ -749,7 +755,46 @@
             "finalPackageCronetSmoke",
             "releaseAsset"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "trustedExecution"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                },
+                "required": [
+                  "finalPackageCronetSmoke"
+                ]
+              },
+              "then": {
+                "required": [
+                  "trustedExecution"
+                ]
+              }
+            }
+          ]
         },
         "win": {
           "type": "object",
@@ -1158,6 +1203,9 @@
                 "coreSha256": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
+                },
+                "sealedExecution": {
+                  "$ref": "#/$defs/sealedExecution"
                 }
               },
               "required": [
@@ -1211,6 +1259,9 @@
                 "url"
               ],
               "additionalProperties": false
+            },
+            "trustedExecution": {
+              "$ref": "#/$defs/trustedExecution"
             }
           },
           "required": [
@@ -1235,7 +1286,46 @@
             "finalPackageCronetSmoke",
             "releaseAsset"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "trustedExecution"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                },
+                "required": [
+                  "finalPackageCronetSmoke"
+                ]
+              },
+              "then": {
+                "required": [
+                  "trustedExecution"
+                ]
+              }
+            }
+          ]
         },
         "mac-x64": {
           "type": "object",
@@ -1644,6 +1734,9 @@
                 "coreSha256": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
+                },
+                "sealedExecution": {
+                  "$ref": "#/$defs/sealedExecution"
                 }
               },
               "required": [
@@ -1697,6 +1790,9 @@
                 "url"
               ],
               "additionalProperties": false
+            },
+            "trustedExecution": {
+              "$ref": "#/$defs/trustedExecution"
             }
           },
           "required": [
@@ -1721,7 +1817,46 @@
             "finalPackageCronetSmoke",
             "releaseAsset"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "trustedExecution"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                },
+                "required": [
+                  "finalPackageCronetSmoke"
+                ]
+              },
+              "then": {
+                "required": [
+                  "trustedExecution"
+                ]
+              }
+            }
+          ]
         },
         "mac-arm64": {
           "type": "object",
@@ -2130,6 +2265,9 @@
                 "coreSha256": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
+                },
+                "sealedExecution": {
+                  "$ref": "#/$defs/sealedExecution"
                 }
               },
               "required": [
@@ -2183,6 +2321,9 @@
                 "url"
               ],
               "additionalProperties": false
+            },
+            "trustedExecution": {
+              "$ref": "#/$defs/trustedExecution"
             }
           },
           "required": [
@@ -2207,7 +2348,46 @@
             "finalPackageCronetSmoke",
             "releaseAsset"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "trustedExecution"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "finalPackageCronetSmoke": {
+                    "type": "object",
+                    "required": [
+                      "sealedExecution"
+                    ]
+                  }
+                },
+                "required": [
+                  "finalPackageCronetSmoke"
+                ]
+              },
+              "then": {
+                "required": [
+                  "trustedExecution"
+                ]
+              }
+            }
+          ]
         }
       },
       "required": [
@@ -2245,6 +2425,237 @@
     "polarisTag": {
       "type": "string",
       "pattern": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)-polaris-(?:alpha|beta|rc)\\.(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*))?(?![\\s\\S])"
+    },
+    "trustedExecution": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "polaris-trusted-execution-v1"
+        },
+        "sourceCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "sourceTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "loader": {
+          "const": "linux-sealed-fd-v1"
+        },
+        "purposes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "check-config-v1",
+              "tls-inventory-v1",
+              "run-main-v1",
+              "run-login-v1",
+              "run-speedtest-v1"
+            ]
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "sourceCommit",
+        "sourceTree",
+        "loader",
+        "purposes"
+      ],
+      "additionalProperties": false
+    },
+    "sealedExecution": {
+      "type": "object",
+      "properties": {
+        "sourceCommit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "sourceTree": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "version": {
+          "type": "string"
+        },
+        "target": {
+          "const": "linux/amd64"
+        },
+        "runId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runAttempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "archiveSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "core": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._+-]+$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "member",
+            "bytes",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "sidecar": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._+-]+$"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "member",
+            "bytes",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "coreSeals": {
+          "const": 15
+        },
+        "sidecarSeals": {
+          "const": 15
+        },
+        "tlsProbe": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "const": "polaris-tls-fingerprint-runtime-probe-v1"
+            },
+            "coreSHA256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "coreBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "capabilities": {
+              "type": "object"
+            },
+            "configurationChecks": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object"
+              }
+            },
+            "networkHandshakeValidated": {
+              "const": false
+            }
+          },
+          "required": [
+            "schema",
+            "coreSHA256",
+            "coreBytes",
+            "capabilities",
+            "configurationChecks",
+            "networkHandshakeValidated"
+          ],
+          "additionalProperties": false
+        },
+        "cronet": {
+          "type": "object",
+          "properties": {
+            "os": {
+              "const": "linux"
+            },
+            "arch": {
+              "const": "amd64"
+            },
+            "go": {
+              "type": "string",
+              "pattern": "^go1\\.[0-9]+\\.[0-9]+$"
+            },
+            "linkage": {
+              "const": "shared-purego"
+            },
+            "library": {
+              "type": "string",
+              "pattern": "^/proc/self/fd/[0-9]+$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "libraryBytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "librarySelection": {
+              "const": "captured-sealed-fd"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+\\.\\d+\\.\\d+$"
+            },
+            "gvisorCompiled": {
+              "const": true
+            }
+          },
+          "required": [
+            "os",
+            "arch",
+            "go",
+            "linkage",
+            "library",
+            "sha256",
+            "libraryBytes",
+            "librarySelection",
+            "version",
+            "gvisorCompiled"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "sourceCommit",
+        "sourceTree",
+        "version",
+        "target",
+        "runId",
+        "runAttempt",
+        "archiveSha256",
+        "core",
+        "sidecar",
+        "coreSeals",
+        "sidecarSeals",
+        "tlsProbe",
+        "cronet"
+      ],
+      "additionalProperties": false
     }
   }
 }
