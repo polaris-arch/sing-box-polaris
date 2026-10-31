@@ -334,12 +334,24 @@ func TestRuntimeManualSelectionDuringFinalStageRejectsStaleCandidate(t *testing.
 	}
 	barrier.open()
 	operation := runtimeTestReceiveApply(t, result)
-	if operation.State != "ABORTING_UNAPPLIED" || f.identity() != selected {
-		t.Fatal("candidate overwrote a concurrent manual choice")
+	observedIdentity := f.identity()
+	t.Logf("manual choice: returned-state=%s selected=%+v current=%+v before=%+v operation-active=%+v errors=%+v", operation.State, selected, observedIdentity, operation.Before, operation.Active, operation.Errors)
+	if observedIdentity != selected || observedIdentity.Revision != before.Revision || observedIdentity.ControlRevision != before.ControlRevision+1 {
+		t.Fatalf("candidate changed concurrent manual identity: selected=%+v current=%+v operation=%+v", selected, observedIdentity, operation)
+	}
+	// Apply observes an asynchronous abort. Like the reference/source-producer
+	// contracts, its returned snapshot may already be terminal. This is not a
+	// relaxation of identity, graph publication or user-selection safety.
+	if operation.State != "ABORTING_UNAPPLIED" && operation.State != "ABORTED_UNAPPLIED" {
+		t.Fatalf("stale candidate did not abort: state=%s errors=%+v", operation.State, operation.Errors)
 	}
 	group, _ := oldView.outbounds.Outbound("select")
 	if group.(adapter.OutboundGroup).Selected("tcp").Tag() != "b" {
-		t.Fatal("manual choice was lost")
+		t.Fatalf("manual choice was lost: selected=%s identity=%+v", group.(adapter.OutboundGroup).Selected("tcp").Tag(), f.identity())
+	}
+	status, err := f.box.GetRuntimeConfigStatus("actor-a", selected.Incarnation, request.TransactionID)
+	if err != nil || status.Active != selected || status.Operation == nil || (status.Operation.State != "ABORTING_UNAPPLIED" && status.Operation.State != "ABORTED_UNAPPLIED") {
+		t.Fatalf("stale candidate reconciliation lost manual identity: status=%+v error=%v", status, err)
 	}
 	oldLease.Release()
 	// A new plan at the new control revision can commit and migrate the choice.

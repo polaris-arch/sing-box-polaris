@@ -384,3 +384,102 @@ class TrustedExecutionControls(unittest.TestCase):
      else:n.smoke(d)
     if fail:self.assertEqual(target.read_bytes(),original)
     else:self.check(json.loads(target.read_text()))
+
+class LocalDevelopmentExecutionControls(unittest.TestCase):
+ """Source controls only; these synthetic objects are not native evidence."""
+ def setUp(self):
+  import shutil
+  directory=tempfile.TemporaryDirectory(prefix='polaris-local-core-fixture-')
+  self.addCleanup(directory.cleanup)
+  self.source=Path(directory.name)
+  self.assertNotEqual(self.source.resolve(),n.ROOT.resolve())
+  def copy(relative):
+   relative=Path(relative)
+   self.assertFalse(relative.is_absolute())
+   self.assertNotIn('..',relative.parts)
+   original=n.ROOT/relative;target=self.source/relative
+   self.assertTrue(original.is_file())
+   self.assertFalse(original.is_symlink())
+   target.parent.mkdir(parents=True,exist_ok=True)
+   shutil.copyfile(original,target)
+  # The real validator reads these files from the selected Core, including
+  # the complete source-owned replacement inventory and its original delta.
+  manifest_path='release/dependency-sources/metacubex-utls-replacement.json'
+  for relative in ['release/ci/tls-fingerprint-capabilities.schema.json',
+                   'release/GO_VERSION','option/tls.go','go.mod','go.sum',manifest_path]:
+   copy(relative)
+  manifest=json.loads((self.source/manifest_path).read_text())
+  copy(manifest['patch'])
+  for relative in manifest['files']:
+   copy(Path(manifest['replacementPath'])/relative)
+  self.replacement_patch=self.source/manifest['patch']
+ def fixture(self):
+  import copy
+  row=sealed_row_fixture()
+  proof=copy.deepcopy(row['finalPackageCronetSmoke']['sealedExecution'])
+  proof.pop('runId');proof.pop('runAttempt')
+  context={'schema':'polaris-local-development-execution-context-v1',
+           'coreSource':{'commit':'a'*40,'tree':'b'*40},
+           'producerSource':{'commit':'c'*40,'tree':'d'*40},'host':{'os':'linux','arch':'amd64'}}
+  return row,proof,context
+ def derive(self,row,proof,context,dirty=False):
+  from unittest.mock import patch
+  def git(*args,**kwargs):
+   self.assertEqual(args[:2],('git','-C'))
+   self.assertIn(Path(args[2]),(self.source,n.ROOT))
+   if 'status' in args:return ' M go.mod' if dirty else ''
+   identity=context['coreSource'] if args[2]==str(self.source) else context['producerSource']
+   return identity['tree' if args[-1]=='HEAD^{tree}' else 'commit']
+  with patch.object(n,'run',side_effect=git):return n.derive_local_trusted_execution(row,proof,context,self.source)
+ def test_distinct_local_context_reuses_all_exact_facts(self):
+  row,proof,context=self.fixture()
+  self.assertEqual(self.derive(row,proof,context),row['trustedExecution'])
+  self.assertNotEqual(context['coreSource'],context['producerSource'])
+  # Prove the independent Core's real material is read, rather than silently
+  # validating against producer ROOT or bypassing the replacement validator.
+  original=self.replacement_patch.read_bytes()
+  try:
+   self.replacement_patch.write_bytes(original+b'\n')
+   with self.assertRaisesRegex(ValueError,'^source-owned Meta delta digest differs$'):
+    self.derive(row,proof,context)
+  finally:self.replacement_patch.write_bytes(original)
+  import jsonschema
+  with self.assertRaises(jsonschema.ValidationError) as rejected:
+   n.derive_trusted_execution(row,proof,{'runId':42,'runAttempt':1})
+  self.assertEqual(rejected.exception.validator,'required')
+  self.assertIn(rejected.exception.message,("'runId' is a required property","'runAttempt' is a required property"))
+  print('local source control: independent Core baseline returned exact policy; owned patch tampering rejected; Formal missing-workflow rejection reached')
+ def test_workflow_identity_cannot_default_or_enter_local_context(self):
+  import copy
+  for key in ['runId','runAttempt','validationOnly','publicationEligible']:
+   row,proof,context=self.fixture();proof[key]=1
+   with self.subTest(key=key),self.assertRaises(ValueError):self.derive(row,proof,context)
+  for key in ['runId','validationOnly','path','lane']:
+   row,proof,context=self.fixture();context[key]=True
+   with self.subTest(key=key),self.assertRaises(ValueError):self.derive(row,proof,context)
+  row,proof,context=self.fixture()
+  with self.assertRaises(ValueError):self.derive(row,proof,context,dirty=True)
+ def test_local_checks_exact_types_source_seals_caps_and_actual_loader(self):
+  import copy,jsonschema
+  row,baseline,context=self.fixture()
+  self.assertEqual(self.derive(row,baseline,context),row['trustedExecution'])
+  mutations=[
+   ('core bool',lambda p:p['core'].update(bytes=True),jsonschema.ValidationError,'type',['bytes']),
+   ('core float',lambda p:p['core'].update(bytes=7.0),ValueError,'sealed execution exact member byte type differs',None),
+   ('sidecar float',lambda p:p['sidecar'].update(bytes=11.0),ValueError,'sealed execution exact member byte type differs',None),
+   ('core seals',lambda p:p.update(coreSeals=0),jsonschema.ValidationError,'const',[]),
+   ('proof source',lambda p:p.update(sourceCommit='e'*40),ValueError,'sealed execution source/target binding differs: sourceCommit',None),
+   # This is a schema const refusal, not evidence of the later Cronet guard.
+   ('standalone schema',lambda p:p['cronet'].update(librarySelection='standalone-path'),jsonschema.ValidationError,'const',['librarySelection']),
+   ('Cronet library bytes',lambda p:p['cronet'].update(libraryBytes=12),ValueError,'captured sealed Cronet observation differs',None),
+   ('configuration coverage',lambda p:p['tlsProbe']['configurationChecks'].pop(),ValueError,'incomplete sealed configuration controls',None),
+   ('capability source',lambda p:p['tlsProbe']['capabilities'].update(sourceCommit='e'*40),ValueError,'selected-core capability binding mismatch: sourceCommit',None)]
+  for name,mutation,error,reason,path in mutations:
+   proof=copy.deepcopy(baseline);mutation(proof)
+   with self.subTest(control=name):
+    with self.assertRaises(error) as rejected:self.derive(row,proof,context)
+    if error is jsonschema.ValidationError:
+     self.assertEqual(rejected.exception.validator,reason)
+     self.assertEqual(list(rejected.exception.absolute_path),path)
+    else:self.assertEqual(str(rejected.exception),reason)
+    print('local source control '+name+': '+str(rejected.exception))

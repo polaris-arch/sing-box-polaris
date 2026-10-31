@@ -1,7 +1,9 @@
 package box
 
 import (
+	"bytes"
 	"context"
+	stdjson "encoding/json"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -18,12 +20,12 @@ import (
 // graph snapshots. Other dashboard clients and TLS retain the legacy path.
 func runtimeStableAPIService(item option.Service) bool {
 	options, ok := item.Options.(*option.APIServiceOptions)
-	if item.Type != C.TypeAPI || !ok || options.Listen == nil || !netip.Addr(*options.Listen).IsLoopback() {
+	if item.Type != C.TypeAPI || !ok || options.Listen == nil || (!netip.Addr(*options.Listen).Unmap().IsLoopback() || netip.Addr(*options.Listen).Zone() != "") {
 		return false
 	}
 	return options.TLS == nil && runtimeStableDashboard(options.Dashboard) &&
 		options.Detour == "" && options.NetNs == "" && options.BindInterface == "" &&
-		options.RoutingMark == 0 && !options.TCPFastOpen && !options.TCPMultiPath
+		options.RoutingMark == 0 && !options.ReuseAddr && !options.TCPFastOpen && !options.TCPMultiPath
 }
 
 // AcquireRuntimeAPI transfers a current graph reservation plus its publication
@@ -117,4 +119,115 @@ func (s *Box) AcquireDashboardHTTP(ctx context.Context, serviceTag string) (adap
 		return nil, errors.New("dashboard HTTP client was not prepared")
 	}
 	return &runtimeDashboardHTTPLease{ctx: adapter.ContextWithRuntimeLease(ctx, lease), transport: transport, lease: lease}, nil
+}
+
+// Only address/port/secret changes share the stable control-plane owner. Tag,
+// cardinality, TLS, dashboard HTTP and every socket option remain structural.
+func runtimeAPIHandoffChanges(before, after stdjson.RawMessage) bool {
+	var left, right []map[string]stdjson.RawMessage
+	if stdjson.Unmarshal(before, &left) != nil || stdjson.Unmarshal(after, &right) != nil || len(left) != 1 || len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if string(left[i]["type"]) != `"api"` || string(right[i]["type"]) != `"api"` {
+			return false
+		}
+		for _, key := range []string{"listen", "listen_port", "secret"} {
+			delete(left[i], key)
+			delete(right[i], key)
+		}
+		a, _ := stdjson.Marshal(left[i])
+		b, _ := stdjson.Marshal(right[i])
+		if !bytes.Equal(a, b) {
+			return false
+		}
+	}
+	return true
+}
+
+func runtimeAPIIdentities(options option.Options, identity RuntimeIdentity) (map[string]adapter.RuntimeAPIIdentity, error) {
+	result := make(map[string]adapter.RuntimeAPIIdentity)
+	for i, item := range options.Services {
+		if !runtimeStableAPIService(item) {
+			continue
+		}
+		tag := item.Tag
+		if tag == "" {
+			tag = fmt.Sprint(i)
+		}
+		digest, err := adapter.RuntimeAPIConfigDigest(*item.Options.(*option.APIServiceOptions))
+		if err != nil {
+			return nil, err
+		}
+		result[tag] = adapter.RuntimeAPIIdentity{Incarnation: identity.Incarnation, Revision: identity.Revision, EffectiveDigest: identity.EffectiveDigest, ConfigurationDigest: digest}
+	}
+	return result, nil
+}
+
+func (s *Box) RuntimeAPIIngressIdentity(tag string) (adapter.RuntimeAPIIdentity, error) {
+	lease, changed, connected, err := s.AcquireRuntimeAPI()
+	if err != nil {
+		return adapter.RuntimeAPIIdentity{}, err
+	}
+	if !connected {
+		return adapter.RuntimeAPIIdentity{}, errors.New("API graph unavailable")
+	}
+	defer lease.Release()
+	view, ok := lease.View().(*runtimeView)
+	if !ok {
+		return adapter.RuntimeAPIIdentity{}, errors.New("API graph view unavailable")
+	}
+	value, ok := view.apiIdentities[tag]
+	if !ok {
+		return adapter.RuntimeAPIIdentity{}, errors.New("API ingress is not in the active graph")
+	}
+	value.Changed = changed
+	return value, nil
+}
+
+func (s *Box) prepareRuntimeAPI(ctx context.Context, graph *preparedRuntimeGraph) error {
+	s.runtime.access.Lock()
+	previous := s.runtime.options
+	s.runtime.access.Unlock()
+	for i, item := range graph.options.Services {
+		if !runtimeStableAPIService(item) || i >= len(previous.Services) {
+			return errors.New("unsupported API service handoff")
+		}
+		tag := item.Tag
+		if tag == "" {
+			tag = fmt.Sprint(i)
+		}
+		next := *item.Options.(*option.APIServiceOptions)
+		digest, err := adapter.RuntimeAPIConfigDigest(next)
+		if err != nil {
+			return err
+		}
+		old, ok := previous.Services[i].Options.(*option.APIServiceOptions)
+		if !ok {
+			return errors.New("API service type changed")
+		}
+		oldDigest, err := adapter.RuntimeAPIConfigDigest(*old)
+		if err != nil {
+			return err
+		}
+		if digest == oldDigest {
+			continue
+		}
+		member, ok := s.service.Get(tag)
+		if !ok {
+			return errors.New("API service owner unavailable")
+		}
+		owner, ok := member.(adapter.RuntimeAPIService)
+		if !ok {
+			return errors.New("API service has no listener handoff adapter")
+		}
+		handoff, err := owner.PrepareRuntimeAPI(ctx, next)
+		if handoff != nil {
+			graph.apiHandoffs = append(graph.apiHandoffs, handoff)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

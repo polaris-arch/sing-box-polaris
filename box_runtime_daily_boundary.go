@@ -23,6 +23,10 @@ func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) 
 			continue
 		}
 		switch key {
+		case "services":
+			if !runtimeAPIHandoffChanges(before[key], after[key]) {
+				runtimeChangedLeaves(key, before[key], after[key], paths)
+			}
 		case "outbounds", "endpoints", "dns", "http_clients", "certificate_providers", "ntp":
 			// Concrete protocol/range support is checked separately. Endpoints
 			// include ordinary userspace nodes, not only host interfaces.

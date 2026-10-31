@@ -128,11 +128,56 @@ def execution_run():
 
 
 def derive_trusted_execution(row, proof, producer, source_root=ROOT):
- """Only exact-object native observations can yield the five-field App policy."""
+ """Formal workflow admission retains its original schema and run authority."""
  import jsonschema
- from tls_fingerprint_probe import validate, validate_configuration_checks, producer_module_identities
  schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
  jsonschema.Draft202012Validator(schema['$defs']['sealedExecution']).validate(proof)
+ for key in ('runId', 'runAttempt'):
+  if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
+   raise ValueError('sealed execution workflow run/attempt differs')
+ return _derive_execution_facts(row, proof, source_root)
+
+
+def derive_local_trusted_execution(row, proof, context, source_root):
+ """Private local producer entry. Never accepts or invents workflow identity.
+
+ Developer compilation selects its lane; this closed context is provenance,
+ not a signature, credential, or a replacement for the Formal wrapper above.
+ """
+ import jsonschema
+ keys={'schema','coreSource','producerSource','host'}
+ if type(context) is not dict or set(context)!=keys or context['schema']!='polaris-local-development-execution-context-v1':
+  raise ValueError('local execution context differs')
+ def source(value, path):
+  if type(value) is not dict or set(value)!={'commit','tree'} or any(type(value[k]) is not str or not re.fullmatch('[0-9a-f]{40}',value[k]) for k in value):
+   raise ValueError('local source identity differs')
+  actual={'commit':run('git','-C',str(path),'rev-parse','HEAD'),'tree':run('git','-C',str(path),'rev-parse','HEAD^{tree}')}
+  if value!=actual or run('git','-C',str(path),'status','--porcelain','--untracked-files=no'):
+   raise ValueError('local source checkout differs or is dirty')
+ source(context['coreSource'], source_root)
+ source(context['producerSource'], ROOT)
+ if context['host']!={'os':'linux','arch':'amd64'} or row['sourceCommit']!=context['coreSource']['commit'] or row['sourceTree']!=context['coreSource']['tree']:
+  raise ValueError('local native host/Core source differs')
+ # Reuse every existing fact property's exact schema. Run/attempt are not
+ # defaulted, stripped from a Formal receipt, or fabricated for this lane.
+ schema=json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
+ properties=schema['$defs']['sealedExecution']['properties']
+ facts=set(properties)-{'runId','runAttempt'}
+ if type(proof) is not dict or set(proof)!=facts:
+  raise ValueError('local execution facts differ or contain workflow identity')
+ for key in facts:
+  jsonschema.Draft202012Validator({'$defs':schema['$defs'],**properties[key]}).validate(proof[key])
+ return _derive_execution_facts(row, proof, source_root)
+
+
+def _derive_execution_facts(row, proof, source_root):
+ from tls_fingerprint_probe import validate, validate_configuration_checks, producer_module_identities
+ for value in [proof.get('coreSeals'),proof.get('sidecarSeals'),proof.get('tlsProbe',{}).get('coreBytes'),proof.get('cronet',{}).get('libraryBytes')]:
+  if type(value) is not int or value<=0:raise ValueError('sealed execution exact quantity type differs')
+ for key in ('core','sidecar'):
+  for obj in (row[key],proof[key]):
+   if type(obj) is not dict or type(obj.get('bytes')) is not int or obj['bytes']<=0:
+    raise ValueError('sealed execution exact member byte type differs')
  if row['target'] != 'linux/amd64' or row['variant']['linkage'] != 'shared-purego' or row['variant']['legacy'] or row['variant']['libc']:
   raise ValueError('trusted execution exact-object platform is unsupported')
  settings = row['buildGraph']['settings']
@@ -145,9 +190,6 @@ def derive_trusted_execution(row, proof, producer, source_root=ROOT):
   raise ValueError('sealed execution requires the selected Linux core and sidecar')
  for key in ('sourceCommit', 'sourceTree', 'version', 'target'):
   if proof[key] != row[key]: raise ValueError('sealed execution source/target binding differs: '+key)
- for key in ('runId', 'runAttempt'):
-  if type(producer[key]) is not int or proof[key] != producer[key]:
-   raise ValueError('sealed execution workflow run/attempt differs')
  if proof['archiveSha256'] != row['archive']['sha256'] or proof['core'] != row['core'] or proof['sidecar'] != row['sidecar']:
   raise ValueError('sealed execution final package bytes differ')
  for pin in (row['core'], row['sidecar']):
