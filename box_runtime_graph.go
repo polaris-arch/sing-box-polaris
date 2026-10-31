@@ -34,6 +34,7 @@ type runtimeView struct {
 	historyConsumers   map[string][]*urltest.HistoryStorage
 	referenceOptions   *route.RuntimeReferenceOptions
 	referenceResources map[any]adapter.RuntimeResourceID
+	apiIdentities      map[string]adapter.RuntimeAPIIdentity
 	identity           adapter.RuntimeRevision
 	router             adapter.Router
 	dns                adapter.DNSRouter
@@ -95,6 +96,7 @@ type runtimeComponent struct {
 }
 
 type preparedRuntimeGraph struct {
+	apiHandoffs              []adapter.RuntimeAPIHandoff
 	checkCertificateClaims   func([]runtimeCertificateClaim) error
 	bindCertificateStorage   func(string, os.FileInfo) error
 	certificateClaimContext  context.Context
@@ -155,6 +157,9 @@ func (g *preparedRuntimeGraph) releaseConstruction() {
 func (g *preparedRuntimeGraph) abort() {
 	g.abortOnce.Do(func() {
 		if !g.published {
+			for _, handoff := range g.apiHandoffs {
+				g.compensationError = errors.Join(g.compensationError, handoff.Abort())
+			}
 			postBindAbsent := g.suspendRuntimeCandidateEffects()
 			_ = g.restoreRuntimeListenersWithEffects(postBindAbsent)
 			g.restoreRuntimeTun()

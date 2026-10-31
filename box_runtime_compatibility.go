@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -49,7 +50,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 			continue
 		}
 		switch key {
-		case "log", "outbounds", "endpoints", "dns", "route", "inbounds", "http_clients", "certificate_providers", "ntp":
+		case "log", "outbounds", "endpoints", "dns", "route", "inbounds", "http_clients", "certificate_providers", "ntp", "services":
 			changed = append(changed, key)
 		default:
 			pending(key)
@@ -67,6 +68,11 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		// endpoint preflight and repeated against live owners before staging.
 	}
 	for _, item := range options.Services {
+		if !bytes.Equal(before["services"], after["services"]) {
+			if value, ok := item.Options.(*option.APIServiceOptions); ok && !adapter.RuntimeAPISecretValid(value.Secret) {
+				pending("services.api.secret")
+			}
+		}
 		if !runtimeStableAPIService(item) {
 			pending("services")
 			break
@@ -180,6 +186,10 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 	var impacts []RuntimeImpact
 	for _, path := range changed {
 		impact := RuntimeImpact{Path: path, UpdateClass: "LOCAL_REPLACE", Reason: "publish one validated runtime graph", AffectedSessionClasses: []string{"new admissions"}}
+		if path == "services" {
+			impact.Reason = "prepare a loopback API listener while retaining the original transaction recovery channel; authenticated channel handoff is separate from persistence"
+			impact.AffectedSessionClasses = []string{"API streams on the replaced ingress"}
+		}
 		if path == "inbounds" {
 			impact.ReconnectRequired = true
 			impact.Reason = "local listener handoff may require exclusive socket rebind; compensation can require reconnect"

@@ -404,15 +404,27 @@ func TestRuntimeDashboardEmptyDirectGuardRemainsEnforced(t *testing.T) {
 type dashboardFailAfterDownload struct {
 	tls.ServerConfig
 	requested <-chan struct{}
+	stop      chan struct{}
+	done      chan struct{}
+	closed    *atomic.Int32
 }
 
 func (f dashboardFailAfterDownload) Start() error {
+	go func() { defer close(f.done); <-f.stop }()
 	select {
 	case <-f.requested:
 		return errors.New("synthetic API stage failure after active dashboard download")
 	case <-time.After(5 * time.Second):
 		return errors.New("no HTTP request before injected API failure")
 	}
+}
+
+func (f dashboardFailAfterDownload) Close() error {
+	if f.closed.Add(1) == 1 {
+		close(f.stop)
+	}
+	<-f.done
+	return nil
 }
 
 func TestRuntimeDashboardActiveDownloadCanceledOnStartFailure(t *testing.T) {
@@ -427,13 +439,19 @@ func TestRuntimeDashboardActiveDownloadCanceledOnStartFailure(t *testing.T) {
 	t.Cleanup(server.Close)
 	ctx, _ := dashboardFileContext(t)
 	instance, api := dashboardRuntimeBox(t, ctx, filepath.Join(t.TempDir(), "dashboard"), server.URL, 0, "download-path")
-	api.tlsConfig = dashboardFailAfterDownload{requested: requested}
+	providerDone := make(chan struct{})
+	var providerCloses atomic.Int32
+	api.tlsConfig = dashboardFailAfterDownload{requested: requested, stop: make(chan struct{}), done: providerDone, closed: &providerCloses}
 	if err := instance.Start(); err == nil || !strings.Contains(err.Error(), "synthetic API stage failure after active dashboard download") {
 		t.Fatalf("missing observed-request failure barrier: %v", err)
 	}
 	dashboardWait(t, requested, "observed real download before failure")
 	dashboardWait(t, canceled, "actual HTTP request cancellation")
 	dashboardWait(t, api.dashboard.done, "active worker joined after failed Start")
+	dashboardWait(t, providerDone, "partially started TLS provider actually joined")
+	if providerCloses.Load() != 1 {
+		t.Fatal("failed TLS provider not closed exactly once")
+	}
 	if err := instance.CloseWithResult(); err != nil {
 		t.Fatal(err)
 	}

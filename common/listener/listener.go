@@ -24,6 +24,7 @@ import (
 type Listener struct {
 	ctx                      context.Context
 	logger                   logger.ContextLogger
+	exclusive                bool
 	network                  []string
 	listenOptions            option.ListenOptions
 	connHandler              adapter.ConnectionHandler
@@ -47,6 +48,9 @@ type Listener struct {
 }
 
 type Options struct {
+	// Exclusive requires an OS-enforced control-plane claim where available.
+	// It never enables reuse or changes ordinary protocol listener defaults.
+	Exclusive                bool
 	Context                  context.Context
 	Logger                   logger.ContextLogger
 	Network                  []string
@@ -65,6 +69,7 @@ func New(
 	options Options,
 ) *Listener {
 	l := &Listener{
+		exclusive:                options.Exclusive,
 		ctx:                      options.Context,
 		logger:                   options.Logger,
 		network:                  append([]string(nil), options.Network...),

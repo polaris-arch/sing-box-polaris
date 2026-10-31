@@ -99,10 +99,10 @@ func TestRuntimeStableAPICoexistsAndClosesBeforeGraphDrain(t *testing.T) {
 	if before.(*runtimeOutbound).id == after.(*runtimeOutbound).id {
 		t.Fatal("attached outbound facade kept the original leaf")
 	}
-	changed := []byte(strings.Replace(string(content), `"secret":"one"`, `"secret":"two"`, 1))
+	changed := []byte(strings.Replace(string(content), `"secret":"one"`, `"secret":"two","dashboard":{"enabled":true}`, 1))
 	plan, err := instance.planRuntimeConfig(context.Background(), "actor-a", f.identity(), changed)
 	if err != nil || plan.Applicable || len(plan.Errors) == 0 || plan.Errors[0].Code != "RESTART_REQUIRED" {
-		t.Fatalf("API configuration change escaped structural boundary: %+v %v", plan, err)
+		t.Fatalf("API dashboard change escaped structural boundary: %+v %v", plan, err)
 	}
 	if err := instance.closeRuntimeResourcesContext(runtimeTestContext(t)); err != nil {
 		t.Fatal(err)

@@ -124,6 +124,7 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	for _, path := range runtimePendingAdapters() {
 		add(path, "unsupported-dependency", "PENDING_ADAPTER", "presence-may-prevent-initial-runtime-graph")
 	}
+	variant("services", "api-loopback-handoff-v1", "", "one-API-service;stable-tag;listen-port-secret-only", "no-TLS-ReuseAddr-interface-netns-detour-or-dashboard-change", "server-owned-socket-custody-through-publication-and-ack", "original-captured-carrier-key;new-channel-HMAC-challenge;separate-handoff-ack", "prepublish-unary-and-stream-task-join;header-safe-secret", "unknown-result-status-only;never-repeat-Apply", "pending-handoff-or-close-failure-retains-claims")
 	add("runtime.persistence", "owner-contract", "RUNTIME_UPDATE_UNSPECIFIED", "unbound-or-failed-owner-remains-durability-pending", "retry-requires-original-repeat-safe-owner", "regeneration-requires-separate-owner-ack")
 	sort.Slice(fields, func(i, j int) bool {
 		if fields[i].Path == fields[j].Path {

@@ -51,6 +51,9 @@ func (s *Box) prepareRuntimeGraphWithSelections(request context.Context, identit
 			return prepared, err
 		}
 	}
+	if err := s.prepareRuntimeAPI(request, prepared); err != nil {
+		return prepared, err
+	}
 	s.migrateRuntimeSelections(prepared)
 	if err := s.applyRuntimeSelectorIntents(prepared, intents); err != nil {
 		return prepared, err
@@ -731,6 +734,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}
 	}
 	view.referenceOptions, err = route.NewRuntimeReferenceOptions(c.ctx, options)
+	if err != nil {
+		return prepared, err
+	}
+	view.apiIdentities, err = runtimeAPIIdentities(options, identity)
 	if err != nil {
 		return prepared, err
 	}

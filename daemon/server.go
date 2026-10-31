@@ -14,10 +14,20 @@ import (
 )
 
 func NewServer(startedService *StartedService, secret string) *grpc.Server {
-	server := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(newUnaryAuthInterceptor(secret), UnaryLocaleInterceptor),
-		grpc.ChainStreamInterceptor(newStreamAuthInterceptor(secret), StreamLocaleInterceptor),
-	)
+	return NewServerWithRuntimeIngress(startedService, secret, nil)
+}
+
+// The ingress extension is only installed by an owned local API listener.
+// Plain daemon and libbox callers retain their original actor/authentication.
+func NewServerWithRuntimeIngress(startedService *StartedService, secret string, owner RuntimeIngress, options ...grpc.ServerOption) *grpc.Server {
+	unary := []grpc.UnaryServerInterceptor{newUnaryAuthInterceptor(secret), UnaryLocaleInterceptor}
+	streams := []grpc.StreamServerInterceptor{newStreamAuthInterceptor(secret), StreamLocaleInterceptor}
+	if owner != nil {
+		unary = append(unary, ingressUnary(owner))
+		streams = append(streams, ingressStreams(owner))
+	}
+	options = append(options, grpc.ChainUnaryInterceptor(unary...), grpc.ChainStreamInterceptor(streams...))
+	server := grpc.NewServer(options...)
 	healthServer := health.NewServer()
 	RegisterStartedServiceServer(server, startedService)
 	RegisterRuntimeConfigServiceServer(server, startedService)

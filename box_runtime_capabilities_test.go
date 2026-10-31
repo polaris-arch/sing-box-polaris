@@ -54,16 +54,24 @@ func TestRuntimeRealmCapabilityUsesExistingProtocolAndConcreteBuild(t *testing.T
 	}
 }
 
-func TestRuntimeCapabilitiesDashboardCoexistenceIsNotServiceHotUpdate(t *testing.T) {
+func TestRuntimeCapabilitiesDashboardChangesStayStructuralWithConditionalAPIHandoff(t *testing.T) {
 	capability := (*Box)(nil).RuntimeCapabilities()
 	if capability.FullConfiguration {
 		t.Fatal("narrow dashboard adapter advertised full configuration")
 	}
-	for _, path := range capability.SupportedPaths {
-		if path == "services" {
-			t.Fatal("stable dashboard advertised hot service replacement")
+	if !slices.Contains(capability.SupportedPaths, "services") {
+		t.Fatal("missing bounded API listener handoff capability")
+	}
+	var handoff bool
+	for _, field := range capability.Fields {
+		if field.Path == "services" && field.Variant == "api-loopback-handoff-v1" && field.UpdateClass == "LOCAL_REPLACE" {
+			handoff = true
 		}
 	}
+	if !handoff {
+		t.Fatal("services path lacks the explicit conditional API variant")
+	}
+
 	for _, field := range capability.Fields {
 		if field.Path != "services" || field.Variant != "structural-change" {
 			continue

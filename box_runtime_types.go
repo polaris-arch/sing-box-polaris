@@ -70,6 +70,7 @@ type RuntimeConfigOperation struct {
 	DesiredStateDigest      string             `json:"desired_state_digest"`
 	DesiredStateRevision    string             `json:"desired_state_revision"`
 	RetirementState         string             `json:"retirement_state"`
+	apiHandoffs             []adapter.RuntimeAPIHandoff
 }
 type RuntimeConfigCapabilities struct {
 	ImplementationManifestDigest string                   `json:"implementation_manifest_digest"`
