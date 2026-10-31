@@ -24,6 +24,7 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	aTLS "github.com/sagernet/sing/common/tls"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -36,9 +37,11 @@ func apiTestCertificate(t *testing.T) (option.InboundTLSOptions, *x509.CertPool)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cert := &x509.Certificate{SerialNumber: big.NewInt(1), DNSNames: []string{"localhost"},
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(1), DNSNames: []string{"localhost"},
 		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour),
-		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
 	der, err := x509.CreateCertificate(rand.Reader, cert, cert, pub, key)
 	if err != nil {
 		t.Fatal(err)
@@ -173,7 +176,7 @@ func TestRuntimeAPIInitialTLSKeepsRealGRPCAndRejectsPlaintext(t *testing.T) {
 func TestRuntimeAPILegacyTLSWatcherWarningKeepsCachedCertificateAndJoinsStop(t *testing.T) {
 	options, roots := apiTestCertificate(t)
 	certificatePath := filepath.Join(t.TempDir(), "certificate.pem")
-	if err := os.WriteFile(certificatePath, []byte(options.Certificate[0]), 0600); err != nil {
+	if err := os.WriteFile(certificatePath, []byte(options.Certificate[0]), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	options.Certificate, options.CertificatePath = nil, certificatePath
@@ -387,6 +390,7 @@ func (c *apiTLSStartBarrier) Start() error {
 	<-c.stop
 	return errors.New("TLS start stopped")
 }
+
 func (c *apiTLSStartBarrier) Close() error { c.once.Do(func() { close(c.stop) }); <-c.done; return nil }
 
 func TestRuntimeAPIStopJoinsAnInFlightTLSStart(t *testing.T) {

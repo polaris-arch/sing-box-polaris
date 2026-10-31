@@ -33,7 +33,7 @@ func TestDarwinStoreLeaseRejectsNonemptyAndHardlinkedData(t *testing.T) {
 	for _, hardlink := range []bool{false, true} {
 		root := t.TempDir()
 		path := filepath.Join(root, "lease")
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestDarwinStoreLeaseRejectsNonemptyAndHardlinkedData(t *testing.T) {
 
 func TestDarwinStoreLeaseKeepsSameDescriptionAndClosesOnExec(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "lease")
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestDarwinStoreLeaseSurvivesClosingTheLauncherDescriptor(t *testing.T) {
 		return
 	}
 	path := filepath.Join(t.TempDir(), "lease")
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
