@@ -757,6 +757,8 @@ jobs:
         fi
         echo "DIR_NAME=${DIR_NAME}" >> "${GITHUB_ENV}"
     - name: Archive
+      env:
+        COPYFILE_DISABLE: '1'
       run: |
         set -xeuo pipefail
         cd dist

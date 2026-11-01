@@ -45,6 +45,12 @@ def darwin_archive_seal_contract(workflow):
     index = {step.get('name'):i for i,step in enumerate(steps)}
     if not index['Build'] < steps.index(seal) < index['Archive'] < index['Collect actual native archive receipt']:
         raise AssertionError('Darwin archive and receipt must contain only the final signed bytes')
+    archive = steps[index['Archive']]
+    # macOS tar otherwise emits AppleDouble/PAX host metadata (including
+    # com.apple.provenance); the strict native reader accepts only dataforks.
+    if (archive.get('env', {}).get('COPYFILE_DISABLE') != '1' or
+            'if' in archive or 'continue-on-error' in archive):
+        raise AssertionError('both Darwin archives must suppress host copyfile metadata')
 
 
 
@@ -67,6 +73,24 @@ class EfficiencyTests(unittest.TestCase):
                     elif mutation == 'skip-failure': seal['continue-on-error'] = True
                     elif mutation == 'no-verify': seal['run'] = seal['run'].splitlines()[0]
                     elif mutation == 'real-identity': seal['run'] = seal['run'].replace('--sign - ', '--sign unreviewed ')
+                    with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                        darwin_archive_seal_contract(wrong)
+
+
+    def test_darwin_archives_exclude_host_metadata_for_both_workflows(self):
+        for workflow_name in ('build', 'signed-release'):
+            original = workflow(workflow_name)
+            with self.subTest(workflow=workflow_name):
+                darwin_archive_seal_contract(original)
+                for mutation in ('missing', 'enabled', 'boolean', 'only-arm64', 'ignore-failure'):
+                    wrong = copy.deepcopy(original)
+                    archive = next(step for step in wrong['jobs']['build_darwin']['steps']
+                                   if step.get('name') == 'Archive')
+                    if mutation == 'missing': archive['env'].pop('COPYFILE_DISABLE')
+                    elif mutation == 'enabled': archive['env']['COPYFILE_DISABLE'] = '0'
+                    elif mutation == 'boolean': archive['env']['COPYFILE_DISABLE'] = True
+                    elif mutation == 'only-arm64': archive['if'] = "matrix.arch == 'arm64'"
+                    elif mutation == 'ignore-failure': archive['continue-on-error'] = True
                     with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
                         darwin_archive_seal_contract(wrong)
 
