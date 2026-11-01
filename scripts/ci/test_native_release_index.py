@@ -377,11 +377,30 @@ class TrustedExecutionControls(unittest.TestCase):
      self.assertNotIn('--library',args);self.assertIn('--sha256',args)
      self.assertTrue(os.fstat(execution.core_fd).st_size);self.assertTrue(os.fstat(execution.library_fd).st_size)
      return SimpleNamespace(returncode=1 if fail else 0,stdout=json.dumps(observed),stderr='synthetic failure')
-    with patch.object(n,'read_archive',return_value=(row['id'],data)),patch.object(n.platform,'system',return_value='Linux'), \
-         patch.dict(os.environ,{'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}),patch.object(tls,'probe',side_effect=probe), \
-         patch.object(tls.SealedExecution,'run',autospec=True,side_effect=child):
-     if fail:self.assertRaisesRegex(ValueError,'sealed Cronet native smoke failed',n.smoke,d)
-     else:n.smoke(d)
+    # Linux retains actual memfd/seal coverage. Other hosts exercise the same
+    # producer entry using explicitly controlled FD/seal observations, not a
+    # claim that their kernel implements Linux sealed execution.
+    from contextlib import ExitStack, contextmanager
+    import fcntl
+    with ExitStack() as kernel:
+     if not hasattr(os,'memfd_create'):
+      @contextmanager
+      def controlled_descriptors(core,library,core_pin,library_pin):
+       with open(core,'rb') as first,open(library,'rb') as second:
+        for stream,pin in [(first,core_pin),(second,library_pin)]:
+         payload=stream.read();self.assertEqual(len(payload),pin['bytes']);self.assertEqual(n.sha(payload),pin['sha256']);stream.seek(0)
+        yield tls.SealedExecution(first.fileno(),second.fileno())
+      kernel.enter_context(patch.object(tls,'sealed_execution',side_effect=controlled_descriptors))
+      kernel.enter_context(patch.object(fcntl,'F_GET_SEALS',0x53544,create=True))
+      original_fcntl=fcntl.fcntl
+      def controlled_seals(fd,operation,*args):
+       return 15 if operation==fcntl.F_GET_SEALS else original_fcntl(fd,operation,*args)
+      kernel.enter_context(patch.object(fcntl,'fcntl',side_effect=controlled_seals))
+     with patch.object(n,'read_archive',return_value=(row['id'],data)),patch.object(n.platform,'system',return_value='Linux'), \
+          patch.dict(os.environ,{'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}),patch.object(tls,'probe',side_effect=probe), \
+          patch.object(tls.SealedExecution,'run',autospec=True,side_effect=child):
+      if fail:self.assertRaisesRegex(ValueError,'sealed Cronet native smoke failed',n.smoke,d)
+      else:n.smoke(d)
     if fail:self.assertEqual(target.read_bytes(),original)
     else:self.check(json.loads(target.read_text()))
 
@@ -483,3 +502,276 @@ class LocalDevelopmentExecutionControls(unittest.TestCase):
      self.assertEqual(list(rejected.exception.absolute_path),path)
     else:self.assertEqual(str(rejected.exception),reason)
     print('local source control '+name+': '+str(rejected.exception))
+
+
+class MacNativeExecutionControls(unittest.TestCase):
+ """Inert byte fixtures/mock native tools: source controls, never signed/root evidence."""
+ def macho(self, arch='arm64', extra=None, library='/usr/lib/libSystem.B.dylib', dyld='/usr/lib/dyld'):
+  import struct
+  def string_command(code, value, minimum):
+   raw=value.encode()+b'\0';length=(minimum+len(raw)+7)//8*8
+   return struct.pack('<III',code,length,minimum)+b'\0'*(minimum-12)+raw+b'\0'*(length-minimum-len(raw))
+  commands=[string_command(0xe,dyld,12),string_command(0xc,library,24)]
+  if extra is not None:commands.append(extra)
+  end=32+sum(map(len,commands))+16;signature=b'controlled-non-executable-signature'
+  commands.append(struct.pack('<IIII',0x1d,16,end,len(signature)))
+  return struct.pack('<8I',0xfeedfacf,{'arm64':0x0100000c,'amd64':0x01000007}[arch],0,2,len(commands),sum(map(len,commands)),0,0)+b''.join(commands)+signature
+ def fixture(self, arch='arm64'):
+  import copy
+  row=sealed_row_fixture();old=copy.deepcopy(row['finalPackageCronetSmoke']['sealedExecution']);data=self.macho(arch)
+  row['target']='darwin/'+arch;row['id']='sing-box-'+row['version']+'-darwin-'+arch
+  row['variant'].update(linkage='static-cgo');row['sidecar']=None
+  row['tags']='with_naive_outbound,with_utls,with_gvisor'
+  row['buildGraph']['settings'].update(GOOS='darwin',GOARCH=arch,CGO_ENABLED='1',**{'-tags':row['tags'],'-ldflags':'-X github.com/sagernet/sing-box/constant.SourceRevision='+row['sourceCommit']+' -X github.com/sagernet/sing-box/constant.Version='+row['version']})
+  row['core']={'member':'sing-box','bytes':len(data),'sha256':n.sha(data)}
+  row['signatureObservation']={'state':'signed','cdHash':'e'*40,'trustValidated':False}
+  row['archive'].update(name=row['id']+'.tar.gz',releaseName=n.public_product_name(row['id']+'.tar.gz'),root=row['id'],members={row['id']+'/sing-box':n.sha(data)})
+  native=n.macos_loader_metadata(data,arch)
+  post={'coreSHA256':n.sha(data),'coreBytes':len(data),'cdHash':'e'*40,'signatureVerified':True,'nativeLoader':native}
+  receipt=old['tlsProbe'];receipt.update(coreSHA256=n.sha(data),coreBytes=len(data));receipt['capabilities'].update(os='darwin',arch=arch,buildTags=row['tags'])
+  cronet={k:old['cronet'][k]for k in ['os','arch','go','linkage','version','gvisorCompiled']};cronet.update(os='darwin',arch=arch,linkage='static-cgo')
+  proof={k:old[k]for k in ['sourceCommit','sourceTree','version','runId','runAttempt','archiveSha256']}
+  proof.update(schema='polaris-macos-native-execution-proof-v1',target=row['target'],core=row['core'].copy(),postSign=post,tlsProbe=receipt,cronet=cronet)
+  row['finalPackageCronetSmoke'].update(os='darwin',arch=arch,linkage='static-cgo',librarySha256=None,coreSha256=n.sha(data))
+  row['finalPackageCronetSmoke'].pop('sealedExecution');row['finalPackageCronetSmoke']['macosExecution']=proof
+  row['trustedExecution']={'schema':'polaris-trusted-execution-v1','sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],'loader':'macos-root-private-v1','purposes':['check-config-v1','run-main-v1']}
+  return row,data
+ def check(self,row):return n.validate_trusted_execution(row,{'runId':42,'runAttempt':1})
+ def test_two_native_targets_derive_only_exact_five_fields_and_two_purposes(self):
+  for arch in ['arm64','amd64']:
+   row,_=self.fixture(arch)
+   with self.subTest(arch=arch):
+    self.assertEqual(self.check(row),row['trustedExecution']);self.assertEqual(len(row['trustedExecution']),5)
+    material=n.distribution_materials({'sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],'sourceArchive':{'name':'synthetic'},'platforms':[row],'legalFiles':[]},n.ROOT)
+    expected=n.sha(json.dumps(row['finalPackageCronetSmoke']['macosExecution'],sort_keys=True,separators=(',',':')).encode())
+    self.assertEqual(material['nativeArchives'][0]['macosExecutionSHA256'],expected)
+    self.assertNotIn('sealedExecutionSHA256',material['nativeArchives'][0])
+ def test_linux_original_canonical_policy_bytes_unchanged(self):
+  row=sealed_row_fixture()
+  expected={'schema':'polaris-trusted-execution-v1','sourceCommit':'a'*40,'sourceTree':'b'*40,'loader':'linux-sealed-fd-v1','purposes':['check-config-v1','tls-inventory-v1','run-main-v1','run-login-v1','run-speedtest-v1']}
+  canonical=lambda v:json.dumps(v,sort_keys=True,separators=(',',':')).encode()
+  self.assertEqual(canonical(n.validate_trusted_execution(row,{'runId':42,'runAttempt':1})),canonical(expected))
+ def test_no_native_proof_or_signature_string_alone_can_grant(self):
+  import copy
+  row,_=self.fixture();plain=copy.deepcopy(row);plain.pop('trustedExecution');plain['finalPackageCronetSmoke'].pop('macosExecution');self.assertIsNone(self.check(plain))
+  for which in ['policy','proof']:
+   bad=copy.deepcopy(row)
+   if which=='policy':bad.pop('trustedExecution')
+   else:bad['finalPackageCronetSmoke'].pop('macosExecution')
+   with self.subTest(which=which),self.assertRaisesRegex(ValueError,'both policy and native sealed proof'):self.check(bad)
+  bad=copy.deepcopy(row);bad['finalPackageCronetSmoke']['sealedExecution']=sealed_row_fixture()['finalPackageCronetSmoke']['sealedExecution']
+  with self.assertRaisesRegex(ValueError,'ambiguous'):self.check(bad)
+ def test_closed_mac_policy_schemas_reject_unknown_fields_and_purposes(self):
+  import copy,jsonschema
+  for filename in ['native-release-index','native-release-contract']:
+   schema=json.loads((n.ROOT/'release/ci'/f'{filename}.schema.json').read_text());validator=jsonschema.Draft202012Validator({'$defs':schema['$defs'],**schema['$defs']['trustedExecution']})
+   row,_=self.fixture();validator.validate(row['trustedExecution'])
+   for mutation in [lambda p:p.update(owner='root'),lambda p:p.update(loader='linux-sealed-fd-v1'),lambda p:p['purposes'].append('tls-inventory-v1'),lambda p:p['purposes'].pop(),lambda p:p['purposes'].reverse(),lambda p:p['purposes'].append('check-config-v1'),lambda p:p.update(purposes=['invented'])]:
+    bad=copy.deepcopy(row);mutation(bad['trustedExecution'])
+    # A Linux-looking policy still fails the row's platform/proof binding and derivation.
+    if bad['trustedExecution']['loader']=='linux-sealed-fd-v1':self.assertRaises(ValueError,self.check,bad)
+    else:self.assertRaises(jsonschema.ValidationError,validator.validate,bad['trustedExecution'])
+ def test_source_target_build_metadata_and_final_byte_mismatches_fail(self):
+  import copy,jsonschema
+  row,_=self.fixture()
+  mutations=[lambda r:r.update(target='windows/arm64'),lambda r:r.update(target='darwin/universal'),lambda r:r['variant'].update(linkage='shared-purego'),lambda r:r['variant'].update(legacy=True),lambda r:r['buildGraph']['settings'].update(CGO_ENABLED='0'),lambda r:r['buildGraph']['settings'].update(GOARCH='amd64'),lambda r:r['buildGraph']['settings'].update(**{'vcs.modified':'true'}),lambda r:r['buildGraph']['settings'].update(**{'vcs.revision':'f'*40}),lambda r:r['buildGraph']['settings'].update(**{'-ldflags':''}),lambda r:r.update(sourceTree='f'*40),lambda r:r['archive'].update(sha256='f'*64),lambda r:r['archive'].update(bytes=1.0),lambda r:r['variant'].update(legacy=0),lambda r:r['core'].update(bytes=7.0),lambda r:r['signatureObservation'].update(cdHash='f'*40),lambda r:r['archive']['members'].update({r['id']+'/sing-box':'f'*64}),lambda r:r['finalPackageCronetSmoke']['macosExecution'].update(runAttempt=2),lambda r:r['finalPackageCronetSmoke']['macosExecution']['postSign'].update(signatureVerified=False),lambda r:r['finalPackageCronetSmoke']['macosExecution']['postSign'].update(coreBytes=float(r['core']['bytes'])),lambda r:r['finalPackageCronetSmoke']['macosExecution']['postSign']['nativeLoader'].update(signatureOffset=999999),lambda r:r['finalPackageCronetSmoke']['macosExecution']['postSign']['nativeLoader'].update(libraries=['/usr/lib/../local/evil.dylib']),lambda r:r['finalPackageCronetSmoke']['macosExecution']['tlsProbe']['capabilities'].update(sourceCommit='f'*40),lambda r:r['finalPackageCronetSmoke']['macosExecution']['tlsProbe']['configurationChecks'].pop(),lambda r:r['finalPackageCronetSmoke']['macosExecution']['cronet'].update(linkage='shared-purego')]
+  for index,mutate in enumerate(mutations):
+   bad=copy.deepcopy(row);mutate(bad)
+   with self.subTest(index=index),self.assertRaises((ValueError,jsonschema.ValidationError)):self.check(bad)
+  bad=copy.deepcopy(row);bad['tags']+=',with_purego';bad['buildGraph']['settings']['-tags']=bad['tags'];self.assertRaises(ValueError,self.check,bad)
+  with self.assertRaises(ValueError):n.derive_trusted_execution(row,row['finalPackageCronetSmoke']['macosExecution'],{'runId':True,'runAttempt':1})
+ def test_both_schemas_bind_proof_to_platform_and_original_linux_definition(self):
+  import copy,jsonschema
+  native=json.loads((n.ROOT/'release/ci/native-release-index.schema.json').read_text());consumer=json.loads((n.ROOT/'release/ci/native-release-contract.schema.json').read_text())
+  for key in ['trustedExecution','linuxTrustedExecution','macosTrustedExecution','sealedExecution','macosExecution']:self.assertEqual(native['$defs'][key],consumer['$defs'][key])
+  schema={'$defs':native['$defs'],**native['properties']['platforms']['items']};validator=jsonschema.Draft202012Validator(schema);row,_=self.fixture();validator.validate(row)
+  for mutation in [lambda r:r.update(target='windows/amd64'),lambda r:r.update(target='linux/amd64'),lambda r:r['variant'].update(linkage='shared-purego'),lambda r:r.pop('trustedExecution'),lambda r:r['finalPackageCronetSmoke'].pop('macosExecution')]:
+   bad=copy.deepcopy(row);mutation(bad)
+   with self.assertRaises(jsonschema.ValidationError):validator.validate(bad)
+ def test_loader_rejects_universal_unknown_search_environment_encryption_and_bad_names(self):
+  import struct
+  for arch in ['arm64','amd64']:self.assertEqual(n.macos_loader_metadata(self.macho(arch),arch)['arch'],arch)
+  for command in [0x8000001c,0x27,0x10,0x21,0x2c,0xdeadbeef]:
+   with self.subTest(command=command),self.assertRaises(ValueError):n.macos_loader_metadata(self.macho(extra=struct.pack('<II',command,8)),'arm64')
+  for name in ['@rpath/evil.dylib','/tmp/evil.dylib','/usr/lib/../evil','/usr/lib//libX.dylib']:
+   with self.subTest(library=name),self.assertRaises(ValueError):n.macos_loader_metadata(self.macho(library=name),'arm64')
+  for change in [lambda d:d.__setitem__(slice(0,4),b'\xca\xfe\xba\xbe'),lambda d:d.__setitem__(slice(4,8),struct.pack('<I',0x01000007)),lambda d:d.__setitem__(slice(12,16),struct.pack('<I',6)),lambda d:d.__setitem__(slice(16,20),struct.pack('<I',0)),lambda d:d.__setitem__(slice(20,24),struct.pack('<I',2**20+1)),lambda d:d.__setitem__(slice(36,40),struct.pack('<I',7)),lambda d:d.__setitem__(slice(36,40),struct.pack('<I',40))]:
+   bad=bytearray(self.macho());change(bad)
+   with self.subTest(change=change),self.assertRaises(ValueError):n.macos_loader_metadata(bad,'arm64')
+  with self.assertRaises(ValueError):n.macos_loader_metadata(self.macho(dyld='/tmp/dyld'),'arm64')
+  with self.assertRaises(ValueError):n.macos_loader_metadata(self.macho(extra=struct.pack('<IIII',0x1d,16,150,3)),'arm64')
+  with self.assertRaises(ValueError):n.macos_loader_metadata(self.macho()[:-1],'arm64')
+ def observe(self,path,row,commands=None):
+  from contextlib import ExitStack
+  from types import SimpleNamespace
+  def code(*args,**kwargs):
+   if commands is not None:commands.append(args[0])
+   return SimpleNamespace(returncode=0,stderr='CDHash='+'e'*40+'\n')
+  with ExitStack() as stack:
+   stack.enter_context(patch.object(n,'macos_native_process',return_value=True));stack.enter_context(patch.object(n.platform,'system',return_value='Darwin'));stack.enter_context(patch.object(n.platform,'machine',return_value='arm64'))
+   stack.enter_context(patch.object(n,'buildinfo',return_value=(row['goVersion'],'fixture',row['buildGraph'])));stack.enter_context(patch.object(n,'run',return_value=row['buildID']));stack.enter_context(patch.object(n.subprocess,'run',side_effect=code))
+   return n.observe_macos_postsign(path,row)
+ def test_postsign_observer_reads_actual_bytes_and_requires_real_native_tools(self):
+  row,data=self.fixture()
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data);commands=[]
+   self.assertEqual(self.observe(core,row,commands),row['finalPackageCronetSmoke']['macosExecution']['postSign'])
+   self.assertEqual(commands,[['/usr/bin/codesign','--verify','--strict',str(core)],['/usr/bin/codesign','--display','--verbose=4',str(core)]])
+   core.write_bytes(data[:-1]+b'X');self.assertRaisesRegex(ValueError,'digest differs',self.observe,core,row)
+ def test_postsign_refuses_host_override_links_and_native_signature_failure(self):
+  import os
+  from types import SimpleNamespace
+  row,data=self.fixture()
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data)
+   with patch.object(n.platform,'system',return_value='Linux'):self.assertRaisesRegex(ValueError,'actual native host',n.observe_macos_postsign,core,row)
+   with patch.dict(os.environ,{'DYLD_INSERT_LIBRARIES':'fixture-only'}):self.assertRaisesRegex(ValueError,'ambient loader',self.observe,core,row)
+   link=Path(td)/'link';link.symlink_to(core);self.assertRaises(OSError,self.observe,link,row);link.unlink();os.link(core,link);self.assertRaisesRegex(ValueError,'final Core object',self.observe,core,row);link.unlink()
+   with patch.object(n,'macos_native_process',return_value=True),patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'buildinfo',return_value=(row['goVersion'],'fixture',row['buildGraph'])),patch.object(n,'run',return_value=row['buildID']),patch.object(n.subprocess,'run',return_value=SimpleNamespace(returncode=1,stderr='CDHash='+'e'*40)):
+    self.assertRaisesRegex(ValueError,'strict signature verification',n.observe_macos_postsign,core,row)
+ def test_postsign_detects_namespace_swap_during_tool_observation(self):
+  import os
+  from types import SimpleNamespace
+  row,data=self.fixture()
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data);replacement=Path(td)/'replacement';replacement.write_bytes(data)
+   def code(*args,**kwargs):
+    if replacement.exists():os.replace(replacement,core)
+    return SimpleNamespace(returncode=0,stderr='CDHash='+'e'*40+'\n')
+   with patch.object(n,'macos_native_process',return_value=True),patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'buildinfo',return_value=(row['goVersion'],'fixture',row['buildGraph'])),patch.object(n,'run',return_value=row['buildID']),patch.object(n.subprocess,'run',side_effect=code):self.assertRaisesRegex(ValueError,'namespace changed',n.observe_macos_postsign,core,row)
+ def smoke_actual_observer(self, failure, arch='arm64'):
+  import copy,errno,os,tls_fingerprint_probe as tls
+  from contextlib import ExitStack
+  from types import SimpleNamespace
+  row,data=self.fixture(arch);proof=copy.deepcopy(row['finalPackageCronetSmoke']['macosExecution'])
+  row.pop('trustedExecution');row['finalPackageCronetSmoke']=None
+  with tempfile.TemporaryDirectory() as td:
+   directory=Path(td);archive=directory/row['archive']['name']
+   TestNative().archive(archive,[(row['archive']['root']+'/sing-box',data)])
+   row['archive'].update(sha256=n.sha(archive.read_bytes()),bytes=archive.stat().st_size)
+   file=directory/'native-row-synthetic.json';file.write_text(json.dumps(row));original=file.read_bytes()
+   opened=[];duplicated=[];calls=[];config_index=0;mutated=False
+   original_open=os.open;original_dup=os.dup
+   def open_input(path,flags,*args,**kwargs):
+    fd=original_open(path,flags,*args,**kwargs)
+    if Path(path).name=='sing-box':
+     self.assertTrue(flags & os.O_NOFOLLOW);self.assertTrue(flags & os.O_CLOEXEC)
+     opened.append((fd,os.fstat(fd)))
+    return fd
+   def duplicate(fd):
+    result=original_dup(fd)
+    if any(fd==held for held,_ in opened):duplicated.append(result)
+    return result
+   def native_phase(core,phase):
+    nonlocal mutated
+    # Check the original no-follow descriptor really spans every native probe.
+    self.assertEqual(len(opened),1)
+    fd,before=opened[0];held=os.fstat(fd)
+    self.assertEqual((held.st_dev,held.st_ino),(before.st_dev,before.st_ino))
+    if failure=='swap-'+phase and not mutated:
+     replacement=core.with_name('replacement');replacement.write_bytes(data);replacement.chmod(core.stat().st_mode & 0o777)
+     self.assertNotEqual(replacement.stat().st_ino,before.st_ino)
+     os.replace(replacement,core);self.assertEqual(core.read_bytes(),data);mutated=True
+    if phase=='cronet':
+     if failure=='runtime':raise ValueError('fixture native failure')
+     if failure=='archive-drift':archive.write_bytes(b'changed archive')
+     if failure=='postsign-bytes':core.write_bytes(data[:-1]+b'X')
+     if failure=='postsign-metadata':core.chmod(0o700)
+   def output(argv,**kwargs):
+    argv=list(argv);calls.append(tuple(argv))
+    if argv[:3]==['go','version','-m']:
+     graph=row['buildGraph'];lines=[str(argv[3])+': '+row['goVersion']]
+     for kind in ['normalModules','prebuiltAcquisitionModules','localReplacements']:
+      for item in graph[kind]:
+       lines.append('\tdep\t'+item['module']+'\t'+item['version']+'\t'+item['h1'])
+       if 'replacement' in item:
+        value=item['replacement'];lines.append('\t=>\t'+value['module']+'\t'+value['version']+'\t'+value['h1'])
+     lines += ['\tbuild\t'+key+'='+json.dumps(value) for key,value in graph['settings'].items()]
+     return '\n'.join(lines)
+    if argv[:3]==['go','tool','buildid']:return row['buildID']
+    self.assertEqual(argv[1:3],['tools','cronet']);self.assertNotIn('--library',argv)
+    native_phase(Path(argv[0]),'cronet');return json.dumps(proof['cronet'])
+   def native(argv,**kwargs):
+    nonlocal config_index
+    calls.append(tuple(argv))
+    if argv[0]=='/usr/bin/codesign':
+     second=sum(command[0]=='/usr/bin/codesign' and '--verify' in command for command in calls)==2
+     signature='f'*40 if failure=='postsign-drift' and second else 'e'*40
+     return SimpleNamespace(returncode=1 if failure=='signature' else 0,stderr='CDHash='+signature+'\n')
+    core=Path(argv[0])
+    if argv[1:]==['tools','tls-fingerprints']:
+     native_phase(core,'capability')
+     return SimpleNamespace(returncode=0,stdout=json.dumps(proof['tlsProbe']['capabilities']),stderr='')
+    self.assertEqual(argv[1:3],['check','-c']);native_phase(core,'config')
+    descriptor,config,error=tls.configuration_cases(proof['tlsProbe']['capabilities'])[config_index];config_index+=1
+    self.assertEqual(json.loads(Path(argv[3]).read_text()),config)
+    return SimpleNamespace(returncode=0 if descriptor['expectedPass'] else 1,stdout=error or '',stderr='')
+   with ExitStack() as stack:
+    stack.enter_context(patch.object(n.platform,'system',return_value='Darwin'))
+    stack.enter_context(patch.object(n.platform,'machine',return_value={'arm64':'arm64','amd64':'x86_64'}[arch]))
+    stack.enter_context(patch.object(n,'macos_native_process',return_value=True))
+    stack.enter_context(patch.dict(os.environ,{'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}))
+    stack.enter_context(patch.object(n.os,'open',side_effect=open_input));stack.enter_context(patch.object(n.os,'dup',side_effect=duplicate))
+    stack.enter_context(patch.object(n.subprocess,'check_output',side_effect=output));stack.enter_context(patch.object(n.subprocess,'run',side_effect=native))
+    if failure=='none':n.smoke(directory)
+    else:
+     with self.assertRaises(ValueError) as rejected:n.smoke(directory)
+     if failure.startswith('swap-') or failure in ('postsign-bytes','postsign-metadata'):
+      self.assertIn('object/namespace changed',str(rejected.exception))
+   self.assertEqual(len(opened),1);self.assertTrue(duplicated)
+   for fd in set([held for held,_ in opened]+duplicated):
+    with self.assertRaises(OSError) as closed:os.fstat(fd)
+    self.assertEqual(closed.exception.errno,errno.EBADF)
+   if failure.startswith('swap-'):self.assertTrue(mutated)
+   if failure!='none':self.assertEqual(file.read_bytes(),original)
+   else:
+    self.assertEqual(config_index,len(tls.configuration_cases(proof['tlsProbe']['capabilities'])))
+    self.assertEqual(sum(command[0]=='/usr/bin/codesign' and '--verify' in command for command in calls),2)
+    result=json.loads(file.read_text());self.assertEqual(self.check(result),result['trustedExecution'])
+    self.assertEqual(result['finalPackageCronetSmoke']['macosExecution']['postSign'],proof['postSign'])
+    self.assertNotIn('sealedExecution',result['finalPackageCronetSmoke'])
+ def test_smoke_wires_actual_postsign_twice_and_emits_only_after_native_success(self):
+  for failure in ['none','signature','runtime','postsign-drift','archive-drift']:
+   with self.subTest(failure=failure):self.smoke_actual_observer(failure)
+  with self.subTest(arch='amd64'):self.smoke_actual_observer('none','amd64')
+ def test_smoke_rejects_same_bytes_new_inode_during_actual_native_probes(self):
+  for phase in ['capability','config','cronet']:
+   with self.subTest(phase=phase):self.smoke_actual_observer('swap-'+phase)
+ def test_smoke_rechecks_original_held_object_bytes_and_metadata_after_probes(self):
+  for failure in ['postsign-bytes','postsign-metadata']:
+   with self.subTest(failure=failure):self.smoke_actual_observer(failure)
+
+ def test_shared_publisher_accepts_mac_only_with_bound_native_materials(self):
+  import copy,jsonschema,test_github_release as publishing
+  publisher=publishing.TrustedExecutionPublisherTests();index=publisher.index();row,_=self.fixture()
+  self.assertEqual(sum(old['id']==row['id']for old in index['platforms']),1)
+  index['platforms']=[row if old['id']==row['id']else old for old in index['platforms']]
+  index['distributionMaterials']=n.distribution_materials(index,n.ROOT);publisher.check(index)
+  for mutation in ['proof','material','purpose']:
+   bad=copy.deepcopy(index);selected=next(item for item in bad['platforms']if item['id']==row['id'])
+   if mutation=='proof':selected['finalPackageCronetSmoke']['macosExecution']['postSign']['cdHash']='f'*40
+   elif mutation=='purpose':selected['trustedExecution']['purposes'].append('run-login-v1')
+   else:next(item for item in bad['distributionMaterials']['nativeArchives']if item['archive']==row['archive']['name']).pop('macosExecutionSHA256')
+   with self.subTest(mutation=mutation),self.assertRaises((ValueError,jsonschema.ValidationError)):publisher.check(bad)
+
+ def test_native_translation_query_rejects_rosetta_and_unknown_without_arch_guessing(self):
+  import ctypes,errno
+  from unittest.mock import Mock
+  original_errno=ctypes.get_errno()
+  try:
+   for result,value,error,size,expected in [(0,0,0,4,True),(0,1,0,4,False),(-1,0,errno.ENOENT,4,True),(-1,0,errno.EACCES,4,None),(0,2,0,4,None),(0,0,0,8,None)]:
+    def query(name,returned,amount,new,new_amount):
+     self.assertEqual(name,b'sysctl.proc_translated');self.assertIsNone(new);self.assertEqual(new_amount,0)
+     returned._obj.value=value;amount._obj.value=size;ctypes.set_errno(error);return result
+    function=Mock(side_effect=query);library=Mock(sysctlbyname=function)
+    with self.subTest(result=result,value=value,error=error,size=size),patch.object(ctypes,'CDLL',return_value=library) as load:
+     if expected is None:self.assertRaisesRegex(ValueError,'unknown',n.macos_native_process)
+     else:self.assertIs(n.macos_native_process(),expected)
+     load.assert_called_once_with('/usr/lib/libSystem.B.dylib',use_errno=True)
+   with patch.object(ctypes,'CDLL',side_effect=OSError('controlled missing API')):self.assertRaisesRegex(ValueError,'unavailable',n.macos_native_process)
+  finally:ctypes.set_errno(original_errno)
+  row,data=self.fixture()
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data)
+   with patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'macos_native_process',return_value=False),patch.object(n.subprocess,'run') as commands:
+    self.assertRaisesRegex(ValueError,'translated execution',n.observe_macos_postsign,core,row);commands.assert_not_called()
