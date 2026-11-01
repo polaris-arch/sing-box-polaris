@@ -506,6 +506,12 @@ class LocalDevelopmentExecutionControls(unittest.TestCase):
 
 class MacNativeExecutionControls(unittest.TestCase):
  """Inert byte fixtures/mock native tools: source controls, never signed/root evidence."""
+ def native_environment(self):
+  # Model the simulated Mac process, independently of the Linux runner's loader.
+  environment={key:value for key,value in n.os.environ.items() if not key.startswith(('LD_','DYLD_'))}
+  return patch.dict(n.os.environ,environment,clear=True)
+ def setUp(self):
+  self.enterContext(self.native_environment())
  def macho(self, arch='arm64', extra=None, library='/usr/lib/libSystem.B.dylib', dyld='/usr/lib/dyld'):
   import struct
   def string_command(code, value, minimum):
@@ -618,6 +624,20 @@ class MacNativeExecutionControls(unittest.TestCase):
    self.assertEqual(self.observe(core,row,commands),row['finalPackageCronetSmoke']['macosExecution']['postSign'])
    self.assertEqual(commands,[['/usr/bin/codesign','--verify','--strict',str(core)],['/usr/bin/codesign','--display','--verbose=4',str(core)]])
    core.write_bytes(data[:-1]+b'X');self.assertRaisesRegex(ValueError,'digest differs',self.observe,core,row)
+ def test_simulated_mac_environment_isolates_and_restores_inherited_loader_variables(self):
+  import os
+  row,data=self.fixture()
+  for key,value in [('LD_LIBRARY_PATH','/opt/hostedtoolcache/Python/3.12.15/x64/lib'),('DYLD_INSERT_LIBRARIES','fixture-only')]:
+   with self.subTest(inherited=key),patch.dict(os.environ,{key:value,'POLARIS_TEST_HOST_ENV':'preserved'}):
+    inherited=dict(os.environ)
+    with self.native_environment():
+     self.assertFalse(any(name.startswith(('LD_','DYLD_')) for name in os.environ))
+     self.assertEqual(dict(os.environ),{name:value for name,value in inherited.items() if not name.startswith(('LD_','DYLD_'))})
+     with tempfile.TemporaryDirectory() as td:
+      core=Path(td)/'inert-core';core.write_bytes(data)
+      self.assertEqual(self.observe(core,row),row['finalPackageCronetSmoke']['macosExecution']['postSign'])
+     self.smoke_actual_observer('none')
+    self.assertEqual(dict(os.environ),inherited)
  def test_postsign_refuses_host_override_links_and_native_signature_failure(self):
   import os
   from types import SimpleNamespace
@@ -625,7 +645,9 @@ class MacNativeExecutionControls(unittest.TestCase):
   with tempfile.TemporaryDirectory() as td:
    core=Path(td)/'inert-core';core.write_bytes(data)
    with patch.object(n.platform,'system',return_value='Linux'):self.assertRaisesRegex(ValueError,'actual native host',n.observe_macos_postsign,core,row)
-   with patch.dict(os.environ,{'DYLD_INSERT_LIBRARIES':'fixture-only'}):self.assertRaisesRegex(ValueError,'ambient loader',self.observe,core,row)
+   for key in ['LD_LIBRARY_PATH','DYLD_INSERT_LIBRARIES']:
+    for value in ['fixture-only','']:
+     with self.subTest(loader=key,value=value),patch.dict(os.environ,{key:value}):self.assertRaisesRegex(ValueError,'ambient loader',self.observe,core,row)
    link=Path(td)/'link';link.symlink_to(core);self.assertRaises(OSError,self.observe,link,row);link.unlink();os.link(core,link);self.assertRaisesRegex(ValueError,'final Core object',self.observe,core,row);link.unlink()
    with patch.object(n,'macos_native_process',return_value=True),patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'buildinfo',return_value=(row['goVersion'],'fixture',row['buildGraph'])),patch.object(n,'run',return_value=row['buildID']),patch.object(n.subprocess,'run',return_value=SimpleNamespace(returncode=1,stderr='CDHash='+'e'*40)):
     self.assertRaisesRegex(ValueError,'strict signature verification',n.observe_macos_postsign,core,row)
