@@ -1558,6 +1558,35 @@ def validate_linux_dispatch(env=os.environ):
         raise ValueError('Linux peer build repository differs')
 
 
+def verify_source_owned_replacements(modules):
+    # Use the producer's Go parser and exact HEAD directory identities. A source
+    # revision may add a vendor; neither an old count nor a partial MVS graph is
+    # the complete source-owned replacement inventory.
+    from native_release_index import source_identity
+    expected = source_identity()
+    if (not isinstance(modules, dict) or set(modules) != set(expected)
+            or type(modules.get('sourceOverlay')) is not int or modules['sourceOverlay'] != 0
+            or any(modules.get(key) != expected[key] for key in ('goModSha256', 'goSumSha256'))):
+        raise ValueError('native producer source module identity differs')
+    replacements = modules['replacements']
+    declared = expected['replacements']
+    if not isinstance(replacements, list) or not declared:
+        raise ValueError('complete source-owned replacement closure missing')
+    for item in replacements + declared:
+        if (not isinstance(item, dict) or set(item) != {'module', 'path', 'tree'}
+                or not isinstance(item['module'], str) or not item['module']
+                or not isinstance(item['path'], str)
+                or not re.fullmatch(r'\./third_party/[A-Za-z0-9_-]+', item['path'])
+                or not isinstance(item['tree'], str) or not re.fullmatch(r'[0-9a-f]{40}', item['tree'])):
+            raise ValueError('invalid source-owned replacement binding')
+    if (len(replacements) != len(declared)
+            or len({item['path'] for item in replacements}) != len(replacements)
+            or len({item['module'] for item in replacements}) != len(replacements)
+            or sorted(replacements, key=lambda item: item['path'])
+            != sorted(declared, key=lambda item: item['path'])):
+        raise ValueError('native producer complete source-owned replacement closure differs')
+
+
 def verify_same_run_context(root, row, diagnostic=False):
     from native_release_index import identity as source_identity
     commit, tree = source_identity()
@@ -1584,17 +1613,7 @@ def verify_same_run_context(root, row, diagnostic=False):
     modules = row['sourceIdentity']
     for name, field in [('go.mod', 'goModSha256'), ('go.sum', 'goSumSha256')]:
         if digest((root/name).read_bytes()) != modules[field]: raise ValueError('producer source module bytes differ')
-    replacements = modules['replacements']
-    if len(replacements) != 10 or len({x['path'] for x in replacements}) != 10:
-        raise ValueError('complete ten-vendor closure missing')
-    declared = re.findall(r'^replace (\S+) => (\./third_party/[A-Za-z0-9_-]+)$', (root/'go.mod').read_text(), re.M)
-    if len(declared) != 10 or len(set(declared)) != 10 or {(x['module'],x['path']) for x in replacements} != set(declared):
-        raise ValueError('native module-to-path closure differs from source go.mod')
-    for item in replacements:
-        path = item['path']
-        if not re.fullmatch(r'\./third_party/[A-Za-z0-9_-]+', path): raise ValueError('non-source-owned replacement')
-        expected = subprocess.check_output(['git', 'rev-parse', 'HEAD:'+path[2:]], cwd=root, text=True).strip()
-        if item['tree'] != expected: raise ValueError('native producer vendor tree differs')
+    verify_source_owned_replacements(modules)
     if diagnostic:
         return {'sourceCommit':product_commit,'sourceTree':product_tree,'runId':PRODUCER['run'],
                 'runAttempt':PRODUCER['attempt'],'workflowCommit':product_commit,
