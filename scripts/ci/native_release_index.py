@@ -239,20 +239,29 @@ def macos_native_row(row):
         not {'with_naive_outbound','with_utls','with_gvisor'} <= set(tags) or
         {'with_purego','with_cronet_purego'} & set(tags)):
         raise ValueError('Mac actual Go target/tags differ')
-    tokens = shlex.split(settings.get('-ldflags','')); values = {}; i = 0
-    while i < len(tokens):
-        token = tokens[i]; i += 1
-        if token == '-X':
-            if i == len(tokens): raise ValueError('Mac truncated Go source flags')
-            assignment = tokens[i]; i += 1
-        elif token.startswith('-X='): assignment = token[3:]
-        else: continue
-        key, separator, value = assignment.partition('=')
-        if not separator or key in values: raise ValueError('Mac ambiguous Go source flags')
-        values[key] = value
-    for key, value in [('SourceRevision',row['sourceCommit']), ('Version',row['version'])]:
-        if values.get('github.com/sagernet/sing-box/constant.'+key) != value:
-            raise ValueError('Mac compiled source/version binding differs: '+key)
+    # Go trimpath builds can omit -ldflags from buildinfo entirely. Absence is
+    # not an identity claim: the held final bytes must still report matching
+    # runtime capabilities/configuration before _derive_macos_execution_facts
+    # can issue the policy. Present stamp metadata remains independently strict.
+    if '-ldflags' in settings:
+        if type(settings['-ldflags']) is not str: raise ValueError('Mac malformed Go source flags')
+        tokens = shlex.split(settings['-ldflags']); values = {}; i = 0
+        while i < len(tokens):
+            token = tokens[i]; i += 1
+            if token == '-X':
+                if i == len(tokens): raise ValueError('Mac truncated Go source flags')
+                assignment = tokens[i]; i += 1
+            elif token.startswith('-X='): assignment = token[3:]
+            else: continue
+            key, separator, value = assignment.partition('=')
+            if not separator or key in values: raise ValueError('Mac ambiguous Go source flags')
+            values[key] = value
+        stamps = [('SourceRevision',row['sourceCommit']), ('Version',row['version'])]
+        if 'github.com/sagernet/sing-box/constant.DirectoryRetirementSourceIdentity' in values:
+            stamps.append(('DirectoryRetirementSourceIdentity',row['sourceCommit']))
+        for key, value in stamps:
+            if values.get('github.com/sagernet/sing-box/constant.'+key) != value:
+                raise ValueError('Mac compiled source/version binding differs: '+key)
     if settings.get('vcs.revision',row['sourceCommit']) != row['sourceCommit'] or settings.get('vcs.modified','false') != 'false':
         raise ValueError('Mac dirty or mismatched Go source')
     return target.split('/')[1]
@@ -401,6 +410,8 @@ def _derive_macos_execution_facts(row, proof, source_root):
     receipt = proof['tlsProbe']
     if receipt['coreSHA256'] != row['core']['sha256'] or type(receipt['coreBytes']) is not int or receipt['coreBytes'] != row['core']['bytes'] or set(receipt['capabilities']['buildTags'].split(',')) != set(row['tags'].split(',')):
         raise ValueError('Mac capability/Core binding differs')
+    # Mandatory even when buildinfo has no linker metadata: actual runtime
+    # version, clean source, target, Go and modules close the final-byte binding.
     validate(receipt['capabilities'],source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],
              target=row['target'],expected_modules=producer_module_identities(row['buildGraph']),source_root=source_root)
     validate_configuration_checks(receipt['capabilities'],receipt['configurationChecks'])

@@ -522,13 +522,18 @@ class MacNativeExecutionControls(unittest.TestCase):
   end=32+sum(map(len,commands))+16;signature=b'controlled-non-executable-signature'
   commands.append(struct.pack('<IIII',0x1d,16,end,len(signature)))
   return struct.pack('<8I',0xfeedfacf,{'arm64':0x0100000c,'amd64':0x01000007}[arch],0,2,len(commands),sum(map(len,commands)),0,0)+b''.join(commands)+signature
- def fixture(self, arch='arm64'):
+ def source_flags(self,row):
+  return ' '.join('-X github.com/sagernet/sing-box/constant.'+key+'='+value for key,value in [('SourceRevision',row['sourceCommit']),('Version',row['version'])])
+ def fixture(self, arch='arm64', ldflags=False):
   import copy
   row=sealed_row_fixture();old=copy.deepcopy(row['finalPackageCronetSmoke']['sealedExecution']);data=self.macho(arch)
   row['target']='darwin/'+arch;row['id']='sing-box-'+row['version']+'-darwin-'+arch
   row['variant'].update(linkage='static-cgo');row['sidecar']=None
   row['tags']='with_naive_outbound,with_utls,with_gvisor'
-  row['buildGraph']['settings'].update(GOOS='darwin',GOARCH=arch,CGO_ENABLED='1',**{'-tags':row['tags'],'-ldflags':'-X github.com/sagernet/sing-box/constant.SourceRevision='+row['sourceCommit']+' -X github.com/sagernet/sing-box/constant.Version='+row['version']})
+  # Actual trimpath buildinfo shape: no fabricated -ldflags setting. Runtime
+  # capabilities, checked independently below, still carry the compiled stamps.
+  row['buildGraph']['settings'].update(GOOS='darwin',GOARCH=arch,CGO_ENABLED='1',**{'-tags':row['tags'],'-trimpath':'true','vcs.revision':row['sourceCommit'],'vcs.modified':'false'})
+  if ldflags:row['buildGraph']['settings']['-ldflags']=self.source_flags(row)
   row['core']={'member':'sing-box','bytes':len(data),'sha256':n.sha(data)}
   row['signatureObservation']={'state':'signed','cdHash':'e'*40,'trustValidated':False}
   row['archive'].update(name=row['id']+'.tar.gz',releaseName=n.public_product_name(row['id']+'.tar.gz'),root=row['id'],members={row['id']+'/sing-box':n.sha(data)})
@@ -543,6 +548,38 @@ class MacNativeExecutionControls(unittest.TestCase):
   row['trustedExecution']={'schema':'polaris-trusted-execution-v1','sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],'loader':'macos-root-private-v1','purposes':['check-config-v1','run-main-v1']}
   return row,data
  def check(self,row):return n.validate_trusted_execution(row,{'runId':42,'runAttempt':1})
+ def test_trimpath_absent_ldflags_and_present_correct_stamps_both_bind_runtime(self):
+  for arch in ['arm64','amd64']:
+   for ldflags in [False,True]:
+    with self.subTest(arch=arch,ldflags=ldflags):
+     row,_=self.fixture(arch,ldflags);settings=row['buildGraph']['settings'];before=dict(settings)
+     self.assertEqual('-ldflags' in settings,ldflags)
+     self.assertEqual(self.check(row),row['trustedExecution']);self.assertEqual(settings,before)
+     if ldflags:
+      settings['-ldflags']=self.source_flags(row).replace('-X ','-X=')+' -X github.com/sagernet/sing-box/constant.DirectoryRetirementSourceIdentity='+row['sourceCommit']
+      self.assertEqual(self.check(row),row['trustedExecution'])
+ def test_present_linker_metadata_cannot_hide_missing_conflicting_or_ambiguous_stamps(self):
+  prefix='github.com/sagernet/sing-box/constant.'
+  row,data=self.fixture();source='-X '+prefix+'SourceRevision='+row['sourceCommit'];version='-X '+prefix+'Version='+row['version'];good=source+' '+version
+  bad_flags=['','-s -w',source,version,good.replace(row['sourceCommit'],'f'*40),good.replace(row['version'],'1.15.0-polaris-alpha.999'),good+' -X',good+' -X broken',good+' '+source,good+' -X='+prefix+'SourceRevision='+row['sourceCommit'],good+' -X "unterminated',good+' -X '+prefix+'DirectoryRetirementSourceIdentity='+'f'*40,None,False,[],{}]
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data)
+   for flags in bad_flags:
+    with self.subTest(flags=flags):
+     row['buildGraph']['settings']['-ldflags']=flags;commands=[]
+     self.assertRaises(ValueError,self.observe,core,row,commands);self.assertEqual(commands,[])
+ def test_absent_linker_metadata_still_requires_complete_clean_runtime_identity(self):
+  import copy,jsonschema
+  row,_=self.fixture()
+  mutations=[lambda d:d.pop('sourceCommit'),lambda d:d.update(sourceCommit=''),lambda d:d.update(sourceCommit='f'*40),lambda d:d.pop('sourceModified'),lambda d:d.update(sourceModified=True),lambda d:d.update(sourceModified=None),lambda d:d.update(coreVersion='1.15.0-polaris-alpha.999'),lambda d:d.update(goVersion='go1.27.1'),lambda d:d.update(requiredGoVersion='go1.27.1'),lambda d:d.update(os='linux'),lambda d:d.update(arch='amd64'),lambda d:d.update(buildTags='with_utls'),lambda d:d['modules'].pop(),lambda d:d['modules'][0].update(sum='h1:wrong')]
+  for index,mutate in enumerate(mutations):
+   bad=copy.deepcopy(row);mutate(bad['finalPackageCronetSmoke']['macosExecution']['tlsProbe']['capabilities'])
+   with self.subTest(index=index),self.assertRaises((ValueError,jsonschema.ValidationError)):self.check(bad)
+ def test_absent_linker_metadata_does_not_admit_a_development_version(self):
+  row,data=self.fixture();row['version']='1.15.0-polaris-dev.c87159cc6'
+  with tempfile.TemporaryDirectory() as td:
+   core=Path(td)/'inert-core';core.write_bytes(data);commands=[]
+   self.assertRaises(ValueError,self.observe,core,row,commands);self.assertEqual(commands,[])
  def test_two_native_targets_derive_only_exact_five_fields_and_two_purposes(self):
   for arch in ['arm64','amd64']:
    row,_=self.fixture(arch)
@@ -661,11 +698,12 @@ class MacNativeExecutionControls(unittest.TestCase):
     if replacement.exists():os.replace(replacement,core)
     return SimpleNamespace(returncode=0,stderr='CDHash='+'e'*40+'\n')
    with patch.object(n,'macos_native_process',return_value=True),patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'buildinfo',return_value=(row['goVersion'],'fixture',row['buildGraph'])),patch.object(n,'run',return_value=row['buildID']),patch.object(n.subprocess,'run',side_effect=code):self.assertRaisesRegex(ValueError,'namespace changed',n.observe_macos_postsign,core,row)
- def smoke_actual_observer(self, failure, arch='arm64'):
+ def smoke_actual_observer(self, failure, arch='arm64', ldflags=False, capability_mutation=None):
   import copy,errno,os,tls_fingerprint_probe as tls
   from contextlib import ExitStack
   from types import SimpleNamespace
-  row,data=self.fixture(arch);proof=copy.deepcopy(row['finalPackageCronetSmoke']['macosExecution'])
+  row,data=self.fixture(arch,ldflags);proof=copy.deepcopy(row['finalPackageCronetSmoke']['macosExecution'])
+  if capability_mutation is not None:capability_mutation(proof['tlsProbe']['capabilities'])
   row.pop('trustedExecution');row['finalPackageCronetSmoke']=None
   with tempfile.TemporaryDirectory() as td:
    directory=Path(td);archive=directory/row['archive']['name']
@@ -737,7 +775,9 @@ class MacNativeExecutionControls(unittest.TestCase):
     stack.enter_context(patch.object(n.subprocess,'check_output',side_effect=output));stack.enter_context(patch.object(n.subprocess,'run',side_effect=native))
     if failure=='none':n.smoke(directory)
     else:
-     with self.assertRaises(ValueError) as rejected:n.smoke(directory)
+     import jsonschema
+     errors=(ValueError,jsonschema.ValidationError) if capability_mutation is not None else ValueError
+     with self.assertRaises(errors) as rejected:n.smoke(directory)
      if failure.startswith('swap-') or failure in ('postsign-bytes','postsign-metadata'):
       self.assertIn('object/namespace changed',str(rejected.exception))
    self.assertEqual(len(opened),1);self.assertTrue(duplicated)
@@ -756,6 +796,13 @@ class MacNativeExecutionControls(unittest.TestCase):
   for failure in ['none','signature','runtime','postsign-drift','archive-drift']:
    with self.subTest(failure=failure):self.smoke_actual_observer(failure)
   with self.subTest(arch='amd64'):self.smoke_actual_observer('none','amd64')
+ def test_trimpath_smoke_with_optional_correct_metadata_uses_fresh_held_runtime_observation(self):
+  for arch in ['arm64','amd64']:
+   with self.subTest(arch=arch):self.smoke_actual_observer('none',arch,ldflags=True)
+ def test_trimpath_smoke_never_publishes_missing_dirty_or_conflicting_runtime_identity(self):
+  mutations=[lambda d:d.pop('sourceCommit'),lambda d:d.update(sourceCommit='f'*40),lambda d:d.pop('sourceModified'),lambda d:d.update(sourceModified=True),lambda d:d.update(coreVersion='1.15.0-polaris-alpha.999'),lambda d:d.update(goVersion='go1.27.1'),lambda d:d.update(arch='amd64'),lambda d:d['modules'].pop()]
+  for index,mutate in enumerate(mutations):
+   with self.subTest(index=index):self.smoke_actual_observer('runtime-identity',capability_mutation=mutate)
  def test_smoke_rejects_same_bytes_new_inode_during_actual_native_probes(self):
   for phase in ['capability','config','cronet']:
    with self.subTest(phase=phase):self.smoke_actual_observer('swap-'+phase)
