@@ -489,6 +489,58 @@ print(json.dumps(receipt))
             self.assertNotEqual(invalid.returncode,0)
             self.assertEqual((root/'test.key').stat().st_mode & 0o777,0o600)
 
+    def replacement_identity(self):
+        # A source fixture, not a GitHub context or an executed native product.
+        declarations = re.findall(r'^replace (\S+) => (\./third_party/[A-Za-z0-9_-]+)$',
+                                  (ROOT/'go.mod').read_text(), re.M)
+        self.assertEqual(len(declarations), 11)
+        self.assertIn(('github.com/libp2p/go-nat', './third_party/go-nat'), declarations)
+        return {'sourceOverlay': 0, 'goModSha256': peer.digest((ROOT/'go.mod').read_bytes()),
+                'goSumSha256': peer.digest((ROOT/'go.sum').read_bytes()),
+                'replacements': [{'module': module, 'path': path, 'tree': format(i, '040x')}
+                                 for i, (module, path) in enumerate(declarations, 1)]}
+
+    def test_source_replacements_use_complete_producer_inventory_not_historical_count(self):
+        expected = self.replacement_identity()
+        with mock.patch('native_release_index.source_identity', return_value=expected) as collector:
+            peer.verify_source_owned_replacements(copy.deepcopy(expected))
+            reordered = copy.deepcopy(expected); reordered['replacements'].reverse()
+            peer.verify_source_owned_replacements(reordered)
+            self.assertEqual(collector.call_count, 2)
+
+    def test_source_replacements_reject_each_missing_changed_or_substituted_vendor(self):
+        expected = self.replacement_identity()
+        with mock.patch('native_release_index.source_identity', return_value=expected):
+            for i in range(len(expected['replacements'])):
+                for field, value in [('module', 'example.invalid/other'),
+                                     ('path', './third_party/other'), ('tree', 'f'*40)]:
+                    with self.subTest(vendor=i, field=field):
+                        changed = copy.deepcopy(expected); changed['replacements'][i][field] = value
+                        self.assertRaises(ValueError, peer.verify_source_owned_replacements, changed)
+                missing = copy.deepcopy(expected); del missing['replacements'][i]
+                self.assertRaises(ValueError, peer.verify_source_owned_replacements, missing)
+            for extra in [copy.deepcopy(expected['replacements'][0]),
+                          {'module':'example.invalid/extra','path':'./third_party/extra','tree':'f'*40}]:
+                changed = copy.deepcopy(expected); changed['replacements'].append(extra)
+                self.assertRaises(ValueError, peer.verify_source_owned_replacements, changed)
+            duplicate = copy.deepcopy(expected); duplicate['replacements'][-1] = duplicate['replacements'][0]
+            self.assertRaises(ValueError, peer.verify_source_owned_replacements, duplicate)
+
+    def test_source_replacements_keep_module_bytes_overlay_and_record_shape_bound(self):
+        expected = self.replacement_identity()
+        with mock.patch('native_release_index.source_identity', return_value=expected):
+            for field, value in [('sourceOverlay', 1), ('sourceOverlay', False),
+                                 ('goModSha256', 'f'*64), ('goSumSha256', 'f'*64),
+                                 ('replacements', None), ('extra', True)]:
+                changed = copy.deepcopy(expected); changed[field] = value
+                self.assertRaises(ValueError, peer.verify_source_owned_replacements, changed)
+            for record in [{}, {'module':'x','path':'../third_party/x','tree':'a'*40},
+                           {'module':'x','path':'./other/x','tree':'a'*40},
+                           {'module':'x','path':'./third_party/x','tree':'a'*39},
+                           dict(expected['replacements'][0], extra=True)]:
+                changed = copy.deepcopy(expected); changed['replacements'][0] = record
+                self.assertRaises(ValueError, peer.verify_source_owned_replacements, changed)
+
     def test_native_workflow_is_same_run_linux_only_no_new_privilege(self):
         source=(ROOT/'.github/workflows/build.yml').read_text()
         job=source[source.index('  native_smoke:'):source.index('  native_index:')]

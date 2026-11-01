@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -53,20 +54,23 @@ func RegisterRuntimeCleanup(ctx context.Context, cleanup func() error) (bool, er
 type RuntimeCloseWaiter interface{ RuntimeCloseAndWait() error }
 
 // CloseRuntimeResource keeps an unknown component's exact dependency closure
-// charged. The diagnostic intentionally does not wrap canceled/closed errors:
-// Scope filters those, which would incorrectly certify resource completion.
+// charged. The diagnostic preserves causes but masks benign completion matches:
+// Scope must not filter a failed cleanup as merely canceled or already closed.
 func CloseRuntimeResource(ctx context.Context, name string, closer interface{ Close() error }) error {
 	if _, bound := adapter.RuntimeResourceSourceFromContext(ctx); !bound {
 		return closer.Close()
 	}
 	if waiter, ok := closer.(RuntimeCloseWaiter); ok {
 		if err := waiter.RuntimeCloseAndWait(); err != nil {
-			return fmt.Errorf("%s runtime cleanup incomplete: %v", name, err)
+			return &runtimeCleanupError{fmt.Errorf("%s runtime cleanup incomplete: %w", name, err)}
 		}
 		return nil
 	}
 	err := closer.Close()
-	return fmt.Errorf("%s runtime worker completion is unproven after close (%v)", name, err)
+	if err != nil {
+		return &runtimeCleanupError{fmt.Errorf("%s runtime worker completion is unproven after close (%w)", name, err)}
+	}
+	return &runtimeCleanupError{fmt.Errorf("%s runtime worker completion is unproven after close", name)}
 }
 
 func runtimeBound(ctx context.Context, source adapter.RuntimeResourceSource) bool {
@@ -209,10 +213,24 @@ func (s *runtimeCarrier) begin() (func(), error) {
 	return release, err
 }
 
-type runtimeCleanupError struct{ message string }
+type runtimeCleanupError struct{ cause error }
 
-func (e *runtimeCleanupError) Error() string                { return e.message }
+func (e *runtimeCleanupError) Error() string                { return e.cause.Error() }
 func (*runtimeCleanupError) RuntimeCleanupIncomplete() bool { return true }
+
+// Preserve genuine error identity without exposing completion sentinels that
+// Scope filters or a caller might mistake for a pending, retryable close. No
+// Unwrap is provided: error expansion must keep this cleanup debt indivisible.
+func (e *runtimeCleanupError) Is(target error) bool {
+	switch target {
+	case context.Canceled, context.DeadlineExceeded, io.EOF, net.ErrClosed,
+		io.ErrClosedPipe, os.ErrClosed, syscall.EPIPE, syscall.ECONNRESET,
+		syscall.ENOTCONN, http.ErrServerClosed, ErrRuntimeClosePending:
+		return false
+	}
+	return errors.Is(e.cause, target)
+}
+func (e *runtimeCleanupError) As(target any) bool { return errors.As(e.cause, target) }
 
 func runtimeCleanupIncomplete(err error) bool {
 	var marker interface{ RuntimeCleanupIncomplete() bool }
@@ -222,11 +240,11 @@ func runtimeCleanupIncomplete(err error) bool {
 func closeRuntimeCarrier(closeFn func() error) (err error) {
 	defer func() {
 		if recover() != nil {
-			err = &runtimeCleanupError{"runtime carrier close panicked; completion unknown"}
+			err = &runtimeCleanupError{errors.New("runtime carrier close panicked; completion unknown")}
 		}
 	}()
 	if err = closeFn(); err != nil {
-		return &runtimeCleanupError{fmt.Sprintf("runtime carrier close failed; completion unknown: %v", err)}
+		return &runtimeCleanupError{fmt.Errorf("runtime carrier close failed; completion unknown: %w", err)}
 	}
 	return nil
 }
@@ -943,7 +961,7 @@ func CloseRuntimeCreation(ctx context.Context, source adapter.RuntimeResourceSou
 	}
 	_, release, err := adapter.AcquireRuntimeOperation(ctx, source)
 	if err != nil {
-		return &runtimeCleanupError{fmt.Sprintf("failed carrier cleanup could not retain its owner: %v", err)}
+		return &runtimeCleanupError{fmt.Errorf("failed carrier cleanup could not retain its owner: %w", err)}
 	}
 	err = closeRuntimeCarrier(closeFn)
 	if err == nil {

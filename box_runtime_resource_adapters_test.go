@@ -17,6 +17,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
@@ -190,6 +191,105 @@ func TestRuntimeResourceEligibilityAndBuildStubsArePrecise(t *testing.T) {
 		if stub == item.available {
 			t.Fatalf("%s build stub inventory: %+v", item.kind, problems)
 		}
+	}
+}
+
+func TestRuntimeRealmHTTPUsesStrictEligibilityAndConcreteBuildAdmission(t *testing.T) {
+	for _, mode := range []string{"missing-reference", "unsupported-inline", "supported-inline", "supported-reference"} {
+		t.Run(mode, func(t *testing.T) {
+			options := runtimeRealmDependencyOptions()
+			realm := options.Outbounds[2].Options.(*option.Hysteria2OutboundOptions)
+			realm.Realm.HTTPClient = &option.HTTPClientOptions{Tag: "control"}
+			wantCode := ""
+			switch mode {
+			case "missing-reference":
+				wantCode = "INVALID_DEPENDENCY_GRAPH"
+			case "unsupported-inline":
+				realm.Realm.HTTPClient = &option.HTTPClientOptions{Engine: "future"}
+				wantCode = "PENDING_ADAPTER"
+			case "supported-inline":
+				realm.Realm.HTTPClient = &option.HTTPClientOptions{Version: 1}
+			case "supported-reference":
+				options.HTTPClients = []option.HTTPClient{{Tag: "control", Version: 1}}
+			}
+			problems := runtimeResourceEligibility(context.Background(), options)
+			matched := slices.ContainsFunc(problems, func(problem RuntimePlanError) bool {
+				return problem.Path == "outbounds[2].realm.http_client" && problem.Code == wantCode
+			})
+			unexpected := slices.ContainsFunc(problems, func(problem RuntimePlanError) bool {
+				return !(problem.Path == "outbounds[2].realm" && problem.Code == "PENDING_ADAPTER" && !C.WithQUIC) &&
+					!(problem.Path == "outbounds[2].realm.http_client" && problem.Code == wantCode && wantCode != "")
+			})
+			if (wantCode != "" && !matched) || unexpected {
+				t.Fatal("Realm HTTP bypassed existing typed eligibility", problems)
+			}
+			_, compatibility := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options)
+			if slices.ContainsFunc(compatibility, func(problem RuntimePlanError) bool {
+				return problem.Path == "outbounds[2].realm" && problem.Code == "PENDING_ADAPTER"
+			}) != !C.WithQUIC {
+				t.Fatal("Realm admission did not follow its concrete build", compatibility)
+			}
+		})
+	}
+}
+
+func TestRuntimeRealmEligibilityPreservesFamiliesAndMappingBounds(t *testing.T) {
+	for _, version := range []int{0, 4, 6} {
+		for _, mapping := range []bool{false, true} {
+			t.Run(fmt.Sprintf("IPv%d/mapping=%t", version, mapping), func(t *testing.T) {
+				options := runtimeRealmDependencyOptions()
+				realm := options.Outbounds[2].Options.(*option.Hysteria2OutboundOptions)
+				realm.Realm.IPVersion = version
+				realm.Realm.PortMapping = &option.Hysteria2RealmPortMapping{Enabled: mapping}
+				problems := runtimeResourceEligibility(context.Background(), options)
+				mappingRejected := slices.ContainsFunc(problems, func(p RuntimePlanError) bool {
+					return p.Path == "outbounds[2].realm.port_mapping" && p.Code == "INVALID_DEPENDENCY_GRAPH"
+				})
+				if mappingRejected != (version == 6 && mapping) {
+					t.Fatal("Realm family/mapping constraint changed", problems)
+				}
+				for _, p := range problems {
+					if (p.Path == "outbounds[2].realm" && p.Code == "PENDING_ADAPTER" && !C.WithQUIC) ||
+						(p.Path == "outbounds[2].realm.port_mapping" && mappingRejected) {
+						continue
+					}
+					t.Fatal("supported Realm variant stayed pending", problems)
+				}
+			})
+		}
+	}
+}
+
+func TestRuntimeRealmEligibilityRejectsOnlyExactUnsupportedOrInvalidVariant(t *testing.T) {
+	for _, test := range []struct {
+		name, suffix, code string
+		mutate             func(*option.Hysteria2OutboundOptions)
+	}{
+		{"server", ".realm", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.Server = "private.invalid" }},
+		{"port", ".realm", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.ServerPort = 443 }},
+		{"hopping", ".realm", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.ServerPorts = []string{"443:444"} }},
+		{"family", ".realm.ip_version", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.Realm.IPVersion = 7 }},
+		{"control-url", ".realm.server_url", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.Realm.ServerURL = "ftp://private.invalid" }},
+		{"missing-control-host", ".realm.server_url", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.Realm.ServerURL = "://private.invalid" }},
+		{"tls-disabled", ".tls", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.TLS.Enabled = false }},
+		{"tls-missing", ".tls", "INVALID_DEPENDENCY_GRAPH", func(v *option.Hysteria2OutboundOptions) { v.TLS = nil }},
+		{"tls-engine", ".tls.engine", "PENDING_ADAPTER", func(v *option.Hysteria2OutboundOptions) { v.TLS.Engine = "apple" }},
+		{"utls", ".tls.utls", "PENDING_ADAPTER", func(v *option.Hysteria2OutboundOptions) { v.TLS.UTLS = &option.OutboundUTLSOptions{Enabled: true} }},
+		{"reality", ".tls.reality", "PENDING_ADAPTER", func(v *option.Hysteria2OutboundOptions) {
+			v.TLS.Reality = &option.OutboundRealityOptions{Enabled: true}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			options := runtimeRealmDependencyOptions()
+			test.mutate(options.Outbounds[2].Options.(*option.Hysteria2OutboundOptions))
+			problems := runtimeResourceEligibility(context.Background(), options)
+			if !slices.ContainsFunc(problems, func(p RuntimePlanError) bool { return p.Path == "outbounds[2]"+test.suffix && p.Code == test.code }) {
+				t.Fatal("exact unsupported Realm variant entered graph", problems)
+			}
+			if strings.Contains(fmt.Sprint(problems), "private.invalid") {
+				t.Fatal("Realm diagnostics exposed private input")
+			}
+		})
 	}
 }
 

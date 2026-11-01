@@ -14,7 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	boxTLS "github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -29,6 +32,25 @@ type runtimeBarrierConn struct {
 	readOnce     sync.Once
 	closeOnce    sync.Once
 	closes       atomic.Int32
+}
+
+func TestRuntimeBoundaryKeepsTypedCleanupCauseThroughActualScopeClose(t *testing.T) {
+	original := &net.OpError{Op: "close", Net: "http", Err: context.Canceled}
+	b := NewRuntimeTransportBoundary(nil)
+	b.record(original)
+	err := b.RuntimeCloseAndWait()
+	var typed *net.OpError
+	if !errors.Is(err, original) || !errors.As(err, &typed) || typed != original || errors.Is(err, context.Canceled) || !boxTLS.IsRuntimeCleanupIncomplete(err) {
+		t.Fatal("HTTP boundary erased real body/socket cleanup failure", err)
+	}
+	if repeated := b.RuntimeCloseAndWait(); !errors.Is(repeated, original) || errors.Is(repeated, context.Canceled) {
+		t.Fatal("repeated terminal close lost its cleanup debt", repeated)
+	}
+	scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+	scope.Add(b.RuntimeCloseAndWait)
+	if result := scope.Close(); result == nil || !errors.Is(result, original) || !boxTLS.IsRuntimeCleanupIncomplete(result) {
+		t.Fatal("construction Scope swallowed HTTP cleanup failure", result)
+	}
 }
 
 func newRuntimeBarrierConn() *runtimeBarrierConn {

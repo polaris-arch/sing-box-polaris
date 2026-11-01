@@ -139,6 +139,18 @@ func cloneRuntimeImpacts(impacts []RuntimeImpact) []RuntimeImpact {
 }
 
 func cloneRuntimeOperation(operation RuntimeConfigOperation) RuntimeConfigOperation {
+	if operation.RetirementState == "DRAINED" {
+		for _, h := range operation.apiHandoffs {
+			done, err := h.Status()
+			if err != nil {
+				operation.RetirementState = "UNKNOWN"
+				break
+			}
+			if !done {
+				operation.RetirementState = "DRAINING"
+			}
+		}
+	}
 	operation.Impacts = cloneRuntimeImpacts(operation.Impacts)
 	operation.Errors = cloneRuntimePlan(RuntimeConfigPlan{Errors: operation.Errors}).Errors
 	return operation
@@ -154,6 +166,11 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	coordinator := s.runtime
 	if coordinator == nil {
 		return plan, errors.New("runtime configuration adapter is unavailable")
+	}
+	for _, member := range s.service.Services() {
+		if owner, ok := member.(interface{ RuntimeAPIHandoffPending() bool }); ok && owner.RuntimeAPIHandoffPending() {
+			return plan, errors.New("API handoff or cleanup remains pending; reconcile the original transaction")
+		}
 	}
 	coordinator.access.Lock()
 	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected {

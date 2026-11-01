@@ -18,10 +18,9 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	N "github.com/sagernet/sing/common/network"
-	aTLS "github.com/sagernet/sing/common/tls"
+	"github.com/sagernet/sing/service"
 
 	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c" //nolint:staticcheck
 )
 
 func RegisterService(registry *boxService.Registry) {
@@ -35,18 +34,24 @@ type Service struct {
 	listener  *listener.Listener
 	tlsConfig tls.ServerConfig
 	dashboard *dashboard
+	runtime   *runtimeAPI
+	legacy    *apiEndpoint
 }
 
 func NewService(ctx context.Context, logger log.ContextLogger, tag string, options option.APIServiceOptions) (adapter.Service, error) {
+	if service.FromContext[adapter.RuntimeAPIProvider](ctx) != nil {
+		options = adapter.NormalizeRuntimeAPIOptions(options)
+	}
 	s := &Service{
 		Adapter: boxService.NewAdapter(C.TypeAPI, tag),
 		logger:  logger,
 		options: options,
 		listener: listener.New(listener.Options{
-			Context: ctx,
-			Logger:  logger,
-			Network: []string{N.NetworkTCP},
-			Listen:  options.ListenOptions,
+			Exclusive: service.FromContext[adapter.RuntimeAPIProvider](ctx) != nil,
+			Context:   ctx,
+			Logger:    logger,
+			Network:   []string{N.NetworkTCP},
+			Listen:    options.ListenOptions,
 		}),
 	}
 	if options.TLS != nil {
@@ -59,12 +64,22 @@ func NewService(ctx context.Context, logger log.ContextLogger, tag string, optio
 	if options.Dashboard != nil && options.Dashboard.Enabled {
 		s.dashboard = newDashboard(ctx, logger, tag, *options.Dashboard)
 	}
+	if provider := service.FromContext[adapter.RuntimeAPIProvider](ctx); provider != nil {
+		runtime, err := newRuntimeAPI(ctx, s, provider)
+		if err != nil {
+			return nil, err
+		}
+		s.runtime = runtime
+	}
 	return s, nil
 }
 
 func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	if stage != adapter.StartStateStarted {
 		return nil
+	}
+	if s.runtime != nil {
+		return s.runtime.start(scope)
 	}
 	ctx := scope.Context()
 	startedService := daemon.NewAttachedService(ctx)
@@ -84,42 +99,38 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return E.Cause(err, "start dashboard")
 		}
 	}
-	httpServer := &http.Server{
-		//nolint:staticcheck
-		Handler: h2c.NewHandler(newHTTPHandler(s.logger, grpcServer, s.options, s.dashboard), new(http2.Server)),
-		BaseContext: func(net.Listener) context.Context {
-			return ctx
-		},
-	}
 	if s.tlsConfig != nil {
-		err := s.tlsConfig.Start()
-		if err != nil {
-			return E.Cause(err, "create TLS config")
-		}
 		scope.Add(s.tlsConfig.Close)
-		if !common.Contains(s.tlsConfig.NextProtos(), http2.NextProtoTLS) {
-			s.tlsConfig.SetNextProtos(append([]string{http2.NextProtoTLS}, s.tlsConfig.NextProtos()...))
-		}
-		if !common.Contains(s.tlsConfig.NextProtos(), "http/1.1") {
-			s.tlsConfig.SetNextProtos(append(s.tlsConfig.NextProtos(), "http/1.1"))
+		if err := s.startTLS(); err != nil {
+			return err
 		}
 	}
 	tcpListener, err := s.listener.ListenTCP()
 	if err != nil {
 		return err
 	}
-	scope.Add(func() error {
-		return closeHTTPListener(httpServer, s.listener)
-	})
 	if s.tlsConfig != nil {
-		tcpListener = aTLS.NewListener(tcpListener, s.tlsConfig)
+		tcpListener = apiTLSListener{Listener: tcpListener, config: s.tlsConfig}
 	}
-	go func() {
-		serveErr := httpServer.Serve(tcpListener)
-		if serveErr != nil && ctx.Err() == nil {
-			s.logger.Error("serve error: ", serveErr)
-		}
-	}()
+	e := &apiEndpoint{listener: tcpListener, conns: make(map[*apiOwnedConn]struct{}), serveDone: make(chan struct{})}
+	s.legacy = e
+	scope.Add(e.close)
+	e.startHandler(ctx, newHTTPHandler(s.logger, grpcServer, s.options, s.dashboard))
+	return nil
+}
+
+// Both initial ingress owners use the same TLS lifecycle. Register its close
+// before calling this: a failed Start may already own provider/watch work.
+func (s *Service) startTLS() error {
+	if err := s.tlsConfig.Start(); err != nil {
+		return E.Cause(err, "create TLS config")
+	}
+	if !common.Contains(s.tlsConfig.NextProtos(), http2.NextProtoTLS) {
+		s.tlsConfig.SetNextProtos(append([]string{http2.NextProtoTLS}, s.tlsConfig.NextProtos()...))
+	}
+	if !common.Contains(s.tlsConfig.NextProtos(), "http/1.1") {
+		s.tlsConfig.SetNextProtos(append(s.tlsConfig.NextProtos(), "http/1.1"))
+	}
 	return nil
 }
 

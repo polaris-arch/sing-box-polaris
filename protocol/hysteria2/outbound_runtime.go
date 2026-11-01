@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
+	"net/netip"
 	"syscall"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -28,8 +30,9 @@ type outboundRuntime struct {
 	cleanup               func() error
 	registered            bool
 	allowNativeDescriptor bool
-	legacyRealm           bool
-	legacyClose           func() error
+	mapperFence           *outbound.RuntimeIOFence
+	mapperBoundary        *httpclient.RuntimeTransportBoundary
+	mapperBegin           func(context.Context) (context.Context, func(), error)
 }
 
 func newOutboundRuntime(ctx context.Context) *outboundRuntime {
@@ -37,27 +40,25 @@ func newOutboundRuntime(ctx context.Context) *outboundRuntime {
 	r.source, _ = adapter.RuntimeResourceSourceFromContext(ctx)
 	r.ctx, r.cancel = context.WithCancel(adapter.ContextWithRuntimeOwnership(ctx, context.Background()))
 	r.boundary = httpclient.NewRuntimeTransportBoundary(func() error {
-		if r.legacyClose != nil {
-			return r.legacyClose()
-		}
 		if r.client != nil {
 			return r.client.RuntimeCloseAndWait()
 		}
 		return nil
 	})
 	r.fence = outbound.NewRuntimeIOFence(func() error { r.cancel(); return r.boundary.RuntimeCloseAndWait() })
-	r.cleanup = outbound.OnceRuntimeCleanup(r.fence.RuntimeCloseAndWait)
+	r.cleanup = outbound.OnceRuntimeCleanup(func() error {
+		// Deletion needs a captured HTTP continuation while native retirement
+		// joins. Keep it separate from sealed external QUIC admission.
+		err := r.fence.RuntimeCloseAndWait()
+		if r.mapperFence != nil {
+			err = errors.Join(err, r.mapperFence.RuntimeCloseAndWait())
+		}
+		return err
+	})
 	return r
 }
 
 func (r *outboundRuntime) install(ctx context.Context, client any) error {
-	if r.legacyRealm {
-		legacy := client.(interface{ CloseWithError(error) error })
-		r.legacyClose = func() error { return legacy.CloseWithError(net.ErrClosed) }
-		var err error
-		r.registered, err = outbound.RegisterRuntimeCleanup(ctx, r.cleanup)
-		return err
-	}
 	waiter, ok := client.(outbound.RuntimeCloseWaiter)
 	if !ok {
 		return errors.New("ordinary QUIC outbound requires pinned sing-quic client worker-join delta")
@@ -68,21 +69,21 @@ func (r *outboundRuntime) install(ctx context.Context, client any) error {
 	if err != nil {
 		return err
 	}
+	if r.mapperFence != nil {
+		r.mapperBegin, err = outbound.RegisterRuntimeOwnedFence(ctx, r.mapperFence)
+		if err != nil {
+			return err
+		}
+	}
 	r.registered, err = outbound.RegisterRuntimeCleanup(ctx, r.cleanup)
 	return err
 }
 func (r *outboundRuntime) close() error { return r.cleanup() }
 func (r *outboundRuntime) guardTLS(config tls.Config) (tls.Config, error) {
-	if r.legacyRealm {
-		return config, nil
-	}
 	return newOutboundRuntimeTLS(config, r)
 }
 
 func (r *outboundRuntime) guardDialer(dialer N.Dialer) N.Dialer {
-	if r.legacyRealm {
-		return dialer
-	}
 	return &outboundOwnedDialer{dialer: dialer, owner: r}
 }
 
@@ -150,9 +151,39 @@ func (d *outboundOwnedDialer) DialContext(ctx context.Context, network string, d
 }
 
 func (d *outboundOwnedDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
-	// Ordinary clients use connected UDP. Optional Realm's unconnected/remote
-	// registration branch needs a separately reviewed ownership contract.
-	return nil, errors.New("QUIC outbound unconnected Realm carrier is outside ordinary node runtime scope")
+	ctx, leave, err := d.enter(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer leave()
+	ctx, finish, err := d.owner.boundary.BeginDial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
+	raw, err := d.dialer.ListenPacket(ctx, destination)
+	if err != nil {
+		if raw != nil {
+			_, fence := outbound.WrapRuntimeOwnedPacketConn(raw)
+			closeErr := fence.RuntimeCloseAndWait()
+			d.owner.boundary.RecordClose(closeErr)
+			if closeErr != nil {
+				return nil, tls.NewRuntimeCleanupError(errors.Join(err, closeErr))
+			}
+		}
+		if tls.IsRuntimeCleanupIncomplete(err) {
+			d.owner.boundary.RecordClose(err)
+		}
+		return nil, err
+	}
+	if raw == nil {
+		return nil, errors.New("Realm listener returned no carrier")
+	}
+	guarded, fence := outbound.WrapRuntimeOwnedPacketConn(raw)
+	if err = d.owner.boundary.RegisterResource(fence); err != nil {
+		return nil, err
+	}
+	return &outboundJoinedPacketConn{PacketConn: guarded, fence: fence}, nil
 }
 
 // Obfuscation and port-hopping wrappers embed net.Conn.Close. Give them a
@@ -182,3 +213,102 @@ func (r *outboundRuntime) nativeCarrier(raw net.Conn) net.Conn {
 	}
 	return &outboundOpaqueConn{raw}
 }
+
+// Realm's unconnected carrier retains its actual packet-method close barrier.
+// Do not expose a raw descriptor that bypasses obfuscation or ownership.
+type outboundJoinedPacketConn struct {
+	net.PacketConn
+	fence *outbound.RuntimeIOFence
+}
+
+func (c *outboundJoinedPacketConn) Close() error { return c.fence.RuntimeCloseAndWait() }
+
+// The constructor captures both dependencies. Demand borrows only this
+// generation's registered ownership, never the current graph's replacement.
+type outboundRealmHTTPTransport struct {
+	owner     *outboundRuntime
+	transport http.RoundTripper
+	mapping   bool
+}
+
+func (t *outboundRealmHTTPTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	begin, boundary := t.owner.begin, t.owner.boundary
+	if t.mapping {
+		begin, boundary = t.owner.mapperBegin, t.owner.mapperBoundary
+	}
+	if begin == nil {
+		return nil, errors.New("Realm HTTP used before ownership installation")
+	}
+	ctx, leave, err := begin(request.Context())
+	if err != nil {
+		return nil, err
+	}
+	defer leave()
+	if t.owner.source != nil {
+		ctx, err = outbound.ContextForRuntimeOwnedSession(ctx, t.owner.source)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return boundary.RoundTrip(request.Clone(ctx), t.transport.RoundTrip)
+}
+
+func (r *outboundRuntime) realmMappingHTTP(transport http.RoundTripper) *http.Client {
+	r.mapperBoundary = httpclient.NewRuntimeTransportBoundary(nil)
+	r.mapperFence = outbound.NewRuntimeIOFence(r.mapperBoundary.RuntimeCloseAndWait)
+	return &http.Client{Transport: &outboundRealmHTTPTransport{owner: r, transport: transport, mapping: true}}
+}
+
+func (r *outboundRuntime) realmLookup(ctx context.Context, lookup func(context.Context) ([]netip.Addr, error)) ([]netip.Addr, error) {
+	ctx, leave, err := (&outboundOwnedDialer{owner: r}).enter(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer leave()
+	ctx, finish, err := r.boundary.BeginDial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
+	return lookup(ctx)
+}
+
+// The Realm peer has already been selected by punching. Adapt only that peer
+// to the existing connected QUIC fence, through the obfuscating PacketConn.
+// Neither Upstream nor SyscallConn may expose the untransformed UDP socket.
+type outboundRealmPacketCarrier struct {
+	net.PacketConn
+	peer netip.AddrPort
+}
+
+func newOutboundRealmPacketCarrier(raw net.PacketConn, remote net.Addr) (net.Conn, error) {
+	peer, ok := remote.(*net.UDPAddr)
+	if raw == nil || !ok || peer == nil || !peer.AddrPort().IsValid() || peer.Port <= 0 || peer.Port > 65535 {
+		return nil, errors.New("Realm QUIC requires a valid selected UDP peer")
+	}
+	address := peer.AddrPort()
+	address = netip.AddrPortFrom(address.Addr().Unmap(), address.Port())
+	return &outboundRealmPacketCarrier{PacketConn: raw, peer: address}, nil
+}
+
+func (c *outboundRealmPacketCarrier) Read(p []byte) (int, error) {
+	for {
+		n, address, err := c.PacketConn.ReadFrom(p)
+		if err != nil {
+			return n, err
+		}
+		peer, ok := address.(*net.UDPAddr)
+		if ok && peer != nil {
+			actual := peer.AddrPort()
+			if actual.IsValid() && netip.AddrPortFrom(actual.Addr().Unmap(), actual.Port()) == c.peer {
+				return n, nil
+			}
+		}
+	}
+}
+
+func (c *outboundRealmPacketCarrier) Write(p []byte) (int, error) {
+	return c.PacketConn.WriteTo(p, net.UDPAddrFromAddrPort(c.peer))
+}
+
+func (c *outboundRealmPacketCarrier) RemoteAddr() net.Addr { return net.UDPAddrFromAddrPort(c.peer) }

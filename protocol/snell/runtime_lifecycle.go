@@ -100,5 +100,17 @@ func (d *runtimeDialer) DialContext(ctx context.Context, network string, destina
 	if err := creation.Register(fence); err != nil {
 		return nil, err
 	}
-	return wrapped, nil
+	// Snell's non-reuse connections inherit this Close, and its reuse pool
+	// also consumes Close synchronously. A private carrier's Close only queues
+	// cleanup and returns ErrRuntimeClosePending. Letting that request result
+	// escape would poison the outer operation and retain its graph forever.
+	// Join the exact registered fence without exposing the physical socket.
+	return &runtimeDialConn{Conn: wrapped, fence: fence}, nil
 }
+
+type runtimeDialConn struct {
+	net.Conn
+	fence *outbound.RuntimeIOFence
+}
+
+func (c *runtimeDialConn) Close() error { return c.fence.RuntimeCloseAndWait() }

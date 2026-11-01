@@ -153,3 +153,79 @@ class FingerprintProbeControls(unittest.TestCase):
             text=(probe.ROOT/'.github/workflows'/workflow).read_text()
             self.assertIn('release/licenses/TLS-DEPENDENCY-NOTICES.txt',text)
         self.assertIn("Path('release/licenses').rglob('*')",(probe.ROOT/'scripts/ci/native_release_index.py').read_text())
+
+
+class SealedExecutionProbeControls(unittest.TestCase):
+    def test_launcher_seals_and_hashes_both_exact_objects_and_closes_every_fd(self):
+        import os,fcntl,hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);core=root/'core';library=root/'libcronet.so'
+            core.write_bytes(b'synthetic-core');library.write_bytes(b'synthetic-library')
+            pin=lambda path:{'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+            with probe.sealed_execution(core,library,pin(core),pin(library)) as execution:
+                fds=(execution.core_fd,execution.library_fd)
+                for fd in fds:
+                    self.assertEqual(fcntl.fcntl(fd,fcntl.F_GET_SEALS),15)
+                    with self.assertRaises(OSError):os.pwrite(fd,b'X',0)
+                # Changing the original namespace cannot change either child object.
+                core.write_bytes(b'new');library.unlink()
+                self.assertEqual(os.pread(fds[0],100,0),b'synthetic-core')
+                self.assertEqual(os.pread(fds[1],100,0),b'synthetic-library')
+                with mock.patch.object(probe.subprocess,'run') as child:
+                    execution.run(['tools','cronet'],text=True,timeout=30)
+                    args,kwargs=child.call_args
+                    self.assertEqual(args[0],['/proc/self/fd/'+str(fds[0]),'tools','cronet'])
+                    self.assertEqual(kwargs['pass_fds'],fds)
+                    self.assertEqual(kwargs['env'],{'PATH':os.defpath,'POLARIS_CRONET_LIBRARY_FD':str(fds[1])})
+            for fd in fds:
+                with self.assertRaises(OSError):os.fstat(fd)
+
+    def test_hash_mismatch_never_yields_a_launcher_and_releases_partial_members(self):
+        import os,hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);core=root/'core';library=root/'library';core.write_bytes(b'core');library.write_bytes(b'library')
+            core_pin={'bytes':4,'sha256':hashlib.sha256(b'core').hexdigest()}
+            library_pin={'bytes':7,'sha256':'0'*64};real=probe.os.memfd_create;fds=[]
+            def create(*args):
+                fd=real(*args);fds.append(fd);return fd
+            with mock.patch.object(probe.os,'memfd_create',side_effect=create),self.assertRaisesRegex(ValueError,'sealed native bytes differ'):
+                with probe.sealed_execution(core,library,core_pin,library_pin):self.fail('mismatched library admitted')
+            self.assertEqual(len(fds),2)
+            for fd in fds:
+                with self.assertRaises(OSError):os.fstat(fd)
+
+    def test_probe_keeps_static_artifact_metadata_but_executes_every_check_via_launcher(self):
+        import hashlib
+        from types import SimpleNamespace
+        document=FingerprintProbeControls().fixture();calls=[]
+        with tempfile.TemporaryDirectory() as directory:
+            core=Path(directory)/'sing-box';core.write_bytes(b'fixture-core')
+            def run(arguments,**kwargs):
+                calls.append(arguments)
+                if arguments==['tools','tls-fingerprints']:return SimpleNamespace(returncode=0,stdout=json.dumps(document),stderr='')
+                self.assertEqual(arguments[:2],['check','-c'])
+                config=json.loads(Path(arguments[2]).read_text())
+                cases=probe.configuration_cases(document)
+                expected,_,error=cases[len(calls)-2]
+                self.assertEqual(config,cases[len(calls)-2][1])
+                return SimpleNamespace(returncode=0 if expected['expectedPass'] else 1,stdout=error or '',stderr='')
+            execution=SimpleNamespace(run=run)
+            with mock.patch.object(probe.subprocess,'run',side_effect=AssertionError('path execution escaped')):
+                receipt=probe.probe(core,source=document['sourceCommit'],version=document['coreVersion'],go_version=document['goVersion'],
+                                    target='linux/amd64',expected_sha=hashlib.sha256(b'fixture-core').hexdigest(),execution=execution)
+            self.assertEqual(receipt['coreBytes'],12)
+            self.assertEqual(len(calls),1+len(probe.configuration_cases(document)))
+            self.assertTrue(core.with_name('sing-box-capability-query.json').is_file())
+            self.assertEqual(receipt['coreSHA256'],hashlib.sha256(b'fixture-core').hexdigest())
+
+    def test_configuration_receipt_rejects_missing_reordered_or_false_controls(self):
+        import copy
+        document=FingerprintProbeControls().fixture()
+        observations=[dict(expected,exitCode=0 if expected['expectedPass'] else 1,output=error or '')
+                      for expected,_,error in probe.configuration_cases(document)]
+        probe.validate_configuration_checks(document,observations)
+        mutations=[lambda xs:xs.pop(),lambda xs:xs.reverse(),lambda xs:xs[-1].update(exitCode=0),
+                   lambda xs:xs[-1].update(output='unrelated failure'),lambda xs:xs[0].update(exitCode=False)]
+        for mutate in mutations:
+            candidate=copy.deepcopy(observations);mutate(candidate)
+            with self.subTest(mutate=mutate),self.assertRaises(ValueError):probe.validate_configuration_checks(document,candidate)

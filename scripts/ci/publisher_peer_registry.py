@@ -1,9 +1,10 @@
-"""Three immutable peer selections; neither evidence artifact is a public asset."""
+"""Immutable peer selections; neither evidence artifact is a public asset."""
 import publisher_peer_evidence as previous
 import publisher_peer_evidence_12_5 as current
 import publisher_peer_evidence_12_6 as latest
+import publisher_peer_evidence_12_7 as alpha127
 
-MODULES = (previous, current, latest)
+MODULES = (previous, current, latest, alpha127)
 JSON_LIMIT = previous.JSON_LIMIT
 strict_json = previous.strict_json
 

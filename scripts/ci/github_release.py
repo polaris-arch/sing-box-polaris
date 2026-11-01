@@ -7,7 +7,7 @@ import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from release_identity import remote_tag_identity, public_product_name, validate_publication_index
+from release_identity import remote_tag_identity, public_product_name, validate_publication_index, same_identity
 from polaris_version import validate as validate_version
 import json
 import os
@@ -359,10 +359,11 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     require((producer['repository'], producer['repositoryId'], producer['workflow'], producer['workflowCommit'],
              producer['runId'], producer['runAttempt']) == (REPO, RID, workflow, source, int(run_id), attempt),
             'final native producer identity mismatch')
-    from native_release_index import expected_native
+    from native_release_index import expected_native, validate_trusted_execution
     expected = expected_native(VERSION)
     require(len(index['platforms']) == 44 and {x['id'] for x in index['platforms']} == set(expected), 'exact 44 native identities required')
     for row in index['platforms']:
+        validate_trusted_execution(row, producer, source_root)
         require((row['sourceCommit'], row['sourceTree'], row['version'], row['tag']) == (source, tree, VERSION, TAG), 'mixed source native row')
         require((row['target'], row['variant']) == (expected[row['id']]['target'], expected[row['id']]['variant']), 'native row matrix mismatch')
         require(row['archive'].get('releaseName') == public_product_name(row['archive']['name']), 'native public archive name mismatch')
@@ -612,14 +613,14 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     return evidence
 
 
-def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT, reference_paths=None):
+def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT, reference_paths=None, resolved_reference=None):
     """Read OCI bytes, never execute an image; require exact reviewed source-material identities."""
     import io
     import tarfile
     reference_path, map_path = reference_paths or (
         root / 'release/dependency-sources/oci/reuse-reference.json',
         root / 'release/dependency-sources/oci/oci-source-notice-map.json')
-    reference = json.loads(reference_path.read_text(encoding='utf-8'))
+    reference = resolved_reference if resolved_reference is not None else json.loads(reference_path.read_text(encoding='utf-8'))
     require(reference['materialMapSHA256'] == sha(map_path), 'OCI source material map changed')
     require(artifact in reference['artifacts'], 'OCI material reference lacks expected artifact')
     expected = reference['artifacts'][artifact]
@@ -765,11 +766,13 @@ def measure_oci_materials(path, artifact, source, run_id, attempt, policy=None):
         return validate_oci_material_reuse(path, artifact, source, run_id, attempt)
     from oci_material_registry import check_image
     expected = check_image(policy, artifact, path)
-    measured = validate_oci_material_reuse(path, artifact, source, run_id, attempt,
-        reference_paths=(policy['reference_path'], policy['material_map_path']))
+    kwargs = {'reference_paths': (policy['reference_path'], policy['material_map_path'])}
+    if 'resolved_reference' in policy:
+        kwargs['resolved_reference'] = policy['resolved_reference']
+    measured = validate_oci_material_reuse(path, artifact, source, run_id, attempt, **kwargs)
     for actual_key, expected_key in (('coreBytes', 'coreBytes'), ('coreSHA256', 'coreSHA256'),
                                      ('installedSHA256', 'installedSHA256'), ('actualImageManifest', 'imageManifest')):
-        require(measured[actual_key] == expected[expected_key], 'OCI supplement actual byte identity changed: ' + actual_key)
+        require(same_identity(measured[actual_key], expected[expected_key]), 'OCI supplement actual byte identity changed: ' + actual_key)
     measured['supplementSelectorSHA256'] = policy['selector_sha256']
     measured['materialSelection'] = 'exact-source-run-attempt-artifact-image-supplement'
     return measured

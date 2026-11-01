@@ -114,7 +114,7 @@ func (b *RuntimeTransportBoundary) record(err error) {
 		return
 	}
 	b.mu.Lock()
-	b.closeErr = errors.Join(b.closeErr, fmt.Errorf("HTTP boundary cleanup incomplete: %v", err))
+	b.closeErr = errors.Join(b.closeErr, boxTLS.NewRuntimeCleanupError(fmt.Errorf("HTTP boundary cleanup incomplete: %w", err)))
 	b.mu.Unlock()
 }
 

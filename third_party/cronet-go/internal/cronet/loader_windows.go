@@ -7,905 +7,617 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
-	"syscall"
 
 	"github.com/ebitengine/purego"
+	"golang.org/x/sys/windows"
 )
 
-var (
-	loadOnce  sync.Once
-	loadError error
-	libHandle uintptr
-)
+const cronetLibraryPathEnv = "POLARIS_CRONET_LIBRARY_PATH"
+const cronetLibrarySearchFlags = windows.LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | windows.LOAD_LIBRARY_SEARCH_SYSTEM32
+
+var processWindowsLibrary windowsLibraryLoader
+
+// windowsLibraryLoader owns one immutable module selection for its lifetime.
+// Dependencies belong to each invocation/instance, never to mutable test hooks.
+// A successfully registered module stays loaded while its function pointers live.
+type windowsLibraryLoader struct {
+	once     sync.Once
+	err      error
+	handle   uintptr
+	path     string
+	explicit bool
+}
+
+type windowsLibraryOps struct {
+	lookupEnv func(string) (string, bool)
+	discover  func() string
+	load      func(string, uintptr) (uintptr, error)
+	free      func(uintptr) error
+	register  func(uintptr) error
+}
 
 func LoadLibrary(path string) error {
-	loadOnce.Do(func() {
-		loadError = doLoadLibrary(path)
+	return processWindowsLibrary.load(path, windowsLibraryOps{
+		lookupEnv: os.LookupEnv,
+		discover:  findLibrary,
+		load:      loadWindowsLibrary,
+		free:      freeWindowsLibrary,
+		register:  registerWindowsLibrarySymbols,
 	})
-	return loadError
 }
 
 func ensureLoaded() {
-	err := LoadLibrary("")
-	if err != nil {
+	if err := LoadLibrary(""); err != nil {
 		panic(err)
 	}
 }
 
-func doLoadLibrary(path string) error {
-	if path == "" {
-		path = findLibrary()
-	}
+func loadWindowsLibrary(path string, flags uintptr) (uintptr, error) {
+	handle, err := windows.LoadLibraryEx(path, 0, flags)
+	return uintptr(handle), err
+}
 
-	if path == "" {
-		return errors.New("cronet: library not found. Place libcronet.dll in the executable directory or PATH")
-	}
+func freeWindowsLibrary(handle uintptr) error {
+	return windows.FreeLibrary(windows.Handle(handle))
+}
 
-	handle, err := syscall.LoadLibrary(path)
+func (loader *windowsLibraryLoader) load(request string, ops windowsLibraryOps) error {
+	selector, explicit := ops.lookupEnv(cronetLibraryPathEnv)
+	loader.once.Do(func() {
+		loader.initialize(request, selector, explicit, ops)
+	})
+	if loader.err != nil {
+		return loader.err
+	}
+	// Warm calls perform no file metadata lookup or discovery. Environment changes
+	// cannot replace an already selected module or silently switch loading modes.
+	if explicit != loader.explicit {
+		return errors.New("cronet: library selector mode changed after initial load")
+	}
+	if explicit {
+		selected, err := explicitWindowsLibraryPath(selector)
+		if err != nil {
+			return fmt.Errorf("cronet: invalid %s: %w", cronetLibraryPathEnv, err)
+		}
+		if !sameWindowsLibraryPath(selected, loader.path) {
+			return errors.New("cronet: library selector changed after initial load")
+		}
+	}
+	if request != "" {
+		requested, err := requestedWindowsLibraryPath(request, explicit)
+		if err != nil {
+			return err
+		}
+		if !sameWindowsLibraryPath(requested, loader.path) {
+			return errors.New("cronet: requested library conflicts with the selected module")
+		}
+	}
+	return nil
+}
+
+func (loader *windowsLibraryLoader) initialize(request, selector string, explicit bool, ops windowsLibraryOps) {
+	var handle uintptr
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			loader.err = fmt.Errorf("cronet: library initialization panicked: %v", recovered)
+		}
+		if handle != 0 && loader.handle == 0 {
+			if err := ops.free(handle); err != nil {
+				loader.err = errors.Join(loader.err, fmt.Errorf("cronet: failed to release rejected library: %w", err))
+			}
+		}
+	}()
+	path, err := selectWindowsLibrary(request, selector, explicit, ops.discover)
 	if err != nil {
-		return fmt.Errorf("cronet: failed to load library %s: %w", path, err)
+		loader.err = err
+		return
 	}
+	loader.path, loader.explicit = path, explicit
+	handle, err = ops.load(path, cronetLibrarySearchFlags)
+	if err != nil {
+		loader.err = fmt.Errorf("cronet: failed to load selected library %s: %w", path, err)
+		return
+	}
+	if handle == 0 {
+		loader.err = errors.New("cronet: loading selected library returned an empty handle")
+		return
+	}
+	if err := ops.register(handle); err != nil {
+		loader.err = fmt.Errorf("cronet: failed to register selected library: %w", err)
+		return
+	}
+	// Publish only a completely registered module. No unload is safe after this
+	// point: the bindings refer to this exact module for the process lifetime.
+	loader.handle = handle
+}
 
-	libHandle = uintptr(handle)
-	return registerSymbols()
+func selectWindowsLibrary(request, selector string, explicit bool, discover func() string) (string, error) {
+	var path string
+	var err error
+	if explicit {
+		// The selector is a choice, not provenance/hash admission or an object lease.
+		// The App must supply and protect its already admitted private DLL cohort.
+		path, err = explicitWindowsLibraryPath(selector)
+		if err != nil {
+			return "", fmt.Errorf("cronet: invalid %s: %w", cronetLibraryPathEnv, err)
+		}
+		if request != "" {
+			requested, requestErr := requestedWindowsLibraryPath(request, true)
+			if requestErr != nil {
+				return "", requestErr
+			}
+			if !sameWindowsLibraryPath(path, requested) {
+				return "", errors.New("cronet: requested library conflicts with explicit selector")
+			}
+		}
+	} else {
+		// Compatibility discovery is exclusively for standalone callers without an
+		// explicit selector. It never becomes a fallback for trusted App selection.
+		if request == "" {
+			request = discover()
+		}
+		if request == "" {
+			return "", errors.New("cronet: library not found in executable directory or PATH")
+		}
+		path, err = requestedWindowsLibraryPath(request, false)
+		if err != nil {
+			return "", err
+		}
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("cronet: selected library is unavailable: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", errors.New("cronet: selected library is not a regular file")
+	}
+	return path, nil
+}
+
+func absoluteWindowsLibraryPath(path string) (string, error) {
+	if path == "" || strings.ContainsRune(path, '\x00') || !filepath.IsAbs(path) {
+		return "", errors.New("an absolute, nonempty library path without NUL is required")
+	}
+	return filepath.Clean(path), nil
+}
+
+func explicitWindowsLibraryPath(path string) (string, error) {
+	absolute, err := absoluteWindowsLibraryPath(path)
+	if err != nil {
+		return "", err
+	}
+	// LoadLibraryExW may append .dll to an extensionless module name. Reject
+	// that spelling before Stat or native loading so the explicit choice cannot
+	// name one file for validation and another file for execution. Standalone
+	// callers retain their separate compatibility path below.
+	if filepath.Ext(absolute) == "" {
+		return "", errors.New("an explicit library filename extension is required to prevent implicit .dll completion")
+	}
+	return absolute, nil
+}
+
+func requestedWindowsLibraryPath(path string, explicit bool) (string, error) {
+	if explicit {
+		selected, err := explicitWindowsLibraryPath(path)
+		if err != nil {
+			return "", fmt.Errorf("cronet: invalid requested library path: %w", err)
+		}
+		return selected, nil
+	}
+	if strings.ContainsRune(path, '\x00') {
+		return "", errors.New("cronet: requested library path contains NUL")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("cronet: failed to make library path absolute: %w", err)
+	}
+	return absoluteWindowsLibraryPath(absolute)
+}
+
+func sameWindowsLibraryPath(left, right string) bool {
+	return strings.EqualFold(filepath.Clean(left), filepath.Clean(right))
 }
 
 func findLibrary() string {
-	libName := "libcronet.dll"
-
-	var searchPaths []string
 	executablePath, err := os.Executable()
+	var searchPaths []string
 	if err == nil {
 		searchPaths = append(searchPaths, filepath.Dir(executablePath))
 	}
-
 	if pathEnv := os.Getenv("PATH"); pathEnv != "" {
-		paths := filepath.SplitList(pathEnv)
-		searchPaths = append(searchPaths, paths...)
+		searchPaths = append(searchPaths, filepath.SplitList(pathEnv)...)
 	}
-
-	for _, searchPath := range searchPaths {
-		fullPath := filepath.Join(searchPath, libName)
-		if _, err := os.Stat(fullPath); err == nil {
-			return fullPath
+	for _, directory := range searchPaths {
+		path := filepath.Join(directory, "libcronet.dll")
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return path
 		}
 	}
-
 	return ""
 }
 
+// Retain the adapters used by the architecture-specific helper source. Initial
+// module loading uses the complete transactional registry below, including its
+// two floating-point entries, rather than publishing partial symbol bindings.
 func lookupSymbol(name string) (uintptr, error) {
-	if libHandle == 0 {
+	if processWindowsLibrary.handle == 0 {
 		return 0, errors.New("cronet: library not loaded")
 	}
+	return lookupWindowsLibrarySymbol(processWindowsLibrary.handle, name)
+}
 
-	proc, err := syscall.GetProcAddress(syscall.Handle(libHandle), name)
+func lookupWindowsLibrarySymbol(handle uintptr, name string) (uintptr, error) {
+	address, err := windows.GetProcAddress(windows.Handle(handle), name)
 	if err != nil {
 		return 0, fmt.Errorf("cronet: symbol %s not found: %w", name, err)
 	}
-	return proc, nil
+	return address, nil
 }
 
-func registerFunc(fnPtr interface{}, name string) error {
-	sym, err := lookupSymbol(name)
+func registerFunc(target interface{}, name string) error {
+	address, err := lookupSymbol(name)
 	if err != nil {
 		return err
 	}
-	purego.RegisterFunc(fnPtr, sym)
+	purego.RegisterFunc(target, address)
 	return nil
 }
 
-func registerSymbols() error {
-	// Buffer
-	if err := registerFunc(&cronetBufferCreate, "Cronet_Buffer_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferDestroy, "Cronet_Buffer_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferSetClientContext, "Cronet_Buffer_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferGetClientContext, "Cronet_Buffer_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferInitWithDataAndCallback, "Cronet_Buffer_InitWithDataAndCallback"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferInitWithAlloc, "Cronet_Buffer_InitWithAlloc"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferGetSize, "Cronet_Buffer_GetSize"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferGetData, "Cronet_Buffer_GetData"); err != nil {
-		return err
-	}
+type windowsLibrarySymbol struct {
+	name   string
+	target interface{}
+}
 
-	// BufferCallback
-	if err := registerFunc(&cronetBufferCallbackDestroy, "Cronet_BufferCallback_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferCallbackSetClientContext, "Cronet_BufferCallback_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferCallbackGetClientContext, "Cronet_BufferCallback_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetBufferCallbackCreateWith, "Cronet_BufferCallback_CreateWith"); err != nil {
-		return err
-	}
+func registerWindowsLibrarySymbols(handle uintptr) error {
+	return bindWindowsLibrarySymbols(handle, windowsLibrarySymbols(), lookupWindowsLibrarySymbol, purego.RegisterFunc)
+}
 
-	// Runnable
-	if err := registerFunc(&cronetRunnableDestroy, "Cronet_Runnable_Destroy"); err != nil {
-		return err
+// Resolve every export before publishing any binding. If purego rejects a
+// signature, restore all function variables before the caller releases the DLL.
+func bindWindowsLibrarySymbols(handle uintptr, symbols []windowsLibrarySymbol, lookup func(uintptr, string) (uintptr, error), bind func(interface{}, uintptr)) (err error) {
+	if handle == 0 {
+		return errors.New("cronet: cannot register an empty library handle")
+	}
+	addresses := make([]uintptr, len(symbols))
+	targets := make([]reflect.Value, len(symbols))
+	previous := make([]reflect.Value, len(symbols))
+	for i, symbol := range symbols {
+		target := reflect.ValueOf(symbol.target)
+		if target.Kind() != reflect.Ptr || target.IsNil() || target.Elem().Kind() != reflect.Func || !target.Elem().CanSet() {
+			return fmt.Errorf("cronet: invalid function target for symbol %s", symbol.name)
+		}
+		targets[i] = target.Elem()
+		previous[i] = reflect.New(targets[i].Type()).Elem()
+		previous[i].Set(targets[i])
+		addresses[i], err = lookup(handle, symbol.name)
+		if err != nil {
+			return err
+		}
+		if addresses[i] == 0 {
+			return fmt.Errorf("cronet: symbol %s resolved to an empty address", symbol.name)
+		}
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			for i := range targets {
+				targets[i].Set(previous[i])
+			}
+			err = fmt.Errorf("cronet: symbol binding failed: %v", recovered)
+		}
+	}()
+	for i := range symbols {
+		bind(symbols[i].target, addresses[i])
 	}
-	if err := registerFunc(&cronetRunnableSetClientContext, "Cronet_Runnable_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRunnableGetClientContext, "Cronet_Runnable_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRunnableRun, "Cronet_Runnable_Run"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRunnableCreateWith, "Cronet_Runnable_CreateWith"); err != nil {
-		return err
-	}
-
-	// Executor
-	if err := registerFunc(&cronetExecutorDestroy, "Cronet_Executor_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetExecutorSetClientContext, "Cronet_Executor_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetExecutorGetClientContext, "Cronet_Executor_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetExecutorExecute, "Cronet_Executor_Execute"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetExecutorCreateWith, "Cronet_Executor_CreateWith"); err != nil {
-		return err
-	}
-
-	// Engine
-	if err := registerFunc(&cronetEngineCreate, "Cronet_Engine_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineDestroy, "Cronet_Engine_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineSetClientContext, "Cronet_Engine_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineGetClientContext, "Cronet_Engine_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineStartWithParams, "Cronet_Engine_StartWithParams"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineStartNetLogToFile, "Cronet_Engine_StartNetLogToFile"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineStopNetLog, "Cronet_Engine_StopNetLog"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineShutdown, "Cronet_Engine_Shutdown"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineGetVersionString, "Cronet_Engine_GetVersionString"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineGetDefaultUserAgent, "Cronet_Engine_GetDefaultUserAgent"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineAddRequestFinishedListener, "Cronet_Engine_AddRequestFinishedListener"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineRemoveRequestFinishedListener, "Cronet_Engine_RemoveRequestFinishedListener"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineGetStreamEngine, "Cronet_Engine_GetStreamEngine"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineSetMockCertVerifierForTesting, "Cronet_Engine_SetMockCertVerifierForTesting"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineCloseAllConnections, "Cronet_Engine_CloseAllConnections"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineSetDialer, "Cronet_Engine_SetDialer"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineSetUdpDialer, "Cronet_Engine_SetUdpDialer"); err != nil {
-		return err
-	}
-
-	// EngineParams
-	if err := registerFunc(&cronetEngineParamsCreate, "Cronet_EngineParams_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsDestroy, "Cronet_EngineParams_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableCheckResultSet, "Cronet_EngineParams_enable_check_result_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsUserAgentSet, "Cronet_EngineParams_user_agent_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsAcceptLanguageSet, "Cronet_EngineParams_accept_language_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsStoragePathSet, "Cronet_EngineParams_storage_path_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableQuicSet, "Cronet_EngineParams_enable_quic_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableHttp2Set, "Cronet_EngineParams_enable_http2_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableBrotliSet, "Cronet_EngineParams_enable_brotli_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsHttpCacheModeSet, "Cronet_EngineParams_http_cache_mode_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsHttpCacheMaxSizeSet, "Cronet_EngineParams_http_cache_max_size_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsQuicHintsAdd, "Cronet_EngineParams_quic_hints_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsPublicKeyPinsAdd, "Cronet_EngineParams_public_key_pins_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnablePublicKeyPinningBypassForLocalTrustAnchorsSet, "Cronet_EngineParams_enable_public_key_pinning_bypass_for_local_trust_anchors_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsExperimentalOptionsSet, "Cronet_EngineParams_experimental_options_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableCheckResultGet, "Cronet_EngineParams_enable_check_result_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsUserAgentGet, "Cronet_EngineParams_user_agent_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsAcceptLanguageGet, "Cronet_EngineParams_accept_language_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsStoragePathGet, "Cronet_EngineParams_storage_path_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableQuicGet, "Cronet_EngineParams_enable_quic_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableHttp2Get, "Cronet_EngineParams_enable_http2_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnableBrotliGet, "Cronet_EngineParams_enable_brotli_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsHttpCacheModeGet, "Cronet_EngineParams_http_cache_mode_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsHttpCacheMaxSizeGet, "Cronet_EngineParams_http_cache_max_size_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsQuicHintsSize, "Cronet_EngineParams_quic_hints_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsQuicHintsAt, "Cronet_EngineParams_quic_hints_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsQuicHintsClear, "Cronet_EngineParams_quic_hints_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsPublicKeyPinsSize, "Cronet_EngineParams_public_key_pins_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsPublicKeyPinsAt, "Cronet_EngineParams_public_key_pins_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsPublicKeyPinsClear, "Cronet_EngineParams_public_key_pins_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsEnablePublicKeyPinningBypassForLocalTrustAnchorsGet, "Cronet_EngineParams_enable_public_key_pinning_bypass_for_local_trust_anchors_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetEngineParamsExperimentalOptionsGet, "Cronet_EngineParams_experimental_options_get"); err != nil {
-		return err
-	}
-
-	// UrlRequest
-	if err := registerFunc(&cronetUrlRequestCreate, "Cronet_UrlRequest_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestDestroy, "Cronet_UrlRequest_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestSetClientContext, "Cronet_UrlRequest_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestGetClientContext, "Cronet_UrlRequest_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestInitWithParams, "Cronet_UrlRequest_InitWithParams"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestStart, "Cronet_UrlRequest_Start"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestFollowRedirect, "Cronet_UrlRequest_FollowRedirect"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestRead, "Cronet_UrlRequest_Read"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestCancel, "Cronet_UrlRequest_Cancel"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestIsDone, "Cronet_UrlRequest_IsDone"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestGetStatus, "Cronet_UrlRequest_GetStatus"); err != nil {
-		return err
-	}
-
-	// UrlRequestParams
-	if err := registerFunc(&cronetUrlRequestParamsCreate, "Cronet_UrlRequestParams_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsDestroy, "Cronet_UrlRequestParams_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsHttpMethodSet, "Cronet_UrlRequestParams_http_method_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestHeadersAdd, "Cronet_UrlRequestParams_request_headers_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsDisableCacheSet, "Cronet_UrlRequestParams_disable_cache_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsPrioritySet, "Cronet_UrlRequestParams_priority_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsUploadDataProviderSet, "Cronet_UrlRequestParams_upload_data_provider_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsUploadDataProviderExecutorSet, "Cronet_UrlRequestParams_upload_data_provider_executor_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAllowDirectExecutorSet, "Cronet_UrlRequestParams_allow_direct_executor_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAnnotationsAdd, "Cronet_UrlRequestParams_annotations_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestFinishedListenerSet, "Cronet_UrlRequestParams_request_finished_listener_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestFinishedExecutorSet, "Cronet_UrlRequestParams_request_finished_executor_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsIdempotencySet, "Cronet_UrlRequestParams_idempotency_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsHttpMethodGet, "Cronet_UrlRequestParams_http_method_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestHeadersSize, "Cronet_UrlRequestParams_request_headers_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestHeadersAt, "Cronet_UrlRequestParams_request_headers_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestHeadersClear, "Cronet_UrlRequestParams_request_headers_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsDisableCacheGet, "Cronet_UrlRequestParams_disable_cache_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsPriorityGet, "Cronet_UrlRequestParams_priority_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsUploadDataProviderGet, "Cronet_UrlRequestParams_upload_data_provider_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsUploadDataProviderExecutorGet, "Cronet_UrlRequestParams_upload_data_provider_executor_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAllowDirectExecutorGet, "Cronet_UrlRequestParams_allow_direct_executor_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAnnotationsSize, "Cronet_UrlRequestParams_annotations_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAnnotationsAt, "Cronet_UrlRequestParams_annotations_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsAnnotationsClear, "Cronet_UrlRequestParams_annotations_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestFinishedListenerGet, "Cronet_UrlRequestParams_request_finished_listener_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsRequestFinishedExecutorGet, "Cronet_UrlRequestParams_request_finished_executor_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestParamsIdempotencyGet, "Cronet_UrlRequestParams_idempotency_get"); err != nil {
-		return err
-	}
-
-	// UrlRequestCallback
-	if err := registerFunc(&cronetUrlRequestCallbackDestroy, "Cronet_UrlRequestCallback_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestCallbackSetClientContext, "Cronet_UrlRequestCallback_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestCallbackGetClientContext, "Cronet_UrlRequestCallback_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestCallbackCreateWith, "Cronet_UrlRequestCallback_CreateWith"); err != nil {
-		return err
-	}
-
-	// UrlRequestStatusListener
-	if err := registerFunc(&cronetUrlRequestStatusListenerDestroy, "Cronet_UrlRequestStatusListener_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestStatusListenerSetClientContext, "Cronet_UrlRequestStatusListener_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestStatusListenerGetClientContext, "Cronet_UrlRequestStatusListener_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlRequestStatusListenerCreateWith, "Cronet_UrlRequestStatusListener_CreateWith"); err != nil {
-		return err
-	}
-
-	// UploadDataProvider
-	if err := registerFunc(&cronetUploadDataProviderDestroy, "Cronet_UploadDataProvider_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataProviderSetClientContext, "Cronet_UploadDataProvider_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataProviderGetClientContext, "Cronet_UploadDataProvider_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataProviderCreateWith, "Cronet_UploadDataProvider_CreateWith"); err != nil {
-		return err
-	}
-
-	// UploadDataSink
-	if err := registerFunc(&cronetUploadDataSinkDestroy, "Cronet_UploadDataSink_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkSetClientContext, "Cronet_UploadDataSink_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkGetClientContext, "Cronet_UploadDataSink_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkOnReadSucceeded, "Cronet_UploadDataSink_OnReadSucceeded"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkOnReadError, "Cronet_UploadDataSink_OnReadError"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkOnRewindSucceeded, "Cronet_UploadDataSink_OnRewindSucceeded"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUploadDataSinkOnRewindError, "Cronet_UploadDataSink_OnRewindError"); err != nil {
-		return err
-	}
-
-	// UrlResponseInfo
-	if err := registerFunc(&cronetUrlResponseInfoCreate, "Cronet_UrlResponseInfo_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoDestroy, "Cronet_UrlResponseInfo_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlSet, "Cronet_UrlResponseInfo_url_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlChainAdd, "Cronet_UrlResponseInfo_url_chain_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoHttpStatusCodeSet, "Cronet_UrlResponseInfo_http_status_code_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoHttpStatusTextSet, "Cronet_UrlResponseInfo_http_status_text_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoAllHeadersListAdd, "Cronet_UrlResponseInfo_all_headers_list_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoWasCachedSet, "Cronet_UrlResponseInfo_was_cached_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoNegotiatedProtocolSet, "Cronet_UrlResponseInfo_negotiated_protocol_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoProxyServerSet, "Cronet_UrlResponseInfo_proxy_server_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoReceivedByteCountSet, "Cronet_UrlResponseInfo_received_byte_count_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlGet, "Cronet_UrlResponseInfo_url_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlChainSize, "Cronet_UrlResponseInfo_url_chain_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlChainAt, "Cronet_UrlResponseInfo_url_chain_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoUrlChainClear, "Cronet_UrlResponseInfo_url_chain_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoHttpStatusCodeGet, "Cronet_UrlResponseInfo_http_status_code_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoHttpStatusTextGet, "Cronet_UrlResponseInfo_http_status_text_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoAllHeadersListSize, "Cronet_UrlResponseInfo_all_headers_list_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoAllHeadersListAt, "Cronet_UrlResponseInfo_all_headers_list_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoAllHeadersListClear, "Cronet_UrlResponseInfo_all_headers_list_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoWasCachedGet, "Cronet_UrlResponseInfo_was_cached_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoNegotiatedProtocolGet, "Cronet_UrlResponseInfo_negotiated_protocol_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoProxyServerGet, "Cronet_UrlResponseInfo_proxy_server_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetUrlResponseInfoReceivedByteCountGet, "Cronet_UrlResponseInfo_received_byte_count_get"); err != nil {
-		return err
-	}
-
-	// Error
-	if err := registerFunc(&cronetErrorCreate, "Cronet_Error_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorDestroy, "Cronet_Error_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorErrorCodeSet, "Cronet_Error_error_code_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorMessageSet, "Cronet_Error_message_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorInternalErrorCodeSet, "Cronet_Error_internal_error_code_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorImmediatelyRetryableSet, "Cronet_Error_immediately_retryable_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorQuicDetailedErrorCodeSet, "Cronet_Error_quic_detailed_error_code_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorErrorCodeGet, "Cronet_Error_error_code_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorMessageGet, "Cronet_Error_message_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorInternalErrorCodeGet, "Cronet_Error_internal_error_code_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorImmediatelyRetryableGet, "Cronet_Error_immediately_retryable_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetErrorQuicDetailedErrorCodeGet, "Cronet_Error_quic_detailed_error_code_get"); err != nil {
-		return err
-	}
-
-	// HttpHeader
-	if err := registerFunc(&cronetHttpHeaderCreate, "Cronet_HttpHeader_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetHttpHeaderDestroy, "Cronet_HttpHeader_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetHttpHeaderNameSet, "Cronet_HttpHeader_name_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetHttpHeaderValueSet, "Cronet_HttpHeader_value_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetHttpHeaderNameGet, "Cronet_HttpHeader_name_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetHttpHeaderValueGet, "Cronet_HttpHeader_value_get"); err != nil {
-		return err
-	}
-
-	// QuicHint
-	if err := registerFunc(&cronetQuicHintCreate, "Cronet_QuicHint_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintDestroy, "Cronet_QuicHint_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintHostSet, "Cronet_QuicHint_host_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintPortSet, "Cronet_QuicHint_port_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintAlternatePortSet, "Cronet_QuicHint_alternate_port_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintHostGet, "Cronet_QuicHint_host_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintPortGet, "Cronet_QuicHint_port_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetQuicHintAlternatePortGet, "Cronet_QuicHint_alternate_port_get"); err != nil {
-		return err
-	}
-
-	// PublicKeyPins
-	if err := registerFunc(&cronetPublicKeyPinsCreate, "Cronet_PublicKeyPins_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsDestroy, "Cronet_PublicKeyPins_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsHostSet, "Cronet_PublicKeyPins_host_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsPinsSha256Add, "Cronet_PublicKeyPins_pins_sha256_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsIncludeSubdomainsSet, "Cronet_PublicKeyPins_include_subdomains_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsExpirationDateSet, "Cronet_PublicKeyPins_expiration_date_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsHostGet, "Cronet_PublicKeyPins_host_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsPinsSha256Size, "Cronet_PublicKeyPins_pins_sha256_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsPinsSha256At, "Cronet_PublicKeyPins_pins_sha256_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsPinsSha256Clear, "Cronet_PublicKeyPins_pins_sha256_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsIncludeSubdomainsGet, "Cronet_PublicKeyPins_include_subdomains_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetPublicKeyPinsExpirationDateGet, "Cronet_PublicKeyPins_expiration_date_get"); err != nil {
-		return err
-	}
-
-	// DateTime
-	if err := registerFunc(&cronetDateTimeCreate, "Cronet_DateTime_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetDateTimeDestroy, "Cronet_DateTime_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetDateTimeValueSet, "Cronet_DateTime_value_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetDateTimeValueGet, "Cronet_DateTime_value_get"); err != nil {
-		return err
-	}
-
-	// Metrics
-	if err := registerFunc(&cronetMetricsCreate, "Cronet_Metrics_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsDestroy, "Cronet_Metrics_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsRequestStartSet, "Cronet_Metrics_request_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsDnsStartSet, "Cronet_Metrics_dns_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsDnsEndSet, "Cronet_Metrics_dns_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsConnectStartSet, "Cronet_Metrics_connect_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsConnectEndSet, "Cronet_Metrics_connect_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSslStartSet, "Cronet_Metrics_ssl_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSslEndSet, "Cronet_Metrics_ssl_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSendingStartSet, "Cronet_Metrics_sending_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSendingEndSet, "Cronet_Metrics_sending_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsPushStartSet, "Cronet_Metrics_push_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsPushEndSet, "Cronet_Metrics_push_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsResponseStartSet, "Cronet_Metrics_response_start_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsRequestEndSet, "Cronet_Metrics_request_end_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSocketReusedSet, "Cronet_Metrics_socket_reused_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSentByteCountSet, "Cronet_Metrics_sent_byte_count_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsReceivedByteCountSet, "Cronet_Metrics_received_byte_count_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsRequestStartGet, "Cronet_Metrics_request_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsDnsStartGet, "Cronet_Metrics_dns_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsDnsEndGet, "Cronet_Metrics_dns_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsConnectStartGet, "Cronet_Metrics_connect_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsConnectEndGet, "Cronet_Metrics_connect_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSslStartGet, "Cronet_Metrics_ssl_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSslEndGet, "Cronet_Metrics_ssl_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSendingStartGet, "Cronet_Metrics_sending_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSendingEndGet, "Cronet_Metrics_sending_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsPushStartGet, "Cronet_Metrics_push_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsPushEndGet, "Cronet_Metrics_push_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsResponseStartGet, "Cronet_Metrics_response_start_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsRequestEndGet, "Cronet_Metrics_request_end_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSocketReusedGet, "Cronet_Metrics_socket_reused_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsSentByteCountGet, "Cronet_Metrics_sent_byte_count_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetMetricsReceivedByteCountGet, "Cronet_Metrics_received_byte_count_get"); err != nil {
-		return err
-	}
-
-	// RequestFinishedInfo
-	if err := registerFunc(&cronetRequestFinishedInfoCreate, "Cronet_RequestFinishedInfo_Create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoDestroy, "Cronet_RequestFinishedInfo_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoMetricsSet, "Cronet_RequestFinishedInfo_metrics_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoAnnotationsAdd, "Cronet_RequestFinishedInfo_annotations_add"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoFinishedReasonSet, "Cronet_RequestFinishedInfo_finished_reason_set"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoMetricsGet, "Cronet_RequestFinishedInfo_metrics_get"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoAnnotationsSize, "Cronet_RequestFinishedInfo_annotations_size"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoAnnotationsAt, "Cronet_RequestFinishedInfo_annotations_at"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoAnnotationsClear, "Cronet_RequestFinishedInfo_annotations_clear"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoFinishedReasonGet, "Cronet_RequestFinishedInfo_finished_reason_get"); err != nil {
-		return err
-	}
-
-	// RequestFinishedInfoListener
-	if err := registerFunc(&cronetRequestFinishedInfoListenerDestroy, "Cronet_RequestFinishedInfoListener_Destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoListenerSetClientContext, "Cronet_RequestFinishedInfoListener_SetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoListenerGetClientContext, "Cronet_RequestFinishedInfoListener_GetClientContext"); err != nil {
-		return err
-	}
-	if err := registerFunc(&cronetRequestFinishedInfoListenerCreateWith, "Cronet_RequestFinishedInfoListener_CreateWith"); err != nil {
-		return err
-	}
-
-	// Custom cert verifier
-	if err := registerFunc(&cronetCreateCertVerifierWithRootCerts, "Cronet_CreateCertVerifierWithRootCerts"); err != nil {
-		return err
-	}
-
-	// BidirectionalStream
-	if err := registerFunc(&bidirectionalStreamCreate, "bidirectional_stream_create"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamDestroy, "bidirectional_stream_destroy"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamDisableAutoFlush, "bidirectional_stream_disable_auto_flush"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamDelayRequestHeadersUntilFlush, "bidirectional_stream_delay_request_headers_until_flush"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamStart, "bidirectional_stream_start"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamRead, "bidirectional_stream_read"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamWrite, "bidirectional_stream_write"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamFlush, "bidirectional_stream_flush"); err != nil {
-		return err
-	}
-	if err := registerFunc(&bidirectionalStreamCancel, "bidirectional_stream_cancel"); err != nil {
-		return err
-	}
-
-	// Register float functions (platform-specific, see loader_windows_float*.go)
-	if err := registerFloatFuncs(); err != nil {
-		return err
-	}
-
 	return nil
+}
+
+func windowsLibrarySymbols() []windowsLibrarySymbol {
+	return []windowsLibrarySymbol{
+
+		// Buffer
+		{"Cronet_Buffer_Create", &cronetBufferCreate},
+		{"Cronet_Buffer_Destroy", &cronetBufferDestroy},
+		{"Cronet_Buffer_SetClientContext", &cronetBufferSetClientContext},
+		{"Cronet_Buffer_GetClientContext", &cronetBufferGetClientContext},
+		{"Cronet_Buffer_InitWithDataAndCallback", &cronetBufferInitWithDataAndCallback},
+		{"Cronet_Buffer_InitWithAlloc", &cronetBufferInitWithAlloc},
+		{"Cronet_Buffer_GetSize", &cronetBufferGetSize},
+		{"Cronet_Buffer_GetData", &cronetBufferGetData},
+
+		// BufferCallback
+		{"Cronet_BufferCallback_Destroy", &cronetBufferCallbackDestroy},
+		{"Cronet_BufferCallback_SetClientContext", &cronetBufferCallbackSetClientContext},
+		{"Cronet_BufferCallback_GetClientContext", &cronetBufferCallbackGetClientContext},
+		{"Cronet_BufferCallback_CreateWith", &cronetBufferCallbackCreateWith},
+
+		// Runnable
+		{"Cronet_Runnable_Destroy", &cronetRunnableDestroy},
+		{"Cronet_Runnable_SetClientContext", &cronetRunnableSetClientContext},
+		{"Cronet_Runnable_GetClientContext", &cronetRunnableGetClientContext},
+		{"Cronet_Runnable_Run", &cronetRunnableRun},
+		{"Cronet_Runnable_CreateWith", &cronetRunnableCreateWith},
+
+		// Executor
+		{"Cronet_Executor_Destroy", &cronetExecutorDestroy},
+		{"Cronet_Executor_SetClientContext", &cronetExecutorSetClientContext},
+		{"Cronet_Executor_GetClientContext", &cronetExecutorGetClientContext},
+		{"Cronet_Executor_Execute", &cronetExecutorExecute},
+		{"Cronet_Executor_CreateWith", &cronetExecutorCreateWith},
+
+		// Engine
+		{"Cronet_Engine_Create", &cronetEngineCreate},
+		{"Cronet_Engine_Destroy", &cronetEngineDestroy},
+		{"Cronet_Engine_SetClientContext", &cronetEngineSetClientContext},
+		{"Cronet_Engine_GetClientContext", &cronetEngineGetClientContext},
+		{"Cronet_Engine_StartWithParams", &cronetEngineStartWithParams},
+		{"Cronet_Engine_StartNetLogToFile", &cronetEngineStartNetLogToFile},
+		{"Cronet_Engine_StopNetLog", &cronetEngineStopNetLog},
+		{"Cronet_Engine_Shutdown", &cronetEngineShutdown},
+		{"Cronet_Engine_GetVersionString", &cronetEngineGetVersionString},
+		{"Cronet_Engine_GetDefaultUserAgent", &cronetEngineGetDefaultUserAgent},
+		{"Cronet_Engine_AddRequestFinishedListener", &cronetEngineAddRequestFinishedListener},
+		{"Cronet_Engine_RemoveRequestFinishedListener", &cronetEngineRemoveRequestFinishedListener},
+		{"Cronet_Engine_GetStreamEngine", &cronetEngineGetStreamEngine},
+		{"Cronet_Engine_SetMockCertVerifierForTesting", &cronetEngineSetMockCertVerifierForTesting},
+		{"Cronet_Engine_CloseAllConnections", &cronetEngineCloseAllConnections},
+		{"Cronet_Engine_SetDialer", &cronetEngineSetDialer},
+		{"Cronet_Engine_SetUdpDialer", &cronetEngineSetUdpDialer},
+
+		// EngineParams
+		{"Cronet_EngineParams_Create", &cronetEngineParamsCreate},
+		{"Cronet_EngineParams_Destroy", &cronetEngineParamsDestroy},
+		{"Cronet_EngineParams_enable_check_result_set", &cronetEngineParamsEnableCheckResultSet},
+		{"Cronet_EngineParams_user_agent_set", &cronetEngineParamsUserAgentSet},
+		{"Cronet_EngineParams_accept_language_set", &cronetEngineParamsAcceptLanguageSet},
+		{"Cronet_EngineParams_storage_path_set", &cronetEngineParamsStoragePathSet},
+		{"Cronet_EngineParams_enable_quic_set", &cronetEngineParamsEnableQuicSet},
+		{"Cronet_EngineParams_enable_http2_set", &cronetEngineParamsEnableHttp2Set},
+		{"Cronet_EngineParams_enable_brotli_set", &cronetEngineParamsEnableBrotliSet},
+		{"Cronet_EngineParams_http_cache_mode_set", &cronetEngineParamsHttpCacheModeSet},
+		{"Cronet_EngineParams_http_cache_max_size_set", &cronetEngineParamsHttpCacheMaxSizeSet},
+		{"Cronet_EngineParams_quic_hints_add", &cronetEngineParamsQuicHintsAdd},
+		{"Cronet_EngineParams_public_key_pins_add", &cronetEngineParamsPublicKeyPinsAdd},
+		{"Cronet_EngineParams_enable_public_key_pinning_bypass_for_local_trust_anchors_set", &cronetEngineParamsEnablePublicKeyPinningBypassForLocalTrustAnchorsSet},
+		{"Cronet_EngineParams_experimental_options_set", &cronetEngineParamsExperimentalOptionsSet},
+		{"Cronet_EngineParams_enable_check_result_get", &cronetEngineParamsEnableCheckResultGet},
+		{"Cronet_EngineParams_user_agent_get", &cronetEngineParamsUserAgentGet},
+		{"Cronet_EngineParams_accept_language_get", &cronetEngineParamsAcceptLanguageGet},
+		{"Cronet_EngineParams_storage_path_get", &cronetEngineParamsStoragePathGet},
+		{"Cronet_EngineParams_enable_quic_get", &cronetEngineParamsEnableQuicGet},
+		{"Cronet_EngineParams_enable_http2_get", &cronetEngineParamsEnableHttp2Get},
+		{"Cronet_EngineParams_enable_brotli_get", &cronetEngineParamsEnableBrotliGet},
+		{"Cronet_EngineParams_http_cache_mode_get", &cronetEngineParamsHttpCacheModeGet},
+		{"Cronet_EngineParams_http_cache_max_size_get", &cronetEngineParamsHttpCacheMaxSizeGet},
+		{"Cronet_EngineParams_quic_hints_size", &cronetEngineParamsQuicHintsSize},
+		{"Cronet_EngineParams_quic_hints_at", &cronetEngineParamsQuicHintsAt},
+		{"Cronet_EngineParams_quic_hints_clear", &cronetEngineParamsQuicHintsClear},
+		{"Cronet_EngineParams_public_key_pins_size", &cronetEngineParamsPublicKeyPinsSize},
+		{"Cronet_EngineParams_public_key_pins_at", &cronetEngineParamsPublicKeyPinsAt},
+		{"Cronet_EngineParams_public_key_pins_clear", &cronetEngineParamsPublicKeyPinsClear},
+		{"Cronet_EngineParams_enable_public_key_pinning_bypass_for_local_trust_anchors_get", &cronetEngineParamsEnablePublicKeyPinningBypassForLocalTrustAnchorsGet},
+		{"Cronet_EngineParams_experimental_options_get", &cronetEngineParamsExperimentalOptionsGet},
+
+		// UrlRequest
+		{"Cronet_UrlRequest_Create", &cronetUrlRequestCreate},
+		{"Cronet_UrlRequest_Destroy", &cronetUrlRequestDestroy},
+		{"Cronet_UrlRequest_SetClientContext", &cronetUrlRequestSetClientContext},
+		{"Cronet_UrlRequest_GetClientContext", &cronetUrlRequestGetClientContext},
+		{"Cronet_UrlRequest_InitWithParams", &cronetUrlRequestInitWithParams},
+		{"Cronet_UrlRequest_Start", &cronetUrlRequestStart},
+		{"Cronet_UrlRequest_FollowRedirect", &cronetUrlRequestFollowRedirect},
+		{"Cronet_UrlRequest_Read", &cronetUrlRequestRead},
+		{"Cronet_UrlRequest_Cancel", &cronetUrlRequestCancel},
+		{"Cronet_UrlRequest_IsDone", &cronetUrlRequestIsDone},
+		{"Cronet_UrlRequest_GetStatus", &cronetUrlRequestGetStatus},
+
+		// UrlRequestParams
+		{"Cronet_UrlRequestParams_Create", &cronetUrlRequestParamsCreate},
+		{"Cronet_UrlRequestParams_Destroy", &cronetUrlRequestParamsDestroy},
+		{"Cronet_UrlRequestParams_http_method_set", &cronetUrlRequestParamsHttpMethodSet},
+		{"Cronet_UrlRequestParams_request_headers_add", &cronetUrlRequestParamsRequestHeadersAdd},
+		{"Cronet_UrlRequestParams_disable_cache_set", &cronetUrlRequestParamsDisableCacheSet},
+		{"Cronet_UrlRequestParams_priority_set", &cronetUrlRequestParamsPrioritySet},
+		{"Cronet_UrlRequestParams_upload_data_provider_set", &cronetUrlRequestParamsUploadDataProviderSet},
+		{"Cronet_UrlRequestParams_upload_data_provider_executor_set", &cronetUrlRequestParamsUploadDataProviderExecutorSet},
+		{"Cronet_UrlRequestParams_allow_direct_executor_set", &cronetUrlRequestParamsAllowDirectExecutorSet},
+		{"Cronet_UrlRequestParams_annotations_add", &cronetUrlRequestParamsAnnotationsAdd},
+		{"Cronet_UrlRequestParams_request_finished_listener_set", &cronetUrlRequestParamsRequestFinishedListenerSet},
+		{"Cronet_UrlRequestParams_request_finished_executor_set", &cronetUrlRequestParamsRequestFinishedExecutorSet},
+		{"Cronet_UrlRequestParams_idempotency_set", &cronetUrlRequestParamsIdempotencySet},
+		{"Cronet_UrlRequestParams_http_method_get", &cronetUrlRequestParamsHttpMethodGet},
+		{"Cronet_UrlRequestParams_request_headers_size", &cronetUrlRequestParamsRequestHeadersSize},
+		{"Cronet_UrlRequestParams_request_headers_at", &cronetUrlRequestParamsRequestHeadersAt},
+		{"Cronet_UrlRequestParams_request_headers_clear", &cronetUrlRequestParamsRequestHeadersClear},
+		{"Cronet_UrlRequestParams_disable_cache_get", &cronetUrlRequestParamsDisableCacheGet},
+		{"Cronet_UrlRequestParams_priority_get", &cronetUrlRequestParamsPriorityGet},
+		{"Cronet_UrlRequestParams_upload_data_provider_get", &cronetUrlRequestParamsUploadDataProviderGet},
+		{"Cronet_UrlRequestParams_upload_data_provider_executor_get", &cronetUrlRequestParamsUploadDataProviderExecutorGet},
+		{"Cronet_UrlRequestParams_allow_direct_executor_get", &cronetUrlRequestParamsAllowDirectExecutorGet},
+		{"Cronet_UrlRequestParams_annotations_size", &cronetUrlRequestParamsAnnotationsSize},
+		{"Cronet_UrlRequestParams_annotations_at", &cronetUrlRequestParamsAnnotationsAt},
+		{"Cronet_UrlRequestParams_annotations_clear", &cronetUrlRequestParamsAnnotationsClear},
+		{"Cronet_UrlRequestParams_request_finished_listener_get", &cronetUrlRequestParamsRequestFinishedListenerGet},
+		{"Cronet_UrlRequestParams_request_finished_executor_get", &cronetUrlRequestParamsRequestFinishedExecutorGet},
+		{"Cronet_UrlRequestParams_idempotency_get", &cronetUrlRequestParamsIdempotencyGet},
+
+		// UrlRequestCallback
+		{"Cronet_UrlRequestCallback_Destroy", &cronetUrlRequestCallbackDestroy},
+		{"Cronet_UrlRequestCallback_SetClientContext", &cronetUrlRequestCallbackSetClientContext},
+		{"Cronet_UrlRequestCallback_GetClientContext", &cronetUrlRequestCallbackGetClientContext},
+		{"Cronet_UrlRequestCallback_CreateWith", &cronetUrlRequestCallbackCreateWith},
+
+		// UrlRequestStatusListener
+		{"Cronet_UrlRequestStatusListener_Destroy", &cronetUrlRequestStatusListenerDestroy},
+		{"Cronet_UrlRequestStatusListener_SetClientContext", &cronetUrlRequestStatusListenerSetClientContext},
+		{"Cronet_UrlRequestStatusListener_GetClientContext", &cronetUrlRequestStatusListenerGetClientContext},
+		{"Cronet_UrlRequestStatusListener_CreateWith", &cronetUrlRequestStatusListenerCreateWith},
+
+		// UploadDataProvider
+		{"Cronet_UploadDataProvider_Destroy", &cronetUploadDataProviderDestroy},
+		{"Cronet_UploadDataProvider_SetClientContext", &cronetUploadDataProviderSetClientContext},
+		{"Cronet_UploadDataProvider_GetClientContext", &cronetUploadDataProviderGetClientContext},
+		{"Cronet_UploadDataProvider_CreateWith", &cronetUploadDataProviderCreateWith},
+
+		// UploadDataSink
+		{"Cronet_UploadDataSink_Destroy", &cronetUploadDataSinkDestroy},
+		{"Cronet_UploadDataSink_SetClientContext", &cronetUploadDataSinkSetClientContext},
+		{"Cronet_UploadDataSink_GetClientContext", &cronetUploadDataSinkGetClientContext},
+		{"Cronet_UploadDataSink_OnReadSucceeded", &cronetUploadDataSinkOnReadSucceeded},
+		{"Cronet_UploadDataSink_OnReadError", &cronetUploadDataSinkOnReadError},
+		{"Cronet_UploadDataSink_OnRewindSucceeded", &cronetUploadDataSinkOnRewindSucceeded},
+		{"Cronet_UploadDataSink_OnRewindError", &cronetUploadDataSinkOnRewindError},
+
+		// UrlResponseInfo
+		{"Cronet_UrlResponseInfo_Create", &cronetUrlResponseInfoCreate},
+		{"Cronet_UrlResponseInfo_Destroy", &cronetUrlResponseInfoDestroy},
+		{"Cronet_UrlResponseInfo_url_set", &cronetUrlResponseInfoUrlSet},
+		{"Cronet_UrlResponseInfo_url_chain_add", &cronetUrlResponseInfoUrlChainAdd},
+		{"Cronet_UrlResponseInfo_http_status_code_set", &cronetUrlResponseInfoHttpStatusCodeSet},
+		{"Cronet_UrlResponseInfo_http_status_text_set", &cronetUrlResponseInfoHttpStatusTextSet},
+		{"Cronet_UrlResponseInfo_all_headers_list_add", &cronetUrlResponseInfoAllHeadersListAdd},
+		{"Cronet_UrlResponseInfo_was_cached_set", &cronetUrlResponseInfoWasCachedSet},
+		{"Cronet_UrlResponseInfo_negotiated_protocol_set", &cronetUrlResponseInfoNegotiatedProtocolSet},
+		{"Cronet_UrlResponseInfo_proxy_server_set", &cronetUrlResponseInfoProxyServerSet},
+		{"Cronet_UrlResponseInfo_received_byte_count_set", &cronetUrlResponseInfoReceivedByteCountSet},
+		{"Cronet_UrlResponseInfo_url_get", &cronetUrlResponseInfoUrlGet},
+		{"Cronet_UrlResponseInfo_url_chain_size", &cronetUrlResponseInfoUrlChainSize},
+		{"Cronet_UrlResponseInfo_url_chain_at", &cronetUrlResponseInfoUrlChainAt},
+		{"Cronet_UrlResponseInfo_url_chain_clear", &cronetUrlResponseInfoUrlChainClear},
+		{"Cronet_UrlResponseInfo_http_status_code_get", &cronetUrlResponseInfoHttpStatusCodeGet},
+		{"Cronet_UrlResponseInfo_http_status_text_get", &cronetUrlResponseInfoHttpStatusTextGet},
+		{"Cronet_UrlResponseInfo_all_headers_list_size", &cronetUrlResponseInfoAllHeadersListSize},
+		{"Cronet_UrlResponseInfo_all_headers_list_at", &cronetUrlResponseInfoAllHeadersListAt},
+		{"Cronet_UrlResponseInfo_all_headers_list_clear", &cronetUrlResponseInfoAllHeadersListClear},
+		{"Cronet_UrlResponseInfo_was_cached_get", &cronetUrlResponseInfoWasCachedGet},
+		{"Cronet_UrlResponseInfo_negotiated_protocol_get", &cronetUrlResponseInfoNegotiatedProtocolGet},
+		{"Cronet_UrlResponseInfo_proxy_server_get", &cronetUrlResponseInfoProxyServerGet},
+		{"Cronet_UrlResponseInfo_received_byte_count_get", &cronetUrlResponseInfoReceivedByteCountGet},
+
+		// Error
+		{"Cronet_Error_Create", &cronetErrorCreate},
+		{"Cronet_Error_Destroy", &cronetErrorDestroy},
+		{"Cronet_Error_error_code_set", &cronetErrorErrorCodeSet},
+		{"Cronet_Error_message_set", &cronetErrorMessageSet},
+		{"Cronet_Error_internal_error_code_set", &cronetErrorInternalErrorCodeSet},
+		{"Cronet_Error_immediately_retryable_set", &cronetErrorImmediatelyRetryableSet},
+		{"Cronet_Error_quic_detailed_error_code_set", &cronetErrorQuicDetailedErrorCodeSet},
+		{"Cronet_Error_error_code_get", &cronetErrorErrorCodeGet},
+		{"Cronet_Error_message_get", &cronetErrorMessageGet},
+		{"Cronet_Error_internal_error_code_get", &cronetErrorInternalErrorCodeGet},
+		{"Cronet_Error_immediately_retryable_get", &cronetErrorImmediatelyRetryableGet},
+		{"Cronet_Error_quic_detailed_error_code_get", &cronetErrorQuicDetailedErrorCodeGet},
+
+		// HttpHeader
+		{"Cronet_HttpHeader_Create", &cronetHttpHeaderCreate},
+		{"Cronet_HttpHeader_Destroy", &cronetHttpHeaderDestroy},
+		{"Cronet_HttpHeader_name_set", &cronetHttpHeaderNameSet},
+		{"Cronet_HttpHeader_value_set", &cronetHttpHeaderValueSet},
+		{"Cronet_HttpHeader_name_get", &cronetHttpHeaderNameGet},
+		{"Cronet_HttpHeader_value_get", &cronetHttpHeaderValueGet},
+
+		// QuicHint
+		{"Cronet_QuicHint_Create", &cronetQuicHintCreate},
+		{"Cronet_QuicHint_Destroy", &cronetQuicHintDestroy},
+		{"Cronet_QuicHint_host_set", &cronetQuicHintHostSet},
+		{"Cronet_QuicHint_port_set", &cronetQuicHintPortSet},
+		{"Cronet_QuicHint_alternate_port_set", &cronetQuicHintAlternatePortSet},
+		{"Cronet_QuicHint_host_get", &cronetQuicHintHostGet},
+		{"Cronet_QuicHint_port_get", &cronetQuicHintPortGet},
+		{"Cronet_QuicHint_alternate_port_get", &cronetQuicHintAlternatePortGet},
+
+		// PublicKeyPins
+		{"Cronet_PublicKeyPins_Create", &cronetPublicKeyPinsCreate},
+		{"Cronet_PublicKeyPins_Destroy", &cronetPublicKeyPinsDestroy},
+		{"Cronet_PublicKeyPins_host_set", &cronetPublicKeyPinsHostSet},
+		{"Cronet_PublicKeyPins_pins_sha256_add", &cronetPublicKeyPinsPinsSha256Add},
+		{"Cronet_PublicKeyPins_include_subdomains_set", &cronetPublicKeyPinsIncludeSubdomainsSet},
+		{"Cronet_PublicKeyPins_expiration_date_set", &cronetPublicKeyPinsExpirationDateSet},
+		{"Cronet_PublicKeyPins_host_get", &cronetPublicKeyPinsHostGet},
+		{"Cronet_PublicKeyPins_pins_sha256_size", &cronetPublicKeyPinsPinsSha256Size},
+		{"Cronet_PublicKeyPins_pins_sha256_at", &cronetPublicKeyPinsPinsSha256At},
+		{"Cronet_PublicKeyPins_pins_sha256_clear", &cronetPublicKeyPinsPinsSha256Clear},
+		{"Cronet_PublicKeyPins_include_subdomains_get", &cronetPublicKeyPinsIncludeSubdomainsGet},
+		{"Cronet_PublicKeyPins_expiration_date_get", &cronetPublicKeyPinsExpirationDateGet},
+
+		// DateTime
+		{"Cronet_DateTime_Create", &cronetDateTimeCreate},
+		{"Cronet_DateTime_Destroy", &cronetDateTimeDestroy},
+		{"Cronet_DateTime_value_set", &cronetDateTimeValueSet},
+		{"Cronet_DateTime_value_get", &cronetDateTimeValueGet},
+
+		// Metrics
+		{"Cronet_Metrics_Create", &cronetMetricsCreate},
+		{"Cronet_Metrics_Destroy", &cronetMetricsDestroy},
+		{"Cronet_Metrics_request_start_set", &cronetMetricsRequestStartSet},
+		{"Cronet_Metrics_dns_start_set", &cronetMetricsDnsStartSet},
+		{"Cronet_Metrics_dns_end_set", &cronetMetricsDnsEndSet},
+		{"Cronet_Metrics_connect_start_set", &cronetMetricsConnectStartSet},
+		{"Cronet_Metrics_connect_end_set", &cronetMetricsConnectEndSet},
+		{"Cronet_Metrics_ssl_start_set", &cronetMetricsSslStartSet},
+		{"Cronet_Metrics_ssl_end_set", &cronetMetricsSslEndSet},
+		{"Cronet_Metrics_sending_start_set", &cronetMetricsSendingStartSet},
+		{"Cronet_Metrics_sending_end_set", &cronetMetricsSendingEndSet},
+		{"Cronet_Metrics_push_start_set", &cronetMetricsPushStartSet},
+		{"Cronet_Metrics_push_end_set", &cronetMetricsPushEndSet},
+		{"Cronet_Metrics_response_start_set", &cronetMetricsResponseStartSet},
+		{"Cronet_Metrics_request_end_set", &cronetMetricsRequestEndSet},
+		{"Cronet_Metrics_socket_reused_set", &cronetMetricsSocketReusedSet},
+		{"Cronet_Metrics_sent_byte_count_set", &cronetMetricsSentByteCountSet},
+		{"Cronet_Metrics_received_byte_count_set", &cronetMetricsReceivedByteCountSet},
+		{"Cronet_Metrics_request_start_get", &cronetMetricsRequestStartGet},
+		{"Cronet_Metrics_dns_start_get", &cronetMetricsDnsStartGet},
+		{"Cronet_Metrics_dns_end_get", &cronetMetricsDnsEndGet},
+		{"Cronet_Metrics_connect_start_get", &cronetMetricsConnectStartGet},
+		{"Cronet_Metrics_connect_end_get", &cronetMetricsConnectEndGet},
+		{"Cronet_Metrics_ssl_start_get", &cronetMetricsSslStartGet},
+		{"Cronet_Metrics_ssl_end_get", &cronetMetricsSslEndGet},
+		{"Cronet_Metrics_sending_start_get", &cronetMetricsSendingStartGet},
+		{"Cronet_Metrics_sending_end_get", &cronetMetricsSendingEndGet},
+		{"Cronet_Metrics_push_start_get", &cronetMetricsPushStartGet},
+		{"Cronet_Metrics_push_end_get", &cronetMetricsPushEndGet},
+		{"Cronet_Metrics_response_start_get", &cronetMetricsResponseStartGet},
+		{"Cronet_Metrics_request_end_get", &cronetMetricsRequestEndGet},
+		{"Cronet_Metrics_socket_reused_get", &cronetMetricsSocketReusedGet},
+		{"Cronet_Metrics_sent_byte_count_get", &cronetMetricsSentByteCountGet},
+		{"Cronet_Metrics_received_byte_count_get", &cronetMetricsReceivedByteCountGet},
+
+		// RequestFinishedInfo
+		{"Cronet_RequestFinishedInfo_Create", &cronetRequestFinishedInfoCreate},
+		{"Cronet_RequestFinishedInfo_Destroy", &cronetRequestFinishedInfoDestroy},
+		{"Cronet_RequestFinishedInfo_metrics_set", &cronetRequestFinishedInfoMetricsSet},
+		{"Cronet_RequestFinishedInfo_annotations_add", &cronetRequestFinishedInfoAnnotationsAdd},
+		{"Cronet_RequestFinishedInfo_finished_reason_set", &cronetRequestFinishedInfoFinishedReasonSet},
+		{"Cronet_RequestFinishedInfo_metrics_get", &cronetRequestFinishedInfoMetricsGet},
+		{"Cronet_RequestFinishedInfo_annotations_size", &cronetRequestFinishedInfoAnnotationsSize},
+		{"Cronet_RequestFinishedInfo_annotations_at", &cronetRequestFinishedInfoAnnotationsAt},
+		{"Cronet_RequestFinishedInfo_annotations_clear", &cronetRequestFinishedInfoAnnotationsClear},
+		{"Cronet_RequestFinishedInfo_finished_reason_get", &cronetRequestFinishedInfoFinishedReasonGet},
+
+		// RequestFinishedInfoListener
+		{"Cronet_RequestFinishedInfoListener_Destroy", &cronetRequestFinishedInfoListenerDestroy},
+		{"Cronet_RequestFinishedInfoListener_SetClientContext", &cronetRequestFinishedInfoListenerSetClientContext},
+		{"Cronet_RequestFinishedInfoListener_GetClientContext", &cronetRequestFinishedInfoListenerGetClientContext},
+		{"Cronet_RequestFinishedInfoListener_CreateWith", &cronetRequestFinishedInfoListenerCreateWith},
+
+		// Custom cert verifier
+		{"Cronet_CreateCertVerifierWithRootCerts", &cronetCreateCertVerifierWithRootCerts},
+
+		// BidirectionalStream
+		{"bidirectional_stream_create", &bidirectionalStreamCreate},
+		{"bidirectional_stream_destroy", &bidirectionalStreamDestroy},
+		{"bidirectional_stream_disable_auto_flush", &bidirectionalStreamDisableAutoFlush},
+		{"bidirectional_stream_delay_request_headers_until_flush", &bidirectionalStreamDelayRequestHeadersUntilFlush},
+		{"bidirectional_stream_start", &bidirectionalStreamStart},
+		{"bidirectional_stream_read", &bidirectionalStreamRead},
+		{"bidirectional_stream_write", &bidirectionalStreamWrite},
+		{"bidirectional_stream_flush", &bidirectionalStreamFlush},
+		{"bidirectional_stream_cancel", &bidirectionalStreamCancel},
+
+		// Floating-point entries, formerly registered after all other bindings.
+		{"Cronet_EngineParams_network_thread_priority_set", &cronetEngineParamsNetworkThreadPrioritySet},
+		{"Cronet_EngineParams_network_thread_priority_get", &cronetEngineParamsNetworkThreadPriorityGet},
+	}
 }

@@ -1,8 +1,12 @@
 package box
 
 import (
+	"context"
 	"reflect"
+	"slices"
 	"testing"
+
+	"github.com/sagernet/sing-box/option"
 )
 
 func TestRuntimeCohortsCondenseOnlyCyclesAndOrderDependencies(t *testing.T) {
@@ -48,6 +52,33 @@ func TestRuntimeCohortsCondenseOnlyCyclesAndOrderDependencies(t *testing.T) {
 	}
 	if !reflect.DeepEqual(nodes[1].dependencies, []string{"b", "leaf"}) {
 		t.Fatal("cohort construction mutated caller dependencies")
+	}
+}
+
+func TestRuntimeRealmDependencyClosurePreservesOrdinaryDNSOwnershipCycle(t *testing.T) {
+	options := runtimeRealmDependencyOptions()
+	options.DNS.Servers[0].Options.(*option.RemoteDNSServerOptions).Detour = "carrier-a"
+	nodes, _, err := runtimeConfigNodes(context.Background(), runtimeResolveGraphDefaults(options))
+	if err != nil {
+		t.Fatal("ordinary DNS/direct cycle was rejected", err)
+	}
+	cohorts, err := runtimeCohorts(nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	membership := make(map[string]int)
+	for index, cohort := range cohorts {
+		for _, name := range cohort.members {
+			membership[name] = index
+		}
+	}
+	if membership["dns-router"] != membership["outbound:carrier-a"] {
+		t.Fatal("existing DNS/direct cycle was split")
+	}
+	realm := membership["outbound:realm"]
+	http := membership["http-manager"]
+	if realm == http || realm == membership["dns-router"] || !slices.Contains(cohorts[realm].dependencies, http) {
+		t.Fatal("Realm did not retain the independent receiving-manager closure", cohorts)
 	}
 }
 

@@ -3,7 +3,10 @@ package outbound
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
+	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -189,6 +192,35 @@ func TestRuntimeCarrierUncertainCloseIsStickyAndRetains(t *testing.T) {
 		if source.count() != 1 || raw.closes.Load() != 1 {
 			t.Fatal("unknown completion lost its exact closure")
 		}
+	}
+}
+
+func TestRuntimeCleanupKeepsCauseIdentityAndScopeDebt(t *testing.T) {
+	for _, signal := range []error{
+		context.Canceled, context.DeadlineExceeded, io.EOF, net.ErrClosed,
+		io.ErrClosedPipe, os.ErrClosed, syscall.EPIPE, syscall.ECONNRESET, syscall.ENOTCONN,
+		http.ErrServerClosed, ErrRuntimeClosePending,
+	} {
+		t.Run(signal.Error(), func(t *testing.T) {
+			// Even a typed cause wrapping a benign sentinel keeps its own identity;
+			// only matching the bare completion sentinel is intentionally opaque.
+			original := &net.OpError{Op: "close", Net: "udp", Err: signal}
+			source := newLifecycleSource()
+			conn := lifecycleDial(t, source, &lifecycleConn{closeErr: original})
+			err := conn.Close()
+			var typed *net.OpError
+			if !errors.Is(err, original) || !errors.As(err, &typed) || typed != original || errors.Is(err, signal) || !runtimeCleanupIncomplete(err) {
+				t.Fatal("cleanup cause identity or opaque completion contract lost", err)
+			}
+			if conn.Close() != err || source.count() != 1 {
+				t.Fatal("failed cleanup stopped retaining its exact owner")
+			}
+			scope := adapter.NewScope(context.Background(), log.NewNOPFactory().Logger())
+			scope.Add(func() error { return err })
+			if result := scope.Close(); result == nil || !errors.Is(result, original) || errors.Is(result, signal) || !runtimeCleanupIncomplete(result) {
+				t.Fatal("Scope filtered a genuine failed cleanup", result)
+			}
+		})
 	}
 }
 
@@ -701,7 +733,7 @@ func TestRuntimeTrustedProtocolDescriptorTraversalKeepsAllFences(t *testing.T) {
 func TestNestedCreationCleanupUncertaintyRetainsAdmission(t *testing.T) {
 	for _, packet := range []bool{false, true} {
 		source := newLifecycleSource()
-		failure := errors.Join(errors.New("handshake failed"), &runtimeCleanupError{"raw close unknown"})
+		failure := errors.Join(errors.New("handshake failed"), &runtimeCleanupError{errors.New("raw close unknown")})
 		if packet {
 			_, err := ListenRuntimePacket(context.Background(), source, func(context.Context) (net.PacketConn, error) { return nil, failure })
 			if err == nil {

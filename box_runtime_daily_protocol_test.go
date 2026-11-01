@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	C "github.com/sagernet/sing-box/constant"
@@ -20,15 +21,52 @@ func TestDailyProtocolInventoryWithStablePersistentCache(t *testing.T) {
 	}
 }
 
-func TestDailyHysteria2RealmIsExplicitException(t *testing.T) {
+func TestDailyHysteria2RealmRequiresConcreteSupportedVariant(t *testing.T) {
 	options := option.Options{Outbounds: []option.Outbound{{Type: C.TypeHysteria2, Tag: "node", Options: &option.Hysteria2OutboundOptions{}}}, DNS: &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeFakeIP}}}}
 	if _, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options); len(problems) != 0 {
 		t.Fatal(problems)
 	}
-	options.Outbounds[0].Options.(*option.Hysteria2OutboundOptions).Realm = &option.Hysteria2Realm{}
-	_, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options)
-	if len(problems) != 1 || problems[0].Path != "outbounds[0].realm" {
-		t.Fatal("Realm exception is not precise", problems)
+	for _, mode := range []string{"supported", "missing-url", "missing-TLS", "custom-TLS", "missing-HTTP", "invalid-family"} {
+		t.Run(mode, func(t *testing.T) {
+			v := &option.Hysteria2OutboundOptions{}
+			v.TLS = &option.OutboundTLSOptions{Enabled: true}
+			v.Realm = &option.Hysteria2Realm{ServerURL: "https://control.invalid", STUNServers: []string{"127.0.0.1:3478"}}
+			path, code := "", ""
+			switch mode {
+			case "missing-url":
+				v.Realm.ServerURL = ""
+				path, code = "outbounds[0].realm.server_url", "INVALID_DEPENDENCY_GRAPH"
+			case "missing-TLS":
+				v.TLS = nil
+				path, code = "outbounds[0].tls", "INVALID_DEPENDENCY_GRAPH"
+			case "custom-TLS":
+				v.TLS.Engine = "apple"
+				path, code = "outbounds[0].tls.engine", "PENDING_ADAPTER"
+			case "missing-HTTP":
+				v.Realm.HTTPClient = &option.HTTPClientOptions{Tag: "absent"}
+				path, code = "outbounds[0].realm.http_client", "INVALID_DEPENDENCY_GRAPH"
+			case "invalid-family":
+				v.Realm.IPVersion = 7
+				path, code = "outbounds[0].realm.ip_version", "INVALID_DEPENDENCY_GRAPH"
+			}
+			options.Outbounds[0].Options = v
+			_, problems := runtimeConfigCompatibility(context.Background(), []byte(`{}`), []byte(`{}`), options)
+			if path != "" && !slices.ContainsFunc(problems, func(p RuntimePlanError) bool { return p.Path == path && p.Code == code }) {
+				t.Fatal("exact unsupported Realm variant lost its guard", problems)
+			}
+			for _, p := range problems {
+				if p.Path == "outbounds[0].realm" && p.Code == "PENDING_ADAPTER" && !C.WithQUIC {
+					continue
+				}
+				if p.Path == path && p.Code == code && path != "" {
+					continue
+				}
+				t.Fatal("supported Realm variant stayed globally pending", problems)
+			}
+			if !C.WithQUIC && !slices.ContainsFunc(problems, func(p RuntimePlanError) bool { return p.Path == "outbounds[0].realm" && p.Code == "PENDING_ADAPTER" }) {
+				t.Fatal("missing concrete build admitted Realm", problems)
+			}
+		})
 	}
 }
 

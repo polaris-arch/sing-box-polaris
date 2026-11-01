@@ -230,3 +230,6 @@ replace github.com/database64128/tfo-go/v2 => ./third_party/tfo-go
 
 // Pinned Vision provider compatibility; preserve both TLS forks and their concrete layouts.
 replace github.com/sagernet/sing-vmess => ./third_party/sing-vmess
+
+// Pinned NAT discovery/mapping completion; upstream identity and full license are retained in-tree.
+replace github.com/libp2p/go-nat => ./third_party/go-nat

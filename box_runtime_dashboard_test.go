@@ -170,7 +170,24 @@ func TestRuntimeDashboardServiceChangesStillRequireRestart(t *testing.T) {
 	t.Cleanup(func() { _ = instance.CloseWithResult() })
 	f.start(t)
 	content, _ := json.MarshalContext(f.ctx, options.Options)
-	for _, change := range [][2]string{{`"original"`, `"replacement"`}, {`"/initial"`, `"/other"`}, {`"http://127.0.0.1/initial.zip"`, `"http://127.0.0.1/other.zip"`}, {`"1h0m0s"`, `"2h0m0s"`}, {`"detour":"select"`, `"detour":"a"`}} {
+	// Secret is the bounded API ingress projection, not dashboard structure.
+	secretCandidate := strings.Replace(string(content), `"original"`, `"replacement"`, 1)
+	secretPlan, err := instance.planRuntimeConfig(context.Background(), "actor-a", f.identity(), []byte(secretCandidate))
+	if err != nil || !secretPlan.Applicable || secretPlan.NoOp || len(secretPlan.Errors) != 0 {
+		t.Fatalf("secret-only API projection refused: %+v %v", secretPlan, err)
+	}
+	apiIngress := false
+	for _, impact := range secretPlan.Impacts {
+		if impact.UpdateClass == "LOCAL_REPLACE" && impact.Path == "services" {
+			for _, class := range impact.AffectedSessionClasses {
+				apiIngress = apiIngress || class == "API streams on the replaced ingress"
+			}
+		}
+	}
+	if !apiIngress {
+		t.Fatal("secret change lacks API ingress replacement impact")
+	}
+	for _, change := range [][2]string{{`"/initial"`, `"/other"`}, {`"http://127.0.0.1/initial.zip"`, `"http://127.0.0.1/other.zip"`}, {`"1h0m0s"`, `"2h0m0s"`}, {`"detour":"select"`, `"detour":"a"`}} {
 		t.Run(change[0], func(t *testing.T) {
 			candidate := strings.Replace(string(content), change[0], change[1], 1)
 			if candidate == string(content) {

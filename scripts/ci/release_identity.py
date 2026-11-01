@@ -2,6 +2,7 @@
 """Bind actual producer checkout to dispatch SHA and one immutable annotated tag."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -15,6 +16,20 @@ RID = 1421657509
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def same_identity(actual, expected):
+    """Compare nested evidence identities without Python bool/int/float coercion."""
+    if type(actual) is not type(expected):
+        return False
+    if type(actual) is dict:
+        return (actual.keys() == expected.keys() and all(type(key) is str for key in actual)
+                and all(same_identity(actual[key], expected[key]) for key in actual))
+    if type(actual) in (list, tuple):
+        return len(actual) == len(expected) and all(same_identity(a, b) for a, b in zip(actual, expected))
+    if type(actual) is float and not math.isfinite(actual):
+        return False
+    return actual == expected
 
 
 def api(path):

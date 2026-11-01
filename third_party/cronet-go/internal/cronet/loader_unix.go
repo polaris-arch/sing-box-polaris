@@ -17,16 +17,28 @@ var (
 	loadOnce  sync.Once
 	loadError error
 	libHandle uintptr
+	// Capture and duplicate the inherited descriptor at package initialization,
+	// before lazy loading or application code can reuse its descriptor number.
+	explicitLibrary = captureExplicitLibrary()
 )
 
 // LoadLibrary loads the cronet shared library from the given path.
 // If path is empty, it searches in standard locations.
 // This function is safe to call from multiple goroutines.
 func LoadLibrary(path string) error {
+	// Validate every explicit assertion, including warm calls. A previously
+	// successful Once must not turn a conflicting path into a successful smoke.
+	if _, err := explicitLibrary.resolvePath(path); err != nil {
+		return err
+	}
 	loadOnce.Do(func() {
 		loadError = doLoadLibrary(path)
 	})
 	return loadError
+}
+
+func ObserveSelectedLibrary(path string) (LibraryObservation, bool, error) {
+	return explicitLibrary.observe(path)
 }
 
 // ensureLoaded attempts to load the library and panics if it fails.
@@ -39,7 +51,13 @@ func ensureLoaded() {
 }
 
 func doLoadLibrary(path string) error {
-	if path == "" {
+	if explicitLibrary.present {
+		var err error
+		path, err = explicitLibrary.resolvePath(path)
+		if err != nil {
+			return err
+		}
+	} else if path == "" {
 		path = findLibrary()
 	}
 

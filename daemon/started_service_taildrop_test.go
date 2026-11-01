@@ -13,6 +13,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -43,9 +44,11 @@ type taildropEndpointManagerFixture struct {
 func (m *taildropEndpointManagerFixture) Endpoints() []adapter.Endpoint {
 	return []adapter.Endpoint{m.endpoint}
 }
+
 func (m *taildropEndpointManagerFixture) Get(tag string) (adapter.Endpoint, bool) {
 	return m.endpoint, m.endpoint != nil && tag == m.endpoint.Tag()
 }
+
 func taildropStartedFixture(t *testing.T, p *taildropProviderFixture) *StartedService {
 	t.Helper()
 	s := admissionTestService(t)
@@ -53,6 +56,7 @@ func taildropStartedFixture(t *testing.T, p *taildropProviderFixture) *StartedSe
 	s.serviceStatus = &ServiceStatus{Status: ServiceStatus_STARTED}
 	return s
 }
+
 func taildropClientFixture(t *testing.T, s *StartedService) StartedServiceClient {
 	t.Helper()
 	listener := bufconn.Listen(64 * 1024)
@@ -91,21 +95,26 @@ func taildropClientFixture(t *testing.T, s *StartedService) StartedServiceClient
 	})
 	return NewStartedServiceClient(connection)
 }
+
 func taildropCallContext(t *testing.T) (context.Context, context.CancelFunc) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	t.Cleanup(cancel)
 	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer taildrop-test-secret"), cancel
 }
+
 func taildropStart(files ...*TaildropOutgoingFile) *TaildropSendClientMessage {
 	return &TaildropSendClientMessage{Message: &TaildropSendClientMessage_Start{Start: &TaildropSendStart{EndpointTag: "taildrop-fixture", PeerStableID: "peer", Files: files}}}
 }
+
 func taildropChunk(data []byte) *TaildropSendClientMessage {
 	return &TaildropSendClientMessage{Message: &TaildropSendClientMessage_Chunk{Chunk: &TaildropFileChunk{Data: data}}}
 }
+
 func taildropFileDone() *TaildropSendClientMessage {
 	return &TaildropSendClientMessage{Message: &TaildropSendClientMessage_FileDone{FileDone: &TaildropFileDone{}}}
 }
+
 func taildropAwait(t *testing.T, done <-chan struct{}) {
 	t.Helper()
 	select {

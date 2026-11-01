@@ -247,6 +247,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				if coordinator.clashMode != nil {
 					coordinator.clashMode.RuntimeReplaceModes(clashmode.CalculateModeList(record.options))
 				}
+				record.operation.apiHandoffs = prepared.apiHandoffs
 				record.operation.Active = next
 				record.operation.State = "COMMITTED_DURABILITY_PENDING"
 				record.operation.RetirementState = "PENDING"

@@ -32,7 +32,8 @@ def supports_source(source):
     from oci_material_selection_12_3 import SOURCE as next_source
     from oci_material_selection_12_5 import SOURCE as latest_source
     from oci_material_selection_12_6 import SOURCE as alpha126_source
-    return source in (legacy.SOURCE, SOURCE, next_source, latest_source, alpha126_source)
+    from oci_material_selection_12_7 import SOURCE as alpha127_source
+    return source in (legacy.SOURCE, SOURCE, next_source, latest_source, alpha126_source, alpha127_source)
 
 
 def _selector_record():
@@ -227,6 +228,9 @@ def _load(artifacts, source_root, publisher_root):
 
 
 def load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root):
+    import oci_material_selection_12_7 as alpha127
+    if source == alpha127.SOURCE:
+        return alpha127.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
     import oci_material_selection_12_6 as alpha126
     if source == alpha126.SOURCE:
         return alpha126.load_for_run(source, tree, tag, tag_object, run_id, attempt, workflow, artifacts, source_root, publisher_root)
@@ -253,6 +257,9 @@ def _checked(policy):
 
 
 def bundle_name(policy):
+    import oci_material_selection_12_7 as alpha127
+    if policy.get('schema') == alpha127.SCHEMA:
+        return alpha127.bundle_name(policy)
     import oci_material_selection_12_6 as alpha126
     if policy.get('schema') == alpha126.SCHEMA:
         return alpha126.bundle_name(policy)
@@ -270,6 +277,9 @@ def bundle_name(policy):
 
 
 def check_image(policy, artifact_name, actual_image_path):
+    import oci_material_selection_12_7 as alpha127
+    if policy.get('schema') == alpha127.SCHEMA:
+        return alpha127.check_image(policy, artifact_name, actual_image_path)
     import oci_material_selection_12_6 as alpha126
     if policy.get('schema') == alpha126.SCHEMA:
         return alpha126.check_image(policy, artifact_name, actual_image_path)
@@ -290,6 +300,9 @@ def check_image(policy, artifact_name, actual_image_path):
 
 
 def write_bundle(policy, path):
+    import oci_material_selection_12_7 as alpha127
+    if policy.get('schema') == alpha127.SCHEMA:
+        return alpha127.write_bundle(policy, path)
     import oci_material_selection_12_6 as alpha126
     if policy.get('schema') == alpha126.SCHEMA:
         return alpha126.write_bundle(policy, path)
@@ -340,6 +353,9 @@ def write_bundle(policy, path):
 
 
 def record(policy, publisher_sha, bundle_path):
+    import oci_material_selection_12_7 as alpha127
+    if policy.get('schema') == alpha127.SCHEMA:
+        return alpha127.record(policy, publisher_sha, bundle_path)
     import oci_material_selection_12_6 as alpha126
     if policy.get('schema') == alpha126.SCHEMA:
         return alpha126.record(policy, publisher_sha, bundle_path)
