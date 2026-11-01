@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 import unittest
+import copy
+import shlex
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -11,7 +13,90 @@ def workflow(name):
     return yaml.safe_load((ROOT / '.github/workflows' / (name + '.yml')).read_text())
 
 
+def native_smoke_go_toolchain_contract(workflow):
+    steps = workflow['jobs']['native_smoke']['steps']
+    # Darwin's held post-sign observer invokes both go version -m and go tool
+    # buildid. A Go installation in the archive-producing job is not inherited
+    # by this separate runner; Linux/Windows smoke do not use that observer.
+    go_steps = [step for step in steps if step.get('uses', '').startswith('actions/setup-go@')]
+    if len(go_steps) != 1:
+        raise AssertionError('Darwin metadata requires exactly one source-owned Go setup')
+    go = go_steps[0]
+    if (go.get('uses') != 'actions/setup-go@v5' or go.get('if') != "startsWith(matrix.id, 'darwin-')"
+            or 'continue-on-error' in go or go.get('with') != {'go-version-file':'release/GO_VERSION','cache':False}):
+        raise AssertionError('Darwin metadata must use the exact source-owned Go pin without cache drift')
+    smoke = next(step for step in steps if step.get('name') == 'Execute final-package Cronet smoke')
+    checkout = next(i for i, step in enumerate(steps) if step.get('name') == 'Checkout')
+    if not checkout < steps.index(go) < steps.index(smoke) or smoke.get('env', {}).get('GOTOOLCHAIN') != 'local':
+        raise AssertionError('Darwin Go must precede metadata and cannot auto-upgrade its toolchain')
+
+
+def darwin_archive_seal_contract(workflow):
+    steps = workflow['jobs']['build_darwin']['steps']
+    seals = [step for step in steps if step.get('name') == 'Seal Darwin native candidate before archive']
+    if len(seals) != 1:
+        raise AssertionError('both modern Darwin archives require an explicit final signature')
+    seal = seals[0]
+    commands = [shlex.split(line) for line in seal.get('run', '').splitlines() if line.strip()]
+    if (seal.get('if') != '${{ ! matrix.legacy_osx }}' or 'continue-on-error' in seal or commands != [
+            ['/usr/bin/codesign','--force','--sign','-','--timestamp=none','dist/sing-box'],
+            ['/usr/bin/codesign','--verify','--strict','dist/sing-box']]):
+        raise AssertionError('modern Darwin seal must be ad-hoc and strictly verified before hashing')
+    index = {step.get('name'):i for i,step in enumerate(steps)}
+    if not index['Build'] < steps.index(seal) < index['Archive'] < index['Collect actual native archive receipt']:
+        raise AssertionError('Darwin archive and receipt must contain only the final signed bytes')
+
+
+
 class EfficiencyTests(unittest.TestCase):
+    def test_darwin_archive_signs_both_modern_targets_before_recording_final_bytes(self):
+        for workflow_name in ('build', 'signed-release'):
+            with self.subTest(workflow=workflow_name):
+                workflow = yaml.safe_load((ROOT/'.github/workflows'/(workflow_name+'.yml')).read_text())
+                darwin_archive_seal_contract(workflow)
+                rows = workflow['jobs']['build_darwin']['strategy']['matrix']['include']
+                self.assertEqual([row['arch'] for row in rows if not row.get('legacy_osx')], ['amd64','arm64'])
+                for mutation in ('missing','duplicate','late','only-arm64','skip-failure','no-verify','real-identity'):
+                    wrong = copy.deepcopy(workflow)
+                    steps = wrong['jobs']['build_darwin']['steps']
+                    seal = next(step for step in steps if step.get('name') == 'Seal Darwin native candidate before archive')
+                    if mutation == 'missing': steps.remove(seal)
+                    elif mutation == 'duplicate': steps.append(copy.deepcopy(seal))
+                    elif mutation == 'late': steps.remove(seal); steps.append(seal)
+                    elif mutation == 'only-arm64': seal['if'] = "matrix.arch == 'arm64'"
+                    elif mutation == 'skip-failure': seal['continue-on-error'] = True
+                    elif mutation == 'no-verify': seal['run'] = seal['run'].splitlines()[0]
+                    elif mutation == 'real-identity': seal['run'] = seal['run'].replace('--sign - ', '--sign unreviewed ')
+                    with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                        darwin_archive_seal_contract(wrong)
+
+
+    def test_darwin_metadata_go_setup_rejects_missing_drift_late_and_partial_platforms(self):
+        for workflow_name in ('build', 'signed-release'):
+            with self.subTest(workflow=workflow_name):
+                original = yaml.safe_load((ROOT/'.github/workflows'/(workflow_name+'.yml')).read_text())
+                native_smoke_go_toolchain_contract(original)
+                for mutation in ('missing','duplicate','late','version','latest','cache','wrong-action',
+                                 'only-arm64','conditional-success','ignore-failure','auto-toolchain'):
+                    workflow = copy.deepcopy(original)
+                    steps = workflow['jobs']['native_smoke']['steps']
+                    go = next(step for step in steps if step.get('uses', '').startswith('actions/setup-go@'))
+                    smoke = next(step for step in steps if step.get('name') == 'Execute final-package Cronet smoke')
+                    if mutation == 'missing': steps.remove(go)
+                    elif mutation == 'duplicate': steps.append(copy.deepcopy(go))
+                    elif mutation == 'late': steps.remove(go); steps.append(go)
+                    elif mutation == 'version': go['with'] = {'go-version':'1.27.1','cache':False}
+                    elif mutation == 'latest': go['with'] = {'go-version':'stable','cache':False}
+                    elif mutation == 'cache': go['with']['cache'] = True
+                    elif mutation == 'wrong-action': go['uses'] = 'actions/setup-go@unreviewed'
+                    elif mutation == 'only-arm64': go['if'] = "matrix.id == 'darwin-arm64'"
+                    elif mutation == 'conditional-success': go['if'] = 'always()'
+                    elif mutation == 'ignore-failure': go['continue-on-error'] = True
+                    elif mutation == 'auto-toolchain': smoke['env']['GOTOOLCHAIN'] = 'auto'
+                    with self.subTest(mutation=mutation), self.assertRaises(AssertionError):
+                        native_smoke_go_toolchain_contract(workflow)
+
+
     def test_win7_prepares_once_without_blocking_other_platforms(self):
         upstream = json.loads((ROOT / 'release/ci/upstream-matrices.json').read_text())['matrices']['build.yml']['build']['include']
         scopes = json.loads((ROOT / 'release/ci/publisher-upstream-scope.json').read_text())
