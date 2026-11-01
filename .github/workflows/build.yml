@@ -800,6 +800,11 @@ jobs:
         GOARCH: ${{ matrix.arch }}
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.legacy_osx && '10.13' || '' }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Seal Darwin native candidate before archive
+      if: ${{ ! matrix.legacy_osx }}
+      run: |
+        /usr/bin/codesign --force --sign - --timestamp=none dist/sing-box
+        /usr/bin/codesign --verify --strict dist/sing-box
     - name: Set name
       run: |-
         DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-darwin-${{ matrix.arch }}"
@@ -1992,6 +1997,12 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: native
+    - name: Setup source-owned Go for Darwin metadata
+      if: startsWith(matrix.id, 'darwin-')
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
@@ -2008,6 +2019,8 @@ jobs:
       run: python -B scripts/ci/protocol_peer.py native --fetch-diagnostic --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute final-package Cronet smoke
       if: inputs.build != 'NativePeerDiagnostic'
+      env:
+        GOTOOLCHAIN: local
       run: python scripts/ci/native_release_index.py smoke native
     - name: Verify controlled native peer runner contracts
       if: matrix.id == 'linux-amd64-purego'
