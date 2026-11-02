@@ -351,8 +351,11 @@ type RuntimeCapabilities struct {
 	MaxReceipts                  uint32                    `protobuf:"varint,7,opt,name=max_receipts,json=maxReceipts,proto3" json:"max_receipts,omitempty"`
 	FullEffectiveSchemaSupported bool                      `protobuf:"varint,8,opt,name=full_effective_schema_supported,json=fullEffectiveSchemaSupported,proto3" json:"full_effective_schema_supported,omitempty"`
 	ControlRevision              uint64                    `protobuf:"varint,9,opt,name=control_revision,json=controlRevision,proto3" json:"control_revision,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// Read-only document from this authenticated running Core. An absent/empty
+	// field is unavailable; it never grants an execution purpose or a CLI fallback.
+	TlsFingerprintCapabilitiesJson string `protobuf:"bytes,10,opt,name=tls_fingerprint_capabilities_json,json=tlsFingerprintCapabilitiesJson,proto3" json:"tls_fingerprint_capabilities_json,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *RuntimeCapabilities) Reset() {
@@ -446,6 +449,13 @@ func (x *RuntimeCapabilities) GetControlRevision() uint64 {
 		return x.ControlRevision
 	}
 	return 0
+}
+
+func (x *RuntimeCapabilities) GetTlsFingerprintCapabilitiesJson() string {
+	if x != nil {
+		return x.TlsFingerprintCapabilitiesJson
+	}
+	return ""
 }
 
 // Explicit snapshot; absent and empty package lists retain their protobuf
@@ -1576,7 +1586,7 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x0fadapter_version\x18\x05 \x01(\tR\x0eadapterVersion\x12\x1e\n" +
 	"\n" +
 	"conditions\x18\x06 \x03(\tR\n" +
-	"conditions\"\xf4\x03\n" +
+	"conditions\"\xbf\x04\n" +
 	"\x13RuntimeCapabilities\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x122\n" +
 	"\x15connected_hot_enabled\x18\x02 \x01(\bR\x13connectedHotEnabled\x12D\n" +
@@ -1586,7 +1596,9 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x19receipt_retention_seconds\x18\x06 \x01(\x04R\x17receiptRetentionSeconds\x12!\n" +
 	"\fmax_receipts\x18\a \x01(\rR\vmaxReceipts\x12E\n" +
 	"\x1ffull_effective_schema_supported\x18\b \x01(\bR\x1cfullEffectiveSchemaSupported\x12)\n" +
-	"\x10control_revision\x18\t \x01(\x04R\x0fcontrolRevision\"\x8f\x01\n" +
+	"\x10control_revision\x18\t \x01(\x04R\x0fcontrolRevision\x12I\n" +
+	"!tls_fingerprint_capabilities_json\x18\n" +
+	" \x01(\tR\x1etlsFingerprintCapabilitiesJson\"\x8f\x01\n" +
 	"\x16RuntimeOverrideOptions\x12#\n" +
 	"\rauto_redirect\x18\x01 \x01(\bR\fautoRedirect\x12'\n" +
 	"\x0finclude_package\x18\x02 \x03(\tR\x0eincludePackage\x12'\n" +
