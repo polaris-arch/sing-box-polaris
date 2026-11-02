@@ -3,6 +3,52 @@ import json,re,unittest,yaml
 import copy,os,shlex,shutil,subprocess,sys,tempfile
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
+def source_cost_steps_contract(gate):
+ # Retention is unconditional input metadata; only the later observation measures.
+ steps=gate['steps']
+ names=('Retain exact Source inputs before compatibility gates (not a test or native PASS)',
+        'Measure whole-migration binary and idle RSS costs')
+ selected=[]
+ for name in names:
+  matches=[step for step in steps if step.get('name')==name]
+  if len(matches)!=1:raise AssertionError('unique exact cost phase step required: '+name)
+  selected.append(matches[0])
+ early,cost=selected
+ commands=(['python','-B','scripts/ci/utls_cost.py','--retain-source-input','--output',
+            '${{ runner.temp }}/tls-fingerprint-evidence'],
+           ['python','scripts/ci/utls_cost.py','--output','${{ runner.temp }}/tls-fingerprint-evidence/cost'])
+ for step,command in zip(selected,commands):
+  try:argv=shlex.split(step.get('run',''))
+  except (ValueError,TypeError) as error:raise AssertionError('cost phase command is not well formed') from error
+  if argv!=command:raise AssertionError('cost phase command differs')
+ calls=[step for step in steps if 'utls_cost.py' in step.get('run','')]
+ if calls!=selected:raise AssertionError('exact input then measurement invocations required')
+ if 'if' in early or 'continue-on-error' in early or 'env' in early:
+  raise AssertionError('early input-only receipt must run unconditionally on all Source platforms')
+ if cost.get('if')!="always() && matrix.os == 'ubuntu-24.04'" or cost.get('continue-on-error') is not True:
+  raise AssertionError('measurement remains a nonblocking Ubuntu always observation')
+ early_index=steps.index(early)
+ for prefix in ('actions/checkout@','actions/setup-python@'):
+  before=[step for step in steps if step.get('uses','').startswith(prefix)]
+  if len(before)!=1 or steps.index(before[0])>=early_index:
+   raise AssertionError('input receipt must follow exact checkout and Python setup')
+ boundaries=([step for step in steps if step.get('uses','').startswith('actions/setup-go@')],
+             [step for step in steps if 'pip install' in step.get('run','')],
+             [step for step in steps if 'test_client_encoding.py' in step.get('run','')])
+ if any(len(group)!=1 or steps.index(group[0])<=early_index for group in boundaries):
+  raise AssertionError('input receipt must precede Go, pip and Unicode gates')
+ required={'SOURCE_BUILD':'${{ inputs.build }}',
+           'SOURCE_GENERATE_ONLY':"${{ inputs.source_generate_only && 'true' || 'false' }}",
+           'SOURCE_WINDOWS_NATIVE_PROOF':"${{ inputs.windows_native_proof && 'true' || 'false' }}",
+           'SOURCE_EVIDENCE_MODE':'${{ inputs.evidence_mode }}','SOURCE_VERSION':'${{ inputs.version }}',
+           'SOURCE_RUNNER':'${{ matrix.os }}'}
+ if any(gate.get('env',{}).get(key)!=value for key,value in required.items()):
+  raise AssertionError('early receipt must retain exact dispatched Source inputs')
+ uploads=[step for step in steps if step.get('uses','').startswith('actions/upload-artifact@')]
+ if len(uploads)!=1 or uploads[0].get('if')!='always()' or uploads[0].get('with',{}).get('if-no-files-found')!='error' or uploads[0].get('with',{}).get('path')!='${{ runner.temp }}/tls-fingerprint-evidence':
+  raise AssertionError('always-upload exact evidence directory must keep no-files failure')
+ return early,cost
+
 class TestVisionSourceContract(unittest.TestCase):
  def test_every_source_boundary_rejects_tampering(self):
   from vision_source import validate, BINDING
@@ -579,8 +625,58 @@ class TestCIContract(unittest.TestCase):
   self.assertFalse(gate['strategy']['fail-fast'])
   self.assertTrue(any(s.get('with',{}).get('go-version-file')=='release/GO_VERSION' for s in gate['steps']))
   self.assertTrue(any('utls_gate.py' in s.get('run','') for s in gate['steps']))
-  cost=next(s for s in gate['steps'] if 'utls_cost.py' in s.get('run',''))
+  early,cost=source_cost_steps_contract(gate)
   self.assertEqual(cost['if'],"always() && matrix.os == 'ubuntu-24.04'")
+ def test_cost_input_and_measurement_invocations_coexist_without_first_match_ambiguity(self):
+  gate=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  early,cost=source_cost_steps_contract(gate)
+  calls=[step for step in gate['steps'] if 'utls_cost.py' in step.get('run','')]
+  self.assertEqual(calls,[early,cost]);self.assertIsNot(early,cost)
+  self.assertIn('--retain-source-input',shlex.split(early['run']))
+  self.assertNotIn('--retain-source-input',shlex.split(cost['run']))
+  self.assertNotIn('if',early);self.assertNotIn('continue-on-error',early)
+  self.assertEqual(cost['name'],'Measure whole-migration binary and idle RSS costs')
+  self.assertEqual(cost['if'],"always() && matrix.os == 'ubuntu-24.04'")
+  self.assertIs(cost['continue-on-error'],True)
+ def test_cost_step_duplicate_missing_renamed_and_wrong_phase_commands_are_rejected(self):
+  original=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  for mutation in ('duplicate-early','duplicate-cost','missing-early','missing-cost','renamed-cost',
+                   'early-as-measurement','measurement-as-early','wrong-cost-program','malformed-command','third-invocation','reversed'):
+   gate=copy.deepcopy(original);steps=gate['steps'];early,cost=source_cost_steps_contract(gate)
+   if mutation=='duplicate-early':steps.append(copy.deepcopy(early))
+   elif mutation=='duplicate-cost':steps.append(copy.deepcopy(cost))
+   elif mutation=='missing-early':steps.remove(early)
+   elif mutation=='missing-cost':steps.remove(cost)
+   elif mutation=='renamed-cost':cost['name']='Unreviewed cost observation'
+   elif mutation=='early-as-measurement':cost['run']=early['run']
+   elif mutation=='measurement-as-early':early['run']=cost['run']
+   elif mutation=='wrong-cost-program':cost['run']=cost['run'].replace('scripts/ci/utls_cost.py','scripts/ci/unreviewed.py')
+   elif mutation=='malformed-command':cost['run']+=" '"
+   elif mutation=='third-invocation':steps.append(dict(cost,name='Unreviewed extra invocation'))
+   else:
+    a,b=steps.index(early),steps.index(cost);steps[a],steps[b]=steps[b],steps[a]
+   with self.subTest(mutation=mutation),self.assertRaises(AssertionError):source_cost_steps_contract(gate)
+ def test_early_cost_receipt_scope_order_and_measurement_only_predicate_cannot_cross(self):
+  original=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  for mutation in ('early-if','early-ignore','early-env','before-checkout','before-python',
+                   'after-go','after-pip','after-unicode','foreign-input','measurement-if','measurement-fatal','shared-output','upload-ignore'):
+   gate=copy.deepcopy(original);steps=gate['steps'];early,cost=source_cost_steps_contract(gate)
+   if mutation=='early-if':early['if']=cost['if']
+   elif mutation=='early-ignore':early['continue-on-error']=True
+   elif mutation=='early-env':early['env']={'SOURCE_BUILD':'Binary'}
+   elif mutation in ('before-checkout','before-python','after-go','after-pip','after-unicode'):
+    if mutation=='before-checkout':target=next(step for step in steps if step.get('uses','').startswith('actions/checkout@'))
+    elif mutation=='before-python':target=next(step for step in steps if step.get('uses','').startswith('actions/setup-python@'))
+    elif mutation=='after-go':target=next(step for step in steps if step.get('uses','').startswith('actions/setup-go@'))
+    elif mutation=='after-pip':target=next(step for step in steps if 'pip install' in step.get('run',''))
+    else:target=next(step for step in steps if 'test_client_encoding.py' in step.get('run',''))
+    steps.remove(early);steps.insert(steps.index(target)+(0 if mutation.startswith('before-') else 1),early)
+   elif mutation=='foreign-input':gate['env']['SOURCE_WINDOWS_NATIVE_PROOF']='true'
+   elif mutation=='measurement-if':cost['if']="matrix.os == 'ubuntu-24.04'"
+   elif mutation=='measurement-fatal':cost['continue-on-error']=False
+   elif mutation=='shared-output':cost['run']=cost['run'].replace('/tls-fingerprint-evidence/cost','/tls-fingerprint-evidence')
+   else:next(step for step in steps if step.get('uses','').startswith('actions/upload-artifact@'))['with']['if-no-files-found']='ignore'
+   with self.subTest(mutation=mutation),self.assertRaises(AssertionError):source_cost_steps_contract(gate)
  def test_new_capability_and_mobile_checks_use_original_product_jobs(self):
   for name in ['build.yml','signed-release.yml']:
    w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
