@@ -8,11 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.outputs.outputs.version }}
+      tag_object: ${{ steps.source.outputs.tag_object }}
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
+        persist-credentials: false
     - name: Setup Go
       if: github.event_name != 'workflow_dispatch'
       uses: actions/setup-go@v5
@@ -31,6 +34,12 @@ jobs:
     - name: Set outputs
       id: outputs
       run: echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Bind unsigned candidate source, annotated tag and testing-track policy
+      id: source
+      run: python3 scripts/ci/linux_candidate_track.py
+      env:
+        CANDIDATE_VERSION: ${{ inputs.version }}
+        GH_TOKEN: ${{ github.token }}
   build:
     name: Build binary
     runs-on: ubuntu-26.04
@@ -100,7 +109,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         fetch-depth: 0
+        persist-credentials: false
+    - name: Verify unsigned candidate source, annotated tag and testing-track policy
+      run: python3 scripts/ci/linux_candidate_track.py
+      env:
+        CANDIDATE_VERSION: ${{ inputs.version }}
+        EXPECTED_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
+        GH_TOKEN: ${{ github.token }}
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
@@ -146,10 +163,6 @@ jobs:
         set -xeuo pipefail
         cd ~/cronet-go
         go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl env >> $GITHUB_ENV
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
     - name: Set build tags
       run: |
         set -xeuo pipefail
@@ -194,8 +207,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Set mtime
       run: TZ=UTC touch -t '197001010000' dist/sing-box
-    - name: Detect track
-      run: bash .github/detect_track.sh
     - name: Set version
       run: |-
         PKG_VERSION="${{ needs.calculate_version.outputs.version }}"
@@ -230,6 +241,12 @@ jobs:
           dist/sing-box=/usr/bin/sing-box
     - name: Cleanup
       run: rm dist/sing-box
+    - name: Recheck unsigned candidate source and immutable tag before upload
+      run: python3 scripts/ci/linux_candidate_track.py
+      env:
+        CANDIDATE_VERSION: ${{ inputs.version }}
+        EXPECTED_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
+        GH_TOKEN: ${{ github.token }}
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
@@ -267,6 +284,6 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.8
+        default: 1.15.0-polaris-alpha.12.9
 permissions:
   contents: read

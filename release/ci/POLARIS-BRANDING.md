@@ -240,10 +240,14 @@ and its `-beta`, `-testing` and `-oldstable` suffixes. `NAME` changes only the
 external asset prefix to `sing-box-polaris`, retaining those same suffixes.
 Container `latest-*` track tags are unchanged.
 
-Unsigned Linux, signed Linux and the owned container publication path call this
-same helper instead of hardcoding a Polaris-only track. Their existing full
-history checkouts, matrices, signatures, environment/enable gates and owned
-publication destinations are unchanged. Current `polaris-main` Linux repository
+Signed Linux and the owned container publication path retain this production
+branch guard. Unsigned Linux candidates use `linux_candidate_track.py`: the
+exact dispatch SHA and existing annotated tag must match the current release
+identity and source-owned `linux-candidate-track.json` testing policy before
+building, and the same tag object is rechecked before artifact upload. This
+candidate entry point does not promote or create release branches. Full history
+checkouts, matrices, signatures, environment/enable gates and owned publication
+destinations are unchanged. Current testing-line Linux repository
 package filenames therefore have the `sing-box-polaris-testing_` prefix, while
 the DEB/RPM package identity remains `sing-box-testing`. Both Linux workflows
 pass `PACKAGE_NAME` to fpm and use `NAME` only for output filenames; binary,

@@ -71,6 +71,18 @@ class TestCIContract(unittest.TestCase):
   self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
   source=(ROOT/'scripts/ci/utls_gate.py').read_text()
   self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)",source)
+ def test_automatic_ci_runs_candidate_track_and_peer_admission_regressions(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  job=workflow['jobs']['contract']
+  for filename in ('test_linux_candidate_track.py','test_native_peer_metadata.py','test_protocol_peer.py'):
+   command="python -B -m unittest discover -s scripts/ci -p '"+filename+"'"
+   steps=[s for s in job['steps'] if s.get('run')==command]
+   self.assertEqual(len(steps),1,filename)
+   for control in (job,steps[0]):
+    self.assertNotIn('if',control)
+    self.assertNotIn('continue-on-error',control)
+   self.assertNotIn('env',steps[0])
+  self.assertEqual(workflow['permissions'],{'contents':'read'})
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
@@ -834,8 +846,8 @@ class TestUpstreamReleaseTrack(unittest.TestCase):
                 with self.subTest(version=version, branches=branches, tag=tag):
                     self.assert_track(branches, track, tag=tag, version=version)
 
-    def test_three_release_workflows_use_only_shared_track_helper(self):
-        for filename, job_name in [('linux.yml', 'build'), ('signed-linux.yml', 'build'),
+    def test_production_release_workflows_keep_shared_branch_track_guard(self):
+        for filename, job_name in [('signed-linux.yml', 'build'),
                                    ('publish-container.yml', 'merge')]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             calls = [(name, step) for name, job in workflow['jobs'].items()

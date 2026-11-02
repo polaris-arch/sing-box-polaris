@@ -2027,10 +2027,16 @@ jobs:
     - name: Verify controlled native peer runner contracts
       if: matrix.id == 'linux-amd64-purego'
       run: python -B -m unittest discover -s scripts/ci -p 'test_protocol_peer.py'
+    - name: Acquire exact same-run Linux artifact metadata without native execution
+      if: matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'
+      timeout-minutes: 3
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python -B scripts/ci/native_peer_metadata.py --native native --output "${{ runner.temp }}/native-peer-admission/admission.json" --failure-output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
       if: matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'
       timeout-minutes: 12
-      run: python -B scripts/ci/protocol_peer.py native --output "${{ runner.temp }}/native-controlled-peer-public"
+      run: python -B scripts/ci/protocol_peer.py native --admission "${{ runner.temp }}/native-peer-admission/admission.json" --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Diagnose the original Linux product with separately bound QA code
       if: inputs.build == 'NativePeerDiagnostic'
       timeout-minutes: 12
@@ -2160,7 +2166,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.8
+        default: 1.15.0-polaris-alpha.12.9
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

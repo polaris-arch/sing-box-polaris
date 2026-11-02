@@ -233,7 +233,7 @@ class ControlledPeerContracts(unittest.TestCase):
         self.assertEqual(external, {'yaml', 'jsonschema'})
         self.assertEqual(modules, {'test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic', 'protocol_peer_netlog',
             'native_release_index', 'tls_fingerprint_probe', 'release_identity', 'polaris_version',
-            'apple_package_overlays', 'legacy_binary_version'})
+            'apple_package_overlays', 'legacy_binary_version', 'native_peer_metadata', 'github_read_transport', 'protocol_peer_cases'})
 
     def test_native_smoke_dependency_omission_or_conditional_or_late_install_is_rejected(self):
         original = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
@@ -549,6 +549,15 @@ print(json.dumps(receipt))
         control=job[start:end]
         self.assertIn("      if: matrix.id == 'linux-amd64-purego'",control)
         self.assertNotIn('env:',control);self.assertNotIn('continue-on-error:',control)
+        self.assertIn('--admission "${{ runner.temp }}/native-peer-admission/admission.json"',control)
+        acquire=next(step for step in yaml.safe_load(source)['jobs']['native_smoke']['steps']
+                     if step.get('name')=='Acquire exact same-run Linux artifact metadata without native execution')
+        self.assertEqual(acquire['env'],{'GH_TOKEN':'${{ github.token }}'})
+        self.assertEqual(acquire['timeout-minutes'],3)
+        self.assertEqual(acquire['if'],"matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'")
+        self.assertNotIn('continue-on-error',acquire)
+        self.assertIn('scripts/ci/native_peer_metadata.py --native native',acquire['run'])
+        self.assertLess(job.index('Acquire exact same-run Linux artifact metadata'),start)
         self.assertIn('      timeout-minutes: 12',control)
         self.assertIn('permissions:\n  contents: read\n',source)
         self.assertLess(job.index('Execute final-package Cronet smoke'),start)
@@ -865,7 +874,7 @@ class FixedNativeDiagnosticContracts(unittest.TestCase):
         self.assertEqual(diagnostic_rows['include'][0]['id'],'linux-amd64-purego')
         self.assertEqual([r['id'] for r in normal_rows['include']],['linux-amd64-purego','windows-amd64','darwin-amd64','darwin-arm64'])
         self.assertIn('      actions: read',job);self.assertNotIn('write',job.split('    needs:',1)[0])
-        self.assertEqual(job.count('GH_TOKEN:'),1)
+        self.assertEqual(job.count('GH_TOKEN:'),2)
         for name in ('Execute final-package Cronet smoke','Upload actual smoke receipt','Download exact same-run native archive'):
             step=job[job.index('    - name: '+name):].split('\n    - name:',1)[0]
             self.assertIn("if: inputs.build != 'NativePeerDiagnostic'",step)
