@@ -48,11 +48,13 @@ func handlePath(handle windows.Handle) (string, error) {
 	}
 	return windows.UTF16ToString(buffer[:n]), nil
 }
+
 func handleIdentity(handle windows.Handle) (fileIdentity, error) {
 	var id fileIdentity
 	err := windows.GetFileInformationByHandleEx(handle, windows.FileIdInfo, (*byte)(unsafe.Pointer(&id)), uint32(unsafe.Sizeof(id)))
 	return id, err
 }
+
 func hexTime(value windows.Filetime) string {
 	return fmt.Sprintf("%08x%08x", value.HighDateTime, value.LowDateTime)
 }
@@ -93,6 +95,7 @@ func actorFor(process, thread windows.Handle, pid uint32) (_ actorFact, failure 
 	}
 	return actorFact{user.User.Sid.String(), "primary", false, pid, hexTime(created)}, nil
 }
+
 func currentActor() (actorFact, error) {
 	thread, err := windows.GetCurrentThread()
 	if err != nil {
@@ -292,6 +295,7 @@ func (c *cohort) copyObject(p pin, reader io.Reader) (int64, error) {
 	}
 	return n, errors.Join(copyErr, syncErr, closeErr)
 }
+
 func (c *cohort) holdObjects(core, sidecar pin) error {
 	for index, p := range []pin{core, sidecar} {
 		name := filepath.Join(c.fact.Path, p.Member)

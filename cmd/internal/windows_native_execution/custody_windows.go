@@ -24,9 +24,11 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const custodySchema = "polaris-windows-native-custody-v1"
-const custodyLimit = 256 << 10
-const custodyDirectory = "polaris-native-execution-custody"
+const (
+	custodySchema    = "polaris-windows-native-custody-v1"
+	custodyLimit     = 256 << 10
+	custodyDirectory = "polaris-native-execution-custody"
+)
 
 var errCustodyReconciled = errors.New("prior native custody exactly reconciled; this invocation issues no proof")
 
@@ -262,6 +264,7 @@ func (c *custody) read(name string) (r custodyRecord, failure error) {
 	}
 	return decodeCustody(raw)
 }
+
 func decodeCustody(raw []byte) (r custodyRecord, err error) {
 	if len(raw) > custodyLimit || uniqueJSON(raw) != nil {
 		return r, errors.New("custody record byte/JSON bound")
@@ -291,12 +294,14 @@ func decodeCustody(raw []byte) (r custodyRecord, err error) {
 	}
 	return r, nil
 }
+
 func reconcileBeforeAdmission(reconcile func() error) error {
 	if err := reconcile(); err != nil {
 		return fmt.Errorf("native cleanup debt remains: %w", err)
 	}
 	return errCustodyReconciled
 }
+
 func (c *custody) write() error {
 	raw, err := json.Marshal(c.record)
 	if err != nil || len(raw) > custodyLimit {
@@ -324,6 +329,7 @@ func (c *custody) write() error {
 	current, _ := utf16(filepath.Join(c.path, "custody.json"))
 	return windows.MoveFileEx(name, current, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
 }
+
 func (c *custody) close() error {
 	var failures []error
 	if c.lock != 0 {
@@ -346,6 +352,7 @@ func (c *custody) bindObjects(core, sidecar objectFact) error {
 	c.record.Objects = []objectFact{core, sidecar}
 	return c.write()
 }
+
 func (c *custody) finish(cleanup cleanupFact) error {
 	if !cleanup.AllChildrenWaited || !cleanup.ReadersJoined || cleanup.JobActiveProcesses != 0 || !cleanup.HeldObjectsClosed || !cleanup.CohortRemoved {
 		return errors.New("native custody debt retained; cleanup incomplete")

@@ -28,9 +28,11 @@ import (
 )
 
 var producerSource, producerTree string // exact clean workflow compile stamps
-const requestSchema = "polaris-windows-native-execution-request-v1"
-const proofSchema = "polaris-windows-native-execution-proof-v1"
-const objectLimit = 256 << 20
+const (
+	requestSchema = "polaris-windows-native-execution-request-v1"
+	proofSchema   = "polaris-windows-native-execution-proof-v1"
+	objectLimit   = 256 << 20
+)
 
 type pin struct {
 	Member string `json:"member"`
@@ -175,6 +177,7 @@ func exactHex(value string, length int) bool {
 	raw, err := hex.DecodeString(value)
 	return err == nil && len(raw)*2 == length && strings.ToLower(value) == value
 }
+
 func validateRequest(r request) error {
 	if r.Schema != requestSchema || r.Target != "windows/amd64" || r.Core.Member != "sing-box.exe" || r.Sidecar.Member != "libcronet.dll" || !exactHex(r.SourceCommit, 40) || !exactHex(r.SourceTree, 40) || r.RunID == 0 || r.RunAttempt == 0 || r.Version == "" || r.CronetVersion == "" {
 		return errors.New("native request identity differs")
@@ -394,6 +397,7 @@ func outboundConfig(name *string, enabled bool) map[string]any {
 	}
 	return map[string]any{"log": map[string]any{"level": "error"}, "outbounds": []any{map[string]any{"type": "trojan", "tag": "probe", "server": "127.0.0.1", "server_port": 443, "password": "local-config-admission-only", "tls": map[string]any{"enabled": true, "server_name": "tls.invalid", "utls": u}}}}
 }
+
 func configurationCases(document tlsDocument) []checkCase {
 	var cases []checkCase
 	add := func(name *string, enabled, passes bool) {

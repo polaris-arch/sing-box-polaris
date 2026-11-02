@@ -19,8 +19,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const outputBound = 262144
-const memoryImageType uint32 = 0x01000000 // MEM_IMAGE, observed through VirtualQueryEx
+const (
+	outputBound            = 262144
+	memoryImageType uint32 = 0x01000000 // MEM_IMAGE, observed through VirtualQueryEx
+)
 
 type boundedOutput struct {
 	bytes.Buffer
@@ -63,6 +65,7 @@ var kernel = windows.NewLazySystemDLL("kernel32.dll")
 func (c *nativeChild) interrupt() error {
 	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, c.pid)
 }
+
 func actualImage(process windows.Handle) (string, error) {
 	buffer := make([]uint16, 32768)
 	size := uint32(len(buffer))
@@ -74,6 +77,7 @@ func actualImage(process windows.Handle) (string, error) {
 	}
 	return windows.UTF16ToString(buffer[:size]), nil
 }
+
 func jobActive(job windows.Handle) (uint32, error) {
 	var info jobAccounting
 	err := windows.QueryInformationJobObject(job, windows.JobObjectBasicAccountingInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), nil)
@@ -294,12 +298,12 @@ func (c *cohort) execute(purpose string, args []string, input []byte, live func(
 			break
 		}
 		status, waitErr = windows.WaitForSingleObject(child.process, 100)
-		if waitErr != nil || status != windows.WAIT_TIMEOUT {
+		if waitErr != nil || status != uint32(windows.WAIT_TIMEOUT) {
 			break
 		}
 	}
 	if waitErr != nil || status != windows.WAIT_OBJECT_0 {
-		record.TimedOut = status == windows.WAIT_TIMEOUT && !time.Now().Before(deadline)
+		record.TimedOut = status == uint32(windows.WAIT_TIMEOUT) && !time.Now().Before(deadline)
 		record.ForcedKill = true
 		c.forced = true
 		failure = errors.Join(failure, waitErr, errors.New("native child did not finish within its wait bound"), windows.TerminateJobObject(child.job, 1))
