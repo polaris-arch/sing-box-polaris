@@ -844,3 +844,42 @@ class MacNativeExecutionControls(unittest.TestCase):
    core=Path(td)/'inert-core';core.write_bytes(data)
    with patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'macos_native_process',return_value=False),patch.object(n.subprocess,'run') as commands:
     self.assertRaisesRegex(ValueError,'translated execution',n.observe_macos_postsign,core,row);commands.assert_not_called()
+
+
+class WindowsTrustedExecutionIntegrationControls(unittest.TestCase):
+ def fixture(self):
+  from test_windows_native_execution import windows_row_fixture
+  return windows_row_fixture()
+ def test_windows_policy_data_retains_exact_source_and_ordered_purposes(self):
+  row=self.fixture();policy=n.validate_trusted_execution(row,{'runId':42,'runAttempt':1})
+  self.assertEqual(policy,row['trustedExecution'])
+  self.assertEqual(policy['purposes'],['check-config-v1','run-main-v1'])
+  self.assertEqual(policy['loader'],'windows-helper-private-cohort-v1')
+ def test_windows_policy_and_proof_pair_are_required_without_broadening_default_matrix(self):
+  row=self.fixture()
+  self.assertEqual(len(n.expected_native(row['version'])),44)
+  for missing in ('trustedExecution','windowsExecution'):
+   import copy
+   bad=copy.deepcopy(row)
+   if missing=='trustedExecution':bad.pop(missing)
+   else:bad['finalPackageCronetSmoke'].pop(missing)
+   self.assertRaises(ValueError,n.validate_trusted_execution,bad,{'runId':42,'runAttempt':1})
+  row.pop('trustedExecution');row['finalPackageCronetSmoke'].pop('windowsExecution')
+  self.assertIsNone(n.validate_trusted_execution(row,{'runId':42,'runAttempt':1}))
+ def test_windows_proof_key_cannot_route_to_linux_or_macos_schema(self):
+  for schema in (None,'polaris-macos-native-execution-proof-v1'):
+   row=self.fixture();proof=row['finalPackageCronetSmoke']['windowsExecution']
+   if schema is None:proof.pop('schema')
+   else:proof['schema']=schema
+   with patch.object(n,'derive_trusted_execution') as derive:
+    self.assertRaisesRegex(ValueError,'key/schema',n.validate_trusted_execution,row,{'runId':42,'runAttempt':1})
+    derive.assert_not_called()
+ def test_distribution_hash_retains_complete_windows_proof_kind(self):
+  row=self.fixture()
+  release={'sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],'sourceArchive':{'name':'synthetic-source'},
+           'platforms':[row],'legalFiles':[]}
+  materials=n.distribution_materials(release,n.ROOT)
+  mapping=materials['nativeArchives'][0]
+  self.assertEqual(mapping['trustedExecutionSHA256'],n.sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',',':')).encode()))
+  self.assertEqual(mapping['windowsExecutionSHA256'],n.sha(json.dumps(row['finalPackageCronetSmoke']['windowsExecution'],sort_keys=True,separators=(',',':')).encode()))
+  self.assertNotIn('sealedExecutionSHA256',mapping);self.assertNotIn('macosExecutionSHA256',mapping)

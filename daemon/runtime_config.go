@@ -4,6 +4,7 @@ import (
 	"context"
 
 	box "github.com/sagernet/sing-box"
+	boxtls "github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing/common/json"
 
 	"google.golang.org/grpc/codes"
@@ -77,7 +78,12 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 		return nil, err
 	}
 	capability := instance.RuntimeCapabilities()
+	document, err := boxtls.FingerprintCapabilitiesJSON()
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "running Core TLS capabilities unavailable")
+	}
 	result := &RuntimeCapabilities{ContractVersion: capability.ContractVersion, ConnectedHotEnabled: capability.Enabled, ImplementationManifestDigest: capability.ImplementationManifestDigest, Active: runtimeIdentity(capability.Identity), ReceiptRetentionSeconds: 300, MaxReceipts: 256, FullEffectiveSchemaSupported: capability.FullConfiguration, ControlRevision: capability.Identity.ControlRevision}
+	result.TlsFingerprintCapabilitiesJson = document
 	for _, field := range capability.Fields {
 		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: field.Path, Variant: field.Variant, PlatformBuild: field.PlatformBuild, UpdateClass: RuntimeUpdateClass(RuntimeUpdateClass_value[field.UpdateClass]), AdapterVersion: field.AdapterVersion, Conditions: append([]string(nil), field.Conditions...)})
 	}

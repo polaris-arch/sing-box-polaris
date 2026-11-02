@@ -131,11 +131,16 @@ def derive_trusted_execution(row, proof, producer, source_root=ROOT):
  """Formal workflow admission retains its original schema and run authority."""
  import jsonschema
  schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
- kind = 'macosExecution' if isinstance(proof,dict) and proof.get('schema') == 'polaris-macos-native-execution-proof-v1' else 'sealedExecution'
+ kind = {'polaris-macos-native-execution-proof-v1':'macosExecution','polaris-windows-native-execution-proof-v1':'windowsExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
  jsonschema.Draft202012Validator(schema['$defs'][kind]).validate(proof)
  for key in ('runId', 'runAttempt'):
   if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
    raise ValueError('sealed execution workflow run/attempt differs')
+ if kind == 'windowsExecution':
+  from windows_native_execution import validate_facts
+  policy=validate_facts(row,proof,source_root)
+  jsonschema.Draft202012Validator(schema['$defs']['windowsTrustedExecution']).validate(policy)
+  return policy
  return _derive_macos_execution_facts(row, proof, source_root) if kind == 'macosExecution' else _derive_execution_facts(row, proof, source_root)
 
 
@@ -427,13 +432,17 @@ def _derive_macos_execution_facts(row, proof, source_root):
 
 def validate_trusted_execution(row, producer, source_root=ROOT):
  smoke = row.get('finalPackageCronetSmoke')
- keys = [key for key in ('sealedExecution','macosExecution') if isinstance(smoke,dict) and key in smoke]
+ keys = [key for key in ('sealedExecution','macosExecution','windowsExecution') if isinstance(smoke,dict) and key in smoke]
  if len(keys) > 1: raise ValueError('ambiguous native execution proofs')
  proof = smoke[keys[0]] if keys else None
  present = 'trustedExecution' in row
  has_proof = bool(keys)
  if not has_proof and not present: return None # historical/unsupported rows never acquire authority
  if proof is None or not present: raise ValueError('trusted execution requires both policy and native sealed proof')
+ expected_schema={'macosExecution':'polaris-macos-native-execution-proof-v1',
+                  'windowsExecution':'polaris-windows-native-execution-proof-v1'}
+ if not isinstance(proof,dict) or (keys[0] in expected_schema and proof.get('schema')!=expected_schema[keys[0]]) or (keys[0]=='sealedExecution' and 'schema' in proof):
+  raise ValueError('native execution proof key/schema differs')
  expected = derive_trusted_execution(row, proof, producer, source_root)
  if row['trustedExecution'] != expected:
   raise ValueError('trusted execution policy differs from native proof')
@@ -505,7 +514,24 @@ def smoke_temp_directory():
 def smoke(directory):
  d=Path(directory);rows=list(d.glob('native-row-*.json'))
  if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
- row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name'];root,members=read_archive(p)
+ row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name']
+ # Ordinary Windows diagnostics never enter this lane or acquire a policy.
+ # An explicit request on an unavailable/unsupported host fails, without a
+ # fallback to the unprivileged probe or a successful skipped proof.
+ if os.environ.get('POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED')=='true':
+  from windows_native_execution import produce,VARIANT
+  if platform.system()!='Windows' or row['target']!='windows/amd64' or row['variant']!=VARIANT:
+   raise ValueError('explicit privileged Windows proof host/modern row unavailable')
+  context=execution_run();proof=produce(row,p,context=context)
+  observed=proof['cronet'];row.pop('trustedExecution',None)
+  row['finalPackageCronetSmoke']={'status':'passed','os':'windows','arch':'amd64','go':row['goVersion'],
+    'gvisorCompiled':True,'naiveOutbound':True,'linkage':'shared-purego','version':observed['version'],
+    'librarySha256':row['sidecar']['sha256'],'coreSha256':row['core']['sha256'],'windowsExecution':proof}
+  row['trustedExecution']=derive_trusted_execution(row,proof,context)
+  validate_trusted_execution(row,context)
+  rows[0].write_text(json.dumps(row,indent=2)+'\n',encoding='utf-8',newline='\n')
+  return
+ root,members=read_archive(p)
  if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
  pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
  if Path('.github/CRONET_GO_VERSION').read_text(encoding='utf-8').strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
@@ -702,7 +728,9 @@ def distribution_materials(index, root=Path('.')):
                      (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else [])})
   if 'trustedExecution' in row:
    native[-1]['trustedExecutionSHA256']=sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',', ':')).encode())
-   proof_key='macosExecution' if 'macosExecution' in row['finalPackageCronetSmoke'] else 'sealedExecution'
+   proof_keys=[key for key in ('sealedExecution','macosExecution','windowsExecution') if key in row['finalPackageCronetSmoke']]
+   if len(proof_keys)!=1:raise ValueError('distribution native execution proof is ambiguous')
+   proof_key=proof_keys[0]
    native[-1][proof_key+'SHA256']=sha(json.dumps(row['finalPackageCronetSmoke'][proof_key],sort_keys=True,separators=(',', ':')).encode())
  return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
          'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],

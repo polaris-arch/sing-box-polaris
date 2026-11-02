@@ -4,7 +4,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   source_proto:
-    name: Generate only the reviewed runtime protobuf
+    name: Generate only runtime protobuf source for review
     if: inputs.build == 'Source' && inputs.source_generate_only
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -135,6 +135,32 @@ jobs:
       run: python -m unittest discover -s scripts/ci -p 'test_client_encoding.py'
     - name: Verify raw Vision source checkout semantics on the actual runner
       run: python -B -m unittest discover -s scripts/ci -p 'test_vision_source.py'
+    - name: Compile Windows native producer and execute unprivileged rejection controls
+      if: matrix.os == 'windows-2025'
+      shell: bash
+      env:
+        CGO_ENABLED: '0'
+        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'false'
+      run: |
+        set -euo pipefail
+        evidence="$RUNNER_TEMP/windows-native-rejection-tests.jsonl"
+        go test -json -mod=readonly -count=1 -timeout=3m -tags with_purego \
+          ./cmd/internal/windows_native_execution github.com/sagernet/cronet-go/internal/cronet | tee "$evidence"
+        python - "$evidence" <<'PYWINDOWS'
+        import json,sys
+        records=[json.loads(line) for line in open(sys.argv[1],encoding='utf-8') if line.strip()]
+        required={
+          'github.com/sagernet/sing-box/cmd/internal/windows_native_execution':{
+            'TestNativeRequestRejectsUnsupportedSourceAndArchiveIdentity',
+            'TestNativeJSONRejectsDuplicateTrailingAndDeepDocuments',
+            'TestNativeConfigurationControlsKeepExpectedErrorsAndCanonicalStdin',
+            'TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution'},
+          'github.com/sagernet/cronet-go/internal/cronet':{'TestWindowsLibraryExplicitObservationRejectsUnprovenModule','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad'}}
+        for package,names in required.items():
+          passed={event.get('Test') for event in records if event.get('Package')==package and event.get('Action')=='pass'}
+          if not names<=passed or not any(event.get('Package')==package and event.get('Action')=='pass' and 'Test' not in event for event in records):
+            raise SystemExit('required unprivileged native rejection control/package PASS missing: '+package)
+        PYWINDOWS
     - name: Execute focused runtime coordinator and resource regressions natively
       timeout-minutes: 30
       shell: bash
@@ -161,6 +187,8 @@ jobs:
                      'TestRuntimeCapabilityBuildInventoryIsCanonicalAndHonest',
                      'TestRuntimeOwnerAcknowledgementIsBoundAndReplaySafe'},
             prefix + '/daemon': {'TestRuntimeActorRequiresServerOwnedTypedContext',
+                                 'TestRuntimeTLSCapabilitiesUseSameDocumentAndActiveIncarnation',
+                                 'TestRuntimeTLSCapabilitiesOldWireIsEmptyAndTagTenIsAdditive',
                                  'TestRuntimePersistenceAcknowledgementAuthenticatesFirst'},
             prefix + '/experimental/libbox': {'TestRuntimeRegenerationRequiresSeparateAppAcknowledgement'},
             prefix + '/adapter': {'TestScopeCloseDrainsAfterCallbackPanic'},
@@ -2020,7 +2048,7 @@ jobs:
         PEER_VERSION: ${{ inputs.version }}
       run: python -B scripts/ci/protocol_peer.py native --fetch-diagnostic --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute final-package Cronet smoke
-      if: inputs.build != 'NativePeerDiagnostic'
+      if: inputs.build != 'NativePeerDiagnostic' && !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64')
       env:
         GOTOOLCHAIN: local
       run: python scripts/ci/native_release_index.py smoke native
@@ -2055,15 +2083,125 @@ jobs:
         if-no-files-found: error
         retention-days: 7
     - name: Upload actual smoke receipt
-      if: inputs.build != 'NativePeerDiagnostic'
+      if: inputs.build != 'NativePeerDiagnostic' && !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64')
       uses: actions/upload-artifact@v4
       with:
         name: smoke-${{ matrix.id }}
         path: native/native-row-*.json
         if-no-files-found: error
+  windows_native_admission:
+    name: Read existing Windows proof protection for this exact tag and attempt
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !cancelled() }}
+    needs: [calculate_version]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
+      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
+      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
+    outputs:
+      receipt: ${{ steps.admission.outputs.receipt }}
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Require existing reviewer protection and one exact tag deployment policy
+      id: admission
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
+      run: python3 -B scripts/ci/windows_native_admission.py --acquire
+  native_windows_proof:
+    name: Explicit SYSTEM final-package Windows native execution proof
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && needs.windows_native_admission.result == 'success' && !failure() && !cancelled() }}
+    needs: [calculate_version, build, build_windows7, build_darwin, build_windows, windows_native_admission]
+    runs-on: [self-hosted, Windows, X64, polaris-windows-system-proof]
+    environment: polaris-windows-native-proof
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+      CGO_ENABLED: '0'
+      PYTHONDONTWRITEBYTECODE: '1'
+      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
+      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
+      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
+      POLARIS_WINDOWS_NATIVE_ADMISSION_RECEIPT: ${{ needs.windows_native_admission.outputs.receipt }}
+    steps:
+    - name: Require preprovisioned SYSTEM and protected runner storage without changing it
+      shell: pwsh
+      run: |
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        if ($identity.User.Value -cne 'S-1-5-18' -or [Security.Principal.WindowsIdentity]::GetCurrent($true)) { throw 'Existing non-impersonating SYSTEM host required; no elevation or installation is performed' }
+        $trusted = @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464','S-1-3-0','S-1-3-4')
+        $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+        foreach ($storage in @($env:GITHUB_WORKSPACE,$env:RUNNER_TEMP)) {
+          $acl = Get-Acl -LiteralPath $storage -ErrorAction Stop
+          $owner = ([Security.Principal.NTAccount]$acl.Owner).Translate([Security.Principal.SecurityIdentifier]).Value
+          if ($owner -notin $trusted[0..2]) { throw 'Runner storage owner is untrusted' }
+          foreach ($rule in $acl.Access) {
+            $sid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+            if ($rule.AccessControlType -eq 'Allow' -and ($rule.FileSystemRights -band $write) -ne 0 -and $sid -notin $trusted) { throw 'Runner storage admits an ordinary writer' }
+          }
+        }
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Rebind token-free protected job to exact source tag and current attempt
+      run: python -B scripts/ci/windows_native_admission.py
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
+    - name: Compile only the clean source-owned native observation producer
+      shell: pwsh
+      run: |
+        $source = (git rev-parse HEAD).Trim()
+        $tree = (git rev-parse 'HEAD^{tree}').Trim()
+        if ($source -cne $env:GITHUB_SHA -or (git status --porcelain --untracked-files=all)) { throw 'Producer source is not the exact clean workflow checkout' }
+        $slot = Join-Path $env:RUNNER_TEMP 'polaris-windows-native-execution'
+        if (Test-Path -LiteralPath $slot) { throw 'Native producer slot must be fresh' }
+        New-Item -ItemType Directory -Path $slot -ErrorAction Stop | Out-Null
+        go build -buildvcs=true -trimpath -mod=readonly -ldflags "-X main.producerSource=$source -X main.producerTree=$tree" -o "$slot/producer.exe" ./cmd/internal/windows_native_execution
+        if ($LASTEXITCODE -ne 0) { throw 'Native producer compilation failed' }
+    - uses: actions/download-artifact@v5
+      with:
+        name: binary-windows_amd64
+        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Install data schema validator
+      run: python -m pip install jsonschema==4.23.0
+    - name: Execute requested native SYSTEM proof with no API credential
+      env:
+        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'true'
+      run: python -B scripts/ci/native_release_index.py smoke "${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}"
+    - name: Preserve only the complete actual native smoke row
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-windows-amd64
+        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}/native-row-*.json
+        if-no-files-found: error
   native_index:
     name: Assemble full 44-archive native index and source/legal sidecars
-    if: '!inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == ''All'' || inputs.build == ''Binary'')'
+    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') && (inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success') }}
     needs:
     - calculate_version
     - build
@@ -2071,6 +2209,7 @@ jobs:
     - build_darwin
     - build_windows
     - native_smoke
+    - native_windows_proof
     runs-on: ubuntu-latest
     steps:
     - name: Checkout exact source
@@ -2175,6 +2314,10 @@ jobs:
         options: [final, staging]
       source_generate_only:
         description: 'Source only: generate the two runtime protobuf files for review; skip native Source validation'
+        type: boolean
+        default: false
+      windows_native_proof:
+        description: 'Separate explicit SYSTEM execution request: needs an existing protected exact-tag environment and preprovisioned SYSTEM host; never installs or elevates'
         type: boolean
         default: false
       build:
