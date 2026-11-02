@@ -2670,8 +2670,10 @@ from oci_material_selection_12_5_tests import NewOCISelectionTests
 # Keep historical classes and their method IDs; do not shadow 12.5 imports.
 from publisher_peer_evidence_12_6_tests import Alpha126PeerEvidenceTests
 from publisher_peer_evidence_12_7_tests import Alpha127PeerEvidenceTests
+from publisher_peer_evidence_12_9_tests import Alpha129PeerEvidenceTests
 from oci_material_selection_12_6_tests import Alpha126OCISelectionTests
 from oci_material_selection_12_7_tests import Alpha127OCISelectionTests
+from oci_material_selection_12_9_tests import Alpha129OCISelectionTests
 
 if __name__=='__main__':
     unittest.main()

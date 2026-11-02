@@ -1,0 +1,44 @@
+{
+  "method": "GET",
+  "url": "https://www.iana.org/time-zones/repository/releases/tzdata2026f.tar.gz",
+  "requestedURL": "https://www.iana.org/time-zones/repository/releases/tzdata2026f.tar.gz",
+  "retrievedAt": "2026-11-02T03:52:52.286978+00:00",
+  "redirects": [
+    {
+      "HTTP": 302,
+      "from": "https://www.iana.org/time-zones/repository/releases/tzdata2026f.tar.gz",
+      "to": "https://data.iana.org/time-zones/releases/tzdata2026f.tar.gz",
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 03:52:53 GMT",
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Length": "0"
+      }
+    }
+  ],
+  "fullGet": true,
+  "status": "VERIFIED",
+  "effectiveURL": "https://data.iana.org/time-zones/releases/tzdata2026f.tar.gz",
+  "bytes": 483310,
+  "sha256": "01b4a91cec5167ed48c11e8ab78f2048cead78ce94b0cafcad0ae8c5a3044d3d",
+  "sha512": "26189803c8b3e903dcc467404e2feefb7d190cb1870249a23577ce31e9dcbf187e4704e0b45c8d1366d1c501bb5b53a2e80f8e2828b2163be15e532f6acab52d",
+  "recipeSHA512Verified": true,
+  "headers": {
+    "Date": "Mon, 02 Nov 2026 03:52:53 GMT",
+    "Content-Type": "application/x-gzip",
+    "Content-Length": "483310",
+    "Last-Modified": "Wed, 28 Oct 2026 07:16:29 GMT",
+    "etag": "\"75fee-65ee1578b3d48\""
+  },
+  "path": "sources/tzdata2026f.tar.gz",
+  "openResponseAndBodyClosed": true,
+  "elapsedSeconds": 1.926,
+  "HTTP": 200,
+  "responseHeaders": {
+    "Date": "Mon, 02 Nov 2026 03:52:53 GMT",
+    "Content-Type": "application/x-gzip",
+    "Content-Length": "483310",
+    "Last-Modified": "Wed, 28 Oct 2026 07:16:29 GMT",
+    "etag": "\"75fee-65ee1578b3d48\""
+  },
+  "noAuthentication": true
+}

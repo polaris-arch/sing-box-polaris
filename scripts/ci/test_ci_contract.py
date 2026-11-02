@@ -83,6 +83,20 @@ class TestCIContract(unittest.TestCase):
     self.assertNotIn('continue-on-error',control)
    self.assertNotIn('env',steps[0])
   self.assertEqual(workflow['permissions'],{'contents':'read'})
+ def test_exact_publisher_peer_and_oci_regressions_and_dual_checkout_remain_in_the_existing_gate(self):
+  contract=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  commands=[s.get('run','') for s in contract['jobs']['contract']['steps']]
+  self.assertIn("python -m unittest discover -s scripts/ci -p 'test_github_release.py'",commands)
+  suite=(ROOT/'scripts/ci/test_github_release.py').read_text()
+  self.assertIn('from publisher_peer_evidence_12_9_tests import Alpha129PeerEvidenceTests',suite)
+  self.assertIn('from oci_material_selection_12_9_tests import Alpha129OCISelectionTests',suite)
+  workflow=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
+  for name in ('validate','publish'):
+   steps=workflow['jobs'][name]['steps']
+   runner=next(s for s in steps if s.get('name')=='Checkout reviewed publisher revision')
+   product=next(s for s in steps if s.get('name')=='Checkout exact build source separately')
+   self.assertEqual(runner['with'],{'ref':'${{ github.sha }}','persist-credentials':False})
+   self.assertEqual(product['with'],{'ref':'${{ inputs.source_sha }}','path':'reviewed-source','persist-credentials':False})
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
