@@ -69,24 +69,40 @@ class Alpha129PeerEvidenceTests(historical_tests.PeerEvidenceTests):
     def test_current_attempt_expiry_and_public_eligibility_never_accept_historical_evidence(self):
         original = self.artifacts[str(self.s['runId'])][-1]
         run = self.runs[str(self.s['runId'])]
+        self.assertIs(original['expired'], False)
+        self.assertGreaterEqual(original['created_at'], run['run_started_at'])
         for change in (dict(run_attempt=2), dict(path='.github/workflows/linux.yml')):
-            with self.subTest(change=change), self.assertRaises(ValueError):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'peer run/role/attempt mismatch'):
                 current.check_api(self.policy, 'all', dict(run, **change), original)
         expired = copy.deepcopy(original); expired['expired'] = True
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, 'peer expired'):
             current.check_api(self.policy, 'all', run, expired)
-        for field, value in (('created_at', '2026-10-25T04:59:59Z'), ('expired', True)):
+        workspaces = []
+        for field, value, message in (
+                ('created_at', '2026-10-25T04:59:59Z', 'artifact predates current run attempt'),
+                ('expired', True, 'peer expired')):
             rows = self.artifacts[str(self.s['runId'])]
             changed = copy.deepcopy(original); changed[field] = value
+            self.assertEqual({k: v for k, v in changed.items() if k != field},
+                             {k: v for k, v in original.items() if k != field})
             rows[-1] = changed
             try:
-                with self.subTest(field=field), self.assertRaises(ValueError):
+                with self.subTest(field=field), self.assertRaisesRegex(ValueError, message):
                     self.inventory()
+                workspaces.append(self.inventory_work)
+                # Earlier valid artifacts really reached retention; the
+                # rejected peer itself must never reach the ZIP transport.
+                retained = self.inventory_work / 'all/binary-native-index/polaris-upstream-native-assets.json'
+                self.assertEqual(retained.read_bytes(), self.index_raw)
+                self.assertNotIn(original['id'], self.inventory_downloads)
             finally:
                 rows[-1] = original
-        for change in (dict(publicationEligible=True), dict(context=dict(self.r['context'], runAttempt=2)),
-                       dict(context=dict(self.r['context'], runId=40956987023))):
-            with self.subTest(change=change), self.assertRaises(ValueError):
+        self.assertEqual(len(set(workspaces)), 2)
+        for change, message in (
+                (dict(publicationEligible=True), 'receipt type/status/origin mismatch'),
+                (dict(context=dict(self.r['context'], runAttempt=2)), 'receipt source/run identity mismatch'),
+                (dict(context=dict(self.r['context'], runId=40956987023)), 'receipt source/run identity mismatch')):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, message):
                 current.validate_receipt(self.policy, self.measured(), dict(self.r, **change))
 
     def test_committed_selection_pins_the_measured_final_evidence_without_making_it_public(self):

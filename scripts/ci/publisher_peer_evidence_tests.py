@@ -257,13 +257,25 @@ class PeerEvidenceTests(unittest.TestCase):
             with self.subTest(mutation=i), self.assertRaises(ValueError): e.validate_receipt(self.policy, self.measured(), r)
         with self.assertRaises(ValueError): e.validate_receipt(self.policy, dict(self.measured(), sha256='0' * 64), self.r)
 
-    def inventory(self):
+    def inventory(self, *, work=None):
         # Stub transport and synthetic package scope; Docker run 44 intentionally
         # has no real OCI images. Current OCI admission is exercised separately
         # by CurrentOCISelectionTests, never disabled in production. Exercise
         # actual bounded ZIP, JSON, receipt, final-index and peer cross-binding.
+        # A failed inventory can retain its already verified native index.
+        # Every independent invocation owns a fresh workspace until tearDown;
+        # explicit work reuse remains available to exercise the production
+        # exclusive-create guard rather than clearing or overwriting its files.
+        if work is None:
+            workspace = tempfile.TemporaryDirectory(prefix='inventory-', dir=self.root)
+            self.addCleanup(workspace.cleanup)
+            work = Path(workspace.name)
+        self.inventory_work = Path(work)
+        self.inventory_downloads = []
         def transport(path, destination, maximum, **_):
-            data = self.downloads[int(path.split('/')[-2])]
+            ident = int(path.split('/')[-2])
+            self.inventory_downloads.append(ident)
+            data = self.downloads[ident]
             self.assertLessEqual(len(data), maximum)
             destination.write(data)
             return {'bytes': len(data), 'sha256': e.digest(data)}
@@ -275,7 +287,19 @@ class PeerEvidenceTests(unittest.TestCase):
              mock.patch.object(p, 'pages', side_effect=lambda path, key: self.artifacts[path.split('/')[-2]]), \
              mock.patch.object(p, 'read_get', side_effect=transport), mock.patch.object(p, 'client_platform', return_value=None):
             return p.inventory({'all': str(self.s['runId']), 'linux': '43', 'docker': '44'}, e.SOURCE,
-                self.root / 'work', self.s['sourceTree'], self.s['tagObject'], budget=p.ScratchBudget(self.root / 'work', reserve=0))
+                self.inventory_work, self.s['sourceTree'], self.s['tagObject'], budget=p.ScratchBudget(self.inventory_work, reserve=0))
+
+    def test_inventory_invocations_own_outputs_and_explicit_reuse_keeps_exclusive_create(self):
+        first = self.inventory(); first_work = self.inventory_work
+        second = self.inventory(); second_work = self.inventory_work
+        self.assertNotEqual(first_work, second_work)
+        self.assertEqual(first['controlledPeerEvidence'], second['controlledPeerEvidence'])
+        relative = Path('all/binary-native-index/polaris-upstream-native-assets.json')
+        self.assertEqual((first_work / relative).read_bytes(), self.index_raw)
+        self.assertEqual((second_work / relative).read_bytes(), self.index_raw)
+        with self.assertRaises(FileExistsError) as collision:
+            self.inventory(work=first_work)
+        self.assertEqual(collision.exception.filename, str(first_work / relative))
 
     def test_full_inventory_assemble_stream_excludes_peer(self):
         actual = self.inventory()
@@ -283,7 +307,7 @@ class PeerEvidenceTests(unittest.TestCase):
         reviewed = copy.deepcopy(actual); reviewed['reviewed'] = True
         real_load = e.load
         with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)):
-            receipt = p.assemble(actual, reviewed, self.root / 'work', self.root / 'dist', self.root / 'audit', materialize=False)
+            receipt = p.assemble(actual, reviewed, self.inventory_work, self.root / 'dist', self.root / 'audit', materialize=False)
             self.assertEqual(len(receipt['assets']), 45)
             self.assertNotIn('receipt.json', [f['releaseName'] for f in receipt['assets']])
             self.assertFalse((self.root / 'dist' / 'receipt.json').exists())
@@ -304,7 +328,7 @@ class PeerEvidenceTests(unittest.TestCase):
                 list(p.public_asset_stream(altered, p.ScratchBudget(self.root / ('stream-' + field), reserve=0)))
             reviewed = copy.deepcopy(altered); reviewed['reviewed'] = True
             with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), self.assertRaises(ValueError):
-                p.assemble(actual, reviewed, self.root / 'work', self.root / ('bad-' + field), materialize=False)
+                p.assemble(actual, reviewed, self.inventory_work, self.root / ('bad-' + field), materialize=False)
         for field in ('nativeIndexSHA256', 'sourceTree'):
             altered = copy.deepcopy(actual); altered['controlledPeerEvidence']['evidence'][field] = '0' * 64
             with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), self.assertRaises(ValueError):
@@ -319,12 +343,16 @@ class PeerEvidenceTests(unittest.TestCase):
     def test_missing_extra_duplicate_artifact_fails_before_download(self):
         rows = self.artifacts[str(self.s['runId'])]
         original = copy.deepcopy(rows)
-        for mode in ('missing', 'extra', 'duplicate-id'):
+        for mode in ('missing', 'extra', 'duplicate-id', 'duplicate-name'):
             rows[:] = copy.deepcopy(original)
             if mode == 'missing': rows.pop()
             elif mode == 'extra': rows.append(dict(rows[-1], name=rows[-1]['name'] + '-extra', id=900))
-            else: rows[-1]['id'] = rows[0]['id']
-            with self.subTest(mode=mode), self.assertRaises(ValueError): self.inventory()
+            elif mode == 'duplicate-id': rows[-1]['id'] = rows[0]['id']
+            else: rows[-1]['name'] = rows[0]['name']
+            message = {'duplicate-id': 'duplicate Actions artifact IDs',
+                       'duplicate-name': 'duplicate Actions artifact names'}.get(mode, 'all: incomplete or unexpected artifact scope')
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, message): self.inventory()
+            self.assertEqual(self.inventory_downloads, [])
 
     def test_oci_ordinary_strict_gate_unchanged(self):
         import oci_material_registry
