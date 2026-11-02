@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -26,6 +25,7 @@ type fileIdentity struct {
 	ID     [16]byte
 }
 type cohort struct {
+	custody                  *custody
 	ctx                      context.Context
 	fact                     cohortFact
 	parent, directory        windows.Handle
@@ -178,7 +178,10 @@ func openReadOnlyObject(name string) (*os.File, error) {
 	return os.NewFile(uintptr(handle), name), nil
 }
 
-func newCohort() (_ *cohort, failure error) {
+func newCohort(id string) (_ *cohort, failure error) {
+	if !exactHex(id, 32) {
+		return nil, errors.New("native cohort reservation identity differs")
+	}
 	windowsDirectory, err := windows.GetWindowsDirectory()
 	if err != nil {
 		return nil, err
@@ -213,11 +216,6 @@ func newCohort() (_ *cohort, failure error) {
 	if windows.UTF16ToString(fs) != "NTFS" {
 		return nil, errors.New("native cohort requires NTFS")
 	}
-	random := make([]byte, 16)
-	if _, err = rand.Read(random); err != nil {
-		return nil, err
-	}
-	id := hex.EncodeToString(random)
 	name := filepath.Join(parentPath, "polaris-native-"+id)
 	sd, err := windows.SecurityDescriptorFromString("O:SYG:SYD:P(A;OICI;FA;;;SY)")
 	if err != nil {
@@ -365,6 +363,10 @@ func removeOwned(name string) error {
 	}
 }
 
+func (c *cohort) resourcesQuiescent() bool {
+	return c.waited == c.children && c.joined == c.children && c.active == 0
+}
+
 func (c *cohort) close() (cleanupFact, error) {
 	var failures []error
 	if c.core != nil {
@@ -387,7 +389,9 @@ func (c *cohort) close() (cleanupFact, error) {
 	}
 	heldClosed := errors.Join(failures...) == nil
 	removed := false
-	if c.fact.Path != "" && heldClosed {
+	// A failed/unknown child wait or reader join must leave the exact cohort
+	// under its durable custody record for later reconciliation, not race it.
+	if c.fact.Path != "" && heldClosed && c.resourcesQuiescent() {
 		for _, name := range []string{"sing-box.exe", "libcronet.dll"} {
 			err := removeOwned(filepath.Join(c.fact.Path, name))
 			if err != nil {

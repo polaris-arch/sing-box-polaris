@@ -6,6 +6,7 @@ package main
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -153,6 +154,7 @@ type nativeFacts struct {
 	Cleanup    cleanupFact   `json:"cleanup"`
 }
 type proof struct {
+	custodyClosed bool
 	Schema        string          `json:"schema"`
 	SourceCommit  string          `json:"sourceCommit"`
 	SourceTree    string          `json:"sourceTree"`
@@ -443,7 +445,7 @@ func configurationCases(document tlsDocument) []checkCase {
 	return cases
 }
 
-func executeSuite(r request, filename string) (result proof, failure error) {
+func executeSuite(r request, filename string, parents ...context.Context) (result proof, failure error) {
 	if err := sourceAdmission(r); err != nil {
 		return result, err
 	}
@@ -460,15 +462,34 @@ func executeSuite(r request, filename string) (result proof, failure error) {
 		}
 		defer func() { failure = errors.Join(failure, nativeBool(kernel.NewProc("FreeConsole"))) }()
 	}
-	deadline, cancelDeadline := context.WithTimeout(context.Background(), 8*time.Minute)
+	parent := context.Background()
+	if len(parents) > 0 {
+		parent = parents[0]
+	}
+	deadline, cancelDeadline := context.WithTimeout(parent, 8*time.Minute)
 	defer cancelDeadline()
 	ctx, stopSignals := signal.NotifyContext(deadline, os.Interrupt)
 	defer stopSignals()
-	c, err := newCohort()
+	if err = ctx.Err(); err != nil {
+		return result, err
+	}
+	journal, err := openCustody(r, actor)
+	if err != nil {
+		return result, err
+	}
+	defer func() {
+		closeErr := journal.close()
+		if closeErr != nil {
+			result.custodyClosed = false
+		}
+		failure = errors.Join(failure, closeErr)
+	}()
+	c, err := newCohort(journal.record.CohortID)
 	if err != nil {
 		return result, err
 	}
 	c.ctx = ctx
+	c.custody = journal
 	result = proof{Schema: proofSchema, SourceCommit: r.SourceCommit, SourceTree: r.SourceTree, Version: r.Version, Target: r.Target, RunID: r.RunID, RunAttempt: r.RunAttempt, ArchiveSHA256: r.Archive.SHA256, Core: r.Core, Sidecar: r.Sidecar}
 	result.Native.Actor = actor
 	result.Native.Cohort = c.fact
@@ -476,15 +497,32 @@ func executeSuite(r request, filename string) (result proof, failure error) {
 		cleanup, err := c.close()
 		result.Native.Cleanup = cleanup
 		failure = errors.Join(failure, err)
+		var custodyErr error
+		for _, record := range result.Native.Executions {
+			if !record.ActualWait || !record.StdoutEOF || !record.StderrEOF || !record.HandlesClosed || record.JobActiveAfterWait != 0 {
+				custodyErr = errors.New("native child handle/readers closure is not complete")
+			}
+		}
+		if custodyErr == nil {
+			custodyErr = journal.finish(cleanup)
+		}
+		result.custodyClosed = custodyErr == nil
+		failure = errors.Join(failure, custodyErr)
 		if ctx.Err() != nil {
 			failure = errors.Join(failure, ctx.Err())
 		}
 	}()
+	if err = journal.bindCohort(c.fact); err != nil {
+		return result, err
+	}
 	if err = copyFinalArchive(filename, r, c); err != nil {
 		return result, err
 	}
 	result.Native.Core = c.coreFact
 	result.Native.Sidecar = c.sidecarFact
+	if err = journal.bindObjects(c.coreFact, c.sidecarFact); err != nil {
+		return result, err
+	}
 	producerPath, err := os.Executable()
 	if err != nil {
 		return result, err
@@ -610,6 +648,25 @@ func executeSuite(r request, filename string) (result proof, failure error) {
 	return result, nil
 }
 
+func readNativeRequest(reader *bufio.Reader) ([]byte, error) {
+	raw, err := reader.ReadSlice('\n')
+	if err != nil {
+		return nil, err
+	}
+	raw = bytes.TrimSuffix(raw, []byte{'\n'})
+	if len(raw) > 1<<20 {
+		return nil, errors.New("native request framing bound")
+	}
+	return raw, nil
+}
+
+func watchNativeCancellation(reader *bufio.Reader, cancel context.CancelFunc) {
+	// Only cancel is a valid control frame. EOF, malformed/oversized or any
+	// other frame also fails closed by cancelling, never selecting an operation.
+	_, _ = reader.ReadSlice('\n')
+	cancel()
+}
+
 func main() {
 	archive := flag.String("archive", "", "exact same-run final ZIP data")
 	flag.Parse()
@@ -617,7 +674,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "fixed absolute archive input required")
 		os.Exit(2)
 	}
-	raw, err := io.ReadAll(io.LimitReader(os.Stdin, (1<<20)+1))
+	reader := bufio.NewReaderSize(os.Stdin, (1<<20)+1)
+	raw, err := readNativeRequest(reader)
 	var r request
 	if err == nil && len(raw) <= 1<<20 {
 		err = uniqueJSON(raw)
@@ -634,10 +692,15 @@ func main() {
 	}
 	var result proof
 	if err == nil {
-		result, err = executeSuite(r, *archive)
+		ctx, cancel := context.WithCancel(context.Background())
+		// Exactly one fixed cancellation frame, or loss of the adapter pipe,
+		// cancels the original owner. No command/path is accepted on this channel.
+		go watchNativeCancellation(reader, cancel)
+		result, err = executeSuite(r, *archive, ctx)
+		cancel()
 	}
 	if err != nil {
-		json.NewEncoder(os.Stdout).Encode(map[string]any{"schema": "polaris-windows-native-execution-diagnostic-v1", "publicationEligible": false, "error": err.Error(), "native": result.Native})
+		json.NewEncoder(os.Stdout).Encode(map[string]any{"schema": "polaris-windows-native-execution-diagnostic-v1", "publicationEligible": false, "executionAuthority": false, "custodyReconciled": result.custodyClosed, "error": err.Error(), "native": result.Native})
 		os.Exit(1)
 	}
 	if err = json.NewEncoder(os.Stdout).Encode(result); err != nil {

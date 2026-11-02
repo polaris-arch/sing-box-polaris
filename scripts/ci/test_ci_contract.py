@@ -74,7 +74,7 @@ class TestCIContract(unittest.TestCase):
  def test_automatic_ci_runs_candidate_track_and_peer_admission_regressions(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
-  for filename in ('test_linux_candidate_track.py','test_native_peer_metadata.py','test_protocol_peer.py','test_windows_native_execution.py','test_windows_native_admission.py'):
+  for filename in ('test_linux_candidate_track.py','test_native_peer_metadata.py','test_protocol_peer.py','test_windows_native_execution.py','test_windows_native_admission.py','test_cronet_windows_overlay.py'):
    command="python -B -m unittest discover -s scripts/ci -p '"+filename+"'"
    steps=[s for s in job['steps'] if s.get('run')==command]
    self.assertEqual(len(steps),1,filename)
@@ -91,6 +91,10 @@ class TestCIContract(unittest.TestCase):
   for job in (admission,native):
    self.assertIn("github.event_name == 'workflow_dispatch'",job['if']);self.assertIn('inputs.windows_native_proof == true',job['if'])
    self.assertNotIn('continue-on-error',job)
+   self.assertIn('!inputs.source_generate_only',job['if'])
+   self.assertIn("(inputs.build == 'All' || inputs.build == 'Binary')",job['if'])
+   self.assertIn("inputs.evidence_mode == 'final'",job['if'])
+   self.assertIn('!failure()',job['if']);self.assertIn('!cancelled()',job['if'])
   self.assertEqual(admission['permissions'],{'contents':'read','actions':'read'})
   self.assertNotIn('environment',admission);self.assertEqual(admission['runs-on'],'ubuntu-24.04')
   acquire=next(s for s in admission['steps'] if s.get('id')=='admission')
@@ -118,76 +122,31 @@ class TestCIContract(unittest.TestCase):
   self.assertEqual(controls['if'],"matrix.os == 'windows-2025'")
   self.assertEqual(controls['env']['POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED'],'false')
   self.assertIn('./cmd/internal/windows_native_execution github.com/sagernet/cronet-go/internal/cronet',controls['run'])
-  for name in ('TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad'):
+  for name in ('TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad',
+               'TestNativeCustodyRecordRejectsAmbiguousAndTruncatedDebt','TestNativeCustodyRejectsForeignObjectAndJobRecoveryTargets',
+               'TestNativeCustodyReconciliationNeverGrantsAdmission','TestNativeCooperativeControlFramesOnlyCancelOriginalOwner',
+               'TestNativeCleanupRequiresActualWaitAndReaderClosure'):
    self.assertIn(name,controls['run'])
   source=(ROOT/'cmd/internal/windows_native_execution/process_windows.go').read_text()
   self.assertIn('0x0002000d',source);self.assertIn('PROC_THREAD_ATTRIBUTE_HANDLE_LIST',source)
   self.assertNotIn('AssignProcessToJobObject',source)
+  self.assertIn('c.custody.newJob()',source)
+  owner=(ROOT/'cmd/internal/windows_native_execution/main_windows.go').read_text()
+  self.assertLess(owner.index('openCustody(r, actor)'),owner.index('newCohort(journal.record.CohortID)'))
+  self.assertIn('go watchNativeCancellation(reader, cancel)',owner)
+  custody=(ROOT/'cmd/internal/windows_native_execution/custody_windows.go').read_text()
+  for token in ('custody-next.json','owner.lock','MOVEFILE_WRITE_THROUGH','reconcileBeforeAdmission','jobSecurity','ownerExited','exact owned member bytes/FileID differ'):
+   self.assertIn(token,custody)
  def test_windows_native_overlay_is_complete_and_cold_reversible_without_rewriting_history(self):
-  import base64,hashlib,stat
-  manifest=json.loads((ROOT/'release/dependency-sources/cronet-go-windows-native-observation.json').read_bytes())
-  self.assertEqual(manifest['schema'],'polaris-source-bound-module-overlay-v1')
-  self.assertEqual(manifest['baseCommit'],'c7960c2020904d90aebb74ad6320bb3701f6041e')
-  self.assertEqual(manifest['baseTree'],'42f8717ff0a1ae0329d5825f14e4b75e3f66a713')
-  self.assertIs(manifest['nativeBinaryValidated'],False)
-  def tree_hash(records):
-   tree={}
-   for record in records:
-    node=tree;parts=record['path'].split('/')
-    for part in parts[:-1]:node=node.setdefault(part,{})
-    node[parts[-1]]=(record['mode'],record.get('gitBlob',record.get('gitObject')))
-   def digest(node):
-    entries=[]
-    for name,value in node.items():
-     mode,oid=('40000',digest(value)) if type(value) is dict else value
-     entries.append((name.encode()+(b'/' if mode=='40000' else b''),mode.encode()+b' '+name.encode()+b'\0'+bytes.fromhex(oid)))
-    raw=b''.join(value for _,value in sorted(entries))
-    return hashlib.sha1(b'tree '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
-   return digest(tree)
-  parent=manifest['baseTree']
-  for proof,next_name in zip(manifest['baseTreeProof'],['third_party','cronet-go']):
-   raw=base64.b64decode(proof['rawBase64'],validate=True)
-   self.assertEqual(hashlib.sha1(b'tree '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),parent)
-   self.assertEqual(proof['gitTree'],parent)
-   entries={};offset=0
-   while offset<len(raw):
-    end=raw.index(b'\0',offset);mode,name=raw[offset:end].split(b' ',1);oid=raw[end+1:end+21]
-    self.assertEqual(len(oid),20);entries[name.decode()]=(mode.decode(),oid.hex());offset=end+21
-   self.assertEqual(entries[next_name][0],'40000');parent=entries[next_name][1]
-  self.assertEqual(parent,manifest['baseVendorTree'])
-  self.assertEqual(tree_hash(manifest['baseFiles']+manifest['unchangedGitlinks']),manifest['baseVendorTree'])
-  vendor=ROOT/manifest['replacementPath'];expected={x['path']:x for x in manifest['baseFiles']}
-  for item in manifest['changes']:
-   name=item['path'];before=item['before'];after=item['after']
-   self.assertEqual(before,expected.get(name))
-   self.assertEqual(item['operation'],'add' if before is None else ('delete' if after is None else 'modify'))
-   if after is None:expected.pop(name)
-   else:expected[name]=after
-  actual={p.relative_to(vendor).as_posix():p for p in vendor.rglob('*') if p.is_file()}
-  self.assertEqual(set(actual),set(expected))
-  def check(path,record):
-   self.assertFalse(path.is_symlink());data=path.read_bytes()
-   self.assertEqual(len(data),record['bytes']);self.assertEqual(hashlib.sha256(data).hexdigest(),record['sha256'])
-   self.assertEqual(hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest(),record['gitBlob'])
-   self.assertEqual('100755' if path.stat().st_mode&stat.S_IXUSR else '100644',record['mode'])
-  for name,path in actual.items():check(path,expected[name])
-  for name,pin in manifest['historicalMaterials'].items():
-   raw=(ROOT/name).read_bytes();self.assertEqual(len(raw),pin['bytes']);self.assertEqual(hashlib.sha256(raw).hexdigest(),pin['sha256'])
-  patch=ROOT/manifest['patch'];self.assertEqual(hashlib.sha256(patch.read_bytes()).hexdigest(),manifest['patchSHA256'])
-  with tempfile.TemporaryDirectory() as directory:
-   target=Path(directory)
-   for item in manifest['changes']:
-    if item['after'] is not None:
-     path=target/item['path'];path.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(vendor/item['path'],path)
-   for reverse in (True,False):
-    command=['patch','-t','-s','-E','-p1','-F','0','-i',str(patch)]+(['-R'] if reverse else [])
-    result=subprocess.run(command,cwd=target,capture_output=True,text=True,timeout=30)
-    self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-    self.assertNotRegex(result.stdout+result.stderr,r'(?i)fuzz|offset')
-    for item in manifest['changes']:
-     record=item['before'] if reverse else item['after'];path=target/item['path']
-     if record is None:self.assertFalse(path.exists())
-     else:check(path,record)
+  import hashlib
+  from cronet_windows_overlay import validate_overlay
+  inputs=validate_overlay(ROOT)
+  self.assertEqual(len(inputs),141)
+  for name in ('release/dependency-sources/cronet-go-windows-native-observation.json',
+               'release/dependency-sources/cronet-go-windows-native-observation.patch'):
+   self.assertEqual(inputs[name],hashlib.sha256((ROOT/name).read_bytes()).hexdigest())
+  self.assertEqual(len([name for name in inputs if name.startswith('third_party/cronet-go/')]),137)
+
  def test_exact_publisher_peer_and_oci_regressions_and_dual_checkout_remain_in_the_existing_gate(self):
   contract=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   commands=[s.get('run','') for s in contract['jobs']['contract']['steps']]

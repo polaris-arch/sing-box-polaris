@@ -282,12 +282,14 @@ def api(path, method='GET', payload=None):
     return json.loads(output) if output.strip() else None
 
 
-def pages(path, key=None):
+def pages(path, key=None, maximum=None):
     result = []
     for page in range(1, 10001):
         data = api(path + ('&' if '?' in path else '?') + f'per_page=100&page={page}')
         batch = data[key] if key else data
         result.extend(batch)
+        if maximum is not None and len(result) > maximum:
+            raise ValueError('pagination item bound exceeded')
         if len(batch) < 100:
             return result
     raise ValueError('pagination bound exceeded')
@@ -359,7 +361,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     require((producer['repository'], producer['repositoryId'], producer['workflow'], producer['workflowCommit'],
              producer['runId'], producer['runAttempt']) == (REPO, RID, workflow, source, int(run_id), attempt),
             'final native producer identity mismatch')
-    from native_release_index import expected_native, validate_trusted_execution
+    from native_release_index import expected_native, validate_trusted_execution, select_native_jobs
     expected = expected_native(VERSION)
     require(len(index['platforms']) == 44 and {x['id'] for x in index['platforms']} == set(expected), 'exact 44 native identities required')
     for row in index['platforms']:
@@ -369,6 +371,9 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
         require(row['archive'].get('releaseName') == public_product_name(row['archive']['name']), 'native public archive name mismatch')
         suffix = '.zip' if row['target'].startswith('windows/') else '.tar.gz'
         require(row['archive']['root'] == row['id'] and row['archive']['name'] == row['id'] + suffix, 'native archive identity mismatch')
+    jobs = pages(f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs', 'jobs', maximum=1000)
+    require(producer['nativeJobs'] == select_native_jobs(index['platforms'], jobs, source, int(run_id), attempt),
+            'native producer job mapping differs from retained proof/API evidence')
     require(index['sourceArchive']['name'] == 'sing-box-polaris-source-' + source + '.tar.gz', 'immutable source archive basename required')
     from native_release_index import distribution_materials
     require(index['distributionMaterials'] == distribution_materials(index, source_root), 'source/notice bindings differ from actual index or committed inputs')

@@ -154,7 +154,12 @@ jobs:
             'TestNativeRequestRejectsUnsupportedSourceAndArchiveIdentity',
             'TestNativeJSONRejectsDuplicateTrailingAndDeepDocuments',
             'TestNativeConfigurationControlsKeepExpectedErrorsAndCanonicalStdin',
-            'TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution'},
+            'TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution',
+            'TestNativeCustodyRecordRejectsAmbiguousAndTruncatedDebt',
+            'TestNativeCustodyRejectsForeignObjectAndJobRecoveryTargets',
+            'TestNativeCustodyReconciliationNeverGrantsAdmission',
+            'TestNativeCooperativeControlFramesOnlyCancelOriginalOwner',
+            'TestNativeCleanupRequiresActualWaitAndReaderClosure'},
           'github.com/sagernet/cronet-go/internal/cronet':{'TestWindowsLibraryExplicitObservationRejectsUnprovenModule','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad'}}
         for package,names in required.items():
           passed={event.get('Test') for event in records if event.get('Package')==package and event.get('Action')=='pass'}
@@ -2091,7 +2096,7 @@ jobs:
         if-no-files-found: error
   windows_native_admission:
     name: Read existing Windows proof protection for this exact tag and attempt
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !cancelled() }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && !failure() && !cancelled() }}
     needs: [calculate_version]
     runs-on: ubuntu-24.04
     timeout-minutes: 5

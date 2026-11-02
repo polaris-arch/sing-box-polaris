@@ -57,6 +57,15 @@ def generic_algorithm_fixture():
         yield
 
 
+
+def native_jobs_fixture(index):
+    """Synthetic Actions data; only mocked metadata, never native authority."""
+    from native_release_index import expected_native_job_names
+    names=expected_native_job_names(index['platforms'])
+    return [{'id':i+1,'name':name,'status':'completed','conclusion':'success',
+             'head_sha':index['sourceCommit'],'run_id':42,'run_attempt':1}
+            for i,(key,name) in enumerate(names.items())]
+
 class GenericFixtureIsolationTests(unittest.TestCase):
     def test_scope_restores_real_gates_after_normal_and_exception_exit(self):
         before = p.peer_evidence.select, p.peer_evidence.check_inventory
@@ -1003,7 +1012,7 @@ class GateTests(unittest.TestCase):
                 'tag':p.TAG,'tagObject':'c'*40,'sourceCommit':source,'sourceTree':tree,
                 'producer':{'repository':p.REPO,'repositoryId':p.RID,'workflow':'.github/workflows/build.yml',
                             'workflowCommit':source,'runId':42,'runAttempt':1,
-                            'nativeJobs':{k:{'id':i+1,'name':'private test fixture'} for i,k in enumerate(['linux','win','mac-x64','mac-arm64'])}},
+                            'nativeJobs':{k:{'id':i+1,'name':'Native final-package Cronet and gVisor smoke ('+ident+')'} for i,(k,ident) in enumerate([('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')])}},
                 'legalFiles':[{'path':'licenses/LICENSE','content':'x','bytes':1,'sha256':'4'*64}],
                 'sourceArchive':{'name':'sing-box-polaris-source-'+source+'.tar.gz','bytes':1,'sha256':'5'*64},'platforms':rows}
         from native_release_index import distribution_materials
@@ -1011,7 +1020,8 @@ class GateTests(unittest.TestCase):
         return index
 
     def check_index(self,index):
-        p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
 
     def test_final_index_uses_original_source_root_for_distribution_materials(self):
         index=self.final_index()
@@ -1019,10 +1029,10 @@ class GateTests(unittest.TestCase):
             source_root=Path(d)/'reviewed-source'
             # The index belongs to the original producer checkout; the new
             # publisher's own script hash must not replace its source binding.
-            with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials:
+            with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials, mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
                 p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',source_root=source_root)
                 materials.assert_called_once_with(index,source_root)
-            with mock.patch('native_release_index.distribution_materials',return_value={'changed':True}),self.assertRaisesRegex(ValueError,'source/notice bindings'):
+            with mock.patch('native_release_index.distribution_materials',return_value={'changed':True}),mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)),self.assertRaisesRegex(ValueError,'source/notice bindings'):
                 p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',source_root=source_root)
         with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials:
             self.check_index(index)
@@ -2689,7 +2699,8 @@ class TrustedExecutionPublisherTests(unittest.TestCase):
         return index
 
     def check(self,index):
-        p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
 
     def test_final_index_accepts_bound_synthetic_sealed_proof_and_keeps_original_row(self):
         index=self.index();before=copy.deepcopy(index)
@@ -2764,3 +2775,83 @@ class TrustedExecutionPublisherTests(unittest.TestCase):
             self.assertEqual(len(output['platforms']),44);self.assertEqual(sum('trustedExecution' in r for r in output['platforms']),1)
             actual=next(r for r in output['platforms'] if 'trustedExecution' in r)
             self.assertEqual(actual,selected);archived.assert_called_once()
+
+
+class WindowsProducerPublisherControls(unittest.TestCase):
+    def index(self):
+        from test_windows_native_execution import windows_row_fixture
+        from native_release_index import distribution_materials, select_native_jobs
+        index=GateTests().final_index();row=windows_row_fixture()
+        row['archive']['releaseName']=p.public_product_name(row['archive']['name'])
+        index['platforms']=[row if old['id']==row['id'] else old for old in index['platforms']]
+        index['producer']['nativeJobs']=select_native_jobs(index['platforms'],native_jobs_fixture(index),'a'*40,42,1)
+        index['distributionMaterials']=distribution_materials(index,p.ROOT)
+        return index
+
+    def check(self,index,jobs):
+        with mock.patch.object(p,'pages',return_value=jobs) as metadata:
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+            metadata.assert_called_once_with(f'repos/{p.REPO}/actions/runs/42/attempts/1/jobs','jobs',maximum=1000)
+
+    def test_final_consumer_binds_actual_system_job_id_name_and_exact_attempt_api(self):
+        index=self.index();self.check(index,native_jobs_fixture(index))
+
+    def test_successful_hosted_job_cannot_replace_real_system_producer(self):
+        index=self.index();jobs=native_jobs_fixture(index)
+        index['producer']['nativeJobs']['win']['name']='Native final-package Cronet and gVisor smoke (windows-amd64)'
+        jobs.append(dict(jobs[1],id=9,name=index['producer']['nativeJobs']['win']['name']))
+        with self.assertRaisesRegex(ValueError,'job mapping'):self.check(index,jobs)
+
+    def test_final_consumer_rejects_missing_wrong_skipped_duplicate_or_foreign_api_producer(self):
+        for case in ('missing','name','id','skipped','status','source','run','attempt','duplicate'):
+            with self.subTest(case=case):
+                index=self.index();jobs=native_jobs_fixture(index);job=jobs[1]
+                if case=='missing':jobs.pop(1)
+                elif case=='name':job['name']='unrelated successful job'
+                elif case=='id':job['id']=99
+                elif case=='skipped':job['conclusion']='skipped'
+                elif case=='status':job['status']='in_progress'
+                elif case=='source':job['head_sha']='f'*40
+                elif case=='run':job['run_id']=43
+                elif case=='attempt':job['run_attempt']=2
+                else:jobs.append(copy.deepcopy(job))
+                with self.assertRaises(ValueError):self.check(index,jobs)
+
+    def test_final_consumer_checks_overlay_using_original_source_root(self):
+        index=self.index();jobs=native_jobs_fixture(index);root=Path('cold-source-exact-root')
+        with mock.patch.object(p,'pages',return_value=jobs), \
+             mock.patch('native_release_index.validate_overlay',side_effect=ValueError('bad original overlay')) as overlay:
+            with self.assertRaisesRegex(ValueError,'bad original overlay'):
+                p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',root)
+            overlay.assert_called_once_with(root)
+
+    def test_job_api_pagination_enforces_bounded_total_scope(self):
+        with mock.patch.object(p,'api',return_value={'jobs':[{}]*100}) as api:
+            with self.assertRaisesRegex(ValueError,'item bound'):
+                p.pages('repos/test/actions/runs/42/attempts/1/jobs','jobs',maximum=1000)
+            self.assertEqual(api.call_count,11)
+
+    def test_existing_assembly_selects_retained_system_producer_from_exact_api_jobs(self):
+        import native_release_index as native
+        index=self.index();rows=index['platforms'];payload=b'synthetic-final-archive'
+        for row in rows:
+            row['archive']['sha256']=hashlib.sha256(payload).hexdigest()
+            if 'trustedExecution' in row:
+                row['finalPackageCronetSmoke']['windowsExecution']['archiveSha256']=row['archive']['sha256']
+        jobs=native_jobs_fixture(index)
+        jobs.append(dict(jobs[1],id=99,name='Native final-package Cronet and gVisor smoke (windows-amd64)'))
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for i,row in enumerate(rows):
+                (root/('native-row-'+str(i)+'.json')).write_text(json.dumps(row))
+                (root/row['archive']['name']).write_bytes(payload)
+            env={'VERSION':p.VERSION,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','GITHUB_WORKFLOW_SHA':'a'*40,
+                 'GITHUB_WORKFLOW_REF':native.REPO+'/.github/workflows/build.yml@refs/heads/synthetic','REQUIRE_RELEASE_TAG':'false'}
+            with mock.patch.object(native,'identity',return_value=('a'*40,'b'*40)),mock.patch.dict(os.environ,env), \
+                 mock.patch.object(native.subprocess,'check_output',return_value=b'synthetic-source-tar'), \
+                 mock.patch.object(native,'validate_archived_source_identity'), \
+                 mock.patch.object(native,'run',return_value=json.dumps([{'jobs':jobs}])), \
+                 mock.patch.object(native,'distribution_materials',return_value={'synthetic':True}):
+                native.assemble(root)
+            output=json.loads((root/'polaris-upstream-native-assets.json').read_text())
+            self.assertEqual(output['producer']['nativeJobs']['win'],{'id':2,'name':native.WINDOWS_PROOF_JOB})

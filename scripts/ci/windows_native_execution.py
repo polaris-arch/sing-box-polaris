@@ -23,6 +23,10 @@ OUTPUT_LIMIT = 8 * 1024 * 1024
 ERROR_LIMIT = 512 * 1024
 PROCESS_SECONDS = 600
 REAP_SECONDS = 15
+COOPERATIVE_SECONDS = 90
+POLL_SECONDS = 0.25
+MAX_ERROR_RECORDS = 32
+MAX_ERROR_EVENTS = 65535
 
 
 def canonical(value):
@@ -312,102 +316,169 @@ def plain_file(path):
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def native_command(tool, archive, raw):
-    """Bound all three pipes and actual producer wait, even on failed framing.
+def native_cleanup_observed(stdout):
+    """A failed fixed native owner can report resource closure, never authority."""
+    try:
+        result=exact_json(stdout)
+        if (type(result) is not dict or result.get('schema')!='polaris-windows-native-execution-diagnostic-v1'
+                or result.get('publicationEligible') is not False or result.get('executionAuthority') is not False
+                or result.get('custodyReconciled') is not True):
+            return False
+        native=result.get('native')
+        if type(native) is not dict or type(native.get('cleanup')) is not dict:
+            return False
+        cleanup=native['cleanup']
+        return (all(cleanup.get(key) is True for key in ('allChildrenWaited','readersJoined','heldObjectsClosed','cohortRemoved'))
+                and type(cleanup.get('jobActiveProcesses')) is int and cleanup['jobActiveProcesses']==0
+                and cleanup.get('configurationRetained') is False and type(cleanup.get('forcedTermination')) is bool)
+    except (ValueError,TypeError,KeyError,UnicodeError,RecursionError):
+        return False
 
-    Killing the producer is not evidence that its native child/cohort cleanup
-    completed. Only a successful, fully validated native cleanup record can
-    support derivation; every adapter failure remains non-authoritative.
+
+def native_command(tool, archive, raw):
+    """Cancel through the original owner; hard kill never certifies cleanup.
+
+    The owner receives one canonical JSON/LF request, retains stdin until normal
+    exit, and accepts only cancel/LF or EOF as cooperative cancellation. Its
+    durable SYSTEM custody gate, rather than this adapter or a vanished PID,
+    reconciles leftovers before any subsequent Core process can be created.
     """
+    if type(raw) is not bytes or len(raw)>1024*1024 or b'\n' in raw:
+        raise ValueError('Windows native request framing differs')
+    deadline=time.monotonic()+PROCESS_SECONDS
     process = subprocess.Popen([str(tool), '--archive', str(archive)], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT,
                                shell=False, close_fds=True)
-    outputs = [bytearray(), bytearray()]
-    errors = []
-    lock = threading.Lock()
-    waited = False
-    code = None
+    outputs=[bytearray(),bytearray()]
+    errors=[]
+    error_count=0
+    lock=threading.Lock()
+    cancelled=threading.Event()
+    done=threading.Event()
+    waited=False
+    code=None
+    hard_kill_attempted=False
+    hard_killed=False
+    cancel_sent=False
 
     def fail(error):
+        nonlocal error_count
+        # Output overflow and wait failures can repeat until teardown finishes.
+        # Retain bounded type names, never exception messages or input secrets.
         with lock:
-            errors.append(type(error).__name__)
-        try:
-            process.kill()
-        except OSError:
-            pass
+            error_count=min(MAX_ERROR_EVENTS,error_count+1)
+            if len(errors)<MAX_ERROR_RECORDS:
+                errors.append(type(error).__name__[:64])
+        cancelled.set()
 
-    def read(stream, index, limit):
+    def read(stream,index,limit):
         try:
             while True:
-                chunk = stream.read(65536)
-                if not chunk:
-                    break
+                chunk=stream.read(65536)
+                if not chunk:break
                 with lock:
-                    room = limit - len(outputs[index])
-                    outputs[index].extend(chunk[:room])
-                if len(chunk) > room:
-                    raise ValueError('Windows native output byte bound')
+                    room=limit-len(outputs[index]);outputs[index].extend(chunk[:room])
+                if len(chunk)>room:
+                    fail(ValueError('native output byte bound'))
+                    # Drain after the retained-byte bound so the native owner
+                    # can finish teardown without a broken output pipe.
         except BaseException as error:
             fail(error)
         finally:
-            try:
-                stream.close()
-            except BaseException as error:
-                fail(error)
+            try:stream.close()
+            except BaseException as error:fail(error)
 
     def write():
+        nonlocal cancel_sent
         try:
-            count = process.stdin.write(raw)
-            if count != len(raw):
+            request=raw+b'\n'
+            if process.stdin.write(request)!=len(request):
                 raise ValueError('Windows native request short write')
             process.stdin.flush()
+            while not done.is_set():
+                if cancelled.wait(POLL_SECONDS):
+                    if process.stdin.write(b'cancel\n')!=7:
+                        raise ValueError('Windows native cancellation short write')
+                    process.stdin.flush();cancel_sent=True
+                    break
         except BaseException as error:
             fail(error)
         finally:
-            try:
-                process.stdin.close()
-            except BaseException as error:
-                fail(error)
+            # If writing the fixed frame failed, EOF still cancels the owner.
+            # This pipe is never reused to send a path, argv or a cleanup command.
+            try:process.stdin.close()
+            except BaseException as error:fail(error)
 
-    threads = [threading.Thread(target=read, args=(process.stdout, 0, OUTPUT_LIMIT), daemon=True),
-               threading.Thread(target=read, args=(process.stderr, 1, ERROR_LIMIT), daemon=True),
-               threading.Thread(target=write, daemon=True)]
-    for thread in threads:
-        thread.start()
-    try:
-        code = process.wait(timeout=PROCESS_SECONDS)
-        waited = True
-    except BaseException as error:
-        fail(error)
+    threads=[threading.Thread(target=read,args=(process.stdout,0,OUTPUT_LIMIT),daemon=True),
+             threading.Thread(target=read,args=(process.stderr,1,ERROR_LIMIT),daemon=True),
+             threading.Thread(target=write,daemon=True)]
+    started=[]
+    for thread,stream in zip(threads,(process.stdout,process.stderr,process.stdin)):
         try:
-            code = process.wait(timeout=REAP_SECONDS)
-            waited = True
-        except BaseException as reap_error:
-            with lock:
-                errors.append(type(reap_error).__name__)
-    finally:
-        deadline = time.monotonic() + REAP_SECONDS
-        for thread in threads:
-            thread.join(timeout=max(0, deadline - time.monotonic()))
-    joined = not any(thread.is_alive() for thread in threads)
+            thread.start();started.append(thread)
+        except BaseException as error:
+            fail(error)
+            # No worker owns this pipe if creation failed. Closing an unwritten
+            # stdin gives the native reader EOF instead of orphaning its owner.
+            try:stream.close()
+            except BaseException as close_error:fail(close_error)
+    cancel_deadline=None
+    while not waited:
+        try:
+            now=time.monotonic()
+            if now>=deadline and not cancelled.is_set():fail(TimeoutError('native producer deadline'))
+            if cancelled.is_set() and cancel_deadline is None:cancel_deadline=now+COOPERATIVE_SECONDS
+            if cancel_deadline is not None and now>=cancel_deadline:
+                hard_kill_attempted=True
+                try:
+                    process.kill();hard_killed=True
+                except BaseException as error:fail(error)
+                try:
+                    status=process.wait(timeout=REAP_SECONDS)
+                    if type(status) is int:code=status;waited=True
+                    else:raise ValueError('native reap returned no exact exit status')
+                except BaseException as error:fail(error)
+                break
+            status=process.wait(timeout=POLL_SECONDS)
+            if type(status) is int:code=status;waited=True
+            else:raise ValueError('native wait returned no exact exit status')
+        except subprocess.TimeoutExpired:
+            pass
+        except BaseException as error:
+            fail(error)
+            # A persistent wait API failure must neither spin unbounded error
+            # storage nor burn CPU during the fixed cooperative interval.
+            try:time.sleep(POLL_SECONDS)
+            except BaseException as pause_error:fail(pause_error)
+    done.set()
+    join_deadline=time.monotonic()+REAP_SECONDS
+    joined_threads=[]
+    for thread in started:
+        try:
+            thread.join(timeout=max(0,join_deadline-time.monotonic()))
+            if not thread.is_alive():joined_threads.append(thread)
+        except BaseException as error:fail(error)
+    readers_joined=all(thread in joined_threads for thread in threads[:2])
+    writer_joined=threads[2] in joined_threads
+    joined=readers_joined and writer_joined
     with lock:
-        stdout, stderr = map(bytes, outputs)
-        failures = list(errors)
-    if not waited or not joined or failures or type(code) is not int or code != 0:
-        # Retain only fixed native tool output, never environment/request data.
-        # Prefixes are labelled bounded diagnostics, not a successful proof.
-        diagnostic = {'schema':'polaris-windows-native-adapter-diagnostic-v1',
-                      'publicationEligible':False, 'executionAuthority':False,
-                      'actualWait':waited, 'readersJoined':joined, 'exitCode':code,
-                      'nativeCleanup':'unknown', 'errors':failures,
-                      'stdoutSHA256':sha_bytes(stdout), 'stderrSHA256':sha_bytes(stderr),
-                      'stdoutBytesRetained':len(stdout), 'stderrBytesRetained':len(stderr),
-                      'stdoutPrefixHex':stdout[:65536].hex(), 'stderrPrefixHex':stderr[:65536].hex()}
-        try:
-            (tool.parent / 'adapter-diagnostic.json').write_bytes(canonical(diagnostic) + b'\n')
-        except OSError:
-            pass  # No diagnostic write can turn a failed producer into proof.
-        raise ValueError('Windows native producer failed; wait/cleanup grants no execution authority')
+        stdout,stderr=map(bytes,outputs);failures=list(errors);count=error_count
+    if not waited or not joined or failures or type(code) is not int or code!=0:
+        closed=not hard_kill_attempted and waited and joined and native_cleanup_observed(stdout)
+        diagnostic={'schema':'polaris-windows-native-adapter-diagnostic-v1',
+                    'publicationEligible':False,'executionAuthority':False,
+                    'actualWait':waited,'readersJoined':readers_joined,'writerJoined':writer_joined,'exitCode':code,
+                    'cooperativeCancelRequested':cancelled.is_set(),'cooperativeFrameWritten':cancel_sent,
+                    'hardKillAttempted':hard_kill_attempted,'hardKilled':hard_killed,'nativeCleanup':'complete' if closed else 'unknown',
+                    'recoveryGate':'native-SYSTEM-custody-exact-reconciliation',
+                    'cleanupDebt':'none-observed' if closed else 'unknown-native-custody-must-reconcile',
+                    'errors':failures,'errorEvents':count,'errorEventsSaturated':count==MAX_ERROR_EVENTS,
+                    'stdoutSHA256':sha_bytes(stdout),'stderrSHA256':sha_bytes(stderr),
+                    'stdoutBytesRetained':len(stdout),'stderrBytesRetained':len(stderr),
+                    'stdoutPrefixHex':stdout[:65536].hex(),'stderrPrefixHex':stderr[:65536].hex()}
+        try:(tool.parent/'adapter-diagnostic.json').write_bytes(canonical(diagnostic)+b'\n')
+        except OSError:pass
+        raise ValueError('Windows native producer failed; exact native custody reconciliation is required before admission')
     return stdout
 
 

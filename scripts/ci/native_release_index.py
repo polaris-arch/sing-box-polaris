@@ -5,6 +5,7 @@ from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
 from release_identity import verify_checkout, public_product_name
+from cronet_windows_overlay import validate_overlay
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -82,6 +83,7 @@ def validate_archived_source_identity(rows,source_tar,commit):
 
 def source_identity():
  hashes=source_module_hashes()
+ validate_overlay(Path.cwd())
  mod=json.loads(run('go','mod','edit','-json'));replacements=[]
  for r in mod.get('Replace',[]) or []:
   new=r['New']
@@ -137,6 +139,7 @@ def derive_trusted_execution(row, proof, producer, source_root=ROOT):
   if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
    raise ValueError('sealed execution workflow run/attempt differs')
  if kind == 'windowsExecution':
+  validate_overlay(source_root)
   from windows_native_execution import validate_facts
   policy=validate_facts(row,proof,source_root)
   jsonschema.Draft202012Validator(schema['$defs']['windowsTrustedExecution']).validate(policy)
@@ -450,7 +453,7 @@ def validate_trusted_execution(row, producer, source_root=ROOT):
 
 
 def collect(directory,matrix):
- commit,tree=identity();d=Path(directory);row_count=0
+ commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);row_count=0
  for p in sorted(d.iterdir()):
   if not p.name.startswith('sing-box-') or not p.name.endswith(('.tar.gz','.zip')):continue
   root,members=read_archive(p);expected=expected_native(os.environ['VERSION']).get(root)
@@ -512,6 +515,7 @@ def smoke_temp_directory():
   cleanup_smoke_directory(directory)
 
 def smoke(directory):
+ validate_overlay(Path.cwd())
  d=Path(directory);rows=list(d.glob('native-row-*.json'))
  if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
  row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name']
@@ -609,9 +613,10 @@ def validate_distribution_assessment(catalog):
 def distribution_materials(index, root=Path('.')):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
+ overlay_inputs=validate_overlay(root)
  from apple_package_overlays import definition as apple_package_definition
  apple_package_definition(root)
- inputs=['go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
+ inputs=['scripts/ci/cronet_windows_overlay.py',*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/dependency-sources/sing-vmess-replacement.json',
          'release/dependency-sources/sing-vmess-vision.patch','scripts/ci/vision_source.py',
          'release/ci/client-overlays.json','release/ci/distribution-materials.json',
@@ -735,7 +740,7 @@ def distribution_materials(index, root=Path('.')):
  return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
          'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],
          'sourceURL':'https://github.com/'+REPO+'/tree/'+index['sourceCommit'],
-         'toolchain':toolchain,'inputs':{p:sha((root/p).read_bytes()) for p in sorted(set(inputs))},
+         'toolchain':toolchain,'inputs':{p:overlay_inputs[p] if p in overlay_inputs else sha((root/p).read_bytes()) for p in sorted(set(inputs))},
          'legalFiles':{x['path']:x['sha256'] for x in index['legalFiles']},
          'modules':dict(sorted(modules.items())),'nativeArchives':native,
          'noticeSelection':{'path':'release/ci/current44-notice-mappings.json','sha256':sha((root/'release/ci/current44-notice-mappings.json').read_bytes()),'bundle':selection['noticeBundle']},
@@ -747,8 +752,41 @@ def distribution_materials(index, root=Path('.')):
                         'Historical source/notice evidence remains historical.']}
 
 
+WINDOWS_PROOF_JOB = 'Explicit SYSTEM final-package Windows native execution proof'
+
+def expected_native_job_names(rows):
+ """The retained proof kind, rather than another successful job, owns evidence."""
+ names={key:f'Native final-package Cronet and gVisor smoke ({ident})'
+        for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]}
+ selected=[row for row in rows if row.get('target')=='windows/amd64' and not row.get('variant',{}).get('legacy',False)]
+ if len(selected)!=1:raise ValueError('native job mapping requires one modern Windows row')
+ smoke=selected[0].get('finalPackageCronetSmoke')
+ if isinstance(smoke,dict) and 'windowsExecution' in smoke:
+  if 'trustedExecution' not in selected[0] or not isinstance(smoke['windowsExecution'],dict) or smoke['windowsExecution'].get('schema')!='polaris-windows-native-execution-proof-v1':
+   raise ValueError('Windows producer mapping requires retained Windows proof and policy')
+  names['win']=WINDOWS_PROOF_JOB
+ return names
+
+def select_native_jobs(rows,jobs,commit,run_id,attempt):
+ if type(run_id) is not int or run_id<=0 or type(attempt) is not int or attempt<=0:
+  raise ValueError('native job run/attempt identity differs')
+ if not isinstance(jobs,list) or len(jobs)>1000:raise ValueError('native job API evidence scope differs')
+ result={}
+ for key,name in expected_native_job_names(rows).items():
+  named=[job for job in jobs if isinstance(job,dict) and job.get('name')==name]
+  if len(named)!=1:raise ValueError('missing/duplicate native producer API evidence: '+name)
+  job=named[0]
+  if (job.get('conclusion')!='success' or job.get('status')!='completed' or job.get('head_sha')!=commit
+      or type(job.get('run_id')) is not int or job['run_id']!=run_id
+      or type(job.get('run_attempt')) is not int or job['run_attempt']!=attempt
+      or type(job.get('id')) is not int or job['id']<=0):
+   raise ValueError('native producer API source/run/attempt/status differs: '+name)
+  result[key]={'id':job['id'],'name':name}
+ if len({value['id'] for value in result.values()})!=len(result):raise ValueError('native producer job IDs collide')
+ return result
+
 def assemble(directory):
- commit,tree=identity();d=Path(directory);v=os.environ['VERSION'];tag='v'+v
+ commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
  final=os.environ.get('REQUIRE_RELEASE_TAG')=='true'
  tag_object=None
  if final:
@@ -794,12 +832,8 @@ def assemble(directory):
  workflow=os.environ['GITHUB_WORKFLOW_REF'].split(REPO+'/',1)[1].split('@',1)[0]
  run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
  pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100'))
- jobs=[j for page in pages for j in page['jobs']];native_jobs={}
- for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]:
-  name=f'Native final-package Cronet and gVisor smoke ({ident})'
-  matches=[j for j in jobs if j['name']==name and j.get('conclusion')=='success' and j.get('status')=='completed' and j.get('head_sha')==commit and str(j.get('run_id'))==run_id and str(j.get('run_attempt'))==attempt]
-  if len(matches)!=1:raise ValueError('missing unique successful native smoke API evidence: '+name)
-  native_jobs[key]={'id':matches[0]['id'],'name':name}
+ jobs=[j for page in pages for j in page['jobs']]
+ native_jobs=select_native_jobs(rows.values(),jobs,commit,int(run_id),int(attempt))
  # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
  for row in rows.values():
   validate_trusted_execution(row, context)

@@ -4,12 +4,14 @@ The synthetic DTOs exercise parsing/rejection and derived *data*. Every native
 adapter command is mocked. These tests cannot create an App execution issuer.
 """
 import copy
+import importlib.util
 import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
 import unittest
 from unittest.mock import Mock, patch
 
@@ -268,26 +270,25 @@ class NativeAdapterControls(unittest.TestCase):
             self.assertEqual(start.call_args.args[0],[str(tool),'--archive',str(archive)])
             self.assertIs(start.call_args.kwargs['shell'],False)
             self.assertIs(start.call_args.kwargs['close_fds'],True)
-            child.wait.assert_called_once_with(timeout=windows.PROCESS_SECONDS)
+            child.wait.assert_called_once_with(timeout=windows.POLL_SECONDS)
             self.assertFalse((Path(td)/'adapter-diagnostic.json').exists())
 
     def test_nonzero_timeout_pipe_errors_and_overflow_keep_non_authoritative_diagnostics(self):
         for which in ['exit','timeout','wait-unknown','stdout','stderr','stdin']:
             with self.subTest(which=which),tempfile.TemporaryDirectory() as td:
                 tool,archive=self.tool_fixture(td)
-                child=self.child(code=1 if which=='exit' else 0)
-                if which=='timeout':child.wait.side_effect=[subprocess.TimeoutExpired('fixed',1),0]
-                if which=='wait-unknown':child.wait.side_effect=[subprocess.TimeoutExpired('fixed',1),subprocess.TimeoutExpired('fixed',1)]
-                if which=='stdout':child.stdout=io.BytesIO(b'x'*33)
-                if which=='stderr':child.stderr=io.BytesIO(b'x'*33)
-                if which=='stdin':child.stdin=Mock();child.stdin.write.return_value=0
-                with patch.object(windows.subprocess,'Popen',return_value=child),patch.object(windows,'OUTPUT_LIMIT',32),patch.object(windows,'ERROR_LIMIT',32):
+                simulation=AdapterSimulation(which)
+                if which=='stdout':simulation.child.stdout=io.BytesIO(b'x'*33)
+                if which=='stderr':simulation.child.stderr=io.BytesIO(b'x'*33)
+                if which=='stdin':simulation.child.stdin.fail_request=True
+                with simulation.patches(),patch.object(windows,'OUTPUT_LIMIT',32),patch.object(windows,'ERROR_LIMIT',32):
                     with self.assertRaises(ValueError):windows.native_command(tool,archive,b'{}')
                 diagnostic=json.loads((Path(td)/'adapter-diagnostic.json').read_text())
                 self.assertIs(diagnostic['publicationEligible'],False);self.assertIs(diagnostic['executionAuthority'],False)
                 self.assertEqual(diagnostic['nativeCleanup'],'unknown')
                 self.assertLessEqual(diagnostic['stdoutBytesRetained'],32)
                 self.assertLessEqual(diagnostic['stderrBytesRetained'],32)
+                self.assertLessEqual(len(diagnostic['errors']),windows.MAX_ERROR_RECORDS)
                 if which=='wait-unknown':self.assertIs(diagnostic['actualWait'],False)
 
     def test_utf8_duplicate_trailing_and_nonfinite_json_rejected(self):
@@ -400,3 +401,284 @@ class WindowsSchemaControls(unittest.TestCase):
         with patch.object(index,'derive_trusted_execution') as derive:
             self.assertRaisesRegex(ValueError,'key/schema',index.validate_trusted_execution,row,{'runId':42,'runAttempt':1})
             derive.assert_not_called()
+
+
+class AdapterClock:
+    """Deterministic scheduling time for fake Popen waits; never a real timeout."""
+    def __init__(self):
+        self.now=0.0
+    def monotonic(self):
+        return self.now
+    def advance(self, seconds):
+        self.now+=seconds
+    def sleep(self, seconds):
+        self.advance(seconds)
+
+
+class AdapterInput(io.BytesIO):
+    def __init__(self):
+        super().__init__()
+        self.frames=[];self.attempts=[]
+        self.request=threading.Event();self.eof=threading.Event()
+        self.fail_request=False;self.fail_cancel=False;self.short_cancel=False;self.fail_flush=False
+    def write(self, raw):
+        self.attempts.append(bytes(raw))
+        if self.fail_request or (raw==b'cancel\n' and self.fail_cancel):
+            raise OSError('mock pipe failure')
+        if raw==b'cancel\n' and self.short_cancel:
+            super().write(raw[:-1]);self.frames.append(raw[:-1]);return len(raw)-1
+        result=super().write(raw);self.frames.append(bytes(raw))
+        if raw!=b'cancel\n':self.request.set()
+        return result
+    def flush(self):
+        if self.fail_flush:raise OSError('mock flush failure')
+        return super().flush()
+    def close(self):
+        super().close();self.eof.set()
+
+
+class AdapterSimulation:
+    """Only mocked Popen pipes, status, clock and kill; never launches Core."""
+    def __init__(self, mode, stdout=b'{}', stderr=b''):
+        self.mode=mode;self.clock=AdapterClock();self.kill_time=None;self.calls=[]
+        self.first=True;self.observed_open_input=False
+        self.child=Mock();self.child.stdin=AdapterInput()
+        self.child.stdout=io.BytesIO(stdout);self.child.stderr=io.BytesIO(stderr)
+        self.child.wait.side_effect=self.wait;self.child.kill.side_effect=self.kill
+    def kill(self):
+        self.kill_time=self.clock.now
+        if self.mode=='kill-error':raise OSError('mock kill failure')
+    def wait(self, timeout):
+        self.calls.append(timeout)
+        if timeout==windows.REAP_SECONDS:
+            if self.mode=='wait-unknown':raise subprocess.TimeoutExpired('mock producer',timeout)
+            return 1
+        if self.mode not in ('stdin','writer-flush') and not self.child.stdin.request.wait(2):
+            raise AssertionError('mock request worker never wrote its fixed frame')
+        self.observed_open_input=self.observed_open_input or not self.child.stdin.closed
+        if self.mode=='success':return 0
+        if self.mode=='exit':return 1
+        if self.first and self.mode in ('cancel','hardkill','wait-unknown','kill-error','wait-error','bad-wait'):
+            self.first=False
+            raise KeyboardInterrupt('mock outer cancellation')
+        if self.mode in ('hardkill','wait-unknown','kill-error','wait-error','bad-wait'):
+            if not self.child.stdin.eof.wait(2):raise AssertionError('mock cancellation/EOF never arrived')
+            self.clock.advance(30)
+            if self.mode=='wait-error':raise OSError('mock persistent wait failure')
+            if self.mode=='bad-wait':return None
+            raise subprocess.TimeoutExpired('mock producer',timeout)
+        if self.mode=='timeout' and self.clock.now<windows.PROCESS_SECONDS:
+            self.clock.advance(30)
+            raise subprocess.TimeoutExpired('mock producer',timeout)
+        if not self.child.stdin.eof.wait(2):raise AssertionError('mock native owner never got EOF')
+        return 1
+    def patches(self):
+        from contextlib import ExitStack
+        stack=ExitStack()
+        stack.enter_context(patch.object(windows.subprocess,'Popen',return_value=self.child))
+        stack.enter_context(patch.object(windows.time,'monotonic',side_effect=self.clock.monotonic))
+        stack.enter_context(patch.object(windows.time,'sleep',side_effect=self.clock.sleep))
+        # Real threads only service inert memory pipes; scheduling waits are tiny.
+        stack.enter_context(patch.object(windows,'POLL_SECONDS',0.001))
+        return stack
+
+
+class CooperativeAdapterControls(unittest.TestCase):
+    """Additional failure controls; original method IDs remain in their suite."""
+    tool_fixture=NativeAdapterControls.tool_fixture
+    def native_diagnostic(self, reconciled=True):
+        cleanup={'allChildrenWaited':True,'readersJoined':True,'jobActiveProcesses':0,
+                 'heldObjectsClosed':True,'cohortRemoved':True,'configurationRetained':False,'forcedTermination':True}
+        return {'schema':'polaris-windows-native-execution-diagnostic-v1','publicationEligible':False,
+                'executionAuthority':False,'custodyReconciled':reconciled,'native':{'cleanup':cleanup}}
+
+    def invoke(self, simulation, assertion=None):
+        with tempfile.TemporaryDirectory() as directory:
+            tool,archive=self.tool_fixture(directory)
+            with simulation.patches(),self.assertRaises(ValueError):
+                windows.native_command(tool,archive,b'{}')
+            result=json.loads((tool.parent/'adapter-diagnostic.json').read_bytes())
+            self.assertIs(result['executionAuthority'],False)
+            self.assertIs(result['publicationEligible'],False)
+            self.assertEqual(result['recoveryGate'],'native-SYSTEM-custody-exact-reconciliation')
+            if assertion:assertion(result)
+            return result
+
+    def test_success_keeps_request_pipe_open_then_joins_writer_without_cancel_or_kill(self):
+        simulation=AdapterSimulation('success',b'fixed mock output')
+        with tempfile.TemporaryDirectory() as directory:
+            tool,archive=self.tool_fixture(directory)
+            with simulation.patches():
+                self.assertEqual(windows.native_command(tool,archive,b'{"a":1}'),b'fixed mock output')
+            self.assertFalse((tool.parent/'adapter-diagnostic.json').exists())
+        self.assertTrue(simulation.observed_open_input)
+        self.assertEqual(simulation.child.stdin.frames,[b'{"a":1}\n'])
+        self.assertTrue(simulation.child.stdin.eof.is_set())
+        simulation.child.kill.assert_not_called()
+        self.assertEqual(simulation.calls,[0.001])
+
+    def test_keyboard_cancel_requests_exact_frame_and_allows_actual_native_cleanup_before_rejecting(self):
+        simulation=AdapterSimulation('cancel',windows.canonical(self.native_diagnostic()))
+        result=self.invoke(simulation)
+        self.assertEqual(simulation.child.stdin.frames,[b'{}\n',b'cancel\n'])
+        self.assertTrue(simulation.child.stdin.eof.is_set())
+        self.assertIs(result['cooperativeCancelRequested'],True)
+        self.assertIs(result['cooperativeFrameWritten'],True)
+        self.assertIs(result['hardKilled'],False)
+        self.assertIs(result['actualWait'],True);self.assertIs(result['readersJoined'],True);self.assertIs(result['writerJoined'],True)
+        self.assertEqual(result['nativeCleanup'],'complete');self.assertEqual(result['cleanupDebt'],'none-observed')
+        simulation.child.kill.assert_not_called()
+
+    def test_deadline_is_cooperative_first_and_does_not_prematurely_kill_owner(self):
+        simulation=AdapterSimulation('timeout',windows.canonical(self.native_diagnostic()))
+        result=self.invoke(simulation)
+        self.assertGreaterEqual(simulation.clock.now,windows.PROCESS_SECONDS)
+        self.assertEqual(result['nativeCleanup'],'complete')
+        self.assertIn('TimeoutError',result['errors'])
+        self.assertIs(result['hardKilled'],False);simulation.child.kill.assert_not_called()
+        self.assertEqual(simulation.child.stdin.frames,[b'{}\n',b'cancel\n'])
+
+    def test_full_grace_expiry_is_the_only_hardkill_path_and_cleanup_stays_unknown(self):
+        for mode in ('hardkill','kill-error','wait-unknown'):
+            with self.subTest(mode=mode):
+                simulation=AdapterSimulation(mode,windows.canonical(self.native_diagnostic()))
+                result=self.invoke(simulation)
+                self.assertGreaterEqual(simulation.kill_time,windows.COOPERATIVE_SECONDS)
+                simulation.child.kill.assert_called_once_with()
+                self.assertEqual(simulation.calls[-1],windows.REAP_SECONDS)
+                self.assertIs(result['hardKillAttempted'],True)
+                self.assertIs(result['hardKilled'],mode!='kill-error')
+                self.assertEqual(result['nativeCleanup'],'unknown')
+                self.assertEqual(result['cleanupDebt'],'unknown-native-custody-must-reconcile')
+                self.assertIs(result['actualWait'],mode!='wait-unknown')
+
+    def test_missing_custody_reconciliation_never_upgrades_native_cleanup_or_issues_authority(self):
+        simulation=AdapterSimulation('cancel',windows.canonical(self.native_diagnostic(False)))
+        result=self.invoke(simulation)
+        self.assertEqual(result['nativeCleanup'],'unknown')
+        self.assertEqual(result['cleanupDebt'],'unknown-native-custody-must-reconcile')
+        self.assertIs(result['hardKilled'],False)
+
+    def test_reader_and_writer_failures_cancel_or_eof_and_still_reap_join(self):
+        for mode in ('reader','reader-close','stdin','writer-flush','cancel-write','cancel-short'):
+            with self.subTest(mode=mode):
+                simulation=AdapterSimulation('cancel' if mode.startswith('cancel-') else mode,
+                                             windows.canonical(self.native_diagnostic()))
+                if mode=='reader':simulation.child.stderr=Mock(read=Mock(side_effect=OSError('mock read failure')))
+                elif mode=='reader-close':simulation.child.stderr=Mock(read=Mock(return_value=b''),close=Mock(side_effect=OSError('mock reader close failure')))
+                elif mode=='stdin':simulation.child.stdin.fail_request=True
+                elif mode=='writer-flush':simulation.child.stdin.fail_flush=True
+                elif mode=='cancel-write':simulation.child.stdin.fail_cancel=True
+                else:simulation.child.stdin.short_cancel=True
+                result=self.invoke(simulation)
+                self.assertTrue(simulation.child.stdin.eof.is_set())
+                self.assertIs(result['actualWait'],True);self.assertIs(result['readersJoined'],True);self.assertIs(result['writerJoined'],True)
+                self.assertIs(result['hardKilled'],False);simulation.child.kill.assert_not_called()
+                self.assertTrue(result['errors'])
+                if mode in ('cancel-write','cancel-short','stdin','writer-flush'):
+                    self.assertIs(result['cooperativeFrameWritten'],False)
+
+    def test_cleanup_debt_retains_exact_original_native_diagnostic_bytes_and_digests(self):
+        value=self.native_diagnostic(False)
+        value['error']='native exact custody journal identity is unresolved'
+        raw=windows.canonical(value)+b'\n';stderr=b'mock native failure details\n'
+        simulation=AdapterSimulation('cancel',raw,stderr)
+        result=self.invoke(simulation)
+        self.assertEqual(result['nativeCleanup'],'unknown')
+        self.assertEqual(result['cleanupDebt'],'unknown-native-custody-must-reconcile')
+        self.assertEqual(bytes.fromhex(result['stdoutPrefixHex']),raw)
+        self.assertEqual(bytes.fromhex(result['stderrPrefixHex']),stderr)
+        self.assertEqual(result['stdoutSHA256'],windows.sha_bytes(raw))
+        self.assertEqual(result['stderrSHA256'],windows.sha_bytes(stderr))
+        self.assertEqual(result['stdoutBytesRetained'],len(raw))
+        self.assertEqual(result['stderrBytesRetained'],len(stderr))
+
+    def test_repeated_overflow_drains_to_eof_but_retained_bytes_and_error_records_remain_bounded(self):
+        simulation=AdapterSimulation('overflow')
+        stream=Mock();stream.read.side_effect=[b'x'*33]*100+[b''];simulation.child.stdout=stream
+        with patch.object(windows,'OUTPUT_LIMIT',32),patch.object(windows,'MAX_ERROR_EVENTS',40):
+            result=self.invoke(simulation)
+        self.assertEqual(stream.read.call_count,101);stream.close.assert_called_once_with()
+        self.assertEqual(result['stdoutBytesRetained'],32)
+        self.assertEqual(len(result['errors']),windows.MAX_ERROR_RECORDS)
+        self.assertEqual(result['errorEvents'],40);self.assertIs(result['errorEventsSaturated'],True)
+        self.assertEqual(result['nativeCleanup'],'unknown');simulation.child.kill.assert_not_called()
+
+    def test_persistent_wait_errors_and_noninteger_status_are_paced_and_bounded(self):
+        for mode in ('wait-error','bad-wait'):
+            with self.subTest(mode=mode):
+                simulation=AdapterSimulation(mode)
+                result=self.invoke(simulation)
+                self.assertIs(result['hardKilled'],True)
+                self.assertGreaterEqual(simulation.kill_time,windows.COOPERATIVE_SECONDS)
+                self.assertEqual(result['nativeCleanup'],'unknown')
+                self.assertIs(result['actualWait'],True)
+                self.assertTrue(any(name in result['errors'] for name in ('OSError','ValueError')))
+                self.assertLess(len(simulation.calls),10)
+
+    def test_failed_thread_join_cannot_be_mistaken_for_closed_readers_or_native_cleanup(self):
+        real_thread=threading.Thread
+        class FailedJoin(real_thread):
+            def join(self, timeout=None):
+                super().join(timeout)
+                raise OSError('mock join failure after worker exit')
+        simulation=AdapterSimulation('exit',windows.canonical(self.native_diagnostic()))
+        with patch.object(windows.threading,'Thread',FailedJoin):result=self.invoke(simulation)
+        self.assertIs(result['actualWait'],True)
+        self.assertIs(result['readersJoined'],False);self.assertIs(result['writerJoined'],False)
+        self.assertEqual(result['nativeCleanup'],'unknown')
+
+    def test_incomplete_thread_join_retains_unknown_cleanup_even_after_native_exit(self):
+        real_thread=threading.Thread
+        observed=[]
+        class StillRunning(real_thread):
+            reported_alive=False
+            def join(self, timeout=None):
+                observed.append(timeout)
+                super().join(timeout)
+                self.reported_alive=True
+            def is_alive(self):
+                return self.reported_alive or super().is_alive()
+        simulation=AdapterSimulation('exit',windows.canonical(self.native_diagnostic()))
+        with patch.object(windows.threading,'Thread',StillRunning):result=self.invoke(simulation)
+        self.assertIs(result['actualWait'],True)
+        self.assertIs(result['readersJoined'],False);self.assertIs(result['writerJoined'],False)
+        self.assertEqual(result['nativeCleanup'],'unknown')
+        self.assertEqual(len(observed),3)
+        self.assertTrue(all(0<=timeout<=windows.REAP_SECONDS for timeout in observed))
+
+    def test_native_cleanup_diagnostic_requires_exact_flags_numbers_and_complete_shapes(self):
+        self.assertTrue(windows.native_cleanup_observed(windows.canonical(self.native_diagnostic())))
+        mutations=[lambda d:d.update(executionAuthority=True),lambda d:d.update(publicationEligible=True),
+                   lambda d:d.update(custodyReconciled=1),lambda d:d.pop('custodyReconciled'),
+                   lambda d:d.update(native=[]),lambda d:d['native'].update(cleanup=[]),
+                   lambda d:d['native']['cleanup'].update(jobActiveProcesses=False),
+                   lambda d:d['native']['cleanup'].update(configurationRetained=True),
+                   lambda d:d['native']['cleanup'].update(forcedTermination=0)]
+        for key in ('allChildrenWaited','readersJoined','heldObjectsClosed','cohortRemoved'):
+            mutations.append(lambda d,k=key:d['native']['cleanup'].update({k:False}))
+        for mutate in mutations:
+            value=self.native_diagnostic();mutate(value)
+            with self.subTest(mutation=mutate):self.assertFalse(windows.native_cleanup_observed(windows.canonical(value)))
+        for raw in (b'{}{}',b'[]',b'null',b'\xff',b'{"x":1,"x":2}'):
+            with self.subTest(raw=raw):self.assertFalse(windows.native_cleanup_observed(raw))
+
+    def test_malformed_or_oversized_request_frames_never_spawn_any_native_owner(self):
+        for raw in (b'{}\n',b'{}\nwhat\n',b'x'*(1024*1024+1),'{}',None):
+            with self.subTest(raw_type=type(raw)),patch.object(windows.subprocess,'Popen') as start:
+                self.assertRaises(ValueError,windows.native_command,Path('/fixed/producer.exe'),Path('/fixed/archive.zip'),raw)
+                start.assert_not_called()
+
+    def test_offline_module_import_does_not_enter_windows_producer_or_recovery(self):
+        import ctypes
+        path=Path(windows.__file__)
+        spec=importlib.util.spec_from_file_location('offline_windows_fact_parser',path)
+        module=importlib.util.module_from_spec(spec)
+        with patch.object(subprocess,'Popen',side_effect=AssertionError('offline import spawned')) as spawn, \
+             patch.object(subprocess,'run',side_effect=AssertionError('offline import ran')), \
+             patch.object(subprocess,'check_output',side_effect=AssertionError('offline import ran')), \
+             patch.object(ctypes,'WinDLL',create=True,side_effect=AssertionError('offline import entered Windows API')) as dll:
+            spec.loader.exec_module(module)
+        spawn.assert_not_called();dll.assert_not_called()
+        self.assertTrue(callable(module.validate_facts));self.assertTrue(callable(module.produce))
+        self.assertEqual(module.SCHEMA,windows.SCHEMA);self.assertEqual(module.VARIANT,windows.VARIANT)

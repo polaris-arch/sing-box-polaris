@@ -87,7 +87,10 @@ func (c *cohort) start(args []string) (child *nativeChild, failure error) {
 			failure = errors.Join(failure, child.abort())
 		}
 	}()
-	job, err := windows.CreateJobObject(nil, nil)
+	if c.custody == nil {
+		return child, errors.New("durable native custody owner required before child creation")
+	}
+	job, err := c.custody.newJob()
 	if err != nil {
 		return child, err
 	}

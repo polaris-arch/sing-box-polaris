@@ -883,3 +883,79 @@ class WindowsTrustedExecutionIntegrationControls(unittest.TestCase):
   self.assertEqual(mapping['trustedExecutionSHA256'],n.sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',',':')).encode()))
   self.assertEqual(mapping['windowsExecutionSHA256'],n.sha(json.dumps(row['finalPackageCronetSmoke']['windowsExecution'],sort_keys=True,separators=(',',':')).encode()))
   self.assertNotIn('sealedExecutionSHA256',mapping);self.assertNotIn('macosExecutionSHA256',mapping)
+
+
+class NativeProducerJobMappingControls(unittest.TestCase):
+ def fixture(self, explicit=True):
+  from test_windows_native_execution import windows_row_fixture
+  row=windows_row_fixture()
+  if not explicit:
+   row.pop('trustedExecution');row['finalPackageCronetSmoke'].pop('windowsExecution')
+  names=n.expected_native_job_names([row])
+  jobs=[{'id':i+1,'name':name,'head_sha':row['sourceCommit'],'run_id':42,'run_attempt':1,
+         'status':'completed','conclusion':'success'} for i,name in enumerate(names.values())]
+  return row,jobs
+ def test_windows_retained_proof_selects_actual_system_producer_and_ordinary_keeps_hosted(self):
+  for explicit in (False,True):
+   row,jobs=self.fixture(explicit)
+   # A successful hosted job remains present in an explicit run but is not the
+   # job that actually produced this retained native proof.
+   if explicit:jobs.append({'id':9,'name':'Native final-package Cronet and gVisor smoke (windows-amd64)',
+                            'head_sha':row['sourceCommit'],'run_id':42,'run_attempt':1,'status':'completed','conclusion':'success'})
+   selected=n.select_native_jobs([row],jobs,row['sourceCommit'],42,1)
+   self.assertEqual(selected['win'],{'id':2,'name':n.WINDOWS_PROOF_JOB if explicit else 'Native final-package Cronet and gVisor smoke (windows-amd64)'})
+ def test_missing_duplicate_wrong_skipped_failed_incomplete_and_foreign_producer_fail(self):
+  import copy
+  for case in ('missing','duplicate','wrong-name','skipped','failed','in-progress','source','run','attempt','bool-id','bool-attempt','reused-id'):
+   with self.subTest(case=case):
+    row,jobs=self.fixture();job=jobs[1]
+    if case=='missing':jobs.pop(1)
+    elif case=='duplicate':jobs.append(copy.deepcopy(job))
+    elif case=='wrong-name':job['name']='Native final-package Cronet and gVisor smoke (windows-amd64)'
+    elif case in ('skipped','failed'):job['conclusion']=case
+    elif case=='in-progress':job['status']='in_progress'
+    elif case=='source':job['head_sha']='f'*40
+    elif case=='run':job['run_id']=43
+    elif case=='attempt':job['run_attempt']=2
+    elif case=='bool-id':job['id']=True
+    elif case=='bool-attempt':job['run_attempt']=True
+    else:job['id']=jobs[0]['id']
+    self.assertRaises(ValueError,n.select_native_jobs,[row],jobs,row['sourceCommit'],42,1)
+ def test_duplicate_named_job_does_not_hide_behind_success_filter_or_other_attempt(self):
+  row,jobs=self.fixture();other=dict(jobs[1],id=99,run_attempt=2,conclusion='skipped');jobs.append(other)
+  self.assertRaisesRegex(ValueError,'duplicate',n.select_native_jobs,[row],jobs,row['sourceCommit'],42,1)
+ def test_ambiguous_missing_or_unproven_windows_row_cannot_choose_producer(self):
+  import copy
+  row,jobs=self.fixture()
+  for rows in ([],[row,copy.deepcopy(row)]):self.assertRaises(ValueError,n.expected_native_job_names,rows)
+  row.pop('trustedExecution');self.assertRaises(ValueError,n.expected_native_job_names,[row])
+
+
+class OverlayProductionBoundaryControls(unittest.TestCase):
+ def test_collect_smoke_assemble_reject_bad_overlay_before_product_work(self):
+  for operation,args in ((n.collect,('unused',{})),(n.smoke,('unused',)),(n.assemble,('unused',))):
+   with self.subTest(operation=operation.__name__),patch.object(n,'identity',return_value=('a'*40,'b'*40)), \
+        patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check, \
+        patch.object(n,'read_archive') as archive,patch.object(n.subprocess,'check_output') as command:
+    self.assertRaisesRegex(ValueError,'bad overlay',operation,*args)
+    check.assert_called_once_with(Path.cwd());archive.assert_not_called();command.assert_not_called()
+ def test_source_identity_and_materials_validate_precise_source_root(self):
+  with patch.object(n,'source_module_hashes',return_value={}),patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check,patch.object(n,'run') as command:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.source_identity)
+   check.assert_called_once_with(Path.cwd());command.assert_not_called()
+  root=Path('exact-cold-source-root')
+  with patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.distribution_materials,{'platforms':[]},root)
+   check.assert_called_once_with(root)
+ def test_windows_app_data_consumer_validates_original_source_root_before_native_facts(self):
+  from test_windows_native_execution import windows_row_fixture
+  row=windows_row_fixture();root=Path('exact-original-source')
+  with patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check,patch('windows_native_execution.validate_facts') as facts:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.validate_trusted_execution,row,{'runId':42,'runAttempt':1},root)
+   check.assert_called_once_with(root);facts.assert_not_called()
+ def test_distribution_inputs_bind_every_validated_overlay_file_and_helper(self):
+  from cronet_windows_overlay import validate_overlay
+  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic'},'platforms':[],'legalFiles':[]}
+  expected=validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
+  self.assertEqual({name:material['inputs'][name] for name in expected},expected)
+  self.assertEqual(material['inputs']['scripts/ci/cronet_windows_overlay.py'],n.sha((n.ROOT/'scripts/ci/cronet_windows_overlay.py').read_bytes()))
