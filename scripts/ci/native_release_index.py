@@ -119,7 +119,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def trusted_execution_definition():
  # The native schema owns the vocabulary; all producer/publisher calls use this validator.
- return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())['$defs']['linuxTrustedExecution']
+ return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))['$defs']['linuxTrustedExecution']
 
 
 def execution_run():
@@ -132,7 +132,7 @@ def execution_run():
 def derive_trusted_execution(row, proof, producer, source_root=ROOT):
  """Formal workflow admission retains its original schema and run authority."""
  import jsonschema
- schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
+ schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
  kind = {'polaris-macos-native-execution-proof-v1':'macosExecution','polaris-windows-native-execution-proof-v1':'windowsExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
  jsonschema.Draft202012Validator(schema['$defs'][kind]).validate(proof)
  for key in ('runId', 'runAttempt'):
@@ -169,7 +169,7 @@ def derive_local_trusted_execution(row, proof, context, source_root):
   raise ValueError('local native host/Core source differs')
  # Reuse every existing fact property's exact schema. Run/attempt are not
  # defaulted, stripped from a Formal receipt, or fabricated for this lane.
- schema=json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
+ schema=json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
  properties=schema['$defs']['sealedExecution']['properties']
  facts=set(properties)-{'runId','runAttempt'}
  if type(proof) is not dict or set(proof)!=facts:
@@ -424,7 +424,7 @@ def _derive_macos_execution_facts(row, proof, source_root):
              target=row['target'],expected_modules=producer_module_identities(row['buildGraph']),source_root=source_root)
     validate_configuration_checks(receipt['capabilities'],receipt['configurationChecks'])
     cronet = proof['cronet']; smoke = row['finalPackageCronetSmoke']
-    pins = json.loads((Path(source_root)/'release/polaris-candidate-inputs.json').read_text())
+    pins = json.loads((Path(source_root)/'release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
     if cronet['version'] != pins['cronetVersion']: raise ValueError('Mac source-owned Cronet version differs')
     expected = {'os':'darwin','arch':arch,'go':row['goVersion'],'linkage':'static-cgo','gvisorCompiled':True}
     if any(type(cronet.get(k)) is not type(v) or cronet[k] != v for k,v in expected.items()): raise ValueError('Mac native Cronet observation differs')

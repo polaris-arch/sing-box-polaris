@@ -116,19 +116,27 @@ jobs:
       GOFLAGS: -mod=readonly
       GOMAXPROCS: '2'
       PYTHONDONTWRITEBYTECODE: '1'
+      SOURCE_BUILD: ${{ inputs.build }}
+      SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      SOURCE_WINDOWS_NATIVE_PROOF: ${{ inputs.windows_native_proof && 'true' || 'false' }}
+      SOURCE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      SOURCE_VERSION: ${{ inputs.version }}
+      SOURCE_RUNNER: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         ref: ${{ github.sha }}
         fetch-depth: 0
         persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Retain exact Source inputs before compatibility gates (not a test or native PASS)
+      run: python -B scripts/ci/utls_cost.py --retain-source-input --output "${{ runner.temp }}/tls-fingerprint-evidence"
     - uses: actions/setup-go@v5
       with:
         go-version-file: release/GO_VERSION
         cache: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
     - name: Install capability schema validator
       run: python -m pip install jsonschema==4.23.0
     - name: Verify client Unicode entrypoints on the actual runner
