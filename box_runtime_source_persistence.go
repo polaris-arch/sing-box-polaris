@@ -28,6 +28,7 @@ func (c *runtimeCoordinator) cleanSourceConfigurationLocked() bool {
 	return c.initialPhase == 2 && (c.active.Revision == 1 || c.durableIdentity == c.active ||
 		c.sourceLineage != nil && sameSourceConfigurationRevision(c.sourceLineage.current, c.active))
 }
+
 func (c *runtimeCoordinator) captureSourcePersistenceBaseLocked(expected RuntimeIdentity) (*runtimeSourcePersistenceBase, error) {
 	if c.active != expected || !c.cleanSourceConfigurationLocked() {
 		return nil, errors.New("source base configuration has no clean provenance")
@@ -40,6 +41,7 @@ func (c *runtimeCoordinator) captureSourcePersistenceBaseLocked(expected Runtime
 	b.known = expected.EffectiveDigest != "" && c.durableDigest == expected.EffectiveDigest && c.durableIdentity == expected && c.durableOwnerReload && c.durableDesiredDigest != "" && c.durableDesiredRevision != ""
 	return b, nil
 }
+
 func (c *runtimeCoordinator) checkSourcePersistenceBaseLocked(b *runtimeSourcePersistenceBase) error {
 	if b == nil || c.stopped || c.active != b.identity || !c.cleanSourceConfigurationLocked() || c.runtimeSourcePersistencePendingLocked() ||
 		c.configurationOwner != nil && c.configurationOwner.operation != nil && !c.configurationOwner.operation.Durable {
@@ -50,9 +52,11 @@ func (c *runtimeCoordinator) checkSourcePersistenceBaseLocked(b *runtimeSourcePe
 	}
 	return nil
 }
+
 func runtimeSourceOnlyRecord(r *runtimePlanRecord) bool {
 	return r != nil && r.sourceProof != nil && r.sourceProof.closure.persistenceBase != nil
 }
+
 func runtimeSourceOnlyContext(ctx context.Context) bool {
 	p, _ := ctx.Value(runtimeSourceApplyProofKey{}).(*runtimeSourceApplyProof)
 	return p != nil && p.closure.persistenceBase != nil
@@ -111,6 +115,7 @@ func (s *Box) registerOriginalExactSourceTailLocked(r *runtimePlanRecord) {
 	default:
 	}
 }
+
 func (c *runtimeCoordinator) sourceDriverEligibleLocked(r *runtimePlanRecord) bool {
 	return r != nil && !c.stopped && c.pendingPersistence == r && c.configurationOwner == r &&
 		r.sourceProof != nil && r.actor == runtimeSourceProducerActor && r.persistenceTailEntered && r.persistenceRetrySafe &&

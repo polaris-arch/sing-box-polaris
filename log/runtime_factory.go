@@ -271,25 +271,32 @@ func (l *runtimeLogger) Log(ctx context.Context, level Level, args []any) {
 	(&observableLogger{defaultFactory: g.sink, tag: l.tag}).Log(ctx, level, args)
 }
 
-func (l *runtimeLogger) Trace(args ...any)                             { l.TraceContext(context.Background(), args...) }
+func (l *runtimeLogger) Trace(args ...any) { l.TraceContext(context.Background(), args...) }
+
 func (l *runtimeLogger) TraceContext(ctx context.Context, args ...any) { l.Log(ctx, LevelTrace, args) }
 
-func (l *runtimeLogger) Debug(args ...any)                             { l.DebugContext(context.Background(), args...) }
+func (l *runtimeLogger) Debug(args ...any) { l.DebugContext(context.Background(), args...) }
+
 func (l *runtimeLogger) DebugContext(ctx context.Context, args ...any) { l.Log(ctx, LevelDebug, args) }
 
-func (l *runtimeLogger) Info(args ...any)                             { l.InfoContext(context.Background(), args...) }
+func (l *runtimeLogger) Info(args ...any) { l.InfoContext(context.Background(), args...) }
+
 func (l *runtimeLogger) InfoContext(ctx context.Context, args ...any) { l.Log(ctx, LevelInfo, args) }
 
-func (l *runtimeLogger) Warn(args ...any)                             { l.WarnContext(context.Background(), args...) }
+func (l *runtimeLogger) Warn(args ...any) { l.WarnContext(context.Background(), args...) }
+
 func (l *runtimeLogger) WarnContext(ctx context.Context, args ...any) { l.Log(ctx, LevelWarn, args) }
 
-func (l *runtimeLogger) Error(args ...any)                             { l.ErrorContext(context.Background(), args...) }
+func (l *runtimeLogger) Error(args ...any) { l.ErrorContext(context.Background(), args...) }
+
 func (l *runtimeLogger) ErrorContext(ctx context.Context, args ...any) { l.Log(ctx, LevelError, args) }
 
-func (l *runtimeLogger) Fatal(args ...any)                             { l.FatalContext(context.Background(), args...) }
+func (l *runtimeLogger) Fatal(args ...any) { l.FatalContext(context.Background(), args...) }
+
 func (l *runtimeLogger) FatalContext(ctx context.Context, args ...any) { l.Log(ctx, LevelFatal, args) }
 
-func (l *runtimeLogger) Panic(args ...any)                             { l.PanicContext(context.Background(), args...) }
+func (l *runtimeLogger) Panic(args ...any) { l.PanicContext(context.Background(), args...) }
+
 func (l *runtimeLogger) PanicContext(ctx context.Context, args ...any) { l.Log(ctx, LevelPanic, args) }
 
 func runtimeOptionLevel(value string) (Level, error) {

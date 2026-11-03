@@ -109,6 +109,7 @@ func (s *runtimeTunSessionWrapper) available() error {
 	defer s.platform.tunAccess.Unlock()
 	return s.platform.runtimeTunFailure
 }
+
 func (s *runtimeTunSessionWrapper) Prepare() (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -130,6 +131,7 @@ func (s *runtimeTunSessionWrapper) Prepare() (err error) {
 	returned = true
 	return err
 }
+
 func (s *runtimeTunSessionWrapper) Validate() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -141,6 +143,7 @@ func (s *runtimeTunSessionWrapper) Validate() error {
 	}
 	return s.session.Validate()
 }
+
 func (s *runtimeTunSessionWrapper) OpenInterface(options *tun.Options) (tun.Tun, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -159,6 +162,7 @@ func (s *runtimeTunSessionWrapper) OpenInterface(options *tun.Options) (tun.Tun,
 	}
 	return s.platform.openTunFD(options, fd)
 }
+
 func (s *runtimeTunSessionWrapper) finish(abort bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -189,5 +193,7 @@ func (s *runtimeTunSessionWrapper) finish(abort bool) error {
 func (s *runtimeTunSessionWrapper) Abort() error  { return s.finish(true) }
 func (s *runtimeTunSessionWrapper) Retire() error { return s.finish(false) }
 
-var _ adapter.RuntimeTunPlatform = (*platformInterfaceWrapper)(nil)
-var _ adapter.RuntimeTunSession = (*runtimeTunSessionWrapper)(nil)
+var (
+	_ adapter.RuntimeTunPlatform = (*platformInterfaceWrapper)(nil)
+	_ adapter.RuntimeTunSession  = (*runtimeTunSessionWrapper)(nil)
+)

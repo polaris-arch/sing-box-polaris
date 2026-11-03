@@ -3,8 +3,10 @@ package box
 import (
 	"bytes"
 	"context"
+	stdjson "encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -90,9 +92,77 @@ func TestRuntimeBoxInitialPublicationWaitsForActualStartedStage(t *testing.T) {
 	}
 }
 
+// The bootstrap platform resource intentionally has a distinct fingerprint:
+// an initial borrowed/failed monitor must never impersonate a prepared private
+// owner. Exercise and verify that first real publication before testing reuse
+// between two private generations. A NoOp cannot make this transition.
+func runtimeTestPublishPrivatePlatformClosure(t *testing.T, f *runtimeTestFixture) {
+	t.Helper()
+	initialLease, initial := f.acquire(t)
+	defer initialLease.Release()
+	before := f.identity()
+	if before.Revision != 1 {
+		t.Fatal("platform transition fixture is not the actual initial graph", before)
+	}
+	c := f.box.runtime
+	c.access.Lock()
+	content := append([]byte(nil), c.canonical...)
+	c.access.Unlock()
+	var root map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(content, &root); err != nil {
+		t.Fatal(err)
+	}
+	var logOptions map[string]stdjson.RawMessage
+	if err := stdjson.Unmarshal(root["log"], &logOptions); err != nil {
+		t.Fatal(err)
+	}
+	logOptions["level"] = []byte("\"debug\"")
+	root["log"], _ = stdjson.Marshal(logOptions)
+	content, err := stdjson.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, request := f.plan(t, content)
+	if plan.NoOp {
+		t.Fatal("NoOp cannot establish a private platform generation")
+	}
+	op, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || op.Active.Revision != before.Revision+1 || len(op.Errors) != 0 {
+		t.Fatal("actual initial platform transition failed", op, err)
+	}
+	currentLease, current := f.acquire(t)
+	defer currentLease.Release()
+	for name, initialID := range initial.componentIDs {
+		if name == "platform-runtime" || name == "route-router" || name == "dns-router" || strings.HasPrefix(name, "rule-set:") {
+			currentID, exists := current.componentIDs[name]
+			if !exists || initialID == currentID {
+				t.Errorf("bootstrap-dependent %s did not acquire its actual private owner", name)
+			}
+			if strings.HasPrefix(name, "rule-set:") {
+				tag := strings.TrimPrefix(name, "rule-set:")
+				oldSet, oldExists := initial.router.RuleSet(tag)
+				newSet, newExists := current.router.RuleSet(tag)
+				if !oldExists || !newExists || oldSet == newSet {
+					t.Errorf("bootstrap-dependent %s retained its initial matcher object", name)
+				}
+			}
+		}
+	}
+	if initial.platform == current.platform || initial.router == current.router || initial.dns == current.dns {
+		t.Fatal("metadata transition did not replace actual platform/router/DNS objects")
+	}
+	for _, name := range []string{"outbound:a", "outbound:b", "dns-transport:resolver"} {
+		if initialID, exists := initial.componentIDs[name]; exists && initialID != current.componentIDs[name] {
+			t.Errorf("platform-independent %s was unnecessarily reconstructed", name)
+		}
+	}
+}
+
 func TestRuntimeApplyReusesExactUnchangedResourcesAndRetiresAfterContinuation(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	f.start(t)
+	runtimeTestPublishPrivatePlatformClosure(t, f)
+	before := f.identity()
 	oldLease, oldView := f.acquire(t)
 	oldA := f.object(t, "a", 0)
 	borrowedB := f.object(t, "b", 0)
@@ -102,7 +172,7 @@ func TestRuntimeApplyReusesExactUnchangedResourcesAndRetiresAfterContinuation(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if operation.State != "COMMITTED_DURABILITY_PENDING" || operation.Active.Revision != 2 {
+	if operation.State != "COMMITTED_DURABILITY_PENDING" || operation.Active.Revision != before.Revision+1 {
 		t.Fatalf("unexpected commit: %+v", operation)
 	}
 	newLease, newView := f.acquire(t)

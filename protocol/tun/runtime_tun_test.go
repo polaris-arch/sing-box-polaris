@@ -261,12 +261,14 @@ func (s *runtimeNativeSessionFixture) Prepare() error {
 	s.prepared = true
 	return nil
 }
+
 func (s *runtimeNativeSessionFixture) Validate() error {
 	if !s.prepared || s.aborted || s.retired {
 		return errors.New("session not current")
 	}
 	return nil
 }
+
 func (s *runtimeNativeSessionFixture) OpenInterface(*nativeTun.Options) (nativeTun.Tun, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
@@ -279,6 +281,7 @@ func (s *runtimeNativeSessionFixture) OpenInterface(*nativeTun.Options) (nativeT
 	s.bridge.events = append(s.bridge.events, "duplicate")
 	return &runtimeNativeDeviceFixture{session: s}, nil
 }
+
 func (s *runtimeNativeSessionFixture) Abort() error {
 	if s.duplicates != 0 {
 		return errors.New("candidate Core readers not joined")
@@ -294,6 +297,7 @@ func (s *runtimeNativeSessionFixture) Abort() error {
 	}
 	return nil
 }
+
 func (s *runtimeNativeSessionFixture) Retire() error {
 	if s.duplicates != 0 {
 		return errors.New("retired before Core join")
@@ -308,8 +312,10 @@ type runtimeNativeDeviceFixture struct {
 	closed  bool
 }
 
-func (*runtimeNativeDeviceFixture) Read([]byte) (int, error)                   { return 0, errors.New("fixture") }
-func (*runtimeNativeDeviceFixture) Write(p []byte) (int, error)                { return len(p), nil }
+func (*runtimeNativeDeviceFixture) Read([]byte) (int, error) { return 0, errors.New("fixture") }
+
+func (*runtimeNativeDeviceFixture) Write(p []byte) (int, error) { return len(p), nil }
+
 func (*runtimeNativeDeviceFixture) Name() (string, error)                      { return "native-fixture", nil }
 func (*runtimeNativeDeviceFixture) Start() error                               { return nil }
 func (*runtimeNativeDeviceFixture) UpdateRouteOptions(nativeTun.Options) error { return nil }
@@ -321,6 +327,7 @@ func (d *runtimeNativeDeviceFixture) Close() error {
 	}
 	return nil
 }
+
 func runtimeNativeOwnerFixture(bridge *runtimeNativeBridgeFixture) *Inbound {
 	var owner *Inbound
 	owner = runtimeTunFixture(func(physical *runtimeTunPhysical) error {
@@ -335,6 +342,7 @@ func runtimeNativeOwnerFixture(bridge *runtimeNativeBridgeFixture) *Inbound {
 	owner.tag = "tun-in"
 	return owner
 }
+
 func publishRuntimeNativeFixture(t *testing.T, owner *Inbound) {
 	t.Helper()
 	if err := owner.RuntimeStagePhysical(context.Background()); err != nil {
@@ -346,6 +354,7 @@ func publishRuntimeNativeFixture(t *testing.T, owner *Inbound) {
 	}
 	publication.Publish()
 }
+
 func TestRuntimeNativeFailedCandidateReopensRestoredActualDescriptor(t *testing.T) {
 	bridge := &runtimeNativeBridgeFixture{}
 	old := runtimeNativeOwnerFixture(bridge)
@@ -376,6 +385,7 @@ func TestRuntimeNativeFailedCandidateReopensRestoredActualDescriptor(t *testing.
 		t.Fatal("candidate cleanup retired the restored old native owner")
 	}
 }
+
 func TestRuntimeNativePublicationAndRetirementKeepSeparateOriginalCustody(t *testing.T) {
 	bridge := &runtimeNativeBridgeFixture{}
 	old := runtimeNativeOwnerFixture(bridge)
@@ -412,6 +422,7 @@ func TestRuntimeNativePublicationAndRetirementKeepSeparateOriginalCustody(t *tes
 		t.Fatal("Stop failed to join and retire exact published owner")
 	}
 }
+
 func TestRuntimeNativeUnknownAbortCannotReopenOldOrPublishCandidate(t *testing.T) {
 	bridge := &runtimeNativeBridgeFixture{}
 	old := runtimeNativeOwnerFixture(bridge)

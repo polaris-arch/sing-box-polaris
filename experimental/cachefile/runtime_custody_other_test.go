@@ -46,17 +46,17 @@ func TestRuntimeUnixJournalReopenKeepsPermissionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, fakeIPRuntimeJournalName)
-	if err := os.Chmod(path, 0640); err != nil {
+	if err := os.Chmod(path, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(path, 0600) })
+	t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
 	if opened, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger()); !errors.Is(err, ErrFakeIPRecoveryCustody) || opened != nil {
 		if opened != nil {
 			_ = opened.Close()
 		}
 		t.Fatal("platform dispatch relaxed Unix file permissions", err)
 	}
-	if err := os.Chmod(path, 0600); err != nil {
+	if err := os.Chmod(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	journal, err = OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())

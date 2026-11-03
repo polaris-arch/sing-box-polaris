@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/bbolt"
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
+	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/service/powerreport"
@@ -249,9 +251,35 @@ func transientTestSetup(t *testing.T) {
 	})
 }
 
+func TestCommandServerRecoveryRootFollowsHostOwnership(t *testing.T) {
+	transientTestSetup(t)
+	sPowerReportEnabled = false
+	for _, test := range []struct {
+		name     string
+		newHost  func(CommandServerHandler, PlatformInterface) (*CommandServer, error)
+		wantRoot bool
+	}{
+		{"primary", NewCommandServer, true},
+		{"strict-primary", NewStrictCommandServer, true},
+		{"transient", NewTransientCommandServer, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server, err := test.newHost(nil, transientTestPlatform{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer server.Close()
+			root, present := adapter.RuntimeRecoveryRootFromContext(server.ctx)
+			if present != test.wantRoot || (test.wantRoot && root != filepath.Clean(sBasePath)) {
+				t.Fatalf("host recovery root = %q, present %v, want primary ownership %v", root, present, test.wantRoot)
+			}
+		})
+	}
+}
+
 func TestTransientCommandServerPreservesSharedState(t *testing.T) {
 	transientTestSetup(t)
-	paths := []string{"configuration.json", "command.sock", filepath.Join(oomkiller.DraftDirectoryName, "metadata.json"), filepath.Join(powerreport.DraftDirectoryName, "metadata.json")}
+	paths := []string{"configuration.json", "command.sock", "sing-box-hot-fakeip-v1.db", filepath.Join(oomkiller.DraftDirectoryName, "metadata.json"), filepath.Join(powerreport.DraftDirectoryName, "metadata.json")}
 	marker := []byte(`{"appVersion":"","appMarketingVersion":""}`)
 	for _, path := range paths {
 		full := filepath.Join(sBasePath, path)
@@ -353,6 +381,19 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	if primaryLogger == defaultLogger {
 		t.Fatal("normal service did not retain default logger replacement")
 	}
+	journalPath := filepath.Join(sBasePath, "sing-box-hot-fakeip-v1.db")
+	journalBefore, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	journalInfo, err := os.Lstat(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sharedBefore, err := os.ReadDir(sBasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	transient, err := NewTransientCommandServer(nil, transientTestPlatform{})
 	if err != nil {
 		t.Fatal(err)
@@ -370,6 +411,42 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	}
 	if log.StdLogger() != primaryLogger {
 		t.Fatal("transient lifecycle changed the primary default logger")
+	}
+	journalAfter, err := os.ReadFile(journalPath)
+	if err != nil || !bytes.Equal(journalAfter, journalBefore) {
+		t.Fatal("transient lifecycle changed the primary recovery journal", err)
+	}
+	afterInfo, err := os.Lstat(journalPath)
+	if err != nil || !os.SameFile(journalInfo, afterInfo) {
+		t.Fatal("transient lifecycle replaced the primary recovery journal", err)
+	}
+	sharedAfter, err := os.ReadDir(sBasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remaining := make(map[string]bool, len(sharedBefore))
+	for _, entry := range sharedBefore {
+		remaining[entry.Name()] = true
+	}
+	for _, entry := range sharedAfter {
+		if remaining[entry.Name()] {
+			delete(remaining, entry.Name())
+		} else if entry.Name() != "transient-cache.db" {
+			t.Fatal("transient lifecycle created unexpected shared state", entry.Name())
+		}
+	}
+	if len(remaining) != 0 {
+		t.Fatal("transient lifecycle removed primary state", remaining)
+	}
+	// Successful transient teardown cannot release the still-live primary's
+	// original journal lock. A real competing open must retain the bounded
+	// writer-lock failure; no larger timeout or shared-handle shortcut is used.
+	probe, err := cachefile.OpenFakeIPRuntimeJournal(primary.ctx, primaryLogger)
+	if probe != nil {
+		_ = probe.Close()
+	}
+	if !errors.Is(err, bbolt.ErrTimeout) {
+		t.Fatal("transient lifecycle released or changed primary journal custody", err)
 	}
 }
 

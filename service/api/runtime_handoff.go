@@ -542,7 +542,7 @@ func (e *apiEndpoint) dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 	e.mu.Unlock()
 	h.mu.Lock()
-	var selected, fallback *apiGeneration
+	var selected, exact, fallback *apiGeneration
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	for _, g := range h.generations {
 		if g.endpoint != e || (g.options.Secret != "" && token != g.options.Secret) {
@@ -552,6 +552,12 @@ func (e *apiEndpoint) dispatch(w http.ResponseWriter, r *http.Request) {
 			selected = g
 			break
 		}
+		// An empty secret accepts any token, but must not rebind a retained
+		// generation's exact credential to the current unauthenticated API.
+		// Same-secret successors still win among exact matches.
+		if g.options.Secret == token && (exact == nil || g.digest == identity.ConfigurationDigest) {
+			exact = g
+		}
 		if g.digest == identity.ConfigurationDigest {
 			fallback = g
 		} else if fallback == nil {
@@ -559,7 +565,10 @@ func (e *apiEndpoint) dispatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if selected == nil {
-		selected = fallback
+		selected = exact
+		if selected == nil {
+			selected = fallback
+		}
 	}
 	// Static dashboard assets and CORS were never bearer-authenticated. A
 	// WebSocket carries its gRPC metadata only in the first frame: choose the

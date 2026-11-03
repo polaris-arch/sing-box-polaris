@@ -23,12 +23,14 @@ func runtimePlatformRequirementsAvailable(have, need route.RuntimeRequirements) 
 	}
 	return true
 }
+
 func runtimePlatformRequirementsAvailableForPolicy(ctx context.Context, have, need route.RuntimeRequirements, policy RuntimeClientImpactPolicyVersion) bool {
 	if policy == RuntimeClientImpactPolicyExplicit {
 		return route.RuntimePlatformPreparationAvailable(ctx, have, need)
 	}
 	return runtimePlatformRequirementsAvailable(have, need)
 }
+
 func runtimeCanPrepareProcessSearcher() bool {
 	return C.IsWindows || C.IsLinux && !C.IsAndroid || C.IsDarwin && !C.IsIos
 }

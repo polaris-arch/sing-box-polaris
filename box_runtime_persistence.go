@@ -37,6 +37,7 @@ type runtimePersistenceUncertainError struct{}
 func (*runtimePersistenceUncertainError) Error() string {
 	return "runtime persistence tail panicked; durability remains pending"
 }
+
 func runtimePersistenceUncertain(err error) bool {
 	var panicError *runtimePersistenceUncertainError
 	var cleanup interface{ RuntimeCleanupIncomplete() bool }

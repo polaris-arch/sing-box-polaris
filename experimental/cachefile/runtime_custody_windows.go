@@ -28,6 +28,7 @@ func requireRuntimeJournalRootCustody(path string, info os.FileInfo) (*runtimeJo
 	}
 	return &runtimeJournalRootCustody{file: file, principal: principal}, nil
 }
+
 func (r *runtimeJournalRootCustody) Close() error {
 	r.access.Lock()
 	defer r.access.Unlock()
@@ -37,6 +38,7 @@ func (r *runtimeJournalRootCustody) Close() error {
 	}
 	return r.closeErr
 }
+
 func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (func() error, error) {
 	r.access.Lock()
 	defer r.access.Unlock()
@@ -87,6 +89,7 @@ func requireRuntimeJournalCustody(path string, expected os.FileInfo, directory b
 	}
 	return runtimeWindowsFileRelease(file), nil
 }
+
 func openRuntimeWindowsCustody(path string, expected os.FileInfo, directory bool, rootPrincipal string) (*os.File, string, error) {
 	if expected == nil || expected.Mode()&os.ModeSymlink != 0 || expected.IsDir() != directory || (!directory && !expected.Mode().IsRegular()) {
 		return nil, "", ErrFakeIPRecoveryCustody
@@ -96,10 +99,16 @@ func openRuntimeWindowsCustody(path string, expected os.FileInfo, directory bool
 		return nil, "", err
 	}
 	flags := uint32(windows.FILE_FLAG_OPEN_REPARSE_POINT)
+	// Attribute-only opens do not participate in Windows sharing checks. Hold
+	// data-read (directory-list) access so no-delete sharing pins the object.
+	access := uint32(windows.READ_CONTROL | windows.FILE_READ_ATTRIBUTES)
 	if directory {
 		flags |= windows.FILE_FLAG_BACKUP_SEMANTICS
+		access |= windows.FILE_LIST_DIRECTORY
+	} else {
+		access |= windows.FILE_READ_DATA
 	}
-	handle, err := windows.CreateFile(name, windows.READ_CONTROL|windows.FILE_READ_ATTRIBUTES, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, flags, 0)
+	handle, err := windows.CreateFile(name, access, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, flags, 0)
 	if err != nil {
 		return nil, "", err
 	}
@@ -130,10 +139,12 @@ func openRuntimeWindowsCustody(path string, expected os.FileInfo, directory bool
 	}
 	return file, principal, nil
 }
+
 func requireRuntimeWindowsDescriptor(sd *windows.SECURITY_DESCRIPTOR, current string) error {
 	_, err := runtimeWindowsDescriptorPrincipal(sd, current, "")
 	return err
 }
+
 func runtimeWindowsDescriptorPrincipal(sd *windows.SECURITY_DESCRIPTOR, current, verifiedRootPrincipal string) (string, error) {
 	if sd == nil {
 		return "", ErrFakeIPRecoveryCustody

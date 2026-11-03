@@ -64,7 +64,7 @@ type sourceRuntimePublicFixture struct {
 
 func sourceRuntimeReplace(t *testing.T, path string, content []byte) {
 	t.Helper()
-	if err := os.WriteFile(path+".next", content, 0600); err != nil {
+	if err := os.WriteFile(path+".next", content, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(path+".next", path); err != nil {

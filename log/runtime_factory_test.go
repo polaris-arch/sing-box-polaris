@@ -188,7 +188,7 @@ func TestRuntimeLogBoundFileClosesOnlyAfterItsEmissionDrain(t *testing.T) {
 	if err := change.Retire(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+	if _, err := file.Stat(); !runtimeLogFileStatIsClosed(err) {
 		t.Fatal("old file not closed", err)
 	}
 	again := runtimeLogPublish(t, f, option.LogOptions{Output: path})
@@ -247,7 +247,7 @@ func TestRuntimeLogPreparationAbortAndOutputFailureKeepCurrent(t *testing.T) {
 	if err := preparedEnable.Abort(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := candidateFile.Stat(); !errors.Is(err, os.ErrClosed) {
+	if _, err := candidateFile.Stat(); !runtimeLogFileStatIsClosed(err) {
 		t.Fatal("aborted candidate file still open", err)
 	}
 	if !f.current.options.Disabled {

@@ -17,6 +17,7 @@ import (
 	"github.com/sagernet/sing-box/daemon"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -242,6 +243,7 @@ func (w *runtimePolicyLogWriter) WriteMessage(_ log.Level, message string) {
 	defer w.Unlock()
 	w.messages = append(w.messages, message)
 }
+
 func (w *runtimePolicyLogWriter) contains(message string) bool {
 	w.Lock()
 	defer w.Unlock()

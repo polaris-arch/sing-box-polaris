@@ -123,6 +123,7 @@ func (m *Manager) PrepareUnchangedRanges(ctx context.Context, inet4Range, inet6R
 func (m *Manager) PrepareUnchangedSelection(ctx context.Context) (*RangeMigration, error) {
 	return m.prepareRanges(ctx, netip.Prefix{}, netip.Prefix{}, true, true)
 }
+
 func (m *Manager) prepareRanges(ctx context.Context, inet4Range, inet6Range netip.Prefix, mustReuse, selectedOnly bool) (*RangeMigration, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

@@ -74,6 +74,7 @@ func newRuntimeLeaseScanner(reader io.Reader, leases map[netip.Addr]net.Hardware
 	}
 	return s
 }
+
 func (s *runtimeLeaseScanner) Scan() bool {
 	if s.err != nil {
 		return false

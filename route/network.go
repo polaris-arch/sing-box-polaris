@@ -423,6 +423,7 @@ func (r *NetworkManager) WIFIState() adapter.WIFIState {
 	}
 	return r.runtimeStableWIFIState()
 }
+
 func (r *NetworkManager) runtimeStableWIFIState() adapter.WIFIState {
 	r.stateAccess.RLock()
 	defer r.stateAccess.RUnlock()
@@ -452,6 +453,7 @@ func (r *NetworkManager) UpdateWIFIState(ctx context.Context) {
 	}
 	r.runtimeUpdateStableWIFI(ctx)
 }
+
 func (r *NetworkManager) runtimeUpdateStableWIFI(ctx context.Context) {
 	var state adapter.WIFIState
 	if r.wifiMonitor != nil {

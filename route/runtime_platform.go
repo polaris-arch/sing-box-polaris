@@ -132,6 +132,7 @@ func (p *RuntimePlatform) Start(request context.Context) error {
 	}
 	return nil
 }
+
 func (p *RuntimePlatform) borrowWIFI() bool {
 	return p.network != nil && p.network.runtimeStableWIFIAvailable()
 }
@@ -142,9 +143,11 @@ func (p *RuntimePlatform) NeighborResolver() adapter.NeighborResolver {
 	}
 	return p.neighbor
 }
+
 func (p *RuntimePlatform) NeedWIFIState() bool {
 	return p.requested.WIFI && (p.wifi != nil && p.started || p.borrowWIFI())
 }
+
 func (p *RuntimePlatform) WIFIState() adapter.WIFIState {
 	if p.wifi == nil {
 		if p.network != nil {
@@ -156,6 +159,7 @@ func (p *RuntimePlatform) WIFIState() adapter.WIFIState {
 	defer p.access.RUnlock()
 	return p.wifiState
 }
+
 func (p *RuntimePlatform) Refresh(ctx context.Context) {
 	p.readAccess.Lock()
 	defer p.readAccess.Unlock()
@@ -180,6 +184,7 @@ func (p *RuntimePlatform) Refresh(ctx context.Context) {
 		}
 	}
 }
+
 func (p *RuntimePlatform) poll() {
 	defer close(p.done)
 	ticker := time.NewTicker(time.Second)
@@ -193,6 +198,7 @@ func (p *RuntimePlatform) poll() {
 		}
 	}
 }
+
 func (p *RuntimePlatform) Activate() {
 	p.published.Store(true)
 	if p.network != nil && p.requested.WIFI {
@@ -214,6 +220,7 @@ func (p *RuntimePlatform) Close() error {
 	})
 	return p.closeErr
 }
+
 func (p *RuntimePlatform) NetworkView(base adapter.NetworkManager) adapter.NetworkManager {
 	return &runtimePlatformNetworkView{NetworkManager: base, platform: p}
 }
@@ -223,8 +230,10 @@ type runtimePlatformNetworkView struct {
 	platform *RuntimePlatform
 }
 
-func (v *runtimePlatformNetworkView) NeedWIFIState() bool                 { return v.platform.NeedWIFIState() }
-func (v *runtimePlatformNetworkView) WIFIState() adapter.WIFIState        { return v.platform.WIFIState() }
+func (v *runtimePlatformNetworkView) NeedWIFIState() bool { return v.platform.NeedWIFIState() }
+
+func (v *runtimePlatformNetworkView) WIFIState() adapter.WIFIState { return v.platform.WIFIState() }
+
 func (v *runtimePlatformNetworkView) UpdateWIFIState(ctx context.Context) { v.platform.Refresh(ctx) }
 
 type runtimePlatformWIFIReader struct{ adapter.PlatformInterface }

@@ -21,7 +21,7 @@ func TestRuntimeNeighborFreshNativeAndLeaseReads(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "dnsmasq.leases")
 	write := func(name string) {
 		t.Helper()
-		if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 "+name+" *\n"), 0600); err != nil {
+		if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 "+name+" *\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

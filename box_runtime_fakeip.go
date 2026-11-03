@@ -211,8 +211,10 @@ func runtimeFakeIPRangeProblems(manager *fakeip.Manager, options option.Options)
 	return nil
 }
 
-type runtimeFakeIPTransactionKey struct{}
-type runtimeFakeIPBinding struct{ Identity RuntimeIdentity }
+type (
+	runtimeFakeIPTransactionKey struct{}
+	runtimeFakeIPBinding        struct{ Identity RuntimeIdentity }
+)
 
 func runtimeContextWithFakeIPTransaction(ctx context.Context, transactionID string) context.Context {
 	return context.WithValue(ctx, runtimeFakeIPTransactionKey{}, transactionID)

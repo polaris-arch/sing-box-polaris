@@ -13,10 +13,11 @@ import (
 	"testing"
 	"time"
 
-	mdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
 	"github.com/sagernet/sing/common/json"
+
+	mdns "github.com/miekg/dns"
 )
 
 type r4ExactInvocation struct {

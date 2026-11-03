@@ -91,6 +91,7 @@ func clientShapeIPv6Port(t *testing.T) int {
 	}
 	return port
 }
+
 func clientShapeMixedOptions(t *testing.T, listen string, port int) *option.HTTPMixedInboundOptions {
 	t.Helper()
 	var value option.HTTPMixedInboundOptions
@@ -99,6 +100,7 @@ func clientShapeMixedOptions(t *testing.T, listen string, port int) *option.HTTP
 	}
 	return &value
 }
+
 func clientShapeFinish(t *testing.T, f *runtimeTestFixture) {
 	t.Helper()
 	t.Cleanup(func() {
@@ -111,6 +113,7 @@ func clientShapeFinish(t *testing.T, f *runtimeTestFixture) {
 		}
 	})
 }
+
 func TestRuntimeAppAllowLANBothDirectionsAndMixedPortWithLANPublicApply(t *testing.T) {
 	for _, row := range []struct {
 		name, before, after string
@@ -168,6 +171,7 @@ func TestRuntimeAppAllowLANBothDirectionsAndMixedPortWithLANPublicApply(t *testi
 		})
 	}
 }
+
 func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing.T) {
 	port := clientShapeIPv6Port(t)
 	f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "client-shapes.test"), nil)
@@ -180,11 +184,22 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	f.box = instance
 	clientShapeFinish(t, f)
 	f.start(t)
-	holder, err := net.Listen("tcp6", fmt.Sprintf("[::1]:%d", port))
+	// Hold exactly the candidate IPv6 wildcard. A concrete ::1 bind may
+	// legitimately coexist with a wildcard on BSD/Windows; tcp6 keeps this
+	// holder separate from the original IPv4-only loopback ingress.
+	holder, err := net.Listen("tcp6", fmt.Sprintf("[::]:%d", port))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer holder.Close()
+	original, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+	if err != nil {
+		t.Fatal("IPv6-only holder displaced original IPv4 ingress", err)
+	}
+	if err := original.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before := f.identity()
 	options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "::", port)}}
 	content, err := json.MarshalContext(f.ctx, options.Options)
 	if err != nil {
@@ -192,7 +207,7 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	}
 	_, request := runtimeClientPlan(t, f, content)
 	operation, err := instance.ApplyRuntimeConfig(context.Background(), "actor-a", request)
-	if err != nil || operation.Active != request.Expected {
+	if err != nil || operation.Active != request.Expected || f.identity() != before {
 		t.Fatal("IPv6 collision changed current graph", operation, err)
 	}
 	found := slices.ContainsFunc(operation.Errors, func(problem RuntimePlanError) bool { return problem.Code == "LISTENER_BIND_FAILED" })
@@ -249,6 +264,7 @@ func (p *clientShapeNativeTunPlatform) NewRuntimeTunSession(options *nativeTun.O
 	p.sessions = append(p.sessions, session)
 	return session, nil
 }
+
 func (p *clientShapeNativeTunPlatform) snapshot() []*clientShapeNativeTunSession {
 	p.access.Lock()
 	defer p.access.Unlock()
@@ -274,6 +290,7 @@ func clientShapeDevicesClosed(devices []*nativeTun.MemoryTun) bool {
 	}
 	return true
 }
+
 func (s *clientShapeNativeTunSession) Prepare() error {
 	s.platform.access.Lock()
 	defer s.platform.access.Unlock()
@@ -283,6 +300,7 @@ func (s *clientShapeNativeTunSession) Prepare() error {
 	s.prepared = true
 	return nil
 }
+
 func (s *clientShapeNativeTunSession) Validate() error {
 	s.platform.access.Lock()
 	defer s.platform.access.Unlock()
@@ -291,6 +309,7 @@ func (s *clientShapeNativeTunSession) Validate() error {
 	}
 	return nil
 }
+
 func (s *clientShapeNativeTunSession) OpenInterface(options *nativeTun.Options) (nativeTun.Tun, error) {
 	s.platform.access.Lock()
 	defer s.platform.access.Unlock()
@@ -304,6 +323,7 @@ func (s *clientShapeNativeTunSession) OpenInterface(options *nativeTun.Options) 
 	s.devices = append(s.devices, device)
 	return device, nil
 }
+
 func (s *clientShapeNativeTunSession) Abort() error {
 	s.platform.access.Lock()
 	defer s.platform.access.Unlock()
@@ -313,6 +333,7 @@ func (s *clientShapeNativeTunSession) Abort() error {
 	s.aborted = true
 	return nil
 }
+
 func (s *clientShapeNativeTunSession) Retire() error {
 	s.platform.access.Lock()
 	defer s.platform.access.Unlock()
@@ -325,6 +346,7 @@ func (s *clientShapeNativeTunSession) Retire() error {
 	}
 	return nil
 }
+
 func clientShapeTunFixture(t *testing.T, platform adapter.PlatformInterface) (*runtimeTestFixture, Options) {
 	t.Helper()
 	if runtime.GOOS != "linux" && runtime.GOOS != "windows" && runtime.GOOS != "darwin" && runtime.GOOS != "android" && runtime.GOOS != "ios" {
@@ -348,6 +370,7 @@ func clientShapeTunFixture(t *testing.T, platform adapter.PlatformInterface) (*r
 	f.start(t)
 	return f, options
 }
+
 func clientShapeTunCandidate(t *testing.T, f *runtimeTestFixture, options Options) []byte {
 	t.Helper()
 	next := *options.Inbounds[0].Options.(*option.TunInboundOptions)
@@ -361,6 +384,7 @@ func clientShapeTunCandidate(t *testing.T, f *runtimeTestFixture, options Option
 	}
 	return content
 }
+
 func TestRuntimeRegisteredV1TunPublicPlanApplyUsesActualOwnerReceiptAndJoin(t *testing.T) {
 	bridge := &clientShapeNativeTunPlatform{clientShapeLegacyTunPlatform: &clientShapeLegacyTunPlatform{}}
 	bridge.version.Store(1)
@@ -400,6 +424,7 @@ func TestRuntimeRegisteredV1TunPublicPlanApplyUsesActualOwnerReceiptAndJoin(t *t
 		t.Fatal("replay repeated native effects", replay, err)
 	}
 }
+
 func TestRuntimeNativePublicPlanRejectsOldAbsentUnknownOrLostV1(t *testing.T) {
 	t.Run("old SDK has no registration interface", func(t *testing.T) {
 		platform := &clientShapeLegacyTunPlatform{}
@@ -423,6 +448,7 @@ func TestRuntimeNativePublicPlanRejectsOldAbsentUnknownOrLostV1(t *testing.T) {
 		})
 	}
 }
+
 func TestRuntimeNativePublicPlanKeepsOriginalCapturedPhysicalDependencies(t *testing.T) {
 	bridge := &clientShapeNativeTunPlatform{clientShapeLegacyTunPlatform: &clientShapeLegacyTunPlatform{}}
 	bridge.version.Store(1)
@@ -435,6 +461,7 @@ func TestRuntimeNativePublicPlanKeepsOriginalCapturedPhysicalDependencies(t *tes
 		t.Fatal("V1 recaptured/ignored original physical closure", plan, err)
 	}
 }
+
 func TestRuntimeNativePublicApplyFailureRetainsOriginalSessionForRestoration(t *testing.T) {
 	bridge := &clientShapeNativeTunPlatform{clientShapeLegacyTunPlatform: &clientShapeLegacyTunPlatform{}}
 	bridge.version.Store(1)

@@ -77,6 +77,7 @@ func TestNativeTunRegistrationIsActualOptionalVersionAndFreezesBeforeInitialize(
 		t.Fatal("registration touched native device")
 	}
 }
+
 func TestNativeTunBindingRetainsReceiptAndFullExistingOptionsWithoutPrematurePrepare(t *testing.T) {
 	p := &nativeTunBindingFixture{version: 1}
 	w := &platformInterfaceWrapper{runtimeTunPlatform: p}
@@ -108,6 +109,7 @@ func TestNativeTunBindingRetainsReceiptAndFullExistingOptionsWithoutPrematurePre
 		t.Fatal("duplicate native retirement", err)
 	}
 }
+
 func TestNativeTunUnknownAbortBlocksNewAndLegacyOperations(t *testing.T) {
 	p := &nativeTunBindingFixture{version: 1}
 	w := &platformInterfaceWrapper{runtimeTunPlatform: p}

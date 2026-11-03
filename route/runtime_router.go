@@ -186,6 +186,7 @@ func (r *RuntimeRouter) WithRuntimeRules(consume func([]adapter.Rule)) {
 	defer lease.Release()
 	consume(lease.View().Router().Rules())
 }
+
 func (r *RuntimeRouter) NeedFindProcess() bool {
 	lease, err := r.admission.Acquire()
 	if err != nil {
@@ -194,6 +195,7 @@ func (r *RuntimeRouter) NeedFindProcess() bool {
 	defer lease.Release()
 	return lease.View().Router().NeedFindProcess()
 }
+
 func (r *RuntimeRouter) NeedFindNeighbor() bool {
 	lease, err := r.admission.Acquire()
 	if err != nil {
@@ -202,6 +204,7 @@ func (r *RuntimeRouter) NeedFindNeighbor() bool {
 	defer lease.Release()
 	return lease.View().Router().NeedFindNeighbor()
 }
+
 func (r *RuntimeRouter) NeighborResolver() adapter.NeighborResolver {
 	lease, err := r.admission.Acquire()
 	if err == nil {
@@ -237,6 +240,7 @@ func (r *runtimeGatewayNeighbor) LookupMAC(address netip.Addr) (net.HardwareAddr
 	}
 	return resolver.LookupMAC(address)
 }
+
 func (r *runtimeGatewayNeighbor) LookupHostname(address netip.Addr) (string, bool) {
 	lease, err := r.router.admission.Acquire()
 	if err != nil {
@@ -249,6 +253,7 @@ func (r *runtimeGatewayNeighbor) LookupHostname(address netip.Addr) (string, boo
 	}
 	return resolver.LookupHostname(address)
 }
+
 func (r *runtimeGatewayNeighbor) LookupAddresses(name string) []netip.Addr {
 	lease, err := r.router.admission.Acquire()
 	if err != nil {

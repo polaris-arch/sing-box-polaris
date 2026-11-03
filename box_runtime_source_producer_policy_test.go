@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	mdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	C "github.com/sagernet/sing-box/constant"
@@ -28,22 +27,26 @@ import (
 	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
+
+	mdns "github.com/miekg/dns"
 )
 
 func r3SourceWrite(t *testing.T, path string, content []byte) {
 	t.Helper()
-	if err := os.WriteFile(path+".next", content, 0600); err != nil {
+	if err := os.WriteFile(path+".next", content, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(path+".next", path); err != nil {
 		t.Fatal(err)
 	}
 }
+
 func r3SourceCanonical(f *runtimeTestFixture) []byte {
 	f.box.runtime.access.Lock()
 	defer f.box.runtime.access.Unlock()
 	return append([]byte(nil), f.box.runtime.canonical...)
 }
+
 func r3SourceCanaryConfig(t *testing.T, content []byte) []byte {
 	t.Helper()
 	var root map[string]stdjson.RawMessage
@@ -71,6 +74,7 @@ func r3SourceCanaryConfig(t *testing.T, content []byte) []byte {
 	}
 	return result
 }
+
 func r3SourceRoute(t *testing.T, content []byte, fields map[string]stdjson.RawMessage) []byte {
 	t.Helper()
 	var root, route map[string]stdjson.RawMessage
@@ -90,6 +94,7 @@ func r3SourceRoute(t *testing.T, content []byte, fields map[string]stdjson.RawMe
 	}
 	return result
 }
+
 func r3SourceFixture(t *testing.T, content []byte, platform adapter.PlatformInterface, persist func(RuntimeIdentity, []byte) error, safe bool, beforeStart ...func(*runtimeTestFixture)) *runtimeTestFixture {
 	t.Helper()
 	f, options := newRuntimeTestConstruction(t, content, nil)
@@ -123,6 +128,7 @@ func r3SourceFixture(t *testing.T, content []byte, platform adapter.PlatformInte
 	f.start(t)
 	return f
 }
+
 func r3SourceCommit(t *testing.T, committed <-chan RuntimeIdentity, revision uint64) RuntimeIdentity {
 	t.Helper()
 	for {
@@ -140,13 +146,16 @@ func r3SourceCommit(t *testing.T, committed <-chan RuntimeIdentity, revision uin
 		}
 	}
 }
+
 func r3SourceSettled(t *testing.T, f *runtimeTestFixture) {
 	t.Helper()
 	waitRetryState(t, f.box.runtime, func() bool { return !f.box.runtime.preparing })
 }
+
 func r3SourceRequest(plan RuntimeConfigPlan) RuntimeConfigApply {
 	return RuntimeConfigApply{ContractVersion: RuntimeConfigContractVersion, PlanID: plan.PlanID, TransactionID: plan.TransactionID, Expected: plan.Expected, CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest}
 }
+
 func r3SourceHasProblem(plan RuntimeConfigPlan, code string) bool {
 	return slices.ContainsFunc(plan.Errors, func(problem RuntimePlanError) bool { return problem.Code == code })
 }
@@ -491,6 +500,7 @@ func r3SourceRootPEM(t *testing.T, serial int64) []byte {
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
+
 func r3SourceRootConfig(t *testing.T, config []byte, path string) []byte {
 	t.Helper()
 	var root map[string]stdjson.RawMessage
@@ -650,6 +660,7 @@ func r4RegenerationSourceFixture(t *testing.T, path string, calls *atomic.Int32)
 		}
 	})
 }
+
 func r4SourceAtRevision(t *testing.T, f *runtimeTestFixture, revision uint64) *runtimePlanRecord {
 	t.Helper()
 	c := f.box.runtime
@@ -664,6 +675,7 @@ func r4SourceAtRevision(t *testing.T, f *runtimeTestFixture, revision uint64) *r
 	t.Fatal("source publication lacks its original receipt")
 	return nil
 }
+
 func TestRuntimeRegenerationSourceColdUnknownTwiceAndExternalNoOp(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sites.json")
 	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))
@@ -700,6 +712,7 @@ func TestRuntimeRegenerationSourceColdUnknownTwiceAndExternalNoOp(t *testing.T) 
 		t.Fatal("NoOp acquired an App acknowledgement tail", err)
 	}
 }
+
 func TestRuntimeRegenerationSourcePreservesHistoricalGenuineBase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sites.json")
 	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))
@@ -712,9 +725,11 @@ func TestRuntimeRegenerationSourcePreservesHistoricalGenuineBase(t *testing.T) {
 		t.Fatal("ordinary provider reload lost its genuine App tail", op, err)
 	}
 	original := op
-	ack := RuntimePersistenceAcknowledgement{ContractVersion: 1, TransactionID: op.TransactionID, Active: op.Active,
+	ack := RuntimePersistenceAcknowledgement{
+		ContractVersion: 1, TransactionID: op.TransactionID, Active: op.Active,
 		PersistenceMode: "app_authoritative_regeneration", DesiredStateDigest: runtimeDigest([]byte("original durable desired state")),
-		DesiredStateRevision: "desired:original"}
+		DesiredStateRevision: "desired:original",
+	}
 	op, err = f.box.AcknowledgeRuntimePersistence(context.Background(), "actor-a", ack)
 	if err != nil || !op.Durable {
 		t.Fatal(op, err)
@@ -741,6 +756,7 @@ func TestRuntimeRegenerationSourcePreservesHistoricalGenuineBase(t *testing.T) {
 		t.Fatal("same configuration lost historical base evidence", plan, op, err)
 	}
 }
+
 func TestRuntimeRegenerationCleanRejectedIntentDoesNotRevokeSourceLineage(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sites.json")
 	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))
@@ -773,6 +789,7 @@ func TestRuntimeRegenerationCleanRejectedIntentDoesNotRevokeSourceLineage(t *tes
 		t.Fatal("clean source lineage was lost or upgraded", r.operation, calls.Load())
 	}
 }
+
 func TestRuntimeRegenerationOriginalPendingTailRemainsOriginalDebt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sites.json")
 	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))

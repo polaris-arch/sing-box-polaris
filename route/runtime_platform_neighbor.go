@@ -102,11 +102,13 @@ func (r *runtimeNeighbor) LookupMAC(address netip.Addr) (net.HardwareAddr, bool)
 	}
 	return slices.Clone(mac), true
 }
+
 func (r *runtimeNeighbor) LookupAddresses(name string) []netip.Addr {
 	r.access.RLock()
 	defer r.access.RUnlock()
 	return lookupAddressesByHostname(name, r.ipToHostname, r.macToHostname, r.neighborIPToMAC, r.leaseIPToMAC)
 }
+
 func (r *runtimeNeighbor) LookupHostname(address netip.Addr) (string, bool) {
 	r.access.RLock()
 	defer r.access.RUnlock()

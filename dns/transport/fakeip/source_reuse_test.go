@@ -25,6 +25,7 @@ type sourceReuseInventory struct {
 	preparing      *persistentPreparation
 	generation     uint64
 	namespaces     map[string]*runtimeFixtureNamespace
+	descriptors    map[string]adapter.FakeIPRuntimeNamespaceDescriptor
 	links          map[string]adapter.FakeIPRuntimeLink
 	reclaims       int
 	linkRemovals   int
@@ -47,8 +48,10 @@ func sourceReuseInspect(m *Manager, backend *runtimeFixtureBackend, resolver *ru
 	state.generation = backend.generation
 	state.reclaims, state.linkRemovals, state.counterCalls = backend.reclaims, backend.linkRemovals, backend.counterCalls
 	state.namespaces = make(map[string]*runtimeFixtureNamespace, len(backend.namespaces))
+	state.descriptors = make(map[string]adapter.FakeIPRuntimeNamespaceDescriptor, len(backend.namespaces))
 	for id, object := range backend.namespaces {
 		state.namespaces[id] = object
+		state.descriptors[id] = object.Descriptor()
 	}
 	state.links = make(map[string]adapter.FakeIPRuntimeLink, len(backend.links))
 	for id, link := range backend.links {
@@ -108,16 +111,82 @@ func sourceReuseSelected(t *testing.T) (*Manager, *runtimeFixtureBackend, *runti
 		t.Fatal("actual selected persistent namespace does not recognize its range")
 	}
 	state := sourceReuseInspect(m, backend, resolver)
-	if state.selected.empty || state.durableHandle == nil || len(state.namespaces) != 1 || len(state.links) != 1 {
-		t.Fatalf("fixture did not establish one real persistent namespace/link: %+v", state)
+	if state.selected.empty || state.durableHandle == nil || state.namespaceCount != 1 ||
+		state.nextNamespace != state.selected.id || state.preparing != nil || state.transitions != 1 {
+		t.Fatalf("fixture did not establish one settled selected Manager namespace: %+v", state)
 	}
-	if state.selected.store.storage != state.durableHandle {
+	if state.store != state.selected.store || state.store.storage != state.durableHandle {
 		t.Fatal("selected allocator is not using the actual persistent namespace handle")
 	}
-	for _, link := range state.links {
-		if !link.DiscoveryReady || !link.Acknowledged {
-			t.Fatal("base link was not actually prepared and acknowledged")
+	p := candidate.persistent
+	if p == nil || candidate.namespace != state.selected || !p.acknowledged ||
+		p.options.TransactionID != options.TransactionID || p.options.EffectiveConfigurationID != options.EffectiveConfigurationID {
+		t.Fatal("selected namespace lost its actual original acknowledged participant")
+	}
+	backendID, err := backend.RuntimeDescriptor(context.Background())
+	if err != nil || backendID.DatabaseID == "" || state.generation == 0 {
+		t.Fatal("original backend/generation identity is unavailable", err)
+	}
+	// Backend discovery has two distinct roles: a zero-range anchor and the
+	// one selected allocator. Neither a bucket count nor a shared pointer alone
+	// proves their exact original transaction, backend and generation closure.
+	anchorID := options.TransactionID + "/anchor"
+	allocatorID := fmt.Sprintf("%s/%d", options.TransactionID, state.selected.id)
+	expected := map[string]adapter.FakeIPRuntimeNamespaceDescriptor{
+		anchorID: {
+			Version: 1, AnchorDatabaseID: backendID.DatabaseID, Backend: backendID,
+			ID: anchorID, LogicalID: anchorID, EffectiveConfigurationID: options.EffectiveConfigurationID,
+			Generation: state.generation,
+		},
+		allocatorID: {
+			Version: 1, AnchorDatabaseID: backendID.DatabaseID, Backend: backendID,
+			ID: allocatorID, LogicalID: fmt.Sprintf("%s/logical/%d", options.TransactionID, state.selected.id),
+			EffectiveConfigurationID: options.EffectiveConfigurationID, Allocator: true, Generation: state.generation,
+		},
+	}
+	if len(state.descriptors) != len(expected) || len(p.created) != len(expected) ||
+		!reflect.DeepEqual(state.descriptors, expected) {
+		t.Fatalf("backend does not contain the exact anchor/allocator owner closure: %+v", state.descriptors)
+	}
+	if state.namespaces[allocatorID] != state.durableHandle || state.durableHandle.Descriptor() != expected[allocatorID] {
+		t.Fatal("actual selected handle is not the original linked allocator")
+	}
+	anchor := state.namespaces[anchorID]
+	if anchor == nil || anchor == state.namespaces[allocatorID] {
+		t.Fatal("discovery anchor aliases or replaces the selected allocator")
+	}
+	anchorImage, err := anchor.Snapshot(context.Background())
+	if err != nil || anchorImage.Metadata == nil || anchorImage.Metadata.Inet4Range.IsValid() ||
+		anchorImage.Metadata.Inet6Range.IsValid() || len(anchorImage.Mappings) != 0 ||
+		len(anchorImage.Answers) != 0 || len(anchorImage.PendingAnswers) != 0 || anchorImage.Issued {
+		t.Fatal("discovery anchor unexpectedly owns allocator ranges or issued answers", err)
+	}
+	allocatorImage := state.durableHandle.SnapshotAllocation()
+	if allocatorImage.Metadata == nil || allocatorImage.Metadata.Inet4Range != v4 || allocatorImage.Metadata.Inet6Range != v6 {
+		t.Fatal("selected allocator metadata is not the actually prepared range pair")
+	}
+	created := make(map[string]bool, len(p.created))
+	for _, handle := range p.created {
+		descriptor := handle.Descriptor()
+		want, known := expected[descriptor.ID]
+		if !known || descriptor != want || created[descriptor.ID] || state.namespaces[descriptor.ID] != handle {
+			t.Fatal("original participant contains a duplicate, foreign or substituted namespace")
 		}
+		created[descriptor.ID] = true
+	}
+	link, found := state.links[options.TransactionID]
+	if !found || len(state.links) != 1 || link.ID != options.TransactionID ||
+		link.EffectiveConfigurationID != options.EffectiveConfigurationID || !link.DiscoveryReady || !link.Acknowledged ||
+		len(link.Namespaces) != len(expected) {
+		t.Fatal("original owner link is missing, unready, unacknowledged or has an unexpected participant set")
+	}
+	linked := make(map[string]bool, len(link.Namespaces))
+	for _, descriptor := range link.Namespaces {
+		want, known := expected[descriptor.ID]
+		if !known || descriptor != want || linked[descriptor.ID] {
+			t.Fatal("original owner link duplicated or borrowed another namespace/generation")
+		}
+		linked[descriptor.ID] = true
 	}
 	return m, backend, resolver, v4, v6
 }

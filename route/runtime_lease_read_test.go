@@ -22,7 +22,7 @@ func TestRuntimeLeaseTruncationAndBudgetsPreserveCompleteAcceptedTable(t *testin
 	nativeMAC := net.HardwareAddr{2, 0, 0, 0, 0, 2}
 	root := t.TempDir()
 	oldPath := filepath.Join(root, "old.leases")
-	if err := os.WriteFile(oldPath, []byte("0 02:00:00:00:00:01 192.0.2.7 old-host *\n"), 0600); err != nil {
+	if err := os.WriteFile(oldPath, []byte("0 02:00:00:00:00:01 192.0.2.7 old-host *\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	n := &runtimeNeighbor{leaseFiles: []string{oldPath}, read: func() ([]adapter.NeighborEntry, error) {
@@ -48,7 +48,7 @@ func TestRuntimeLeaseTruncationAndBudgetsPreserveCompleteAcceptedTable(t *testin
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			path := filepath.Join(root, row.name+".leases")
-			if err := os.WriteFile(path, []byte(row.content), 0600); err != nil {
+			if err := os.WriteFile(path, []byte(row.content), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			n.leaseFiles = []string{path}
@@ -72,7 +72,7 @@ func TestRuntimeLeaseTruncationAndBudgetsPreserveCompleteAcceptedTable(t *testin
 	block := strings.Repeat("#"+strings.Repeat("x", 1022)+"\n", runtimeLeaseFileBytes/1024)
 	for index := 0; index < 5; index++ {
 		path := filepath.Join(root, fmt.Sprintf("aggregate-%d.leases", index))
-		if err := os.WriteFile(path, []byte(block), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(block), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		n.leaseFiles = append(n.leaseFiles, path)
@@ -105,6 +105,7 @@ func (r *runtimeLeaseReadFault) Read(p []byte) (int, error) {
 	}
 	return n, err
 }
+
 func TestRuntimeLeaseAllFormatsPropagateMidReadFailure(t *testing.T) {
 	failed := errors.New("isolated lease read failed")
 	for _, name := range []string{"dnsmasq.leases", "dhcpd.leases", "kea-leases4.csv", "kea-leases6.csv", "dhcpd_leases"} {
@@ -129,6 +130,7 @@ func (r *runtimeLeaseReadBarrier) Read(p []byte) (int, error) {
 	<-r.release
 	return copy(p, "0 02:00:00:00:00:01 192.0.2.7 late *\n"), io.EOF
 }
+
 func TestRuntimeLeaseCancellationWaitsForActualReadAndRejectsItsLateBytes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	barrier := &runtimeLeaseReadBarrier{entered: make(chan struct{}), release: make(chan struct{})}

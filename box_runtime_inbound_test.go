@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	mdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	"github.com/sagernet/sing-box/common/listener"
@@ -21,6 +20,8 @@ import (
 	"github.com/sagernet/sing-box/protocol/mixed"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
+
+	mdns "github.com/miekg/dns"
 )
 
 type runtimeInboundFixture struct {

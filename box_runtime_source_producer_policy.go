@@ -114,11 +114,13 @@ func runtimeSourceRequirementsCovered(have, need route.RuntimeRequirements) bool
 	}
 	return true
 }
+
 func (p *runtimeSourcePlan) covers(need route.RuntimeRequirements) bool {
 	// Existing unused native availability does not authorize newly requested
 	// lookups; the demand must also be present in the accepted frozen graph.
 	return runtimeSourceRequirementsCovered(p.accepted, need) && runtimeSourceRequirementsCovered(p.available, need)
 }
+
 func runtimeSourceConfirmationProblem(path, message string) RuntimePlanError {
 	return RuntimePlanError{Code: "SOURCE_REFRESH_REQUIRES_CONFIRMATION", Path: path, Message: message}
 }

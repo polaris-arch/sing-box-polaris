@@ -13,12 +13,13 @@ import (
 	"testing"
 	"time"
 
-	mdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
+
+	mdns "github.com/miekg/dns"
 )
 
 type runtimeProvisionWIFIPlatform struct {
@@ -34,11 +35,13 @@ func (p *runtimeProvisionWIFIPlatform) ReadWIFIState(context.Context) adapter.WI
 	p.reads++
 	return p.state
 }
+
 func (p *runtimeProvisionWIFIPlatform) snapshot() (adapter.WIFIState, int) {
 	p.access.Lock()
 	defer p.access.Unlock()
 	return p.state, p.reads
 }
+
 func runtimeProvisionCandidate(t *testing.T, routeFields map[string]stdjson.RawMessage) []byte {
 	t.Helper()
 	var root map[string]stdjson.RawMessage
@@ -59,6 +62,7 @@ func runtimeProvisionCandidate(t *testing.T, routeFields map[string]stdjson.RawM
 	}
 	return content
 }
+
 func runtimeProvisionWIFIFixture(t *testing.T) (*runtimeTestFixture, *runtimeProvisionWIFIPlatform) {
 	t.Helper()
 	f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "provision.test"), nil)
@@ -164,8 +168,14 @@ func TestRuntimeFirstProcessPublicPreparationKeepsOriginalStableOwner(t *testing
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "provision.test"), nil)
 	f.start(t)
 	content := runtimeProvisionCandidate(t, map[string]stdjson.RawMessage{"find_process": []byte("true")})
-	if f.box.router.NeedFindProcess() {
-		t.Fatal("unexpected initial process demand")
+	gateway := f.box.Router()
+	if gateway == nil || gateway != f.box.runtime.gateway || gateway.NeedFindProcess() {
+		t.Fatal("actual initial runtime gateway has unexpected process demand")
+	}
+	oldLease, old := f.acquire(t)
+	defer oldLease.Release()
+	if old.router != f.box.runtime.initialRouter || old.router.NeedFindProcess() {
+		t.Fatal("initial leased graph was not the original stable process owner")
 	}
 	_, request := runtimeClientPlan(t, f, content)
 	op, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
@@ -177,7 +187,8 @@ func TestRuntimeFirstProcessPublicPreparationKeepsOriginalStableOwner(t *testing
 		t.Fatal(err)
 	}
 	defer lease.Release()
-	if !lease.View().(*runtimeView).router.NeedFindProcess() || f.box.runtime.initialRouter.NeedFindProcess() || !f.box.router.NeedFindProcess() {
+	if !lease.View().(*runtimeView).router.NeedFindProcess() || old.router.NeedFindProcess() ||
+		f.box.runtime.initialRouter.NeedFindProcess() || f.box.Router() != gateway || !gateway.NeedFindProcess() {
 		t.Fatal("private process owner was confused with initial stable graph")
 	}
 }
@@ -212,7 +223,7 @@ func TestRuntimeFirstNeighborDHCPPublicFailureIsBeforePublication(t *testing.T) 
 
 func TestRuntimeFakeIPNamespacesCannotColdStartWithoutRecoveryRoot(t *testing.T) {
 	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
+	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, "cache.db")
@@ -284,7 +295,7 @@ func TestRuntimeFirstNeighborDHCPPublicApplyCapturesRealLeaseSample(t *testing.T
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "provision.test"), nil)
 	f.start(t)
 	path := filepath.Join(t.TempDir(), "dnsmasq.leases")
-	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 first-host *\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 first-host *\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	paths, _ := stdjson.Marshal([]string{path})
@@ -302,7 +313,7 @@ func TestRuntimeFirstNeighborDHCPPublicApplyCapturesRealLeaseSample(t *testing.T
 	if name, ok := resolver.LookupHostname(address); !ok || name != "first-host" {
 		t.Fatal("initial DHCP sample absent", name, ok)
 	}
-	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 second-host *\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 second-host *\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	lease, err := f.box.runtime.store.Acquire()

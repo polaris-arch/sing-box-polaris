@@ -18,7 +18,7 @@ func TestRuntimeTruncatedDHCPPublicApplyKeepsSelectedGraph(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "provision.test"), nil)
 	f.start(t)
 	path := filepath.Join(t.TempDir(), "dnsmasq.leases")
-	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 partial *\n"+strings.Repeat("x", 65536)+"\n0 02:00:00:00:00:02 192.0.2.8 omitted *\n"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("0 02:00:00:00:00:01 192.0.2.7 partial *\n"+strings.Repeat("x", 65536)+"\n0 02:00:00:00:00:02 192.0.2.8 omitted *\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	paths, _ := stdjson.Marshal([]string{path})

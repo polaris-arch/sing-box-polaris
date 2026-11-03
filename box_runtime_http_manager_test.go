@@ -64,12 +64,26 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 				t.Fatal(err)
 			}
 			f.start(t)
+			initialLease, initial := f.acquire(t)
+			if len(captured) != 1 || captured[0].http != initial.httpClients || captured[0].dns != initial.dns {
+				t.Fatal("actual initial Realm constructor missed its captured generation")
+			}
+			runtimeTestPublishPrivatePlatformClosure(t, f)
 			oldLease, old := f.acquire(t)
 			oldID := old.componentIDs["outbound:realm"]
 			oldResource := runtimeTestResource(t, f, oldID)
-			if len(captured) != 1 || captured[0].http != old.httpClients || captured[0].dns != old.dns {
-				t.Fatal("actual initial Realm constructor missed its captured generation")
+			// The first private platform changes DNS and its actual HTTP/Realm
+			// consumers even when a named HTTP detour ignores route.final.
+			if len(captured) != 2 || initial.componentIDs["outbound:realm"] == oldID ||
+				initial.componentIDs["http-manager"] == old.componentIDs["http-manager"] ||
+				initial.httpClients == old.httpClients || initial.dns == old.dns ||
+				captured[1].http != old.httpClients || captured[1].dns != old.dns ||
+				captured[0].http != initial.httpClients || captured[0].dns != initial.dns {
+				t.Fatal("bootstrap transition failed to retain distinct complete Realm closures")
 			}
+			initialLease.Release()
+			oldCapture := captured[1]
+			const baselineConstructors = 2
 			if change == "named-http" {
 				for _, invalid := range []string{"missing-http", "self-http"} {
 					oldTag, oldDetour, oldFinal := realm.Realm.HTTPClient.Tag, candidate.HTTPClients[0].Detour, candidate.Route.Final
@@ -81,7 +95,7 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 					}
 					before := f.identity()
 					plan, err := f.box.planRuntimeConfig(context.Background(), "actor-a", before, runtimeResourceEncode(t, f, candidate))
-					if err != nil || plan.Applicable || len(plan.Errors) == 0 || f.identity() != before || len(captured) != 1 {
+					if err != nil || plan.Applicable || len(plan.Errors) == 0 || f.identity() != before || len(captured) != baselineConstructors {
 						t.Fatal("invalid Realm closure changed or prepared the active graph", invalid, plan, err)
 					}
 					realm.Realm.HTTPClient.Tag, candidate.HTTPClients[0].Detour, candidate.Route.Final = oldTag, oldDetour, oldFinal
@@ -92,7 +106,7 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 				candidate.Route.Final = "realm"
 				before := f.identity()
 				plan, err := f.box.planRuntimeConfig(context.Background(), "actor-a", before, runtimeResourceEncode(t, f, candidate))
-				if err != nil || plan.Applicable || len(plan.Errors) == 0 || f.identity() != before || len(captured) != 1 {
+				if err != nil || plan.Applicable || len(plan.Errors) == 0 || f.identity() != before || len(captured) != baselineConstructors {
 					t.Fatal("actual implicit HTTP bootstrap cycle entered Plan", plan, err)
 				}
 				candidate.Route.Final = oldFinal
@@ -113,20 +127,20 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 			}
 			before := f.identity()
 			_, apply := f.plan(t, runtimeResourceEncode(t, f, candidate))
-			if len(captured) != 1 {
+			if len(captured) != baselineConstructors {
 				t.Fatal("Plan ran a Realm constructor")
 			}
 			result := runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), apply))
 			_, current := f.acquire(t)
 			reuse := change == "named-http-route-final"
-			wantConstructors := 2
+			wantConstructors := baselineConstructors + 1
 			if reuse {
-				wantConstructors = 1
+				wantConstructors = baselineConstructors
 			}
 			if result.Active.Revision != before.Revision+1 || (current.componentIDs["outbound:realm"] == oldID) != reuse || len(captured) != wantConstructors || captured[len(captured)-1].http != current.httpClients || captured[len(captured)-1].dns != current.dns {
 				t.Fatal("same-tag Realm reused a previous closure", result)
 			}
-			if old.componentIDs["outbound:realm"] != oldID || captured[0].http != old.httpClients || captured[0].dns != old.dns {
+			if old.componentIDs["outbound:realm"] != oldID || oldCapture.http != old.httpClients || oldCapture.dns != old.dns {
 				t.Fatal("new publication mutated the old Realm view")
 			}
 			select {

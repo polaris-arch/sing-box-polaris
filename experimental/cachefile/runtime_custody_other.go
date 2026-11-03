@@ -32,12 +32,14 @@ func requireRuntimeJournalRootCustody(path string, info os.FileInfo) (*runtimeJo
 	}
 	return &runtimeJournalRootCustody{info: info}, nil
 }
+
 func (r *runtimeJournalRootCustody) Close() error {
 	r.access.Lock()
 	defer r.access.Unlock()
 	r.closed = true
 	return nil
 }
+
 func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (func() error, error) {
 	r.access.Lock()
 	defer r.access.Unlock()

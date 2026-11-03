@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	mdns "github.com/miekg/dns"
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
@@ -18,6 +17,8 @@ import (
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
+
+	mdns "github.com/miekg/dns"
 )
 
 func runtimeFakeIPCandidate(t *testing.T, prefix string) *preparedRuntimeGraph {

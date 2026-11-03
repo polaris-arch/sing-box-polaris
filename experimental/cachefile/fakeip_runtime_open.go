@@ -152,6 +152,7 @@ func (c *CacheFile) BindRuntimeRecoveryJournal(journal *FakeIPRuntimeJournal) er
 	c.runtimeRecoveryJournal = journal
 	return nil
 }
+
 func (c *CacheFile) requireRuntimeNamespaceRecovery(db *bbolt.DB) error {
 	return db.View(func(tx *bbolt.Tx) error {
 		root, err := runtimeRoot(tx)

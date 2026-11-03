@@ -10,6 +10,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
+
 	"golang.org/x/sys/windows"
 )
 
@@ -108,6 +109,156 @@ func TestRuntimeWindowsJournalCustodyPinsNativeRootAndFile(t *testing.T) {
 	}
 }
 
+// Exercise the verified root's actual child grant, not a synthetic descriptor.
+// Close the shared data handle before mutation checks, leaving only custody.
+func TestRuntimeWindowsRootCustodyPinsChildUntilExactRelease(t *testing.T) {
+	root := runtimeWindowsJournalPrivateRoot(t)
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	custody, err := requireRuntimeJournalRootCustody(root, rootInfo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer custody.Close()
+	path := filepath.Join(root, "journal.db")
+	if err := os.WriteFile(path, []byte("original journal"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fileInfo, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release, err := custody.RequireFile(path, fileInfo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Do not inherit os.Open's toolchain-specific share flags. Exercise real
+	// data access with a companion that explicitly permits deletion.
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ|windows.GENERIC_WRITE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		t.Fatal("custody blocked ordinary data access", err)
+	}
+	shared := os.NewFile(uintptr(handle), path)
+	if shared == nil {
+		_ = windows.CloseHandle(handle)
+		t.Fatal("could not retain shared data handle")
+	}
+	defer shared.Close()
+	const payload = "shared read/write journal"
+	if n, err := shared.WriteAt([]byte(payload), 0); err != nil || n != len(payload) {
+		t.Fatal("custody blocked journal writes", n, err)
+	}
+	data := make([]byte, len(payload))
+	if n, err := shared.ReadAt(data, 0); err != nil || n != len(payload) || string(data) != payload {
+		t.Fatal("custody blocked journal reads", n, err, string(data))
+	}
+	// Remove the companion before mutation checks: neither a Go share mask nor
+	// legacy Win32 restrictions on replacing open targets may mask custody.
+	if err := shared.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Native DELETE opens must hit the sharing check for both retained owners.
+	for _, candidate := range []struct {
+		path  string
+		flags uint32
+	}{
+		{path, windows.FILE_FLAG_OPEN_REPARSE_POINT},
+		{root, windows.FILE_FLAG_OPEN_REPARSE_POINT | windows.FILE_FLAG_BACKUP_SEMANTICS},
+	} {
+		name, err := windows.UTF16PtrFromString(candidate.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deleteHandle, err := windows.CreateFile(name, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, candidate.flags, 0)
+		if err == nil {
+			_ = windows.CloseHandle(deleteHandle)
+			t.Fatal("live custody admitted native DELETE access", candidate.path)
+		}
+		if !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+			t.Fatal("native DELETE did not fail at the sharing boundary", candidate.path, err)
+		}
+	}
+	if err := os.Rename(path, path+".moved"); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		t.Fatal("live child allowed rename or failed for a different reason", err)
+	}
+	if err := os.Remove(path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		t.Fatal("live child allowed deletion or failed for a different reason", err)
+	}
+	replacement := filepath.Join(root, "replacement.db")
+	if err := os.WriteFile(replacement, []byte("replacement"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		t.Fatal("live child allowed replacement or failed for a different reason", err)
+	}
+	current, err := os.Lstat(path)
+	if err != nil || !os.SameFile(fileInfo, current) {
+		t.Fatal("rejected operations changed the owned file identity", err)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != payload {
+		t.Fatal("rejected operations changed the journal contents", err, string(data))
+	}
+	if data, err := os.ReadFile(replacement); err != nil || string(data) != "replacement" {
+		t.Fatal("rejected replacement consumed its source", err, string(data))
+	}
+	if err := os.Rename(root, root+".moved"); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+		t.Fatal("live root allowed rename or failed for a different reason", err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := release(); err != nil {
+		t.Fatal("child release was not idempotent", err)
+	}
+	// The same native DELETE request must now succeed, distinguishing custody
+	// from DACL denial. It does not set a deletion disposition on the file.
+	deleteHandle, err := windows.CreateFile(name, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		t.Fatal("native DELETE remained blocked after child release", err)
+	}
+	if err := windows.CloseHandle(deleteHandle); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(path, path+".moved"); err != nil {
+		t.Fatal("released child remained pinned", err)
+	}
+	if err := os.Rename(path+".moved", path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal("released child could not be replaced", err)
+	}
+	current, err = os.Lstat(path)
+	if err != nil || os.SameFile(fileInfo, current) {
+		t.Fatal("replacement did not install a different native object", err)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "replacement" {
+		t.Fatal("replacement was not actually installed", err, string(data))
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal("released child could not be deleted", err)
+	}
+	if err := custody.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := custody.Close(); err != nil {
+		t.Fatal("root release was not idempotent", err)
+	}
+	if err := os.Rename(root, root+".released"); err != nil {
+		t.Fatal("released root remained pinned", err)
+	}
+	if err := os.Remove(root + ".released"); err != nil {
+		t.Fatal("released root could not be deleted", err)
+	}
+}
+
 func TestRuntimeWindowsJournalChildRetainsOnlyVerifiedRootPrincipal(t *testing.T) {
 	const user = "S-1-5-21-1-2-3-1001"
 	const foreign = "S-1-5-21-1-2-3-2002"
@@ -179,6 +330,7 @@ func runtimeWindowsJournalPrivateRoot(t *testing.T) string {
 	}
 	return root
 }
+
 func TestRuntimeWindowsJournalRealOpenCloseReopen(t *testing.T) {
 	root := runtimeWindowsJournalPrivateRoot(t)
 	ctx := adapter.ContextWithRuntimeRecoveryRoot(context.Background(), root)
@@ -200,7 +352,7 @@ func TestRuntimeWindowsJournalRealOpenCloseReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm()&0077 == 0 {
+	if info.Mode().Perm()&0o077 == 0 {
 		t.Fatal("fixture did not exercise Windows Unix-mode mismatch", info.Mode())
 	}
 	journal, err = OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
@@ -213,6 +365,7 @@ func TestRuntimeWindowsJournalRealOpenCloseReopen(t *testing.T) {
 		t.Fatal("reopen lost exact database identity", first, second, err)
 	}
 }
+
 func TestRuntimeWindowsJournalCanceledOpenAndClosedRootCannotAdoptChild(t *testing.T) {
 	root := runtimeWindowsJournalPrivateRoot(t)
 	ctx, cancel := context.WithCancel(adapter.ContextWithRuntimeRecoveryRoot(context.Background(), root))
@@ -232,7 +385,7 @@ func TestRuntimeWindowsJournalCanceledOpenAndClosedRootCannotAdoptChild(t *testi
 		t.Fatal(err)
 	}
 	outside := filepath.Join(runtimeWindowsJournalPrivateRoot(t), "outside.db")
-	if err := os.WriteFile(outside, nil, 0600); err != nil {
+	if err := os.WriteFile(outside, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	outsideInfo, err := os.Lstat(outside)
