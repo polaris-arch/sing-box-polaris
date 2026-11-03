@@ -97,26 +97,35 @@ func r3SourceRoute(t *testing.T, content []byte, fields map[string]stdjson.RawMe
 
 func r3SourceFixture(t *testing.T, content []byte, platform adapter.PlatformInterface, persist func(RuntimeIdentity, []byte) error, safe bool, beforeStart ...func(*runtimeTestFixture)) *runtimeTestFixture {
 	t.Helper()
-	f, options := newRuntimeTestConstruction(t, content, nil)
+	// Build the registries before decoding the actual canary configuration.
+	f, options := newRuntimeTestConstruction(t, []byte("{}"), nil)
+	direct.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
 	if platform != nil {
 		f.ctx = service.ContextWith[adapter.PlatformInterface](f.ctx, platform)
 		options.Context = f.ctx
 	}
-	direct.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
+	if err := json.UnmarshalContext(f.ctx, content, &options.Options); err != nil {
+		t.Fatal(err)
+	}
 	instance, err := New(options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.box = instance
 	t.Cleanup(func() {
-		if err := instance.closeRuntimeResourcesContext(runtimeTestContext(t)); err != nil {
-			t.Error(err)
-			return
+		if instance.runtime != nil {
+			if err := instance.closeRuntimeResourcesContext(runtimeTestContext(t)); err != nil {
+				t.Error(err)
+				return
+			}
 		}
 		if err := instance.CloseWithResult(); err != nil {
 			t.Error(err)
 		}
 	})
+	if instance.runtime == nil {
+		t.Fatal("source fixture did not construct a connected runtime", instance.runtimeEligibilityErrors)
+	}
 	if persist != nil {
 		if err := instance.BindRuntimePersistenceOptions(persist, "exact_configuration_file", safe); err != nil {
 			t.Fatal(err)
@@ -555,6 +564,15 @@ func TestRuntimeSourceProducerRootWatchRefreshesNonPhysicalClosure(t *testing.T)
 	p := runtimeTestProducer(t, f)
 	oldLease, old := f.acquire(t)
 	before := f.identity()
+	canonical := r3SourceCanonical(f)
+	oldRoots := service.FromContext[adapter.CertificateStore](f.object(t, "a", 0).ctx)
+	if oldRoots == nil {
+		t.Fatal("public construction did not capture its configured root snapshot")
+	}
+	oldPool := oldRoots.Pool()
+	f.box.runtime.access.Lock()
+	oldRootDigest := f.box.runtime.rootDigest
+	f.box.runtime.access.Unlock()
 	oldRevision := p.rootStore.RuntimeRevision()
 	r3SourceWrite(t, rootPath, r3SourceRootPEM(t, 2))
 	waitRetryState(t, f.box.runtime, func() bool { return p.rootStore.RuntimeRevision() > oldRevision })
@@ -564,6 +582,50 @@ func TestRuntimeSourceProducerRootWatchRefreshesNonPhysicalClosure(t *testing.T)
 	_, next := f.acquire(t)
 	if id.EffectiveDigest != before.EffectiveDigest || next.componentIDs["outbound:a"] == old.componentIDs["outbound:a"] || oldLease.View().Identity().Revision != 1 {
 		t.Fatal("root content did not replace only its immutable consumer closure")
+	}
+	nextRoots := service.FromContext[adapter.CertificateStore](f.object(t, "a", 1).ctx)
+	if nextRoots == nil || !oldPool.Equal(oldRoots.Pool()) || oldPool.Equal(nextRoots.Pool()) {
+		t.Fatal("root watcher mutated a retained consumer or lost the new root snapshot")
+	}
+	c := f.box.runtime
+	c.access.Lock()
+	var record *runtimePlanRecord
+	for _, candidate := range c.plans {
+		if candidate.operation != nil && candidate.operation.Active == id {
+			record = candidate
+			break
+		}
+	}
+	owned := record != nil && record.sourceProof != nil && record.actor == runtimeSourceProducerActor &&
+		record.sourceProof.producer == p && record.sourceProof.expected == before &&
+		record.sourceProof.rootDigest == c.rootDigest && c.rootDigest != oldRootDigest &&
+		record.plan.ClientImpactPolicyVersion == RuntimeClientImpactPolicyExplicit && !record.plan.ImpactConfirmationRequired &&
+		record.operation.Before == before && record.operation.Active == id &&
+		record.operation.State == "COMMITTED" && record.operation.Durable && record.operation.PersistenceMode == "exact_configuration_file" &&
+		!record.operation.OwnerReloadAcknowledged && record.operation.DesiredStateDigest == "" && record.operation.DesiredStateRevision == "" &&
+		bytes.Equal(record.canonical, canonical) && bytes.Equal(c.canonical, canonical) &&
+		c.pendingPersistence == nil && c.configurationOwner == nil
+	transaction := ""
+	if record != nil {
+		transaction = record.plan.TransactionID
+	}
+	c.access.Unlock()
+	if !owned || id.Incarnation != before.Incarnation || id.Revision != before.Revision+1 || runtimeTestProducer(t, f) != p {
+		t.Fatal("root watcher lost its original proof, canonical bytes or persistence owner")
+	}
+	receipt, err := f.box.GetRuntimeConfigStatus(runtimeSourceProducerActor, id.Incarnation, transaction)
+	if err != nil || receipt.LookupState != "FOUND" || receipt.Active != id || receipt.Operation == nil ||
+		!receipt.Operation.Durable || receipt.DurableAppliedDigest != before.EffectiveDigest ||
+		receipt.DurableDesiredStateDigest != "" || receipt.DurableDesiredStateRevision != "" || receipt.DurableOwnerReloadAcknowledged {
+		t.Fatal("root resource refresh manufactured desired-state evidence", receipt, err)
+	}
+	// Content refresh does not grant authority to edit certificate options.
+	edited := r3SourceRootConfig(t, canonical, filepath.Join(t.TempDir(), "replacement.pem"))
+	plan, err := f.box.PlanRuntimeConfigWithClientImpactPolicy(context.Background(), "actor-a", id, edited, nil, RuntimeClientImpactPolicyExplicit)
+	if err != nil || plan.Applicable || !slices.ContainsFunc(plan.Errors, func(problem RuntimePlanError) bool {
+		return problem.Path == "certificate.certificate_path" && problem.Code == "RESTART_REQUIRED"
+	}) {
+		t.Fatal("initial root adapter relaxed the certificate edit boundary", plan, err)
 	}
 }
 

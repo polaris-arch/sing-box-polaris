@@ -123,7 +123,7 @@ func TestRuntimeWindowsRootCustodyPinsChildUntilExactRelease(t *testing.T) {
 	}
 	defer custody.Close()
 	path := filepath.Join(root, "journal.db")
-	if err := os.WriteFile(path, []byte("original journal"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("original journal"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	fileInfo, err := os.Lstat(path)
@@ -192,7 +192,7 @@ func TestRuntimeWindowsRootCustodyPinsChildUntilExactRelease(t *testing.T) {
 		t.Fatal("live child allowed deletion or failed for a different reason", err)
 	}
 	replacement := filepath.Join(root, "replacement.db")
-	if err := os.WriteFile(replacement, []byte("replacement"), 0600); err != nil {
+	if err := os.WriteFile(replacement, []byte("replacement"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(replacement, path); !errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {

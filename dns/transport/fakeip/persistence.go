@@ -567,7 +567,7 @@ func (p *persistentPreparation) prepareFence(ctx context.Context) (*RangeCommit,
 			for _, image := range p.images {
 				if image.namespace == p.candidate.namespace {
 					for address, domain := range image.snapshot.Mappings {
-						if _, protected := commit.authority[address]; !protected {
+						if _, protected := commit.authority[address]; !protected && m.recovered.permitsAllocation(address, domain) {
 							commit.authority[address] = authorityEntry{domain: domain, namespace: image.namespace}
 						}
 					}
@@ -750,7 +750,13 @@ func (m *Manager) noteAllocationLocked(namespace *memoryNamespace, address netip
 
 // AcknowledgePersistence is called only after the coordinator has persisted the
 // exact canonical effective configuration. RAM publication is insufficient.
+// A digest alone may select only one retained transition; callers holding a
+// migration must acknowledge its original participant instead.
 func (m *Manager) AcknowledgePersistence(ctx context.Context, effectiveID string) error {
+	return m.acknowledgePersistence(ctx, effectiveID, nil)
+}
+
+func (m *Manager) acknowledgePersistence(ctx context.Context, effectiveID string, exact *persistentPreparation) error {
 	m.persistenceMaintenance.Lock()
 	defer m.persistenceMaintenance.Unlock()
 	done, ok := m.work.Reserve()
@@ -761,9 +767,35 @@ func (m *Manager) AcknowledgePersistence(ctx context.Context, effectiveID string
 	m.mappingAccess.Lock()
 	var transition *persistentPreparation
 	for _, candidate := range m.transitions {
-		if candidate.options.EffectiveConfigurationID == effectiveID {
+		if exact != nil {
+			if candidate == exact {
+				transition = candidate
+				break
+			}
+		} else if candidate.options.EffectiveConfigurationID == effectiveID {
+			if transition != nil {
+				m.mappingAccess.Unlock()
+				return ErrPersistenceIdentity
+			}
 			transition = candidate
-			break
+		}
+	}
+	if exact != nil && transition == nil {
+		m.mappingAccess.Unlock()
+		return ErrPersistenceIdentity
+	}
+	if transition != nil {
+		candidate := transition.candidate
+		if candidate == nil || candidate.manager != m || candidate.persistent != transition || candidate.state.Load() != 2 ||
+			!candidate.namespace.published || candidate.namespace.aborted || transition.options.EffectiveConfigurationID != effectiveID {
+			m.mappingAccess.Unlock()
+			return ErrPersistenceIdentity
+		}
+		// Maintenance may already have compacted this acknowledged link. A
+		// replay must not recreate an earlier link or borrow another transaction.
+		if transition.acknowledged {
+			m.mappingAccess.Unlock()
+			return nil
 		}
 	}
 	m.mappingAccess.Unlock()
@@ -817,13 +849,13 @@ func (c *RangeMigration) AcknowledgePersistence(ctx context.Context, effectiveID
 	if c.persistent == nil {
 		return nil
 	}
-	if effectiveID != c.persistent.options.EffectiveConfigurationID {
+	if c.persistent.candidate != c || c.state.Load() != 2 || effectiveID != c.persistent.options.EffectiveConfigurationID {
 		return ErrPersistenceIdentity
 	}
 	if err := c.WaitPersistence(ctx); err != nil {
 		return err
 	}
-	return c.manager.AcknowledgePersistence(ctx, effectiveID)
+	return c.manager.acknowledgePersistence(ctx, effectiveID, c.persistent)
 }
 
 // Selection is an allocator image lookup under the caller's explicit config.

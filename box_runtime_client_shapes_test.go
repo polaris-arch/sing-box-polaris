@@ -5,6 +5,7 @@ import (
 	stdjson "encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"os"
@@ -184,14 +185,26 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	f.box = instance
 	clientShapeFinish(t, f)
 	f.start(t)
-	// Hold exactly the candidate IPv6 wildcard. A concrete ::1 bind may
-	// legitimately coexist with a wildcard on BSD/Windows; tcp6 keeps this
-	// holder separate from the original IPv4-only loopback ingress.
-	holder, err := net.Listen("tcp6", fmt.Sprintf("[::]:%d", port))
-	if err != nil {
-		t.Fatal(err)
+	// A Windows default socket does not prove exclusive ownership. The
+	// platform fixture holds only IPv6 and verifies its actual socket options.
+	holder := clientShapeIPv6CollisionHolder(t, port)
+	holderAddr, ok := holder.Addr().(*net.TCPAddr)
+	if !ok || holderAddr.Port != port || holderAddr.IP.To4() != nil || !holderAddr.IP.IsUnspecified() {
+		_ = holder.Close()
+		t.Fatal("holder did not bind the candidate IPv6 wildcard tuple", holder.Addr())
 	}
-	defer holder.Close()
+	t.Cleanup(func() {
+		if err := holder.Close(); err != nil {
+			t.Error("close collision holder", err)
+			return
+		}
+		// Reclaim exactly the same IPv6 tuple while the original IPv4
+		// ingress is still alive; cleanup must release its real capability.
+		reclaimed := clientShapeIPv6CollisionHolder(t, port)
+		if err := reclaimed.Close(); err != nil {
+			t.Error("close reclaimed collision holder", err)
+		}
+	})
 	original, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
 	if err != nil {
 		t.Fatal("IPv6-only holder displaced original IPv4 ingress", err)
@@ -200,6 +213,7 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 		t.Fatal(err)
 	}
 	before := f.identity()
+	_, beforeView := f.acquire(t)
 	options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "::", port)}}
 	content, err := json.MarshalContext(f.ctx, options.Options)
 	if err != nil {
@@ -207,8 +221,12 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	}
 	_, request := runtimeClientPlan(t, f, content)
 	operation, err := instance.ApplyRuntimeConfig(context.Background(), "actor-a", request)
-	if err != nil || operation.Active != request.Expected || f.identity() != before {
+	if err != nil || operation.Active != request.Expected || f.identity() != before || strings.HasPrefix(operation.State, "COMMITTED") {
 		t.Fatal("IPv6 collision changed current graph", operation, err)
+	}
+	_, afterView := f.acquire(t)
+	if afterView != beforeView {
+		t.Fatal("failed IPv6 bind replaced the original graph view")
 	}
 	found := slices.ContainsFunc(operation.Errors, func(problem RuntimePlanError) bool { return problem.Code == "LISTENER_BIND_FAILED" })
 	if !found {
@@ -218,7 +236,17 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	if err != nil {
 		t.Fatal("original loopback ingress not restored", err)
 	}
-	_ = connection.Close()
+	defer connection.Close()
+	if err := connection.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connection.Write([]byte{5, 1, 0}); err != nil {
+		t.Fatal("restored mixed ingress did not receive SOCKS greeting", err)
+	}
+	var reply [2]byte
+	if _, err := io.ReadFull(connection, reply[:]); err != nil || reply != [2]byte{5, 0} {
+		t.Fatal("restored original mixed ingress did not serve SOCKS greeting", reply, err)
+	}
 }
 
 // The only replaced boundary is the original provider device. Core uses the

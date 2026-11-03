@@ -25,7 +25,8 @@ type fixedPersistentPreparation struct {
 	storage   adapter.FakeIPStorage
 	snapshot  fixedPersistentSnapshot
 	recovered *recoveredPersistence
-	ready     bool // manager.mappingAccess
+	mappings  map[netip.Addr]string // private validated allocation snapshot, released at terminal publication
+	ready     bool                  // manager.mappingAccess
 }
 
 // PrepareInitialPersistentRanges creates a private, nonallocating handle for
@@ -147,6 +148,7 @@ func (c *RangeMigration) InitializePersistentStorage(ctx context.Context) error 
 	store := c.namespace.store
 	store.storage = initial.storage
 	store.inet4Current, store.inet6Current = metadata.Inet4Current, metadata.Inet6Current
+	initial.mappings = snapshot.Mappings
 	initial.ready = true
 	return nil
 }

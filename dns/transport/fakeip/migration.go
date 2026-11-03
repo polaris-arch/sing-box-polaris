@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/netip"
 	"sync"
@@ -311,6 +312,28 @@ func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) 
 			commit.owned[namespace] = owned
 		}
 	}
+	if c.initial != nil && m.authority != nil {
+		// Recovery owns the protected union. The explicitly selected allocator
+		// also owns ordinary batched mappings, which need no answer certificate.
+		// Stage both maps privately; an aborted fence cannot expose this image.
+		commit.authority = make(map[netip.Addr]authorityEntry, len(m.authority)+len(c.initial.mappings))
+		maps.Copy(commit.authority, m.authority)
+		commit.domains = make(map[domainKey]netip.Addr, len(m.domains)+len(c.initial.mappings))
+		maps.Copy(commit.domains, m.domains)
+		owned := make(map[netip.Addr]struct{})
+		commit.owned = map[*memoryNamespace]map[netip.Addr]struct{}{c.namespace: owned}
+		for address, domain := range c.initial.mappings {
+			if _, protected := commit.authority[address]; protected || !c.initial.recovered.permitsAllocation(address, domain) {
+				continue
+			}
+			commit.authority[address] = authorityEntry{domain: domain, namespace: c.namespace}
+			key := domainKey{domain, address.Is6()}
+			if _, protected := commit.domains[key]; !protected {
+				commit.domains[key] = address
+			}
+			owned[address] = struct{}{}
+		}
+	}
 	for address, entry := range commit.authority {
 		if record := m.protection.current[address]; record != nil && record.current && record.key.domain == entry.domain {
 			entry.revision = record.revision
@@ -349,6 +372,9 @@ func (c *RangeCommit) Publish() {
 		m.active = candidate.namespace
 		m.store = candidate.namespace.store
 	}
+	if candidate.initial != nil {
+		candidate.initial.mappings = nil
+	}
 	candidate.permit.state.Store(1)
 	candidate.state.Store(2)
 	m.mappingAccess.Unlock()
@@ -372,6 +398,9 @@ func (c *RangeCommit) abortClaimedState() {
 	candidate := c.candidate
 	if p := candidate.persistent; p != nil {
 		p.canceled.Store(true)
+	}
+	if candidate.initial != nil {
+		candidate.initial.mappings = nil
 	}
 	candidate.permit.state.Store(2)
 	candidate.state.Store(3)
@@ -406,6 +435,9 @@ func (c *RangeMigration) Abort() {
 	m.mappingAccess.Lock()
 	if c.namespace != c.base {
 		c.namespace.aborted = true
+	}
+	if c.initial != nil {
+		c.initial.mappings = nil
 	}
 	m.collectNamespacesLocked()
 	m.mappingAccess.Unlock()

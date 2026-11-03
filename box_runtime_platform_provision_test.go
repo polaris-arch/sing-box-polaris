@@ -286,6 +286,21 @@ func TestRuntimeFakeIPNamespacesCannotColdStartWithoutRecoveryRoot(t *testing.T)
 	if domain, ok := recovered.box.runtime.fakeIP.RecognitionStore().Lookup(address); !ok || domain != "actually-issued.example" {
 		t.Fatal("explicit recovery lost issued mapping", domain, ok)
 	}
+	resumed, err := recovered.box.runtime.fakeIP.Borrow(netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("2001:2::/48"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resumed.Close()
+	if reused, err := resumed.Create("actually-issued.example", false); err != nil || reused != address {
+		t.Fatal("cold allocator did not reuse the actually issued mapping", reused, err)
+	}
+	nextAddress, err := resumed.Create("after-cold-start.example", false)
+	if err != nil || nextAddress != address.Next() {
+		t.Fatal("cold allocator did not resume its actual cursor", nextAddress, address, err)
+	}
+	if domain, ok := recovered.box.runtime.fakeIP.RecognitionStore().Lookup(nextAddress); !ok || domain != "after-cold-start.example" {
+		t.Fatal("resumed allocation was not recognized", domain, ok)
+	}
 }
 
 func TestRuntimeFirstNeighborDHCPPublicApplyCapturesRealLeaseSample(t *testing.T) {

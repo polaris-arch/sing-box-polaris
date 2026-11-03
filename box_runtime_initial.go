@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing-box/common/netns"
 	"github.com/sagernet/sing-box/common/trafficcontrol"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
 	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/experimental"
@@ -56,8 +57,17 @@ func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []Run
 			pending(problem.Path, problem.Message)
 		}
 	}
-	if options.Certificate != nil {
-		pending("certificate", "initial certificate configuration requires a runtime adapter")
+	if certificate := options.Certificate; certificate != nil {
+		switch certificate.Store {
+		case "", C.CertificateStoreSystem, C.CertificateStoreMozilla, C.CertificateStoreChrome, C.CertificateStoreNone:
+		default:
+			pending("certificate.store", "initial certificate store requires a runtime adapter")
+		}
+		// The existing directory loader skips missing directories and invalid
+		// entries. Keep that legacy behavior outside strict runtime admission.
+		if len(certificate.CertificateDirectoryPath) != 0 {
+			pending("certificate.certificate_directory_path", "initial certificate directory loading requires a runtime adapter")
+		}
 	}
 	if len(options.NetworkNamespaces) != 0 {
 		pending("network_namespaces", "initial network namespaces require a runtime adapter")
