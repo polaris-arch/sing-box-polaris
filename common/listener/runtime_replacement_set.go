@@ -127,6 +127,7 @@ func planListenerSetMode(previous, next []*Listener, standalone bool) (*Listener
 	t.retirement = newListenerRetirement(previous, t.holdOld)
 	return t, nil
 }
+
 func PlanListenerSet(previous, next []*Listener) (ListenerSetImpact, error) {
 	t, err := planListenerSet(previous, next)
 	if err != nil {
@@ -134,9 +135,11 @@ func PlanListenerSet(previous, next []*Listener) (ListenerSetImpact, error) {
 	}
 	return t.Impact(), nil
 }
+
 func ReserveListenerSet(previous, next []*Listener, allowLocalReconnect bool) (*ListenerSetTransaction, error) {
 	return reserveListenerSetMode(previous, next, allowLocalReconnect, false)
 }
+
 func reserveListenerSetMode(previous, next []*Listener, allowLocalReconnect, standalone bool) (*ListenerSetTransaction, error) {
 	t, err := planListenerSetMode(previous, next, standalone)
 	if err != nil {
@@ -179,11 +182,13 @@ func reserveListenerSetMode(previous, next []*Listener, allowLocalReconnect, sta
 	}
 	return t, nil
 }
+
 func (t *ListenerSetTransaction) Impact() ListenerSetImpact {
 	result := t.impact
 	result.Reasons = append([]string(nil), result.Reasons...)
 	return result
 }
+
 func (t *ListenerSetTransaction) begin() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -205,6 +210,7 @@ func (t *ListenerSetTransaction) releaseReservations() {
 		l.runtime.mu.Unlock()
 	}
 }
+
 func (t *ListenerSetTransaction) isTransferredSpec(candidate *Listener, spec runtimeTCPBindSpec) bool {
 	for _, move := range t.moves {
 		if move.to == candidate && runtimeTCPSameEndpoint(move.member.spec, spec) {
@@ -213,6 +219,7 @@ func (t *ListenerSetTransaction) isTransferredSpec(candidate *Listener, spec run
 	}
 	return false
 }
+
 func (t *ListenerSetTransaction) conflictsWithOld(spec runtimeTCPBindSpec) bool {
 	for _, old := range t.previous {
 		for _, member := range old.runtimeTCPMembers() {

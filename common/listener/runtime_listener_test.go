@@ -56,6 +56,7 @@ func (g *graphFixture) Fork() (adapter.RuntimeLease, error) {
 	g.owner.graphRefs.Add(1)
 	return &graphFixture{owner: g.owner}, nil
 }
+
 func (g *graphFixture) Release() {
 	g.once.Do(func() {
 		g.owner.graphRefs.Add(-1)
@@ -65,6 +66,7 @@ func (g *graphFixture) Release() {
 		}
 	})
 }
+
 func (g *graphFixture) RetainResource(id adapter.RuntimeResourceID) (adapter.RuntimeResourceLease, error) {
 	if !g.owner.membership || id != g.owner.id {
 		return nil, errors.New("resource outside graph")

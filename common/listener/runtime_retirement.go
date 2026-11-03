@@ -27,6 +27,7 @@ func newListenerRetirement(previous []*Listener, held map[*Listener]bool) *Liste
 	}
 	return r
 }
+
 func (t *ListenerSetTransaction) Retirement() *ListenerRetirement {
 	if t == nil {
 		return nil
@@ -60,6 +61,7 @@ func (r *ListenerRetirement) RetirePrevious() error {
 	<-r.done
 	return r.err
 }
+
 func retireRuntimeListener(old *Listener) (err error) {
 	defer func() {
 		if recover() != nil {

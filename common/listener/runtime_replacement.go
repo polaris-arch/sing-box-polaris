@@ -67,6 +67,7 @@ func PlanReplacement(previous, next *Listener) (ReplacementImpact, error) {
 	}
 	return impact, nil
 }
+
 func ReserveReplacement(previous, next *Listener, allowLocalReconnect bool) (*Replacement, error) {
 	impact, err := PlanReplacement(previous, next)
 	if err != nil {
@@ -153,6 +154,7 @@ func (l *Listener) releaseRuntimeSockets() error {
 	}
 	return nil
 }
+
 func (l *Listener) restoreRuntimeSockets() error {
 	r := l.runtime
 	r.mu.Lock()

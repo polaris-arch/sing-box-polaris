@@ -20,6 +20,7 @@ type queuedAcceptorFixture struct {
 func newQueuedAcceptorFixture() *queuedAcceptorFixture {
 	return &queuedAcceptorFixture{acceptorFixture: newAcceptorFixture(), conns: make(chan net.Conn, 1)}
 }
+
 func (s *queuedAcceptorFixture) Accept() (net.Conn, error) {
 	s.calls.Add(1)
 	s.accepted <- struct{}{}
@@ -393,6 +394,7 @@ func (s *rawAcceptGapFixture) Accept() (net.Conn, error) {
 	<-s.allow
 	return s.physical, nil
 }
+
 func (s *rawAcceptGapFixture) SetDeadline(value time.Time) error {
 	if !value.IsZero() {
 		s.interruptOnce.Do(func() { close(s.interrupted) })
