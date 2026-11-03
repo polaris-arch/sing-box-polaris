@@ -99,7 +99,7 @@ func TestRuntimeCertificateUnsafeStorageStageHasFiniteOwnerAndNoHTTP(t *testing.
 		f.start(t)
 		before := f.identity()
 		provider := &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"unsafe.invalid"}, DataDirectory: dir, APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}
-		options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a"}}
+		options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}}}
 		options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "unsafe", Options: provider}}
 		_, apply := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 		operation := runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), apply))

@@ -41,3 +41,31 @@ func (c *runtimeCoordinator) VisitRuntimeNetwork(ctx context.Context, visit func
 		}
 	}
 }
+
+// RuntimeWIFIState borrows the selected graph while copying monitor state.
+func (c *runtimeCoordinator) RuntimeWIFIState() (adapter.WIFIState, bool, bool) {
+	lease, err := c.store.Acquire()
+	if err != nil {
+		return adapter.WIFIState{}, false, false
+	}
+	defer lease.Release()
+	view, ok := lease.View().(*runtimeView)
+	if !ok || view.platform == nil {
+		return adapter.WIFIState{}, false, false
+	}
+	return view.platform.WIFIState(), view.platform.NeedWIFIState(), true
+}
+
+func (c *runtimeCoordinator) RuntimeUpdateWIFIState(ctx context.Context) bool {
+	lease, err := c.store.Acquire()
+	if err != nil {
+		return false
+	}
+	defer lease.Release()
+	view, ok := lease.View().(*runtimeView)
+	if !ok || view.platform == nil {
+		return false
+	}
+	view.platform.Refresh(ctx)
+	return true
+}

@@ -15,6 +15,11 @@ func PrepareRuntimeLevel(factory Factory, value string) (func(), error) {
 		}
 	}
 	switch f := factory.(type) {
+	case *runtimeFactory:
+		if f == nil {
+			return nil, errors.New("missing log factory")
+		}
+		return func() { f.SetLevel(level) }, nil
 	case *defaultFactory:
 		if f == nil {
 			return nil, errors.New("missing log factory")

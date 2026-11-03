@@ -32,9 +32,9 @@ func runtimeDashboardTestOptions(t *testing.T) (*runtimeTestFixture, Options) {
 	})
 	listen := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
 	options.Services = []option.Service{{Type: C.TypeAPI, Options: &option.APIServiceOptions{
-		Listen: &listen, Secret: "original", Dashboard: &option.APIDashboardOptions{
+		ListenOptions: option.ListenOptions{Listen: &listen}, Secret: "original", Dashboard: &option.APIDashboardOptions{
 			Enabled: true, Path: "/initial", DownloadURL: "http://127.0.0.1/initial.zip", UpdateInterval: badoption.Duration(time.Hour),
-			HTTPClient: &option.HTTPClientOptions{Detour: "select"},
+			HTTPClient: &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "select"}},
 		},
 	}}}
 	return f, options

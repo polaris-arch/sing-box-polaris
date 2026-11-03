@@ -15,7 +15,7 @@ type runtimePersistenceParticipant interface {
 func runtimePersistCommitted(ctx context.Context, identity RuntimeIdentity, canonical []byte, persist func(RuntimeIdentity, []byte) error, migration runtimePersistenceParticipant) (err error) {
 	defer func() {
 		if recover() != nil {
-			err = errors.New("runtime persistence tail panicked; durability remains pending")
+			err = &runtimePersistenceUncertainError{}
 		}
 	}()
 	if migration != nil {
@@ -30,4 +30,15 @@ func runtimePersistCommitted(ctx context.Context, identity RuntimeIdentity, cano
 		return migration.AcknowledgePersistence(ctx, identity.EffectiveDigest)
 	}
 	return nil
+}
+
+type runtimePersistenceUncertainError struct{}
+
+func (*runtimePersistenceUncertainError) Error() string {
+	return "runtime persistence tail panicked; durability remains pending"
+}
+func runtimePersistenceUncertain(err error) bool {
+	var panicError *runtimePersistenceUncertainError
+	var cleanup interface{ RuntimeCleanupIncomplete() bool }
+	return errors.As(err, &panicError) || errors.Is(err, errRuntimeCleanupIncomplete) || (errors.As(err, &cleanup) && cleanup.RuntimeCleanupIncomplete())
 }

@@ -78,6 +78,7 @@ type RangeMigration struct {
 	activation sync.Once
 	persistent *persistentPreparation
 	initial    *fixedPersistentPreparation
+	mustReuse  bool // source-only selection proof; never a new namespace participant
 }
 
 type rangeMigrationContextKey struct{}
@@ -107,11 +108,29 @@ func validRanges(inet4Range, inet6Range netip.Prefix) error {
 }
 
 func (m *Manager) PrepareRanges(ctx context.Context, inet4Range, inet6Range netip.Prefix) (*RangeMigration, error) {
+	return m.prepareRanges(ctx, inet4Range, inet6Range, false, false)
+}
+
+// PrepareUnchangedRanges retains the actual selected allocator. The constraint
+// is atomic and precedes all namespace/storage/link allocation; no fallback.
+func (m *Manager) PrepareUnchangedRanges(ctx context.Context, inet4Range, inet6Range netip.Prefix) (*RangeMigration, error) {
+	return m.prepareRanges(ctx, inet4Range, inet6Range, true, false)
+}
+
+// PrepareUnchangedSelection fences a disabled graph's actual selected identity,
+// including its empty allocator and retained old-answer namespaces. It neither
+// enables allocation nor constructs a removal/persistence participant.
+func (m *Manager) PrepareUnchangedSelection(ctx context.Context) (*RangeMigration, error) {
+	return m.prepareRanges(ctx, netip.Prefix{}, netip.Prefix{}, true, true)
+}
+func (m *Manager) prepareRanges(ctx context.Context, inet4Range, inet6Range netip.Prefix, mustReuse, selectedOnly bool) (*RangeMigration, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := validRanges(inet4Range, inet6Range); err != nil {
-		return nil, err
+	if !selectedOnly {
+		if err := validRanges(inet4Range, inet6Range); err != nil {
+			return nil, err
+		}
 	}
 	done, ok := m.work.Reserve()
 	if !ok {
@@ -123,9 +142,31 @@ func (m *Manager) PrepareRanges(ctx context.Context, inet4Range, inet6Range neti
 	}
 	inet4Range, inet6Range = inet4Range.Masked(), inet6Range.Masked()
 	m.mappingAccess.Lock()
+	if mustReuse {
+		if m.preparing != nil {
+			m.mappingAccess.Unlock()
+			done()
+			return nil, ErrPersistencePreparing
+		}
+		for _, transition := range m.transitions {
+			if !transition.acknowledged {
+				m.mappingAccess.Unlock()
+				done()
+				return nil, ErrPersistencePending
+			}
+		}
+	}
 	m.protection.prune(m.now())
 	m.collectNamespacesLocked()
 	base := m.active
+	if selectedOnly && base != nil {
+		inet4Range, inet6Range = base.store.inet4Range, base.store.inet6Range
+	}
+	if mustReuse && (base == nil || (!selectedOnly && base.empty) || inet4Range != base.store.inet4Range || inet6Range != base.store.inet6Range) {
+		m.mappingAccess.Unlock()
+		done()
+		return nil, ErrMigrationRequired
+	}
 	namespace := base
 	if inet4Range != base.store.inet4Range || inet6Range != base.store.inet6Range {
 		if !base.empty {
@@ -173,7 +214,7 @@ func (m *Manager) PrepareRanges(ctx context.Context, inet4Range, inet6Range neti
 		done()
 		return nil, err
 	}
-	candidate := &RangeMigration{manager: m, namespace: namespace, base: base, permit: NewAnswerPermit(), done: done}
+	candidate := &RangeMigration{manager: m, namespace: namespace, base: base, permit: NewAnswerPermit(), done: done, mustReuse: mustReuse}
 	m.mappingAccess.Unlock()
 	return candidate, nil
 }
@@ -227,6 +268,16 @@ func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) 
 		c.state.Store(0)
 		m.mappingAccess.Unlock()
 		return nil, impact, err
+	}
+	if c.mustReuse {
+		if m.preparing != nil {
+			return fail(MigrationImpact{}, ErrPersistencePreparing)
+		}
+		for _, transition := range m.transitions {
+			if !transition.acknowledged {
+				return fail(MigrationImpact{}, ErrPersistencePending)
+			}
+		}
 	}
 	m.protection.prune(m.now())
 	impact := m.migrationImpactLocked(c.namespace)
@@ -785,4 +836,24 @@ func (m *Manager) collectNamespacesLocked() {
 			delete(m.namespaces, id)
 		}
 	}
+}
+
+// PersistentRangesRequired reports the actual retained allocator kind. It is not
+// inferred from today's config flag: an earlier durable namespace may still own
+// recognition or answer custody even after allocation moves back to memory.
+func (m *Manager) PersistentRangesRequired() bool {
+	m.mappingAccess.Lock()
+	defer m.mappingAccess.Unlock()
+	if m.active != nil && !m.active.empty {
+		if _, memory := m.active.store.storage.(*MemoryStorage); !memory {
+			return true
+		}
+	}
+	return m.recovered != nil || len(m.transitions) != 0 || m.preparing != nil
+}
+
+// UnchangedSelection certifies that this candidate only owns a new answer
+// permit for the exact selected namespace, never a new persistent transition.
+func (c *RangeMigration) UnchangedSelection() bool {
+	return c != nil && c.mustReuse && c.namespace == c.base && c.persistent == nil && c.initial == nil
 }

@@ -99,6 +99,10 @@ func (c *CacheFile) startFakeIPRuntime(request fakeIPRuntimeOpenRequest) error {
 			return err
 		}
 	}
+	if err := c.requireRuntimeNamespaceRecovery(db); err != nil {
+		_ = db.Close()
+		return err
+	}
 	c.DB = db
 	c.runtimeFileInfo = info
 	return nil
@@ -121,4 +125,60 @@ func (c *CacheFile) validateRuntimeFileIdentity() error {
 		return ErrFakeIPRuntimeIdentity
 	}
 	return nil
+}
+
+// BindRuntimeRecoveryJournal accepts the actual opened owner before the selected
+// cache opens. A path string or process cwd cannot stand in for this binding.
+func (c *CacheFile) BindRuntimeRecoveryJournal(journal *FakeIPRuntimeJournal) error {
+	if journal == nil {
+		return ErrFakeIPRecoveryRoot
+	}
+	root, present := adapter.RuntimeRecoveryRootFromContext(c.ctx)
+	other, otherPresent := adapter.RuntimeRecoveryRootFromContext(journal.ctx)
+	if !present || !otherPresent || root != other {
+		return ErrFakeIPRecoveryCustody
+	}
+	journal.access.Lock()
+	closed := journal.closed
+	journal.access.Unlock()
+	if closed {
+		return ErrFakeIPRecoveryClosed
+	}
+	c.dbAccess.Lock()
+	defer c.dbAccess.Unlock()
+	if c.DB != nil || c.runtimeRecoveryJournal != nil {
+		return ErrFakeIPRecoveryCustody
+	}
+	c.runtimeRecoveryJournal = journal
+	return nil
+}
+func (c *CacheFile) requireRuntimeNamespaceRecovery(db *bbolt.DB) error {
+	return db.View(func(tx *bbolt.Tx) error {
+		root, err := runtimeRoot(tx)
+		if err == ErrFakeIPRuntimeMissing {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		retained := false
+		for _, name := range [][]byte{bucketRuntimeNamespaces, bucketRuntimeLinks, bucketRuntimeAuthority} {
+			if bucket := root.Bucket(name); bucket != nil {
+				key, _ := bucket.Cursor().First()
+				retained = retained || key != nil
+			}
+		}
+		if !retained {
+			return nil
+		}
+		if c.runtimeRecoveryJournal == nil {
+			return ErrFakeIPRecoveryRoot
+		}
+		c.runtimeRecoveryJournal.access.Lock()
+		defer c.runtimeRecoveryJournal.access.Unlock()
+		if c.runtimeRecoveryJournal.closed {
+			return ErrFakeIPRecoveryClosed
+		}
+		return nil
+	})
 }

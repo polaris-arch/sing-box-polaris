@@ -92,7 +92,7 @@ func TestRuntimeHTTPNamedSameTagReplacementRetainsOldStreamingBodyAndPersistence
 		}
 		return nil
 	})
-	options.HTTPClients = []option.HTTPClient{{Tag: "fetch", Version: 1, Detour: "a"}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "fetch", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}}}
 	options.Route.DefaultHTTPClient = "fetch"
 	runtimeResourceNew(t, f, options)
 	var persist atomic.Int32
@@ -350,7 +350,7 @@ func TestRuntimeNTPEnableSourceReplacementDisableClosesActualOldExchange(t *test
 		if server == "" {
 			options.NTP = nil
 		} else {
-			options.NTP = &option.NTPOptions{Enabled: true, Server: server, Detour: "a"}
+			options.NTP = &option.NTPOptions{Enabled: true, ServerOptions: option.ServerOptions{Server: server}, DialerOptions: option.DialerOptions{Detour: "a"}}
 		}
 		_, apply := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 		operation := runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), apply))
@@ -408,7 +408,7 @@ func TestRuntimeHTTPConsumerClosureChangesUseNewExactAllocations(t *testing.T) {
 		t.Run(change, func(t *testing.T) {
 			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "closure.test"), nil)
 			if change != "add" && change != "route-final" {
-				options.HTTPClients = []option.HTTPClient{{Tag: "one", Version: 1, Detour: "a", DomainResolver: &option.DomainResolveOptions{Server: "resolver"}}, {Tag: "two", Version: 1, Detour: "b"}}
+				options.HTTPClients = []option.HTTPClient{{Tag: "one", Version: 1, DialerOptions: option.DialerOptions{Detour: "a", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "resolver"}}}}, {Tag: "two", Version: 1, DialerOptions: option.DialerOptions{Detour: "b"}}}
 				options.Route.DefaultHTTPClient = "one"
 			}
 			runtimeResourceNew(t, f, options)
@@ -416,7 +416,7 @@ func TestRuntimeHTTPConsumerClosureChangesUseNewExactAllocations(t *testing.T) {
 			_, old := f.acquire(t)
 			switch change {
 			case "add":
-				options.HTTPClients = []option.HTTPClient{{Tag: "one", Version: 1, Detour: "a"}}
+				options.HTTPClients = []option.HTTPClient{{Tag: "one", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}}}
 				options.Route.DefaultHTTPClient = "one"
 			case "remove":
 				options.HTTPClients = nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"net"
+	"net/netip"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -185,13 +186,80 @@ func (r *RuntimeRouter) WithRuntimeRules(consume func([]adapter.Rule)) {
 	defer lease.Release()
 	consume(lease.View().Router().Rules())
 }
-func (r *RuntimeRouter) NeedFindProcess() bool  { return r.structural.FindProcess }
-func (r *RuntimeRouter) NeedFindNeighbor() bool { return r.structural.FindNeighbor }
+func (r *RuntimeRouter) NeedFindProcess() bool {
+	lease, err := r.admission.Acquire()
+	if err != nil {
+		return r.structural.FindProcess
+	}
+	defer lease.Release()
+	return lease.View().Router().NeedFindProcess()
+}
+func (r *RuntimeRouter) NeedFindNeighbor() bool {
+	lease, err := r.admission.Acquire()
+	if err != nil {
+		return r.structural.FindNeighbor
+	}
+	defer lease.Release()
+	return lease.View().Router().NeedFindNeighbor()
+}
 func (r *RuntimeRouter) NeighborResolver() adapter.NeighborResolver {
+	lease, err := r.admission.Acquire()
+	if err == nil {
+		present := lease.View().Router().NeighborResolver() != nil
+		lease.Release()
+		if present {
+			return &runtimeGatewayNeighbor{router: r}
+		}
+		return nil
+	}
 	if r.structural.NeighborView != nil {
 		return r.structural.NeighborView()
 	}
 	return r.structural.Neighbor
+}
+
+// A stable gateway cannot export a raw graph-owned native reader after dropping
+// admission. Each short lookup keeps the selected owner until the native/table
+// lookup actually returns; graph consumers already capture their own leaf.
+type runtimeGatewayNeighbor struct{ router *RuntimeRouter }
+
+func (*runtimeGatewayNeighbor) Start() error { return nil }
+func (*runtimeGatewayNeighbor) Close() error { return nil }
+func (r *runtimeGatewayNeighbor) LookupMAC(address netip.Addr) (net.HardwareAddr, bool) {
+	lease, err := r.router.admission.Acquire()
+	if err != nil {
+		return nil, false
+	}
+	defer lease.Release()
+	resolver := lease.View().Router().NeighborResolver()
+	if resolver == nil {
+		return nil, false
+	}
+	return resolver.LookupMAC(address)
+}
+func (r *runtimeGatewayNeighbor) LookupHostname(address netip.Addr) (string, bool) {
+	lease, err := r.router.admission.Acquire()
+	if err != nil {
+		return "", false
+	}
+	defer lease.Release()
+	resolver := lease.View().Router().NeighborResolver()
+	if resolver == nil {
+		return "", false
+	}
+	return resolver.LookupHostname(address)
+}
+func (r *runtimeGatewayNeighbor) LookupAddresses(name string) []netip.Addr {
+	lease, err := r.router.admission.Acquire()
+	if err != nil {
+		return nil
+	}
+	defer lease.Release()
+	resolver := lease.View().Router().NeighborResolver()
+	if resolver == nil {
+		return nil
+	}
+	return resolver.LookupAddresses(name)
 }
 
 func (r *RuntimeRouter) AppendTracker(tracker adapter.ConnectionTracker) {

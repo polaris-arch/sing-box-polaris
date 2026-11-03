@@ -1,8 +1,8 @@
 package route
 
 import (
-	"bufio"
 	"encoding/hex"
+	"io"
 	"net"
 	"net/netip"
 	"os"
@@ -17,23 +17,26 @@ func parseLeaseFile(path string, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHo
 		return
 	}
 	defer file.Close()
+	// The legacy callback API remains best-effort; private runtime readers
+	// propagate this error and publish only complete samples.
+	_ = parseRuntimeLeaseFile(path, file, ipToMAC, ipToHostname, macToHostname)
+}
+
+// The runtime owner keeps this exact opened file through parsing.
+func parseRuntimeLeaseFile(path string, file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
 	if strings.HasSuffix(path, "dhcpd_leases") {
-		parseBootpdLeases(file, ipToMAC, ipToHostname, macToHostname)
-		return
+		return parseBootpdLeases(file, ipToMAC, ipToHostname, macToHostname)
 	}
 	if strings.HasSuffix(path, "kea-leases4.csv") {
-		parseKeaCSV4(file, ipToMAC, ipToHostname, macToHostname)
-		return
+		return parseKeaCSV4(file, ipToMAC, ipToHostname, macToHostname)
 	}
 	if strings.HasSuffix(path, "kea-leases6.csv") {
-		parseKeaCSV6(file, ipToMAC, ipToHostname, macToHostname)
-		return
+		return parseKeaCSV6(file, ipToMAC, ipToHostname, macToHostname)
 	}
 	if strings.HasSuffix(path, "dhcpd.leases") {
-		parseISCDhcpd(file, ipToMAC, ipToHostname, macToHostname)
-		return
+		return parseISCDhcpd(file, ipToMAC, ipToHostname, macToHostname)
 	}
-	parseDnsmasqOdhcpd(file, ipToMAC, ipToHostname, macToHostname)
+	return parseDnsmasqOdhcpd(file, ipToMAC, ipToHostname, macToHostname)
 }
 
 func ReloadLeaseFiles(leaseFiles []string) (leaseIPToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
@@ -46,9 +49,9 @@ func ReloadLeaseFiles(leaseFiles []string) (leaseIPToMAC map[netip.Addr]net.Hard
 	return
 }
 
-func parseDnsmasqOdhcpd(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
+func parseDnsmasqOdhcpd(file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
 	now := time.Now().Unix()
-	scanner := bufio.NewScanner(file)
+	scanner := newRuntimeLeaseScanner(file, ipToMAC, ipToHostname, macToHostname)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "duid ") {
@@ -110,6 +113,7 @@ func parseDnsmasqOdhcpd(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, 
 			}
 		}
 	}
+	return scanner.Err()
 }
 
 func parseOdhcpdLine(line string, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
@@ -182,8 +186,8 @@ func parseOdhcpdLine(line string, ipToMAC map[netip.Addr]net.HardwareAddr, ipToH
 	}
 }
 
-func parseISCDhcpd(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
-	scanner := bufio.NewScanner(file)
+func parseISCDhcpd(file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
+	scanner := newRuntimeLeaseScanner(file, ipToMAC, ipToHostname, macToHostname)
 	var currentIP netip.Addr
 	var currentMAC net.HardwareAddr
 	var currentHostname string
@@ -237,10 +241,11 @@ func parseISCDhcpd(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToH
 			currentActive = state == "active"
 		}
 	}
+	return scanner.Err()
 }
 
-func parseKeaCSV4(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
-	scanner := bufio.NewScanner(file)
+func parseKeaCSV4(file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
+	scanner := newRuntimeLeaseScanner(file, ipToMAC, ipToHostname, macToHostname)
 	firstLine := true
 	for scanner.Scan() {
 		if firstLine {
@@ -273,10 +278,11 @@ func parseKeaCSV4(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHo
 			macToHostname[mac.String()] = hostname
 		}
 	}
+	return scanner.Err()
 }
 
-func parseKeaCSV6(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
-	scanner := bufio.NewScanner(file)
+func parseKeaCSV6(file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
+	scanner := newRuntimeLeaseScanner(file, ipToMAC, ipToHostname, macToHostname)
 	firstLine := true
 	for scanner.Scan() {
 		if firstLine {
@@ -319,11 +325,12 @@ func parseKeaCSV6(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHo
 			}
 		}
 	}
+	return scanner.Err()
 }
 
-func parseBootpdLeases(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) {
+func parseBootpdLeases(file io.Reader, ipToMAC map[netip.Addr]net.HardwareAddr, ipToHostname map[netip.Addr]string, macToHostname map[string]string) error {
 	now := time.Now().Unix()
-	scanner := bufio.NewScanner(file)
+	scanner := newRuntimeLeaseScanner(file, ipToMAC, ipToHostname, macToHostname)
 	var currentName string
 	var currentIP netip.Addr
 	var currentMAC net.HardwareAddr
@@ -383,4 +390,5 @@ func parseBootpdLeases(file *os.File, ipToMAC map[netip.Addr]net.HardwareAddr, i
 			}
 		}
 	}
+	return scanner.Err()
 }

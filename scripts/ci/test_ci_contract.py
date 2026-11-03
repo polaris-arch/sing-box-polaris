@@ -199,6 +199,7 @@ class TestCIContract(unittest.TestCase):
   self.assertIn("python -m unittest discover -s scripts/ci -p 'test_github_release.py'",commands)
   suite=(ROOT/'scripts/ci/test_github_release.py').read_text()
   self.assertIn('from publisher_peer_evidence_12_9_tests import Alpha129PeerEvidenceTests',suite)
+  self.assertIn('from publisher_peer_successor_tests import SuccessorPeerPreparationTests',suite)
   self.assertIn('from oci_material_selection_12_9_tests import Alpha129OCISelectionTests',suite)
   workflow=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
   for name in ('validate','publish'):
@@ -544,6 +545,11 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(w['on']['workflow_dispatch']['inputs']['tag']['default'],release['tag'],name)
   w=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
   self.assertEqual(w['concurrency']['group'],'polaris-github-release-'+release['tag'])
+  import publisher_peer_successor
+  self.assertEqual(publisher_peer_successor.VERSION,release['version'])
+  self.assertEqual((ROOT/'constant/version.go').read_text(),'package constant\n\nvar Version = \"unknown\"\n')
+  self.assertIn('return C.Version',(ROOT/'experimental/libbox/setup.go').read_text())
+  self.assertIn('github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}',(ROOT/'.github/workflows/build.yml').read_text())
   w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
   step=next(s for s in w['jobs']['build_docker']['steps'] if s.get('uses','').startswith('docker/build-push-action@'))
   self.assertEqual(step['env']['DOCKER_BUILD_RECORD_UPLOAD'],'false')

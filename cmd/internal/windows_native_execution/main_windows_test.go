@@ -11,7 +11,7 @@ import (
 // Parser/control fixtures are synthetic rejection inputs, never native facts.
 // No test creates a cohort, elevates, installs, or executes the final Core.
 func requestFixture() request {
-	r := request{Schema: requestSchema, SourceCommit: strings.Repeat("a", 40), SourceTree: strings.Repeat("b", 40), Version: "1.15.0-polaris-alpha.12.9", Target: "windows/amd64", GoVersion: "go1.27.2", CronetVersion: "fixture", RunID: 123, RunAttempt: 1}
+	r := request{Schema: requestSchema, SourceCommit: strings.Repeat("a", 40), SourceTree: strings.Repeat("b", 40), Version: "1.15.0-polaris-alpha.12.10", Target: "windows/amd64", GoVersion: "go1.27.2", CronetVersion: "fixture", RunID: 123, RunAttempt: 1}
 	r.Core = pin{"sing-box.exe", 2, strings.Repeat("c", 64)}
 	r.Sidecar = pin{"libcronet.dll", 3, strings.Repeat("d", 64)}
 	r.Archive = archivePin{"sing-box-fixture-windows-amd64", 4, strings.Repeat("e", 64), map[string]string{"sing-box-fixture-windows-amd64/sing-box.exe": r.Core.SHA256, "sing-box-fixture-windows-amd64/libcronet.dll": r.Sidecar.SHA256}}

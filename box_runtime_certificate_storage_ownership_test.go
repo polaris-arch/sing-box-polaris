@@ -97,7 +97,7 @@ func TestRuntimeCertificatePublicationRechecksAliasAfterActualOriginCAStage(t *t
 	runtimeResourceNew(t, f, options)
 	f.start(t)
 	before := f.identity()
-	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a", TLS: &option.OutboundTLSOptions{Insecure: true}}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Insecure: true}}}}
 	options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"race.invalid"}, DataDirectory: l, APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}
 	_, apply := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 	operation := runtimeTestReceiveApply(t, runtimeTestApplyAsync(f, context.Background(), apply))
@@ -218,7 +218,7 @@ func TestRuntimeRetainedOriginCAAliasMayMoveWithoutTransferringItsStorageToNextP
 		return nil
 	})
 	originca.RegisterCertificateProvider(service.FromContext[adapter.CertificateProviderRegistry](f.ctx).(*certificate.Registry))
-	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a", TLS: &option.OutboundTLSOptions{Insecure: true}}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Insecure: true}}}}
 	provider := &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"retained.invalid"}, DataDirectory: l, APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}
 	options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "old", Options: provider}}
 	runtimeResourceNew(t, f, options)

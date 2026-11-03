@@ -353,9 +353,10 @@ type RuntimeCapabilities struct {
 	ControlRevision              uint64                    `protobuf:"varint,9,opt,name=control_revision,json=controlRevision,proto3" json:"control_revision,omitempty"`
 	// Read-only document from this authenticated running Core. An absent/empty
 	// field is unavailable; it never grants an execution purpose or a CLI fallback.
-	TlsFingerprintCapabilitiesJson string `protobuf:"bytes,10,opt,name=tls_fingerprint_capabilities_json,json=tlsFingerprintCapabilitiesJson,proto3" json:"tls_fingerprint_capabilities_json,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	TlsFingerprintCapabilitiesJson      string   `protobuf:"bytes,10,opt,name=tls_fingerprint_capabilities_json,json=tlsFingerprintCapabilitiesJson,proto3" json:"tls_fingerprint_capabilities_json,omitempty"`
+	SupportedClientImpactPolicyVersions []uint32 `protobuf:"varint,11,rep,packed,name=supported_client_impact_policy_versions,json=supportedClientImpactPolicyVersions,proto3" json:"supported_client_impact_policy_versions,omitempty"`
+	unknownFields                       protoimpl.UnknownFields
+	sizeCache                           protoimpl.SizeCache
 }
 
 func (x *RuntimeCapabilities) Reset() {
@@ -458,6 +459,13 @@ func (x *RuntimeCapabilities) GetTlsFingerprintCapabilitiesJson() string {
 	return ""
 }
 
+func (x *RuntimeCapabilities) GetSupportedClientImpactPolicyVersions() []uint32 {
+	if x != nil {
+		return x.SupportedClientImpactPolicyVersions
+	}
+	return nil
+}
+
 // Explicit snapshot; absent and empty package lists retain their protobuf
 // semantics. Native directory custody is never accepted through this message.
 type RuntimeOverrideOptions struct {
@@ -521,15 +529,16 @@ func (x *RuntimeOverrideOptions) GetExcludePackage() []string {
 }
 
 type PlanRuntimeConfigRequest struct {
-	state                   protoimpl.MessageState   `protogen:"open.v1"`
-	ContractVersion         uint32                   `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
-	Expected                *RuntimeIdentity         `protobuf:"bytes,2,opt,name=expected,proto3" json:"expected,omitempty"`
-	ConfigContent           string                   `protobuf:"bytes,3,opt,name=config_content,json=configContent,proto3" json:"config_content,omitempty"`
-	Overrides               *RuntimeOverrideOptions  `protobuf:"bytes,4,opt,name=overrides,proto3" json:"overrides,omitempty"`
-	ExpectedControlRevision uint64                   `protobuf:"varint,5,opt,name=expected_control_revision,json=expectedControlRevision,proto3" json:"expected_control_revision,omitempty"`
-	SelectorIntents         []*RuntimeSelectorIntent `protobuf:"bytes,6,rep,name=selector_intents,json=selectorIntents,proto3" json:"selector_intents,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state                     protoimpl.MessageState   `protogen:"open.v1"`
+	ContractVersion           uint32                   `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	Expected                  *RuntimeIdentity         `protobuf:"bytes,2,opt,name=expected,proto3" json:"expected,omitempty"`
+	ConfigContent             string                   `protobuf:"bytes,3,opt,name=config_content,json=configContent,proto3" json:"config_content,omitempty"`
+	Overrides                 *RuntimeOverrideOptions  `protobuf:"bytes,4,opt,name=overrides,proto3" json:"overrides,omitempty"`
+	ExpectedControlRevision   uint64                   `protobuf:"varint,5,opt,name=expected_control_revision,json=expectedControlRevision,proto3" json:"expected_control_revision,omitempty"`
+	SelectorIntents           []*RuntimeSelectorIntent `protobuf:"bytes,6,rep,name=selector_intents,json=selectorIntents,proto3" json:"selector_intents,omitempty"`
+	ClientImpactPolicyVersion uint32                   `protobuf:"varint,7,opt,name=client_impact_policy_version,json=clientImpactPolicyVersion,proto3" json:"client_impact_policy_version,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *PlanRuntimeConfigRequest) Reset() {
@@ -604,6 +613,13 @@ func (x *PlanRuntimeConfigRequest) GetSelectorIntents() []*RuntimeSelectorIntent
 	return nil
 }
 
+func (x *PlanRuntimeConfigRequest) GetClientImpactPolicyVersion() uint32 {
+	if x != nil {
+		return x.ClientImpactPolicyVersion
+	}
+	return 0
+}
+
 type RuntimeSelectorIntent struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Group                 string                 `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
@@ -673,22 +689,24 @@ func (x *RuntimeSelectorIntent) GetPinCurrentTcp() bool {
 }
 
 type RuntimeConfigPlan struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	ContractVersion         uint32                 `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
-	PlanId                  string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
-	Expected                *RuntimeIdentity       `protobuf:"bytes,3,opt,name=expected,proto3" json:"expected,omitempty"`
-	CandidateDigest         string                 `protobuf:"bytes,4,opt,name=candidate_digest,json=candidateDigest,proto3" json:"candidate_digest,omitempty"`
-	DependencyDigest        string                 `protobuf:"bytes,5,opt,name=dependency_digest,json=dependencyDigest,proto3" json:"dependency_digest,omitempty"`
-	ImpactDigest            string                 `protobuf:"bytes,6,opt,name=impact_digest,json=impactDigest,proto3" json:"impact_digest,omitempty"`
-	Impacts                 []*RuntimeImpact       `protobuf:"bytes,7,rep,name=impacts,proto3" json:"impacts,omitempty"`
-	Errors                  []*RuntimePlanError    `protobuf:"bytes,8,rep,name=errors,proto3" json:"errors,omitempty"`
-	ExpiresAtUnixMilli      int64                  `protobuf:"varint,9,opt,name=expires_at_unix_milli,json=expiresAtUnixMilli,proto3" json:"expires_at_unix_milli,omitempty"`
-	Applicable              bool                   `protobuf:"varint,10,opt,name=applicable,proto3" json:"applicable,omitempty"`
-	ExpectedControlRevision uint64                 `protobuf:"varint,11,opt,name=expected_control_revision,json=expectedControlRevision,proto3" json:"expected_control_revision,omitempty"`
-	TransactionId           string                 `protobuf:"bytes,12,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	NoOp                    bool                   `protobuf:"varint,13,opt,name=no_op,json=noOp,proto3" json:"no_op,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	ContractVersion            uint32                 `protobuf:"varint,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
+	PlanId                     string                 `protobuf:"bytes,2,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`
+	Expected                   *RuntimeIdentity       `protobuf:"bytes,3,opt,name=expected,proto3" json:"expected,omitempty"`
+	CandidateDigest            string                 `protobuf:"bytes,4,opt,name=candidate_digest,json=candidateDigest,proto3" json:"candidate_digest,omitempty"`
+	DependencyDigest           string                 `protobuf:"bytes,5,opt,name=dependency_digest,json=dependencyDigest,proto3" json:"dependency_digest,omitempty"`
+	ImpactDigest               string                 `protobuf:"bytes,6,opt,name=impact_digest,json=impactDigest,proto3" json:"impact_digest,omitempty"`
+	Impacts                    []*RuntimeImpact       `protobuf:"bytes,7,rep,name=impacts,proto3" json:"impacts,omitempty"`
+	Errors                     []*RuntimePlanError    `protobuf:"bytes,8,rep,name=errors,proto3" json:"errors,omitempty"`
+	ExpiresAtUnixMilli         int64                  `protobuf:"varint,9,opt,name=expires_at_unix_milli,json=expiresAtUnixMilli,proto3" json:"expires_at_unix_milli,omitempty"`
+	Applicable                 bool                   `protobuf:"varint,10,opt,name=applicable,proto3" json:"applicable,omitempty"`
+	ExpectedControlRevision    uint64                 `protobuf:"varint,11,opt,name=expected_control_revision,json=expectedControlRevision,proto3" json:"expected_control_revision,omitempty"`
+	TransactionId              string                 `protobuf:"bytes,12,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	NoOp                       bool                   `protobuf:"varint,13,opt,name=no_op,json=noOp,proto3" json:"no_op,omitempty"`
+	ClientImpactPolicyVersion  uint32                 `protobuf:"varint,14,opt,name=client_impact_policy_version,json=clientImpactPolicyVersion,proto3" json:"client_impact_policy_version,omitempty"`
+	ImpactConfirmationRequired bool                   `protobuf:"varint,15,opt,name=impact_confirmation_required,json=impactConfirmationRequired,proto3" json:"impact_confirmation_required,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *RuntimeConfigPlan) Reset() {
@@ -808,6 +826,20 @@ func (x *RuntimeConfigPlan) GetTransactionId() string {
 func (x *RuntimeConfigPlan) GetNoOp() bool {
 	if x != nil {
 		return x.NoOp
+	}
+	return false
+}
+
+func (x *RuntimeConfigPlan) GetClientImpactPolicyVersion() uint32 {
+	if x != nil {
+		return x.ClientImpactPolicyVersion
+	}
+	return 0
+}
+
+func (x *RuntimeConfigPlan) GetImpactConfirmationRequired() bool {
+	if x != nil {
+		return x.ImpactConfirmationRequired
 	}
 	return false
 }
@@ -1586,7 +1618,7 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x0fadapter_version\x18\x05 \x01(\tR\x0eadapterVersion\x12\x1e\n" +
 	"\n" +
 	"conditions\x18\x06 \x03(\tR\n" +
-	"conditions\"\xbf\x04\n" +
+	"conditions\"\x95\x05\n" +
 	"\x13RuntimeCapabilities\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x122\n" +
 	"\x15connected_hot_enabled\x18\x02 \x01(\bR\x13connectedHotEnabled\x12D\n" +
@@ -1598,23 +1630,25 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"\x1ffull_effective_schema_supported\x18\b \x01(\bR\x1cfullEffectiveSchemaSupported\x12)\n" +
 	"\x10control_revision\x18\t \x01(\x04R\x0fcontrolRevision\x12I\n" +
 	"!tls_fingerprint_capabilities_json\x18\n" +
-	" \x01(\tR\x1etlsFingerprintCapabilitiesJson\"\x8f\x01\n" +
+	" \x01(\tR\x1etlsFingerprintCapabilitiesJson\x12T\n" +
+	"'supported_client_impact_policy_versions\x18\v \x03(\rR#supportedClientImpactPolicyVersions\"\x8f\x01\n" +
 	"\x16RuntimeOverrideOptions\x12#\n" +
 	"\rauto_redirect\x18\x01 \x01(\bR\fautoRedirect\x12'\n" +
 	"\x0finclude_package\x18\x02 \x03(\tR\x0eincludePackage\x12'\n" +
-	"\x0fexclude_package\x18\x03 \x03(\tR\x0eexcludePackage\"\xe5\x02\n" +
+	"\x0fexclude_package\x18\x03 \x03(\tR\x0eexcludePackage\"\xa6\x03\n" +
 	"\x18PlanRuntimeConfigRequest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x123\n" +
 	"\bexpected\x18\x02 \x01(\v2\x17.daemon.RuntimeIdentityR\bexpected\x12%\n" +
 	"\x0econfig_content\x18\x03 \x01(\tR\rconfigContent\x12<\n" +
 	"\toverrides\x18\x04 \x01(\v2\x1e.daemon.RuntimeOverrideOptionsR\toverrides\x12:\n" +
 	"\x19expected_control_revision\x18\x05 \x01(\x04R\x17expectedControlRevision\x12H\n" +
-	"\x10selector_intents\x18\x06 \x03(\v2\x1d.daemon.RuntimeSelectorIntentR\x0fselectorIntents\"\xa9\x01\n" +
+	"\x10selector_intents\x18\x06 \x03(\v2\x1d.daemon.RuntimeSelectorIntentR\x0fselectorIntents\x12?\n" +
+	"\x1cclient_impact_policy_version\x18\a \x01(\rR\x19clientImpactPolicyVersion\"\xa9\x01\n" +
 	"\x15RuntimeSelectorIntent\x12\x14\n" +
 	"\x05group\x18\x01 \x01(\tR\x05group\x12\x1a\n" +
 	"\bselected\x18\x02 \x01(\tR\bselected\x126\n" +
 	"\x17expected_selection_path\x18\x03 \x03(\tR\x15expectedSelectionPath\x12&\n" +
-	"\x0fpin_current_tcp\x18\x04 \x01(\bR\rpinCurrentTcp\"\xb7\x04\n" +
+	"\x0fpin_current_tcp\x18\x04 \x01(\bR\rpinCurrentTcp\"\xba\x05\n" +
 	"\x11RuntimeConfigPlan\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\rR\x0fcontractVersion\x12\x17\n" +
 	"\aplan_id\x18\x02 \x01(\tR\x06planId\x123\n" +
@@ -1631,7 +1665,9 @@ const file_daemon_runtime_config_proto_rawDesc = "" +
 	"applicable\x12:\n" +
 	"\x19expected_control_revision\x18\v \x01(\x04R\x17expectedControlRevision\x12%\n" +
 	"\x0etransaction_id\x18\f \x01(\tR\rtransactionId\x12\x13\n" +
-	"\x05no_op\x18\r \x01(\bR\x04noOp\"\x97\x02\n" +
+	"\x05no_op\x18\r \x01(\bR\x04noOp\x12?\n" +
+	"\x1cclient_impact_policy_version\x18\x0e \x01(\rR\x19clientImpactPolicyVersion\x12@\n" +
+	"\x1cimpact_confirmation_required\x18\x0f \x01(\bR\x1aimpactConfirmationRequired\"\x97\x02\n" +
 	"\rRuntimeImpact\x12\x1f\n" +
 	"\vresource_id\x18\x01 \x01(\tR\n" +
 	"resourceId\x12%\n" +

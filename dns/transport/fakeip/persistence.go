@@ -831,31 +831,14 @@ func (c *RangeMigration) AcknowledgePersistence(ctx context.Context, effectiveID
 // separate valid-answer union overrides any stale ordinary batched mapping.
 func (p *persistentPreparation) selectStartupAllocator(ctx context.Context, backend adapter.FakeIPRuntimeBackendDescriptor, metadata adapter.FakeIPMetadata) (adapter.FakeIPStorageSnapshot, error) {
 	var selected adapter.FakeIPStorageSnapshot
-	var generation uint64
-	m := p.candidate.manager
-	if m.recovered != nil {
-		for _, handle := range m.recovered.handles {
-			descriptor := handle.Descriptor()
-			if !descriptor.Allocator || descriptor.Backend != backend || descriptor.EffectiveConfigurationID != p.options.EffectiveConfigurationID {
-				continue
-			}
-			snapshot, err := handle.Snapshot(ctx)
-			if err != nil {
-				return selected, err
-			}
-			if !snapshot.Issued || snapshot.Metadata == nil || snapshot.Metadata.Inet4Range != metadata.Inet4Range || snapshot.Metadata.Inet6Range != metadata.Inet6Range {
-				continue
-			}
-			if descriptor.Generation == 0 || descriptor.Generation == generation {
-				return selected, ErrPersistenceIdentity
-			}
-			if descriptor.Generation > generation {
-				generation, selected = descriptor.Generation, snapshot
-			}
+	if recovered := p.candidate.manager.recovered; recovered != nil {
+		handle, err := recoveredInitialAllocator(ctx, recovered, backend, p.options.EffectiveConfigurationID, metadata.Inet4Range, metadata.Inet6Range)
+		if err != nil {
+			return selected, err
 		}
-	}
-	if selected.Metadata != nil {
-		return selected, nil
+		if handle != nil {
+			return handle.Snapshot(ctx)
+		}
 	}
 	legacy, err := p.backends[backend].SnapshotFakeIP(ctx)
 	if err != nil {

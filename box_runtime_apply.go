@@ -7,6 +7,7 @@ import (
 
 	"github.com/sagernet/sing-box/common/urltest"
 	"github.com/sagernet/sing-box/experimental/clashmode"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
 )
@@ -17,6 +18,13 @@ func (s *Box) PlanRuntimeConfig(ctx context.Context, actor string, expected Runt
 
 func (s *Box) PlanRuntimeConfigWithSelections(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, intents []RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
 	return s.planRuntimeConfig(ctx, actor, expected, content, intents...)
+}
+
+// PlanRuntimeConfigWithClientImpactPolicy retains the same transaction ingress.
+// The returned impact digest binds the recognized policy and required choice;
+// Apply still requires the original authenticated actor and exact plan digest.
+func (s *Box) PlanRuntimeConfigWithClientImpactPolicy(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, intents []RuntimeSelectorIntent, version RuntimeClientImpactPolicyVersion) (RuntimeConfigPlan, error) {
+	return s.planRuntimeConfigWithClientImpactPolicy(ctx, actor, expected, content, version, intents...)
 }
 
 func (s *Box) ApplyRuntimeConfig(ctx context.Context, actor string, request RuntimeConfigApply) (RuntimeConfigOperation, error) {
@@ -62,6 +70,24 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("runtime plan precondition changed")
 	}
+	// Stored Plan authority overrides any inherited private context value.
+	ctx = context.WithValue(ctx, runtimeSourceApplyProofKey{}, record.sourceProof)
+	if proof := record.sourceProof; proof != nil {
+		if proof.transactionID != request.TransactionID || proof.expected != request.Expected || actor != runtimeSourceProducerActor {
+			coordinator.access.Unlock()
+			return RuntimeConfigOperation{}, errors.New("source plan authority changed")
+		}
+		if err := coordinator.checkRuntimeSourcePlanLocked(proof.producer, request.Expected, record.canonical); err != nil {
+			coordinator.access.Unlock()
+			return RuntimeConfigOperation{}, err
+		}
+		// Only the stored private capability selects this path. RPC/context
+		// flags cannot upgrade a public plan or bypass the original producer Stop.
+		requestContext, cancel := context.WithCancel(ctx)
+		stop := context.AfterFunc(proof.producer.ctx, cancel)
+		defer func() { stop(); cancel() }()
+		ctx = context.WithValue(requestContext, runtimeSourceApplyProofKey{}, proof)
+	}
 	if len(record.selectorIntents) > 0 && coordinator.active.ControlRevision == math.MaxUint64 {
 		coordinator.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("runtime control revision exhausted")
@@ -90,6 +116,13 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		operation := cloneRuntimeOperation(*record.operation)
 		coordinator.access.Unlock()
 		return operation, nil
+	}
+	if record.sourceProof == nil {
+		if coordinator.sourceIntentEpoch == math.MaxUint64 {
+			coordinator.access.Unlock()
+			return RuntimeConfigOperation{}, errors.New("source owner intent epoch exhausted")
+		}
+		coordinator.sourceIntentEpoch++ // callback retry revocation, not accepted resource-lineage revocation
 	}
 	record.consumed = true
 	record.inFlight = true
@@ -138,7 +171,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	}()
 	// Only preparation work observes request cancellation. Committed component
 	// contexts are constructed under coordinator.ctx by prepareRuntimeGraphWithSelections.
-	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(ctx, next, record.options, record.selectorIntents, record.sources...)
+	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(runtimeContextWithClientImpactPolicy(runtimeContextWithFakeIPTransaction(ctx, request.TransactionID), record.plan.ClientImpactPolicyVersion), next, record.options, record.selectorIntents, record.sources...)
 	if prepareErr == nil && prepared.rootDigest != record.rootDigest {
 		prepareErr = errors.New("root content changed after planning")
 	}
@@ -198,7 +231,9 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			}
 		}
 		var publication runtimeFakeIPPublication
+		defer func() { publication.abort() }()
 		if prepared != nil {
+			publication.apiHandoffs = prepared.apiHandoffs
 			publication.logPublication = prepared.logPublication
 			publication.dnsStores = prepared.dnsStores
 			publication.endpoints = prepared.endpointTransaction
@@ -206,9 +241,14 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		if prepareErr == nil {
 			prepareErr = prepared.endpointTransaction.PreparePublication()
 		}
+		if prepareErr == nil && prepared.logChange != nil {
+			publication.log, prepareErr = prepared.logChange.PreparePublication()
+		}
 		if prepareErr == nil {
-			publication.commit, prepareErr = prepared.fenceRuntimeFakeIP()
-			defer func() { publication.abort() }()
+			prepareErr = s.validateRuntimeTunPublication(ctx, prepared)
+		}
+		if prepareErr == nil {
+			publication.commit, prepareErr = prepared.fenceRuntimeFakeIP(ctx)
 			if prepareErr == nil && prepared.tunTransaction != nil {
 				publication.tun, prepareErr = prepared.tunTransaction.PreparePublication()
 			}
@@ -227,6 +267,9 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		if prepareErr == nil {
 			prepareErr = ctx.Err()
 		}
+		if prepareErr == nil && runtimeSourceOnlyRecord(record) {
+			prepareErr = coordinator.checkSourcePersistenceBaseLocked(record.sourceProof.closure.persistenceBase)
+		}
 		if prepareErr == nil {
 			_, prepareErr = publication.publish(coordinator.store, request.Expected.graphRevision(), prepared.graph)
 			if prepareErr == nil {
@@ -244,6 +287,15 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				coordinator.canonical = append([]byte(nil), record.canonical...)
 				coordinator.active = next
 				coordinator.pendingPersistence = nil
+				if !runtimeSourceOnlyRecord(record) {
+					coordinator.sourceLineage = nil
+					if coordinator.persist != nil {
+						coordinator.configurationOwner = record
+					} else {
+						coordinator.configurationOwner = nil
+					}
+				}
+				record.sourceDriverEpoch = coordinator.sourceIntentEpoch
 				if coordinator.clashMode != nil {
 					coordinator.clashMode.RuntimeReplaceModes(clashmode.CalculateModeList(record.options))
 				}
@@ -251,6 +303,14 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				record.operation.Active = next
 				record.operation.State = "COMMITTED_DURABILITY_PENDING"
 				record.operation.RetirementState = "PENDING"
+				if runtimeSourceOnlyRecord(record) {
+					// Complete the resource receipt and child lineage before controls
+					// can advance the published identity. A post-publication invariant
+					// failure remains committed/uncertain; it is never an abort.
+					if settleErr := coordinator.settleSourceOnlyLocked(record, next); settleErr != nil {
+						record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "SOURCE_PERSISTENCE_SCOPE_CHANGED", Message: "source resources published; base evidence remains unconfirmed"})
+					}
+				}
 			}
 		}
 		if prepareErr != nil {
@@ -303,7 +363,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	coordinator.access.Lock()
 	persist := coordinator.persist
 	coordinator.access.Unlock()
-	if persist != nil {
+	if !runtimeSourceOnlyRecord(record) && persist != nil {
 		// A persisted canonical snapshot alone does not certify completion of
 		// the migration's already-admitted namespace writers or exact links.
 		// All fallible durability work stays outside the publication guard.
@@ -322,6 +382,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 		persistErr := coordinator.persistRuntimeTransaction(coordinator.ctx, next, record.canonical, record.selectorIntents, persist, migration)
 		coordinator.access.Lock()
+		record.persistenceUncertain = runtimePersistenceUncertain(persistErr)
 		var ownerPending *RuntimeOwnerAcknowledgementRequiredError
 		if errors.As(persistErr, &ownerPending) && ownerPending.Mode == "app_authoritative_regeneration" && coordinator.persistenceMode == ownerPending.Mode {
 			record.awaitingOwnerAcknowledgement = true
@@ -336,15 +397,19 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			coordinator.durableDesiredDigest = ""
 			coordinator.durableDesiredRevision = ""
 			coordinator.durableOwnerReload = false
+			if coordinator.configurationOwner == record {
+				coordinator.configurationOwner = nil
+			}
 		} else {
 			record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PERSISTENCE_FAILED", Message: "active configuration committed; owner persistence acknowledgement pending"})
 		}
 		if coordinator.pendingPersistence == record && (record.operation.Durable || (!record.persistenceRetrySafe && !record.awaitingOwnerAcknowledgement)) {
 			coordinator.pendingPersistence = nil
 		}
+		s.registerOriginalExactSourceTailLocked(record)
 		coordinator.access.Unlock()
 	}
-	go s.observeRuntimeRetirement(record, retired)
+	go s.observeRuntimeRetirement(record, retired, prepared.logChange)
 	coordinator.access.Lock()
 	operation = cloneRuntimeOperation(*record.operation)
 	coordinator.access.Unlock()
@@ -373,8 +438,14 @@ func (s *Box) observeRuntimeAbort(record *runtimePlanRecord, prepared *preparedR
 	// Sticky cleanup failures retain the charged record and uncertain resources.
 }
 
-func (s *Box) observeRuntimeRetirement(record *runtimePlanRecord, resources []*runtimeResource) {
-	err := waitRuntimeResources(context.Background(), resources)
+func (s *Box) observeRuntimeRetirement(record *runtimePlanRecord, resources []*runtimeResource, logChanges ...*log.RuntimeOptionsChange) {
+	var err error
+	for _, change := range logChanges {
+		if change != nil {
+			err = errors.Join(err, change.Retire(context.Background()))
+		}
+	}
+	err = errors.Join(err, waitRuntimeResources(context.Background(), resources))
 	s.runtime.access.Lock()
 	defer s.runtime.access.Unlock()
 	if err != nil {

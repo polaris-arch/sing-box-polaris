@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -73,26 +74,29 @@ type runtimeAPI struct {
 }
 
 type apiGeneration struct {
-	hub              *runtimeAPI
-	options          option.APIServiceOptions
-	digest, id       string
-	endpoint         *apiEndpoint
-	ctx              context.Context
-	cancel           context.CancelFunc
-	attached         *daemon.StartedService
-	grpc             *grpc.Server
-	handler          http.Handler
-	mu               sync.Mutex
-	closing          bool
-	quiescing        bool
-	admissionChanged chan struct{}
-	ordinary         int
-	ordinaryIdle     chan struct{}
-	requests         sync.WaitGroup
-	once             sync.Once
-	done             chan struct{}
-	closeErr         error
-	confirmed        *apiHandoff
+	hub                 *runtimeAPI
+	options             option.APIServiceOptions
+	digest, id          string
+	endpoint            *apiEndpoint
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	attached            *daemon.StartedService
+	grpc                *grpc.Server
+	handler             http.Handler
+	dashboard           *dashboard
+	dashboardResource   *runtimeDashboardResource
+	dashboardActivation chan struct{}
+	mu                  sync.Mutex
+	closing             bool
+	quiescing           bool
+	admissionChanged    chan struct{}
+	ordinary            int
+	ordinaryIdle        chan struct{}
+	requests            sync.WaitGroup
+	once                sync.Once
+	done                chan struct{}
+	closeErr            error
+	confirmed           *apiHandoff
 }
 
 type apiEndpoint struct {
@@ -168,6 +172,7 @@ type apiHandoff struct {
 	authTimer    *time.Timer
 	done         chan struct{}
 	closeErr     error
+	publishOnce  sync.Once
 }
 
 // Caller holds hub.mu. Expiry revokes authentication, never asserts that the
@@ -425,7 +430,7 @@ func (h *runtimeAPI) start(scope *adapter.Scope) error {
 		tcp = apiTLSListener{Listener: tcp, config: h.service.tlsConfig}
 	}
 	endpoint := &apiEndpoint{hub: h, listener: tcp, conns: make(map[*apiOwnedConn]struct{}), serveDone: make(chan struct{})}
-	g, err := h.newGeneration(h.service.options, endpoint)
+	g, err := h.newGeneration(h.service.options, endpoint, &runtimeDashboardResource{dashboard: h.service.dashboard})
 	if err != nil {
 		return errors.Join(err, endpoint.close())
 	}
@@ -441,7 +446,7 @@ func (h *runtimeAPI) start(scope *adapter.Scope) error {
 	return nil
 }
 
-func (h *runtimeAPI) newGeneration(options option.APIServiceOptions, endpoint *apiEndpoint) (*apiGeneration, error) {
+func (h *runtimeAPI) newGeneration(options option.APIServiceOptions, endpoint *apiEndpoint, resource *runtimeDashboardResource) (*apiGeneration, error) {
 	digest, err := adapter.RuntimeAPIConfigDigest(options)
 	if err != nil {
 		return nil, err
@@ -464,7 +469,12 @@ func (h *runtimeAPI) newGeneration(options option.APIServiceOptions, endpoint *a
 	g := &apiGeneration{admissionChanged: make(chan struct{}), hub: h, options: options, digest: digest, id: id, endpoint: endpoint, ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	g.attached = h.attached
 	g.grpc = daemon.NewServerWithRuntimeIngress(g.attached, options.Secret, g, grpc.ForceServerCodec(apiWireCodec{}))
-	g.handler = newHTTPHandler(h.service.logger, g.grpc, options, h.service.dashboard)
+	if resource != nil && resource.dashboard != nil {
+		resource.retain()
+		g.dashboardResource, g.dashboard = resource, resource.dashboard
+	}
+	g.dashboardActivation = make(chan struct{})
+	g.handler = newHTTPHandler(h.service.logger, g.grpc, options, g.dashboard)
 	return g, nil
 }
 
@@ -521,27 +531,35 @@ func (e *apiEndpoint) dispatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "API publication unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	// Same-secret dashboard toggles still create distinct generations. A
+	// captured carrier keeps its origin for recovery; an unbound new carrier
+	// chooses the published digest, never the first historical token match.
+	carrier, _ := r.Context().Value(apiConnContextKey{}).(*apiOwnedConn)
+	e.mu.Lock()
+	var pinned *apiGeneration
+	if carrier != nil {
+		pinned = carrier.generation
+	}
+	e.mu.Unlock()
 	h.mu.Lock()
-	var selected, empty *apiGeneration
+	var selected, fallback *apiGeneration
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	for _, g := range h.generations {
-		if g.endpoint != e {
+		if g.endpoint != e || (g.options.Secret != "" && token != g.options.Secret) {
 			continue
 		}
-		if g.options.Secret != "" && token == g.options.Secret {
+		if pinned == g {
 			selected = g
 			break
 		}
-		if g.options.Secret == "" {
-			if identity.ConfigurationDigest == g.digest {
-				empty = g
-			} else if empty == nil {
-				empty = g
-			}
+		if g.digest == identity.ConfigurationDigest {
+			fallback = g
+		} else if fallback == nil {
+			fallback = g
 		}
 	}
 	if selected == nil {
-		selected = empty
+		selected = fallback
 	}
 	// Static dashboard assets and CORS were never bearer-authenticated. A
 	// WebSocket carries its gRPC metadata only in the first frame: choose the
@@ -575,8 +593,7 @@ func (e *apiEndpoint) dispatch(w http.ResponseWriter, r *http.Request) {
 	// First admission pins the actual accepted carrier. Even with the same
 	// tuple, a new credential must establish its own channel; changing headers
 	// on an old h2 connection cannot transfer listener generation custody.
-	carrier, ok := r.Context().Value(apiConnContextKey{}).(*apiOwnedConn)
-	if !ok {
+	if carrier == nil {
 		selected.mu.Unlock()
 		http.Error(w, "API carrier custody unavailable", http.StatusServiceUnavailable)
 		return
@@ -646,6 +663,7 @@ func (g *apiGeneration) close() error {
 			}
 		}
 		g.grpc.Stop()
+		g.closeErr = errors.Join(g.closeErr, g.dashboardResource.release())
 		g.requests.Wait()
 		close(g.done)
 	})
@@ -706,12 +724,20 @@ func (s *Service) PrepareRuntimeAPI(ctx context.Context, options option.APIServi
 	successor.ListenPort = 0
 	original.Secret = ""
 	successor.Secret = ""
-	if !reflect.DeepEqual(original, successor) {
+	if !reflect.DeepEqual(original, successor) && !adapter.RuntimeDashboardToggleEligible(old.options, options) {
 		h.mu.Unlock()
 		return nil, errors.New("API handoff changes unsupported options")
 	}
 	address := *options.Listen
 	options.Listen = &address
+	if options.Dashboard != nil {
+		dashboardOptions := *options.Dashboard
+		if dashboardOptions.HTTPClient != nil {
+			client := *dashboardOptions.HTTPClient
+			dashboardOptions.HTTPClient = &client
+		}
+		options.Dashboard = &dashboardOptions
+	}
 	h.preparing = true
 	h.workers.Add(1)
 	h.mu.Unlock()
@@ -722,9 +748,39 @@ func (s *Service) PrepareRuntimeAPI(ctx context.Context, options option.APIServi
 	} else if options.ListenPort == 0 {
 		return nil, errors.New("API successor requires an explicit reachable port")
 	}
-	next, err := h.newGeneration(options, endpoint)
+	var candidateDashboard *dashboard
+	resource := old.dashboardResource
+	if !reflect.DeepEqual(old.options.Dashboard, options.Dashboard) {
+		resource = nil
+		if options.Dashboard != nil && options.Dashboard.Enabled {
+			candidateDashboard = newDashboard(h.ctx, s.logger, s.Tag(), *options.Dashboard)
+			resource = &runtimeDashboardResource{dashboard: candidateDashboard}
+		}
+	}
+	next, err := h.newGeneration(options, endpoint, resource)
 	if err != nil {
 		return nil, err
+	}
+	if candidateDashboard != nil {
+		// Reject a symlink/non-directory root before this generation can serve it.
+		if info, statErr := os.Lstat(candidateDashboard.path); statErr != nil && !os.IsNotExist(statErr) || statErr == nil && !info.IsDir() {
+			cleanup := next.close()
+			if endpoint == nil {
+				cleanup = errors.Join(cleanup, next.endpoint.close())
+			}
+			return nil, errors.Join(errors.New("invalid runtime dashboard directory"), statErr, cleanup)
+		}
+		var previous <-chan struct{}
+		if old.dashboard != nil {
+			previous = old.dashboard.runtimeWorkerDone()
+		}
+		if err := candidateDashboard.prepareAfter(ctx, h.ctx, next.dashboardActivation, previous); err != nil {
+			cleanup := next.close()
+			if endpoint == nil {
+				cleanup = errors.Join(cleanup, next.endpoint.close())
+			}
+			return nil, errors.Join(err, cleanup)
+		}
 	}
 	handoff := &apiHandoff{hub: h, origin: old, next: next, done: make(chan struct{})}
 	if _, err = rand.Read(handoff.key[:]); err != nil {
@@ -1092,4 +1148,16 @@ func (apiWireCodec) Unmarshal(data []byte, value any) error {
 		return errors.New("non-protobuf API request")
 	}
 	return proto.Unmarshal(data, message)
+}
+
+// Called only by the graph store's prepared publication participant. There is
+// no file/network work or old-worker join under the publication guard.
+// The successor's graph admission blocks until that store publication finishes.
+func (h *apiHandoff) PublishRuntimeAPI() {
+	h.publishOnce.Do(func() {
+		if h.origin.dashboardResource != h.next.dashboardResource && h.origin.dashboard != nil {
+			h.origin.dashboard.stopRuntimeWorker()
+		}
+		close(h.next.dashboardActivation)
+	})
 }

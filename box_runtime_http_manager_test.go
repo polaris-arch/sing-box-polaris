@@ -26,8 +26,8 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 			candidate := runtimeRealmDependencyOptions()
 			candidate.Log = options.Log
 			candidate.HTTPClients = []option.HTTPClient{
-				{Tag: "one", Version: 1, Detour: "carrier-a", DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}},
-				{Tag: "two", Version: 1, Detour: "carrier-b", DomainResolver: &option.DomainResolveOptions{Server: "replacement"}},
+				{Tag: "one", Version: 1, DialerOptions: option.DialerOptions{Detour: "carrier-a", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}},
+				{Tag: "two", Version: 1, DialerOptions: option.DialerOptions{Detour: "carrier-b", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "replacement"}}}},
 			}
 			candidate.Route.DefaultHTTPClient = "one"
 			realm := candidate.Outbounds[2].Options.(*option.Hysteria2OutboundOptions)
@@ -39,7 +39,7 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 			case "named-http", "named-http-route-final":
 				realm.Realm.HTTPClient = &option.HTTPClientOptions{Tag: "one"}
 			case "inline-http":
-				realm.Realm.HTTPClient = &option.HTTPClientOptions{Version: 1, Detour: "carrier-a"}
+				realm.Realm.HTTPClient = &option.HTTPClientOptions{Version: 1, DialerOptions: option.DialerOptions{Detour: "carrier-a"}}
 			case "route-final":
 				// Only the implicit manager default captures Final. Named clients
 				// above have explicit detours and must not invent this dependency.
@@ -177,7 +177,7 @@ func TestRuntimeRealmLiteralDiscoveryDoesNotCaptureUnusedDNS(t *testing.T) {
 	realm.Realm.ServerURL = "https://127.0.0.1:0"
 	realm.Realm.STUNServers = []string{"127.0.0.1:3478"}
 	realm.Realm.HTTPClient = &option.HTTPClientOptions{Tag: "control"}
-	options.HTTPClients = []option.HTTPClient{{Tag: "control", Version: 1, Detour: "carrier-a"}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "control", Version: 1, DialerOptions: option.DialerOptions{Detour: "carrier-a"}}}
 	options.Route.DefaultHTTPClient = "control"
 	for i := 0; i < 2; i++ {
 		options.Outbounds[i].Type = C.TypeSOCKS
@@ -536,7 +536,7 @@ func TestRuntimeHTTPImplicitDefaultCapturesSourceOrderFinal(t *testing.T) {
 }
 
 func TestRuntimeHTTPNamedDefinitionsCaptureResolverAndDetour(t *testing.T) {
-	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "updates", Detour: "proxy", DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "updates", DialerOptions: option.DialerOptions{Detour: "proxy", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:proxy", "dns-router", "dns-transport:bootstrap"} {
 		if !slices.Contains(node.dependencies, dependency) {
@@ -564,7 +564,7 @@ func TestRuntimeHTTPDefaultSelectionAffectsFingerprint(t *testing.T) {
 }
 
 func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) {
-	client := &option.HTTPClientOptions{Detour: "issuer-proxy", DomainResolver: &option.DomainResolveOptions{Server: "issuer-dns"}}
+	client := &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "issuer-proxy", AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Server: "issuer-dns"}}}}
 	options := option.Options{CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: client}}}}
 	first := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:issuer-proxy", "dns-router", "dns-transport:issuer-dns"} {
@@ -587,7 +587,7 @@ func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) 
 }
 
 func TestRuntimeNamedProviderHTTPReferenceDoesNotCreateInlineTransport(t *testing.T) {
-	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "shared-proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", DialerOptions: option.DialerOptions{Detour: "shared-proxy"}}}, CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
 	if !slices.Contains(node.dependencies, "outbound:shared-proxy") {
 		t.Fatal("shared HTTP definition lost")
@@ -605,7 +605,7 @@ func TestRuntimeNamedProviderHTTPReferenceDoesNotCreateInlineTransport(t *testin
 
 func TestRuntimeHTTPResolveOnDetourCapturesNamedDefinitionAndProgrammaticFlags(t *testing.T) {
 	client := &option.HTTPClientOptions{Tag: "issuer", ResolveOnDetour: true}
-	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{HTTPClient: client}}}}
+	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", DialerOptions: option.DialerOptions{Detour: "proxy"}}}, CertificateProviders: []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{HTTPClient: client}}}}
 	before := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:proxy", "dns-router"} {
 		if !slices.Contains(before.dependencies, dependency) {

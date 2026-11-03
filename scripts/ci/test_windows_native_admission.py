@@ -18,7 +18,7 @@ from github_read_transport import ReadFailure
 
 SOURCE = 'a' * 40
 TAG_OBJECT = 'c' * 40
-VERSION = '1.15.0-polaris-alpha.12.9'
+VERSION = '1.15.0-polaris-alpha.12.10'
 TAG = 'v' + VERSION
 
 

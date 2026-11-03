@@ -218,7 +218,7 @@ func (p *clockPolicy) CheckFeature(_ context.Context, feature string) error {
 func TestClockConstructorIsInertAndFreezesOptions(t *testing.T) {
 	policy := "captured-policy"
 	fragment := true
-	options := option.NTPOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &policy}, UDPFragment: &fragment, NetworkType: []option.InterfaceType{1}}
+	options := option.NTPOptions{DialerOptions: option.DialerOptions{AbstractDialerOptions: option.AbstractDialerOptions{DomainResolver: &option.DomainResolveOptions{Mode: option.DomainResolverModeRules, Policy: &policy}, UDPFragment: &fragment, NetworkType: []option.InterfaceType{1}}}}
 	f := newClockFixture(t, options, nil, nil, nil)
 	s := f.s
 	policy = "mutated"

@@ -42,12 +42,19 @@ def strict_json(raw):
     return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant, parse_float=finite)
 
 
-def load(root, *, path, expected_source, expected_version, run_id):
+def load(root, *, path, expected_source, expected_version, run_id, run_attempt=1):
     path = Path(root) / path
     info = path.lstat()
     require(stat.S_ISREG(info.st_mode) and 0 < info.st_size <= JSON_LIMIT, 'selection must be bounded regular file')
     raw = path.read_bytes()
+    return validate_selection(raw, expected_source=expected_source, expected_version=expected_version,
+                              run_id=run_id, run_attempt=run_attempt)
+
+
+def validate_selection(raw, *, expected_source, expected_version, run_id, run_attempt=1):
     s = strict_json(raw)
+    require(type(run_id) is int and run_id > 0 and type(run_attempt) is int and run_attempt > 0,
+            'selection expected run/attempt invalid')
     require(type(s) is dict and set(s) == {
         'schema', 'repository', 'repositoryId', 'version', 'tag', 'sourceCommit', 'sourceTree',
         'tagObject', 'workflow', 'runId', 'runAttempt', 'artifact', 'member', 'nativeIndexSHA256',
@@ -59,7 +66,7 @@ def load(root, *, path, expected_source, expected_version, run_id):
             and same_identity(s['sourceCommit'], expected_source) and same_identity(s['version'], expected_version) and same_identity(s['tag'], 'v' + expected_version)
             and same_identity(s['workflow'], '.github/workflows/build.yml')
             and type(s['runId']) is int and same_identity(s['runId'], run_id)
-            and type(s['runAttempt']) is int and same_identity(s['runAttempt'], 1)
+            and type(s['runAttempt']) is int and same_identity(s['runAttempt'], run_attempt)
             and s['publicationEligible'] is False and same_identity(s['publicationDisposition'], DISPOSITION),
             'selection identity/type differs')
     for key in ('sourceTree', 'tagObject'):

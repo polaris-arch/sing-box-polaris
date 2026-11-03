@@ -58,9 +58,13 @@ type FakeIPRuntimeJournal struct {
 	cancel      context.CancelFunc
 	flushDone   chan struct{}
 	closeErr    error
+	custody     []func() error
 }
 
 func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRuntimeJournal, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	root, present := adapter.RuntimeRecoveryRootFromContext(ctx)
 	if !present || !filepath.IsAbs(root) {
 		return nil, ErrFakeIPRecoveryRoot
@@ -70,15 +74,34 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFakeIPRecoveryCustody, err)
 	}
-	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 || rootInfo.Mode().Perm()&0o022 != 0 {
+	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
 		return nil, ErrFakeIPRecoveryCustody
 	}
+	rootCustody, err := requireRuntimeJournalRootCustody(root, rootInfo)
+	if err != nil {
+		return nil, err
+	}
+	releaseRoot := rootCustody.Close
+	var releaseFile func() error
+	retained := false
+	defer func() {
+		if !retained {
+			if releaseFile != nil {
+				_ = releaseFile()
+			}
+			_ = releaseRoot()
+		}
+	}()
 	canonical, err := filepath.EvalSymlinks(root)
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	path := filepath.Join(canonical, fakeIPRuntimeJournalName)
 	created := false
+	var existingInfo os.FileInfo
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	if err == nil {
 		created = true
@@ -87,15 +110,23 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 		if inspectErr != nil {
 			return nil, inspectErr
 		}
-		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
 			return nil, ErrFakeIPRecoveryCustody
 		}
+		releaseFile, err = rootCustody.RequireFile(path, info)
+		if err != nil {
+			return nil, err
+		}
+		existingInfo = info
 		file, err = os.OpenFile(path, os.O_RDWR, 0)
 	}
 	if err != nil {
 		return nil, err
 	}
 	opened, err := file.Stat()
+	if err == nil && existingInfo != nil && !os.SameFile(existingInfo, opened) {
+		err = ErrFakeIPRecoveryCustody
+	}
 	if err == nil {
 		err = file.Sync()
 	}
@@ -106,8 +137,14 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	if err != nil {
 		return nil, err
 	}
-	if !opened.Mode().IsRegular() || opened.Mode().Perm()&0o077 != 0 {
+	if !opened.Mode().IsRegular() {
 		return nil, ErrFakeIPRecoveryCustody
+	}
+	if releaseFile == nil {
+		releaseFile, err = rootCustody.RequireFile(path, opened)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if created {
 		if err = syncRuntimeFileCreation(path); err != nil {
@@ -143,6 +180,8 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	descriptor, _ := cache.RuntimeDescriptor(ctx)
 	entry := &recoveryBackend{backend: cache, permanent: true, changed: make(chan struct{})}
 	journal.addViewLocked(entry, descriptor, cache)
+	journal.custody = []func() error{releaseFile, releaseRoot}
+	retained = true
 	go func() { defer close(journal.flushDone); cache.loopFlush(flushCtx) }()
 	return journal, nil
 }
@@ -624,6 +663,12 @@ func (j *FakeIPRuntimeJournal) Close() error {
 	<-j.flushDone
 	j.flushTimer.Stop()
 	j.closeErr = closeStrictRuntimeCache(j.CacheFile)
+	if j.closeErr == nil {
+		for _, release := range j.custody {
+			j.closeErr = errors.Join(j.closeErr, release())
+		}
+		j.custody = nil
+	}
 	return j.closeErr
 }
 
@@ -687,4 +732,26 @@ func (j *FakeIPRuntimeJournal) PruneUnreferencedCustody(ctx context.Context) err
 		}
 		return nil
 	})
+}
+
+// A declared root with no usable private custody remains a legacy startup when
+// no journal exists. Existing recovery evidence is never ignored or adopted.
+// This inspection performs no creation, chmod, ACL write, reset or DB open.
+func FakeIPRuntimeRecoveryRootReady(ctx context.Context) (bool, error) {
+	root, present := adapter.RuntimeRecoveryRootFromContext(ctx)
+	if !present {
+		return false, nil
+	}
+	info, err := os.Lstat(root)
+	if err == nil {
+		var release func() error
+		release, err = requireRuntimeJournalCustody(root, info, true)
+		if err == nil {
+			return true, release()
+		}
+	}
+	if _, journalErr := os.Lstat(filepath.Join(root, fakeIPRuntimeJournalName)); os.IsNotExist(journalErr) {
+		return false, nil
+	}
+	return false, errors.Join(ErrFakeIPRecoveryCustody, err)
 }
