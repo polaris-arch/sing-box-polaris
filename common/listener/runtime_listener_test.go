@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -25,6 +26,7 @@ type admissionFixture struct {
 	entered      chan struct{}
 	allow        chan struct{}
 	membership   bool
+	released     chan struct{}
 }
 
 func (a *admissionFixture) Acquire() (adapter.RuntimeLease, error) {
@@ -54,7 +56,15 @@ func (g *graphFixture) Fork() (adapter.RuntimeLease, error) {
 	g.owner.graphRefs.Add(1)
 	return &graphFixture{owner: g.owner}, nil
 }
-func (g *graphFixture) Release() { g.once.Do(func() { g.owner.graphRefs.Add(-1) }) }
+func (g *graphFixture) Release() {
+	g.once.Do(func() {
+		g.owner.graphRefs.Add(-1)
+		select {
+		case g.owner.released <- struct{}{}:
+		default:
+		}
+	})
+}
 func (g *graphFixture) RetainResource(id adapter.RuntimeResourceID) (adapter.RuntimeResourceLease, error) {
 	if !g.owner.membership || id != g.owner.id {
 		return nil, errors.New("resource outside graph")
@@ -74,10 +84,18 @@ func (r *resourceFixture) Fork() (adapter.RuntimeResourceLease, error) {
 	return &resourceFixture{owner: r.owner}, nil
 }
 
-func (r *resourceFixture) Release()                { r.once.Do(func() { r.owner.resourceRefs.Add(-1) }) }
+func (r *resourceFixture) Release() {
+	r.once.Do(func() {
+		r.owner.resourceRefs.Add(-1)
+		select {
+		case r.owner.released <- struct{}{}:
+		default:
+		}
+	})
+}
 func (*resourceFixture) Retiring() <-chan struct{} { return nil }
 func newAdmissionFixture() *admissionFixture {
-	return &admissionFixture{id: adapter.RuntimeResourceID{Incarnation: "listeners", Sequence: 1}, membership: true}
+	return &admissionFixture{id: adapter.RuntimeResourceID{Incarnation: "listeners", Sequence: 1}, membership: true, released: make(chan struct{}, 16)}
 }
 
 func waitFixture(t *testing.T, signal <-chan struct{}) {
@@ -239,14 +257,38 @@ func (handlerFixture) NewConnection(context.Context, net.Conn, adapter.InboundCo
 }
 
 func listenerFixture(a *admissionFixture, acceptor *acceptorFixture, phase string) *Listener {
-	var socket net.Listener
+	l := &Listener{
+		ctx: context.Background(), logger: log.NewNOPFactory().Logger(), network: []string{N.NetworkTCP}, listenOptions: option.ListenOptions{ListenPort: 12345}, connHandler: handlerFixture{},
+		runtime: &runtimeListener{phase: phase, gateway: NewAdmissionGateway(a, sourceFixture{a}), closeDone: make(chan struct{})},
+	}
+	spec := runtimeTCPBindSpec{network: "tcp4", address: netip.MustParseAddr("127.0.0.1"), port: 12345}
+	fixtureTCPExpected(l, spec)
 	if acceptor != nil {
-		socket = acceptor
+		fixtureAddTCP(l, acceptor, spec)
 	}
-	return &Listener{
-		ctx: context.Background(), logger: log.NewNOPFactory().Logger(), network: []string{N.NetworkTCP}, listenOptions: option.ListenOptions{ListenPort: 12345}, connHandler: handlerFixture{}, tcpListener: socket,
-		runtime: &runtimeListener{phase: phase, gateway: NewAdmissionGateway(a, sourceFixture{a}), closeDone: make(chan struct{}), ownsTCP: acceptor != nil},
+	return l
+}
+
+func fixtureTCPExpected(l *Listener, specs ...runtimeTCPBindSpec) {
+	l.runtime.tcp.expected = len(specs)
+	l.runtime.tcp.specs = [2]runtimeTCPBindSpec{}
+	copy(l.runtime.tcp.specs[:], specs)
+}
+
+func fixtureAddTCP(l *Listener, socket net.Listener, spec runtimeTCPBindSpec) *runtimeTCPMember {
+	member := newRuntimeTCPMember(spec, socket)
+	l.runtime.tcp.members[l.runtime.tcp.count] = member
+	l.runtime.tcp.count++
+	return member
+}
+
+func fixtureOwnsTCP(l *Listener, socket net.Listener) bool {
+	for _, member := range l.runtimeTCPMembers() {
+		if member.socket == socket {
+			return true
+		}
 	}
+	return false
 }
 
 func TestArmedCandidateDoesNotAcceptBeforePublication(t *testing.T) {
@@ -301,14 +343,14 @@ func TestReuseTCPCompensationReturnsSameAcceptorWithoutClosingIt(t *testing.T) {
 	if err := replacement.Stage(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if previous.tcpListener != nil || next.tcpListener != acceptor {
+	if len(previous.runtimeTCPMembers()) != 0 || !fixtureOwnsTCP(next, acceptor) {
 		t.Fatal("acceptor ownership did not transfer")
 	}
 	result := replacement.Compensate()
 	if !result.Restored || result.LocalReconnect || result.Error != nil {
 		t.Fatalf("wrong restoration: %+v", result)
 	}
-	if previous.tcpListener != acceptor || next.tcpListener != nil {
+	if !fixtureOwnsTCP(previous, acceptor) || len(next.runtimeTCPMembers()) != 0 {
 		t.Fatal("acceptor not restored")
 	}
 	acceptor.mu.Lock()
@@ -482,6 +524,8 @@ func TestListenerSetPortSwapTransfersByPhysicalEndpoint(t *testing.T) {
 	socketA, socketB := newAcceptorFixture(), newAcceptorFixture()
 	oldA, oldB := listenerFixture(a, socketA, "prepared"), listenerFixture(a, socketB, "prepared")
 	oldB.listenOptions.ListenPort++
+	oldB.runtime.tcp.members[0].spec.port++
+	oldB.runtime.tcp.specs[0].port++
 	for _, old := range []*Listener{oldA, oldB} {
 		if err := old.ArmIngress(); err != nil {
 			t.Fatal(err)
@@ -494,6 +538,7 @@ func TestListenerSetPortSwapTransfersByPhysicalEndpoint(t *testing.T) {
 	waitFixture(t, socketB.accepted)
 	nextB, nextA := listenerFixture(a, nil, "inert"), listenerFixture(a, nil, "inert")
 	nextB.listenOptions.ListenPort++
+	nextB.runtime.tcp.specs[0].port++
 	group, err := ReserveListenerSet([]*Listener{oldA, oldB}, []*Listener{nextB, nextA}, false)
 	if err != nil {
 		t.Fatal(err)
@@ -501,13 +546,13 @@ func TestListenerSetPortSwapTransfersByPhysicalEndpoint(t *testing.T) {
 	if err := group.Stage(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if nextB.tcpListener != socketB || nextA.tcpListener != socketA {
+	if !fixtureOwnsTCP(nextB, socketB) || !fixtureOwnsTCP(nextA, socketA) {
 		t.Fatal("port swap matched by list position instead of endpoint")
 	}
 	if result := group.Compensate(); !result.Restored || result.LocalReconnect {
 		t.Fatalf("wrong compensation: %+v", result)
 	}
-	if oldA.tcpListener != socketA || oldB.tcpListener != socketB {
+	if !fixtureOwnsTCP(oldA, socketA) || !fixtureOwnsTCP(oldB, socketB) {
 		t.Fatal("port swap restoration changed descriptor ownership")
 	}
 	for _, old := range []*Listener{oldA, oldB} {
@@ -561,8 +606,7 @@ func TestListenerSetSuccessfulRestoreStillReportsReconnect(t *testing.T) {
 	next.runtime.prepareSockets = func() error { return errors.New("candidate bind rejected") }
 	old.runtime.prepareSockets = func() error {
 		old.runtime.mu.Lock()
-		old.tcpListener = newAcceptorFixture()
-		old.runtime.ownsTCP = true
+		fixtureAddTCP(old, newAcceptorFixture(), runtimeTCPBindSpec{network: "tcp4", address: netip.MustParseAddr("127.0.0.1"), port: 12345})
 		old.runtime.mu.Unlock()
 		return nil
 	}
@@ -577,7 +621,7 @@ func TestListenerSetSuccessfulRestoreStillReportsReconnect(t *testing.T) {
 	if !result.Restored || !result.LocalReconnect || result.Error != nil {
 		t.Fatalf("successful rebind hid interruption: %+v", result)
 	}
-	if old.tcpListener == socket {
+	if fixtureOwnsTCP(old, socket) {
 		t.Fatal("old closed descriptor pretended to survive")
 	}
 	if err := old.RuntimeCloseAndWait(); err != nil {

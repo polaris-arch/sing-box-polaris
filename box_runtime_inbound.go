@@ -60,21 +60,14 @@ func (s *Box) stageRuntimeListeners(ctx context.Context, g *preparedRuntimeGraph
 	// Include unchanged occupancy in validation, without pausing its ingress.
 	all := append(runtimeResourceListeners(retained), next...)
 	if _, err := listener.PlanListenerSet(nil, all); err != nil {
-		return err
+		return runtimeListenerPreparationError(err)
 	}
 	transaction, err := listener.ReserveListenerSet(previous, next, allowReconnect)
 	if err != nil {
-		return err
+		return runtimeListenerPreparationError(err)
 	}
 	g.listenerTransaction = transaction
-	if err := transaction.Stage(ctx); err != nil {
-		var bind *net.OpError
-		if errors.As(err, &bind) && bind.Op == "listen" {
-			return &runtimeListenerBindError{cause: err}
-		}
-		return err
-	}
-	return nil
+	return runtimeListenerPreparationError(transaction.Stage(ctx))
 }
 
 func (g *preparedRuntimeGraph) restoreRuntimeListenersWithEffects(candidateAbsent bool) error {
@@ -462,6 +455,31 @@ func runtimeClientCanaryProblems(ctx context.Context, options option.Options) []
 		}
 	}
 	return problem
+}
+
+// Keep structural handoff refusal distinct from an actual failed native bind.
+// This runs for both planning/reservation and staged socket preparation.
+func runtimeListenerPreparationError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var handoff *listener.PhysicalHandoffError
+	if errors.As(err, &handoff) {
+		return &runtimeListenerHandoffError{cause: err}
+	}
+	var bind *net.OpError
+	if errors.As(err, &bind) && bind.Op == "listen" {
+		return &runtimeListenerBindError{cause: err}
+	}
+	return err
+}
+
+type runtimeListenerHandoffError struct{ cause error }
+
+func (e *runtimeListenerHandoffError) Error() string { return "candidate listener requires restart" }
+func (e *runtimeListenerHandoffError) Unwrap() error { return e.cause }
+func (*runtimeListenerHandoffError) RuntimePlanError() RuntimePlanError {
+	return RuntimePlanError{Code: "RESTART_REQUIRED", Path: "inbounds", Message: "exclusive IPv6 listener cannot retain rollback custody for incompatible socket options"}
 }
 
 // Preserve the actual cause for ownership/compensation while exposing only a

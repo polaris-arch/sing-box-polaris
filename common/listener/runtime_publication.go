@@ -63,6 +63,7 @@ func (p *PreparedListenerPublication) Publish() {
 		}
 		r.phase = "active"
 	}
+	t.retirement.committed.Store(true)
 	p.published = true
 	for _, next := range slices.Backward(t.next) {
 		r := next.runtime
@@ -91,4 +92,5 @@ func (p *PreparedListenerPublication) Finish() {
 	t.busy = false
 	t.mu.Unlock()
 	t.releaseReservations()
+	t.retirement.ready.Store(true)
 }

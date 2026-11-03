@@ -11,15 +11,45 @@ import (
 	"syscall"
 
 	"github.com/sagernet/sing/common/control"
+	M "github.com/sagernet/sing/common/metadata"
 
 	"golang.org/x/sys/windows"
 )
 
-// An explicit runtime :: must retain both native IPv6 and mapped IPv4. Passing
-// tcp lets Go choose IPv4zero when its mapped-IPv4 capability probe is false.
-func (l *Listener) runtimeTCPWildcardNetwork(config *net.ListenConfig, network string, address netip.Addr) string {
-	if l.runtime == nil || address != netip.IPv6Unspecified() {
-		return network
+func (l *Listener) runtimeTCPPlatformSpecs() []runtimeTCPBindSpec {
+	address := l.listenOptions.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1}))
+	spec := runtimeTCPBindSpec{network: M.NetworkFromNetAddr("tcp", address), address: address, port: l.listenOptions.ListenPort, netns: l.listenOptions.NetNs, exclusive: l.exclusive}
+	if address != netip.IPv6Unspecified() {
+		return []runtimeTCPBindSpec{spec}
+	}
+	if l.exclusive {
+		// Preserve the explicit API/control-plane dual-stack exclusive policy.
+		spec.network = "tcp6"
+		return []runtimeTCPBindSpec{spec}
+	}
+	v6 := spec
+	v6.network = "tcp6"
+	v6.v6only = true
+	v6.exclusive = true
+	v6.narrowExclusive = true
+	v4 := spec
+	v4.network = "tcp4"
+	v4.address = netip.IPv4Unspecified()
+	// First bind is the real IPv6 owner, never a probe. This detects an IPv6
+	// collision before touching any old ordinary IPv4 listening descriptor.
+	return []runtimeTCPBindSpec{v6, v4}
+}
+
+func (l *Listener) validateRuntimeTCPPolicy() error {
+	if !l.exclusive && l.listenOptions.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1})) == netip.IPv6Unspecified() && l.listenOptions.ReuseAddr {
+		return errors.New("runtime IPv6 wildcard exclusive member cannot enable reuse_addr")
+	}
+	return nil
+}
+
+func (l *Listener) controlRuntimeTCPMember(config *net.ListenConfig, spec runtimeTCPBindSpec) error {
+	if spec.address != netip.IPv6Unspecified() {
+		return nil
 	}
 	config.Control = control.Append(config.Control, func(network, _ string, raw syscall.RawConn) error {
 		if network != "tcp6" {
@@ -27,36 +57,40 @@ func (l *Listener) runtimeTCPWildcardNetwork(config *net.ListenConfig, network s
 		}
 		return control.Raw(raw, func(fd uintptr) error {
 			handle := windows.Handle(fd)
-			if err := windows.SetsockoptInt(handle, windows.IPPROTO_IPV6, windows.IPV6_V6ONLY, 0); err != nil {
+			want := 0
+			if spec.v6only {
+				want = 1
+			}
+			if err := windows.SetsockoptInt(handle, windows.IPPROTO_IPV6, windows.IPV6_V6ONLY, want); err != nil {
 				return os.NewSyscallError("setsockopt(IPV6_V6ONLY)", err)
+			}
+			if spec.narrowExclusive {
+				if err := windows.SetsockoptInt(handle, windows.SOL_SOCKET, ^int(windows.SO_REUSEADDR), 1); err != nil {
+					return os.NewSyscallError("setsockopt(SO_EXCLUSIVEADDRUSE)", err)
+				}
 			}
 			value, err := windows.GetsockoptInt(handle, windows.IPPROTO_IPV6, windows.IPV6_V6ONLY)
 			if err != nil {
 				return os.NewSyscallError("getsockopt(IPV6_V6ONLY)", err)
 			}
-			if value != 0 {
-				return errors.New("runtime IPv6 wildcard lost mapped IPv4 before bind")
+			if value != want {
+				return errors.New("runtime IPv6 wildcard lost requested family policy before bind")
 			}
 			return nil
 		})
 	})
-	// tcp6 fixes AF_INET6; Control above clears Go's IPv6-only default before
-	// the actual bind. Merely selecting tcp6 would remove IPv4 allowLAN.
-	return "tcp6"
+	return nil
 }
 
-func (l *Listener) validateRuntimeTCPWildcard(network string, socket net.Listener) error {
-	if l.runtime == nil || l.listenOptions.Listen == nil || netip.Addr(*l.listenOptions.Listen) != netip.IPv6Unspecified() {
+func (l *Listener) validateRuntimeTCPMember(member *runtimeTCPMember) error {
+	spec, socket := member.spec, member.socket
+	split := !l.exclusive && l.listenOptions.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1})) == netip.IPv6Unspecified()
+	if spec.address != netip.IPv6Unspecified() && !(split && spec.network == "tcp4" && spec.address == netip.IPv4Unspecified()) {
 		return nil
 	}
-	if network != "tcp6" {
-		return errors.New("runtime IPv6 wildcard did not retain its IPv6 socket family")
-	}
-	// Both net.ListenConfig and the vendored Windows TFO listener return a
-	// *net.TCPListener. Keep the descriptor private to the owning listener.
 	conn, ok := socket.(syscall.Conn)
 	if !ok {
-		return errors.New("runtime IPv6 wildcard has no native socket readback")
+		return errors.New("runtime wildcard member has no native socket readback")
 	}
 	raw, err := conn.SyscallConn()
 	if err != nil {
@@ -68,13 +102,32 @@ func (l *Listener) validateRuntimeTCPWildcard(network string, socket net.Listene
 		if err != nil {
 			return os.NewSyscallError("getsockname", err)
 		}
-		local, ok := address.(*windows.SockaddrInet6)
-		if !ok {
-			return errors.New("bound runtime IPv6 wildcard is not AF_INET6")
-		}
-		v6only, err := windows.GetsockoptInt(handle, windows.IPPROTO_IPV6, windows.IPV6_V6ONLY)
-		if err != nil {
-			return os.NewSyscallError("getsockopt(IPV6_V6ONLY)", err)
+		var localPort int
+		v6only := -1
+		switch local := address.(type) {
+		case *windows.SockaddrInet6:
+			if spec.network != "tcp6" || spec.address != netip.IPv6Unspecified() || local.Addr != [16]byte{} || local.ZoneId != 0 {
+				return errors.New("runtime wildcard member differs from requested IPv6 family/tuple")
+			}
+			localPort = local.Port
+			v6only, err = windows.GetsockoptInt(handle, windows.IPPROTO_IPV6, windows.IPV6_V6ONLY)
+			if err != nil {
+				return os.NewSyscallError("getsockopt(IPV6_V6ONLY)", err)
+			}
+			want := 0
+			if spec.v6only {
+				want = 1
+			}
+			if v6only != want {
+				return errors.New("runtime wildcard member differs from requested IPv6-only policy")
+			}
+		case *windows.SockaddrInet4:
+			if spec.network != "tcp4" || spec.address != netip.IPv4Unspecified() || local.Addr != [4]byte{} {
+				return errors.New("runtime wildcard member differs from requested IPv4 family/tuple")
+			}
+			localPort = local.Port
+		default:
+			return errors.New("runtime wildcard member has unexpected native family")
 		}
 		reuse, err := windows.GetsockoptInt(handle, windows.SOL_SOCKET, windows.SO_REUSEADDR)
 		if err != nil {
@@ -84,12 +137,14 @@ func (l *Listener) validateRuntimeTCPWildcard(network string, socket net.Listene
 		if err != nil {
 			return os.NewSyscallError("getsockopt(SO_EXCLUSIVEADDRUSE)", err)
 		}
-		l.logger.Debug("Windows runtime TCP binding family=AF_INET6 network=", network,
-			" local=", net.JoinHostPort(netip.AddrFrom16(local.Addr).String(), fmt.Sprint(local.Port)),
-			" IPV6_V6ONLY=", v6only, " SO_REUSEADDR=", reuse, " SO_EXCLUSIVEADDRUSE=", exclusive)
-		if local.Addr != [16]byte{} || local.ZoneId != 0 || local.Port == 0 ||
-			l.listenOptions.ListenPort != 0 && local.Port != int(l.listenOptions.ListenPort) || v6only != 0 {
-			return errors.New("bound runtime IPv6 wildcard differs from its requested dual-stack tuple")
+		l.logger.Debug("Windows runtime TCP member network=", spec.network, " local=", socket.Addr(), " IPV6_V6ONLY=", v6only, " SO_REUSEADDR=", reuse, " SO_EXCLUSIVEADDRUSE=", exclusive)
+		if localPort == 0 || localPort != int(spec.port) {
+			return errors.New("runtime wildcard member differs from requested port")
+		}
+		if spec.narrowExclusive || !l.exclusive && spec.network == "tcp4" {
+			if reuse != 0 || (exclusive != 0) != spec.exclusive {
+				return errors.New("runtime wildcard member differs from requested exclusive custody")
+			}
 		}
 		return nil
 	})

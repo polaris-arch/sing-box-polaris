@@ -20,6 +20,8 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/mixed"
 	protocolTun "github.com/sagernet/sing-box/protocol/tun"
@@ -84,7 +86,7 @@ func clientShapeIPv6Port(t *testing.T) int {
 	t.Helper()
 	probe, err := net.Listen("tcp6", "[::1]:0")
 	if err != nil {
-		t.Skip("IPv6 socket fixture unavailable:", err)
+		t.Fatal("required IPv6 socket fixture unavailable:", err)
 	}
 	port := probe.Addr().(*net.TCPAddr).Port
 	if err := probe.Close(); err != nil {
@@ -294,6 +296,7 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	options.Log = &option.LogOptions{Level: "debug", DisableColor: true}
 	mixed.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
 	options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "127.0.0.1", port)}}
+	clientShapeUseDirect(&options)
 	instance, err := New(options)
 	if err != nil {
 		t.Fatal(err)
@@ -301,6 +304,8 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	f.box = instance
 	clientShapeFinish(t, f)
 	f.start(t)
+	held := clientShapeOpenTunnel(t, "tcp4", fmt.Sprintf("127.0.0.1:%d", port))
+	held.exchange(t, "before-collision")
 	// A Windows default socket does not prove exclusive ownership. The
 	// platform fixture holds only IPv6 and verifies its actual socket options.
 	holder := clientShapeIPv6CollisionHolder(t, port)
@@ -357,6 +362,8 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	if !found {
 		t.Fatal("candidate did not reach actual wildcard bind failure", operation)
 	}
+	held.exchange(t, "after-collision")
+	held.finish(t)
 	connection, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
 	if err != nil {
 		t.Fatal("original loopback ingress not restored", err)
@@ -639,5 +646,453 @@ func TestRuntimeNativePublicApplyFailureRetainsOriginalSessionForRestoration(t *
 	bridge.access.Unlock()
 	if !restored || !aborted || !first.receipt.Published() || sessions[1].receipt.Published() || bridge.legacyOpens.Load() != 0 {
 		t.Fatal("rollback lost or replaced original native custody")
+	}
+}
+
+// Use the registered production direct outbound for literal loopback targets.
+// The SOCKS fixtures in runtimeTestConfig remain present and unchanged.
+func clientShapeUseDirect(options *Options) {
+	options.Outbounds = append(options.Outbounds, option.Outbound{Type: C.TypeDirect, Tag: "native-echo", Options: &option.DirectOutboundOptions{}})
+	route := *options.Route
+	route.Final = "native-echo"
+	options.Route = &route
+}
+
+type clientShapeTunnel struct {
+	client, peer *net.TCPConn
+	closeOnce    sync.Once
+	closeErr     error
+}
+
+func (p *clientShapeTunnel) close() error {
+	p.closeOnce.Do(func() { p.closeErr = errors.Join(p.client.Close(), p.peer.Close()) })
+	return p.closeErr
+}
+
+// Both ends are real TCP sockets. The peer is accepted synchronously after the
+// production mixed/SOCKS CONNECT succeeds; no test echo worker can outlive it.
+func clientShapeOpenTunnel(t *testing.T, network, address string) *clientShapeTunnel {
+	t.Helper()
+	echo, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := echo.Close(); err != nil {
+			t.Error("close literal local peer listener", err)
+		}
+	}()
+	if err := echo.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	connection, err := net.DialTimeout(network, address, time.Second)
+	if err != nil {
+		t.Fatal("dial actual mixed ingress", err)
+	}
+	client, ok := connection.(*net.TCPConn)
+	if !ok {
+		_ = connection.Close()
+		t.Fatalf("native TCP carrier has type %T", connection)
+	}
+	// Register cleanup before any handshake assertion can terminate the test.
+	t.Cleanup(func() { _ = client.Close() })
+	if err := client.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := client.Write([]byte{5, 1, 0}); err != nil || n != 3 {
+		t.Fatal("write actual SOCKS greeting", n, err)
+	}
+	var greeting [2]byte
+	if _, err := io.ReadFull(client, greeting[:]); err != nil || greeting != [2]byte{5, 0} {
+		t.Fatal("actual mixed receiver rejected SOCKS greeting", greeting, err)
+	}
+	port := echo.Addr().(*net.TCPAddr).Port
+	request := []byte{5, 1, 0, 1, 127, 0, 0, 1, byte(port >> 8), byte(port)}
+	if n, err := client.Write(request); err != nil || n != len(request) {
+		t.Fatal("write real SOCKS CONNECT", n, err)
+	}
+	var response [4]byte
+	if _, err := io.ReadFull(client, response[:]); err != nil || response[0] != 5 || response[1] != 0 || response[2] != 0 {
+		t.Fatal("production SOCKS CONNECT did not reach local peer", response, err)
+	}
+	remaining := 0
+	switch response[3] {
+	case 1:
+		remaining = 6
+	case 4:
+		remaining = 18
+	case 3:
+		var length [1]byte
+		if _, err := io.ReadFull(client, length[:]); err != nil {
+			t.Fatal(err)
+		}
+		remaining = int(length[0]) + 2
+	default:
+		t.Fatal("invalid actual SOCKS CONNECT address type", response)
+	}
+	if _, err := io.ReadFull(client, make([]byte, remaining)); err != nil {
+		t.Fatal("read actual SOCKS CONNECT bound address", err)
+	}
+	peer, err := echo.AcceptTCP()
+	if err != nil {
+		t.Fatal("accept production direct outbound", err)
+	}
+	p := &clientShapeTunnel{client: client, peer: peer}
+	t.Cleanup(func() {
+		if err := p.close(); err != nil {
+			t.Error("close real held tunnel", err)
+		}
+	})
+	return p
+}
+
+func (p *clientShapeTunnel) exchange(t *testing.T, payload string) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	if err := errors.Join(p.client.SetDeadline(deadline), p.peer.SetDeadline(deadline)); err != nil {
+		t.Fatal(err)
+	}
+	data := []byte(payload)
+	if n, err := p.client.Write(data); err != nil || n != len(data) {
+		t.Fatal("held SOCKS carrier write", n, err)
+	}
+	received := make([]byte, len(data))
+	if _, err := io.ReadFull(p.peer, received); err != nil || string(received) != payload {
+		t.Fatal("actual local peer lost held-carrier bytes", string(received), err)
+	}
+	if n, err := p.peer.Write(received); err != nil || n != len(received) {
+		t.Fatal("actual local peer reply", n, err)
+	}
+	if _, err := io.ReadFull(p.client, received); err != nil || string(received) != payload {
+		t.Fatal("held SOCKS carrier lost return bytes", string(received), err)
+	}
+}
+
+func (p *clientShapeTunnel) finish(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	if err := errors.Join(p.client.SetDeadline(deadline), p.peer.SetDeadline(deadline)); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.client.CloseWrite(); err != nil {
+		t.Fatal("finish held client write side", err)
+	}
+	var tail [1]byte
+	if n, err := p.peer.Read(tail[:]); n != 0 || err != io.EOF {
+		t.Fatal("production tunnel did not forward client EOF", n, err)
+	}
+	if err := p.peer.CloseWrite(); err != nil {
+		t.Fatal("finish local peer write side", err)
+	}
+	if n, err := p.client.Read(tail[:]); n != 0 || err != io.EOF {
+		t.Fatal("production tunnel did not forward peer EOF", n, err)
+	}
+	if err := p.close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRuntimeAppListenerHandoffPreservesActualHeldFamilyTunnels(t *testing.T) {
+	for _, row := range []struct {
+		name, before, after string
+		changePort          bool
+	}{
+		{"allowLAN-on", "127.0.0.1", "::", false},
+		{"allowLAN-off", "::", "127.0.0.1", false},
+		{"mixed-port-with-LAN", "::", "::", true},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			oldPort := clientShapeIPv6Port(t)
+			newPort := oldPort
+			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "held-client-shapes.test"), nil)
+			mixed.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
+			clientShapeUseDirect(&options)
+			options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, row.before, oldPort)}}
+			runtimeResourceNew(t, f, options)
+			f.start(t)
+			if row.changePort {
+				newPort = clientShapeIPv6Port(t)
+				if newPort == oldPort {
+					t.Fatal("distinct native port fixture returned the old port")
+				}
+			}
+			oldLease, oldView := f.acquire(t)
+			oldInbound, ok := oldView.inbounds.Get("mixed-in")
+			if !ok {
+				t.Fatal("original real mixed receiver is absent")
+			}
+			oldResource := runtimeTestResource(t, f, oldView.componentIDs["inbound:mixed-in"])
+			held4 := clientShapeOpenTunnel(t, "tcp4", fmt.Sprintf("127.0.0.1:%d", oldPort))
+			held4.exchange(t, "old-v4-before")
+			var held6 *clientShapeTunnel
+			if row.before == "::" {
+				held6 = clientShapeOpenTunnel(t, "tcp6", fmt.Sprintf("[::1]:%d", oldPort))
+				held6.exchange(t, "old-v6-before")
+			}
+			// Only the actual accepted carriers may keep this old inbound owner alive.
+			oldLease.Release()
+			options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, row.after, newPort)}}
+			_, request := runtimeClientPlan(t, f, runtimeResourceEncode(t, f, options.Options))
+			operation, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
+			if err != nil || !strings.HasPrefix(operation.State, "COMMITTED") || operation.Active.Revision != request.Expected.Revision+1 || operation.RetirementState != "PENDING" {
+				t.Fatal("real held-family public handoff did not commit with retained owner", operation, err)
+			}
+			select {
+			case <-oldResource.owner.Closed():
+				t.Fatal("old accepted carrier lost its original inbound owner")
+			default:
+			}
+			held4.exchange(t, "old-v4-after")
+			if held6 != nil {
+				held6.exchange(t, "old-v6-after")
+			}
+			newLease, newView := f.acquire(t)
+			newInbound, ok := newView.inbounds.Get("mixed-in")
+			if !ok || newView == oldView || newInbound == oldInbound || newView.componentIDs["inbound:mixed-in"] == oldResource.id {
+				t.Fatal("published receiver did not belong to the new actual graph")
+			}
+			newLease.Release()
+			fresh4 := clientShapeOpenTunnel(t, "tcp4", fmt.Sprintf("127.0.0.1:%d", newPort))
+			fresh4.exchange(t, "new-v4-receiver")
+			fresh4.finish(t)
+			if row.after == "::" {
+				fresh6 := clientShapeOpenTunnel(t, "tcp6", fmt.Sprintf("[::1]:%d", newPort))
+				fresh6.exchange(t, "new-v6-receiver")
+				fresh6.finish(t)
+			}
+			if row.after != "::" || row.changePort {
+				unexpected, err := net.DialTimeout("tcp6", fmt.Sprintf("[::1]:%d", oldPort), time.Second)
+				if err == nil {
+					_ = unexpected.Close()
+					t.Fatal("post-K retirement left old native IPv6 listening ingress open")
+				}
+			}
+			held4.finish(t)
+			if held6 != nil {
+				held6.finish(t)
+			}
+			if err := oldResource.owner.WaitClosed(runtimeTestContext(t)); err != nil {
+				t.Fatal("old inbound owner did not drain after real carrier completion", err)
+			}
+		})
+	}
+}
+
+// Reuse the existing callback fixture but declare this entirely local fault as
+// having no external registration debt. Each registration uses its constructor's
+// exact preparing context, so no stage callback is shared between Box instances.
+type clientShapeLateEffect struct{ runtimeCertificateAliasEffect }
+
+func (*clientShapeLateEffect) RuntimeExternalEffects() bool { return false }
+
+func TestRuntimeAppLateAbortResumesHeldIPv6AndOriginalPublicIngress(t *testing.T) {
+	for _, row := range []struct {
+		name, after        string
+		changePort, cancel bool
+	}{
+		{"allowLAN-off-effect", "127.0.0.1", false, false},
+		{"port-change-cancel", "::", true, true},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			oldPort := clientShapeIPv6Port(t)
+			newPort := oldPort
+			f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "late-client-shapes.test"), nil)
+			clientShapeUseDirect(&options)
+			var fail atomic.Bool
+			var reached atomic.Int32
+			var cancel context.CancelFunc
+			cause := errors.New("fixture failure after actual listener Stage")
+			registry := service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry)
+			inbound.Register[option.HTTPMixedInboundOptions](registry, C.TypeMixed, func(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, value option.HTTPMixedInboundOptions) (adapter.Inbound, error) {
+				actual, err := mixed.NewInbound(ctx, router, logger, tag, value)
+				if err != nil {
+					return nil, err
+				}
+				// Reuse the existing callback-only post-bind fixture. The registered
+				// object remains the production mixed inbound and its native listener.
+				effect := &clientShapeLateEffect{runtimeCertificateAliasEffect{stage: func() error {
+					if !fail.Load() {
+						return nil
+					}
+					listeners := actual.(inbound.RuntimePreparedInbound).RuntimeListeners()
+					if len(listeners) != 1 {
+						return errors.New("late failure has no exact candidate logical listener")
+					}
+					for _, l := range listeners {
+						if l.RuntimeStatus().Phase != "armed" {
+							return errors.New("late failure ran before actual candidate listeners armed")
+						}
+					}
+					reached.Add(1)
+					if row.cancel {
+						cancel()
+						return nil
+					}
+					return cause
+				}}}
+				if err := adapter.RegisterRuntimePostBindEffect(ctx, effect); err != nil {
+					return nil, err
+				}
+				return actual, nil
+			})
+			options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "::", oldPort)}}
+			runtimeResourceNew(t, f, options)
+			f.start(t)
+			if row.changePort {
+				newPort = clientShapeIPv6Port(t)
+				if newPort == oldPort {
+					t.Fatal("distinct native port fixture returned the old port")
+				}
+			}
+			held4 := clientShapeOpenTunnel(t, "tcp4", fmt.Sprintf("127.0.0.1:%d", oldPort))
+			held6 := clientShapeOpenTunnel(t, "tcp6", fmt.Sprintf("[::1]:%d", oldPort))
+			held4.exchange(t, "late-old-v4-before")
+			held6.exchange(t, "late-old-v6-before")
+			before := f.identity()
+			oldLease, oldView := f.acquire(t)
+			oldLease.Release()
+			options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, row.after, newPort)}}
+			_, request := runtimeClientPlan(t, f, runtimeResourceEncode(t, f, options.Options))
+			ctx, cancelRequest := context.WithCancel(context.Background())
+			defer cancelRequest()
+			cancel = cancelRequest
+			fail.Store(true)
+			operation, err := f.box.ApplyRuntimeConfig(ctx, "actor-a", request)
+			if err != nil || reached.Load() != 1 || operation.Active != before || f.identity() != before || strings.HasPrefix(operation.State, "COMMITTED") {
+				t.Fatal("late actual Stage failure lost original identity or missed its injection", operation, reached.Load(), err)
+			}
+			if !slices.ContainsFunc(operation.Errors, func(problem RuntimePlanError) bool { return problem.Code == "PREPARATION_FAILED" }) || slices.ContainsFunc(operation.Errors, func(problem RuntimePlanError) bool {
+				return problem.Code == "LISTENER_BIND_FAILED" || problem.Code == "LISTENER_RESTORATION_FAILED"
+			}) {
+				t.Fatal("late failure was replaced by early bind refusal or lost restoration", operation)
+			}
+			newLease, afterView := f.acquire(t)
+			if afterView != oldView {
+				t.Fatal("late failed candidate replaced the original graph view")
+			}
+			newLease.Release()
+			held4.exchange(t, "late-old-v4-after")
+			held6.exchange(t, "late-old-v6-after")
+			fresh4 := clientShapeOpenTunnel(t, "tcp4", fmt.Sprintf("127.0.0.1:%d", oldPort))
+			fresh6 := clientShapeOpenTunnel(t, "tcp6", fmt.Sprintf("[::1]:%d", oldPort))
+			fresh4.exchange(t, "resumed-v4-receiver")
+			fresh6.exchange(t, "resumed-v6-receiver")
+			fresh4.finish(t)
+			fresh6.finish(t)
+			if row.changePort {
+				// No candidate accepted connection exists; reclaim both exact families
+				// only after Apply's candidate-first cleanup has returned.
+				v6 := clientShapeIPv6CollisionHolder(t, newPort)
+				if err := v6.Close(); err != nil {
+					t.Fatal("candidate IPv6 tuple cleanup", err)
+				}
+				v4, err := net.Listen("tcp4", fmt.Sprintf("127.0.0.1:%d", newPort))
+				if err != nil {
+					t.Fatal("candidate IPv4 tuple was not released", err)
+				}
+				if err := v4.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			held4.finish(t)
+			held6.finish(t)
+		})
+	}
+}
+
+func TestRuntimeListenerRetirementObserverPreservesStickyUnknownReceipt(t *testing.T) {
+	cause := errors.New("first physical listener close remained unknown")
+	for _, row := range []struct {
+		name, retirement string
+		err              error
+	}{
+		{"listener-first-error", "PENDING", cause},
+		{"prior-post-commit-unknown", "UNKNOWN", nil},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			identity := RuntimeIdentity{Incarnation: "observer", Revision: 2, EffectiveDigest: "committed"}
+			record := &runtimePlanRecord{actor: "actor-a", inFlight: true, storageCharge: 19, operation: &RuntimeConfigOperation{ContractVersion: RuntimeConfigContractVersion, TransactionID: "observer", State: "COMMITTED", Active: identity, Durable: true, RetirementState: row.retirement}}
+			if row.retirement == "UNKNOWN" {
+				record.operation.Errors = []RuntimePlanError{{Code: "POST_COMMIT_FAILURE"}}
+			}
+			c := &runtimeCoordinator{active: identity, now: time.Now, plans: map[string]*runtimePlanRecord{"observer": record}, planStorage: 19}
+			instance := &Box{runtime: c}
+			instance.observeRuntimeRetirement(record, nil, row.err)
+			// A later otherwise successful observer must not launder the first result.
+			instance.observeRuntimeRetirement(record, nil, nil)
+			status, err := instance.GetRuntimeConfigStatus("actor-a", identity.Incarnation, "observer")
+			if err != nil || status.LookupState != "FOUND" || status.Operation == nil || status.Operation.RetirementState != "UNKNOWN" || status.Operation.State != "COMMITTED" || status.Operation.Active != identity || !status.Operation.Durable {
+				t.Fatal("retirement error changed commit or vanished from actual status", status, err)
+			}
+			if !record.inFlight || record.receiptExpires != 0 || c.planStorage != record.storageCharge || c.plans["observer"] != record {
+				t.Fatal("unknown cleanup receipt was expired or uncharged", record, c.planStorage)
+			}
+		})
+	}
+}
+
+func TestRuntimeListenerRetirementObserverWaitsForActualOwnerBarrier(t *testing.T) {
+	barrier := newRuntimeTestBarrier()
+	defer barrier.open()
+	owner, err := runtimegraph.NewResourceOwner(context.Background(), adapter.RuntimeResourceID{Incarnation: "observer", Sequence: 1}, nil, func() error { barrier.block(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.Seal()
+	runtimeTestWait(t, barrier.entered, "actual old owner cleanup")
+	identity := RuntimeIdentity{Incarnation: "observer", Revision: 2, EffectiveDigest: "committed"}
+	record := &runtimePlanRecord{inFlight: true, operation: &RuntimeConfigOperation{State: "COMMITTED_DURABILITY_PENDING", Active: identity, RetirementState: "PENDING"}}
+	instance := &Box{runtime: &runtimeCoordinator{now: time.Now}}
+	done := make(chan struct{})
+	go func() {
+		instance.observeRuntimeRetirement(record, []*runtimeResource{{owner: owner}}, nil)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		barrier.open()
+		runtimeTestWait(t, done, "retirement observer cleanup join")
+	})
+	select {
+	case <-done:
+		t.Fatal("observer certified drain before actual old owner cleanup")
+	default:
+	}
+	instance.runtime.access.Lock()
+	pending := record.operation.RetirementState == "PENDING" && record.inFlight && record.receiptExpires == 0
+	instance.runtime.access.Unlock()
+	if !pending {
+		t.Fatal("held cleanup lost its pending charged receipt")
+	}
+	barrier.open()
+	runtimeTestWait(t, done, "actual retirement observer")
+	if record.operation.RetirementState != "DRAINED" || record.inFlight || record.receiptExpires == 0 || record.operation.State != "COMMITTED_DURABILITY_PENDING" || record.operation.Active != identity || record.operation.Durable {
+		t.Fatal("successful actual owner drain changed durability or missed completion", record.operation)
+	}
+}
+
+func TestRuntimeListenerRetirementOwnerFailureStaysInCatalog(t *testing.T) {
+	cause := errors.New("sticky listener completion fixture")
+	scope := adapter.NewScope(context.Background(), nil)
+	scope.Add(func() error { return runtimeCleanupResult(cause) })
+	id := adapter.RuntimeResourceID{Incarnation: "observer", Sequence: 1}
+	owner, err := runtimegraph.NewResourceOwner(context.Background(), id, nil, scope.Close)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner.Seal()
+	if err := owner.WaitClosed(runtimeTestContext(t)); !errors.Is(err, cause) || !errors.Is(err, errRuntimeCleanupIncomplete) {
+		t.Fatal("actual original scope cleanup lost sticky completion", err)
+	}
+	resource := &runtimeResource{id: id, owner: owner, scope: scope}
+	record := &runtimePlanRecord{inFlight: true, operation: &RuntimeConfigOperation{State: "COMMITTED", RetirementState: "PENDING"}}
+	c := &runtimeCoordinator{now: time.Now, catalog: map[adapter.RuntimeResourceID]*runtimeResource{id: resource}}
+	instance := &Box{runtime: c}
+	instance.observeRuntimeRetirement(record, []*runtimeResource{resource}, nil)
+	c.access.Lock()
+	c.pruneRuntimeCatalogLocked()
+	kept := c.catalog[id] == resource
+	c.access.Unlock()
+	if !kept || record.operation.RetirementState != "UNKNOWN" || !record.inFlight || record.receiptExpires != 0 {
+		t.Fatal("actual owner failure was pruned or receipt falsely drained", record.operation, kept)
 	}
 }

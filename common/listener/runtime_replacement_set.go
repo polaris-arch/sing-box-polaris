@@ -7,41 +7,51 @@ import (
 	"sync"
 )
 
-// ListenerSetImpact includes only physical restrictions, not protocol/schema
-// exclusions. In particular port swaps and TCP/UDP splits are staged as a group.
 type ListenerSetImpact struct {
 	LocalReconnect             bool
 	UDPAssociationsInterrupted bool
 	Reasons                    []string
 }
-
 type listenerOldState struct {
 	paused     bool
 	released   bool
 	pauseError error
 }
-
+type runtimeTCPMove struct {
+	member      *runtimeTCPMember
+	from, to    *Listener
+	transferred bool
+}
 type ListenerSetTransaction struct {
-	mu          sync.Mutex
-	previous    []*Listener
-	next        []*Listener
-	reuse       map[*Listener]*Listener
-	releaseOld  map[*Listener]bool
-	oldState    map[*Listener]*listenerOldState
-	transferred map[*Listener]bool
-	impact      ListenerSetImpact
-	busy        bool
-	staged      bool
-	finished    bool
-	restoration *Restoration
+	mu                     sync.Mutex
+	previous, next         []*Listener
+	moves                  []*runtimeTCPMove
+	releaseOld             map[*Listener]bool
+	holdOld                map[*Listener]bool
+	oldState               map[*Listener]*listenerOldState
+	impact                 ListenerSetImpact
+	busy, staged, finished bool
+	restoration            *Restoration
+	retirement             *ListenerRetirement
 }
 
-// ReserveListenerSet takes only changed/removed old listeners and new candidate
-// listeners. Unchanged retained listeners stay outside the set; Box must still
-// include their endpoint occupancy when validating the full candidate inventory.
-// Every pointer may occur once. There is one reservation for the whole set.
+// PhysicalHandoffError is a structural refusal, not an attempted bind failure.
+// It requires an actual conflicting exclusive member which cannot transfer.
+type PhysicalHandoffError struct{}
+
+func (*PhysicalHandoffError) Error() string {
+	return "exclusive IPv6 endpoint cannot transfer without destroying rollback custody; restart required"
+}
+
 func planListenerSet(previous, next []*Listener) (*ListenerSetTransaction, error) {
-	t := &ListenerSetTransaction{previous: append([]*Listener(nil), previous...), next: append([]*Listener(nil), next...), reuse: make(map[*Listener]*Listener), releaseOld: make(map[*Listener]bool), oldState: make(map[*Listener]*listenerOldState), transferred: make(map[*Listener]bool)}
+	return planListenerSetMode(previous, next, false)
+}
+
+// The standalone replacement historically holds nonconflicting pure TCP old
+// ingress through commit. Keep that zero-reconnect contract in the same engine;
+// Box and ordinary ListenerSet removal still release ordinary old binds in Stage.
+func planListenerSetMode(previous, next []*Listener, standalone bool) (*ListenerSetTransaction, error) {
+	t := &ListenerSetTransaction{previous: append([]*Listener(nil), previous...), next: append([]*Listener(nil), next...), releaseOld: make(map[*Listener]bool), holdOld: make(map[*Listener]bool), oldState: make(map[*Listener]*listenerOldState)}
 	seen := make(map[*Listener]bool)
 	for _, l := range append(append([]*Listener(nil), previous...), next...) {
 		if l == nil || l.runtime == nil || seen[l] {
@@ -56,41 +66,67 @@ func planListenerSet(previous, next []*Listener) (*ListenerSetTransaction, error
 			}
 		}
 	}
-	used := make(map[*Listener]bool)
+	used := make(map[*runtimeTCPMember]bool)
 	for _, candidate := range next {
-		for _, old := range previous {
-			if !used[old] && onlyTCP(old) && onlyTCP(candidate) && listenersMayConflict(old, candidate) && sameSocketOptions(old, candidate) && canPauseTCP(old) {
-				t.reuse[candidate] = old
-				used[old] = true
-				break
+		for _, spec := range candidate.runtimeTCPExpected() {
+			// A privately prepared candidate already owns its actual binding.
+			if candidate.hasRuntimeTCPMember(spec) {
+				continue
+			}
+			found := false
+			for _, old := range previous {
+				for _, member := range old.runtimeTCPMembers() {
+					if !used[member] && runtimeTCPInterruptible(member) && sameRuntimeTCPOptions(old, candidate, member.spec, spec) {
+						t.moves = append(t.moves, &runtimeTCPMove{member: member, from: old, to: candidate})
+						used[member] = true
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
 			}
 		}
 	}
 	for _, old := range previous {
 		t.oldState[old] = &listenerOldState{}
-		// A retired, untransferred listening socket must not remain an
-		// invisible address reservation after it leaves the active inventory.
-		// Established TCP sessions are independent; UDP write-back associations
-		// on an exclusively released socket are disclosed as interrupted.
-		if !used[old] || (hasRuntimeTCP(old) && !canPauseTCP(old)) {
-			t.releaseOld[old] = true
-		}
-		for _, candidate := range next {
-			if listenersMayConflict(old, candidate) && t.reuse[candidate] != old {
+		for _, member := range old.runtimeTCPMembers() {
+			if used[member] {
+				continue
+			}
+			if member.spec.narrowExclusive {
+				if !runtimeTCPInterruptible(member) {
+					return nil, &PhysicalHandoffError{}
+				}
+				for _, candidate := range next {
+					for _, spec := range candidate.runtimeTCPExpected() {
+						if runtimeTCPConflict(member.spec, spec) {
+							return nil, &PhysicalHandoffError{}
+						}
+					}
+				}
+				t.holdOld[old] = true
+			} else if standalone && onlyTCP(old) && runtimeTCPInterruptible(member) && !runtimeTCPConflictsCandidates(member.spec, next) {
+				t.holdOld[old] = true
+			} else {
 				t.releaseOld[old] = true
 			}
+		}
+		if hasRuntimeUDP(old) {
+			t.releaseOld[old] = true
 		}
 		if t.releaseOld[old] {
 			t.impact.LocalReconnect = true
 			if hasRuntimeUDP(old) {
 				t.impact.UDPAssociationsInterrupted = true
 			}
-			t.impact.Reasons = append(t.impact.Reasons, "old listener must release its exclusive or non-interruptible socket before candidate bind")
+			t.impact.Reasons = append(t.impact.Reasons, "old ordinary or non-interruptible socket requires local handoff; exclusive IPv6 ingress is retained until publication")
 		}
 	}
+	t.retirement = newListenerRetirement(previous, t.holdOld)
 	return t, nil
 }
-
 func PlanListenerSet(previous, next []*Listener) (ListenerSetImpact, error) {
 	t, err := planListenerSet(previous, next)
 	if err != nil {
@@ -98,9 +134,11 @@ func PlanListenerSet(previous, next []*Listener) (ListenerSetImpact, error) {
 	}
 	return t.Impact(), nil
 }
-
 func ReserveListenerSet(previous, next []*Listener, allowLocalReconnect bool) (*ListenerSetTransaction, error) {
-	t, err := planListenerSet(previous, next)
+	return reserveListenerSetMode(previous, next, allowLocalReconnect, false)
+}
+func reserveListenerSetMode(previous, next []*Listener, allowLocalReconnect, standalone bool) (*ListenerSetTransaction, error) {
+	t, err := planListenerSetMode(previous, next, standalone)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +150,7 @@ func ReserveListenerSet(previous, next []*Listener, allowLocalReconnect bool) (*
 	defer replacementReservations.Unlock()
 	for _, l := range all {
 		l.runtime.mu.Lock()
-		held := l.runtime.replacement != nil || l.runtime.setReplacement != nil
+		held := l.runtime.setReplacement != nil
 		l.runtime.mu.Unlock()
 		if held {
 			return nil, errors.New("listener is already reserved")
@@ -141,13 +179,11 @@ func ReserveListenerSet(previous, next []*Listener, allowLocalReconnect bool) (*
 	}
 	return t, nil
 }
-
 func (t *ListenerSetTransaction) Impact() ListenerSetImpact {
 	result := t.impact
 	result.Reasons = append([]string(nil), result.Reasons...)
 	return result
 }
-
 func (t *ListenerSetTransaction) begin() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -163,9 +199,29 @@ func (t *ListenerSetTransaction) releaseReservations() {
 	defer replacementReservations.Unlock()
 	for _, l := range append(append([]*Listener(nil), t.previous...), t.next...) {
 		l.runtime.mu.Lock()
-		l.runtime.setReplacement = nil
+		if l.runtime.setReplacement == t {
+			l.runtime.setReplacement = nil
+		}
 		l.runtime.mu.Unlock()
 	}
+}
+func (t *ListenerSetTransaction) isTransferredSpec(candidate *Listener, spec runtimeTCPBindSpec) bool {
+	for _, move := range t.moves {
+		if move.to == candidate && runtimeTCPSameEndpoint(move.member.spec, spec) {
+			return true
+		}
+	}
+	return false
+}
+func (t *ListenerSetTransaction) conflictsWithOld(spec runtimeTCPBindSpec) bool {
+	for _, old := range t.previous {
+		for _, member := range old.runtimeTCPMembers() {
+			if runtimeTCPConflict(member.spec, spec) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (t *ListenerSetTransaction) Stage(ctx context.Context) error {
@@ -181,24 +237,65 @@ func (t *ListenerSetTransaction) Stage(ctx context.Context) error {
 			return err
 		}
 	}
+	// Acquire all independent real TCP sockets before any old pause or release.
+	// In particular new tcp6 rejects occupancy while old IPv4 remains active.
+	for _, candidate := range t.next {
+		if candidate.runtime.prepareSockets != nil {
+			continue
+		}
+		for index := 0; index < len(candidate.runtimeTCPExpected()); index++ {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			spec := candidate.runtimeTCPExpected()[index]
+			if candidate.hasRuntimeTCPMember(spec) || t.isTransferredSpec(candidate, spec) || t.conflictsWithOld(spec) {
+				continue
+			}
+			if err := candidate.prepareRuntimeTCPMember(spec); err != nil {
+				return err
+			}
+		}
+	}
 	for _, old := range t.previous {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		state := t.oldState[old]
+		before := old.runtimeTCPMembers()
 		var err error
 		if t.releaseOld[old] {
 			err = old.PauseIngressForRebind()
 		} else {
 			err = old.PauseIngress()
 		}
+		// PauseForRebind can itself close an ordinary acceptor. Record that
+		// physical effect even if a later pause, cancellation or move fails.
+		for _, member := range before {
+			select {
+			case <-member.close.done:
+				state.released = true
+			default:
+			}
+		}
+		old.runtime.mu.Lock()
+		state.released = state.released || old.runtime.udpReleased
+		old.runtime.mu.Unlock()
 		if err != nil {
 			state.pauseError = err
 			return err
 		}
 		state.paused = true
 	}
-	// All old readers are joined before releasing any conflicting descriptor.
+	// Every old ingress worker is joined before any descriptor custody moves.
+	for _, move := range t.moves {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := moveRuntimeTCPMember(move.from, move.to, move.member); err != nil {
+			return err
+		}
+		move.transferred = true
+	}
 	for _, old := range t.previous {
 		if t.releaseOld[old] {
 			t.oldState[old].released = true
@@ -211,12 +308,7 @@ func (t *ListenerSetTransaction) Stage(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if old := t.reuse[candidate]; old != nil {
-			if err := transferTCPAcceptor(old, candidate); err != nil {
-				return err
-			}
-			t.transferred[candidate] = true
-		} else if err := candidate.Prepare(); err != nil {
+		if err := candidate.prepareRuntimeForSet(); err != nil {
 			return err
 		}
 	}
@@ -232,32 +324,22 @@ func (t *ListenerSetTransaction) Stage(ctx context.Context) error {
 	return nil
 }
 
+// Standalone users also own H: do not leak a held old listener when they use
+// Commit instead of Box's prepared graph publication. Native retirement occurs
+// only after the transaction operation has released its mutex/reservations.
 func (t *ListenerSetTransaction) Commit() error {
-	if err := t.begin(); err != nil {
+	// PreparePublication owns begin/end and validates every candidate gate
+	// before any opens. Failure leaves the staged set available to Compensate.
+	publication, err := t.PreparePublication()
+	if err != nil {
 		return err
 	}
-	defer t.end()
-	if !t.staged {
-		return errors.New("listener set not staged")
-	}
-	t.finished = true
-	var err error
-	for _, candidate := range t.next {
-		err = errors.Join(err, candidate.Activate())
-	}
-	t.releaseReservations()
-	return err
+	publication.Publish()
+	publication.Finish()
+	return t.retirement.RetirePrevious()
 }
 
-// Compensate first removes every candidate bind, then restores old binds. This
-// order is essential for port swaps and split/merged TCP+UDP inventories. It
-// returns each physical interruption even if address restoration succeeds.
 func (t *ListenerSetTransaction) Compensate() Restoration { return t.CompensateBeforeActivate(nil) }
-
-// The callback runs after actual old sockets are restored and armed, while
-// public admission remains closed. It may perform fallible control restoration;
-// failure preserves closed admission and is never reported as rollback success.
-// No transaction/listener/publication mutex is held while invoking it.
 func (t *ListenerSetTransaction) CompensateBeforeActivate(beforeActivate func() error) Restoration {
 	t.mu.Lock()
 	previous := t.restoration
@@ -271,33 +353,48 @@ func (t *ListenerSetTransaction) CompensateBeforeActivate(beforeActivate func() 
 	defer t.end()
 	result := Restoration{}
 	var err error
-	for _, candidate := range t.next {
-		if t.transferred[candidate] {
-			pauseErr := candidate.PauseIngress()
-			if pauseErr == nil {
-				pauseErr = transferTCPAcceptor(candidate, t.reuse[candidate])
+	// Return exact transferred members before candidate-owned socket cleanup.
+	pausedCandidates := make(map[*Listener]bool)
+	for _, move := range t.moves {
+		if !move.transferred {
+			continue
+		}
+		candidate := move.to
+		if !pausedCandidates[candidate] {
+			candidate.runtime.mu.Lock()
+			phase := candidate.runtime.phase
+			candidate.runtime.mu.Unlock()
+			var pauseErr error
+			if phase == "active" || phase == "armed" {
+				pauseErr = candidate.PauseIngress()
+			} else if phase == "inert" || phase == "prepared" || phase == "failed" {
+				// prepareRuntimeForSet never starts workers on these phases.
+				candidate.runtime.mu.Lock()
+				candidate.runtime.phase = "paused"
+				candidate.runtime.mu.Unlock()
+			} else if phase != "paused" {
+				pauseErr = ErrRuntimeTransition
 			}
 			if pauseErr != nil {
 				err = errors.Join(err, pauseErr)
+				continue
 			}
+			pausedCandidates[candidate] = true
 		}
+		moveErr := moveRuntimeTCPMember(candidate, move.from, move.member)
+		if moveErr == nil {
+			move.transferred = false
+		}
+		err = errors.Join(err, moveErr)
 	}
 	for _, candidate := range t.next {
 		err = errors.Join(err, candidate.RuntimeCloseAndWait())
 	}
-	// Even with a candidate cleanup failure, attempt independent old restores;
-	// any bind conflict or uncertain close remains visible in the aggregate.
 	for _, old := range t.previous {
 		state := t.oldState[old]
-		status := old.RuntimeStatus()
-		old.runtime.mu.Lock()
-		physicallyClosed := old.runtime.tcpReleased || old.runtime.udpReleased
-		old.runtime.mu.Unlock()
-		if state.released || physicallyClosed {
+		if state.released {
 			result.LocalReconnect = true
-			if t.impact.UDPAssociationsInterrupted {
-				result.UDPAssociationsInterrupted = true
-			}
+			result.UDPAssociationsInterrupted = t.impact.UDPAssociationsInterrupted
 		}
 		if state.pauseError != nil {
 			err = errors.Join(err, fmt.Errorf("previous ingress pause incomplete: %v", state.pauseError))
@@ -307,7 +404,7 @@ func (t *ListenerSetTransaction) CompensateBeforeActivate(beforeActivate func() 
 			continue
 		}
 		var restoreErr error
-		if status.Phase == "released" {
+		if state.released {
 			restoreErr = old.restoreRuntimeSockets()
 		}
 		if restoreErr == nil {
@@ -335,4 +432,15 @@ func (t *ListenerSetTransaction) CompensateBeforeActivate(beforeActivate func() 
 	t.mu.Unlock()
 	t.releaseReservations()
 	return result
+}
+
+func runtimeTCPConflictsCandidates(spec runtimeTCPBindSpec, next []*Listener) bool {
+	for _, candidate := range next {
+		for _, wanted := range candidate.runtimeTCPExpected() {
+			if runtimeTCPConflict(spec, wanted) {
+				return true
+			}
+		}
+	}
+	return false
 }

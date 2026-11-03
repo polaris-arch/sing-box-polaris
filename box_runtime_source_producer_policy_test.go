@@ -892,6 +892,9 @@ func TestRuntimeRegenerationSourceReusesRealJournalNamespaceAndDisabledRecogniti
 		t.Fatal(err)
 	}
 	options.Route, options.Outbounds, options.Inbounds = local.Route, local.Outbounds, local.Inbounds
+	// Preserve the paired hijack/terminal-REFUSED canary rules while retaining
+	// the real FakeIP server and persistent cache from the construction fixture.
+	options.DNS.Rules = local.DNS.Rules
 	options.Context = adapter.ContextWithRuntimeRecoveryRoot(options.Context, root)
 	physical := runtimeFakeIPCleanupBox(t, f, options)
 	var calls atomic.Int32

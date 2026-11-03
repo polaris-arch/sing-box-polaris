@@ -184,9 +184,11 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	if prepareErr == nil && len(runtimeValidateBoundInterfaces(coordinator.ctx, record.options)) > 0 {
 		prepareErr = errors.New("requested outbound interface became unavailable")
 	}
+	var resumeReferences func()
 	if prepareErr == nil && coordinator.reference != nil {
 		pause, pauseErr := coordinator.reference.Pause(ctx)
 		if pause != nil {
+			resumeReferences = pause.Resume
 			defer pause.Resume()
 		}
 		if pauseErr != nil {
@@ -337,6 +339,23 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		coordinator.access.Unlock()
 		return operation, nil
 	}
+	// Publication has released every graph/control guard. Resume references
+	// before native retirement, which may join callbacks against the new graph.
+	if resumeReferences != nil {
+		resumeReferences()
+	}
+	var listenerRetirementErr error
+	if prepared.listenerTransaction != nil {
+		if retirement := prepared.listenerTransaction.Retirement(); retirement != nil {
+			listenerRetirementErr = retirement.RetirePrevious()
+		}
+	}
+	if listenerRetirementErr != nil {
+		coordinator.access.Lock()
+		record.operation.RetirementState = "UNKNOWN"
+		record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "LISTENER_RETIREMENT_FAILED", Path: "inbounds", Message: "active configuration committed; previous listener retirement remains unconfirmed"})
+		coordinator.access.Unlock()
+	}
 	if prepared.fakeIPMigration != nil {
 		prepared.fakeIPMigration.ActivatePersistence()
 	}
@@ -409,7 +428,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		s.registerOriginalExactSourceTailLocked(record)
 		coordinator.access.Unlock()
 	}
-	go s.observeRuntimeRetirement(record, retired, prepared.logChange)
+	go s.observeRuntimeRetirement(record, retired, listenerRetirementErr, prepared.logChange)
 	coordinator.access.Lock()
 	operation = cloneRuntimeOperation(*record.operation)
 	coordinator.access.Unlock()
@@ -438,8 +457,8 @@ func (s *Box) observeRuntimeAbort(record *runtimePlanRecord, prepared *preparedR
 	// Sticky cleanup failures retain the charged record and uncertain resources.
 }
 
-func (s *Box) observeRuntimeRetirement(record *runtimePlanRecord, resources []*runtimeResource, logChanges ...*log.RuntimeOptionsChange) {
-	var err error
+func (s *Box) observeRuntimeRetirement(record *runtimePlanRecord, resources []*runtimeResource, listenerRetirementErr error, logChanges ...*log.RuntimeOptionsChange) {
+	err := listenerRetirementErr
 	for _, change := range logChanges {
 		if change != nil {
 			err = errors.Join(err, change.Retire(context.Background()))
@@ -448,7 +467,9 @@ func (s *Box) observeRuntimeRetirement(record *runtimePlanRecord, resources []*r
 	err = errors.Join(err, waitRuntimeResources(context.Background(), resources))
 	s.runtime.access.Lock()
 	defer s.runtime.access.Unlock()
-	if err != nil {
+	// A prior post-commit failure is sticky even when resource draining later
+	// succeeds; application completion cannot certify native listener release.
+	if err != nil || record.operation.RetirementState == "UNKNOWN" {
 		record.operation.RetirementState = "UNKNOWN"
 	} else {
 		record.operation.RetirementState = "DRAINED"
