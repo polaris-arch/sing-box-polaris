@@ -1055,6 +1055,22 @@ jobs:
             grep -q '^--- PASS: TestRuntimeWriteCancellationJoinsActualDeadlineMutation ' "$selection_dir/tfo-go-test.log"
             grep -q '^--- PASS: TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback ' "$selection_dir/tfo-go-test.log"
           fi
+          if [ -f "$selection_dir/go-nat-selected" ]; then
+            grep -Fqx 'github.com/libp2p/go-nat' "$selection_dir/go-nat-selected"
+            grep -Fqx 'module github.com/libp2p/go-nat' third_party/go-nat/go.mod
+            grep -Fqx 'replace github.com/libp2p/go-nat => ./third_party/go-nat' go.mod
+            # Use the product root so the owned NAT implementation and its
+            # transitive dependencies are selected by the verified replacements.
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            ldflags="$(cat release/LDFLAGS)"
+            go test -mod=readonly -race -gcflags=all=-d=checkptr=2 -count=1 -timeout=10m -v \
+              -tags "$tags" -ldflags "$ldflags" github.com/libp2p/go-nat/... | tee "$selection_dir/go-nat-test.log"
+            grep -q '^--- PASS: TestDiscoverNATsCancellationJoinsAllFourLateProducers ' "$selection_dir/go-nat-test.log"
+            grep -q '^--- PASS: TestNATPMPDeleteRequiresExactAckAndKeepsDebtForRetry ' "$selection_dir/go-nat-test.log"
+            grep -q '^--- PASS: TestUPNPDeleteAlwaysVerifiesCurrentIdentityAndHonorsConfirmedAbsence ' "$selection_dir/go-nat-test.log"
+            grep -q '^--- PASS: TestUPNPCapturedDiscoveryJoinsEverySSDPRequestBeforeCancellation ' "$selection_dir/go-nat-test.log"
+            grep -q '^--- PASS: TestNATCallerHTTPEntryRejectsImplicitDefaultAndCanceledWork ' "$selection_dir/go-nat-test.log"
+          fi
           if [ -f "$selection_dir/sing-vmess-selected" ]; then
             grep -qx 'github.com/sagernet/sing-vmess' "$selection_dir/sing-vmess-selected"
             grep -qx 'module github.com/sagernet/sing-vmess' third_party/sing-vmess/go.mod

@@ -886,12 +886,12 @@ func TestRuntimeRegenerationSourceReusesRealJournalNamespaceAndDisabledRecogniti
 	path := filepath.Join(root, "sites.json")
 	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))
 	f, options := runtimeFakeIPCleanupConstruction(t, filepath.Join(root, "cache.db"), nil)
+	direct.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
 	var local option.Options
 	if err := json.UnmarshalContext(f.ctx, r3SourceCanaryConfig(t, runtimeTestLocalConfig(path)), &local); err != nil {
 		t.Fatal(err)
 	}
 	options.Route, options.Outbounds, options.Inbounds = local.Route, local.Outbounds, local.Inbounds
-	direct.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
 	options.Context = adapter.ContextWithRuntimeRecoveryRoot(options.Context, root)
 	physical := runtimeFakeIPCleanupBox(t, f, options)
 	var calls atomic.Int32

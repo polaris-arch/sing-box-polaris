@@ -115,6 +115,106 @@ func clientShapeFinish(t *testing.T, f *runtimeTestFixture) {
 	})
 }
 
+func clientShapeSOCKSGreeting(network, address string) (err error) {
+	conn, err := net.DialTimeout(network, address, time.Second)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, conn.Close()) }()
+	if err = conn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		return err
+	}
+	if n, writeErr := conn.Write([]byte{5, 1, 0}); writeErr != nil {
+		return writeErr
+	} else if n != 3 {
+		return io.ErrShortWrite
+	}
+	var reply [2]byte
+	if _, err = io.ReadFull(conn, reply[:]); err != nil {
+		return err
+	}
+	if reply != [2]byte{5, 0} {
+		return fmt.Errorf("wrong actual mixed ingress SOCKS reply: %x", reply)
+	}
+	return nil
+}
+
+// The holder must receive IPv6 bytes itself. Its accept worker and both peers
+// share the existing one-second bound and are joined before close/reclaim.
+func clientShapeIPv6HolderBytes(holder net.Listener, port int) error {
+	tcp, ok := holder.(*net.TCPListener)
+	if !ok {
+		return fmt.Errorf("holder has no finite native TCP accept: %T", holder)
+	}
+	deadline := time.Now().Add(time.Second)
+	if err := tcp.SetDeadline(deadline); err != nil {
+		return err
+	}
+	sentinel := [4]byte{'h', 'o', 'l', 'd'}
+	done := make(chan error, 1)
+	go func() {
+		conn, err := tcp.AcceptTCP()
+		if err == nil {
+			err = func() error {
+				if err := conn.SetDeadline(deadline); err != nil {
+					return err
+				}
+				var received [4]byte
+				if _, err := io.ReadFull(conn, received[:]); err != nil {
+					return err
+				}
+				if received != sentinel {
+					return fmt.Errorf("IPv6 holder received foreign bytes: %x", received)
+				}
+				if n, err := conn.Write(received[:]); err != nil {
+					return err
+				} else if n != len(received) {
+					return io.ErrShortWrite
+				}
+				var trailing [1]byte
+				if n, err := conn.Read(trailing[:]); n != 0 || err != io.EOF {
+					return fmt.Errorf("holder peer did not finish its write side: %d, %v", n, err)
+				}
+				return nil
+			}()
+			err = errors.Join(err, conn.Close())
+		}
+		done <- err
+	}()
+	clientErr := func() (err error) {
+		conn, err := net.DialTimeout("tcp6", fmt.Sprintf("[::1]:%d", port), time.Second)
+		if err != nil {
+			return err
+		}
+		defer func() { err = errors.Join(err, conn.Close()) }()
+		if err = conn.SetDeadline(deadline); err != nil {
+			return err
+		}
+		if n, err := conn.Write(sentinel[:]); err != nil {
+			return err
+		} else if n != len(sentinel) {
+			return io.ErrShortWrite
+		}
+		if err = conn.(*net.TCPConn).CloseWrite(); err != nil {
+			return err
+		}
+		var reply [4]byte
+		if _, err = io.ReadFull(conn, reply[:]); err != nil {
+			return err
+		}
+		if reply != sentinel {
+			return fmt.Errorf("IPv6 bytes reached another receiver: %x", reply)
+		}
+		var trailing [1]byte
+		if n, err := conn.Read(trailing[:]); n != 0 || err != io.EOF {
+			return fmt.Errorf("holder did not close after peer EOF: %d, %v", n, err)
+		}
+		return nil
+	}()
+	serverErr := <-done
+	return errors.Join(clientErr, serverErr, tcp.SetDeadline(time.Time{}))
+}
+
 func TestRuntimeAppAllowLANBothDirectionsAndMixedPortWithLANPublicApply(t *testing.T) {
 	for _, row := range []struct {
 		name, before, after string
@@ -169,6 +269,20 @@ func TestRuntimeAppAllowLANBothDirectionsAndMixedPortWithLANPublicApply(t *testi
 				t.Fatal("published listener has no actual socket", err)
 			}
 			_ = connection.Close()
+			if err := clientShapeSOCKSGreeting("tcp4", fmt.Sprintf("127.0.0.1:%d", newPort)); err != nil {
+				t.Fatal("published IPv4 ingress did not serve actual SOCKS bytes", err)
+			}
+			if row.after == "::" {
+				if err := clientShapeSOCKSGreeting("tcp6", fmt.Sprintf("[::1]:%d", newPort)); err != nil {
+					t.Fatal("published allowLAN ingress lost native IPv6 SOCKS bytes", err)
+				}
+			} else {
+				closed, err := net.DialTimeout("tcp6", fmt.Sprintf("[::1]:%d", newPort), time.Second)
+				if err == nil {
+					_ = closed.Close()
+					t.Fatal("allowLAN-off retained an IPv6 listening socket")
+				}
+			}
 		})
 	}
 }
@@ -176,6 +290,8 @@ func TestRuntimeAppAllowLANBothDirectionsAndMixedPortWithLANPublicApply(t *testi
 func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing.T) {
 	port := clientShapeIPv6Port(t)
 	f, options := newRuntimeTestConstruction(t, runtimeTestConfig(1080, "client-shapes.test"), nil)
+	// On an unexpected commit, retain actual bound family/options/tuple logs.
+	options.Log = &option.LogOptions{Level: "debug", DisableColor: true}
 	mixed.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
 	options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "127.0.0.1", port)}}
 	instance, err := New(options)
@@ -212,6 +328,9 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	if err := original.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if err := clientShapeIPv6HolderBytes(holder, port); err != nil {
+		t.Fatal("original IPv6 tuple holder did not receive actual sentinel bytes", err)
+	}
 	before := f.identity()
 	_, beforeView := f.acquire(t)
 	options.Inbounds = []option.Inbound{{Type: C.TypeMixed, Tag: "mixed-in", Options: clientShapeMixedOptions(t, "::", port)}}
@@ -222,7 +341,13 @@ func TestRuntimeAppAllowLANIPv6CollisionRestoresOriginalPublicIngress(t *testing
 	_, request := runtimeClientPlan(t, f, content)
 	operation, err := instance.ApplyRuntimeConfig(context.Background(), "actor-a", request)
 	if err != nil || operation.Active != request.Expected || f.identity() != before || strings.HasPrefix(operation.State, "COMMITTED") {
+		t.Log("candidate native family/options/local tuple are recorded by the actual bind readback above")
+		t.Log("IPv4 mixed SOCKS byte receiver:", clientShapeSOCKSGreeting("tcp4", fmt.Sprintf("127.0.0.1:%d", port)))
+		t.Log("IPv6 original holder sentinel byte receiver:", clientShapeIPv6HolderBytes(holder, port))
 		t.Fatal("IPv6 collision changed current graph", operation, err)
+	}
+	if err := clientShapeIPv6HolderBytes(holder, port); err != nil {
+		t.Fatal("failed candidate changed the original IPv6 byte receiver", err)
 	}
 	_, afterView := f.acquire(t)
 	if afterView != beforeView {

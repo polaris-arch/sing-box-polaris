@@ -78,28 +78,34 @@ func (l *Listener) listenTCP() (net.Listener, error) {
 			})
 		})
 	}
+	network := l.runtimeTCPWildcardNetwork(&listenConfig, M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr), bindAddr.Addr)
 	tcpListener, err := ListenNetworkNamespace[net.Listener](l.ctx, l.listenOptions.NetNs, func() (net.Listener, error) {
 		if l.listenOptions.TCPFastOpen {
 			var tfoConfig tfo.ListenConfig
 			tfoConfig.ListenConfig = listenConfig
-			return tfoConfig.Listen(l.ctx, M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr), bindAddr.String())
+			return tfoConfig.Listen(l.ctx, network, bindAddr.String())
 		} else {
-			return listenConfig.Listen(l.ctx, M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr), bindAddr.String())
+			return listenConfig.Listen(l.ctx, network, bindAddr.String())
 		}
 	})
 	if err != nil {
 		return nil, err
-	}
-	if l.runtime == nil {
-		l.logger.Info("tcp server started at ", tcpListener.Addr())
-	} else {
-		l.logger.Debug("candidate tcp socket bound at ", tcpListener.Addr())
 	}
 	l.tcpListener = tcpListener
 	if l.runtime != nil {
 		l.runtime.mu.Lock()
 		l.runtime.ownsTCP = true
 		l.runtime.mu.Unlock()
+	}
+	// Retain ownership before checking the actual descriptor: Prepare joins and
+	// reports its close result if this post-bind validation fails.
+	if err := l.validateRuntimeTCPWildcard(network, tcpListener); err != nil {
+		return nil, &net.OpError{Op: "listen", Net: network, Addr: tcpListener.Addr(), Err: err}
+	}
+	if l.runtime == nil {
+		l.logger.Info("tcp server started at ", tcpListener.Addr())
+	} else {
+		l.logger.Debug("candidate tcp socket bound at ", tcpListener.Addr())
 	}
 	return tcpListener, err
 }
