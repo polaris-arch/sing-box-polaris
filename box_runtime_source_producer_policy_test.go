@@ -15,8 +15,10 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -33,11 +35,78 @@ import (
 
 func r3SourceWrite(t *testing.T, path string, content []byte) {
 	t.Helper()
-	if err := os.WriteFile(path+".next", content, 0o600); err != nil {
+	if err := r3SourcePublish(runtimeTestContext(t), path, content, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(path+".next", path); err != nil {
-		t.Fatal(err)
+}
+
+const r3SourcePublishRetryLimit = 2 * time.Second
+
+// Publish complete, closed fixture bytes. Retrying this test-only file replacement
+// never retries the production producer, persistence callback or transaction.
+func r3SourcePublish(ctx context.Context, path string, content []byte, onRetry func(context.Context, time.Time, error)) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	staged := path + ".next"
+	if err := os.WriteFile(staged, content, 0o600); err != nil {
+		return err
+	}
+	return r3SourceReplace(ctx, staged, path, onRetry)
+}
+
+// A default Windows read handle does not share delete/rename access. A live
+// source reader can therefore briefly obstruct replacement. Its identity is not
+// inferred from AccessDenied. Only owned regular staging with a regular or absent
+// destination is retried; a nonregular target is not a sharing workaround. Thus
+// the original OS error survives cancellation/deadline exhaustion.
+// onRetry observes the first real retryable failure and the actual bounded
+// context/own deadline. It must be finite and context-aware; normal callers use nil.
+// The retry deadline cannot preempt a synchronous filesystem operation or hook.
+func r3SourceReplace(ctx context.Context, staged, path string, onRetry func(context.Context, time.Time, error)) error {
+	ownDeadline := time.Now().Add(r3SourcePublishRetryLimit)
+	ctx, cancel := context.WithDeadline(ctx, ownDeadline)
+	defer cancel()
+	var firstErr error
+	for {
+		if err := ctx.Err(); err != nil {
+			if firstErr != nil {
+				return firstErr
+			}
+			return err
+		}
+		err := os.Rename(staged, path)
+		if err == nil {
+			return nil
+		}
+		var link *os.LinkError
+		var errno syscall.Errno
+		// Numeric Errno values keep this untagged test file compilable on Unix.
+		// Windows ERROR_ACCESS_DENIED=5 and ERROR_SHARING_VIOLATION=32 only.
+		if runtime.GOOS != "windows" || !errors.As(err, &link) || !errors.As(link.Err, &errno) ||
+			(errno != syscall.Errno(5) && errno != syscall.Errno(32)) {
+			return err
+		}
+		stagedInfo, stagedErr := os.Lstat(staged)
+		targetInfo, targetErr := os.Lstat(path)
+		if stagedErr != nil || !stagedInfo.Mode().IsRegular() ||
+			(targetErr != nil && !errors.Is(targetErr, os.ErrNotExist)) ||
+			(targetErr == nil && !targetInfo.Mode().IsRegular()) {
+			return err
+		}
+		if firstErr == nil {
+			firstErr = err
+			if onRetry != nil {
+				onRetry(ctx, ownDeadline, err)
+			}
+		}
+		timer := time.NewTimer(5 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return firstErr
+		case <-timer.C:
+		}
 	}
 }
 
@@ -980,5 +1049,306 @@ func TestRuntimeRegenerationSourceReusesRealJournalNamespaceAndDisabledRecogniti
 	}
 	if domain, found := f.box.runtime.fakeIP.RecognitionStore().Lookup(address); !found || domain != "retained.example" {
 		t.Fatal("disabled graph refresh erased old answer recognition", domain, found)
+	}
+}
+
+func TestR3SourceWritePublishesCompleteReplacement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sites.json")
+	first := bytes.Repeat([]byte("old-complete-source\n"), 1024)
+	next := bytes.Repeat([]byte("new-complete-source\n"), 2048)
+	r3SourceWrite(t, path, first)
+	r3SourceWrite(t, path, next)
+	actual, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(actual, next) {
+		t.Fatal("fixture helper did not publish the complete replacement", err)
+	}
+	if _, err := os.Stat(path + ".next"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("successful replacement retained its staging file", err)
+	}
+}
+
+func TestR3SourcePublisherPreservesUnrelatedFilesystemErrors(t *testing.T) {
+	t.Run("missing-staged-file", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "sites.json")
+		original := []byte("original source")
+		if err := os.WriteFile(path, original, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		retries := 0
+		err := r3SourceReplace(runtimeTestContext(t), path+".missing", path, func(context.Context, time.Time, error) { retries++ })
+		var link *os.LinkError
+		if !errors.As(err, &link) || !errors.Is(err, os.ErrNotExist) || retries != 0 {
+			t.Fatal("missing staging source lost its unrelated OS error or retried", err, retries)
+		}
+		actual, readErr := os.ReadFile(path)
+		if readErr != nil || !bytes.Equal(actual, original) {
+			t.Fatal("failed replacement changed destination", readErr)
+		}
+	})
+	t.Run("directory-target", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "target")
+		if err := os.Mkdir(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		sentinel := filepath.Join(path, "sentinel")
+		if err := os.WriteFile(sentinel, []byte("unchanged"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		retries := 0
+		err := r3SourcePublish(runtimeTestContext(t), path, []byte("replacement"), func(context.Context, time.Time, error) { retries++ })
+		var link *os.LinkError
+		if !errors.As(err, &link) || retries != 0 {
+			t.Fatal("nonregular target did not retain its rename error without retry", err, retries)
+		}
+		actual, readErr := os.ReadFile(sentinel)
+		if readErr != nil || string(actual) != "unchanged" {
+			t.Fatal("failed replacement removed/truncated the directory target", readErr)
+		}
+		staged, readErr := os.ReadFile(path + ".next")
+		if readErr != nil || string(staged) != "replacement" {
+			t.Fatal("failed replacement did not retain its complete staged bytes", readErr)
+		}
+	})
+	t.Run("missing-staging-parent", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing-parent", "sites.json")
+		retries := 0
+		err := r3SourcePublish(runtimeTestContext(t), path, []byte("replacement"), func(context.Context, time.Time, error) { retries++ })
+		var pathErr *os.PathError
+		if !errors.As(err, &pathErr) || !errors.Is(err, os.ErrNotExist) || retries != 0 {
+			t.Fatal("staging failure lost its original error or entered replacement retry", err, retries)
+		}
+	})
+	t.Run("already-cancelled", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "sites.json")
+		if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		retries := 0
+		err := r3SourcePublish(ctx, path, []byte("replacement"), func(context.Context, time.Time, error) { retries++ })
+		if !errors.Is(err, context.Canceled) || retries != 0 {
+			t.Fatal("cancelled publication continued into filesystem retry", err, retries)
+		}
+		actual, readErr := os.ReadFile(path)
+		if readErr != nil || string(actual) != "original" {
+			t.Fatal("cancelled publication changed destination", readErr)
+		}
+		if _, err := os.Stat(path + ".next"); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("already-cancelled publication wrote staging bytes", err)
+		}
+	})
+}
+
+func TestR3SourcePublisherWindowsHeldReadHandle(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows delete-sharing contract; portable publication/error controls run separately")
+	}
+	for _, mode := range []string{"release", "staging-reader-release", "cancel", "caller-deadline", "internal-limit", "missing-stage-after-block"} {
+		t.Run(mode, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "sites.json")
+			first := bytes.Repeat([]byte("held-original\n"), 1024)
+			next := bytes.Repeat([]byte("complete-replacement\n"), 2048)
+			heldPath := path
+			if mode == "staging-reader-release" {
+				heldPath = path + ".next"
+			}
+			if err := os.WriteFile(heldPath, first, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			held, err := os.Open(heldPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base, cancel := context.WithCancel(context.Background())
+			wait := runtimeTestContext(t)
+			type observation struct {
+				firstErr         error
+				retry            context.Context
+				ownDeadline      time.Time
+				actualDeadline   time.Time
+				hasDeadline      bool
+				callerDeadline   time.Time
+				callerHasLimit   bool
+				target           []byte
+				targetErr        error
+				staged           []byte
+				stagedErr        error
+				actionErr        error
+				afterActionCause error
+			}
+			type outcome struct {
+				err error
+				at  time.Time
+			}
+			observed := make(chan observation, 1)
+			result := make(chan outcome, 1)
+			joined := make(chan struct{})
+			go func() {
+				defer close(joined)
+				caller := base
+				if mode == "caller-deadline" {
+					// Prepare/close complete staging before starting this caller clock.
+					// Replace is the same actual continuation used by Publish.
+					if err := os.WriteFile(path+".next", next, 0o600); err != nil {
+						result <- outcome{err: err, at: time.Now()}
+						return
+					}
+					var stop context.CancelFunc
+					caller, stop = context.WithTimeout(base, time.Second)
+					defer stop()
+				}
+				hook := func(retry context.Context, ownDeadline time.Time, firstErr error) {
+					o := observation{firstErr: firstErr, retry: retry, ownDeadline: ownDeadline}
+					o.actualDeadline, o.hasDeadline = retry.Deadline()
+					o.callerDeadline, o.callerHasLimit = caller.Deadline()
+					o.target, o.targetErr = os.ReadFile(path)
+					o.staged, o.stagedErr = os.ReadFile(path + ".next")
+					// All evidence and actions finish inside the real first-failure
+					// hook, before this worker may issue another Rename/Lstat.
+					if !o.hasDeadline || o.stagedErr != nil || !bytes.Equal(o.staged, next) ||
+						(mode == "staging-reader-release" && !errors.Is(o.targetErr, os.ErrNotExist)) ||
+						(mode != "staging-reader-release" && (o.targetErr != nil || !bytes.Equal(o.target, first))) {
+						o.actionErr = errors.New("actual first-failure evidence incomplete")
+					} else if retry.Err() != nil || caller.Err() != nil {
+						o.actionErr = errors.New("control context expired before its actual first-failure action")
+					} else {
+						switch mode {
+						case "release", "staging-reader-release":
+							o.actionErr = held.Close()
+						case "cancel", "caller-deadline":
+							if mode == "cancel" {
+								cancel()
+							} else if !o.callerHasLimit || !o.actualDeadline.Equal(o.callerDeadline) ||
+								!o.callerDeadline.Before(ownDeadline) {
+								o.actionErr = errors.New("actual retry context did not inherit the earlier caller deadline")
+							}
+							if o.actionErr == nil {
+								select {
+								case <-caller.Done():
+								case <-wait.Done():
+									o.actionErr = wait.Err()
+								}
+							}
+							if o.actionErr == nil {
+								select {
+								case <-retry.Done():
+								case <-wait.Done():
+									o.actionErr = wait.Err()
+								}
+							}
+							if o.actionErr == nil {
+								expected := error(context.Canceled)
+								if mode == "caller-deadline" {
+									expected = context.DeadlineExceeded
+								}
+								if !errors.Is(retry.Err(), expected) || !errors.Is(caller.Err(), expected) {
+									o.actionErr = errors.New("actual caller event did not cause the observed retry context")
+								} else {
+									// An ignored context would next encounter a real ENOENT.
+									// Correct cancellation/deadline must preserve firstErr.
+									o.actionErr = os.Remove(path + ".next")
+								}
+							}
+						case "missing-stage-after-block":
+							o.actionErr = os.Remove(path + ".next")
+						}
+					}
+					o.afterActionCause = retry.Err()
+					if o.actionErr != nil {
+						cancel()
+					}
+					observed <- o
+				}
+				var err error
+				if mode == "caller-deadline" {
+					err = r3SourceReplace(caller, path+".next", path, hook)
+				} else {
+					err = r3SourcePublish(caller, path, next, hook)
+				}
+				// Closest worker-side observation, before result-channel delivery.
+				result <- outcome{err: err, at: time.Now()}
+			}()
+			t.Cleanup(func() {
+				cancel()
+				_ = held.Close()
+				timer := time.NewTimer(5 * time.Second)
+				defer timer.Stop()
+				select {
+				case <-joined:
+				case <-timer.C:
+					t.Error("actual fixture publisher did not join after cancellation/reader close")
+				}
+			})
+			var o observation
+			select {
+			case o = <-observed:
+			case <-wait.Done():
+				t.Fatal("no completed actual first-failure observation/action", wait.Err())
+			}
+			if o.actionErr != nil {
+				t.Fatal("causal filesystem/context control could not be established", o.actionErr)
+			}
+			var link *os.LinkError
+			if !errors.As(o.firstErr, &link) || link.Old != path+".next" || link.New != path {
+				t.Fatal("retry observation did not preserve the actual replacement error", o.firstErr)
+			}
+			if mode != "caller-deadline" && (o.callerHasLimit || !o.actualDeadline.Equal(o.ownDeadline)) {
+				t.Fatal("actual internal retry deadline was not observed independently of caller timing")
+			}
+			var returned outcome
+			select {
+			case returned = <-result:
+			case <-wait.Done():
+				t.Fatal("fixture publisher failed to complete within progress watchdog", wait.Err())
+			}
+			runtimeTestWait(t, joined, "actual fixture publisher return")
+			if mode == "release" || mode == "staging-reader-release" {
+				if o.afterActionCause != nil || returned.err != nil {
+					t.Fatal("replacement failed after actual reader closure", o.afterActionCause, returned.err)
+				}
+				actual, readErr := os.ReadFile(path)
+				if readErr != nil || !bytes.Equal(actual, next) {
+					t.Fatal("replacement after reader close was incomplete", readErr)
+				}
+				if _, err := os.Stat(path + ".next"); !errors.Is(err, os.ErrNotExist) {
+					t.Fatal("completed replacement retained staging file", err)
+				}
+				return
+			}
+			switch mode {
+			case "missing-stage-after-block":
+				if o.afterActionCause != nil || !errors.Is(returned.err, os.ErrNotExist) || returned.err == o.firstErr {
+					t.Fatal("actual post-delete Rename error was hidden by the earlier sharing error", returned.err, o.afterActionCause)
+				}
+			case "cancel", "caller-deadline":
+				expected := error(context.Canceled)
+				if mode == "caller-deadline" {
+					expected = context.DeadlineExceeded
+					if returned.at.Before(o.actualDeadline) {
+						t.Fatal("worker returned before the actual caller deadline")
+					}
+				}
+				if !errors.Is(o.afterActionCause, expected) || returned.err != o.firstErr {
+					t.Fatal("actual context event did not take precedence over the pending ENOENT", returned.err, o.firstErr)
+				}
+				if _, err := os.Stat(path + ".next"); !errors.Is(err, os.ErrNotExist) {
+					t.Fatal("control did not remove only its own staging file", err)
+				}
+			case "internal-limit":
+				if o.afterActionCause != nil || returned.err != o.firstErr ||
+					!errors.Is(o.retry.Err(), context.DeadlineExceeded) || returned.at.Before(o.actualDeadline) {
+					t.Fatal("actual internal deadline/worker return did not bound the held-reader retry", returned.err)
+				}
+				staged, readErr := os.ReadFile(path + ".next")
+				if readErr != nil || !bytes.Equal(staged, next) {
+					t.Fatal("exhausted publication discarded/truncated staging bytes", readErr)
+				}
+			}
+			actual, readErr := os.ReadFile(path)
+			if readErr != nil || !bytes.Equal(actual, first) {
+				t.Fatal("failed publication did not retain complete original destination", readErr)
+			}
+		})
 	}
 }

@@ -353,7 +353,8 @@ type RuntimeCapabilities struct {
 	ControlRevision              uint64                    `protobuf:"varint,9,opt,name=control_revision,json=controlRevision,proto3" json:"control_revision,omitempty"`
 	// Read-only document from this authenticated running Core. An absent/empty
 	// field is unavailable; it never grants an execution purpose or a CLI fallback.
-	TlsFingerprintCapabilitiesJson      string   `protobuf:"bytes,10,opt,name=tls_fingerprint_capabilities_json,json=tlsFingerprintCapabilitiesJson,proto3" json:"tls_fingerprint_capabilities_json,omitempty"`
+	TlsFingerprintCapabilitiesJson string `protobuf:"bytes,10,opt,name=tls_fingerprint_capabilities_json,json=tlsFingerprintCapabilitiesJson,proto3" json:"tls_fingerprint_capabilities_json,omitempty"`
+	// Recognition of a consumer's explicit-confirmation protocol, never consent.
 	SupportedClientImpactPolicyVersions []uint32 `protobuf:"varint,11,rep,packed,name=supported_client_impact_policy_versions,json=supportedClientImpactPolicyVersions,proto3" json:"supported_client_impact_policy_versions,omitempty"`
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
