@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -50,7 +51,7 @@ func TestRuntimeUnixJournalReopenKeepsPermissionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
-	if opened, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger()); !errors.Is(err, ErrFakeIPRecoveryCustody) || opened != nil {
+	if opened, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger()); !errors.Is(err, ErrFakeIPRecoveryCustody) || opened != nil || !strings.Contains(err.Error(), "unix.inspect.kind-or-permissions") {
 		if opened != nil {
 			_ = opened.Close()
 		}

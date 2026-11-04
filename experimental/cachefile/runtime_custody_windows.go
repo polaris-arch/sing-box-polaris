@@ -24,7 +24,7 @@ type runtimeJournalRootCustody struct {
 func requireRuntimeJournalRootCustody(path string, info os.FileInfo) (*runtimeJournalRootCustody, error) {
 	file, principal, err := openRuntimeWindowsCustody(path, info, true, "")
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.root-open", err)
 	}
 	return &runtimeJournalRootCustody{file: file, principal: principal}, nil
 }
@@ -34,7 +34,7 @@ func (r *runtimeJournalRootCustody) Close() error {
 	defer r.access.Unlock()
 	if !r.closed {
 		r.closed = true
-		r.closeErr = r.file.Close()
+		r.closeErr = fakeIPRecoveryError("windows.root-close", r.file.Close())
 	}
 	return r.closeErr
 }
@@ -43,33 +43,33 @@ func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (
 	r.access.Lock()
 	defer r.access.Unlock()
 	if r.closed {
-		return nil, ErrFakeIPRecoveryClosed
+		return nil, fakeIPRecoveryError("windows.child.closed-root", ErrFakeIPRecoveryClosed)
 	}
 	parent, err := os.Stat(filepath.Dir(path))
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.child.parent-stat", err)
 	}
 	rootInfo, err := r.file.Stat()
 	if err != nil || !os.SameFile(parent, rootInfo) {
-		return nil, errors.Join(ErrFakeIPRecoveryCustody, err)
+		return nil, fakeIPRecoveryError("windows.child.parent-identity", errors.Join(ErrFakeIPRecoveryCustody, err))
 	}
 	// Recheck the still-pinned root descriptor. Changing its owner or broadening
 	// its ACL cannot turn a formerly accepted principal into current authority.
 	sd, err := windows.GetSecurityInfo(windows.Handle(r.file.Fd()), windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.child.root-security", err)
 	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.child.token-user", err)
 	}
 	principal, err := runtimeWindowsDescriptorPrincipal(sd, user.User.Sid.String(), "")
 	if err != nil || principal != r.principal {
-		return nil, errors.Join(ErrFakeIPRecoveryCustody, err)
+		return nil, fakeIPRecoveryError("windows.child.root-principal", errors.Join(ErrFakeIPRecoveryCustody, err))
 	}
 	file, _, err := openRuntimeWindowsCustody(path, info, false, r.principal)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.child.open", err)
 	}
 	return runtimeWindowsFileRelease(file), nil
 }
@@ -77,7 +77,10 @@ func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (
 func runtimeWindowsFileRelease(file *os.File) func() error {
 	var once sync.Once
 	var closeErr error
-	return func() error { once.Do(func() { closeErr = file.Close() }); return closeErr }
+	return func() error {
+		once.Do(func() { closeErr = fakeIPRecoveryError("windows.object-close", file.Close()) })
+		return closeErr
+	}
 }
 
 // Compatibility inspection for readiness and independent same-account objects.
@@ -85,18 +88,18 @@ func runtimeWindowsFileRelease(file *os.File) func() error {
 func requireRuntimeJournalCustody(path string, expected os.FileInfo, directory bool) (func() error, error) {
 	file, _, err := openRuntimeWindowsCustody(path, expected, directory, "")
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("windows.inspect", err)
 	}
 	return runtimeWindowsFileRelease(file), nil
 }
 
 func openRuntimeWindowsCustody(path string, expected os.FileInfo, directory bool, rootPrincipal string) (*os.File, string, error) {
 	if expected == nil || expected.Mode()&os.ModeSymlink != 0 || expected.IsDir() != directory || (!directory && !expected.Mode().IsRegular()) {
-		return nil, "", ErrFakeIPRecoveryCustody
+		return nil, "", fakeIPRecoveryError("windows.native.input-kind", ErrFakeIPRecoveryCustody)
 	}
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fakeIPRecoveryError("windows.native.path-encoding", err)
 	}
 	flags := uint32(windows.FILE_FLAG_OPEN_REPARSE_POINT)
 	// Attribute-only opens do not participate in Windows sharing checks. Hold
@@ -110,32 +113,34 @@ func openRuntimeWindowsCustody(path string, expected os.FileInfo, directory bool
 	}
 	handle, err := windows.CreateFile(name, access, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, flags, 0)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fakeIPRecoveryError("windows.native.open", err)
 	}
 	file := os.NewFile(uintptr(handle), path)
-	fail := func(cause error) (*os.File, string, error) { return nil, "", errors.Join(cause, file.Close()) }
+	fail := func(cause error) (*os.File, string, error) {
+		return nil, "", errors.Join(cause, fakeIPRecoveryError("windows.native.close-after-failure", file.Close()))
+	}
 	var native windows.ByHandleFileInformation
 	if err := windows.GetFileInformationByHandle(handle, &native); err != nil {
-		return fail(err)
+		return fail(fakeIPRecoveryError("windows.native.handle-info", err))
 	}
 	if native.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || (native.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0) != directory {
-		return fail(ErrFakeIPRecoveryCustody)
+		return fail(fakeIPRecoveryError("windows.native.handle-kind", ErrFakeIPRecoveryCustody))
 	}
 	actual, err := file.Stat()
 	if err != nil || !os.SameFile(expected, actual) {
-		return fail(errors.Join(ErrFakeIPRecoveryCustody, err))
+		return fail(fakeIPRecoveryError("windows.native.identity", errors.Join(ErrFakeIPRecoveryCustody, err)))
 	}
 	sd, err := windows.GetSecurityInfo(handle, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return fail(err)
+		return fail(fakeIPRecoveryError("windows.native.security-info", err))
 	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
-		return fail(err)
+		return fail(fakeIPRecoveryError("windows.native.token-user", err))
 	}
 	principal, err := runtimeWindowsDescriptorPrincipal(sd, user.User.Sid.String(), rootPrincipal)
 	if err != nil {
-		return fail(err)
+		return fail(fakeIPRecoveryError("windows.native.descriptor", err))
 	}
 	return file, principal, nil
 }
@@ -147,17 +152,17 @@ func requireRuntimeWindowsDescriptor(sd *windows.SECURITY_DESCRIPTOR, current st
 
 func runtimeWindowsDescriptorPrincipal(sd *windows.SECURITY_DESCRIPTOR, current, verifiedRootPrincipal string) (string, error) {
 	if sd == nil {
-		return "", ErrFakeIPRecoveryCustody
+		return "", fakeIPRecoveryError("windows.descriptor.missing", ErrFakeIPRecoveryCustody)
 	}
 	owner, _, err := sd.Owner()
 	if err != nil || owner == nil || !owner.IsValid() {
-		return "", ErrFakeIPRecoveryCustody
+		return "", fakeIPRecoveryError("windows.descriptor.owner-invalid", ErrFakeIPRecoveryCustody)
 	}
 	ownerSID := owner.String()
 	principal := verifiedRootPrincipal
 	if principal == "" {
 		if current != ownerSID && current != "S-1-5-18" {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.root-owner", ErrFakeIPRecoveryCustody)
 		}
 		principal = ownerSID
 	} else {
@@ -165,31 +170,31 @@ func runtimeWindowsDescriptorPrincipal(sd *windows.SECURITY_DESCRIPTOR, current,
 		// the user principal from the same verified root. A normal user must still
 		// own its child; no arbitrary owner or foreign inherited ACE is admitted.
 		if current != principal && current != "S-1-5-18" {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.child-current", ErrFakeIPRecoveryCustody)
 		}
 		if ownerSID != principal && (current != "S-1-5-18" || (ownerSID != "S-1-5-18" && ownerSID != "S-1-5-32-544")) {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.child-owner", ErrFakeIPRecoveryCustody)
 		}
 	}
 	acl, _, err := sd.DACL()
 	if err != nil || acl == nil || acl.AceCount == 0 {
-		return "", ErrFakeIPRecoveryCustody
+		return "", fakeIPRecoveryError("windows.descriptor.dacl-invalid", ErrFakeIPRecoveryCustody)
 	}
 	for index := uint32(0); index < uint32(acl.AceCount); index++ {
 		var ace *windows.ACCESS_ALLOWED_ACE
 		if err := windows.GetAce(acl, index, &ace); err != nil {
-			return "", err
+			return "", fakeIPRecoveryError("windows.descriptor.ace-read", err)
 		}
 		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.ace-kind", ErrFakeIPRecoveryCustody)
 		}
 		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
 		if !sid.IsValid() {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.ace-sid", ErrFakeIPRecoveryCustody)
 		}
 		value := sid.String()
 		if value != principal && value != "S-1-5-18" && value != "S-1-5-32-544" {
-			return "", ErrFakeIPRecoveryCustody
+			return "", fakeIPRecoveryError("windows.descriptor.ace-principal", ErrFakeIPRecoveryCustody)
 		}
 	}
 	return principal, nil

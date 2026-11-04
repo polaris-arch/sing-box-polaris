@@ -15,7 +15,7 @@ func requireRuntimeJournalCustody(_ string, info os.FileInfo, directory bool) (f
 		mask = 0o022
 	}
 	if info == nil || info.Mode()&os.ModeSymlink != 0 || info.IsDir() != directory || (!directory && !info.Mode().IsRegular()) || info.Mode().Perm()&mask != 0 {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("unix.inspect.kind-or-permissions", ErrFakeIPRecoveryCustody)
 	}
 	return func() error { return nil }, nil
 }
@@ -28,7 +28,7 @@ type runtimeJournalRootCustody struct {
 
 func requireRuntimeJournalRootCustody(path string, info os.FileInfo) (*runtimeJournalRootCustody, error) {
 	if _, err := requireRuntimeJournalCustody(path, info, true); err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("unix.root-open", err)
 	}
 	return &runtimeJournalRootCustody{info: info}, nil
 }
@@ -44,17 +44,17 @@ func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (
 	r.access.Lock()
 	defer r.access.Unlock()
 	if r.closed {
-		return nil, ErrFakeIPRecoveryClosed
+		return nil, fakeIPRecoveryError("unix.child.closed-root", ErrFakeIPRecoveryClosed)
 	}
 	parent, err := os.Stat(filepath.Dir(path))
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("unix.child.parent-stat", err)
 	}
 	if !os.SameFile(parent, r.info) {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("unix.child.parent-identity", ErrFakeIPRecoveryCustody)
 	}
 	if _, err := requireRuntimeJournalCustody(filepath.Dir(path), parent, true); err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("unix.child.root-custody", err)
 	}
 	return requireRuntimeJournalCustody(path, info, false)
 }

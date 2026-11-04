@@ -202,6 +202,7 @@ func TestRuntimeTunNativeFDProviderCannotBeInferredFromCoreDuplicate(t *testing.
 
 func TestRuntimeTunCancellationAfterFinalPhysicalStageIsNotPublishable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	next := runtimeTunFixture(func(*runtimeTunPhysical) error { cancel(); return nil })
 	defer next.RuntimeCloseAndWait()
 	transaction := NewRuntimeSetTransaction(nil, []*Inbound{next})
@@ -211,8 +212,166 @@ func TestRuntimeTunCancellationAfterFinalPhysicalStageIsNotPublishable(t *testin
 	if _, err := transaction.PreparePublication(); err == nil {
 		t.Fatal("canceled stage published")
 	}
+	next.runtime.mu.Lock()
+	operation, physical := next.runtime.operation, next.runtime.physical
+	next.runtime.mu.Unlock()
+	if operation == nil || physical == nil {
+		t.Fatal("canceled constructor lost its actual operation or physical owner")
+	}
+	// Request cancellation ends observation; only done joins the actual constructor.
+	select {
+	case <-operation.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("canceled constructor terminal watchdog")
+	}
+	if operation.err != nil {
+		t.Fatal("canceled constructor did not actually complete successfully", operation.err)
+	}
+	if _, err := transaction.PreparePublication(); err == nil {
+		t.Fatal("constructor completion made canceled stage publishable")
+	}
+	if physical.gate.Load() {
+		t.Fatal("canceled stage opened packet admission")
+	}
 	if err := transaction.Compensate(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+	select {
+	case <-physical.done:
+	default:
+		t.Fatal("successful compensation did not close the actual physical owner")
+	}
+	if physical.gate.Load() {
+		t.Fatal("compensated canceled stage still admits packets")
+	}
+	if _, err := transaction.PreparePublication(); err == nil {
+		t.Fatal("compensated canceled stage published")
+	}
+}
+
+func TestRuntimeTunCanceledStageCompensationRetainsPendingOperationFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	entered, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	finish := func() { releaseOnce.Do(func() { close(release) }) }
+	next := runtimeTunFixture(func(*runtimeTunPhysical) error {
+		close(entered)
+		cancel()
+		<-release
+		return nil
+	})
+	transaction := NewRuntimeSetTransaction(nil, []*Inbound{next})
+	result, stageReturned := make(chan error, 1), make(chan struct{})
+	t.Cleanup(func() {
+		finish()
+		<-stageReturned
+		_ = next.RuntimeCloseAndWait()
+	})
+	go func() {
+		defer close(stageReturned)
+		result <- transaction.Stage(ctx)
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("held constructor entry watchdog")
+	}
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal("held constructor cancellation not observed", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("held constructor cancel observation watchdog")
+	}
+	next.runtime.mu.Lock()
+	operation, physical := next.runtime.operation, next.runtime.physical
+	next.runtime.mu.Unlock()
+	if operation == nil || physical == nil {
+		t.Fatal("pending constructor lost its actual operation or physical owner")
+	}
+	select {
+	case <-operation.done:
+		t.Fatal("held constructor reported completion")
+	default:
+	}
+	select {
+	case <-physical.done:
+		t.Fatal("observer cancellation closed the held physical owner")
+	default:
+	}
+	if physical.gate.Load() {
+		t.Fatal("pending canceled stage admits packets")
+	}
+	if _, err := transaction.PreparePublication(); err == nil {
+		t.Fatal("pending canceled stage published")
+	}
+	compensationErr := transaction.Compensate(context.Background())
+	if compensationErr == nil || compensationErr.Error() != "TUN physical operation still in progress" {
+		t.Fatal("prejoin compensation did not reject the actual pending operation", compensationErr)
+	}
+	if !transaction.compensated || transaction.compensationError != compensationErr {
+		t.Fatal("prejoin compensation did not retain its actual failure")
+	}
+	next.runtime.mu.Lock()
+	samePendingOwner := next.runtime.operation == operation && next.runtime.physical == physical
+	next.runtime.mu.Unlock()
+	if !samePendingOwner {
+		t.Fatal("prejoin compensation replaced the pending operation or physical owner")
+	}
+	select {
+	case <-operation.done:
+		t.Fatal("prejoin compensation falsely joined the held constructor")
+	default:
+	}
+	select {
+	case <-physical.done:
+		t.Fatal("prejoin compensation closed the held physical owner")
+	default:
+	}
+	if err := transaction.Compensate(context.Background()); err != compensationErr {
+		t.Fatal("repeated prejoin compensation changed the sticky failure", err)
+	}
+	finish()
+	select {
+	case <-operation.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("released constructor terminal watchdog")
+	}
+	if operation.err != nil {
+		t.Fatal("released constructor failed", operation.err)
+	}
+	if err := transaction.Compensate(context.Background()); err != compensationErr {
+		t.Fatal("actual constructor join erased the sticky compensation failure", err)
+	}
+	next.runtime.mu.Lock()
+	sameCompletedOwner := next.runtime.operation == operation && next.runtime.physical == physical
+	next.runtime.mu.Unlock()
+	if !sameCompletedOwner {
+		t.Fatal("sticky compensation replaced the completed operation or physical owner")
+	}
+	select {
+	case <-physical.done:
+		t.Fatal("failed compensation was silently retried after constructor join")
+	default:
+	}
+	if physical.gate.Load() {
+		t.Fatal("failed compensation opened packet admission")
+	}
+	if _, err := transaction.PreparePublication(); err == nil {
+		t.Fatal("joined constructor with failed compensation published")
+	}
+	if err := next.RuntimeCloseAndWait(); err != nil {
+		t.Fatal("actual terminal owner cleanup failed", err)
+	}
+	select {
+	case <-physical.done:
+	default:
+		t.Fatal("terminal owner close returned before physical cleanup")
+	}
+	if physical.gate.Load() {
+		t.Fatal("closed physical owner still admits packets")
 	}
 }
 

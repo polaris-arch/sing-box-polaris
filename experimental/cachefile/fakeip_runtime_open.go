@@ -115,14 +115,14 @@ func (c *CacheFile) validateRuntimeFileIdentity() error {
 	expected := c.runtimeFileInfo
 	c.dbAccess.RUnlock()
 	if expected == nil {
-		return ErrFakeIPRecoveryCustody
+		return fakeIPRecoveryError("descriptor.missing-file-info", ErrFakeIPRecoveryCustody)
 	}
 	actual, err := os.Lstat(c.path)
 	if err != nil {
-		return err
+		return fakeIPRecoveryError("descriptor.current-lstat", err)
 	}
 	if !actual.Mode().IsRegular() || actual.Mode()&os.ModeSymlink != 0 || !os.SameFile(expected, actual) {
-		return ErrFakeIPRuntimeIdentity
+		return fakeIPRecoveryError("descriptor.current-identity", ErrFakeIPRuntimeIdentity)
 	}
 	return nil
 }
@@ -131,23 +131,23 @@ func (c *CacheFile) validateRuntimeFileIdentity() error {
 // cache opens. A path string or process cwd cannot stand in for this binding.
 func (c *CacheFile) BindRuntimeRecoveryJournal(journal *FakeIPRuntimeJournal) error {
 	if journal == nil {
-		return ErrFakeIPRecoveryRoot
+		return fakeIPRecoveryError("cache-bind.missing-journal", ErrFakeIPRecoveryRoot)
 	}
 	root, present := adapter.RuntimeRecoveryRootFromContext(c.ctx)
 	other, otherPresent := adapter.RuntimeRecoveryRootFromContext(journal.ctx)
 	if !present || !otherPresent || root != other {
-		return ErrFakeIPRecoveryCustody
+		return fakeIPRecoveryError("cache-bind.root-identity", ErrFakeIPRecoveryCustody)
 	}
 	journal.access.Lock()
 	closed := journal.closed
 	journal.access.Unlock()
 	if closed {
-		return ErrFakeIPRecoveryClosed
+		return fakeIPRecoveryError("cache-bind.closed-journal", ErrFakeIPRecoveryClosed)
 	}
 	c.dbAccess.Lock()
 	defer c.dbAccess.Unlock()
 	if c.DB != nil || c.runtimeRecoveryJournal != nil {
-		return ErrFakeIPRecoveryCustody
+		return fakeIPRecoveryError("cache-bind.already-open-or-bound", ErrFakeIPRecoveryCustody)
 	}
 	c.runtimeRecoveryJournal = journal
 	return nil

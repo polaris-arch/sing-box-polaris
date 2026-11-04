@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"unsafe"
 
@@ -103,9 +104,11 @@ func TestRuntimeWindowsJournalCustodyPinsNativeRootAndFile(t *testing.T) {
 		t.Fatal("native file handle did not release", err)
 	}
 	create()
-	if release, err := requireRuntimeJournalCustody(path, fileInfo, false); err == nil {
-		_ = release()
-		t.Fatal("new object borrowed the previous journal identity")
+	if release, err := requireRuntimeJournalCustody(path, fileInfo, false); !errors.Is(err, ErrFakeIPRecoveryCustody) || !strings.Contains(err.Error(), "windows.native.identity") {
+		if release != nil {
+			_ = release()
+		}
+		t.Fatal("new object borrowed the previous journal identity or lost its rejection stage", err)
 	}
 }
 
@@ -370,7 +373,7 @@ func TestRuntimeWindowsJournalCanceledOpenAndClosedRootCannotAdoptChild(t *testi
 	root := runtimeWindowsJournalPrivateRoot(t)
 	ctx, cancel := context.WithCancel(adapter.ContextWithRuntimeRecoveryRoot(context.Background(), root))
 	cancel()
-	if journal, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger()); !errors.Is(err, context.Canceled) || journal != nil {
+	if journal, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger()); !errors.Is(err, context.Canceled) || journal != nil || !strings.Contains(err.Error(), "journal.context-before-root") {
 		t.Fatal(journal, err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, fakeIPRuntimeJournalName)); !errors.Is(err, os.ErrNotExist) {
@@ -392,7 +395,7 @@ func TestRuntimeWindowsJournalCanceledOpenAndClosedRootCannotAdoptChild(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if release, err := custody.RequireFile(outside, outsideInfo); !errors.Is(err, ErrFakeIPRecoveryCustody) || release != nil {
+	if release, err := custody.RequireFile(outside, outsideInfo); !errors.Is(err, ErrFakeIPRecoveryCustody) || release != nil || !strings.Contains(err.Error(), "windows.child.parent-identity") {
 		t.Fatal("root token adopted an unrelated parent", err)
 	}
 	if err := custody.Close(); err != nil {

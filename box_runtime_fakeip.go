@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/netip"
 	"sync"
 
@@ -255,7 +256,7 @@ func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity Runt
 	}
 	ready, rootErr := cachefile.FakeIPRuntimeRecoveryRootReady(ctx)
 	if rootErr != nil {
-		return rootErr
+		return fmt.Errorf("fake-IP recovery root-readiness: %w", rootErr)
 	}
 	if !ready {
 		return nil
@@ -270,7 +271,7 @@ func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity Runt
 	s.runtime.fakeIPPersistence = owner // retain every partial owner for shutdown
 	journal, err := cachefile.OpenFakeIPRuntimeJournal(ctx, s.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("fake-IP recovery journal-open: %w", err)
 	}
 	owner.journal = journal
 	cache := service.FromContext[adapter.CacheFile](ctx)
@@ -286,7 +287,7 @@ func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity Runt
 			return fakeip.ErrRecoveryAnchorRequired
 		}
 		if err := binder.BindRuntimeRecoveryJournal(journal); err != nil {
-			return err
+			return fmt.Errorf("fake-IP recovery configured-cache-bind: %w", err)
 		}
 		found := false
 		for index, component := range s.internalService {
@@ -294,7 +295,7 @@ func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity Runt
 				wrapper := &runtimeFakeIPCacheService{LifecycleService: component}
 				s.internalService[index] = wrapper
 				if err := s.runtime.stable.scope.Start(wrapper.Name(), wrapper, adapter.StartStateInitialize); err != nil {
-					return err
+					return fmt.Errorf("fake-IP recovery configured-cache-initialize: %w", err)
 				}
 				found = true
 				break
@@ -309,12 +310,12 @@ func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity Runt
 	if owner.backend != nil {
 		owner.binding, err = journal.BindBackend(ctx, owner.backend)
 		if err != nil {
-			return err
+			return fmt.Errorf("fake-IP recovery configured-backend-bind: %w", err)
 		}
 		configured = append(configured, owner.backend)
 	}
 	if err = s.runtime.fakeIP.RecoverPersistent(ctx, journal, journal, identity.EffectiveDigest, configured...); err != nil {
-		return err
+		return fmt.Errorf("fake-IP recovery persistent-recover: %w", err)
 	}
 	owner.ready = true
 	return nil
