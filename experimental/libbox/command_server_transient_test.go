@@ -365,6 +365,10 @@ func TestCommandServerRetainsSharedDiagnostics(t *testing.T) {
 
 func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	transientTestSetup(t)
+	// The positive journal premise needs native private custody, not only a path.
+	// The original short parent remains owned by transientTestSetup cleanup.
+	sBasePath = commandServerPrivateRecoveryRoot(t, sBasePath)
+	sWorkingPath, sTempPath = sBasePath, sBasePath
 	sPowerReportEnabled = false
 	defaultLogger := log.StdLogger()
 	t.Cleanup(func() { log.SetStdLogger(defaultLogger) })
@@ -373,6 +377,16 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { primary.CloseService(); primary.Close() }()
+	if root, present := adapter.RuntimeRecoveryRootFromContext(primary.ctx); !present || root != sBasePath {
+		t.Fatalf("primary recovery root premise: got %q, present=%v, want %q", root, present, sBasePath)
+	}
+	ready, err := cachefile.FakeIPRuntimeRecoveryRootReady(primary.ctx)
+	if err != nil {
+		t.Fatal("primary recovery root readiness before start:", err)
+	}
+	if !ready {
+		t.Fatal("primary recovery root readiness before start: private root not ready")
+	}
 	if err := primary.StartOrReloadService(`{"experimental":{"cache_file":{"path":"primary-cache.db"}}}`, &OverrideOptions{}); err != nil {
 		t.Fatal(err)
 	}
