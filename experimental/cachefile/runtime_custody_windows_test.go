@@ -9,6 +9,7 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/sagernet/bbolt"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
 
@@ -403,5 +404,295 @@ func TestRuntimeWindowsJournalCanceledOpenAndClosedRootCannotAdoptChild(t *testi
 	}
 	if release, err := custody.RequireFile(filepath.Join(root, "absent"), nil); !errors.Is(err, ErrFakeIPRecoveryClosed) || release != nil {
 		t.Fatal("released root token granted child authority", err)
+	}
+}
+
+// Inspect the real created object, not the requested creation descriptor. The
+// returned strings are kept only for equality checks and never printed.
+func runtimeWindowsCreatedJournalSecurity(t *testing.T, file *os.File) string {
+	t.Helper()
+	sd, err := windows.GetSecurityInfo(windows.Handle(file.Fd()), windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal("could not inspect created journal security")
+	}
+	owner, _, err := sd.Owner()
+	if err != nil || owner == nil || !owner.IsValid() {
+		t.Fatal("created journal has no valid native owner")
+	}
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal("could not inspect current process identity")
+	}
+	if owner.String() != user.User.Sid.String() {
+		t.Fatal("fresh journal owner does not equal current process user")
+	}
+	control, _, err := sd.Control()
+	if err != nil || control&windows.SE_DACL_PROTECTED == 0 {
+		t.Fatal("fresh journal DACL is not protected from inheritance")
+	}
+	acl, _, err := sd.DACL()
+	if err != nil || acl == nil || acl.AceCount == 0 {
+		t.Fatal("fresh journal has no private native DACL")
+	}
+	grants := map[string]bool{user.User.Sid.String(): false, "S-1-5-18": false, "S-1-5-32-544": false}
+	for index := uint32(0); index < uint32(acl.AceCount); index++ {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(acl, index, &ace); err != nil {
+			t.Fatal("could not read created journal grant")
+		}
+		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags != 0 || ace.Mask == 0 {
+			t.Fatal("created journal grant is not explicit noninheriting access")
+		}
+		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+		if !sid.IsValid() {
+			t.Fatal("created journal grant has an invalid identity")
+		}
+		if _, allowed := grants[sid.String()]; !allowed {
+			t.Fatal("created journal granted access outside its private principals")
+		}
+		grants[sid.String()] = true
+	}
+	for _, granted := range grants {
+		if !granted {
+			t.Fatal("created journal omitted a required private principal")
+		}
+	}
+	value := sd.String()
+	if value == "" {
+		t.Fatal("created journal security could not be retained for equality")
+	}
+	return value
+}
+
+func runtimeWindowsJournalSecurityAtPath(t *testing.T, path string) string {
+	t.Helper()
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal("could not open journal for security inspection")
+	}
+	defer file.Close()
+	before, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal("could not inspect journal path identity")
+	}
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(before, opened) {
+		t.Fatal("security inspection did not address the current journal object")
+	}
+	return runtimeWindowsCreatedJournalSecurity(t, file)
+}
+
+func TestRuntimeWindowsProductionNewJournalOwnerAndExclusiveReopen(t *testing.T) {
+	root := runtimeWindowsJournalPrivateRoot(t)
+	path := filepath.Join(root, fakeIPRuntimeJournalName)
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("production NEW journal premise is not absent")
+	}
+	ctx := adapter.ContextWithRuntimeRecoveryRoot(context.Background(), root)
+	journal, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
+	if err != nil {
+		t.Fatal("production fresh journal did not open")
+	}
+	defer journal.Close()
+	first, err := journal.RuntimeDescriptor(ctx)
+	if err != nil || first.DatabaseID == "" {
+		t.Fatal("production fresh journal has no database identity")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		t.Fatal("production fresh journal is not a regular object")
+	}
+	security := runtimeWindowsJournalSecurityAtPath(t, path)
+	before, err := os.ReadFile(path)
+	if err != nil || len(before) == 0 {
+		t.Fatal("production fresh database has no persisted bytes")
+	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		t.Fatal("could not inspect verified root")
+	}
+	custody, err := requireRuntimeJournalRootCustody(root, rootInfo)
+	if err != nil {
+		t.Fatal("could not retain verified root for exclusive creation check")
+	}
+	defer custody.Close()
+	duplicate, err := createRuntimeJournalFile(custody, path)
+	if duplicate != nil {
+		_ = duplicate.Close()
+	}
+	if duplicate != nil || !errors.Is(err, os.ErrExist) {
+		t.Fatal("CREATE_NEW did not preserve existing-file error classification")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("rejected exclusive creation changed existing database bytes")
+	}
+	afterInfo, err := os.Lstat(path)
+	if err != nil || !os.SameFile(info, afterInfo) || runtimeWindowsJournalSecurityAtPath(t, path) != security {
+		t.Fatal("rejected exclusive creation changed native identity, owner or ACL")
+	}
+	competing, err := OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
+	if competing != nil {
+		_ = competing.Close()
+	}
+	if competing != nil || !errors.Is(err, bbolt.ErrTimeout) {
+		t.Fatal("live production journal did not retain the real bbolt writer lock")
+	}
+	if runtimeWindowsJournalSecurityAtPath(t, path) != security {
+		t.Fatal("competing production open changed owner or ACL")
+	}
+	if err := journal.Close(); err != nil {
+		t.Fatal("production journal did not close")
+	}
+	journal, err = OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
+	if err != nil {
+		t.Fatal("production existing journal did not reopen")
+	}
+	defer journal.Close()
+	second, err := journal.RuntimeDescriptor(ctx)
+	if err != nil || second != first {
+		t.Fatal("production reopen changed the exact database descriptor")
+	}
+	afterInfo, err = os.Lstat(path)
+	if err != nil || !os.SameFile(info, afterInfo) || runtimeWindowsJournalSecurityAtPath(t, path) != security {
+		t.Fatal("production reopen changed native identity, owner or ACL")
+	}
+}
+
+func TestRuntimeWindowsActualCreatorHandlePinsUntilClose(t *testing.T) {
+	root := runtimeWindowsJournalPrivateRoot(t)
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		t.Fatal("could not inspect creator root")
+	}
+	custody, err := requireRuntimeJournalRootCustody(root, rootInfo)
+	if err != nil {
+		t.Fatal("could not retain creator root")
+	}
+	defer custody.Close()
+	path := filepath.Join(root, "creator.db")
+	file, err := createRuntimeJournalFile(custody, path)
+	if err != nil {
+		t.Fatal("actual production creator did not create a fresh child")
+	}
+	defer file.Close()
+	security := runtimeWindowsCreatedJournalSecurity(t, file)
+	var handleFlags uint32
+	getHandleInformation := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation")
+	ok, _, _ := getHandleInformation.Call(file.Fd(), uintptr(unsafe.Pointer(&handleFlags)))
+	if ok == 0 || handleFlags&windows.HANDLE_FLAG_INHERIT != 0 {
+		t.Fatal("actual production creation handle is inheritable or uninspectable")
+	}
+	info, err := file.Stat()
+	if err != nil {
+		t.Fatal("actual creation handle has no file identity")
+	}
+	const payload = "actual exclusive creation handle read and write"
+	if n, err := file.WriteAt([]byte(payload), 0); err != nil || n != len(payload) {
+		t.Fatal("actual creation handle cannot write")
+	}
+	if err := file.Sync(); err != nil {
+		t.Fatal("actual creation handle cannot sync")
+	}
+	data := make([]byte, len(payload))
+	if n, err := file.ReadAt(data, 0); err != nil || n != len(payload) || string(data) != payload {
+		t.Fatal("actual creation handle cannot read its written bytes")
+	}
+	// No extra child custody or companion data handle is retained: the creator's
+	// returned handle alone must cause this native sharing violation.
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		t.Fatal("could not encode test-owned child name")
+	}
+	deleteHandle, err := windows.CreateFile(name, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err == nil {
+		_ = windows.CloseHandle(deleteHandle)
+	}
+	if !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
+		t.Fatal("actual creation handle did not deny native DELETE through sharing")
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal("actual production creation handle did not close")
+	}
+	deleteHandle, err = windows.CreateFile(name, windows.DELETE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		t.Fatal("native DELETE remained denied after creation handle release")
+	}
+	if err := windows.CloseHandle(deleteHandle); err != nil {
+		t.Fatal("native DELETE probe did not release")
+	}
+	if err := os.Rename(path, path+".released"); err != nil {
+		t.Fatal("released creation object could not be renamed")
+	}
+	current, err := os.Lstat(path + ".released")
+	if err != nil || !os.SameFile(info, current) || runtimeWindowsJournalSecurityAtPath(t, path+".released") != security {
+		t.Fatal("handle release or rename changed owner, ACL or object identity")
+	}
+	if data, err := os.ReadFile(path + ".released"); err != nil || string(data) != payload {
+		t.Fatal("released creation object lost persisted bytes")
+	}
+	if err := os.Remove(path + ".released"); err != nil {
+		t.Fatal("released creation object could not be deleted")
+	}
+}
+
+func TestRuntimeWindowsActualCreatorRejectsWithoutCreating(t *testing.T) {
+	root := runtimeWindowsJournalPrivateRoot(t)
+	info, err := os.Lstat(root)
+	if err != nil {
+		t.Fatal("could not inspect creator authority root")
+	}
+	custody, err := requireRuntimeJournalRootCustody(root, info)
+	if err != nil {
+		t.Fatal("could not acquire creator authority")
+	}
+	defer custody.Close()
+	outside := runtimeWindowsJournalPrivateRoot(t)
+	for _, row := range []struct {
+		name string
+		root *runtimeJournalRootCustody
+		path string
+		want error
+	}{
+		{"nil-authority", nil, filepath.Join(root, "nil.db"), ErrFakeIPRecoveryCustody},
+		{"missing-native-root", &runtimeJournalRootCustody{}, filepath.Join(root, "missing-root.db"), ErrFakeIPRecoveryCustody},
+		{"missing-principal", &runtimeJournalRootCustody{file: custody.file}, filepath.Join(root, "missing-principal.db"), ErrFakeIPRecoveryCustody},
+		{"wrong-parent", custody, filepath.Join(outside, "outside.db"), ErrFakeIPRecoveryCustody},
+		{"missing-parent", custody, filepath.Join(root, "absent-parent", "child.db"), os.ErrNotExist},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			file, err := createRuntimeJournalFile(row.root, row.path)
+			if file != nil {
+				_ = file.Close()
+			}
+			if file != nil || !errors.Is(err, row.want) {
+				t.Fatal("creator did not preserve its authority or native error fence")
+			}
+			if _, err := os.Lstat(row.path); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("rejected creator left a filesystem object")
+			}
+		})
+	}
+	if err := custody.Close(); err != nil {
+		t.Fatal("creator root did not close")
+	}
+	path := filepath.Join(root, "closed-root.db")
+	file, err := createRuntimeJournalFile(custody, path)
+	if file != nil {
+		_ = file.Close()
+	}
+	if file != nil || !errors.Is(err, ErrFakeIPRecoveryClosed) {
+		t.Fatal("released creator authority admitted a new child")
+	}
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("released creator authority left a new child")
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("creator rejection changed the test-owned root contents")
+	}
+	entries, err = os.ReadDir(outside)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("wrong-parent rejection changed the unrelated root")
 	}
 }

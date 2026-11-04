@@ -58,3 +58,7 @@ func (r *runtimeJournalRootCustody) RequireFile(path string, info os.FileInfo) (
 	}
 	return requireRuntimeJournalCustody(path, info, false)
 }
+
+func createRuntimeJournalFile(rootCustody *runtimeJournalRootCustody, path string) (*os.File, error) {
+	return os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+}

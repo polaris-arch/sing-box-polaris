@@ -111,7 +111,7 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	path := filepath.Join(canonical, fakeIPRuntimeJournalName)
 	created := false
 	var existingInfo os.FileInfo
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	file, err := createRuntimeJournalFile(rootCustody, path)
 	if err == nil {
 		created = true
 	} else if errors.Is(err, os.ErrExist) {

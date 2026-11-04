@@ -508,3 +508,119 @@ func TestCommandServerRejectedReloadKeepsSharedDiagnostics(t *testing.T) {
 		t.Fatalf("rejected reload overwrote live configuration snapshot: %v", err)
 	}
 }
+
+// Exercise normal production construction through both configured-cache paths.
+// No journal is supplied by this test before the first service starts.
+func TestCommandServerFreshJournalSurvivesNormalCloseAndRestart(t *testing.T) {
+	transientTestSetup(t)
+	sBasePath = commandServerPrivateRecoveryRoot(t, sBasePath)
+	sWorkingPath, sTempPath = sBasePath, sBasePath
+	sPowerReportEnabled = false
+	defaultLogger := log.StdLogger()
+	t.Cleanup(func() { log.SetStdLogger(defaultLogger) })
+	path := filepath.Join(sBasePath, "sing-box-hot-fakeip-v1.db")
+	cachePath := filepath.Join(sBasePath, "primary-cache.db")
+	for _, candidate := range []string{path, cachePath} {
+		if _, err := os.Lstat(candidate); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("fresh normal service journal or configured cache already exists")
+		}
+	}
+	primary, err := NewCommandServer(nil, transientTestPlatform{})
+	if err != nil {
+		t.Fatal("could not construct normal primary")
+	}
+	defer func() { primary.CloseService(); primary.Close() }()
+	if ready, err := cachefile.FakeIPRuntimeRecoveryRootReady(primary.ctx); err != nil || !ready {
+		t.Fatal("normal primary does not have verified root custody")
+	}
+	const config = `{"experimental":{"cache_file":{"path":"primary-cache.db"}}}`
+	if err := primary.StartOrReloadService(config, &OverrideOptions{}); err != nil {
+		t.Fatal("normal fresh journal and configured cache failed production Start")
+	}
+	instance := primary.Instance()
+	if instance == nil || instance.Box() == nil || log.StdLogger() == defaultLogger {
+		t.Fatal("normal production Start did not publish its instance and logger")
+	}
+	journalInfo, err := os.Lstat(path)
+	if err != nil || !journalInfo.Mode().IsRegular() {
+		t.Fatal("normal production Start did not create its journal")
+	}
+	cacheInfo, err := os.Lstat(cachePath)
+	if err != nil || !cacheInfo.Mode().IsRegular() {
+		t.Fatal("normal production Start did not create its configured cache")
+	}
+	before, err := os.ReadFile(path)
+	if err != nil || len(before) == 0 {
+		t.Fatal("normal production journal has no persisted bytes")
+	}
+	probe, err := cachefile.OpenFakeIPRuntimeJournal(primary.ctx, log.StdLogger())
+	if probe != nil {
+		_ = probe.Close()
+	}
+	if probe != nil || !errors.Is(err, bbolt.ErrTimeout) {
+		t.Fatal("normal production Start did not retain its real journal writer lock")
+	}
+	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, before) {
+		t.Fatal("competing journal open changed live primary journal bytes")
+	}
+	if primary.Instance() != instance || instance.Box() == nil {
+		t.Fatal("competing journal open changed the published primary")
+	}
+	if err := primary.CloseService(); err != nil {
+		t.Fatal("normal primary did not release its production service")
+	}
+	primary.Close()
+	ctx := adapter.ContextWithRuntimeRecoveryRoot(context.Background(), sBasePath)
+	journal, err := cachefile.OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
+	if err != nil {
+		t.Fatal("normal primary close did not release its journal")
+	}
+	first, err := journal.RuntimeDescriptor(ctx)
+	if err != nil || first.DatabaseID == "" {
+		_ = journal.Close()
+		t.Fatal("normal primary journal has no retained database identity")
+	}
+	if err := journal.Close(); err != nil {
+		t.Fatal("normal primary journal probe did not close")
+	}
+	next, err := NewCommandServer(nil, transientTestPlatform{})
+	if err != nil {
+		t.Fatal("could not construct next normal primary")
+	}
+	defer func() { next.CloseService(); next.Close() }()
+	if err := next.StartOrReloadService(config, &OverrideOptions{}); err != nil {
+		t.Fatal("normal existing journal and configured cache failed production restart")
+	}
+	if next.Instance() == nil || next.Instance().Box() == nil {
+		t.Fatal("normal existing-file restart did not publish its instance")
+	}
+	for _, candidate := range []struct {
+		path string
+		info os.FileInfo
+	}{{path, journalInfo}, {cachePath, cacheInfo}} {
+		after, err := os.Lstat(candidate.path)
+		if err != nil || !os.SameFile(candidate.info, after) {
+			t.Fatal("normal restart replaced a journal or configured cache object")
+		}
+	}
+	probe, err = cachefile.OpenFakeIPRuntimeJournal(next.ctx, log.StdLogger())
+	if probe != nil {
+		_ = probe.Close()
+	}
+	if probe != nil || !errors.Is(err, bbolt.ErrTimeout) {
+		t.Fatal("normal restarted primary did not retain its real journal writer lock")
+	}
+	if err := next.CloseService(); err != nil {
+		t.Fatal("normal restarted primary did not close")
+	}
+	next.Close()
+	journal, err = cachefile.OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
+	if err != nil {
+		t.Fatal("normal restarted primary did not release its journal")
+	}
+	defer journal.Close()
+	second, err := journal.RuntimeDescriptor(ctx)
+	if err != nil || second != first {
+		t.Fatal("normal production restart changed the exact journal descriptor")
+	}
+}

@@ -199,3 +199,92 @@ func runtimeWindowsDescriptorPrincipal(sd *windows.SECURITY_DESCRIPTOR, current,
 	}
 	return principal, nil
 }
+
+// Create only a new journal under the still-verified root. Establish the owner
+// and private DACL at creation rather than relying on a token's default owner.
+// Existing evidence is never opened for mutation, repaired, or removed here.
+func createRuntimeJournalFile(rootCustody *runtimeJournalRootCustody, path string) (*os.File, error) {
+	if rootCustody == nil {
+		return nil, fakeIPRecoveryError("windows.create.missing-root", ErrFakeIPRecoveryCustody)
+	}
+	r := rootCustody
+	r.access.Lock()
+	defer r.access.Unlock()
+	if r.closed {
+		return nil, fakeIPRecoveryError("windows.create.closed-root", ErrFakeIPRecoveryClosed)
+	}
+	if r.file == nil || r.principal == "" || !filepath.IsAbs(path) {
+		return nil, fakeIPRecoveryError("windows.create.root-authority", ErrFakeIPRecoveryCustody)
+	}
+	parent, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.parent-stat", err)
+	}
+	rootInfo, err := r.file.Stat()
+	if err != nil || !os.SameFile(parent, rootInfo) {
+		return nil, fakeIPRecoveryError("windows.create.parent-identity", errors.Join(ErrFakeIPRecoveryCustody, err))
+	}
+	var native windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(windows.Handle(r.file.Fd()), &native); err != nil {
+		return nil, fakeIPRecoveryError("windows.create.root-handle-info", err)
+	}
+	if native.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || native.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY == 0 {
+		return nil, fakeIPRecoveryError("windows.create.root-handle-kind", ErrFakeIPRecoveryCustody)
+	}
+	sd, err := windows.GetSecurityInfo(windows.Handle(r.file.Fd()), windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.root-security", err)
+	}
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.token-user", err)
+	}
+	if user == nil || user.User.Sid == nil || !user.User.Sid.IsValid() {
+		return nil, fakeIPRecoveryError("windows.create.token-user-invalid", ErrFakeIPRecoveryCustody)
+	}
+	current := user.User.Sid.String()
+	principal, err := runtimeWindowsDescriptorPrincipal(sd, current, "")
+	if err != nil || principal != r.principal {
+		return nil, fakeIPRecoveryError("windows.create.root-principal", errors.Join(ErrFakeIPRecoveryCustody, err))
+	}
+	// A normal process must be the verified root owner. SYSTEM's own user SID
+	// is an admissible child owner under the unchanged descriptor validator.
+	if current != principal && current != "S-1-5-18" {
+		return nil, fakeIPRecoveryError("windows.create.current-principal", ErrFakeIPRecoveryCustody)
+	}
+	creationSD, err := windows.SecurityDescriptorFromString("O:" + current + "D:P(A;;FA;;;" + principal + ")(A;;FA;;;SY)(A;;FA;;;BA)")
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.security-descriptor", err)
+	}
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.path-encoding", err)
+	}
+	attributes := windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: creationSD,
+		InheritHandle:      0,
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ|windows.GENERIC_WRITE, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, &attributes, windows.CREATE_NEW, windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, fakeIPRecoveryError("windows.create.open", err)
+	}
+	file := os.NewFile(uintptr(handle), path)
+	fail := func(cause error) (*os.File, error) {
+		return nil, errors.Join(cause, fakeIPRecoveryError("windows.create.close-after-failure", file.Close()))
+	}
+	created, err := file.Stat()
+	if err != nil {
+		return fail(fakeIPRecoveryError("windows.create.file-stat", err))
+	}
+	// Keep the no-delete creation handle alive while the original native
+	// validator checks the exact new identity, owner, and all allowed ACEs.
+	verified, _, err := openRuntimeWindowsCustody(path, created, false, principal)
+	if err != nil {
+		return fail(fakeIPRecoveryError("windows.create.file-custody", err))
+	}
+	if err := verified.Close(); err != nil {
+		return fail(fakeIPRecoveryError("windows.create.validation-close", err))
+	}
+	return file, nil
+}
