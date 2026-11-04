@@ -36,6 +36,7 @@ jobs:
         - ubuntu-latest
         - windows-latest
         - macos-latest
+        - xcode-27
         go:
         - 1.27.2
     runs-on: ${{ matrix.os }}
@@ -94,7 +95,7 @@ jobs:
         test ! -L "$binary_dir/netns.test"
         printf '%s\n' 'netns: compilation only; native validation runs on development machines.' | tee -a "$GITHUB_STEP_SUMMARY"
     - name: Test (macOS ordinary packages)
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-latest' || matrix.os == 'xcode-27'
       run: go test -v -tags "$BUILD_TAGS" -ldflags "$LDFLAGS_SHARED" ./...
     - name: Test (windows)
       if: matrix.os == 'windows-latest'

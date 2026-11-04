@@ -114,7 +114,9 @@ class TestCIContract(unittest.TestCase):
   self.assertNotIn('sudo',step['run'])
   self.assertNotIn('if',step)
   self.assertNotIn('continue-on-error',step)
-  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
+  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest','xcode-27'})
+  mac=next(s for s in job['steps'] if s.get('name')=='Test (macOS ordinary packages)')
+  self.assertEqual(mac['if'],"matrix.os == 'macos-latest' || matrix.os == 'xcode-27'")
   source=(ROOT/'scripts/ci/utls_gate.py').read_text()
   self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)",source)
  def test_automatic_ci_runs_candidate_track_and_peer_admission_regressions(self):
@@ -669,10 +671,18 @@ class TestCIContract(unittest.TestCase):
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
   self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
   self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
-  gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
+  gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15','xcode-27'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
   self.assertEqual(w['permissions']['contents'],'read')
+ def test_four_material_callers_prepare_before_download(self):
+  for file,name in [('build.yml','build'),('build.yml','build_linux_client'),('linux.yml','build'),('docker.yml','build_binary')]:
+   steps=yaml.safe_load((ROOT/'.github/workflows'/file).read_text())['jobs'][name]['steps']
+   clone,keyring,download=[next(s for s in steps if s.get('name')==n) for n in ('Clone cronet-go','Regenerate Debian keyring','Download Chromium toolchain')]
+   self.assertTrue(steps.index(clone)<steps.index(keyring)<steps.index(download))
+   self.assertTrue(clone['run'].rstrip().endswith('python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"'))
+   self.assertEqual((clone.get('timeout-minutes'),download.get('timeout-minutes')),(10,20))
+   for step in (clone,keyring,download):self.assertNotIn('continue-on-error',step)
  def test_runtime_protobuf_bootstrap_is_isolated_from_native_products(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   option=w['on']['workflow_dispatch']['inputs']['source_generate_only']
@@ -711,7 +721,7 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   gate=w['jobs']['utls_gate']
   self.assertEqual(gate['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15'])
+  self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15','xcode-27'])
   self.assertFalse(gate['strategy']['fail-fast'])
   self.assertTrue(any(s.get('with',{}).get('go-version-file')=='release/GO_VERSION' for s in gate['steps']))
   self.assertTrue(any('utls_gate.py' in s.get('run','') for s in gate['steps']))
@@ -1574,7 +1584,7 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
     }
 
     def test_manual_test_and_lint_keep_complete_jobs_behind_full_classifier(self):
-        for filename, count in [('test.yml', 3), ('lint.yml', 10)]:
+        for filename, count in [('test.yml', 4), ('lint.yml', 10)]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             self.assertEqual(set(workflow['on']), {'pull_request', 'workflow_dispatch'})
             self.assertEqual(workflow['on']['workflow_dispatch'], {})

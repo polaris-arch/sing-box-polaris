@@ -78,6 +78,7 @@ jobs:
         go-version: 1.27.2
     - name: Clone cronet-go
       if: matrix.naive
+      timeout-minutes: 10
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -87,6 +88,7 @@ jobs:
         git -C ~/cronet-go fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
         git -C ~/cronet-go checkout FETCH_HEAD
         git -C ~/cronet-go submodule update --init --recursive --depth=1
+        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
     - name: Regenerate Debian keyring
       if: matrix.naive
       run: |
@@ -103,10 +105,10 @@ jobs:
           ~/cronet-go/naiveproxy/src/third_party/llvm-build/
           ~/cronet-go/naiveproxy/src/gn/out/
           ~/cronet-go/naiveproxy/src/chrome/build/pgo_profiles/
-          ~/cronet-go/naiveproxy/src/out/sysroot-build/
-        key: chromium-toolchain-${{ matrix.arch }}-musl-${{ hashFiles('.github/CRONET_GO_VERSION') }}
+        key: chromium-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.arch }}-musl-${{ hashFiles('.github/CRONET_GO_VERSION', 'release/ci/cronet-material-inputs.json', '.github/patches/cronet-sysroot-transport.patch', 'scripts/ci/cronet_material_bootstrap.py') }}
     - name: Download Chromium toolchain
       if: matrix.naive
+      timeout-minutes: 20
       run: |
         set -xeuo pipefail
         cd ~/cronet-go
@@ -302,6 +304,6 @@ jobs:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.12.11
+        default: v1.15.0-polaris-alpha.12.12
 permissions:
   contents: read
