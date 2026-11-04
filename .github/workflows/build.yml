@@ -2292,7 +2292,7 @@ jobs:
     - build_apple_app_store
     - native_smoke
     - native_index
-    if: success() && inputs.build == 'All' && !inputs.source_generate_only
+    if: ${{ !failure() && !cancelled() && inputs.build == 'All' && !inputs.source_generate_only && needs.calculate_version.result == 'success' && needs.build.result == 'success' && needs.build_windows7.result == 'success' && needs.build_darwin.result == 'success' && needs.build_windows.result == 'success' && needs.build_android_library.result == 'success' && needs.build_android.result == 'success' && needs.build_windows_client.result == 'success' && needs.build_linux_client.result == 'success' && needs.build_apple_library.result == 'success' && needs.build_apple.result == 'success' && needs.build_apple_app_store.result == 'success' && needs.native_smoke.result == 'success' && needs.native_index.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -2318,7 +2318,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.10
+        default: 1.15.0-polaris-alpha.12.11
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

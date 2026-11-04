@@ -339,6 +339,90 @@ class TestCIContract(unittest.TestCase):
       (root/'.github/workflows/build.yml').write_text(json.dumps(mutated))
       with mock.patch.object(sys.modules[__name__],'ROOT',root),self.assertRaises((AssertionError,KeyError)):
        self.test_unsigned_apple_package_overlays_cover_all_rows_and_preserve_trust()
+ def _assert_all_producer_receipt_contract(self,workflow):
+  # This checks the real workflow configuration, not GitHub's scheduler.
+  jobs=workflow['jobs'];receipt=jobs['publisher_receipt']
+  expected=('calculate_version','build','build_windows7','build_darwin','build_windows',
+            'build_android_library','build_android','build_windows_client','build_linux_client',
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index')
+  self.assertEqual(receipt['needs'],list(expected))
+  clauses=('!failure()','!cancelled()',"inputs.build == 'All'",'!inputs.source_generate_only')
+  clauses+=tuple("needs."+name+".result == 'success'" for name in expected)
+  self.assertEqual(receipt['if'],'${{ '+' && '.join(clauses)+' }}')
+  self.assertNotIn('continue-on-error',receipt)
+  self.assertIn('prepare_windows7',jobs['build_windows7']['needs'])
+  index=jobs['native_index']
+  self.assertEqual(index['needs'],['calculate_version','build','build_windows7',
+                                 'build_darwin','build_windows','native_smoke','native_windows_proof'])
+  self.assertEqual(index['if'],"${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') && (inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success') }}")
+  field=workflow['on']['workflow_dispatch']['inputs']['windows_native_proof']
+  self.assertEqual(field['type'],'boolean');self.assertIs(field['default'],False)
+  native=jobs['native_windows_proof']
+  self.assertEqual(native['environment'],'polaris-windows-native-proof')
+  self.assertEqual(native['runs-on'],['self-hosted','Windows','X64','polaris-windows-system-proof'])
+  steps=receipt['steps'];self.assertEqual(len(steps),3)
+  self.assertEqual(steps[0],{'uses':'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8',
+                            'with':{'fetch-depth':0}})
+  record=steps[1];upload=steps[2]
+  self.assertEqual(record['name'],'Record exact completed scope')
+  self.assertEqual(record['run'],'python3 scripts/ci/publisher_run_receipt.py')
+  self.assertEqual(record['env'],{'PUBLISHER_ROLE':'all','RELEASE_BUILD':'${{ inputs.build }}',
+                                'RELEASE_VERSION':'${{ inputs.version }}',
+                                'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false'})
+  self.assertEqual(upload['uses'],'actions/upload-artifact@v4')
+  self.assertEqual(upload['with'],{'name':'publisher-run-receipt','path':'publisher-run-receipt.json',
+                                 'if-no-files-found':'error'})
+  for step in steps:
+   self.assertNotIn('if',step);self.assertNotIn('continue-on-error',step)
+ def test_all_receipt_requires_explicit_complete_producer_success(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  self._assert_all_producer_receipt_contract(workflow)
+ def test_all_receipt_configuration_mutations_are_rejected(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  self._assert_all_producer_receipt_contract(workflow)
+  receipt=workflow['jobs']['publisher_receipt'];condition=receipt['if'];cases=[]
+  self.assertTrue(receipt['needs'])
+  for name in receipt['needs']:
+   self.assertEqual(receipt['needs'].count(name),1)
+   clause="needs."+name+".result == 'success'"
+   self.assertEqual(condition.count(clause),1)
+   cases.append((name+':missing-need','needs',[n for n in receipt['needs'] if n!=name]))
+   cases.append((name+':missing-result','if',condition.replace(' && '+clause,'',1)))
+   cases.append((name+':nonfailure-result','if',condition.replace(clause,"needs."+name+".result != 'failure'",1)))
+   cases.append((name+':foreign-result-owner','if',condition.replace(clause,"needs.unregistered_producer.result == 'success'",1)))
+   for status in ('failure','skipped','cancelled','unknown'):
+    cases.append((name+':'+status+'-result','if',condition.replace(clause,"needs."+name+".result == '"+status+"'",1)))
+  for label,anchor in (('missing-no-failure','!failure() && '),
+                       ('missing-no-cancel','!cancelled() && '),
+                       ('missing-All',"inputs.build == 'All' && "),
+                       ('missing-source-only',' && !inputs.source_generate_only')):
+   self.assertEqual(condition.count(anchor),1)
+   cases.append((label,'if',condition.replace(anchor,'',1)))
+  cases.append(('generic-success','if',"success() && inputs.build == 'All' && !inputs.source_generate_only"))
+  cases.append(('unconditional-always','if','always()'))
+  for label,index,key,value in (('synthetic-record',1,'run',"printf '{}' > publisher-run-receipt.json"),
+                                ('foreign-role',1,'env',dict(receipt['steps'][1]['env'],PUBLISHER_ROLE='linux')),
+                                ('foreign-version',1,'env',dict(receipt['steps'][1]['env'],RELEASE_VERSION='1.15.0-polaris-alpha.12.10')),
+                                ('publish-stores',1,'env',dict(receipt['steps'][1]['env'],PUBLISH_STORES='true')),
+                                ('publish-registry',1,'env',dict(receipt['steps'][1]['env'],PUBLISH_REGISTRY='true')),
+                                ('conditional-upload',2,'if','false'),
+                                ('ignore-record-failure',1,'continue-on-error',True),
+                                ('allow-missing-receipt',2,'with',dict(receipt['steps'][2]['with'],**{'if-no-files-found':'ignore'}))):
+   steps=copy.deepcopy(receipt['steps']);steps[index][key]=value
+   cases.append((label,'steps',steps))
+  for label,field,value in cases:
+   with self.subTest(case=label):
+    # A broken unmodified producer must fail outside assertRaises, never feed a negative green.
+    self._assert_all_producer_receipt_contract(workflow)
+    changed=copy.deepcopy(workflow);changed['jobs']['publisher_receipt'][field]=value
+    self.assertNotEqual(value,receipt[field])
+    restored=copy.deepcopy(changed);restored['jobs']['publisher_receipt'][field]=copy.deepcopy(receipt[field])
+    self.assertEqual(restored,workflow)
+    self.assertNotEqual(changed,workflow)
+    with self.assertRaises((AssertionError,KeyError)):
+     self._assert_all_producer_receipt_contract(changed)
+  # These are configuration controls. Only a later hosted run can prove actual
+  # scheduling after a skipped optional ancestor and upload the genuine receipt.
  def test_signed_all_receipt_has_satisfiable_fail_closed_dependencies(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   jobs=w['jobs'];receipt=jobs['publisher_receipt']
