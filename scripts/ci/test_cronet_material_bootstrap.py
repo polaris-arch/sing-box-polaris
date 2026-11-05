@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,12 @@ HASH_FILE = "def hash_file(hasher, file_name: str) -> str:\n    with open(file_n
 INSTALL_CALLER = "def install_into_sysroot(\n    build_dir: str, install_root: str, packages: dict[str, str]\n) -> None:\n    \"\"\"\n    Installs libraries and headers into the sysroot environment.\n    \"\"\"\n    banner(\"Install Libs And Headers Into Jail\")\n\n    debian_packages_dir = os.path.join(build_dir, \"debian-packages\")\n    os.makedirs(debian_packages_dir, exist_ok=True)\n\n    debian_dir = os.path.join(install_root, \"debian\")\n    os.makedirs(debian_dir, exist_ok=True)\n    for package, sha256sum in packages.items():\n        package_name = os.path.basename(package)\n        package_path = os.path.join(debian_packages_dir, package_name)\n\n        banner(f\"Installing {package_name}\")\n        download_or_copy(package, package_path)\n        if hash_file(hashlib.sha256(), package_path) != sha256sum:\n            raise ValueError(f\"SHA256 mismatch for {package_path}\")\n\n        sub_banner(f\"Extracting to {install_root}\")\n        subprocess.run(\n            [\"dpkg-deb\", \"-x\", package_path, install_root], check=True\n        )\n\n        base_package = get_base_package_name(package_path)\n        debian_package_dir = os.path.join(debian_dir, base_package, \"DEBIAN\")\n\n        # Extract the control file\n        os.makedirs(debian_package_dir, exist_ok=True)\n        with subprocess.Popen(\n            [\"dpkg-deb\", \"-e\", package_path, debian_package_dir],\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n        ) as proc:\n            _, err = proc.communicate()\n            if proc.returncode != 0:\n                message = \"Failed to extract control from\"\n                raise Exception(\n                    f\"{message} {package_path}: {err.decode('utf-8')}\"\n                )\n\n    # Prune /usr/share, leaving only allowlisted directories.\n    USR_SHARE_ALLOWLIST = {\n        \"fontconfig\",\n        \"pkgconfig\",\n        \"wayland\",\n        \"wayland-protocols\",\n    }\n    usr_share = os.path.join(install_root, \"usr\", \"share\")\n    for item in os.listdir(usr_share):\n        full_path = os.path.join(usr_share, item)\n        if os.path.isdir(full_path) and item not in USR_SHARE_ALLOWLIST:\n            shutil.rmtree(full_path)\n\n\n"
 ORIGIN = "https://snapshot.debian.org/archive/debian/20250129T203412Z//dists/bullseye/Release"
 MIRROR = ORIGIN.replace("snapshot.debian.org", "snapshot-cloudflare.debian.org", 1)
+
+
+# Exact unchanged function slices from pinned be1be963 sysroot_creator.py.
+ATOMIC_COPY = "def atomic_copyfile(source: str, destination: str) -> None:\n    dest_dir = os.path.dirname(destination)\n    with tempfile.NamedTemporaryFile(\n        mode=\"wb\", delete=False, dir=dest_dir\n    ) as temp_file:\n        temp_filename = temp_file.name\n    shutil.copyfile(source, temp_filename)\n    os.rename(temp_filename, destination)\n\n\n"
+DOWNLOAD_NON_UNIQUE = "def download_or_copy_non_unique_filename(url: str, dest: str) -> None:\n    \"\"\"\n    Downloads a file from a given URL to a destination with a unique filename,\n    based on the SHA-256 hash of the URL.\n    \"\"\"\n    hash_digest = hashlib.sha256(url.encode()).hexdigest()\n    unique_dest = f\"{dest}.{hash_digest}\"\n    download_or_copy(url, unique_dest)\n    atomic_copyfile(unique_dest, dest)\n\n\n"
+VERIFY_CALLER = "def verify_package_listing(\n    file_path: str, output_file: str, dist: str, build_dir: str\n) -> None:\n    \"\"\"\n    Verifies the downloaded Packages.xz file against its checksum and GPG keys.\n    \"\"\"\n    # Paths for Release and Release.gpg files\n    repo_basedir = f\"{ARCHIVE_URL}/dists/{dist}\"\n    release_list = f\"{repo_basedir}/{RELEASE_FILE}\"\n    release_list_gpg = f\"{repo_basedir}/{RELEASE_FILE_GPG}\"\n\n    release_file = os.path.join(build_dir, f\"{dist}-{RELEASE_FILE}\")\n    release_file_gpg = os.path.join(build_dir, f\"{dist}-{RELEASE_FILE_GPG}\")\n\n    if not os.path.exists(KEYRING_FILE):\n        raise Exception(f\"KEYRING_FILE not found: {KEYRING_FILE}\")\n\n    # Download Release and Release.gpg files\n    download_or_copy_non_unique_filename(release_list, release_file)\n    download_or_copy_non_unique_filename(release_list_gpg, release_file_gpg)\n\n    # Verify Release file with GPG\n    subprocess.run(\n        [\"gpgv\", \"--keyring\", KEYRING_FILE, release_file_gpg, release_file],\n        check=True,\n    )\n\n    # Find the SHA256 checksum for the specific file in the Release file\n    sha256sum_pattern = re.compile(\n        r\"([a-f0-9]{64})\\s+\\d+\\s+\" + re.escape(file_path) + r\"$\"\n    )\n    sha256sum_match = None\n    with open(release_file, \"r\") as f:\n        for line in f:\n            if match := sha256sum_pattern.search(line):\n                sha256sum_match = match.group(1)\n                break\n\n    if not sha256sum_match:\n        raise Exception(f\"Checksum for {file_path} not found in {release_file}\")\n\n    if hash_file(hashlib.sha256(), output_file) != sha256sum_match:\n        raise Exception(f\"Checksum mismatch for {output_file}\")\n\n\n"
 
 
 class RequestError(Exception):
@@ -159,13 +166,13 @@ class CronetMaterialTests(unittest.TestCase):
     self.stdout.__enter__()
     self.addCleanup(self.stdout.__exit__, None, None, None)
 
-  def request(self, requests, policy=None):
+  def request(self, requests, policy=None, logical=ORIGIN):
     with mock.patch.object(material, "load_policy", return_value=policy or self.policy):
-      material.download_file(ORIGIN, self.dest, requests)
+      material.download_file(logical, self.dest, requests)
 
-  def failure(self, code, requests, policy=None):
+  def failure(self, code, requests, policy=None, logical=ORIGIN):
     with self.assertRaises(material.MaterialError) as caught:
-      self.request(requests, policy)
+      self.request(requests, policy, logical)
     self.assertEqual(caught.exception.code, code)
     self.assertEqual(self.dest.read_bytes(), b"previous verified destination")
     self.assertEqual(list(self.root.glob(".polaris-material-*")), [])
@@ -255,6 +262,153 @@ class CronetMaterialTests(unittest.TestCase):
     self.assertEqual(len(requests.calls), 4)
     self.assertEqual([url for url, _ in requests.calls][2:], [MIRROR, ORIGIN])
     self.assertTrue(all(response.closed for response in responses))
+
+
+  def test_named_file_labels_and_exact_resource_basenames(self):
+    resources = [
+      ("dists/bullseye/Packages", "Packages"),
+      ("dists/bullseye/main/binary-amd64/Packages.xz", "Packages.xz"),
+      ("dists/bullseye/Release", "Release"),
+      ("dists/bullseye/Release.gpg", "Release.gpg"),
+      ("pool/main/f/fixture/libfixture_1:2+build1_amd64.deb",
+       "libfixture_1%3A2%2Bbuild1_amd64.deb"),
+      ("pool/main/f/fixture/libfixture_1%3A2%2Bbuild1_amd64.deb",
+       "libfixture_1%3A2%2Bbuild1_amd64.deb"),
+    ]
+    for prefix in self.policy["archivePrefixes"]:
+      for resource, basename in resources:
+        logical = "https://snapshot.debian.org" + prefix + "/" + resource
+        for filename in (None, "0" * 64, "f" * 64, basename):
+          path = "/file/" + "a" * 40 + ("/" + filename if filename else "")
+          for location in (logical, path, "https://snapshot.debian.org" + path,
+                   "https://snapshot-cloudflare.debian.org" + path):
+            with self.subTest(logical=logical, location=location):
+              old = self.dest.read_bytes()
+              def observe():
+                self.assertEqual(self.dest.read_bytes(), old)
+              responses = [Response(status=302, headers={"Location": location}),
+                     Response(body=b"not a filename digest", observe=observe)]
+              requests = Requests(*responses)
+              self.request(requests, logical=logical)
+              host = "snapshot-cloudflare.debian.org" if "cloudflare" in location else "snapshot.debian.org"
+              self.assertEqual([url for url, _ in requests.calls],
+                       [logical, logical if location == logical else "https://" + host + path])
+              self.assertEqual(self.dest.read_bytes(), b"not a filename digest")
+              if filename in ("0" * 64, "f" * 64):
+                self.assertNotEqual(hashlib.sha256(self.dest.read_bytes()).hexdigest(), filename)
+              self.assertTrue(all(response.closed for response in responses))
+              self.assertTrue(requests.session_closed)
+              self.assertEqual(list(self.root.glob(".polaris-material-*")), [])
+
+  def test_named_file_relative_mirror_and_shared_request_hop_budget(self):
+    for filename in ("0" * 64, "Release"):
+      path = "/file/" + "b" * 40 + "/" + filename
+      responses = [Response(status=503), Response(status=302, headers={"Location": path}), Response(body=b"done")]
+      requests = Requests(*responses)
+      with mock.patch.object(material.time, "sleep"):
+        self.request(requests)
+      self.assertEqual([url for url, _ in requests.calls],
+               [ORIGIN, MIRROR, "https://snapshot-cloudflare.debian.org" + path])
+      for statuses, code in [([302, 302, 302, 200], None),
+                 ([302] * 4, "REDIRECT_BUDGET"),
+                 ([302, 503, 503, 503], "HTTP_TRANSIENT_EXHAUSTED")]:
+        self.dest.write_bytes(b"previous verified destination")
+        responses = [Response(status=status, headers={"Location": path}, body=b"done") for status in statuses]
+        requests = Requests(*responses)
+        with mock.patch.object(material.time, "sleep"):
+          if code:
+            self.failure(code, requests)
+          else:
+            self.request(requests)
+        self.assertEqual(len(requests.calls), 4)
+        self.assertTrue(all(response.closed for response in responses))
+
+  def test_named_file_refuses_malformed_identity_without_fallback(self):
+    root = "/file/" + "a" * 40
+    invalid = [("/file/" + first + "/" + "0" * 64, "REDIRECT_IDENTITY")
+           for first in ("a" * 39, "a" * 41, "a" * 64, "A" * 40, "g" * 40)]
+    invalid += [(root + "/" + suffix, "REDIRECT_IDENTITY") for suffix in (
+      "", "0" * 63, "0" * 65, "A" * 64, "g" * 64, "Release/", "/Release",
+      "Release/extra", ".", "..", "../" + "a" * 40 + "/Release", "%2e", "%2e%2e",
+      "%2fRelease", "%5cRelease", "Release%2Egpg", "Release%00", "Release%7f",
+      "Release%252f", "Other", "Packages.xz", "Rélease", "Release\\extra")]
+    invalid += [
+      (root + "/Release?x=1", "URL_AUTHORITY_OR_QUERY"),
+      (root + "/Release?", "URL_AUTHORITY_OR_QUERY"),
+      (root + "/Release#", "URL_AUTHORITY_OR_QUERY"),
+      (root + "/Release\x00", "URL_IDENTITY"),
+      ("\x00" + root + "/Release", "URL_IDENTITY"),
+      (root + "/Release\x7f", "URL_IDENTITY"),
+      ("https://example.invalid" + root + "/Release", "URL_AUTHORITY_OR_QUERY"),
+      ("http://snapshot.debian.org" + root + "/Release", "URL_AUTHORITY_OR_QUERY"),
+      ("https://u@snapshot.debian.org" + root + "/Release", "URL_AUTHORITY_OR_QUERY"),
+      ("https://snapshot.debian.org:443" + root + "/Release", "URL_AUTHORITY_OR_QUERY"),
+    ]
+    for location, code in invalid:
+      with self.subTest(location=location):
+        response = Response(status=302, headers={"Location": location})
+        requests = Requests(response)
+        self.failure(code, requests)
+        self.assertEqual(len(requests.calls), 1)
+        self.assertTrue(response.closed and requests.session_closed)
+    logical = ORIGIN.rsplit("/", 1)[0] + "/libfixture_1:2+build1_amd64.deb"
+    for filename in ("libfixture_1:2+build1_amd64.deb",
+             "libfixture_1%3a2%2bbuild1_amd64.deb",
+             "libfixture_1%253A2%252Bbuild1_amd64.deb"):
+      requests = Requests(Response(status=302, headers={"Location": root + "/" + filename}))
+      self.failure("REDIRECT_IDENTITY", requests, logical=logical)
+      self.assertEqual(len(requests.calls), 1)
+
+    responses = [Response(status=302, headers={"Location": root}),
+           Response(status=302, headers={"Location": "a" * 40 + "//Release"})]
+    requests = Requests(*responses)
+    self.failure("REDIRECT_IDENTITY", requests)
+    self.assertEqual(len(requests.calls), 2)
+    self.assertTrue(all(response.closed for response in responses))
+
+  def test_named_file_retains_pinned_gpg_then_packages_checksum(self):
+    self.assertEqual(material.digest(VERIFY_CALLER.encode()), "5b930889ae475073e5b737b3c828694d4516756f48923905f2a67d482f3d03c8")
+    self.assertEqual(material.digest(DOWNLOAD_NON_UNIQUE.encode()), "5c28e8486017c75e4d2bd81d1e79b93577a696ec0ffe836f386a67529f704e68")
+    self.assertEqual(material.digest(ATOMIC_COPY.encode()), "e5a9765786bb4961cef6e391d4c5f9a1e9993112c94fa910accf3755e093f821")
+    for failure in ("gpg", "packages", None):
+      with self.subTest(failure=failure):
+        build = self.root / (failure or "valid")
+        build.mkdir()
+        listing = build / "Packages.xz"
+        listing.write_bytes(b"controlled packages")
+        keyring = build / "keyring"
+        keyring.write_bytes(b"controlled keyring")
+        checksum = hashlib.sha256(b"corrupt" if failure == "packages" else listing.read_bytes()).hexdigest()
+        release = ("SHA256:\n " + checksum + " 19 main/binary-amd64/Packages.xz\n").encode()
+        responses = [Response(status=302, headers={"Location": "/file/" + "a" * 40 + "/Release"}),
+               Response(body=release),
+               Response(status=302, headers={"Location": "/file/" + "b" * 40 + "/Release.gpg"}),
+               Response(body=b"controlled signature")]
+        requests = Requests(*responses)
+        namespace = self.caller_namespace(requests)
+        namespace.update(ARCHIVE_URL=ORIGIN.split("/dists/", 1)[0],
+                 RELEASE_FILE="Release", RELEASE_FILE_GPG="Release.gpg", KEYRING_FILE=str(keyring))
+        hash_probe = mock.Mock(wraps=namespace["hash_file"])
+        effect = subprocess.CalledProcessError(1, "gpgv") if failure == "gpg" else None
+        with mock.patch.dict(sys.modules, {"polaris_cronet_material": material}), \
+           mock.patch.object(material, "load_policy", return_value=self.policy), \
+           mock.patch.object(subprocess, "run", side_effect=effect) as verify, \
+           mock.patch.dict(namespace, {"hash_file": hash_probe}):
+          if failure == "gpg":
+            with self.assertRaises(subprocess.CalledProcessError):
+              namespace["verify_package_listing"]("main/binary-amd64/Packages.xz", str(listing), "bullseye", str(build))
+          elif failure == "packages":
+            with self.assertRaisesRegex(Exception, "Checksum mismatch"):
+              namespace["verify_package_listing"]("main/binary-amd64/Packages.xz", str(listing), "bullseye", str(build))
+          else:
+            namespace["verify_package_listing"]("main/binary-amd64/Packages.xz", str(listing), "bullseye", str(build))
+        self.assertEqual(verify.call_count, 1)
+        self.assertEqual(verify.call_args.args[0][0], "gpgv")
+        self.assertTrue(verify.call_args.kwargs["check"])
+        self.assertEqual(hash_probe.call_count, 0 if failure == "gpg" else 1)
+        self.assertEqual(len(requests.calls), 4)
+        self.assertTrue(all(response.closed for response in responses))
+        self.assertEqual(list(self.root.glob(".polaris-material-*")), [])
 
   def test_connect_and_read_timeouts_retry_under_the_same_request_budget(self):
     requests = Requests(ConnectTimeout("connect timeout"), ReadTimeout("read timeout"),
@@ -477,10 +631,11 @@ class CronetMaterialTests(unittest.TestCase):
     source, result, patch, policy = self.fixture_overlay()
     candidate = material.apply_overlay(source, patch, policy)
     namespace = {"requests": requests, "os": os, "hashlib": hashlib,
-           "subprocess": subprocess, "re": re,
+           "subprocess": subprocess, "re": re, "shutil": shutil, "tempfile": tempfile,
            "banner": lambda text: None, "sub_banner": lambda text: None}
     exec(candidate, namespace)
-    exec(DOWNLOAD_OR_COPY + HASH_FILE + INSTALL_CALLER, namespace)
+    exec(ATOMIC_COPY + DOWNLOAD_NON_UNIQUE + DOWNLOAD_OR_COPY + HASH_FILE +
+       INSTALL_CALLER + VERIFY_CALLER, namespace)
     return namespace
 
   def test_actual_patched_wrapper_preserves_original_deb_hash_before_extract(self):
@@ -490,7 +645,9 @@ class CronetMaterialTests(unittest.TestCase):
     self.assertEqual(material.digest(INSTALL_CALLER.encode()), "e37e57a90a34e778fae0db1f79bbd5cb6514a5476a90cbf2d1c073f0ea8a1114")
     for good in (False, True):
       with self.subTest(good=good):
-        requests = Requests(Response(body=b"controlled package bytes"))
+        responses = [Response(status=302, headers={"Location": "/file/" + "a" * 40 + "/" + "f" * 64}),
+               Response(body=b"controlled package bytes")]
+        requests = Requests(*responses)
         namespace = self.caller_namespace(requests)
         package = ORIGIN.rsplit("/", 1)[0] + "/fixture.deb"
         expected = hashlib.sha256(b"controlled package bytes" if good else b"corrupt").hexdigest()
@@ -502,7 +659,8 @@ class CronetMaterialTests(unittest.TestCase):
           with self.assertRaises(ReachedExtraction if good else ValueError):
             namespace["install_into_sysroot"](str(build), str(install), {package: expected})
         self.assertEqual(extract.call_count, 1 if good else 0)
-        self.assertEqual(len(requests.calls), 1)
+        self.assertEqual(len(requests.calls), 2)
+        self.assertTrue(all(response.closed for response in responses))
         if good:
           self.assertEqual(extract.call_args.args[0][0], "dpkg-deb")
 

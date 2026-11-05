@@ -15,7 +15,7 @@ import sys
 import tempfile
 import threading
 import time
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 POLICY_SHA256 = "d1d1a6414ba2c947f8b12292b09d243682d1dccd2cea7818bbee7911dc0187e5"
 REPLACEMENT = "def download_file(url: str, dest: str, retries=5) -> None:\n    # Fixed source-owned transport; retries cannot override its global budgets.\n    from polaris_cronet_material import download_file as bounded_download\n    bounded_download(url, dest, requests)\n\n\n".encode()
@@ -256,14 +256,15 @@ def _object_alarm(seconds):
 
 
 def _url(url, policy, logical=None):
-  if not isinstance(url, str) or len(url) > 2048 or any(c.isspace() for c in url):
+  if (not isinstance(url, str) or len(url) > 2048
+      or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in url)):
     raise MaterialError("URL_IDENTITY")
   try:
     value = urlsplit(url)
   except ValueError:
     raise MaterialError("URL_IDENTITY") from None
   if (value.scheme != "https" or value.netloc not in policy["authorities"]
-      or value.fragment or value.query):
+      or value.fragment or value.query or "?" in url or "#" in url):
     raise MaterialError("URL_AUTHORITY_OR_QUERY")
   if logical is None:
     if value.netloc != policy["authorities"][0]:
@@ -272,8 +273,17 @@ def _url(url, policy, logical=None):
       raise MaterialError("ARCHIVE_IDENTITY")
     if re.search(r"(?i)%2f|%5c|%2e", value.path) or "\\" in value.path or ".." in value.path.split("/"):
       raise MaterialError("URL_PATH_IDENTITY")
-  elif value.path != urlsplit(logical).path and not re.fullmatch(r"/file/[0-9a-f]{40}", value.path):
-    raise MaterialError("REDIRECT_IDENTITY")
+  elif value.path != urlsplit(logical).path:
+    content = re.fullmatch(r"/file/[0-9a-f]{40}(?:/([^/]+))?", value.path)
+    if content is None:
+      raise MaterialError("REDIRECT_IDENTITY")
+    filename = content.group(1)
+    if filename is not None and not re.fullmatch(r"[0-9a-f]{64}", filename):
+      # Snapshot's optional filename is a label, never a second body digest.
+      basename = urlsplit(logical).path.rsplit("/", 1)[-1]
+      resource = r"(?:Packages(?:\.xz)?|Release(?:\.gpg)?|[A-Za-z0-9](?:[A-Za-z0-9._+~:-]|%(?:2B|3A))*\.deb)"
+      if not re.fullmatch(resource, basename) or filename != quote(basename, safe="%"):
+        raise MaterialError("REDIRECT_IDENTITY")
   return value
 
 
@@ -409,6 +419,15 @@ def download_file(url, dest, requests_module):
                 if not location or len(location) > 2048:
                   raise MaterialError("REDIRECT_IDENTITY")
                 try:
+                  if any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in location):
+                    raise MaterialError("URL_IDENTITY")
+                  if "?" in location or "#" in location:
+                    raise MaterialError("URL_AUTHORITY_OR_QUERY")
+                  if ("\\" in location
+                      or ("//" in urlsplit(location).path
+                        and urlsplit(location).path != urlsplit(url).path)
+                      or any(p in (".", "..") for p in urlsplit(location).path.split("/"))):
+                    raise MaterialError("REDIRECT_IDENTITY")
                   target = urljoin(current, location)
                   _url(target, policy, logical=url)
                 except ValueError:
