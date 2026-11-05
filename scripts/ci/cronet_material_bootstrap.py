@@ -370,6 +370,140 @@ def _manual_session(requests_module):
   return ManualSession()
 
 
+
+
+# Only complete raw data cross the supplier/consumer boundary. This hook is in
+# the source-prepared controller copied beside the pinned original creator.
+_CANDIDATES_USED = {}
+
+
+def _candidate_manifest(root, policy):
+  root = Path(root).absolute()
+  _directory(root)
+  data = read_regular(root / "candidate-manifest.json", 1048576)
+  def pairs(items):
+    result = {}
+    for key, value in items:
+      if key in result:
+        raise MaterialError("CANDIDATE_DUPLICATE_KEY")
+      result[key] = value
+    return result
+  manifest = json.loads(data, object_pairs_hook=pairs)
+  if (type(manifest) is not dict
+      or manifest.get("schema") != "polaris-debian-candidate-v1"
+      or manifest.get("scope") != "debian-raw"
+      or type(manifest.get("objects")) is not list
+      or len(manifest["objects"]) > 512):
+    raise MaterialError("CANDIDATE_MANIFEST")
+  urls, members = {}, {}
+  for item in manifest["objects"]:
+    if (type(item) is not dict
+        or set(item) != {"url", "member", "sha256", "bytes", "profiles", "complete"}
+        or type(item["url"]) is not str or item["url"] in urls
+        or type(item["sha256"]) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", item["sha256"]) is None
+        or item["member"] != "objects/" + item["sha256"]
+        or type(item["bytes"]) is not int
+        or not 0 <= item["bytes"] <= policy["limits"]["objectBytes"]
+        or item["complete"] is not True):
+      raise MaterialError("CANDIDATE_OBJECT")
+    _url(item["url"], policy)
+    if item["member"] in members and members[item["member"]] != item["bytes"]:
+      raise MaterialError("CANDIDATE_ALIAS")
+    members[item["member"]] = item["bytes"]
+    urls[item["url"]] = item
+  if sum(members.values()) > policy["limits"]["creatorProcessBytes"]:
+    raise MaterialError("CANDIDATE_UNION_BYTES")
+  return manifest, urls
+
+
+def _capture_candidate(url, destination, policy):
+  name = os.environ.get("POLARIS_CRONET_CAPTURE_DIR")
+  if not name:
+    return
+  profile = os.environ.get("POLARIS_CRONET_CAPTURE_PROFILE")
+  root = Path(name).absolute()
+  manifest, urls = _candidate_manifest(root, policy)
+  if profile not in manifest.get("requiredProfiles", []):
+    raise MaterialError("CANDIDATE_CAPTURE_PROFILE")
+  data = read_regular(destination, policy["limits"]["objectBytes"])
+  sha = digest(data)
+  member = "objects/" + sha
+  item = {"url": url, "member": member, "sha256": sha,
+          "bytes": len(data), "profiles": [profile], "complete": True}
+  prior = urls.get(url)
+  if prior is not None:
+    if any(prior[key] != item[key] for key in ("member", "sha256", "bytes")):
+      raise MaterialError("CANDIDATE_URL_CHANGED")
+    item["profiles"] = sorted(set(prior["profiles"] + [profile]))
+  objects = [value for key, value in urls.items() if key != url] + [item]
+  unique = {value["member"]: value["bytes"] for value in objects}
+  if len(objects) > 512 or sum(unique.values()) > policy["limits"]["creatorProcessBytes"]:
+    raise MaterialError("CANDIDATE_CAPTURE_BUDGET")
+  target = root / member
+  _directory(target.parent)
+  if target.exists() or target.is_symlink():
+    if read_regular(target, policy["limits"]["objectBytes"]) != data:
+      raise MaterialError("CANDIDATE_CAS_COLLISION")
+  else:
+    _atomic_bytes(target, data, absent=True)
+  manifest["objects"] = sorted(objects, key=lambda value: value["url"])
+  encoded = (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+  if len(encoded) > 1048576:
+    raise MaterialError("CANDIDATE_MANIFEST_BYTES")
+  _atomic_bytes(root / "candidate-manifest.json", encoded)
+  _CANDIDATES_USED[url] = dict(item)
+
+
+def _reuse_candidate(url, dest, policy):
+  global _CHARGED
+  name = os.environ.get("POLARIS_CRONET_RAW_STORE")
+  if not name:
+    return False
+  root = Path(name).absolute()
+  manifest, urls = _candidate_manifest(root, policy)
+  item = urls.get(url)
+  if item is None:
+    if os.environ.get("POLARIS_CRONET_CAPTURE_DIR"):
+      # Supplier may acquire a missing candidate using the unchanged bounded
+      # origin controller. Consumers never set capture mode.
+      return False
+    raise MaterialError("CANDIDATE_REQUIRED_MISSING")
+  size = item["bytes"]
+  if size > policy["limits"]["creatorProcessBytes"] - _CHARGED:
+    raise MaterialError("PROCESS_BYTES")
+  # Reserve before any CAS body read. Errors keep the whole reservation.
+  # A raw exact-size read avoids read_regular's extra EOF-probe byte.
+  _CHARGED += size
+  try:
+    fd = os.open(root / item["member"], os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+      info = os.fstat(fd)
+      if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid():
+        raise MaterialError("SOURCE_FILE_KIND_OR_OWNER")
+      if info.st_size != size:
+        raise MaterialError("CANDIDATE_INTEGRITY")
+      data = os.read(fd, size)
+      if os.fstat(fd).st_size != size:
+        raise MaterialError("CANDIDATE_INTEGRITY")
+    finally:
+      os.close(fd)
+  except OSError:
+    raise MaterialError("SOURCE_FILE_READ") from None
+  if len(data) != size or digest(data) != item["sha256"]:
+    raise MaterialError("CANDIDATE_INTEGRITY")
+  destination = Path(dest).absolute()
+  _create_parent(destination.parent)
+  _atomic_bytes(destination, data, absent=True)
+  _CANDIDATES_USED[url] = dict(item)
+  _capture_candidate(url, destination, policy)
+  _emit(policy, phase="candidate_reuse", logicalURL=url, requests=0,
+        bodyBytes=len(data), storageSHA256=item["sha256"],
+        manifestSHA256=digest(read_regular(root / "candidate-manifest.json")),
+        processBudgetChargedBytes=_CHARGED)
+  return True
+
+
 def download_file(url, dest, requests_module):
   """Actual creator transport. Caller alone verifies GPG and content hashes."""
   policy = load_policy()
@@ -382,7 +516,10 @@ def download_file(url, dest, requests_module):
   last_status = None
   last_host = policy["authorities"][0]
   try:
-    with _object_alarm(limits["objectWallSeconds"]), _manual_session(requests_module) as session:
+    with _object_alarm(limits["objectWallSeconds"]), contextlib.ExitStack() as resources:
+      if _reuse_candidate(url, dest, policy):
+        return
+      session = resources.enter_context(_manual_session(requests_module))
       destination = Path(dest).absolute()
       _create_parent(destination.parent)
       destination = _destination(destination)
@@ -447,6 +584,7 @@ def download_file(url, dest, requests_module):
               response = None
               _destination(destination)
               os.replace(temporary, destination)
+              _capture_candidate(url, destination, policy)
               _emit(policy, phase="complete", logicalURL=url,
                   host=last_host, status=last_status,
                   requests=requests_count, bodyBytes=size,

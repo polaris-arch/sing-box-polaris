@@ -16,7 +16,8 @@
       "native_smoke",
       "native_index",
       "prepare_windows7",
-      "build_windows7"
+      "build_windows7",
+      "debian_materials"
     ],
     "matrices": {
       "build": {
@@ -571,7 +572,9 @@
       "unsigned-apple-ios-archive",
       "unsigned-apple-macos-archive",
       "unsigned-apple-tvos-archive",
-      "go-win7-toolchain"
+      "go-win7-toolchain",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-android-apks-other": [
@@ -1433,14 +1436,36 @@
           "pattern": "^go-win7-toolchain\\.tar\\.gz$",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
     }
   },
   "linux": {
     "workflow": ".github/workflows/linux.yml",
     "requiredJobs": [
       "calculate_version",
-      "build"
+      "build",
+      "debian_materials"
     ],
     "matrices": {
       "build": {
@@ -1539,7 +1564,9 @@
       "binary-linux_ppc64le",
       "binary-linux_riscv64",
       "binary-linux_s390x",
-      "publisher-run-receipt"
+      "publisher-run-receipt",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-linux_386": [
@@ -1657,14 +1684,36 @@
           "pattern": "publisher\\-run\\-receipt\\.json",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
     }
   },
   "docker": {
     "workflow": ".github/workflows/docker.yml",
     "requiredJobs": [
       "build_binary",
-      "build_docker"
+      "build_docker",
+      "debian_materials"
     ],
     "matrices": {
       "build_binary": {
@@ -1774,7 +1823,9 @@
       "oci-linux-ppc64le",
       "oci-linux-riscv64",
       "oci-linux-s390x",
-      "publisher-run-receipt"
+      "publisher-run-receipt",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-linux-386": [
@@ -1896,7 +1947,28 @@
           "pattern": "publisher\\-run\\-receipt\\.json",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
     }
   },
   "signed": {

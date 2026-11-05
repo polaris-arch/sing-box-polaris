@@ -610,7 +610,7 @@ def validate_distribution_assessment(catalog):
  return catalog['status']=='reviewed-current-scope' and catalog['openItems']==[]
 
 
-def distribution_materials(index, root=Path('.')):
+def distribution_materials(index, root=Path('.'), *, debian_raw=None):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
  overlay_inputs=validate_overlay(root)
@@ -650,6 +650,10 @@ def distribution_materials(index, root=Path('.')):
          'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
          'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
          '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
+ if (root/'release/ci/cronet-material-profiles.json').is_file():
+  inputs += ['scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+             'release/ci/cronet-material-inputs.json','release/ci/cronet-material-profiles.json',
+             '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION']
  if any('trustedExecution' in row for row in index['platforms']):
   inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json',
              'release/ci/native-release-contract.schema.json']
@@ -737,7 +741,7 @@ def distribution_materials(index, root=Path('.')):
    if len(proof_keys)!=1:raise ValueError('distribution native execution proof is ambiguous')
    proof_key=proof_keys[0]
    native[-1][proof_key+'SHA256']=sha(json.dumps(row['finalPackageCronetSmoke'][proof_key],sort_keys=True,separators=(',', ':')).encode())
- return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
+ result={'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
          'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],
          'sourceURL':'https://github.com/'+REPO+'/tree/'+index['sourceCommit'],
          'toolchain':toolchain,'inputs':{p:overlay_inputs[p] if p in overlay_inputs else sha((root/p).read_bytes()) for p in sorted(set(inputs))},
@@ -750,6 +754,20 @@ def distribution_materials(index, root=Path('.')):
                         'The kernel source archive does not expand client gitlinks.',
                         'Module h1 is a Go directory checksum, not a downloaded ZIP SHA256.',
                         'Historical source/notice evidence remains historical.']}
+
+ if debian_raw is not None:
+  from cronet_material_supply import profile_plan_sha256
+  import jsonschema
+  schema=json.loads((root/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
+  jsonschema.Draft202012Validator({'$ref':'#/$defs/debianBinding','$defs':schema['$defs']}).validate(debian_raw)
+  context=debian_raw['context'];producer=index['producer']
+  expected={'repository':REPO,'repositoryID':RID,'sourceCommit':index['sourceCommit'],
+            'sourceTree':index['sourceTree'],'tag':index['tag'],'tagObject':index['tagObject'],
+            'workflow':producer['workflow'],'runID':producer['runId'],'runAttempt':producer['runAttempt'],'role':'all'}
+  if context!=expected or debian_raw['planSHA256']!=profile_plan_sha256(root):
+   raise ValueError('All Debian binding differs from actual native producer/source inputs')
+  result['debianRaw']=debian_raw
+ return result
 
 
 WINDOWS_PROOF_JOB = 'Explicit SYSTEM final-package Windows native execution proof'
@@ -839,7 +857,10 @@ def assemble(directory):
   validate_trusted_execution(row, context)
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
- index['distributionMaterials']=distribution_materials(index)
+ from github_release import producer_debian_materials
+ debian_raw=producer_debian_materials('all',commit,tree)
+ index['distributionMaterials']=(distribution_materials(index) if debian_raw is None
+                                else distribution_materials(index,debian_raw=debian_raw))
  if final:
   verify_checkout(tag,commit,tag_object)
   import jsonschema

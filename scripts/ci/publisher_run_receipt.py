@@ -25,4 +25,10 @@ record = {'repository': os.environ['GITHUB_REPOSITORY'], 'repositoryId': int(os.
           'sourceCommit': head, 'runId': os.environ['GITHUB_RUN_ID'], 'attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
           'version': os.environ['RELEASE_VERSION'], 'build': os.environ['RELEASE_BUILD'], 'role': role,
           'publishStores': False, 'publishRegistry': False}
+from github_release import producer_debian_materials
+tree=(subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip()
+      if os.environ.get('POLARIS_DEBIAN_REQUIRED','false')=='true' else None)
+debian_raw=producer_debian_materials(role,head,tree)
+if debian_raw is not None:
+    record['distributionMaterials']={'debianRaw':debian_raw}
 Path('publisher-run-receipt.json').write_text(json.dumps(record, indent=2)+'\n', encoding='utf-8', newline='\n')

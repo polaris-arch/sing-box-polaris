@@ -959,3 +959,51 @@ class OverlayProductionBoundaryControls(unittest.TestCase):
   expected=validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
   self.assertEqual({name:material['inputs'][name] for name in expected},expected)
   self.assertEqual(material['inputs']['scripts/ci/cronet_windows_overlay.py'],n.sha((n.ROOT/'scripts/ci/cronet_windows_overlay.py').read_bytes()))
+
+
+class DebianDistributionBindingTests(unittest.TestCase):
+ def fixture(self):
+  from test_cronet_material_supply import fixture_bundle
+  version=json.loads((n.ROOT/'release/ci/github-release.json').read_text())['version']
+  context={'repository':n.REPO,'repositoryID':n.RID,'sourceCommit':'a'*40,'sourceTree':'b'*40,
+           'tag':'v'+version,'tagObject':'c'*40,'workflow':'.github/workflows/build.yml',
+           'runID':42,'runAttempt':1,'role':'all'}
+  bundle=fixture_bundle('all',context=context)
+  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'tag':context['tag'],'tagObject':'c'*40,
+         'sourceArchive':{'name':'synthetic-source'},'platforms':[],'legalFiles':[],
+         'producer':{'workflow':context['workflow'],'runId':42,'runAttempt':1}}
+  return index,bundle['binding']
+ def test_All_binds_actual_own_materials_without_any_future_linux_docker_run(self):
+  index,binding=self.fixture();material=n.distribution_materials(index,n.ROOT,debian_raw=binding)
+  self.assertEqual(material['debianRaw'],binding)
+  self.assertEqual(material['debianRaw']['context']['role'],'all')
+  for name in ('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+               'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+               '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION'):
+   self.assertEqual(material['inputs'][name],n.sha((n.ROOT/name).read_bytes()))
+ def test_no_implicit_read_of_untrusted_index_debian_property(self):
+  index,binding=self.fixture();index['distributionMaterials']={'debianRaw':binding}
+  self.assertNotIn('debianRaw',n.distribution_materials(index,n.ROOT))
+ def test_closed_schema_and_exact_producer_source_profile_bindings(self):
+  import copy,jsonschema
+  index,binding=self.fixture()
+  mutations=[lambda b:b['context'].update(sourceCommit='f'*40),
+             lambda b:b['context'].update(sourceTree='f'*40),
+             lambda b:b['context'].update(tag='v1.15.0-polaris-alpha.999'),
+             lambda b:b['context'].update(tagObject='f'*40),
+             lambda b:b['context'].update(runID=43),
+             lambda b:b['context'].update(runAttempt=2),
+             lambda b:b['context'].update(role='linux'),
+             lambda b:b['rawArtifact'].update(id=True),
+             lambda b:b['readyArtifact'].update(name='unknown'),
+             lambda b:b['readyArtifact'].update(size=1048576+65537),
+             lambda b:b.update(planSHA256='f'*64),
+             lambda b:b.update(requiredProfiles=[]),
+             lambda b:b.update(requiredProfiles=['bullseye-amd64']*8),
+             lambda b:b.update(unknown='forbidden'),
+             lambda b:b['context'].update(unknown='forbidden'),
+             lambda b:b['supplierJob'].update(extra='forbidden')]
+  for number,mutate in enumerate(mutations):
+   bad=copy.deepcopy(binding);mutate(bad)
+   with self.subTest(number=number),self.assertRaises((ValueError,jsonschema.ValidationError)):
+    n.distribution_materials(index,n.ROOT,debian_raw=bad)
