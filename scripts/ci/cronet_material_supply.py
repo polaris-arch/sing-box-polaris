@@ -230,6 +230,11 @@ def allowed_url(url, profile_id, plan):
     if url in profile_urls(plan, profile_id):
         return
     prefix = profile["archivePrefix"] + "pool/"
+    # This fixed ports index mixes Architecture:all pool/ with loong64 pool-loong64/.
+    if (profile_id == "sid-loong64" and profile["creatorArchitecture"] == "loong64"
+            and profile["archivePrefix"] == "https://snapshot.debian.org/archive/debian-ports/20250625T074124Z/"
+            and url.startswith(profile["archivePrefix"] + "pool-loong64/")):
+        prefix = profile["archivePrefix"] + "pool-loong64/"
     require(url.startswith(prefix), "logical URL/profile archive")
     relative = url[len(prefix):]
     require(re.fullmatch(r"[A-Za-z0-9._+~:%/-]+\.deb", relative) is not None
