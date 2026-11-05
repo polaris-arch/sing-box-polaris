@@ -2,10 +2,13 @@ package box
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -244,6 +247,31 @@ func runtimeTestConfig(port int, domain string) []byte {
 func (f *runtimeTestFixture) start(t *testing.T) {
 	t.Helper()
 	if err := f.box.Start(); err != nil {
+		// Diagnostic traversal is best effort; the original Start error remains fatal.
+		func() {
+			defer func() {
+				if panicValue := recover(); panicValue != nil {
+					t.Logf("runtime fixture start diagnostics unavailable: panic_type=%T", panicValue)
+				}
+			}()
+			var opErr *net.OpError
+			if errors.As(err, &opErr) && opErr != nil {
+				t.Logf("runtime fixture start net.OpError: op=%q net=%q source=%v addr=%v cause=%T: %v", opErr.Op, opErr.Net, opErr.Source, opErr.Addr, opErr.Err, opErr.Err)
+				cause := opErr.Err
+				var syscallErr *os.SyscallError
+				if errors.As(cause, &syscallErr) {
+					if syscallErr == nil {
+						return
+					}
+					t.Logf("runtime fixture start os.SyscallError: syscall=%q cause=%T: %v", syscallErr.Syscall, syscallErr.Err, syscallErr.Err)
+					cause = syscallErr.Err
+				}
+				var errno syscall.Errno
+				if errors.As(cause, &errno) {
+					t.Logf("runtime fixture start syscall.Errno: %d", errno)
+				}
+			}
+		}()
 		t.Fatal(err)
 	}
 }
