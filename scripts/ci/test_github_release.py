@@ -2907,19 +2907,21 @@ class DebianMaterialPublisherTests(unittest.TestCase):
             for child in children:
                 child.stdout.close();child.stderr.close()
 
-    def read(self, bundle, *, context=None, artifacts=None, supplier_job=None):
+    def read(self, bundle, *, context=None, artifacts=None, supplier_job=None, run=None):
         downloads={bundle['raw_artifact']['id']:bundle['raw_zip'],
                    bundle['ready_artifact']['id']:bundle['ready_zip']}
         with tempfile.TemporaryDirectory() as directory,self.transport(downloads):
             root=Path(directory);budget=p.ScratchBudget(root,reserve=0)
-            result=p.read_debian_artifacts(self.artifacts(bundle) if artifacts is None else artifacts,
-                context or bundle['context'],self.run_record(bundle),
-                bundle['supplier_job'] if supplier_job is None else supplier_job,budget)
-            self.assertEqual(list(root.iterdir()),[])
-            self.assertEqual(budget.live,0)
-            self.assertLessEqual(budget.peak,max(len(bundle['raw_zip']),len(bundle['ready_zip'])))
-            self.assertEqual(p.SCRATCH_LIMIT,4294967296)
-            return result
+            try:
+                return p.read_debian_artifacts(self.artifacts(bundle) if artifacts is None else artifacts,
+                    bundle['context'] if context is None else context,
+                    self.run_record(bundle) if run is None else run,
+                    bundle['supplier_job'] if supplier_job is None else supplier_job,budget)
+            finally:
+                self.assertEqual(list(root.iterdir()),[])
+                self.assertEqual(budget.live,0)
+                self.assertLessEqual(budget.peak,max(len(bundle['raw_zip']),len(bundle['ready_zip'])))
+                self.assertEqual(p.SCRATCH_LIMIT,4294967296)
 
     def rewrite(self, bundle, *, manifest=None, ready=None, extra=None):
         """Rehash fixture containers; the production validator remains the only predicate."""
@@ -2960,20 +2962,34 @@ class DebianMaterialPublisherTests(unittest.TestCase):
 
     def test_noop_rewrite_reaches_real_receiver_with_fresh_outer_zip_refs(self):
         from cronet_material_supply import artifact_ref, encode_json
-        for role in ('all','linux','docker'):
+        for role,count in [('all',8),('linux',1),('docker',1)]:
             with self.subTest(role=role):
-                original=self.bundle(role)
+                original=self.bundle(role);before=copy.deepcopy(original)
+                # Freeze each authority independently before touching the candidate graph.
+                authority={'context':copy.deepcopy(original['context']),
+                           'artifacts':copy.deepcopy(self.artifacts(original)),
+                           'run':copy.deepcopy(self.run_record(original)),
+                           'supplier':copy.deepcopy(original['supplier_job'])}
+                authority_before=copy.deepcopy(authority)
                 rewritten=self.rewrite(original)
                 self.assertEqual(rewritten['manifest'],original['manifest'])
-                # The original fixture binding predates these rebuilt ZIPs.
-                binding,entries=self.read(rewritten)
+                artifacts=copy.deepcopy(authority['artifacts'])
+                for api,key in zip(artifacts,('raw_artifact','ready_artifact')):
+                    api.update(size_in_bytes=rewritten[key]['size_in_bytes'],digest=rewritten[key]['digest'])
+                # Only ZIP measurements change; source/run/supplier authority stays external.
+                binding,entries=self.read(rewritten,context=authority['context'],artifacts=artifacts,
+                                          run=authority['run'],supplier_job=authority['supplier'])
+                self.assertEqual(original,before)
+                self.assertEqual(authority,authority_before)
+                self.assertEqual(binding['context'],authority['context'])
+                self.assertEqual(len(binding['requiredProfiles']),count)
                 manifest=encode_json(rewritten['manifest'])
                 manifest_sha=hashlib.sha256(manifest).hexdigest()
                 self.assertEqual(binding['manifestSHA256'],manifest_sha)
                 raw_files=entries[p.DEBIAN_RAW]['files']
                 self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['bytes'],len(manifest))
                 self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['sha256'],manifest_sha)
-                for api in self.artifacts(rewritten):
+                for api in artifacts:
                     self.assertNotIn('size',api)
                 for key,zip_key,ref_key in [('raw_artifact','raw_zip','rawArtifact'),
                                            ('ready_artifact','ready_zip','readyArtifact')]:
@@ -2992,20 +3008,62 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                 self.assertEqual(rewritten['ready']['rawArtifact'],artifact_ref(rewritten['raw_artifact']))
 
     def test_current_source_tag_run_attempt_plan_and_profile_not_asserted_from_self_hash(self):
+        import cronet_material_supply as supply
         changes=[
-            lambda m:m['context'].update(sourceCommit='f'*40),
-            lambda m:m['context'].update(tag=p.TAG+'0'),
-            lambda m:m['context'].update(tagObject='f'*40),
-            lambda m:m['context'].update(sourceTree='f'*40),
-            lambda m:m['context'].update(runID=43),
-            lambda m:m['context'].update(runAttempt=2),
-            lambda m:m.update(planSHA256='f'*64),
-            lambda m:m.update(requiredProfiles=[]),
-            lambda m:m.update(requiredProfiles=['bullseye-arm64']),
-            lambda m:m.update(unlisted='forbidden')]
-        for number,change in enumerate(changes):
-            with self.subTest(number=number),self.assertRaises(ValueError):
-                self.read(self.rewrite(self.bundle(),manifest=change))
+            ('sourceCommit',lambda m:m['context'].update(sourceCommit='f'*40)),
+            ('tag',lambda m:m['context'].update(tag=p.TAG+'0')),
+            ('tagObject',lambda m:m['context'].update(tagObject='f'*40)),
+            ('sourceTree',lambda m:m['context'].update(sourceTree='f'*40)),
+            ('runID',lambda m:m['context'].update(runID=43)),
+            ('runAttempt',lambda m:m['context'].update(runAttempt=2)),
+            ('planSHA256',lambda m:m.update(planSHA256='f'*64)),
+            ('requiredProfilesEmpty',lambda m:m.update(requiredProfiles=[])),
+            ('requiredProfilesWrong',lambda m:m.update(requiredProfiles=['bullseye-arm64'])),
+            ('unlisted',lambda m:m.update(unlisted='forbidden'))]
+        for role,count in [('all',8),('linux',1),('docker',1)]:
+            for number,(axis,change) in enumerate(changes):
+                with self.subTest(role=role,number=number,axis=axis):
+                    original=self.bundle(role);before=copy.deepcopy(original)
+                    # A whole-bundle deepcopy preserves aliases; it is not an expectation.
+                    authority={'context':copy.deepcopy(original['context']),
+                               'artifacts':copy.deepcopy(self.artifacts(original)),
+                               'run':copy.deepcopy(self.run_record(original)),
+                               'supplier':copy.deepcopy(original['supplier_job'])}
+                    authority_before=copy.deepcopy(authority)
+                    self.assertEqual(len(original['manifest']['requiredProfiles']),count)
+                    rewritten=self.rewrite(original,manifest=change)
+                    for candidate_context in (rewritten['context'],rewritten['manifest']['context'],
+                                              rewritten['ready']['context'],rewritten['binding']['context']):
+                        self.assertIsNot(authority['context'],candidate_context)
+                    self.assertIsNot(authority['supplier'],rewritten['supplier_job'])
+                    artifacts=copy.deepcopy(authority['artifacts'])
+                    for pinned,api,key,zip_key in zip(authority['artifacts'],artifacts,
+                            ('raw_artifact','ready_artifact'),('raw_zip','ready_zip')):
+                        # Keep API identity/timing fixed and remeasure only the changed container.
+                        api.update(size_in_bytes=rewritten[key]['size_in_bytes'],digest=rewritten[key]['digest'])
+                        self.assertEqual(api['size_in_bytes'],len(rewritten[zip_key]))
+                        self.assertEqual(api['digest'],'sha256:'+hashlib.sha256(rewritten[zip_key]).hexdigest())
+                        self.assertEqual({k:v for k,v in api.items() if k not in ('size_in_bytes','digest')},
+                                         {k:v for k,v in pinned.items() if k not in ('size_in_bytes','digest')})
+                        self.assertIsNot(api['workflow_run'],rewritten[key]['workflow_run'])
+                    self.assertEqual(original,before)
+                    self.assertEqual(authority,authority_before)
+                    guard='candidate manifest fields' if axis=='unlisted' else 'candidate source/plan/state'
+                    # Wrap the actual imported validator; no accepting predicate replaces it.
+                    with mock.patch.object(supply,'validate_manifest',wraps=supply.validate_manifest) as manifest_guard:
+                        with self.assertRaisesRegex(ValueError,'^Debian material admission: '+guard+'$'):
+                            self.read(rewritten,context=authority['context'],artifacts=artifacts,
+                                      run=authority['run'],supplier_job=authority['supplier'])
+                    manifest_guard.assert_called_once()
+                    decoded=manifest_guard.call_args.args[0]
+                    self.assertEqual(decoded,rewritten['manifest'])
+                    self.assertIs(manifest_guard.call_args.kwargs['context'],authority['context'])
+                    if number<6:
+                        self.assertNotEqual(decoded['context'][axis],authority['context'][axis])
+                        self.assertEqual({k:v for k,v in decoded['context'].items() if k!=axis},
+                                         {k:v for k,v in authority['context'].items() if k!=axis})
+                    self.assertEqual(original,before)
+                    self.assertEqual(authority,authority_before)
 
     def test_exact_cas_rejects_extra_missing_wrong_hash_oversize_and_object_count(self):
         base=self.bundle()
@@ -3051,24 +3109,71 @@ class DebianMaterialPublisherTests(unittest.TestCase):
         return {p.DEBIAN_USE:fact}
 
     def test_all_candidate_pointer_is_written_by_existing_real_recorder(self):
-        b=self.bundle('all');artifact=self.eligible('all')[0];binding,_=self.read(b)
-        from cronet_material_supply import encode_json
-        files=self.use_files(b,artifact)
-        with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/p.DEBIAN_USE).write_bytes(encode_json(files[p.DEBIAN_USE]['debianRawUse']))
-            (root/'inert-package').write_bytes(b'inert fixture')
-            env={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID),'GITHUB_JOB':'build',
-                 'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','CANDIDATE_MATRIX_KEY':'build-0'}
-            with mock.patch.dict(os.environ,env,clear=True),mock.patch('subprocess.check_output',side_effect=lambda command,**_: 'b'*40 if command[-1]=='HEAD^{tree}' else 'a'*40):
-                namespace=runpy.run_path(str(p.ROOT/'scripts/ci/record_candidate.py'),run_name='fixture_recorder')
-                namespace['main'](str(root))
-            candidate=json.loads(next(root.glob('polaris-candidate-manifest-*.json')).read_text())
-        self.assertTrue(p.validate_debian_use(files,[candidate],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']]))
-        for change in [lambda c:c.pop('debianMaterialUse'),lambda c:c['debianMaterialUse'].update(sha256='f'*64),
-                       lambda c:c.update(job='build_windows'),lambda c:c.update(files=[])]:
-            bad=copy.deepcopy(candidate);change(bad)
-            with self.subTest(change=change),self.assertRaises(ValueError):
-                p.validate_debian_use(files,[bad],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+        from cronet_material_supply import encode_json, expected_use, load_profile_plan
+        b=self.bundle('all');binding,_=self.read(b)
+        jobs=[b['supplier_job'],*b['consumer_jobs']]
+        # C1 is the positive for this build environment. C2 is the original cross-job negative.
+        cases=[('binary-linux_amd64-glibc','C1_ALL_BINARY','amd64',['bullseye-amd64'],'build'),
+               ('binary-linux-client-arm64','C2_ALL_LINUX_CLIENT','arm64',
+                ['bullseye-amd64','bullseye-arm64'],'build_linux_client')]
+        for artifact,caller,arch,profiles,sidecar_key in cases:
+            with self.subTest(artifact=artifact,caller=caller):
+                self.assertIn(artifact,self.eligible('all'))
+                self.assertEqual(expected_use('all',artifact),
+                                 {'caller':caller,'targetArch':arch,'libc':'glibc','profiles':profiles})
+                source_caller=next(item for item in load_profile_plan()['callers'] if item['id']==caller)
+                self.assertEqual(source_caller['job'],sidecar_key)
+                self.assertEqual(source_caller['workflow'],b['context']['workflow'])
+                files=self.use_files(b,artifact);use=files[p.DEBIAN_USE]['debianRawUse']
+                self.assertEqual((use['caller'],use['targetArch'],use['libc'],
+                                  [profile['id'] for profile in use['profiles']],use['consumerJob']['key']),
+                                 (caller,arch,'glibc',profiles,sidecar_key))
+                raw=encode_json(use)
+                self.assertEqual(files[p.DEBIAN_USE]['bytes'],len(raw))
+                self.assertEqual(files[p.DEBIAN_USE]['sha256'],hashlib.sha256(raw).hexdigest())
+                env={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID),'GITHUB_JOB':'build',
+                     'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','CANDIDATE_MATRIX_KEY':'build-0'}
+                if caller=='C1_ALL_BINARY':
+                    self.assertEqual(env['GITHUB_JOB'],source_caller['job'])
+                else:
+                    self.assertNotEqual(env['GITHUB_JOB'],source_caller['job'])
+                with tempfile.TemporaryDirectory() as directory:
+                    root=Path(directory);(root/p.DEBIAN_USE).write_bytes(raw)
+                    (root/'inert-package').write_bytes(b'inert fixture')
+                    with mock.patch.dict(os.environ,env,clear=True),mock.patch('subprocess.check_output',side_effect=lambda command,**_: 'b'*40 if command[-1]=='HEAD^{tree}' else 'a'*40):
+                        namespace=runpy.run_path(str(p.ROOT/'scripts/ci/record_candidate.py'),run_name='fixture_recorder')
+                        namespace['main'](str(root))
+                    self.assertEqual((root/p.DEBIAN_USE).read_bytes(),raw)
+                    emitted_use=json.loads((root/p.DEBIAN_USE).read_bytes())
+                    self.assertEqual(emitted_use,use)
+                    candidates=list(root.glob('polaris-candidate-manifest-*.json'))
+                    self.assertEqual(len(candidates),1)
+                    candidate=json.loads(candidates[0].read_text())
+                self.assertEqual(candidate['job'],env['GITHUB_JOB'])
+                self.assertEqual(candidate['matrixKey'],env['CANDIDATE_MATRIX_KEY'])
+                self.assertEqual((candidate['sourceCommit'],candidate['sourceTree'],
+                                  candidate['workflowRunId'],candidate['workflowAttempt']),
+                                 ('a'*40,'b'*40,'42','1'))
+                reference={'member':p.DEBIAN_USE,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+                self.assertEqual(candidate['debianMaterialUse'],reference)
+                self.assertEqual([row for row in candidate['files'] if row['path']==p.DEBIAN_USE],
+                                 [{'path':p.DEBIAN_USE,'bytes':reference['bytes'],'sha256':reference['sha256']}])
+                self.assertEqual(emitted_use['consumerJob']['key'],source_caller['job'])
+                if caller=='C2_ALL_LINUX_CLIENT':
+                    # All other fields are valid; the real build recorder cannot claim C2's job.
+                    with self.assertRaisesRegex(ValueError,'^candidate Debian consumer job mismatch$'):
+                        p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs)
+                    continue
+                self.assertEqual(candidate['job'],emitted_use['consumerJob']['key'])
+                self.assertTrue(p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs))
+                for change,guard in [
+                    (lambda c:c.pop('debianMaterialUse'),'candidate Debian useRef mismatch'),
+                    (lambda c:c['debianMaterialUse'].update(sha256='f'*64),'candidate Debian useRef mismatch'),
+                    (lambda c:c.update(job='build_windows'),'candidate Debian consumer job mismatch'),
+                    (lambda c:c.update(files=[]),'candidate did not measure its Debian use sidecar')]:
+                    bad=copy.deepcopy(candidate);change(bad)
+                    with self.subTest(guard=guard),self.assertRaisesRegex(ValueError,'^'+guard+'$'):
+                        p.validate_debian_use(files,[bad],artifact,binding,jobs=jobs)
 
     def test_real_use_validation_rejects_mismatched_artifact_context_target_and_profile(self):
         for role in ['all','linux','docker']:
