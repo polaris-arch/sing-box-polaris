@@ -2881,7 +2881,7 @@ class DebianMaterialPublisherTests(unittest.TestCase):
 
     def artifacts(self, bundle):
         return [dict(id=bundle[key]['id'],name=bundle[key]['name'],digest=bundle[key]['digest'],
-                     size_in_bytes=bundle[key]['size'],expired=False,
+                     size_in_bytes=bundle[key]['size_in_bytes'],expired=False,
                      workflow_run={'id':bundle['context']['runID'],'head_sha':bundle['context']['sourceCommit']},
                      created_at=bundle['supplier_job']['completed_at'])
                 for key in ('raw_artifact','ready_artifact')]
@@ -2923,7 +2923,7 @@ class DebianMaterialPublisherTests(unittest.TestCase):
 
     def rewrite(self, bundle, *, manifest=None, ready=None, extra=None):
         """Rehash fixture containers; the production validator remains the only predicate."""
-        from cronet_material_supply import encode_json
+        from cronet_material_supply import artifact_ref, encode_json
         bundle=copy.deepcopy(bundle)
         if manifest is not None:manifest(bundle['manifest'])
         with zipfile.ZipFile(io.BytesIO(bundle['raw_zip'])) as archive:
@@ -2933,12 +2933,12 @@ class DebianMaterialPublisherTests(unittest.TestCase):
         rows.append((p.DEBIAN_MANIFEST,raw))
         if extra is not None:rows.extend(extra)
         bundle['raw_zip']=BoundedStorageTests.zipped(rows)
-        bundle['raw_artifact'].update(size=len(bundle['raw_zip']),digest='sha256:'+hashlib.sha256(bundle['raw_zip']).hexdigest())
+        bundle['raw_artifact'].update(size_in_bytes=len(bundle['raw_zip']),digest='sha256:'+hashlib.sha256(bundle['raw_zip']).hexdigest())
         bundle['ready']['manifestSHA256']=hashlib.sha256(raw).hexdigest()
-        bundle['ready']['rawArtifact']=copy.deepcopy(bundle['raw_artifact'])
+        bundle['ready']['rawArtifact']=artifact_ref(bundle['raw_artifact'])
         if ready is not None:ready(bundle['ready'])
         bundle['ready_zip']=BoundedStorageTests.zipped([('debian-material-ready.json',encode_json(bundle['ready']))])
-        bundle['ready_artifact'].update(size=len(bundle['ready_zip']),digest='sha256:'+hashlib.sha256(bundle['ready_zip']).hexdigest())
+        bundle['ready_artifact'].update(size_in_bytes=len(bundle['ready_zip']),digest='sha256:'+hashlib.sha256(bundle['ready_zip']).hexdigest())
         return bundle
 
     def eligible(self, role):
@@ -2957,6 +2957,39 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                     for name,record in item['files'].items():
                         self.assertEqual(p.publication(role,artifact,name),(None,record['publicationDisposition']))
                         self.assertIsNone(record['releaseName'])
+
+    def test_noop_rewrite_reaches_real_receiver_with_fresh_outer_zip_refs(self):
+        from cronet_material_supply import artifact_ref, encode_json
+        for role in ('all','linux','docker'):
+            with self.subTest(role=role):
+                original=self.bundle(role)
+                rewritten=self.rewrite(original)
+                self.assertEqual(rewritten['manifest'],original['manifest'])
+                # The original fixture binding predates these rebuilt ZIPs.
+                binding,entries=self.read(rewritten)
+                manifest=encode_json(rewritten['manifest'])
+                manifest_sha=hashlib.sha256(manifest).hexdigest()
+                self.assertEqual(binding['manifestSHA256'],manifest_sha)
+                raw_files=entries[p.DEBIAN_RAW]['files']
+                self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['bytes'],len(manifest))
+                self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['sha256'],manifest_sha)
+                for api in self.artifacts(rewritten):
+                    self.assertNotIn('size',api)
+                for key,zip_key,ref_key in [('raw_artifact','raw_zip','rawArtifact'),
+                                           ('ready_artifact','ready_zip','readyArtifact')]:
+                    api=rewritten[key];outer=rewritten[zip_key]
+                    digest='sha256:'+hashlib.sha256(outer).hexdigest()
+                    self.assertNotIn('size',api)
+                    self.assertEqual(api['size_in_bytes'],len(outer))
+                    self.assertEqual(api['digest'],digest)
+                    reference=artifact_ref(api)
+                    self.assertEqual(set(reference),{'id','name','digest','size'})
+                    self.assertEqual(binding[ref_key],reference)
+                    measured=entries[api['name']]
+                    self.assertEqual(measured['archiveBytes'],len(outer))
+                    self.assertEqual(measured['archiveSha256'],digest)
+                self.assertEqual(set(rewritten['ready']['rawArtifact']),{'id','name','digest','size'})
+                self.assertEqual(rewritten['ready']['rawArtifact'],artifact_ref(rewritten['raw_artifact']))
 
     def test_current_source_tag_run_attempt_plan_and_profile_not_asserted_from_self_hash(self):
         changes=[

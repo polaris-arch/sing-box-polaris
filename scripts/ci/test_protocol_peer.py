@@ -381,7 +381,33 @@ jobs:
         normal=normal_build_matrix(build['strategy']['matrix'])
         baseline=json.loads((ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']['build.yml']['build']
         self.assertCountEqual(normal['include']+jobs['build_windows7']['strategy']['matrix']['include'],baseline['include'])
-        self.assertEqual(build['needs'],['calculate_version'])
+        self.assertEqual(build['needs'],['calculate_version','debian_materials'])
+        self.assertEqual(build['if'], "${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')) }}")
+        # Evaluate the actual configuration's finite Boolean expression. This
+        # is not a scheduler simulation or a replacement production predicate.
+        # Its explicit status function permits the optional supplier's SKIP,
+        # while every old required ancestor must still succeed.
+        for required in ('false','true','','unknown'):
+            for ancestor in ('success','failure','skipped','cancelled','','unknown'):
+                for supplier in ('success','failure','skipped','cancelled','','unknown'):
+                    for canceled in (False,True):
+                        values = {'cancelled()': canceled,
+                                  'needs.calculate_version.result': ancestor,
+                                  'needs.calculate_version.outputs.material_required': required,
+                                  'needs.debian_materials.result': supplier,
+                                  'inputs.source_generate_only': False,
+                                  'github.event_name': 'workflow_dispatch',
+                                  'inputs.build': 'NativePeerLinux'}
+                        expression = build['if'][3:-2].strip()
+                        for token in sorted(values, key=len, reverse=True):
+                            expression = expression.replace(token, repr(values[token]))
+                        expression = expression.replace('&&', ' and ').replace('||', ' or ')
+                        expression = re.sub(r'!(?!=)', 'not ', expression)
+                        admitted = eval(expression, {'__builtins__': {}}, {})
+                        expected = (not canceled and ancestor == 'success' and
+                                    (required == 'false' or required == 'true' and supplier == 'success'))
+                        with self.subTest(required=required, ancestor=ancestor, supplier=supplier, canceled=canceled):
+                            self.assertEqual(bool(admitted), expected)
         self.assertIn("inputs.build == 'NativePeerLinux'",build['if'])
         self.assertIn("|| inputs.build == 'NativePeerLinux'",pre['if'])
         guard=next(s for s in pre['steps'] if s.get('name')=='Reject incompatible exact-source Linux peer inputs')

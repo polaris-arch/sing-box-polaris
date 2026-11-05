@@ -46,21 +46,29 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_self_contained_schemas_share_the_parser_contract(self):
         import jsonschema
-        for name, count in [('native-release-index.schema.json', 4), ('native-release-contract.schema.json', 10)]:
+        for name, count in [('native-release-index.schema.json', 5), ('native-release-contract.schema.json', 10)]:
             schema = json.loads((ROOT / 'release/ci' / name).read_text())
             jsonschema.Draft202012Validator.check_schema(schema)
             refs = []
-            def collect(value):
+            def collect(value, path=''):
                 if isinstance(value, dict):
                     if value.get('$ref', '').startswith('#/$defs/polaris'):
-                        refs.append(value['$ref'])
-                    for child in value.values():
-                        collect(child)
+                        refs.append((path + '/$ref', value['$ref']))
+                    for key, child in value.items():
+                        collect(child, path + '/' + key.replace('~', '~0').replace('/', '~1'))
                 elif isinstance(value, list):
-                    for child in value:
-                        collect(child)
+                    for index, child in enumerate(value):
+                        collect(child, path + '/' + str(index))
             collect(schema)
             self.assertEqual(len(refs), count)
+            if name == 'native-release-index.schema.json':
+                self.assertCountEqual(refs, [
+                    ('/properties/version/$ref', '#/$defs/polarisVersion'),
+                    ('/properties/tag/$ref', '#/$defs/polarisTag'),
+                    ('/properties/platforms/items/properties/version/$ref', '#/$defs/polarisVersion'),
+                    ('/properties/platforms/items/properties/tag/$ref', '#/$defs/polarisTag'),
+                    ('/$defs/debianContext/properties/tag/$ref', '#/$defs/polarisTag'),
+                ])
             for tag in [False, True]:
                 key = 'polarisTag' if tag else 'polarisVersion'
                 field = schema['$defs'][key]

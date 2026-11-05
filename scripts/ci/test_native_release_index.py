@@ -202,6 +202,116 @@ class TestSmokeCleanup(unittest.TestCase):
     self.assertRaises(PermissionError,n.smoke,str(d))
    self.assertEqual(row_path.read_text(),original)
 
+
+
+class DebianPlanAndProducerBridgeTests(unittest.TestCase):
+ def test_six_measured_inputs_match_actual_supplier_without_hashing_the_larger_map(self):
+  import cronet_material_supply as supply
+  index,binding=DebianDistributionBindingTests().fixture()
+  material=n.distribution_materials(index,n.ROOT,debian_raw=binding)
+  self.assertEqual(n.DEBIAN_INPUTS,supply.INPUTS)
+  self.assertEqual(n._debian_plan_sha256(material['inputs']),supply.profile_plan_sha256(n.ROOT))
+  self.assertGreater(len(material['inputs']),len(n.DEBIAN_INPUTS))
+  larger=dict(material['inputs'],unrelated='f'*64)
+  self.assertEqual(n._debian_plan_sha256(larger),binding['planSHA256'])
+  bad=dict(binding,planSHA256=n.sha(supply.encode_json(material['inputs'])))
+  self.assertNotEqual(bad['planSHA256'],binding['planSHA256'])
+  with self.assertRaisesRegex(ValueError,'actual native producer/source inputs'):
+   n.distribution_materials(index,n.ROOT,debian_raw=bad)
+  for name in n.DEBIAN_INPUTS:
+   missing=dict(material['inputs']);del missing[name]
+   with self.subTest(name=name),self.assertRaisesRegex(ValueError,'missing or invalid'):
+    n._debian_plan_sha256(missing)
+   for value in (None,True,1,'','A'*64,'f'*63,'f'*64+'\n'):
+    invalid=dict(material['inputs']);invalid[name]=value
+    with self.subTest(name=name,value=value),self.assertRaisesRegex(ValueError,'missing or invalid'):
+     n._debian_plan_sha256(invalid)
+
+ def test_required_measurement_and_optional_refs_fail_closed(self):
+  from unittest.mock import Mock
+  names=('POLARIS_DEBIAN_RAW_ID','POLARIS_DEBIAN_RAW_DIGEST',
+         'POLARIS_DEBIAN_READY_ID','POLARIS_DEBIAN_READY_DIGEST')
+  base={name:'' for name in names}
+  for mode in ('','True','FALSE','unknown'):
+   with self.subTest(mode=mode),patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED=mode)),self.assertRaisesRegex(ValueError,'required mode'):
+    n._measure_debian_materials(None,'a'*40,'b'*40)
+  with patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED='true')):
+   self.assertRaisesRegex(ValueError,'measurement missing',n._measure_debian_materials,None,'a'*40,'b'*40)
+   self.assertRaisesRegex(ValueError,'callable required',n._measure_debian_materials,{},'a'*40,'b'*40)
+   absent=Mock(return_value=None)
+   self.assertRaisesRegex(ValueError,'differs from required mode',n._measure_debian_materials,absent,'a'*40,'b'*40)
+   absent.assert_called_once_with('all','a'*40,'b'*40)
+   failed=Mock(side_effect=ValueError('actual measurement rejected'))
+   self.assertRaisesRegex(ValueError,'actual measurement rejected',n._measure_debian_materials,failed,'a'*40,'b'*40)
+   failed.assert_called_once()
+  with patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED='false')):
+   self.assertIsNone(n._measure_debian_materials(None,'a'*40,'b'*40))
+   self.assertRaisesRegex(ValueError,'differs from required mode',n._measure_debian_materials,lambda *a:{},'a'*40,'b'*40)
+  for name in names:
+   env=dict(base,POLARIS_DEBIAN_REQUIRED='false');env[name]='unexpected'
+   measured=Mock()
+   with self.subTest(name=name),patch.dict(n.os.environ,env),self.assertRaisesRegex(ValueError,'unexpected references'):
+    n._measure_debian_materials(measured,'a'*40,'b'*40)
+   measured.assert_not_called()
+
+ def test_actual_producer_measurement_reads_real_zip_bundle_and_rejects_cross_context(self):
+  import copy,github_release as release
+  from test_cronet_material_supply import fixture_bundle
+  context={'repository':n.REPO,'repositoryID':n.RID,'sourceCommit':'a'*40,'sourceTree':'b'*40,
+           'tag':release.TAG,'tagObject':'c'*40,'workflow':'.github/workflows/build.yml',
+           'runID':42,'runAttempt':1,'role':'all'}
+  bundle=fixture_bundle('all',context=context)
+  artifacts={bundle[key]['id']:copy.deepcopy(bundle[key]) for key in ('raw_artifact','ready_artifact')}
+  payloads={bundle['raw_artifact']['id']:bundle['raw_zip'],bundle['ready_artifact']['id']:bundle['ready_zip']}
+  run={'id':42,'run_attempt':1,'status':'in_progress','conclusion':None,
+       'repository':{'id':n.RID},'head_repository':{'id':n.RID},'head_sha':context['sourceCommit'],
+       'head_branch':release.TAG,'path':context['workflow'],'event':'workflow_dispatch',
+       'run_started_at':bundle['supplier_job']['started_at']}
+  requests=[]
+  def api(path):
+   if path==f'repos/{n.REPO}/actions/runs/42':return copy.deepcopy(run)
+   if path.startswith(f'repos/{n.REPO}/actions/artifacts/'):
+    return copy.deepcopy(artifacts[int(path.rsplit('/',1)[1])])
+   if path==f'repos/{n.REPO}/actions/runs/42/attempts/1/jobs?per_page=100&page=1':
+    return {'total_count':1,'jobs':[copy.deepcopy(bundle['supplier_job'])]}
+   raise AssertionError('unexpected producer metadata request '+path)
+  def transfer(path,sink,maximum,**kwargs):
+   ident=int(path.split('/')[-2]);body=payloads[ident];self.assertLessEqual(len(body),maximum)
+   requests.append(ident);sink.write(body)
+   return {'bytes':len(body),'sha256':n.sha(body)}
+  env={'POLARIS_DEBIAN_REQUIRED':'true','POLARIS_DEBIAN_RAW_ID':str(bundle['raw_artifact']['id']),
+       'POLARIS_DEBIAN_RAW_DIGEST':bundle['raw_artifact']['digest'],
+       'POLARIS_DEBIAN_READY_ID':str(bundle['ready_artifact']['id']),
+       'POLARIS_DEBIAN_READY_DIGEST':bundle['ready_artifact']['digest'],
+       'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REF':'refs/tags/'+release.TAG,
+       'GITHUB_SHA':context['sourceCommit'],'GITHUB_WORKFLOW_SHA':context['sourceCommit'],
+       'GITHUB_WORKFLOW_REF':n.REPO+'/'+context['workflow']+'@refs/tags/'+release.TAG,
+       'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}
+  with patch.dict(n.os.environ,env),patch.object(release,'api',side_effect=api), \
+       patch.object(release,'read_get',side_effect=transfer), \
+       patch.object(release,'tag_identity',return_value=context['tagObject']) as tag:
+   # The actual production receiver, archive/member readers and validators run.
+   binding=n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   self.assertEqual(binding,bundle['binding']);self.assertEqual(requests,[2001,2002])
+   self.assertEqual(tag.call_count,2)
+   index,_=DebianDistributionBindingTests().fixture()
+   self.assertEqual(n.distribution_materials(index,n.ROOT,debian_raw=binding)['debianRaw'],binding)
+   for changed in ({'GITHUB_RUN_ATTEMPT':'2'},{'GITHUB_SHA':'f'*40},{'GITHUB_WORKFLOW_REF':n.REPO+'/.github/workflows/linux.yml@refs/tags/'+release.TAG}):
+    with self.subTest(changed=changed),patch.dict(n.os.environ,changed),self.assertRaises(ValueError):
+     n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   bundle['supplier_job']['conclusion']='failure'
+   try:
+    with self.assertRaisesRegex(ValueError,'supplier did not succeed'):
+     n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   finally:bundle['supplier_job']['conclusion']='success'
+   with self.assertRaises(ValueError):
+    n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],'f'*40)
+  optional={key:'' for key in env if key.startswith('POLARIS_DEBIAN_')}
+  optional['POLARIS_DEBIAN_REQUIRED']='false'
+  with patch.dict(n.os.environ,optional),patch.object(release,'api') as remote:
+   self.assertIsNone(n._measure_debian_materials(release.producer_debian_materials,'a'*40,'b'*40))
+   remote.assert_not_called()
+
 if __name__=='__main__':unittest.main()
 
 class TestWin7ReceiptMatrix(unittest.TestCase):

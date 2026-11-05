@@ -570,12 +570,13 @@ class TestCIContract(unittest.TestCase):
   self.assert_local_annotated_checkouts('signed-release.yml',{'calculate_version','native_index','upload'})
  def assert_local_annotated_checkouts(self,filename,expected):
   workflow=yaml.safe_load((ROOT/'.github/workflows'/filename).read_text())
+  bridge_call="assemble('artifacts', measure_debian=producer_debian_materials)"
   # Both local annotated-tag gates must keep the full-history tag objects.
   # An implicit tag ref lets checkout overwrite the tag with the event commit.
   gates={name:job for name,job in workflow['jobs'].items() if any(
    'scripts/ci/release_identity.py' in step.get('run','') or
    'scripts/ci/owned_distribution.py verify-tag' in step.get('run','') or
-   'scripts/ci/native_release_index.py assemble' in step.get('run','')
+   'scripts/ci/native_release_index.py assemble' in step.get('run','') or bridge_call in step.get('run','')
    for step in job['steps'])}
   self.assertEqual(set(gates),expected)
   for name,job in gates.items():
@@ -587,7 +588,7 @@ class TestCIContract(unittest.TestCase):
     self.assertEqual(checkout['with'].get('ref'),'${{ github.sha }}')
     self.assertEqual(checkout['with'].get('fetch-depth'),0)
     for index,step in enumerate(job['steps']):
-     if any(command in step.get('run','') for command in ('scripts/ci/release_identity.py','scripts/ci/native_release_index.py assemble','scripts/ci/owned_distribution.py verify-tag')):
+     if any(command in step.get('run','') for command in ('scripts/ci/release_identity.py','scripts/ci/native_release_index.py assemble','scripts/ci/owned_distribution.py verify-tag',bridge_call)):
       self.assertLess(job['steps'].index(checkout),index)
  def test_staging_never_admits_store_publication(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
@@ -2158,6 +2159,75 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
      kill_session(process.pid)
      if process.poll() is None:process.kill()
      process.communicate(timeout=3)
+
+
+
+_NATIVE_INDEX_BRIDGE = """python3 -B - <<'PY'
+import sys
+sys.path.insert(0, 'scripts/ci')
+from github_release import producer_debian_materials
+from native_release_index import assemble
+assemble('artifacts', measure_debian=producer_debian_materials)
+PY"""
+
+class TestNativeIndexProducerBridge(unittest.TestCase):
+ def assert_bridge(self,workflow):
+  job=workflow['jobs']['native_index'];steps=job['steps']
+  matches=[step for step in steps if step.get('name')=='Assemble explicitly selected final or staging index']
+  self.assertEqual(len(matches),1);step=matches[0]
+  self.assertEqual(step['run'].strip(),_NATIVE_INDEX_BRIDGE)
+  self.assertNotIn('if',step);self.assertNotIn('continue-on-error',step)
+  expression=lambda s:'$'+'{{ '+s+' }}'
+  self.assertEqual(step['env'],{
+   'VERSION':expression('needs.calculate_version.outputs.version'),
+   'REQUIRE_RELEASE_TAG':expression("inputs.evidence_mode == 'final' && 'true' || 'false'"),
+   'EXPECTED_RELEASE_TAG_OBJECT':expression('needs.calculate_version.outputs.tag_object'),
+   'POLARIS_DEBIAN_REQUIRED':expression('needs.calculate_version.outputs.material_required'),
+   'POLARIS_DEBIAN_RAW_ID':expression('needs.debian_materials.outputs.raw_id'),
+   'POLARIS_DEBIAN_RAW_DIGEST':expression('needs.debian_materials.outputs.raw_digest'),
+   'POLARIS_DEBIAN_READY_ID':expression('needs.debian_materials.outputs.ready_id'),
+   'POLARIS_DEBIAN_READY_DIGEST':expression('needs.debian_materials.outputs.ready_digest'),
+   'GH_TOKEN':expression('github.token')})
+  self.assertNotIn('GH_TOKEN',workflow.get('env',{}));self.assertNotIn('GH_TOKEN',job.get('env',{}))
+  self.assertEqual(job['permissions'],{'contents':'read','actions':'read'})
+  self.assertEqual(job['needs'],['calculate_version','build','build_windows7',
+   'build_darwin','build_windows','native_smoke','native_windows_proof','debian_materials'])
+  checkouts=[s for s in steps if s.get('uses','').startswith('actions/checkout@')]
+  self.assertEqual(len(checkouts),1);checkout=checkouts[0]
+  self.assertEqual(checkout['uses'],'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8')
+  self.assertEqual(checkout['with']['ref'],expression('github.sha'))
+  self.assertEqual(checkout['with']['fetch-depth'],0)
+  self.assertLess(steps.index(checkout),steps.index(step))
+  # Execute the actual configured fixed bridge with only its product entry
+  # intercepted. This checks the imported real capability object and arguments.
+  import github_release,native_release_index
+  with mock.patch.object(native_release_index,'assemble') as assemble, \
+       mock.patch.object(sys,'path',list(sys.path)):
+   exec(compile('\n'.join(step['run'].strip().splitlines()[1:-1]),
+                '<configured-native-index-bridge>','exec'),{})
+  assemble.assert_called_once_with('artifacts',measure_debian=github_release.producer_debian_materials)
+ def test_fixed_producer_step_passes_the_actual_measurement_function(self):
+  self.assert_bridge(yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text()))
+ def test_no_cli_provider_copied_binding_or_reordered_checkout_can_replace_the_bridge(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  for case in ('old-cli','missing-measurement','copied-json','dynamic-provider','wrong-role',
+               'missing-required','missing-token','job-token','shallow-checkout','late-checkout','ignored'):
+   with self.subTest(case=case):
+    bad=copy.deepcopy(workflow);job=bad['jobs']['native_index'];steps=job['steps']
+    step=next(s for s in steps if s.get('name')=='Assemble explicitly selected final or staging index')
+    checkout=next(s for s in steps if s.get('uses','').startswith('actions/checkout@'))
+    if case=='old-cli':step['run']='python3 scripts/ci/native_release_index.py assemble artifacts'
+    elif case=='missing-measurement':step['run']=step['run'].replace('measure_debian=producer_debian_materials','measure_debian=None')
+    elif case=='copied-json':step['run']=step['run'].replace('measure_debian=producer_debian_materials',"measure_debian=lambda *a: json.loads(open('binding.json').read())")
+    elif case=='dynamic-provider':step['run']=step['run'].replace('from github_release import producer_debian_materials',"producer_debian_materials=getattr(__import__(os.environ['PROVIDER']),'producer_debian_materials')")
+    elif case=='wrong-role':step['run']=step['run'].replace("assemble('artifacts',","assemble('other-role',")
+    elif case=='missing-required':del step['env']['POLARIS_DEBIAN_REQUIRED']
+    elif case=='missing-token':del step['env']['GH_TOKEN']
+    elif case=='job-token':job['env']={'GH_TOKEN':step['env']['GH_TOKEN']}
+    elif case=='shallow-checkout':checkout['with']['fetch-depth']=1
+    elif case=='late-checkout':steps.remove(checkout);steps.append(checkout)
+    elif case=='ignored':step['continue-on-error']=True
+    with self.assertRaises((AssertionError,KeyError)):self.assert_bridge(bad)
 
 if __name__=='__main__':unittest.main()
 

@@ -2399,7 +2399,14 @@ jobs:
         pattern: smoke-*
         path: artifacts
     - name: Assemble explicitly selected final or staging index
-      run: python3 scripts/ci/native_release_index.py assemble artifacts
+      run: |-
+        python3 -B - <<'PY'
+        import sys
+        sys.path.insert(0, 'scripts/ci')
+        from github_release import producer_debian_materials
+        from native_release_index import assemble
+        assemble('artifacts', measure_debian=producer_debian_materials)
+        PY
       env:
         VERSION: ${{ needs.calculate_version.outputs.version }}
         REQUIRE_RELEASE_TAG: ${{ inputs.evidence_mode == 'final' && 'true' || 'false' }}

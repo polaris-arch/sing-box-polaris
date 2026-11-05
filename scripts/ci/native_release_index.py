@@ -8,6 +8,35 @@ from release_identity import verify_checkout, public_product_name
 from cronet_windows_overlay import validate_overlay
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
+DEBIAN_INPUTS=('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+               'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+               '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION')
+
+def _debian_plan_sha256(measured):
+ selected={}
+ for name in DEBIAN_INPUTS:
+  value=measured.get(name)
+  if type(value) is not str or re.fullmatch(r'[0-9a-f]{64}',value) is None:
+   raise ValueError('missing or invalid measured Debian source input: '+name)
+  selected[name]=value
+ return sha((json.dumps(selected,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False)+'\n').encode())
+
+def _measure_debian_materials(measure_debian,commit,tree):
+ required=os.environ.get('POLARIS_DEBIAN_REQUIRED','false')
+ if required not in ('true','false'):raise ValueError('invalid Debian required mode')
+ refs=[os.environ.get(name,'') for name in ('POLARIS_DEBIAN_RAW_ID','POLARIS_DEBIAN_RAW_DIGEST',
+                                           'POLARIS_DEBIAN_READY_ID','POLARIS_DEBIAN_READY_DIGEST')]
+ if required=='false' and any(refs):raise ValueError('optional Debian mode carries unexpected references')
+ if measure_debian is None:
+  if required=='true':raise ValueError('required Debian material measurement missing')
+  return None
+ if not callable(measure_debian):raise ValueError('explicit Debian measurement callable required')
+ measured=measure_debian('all',commit,tree)
+ if (required=='true' and measured is None) or (required=='false' and measured is not None):
+  raise ValueError('Debian material measurement differs from required mode')
+ return measured
+
+
 def sha(b):return hashlib.sha256(b).hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
 def git(*args):return run('git',*args)
@@ -651,9 +680,7 @@ def distribution_materials(index, root=Path('.'), *, debian_raw=None):
          'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
          '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
  if (root/'release/ci/cronet-material-profiles.json').is_file():
-  inputs += ['scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
-             'release/ci/cronet-material-inputs.json','release/ci/cronet-material-profiles.json',
-             '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION']
+  inputs += DEBIAN_INPUTS
  if any('trustedExecution' in row for row in index['platforms']):
   inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json',
              'release/ci/native-release-contract.schema.json']
@@ -756,7 +783,6 @@ def distribution_materials(index, root=Path('.'), *, debian_raw=None):
                         'Historical source/notice evidence remains historical.']}
 
  if debian_raw is not None:
-  from cronet_material_supply import profile_plan_sha256
   import jsonschema
   schema=json.loads((root/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
   jsonschema.Draft202012Validator({'$ref':'#/$defs/debianBinding','$defs':schema['$defs']}).validate(debian_raw)
@@ -764,7 +790,7 @@ def distribution_materials(index, root=Path('.'), *, debian_raw=None):
   expected={'repository':REPO,'repositoryID':RID,'sourceCommit':index['sourceCommit'],
             'sourceTree':index['sourceTree'],'tag':index['tag'],'tagObject':index['tagObject'],
             'workflow':producer['workflow'],'runID':producer['runId'],'runAttempt':producer['runAttempt'],'role':'all'}
-  if context!=expected or debian_raw['planSHA256']!=profile_plan_sha256(root):
+  if context!=expected or debian_raw['planSHA256']!=_debian_plan_sha256(result['inputs']):
    raise ValueError('All Debian binding differs from actual native producer/source inputs')
   result['debianRaw']=debian_raw
  return result
@@ -803,7 +829,7 @@ def select_native_jobs(rows,jobs,commit,run_id,attempt):
  if len({value['id'] for value in result.values()})!=len(result):raise ValueError('native producer job IDs collide')
  return result
 
-def assemble(directory):
+def assemble(directory, *, measure_debian=None):
  commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
  final=os.environ.get('REQUIRE_RELEASE_TAG')=='true'
  tag_object=None
@@ -857,8 +883,7 @@ def assemble(directory):
   validate_trusted_execution(row, context)
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
- from github_release import producer_debian_materials
- debian_raw=producer_debian_materials('all',commit,tree)
+ debian_raw=_measure_debian_materials(measure_debian,commit,tree)
  index['distributionMaterials']=(distribution_materials(index) if debian_raw is None
                                 else distribution_materials(index,debian_raw=debian_raw))
  if final:

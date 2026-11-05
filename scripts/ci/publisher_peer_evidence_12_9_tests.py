@@ -116,7 +116,21 @@ class Alpha129PeerEvidenceTests(historical_tests.PeerEvidenceTests):
                          'sha256': '92292c1fd55fd628586ff6d73d0c2de27f61ce46e9761e34758eafbed8338fe6'})
         self.assertEqual(selected['nativeIndexSHA256'], '781bc0d903d9ee25631c032e2859cfabd78b47dbfb7cbddce2e6e66317baece2')
         self.assertFalse(selected['publicationEligible'])
-        scope = p.release_scope(current.VERSION)
+        # This selection measured the committed alpha.12.9 scope, not today's
+        # producer scope. Keep the original bytes and confine SCOPE to this call.
+        historical_scope = Path(__file__).with_name('testdata') / 'publisher-upstream-scope-alpha12.9.json'
+        scope_raw = historical_scope.read_bytes()
+        self.assertEqual(len(scope_raw), 91707)
+        self.assertEqual(hashlib.sha256(scope_raw).hexdigest(),
+                         '6f4ba1a08d0f02cae71e33fc36fd1adb0c366938d3e9f5a73ef0b48ed3193df4')
+        current_scope = p.SCOPE
+        with mock.patch.object(p, 'SCOPE', historical_scope):
+            scope = p.release_scope(current.VERSION)
+        self.assertIs(p.SCOPE, current_scope)
+        with self.assertRaisesRegex(ValueError, 'scope version differs from reviewed release version'), \
+                mock.patch.object(p, 'SCOPE', historical_scope):
+            p.release_scope('1.15.0-polaris-alpha.12.10')
+        self.assertIs(p.SCOPE, current_scope)
         original = copy.deepcopy(scope)
         scoped = registry.scoped(scope, current.select(p.ROOT, current.SOURCE, current.VERSION, 'v' + current.VERSION),
                                  {'all': str(current.RUN_ID), 'linux': '41379210301', 'docker': '41379223932'})
