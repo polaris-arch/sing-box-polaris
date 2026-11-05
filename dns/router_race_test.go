@@ -248,10 +248,10 @@ func controlledDNSUpstream(tag, address string) *controlledDNSTransport {
 	upstream := &controlledDNSTransport{
 		fakeDNSTransport: fakeDNSTransport{tag: tag, rcode: mDNS.RcodeSuccess},
 		entered:          make(chan struct{}), release: make(chan struct{}),
-		replied:          make(chan struct{}), cancelSeen: make(chan struct{}),
-		cancelExit:       make(chan struct{}),
-		rawDone:          make(chan struct{}), callbackDone: make(chan struct{}),
-		asyncReturned:    make(chan struct{}),
+		replied: make(chan struct{}), cancelSeen: make(chan struct{}),
+		cancelExit: make(chan struct{}),
+		rawDone:    make(chan struct{}), callbackDone: make(chan struct{}),
+		asyncReturned: make(chan struct{}),
 	}
 	if address != "" {
 		upstream.address = netip.MustParseAddr(address)
@@ -438,7 +438,7 @@ func controlledDNSStart(t *testing.T, staged bool, raw []option.DNSRule, returnA
 	observed := make([]*controlledDNSRule, len(rules))
 	for index, rule := range rules {
 		observed[index] = &controlledDNSRule{
-			DNSRule:   rule, raceSeen: make(chan struct{}),
+			DNSRule: rule, raceSeen: make(chan struct{}),
 			matchSeen: make(chan struct{}), actionSeen: make(chan struct{}),
 		}
 		rules[index] = observed[index]
@@ -453,9 +453,9 @@ func controlledDNSStart(t *testing.T, staged bool, raw []option.DNSRule, returnA
 	}
 	router.transport = &fakeDNSTransportManager{transports: mapping, defaultTransport: mapping["final"]}
 	run := &controlledDNSRun{
-		t:     t, router: router, rules: rules, observed: observed,
-		ctx:   ctx, cancel: cancel, staged: staged,
-		done:  make(chan struct{}), walkDone: make(chan struct{}), resume: make(chan struct{}),
+		t: t, router: router, rules: rules, observed: observed,
+		ctx: ctx, cancel: cancel, staged: staged,
+		done: make(chan struct{}), walkDone: make(chan struct{}), resume: make(chan struct{}),
 		state: dnsRuleWalkState{lastLoggedIndex: -1},
 		message: &mDNS.Msg{Id: 1, RecursionDesired: true, Question: []mDNS.Question{{
 			Name: "race.example.org.", Qtype: mDNS.TypeA, Qclass: mDNS.ClassINET,
@@ -591,7 +591,7 @@ func controlledDNSBoundRoute(race, speculative bool) option.DNSRule {
 				ResponseRcode: &successRcode,
 			},
 			DNSRuleAction: option.DNSRuleAction{
-				Action:       C.RuleActionTypeRoute, Race: race,
+				Action: C.RuleActionTypeRoute, Race: race,
 				RouteOptions: option.DNSRouteActionOptions{Server: "final", Speculative: speculative},
 			},
 		},
