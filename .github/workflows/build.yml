@@ -13,7 +13,7 @@ jobs:
       GOFLAGS: -mod=readonly
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
-    - name: Reject checkpoint outside material Final
+    - name: Reject prepared candidate in Source mode
       shell: bash
       env:
         CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
@@ -62,7 +62,7 @@ jobs:
       GOFLAGS: -mod=readonly
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
-    - name: Reject checkpoint outside material Final
+    - name: Reject prepared candidate in Source mode
       shell: bash
       env:
         CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
@@ -143,7 +143,7 @@ jobs:
       SOURCE_VERSION: ${{ inputs.version }}
       SOURCE_RUNNER: ${{ matrix.os }}
     steps:
-    - name: Reject checkpoint outside material Final
+    - name: Reject prepared candidate in Source mode
       shell: bash
       env:
         CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
@@ -273,7 +273,7 @@ jobs:
         if-no-files-found: error
         retention-days: 7
   calculate_version:
-    if: (inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'
+    if: (inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'
     name: Calculate version
     runs-on: ubuntu-latest
     outputs:
@@ -345,21 +345,40 @@ jobs:
     - name: Classify Debian material requirement
       id: material_scope
       env:
-        REQUIRED: ${{ github.event_name == 'workflow_dispatch' && inputs.build == 'All' && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
+        REQUIRED: ${{ github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Materials') && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
         CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
         CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIALS_ONLY: ${{ inputs.build == 'Materials' && 'true' || 'false' }}
+        SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        WINDOWS_NATIVE_PROOF: ${{ inputs.windows_native_proof && 'true' || 'false' }}
       shell: bash
       run: |
         if [[ "$REQUIRED" != "true" && "$REQUIRED" != "false" ]]; then
           echo "invalid Debian material mode" >&2
           exit 1
         fi
+        if [[ "$MATERIALS_ONLY" != "true" && "$MATERIALS_ONLY" != "false" ]]; then
+          echo "invalid Materials-only selector" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" == "true" && ( "$REQUIRED" != "true" || "$SOURCE_GENERATE_ONLY" != "false" || "$WINDOWS_NATIVE_PROOF" != "false" ) ]]; then
+          echo "Materials requires exact-tag final identity and excludes source generation/native proof" >&2
+          exit 1
+        fi
         if [[ -n "$CHECKPOINT_ARTIFACT_ID" && -z "$CHECKPOINT_DIGEST" || -z "$CHECKPOINT_ARTIFACT_ID" && -n "$CHECKPOINT_DIGEST" ]]; then
-          echo "Debian checkpoint requires both artifact ID and digest" >&2
+          echo "Debian candidate requires both artifact ID and digest" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && ( ! "$CHECKPOINT_ARTIFACT_ID" =~ ^[1-9][0-9]*$ || ! "$CHECKPOINT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ) ]]; then
+          echo "invalid exact candidate ID/digest" >&2
           exit 1
         fi
         if [[ "$REQUIRED" != "true" && ( -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ) ]]; then
-          echo "Debian checkpoint is only allowed in required material Final mode" >&2
+          echo "Debian candidate is only allowed for Materials or required Final" >&2
+          exit 1
+        fi
+        if [[ "$REQUIRED" == "true" && "$MATERIALS_ONLY" != "true" && -z "$CHECKPOINT_ARTIFACT_ID" ]]; then
+          echo "Final NOT_READY: an explicit completed Materials candidate is required" >&2
           exit 1
         fi
         printf 'required=%s\n' "$REQUIRED" >> "$GITHUB_OUTPUT"
@@ -390,6 +409,7 @@ jobs:
       with:
         checkpoint-artifact-id: ${{ inputs.debian_checkpoint_artifact_id }}
         checkpoint-artifact-digest: ${{ inputs.debian_checkpoint_digest }}
+        materials-only: ${{ inputs.build == 'Materials' && 'true' || 'false' }}
         role: all
         tag: v${{ inputs.version }}
         tag-object: ${{ needs.calculate_version.outputs.tag_object }}
@@ -512,6 +532,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role all \
             --caller C1_ALL_BINARY --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            --checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
         fi
@@ -523,6 +544,8 @@ jobs:
         fi
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
         MATERIAL_LIBC: ${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}
         GH_TOKEN: ${{ github.token }}
@@ -1532,6 +1555,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role all \
             --caller C2_ALL_LINUX_CLIENT --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            --checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
         fi
@@ -1539,6 +1563,8 @@ jobs:
         go run ./cmd/build-naive --target=linux/${{ matrix.go_arch }} download-toolchain
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.go_arch }}
         MATERIAL_LIBC: glibc
         GH_TOKEN: ${{ github.token }}
@@ -2467,12 +2493,12 @@ jobs:
   workflow_dispatch:
     inputs:
       debian_checkpoint_artifact_id:
-        description: Optional exact same-source/tag/role raw checkpoint; requires its digest
+        description: Exact completed Materials raw candidate ID; optional resume in Materials, mandatory in Final
         type: string
         required: false
         default: ''
       debian_checkpoint_digest:
-        description: Exact checkpoint artifact ZIP digest; no latest or automatic resume
+        description: Paired immutable candidate ZIP SHA256; same source/tag/plan, no latest or automatic resume
         type: string
         required: false
         default: ''
@@ -2480,7 +2506,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.16
+        default: 1.15.0-polaris-alpha.12.17
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice
@@ -2502,6 +2528,7 @@ jobs:
         default: All
         options:
         - All
+        - Materials
         - Source
         - Binary
         - NativePeerDiagnostic

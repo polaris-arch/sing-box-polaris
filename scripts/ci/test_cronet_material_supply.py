@@ -1,6 +1,7 @@
 """Real protocol controls; these fixtures are not Debian cryptographic acceptance."""
 import argparse
 import copy
+from contextlib import contextmanager
 import hashlib
 import io
 import json
@@ -135,7 +136,7 @@ def fixture_local_use(bundle, artifact_name):
     expected = supply.expected_use(bundle["context"]["role"], artifact_name)
     manifest = copy.deepcopy(bundle["manifest"])
     subset = set(expected["profiles"])
-    manifest.update(schema=supply.LOCAL_MANIFEST, requiredProfiles=expected["profiles"], seed=None)
+    manifest.update(schema=supply.LOCAL_MANIFEST, requiredProfiles=expected["profiles"])
     manifest["profiles"] = [profile for profile in manifest["profiles"] if profile["id"] in subset]
     manifest["objects"] = [item for item in manifest["objects"] if subset.intersection(item["profiles"])]
     for item in manifest["objects"]:
@@ -153,8 +154,8 @@ class LocalOriginalUseTests(unittest.TestCase):
     def run_local(self, bundle, artifact, output, verify=None):
         wire = fixture_local_use(bundle, artifact)
         expected = supply.expected_use(bundle["context"]["role"], artifact)
-        def capture(root, profiles, store, enabled, deadline):
-            self.assertIs(enabled, True)
+        def seed(args, context, store, *, profiles, prepared):
+            self.assertIs(prepared, True)
             self.assertEqual(profiles, expected["profiles"])
             manifest = supply.decode_json(supply.read_regular(store / supply.MANIFEST))
             manifest["objects"] = copy.deepcopy(wire["manifest"]["objects"])
@@ -163,13 +164,19 @@ class LocalOriginalUseTests(unittest.TestCase):
                 if not path.exists():
                     supply.write_new(path, bundle["payloads"][item["url"]])
             supply.replace_json(store / supply.MANIFEST, manifest)
+        def capture(root, profiles, store, enabled, deadline):
+            self.assertIs(enabled, False)
+            self.assertEqual(profiles, expected["profiles"])
             return (verify(store, profiles) if verify is not None else copy.deepcopy(wire["manifest"]["profiles"]))
         args = argparse.Namespace(cronet_root=output.parent, role=bundle["context"]["role"],
-            caller=expected["caller"], target_arch=expected["targetArch"], libc=expected["libc"], output=output)
+            caller=expected["caller"], target_arch=expected["targetArch"], libc=expected["libc"], output=output,
+            checkpoint_artifact_id=bundle["raw_artifact"]["id"],
+            checkpoint_artifact_digest=bundle["raw_artifact"]["digest"])
         with mock.patch.dict(os.environ, {"GITHUB_JOB":wire["consumerJob"]["key"]}, clear=True), \
              mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
              mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
              mock.patch.object(supply, "_consumer_job", return_value=wire["consumerJob"]), \
+             mock.patch.object(supply, "_seed_checkpoint", side_effect=seed), \
              mock.patch.object(supply, "_profiles", side_effect=capture):
             supply.consume_local(args)
         use = supply.decode_json(supply.read_regular(output / "use.json"))
@@ -212,7 +219,7 @@ class LocalOriginalUseTests(unittest.TestCase):
                                                output / "missing", bootstrap.load_policy())
             self.assertEqual(dict(os.environ), before)
 
-    def test_local_cli_has_no_ready_checkpoint_or_profile_override(self):
+    def test_local_cli_requires_candidate_pair_and_rejects_ready_or_profile_override(self):
         common = ["--cronet-root", "/fixture", "--role", "linux", "--caller", "C3_LINUX",
                   "--target-arch", "amd64", "--libc", "musl", "--output", "/fixture-out"]
         for command, extra in [("consume", []), ("consume-local", ["--ready-artifact-id", "1"]),
@@ -223,6 +230,12 @@ class LocalOriginalUseTests(unittest.TestCase):
                  self.assertRaises(SystemExit), mock.patch.object(supply, "_prepared") as prepared:
                 supply.main()
             prepared.assert_not_called()
+        with mock.patch("sys.argv", ["cronet_material_supply.py", "consume-local", *common,
+                         "--checkpoint-artifact-id", "2001", "--checkpoint-artifact-digest", "a" * 64]), \
+             mock.patch.object(supply, "consume_local") as consume:
+            supply.main()
+        self.assertEqual(consume.call_args.args[0].checkpoint_artifact_id, 2001)
+        self.assertEqual(consume.call_args.args[0].checkpoint_artifact_digest, "a" * 64)
 
     def test_local_entry_rejects_inherited_capture_before_any_worker(self):
         bundle = fixture_bundle("linux")
@@ -659,7 +672,7 @@ class MaterialProtocolTests(unittest.TestCase):
     def test_mixed_seed_source_or_ready_reference_rejected(self):
         bundle = fixture_bundle()
         for change in ({"sourceCommit": "d" * 40}, {"tagObject": "e" * 40},
-                       {"role": "all", "workflow": ".github/workflows/build.yml"}):
+                       {"role": "docker", "workflow": ".github/workflows/docker.yml"}):
             manifest = copy.deepcopy(bundle["manifest"])
             manifest["seed"] = {"artifact": supply.artifact_ref(bundle["raw_artifact"]),
                                 "context": dict(bundle["context"], **change), "manifestSHA256": "f" * 64}
@@ -738,6 +751,342 @@ class ExplicitCheckpointTests(unittest.TestCase):
             self.assertIsNone(supply._seed_checkpoint(args, context, Path("unused")))
             transport.assert_not_called()
 
+
+class PreparedCandidateTests(unittest.TestCase):
+    """Real ZIP/CAS/import controls; controlled receipts never claim GPG acceptance."""
+    def candidate(self):
+        bundle = fixture_bundle("all")
+        bundle["manifest"]["state"] = "PARTIAL"
+        bundle["manifest"]["profiles"] = []
+        self.repack(bundle)
+        return bundle
+
+    def repack(self, bundle):
+        bundle["files"][supply.MANIFEST] = supply.encode_json(bundle["manifest"])
+        bundle["raw_zip"] = _zip_bytes(bundle["files"])
+        bundle["raw_artifact"]["digest"] = "sha256:" + supply.digest(bundle["raw_zip"])
+        bundle["raw_artifact"]["size_in_bytes"] = len(bundle["raw_zip"])
+
+    @contextmanager
+    def transport(self, bundle, mutate_run=None, mutate_jobs=None, mutate_artifact=None):
+        context = bundle["context"]
+        run = {"id": context["runID"], "run_attempt": context["runAttempt"],
+               "head_sha": context["sourceCommit"], "head_branch": context["tag"],
+               "event": "workflow_dispatch", "path": context["workflow"],
+               "repository": {"id": supply.RID, "full_name": supply.REPO},
+               "head_repository": {"id": supply.RID, "full_name": supply.REPO},
+               "run_started_at": "2020-01-01T00:00:00Z", "status": "completed", "conclusion": "failure"}
+        source = dict(bundle["supplier_job"], id=2999, name="Calculate version", conclusion="success")
+        jobs = [source, dict(bundle["supplier_job"], conclusion="failure"),
+                dict(source, id=2998, name="Build binary", conclusion="skipped")]
+        artifact = copy.deepcopy(bundle["raw_artifact"])
+        if mutate_run is not None: mutate_run(run)
+        if mutate_jobs is not None: mutate_jobs(jobs)
+        if mutate_artifact is not None: mutate_artifact(artifact)
+        def api(path, deadline=None):
+            if path == "actions/artifacts/2001": return copy.deepcopy(artifact)
+            if path == "actions/runs/1001/attempts/1": return copy.deepcopy(run)
+            if path == "actions/runs/1001/artifacts?per_page=100&page=1":
+                return {"total_count": 1, "artifacts": [copy.deepcopy(artifact)]}
+            if path == "actions/runs/1001/attempts/1/jobs?per_page=100&page=1":
+                return {"total_count": len(jobs), "jobs": copy.deepcopy(jobs)}
+            raise AssertionError("unexpected prepared metadata request: " + path)
+        def transfer(path, sink, maximum, **kwargs):
+            self.assertEqual(path, "repos/" + supply.REPO + "/actions/artifacts/2001/zip")
+            self.assertLessEqual(len(bundle["raw_zip"]), maximum)
+            sink.write(bundle["raw_zip"])
+            return {"bytes": len(bundle["raw_zip"]), "sha256": supply.digest(bundle["raw_zip"])}
+        with mock.patch.object(supply, "_api", side_effect=api), \
+             mock.patch.object(supply._release(), "read_get", side_effect=transfer):
+            yield
+
+    def args(self, bundle, role, root):
+        return argparse.Namespace(role=role, cronet_root=root, output=root / "out", materials_only=False,
+            checkpoint_artifact_id=2001, checkpoint_artifact_digest=bundle["raw_artifact"]["digest"])
+
+    def context(self, bundle, role):
+        return dict(bundle["context"], role=role, runID=1002,
+                    workflow=supply.load_profile_plan()["roles"][role]["workflow"])
+
+    def store(self, context, output):
+        supply.new_directory(output); supply.new_directory(output / "objects")
+        supply.write_new(output / supply.MANIFEST, supply.encode_json({
+            "schema": "polaris-debian-candidate-v1", "scope": supply.SCOPE, "context": context,
+            "planSHA256": supply.profile_plan_sha256(), "requiredProfiles": supply.required_profiles(context),
+            "state": "PARTIAL", "objects": [], "profiles": [], "seed": None}))
+
+    def test_measured_partial_all_candidate_imports_each_role_without_borrowing_ready(self):
+        bundle = self.candidate()
+        for role in ("all", "linux", "docker"):
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); context = self.context(bundle, role); output = root / "raw"
+                self.store(context, output)
+                with self.transport(bundle):
+                    seed = supply._seed_checkpoint(self.args(bundle, role, root), context, output, prepared=True)
+                current = supply.decode_json(supply.read_regular(output / supply.MANIFEST))
+                supply.validate_manifest(current, context=context, measurements=supply._measure_local(output, current))
+                self.assertEqual(seed["context"], bundle["context"])
+                self.assertEqual(current["context"], context)
+                self.assertEqual(current["state"], "PARTIAL"); self.assertEqual(current["profiles"], [])
+                self.assertFalse((output / supply.READY).exists())
+                self.assertTrue(all(set(item["profiles"]) <= set(current["requiredProfiles"])
+                                    for item in current["objects"]))
+
+    def test_incompatible_source_tag_plan_attempt_artifact_and_nonmaterials_frontier_are_rejected(self):
+        baseline = self.candidate()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); context = self.context(baseline, "linux")
+            self.store(context, root / "raw")
+            with self.transport(baseline):
+                seed = supply._seed_checkpoint(self.args(baseline, "linux", root), context, root / "raw", prepared=True)
+            self.assertEqual(seed["context"], baseline["context"])
+            self.assertEqual(seed["artifact"], supply.artifact_ref(baseline["raw_artifact"]))
+        cases = ["sourceCommit", "sourceTree", "tag", "tagObject", "plan", "run", "attempt", "artifact",
+                 "outer", "member", "product", "source_failed", "job_attempt", "duplicate_job",
+                 "cancelled", "artifact_time", "role"]
+        guards = {
+            "sourceCommit": "checkpoint source/repository/ref", "sourceTree": "candidate exact source/tag identity",
+            "tag": "checkpoint source/repository/ref", "tagObject": "candidate exact source/tag identity",
+            "plan": "candidate source/plan/state", "run": "actual run/attempt/source/ref/workflow",
+            "attempt": "actual run/attempt/source/ref/workflow", "artifact": "explicit checkpoint ID/digest",
+            "outer": "explicit checkpoint ID/digest", "member": "actual member bytes/selfSHA",
+            "product": "Materials-only actual job frontier", "source_failed": "Materials source/supplier completion",
+            "job_attempt": "Materials actual source/run/attempt job", "duplicate_job": "duplicate job",
+            "cancelled": "completed Materials run required", "artifact_time": "candidate artifact actual supplier attempt/time",
+            "role": "completed Materials run required"}
+        self.assertEqual(set(guards), set(cases))
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                bundle = copy.deepcopy(baseline); root = Path(temporary)
+                context = self.context(bundle, "linux")
+                if case in ("sourceCommit", "sourceTree", "tag", "tagObject"):
+                    context[case] = "v1.15.0-polaris-alpha.12.99" if case == "tag" else "d" * 40
+                if case == "plan":
+                    bundle["manifest"]["planSHA256"] = "d" * 64; self.repack(bundle)
+                if case == "member":
+                    name = bundle["manifest"]["objects"][0]["member"]
+                    bundle["files"][name] += b"tampered"; self.repack(bundle)
+                args = self.args(bundle, "linux", root)
+                if case == "outer": args.checkpoint_artifact_digest = "e" * 64
+                def run(row):
+                    if case == "run": row["id"] += 1
+                    if case == "attempt": row["run_attempt"] += 1
+                    if case == "cancelled": row["conclusion"] = "cancelled"
+                def jobs(rows):
+                    if case == "product": rows[2]["conclusion"] = "success"
+                    if case == "source_failed": rows[0]["conclusion"] = "failure"
+                    if case == "job_attempt": rows[1]["run_attempt"] += 1
+                    if case == "duplicate_job": rows[2]["id"] = rows[1]["id"]
+                    if case == "artifact_time": rows[1]["completed_at"] = "2020-01-01T00:00:20Z"
+                def artifact(row):
+                    if case == "artifact": row["id"] += 1
+                if case == "role":
+                    bundle["manifest"]["context"]["role"] = "linux"
+                    bundle["manifest"]["context"]["workflow"] = ".github/workflows/linux.yml"
+                    self.repack(bundle); args = self.args(bundle, "linux", root)
+                self.store(context, root / "raw")
+                with self.transport(bundle, run, jobs, artifact), \
+                     self.assertRaisesRegex(ValueError, "^Debian material admission: " + guards[case] + "$"):
+                    supply._seed_checkpoint(args, context, root / "raw", prepared=True)
+
+    def test_final_prepare_reauthenticates_strictly_and_retains_candidate_identity(self):
+        bundle = self.candidate()
+        for role in ("all", "linux", "docker"):
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); context = self.context(bundle, role); args = self.args(bundle, role, root)
+                def verify(cronet, profiles, store, capture, deadline, *, independent):
+                    self.assertIs(capture, False); self.assertIs(independent, True)
+                    current = supply.decode_json(supply.read_regular(store / supply.MANIFEST))
+                    self.assertEqual(current["seed"]["context"], bundle["context"])
+                    return [copy.deepcopy(p) for p in fixture_bundle("all")["manifest"]["profiles"] if p["id"] in profiles]
+                with self.transport(bundle), mock.patch.object(supply, "actions_context", return_value=context), \
+                     mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                     mock.patch.object(supply, "_profiles", side_effect=verify):
+                    supply.prepare(args)
+                manifest = supply.decode_json(supply.read_regular(args.output / supply.MANIFEST))
+                self.assertEqual(manifest["state"], "VERIFIED")
+                self.assertEqual(manifest["seed"]["context"], bundle["context"])
+                self.assertFalse((args.output / supply.READY).exists())
+
+    def test_final_and_local_empty_pair_stop_before_profiles(self):
+        bundle = self.candidate()
+        with tempfile.TemporaryDirectory() as temporary:
+            args = self.args(bundle, "all", Path(temporary)); args.checkpoint_artifact_id = None
+            args.checkpoint_artifact_digest = None
+            with mock.patch.dict(os.environ, {}, clear=True), \
+                 mock.patch.object(supply, "actions_context", return_value=self.context(bundle, "all")), \
+                 mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                 mock.patch.object(supply, "_profiles") as worker:
+                with self.assertRaisesRegex(ValueError, "NOT_READY"): supply.prepare(args)
+                with self.assertRaisesRegex(ValueError, "NOT_READY"): supply.consume_local(args)
+                worker.assert_not_called()
+            args.materials_only = True; args.role = "linux"
+            with mock.patch.object(supply, "actions_context", return_value=self.context(bundle, "linux")), \
+                 mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                 self.assertRaisesRegex(ValueError, "all-role union"):
+                supply.prepare(args)
+
+    def test_partial_missing_own_profile_never_contacts_origin_and_auth_failure_has_no_use(self):
+        for failure in ("none", "missing", "authentication"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
+                bundle = self.candidate(); root = Path(temporary); context = self.context(bundle, "all")
+                expected = supply.expected_use("all", "binary-linux_arm64-glibc")
+                if failure == "missing":
+                    removed = next(item for item in bundle["manifest"]["objects"]
+                                   if item["profiles"] == ["bullseye-arm64"])
+                    bundle["manifest"]["objects"].remove(removed)
+                    del bundle["files"][removed["member"]]; self.repack(bundle)
+                args = self.args(bundle, "all", root)
+                args.caller = expected["caller"]; args.target_arch = "arm64"; args.libc = "glibc"
+                requests = Requests()
+                def verify(cronet, profiles, store, capture, deadline):
+                    self.assertEqual(cronet, args.cronet_root); self.assertEqual(store, args.output / "raw")
+                    self.assertIs(capture, False); self.assertEqual(profiles, expected["profiles"])
+                    with mock.patch.dict(os.environ, {"POLARIS_CRONET_RAW_STORE": str(store)}, clear=True):
+                        if failure == "missing":
+                            bootstrap.download_file(removed["url"], root / "missing", requests)
+                        if failure == "authentication":
+                            raise ValueError("controlled original GPG/Packages/deb authentication failure")
+                        return [copy.deepcopy(p) for p in fixture_bundle("all")["manifest"]["profiles"]
+                                if p["id"] in profiles]
+                verify_probe = mock.Mock(wraps=verify)
+                with self.transport(bundle), mock.patch.dict(os.environ, {"GITHUB_JOB": "build"}, clear=True), \
+                     mock.patch.object(supply, "actions_context", return_value=context), \
+                     mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                     mock.patch.object(supply, "_consumer_job", return_value={"id": 4001, "key": "build", "name": "Build binary", "runner": "fixture"}), \
+                     mock.patch.object(supply, "_profiles", side_effect=verify_probe) as profiles_worker:
+                    if failure == "missing":
+                        with self.assertRaisesRegex(bootstrap.MaterialError, "^CANDIDATE_REQUIRED_MISSING$") as refused:
+                            supply.consume_local(args)
+                        self.assertEqual(refused.exception.code, "CANDIDATE_REQUIRED_MISSING")
+                    elif failure == "authentication":
+                        with self.assertRaisesRegex(ValueError, "^controlled original GPG/Packages/deb authentication failure$"):
+                            supply.consume_local(args)
+                    else:
+                        supply.consume_local(args)
+                profiles_worker.assert_called_once_with(args.cronet_root, expected["profiles"], args.output / "raw", False, mock.ANY)
+                verify_probe.assert_called_once_with(args.cronet_root, expected["profiles"], args.output / "raw", False, mock.ANY)
+                self.assertEqual(requests.calls, [])
+                if failure == "none":
+                    use = supply.decode_json(supply.read_regular(args.output / "use.json"))
+                    self.assertEqual(use["requiredProfiles"], expected["profiles"])
+                    self.assertEqual(use["manifest"]["state"], "VERIFIED")
+                    self.assertEqual(use["context"], context)
+                    self.assertEqual(use["manifest"]["seed"]["context"], bundle["context"])
+                else:
+                    self.assertFalse((args.output / "use.json").exists())
+
+    def test_consumer_subset_joins_current_canonical_with_same_immutable_candidate(self):
+        donor = self.candidate()
+        for role, artifact in (("all", "binary-linux_arm64-glibc"), ("linux", "binary-linux_arm64"),
+                               ("docker", "binary-linux-arm64")):
+            with self.subTest(role=role), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); context = self.context(donor, role)
+                canonical = fixture_bundle(role, context=context)
+                canonical["manifest"]["seed"] = {"artifact": supply.artifact_ref(donor["raw_artifact"]),
+                    "context": donor["context"], "manifestSHA256": supply.digest(donor["files"][supply.MANIFEST])}
+                canonical["binding"]["manifestSHA256"] = supply.digest(supply.encode_json(canonical["manifest"]))
+                wire = fixture_local_use(canonical, artifact)
+                expected = supply.expected_use(role, artifact)
+                args = self.args(donor, role, root)
+                args.caller = expected["caller"]; args.target_arch = expected["targetArch"]; args.libc = expected["libc"]
+                requests = Requests()
+                def verify(cronet, profiles, store, capture, deadline):
+                    self.assertIs(capture, False); self.assertEqual(profiles, expected["profiles"])
+                    manifest = supply.decode_json(supply.read_regular(store / supply.MANIFEST))
+                    self.assertEqual(manifest["seed"], canonical["manifest"]["seed"])
+                    with mock.patch.dict(os.environ, {"POLARIS_CRONET_RAW_STORE": str(store)}, clear=True), \
+                         mock.patch.object(bootstrap, "_CHARGED", 0), \
+                         mock.patch.object(bootstrap, "_CANDIDATES_USED", {}):
+                        for number, url in enumerate(sorted({url for p in wire["manifest"]["profiles"] for url in p["urls"]})):
+                            bootstrap.download_file(url, root / ("reverified-" + str(number)), requests)
+                    return wire["manifest"]["profiles"]
+                with self.transport(donor), mock.patch.dict(os.environ, {"GITHUB_JOB": wire["consumerJob"]["key"]}, clear=True), \
+                     mock.patch.object(supply, "actions_context", return_value=context), \
+                     mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                     mock.patch.object(supply, "_consumer_job", return_value=wire["consumerJob"]), \
+                     mock.patch.object(supply, "_profiles", side_effect=verify):
+                    supply.consume_local(args)
+                use = supply.decode_json(supply.read_regular(args.output / "use.json"))
+                LocalOriginalUseTests().validate(canonical, artifact, use)
+                self.assertEqual(requests.calls, [])
+                wrong = copy.deepcopy(use)
+                wrong["manifest"]["seed"]["context"]["runID"] += 1
+                wrong["manifestSHA256"] = supply.digest(supply.encode_json(wrong["manifest"]))
+                with self.assertRaisesRegex(ValueError, "prepared candidate identity"):
+                    LocalOriginalUseTests().validate(canonical, artifact, wrong)
+
+    def test_materials_attempts_other_profiles_once_preserves_complete_raw_and_reports_failure(self):
+        bundle = fixture_bundle("all")
+        profile_ids = bundle["manifest"]["requiredProfiles"]
+        for failed in (profile_ids[0], profile_ids[3], None):
+            with self.subTest(failed=failed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); args = self.args(bundle, "all", root)
+                args.materials_only = True; args.checkpoint_artifact_id = None; args.checkpoint_artifact_digest = None
+                attempted = []
+                class Child:
+                    pid = 4567
+                    def __init__(self, command, env, start_new_session):
+                        self.profile = command[command.index("--profile") + 1]
+                        self.receipt = Path(command[command.index("--receipt") + 1])
+                        self.env = env; self.returncode = None; attempted.append(self.profile)
+                    def wait(child, timeout):
+                        self.assertGreater(timeout, 0); self.assertLessEqual(timeout, supply.PROFILE_SECONDS)
+                        receipt = next(p for p in bundle["manifest"]["profiles"] if p["id"] == child.profile)
+                        urls = receipt["urls"][:1] if child.profile == failed else receipt["urls"]
+                        with mock.patch.dict(os.environ, child.env, clear=True):
+                            for number, url in enumerate(urls):
+                                destination = child.receipt.parent / ("body-" + str(number))
+                                destination.write_bytes(bundle["payloads"][url])
+                                bootstrap._capture_candidate(url, destination, bootstrap.load_policy())
+                        child.returncode = 1 if child.profile == failed else 0
+                        if child.returncode == 0: supply.write_new(child.receipt, supply.encode_json(receipt))
+                        return child.returncode
+                    def poll(child): return child.returncode
+                with mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
+                     mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                     mock.patch.object(supply.subprocess, "Popen", side_effect=Child):
+                    if failed is None: supply.prepare(args)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "profiles NOT_READY"): supply.prepare(args)
+                self.assertEqual(attempted, profile_ids)
+                manifest = supply.decode_json(supply.read_regular(args.output / supply.MANIFEST))
+                self.assertEqual([p["id"] for p in manifest["profiles"]], [p for p in profile_ids if p != failed])
+                self.assertEqual(manifest["state"], "VERIFIED" if failed is None else "PARTIAL")
+                supply.validate_manifest(manifest, context=bundle["context"],
+                                         measurements=supply._measure_local(args.output, manifest))
+                self.assertFalse((args.output / supply.READY).exists())
+
+    def test_profile_timeout_cleanup_and_whole_deadline_never_expand_preparation(self):
+        bundle = fixture_bundle("all"); ids = bundle["manifest"]["requiredProfiles"]
+        for mode in ("timeout", "whole", "cleanup"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); output = root / "raw"; self.store(bundle["context"], output)
+                attempted = []
+                class Child:
+                    pid = 4567
+                    def __init__(child, command, env, start_new_session):
+                        child.profile = command[command.index("--profile") + 1]
+                        child.receipt = Path(command[command.index("--receipt") + 1])
+                        child.calls = 0; child.returncode = None; attempted.append(child.profile)
+                    def wait(child, timeout):
+                        child.calls += 1
+                        self.assertLessEqual(timeout, supply.PROFILE_SECONDS)
+                        if child.profile == ids[0]:
+                            if mode != "whole" and child.calls == 1:
+                                raise subprocess.TimeoutExpired("controlled profile", timeout)
+                            child.returncode = -9; return child.returncode
+                        receipt = next(p for p in bundle["manifest"]["profiles"] if p["id"] == child.profile)
+                        supply.write_new(child.receipt, supply.encode_json(receipt))
+                        child.returncode = 0; return 0
+                    def poll(child): return child.returncode
+                with mock.patch.object(supply.subprocess, "Popen", side_effect=Child), \
+                     mock.patch.object(supply.os, "killpg", side_effect=OSError("controlled cleanup") if mode == "cleanup" else None) as kill, \
+                     mock.patch.object(supply.time, "monotonic", side_effect=[0, 2401] if mode == "whole" else None,
+                                       return_value=0), self.assertRaisesRegex(ValueError, "cleanup unconfirmed" if mode == "cleanup" else "profiles NOT_READY"):
+                    supply._profiles(root, ids, output, True, supply.PREPARE_SECONDS, independent=True)
+                self.assertEqual(attempted, ids if mode == "timeout" else ids[:1])
+                self.assertEqual(kill.call_count, 0 if mode == "whole" else 1)
 
 class AnnotatedObjectTests(unittest.TestCase):
     def fake_api(self, path, deadline=None):

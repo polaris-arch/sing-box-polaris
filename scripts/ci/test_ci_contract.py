@@ -672,7 +672,7 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
   self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
+  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'")
   gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15','xcode-27'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
@@ -1801,7 +1801,7 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
 # Preserve the pre-supply selectors and real source ancestors, while proving
 # that a sibling canonical supplier cannot gate independent consumer jobs.
 _MATERIAL_OLD_SELECTORS = {'prepare_windows7': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')", 'build_darwin': "!inputs.source_generate_only && !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_windows': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_android_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable'", 'build_windows_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable'", 'build_linux_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable'", 'build_apple_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')"}
-_MATERIAL_REQUIRED_EXPRESSIONS = {'.github/workflows/build.yml': "github.event_name == 'workflow_dispatch' && inputs.build == 'All' && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/')", '.github/workflows/linux.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')", '.github/workflows/docker.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')"}
+_MATERIAL_REQUIRED_EXPRESSIONS = {'.github/workflows/build.yml': "github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Materials') && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/')", '.github/workflows/linux.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')", '.github/workflows/docker.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')"}
 _MATERIAL_CALLERS = [['.github/workflows/build.yml', 'build', 'all', 'calculate_version', 'C1_ALL_BINARY', '${{ matrix.arch }}', "${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}", "fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'", 'dist'], ['.github/workflows/build.yml', 'build_linux_client', 'all', 'calculate_version', 'C2_ALL_LINUX_CLIENT', '${{ matrix.go_arch }}', 'glibc', 'true', 'dist'], ['.github/workflows/linux.yml', 'build', 'linux', 'calculate_version', 'C3_LINUX', '${{ matrix.arch }}', 'musl', 'matrix.naive', 'dist'], ['.github/workflows/docker.yml', 'build_binary', 'docker', 'source', 'C4_DOCKER', '${{ matrix.arch }}', 'musl', 'matrix.naive', '.']]
 
 
@@ -1850,17 +1850,17 @@ class TestDebianMaterialWiring(unittest.TestCase):
    if filename=='docker.yml':
     self.assertNotIn('outputs',workflow['jobs']['build_binary'])
    # All selectors, source generation, staging and branch paths retain their
-   # old behavior. Only the exact current-tag full Final mode requests supply.
+   # old behavior. Only exact current-tag Materials and full Final request supply.
    for event in ('workflow_dispatch','push'):
     for ref in ('refs/tags/v1.15.0-polaris-alpha.12.14','refs/heads/fix/current'):
-     for build in ('All','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
+     for build in ('All','Materials','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
       for evidence in ('final','staging'):
        for source_only in (False,True):
         values={'github.event_name':event,'github.ref':ref,'inputs.build':build,
                 'inputs.evidence_mode':evidence,'inputs.source_generate_only':source_only}
         actual=_material_expression(mode[0]['env']['REQUIRED'],values)
         required=event=='workflow_dispatch' and ref.startswith('refs/tags/')
-        if filename=='build.yml':required=required and build=='All' and evidence=='final' and not source_only
+        if filename=='build.yml':required=required and build in ('All','Materials') and evidence=='final' and not source_only
         self.assertEqual(actual,'true' if required else 'false',(filename,values))
  def test_preexisting_all_skip_invalid_source_generation_combination_does_not_consume_checkpoint(self):
   # Root retains the original invalid All+source_generate_only all-skip shape.
@@ -1879,30 +1879,104 @@ class TestDebianMaterialWiring(unittest.TestCase):
   self.assertEqual(workflow['jobs']['source_proto']['if'],"inputs.build == 'Source' && inputs.source_generate_only")
   self.assertEqual(workflow['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
   self.assertEqual(workflow['jobs']['utls_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(workflow['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
+  self.assertEqual(workflow['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'")
  def test_checkpoint_rejection_runs_the_actual_bounded_preflight_shell(self):
   for filename,workflow in self.workflows().items():
    parent='source' if filename=='docker.yml' else 'calculate_version'
    mode=next(s for s in workflow['jobs'][parent]['steps'] if s.get('id')=='material_scope')
    self.assertIn('printf',mode['run']);self.assertIn('$GITHUB_OUTPUT',mode['run'])
+   accepted=set()
    for required in ('true','false','', 'unknown'):
     for artifact_id,digest in (('',''),('123',''),('','a'*64),('123','a'*64)):
      with self.subTest(workflow=filename,required=required,id_present=bool(artifact_id),digest_present=bool(digest)),tempfile.TemporaryDirectory() as tmp:
       out=Path(tmp)/'output'
-      env=dict(os.environ,REQUIRED=required,CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(out))
+      env=dict(os.environ,REQUIRED=required,MATERIALS_ONLY='false',SOURCE_GENERATE_ONLY='false',WINDOWS_NATIVE_PROOF='false',CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(out))
       result=subprocess.run(['bash','-euo','pipefail','-c',mode['run']],env=env,capture_output=True,text=True,timeout=10)
-      allowed=required in ('true','false') and bool(artifact_id)==bool(digest) and (required=='true' or not artifact_id)
-      self.assertEqual(result.returncode==0,allowed)
+      allowed=(required=='true' and bool(artifact_id) and bool(digest)) or (required=='false' and not artifact_id and not digest)
+      if required not in ('true','false'):guard='invalid Debian material mode'
+      elif bool(artifact_id)!=bool(digest):guard='Debian candidate requires both artifact ID and digest'
+      elif required=='false' and artifact_id:guard='Debian candidate is only allowed for Materials or required Final'
+      elif required=='true' and not artifact_id:guard='Final NOT_READY: an explicit completed Materials candidate is required'
+      else:guard=None
+      self.assertEqual(guard is None,allowed)
+      self.assertEqual(result.returncode,0 if allowed else 1)
+      self.assertEqual(result.stderr,'' if allowed else guard+'\n')
+      self.assertEqual(result.stdout,'')
       self.assertEqual(out.read_text() if out.exists() else '',('required='+required+'\n') if allowed else '')
+      if allowed:accepted.add((required,bool(artifact_id)))
+   self.assertEqual(accepted,{('true',True),('false',False)})
   # Source/Source-generate never reaches calculate_version; each real Source
   # entry therefore rejects nonempty seed inputs before checkout/preparation.
   for name in ('source_proto','source_gate','utls_gate'):
    first=self.workflows()['build.yml']['jobs'][name]['steps'][0]
-   self.assertEqual(first['name'],'Reject checkpoint outside material Final');self.assertEqual(first['shell'],'bash')
+   self.assertEqual(first['name'],'Reject prepared candidate in Source mode');self.assertEqual(first['shell'],'bash')
    for a,b in (('',''),('123',''),('','a'*64),('123','a'*64)):
     result=subprocess.run(['bash','-euo','pipefail','-c',first['run']],
-                          env=dict(os.environ,CHECKPOINT_ARTIFACT_ID=a,CHECKPOINT_DIGEST=b),capture_output=True,timeout=10)
-    self.assertEqual(result.returncode==0,not a and not b)
+                          env=dict(os.environ,CHECKPOINT_ARTIFACT_ID=a,CHECKPOINT_DIGEST=b),capture_output=True,text=True,timeout=10)
+    allowed=not a and not b
+    self.assertEqual(result.returncode,0 if allowed else 1)
+    self.assertEqual(result.stderr,'' if allowed else 'Debian checkpoint is not a Source input\n')
+    self.assertEqual(result.stdout,'')
+ def test_materials_selector_runs_only_identity_and_supplier_and_rejects_incompatible_inputs(self):
+  workflow=self.workflows()['build.yml'];jobs=workflow['jobs']
+  self.assertIn('Materials',workflow['on']['workflow_dispatch']['inputs']['build']['options'])
+  values={'inputs.build':'Materials','inputs.source_generate_only':False,
+          'inputs.evidence_mode':'final','inputs.windows_native_proof':False,
+          'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.17',
+          'cancelled()':False,'failure()':False}
+  selected=[]
+  for name,job in jobs.items():
+   context=dict(values)
+   for token in re.findall(r'needs\.[A-Za-z0-9_]+(?:\.outputs\.[A-Za-z0-9_]+|\.result)',job['if']):
+    context[token]='success' if token.endswith('.result') else 'true'
+   if _material_expression(job['if'],context):selected.append(name)
+  self.assertEqual(selected,['calculate_version','debian_materials'])
+  call=next(step for step in jobs['debian_materials']['steps'] if step.get('id')=='materials')
+  self.assertEqual(call['with']['materials-only'],"${{ inputs.build == 'Materials' && 'true' || 'false' }}")
+  action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
+  self.assertEqual(action['inputs']['materials-only']['default'],'false')
+  prepare=next(step for step in action['runs']['steps'] if step.get('id')=='prepare')
+  self.assertIn('mode_args=(--materials-only)',prepare['run'])
+  self.assertIn('"${mode_args[@]}"',prepare['run'])
+  self.assertEqual(prepare['env']['MATERIALS_ONLY'],'${{ inputs.materials-only }}')
+  mode=next(step for step in jobs['calculate_version']['steps'] if step.get('id')=='material_scope')
+  accepted=set()
+  for event in ('workflow_dispatch','push'):
+   for ref in ('refs/tags/v1.15.0-polaris-alpha.12.17','refs/heads/main'):
+    for evidence in ('final','staging'):
+     for source_only in (False,True):
+      for native in (False,True):
+       for artifact,digest in (('',''),('123','a'*64),('123',''),('','a'*64),('0','a'*64),('123','bad')):
+        bindings=dict(values,**{'github.event_name':event,'github.ref':ref,'inputs.evidence_mode':evidence,
+                               'inputs.source_generate_only':source_only,'inputs.windows_native_proof':native})
+        required=_material_expression(mode['env']['REQUIRED'],bindings)
+        with self.subTest(values=bindings,pair=(artifact,digest)),tempfile.TemporaryDirectory() as temporary:
+         output=Path(temporary)/'output'
+         env=dict(os.environ,REQUIRED=required,MATERIALS_ONLY='true',SOURCE_GENERATE_ONLY=str(source_only).lower(),
+                  WINDOWS_NATIVE_PROOF=str(native).lower(),CHECKPOINT_ARTIFACT_ID=artifact,
+                  CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(output))
+         result=subprocess.run(['bash','-euo','pipefail','-c',mode['run']],env=env,capture_output=True,text=True,timeout=10)
+         allowed=(event=='workflow_dispatch' and ref.startswith('refs/tags/') and evidence=='final'
+                  and not source_only and not native and (artifact,digest) in (('',''),('123','a'*64)))
+         if required!='true' or source_only or native:
+          guard='Materials requires exact-tag final identity and excludes source generation/native proof'
+         elif bool(artifact)!=bool(digest):guard='Debian candidate requires both artifact ID and digest'
+         elif artifact and (artifact!='123' or digest!='a'*64):guard='invalid exact candidate ID/digest'
+         else:guard=None
+         self.assertEqual(guard is None,allowed)
+         self.assertEqual(result.returncode,0 if allowed else 1)
+         self.assertEqual(result.stderr,'' if allowed else guard+'\n')
+         self.assertEqual(result.stdout,'')
+         self.assertEqual(output.read_text() if output.exists() else '', 'required=true\n' if allowed else '')
+         if allowed:accepted.add((artifact,digest))
+  self.assertEqual(accepted,{('',''),('123','a'*64)})
+  # Invalid Materials+source_generate_only must reach this rejecting preflight,
+  # rather than silently skipping every job or accidentally running Source.
+  self.assertTrue(_material_expression(jobs['calculate_version']['if'],dict(values,**{'inputs.source_generate_only':True})))
+  for filename,other in self.workflows().items():
+   if filename=='build.yml':continue
+   supplier=next(step for step in other['jobs']['debian_materials']['steps'] if step.get('id')=='materials')
+   self.assertNotIn('materials-only',supplier['with'])
  def test_every_heavy_frontier_preserves_old_ancestors_and_handles_optional_ready(self):
   workflows=self.workflows()
   for filename,name in (('build.yml','build'),('build.yml','build_linux_client'),('linux.yml','build')):
@@ -1915,7 +1989,7 @@ class TestDebianMaterialWiring(unittest.TestCase):
     for ancestor in ('success','failure','skipped','cancelled','','unknown'):
      for ready in ('success','failure','skipped','cancelled','','unknown'):
       for cancelled in (False,True):
-       for build in ('All','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
+       for build in ('All','Materials','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
         values={'needs.'+parent+'.result':ancestor,'needs.'+parent+'.outputs.material_required':mode,
                 'needs.debian_materials.result':ready,'cancelled()':cancelled,'failure()':ancestor=='failure',
                 'inputs.source_generate_only':False,'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.14','inputs.build':build}
@@ -1983,6 +2057,9 @@ class TestDebianMaterialWiring(unittest.TestCase):
    self.assertEqual(download['env']['MATERIAL_TARGET_ARCH'],arch);self.assertEqual(download['env']['MATERIAL_LIBC'],libc)
    self.assertEqual(download['env']['POLARIS_DEBIAN_REQUIRED'],'${{ needs.'+parent+'.outputs.material_required }}')
    self.assertEqual(download['env']['GH_TOKEN'],'${{ github.token }}')
+   self.assertIn('--checkpoint-artifact-id \"$CHECKPOINT_ARTIFACT_ID\" --checkpoint-artifact-digest \"$CHECKPOINT_DIGEST\"',run)
+   self.assertEqual(download['env']['CHECKPOINT_ARTIFACT_ID'],'${{ inputs.debian_checkpoint_artifact_id }}')
+   self.assertEqual(download['env']['CHECKPOINT_DIGEST'],'${{ inputs.debian_checkpoint_digest }}')
    self.assertEqual(job['permissions'],{'contents':'read','actions':'read'})
    keep=next(s for s in steps if s.get('name')=='Retain exact Debian material use')
    self.assertEqual(keep['if'],"${{ needs."+parent+".outputs.material_required == 'true' && ("+eligible+') }}')

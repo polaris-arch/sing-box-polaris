@@ -333,9 +333,7 @@ def _validate_manifest(manifest, *, context, measurements, profiles, schema):
     seed = manifest["seed"]
     if seed is not None:
         exact(seed, {"artifact", "context", "manifestSHA256"}, "seed fields")
-        old = validate_context(seed["context"])
-        require(old is not None and all(equal(seed["context"][key], context[key])
-                for key in CONTEXT_KEYS - {"runID", "runAttempt"}), "seed exact source/profile identity")
+        _candidate_identity(seed["context"], context)
         require(artifact_ref(seed["artifact"])["name"] == RAW_NAME, "seed raw only")
         sha(seed["manifestSHA256"])
     expected = dict(members)
@@ -441,7 +439,7 @@ def _validate_local_use_shape(use, artifact_name):
     manifest = use["manifest"]
     _validate_manifest(manifest, context=use["context"], measurements=None,
                        profiles=expected["profiles"], schema=LOCAL_MANIFEST)
-    require(manifest["seed"] is None and manifest["state"] == "VERIFIED"
+    require(manifest["state"] == "VERIFIED"
             and use["manifestSHA256"] == digest(encode_json(manifest)), "local complete manifest")
     for item in manifest["objects"]:
         owners = sorted(profile["id"] for profile in manifest["profiles"] if item["url"] in profile["urls"])
@@ -483,6 +481,7 @@ def _validate_local_binding(use, binding, canonical_manifest, artifact_name):
                 and item["profiles"] == sorted(subset.intersection(original["profiles"])),
                 "local URL/CAS differs from canonical bytes")
     profiles = {profile["id"]: profile for profile in canonical_manifest["profiles"]}
+    require(equal(use["manifest"]["seed"], canonical_manifest["seed"]), "local/canonical prepared candidate identity")
     for profile in use["manifest"]["profiles"]:
         original = profiles.get(profile["id"])
         # Both freshly generated keyrings were used by the fixed original
@@ -750,7 +749,7 @@ def _run(context, deadline):
     return run
 
 
-def _job(context, completed=True, deadline=None):
+def _jobs(context, deadline=None):
     rows, total, seen = [], None, set()
     for page in range(1, 5):
         result = _api("actions/runs/" + str(context["runID"]) + "/attempts/"
@@ -768,6 +767,11 @@ def _job(context, completed=True, deadline=None):
             break
         require(len(rows) < total and len(result["jobs"]) == 100, "jobs pagination")
     require(len(rows) == total, "complete jobs pages")
+    return rows
+
+
+def _job(context, completed=True, deadline=None):
+    rows = _jobs(context, deadline)
     matches = [row for row in rows if row.get("name") == SUPPLIER_NAME]
     require(len(matches) == 1, "unique actual supplier job")
     supplier_ref(matches[0], context, completed=completed)
@@ -905,11 +909,13 @@ def _profile_worker(root, profile_id, work, receipt):
     write_new(receipt, encode_json(result))
 
 
-def _profiles(root, profile_ids, raw_store, capture, deadline):
-    results = []
+def _profiles(root, profile_ids, raw_store, capture, deadline, *, independent=False):
+    results, failures = [], []
     for profile_id in profile_ids:
         remaining = deadline - time.monotonic()
-        require(remaining > 0, "whole preparation deadline")
+        if remaining <= 0:
+            failures.append(profile_id + ": whole preparation deadline")
+            break
         with tempfile.TemporaryDirectory(prefix="debian-profile-", dir=Path(raw_store).parent) as directory:
             work = Path(directory)
             check_directory(work, private=True)
@@ -924,27 +930,42 @@ def _profiles(root, profile_ids, raw_store, capture, deadline):
                        "--cronet-root", str(root), "--profile", profile_id, "--work", str(work),
                        "--receipt", str(work / "profile.json")]
             child = subprocess.Popen(command, env=env, start_new_session=True)
+            failed = None
             try:
-                code = child.wait(timeout=min(PROFILE_SECONDS, remaining))
-                require(code == 0, "original profile process failed: " + profile_id)
+                try:
+                    code = child.wait(timeout=min(PROFILE_SECONDS, remaining))
+                    if code != 0:
+                        failed = "original profile process failed: " + profile_id
+                except subprocess.TimeoutExpired:
+                    failed = "original profile process deadline: " + profile_id
             finally:
                 if child.poll() is None:
-                    primary = sys.exc_info()[1]
                     try:
                         os.killpg(child.pid, signal.SIGKILL)
                         child.wait(timeout=5)
                     except (OSError, subprocess.TimeoutExpired) as cleanup:
-                        if primary is not None:
-                            primary.add_note("profile process group cleanup unconfirmed")
-                        else:
-                            raise cleanup
-            record = decode_json(read_regular(work / "profile.json"))
-            validate_profile(record, profile_id, load_profile_plan())
+                        raise ValueError("profile process group cleanup unconfirmed") from cleanup
+            if failed is not None:
+                if not independent:
+                    require(False, failed)
+                failures.append(failed)
+                print(encode_json({"phase": "profile_not_ready", "profile": profile_id,
+                                   "failure": failed}).decode().strip(), flush=True)
+                continue
+            try:
+                record = decode_json(read_regular(work / "profile.json"))
+                validate_profile(record, profile_id, load_profile_plan())
+            except (ValueError, OSError):
+                if not independent:
+                    raise
+                failures.append("invalid original profile receipt: " + profile_id)
+                continue
             results.append(record)
-            if capture:
+            if capture or independent:
                 current = decode_json(read_regular(Path(raw_store) / MANIFEST))
                 current["profiles"] = list(results)
                 replace_json(Path(raw_store) / MANIFEST, current)
+    require(not failures, "profiles NOT_READY: " + "; ".join(failures))
     return results
 
 
@@ -1048,7 +1069,37 @@ def _prune_export(directory):
             path.unlink()
 
 
-def _seed_checkpoint(args, context, output):
+def _candidate_identity(old, current):
+    validate_context(old)
+    require(all(equal(old[key], current[key]) for key in CONTEXT_KEYS
+                - {"runID", "runAttempt", "workflow", "role"}), "candidate exact source/tag identity")
+    require((old["role"] == current["role"] and old["workflow"] == current["workflow"])
+            or (old["role"] == "all" and current["role"] in ("linux", "docker")),
+            "candidate compatible role/workflow")
+
+
+def _materials_run(context, run, artifact, deadline):
+    # The run API does not expose dispatch inputs. Check the actual selected
+    # job frontier instead: only source identity and the supplier may have run.
+    require(context["role"] == "all" and run["status"] == "completed"
+            and run.get("conclusion") in ("success", "failure"), "completed Materials run required")
+    active = [row for row in _jobs(context, deadline) if row.get("conclusion") != "skipped"]
+    require(len(active) == 2 and {row.get("name") for row in active}
+            == {"Calculate version", SUPPLIER_NAME}, "Materials-only actual job frontier")
+    for row in active:
+        require(row.get("status") == "completed" and row.get("head_sha") == context["sourceCommit"]
+                and type(row.get("run_id")) is int and row["run_id"] == context["runID"]
+                and type(row.get("run_attempt")) is int and row["run_attempt"] == context["runAttempt"],
+                "Materials actual source/run/attempt job")
+    source = next(row for row in active if row["name"] == "Calculate version")
+    supplier = next(row for row in active if row["name"] == SUPPLIER_NAME)
+    require(source.get("conclusion") == "success" and supplier.get("conclusion") in ("success", "failure"),
+            "Materials source/supplier completion")
+    require(_timestamp(supplier.get("started_at")) <= _timestamp(artifact.get("created_at"))
+            <= _timestamp(supplier.get("completed_at")), "candidate artifact actual supplier attempt/time")
+
+
+def _seed_checkpoint(args, context, output, *, profiles=None, prepared=False):
     require(bool(args.checkpoint_artifact_id) == bool(args.checkpoint_artifact_digest),
             "checkpoint ID/digest pair")
     if not args.checkpoint_artifact_id:
@@ -1076,19 +1127,24 @@ def _seed_checkpoint(args, context, output):
             manifest, measurements = _measure_zip(archive)
             old_context = manifest.get("context")
             validate_context(old_context)
-            require(old_context["runID"] == workflow_run["id"]
-                    and all(equal(old_context[key], context[key])
-                            for key in CONTEXT_KEYS - {"runID", "runAttempt"}),
-                    "checkpoint exact source/tag/role; actual run/attempt")
+            require(old_context["runID"] == workflow_run["id"], "checkpoint actual run")
+            _candidate_identity(old_context, context)
             # Attempt comes from the measured manifest, then is independently
             # checked through that exact API attempt, never guessed from latest.
-            run = _run(old_context, time.monotonic() + 120)
+            metadata_deadline = time.monotonic() + 120
+            run = _run(old_context, metadata_deadline)
             require(run["status"] == "completed", "checkpoint actual terminal attempt")
-            _artifact(old, old_context, run, RAW_NAME)
+            require(equal(_select_artifact(old_context, args.checkpoint_artifact_id, expected_digest,
+                                           RAW_NAME, run, metadata_deadline), old), "stable checkpoint metadata")
+            if prepared:
+                _materials_run(old_context, run, old, metadata_deadline)
             validate_manifest(manifest, context=old_context, measurements=measurements)
-            _copy_raw_objects(archive, manifest, output)
+            selected = set(profiles if profiles is not None else required_profiles(context))
+            objects = [dict(item, profiles=sorted(selected.intersection(item["profiles"])))
+                       for item in manifest["objects"] if selected.intersection(item["profiles"])]
+            _copy_raw_objects(archive, dict(manifest, objects=objects), output)
     current = decode_json(read_regular(Path(output) / MANIFEST))
-    current["objects"] = manifest["objects"]
+    current["objects"] = objects
     current["profiles"] = []
     current["state"] = "PARTIAL"
     current["seed"] = {"artifact": artifact_ref(old), "context": old_context,
@@ -1109,6 +1165,10 @@ def prepare(args):
     context = actions_context(args.role)
     _prepared(args.cronet_root)
     _fresh_stage(args.cronet_root)
+    materials_only = args.materials_only
+    require(not materials_only or args.role == "all", "Materials prepares the all-role union only")
+    require(materials_only or (args.checkpoint_artifact_id and args.checkpoint_artifact_digest),
+            "Final NOT_READY: explicit prepared candidate ID/digest required")
     deadline = time.monotonic() + PREPARE_SECONDS
     output = new_directory(args.output)
     new_directory(output / "objects")
@@ -1118,8 +1178,9 @@ def prepare(args):
     write_new(output / MANIFEST, encode_json(manifest))
     primary = None
     try:
-        _seed_checkpoint(args, context, output)
-        receipts = _profiles(args.cronet_root, manifest["requiredProfiles"], output, True, deadline)
+        _seed_checkpoint(args, context, output, prepared=True)
+        receipts = _profiles(args.cronet_root, manifest["requiredProfiles"], output, materials_only, deadline,
+                             independent=True)
         manifest = decode_json(read_regular(output / MANIFEST))
         # Discard seed candidates not actually selected/reverified this time.
         required = {url for profile in receipts for url in profile["urls"]}
@@ -1218,6 +1279,8 @@ def consume_local(args):
                     ("SYSROOT_ARCH", "target_os", "target_cpu", "EXTRA_FLAGS", "OPENWRT_FLAGS",
                      "POLARIS_CRONET_CAPTURE_DIR", "POLARIS_CRONET_CAPTURE_PROFILE", "POLARIS_CRONET_RAW_STORE")),
             "fresh local consumer environment")
+    require(args.checkpoint_artifact_id and args.checkpoint_artifact_digest,
+            "consumer NOT_READY: explicit prepared candidate ID/digest required")
     artifact, expected = resolve_consumer(args.role, args.caller, args.target_arch, args.libc)
     consumer = _consumer_job(context, args.caller, time.monotonic() + 120, artifact_name=artifact)
     output = new_directory(args.output)
@@ -1229,7 +1292,8 @@ def consume_local(args):
                 "planSHA256": profile_plan_sha256(), "requiredProfiles": expected["profiles"],
                 "state": "PARTIAL", "objects": [], "profiles": [], "seed": None}
     write_new(raw_store / MANIFEST, encode_json(manifest))
-    receipts = _profiles(args.cronet_root, expected["profiles"], raw_store, True,
+    _seed_checkpoint(args, context, raw_store, profiles=expected["profiles"], prepared=True)
+    receipts = _profiles(args.cronet_root, expected["profiles"], raw_store, False,
                          time.monotonic() + min(PREPARE_SECONDS, PROFILE_SECONDS * len(expected["profiles"])))
     manifest = decode_json(read_regular(raw_store / MANIFEST))
     urls = {url for receipt in receipts for url in receipt["urls"]}
@@ -1317,6 +1381,8 @@ def main():
     command.add_argument("--output", type=Path, required=True)
     command.add_argument("--checkpoint-artifact-id", type=int)
     command.add_argument("--checkpoint-artifact-digest")
+    command.add_argument("--materials-only", action="store_true",
+                         help="All-role preparation only; permits bounded cold origin acquisition")
     command = sub.add_parser("ready")
     command.add_argument("--input", type=Path, required=True)
     command.add_argument("--raw-artifact-id", type=int, required=True)
@@ -1329,6 +1395,9 @@ def main():
         if name == "consume":
             command.add_argument("--ready-artifact-id", type=int, required=True)
             command.add_argument("--ready-artifact-digest", required=True)
+        else:
+            command.add_argument("--checkpoint-artifact-id", type=int, required=True)
+            command.add_argument("--checkpoint-artifact-digest", required=True)
         command.add_argument("--caller", choices=("C1_ALL_BINARY", "C2_ALL_LINUX_CLIENT", "C3_LINUX", "C4_DOCKER"), required=True)
         command.add_argument("--target-arch", required=True)
         command.add_argument("--libc", choices=("glibc", "musl"), required=True)

@@ -28,18 +28,37 @@ jobs:
         REQUIRED: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
         CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
         CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIALS_ONLY: 'false'
+        SOURCE_GENERATE_ONLY: 'false'
+        WINDOWS_NATIVE_PROOF: 'false'
       shell: bash
       run: |
         if [[ "$REQUIRED" != "true" && "$REQUIRED" != "false" ]]; then
           echo "invalid Debian material mode" >&2
           exit 1
         fi
+        if [[ "$MATERIALS_ONLY" != "true" && "$MATERIALS_ONLY" != "false" ]]; then
+          echo "invalid Materials-only selector" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" == "true" && ( "$REQUIRED" != "true" || "$SOURCE_GENERATE_ONLY" != "false" || "$WINDOWS_NATIVE_PROOF" != "false" ) ]]; then
+          echo "Materials requires exact-tag final identity and excludes source generation/native proof" >&2
+          exit 1
+        fi
         if [[ -n "$CHECKPOINT_ARTIFACT_ID" && -z "$CHECKPOINT_DIGEST" || -z "$CHECKPOINT_ARTIFACT_ID" && -n "$CHECKPOINT_DIGEST" ]]; then
-          echo "Debian checkpoint requires both artifact ID and digest" >&2
+          echo "Debian candidate requires both artifact ID and digest" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && ( ! "$CHECKPOINT_ARTIFACT_ID" =~ ^[1-9][0-9]*$ || ! "$CHECKPOINT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ) ]]; then
+          echo "invalid exact candidate ID/digest" >&2
           exit 1
         fi
         if [[ "$REQUIRED" != "true" && ( -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ) ]]; then
-          echo "Debian checkpoint is only allowed in required material Final mode" >&2
+          echo "Debian candidate is only allowed for Materials or required Final" >&2
+          exit 1
+        fi
+        if [[ "$REQUIRED" == "true" && "$MATERIALS_ONLY" != "true" && -z "$CHECKPOINT_ARTIFACT_ID" ]]; then
+          echo "Final NOT_READY: an explicit completed Materials candidate is required" >&2
           exit 1
         fi
         printf 'required=%s\n' "$REQUIRED" >> "$GITHUB_OUTPUT"
@@ -146,6 +165,7 @@ jobs:
           python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role docker \
             --caller C4_DOCKER --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            --checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
         fi
@@ -153,6 +173,8 @@ jobs:
         go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.source.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
         MATERIAL_LIBC: musl
         GH_TOKEN: ${{ github.token }}
@@ -614,12 +636,12 @@ jobs:
   workflow_dispatch:
     inputs:
       debian_checkpoint_artifact_id:
-        description: Optional exact same-source/tag/role raw checkpoint; requires its digest
+        description: Exact completed Materials raw candidate ID; optional resume in Materials, mandatory in Final
         type: string
         required: false
         default: ''
       debian_checkpoint_digest:
-        description: Exact checkpoint artifact ZIP digest; no latest or automatic resume
+        description: Paired immutable candidate ZIP SHA256; same source/tag/plan, no latest or automatic resume
         type: string
         required: false
         default: ''
@@ -627,6 +649,6 @@ jobs:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.12.16
+        default: v1.15.0-polaris-alpha.12.17
 permissions:
   contents: read

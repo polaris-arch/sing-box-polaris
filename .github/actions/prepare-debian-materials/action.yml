@@ -1,12 +1,16 @@
 name: Prepare exact Debian raw inputs
 description: Authenticate exact profiles, checkpoint complete raw data, then bind READY to its upload.
 inputs:
+  materials-only:
+    description: All-role preparation permits bounded cold acquisition; Final is strict candidate-only
+    required: false
+    default: 'false'
   checkpoint-artifact-id:
-    description: Optional exact compatible raw checkpoint artifact ID
+    description: Completed all-role Materials candidate ID; optional preparation resume, mandatory Final
     required: false
     default: ''
   checkpoint-artifact-digest:
-    description: Paired exact raw checkpoint ZIP digest
+    description: Paired immutable candidate ZIP SHA256; exact source, tag and plan
     required: false
     default: ''
   role:
@@ -74,16 +78,24 @@ runs:
     id: prepare
     shell: bash
     env:
+      MATERIALS_ONLY: ${{ inputs.materials-only }}
       MATERIAL_ROLE: ${{ inputs.role }}
       CHECKPOINT_ARTIFACT_ID: ${{ inputs.checkpoint-artifact-id }}
       CHECKPOINT_DIGEST: ${{ inputs.checkpoint-artifact-digest }}
     run: |
       set -euo pipefail
+      mode_args=()
+      if [[ "$MATERIALS_ONLY" == "true" ]]; then
+        mode_args=(--materials-only)
+      elif [[ "$MATERIALS_ONLY" != "false" ]]; then
+        echo "invalid Materials-only selector" >&2
+        exit 1
+      fi
       checkpoint_args=()
       if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
         checkpoint_args=(--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST")
       fi
-      python3 scripts/ci/cronet_material_supply.py prepare --cronet-root "$HOME/cronet-go" --role "$MATERIAL_ROLE" --output "$RUNNER_TEMP/debian-material-raw" "${checkpoint_args[@]}"
+      python3 scripts/ci/cronet_material_supply.py prepare --cronet-root "$HOME/cronet-go" --role "$MATERIAL_ROLE" --output "$RUNNER_TEMP/debian-material-raw" "${checkpoint_args[@]}" "${mode_args[@]}"
   - name: Checkpoint complete raw objects even after failed preparation
     id: raw-upload
     if: always()

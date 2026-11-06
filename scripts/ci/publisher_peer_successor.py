@@ -15,8 +15,8 @@ import stat
 import publisher_peer_validation as v
 from release_identity import REPO, RID, same_identity
 
-VERSION = '1.15.0-polaris-alpha.12.16'
-PATH = 'release/ci/publisher-peer-evidence-12.16.json'
+VERSION = '1.15.0-polaris-alpha.12.17'
+PATH = 'release/ci/publisher-peer-evidence-12.17.json'
 INDEX_LIMIT = 16 * 1024 * 1024
 DISPOSITION = v.DISPOSITION
 JSON_LIMIT = v.JSON_LIMIT
