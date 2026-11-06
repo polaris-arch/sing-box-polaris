@@ -3,16 +3,21 @@ package api
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/daemon"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	health "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -22,10 +27,14 @@ import (
 type blockingAPIManaged struct {
 	daemon.UnimplementedManagedServiceServer
 	entered, release chan struct{}
+	returned         chan struct{}
 }
 
 func (b *blockingAPIManaged) GetSystemProxyStatus(ctx context.Context, _ *emptypb.Empty) (*daemon.SystemProxyStatus, error) {
 	close(b.entered)
+	if b.returned != nil {
+		defer close(b.returned)
+	}
 	select {
 	case <-b.release:
 		return &daemon.SystemProxyStatus{}, nil
@@ -199,5 +208,243 @@ func TestRuntimeAPIExclusiveClaimRejectsConcurrentOrdinaryBind(t *testing.T) {
 	}
 	if errors.Is(err, net.ErrClosed) {
 		t.Fatal("fixture did not test a live claim", err)
+	}
+}
+
+// The real RPC returns on owner cancellation, but its HTTP dispatch tail is
+// deliberately retained. Closing the physical h2c carrier must not let Box
+// report success before that admitted handler is joined.
+func TestRuntimeAPICloseJoinsHeldDispatchAfterCarrierShutdown(t *testing.T) {
+	instance, api, ctx, _ := handoffBox(t, "old")
+	origin := api.runtime.generations[0]
+	endpoint := origin.endpoint
+	held := &blockingAPIManaged{entered: make(chan struct{}), release: make(chan struct{}), returned: make(chan struct{})}
+	daemon.RegisterManagedServiceServer(origin.grpc, held)
+	captured := make(chan *apiOwnedConn, 1)
+	tailEntered := make(chan struct{})
+	tailRelease := make(chan struct{})
+	defer func() {
+		if !runtimeAPIChannelClosed(tailRelease) {
+			close(tailRelease)
+		}
+	}()
+	original := origin.handler
+	// Installed before any request exists; only this existing test method is
+	// held, with the same production ingress and gRPC server underneath it.
+	origin.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != daemon.ManagedService_GetSystemProxyStatus_FullMethodName {
+			original.ServeHTTP(w, r)
+			return
+		}
+		carrier, _ := r.Context().Value(apiConnContextKey{}).(*apiOwnedConn)
+		captured <- carrier
+		original.ServeHTTP(w, r)
+		close(tailEntered)
+		<-tailRelease
+	})
+	connection, err := grpc.NewClient(endpoint.listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(daemon.NewClientAuthUnaryInterceptor("old")), grpc.WithStreamInterceptor(daemon.NewClientAuthStreamInterceptor("old")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	ordinary := make(chan error, 1)
+	go func() {
+		_, err := daemon.NewManagedServiceClient(connection).GetSystemProxyStatus(ctx, &emptypb.Empty{})
+		ordinary <- err
+	}()
+	select {
+	case <-held.entered:
+	case <-ctx.Done():
+		t.Fatal("real RPC never entered", ctx.Err())
+	}
+	var carrier *apiOwnedConn
+	select {
+	case carrier = <-captured:
+	case <-ctx.Done():
+		t.Fatal("RPC has no captured carrier", ctx.Err())
+	}
+	endpoint.mu.Lock()
+	_, retained := endpoint.conns[carrier]
+	owned := carrier != nil && carrier.generation == origin
+	endpoint.mu.Unlock()
+	if !retained || !owned {
+		t.Fatal("controlled RPC did not use its actual generation-owned carrier")
+	}
+	stream, err := daemon.NewStartedServiceClient(connection).SubscribeOutbounds(ctx, &emptypb.Empty{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Recv(); err != nil {
+		t.Fatal("inventory did not enter the real attached graph", err)
+	}
+	streamDone := make(chan error, 1)
+	readerReady := make(chan struct{})
+	go func() {
+		close(readerReady)
+		for {
+			if _, err := stream.Recv(); err != nil {
+				streamDone <- err
+				return
+			}
+		}
+	}()
+	select {
+	case <-readerReady:
+	case <-ctx.Done():
+		t.Fatal("inventory terminal reader did not start", ctx.Err())
+	}
+	closeStarted := time.Now()
+	closed := make(chan error, 1)
+	go func() { closed <- instance.CloseWithResult() }()
+	select {
+	case <-tailEntered:
+	case err := <-closed:
+		t.Fatal("Close returned before held dispatch reached its cancellation tail", err)
+	case <-ctx.Done():
+		t.Fatalf("owner did not cancel the real RPC: %v; %s", ctx.Err(), runtimeAPICloseState(api))
+	}
+	select {
+	case <-held.returned:
+	case <-ctx.Done():
+		t.Fatal("actual RPC callback did not return on owner cancellation", ctx.Err())
+	}
+	select {
+	case err := <-ordinary:
+		if err := runtimeAPISubscriptionTerminalError(ctx, err); err != nil {
+			t.Fatal("ordinary RPC ended through client deadline/cancellation", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("ordinary client did not observe owner termination", ctx.Err())
+	}
+	select {
+	case err := <-streamDone:
+		if err := runtimeAPISubscriptionTerminalError(ctx, err); err != nil {
+			t.Fatal("inventory ended through client deadline/cancellation", err)
+		}
+	case <-ctx.Done():
+		t.Fatal("inventory client did not observe owner termination", ctx.Err())
+	}
+	// The map is removed only by the actual apiOwnedConn.Close. Check that
+	// physical close independently of request-context cancellation. Poll only
+	// within handoffBox's unchanged, single five-second overall context.
+	tick := time.NewTicker(time.Millisecond)
+	defer tick.Stop()
+	for {
+		endpoint.mu.Lock()
+		_, retained = endpoint.conns[carrier]
+		closing := endpoint.closing
+		endpoint.mu.Unlock()
+		if !retained && closing {
+			break
+		}
+		select {
+		case err := <-closed:
+			t.Fatal("Close returned before physical carrier shutdown and held-handler join", err)
+		case <-tick.C:
+		case <-ctx.Done():
+			t.Fatalf("carrier shutdown missed total deadline: %v; %s", ctx.Err(), runtimeAPICloseState(api))
+		}
+	}
+	select {
+	case <-endpoint.serveDone:
+	case <-ctx.Done():
+		t.Fatal("endpoint Serve did not return", ctx.Err())
+	}
+	// Negative control: real transport termination has already occurred, but
+	// it is not sufficient while one admitted HTTP handler remains held.
+	if runtimeAPIChannelClosed(origin.done) || runtimeAPIChannelClosed(api.runtime.closeDone) {
+		t.Fatalf("handler not joined before generation/owner completion; %s", runtimeAPICloseState(api))
+	}
+	select {
+	case err := <-closed:
+		t.Fatal("Box falsely completed while admitted dispatch was held", err)
+	default:
+	}
+	t.Logf("carrier shutdown with dispatch still held after %s; %s", time.Since(closeStarted), runtimeAPICloseState(api))
+	close(tailRelease)
+	select {
+	case err := <-closed:
+		if err != nil || ctx.Err() != nil {
+			t.Fatalf("Close did not join released dispatch within total deadline: %v context=%v", err, ctx.Err())
+		}
+	case <-ctx.Done():
+		t.Fatalf("released dispatch did not join before total deadline: %v; %s", ctx.Err(), runtimeAPICloseState(api))
+	}
+	origin.mu.Lock()
+	ordinaryCount := origin.ordinary
+	origin.mu.Unlock()
+	endpoint.mu.Lock()
+	carrierCount := len(endpoint.conns)
+	endpoint.mu.Unlock()
+	if !runtimeAPIChannelClosed(origin.done) || !runtimeAPIChannelClosed(api.runtime.closeDone) || ordinaryCount != 0 || carrierCount != 0 {
+		t.Fatalf("Close retained real handler/carrier/borrower; %s", runtimeAPICloseState(api))
+	}
+}
+
+func TestRuntimeAPIClientCancellationDoesNotProveOwnerShutdown(t *testing.T) {
+	_, api, ctx, _ := handoffBox(t, "old")
+	origin := api.runtime.generations[0]
+	connection, err := grpc.NewClient(origin.endpoint.listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(daemon.NewClientAuthUnaryInterceptor("old")), grpc.WithStreamInterceptor(daemon.NewClientAuthStreamInterceptor("old")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	request, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stream, err := daemon.NewStartedServiceClient(connection).SubscribeOutbounds(request, &emptypb.Empty{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Recv(); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	terminal := make(chan error, 1)
+	go func() {
+		for {
+			if _, err := stream.Recv(); err != nil {
+				terminal <- err
+				return
+			}
+		}
+	}()
+	select {
+	case err := <-terminal:
+		if status.Code(err) != codes.Canceled || !errors.Is(request.Err(), context.Canceled) {
+			t.Fatalf("negative control did not reach actual client cancellation: %v context=%v", err, request.Err())
+		}
+		if rejected := runtimeAPISubscriptionTerminalError(request, err); rejected == nil || !strings.Contains(rejected.Error(), "request ended independently") {
+			t.Fatalf("client cancellation was accepted as owner shutdown: %v", rejected)
+		}
+	case <-ctx.Done():
+		t.Fatal("client cancellation did not actually terminate stream", ctx.Err())
+	}
+	if runtimeAPIChannelClosed(origin.done) || runtimeAPIChannelClosed(origin.endpoint.serveDone) || runtimeAPIChannelClosed(api.runtime.closeDone) {
+		t.Fatal("negative control unexpectedly closed live API owner")
+	}
+	// A real successful public RPC proves the owner is still usable. Merely
+	// inspecting open done channels would not establish the positive control.
+	if _, err := daemon.NewRuntimeConfigServiceClient(connection).GetRuntimeCapabilities(ctx, &emptypb.Empty{}); err != nil {
+		t.Fatal("client cancellation also destroyed live API owner", err)
+	}
+}
+
+func TestRuntimeAPISubscriptionTerminalGuardRejectsDeadline(t *testing.T) {
+	for name, terminal := range map[string]error{
+		"RPC deadline":     status.Error(codes.DeadlineExceeded, "synthetic deadline negative control"),
+		"context deadline": context.DeadlineExceeded,
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := runtimeAPISubscriptionTerminalError(context.Background(), terminal)
+			if err == nil || !strings.Contains(err.Error(), "subscription reached deadline") {
+				t.Fatalf("deadline was accepted as owner shutdown: %v", err)
+			}
+		})
+	}
+	if err := runtimeAPISubscriptionTerminalError(context.Background(), io.EOF); err != nil {
+		t.Fatal("live-request transport EOF was rejected", err)
+	}
+	if err := runtimeAPISubscriptionTerminalError(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "no terminal error") {
+		t.Fatal("missing terminal was accepted", err)
 	}
 }
