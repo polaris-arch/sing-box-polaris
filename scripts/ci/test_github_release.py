@@ -526,13 +526,75 @@ class GateTests(unittest.TestCase):
         self.enterContext(generic_algorithm_fixture())
 
     def test_scope_preserved(self):
+        import yaml
         s=json.loads(p.SCOPE.read_text())
         self.assertEqual(len(s['all']['matrices']['build']['include'])+len(s['all']['matrices']['build_windows7']['include']),38)
         for role,scope in s.items():
             self.assertEqual(set(scope['requiredArtifacts']),set(scope['payloadRules']))
             self.assertEqual(len(scope['requiredArtifacts']),len(set(scope['requiredArtifacts'])))
-        self.assertEqual(len(s['docker']['matrices']['build_binary']['include']),10)
-        self.assertEqual(len(s['docker']['matrices']['build_docker']['include']),9)
+            self.assertEqual(set(scope['receiptJobs']),set(scope['requiredJobs']))
+        self.assertEqual({role:len(s[role]['requiredArtifacts']) for role in ('all','linux','docker')},
+                         {'all':74,'linux':14,'docker':22})
+        self.assertEqual({role:len(scope['receiptJobs']) for role,scope in s.items()},
+                         {'all':16,'linux':3,'docker':21,'signed':16})
+        for role in ('all','signed'):
+            self.assertEqual(sum(len(s[role]['matrices'][job]['include'])
+                                 for job in ('build','build_windows7','build_darwin','build_windows')),44)
+        baseline=json.loads((p.ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']['docker.yml']
+        jobs=yaml.safe_load((p.ROOT/'.github/workflows/docker.yml').read_text())['jobs']
+        products={'linux/amd64':'','linux/arm64':'_arm64','linux/386':'_386',
+                  'linux/arm/v7':'_armv7','linux/arm/v6':'_armv6','linux/mipsle':'_mipsle',
+                  'linux/riscv64':'_riscv64','linux/loong64':'_loong64',
+                  'linux/ppc64le':'_ppc64le','linux/s390x':'_s390x'}
+        binary_rows={row['docker_platform']:row for row in baseline['build_binary']['include']}
+        image_rows={row['platform']:row for row in baseline['build_docker']['include']}
+        self.assertEqual(len(baseline['build_binary']['include']),10)
+        self.assertEqual(len(baseline['build_docker']['include']),9)
+        self.assertEqual(set(binary_rows),set(products))
+        self.assertEqual(set(image_rows),set(products)-{'linux/mipsle'})
+        expected_jobs=set();expected_artifacts={'publisher-run-receipt','debian-candidate-raw','debian-material-ready'}
+        for platform,suffix in products.items():
+            binary='build_binary'+suffix;expected_jobs.add(binary)
+            row=binary_rows[platform];job=jobs[binary]
+            self.assertEqual(job['name'],binary)
+            self.assertEqual(job['needs'],['source'])
+            self.assertEqual(job['strategy']['matrix'],{'include':[row]})
+            self.assertEqual(s['docker']['matrices'][binary],job['strategy']['matrix'])
+            self.assertIs(job['strategy']['fail-fast'],False)
+            self.assertNotIn('needs.debian_materials',job['if'])
+            self.assertEqual(job['steps'],jobs['build_binary']['steps'])
+            for name in ('Build (naive)','Build (non-naive)'):
+                self.assertIn('go build',next(step for step in job['steps'] if step.get('name')==name)['run'])
+            prepare=next(step for step in job['steps'] if step.get('name')=='Prepare artifact')
+            self.assertIn('platform=${{ matrix.docker_platform }}',prepare['run'])
+            upload=next(step for step in job['steps'] if step.get('name')=='Upload binary')
+            self.assertEqual(upload['with']['name'],'binary-${{ env.PLATFORM_PAIR }}')
+            expected_artifacts.add('binary-'+platform.replace('/','-'))
+            if platform=='linux/mipsle':continue
+            image='build_docker'+suffix;expected_jobs.add(image);job=jobs[image]
+            self.assertEqual(job['name'],image)
+            self.assertEqual(job['needs'],[binary,'source'])
+            self.assertEqual(job['strategy']['matrix'],{'include':[image_rows[platform]]})
+            self.assertEqual(s['docker']['matrices'][image],job['strategy']['matrix'])
+            self.assertIs(job['strategy']['fail-fast'],False)
+            self.assertEqual(job['steps'],jobs['build_docker']['steps'])
+            self.assertNotIn('always()',job.get('if',''))
+            prepare=next(step for step in job['steps'] if step.get('name')=='Prepare')
+            self.assertIn('platform=${{ matrix.platform }}',prepare['run'])
+            download=next(step for step in job['steps'] if step.get('name')=='Download binary')
+            self.assertEqual(download['with'],{'name':'binary-${{ env.PLATFORM_PAIR }}','path':'.'})
+            build=next(step for step in job['steps'] if step.get('uses')=='docker/build-push-action@v6')
+            self.assertFalse(build['with']['push']);self.assertIn('type=oci,dest=',build['with']['outputs'])
+            upload=next(step for step in job['steps'] if step.get('name')=='Upload OCI archive')
+            self.assertEqual(upload['with']['name'],'oci-${{ env.PLATFORM_PAIR }}')
+            expected_artifacts.add('oci-'+platform.replace('/','-'))
+        self.assertEqual(set(s['docker']['matrices']),expected_jobs)
+        self.assertEqual({name for name in jobs if name.startswith(('build_binary','build_docker'))},expected_jobs)
+        self.assertEqual(set(s['docker']['requiredArtifacts']),expected_artifacts)
+        self.assertEqual(set(s['docker']['requiredJobs']),expected_jobs|{'source','debian_materials'})
+        self.assertEqual(jobs['publisher_receipt']['needs'],list(s['docker']['receiptJobs']))
+        self.assertEqual(s['docker']['receiptJobs'],{name:'debian_required' if name=='debian_materials' else 'required'
+                                                   for name in expected_jobs|{'source','debian_materials'}})
 
     def test_reviewed_current_version_renders_all_linux_and_signed_payloads(self):
         scope=p.release_scope(p.VERSION)

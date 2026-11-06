@@ -126,7 +126,9 @@ class EfficiencyTests(unittest.TestCase):
         scopes = json.loads((ROOT / 'release/ci/publisher-upstream-scope.json').read_text())
         for name, role in [('build', 'all'), ('signed-release', 'signed')]:
             jobs = workflow(name)['jobs']
-            self.assertEqual(jobs['build']['needs'], ['calculate_version', 'debian_materials'] if role == 'all' else ['calculate_version'])
+            for producer in ('build', 'prepare_windows7', 'build_darwin'):
+                self.assertEqual(jobs[producer]['needs'], ['calculate_version'])
+                self.assertNotIn('needs.debian_materials', jobs[producer]['if'])
             self.assertEqual(jobs['build_windows7']['needs'], ['calculate_version', 'prepare_windows7'])
             if role == 'signed':
                 for job in ['build', 'prepare_windows7', 'build_windows7']:
@@ -150,7 +152,12 @@ class EfficiencyTests(unittest.TestCase):
             self.assertFalse(any(s.get('uses', '').startswith('actions/cache@') for s in steps))
             for consumer in ['native_smoke', 'native_index', 'publisher_receipt']:
                 self.assertIn('build_windows7', jobs[consumer]['needs'])
-            self.assertEqual(jobs['build_darwin']['needs'], ['calculate_version', 'debian_materials'] if role == 'all' else ['calculate_version'])
+            self.assertIn('prepare_windows7', jobs['publisher_receipt']['needs'])
+            self.assertEqual(scopes[role]['receiptJobs']['prepare_windows7'], 'required')
+            if role == 'all':
+                self.assertIs(jobs['build']['strategy']['fail-fast'], False)
+                for consumer in ('native_index', 'publisher_receipt'):
+                    self.assertIn('debian_materials', jobs[consumer]['needs'])
             self.assertIn('go-win7-toolchain', scopes[role]['requiredArtifacts'])
             self.assertEqual(scopes[role]['matrices']['build_windows7'], jobs['build_windows7']['strategy']['matrix'])
 
