@@ -478,7 +478,7 @@
           },
           {
             "id": "darwin-arm64",
-            "runner": "macos-15",
+            "runner": "xcode-27",
             "artifact": "binary-darwin_arm64"
           }
         ]
