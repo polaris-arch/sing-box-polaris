@@ -2419,7 +2419,9 @@ jobs:
     - build_apple_app_store
     - native_smoke
     - native_index
-    if: success() && inputs.build == 'All'
+    - prepare_windows7
+    - upload
+    if: ${{ always() && inputs.build == 'All' }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -2429,6 +2431,11 @@ jobs:
       run: python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: signed
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        RECEIPT_SOURCE_GENERATE_ONLY: 'false'
+        RECEIPT_DISTRIBUTION_ENABLED: ${{ vars.POLARIS_DISTRIBUTION_ENABLED }}
+        RECEIPT_PUBLISH_GITHUB: ${{ inputs.publish_github && 'true' || 'false' }}
         RELEASE_BUILD: ${{ inputs.build }}
         RELEASE_VERSION: ${{ inputs.version }}
         PUBLISH_STORES: ${{ inputs.publish_stores && 'true' || 'false' }}
@@ -2445,7 +2452,7 @@ jobs:
         description: Version name
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.14
+        default: 1.15.0-polaris-alpha.12.16
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

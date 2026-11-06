@@ -20,6 +20,17 @@ import errno
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 
+
+def receipt_context_fixture(role, material):
+    policies=json.loads(p.SCOPE.read_text())[role]['receiptJobs']
+    return {'GITHUB_REF':'refs/tags/'+p.TAG if material else 'refs/heads/fixture',
+            'RECEIPT_EVIDENCE_MODE':'final','RECEIPT_SOURCE_GENERATE_ONLY':'false',
+            'RECEIPT_DISTRIBUTION_ENABLED':'false','RECEIPT_PUBLISH_GITHUB':'false',
+            'POLARIS_DEBIAN_REQUIRED':'true' if material else 'false',
+            'NEEDS_JSON':json.dumps({key:{'result':'skipped' if policy=='debian_required' and not material
+                                                   else 'success','outputs':{}}
+                                     for key,policy in policies.items()})}
+
 @contextmanager
 def historical_release():
     """Exercise immutable alpha.12 recovery evidence, never the current release plan."""
@@ -686,9 +697,11 @@ class GateTests(unittest.TestCase):
              'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
              'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
              'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false'}
+        env.update(receipt_context_fixture('docker',False))
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'release/ci').mkdir(parents=True)
             (root/'release/ci/github-release.json').write_text(json.dumps(release))
+            (root/'release/ci/publisher-upstream-scope.json').write_bytes(p.SCOPE.read_bytes())
             script=p.ROOT/'scripts/ci/publisher_run_receipt.py'
             with chdir(root),mock.patch.dict(os.environ,env),mock.patch('subprocess.check_output',return_value=source):
                 runpy.run_path(str(script),run_name='__main__')
@@ -1112,9 +1125,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.14')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.14')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.14')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.16')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.16')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.16')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
@@ -2907,16 +2920,20 @@ class DebianMaterialPublisherTests(unittest.TestCase):
             for child in children:
                 child.stdout.close();child.stderr.close()
 
-    def read(self, bundle, *, context=None, artifacts=None, supplier_job=None, run=None):
+    def read(self, bundle, *, context=None, artifacts=None, supplier_job=None, run=None, with_ready=False):
         downloads={bundle['raw_artifact']['id']:bundle['raw_zip'],
                    bundle['ready_artifact']['id']:bundle['ready_zip']}
         with tempfile.TemporaryDirectory() as directory,self.transport(downloads):
             root=Path(directory);budget=p.ScratchBudget(root,reserve=0)
             try:
-                return p.read_debian_artifacts(self.artifacts(bundle) if artifacts is None else artifacts,
+                api_artifacts=self.artifacts(bundle) if artifacts is None else artifacts
+                binding,entries,manifest,ready_metadata=p.read_debian_artifacts(api_artifacts,
                     bundle['context'] if context is None else context,
                     self.run_record(bundle) if run is None else run,
                     bundle['supplier_job'] if supplier_job is None else supplier_job,budget)
+                self.assertEqual(manifest,bundle['manifest'])
+                self.assertIs(ready_metadata,next(item for item in api_artifacts if item['name']==p.DEBIAN_READY))
+                return (binding,entries,ready_metadata) if with_ready else (binding,entries)
             finally:
                 self.assertEqual(list(root.iterdir()),[])
                 self.assertEqual(budget.live,0)
@@ -3100,10 +3117,10 @@ class DebianMaterialPublisherTests(unittest.TestCase):
             job=copy.deepcopy(b['supplier_job']);change(job)
             with self.subTest(change=change),self.assertRaises(ValueError):self.read(b,supplier_job=job)
 
-    def use_files(self, bundle, artifact):
-        from test_cronet_material_supply import fixture_use
+    def use_files(self, bundle, artifact, *, local=False):
+        from test_cronet_material_supply import fixture_use, fixture_local_use
         from cronet_material_supply import encode_json
-        use=fixture_use(bundle,artifact);raw=encode_json(use)
+        use=(fixture_local_use if local else fixture_use)(bundle,artifact);raw=encode_json(use)
         fact={'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
               'releaseName':None,'publicationDisposition':'private-debian-use','debianRawUse':use}
         return {p.DEBIAN_USE:fact}
@@ -3116,7 +3133,7 @@ class DebianMaterialPublisherTests(unittest.TestCase):
         cases=[('binary-linux_amd64-glibc','C1_ALL_BINARY','amd64',['bullseye-amd64'],'build'),
                ('binary-linux-client-arm64','C2_ALL_LINUX_CLIENT','arm64',
                 ['bullseye-amd64','bullseye-arm64'],'build_linux_client')]
-        for artifact,caller,arch,profiles,sidecar_key in cases:
+        for artifact,caller,arch,profiles,sidecar_key,local in [(*case,local) for case in cases for local in (False,True)]:
             with self.subTest(artifact=artifact,caller=caller):
                 self.assertIn(artifact,self.eligible('all'))
                 self.assertEqual(expected_use('all',artifact),
@@ -3124,9 +3141,9 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                 source_caller=next(item for item in load_profile_plan()['callers'] if item['id']==caller)
                 self.assertEqual(source_caller['job'],sidecar_key)
                 self.assertEqual(source_caller['workflow'],b['context']['workflow'])
-                files=self.use_files(b,artifact);use=files[p.DEBIAN_USE]['debianRawUse']
+                files=self.use_files(b,artifact,local=local);use=files[p.DEBIAN_USE]['debianRawUse']
                 self.assertEqual((use['caller'],use['targetArch'],use['libc'],
-                                  [profile['id'] for profile in use['profiles']],use['consumerJob']['key']),
+                                  [profile['id'] for profile in (use['manifest']['profiles'] if local else use['profiles'])],use['consumerJob']['key']),
                                  (caller,arch,'glibc',profiles,sidecar_key))
                 raw=encode_json(use)
                 self.assertEqual(files[p.DEBIAN_USE]['bytes'],len(raw))
@@ -3162,10 +3179,10 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                 if caller=='C2_ALL_LINUX_CLIENT':
                     # All other fields are valid; the real build recorder cannot claim C2's job.
                     with self.assertRaisesRegex(ValueError,'^candidate Debian consumer job mismatch$'):
-                        p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs)
+                        p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
                     continue
                 self.assertEqual(candidate['job'],emitted_use['consumerJob']['key'])
-                self.assertTrue(p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs))
+                self.assertTrue(p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs,canonical_manifest=b['manifest']))
                 for change,guard in [
                     (lambda c:c.pop('debianMaterialUse'),'candidate Debian useRef mismatch'),
                     (lambda c:c['debianMaterialUse'].update(sha256='f'*64),'candidate Debian useRef mismatch'),
@@ -3173,7 +3190,7 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                     (lambda c:c.update(files=[]),'candidate did not measure its Debian use sidecar')]:
                     bad=copy.deepcopy(candidate);change(bad)
                     with self.subTest(guard=guard),self.assertRaisesRegex(ValueError,'^'+guard+'$'):
-                        p.validate_debian_use(files,[bad],artifact,binding,jobs=jobs)
+                        p.validate_debian_use(files,[bad],artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
 
     def test_real_use_validation_rejects_mismatched_artifact_context_target_and_profile(self):
         for role in ['all','linux','docker']:
@@ -3196,6 +3213,74 @@ class DebianMaterialPublisherTests(unittest.TestCase):
                     p.validate_debian_use(bad,[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
             with self.assertRaises(ValueError):p.validate_debian_use({},[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
             with self.assertRaises(ValueError):p.validate_debian_use(files,[],'unlisted-artifact',binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+
+    def test_local_original_before_ready_and_legacy_timing_are_distinct(self):
+        for role in ('all','linux','docker'):
+            b=self.bundle(role);binding,_,ready_metadata=self.read(b,with_ready=True)
+            self.assertEqual(set(binding['readyArtifact']),{'id','name','digest','size'})
+            self.assertEqual(p.debian_artifact_ref(ready_metadata),binding['readyArtifact'])
+            artifact=self.eligible(role)[0]
+            row=b['consumer_job_by_artifact'][artifact]
+            row.update(started_at='2020-01-01T00:00:05Z',completed_at='2020-01-01T00:00:40Z')
+            jobs=[b['supplier_job'],*b['consumer_jobs']]
+            metadata={'created_at':'2020-01-01T00:00:40Z'}
+            files=self.use_files(b,artifact,local=True)
+            def candidates_for(members):
+                fact=members[p.DEBIAN_USE];use=fact['debianRawUse']
+                reference={'member':p.DEBIAN_USE,'bytes':fact['bytes'],'sha256':fact['sha256']}
+                return ([{'job':use['consumerJob']['key'],'debianMaterialUse':reference,
+                          'files':[dict(path=p.DEBIAN_USE,bytes=fact['bytes'],sha256=fact['sha256'])]}]
+                        if role=='all' else [])
+            candidates=candidates_for(files)
+            self.assertTrue(p.validate_debian_use(files,candidates,artifact,binding,jobs=jobs,
+                canonical_manifest=b['manifest'],artifact_metadata=metadata,ready_metadata=ready_metadata))
+            remote=self.use_files(b,artifact)
+            remote_candidates=candidates_for(remote)
+            after={'created_at':'2020-01-01T00:02:30Z'}
+            row.update(started_at='2020-01-01T00:02:10Z',completed_at='2020-01-01T00:03:00Z')
+            # The actual reader's compact binding plus authenticated API READY
+            # metadata accepts a legacy consumer after both independent gates.
+            self.assertTrue(p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=ready_metadata))
+            with self.subTest(role=role),self.assertRaisesRegex(ValueError,'Debian consumer artifact predates READY'):
+                p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                    canonical_manifest=b['manifest'],artifact_metadata=metadata,ready_metadata=ready_metadata)
+            row.update(started_at='2020-01-01T00:00:05Z')
+            with self.assertRaisesRegex(ValueError,'Debian consumer started before'):
+                p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                    canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=ready_metadata)
+            for missing_or_foreign in (None,dict(ready_metadata,id=ready_metadata['id']+1)):
+                with self.assertRaisesRegex(ValueError,'legacy authenticated READY metadata missing or mismatched'):
+                    p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=missing_or_foreign)
+            for changed in ({},dict(binding,manifestSHA256='f'*64)):
+                with self.assertRaises(ValueError):
+                    p.validate_debian_use(files,candidates,artifact,changed,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=metadata)
+            for mutate in (lambda u:u.update(schema='unknown'),lambda u:u.pop('manifest'),
+                           lambda u:u.update(schema='polaris-debian-use-v1')):
+                bad=copy.deepcopy(files);mutate(bad[p.DEBIAN_USE]['debianRawUse'])
+                with self.assertRaises(ValueError):
+                    p.validate_debian_use(bad,candidates,artifact,binding,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=metadata)
+            with self.assertRaises(ValueError):
+                p.validate_debian_use({},candidates,artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
+
+    def test_local_manifest_self_hash_cannot_replace_actual_canonical_bytes(self):
+        from cronet_material_supply import encode_json
+        b=self.bundle('linux');binding,_=self.read(b);artifact=self.eligible('linux')[0]
+        files=self.use_files(b,artifact,local=True);use=files[p.DEBIAN_USE]['debianRawUse']
+        use['manifest']['objects'][0]['bytes']+=1
+        use['manifestSHA256']=hashlib.sha256(encode_json(use['manifest'])).hexdigest()
+        with self.assertRaisesRegex(ValueError,'local URL/CAS differs from canonical bytes'):
+            p.validate_debian_use(files,[],artifact,binding,jobs=b['consumer_jobs'],canonical_manifest=b['manifest'])
+        with self.assertRaises(ValueError):
+            p.validate_debian_use(self.use_files(b,artifact,local=True),[],artifact,binding,jobs=b['consumer_jobs'])
+        self.assertFalse(p.validate_debian_use({},[],'binary-linux_s390x',binding,jobs=b['consumer_jobs'],
+                                             canonical_manifest=b['manifest']))
+        with self.assertRaises(ValueError):
+            p.validate_debian_use(files,[],'binary-linux_s390x',binding,jobs=b['consumer_jobs'],
+                                 canonical_manifest=b['manifest'])
 
     def test_exact_payload_member_is_required_only_in_actual_consumers(self):
         files={'package':{},p.DEBIAN_USE:{}}
@@ -3318,9 +3403,11 @@ class DebianMaterialPublisherTests(unittest.TestCase):
              'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
              'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
              'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false','POLARIS_DEBIAN_REQUIRED':'true'}
+        env.update(receipt_context_fixture('linux',True))
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'release/ci').mkdir(parents=True)
             (root/'release/ci/github-release.json').write_text(json.dumps(release))
+            (root/'release/ci/publisher-upstream-scope.json').write_bytes(p.SCOPE.read_bytes())
             with chdir(root),mock.patch.dict(os.environ,env,clear=True), \
                  mock.patch('subprocess.check_output',side_effect=lambda command,**_: 'b'*40 if command[-1]=='HEAD^{tree}' else source), \
                  mock.patch('github_release.producer_debian_materials',return_value=b['binding']) as measured:

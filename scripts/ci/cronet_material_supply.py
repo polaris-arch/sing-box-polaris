@@ -29,6 +29,7 @@ REPO, RID = "polaris-arch/sing-box-polaris", 1421657509
 MANIFEST, READY, USE = "candidate-manifest.json", "debian-material-ready.json", "debian-material-use.json"
 RAW_NAME, READY_NAME = "debian-candidate-raw", "debian-material-ready"
 SCOPE, VERIFICATION = "debian-raw", "original-gpgv-packages-deb-v1"
+LOCAL_USE, LOCAL_MANIFEST = "polaris-debian-local-use-v1", "polaris-debian-local-manifest-v1"
 SUPPLIER_NAME, SUPPLIER_KEY = "Supply verified Debian raw inputs", "debian_materials"
 OBJECT_LIMIT, UNION_LIMIT, JSON_LIMIT, COUNT_LIMIT = 64 * 1024**2, 1024**3, 1024**2, 512
 ZIP_LIMIT, PROFILE_SECONDS, PREPARE_SECONDS, TRANSFER_SECONDS = 1024**3 + 2 * 1024**2, 1200, 2400, 600
@@ -182,6 +183,22 @@ def expected_use(role, artifact_name):
     return json.loads(encode_json(value)) if value is not None else None
 
 
+def consumer_job_key(expected, plan):
+    caller = next(item for item in plan["callers"] if item["id"] == expected["caller"])
+    return expected.get("job", caller["job"])
+
+
+def resolve_consumer(role, caller, target_arch, libc):
+    plan = load_profile_plan()
+    matches = [(name, value) for name, value in plan["eligibleArtifacts"].get(role, {}).items()
+               if (value["caller"], value["targetArch"], value["libc"]) == (caller, target_arch, libc)]
+    require(len(matches) == 1, "exact source-owned consumer tuple")
+    name, expected = matches[0]
+    require(os.environ.get("GITHUB_JOB") == consumer_job_key(expected, plan),
+            "actual consumer source-owned job key")
+    return name, expected
+
+
 def validate_context(context):
     exact(context, CONTEXT_KEYS, "context fields")
     for key in ("repositoryID", "runID", "runAttempt"):
@@ -260,13 +277,18 @@ def validate_profile(record, profile_id, plan):
 
 
 def validate_manifest(manifest, *, context, measurements):
+    return _validate_manifest(manifest, context=context, measurements=measurements,
+                              profiles=required_profiles(context), schema="polaris-debian-candidate-v1")
+
+
+def _validate_manifest(manifest, *, context, measurements, profiles, schema):
     plan = validate_context(context)
     exact(manifest, {"schema", "scope", "context", "planSHA256", "requiredProfiles", "state",
                      "objects", "profiles", "seed"}, "candidate manifest fields")
-    require(manifest["schema"] == "polaris-debian-candidate-v1" and manifest["scope"] == SCOPE
+    require(manifest["schema"] == schema and manifest["scope"] == SCOPE
             and equal(manifest["context"], context)
             and manifest["planSHA256"] == profile_plan_sha256()
-            and equal(manifest["requiredProfiles"], required_profiles(context, plan))
+            and equal(manifest["requiredProfiles"], profiles)
             and type(manifest["state"]) is str and manifest["state"] in ("PARTIAL", "VERIFIED"),
             "candidate source/plan/state")
     require(type(manifest["objects"]) is list and len(manifest["objects"]) <= COUNT_LIMIT
@@ -319,6 +341,10 @@ def validate_manifest(manifest, *, context, measurements):
     expected = dict(members)
     raw = encode_json(manifest)
     require(len(raw) <= JSON_LIMIT, "manifest bytes")
+    # Local wire metadata is joined to independently measured canonical CAS
+    # bytes later. The acquisition path separately measures its actual store.
+    if schema == LOCAL_MANIFEST and measurements is None:
+        return manifest
     expected[MANIFEST] = {"bytes": len(raw), "sha256": digest(raw)}
     require(type(measurements) is dict and set(measurements) == set(expected), "exact measured member set")
     for name, value in measurements.items():
@@ -394,12 +420,86 @@ def _validate_use_shape(use, *, binding, ready_artifact, artifact_name):
     integer(use["consumerJob"]["id"], positive=True)
     require(all(type(use["consumerJob"][key]) is str and use["consumerJob"][key] for key in ("key", "name", "runner")), "consumer job text")
     caller = next(item for item in plan["callers"] if item["id"] == use["caller"])
-    require(use["consumerJob"]["key"] == caller["job"] and caller["workflow"] == use["context"]["workflow"], "consumer source-owned job key")
+    require(use["consumerJob"]["key"] == consumer_job_key(expected, plan)
+            and caller["workflow"] == use["context"]["workflow"], "consumer source-owned job key")
     return use
 
 
-def validate_use_ref(use, *, binding, ready_artifact, artifact_name, consumer_job):
-    _validate_use_shape(use, binding=binding, ready_artifact=ready_artifact, artifact_name=artifact_name)
+def _validate_local_use_shape(use, artifact_name):
+    exact(use, {"schema", "scope", "acquisition", "context", "planSHA256", "artifact", "caller",
+                "targetArch", "libc", "requiredProfiles", "manifestSHA256", "manifest",
+                "verification", "consumerJob"}, "local use fields")
+    require(use["schema"] == LOCAL_USE and use["scope"] == SCOPE
+            and use["acquisition"] == "local-original" and use["artifact"] == artifact_name
+            and use["verification"] == VERIFICATION, "local original use kind")
+    plan = validate_context(use["context"])
+    expected = expected_use(use["context"]["role"], artifact_name)
+    require(expected is not None and all(equal(use[key], expected[target]) for key, target in
+            (("caller", "caller"), ("targetArch", "targetArch"), ("libc", "libc"),
+             ("requiredProfiles", "profiles"))), "local artifact/matrix subset")
+    require(use["planSHA256"] == profile_plan_sha256(), "local trusted plan")
+    manifest = use["manifest"]
+    _validate_manifest(manifest, context=use["context"], measurements=None,
+                       profiles=expected["profiles"], schema=LOCAL_MANIFEST)
+    require(manifest["seed"] is None and manifest["state"] == "VERIFIED"
+            and use["manifestSHA256"] == digest(encode_json(manifest)), "local complete manifest")
+    for item in manifest["objects"]:
+        owners = sorted(profile["id"] for profile in manifest["profiles"] if item["url"] in profile["urls"])
+        require(item["profiles"] == owners, "local exact object/profile closure")
+    reference = use["consumerJob"]
+    exact(reference, {"id", "key", "name", "runner"}, "local actual consumer fields")
+    integer(reference["id"], positive=True)
+    require(all(type(reference[key]) is str and reference[key] for key in ("key", "name", "runner")),
+            "local actual consumer text")
+    caller = next(item for item in plan["callers"] if item["id"] == expected["caller"])
+    require(reference["key"] == consumer_job_key(expected, plan)
+            and caller["workflow"] == use["context"]["workflow"], "local source-owned job key")
+    require(len(encode_json(use)) <= JSON_LIMIT, "local use bytes")
+    return use
+
+
+def _validate_local_binding(use, binding, canonical_manifest, artifact_name):
+    _validate_local_use_shape(use, artifact_name)
+    exact(binding, BINDING_KEYS, "complete distribution binding fields")
+    require(binding["schema"] == "polaris-debian-binding-v1" and binding["scope"] == SCOPE
+            and binding["verification"] == VERIFICATION
+            and equal(binding["context"], use["context"])
+            and binding["planSHA256"] == use["planSHA256"], "local canonical binding")
+    require(type(canonical_manifest) is dict
+            and canonical_manifest.get("schema") == "polaris-debian-candidate-v1"
+            and canonical_manifest.get("state") == "VERIFIED"
+            and equal(canonical_manifest.get("context"), use["context"])
+            and canonical_manifest.get("planSHA256") == use["planSHA256"]
+            and equal(canonical_manifest.get("requiredProfiles"), required_profiles(use["context"]))
+            and equal(binding["requiredProfiles"], canonical_manifest["requiredProfiles"])
+            and binding["manifestSHA256"] == digest(encode_json(canonical_manifest)),
+            "independent full canonical manifest required")
+    canonical = {item["url"]: item for item in canonical_manifest["objects"]}
+    subset = set(use["requiredProfiles"])
+    for item in use["manifest"]["objects"]:
+        original = canonical.get(item["url"])
+        require(original is not None and all(equal(item[key], original[key])
+                for key in ("member", "sha256", "bytes", "complete"))
+                and item["profiles"] == sorted(subset.intersection(original["profiles"])),
+                "local URL/CAS differs from canonical bytes")
+    profiles = {profile["id"]: profile for profile in canonical_manifest["profiles"]}
+    for profile in use["manifest"]["profiles"]:
+        original = profiles.get(profile["id"])
+        # Both freshly generated keyrings were used by the fixed original
+        # verifier. Their actual file hashes are facts, not reproducibility.
+        require(original is not None and all(equal(profile[key], original[key])
+                for key in ("id", "urls", "selectedDebs", "verified")),
+                "local original selected closure differs from canonical")
+
+
+def validate_use_ref(use, *, binding, ready_artifact, artifact_name, consumer_job, canonical_manifest=None):
+    require(type(use) is dict, "consumer use object")
+    if use.get("schema") == LOCAL_USE:
+        _validate_local_binding(use, binding, canonical_manifest, artifact_name)
+        require(equal(binding["readyArtifact"], artifact_ref(ready_artifact)), "actual canonical READY")
+    else:
+        # Missing READY/unknown schema never selects local-original.
+        _validate_use_shape(use, binding=binding, ready_artifact=ready_artifact, artifact_name=artifact_name)
     reference = use["consumerJob"]
     require(type(consumer_job) is dict and consumer_job.get("status") == "completed"
             and consumer_job.get("conclusion") == "success", "actual consumer successful completion")
@@ -1075,10 +1175,13 @@ def ready(args):
     write_new(output / READY, encode_json(record))
 
 
-def _consumer_job(context, caller, deadline):
+def _consumer_job(context, caller, deadline, *, artifact_name=None):
     plan = load_profile_plan()
     expected = next(item for item in plan["callers"] if item["id"] == caller)
-    require(expected["workflow"] == context["workflow"] and os.environ.get("GITHUB_JOB") == expected["job"],
+    use = expected_use(context["role"], artifact_name) if artifact_name is not None else None
+    require(use is None or use["caller"] == caller, "consumer caller/artifact")
+    job_key = consumer_job_key(use, plan) if use is not None else expected["job"]
+    require(expected["workflow"] == context["workflow"] and os.environ.get("GITHUB_JOB") == job_key,
             "actual consumer source-owned job key")
     runner = os.environ.get("RUNNER_NAME")
     require(type(runner) is str and runner, "actual consumer runner identity")
@@ -1104,7 +1207,51 @@ def _consumer_job(context, caller, deadline):
             and type(row.get("run_attempt")) is int and row["run_attempt"] == context["runAttempt"]
             and row.get("head_sha") == context["sourceCommit"]
             and type(row.get("name")) is str and row["name"], "consumer actual API context")
-    return {"id": row["id"], "key": expected["job"], "name": row["name"], "runner": runner}
+    return {"id": row["id"], "key": job_key, "name": row["name"], "runner": runner}
+
+
+def consume_local(args):
+    context = actions_context(args.role)
+    _prepared(args.cronet_root)
+    _fresh_stage(args.cronet_root)
+    require(not any(os.environ.get(key) for key in
+                    ("SYSROOT_ARCH", "target_os", "target_cpu", "EXTRA_FLAGS", "OPENWRT_FLAGS",
+                     "POLARIS_CRONET_CAPTURE_DIR", "POLARIS_CRONET_CAPTURE_PROFILE", "POLARIS_CRONET_RAW_STORE")),
+            "fresh local consumer environment")
+    artifact, expected = resolve_consumer(args.role, args.caller, args.target_arch, args.libc)
+    consumer = _consumer_job(context, args.caller, time.monotonic() + 120, artifact_name=artifact)
+    output = new_directory(args.output)
+    raw_store = new_directory(output / "raw")
+    new_directory(raw_store / "objects")
+    # Bootstrap's capture protocol requires this internal schema. Public
+    # validate_manifest still rejects a subset as a full-role canonical RAW.
+    manifest = {"schema": "polaris-debian-candidate-v1", "scope": SCOPE, "context": context,
+                "planSHA256": profile_plan_sha256(), "requiredProfiles": expected["profiles"],
+                "state": "PARTIAL", "objects": [], "profiles": [], "seed": None}
+    write_new(raw_store / MANIFEST, encode_json(manifest))
+    receipts = _profiles(args.cronet_root, expected["profiles"], raw_store, True,
+                         time.monotonic() + min(PREPARE_SECONDS, PROFILE_SECONDS * len(expected["profiles"])))
+    manifest = decode_json(read_regular(raw_store / MANIFEST))
+    urls = {url for receipt in receipts for url in receipt["urls"]}
+    manifest["objects"] = [item for item in manifest["objects"] if item["url"] in urls]
+    for item in manifest["objects"]:
+        item["profiles"] = sorted(receipt["id"] for receipt in receipts if item["url"] in receipt["urls"])
+    manifest.update(profiles=receipts, state="VERIFIED")
+    replace_json(raw_store / MANIFEST, manifest)
+    _prune_export(raw_store)
+    _validate_manifest(manifest, context=context, measurements=_measure_local(raw_store, manifest),
+                       profiles=expected["profiles"], schema="polaris-debian-candidate-v1")
+    wire_manifest = dict(manifest, schema=LOCAL_MANIFEST)
+    use = {"schema": LOCAL_USE, "scope": SCOPE, "acquisition": "local-original", "context": context,
+           "planSHA256": manifest["planSHA256"], "artifact": artifact, "caller": args.caller,
+           "targetArch": args.target_arch, "libc": args.libc, "requiredProfiles": expected["profiles"],
+           "manifestSHA256": digest(encode_json(wire_manifest)), "manifest": wire_manifest,
+           "verification": VERIFICATION, "consumerJob": consumer}
+    _validate_local_use_shape(use, artifact)
+    write_new(output / "use.json", encode_json(use))
+    print(encode_json({"phase": "consumer_original_verification", "acquisition": "local-original",
+                       "scope": SCOPE, "caller": args.caller, "profiles": expected["profiles"],
+                       "rawStore": str(raw_store), "verification": VERIFICATION}).decode().strip())
 
 
 def consume(args):
@@ -1121,7 +1268,7 @@ def consume(args):
     deadline = time.monotonic() + 120
     run = _run(context, deadline)
     supplier = _job(context, deadline=deadline)
-    consumer = _consumer_job(context, args.caller, deadline)
+    consumer = _consumer_job(context, args.caller, deadline, artifact_name=artifact_name)
     ready_metadata = _select_artifact(context, args.ready_artifact_id, args.ready_artifact_digest,
                                       READY_NAME, run, deadline)
     release = _release()
@@ -1175,15 +1322,17 @@ def main():
     command.add_argument("--raw-artifact-id", type=int, required=True)
     command.add_argument("--raw-artifact-digest", required=True)
     command.add_argument("--output", type=Path, required=True)
-    command = sub.add_parser("consume")
-    command.add_argument("--cronet-root", type=Path, required=True)
-    command.add_argument("--role", choices=("all", "linux", "docker"), required=True)
-    command.add_argument("--ready-artifact-id", type=int, required=True)
-    command.add_argument("--ready-artifact-digest", required=True)
-    command.add_argument("--caller", choices=("C1_ALL_BINARY", "C2_ALL_LINUX_CLIENT", "C3_LINUX", "C4_DOCKER"), required=True)
-    command.add_argument("--target-arch", required=True)
-    command.add_argument("--libc", choices=("glibc", "musl"), required=True)
-    command.add_argument("--output", type=Path, required=True)
+    for name in ("consume", "consume-local"):
+        command = sub.add_parser(name)
+        command.add_argument("--cronet-root", type=Path, required=True)
+        command.add_argument("--role", choices=("all", "linux", "docker"), required=True)
+        if name == "consume":
+            command.add_argument("--ready-artifact-id", type=int, required=True)
+            command.add_argument("--ready-artifact-digest", required=True)
+        command.add_argument("--caller", choices=("C1_ALL_BINARY", "C2_ALL_LINUX_CLIENT", "C3_LINUX", "C4_DOCKER"), required=True)
+        command.add_argument("--target-arch", required=True)
+        command.add_argument("--libc", choices=("glibc", "musl"), required=True)
+        command.add_argument("--output", type=Path, required=True)
     command = sub.add_parser("_profile", help=argparse.SUPPRESS)
     command.add_argument("--cronet-root", type=Path, required=True)
     command.add_argument("--profile", required=True)
@@ -1193,7 +1342,7 @@ def main():
     if args.command == "_profile":
         _profile_worker(args.cronet_root, args.profile, args.work, args.receipt)
     else:
-        {"prepare": prepare, "ready": ready, "consume": consume}[args.command](args)
+        {"prepare": prepare, "ready": ready, "consume": consume, "consume-local": consume_local}[args.command](args)
 
 
 if __name__ == "__main__":

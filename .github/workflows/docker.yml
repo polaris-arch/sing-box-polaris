@@ -76,50 +76,21 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
   build_binary:
-    needs: [source, debian_materials]
-    outputs:
-      material_required: ${{ needs.source.outputs.material_required }}
-    name: Build binary
-    if: ${{ !cancelled() && needs.source.result == 'success' && (needs.source.outputs.material_required == 'false' || (needs.source.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
+    needs: [source]
+    name: build_binary
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
     permissions:
       contents: read
       actions: read
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
         - arch: amd64
           naive: true
           docker_platform: linux/amd64
-        - arch: arm64
-          naive: true
-          docker_platform: linux/arm64
-        - arch: '386'
-          naive: true
-          docker_platform: linux/386
-        - arch: arm
-          goarm: '7'
-          naive: true
-          docker_platform: linux/arm/v7
-        - arch: mipsle
-          gomips: softfloat
-          naive: true
-          docker_platform: linux/mipsle
-        - arch: riscv64
-          naive: true
-          docker_platform: linux/riscv64
-        - arch: loong64
-          naive: true
-          docker_platform: linux/loong64
-        - arch: arm
-          goarm: '6'
-          docker_platform: linux/arm/v6
-        - arch: ppc64le
-          docker_platform: linux/ppc64le
-        - arch: s390x
-          docker_platform: linux/s390x
-    steps:
+    steps: &build_binary_steps
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -172,10 +143,8 @@ jobs:
       run: |
         set -xeuo pipefail
         if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
-          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume \
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role docker \
-            --ready-artifact-id "$POLARIS_DEBIAN_READY_ID" \
-            --ready-artifact-digest "$POLARIS_DEBIAN_READY_DIGEST" \
             --caller C4_DOCKER --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
@@ -184,10 +153,6 @@ jobs:
         go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.source.outputs.material_required }}
-        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
-        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
-        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
-        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
         MATERIAL_LIBC: musl
         GH_TOKEN: ${{ github.token }}
@@ -271,27 +236,162 @@ jobs:
           debian-material-use.json
         if-no-files-found: error
         retention-days: 1
+  build_binary_arm64:
+    needs: [source]
+    name: build_binary_arm64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm64
+          naive: true
+          docker_platform: linux/arm64
+    steps: *build_binary_steps
+  build_binary_386:
+    needs: [source]
+    name: build_binary_386
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: '386'
+          naive: true
+          docker_platform: linux/386
+    steps: *build_binary_steps
+  build_binary_armv7:
+    needs: [source]
+    name: build_binary_armv7
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm
+          goarm: '7'
+          naive: true
+          docker_platform: linux/arm/v7
+    steps: *build_binary_steps
+  build_binary_mipsle:
+    needs: [source]
+    name: build_binary_mipsle
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: mipsle
+          gomips: softfloat
+          naive: true
+          docker_platform: linux/mipsle
+    steps: *build_binary_steps
+  build_binary_riscv64:
+    needs: [source]
+    name: build_binary_riscv64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: riscv64
+          naive: true
+          docker_platform: linux/riscv64
+    steps: *build_binary_steps
+  build_binary_loong64:
+    needs: [source]
+    name: build_binary_loong64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: loong64
+          naive: true
+          docker_platform: linux/loong64
+    steps: *build_binary_steps
+  build_binary_armv6:
+    needs: [source]
+    name: build_binary_armv6
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm
+          goarm: '6'
+          docker_platform: linux/arm/v6
+    steps: *build_binary_steps
+  build_binary_ppc64le:
+    needs: [source]
+    name: build_binary_ppc64le
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: ppc64le
+          docker_platform: linux/ppc64le
+    steps: *build_binary_steps
+  build_binary_s390x:
+    needs: [source]
+    name: build_binary_s390x
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: s390x
+          docker_platform: linux/s390x
+    steps: *build_binary_steps
   build_docker:
-    name: Build Docker image
+    name: build_docker
     runs-on: ubuntu-latest
     needs:
     - build_binary
     - source
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
         - platform: linux/amd64
-        - platform: linux/arm/v6
-        - platform: linux/arm/v7
-        - platform: linux/arm64
-        - platform: linux/386
-        - platform: linux/ppc64le
-        - platform: linux/riscv64
-        - platform: linux/s390x
-        - platform: linux/loong64
-          base_image: ghcr.io/loong64/alpine:edge
-    steps:
+    steps: &build_docker_steps
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -354,13 +454,128 @@ jobs:
         name: oci-${{ env.PLATFORM_PAIR }}
         path: ${{ runner.temp }}/image.tar
         if-no-files-found: error
+  build_docker_armv6:
+    name: build_docker_armv6
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_armv6
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm/v6
+    steps: *build_docker_steps
+  build_docker_armv7:
+    name: build_docker_armv7
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_armv7
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm/v7
+    steps: *build_docker_steps
+  build_docker_arm64:
+    name: build_docker_arm64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_arm64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm64
+    steps: *build_docker_steps
+  build_docker_386:
+    name: build_docker_386
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_386
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/386
+    steps: *build_docker_steps
+  build_docker_ppc64le:
+    name: build_docker_ppc64le
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_ppc64le
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/ppc64le
+    steps: *build_docker_steps
+  build_docker_riscv64:
+    name: build_docker_riscv64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_riscv64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/riscv64
+    steps: *build_docker_steps
+  build_docker_s390x:
+    name: build_docker_s390x
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_s390x
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/s390x
+    steps: *build_docker_steps
+  build_docker_loong64:
+    name: build_docker_loong64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_loong64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/loong64
+          base_image: ghcr.io/loong64/alpine:edge
+    steps: *build_docker_steps
   publisher_receipt:
     name: Record complete producer scope
     needs:
+    - source
     - build_binary
+    - build_binary_arm64
+    - build_binary_386
+    - build_binary_armv7
+    - build_binary_mipsle
+    - build_binary_riscv64
+    - build_binary_loong64
+    - build_binary_armv6
+    - build_binary_ppc64le
+    - build_binary_s390x
     - build_docker
+    - build_docker_armv6
+    - build_docker_armv7
+    - build_docker_arm64
+    - build_docker_386
+    - build_docker_ppc64le
+    - build_docker_riscv64
+    - build_docker_s390x
+    - build_docker_loong64
     - debian_materials
-    if: ${{ !cancelled() && needs.build_binary.result == 'success' && needs.build_docker.result == 'success' && (needs.build_binary.outputs.material_required == 'false' || (needs.build_binary.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -375,11 +590,16 @@ jobs:
         python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: docker
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: final
+        RECEIPT_SOURCE_GENERATE_ONLY: 'false'
+        RECEIPT_DISTRIBUTION_ENABLED: 'false'
+        RECEIPT_PUBLISH_GITHUB: 'false'
         RELEASE_BUILD: All
         RELEASE_VERSION: ${{ inputs.tag }}
         PUBLISH_STORES: 'false'
         PUBLISH_REGISTRY: 'false'
-        POLARIS_DEBIAN_REQUIRED: ${{ needs.build_binary.outputs.material_required }}
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.source.outputs.material_required }}
         POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
         POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
         POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
@@ -407,6 +627,6 @@ jobs:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.12.14
+        default: v1.15.0-polaris-alpha.12.16
 permissions:
   contents: read

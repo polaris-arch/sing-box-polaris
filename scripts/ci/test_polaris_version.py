@@ -181,13 +181,23 @@ class PolarisVersionTests(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as directory, chdir(directory):
                     Path('release/ci').mkdir(parents=True)
                     Path('release/ci/github-release.json').write_text(json.dumps(plan))
+                    scope = json.loads((ROOT / 'release/ci/publisher-upstream-scope.json').read_text())
+                    Path('release/ci/publisher-upstream-scope.json').write_text(json.dumps(scope))
+                    needs = {name: {'result': 'skipped' if name == 'upload' else 'success', 'outputs': {}}
+                             for name in scope[role]['receiptJobs']}
                     env = {'PUBLISHER_ROLE': role, 'GITHUB_EVENT_NAME': 'workflow_dispatch',
                            'GITHUB_REPOSITORY': PLAN['repository'], 'GITHUB_REPOSITORY_ID': str(PLAN['repositoryId']),
                            'RELEASE_BUILD': 'All', 'RELEASE_VERSION': version, 'GITHUB_SHA': source,
                            'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1',
-                           'PUBLISH_STORES': 'false', 'PUBLISH_REGISTRY': 'false'}
+                           'PUBLISH_STORES': 'false', 'PUBLISH_REGISTRY': 'false',
+                           'GITHUB_REF': 'refs/tags/' + plan['tag'], 'NEEDS_JSON': json.dumps(needs),
+                           'RECEIPT_EVIDENCE_MODE': 'final', 'RECEIPT_SOURCE_GENERATE_ONLY': 'false',
+                           'RECEIPT_DISTRIBUTION_ENABLED': 'true' if role == 'signed' else 'false',
+                           'RECEIPT_PUBLISH_GITHUB': 'false',
+                           'POLARIS_DEBIAN_REQUIRED': 'false' if role == 'signed' else 'true'}
                     script = ROOT / 'scripts/ci/publisher_run_receipt.py'
-                    with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'):
+                    with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'), \
+                         patch.object(publisher, 'producer_debian_materials', return_value=None):
                         runpy.run_path(str(script))
                     receipt = json.loads(Path('publisher-run-receipt.json').read_text())
                     self.assertEqual(receipt['version'], version)

@@ -609,7 +609,7 @@ def read_debian_artifacts(artifacts, context, run, supplier_job, budget):
                        'archiveSha256': ready_artifact['digest'],
                        'files': {DEBIAN_POLICY['readyMember']: dict(ready_fact, releaseName=None,
                                      publicationDisposition='private-debian-ready')}}}
-    return binding, entries
+    return binding, entries, manifest, ready_artifact
 
 
 def debian_supplier_job(context, jobs=None):
@@ -659,14 +659,17 @@ def producer_debian_materials(role, source, tree, *, env=None):
                 and artifact['digest'] == expected_digest, 'Debian job output/API mismatch')
         artifacts.append(artifact)
     with tempfile.TemporaryDirectory(prefix='polaris-debian-receipt-') as directory:
-        binding, _ = read_debian_artifacts(artifacts, context, run, debian_supplier_job(context),
+        binding, _, _, _ = read_debian_artifacts(artifacts, context, run, debian_supplier_job(context),
                                            ScratchBudget(Path(directory)))
     require(tag_identity(source) == tag_object, 'Debian producer tag moved during verification')
     return binding
 
 
-def validate_debian_use(files, candidates, artifact, binding, *, jobs=None):
-    from cronet_material_supply import expected_use, validate_use_ref
+def validate_debian_use(files, candidates, artifact, binding, *, jobs=None,
+                        canonical_manifest=None, artifact_metadata=None, ready_metadata=None):
+    from cronet_material_supply import expected_use, validate_use_ref, LOCAL_USE, BINDING_KEYS
+    if binding is not None:
+        require(type(binding) is dict and set(binding) == BINDING_KEYS, 'complete Debian material binding')
     expected = expected_use(binding['context']['role'], artifact) if binding is not None else None
     use = files.get(DEBIAN_USE, {}).get('debianRawUse')
     require((use is not None) == (expected is not None), 'missing/unexpected Debian consumer sidecar')
@@ -679,12 +682,20 @@ def validate_debian_use(files, candidates, artifact, binding, *, jobs=None):
     consumers = [job for job in jobs if job['id'] == ref['id']]
     require(len(consumers) == 1, 'missing/ambiguous actual Debian consumer job')
     validate_use_ref(use, binding=binding, ready_artifact=binding['readyArtifact'],
-                     artifact_name=artifact, consumer_job=consumers[0])
-    supplier = debian_supplier_job(binding['context'], jobs=jobs)
-    require(supplier['id'] == binding['supplierJob']['id']
-            and datetime.fromisoformat(consumers[0]['started_at'].replace('Z', '+00:00'))
-                >= datetime.fromisoformat(supplier['completed_at'].replace('Z', '+00:00')),
-            'Debian consumer started before its actual supplier completed')
+                     artifact_name=artifact, consumer_job=consumers[0], canonical_manifest=canonical_manifest)
+    if use['schema'] != LOCAL_USE:
+        if artifact_metadata is not None:
+            require(type(ready_metadata) is dict
+                    and {'id', 'name', 'digest', 'size_in_bytes', 'created_at'} <= set(ready_metadata)
+                    and type(ready_metadata['created_at']) is str
+                    and same_identity(debian_artifact_ref(ready_metadata), binding['readyArtifact']),
+                    'legacy authenticated READY metadata missing or mismatched')
+            debian_consumer_artifact(artifact_metadata, ready_metadata)
+        supplier = debian_supplier_job(binding['context'], jobs=jobs)
+        require(supplier['id'] == binding['supplierJob']['id']
+                and datetime.fromisoformat(consumers[0]['started_at'].replace('Z', '+00:00'))
+                    >= datetime.fromisoformat(supplier['completed_at'].replace('Z', '+00:00')),
+                'Debian consumer started before its actual supplier completed')
     if binding['context']['role'] == 'all':
         require(len(candidates) == 1, 'All Debian consumer needs its existing exact candidate receipt')
         record = candidates[0]
@@ -1054,6 +1065,8 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
         binding = None
+        canonical_manifest = None
+        ready_metadata = None
         private_entries = {}
         material_jobs = []
         if debian_policy(scope, role) is not None:
@@ -1061,7 +1074,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
             require(context['runID'] == int(rid), 'Debian input run ID mismatch')
             material_jobs = pages(f'repos/{REPO}/actions/runs/{context["runID"]}/attempts/{context["runAttempt"]}/jobs',
                                   'jobs', maximum=1000)
-            binding, private_entries = read_debian_artifacts(
+            binding, private_entries, canonical_manifest, ready_metadata = read_debian_artifacts(
                 artifacts, context, run, debian_supplier_job(context, jobs=material_jobs), budget)
             entry['distributionMaterials'] = {'debianRaw': binding}
         for a in artifacts:
@@ -1075,11 +1088,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
             require(datetime.fromisoformat(a['created_at'].replace('Z', '+00:00')) >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')), 'artifact predates current run attempt')
             arun = a.get('workflow_run', {})
             require(arun.get('id') == int(rid) and arun.get('head_sha') == source, 'artifact source mismatch')
-            if binding is not None:
-                from cronet_material_supply import expected_use
-                if expected_use(role, a['name']) is not None:
-                    ready_artifact = next(item for item in artifacts if item['name'] == DEBIAN_READY)
-                    debian_consumer_artifact(a, ready_artifact)
             files = {}
             client_sources = []
             candidate_records = []
@@ -1150,7 +1158,9 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                                 files[relative]['androidMaterialReuse'] = validate_android_material_reuse(provenance.get('androidRuntimeMaterials'), configuration, measured)
             require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
-            has_debian_use = validate_debian_use(files, candidate_records, a['name'], binding, jobs=material_jobs)
+            has_debian_use = validate_debian_use(files, candidate_records, a['name'], binding, jobs=material_jobs,
+                                                canonical_manifest=canonical_manifest, artifact_metadata=a,
+                                                ready_metadata=ready_metadata)
             verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'], debian_use=has_debian_use)
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveBytes': a['size_in_bytes'], 'archiveSha256': a['digest'], 'files': files}
         expected_receipt = {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,

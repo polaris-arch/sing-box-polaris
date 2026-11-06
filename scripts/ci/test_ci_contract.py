@@ -346,12 +346,9 @@ class TestCIContract(unittest.TestCase):
   jobs=workflow['jobs'];receipt=jobs['publisher_receipt']
   expected=('calculate_version','build','build_windows7','build_darwin','build_windows',
             'build_android_library','build_android','build_windows_client','build_linux_client',
-            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index','debian_materials')
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index','prepare_windows7','debian_materials')
   self.assertEqual(receipt['needs'],list(expected))
-  clauses=('!failure()','!cancelled()',"inputs.build == 'All'",'!inputs.source_generate_only')
-  clauses+=tuple("needs."+name+".result == 'success'" for name in expected[:-1])
-  clauses+=("(needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success'))",)
-  self.assertEqual(receipt['if'],'${{ '+' && '.join(clauses)+' }}')
+  self.assertEqual(receipt['if'],"${{ always() && inputs.build == 'All' && !inputs.source_generate_only }}")
   self.assertNotIn('continue-on-error',receipt)
   self.assertIn('prepare_windows7',jobs['build_windows7']['needs'])
   index=jobs['native_index']
@@ -377,7 +374,12 @@ class TestCIContract(unittest.TestCase):
                                  'POLARIS_DEBIAN_RAW_DIGEST':'${{ needs.debian_materials.outputs.raw_digest }}',
                                  'POLARIS_DEBIAN_READY_ID':'${{ needs.debian_materials.outputs.ready_id }}',
                                  'POLARIS_DEBIAN_READY_DIGEST':'${{ needs.debian_materials.outputs.ready_digest }}',
-                                 'GH_TOKEN':'${{ github.token }}'})
+                                 'GH_TOKEN':'${{ github.token }}',
+                                 'NEEDS_JSON':'${{ toJSON(needs) }}',
+                                 'RECEIPT_EVIDENCE_MODE':'${{ inputs.evidence_mode }}',
+                                 'RECEIPT_SOURCE_GENERATE_ONLY':"${{ inputs.source_generate_only && 'true' || 'false' }}",
+                                 'RECEIPT_DISTRIBUTION_ENABLED':'false',
+                                 'RECEIPT_PUBLISH_GITHUB':'false'})
   self.assertEqual(upload['uses'],'actions/upload-artifact@v4')
   self.assertEqual(upload['with'],{'name':'publisher-run-receipt','path':'publisher-run-receipt.json',
                                  'if-no-files-found':'error'})
@@ -389,26 +391,14 @@ class TestCIContract(unittest.TestCase):
  def test_all_receipt_configuration_mutations_are_rejected(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self._assert_all_producer_receipt_contract(workflow)
-  receipt=workflow['jobs']['publisher_receipt'];condition=receipt['if'];cases=[]
-  self.assertTrue(receipt['needs'])
-  for name in receipt['needs'][:-1]:
+  receipt=workflow['jobs']['publisher_receipt'];cases=[]
+  for name in receipt['needs']:
    self.assertEqual(receipt['needs'].count(name),1)
-   clause="needs."+name+".result == 'success'"
-   self.assertEqual(condition.count(clause),1)
    cases.append((name+':missing-need','needs',[n for n in receipt['needs'] if n!=name]))
-   cases.append((name+':missing-result','if',condition.replace(' && '+clause,'',1)))
-   cases.append((name+':nonfailure-result','if',condition.replace(clause,"needs."+name+".result != 'failure'",1)))
-   cases.append((name+':foreign-result-owner','if',condition.replace(clause,"needs.unregistered_producer.result == 'success'",1)))
-   for status in ('failure','skipped','cancelled','unknown'):
-    cases.append((name+':'+status+'-result','if',condition.replace(clause,"needs."+name+".result == '"+status+"'",1)))
-  for label,anchor in (('missing-no-failure','!failure() && '),
-                       ('missing-no-cancel','!cancelled() && '),
-                       ('missing-All',"inputs.build == 'All' && "),
-                       ('missing-source-only',' && !inputs.source_generate_only')):
-   self.assertEqual(condition.count(anchor),1)
-   cases.append((label,'if',condition.replace(anchor,'',1)))
-  cases.append(('generic-success','if',"success() && inputs.build == 'All' && !inputs.source_generate_only"))
-  cases.append(('unconditional-always','if','always()'))
+  cases += [('extra-need','needs',receipt['needs']+['unregistered_producer']),
+            ('generic-success','if',"success() && inputs.build == 'All' && !inputs.source_generate_only"),
+            ('failure-front-gate','if',"!failure() && !cancelled() && inputs.build == 'All' && !inputs.source_generate_only"),
+            ('unconditional-always','if','always()')]
   for label,index,key,value in (('synthetic-record',1,'run',"printf '{}' > publisher-run-receipt.json"),
                                 ('foreign-role',1,'env',dict(receipt['steps'][1]['env'],PUBLISHER_ROLE='linux')),
                                 ('foreign-version',1,'env',dict(receipt['steps'][1]['env'],RELEASE_VERSION='1.15.0-polaris-alpha.12.10')),
@@ -432,30 +422,30 @@ class TestCIContract(unittest.TestCase):
      self._assert_all_producer_receipt_contract(changed)
   # These are configuration controls. Only a later hosted run can prove actual
   # scheduling after a skipped optional ancestor and upload the genuine receipt.
- def test_signed_all_receipt_has_satisfiable_fail_closed_dependencies(self):
+ def test_signed_all_receipt_has_terminal_complete_direct_dependencies(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   jobs=w['jobs'];receipt=jobs['publisher_receipt']
   expected={'calculate_version','build','build_windows7','build_darwin','build_windows',
             'build_android_library','build_android','build_windows_client','build_linux_client',
-            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index'}
-  self.assertEqual(set(receipt['needs']),expected)
-  self.assertEqual(receipt['if'],"success() && inputs.build == 'All'")
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index',
+            'prepare_windows7','upload'}
+  self.assertEqual(set(receipt['needs']),expected);self.assertEqual(len(receipt['needs']),16)
+  self.assertEqual(receipt['if'],"${{ always() && inputs.build == 'All' }}")
   self.assertIn("inputs.build == 'publish-android'",jobs['publish_android']['if'])
   scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())['signed']
   self.assertNotIn('publish_android',scope['requiredJobs'])
-  self.assertEqual(set(scope['requiredJobs']),expected|{'prepare_windows7','upload'})
+  self.assertEqual(set(scope['requiredJobs']),expected)
+  self.assertEqual(scope['receiptJobs'],{name:'github_upload' if name=='upload' else 'required' for name in expected})
   self.assertIn('publisher-run-receipt',scope['requiredArtifacts'])
-  # Evaluate only this exact conjunction against inert terminal job outcomes.
-  # An optional store-only job may be skipped; every actual All producer must succeed.
-  def admitted(build,outcomes):
-   return build=='All' and all(outcomes[name]=='success' for name in receipt['needs'])
-  outcomes={name:'success' for name in expected};outcomes['publish_android']='skipped'
-  self.assertTrue(admitted('All',outcomes))
-  self.assertFalse(admitted('publish-android',outcomes))
-  for name in expected:
-   for result in ('failure','skipped','cancelled'):
-    with self.subTest(job=name,result=result):
-     self.assertFalse(admitted('All',dict(outcomes,**{name:result})))
+  env=next(s for s in receipt['steps'] if s.get('name')=='Record exact completed scope')['env']
+  self.assertEqual(env['NEEDS_JSON'],'${{ toJSON(needs) }}')
+  self.assertEqual(env['RECEIPT_EVIDENCE_MODE'],'${{ inputs.evidence_mode }}')
+  self.assertEqual(env['RECEIPT_DISTRIBUTION_ENABLED'],'${{ vars.POLARIS_DISTRIBUTION_ENABLED }}')
+  self.assertEqual(env['RECEIPT_PUBLISH_GITHUB'],"${{ inputs.publish_github && 'true' || 'false' }}")
+  # Keep publication's original repository/environment/credential boundary.
+  self.assertEqual(jobs['upload']['if'],"!failure() && !cancelled() && github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true' && inputs.publish_github && inputs.evidence_mode == 'final' && inputs.build == 'All'")
+  for name in ('build','native_smoke','native_index','upload'):
+   self.assertNotIn('always()',jobs[name]['if'])
  def test_signed_apple_identity_skips_inactive_matrix_rows(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   for job_name in ('build_apple','build_apple_app_store'):
@@ -516,6 +506,10 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(set(w['on']),{'workflow_dispatch'},filename)
    for job,matrix in baseline[up].items():
     actual=copy.deepcopy(w['jobs'][job]['strategy']['matrix'])
+    if filename=='docker.yml':
+     actual={'include':[row for name,candidate in w['jobs'].items() if name==job or name.startswith(job+'_')
+                        for row in candidate['strategy']['matrix']['include']]}
+     self.assertCountEqual(actual['include'],matrix['include'],(filename,job));continue
     if filename=='build.yml' and job=='build':
      from test_protocol_peer import normal_build_matrix
      actual=normal_build_matrix(actual)
@@ -622,7 +616,7 @@ class TestCIContract(unittest.TestCase):
  def test_docker_actual_builds_bind_dispatch_and_recheck_before_upload(self):
   w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
   self.assertIn('source',w['jobs'])
-  for name in ['build_binary','build_docker']:
+  for name in [n for n in w['jobs'] if n.startswith(('build_binary','build_docker'))]:
    job=w['jobs'][name];self.assertIn('source',job['needs'])
    checkout=next(x for x in job['steps'] if x.get('uses','').startswith('actions/checkout@'))
    self.assertEqual(checkout['with']['ref'],'${{ github.sha }}')
@@ -1804,8 +1798,8 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
 
 
 
-# The old selector strings are a source-pinned pre-supply contract. Exact needs
-# and explicit status functions below make optional skipped dependencies visible.
+# Preserve the pre-supply selectors and real source ancestors, while proving
+# that a sibling canonical supplier cannot gate independent consumer jobs.
 _MATERIAL_OLD_SELECTORS = {'prepare_windows7': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')", 'build_darwin': "!inputs.source_generate_only && !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_windows': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_android_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable'", 'build_windows_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable'", 'build_linux_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable'", 'build_apple_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')"}
 _MATERIAL_REQUIRED_EXPRESSIONS = {'.github/workflows/build.yml': "github.event_name == 'workflow_dispatch' && inputs.build == 'All' && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/')", '.github/workflows/linux.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')", '.github/workflows/docker.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')"}
 _MATERIAL_CALLERS = [['.github/workflows/build.yml', 'build', 'all', 'calculate_version', 'C1_ALL_BINARY', '${{ matrix.arch }}', "${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}", "fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'", 'dist'], ['.github/workflows/build.yml', 'build_linux_client', 'all', 'calculate_version', 'C2_ALL_LINUX_CLIENT', '${{ matrix.go_arch }}', 'glibc', 'true', 'dist'], ['.github/workflows/linux.yml', 'build', 'linux', 'calculate_version', 'C3_LINUX', '${{ matrix.arch }}', 'musl', 'matrix.naive', 'dist'], ['.github/workflows/docker.yml', 'build_binary', 'docker', 'source', 'C4_DOCKER', '${{ matrix.arch }}', 'musl', 'matrix.naive', '.']]
@@ -1824,7 +1818,7 @@ def _material_expression(expression, bindings):
  text=text.replace('&&',' and ').replace('||',' or ')
  text=re.sub(r'!(?!=)','not ',text)
  return eval(text,{'__builtins__':{},'true':True,'false':False,
-                  'startsWith':lambda value,prefix:value.startswith(prefix)},{})
+                  'startsWith':lambda value,prefix:value.startswith(prefix),'always':lambda:True},{})
 
 
 class TestDebianMaterialWiring(unittest.TestCase):
@@ -1832,8 +1826,8 @@ class TestDebianMaterialWiring(unittest.TestCase):
   return {name:yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
           for name in ('build.yml','linux.yml','docker.yml')}
  def assert_frontier(self,job,parent,old_selector=None):
-  self.assertEqual(job['needs'],[parent,'debian_materials'])
-  condition="!cancelled() && needs."+parent+".result == 'success' && "+_material_gate(parent)
+  self.assertEqual(job['needs'],[parent])
+  condition="!cancelled() && needs."+parent+".result == 'success'"
   if old_selector is not None:
    selector=old_selector.replace('!failure() && ','').replace('!cancelled() && ','')
    condition+=' && ('+selector+')'
@@ -1854,7 +1848,7 @@ class TestDebianMaterialWiring(unittest.TestCase):
     field=workflow['on']['workflow_dispatch']['inputs'][key]
     self.assertEqual(field['type'],'string');self.assertIs(field['required'],False);self.assertEqual(field['default'],'')
    if filename=='docker.yml':
-    self.assertEqual(workflow['jobs']['build_binary']['outputs']['material_required'],'${{ needs.source.outputs.material_required }}')
+    self.assertNotIn('outputs',workflow['jobs']['build_binary'])
    # All selectors, source generation, staging and branch paths retain their
    # old behavior. Only the exact current-tag full Final mode requests supply.
    for event in ('workflow_dispatch','push'):
@@ -1911,6 +1905,8 @@ class TestDebianMaterialWiring(unittest.TestCase):
     self.assertEqual(result.returncode==0,not a and not b)
  def test_every_heavy_frontier_preserves_old_ancestors_and_handles_optional_ready(self):
   workflows=self.workflows()
+  for filename,name in (('build.yml','build'),('build.yml','build_linux_client'),('linux.yml','build')):
+   self.assertIs(workflows[filename]['jobs'][name]['strategy']['fail-fast'],False)
   frontier=[('build.yml',name,'calculate_version',old) for name,old in _MATERIAL_OLD_SELECTORS.items()]
   frontier+=[('linux.yml','build','calculate_version',None),('docker.yml','build_binary','source',None)]
   for filename,name,parent,old in frontier:
@@ -1924,16 +1920,16 @@ class TestDebianMaterialWiring(unittest.TestCase):
                 'needs.debian_materials.result':ready,'cancelled()':cancelled,'failure()':ancestor=='failure',
                 'inputs.source_generate_only':False,'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.14','inputs.build':build}
         selector=True if old is None else _material_expression(old,values)
-        expected=bool(selector and not cancelled and ancestor=='success' and (mode=='false' or mode=='true' and ready=='success'))
+        expected=bool(selector and not cancelled and ancestor=='success')
         self.assertEqual(bool(_material_expression(candidate['if'],values)),expected,(filename,name,mode,ancestor,ready,cancelled,build))
    # Mutate actual needs and conditions; every change must be rejected by the
    # same assertion which first accepts the complete unmodified candidate.
    changes=[]
    for status in ('failure','skipped','cancelled','','unknown'):
     changes.append(('if',candidate['if'].replace("needs."+parent+".result == 'success'","needs."+parent+".result == '"+status+"'",1)))
-   changes += [('needs',[parent]),('needs',['debian_materials']),('if','always()'),('if','success()'),
-               ('if',candidate['if'].replace(_material_gate(parent),"needs.debian_materials.result != 'failure'")),
-               ('if',candidate['if'].replace("needs."+parent+".outputs.material_required == 'false'","needs."+parent+".outputs.material_required != 'true'",1))]
+   changes += [('needs',[parent,'debian_materials']),('needs',['debian_materials']),
+               ('if','always()'),('if','success()'),
+               ('if',candidate['if'].replace("needs."+parent+".result == 'success'","needs.debian_materials.result != 'failure'"))]
    for field,value in changes:
     wrong=copy.deepcopy(candidate);wrong[field]=value
     with self.assertRaises(AssertionError):self.assert_frontier(wrong,parent,old)
@@ -1981,7 +1977,7 @@ class TestDebianMaterialWiring(unittest.TestCase):
    clone,keyring,download=[next(s for s in steps if s.get('name')==n) for n in ('Clone cronet-go','Regenerate Debian keyring','Download Chromium toolchain')]
    self.assertLess(steps.index(clone),steps.index(keyring));self.assertLess(steps.index(keyring),steps.index(download))
    self.assertEqual((clone['timeout-minutes'],download['timeout-minutes']),(10,20))
-   run=download['run'];self.assertLess(run.index('cronet_material_supply.py" consume'),run.index('export POLARIS_CRONET_RAW_STORE='))
+   run=download['run'];self.assertLess(run.index('cronet_material_supply.py" consume-local'),run.index('export POLARIS_CRONET_RAW_STORE='))
    self.assertLess(run.index('export POLARIS_CRONET_RAW_STORE='),run.index('go run ./cmd/build-naive'))
    self.assertIn('--caller '+caller+' --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC"',run)
    self.assertEqual(download['env']['MATERIAL_TARGET_ARCH'],arch);self.assertEqual(download['env']['MATERIAL_LIBC'],libc)
@@ -2002,16 +1998,17 @@ class TestDebianMaterialWiring(unittest.TestCase):
   commands='\n'.join(s.get('run','') for s in workflows['build.yml']['jobs']['source_gate']['steps'])
   self.assertIn("python3 -m unittest discover -s scripts/ci -p 'test_*.py'",commands)
   self.assertTrue((ROOT/'scripts/ci/test_cronet_material_supply.py').is_file())
- def test_original_receipt_success_and_native_proof_exceptions_survive_the_new_edge(self):
-  workflows=self.workflows()
+ def test_terminal_receipts_keep_full_source_owned_jobs_and_native_proof_join(self):
+  workflows=self.workflows();scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())
   for filename,workflow in workflows.items():
-   receipt=workflow['jobs']['publisher_receipt'];self.assertEqual(receipt['needs'][-1],'debian_materials')
-   self.assertEqual(len(receipt['needs']),15 if filename=='build.yml' else 3)
-   for name in receipt['needs'][:-1]:self.assertIn("needs."+name+".result == 'success'",receipt['if'])
-   parent='build_binary' if filename=='docker.yml' else 'calculate_version'
-   self.assertIn(_material_gate(parent),receipt['if']);self.assertIn('!cancelled()',receipt['if'])
-   self.assertNotIn('always()',receipt['if']);self.assertNotIn('success()',receipt['if'])
+   role={'build.yml':'all','linux.yml':'linux','docker.yml':'docker'}[filename]
+   receipt=workflow['jobs']['publisher_receipt'];self.assertEqual(receipt['needs'],list(scope[role]['receiptJobs']))
+   self.assertEqual(len(receipt['needs']),{'all':16,'linux':3,'docker':21}[role])
+   self.assertIn('always()',receipt['if']);self.assertNotIn('failure()',receipt['if']);self.assertNotIn('cancelled()',receipt['if'])
+   self.assertNotIn('success()',receipt['if']);self.assertNotIn('needs.',receipt['if'])
+   parent='source' if role=='docker' else 'calculate_version'
    record=next(s for s in receipt['steps'] if s.get('name')=='Record exact completed scope')
+   self.assertEqual(record['env']['NEEDS_JSON'],'${{ toJSON(needs) }}')
    self.assertEqual(record['env']['POLARIS_DEBIAN_REQUIRED'],'${{ needs.'+parent+'.outputs.material_required }}')
    for key,out in (('RAW_ID','raw_id'),('RAW_DIGEST','raw_digest'),('READY_ID','ready_id'),('READY_DIGEST','ready_digest')):
     self.assertEqual(record['env']['POLARIS_DEBIAN_'+key],'${{ needs.debian_materials.outputs.'+out+' }}')
@@ -2020,7 +2017,156 @@ class TestDebianMaterialWiring(unittest.TestCase):
   self.assertIn("inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success'",index['if'])
   for name in index['needs']:
    if name not in ('native_windows_proof','debian_materials'):self.assertIn("needs."+name+".result == 'success'",index['if'])
-  self.assertIn(_material_gate('calculate_version'),index['if'])
+  self.assertIn(_material_gate('calculate_version'),index['if']);self.assertNotIn('always()',index['if'])
+ def test_docker_real_jobs_are_one_to_one_products_and_only_own_binary_ancestors(self):
+  workflow=self.workflows()['docker.yml'];jobs=workflow['jobs']
+  scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())['docker']
+  products={'':'linux/amd64','_arm64':'linux/arm64','_386':'linux/386','_armv7':'linux/arm/v7',
+            '_armv6':'linux/arm/v6','_mipsle':'linux/mipsle','_riscv64':'linux/riscv64',
+            '_loong64':'linux/loong64','_ppc64le':'linux/ppc64le','_s390x':'linux/s390x'}
+  expected={'source','debian_materials'}
+  for suffix,platform in products.items():
+   binary='build_binary'+suffix;expected.add(binary);job=jobs[binary]
+   self.assertEqual(job['name'],binary);self.assertEqual(job['needs'],['source'])
+   self.assertIs(job['strategy']['fail-fast'],False)
+   self.assertEqual(len(job['strategy']['matrix']['include']),1)
+   self.assertEqual(job['strategy']['matrix']['include'][0]['docker_platform'],platform)
+   self.assertEqual(scope['matrices'][binary],job['strategy']['matrix'])
+   self.assertFalse(any('needs.debian_materials' in json.dumps(s) for s in job['steps']))
+   self.assertTrue(any(s.get('name')=='Build (naive)' for s in job['steps']))
+   self.assertTrue(any(s.get('name')=='Build (non-naive)' for s in job['steps']))
+   if suffix=='_mipsle':continue
+   image='build_docker'+suffix;expected.add(image);job=jobs[image]
+   self.assertEqual(job['name'],image);self.assertEqual(job['needs'],[binary,'source'])
+   self.assertIs(job['strategy']['fail-fast'],False)
+   self.assertEqual(len(job['strategy']['matrix']['include']),1)
+   self.assertEqual(job['strategy']['matrix']['include'][0]['platform'],platform)
+   self.assertEqual(scope['matrices'][image],job['strategy']['matrix'])
+   download=next(s for s in job['steps'] if s.get('name')=='Download binary')
+   self.assertEqual(download['with']['name'],'binary-${{ env.PLATFORM_PAIR }}')
+   self.assertEqual(next(s for s in job['steps'] if s.get('name')=='Prepare')['run'],
+                    'platform=${{ matrix.platform }}\necho "PLATFORM_PAIR=${platform//\\//-}" >> $GITHUB_ENV\n')
+   self.assertTrue(any(s.get('uses')=='docker/build-push-action@v6' for s in job['steps']))
+  self.assertNotIn('build_docker_mipsle',jobs)
+  self.assertEqual(set(scope['requiredJobs']),expected);self.assertEqual(set(scope['receiptJobs']),expected)
+  self.assertEqual(set(jobs['publisher_receipt']['needs']),expected)
+  self.assertEqual({n for n in jobs if n.startswith(('build_binary','build_docker'))},expected-{'source','debian_materials'})
+  self.assertEqual({r:len(json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())[r]['requiredArtifacts']) for r in ('all','linux','docker')},
+                   {'all':74,'linux':14,'docker':22})
+
+
+class TestNativeProducerReceiptJobs(unittest.TestCase):
+ # Independent fixed expectations: neither needs outputs nor an incomplete
+ # runtime map can choose which real producer jobs this source requires.
+ ALL=('calculate_version','build','build_windows7','build_darwin','build_windows',
+      'build_android_library','build_android','build_windows_client','build_linux_client',
+      'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index',
+      'prepare_windows7','debian_materials')
+ DOCKER_BINARY=('build_binary','build_binary_arm64','build_binary_386','build_binary_armv7',
+                'build_binary_mipsle','build_binary_riscv64','build_binary_loong64',
+                'build_binary_armv6','build_binary_ppc64le','build_binary_s390x')
+ DOCKER_IMAGE=('build_docker','build_docker_armv6','build_docker_armv7','build_docker_arm64',
+               'build_docker_386','build_docker_ppc64le','build_docker_riscv64',
+               'build_docker_s390x','build_docker_loong64')
+ def fixture(self,role):
+  ids={'all':self.ALL,'linux':('calculate_version','build','debian_materials'),
+       'docker':('source',)+self.DOCKER_BINARY+self.DOCKER_IMAGE+('debian_materials',),
+       'signed':self.ALL[:-1]+('upload',)}[role]
+  plan=json.loads((ROOT/'release/ci/github-release.json').read_text())
+  env={'PUBLISHER_ROLE':role,'GITHUB_EVENT_NAME':'workflow_dispatch',
+       'GITHUB_REPOSITORY':'polaris-arch/sing-box-polaris','GITHUB_REPOSITORY_ID':'1421657509',
+       'GITHUB_REF':'refs/tags/'+plan['tag'],'GITHUB_SHA':'a'*40,'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1',
+       'RELEASE_BUILD':'All','RELEASE_VERSION':plan['version'],'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false',
+       'RECEIPT_EVIDENCE_MODE':'final','RECEIPT_SOURCE_GENERATE_ONLY':'false',
+       'RECEIPT_DISTRIBUTION_ENABLED':'true' if role=='signed' else 'false',
+       'RECEIPT_PUBLISH_GITHUB':'false','POLARIS_DEBIAN_REQUIRED':'false' if role=='signed' else 'true'}
+  needs={name:{'result':'skipped' if name=='upload' else 'success','outputs':{}} for name in ids}
+  return env,needs
+ def record(self,env,needs,accepted,raw=None):
+  import runpy
+  with tempfile.TemporaryDirectory() as directory:
+   old=Path.cwd()
+   try:
+    os.chdir(directory);Path('release/ci').mkdir(parents=True)
+    for filename in ('github-release.json','publisher-upstream-scope.json'):
+     Path('release/ci',filename).write_text((ROOT/'release/ci'/filename).read_text())
+    env=dict(env,NEEDS_JSON=json.dumps(needs) if raw is None else raw)
+    with mock.patch.dict(os.environ,env,clear=True),mock.patch('subprocess.check_output',return_value='a'*40+'\n'), \
+         mock.patch('github_release.producer_debian_materials',return_value=None) as material:
+     if accepted:
+      runpy.run_path(str(ROOT/'scripts/ci/publisher_run_receipt.py'))
+      receipt=json.loads(Path('publisher-run-receipt.json').read_text())
+      self.assertEqual(receipt['role'],env['PUBLISHER_ROLE']);self.assertEqual(receipt['sourceCommit'],'a'*40)
+      self.assertNotIn('jobResults',receipt);self.assertNotIn('selection',receipt)
+      material.assert_called_once()
+     else:
+      with self.assertRaises((AssertionError,KeyError,ValueError,TypeError)):
+       runpy.run_path(str(ROOT/'scripts/ci/publisher_run_receipt.py'))
+      self.assertFalse(Path('publisher-run-receipt.json').exists());material.assert_not_called()
+   finally:os.chdir(old)
+ def test_all_complete_roles_write_actual_receipt_and_every_selected_job_rejects_bad_terminal_states(self):
+  for role in ('all','linux','docker','signed'):
+   env,needs=self.fixture(role);self.record(env,needs,True)
+   for name in needs:
+    if name=='upload':continue # Explicit unselected branch covered separately.
+    for result in ('failure','skipped','cancelled','unknown','','queued'):
+     wrong=copy.deepcopy(needs);wrong[name]['result']=result
+     with self.subTest(role=role,job=name,result=result):self.record(env,wrong,False)
+    wrong=copy.deepcopy(needs);del wrong[name]
+    with self.subTest(role=role,missing=name):self.record(env,wrong,False)
+   wrong=dict(needs,unregistered_producer={'result':'success','outputs':{}})
+   self.record(env,wrong,False)
+ def test_supplier_selection_is_native_and_never_taken_from_needs_outputs(self):
+  for role in ('all','linux','docker'):
+   env,needs=self.fixture(role)
+   wrong=copy.deepcopy(needs);wrong['debian_materials']['result']='failure'
+   owner='source' if role=='docker' else 'calculate_version'
+   wrong[owner]['outputs']={'material_required':'false','receiptJobs':'{}'}
+   self.record(env,wrong,False)
+   self.record(dict(env,POLARIS_DEBIAN_REQUIRED='false'),needs,False)
+   branch=dict(env,GITHUB_REF='refs/heads/fix/current',POLARIS_DEBIAN_REQUIRED='false')
+   optional=copy.deepcopy(needs);optional['debian_materials']['result']='skipped'
+   self.record(branch,optional,True)
+   for result in ('success','failure','cancelled','unknown',''):
+    wrong=copy.deepcopy(optional);wrong['debian_materials']['result']=result
+    self.record(branch,wrong,False)
+   if role=='all':
+    staging=dict(env,RECEIPT_EVIDENCE_MODE='staging',POLARIS_DEBIAN_REQUIRED='false')
+    self.record(staging,optional,True);self.record(staging,needs,False)
+ def test_signed_upload_selection_never_downgrades_failure_or_cancellation(self):
+  env,needs=self.fixture('signed');self.record(env,needs,True)
+  selected=dict(env,RECEIPT_PUBLISH_GITHUB='true')
+  complete=copy.deepcopy(needs);complete['upload']['result']='success'
+  self.record(selected,complete,True)
+  for result in ('failure','cancelled','skipped','unknown','','queued'):
+   wrong=copy.deepcopy(complete);wrong['upload']={'result':result,'outputs':{'publish_github':'false'}}
+   self.record(selected,wrong,False)
+  for result in ('success','failure','cancelled','unknown',''):
+   wrong=copy.deepcopy(needs);wrong['upload']['result']=result;self.record(env,wrong,False)
+  staging=dict(env,RECEIPT_EVIDENCE_MODE='staging')
+  self.record(staging,needs,True)
+  self.record(dict(staging,RECEIPT_PUBLISH_GITHUB='true'),needs,False)
+  self.record(dict(env,RECEIPT_DISTRIBUTION_ENABLED='false'),needs,False)
+  self.record(dict(env,GITHUB_REPOSITORY='other/repo'),needs,False)
+  missing=copy.deepcopy(needs);del missing['upload'];self.record(env,missing,False)
+ def test_native_needs_shape_partial_modes_and_selection_ambiguity_fail_before_any_material_read(self):
+  env,needs=self.fixture('all')
+  for raw in ('{}','[]','null','{','{"build":{},"build":{}}'):
+   self.record(env,needs,False,raw)
+  for item in ({'result':'success'},{'result':'success','outputs':[]},
+               {'result':'success','outputs':{},'selection':'required'},[],None):
+   wrong=copy.deepcopy(needs);wrong['build']=item;self.record(env,wrong,False)
+  for mode in ('Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple'):
+   self.record(dict(env,RELEASE_BUILD=mode),needs,False)
+  for key in ('RECEIPT_SOURCE_GENERATE_ONLY','RECEIPT_DISTRIBUTION_ENABLED','RECEIPT_PUBLISH_GITHUB'):
+   for value in ('','unknown','1','True'):
+    self.record(dict(env,**{key:value}),needs,False)
+   wrong=dict(env);del wrong[key];self.record(wrong,needs,False)
+  for changes in ({'RECEIPT_SOURCE_GENERATE_ONLY':'true'}, {'RECEIPT_EVIDENCE_MODE':'unknown'},
+                  {'GITHUB_EVENT_NAME':'push'}, {'GITHUB_REF':'refs/tags/vwrong'}, {'GITHUB_REF':''},
+                  {'RECEIPT_PUBLISH_GITHUB':'true'}, {'RECEIPT_DISTRIBUTION_ENABLED':'true'},
+                  {'PUBLISH_STORES':'true'}, {'PUBLISH_REGISTRY':'true'}):
+   self.record(dict(env,**changes),needs,False)
 
 
 

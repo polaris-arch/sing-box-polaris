@@ -127,7 +127,187 @@ def fixture_use(bundle, artifact_name):
             "caller": expected["caller"], "targetArch": expected["targetArch"], "libc": expected["libc"],
             "profiles": [copy.deepcopy(next(item for item in bundle["manifest"]["profiles"] if item["id"] == profile_id))
                          for profile_id in expected["profiles"]],
-            "consumerJob": {"id": job["id"], "key": caller["job"], "name": job["name"], "runner": job["runner_name"]}}
+            "consumerJob": {"id": job["id"], "key": expected.get("job", caller["job"]), "name": job["name"], "runner": job["runner_name"]}}
+
+
+def fixture_local_use(bundle, artifact_name):
+    """Subset wire data from a measured fixture; no new authentication claim."""
+    expected = supply.expected_use(bundle["context"]["role"], artifact_name)
+    manifest = copy.deepcopy(bundle["manifest"])
+    subset = set(expected["profiles"])
+    manifest.update(schema=supply.LOCAL_MANIFEST, requiredProfiles=expected["profiles"], seed=None)
+    manifest["profiles"] = [profile for profile in manifest["profiles"] if profile["id"] in subset]
+    manifest["objects"] = [item for item in manifest["objects"] if subset.intersection(item["profiles"])]
+    for item in manifest["objects"]:
+        item["profiles"] = sorted(subset.intersection(item["profiles"]))
+    remote = fixture_use(bundle, artifact_name)
+    return {"schema": supply.LOCAL_USE, "scope": supply.SCOPE, "acquisition": "local-original",
+            "context": copy.deepcopy(bundle["context"]), "planSHA256": manifest["planSHA256"],
+            "artifact": artifact_name, "caller": expected["caller"], "targetArch": expected["targetArch"],
+            "libc": expected["libc"], "requiredProfiles": list(expected["profiles"]),
+            "manifestSHA256": supply.digest(supply.encode_json(manifest)), "manifest": manifest,
+            "verification": supply.VERIFICATION, "consumerJob": remote["consumerJob"]}
+
+
+class LocalOriginalUseTests(unittest.TestCase):
+    def run_local(self, bundle, artifact, output, verify=None):
+        wire = fixture_local_use(bundle, artifact)
+        expected = supply.expected_use(bundle["context"]["role"], artifact)
+        def capture(root, profiles, store, enabled, deadline):
+            self.assertIs(enabled, True)
+            self.assertEqual(profiles, expected["profiles"])
+            manifest = supply.decode_json(supply.read_regular(store / supply.MANIFEST))
+            manifest["objects"] = copy.deepcopy(wire["manifest"]["objects"])
+            for item in manifest["objects"]:
+                path = store / item["member"]
+                if not path.exists():
+                    supply.write_new(path, bundle["payloads"][item["url"]])
+            supply.replace_json(store / supply.MANIFEST, manifest)
+            return (verify(store, profiles) if verify is not None else copy.deepcopy(wire["manifest"]["profiles"]))
+        args = argparse.Namespace(cronet_root=output.parent, role=bundle["context"]["role"],
+            caller=expected["caller"], target_arch=expected["targetArch"], libc=expected["libc"], output=output)
+        with mock.patch.dict(os.environ, {"GITHUB_JOB":wire["consumerJob"]["key"]}, clear=True), \
+             mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
+             mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+             mock.patch.object(supply, "_consumer_job", return_value=wire["consumerJob"]), \
+             mock.patch.object(supply, "_profiles", side_effect=capture):
+            supply.consume_local(args)
+        use = supply.decode_json(supply.read_regular(output / "use.json"))
+        self.validate(bundle, artifact, use)
+        return use
+
+    def validate(self, bundle, artifact, use):
+        return supply.validate_use_ref(use, binding=bundle["binding"], ready_artifact=bundle["ready_artifact"],
+            artifact_name=artifact, consumer_job=bundle["consumer_job_by_artifact"][artifact],
+            canonical_manifest=bundle["manifest"])
+
+    def test_all_source_owned_subsets_join_exact_canonical_cas(self):
+        counts = {"all": (18, 27), "linux": (7, 7), "docker": (7, 7)}
+        for role, (rows, profiles) in counts.items():
+            bundle = fixture_bundle(role)
+            names = supply.load_profile_plan()["eligibleArtifacts"][role]
+            self.assertEqual(len(names), rows)
+            self.assertEqual(sum(len(value["profiles"]) for value in names.values()), profiles)
+            for artifact in names:
+                use = fixture_local_use(bundle, artifact)
+                self.assertIs(self.validate(bundle, artifact, use), use)
+                self.assertNotIn("readyArtifact", use)
+                self.assertNotIn("rawArtifact", use)
+                self.assertNotIn("supplierJob", use)
+                # A subset wire record must never be accepted as canonical v1.
+                with self.assertRaises(ValueError):
+                    supply.validate_manifest(use["manifest"], context=use["context"], measurements={})
+
+    def test_local_entry_measures_cas_and_toolchain_has_no_origin_fallback(self):
+        bundle = fixture_bundle("all")
+        before = dict(os.environ)
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "consumer"
+            use = self.run_local(bundle, "binary-linux_arm64-glibc", output)
+            self.assertEqual(use["requiredProfiles"], ["bullseye-amd64", "bullseye-arm64"])
+            with mock.patch.dict(os.environ, {"POLARIS_CRONET_RAW_STORE":str(output / "raw")}, clear=True):
+                unknown = next(p for p in supply.load_profile_plan()["profiles"] if p["id"] == "sid-loong64")
+                with self.assertRaisesRegex(bootstrap.MaterialError, "CANDIDATE_REQUIRED_MISSING"):
+                    bootstrap._reuse_candidate(unknown["archivePrefix"] + "pool/main/x/not-selected.deb",
+                                               output / "missing", bootstrap.load_policy())
+            self.assertEqual(dict(os.environ), before)
+
+    def test_local_cli_has_no_ready_checkpoint_or_profile_override(self):
+        common = ["--cronet-root", "/fixture", "--role", "linux", "--caller", "C3_LINUX",
+                  "--target-arch", "amd64", "--libc", "musl", "--output", "/fixture-out"]
+        for command, extra in [("consume", []), ("consume-local", ["--ready-artifact-id", "1"]),
+                               ("consume-local", ["--checkpoint-artifact-id", "1"]),
+                               ("consume-local", ["--profiles", "sid-loong64"])]:
+            with self.subTest(command=command, extra=extra), \
+                 mock.patch("sys.argv", ["cronet_material_supply.py", command, *common, *extra]), \
+                 self.assertRaises(SystemExit), mock.patch.object(supply, "_prepared") as prepared:
+                supply.main()
+            prepared.assert_not_called()
+
+    def test_local_entry_rejects_inherited_capture_before_any_worker(self):
+        bundle = fixture_bundle("linux")
+        args = argparse.Namespace(cronet_root="/fixture", role="linux", caller="C3_LINUX",
+                                  target_arch="amd64", libc="musl", output="/unused")
+        for name in ("POLARIS_CRONET_CAPTURE_DIR", "POLARIS_CRONET_CAPTURE_PROFILE", "POLARIS_CRONET_RAW_STORE"):
+            with mock.patch.dict(os.environ, {"GITHUB_JOB":"build", name:"/inherited"}, clear=True), \
+                 mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
+                 mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                 mock.patch.object(supply, "_profiles") as worker, \
+                 self.assertRaisesRegex(ValueError, "fresh local consumer environment"):
+                supply.consume_local(args)
+            worker.assert_not_called()
+
+    def test_local_canonical_join_rejects_self_consistent_poison_and_missing_authority(self):
+        bundle = fixture_bundle("all")
+        artifact = "binary-linux_loong64-glibc"
+        original = fixture_local_use(bundle, artifact)
+        mutations = [
+            lambda u:u.update(acquisition="remote-ready"),
+            lambda u:u.update(schema="unknown-local"),
+            lambda u:u.update(artifact="binary-linux_amd64-glibc"),
+            lambda u:u.update(caller="C2_ALL_LINUX_CLIENT"),
+            lambda u:u.update(targetArch="amd64"),
+            lambda u:u.update(libc="musl"),
+            lambda u:u.update(planSHA256="f"*64),
+            lambda u:u["context"].update(sourceCommit="f"*40),
+            lambda u:u["context"].update(sourceTree="f"*40),
+            lambda u:u["context"].update(tag="v1.15.0-polaris-alpha.12.15"),
+            lambda u:u["context"].update(role="linux"),
+            lambda u:u["context"].update(runAttempt=2),
+            lambda u:u["consumerJob"].update(key="build_windows"),
+            lambda u:u["consumerJob"].update(id=True),
+            lambda u:u["manifest"].update(objects=u["manifest"]["objects"][:-1]),
+            lambda u:u["manifest"]["objects"][0].update(bytes=67108865),
+            lambda u:u["manifest"]["objects"][0].update(bytes=True),
+            lambda u:u["manifest"]["objects"][0].update(member="objects/../alias"),
+            lambda u:u["manifest"]["objects"][0].update(bytes=u["manifest"]["objects"][0]["bytes"]+1),
+            lambda u:u["manifest"]["objects"][0].update(profiles=[]),
+            lambda u:u["manifest"].update(profiles=[]),
+            lambda u:u["manifest"].update(seed={}),
+            lambda u:u.pop("manifestSHA256")]
+        for mutate in mutations:
+            use = copy.deepcopy(original)
+            mutate(use)
+            if "manifestSHA256" in use:
+                use["manifestSHA256"] = supply.digest(supply.encode_json(use["manifest"]))
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                self.validate(bundle, artifact, use)
+        with self.assertRaises(ValueError):
+            supply.validate_use_ref(original, binding=bundle["binding"], ready_artifact=bundle["ready_artifact"],
+                artifact_name=artifact, consumer_job=bundle["consumer_job_by_artifact"][artifact])
+        partial = copy.deepcopy(bundle)
+        partial["manifest"]["state"] = "PARTIAL"
+        partial["binding"]["manifestSHA256"] = supply.digest(supply.encode_json(partial["manifest"]))
+        with self.assertRaisesRegex(ValueError, "independent full canonical manifest required"):
+            self.validate(partial, artifact, original)
+        different = copy.deepcopy(original)
+        different["manifest"]["profiles"][0]["keyringSHA256"] = "f"*64
+        different["manifestSHA256"] = supply.digest(supply.encode_json(different["manifest"]))
+        self.validate(bundle, artifact, different)
+        for status in ("in_progress", "queued", "cancelled"):
+            bad = copy.deepcopy(bundle)
+            bad["consumer_job_by_artifact"][artifact].update(status=status)
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                self.validate(bad, artifact, original)
+        failed = copy.deepcopy(bundle)
+        failed["consumer_job_by_artifact"][artifact].update(conclusion="failure")
+        with self.assertRaises(ValueError):
+            self.validate(failed, artifact, original)
+
+    def test_exact_docker_job_and_no_nonconsumer_local_entry(self):
+        plan = supply.load_profile_plan()
+        jobs = {"amd64":"build_binary", "arm64":"build_binary_arm64", "386":"build_binary_386",
+                "arm":"build_binary_armv7", "mipsle":"build_binary_mipsle",
+                "riscv64":"build_binary_riscv64", "loong64":"build_binary_loong64"}
+        for artifact, entry in plan["eligibleArtifacts"]["docker"].items():
+            with mock.patch.dict(os.environ, {"GITHUB_JOB": jobs[entry["targetArch"]]}):
+                self.assertEqual(supply.resolve_consumer("docker", "C4_DOCKER", entry["targetArch"], "musl")[0], artifact)
+            with mock.patch.dict(os.environ, {"GITHUB_JOB":"build_binary_s390x"}), self.assertRaises(ValueError):
+                supply.resolve_consumer("docker", "C4_DOCKER", entry["targetArch"], "musl")
+        with mock.patch.dict(os.environ, {"GITHUB_JOB":"build"}), self.assertRaises(ValueError):
+            supply.resolve_consumer("all", "C1_ALL_BINARY", "amd64", "purego")
+        with mock.patch.dict(os.environ, {"GITHUB_JOB":"build_binary_s390x"}), self.assertRaises(ValueError):
+            supply.resolve_consumer("docker", "C4_DOCKER", "s390x", "musl")
 
 
 class ProfileURLTests(unittest.TestCase):
@@ -777,6 +957,41 @@ class OriginalAuthenticationTests(unittest.TestCase):
                                 else:
                                     with self.assertRaisesRegex(ValueError, "original selected deb SHA256"):
                                         supply._verify_profile_data(creator, bootstrap, profile, trial / "build")
+                            # Reach the real local entry as well. Only transport
+                            # bytes/Actions identity are fixtures; this profile's
+                            # original creator and actual gpgv are not replaced.
+                            candidate_receipt = {"id": profile_id, "keyringSHA256": supply.digest(keyring.read_bytes()),
+                                "selectedDebs": {url:supply.digest(body) for url, body in debs.items()},
+                                "urls": sorted(supply.profile_urls(plan, profile_id) | set(debs)), "verified": True}
+                            local_bundle = fixture_bundle(role, authenticated=(candidate_receipt, payloads))
+                            artifact = "binary-linux_loong64-glibc" if arch == "loong64" else "binary-linux_amd64"
+                            def verify_local(raw_store, profile_ids):
+                                receipts = []
+                                for requested in profile_ids:
+                                    if requested != profile_id:
+                                        # Host envelope is ordinary protocol data
+                                        # in this signed sid-only fixture.
+                                        receipts.append(copy.deepcopy(next(r for r in local_bundle["manifest"]["profiles"]
+                                                                              if r["id"] == requested)))
+                                        continue
+                                    with mock.patch.dict(os.environ, {"POLARIS_CRONET_RAW_STORE":str(raw_store)}), \
+                                         mock.patch.object(bootstrap, "_CHARGED", 0), \
+                                         mock.patch.object(bootstrap, "_CANDIDATES_USED", {}):
+                                        receipts.append(supply._verify_profile_data(creator, bootstrap, profile,
+                                                                                   trial / "local-original-build"))
+                                return receipts
+                            controls = LocalOriginalUseTests()
+                            if poison == "none":
+                                local = controls.run_local(local_bundle, artifact, trial / "local-output", verify_local)
+                                selected = next(r for r in local["manifest"]["profiles"] if r["id"] == profile_id)
+                                self.assertEqual(selected["selectedDebs"], candidate_receipt["selectedDebs"])
+                            else:
+                                exception = subprocess.CalledProcessError if poison == "signature" else Exception
+                                message = {"signature":"gpgv", "packages":"Checksum mismatch",
+                                           "guard":"logical URL/profile archive", "deb":"original selected deb SHA256"}[poison]
+                                with self.assertRaisesRegex(exception, message):
+                                    controls.run_local(local_bundle, artifact, trial / "local-output", verify_local)
+                                self.assertFalse((trial / "local-output/use.json").exists())
                             self.assertTrue(real_process.call_args_list)
                             self.assertTrue(all(call.args[0][0] == "gpgv" for call in real_process.call_args_list))
             finally:

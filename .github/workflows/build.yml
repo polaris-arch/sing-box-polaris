@@ -397,9 +397,9 @@ jobs:
         GH_TOKEN: ${{ github.token }}
   prepare_windows7:
     name: Prepare one verified Windows 7 Go toolchain
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
     runs-on: ubuntu-26.04
-    needs: [calculate_version, debian_materials]
+    needs: [calculate_version]
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -424,15 +424,15 @@ jobs:
         retention-days: 7
   build:
     name: Build binary
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')) }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
       actions: read
     needs:
     - calculate_version
-    - debian_materials
     strategy:
+      fail-fast: false
       max-parallel: 13
       matrix: ${{ fromJSON(inputs.build == 'NativePeerLinux' && '{"include":[{"os":"linux","arch":"amd64","variant":"purego","naive":true}]}' || '{"include":[{"os":"linux","arch":"amd64","variant":"purego","naive":true},{"os":"linux","arch":"amd64","variant":"glibc","naive":true},{"os":"linux","arch":"amd64","variant":"musl","naive":true,"debian":"amd64","rpm":"x86_64","pacman":"x86_64","alpine":"x86_64","openwrt":"x86_64"},{"os":"linux","arch":"arm64","variant":"purego","naive":true},{"os":"linux","arch":"arm64","variant":"glibc","naive":true},{"os":"linux","arch":"arm64","variant":"musl","naive":true,"debian":"arm64","rpm":"aarch64","pacman":"aarch64","alpine":"aarch64","openwrt":"aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic"},{"os":"linux","arch":"386","go386":"sse2"},{"os":"linux","arch":"386","variant":"glibc","naive":true,"go386":"sse2"},{"os":"linux","arch":"386","variant":"musl","naive":true,"go386":"sse2","debian":"i386","rpm":"i386","alpine":"x86","openwrt":"i386_pentium4"},{"os":"linux","arch":"arm","goarm":"7"},{"os":"linux","arch":"arm","variant":"glibc","naive":true,"goarm":"7"},{"os":"linux","arch":"arm","variant":"musl","naive":true,"goarm":"7","debian":"armhf","rpm":"armv7hl","pacman":"armv7hl","alpine":"armv7","openwrt":"arm_cortex-a5_vfpv4 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_cortex-a15_neon-vfpv4"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","naive":true,"variant":"glibc"},{"os":"linux","arch":"mipsle","gomips":"softfloat","naive":true,"variant":"musl","debian":"mipsel","rpm":"mipsel","openwrt":"mipsel_24kc mipsel_74kc mipsel_mips32"},{"os":"linux","arch":"mips64le","gomips":"hardfloat","naive":true,"variant":"glibc","debian":"mips64el","rpm":"mips64el"},{"os":"linux","arch":"riscv64","naive":true,"variant":"glibc"},{"os":"linux","arch":"riscv64","naive":true,"variant":"musl","debian":"riscv64","rpm":"riscv64","alpine":"riscv64","openwrt":"riscv64_generic"},{"os":"linux","arch":"loong64","naive":true,"variant":"glibc"},{"os":"linux","arch":"loong64","naive":true,"variant":"musl","debian":"loongarch64","rpm":"loongarch64","alpine":"loongarch64","openwrt":"loongarch64_generic"},{"os":"linux","arch":"386","go386":"softfloat","openwrt":"i386_pentium-mmx"},{"os":"linux","arch":"arm","goarm":"5","openwrt":"arm_arm926ej-s arm_cortex-a7 arm_cortex-a9 arm_fa526 arm_xscale"},{"os":"linux","arch":"arm","goarm":"6","debian":"armel","rpm":"armv6hl","openwrt":"arm_arm1176jzf-s_vfp"},{"os":"linux","arch":"mips","gomips":"softfloat","openwrt":"mips_24kc mips_4kec mips_mips32"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","openwrt":"mipsel_24kc_24kf"},{"os":"linux","arch":"mipsle","gomips":"softfloat"},{"os":"linux","arch":"mips64","gomips":"softfloat","openwrt":"mips64_mips64r2 mips64_octeonplus"},{"os":"linux","arch":"mips64le","gomips":"hardfloat"},{"os":"linux","arch":"mips64le","gomips":"softfloat","openwrt":"mips64el_mips64r2"},{"os":"linux","arch":"s390x","debian":"s390x","rpm":"s390x"},{"os":"linux","arch":"ppc64le","debian":"ppc64el","rpm":"ppc64le"},{"os":"linux","arch":"riscv64"},{"os":"linux","arch":"loong64"},{"os":"android","arch":"arm64","ndk":"aarch64-linux-android23"},{"os":"android","arch":"arm","ndk":"armv7a-linux-androideabi23"},{"os":"android","arch":"amd64","ndk":"x86_64-linux-android23"},{"os":"android","arch":"386","ndk":"i686-linux-android23"}]}') }}
     # Optional matrix keys stay absent; the JSON view lets both partitions share these steps.
@@ -509,10 +509,8 @@ jobs:
       run: |
         set -xeuo pipefail
         if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
-          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume \
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role all \
-            --ready-artifact-id "$POLARIS_DEBIAN_READY_ID" \
-            --ready-artifact-digest "$POLARIS_DEBIAN_READY_DIGEST" \
             --caller C1_ALL_BINARY --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
@@ -525,10 +523,6 @@ jobs:
         fi
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
-        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
-        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
-        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
-        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
         MATERIAL_LIBC: ${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}
         GH_TOKEN: ${{ github.token }}
@@ -876,11 +870,10 @@ jobs:
     steps: *native_archive_steps
   build_darwin:
     name: Build Darwin binaries
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
     runs-on: xcode-27
     needs:
     - calculate_version
-    - debian_materials
     strategy:
       matrix:
         include:
@@ -998,11 +991,10 @@ jobs:
         if-no-files-found: error
   build_windows:
     name: Build Windows binaries
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
     runs-on: windows-latest
     needs:
     - calculate_version
-    - debian_materials
     strategy:
       matrix:
         include:
@@ -1116,11 +1108,10 @@ jobs:
         if-no-files-found: error
   build_android_library:
     name: Build Android library (${{ matrix.go_arch }})
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable') }}
     runs-on: ubuntu-latest
     needs:
     - calculate_version
-    - debian_materials
     strategy:
       fail-fast: false
       matrix:
@@ -1304,11 +1295,10 @@ jobs:
         if-no-files-found: error
   build_windows_client:
     name: Build Windows client (${{ matrix.desktop_arch }})
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable') }}
     runs-on: windows-latest
     needs:
     - calculate_version
-    - debian_materials
     strategy:
       fail-fast: false
       matrix:
@@ -1427,15 +1417,15 @@ jobs:
       BUILD_NUMBER: ${{ github.run_number }}
   build_linux_client:
     name: Build Linux client (${{ matrix.desktop_arch }})
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable') }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
       actions: read
     needs:
     - calculate_version
-    - debian_materials
     strategy:
+      fail-fast: false
       matrix:
         include:
         - desktop_arch: x64
@@ -1539,10 +1529,8 @@ jobs:
       run: |-
         set -xeuo pipefail
         if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
-          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume \
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role all \
-            --ready-artifact-id "$POLARIS_DEBIAN_READY_ID" \
-            --ready-artifact-digest "$POLARIS_DEBIAN_READY_DIGEST" \
             --caller C2_ALL_LINUX_CLIENT --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
@@ -1551,10 +1539,6 @@ jobs:
         go run ./cmd/build-naive --target=linux/${{ matrix.go_arch }} download-toolchain
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
-        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
-        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
-        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
-        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.go_arch }}
         MATERIAL_LIBC: glibc
         GH_TOKEN: ${{ github.token }}
@@ -1604,10 +1588,9 @@ jobs:
   build_apple_library:
     name: Build Apple library (${{ matrix.artifact }})
     runs-on: ${{ matrix.build && 'xcode-27' || 'ubuntu-latest' }}
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')) }}
     needs:
     - calculate_version
-    - debian_materials
     strategy:
       fail-fast: false
       matrix:
@@ -2445,8 +2428,9 @@ jobs:
     - build_apple_app_store
     - native_smoke
     - native_index
+    - prepare_windows7
     - debian_materials
-    if: ${{ !failure() && !cancelled() && inputs.build == 'All' && !inputs.source_generate_only && needs.calculate_version.result == 'success' && needs.build.result == 'success' && needs.build_windows7.result == 'success' && needs.build_darwin.result == 'success' && needs.build_windows.result == 'success' && needs.build_android_library.result == 'success' && needs.build_android.result == 'success' && needs.build_windows_client.result == 'success' && needs.build_linux_client.result == 'success' && needs.build_apple_library.result == 'success' && needs.build_apple.result == 'success' && needs.build_apple_app_store.result == 'success' && needs.native_smoke.result == 'success' && needs.native_index.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
+    if: ${{ always() && inputs.build == 'All' && !inputs.source_generate_only }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -2459,6 +2443,11 @@ jobs:
       run: python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: all
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        RECEIPT_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        RECEIPT_DISTRIBUTION_ENABLED: 'false'
+        RECEIPT_PUBLISH_GITHUB: 'false'
         RELEASE_BUILD: ${{ inputs.build }}
         RELEASE_VERSION: ${{ inputs.version }}
         PUBLISH_STORES: 'false'
@@ -2491,7 +2480,7 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.14
+        default: 1.15.0-polaris-alpha.12.16
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice

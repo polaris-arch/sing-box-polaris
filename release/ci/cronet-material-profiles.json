@@ -1712,6 +1712,7 @@
     "docker": {
       "binary-linux-amd64": {
         "caller": "C4_DOCKER",
+        "job": "build_binary",
         "targetArch": "amd64",
         "libc": "musl",
         "profiles": [
@@ -1720,6 +1721,7 @@
       },
       "binary-linux-arm64": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_arm64",
         "targetArch": "arm64",
         "libc": "musl",
         "profiles": [
@@ -1728,6 +1730,7 @@
       },
       "binary-linux-386": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_386",
         "targetArch": "386",
         "libc": "musl",
         "profiles": [
@@ -1736,6 +1739,7 @@
       },
       "binary-linux-arm-v7": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_armv7",
         "targetArch": "arm",
         "libc": "musl",
         "profiles": [
@@ -1744,6 +1748,7 @@
       },
       "binary-linux-mipsle": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_mipsle",
         "targetArch": "mipsle",
         "libc": "musl",
         "profiles": [
@@ -1752,6 +1757,7 @@
       },
       "binary-linux-riscv64": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_riscv64",
         "targetArch": "riscv64",
         "libc": "musl",
         "profiles": [
@@ -1760,6 +1766,7 @@
       },
       "binary-linux-loong64": {
         "caller": "C4_DOCKER",
+        "job": "build_binary_loong64",
         "targetArch": "loong64",
         "libc": "musl",
         "profiles": [

@@ -96,15 +96,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
   build:
     name: Build binary
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' }}
     permissions:
       contents: read
       actions: read
     runs-on: ubuntu-26.04
     needs:
     - calculate_version
-    - debian_materials
     strategy:
+      fail-fast: false
       matrix:
         include:
         - os: linux
@@ -217,10 +217,8 @@ jobs:
       run: |
         set -xeuo pipefail
         if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
-          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume \
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role linux \
-            --ready-artifact-id "$POLARIS_DEBIAN_READY_ID" \
-            --ready-artifact-digest "$POLARIS_DEBIAN_READY_DIGEST" \
             --caller C3_LINUX --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
@@ -229,10 +227,6 @@ jobs:
         go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
       env:
         POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
-        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
-        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
-        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
-        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
         MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
         MATERIAL_LIBC: musl
         GH_TOKEN: ${{ github.token }}
@@ -341,7 +335,7 @@ jobs:
     - calculate_version
     - build
     - debian_materials
-    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && needs.build.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -354,6 +348,11 @@ jobs:
       run: python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: linux
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: final
+        RECEIPT_SOURCE_GENERATE_ONLY: 'false'
+        RECEIPT_DISTRIBUTION_ENABLED: 'false'
+        RECEIPT_PUBLISH_GITHUB: 'false'
         RELEASE_BUILD: All
         RELEASE_VERSION: ${{ inputs.version }}
         PUBLISH_STORES: 'false'
@@ -386,6 +385,6 @@ jobs:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.14
+        default: 1.15.0-polaris-alpha.12.16
 permissions:
   contents: read
