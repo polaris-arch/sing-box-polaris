@@ -468,7 +468,9 @@ func (h *runtimeAPI) newGeneration(options option.APIServiceOptions, endpoint *a
 	ctx, cancel := context.WithCancel(h.ctx)
 	g := &apiGeneration{admissionChanged: make(chan struct{}), hub: h, options: options, digest: digest, id: id, endpoint: endpoint, ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	g.attached = h.attached
-	g.grpc = daemon.NewServerWithRuntimeIngress(g.attached, options.Secret, g, grpc.ForceServerCodec(apiWireCodec{}))
+	// HTTP transport completion can precede interceptor release. Stop must
+	// join actual RPC handlers before this generation reports done.
+	g.grpc = daemon.NewServerWithRuntimeIngress(g.attached, options.Secret, g, grpc.ForceServerCodec(apiWireCodec{}), grpc.WaitForHandlers(true))
 	if resource != nil && resource.dashboard != nil {
 		resource.retain()
 		g.dashboardResource, g.dashboard = resource, resource.dashboard

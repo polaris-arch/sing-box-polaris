@@ -26,8 +26,9 @@ import (
 // or changed, and no additional production RPC is introduced.
 type blockingAPIManaged struct {
 	daemon.UnimplementedManagedServiceServer
-	entered, release chan struct{}
-	returned         chan struct{}
+	entered, release         chan struct{}
+	returned                 chan struct{}
+	cancelled, returnRelease chan struct{}
 }
 
 func (b *blockingAPIManaged) GetSystemProxyStatus(ctx context.Context, _ *emptypb.Empty) (*daemon.SystemProxyStatus, error) {
@@ -39,6 +40,12 @@ func (b *blockingAPIManaged) GetSystemProxyStatus(ctx context.Context, _ *emptyp
 	case <-b.release:
 		return &daemon.SystemProxyStatus{}, nil
 	case <-ctx.Done():
+		if b.cancelled != nil {
+			close(b.cancelled)
+		}
+		if b.returnRelease != nil {
+			<-b.returnRelease
+		}
 		return nil, ctx.Err()
 	}
 }
@@ -211,21 +218,25 @@ func TestRuntimeAPIExclusiveClaimRejectsConcurrentOrdinaryBind(t *testing.T) {
 	}
 }
 
-// The real RPC returns on owner cancellation, but its HTTP dispatch tail is
-// deliberately retained. Closing the physical h2c carrier must not let Box
-// report success before that admitted handler is joined.
+// Hold both the real RPC's cancellation tail and its HTTP dispatch tail.
+// Observe held-work snapshots, then release both and verify complete shutdown.
+// These snapshots do not prove entry into Stop's handler join or deterministically
+// reject an implementation missing that join.
 func TestRuntimeAPICloseJoinsHeldDispatchAfterCarrierShutdown(t *testing.T) {
 	instance, api, ctx, _ := handoffBox(t, "old")
 	origin := api.runtime.generations[0]
 	endpoint := origin.endpoint
-	held := &blockingAPIManaged{entered: make(chan struct{}), release: make(chan struct{}), returned: make(chan struct{})}
+	held := &blockingAPIManaged{entered: make(chan struct{}), release: make(chan struct{}), returned: make(chan struct{}), cancelled: make(chan struct{}), returnRelease: make(chan struct{})}
 	daemon.RegisterManagedServiceServer(origin.grpc, held)
 	captured := make(chan *apiOwnedConn, 1)
 	tailEntered := make(chan struct{})
 	tailRelease := make(chan struct{})
+	tailReturned := make(chan struct{})
 	defer func() {
-		if !runtimeAPIChannelClosed(tailRelease) {
-			close(tailRelease)
+		for _, release := range []chan struct{}{tailRelease, held.returnRelease} {
+			if !runtimeAPIChannelClosed(release) {
+				close(release)
+			}
 		}
 	}()
 	original := origin.handler
@@ -241,6 +252,7 @@ func TestRuntimeAPICloseJoinsHeldDispatchAfterCarrierShutdown(t *testing.T) {
 		original.ServeHTTP(w, r)
 		close(tailEntered)
 		<-tailRelease
+		close(tailReturned)
 	})
 	connection, err := grpc.NewClient(endpoint.listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(daemon.NewClientAuthUnaryInterceptor("old")), grpc.WithStreamInterceptor(daemon.NewClientAuthStreamInterceptor("old")))
 	if err != nil {
@@ -304,9 +316,9 @@ func TestRuntimeAPICloseJoinsHeldDispatchAfterCarrierShutdown(t *testing.T) {
 		t.Fatalf("owner did not cancel the real RPC: %v; %s", ctx.Err(), runtimeAPICloseState(api))
 	}
 	select {
-	case <-held.returned:
+	case <-held.cancelled:
 	case <-ctx.Done():
-		t.Fatal("actual RPC callback did not return on owner cancellation", ctx.Err())
+		t.Fatal("actual RPC callback did not observe owner cancellation", ctx.Err())
 	}
 	select {
 	case err := <-ordinary:
@@ -363,12 +375,51 @@ func TestRuntimeAPICloseJoinsHeldDispatchAfterCarrierShutdown(t *testing.T) {
 	t.Logf("carrier shutdown with dispatch still held after %s; %s", time.Since(closeStarted), runtimeAPICloseState(api))
 	close(tailRelease)
 	select {
+	case <-tailReturned:
+	case <-ctx.Done():
+		t.Fatal("released HTTP dispatch tail did not return", ctx.Err())
+	}
+	// The endpoint is sealed and its physical carrier is already removed, so
+	// no new dispatch can Add while this Wait joins the existing HTTP work.
+	dispatchJoined := make(chan struct{})
+	go func() { origin.requests.Wait(); close(dispatchJoined) }()
+	select {
+	case <-dispatchJoined:
+	case <-ctx.Done():
+		t.Fatal("released HTTP dispatch did not join", ctx.Err())
+	}
+	origin.mu.Lock()
+	borrowers := origin.ordinary
+	origin.mu.Unlock()
+	if runtimeAPIChannelClosed(held.returned) || borrowers == 0 {
+		t.Fatal("controlled cancelled RPC lost its deferred-release borrower", borrowers)
+	}
+	// Held-RPC snapshot only: HTTP work has joined, but owner close may still
+	// be in endpoint cleanup. Open done channels do not prove that Stop has
+	// reached its handler join, so this cannot deterministically reject a
+	// missing RPC wait. The checks still reject premature completion if seen.
+	if runtimeAPIChannelClosed(origin.done) || runtimeAPIChannelClosed(api.runtime.closeDone) {
+		t.Fatalf("generation/owner completed before RPC release; %s", runtimeAPICloseState(api))
+	}
+	select {
+	case err := <-closed:
+		t.Fatal("Box falsely completed before cancelled RPC release", err)
+	default:
+	}
+	t.Logf("HTTP joined with RPC release still held after %s; %s", time.Since(closeStarted), runtimeAPICloseState(api))
+	close(held.returnRelease)
+	select {
+	case <-held.returned:
+	case <-ctx.Done():
+		t.Fatal("released real RPC callback did not return", ctx.Err())
+	}
+	select {
 	case err := <-closed:
 		if err != nil || ctx.Err() != nil {
-			t.Fatalf("Close did not join released dispatch within total deadline: %v context=%v", err, ctx.Err())
+			t.Fatalf("Close did not join dispatch and RPC release within total deadline: %v context=%v", err, ctx.Err())
 		}
 	case <-ctx.Done():
-		t.Fatalf("released dispatch did not join before total deadline: %v; %s", ctx.Err(), runtimeAPICloseState(api))
+		t.Fatalf("RPC release did not join before total deadline: %v; %s", ctx.Err(), runtimeAPICloseState(api))
 	}
 	origin.mu.Lock()
 	ordinaryCount := origin.ordinary
