@@ -933,7 +933,7 @@ class PreparedCandidateTests(unittest.TestCase):
                     args = self.args(bundle, "all", root)
                     args.caller = "C1_ALL_BINARY"; args.target_arch = "arm64"; args.libc = "glibc"
                     args.checkpoint_artifact_id = artifact_id; args.checkpoint_artifact_digest = artifact_digest
-                    with self.transport(bundle), mock.patch.dict(os.environ, {}, clear=True), \
+                    with self.transport(bundle), mock.patch.dict(os.environ, {"GITHUB_JOB": "build"}, clear=True), \
                          mock.patch.object(supply, "actions_context", return_value=context), \
                          mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
                          mock.patch.object(supply, "_consumer_job", return_value={"id": 4001, "key": "build",
@@ -980,7 +980,7 @@ class PreparedCandidateTests(unittest.TestCase):
                             supply.write_new(child.receipt, supply.encode_json(receipt))
                             child.returncode = 0; return 0
                         def poll(child): return child.returncode
-                    with mock.patch.dict(os.environ, {}, clear=True), \
+                    with mock.patch.dict(os.environ, {"GITHUB_JOB": wire["consumerJob"]["key"]}, clear=True), \
                          mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
                          mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
                          mock.patch.object(supply, "_consumer_job", return_value=wire["consumerJob"]), \
