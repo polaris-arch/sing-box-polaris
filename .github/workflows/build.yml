@@ -2256,7 +2256,7 @@ jobs:
         path: native/native-row-*.json
         if-no-files-found: error
   windows_native_admission:
-    name: Read existing Windows proof protection for this exact tag and attempt
+    name: Bind explicit Windows proof request to this exact tag and attempt
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && !failure() && !cancelled() }}
     needs: [calculate_version]
     runs-on: ubuntu-24.04
@@ -2281,7 +2281,7 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Require existing reviewer protection and one exact tag deployment policy
+    - name: Bind current run and exact annotated checkout
       id: admission
       env:
         GH_TOKEN: ${{ github.token }}
@@ -2292,7 +2292,6 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && needs.windows_native_admission.result == 'success' && !failure() && !cancelled() }}
     needs: [calculate_version, build, build_windows7, build_darwin, build_windows, windows_native_admission]
     runs-on: [self-hosted, Windows, X64, polaris-windows-system-proof]
-    environment: polaris-windows-native-proof
     timeout-minutes: 20
     permissions:
       contents: read
@@ -2332,7 +2331,7 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Rebind token-free protected job to exact source tag and current attempt
+    - name: Rebind token-free job to exact source tag and current attempt
       run: python -B scripts/ci/windows_native_admission.py
     - uses: actions/setup-go@v5
       with:
@@ -2522,7 +2521,7 @@ jobs:
         type: boolean
         default: false
       windows_native_proof:
-        description: 'Separate explicit SYSTEM execution request: needs an existing protected exact-tag environment and preprovisioned SYSTEM host; never installs or elevates'
+        description: 'Separate explicit SYSTEM proof request: needs an independently controlled SYSTEM host; never installs or elevates'
         type: boolean
         default: false
       build:
