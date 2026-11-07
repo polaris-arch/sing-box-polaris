@@ -789,7 +789,7 @@ class TestCIContract(unittest.TestCase):
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
  def expected_lint_rules(self):
-  # Keep each reviewed boundary explicit: eight SA1019 rules have distinct
+  # Keep each reviewed boundary explicit: nine SA1019 rules have distinct
   # path/diagnostic identities, so the diagnostic code alone is not a key.
   return {
    'http2':{
@@ -810,6 +810,11 @@ class TestCIContract(unittest.TestCase):
     'linters':['staticcheck'],
     'path':r'^service/api/runtime_handoff\.go$',
     'text':r'^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $',
+    'source':r'^\s*(?:handler := h2c\.NewHandler\(next, new\(http2\.Server\)\))$'},
+   'runtime-h2c-server':{
+    'linters':['staticcheck'],
+    'path':r'^service/api/runtime_handoff\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2\.Server is deprecated: Use \[http\.Server\] instead\. $',
     'source':r'^\s*(?:handler := h2c\.NewHandler\(next, new\(http2\.Server\)\))$'},
    'h2c-import':{
     'linters':['staticcheck'],
@@ -838,11 +843,12 @@ class TestCIContract(unittest.TestCase):
     'source':r'^func NewWithConstructionReport\(options Options\) \(instance \*Box, err error, report ConstructionReport\) \{$'}}
  def lint_rules(self):
   config=yaml.safe_load((ROOT/'.golangci.yml').read_text())
+  self.assertIs(config.get('issues',{}).get('uniq-by-line'),False)
   for name in ['staticcheck','unused','modernize']:self.assertIn(name,config['linters']['enable'])
   checks=config['linters']['settings']['staticcheck']['checks']
   self.assertIn('all',checks)
   for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),9)
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),10)
   expected=self.expected_lint_rules()
   self.assertCountEqual(rules,list(expected.values()))
   by_scope={(rule['path'],rule['text']):rule for rule in rules}
@@ -903,7 +909,7 @@ class TestCIContract(unittest.TestCase):
                  signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
                  'return instance, err, report',signature+' // another line']:
    self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
- def test_reviewed_compatibility_exclusions_match_only_ten_exact_diagnostics(self):
+ def test_reviewed_compatibility_exclusions_match_only_eleven_exact_diagnostics(self):
   rules=self.lint_rules()
   fixtures=[
    ('tls-rand','common/httpclient/runtime_quic_tls.go',
@@ -914,6 +920,9 @@ class TestCIContract(unittest.TestCase):
     ['"golang.org/x/net/http2/h2c"']),
    ('runtime-h2c-handler','service/api/runtime_handoff.go',
     'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.',
+    ['handler := h2c.NewHandler(next, new(http2.Server))']),
+   ('runtime-h2c-server','service/api/runtime_handoff.go',
+    'SA1019: golang.org/x/net/http2.Server is deprecated: Use [http.Server] instead.',
     ['handler := h2c.NewHandler(next, new(http2.Server))']),
    ('h2c-import','protocol/naive/inbound_runtime_tcp.go',
     'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
@@ -956,7 +965,7 @@ class TestCIContract(unittest.TestCase):
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,other_message,source))
      for other_source in ['',source+' // another statement','prefix '+source,'unrelated()']:
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,message,other_source))
-  self.assertEqual(len(matched),10)
+  self.assertEqual(len(matched),11)
   self.assertEqual(len({(row[1],row[2]) for row in matched}),9)
   # The rejected server-only field must not inherit the client Rand exception.
   message='SA1019: (crypto/tls.Config).NameToCertificate has been deprecated since Go 1.14: NameToCertificate only allows associating a single certificate with a given name. Leave this field nil to let the library select the first compatible chain from Certificates.'
@@ -1003,6 +1012,14 @@ class TestCIContract(unittest.TestCase):
     elif field=='duplicate':changed.append(copy.deepcopy(changed[index]))
     elif field=='remove-source':changed[index].pop('source')
     else:changed[index][field]=value
+    with mock.patch.object(yaml,'safe_load',return_value=config),self.assertRaises(AssertionError):
+     self.lint_rules()
+  for mutation in ['missing-issues','missing-uniq-by-line','enabled-uniq-by-line']:
+   with self.subTest(mutation=mutation):
+    config=copy.deepcopy(original)
+    if mutation=='missing-issues':config.pop('issues')
+    elif mutation=='missing-uniq-by-line':config['issues'].pop('uniq-by-line')
+    else:config['issues']['uniq-by-line']=True
     with mock.patch.object(yaml,'safe_load',return_value=config),self.assertRaises(AssertionError):
      self.lint_rules()
  def test_lint_collects_uncapped_diagnostics_and_retains_failure_status(self):
