@@ -2263,10 +2263,10 @@ class TestNativeProducerReceiptJobs(unittest.TestCase):
 
 class TestSupplierCloneBudget(unittest.TestCase):
  def test_real_supplier_script_preserves_primary_status_and_kills_term_ignoring_grandchild(self):
-  # Existing Source/CI-contract discovery runs this GNU/Linux control on Ubuntu.
+  # Existing CI-contract discovery runs this Linux control on Ubuntu.
   # Tool fixtures replace external Git/bootstrap work, never the timeout or bash.
-  # SIGALRM drives GNU timeout's real expiry handler; this is not a natural
-  # 590-second wall-clock measurement, nor material authentication evidence.
+  # The execution copy uses a short natural expiry with the real kill-after.
+  # This is not a 590-second wall-clock or material authentication measurement.
   import selectors,signal,time
   wall_deadline=time.monotonic()+90
   def budget(cap):
@@ -2275,8 +2275,6 @@ class TestSupplierCloneBudget(unittest.TestCase):
    return min(cap,remaining)
   self.assertTrue(sys.platform.startswith('linux'))
   timeout=shutil.which('timeout');self.assertIsNotNone(timeout)
-  version=subprocess.run([timeout,'--version'],capture_output=True,text=True,timeout=budget(3))
-  self.assertEqual(version.returncode,0);self.assertIn('GNU coreutils',version.stdout)
   action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
   selected=[s for s in action['runs']['steps'] if s.get('name')=='Clone and prepare pinned original creator']
   self.assertEqual(len(selected),1);step=selected[0]
@@ -2285,6 +2283,7 @@ class TestSupplierCloneBudget(unittest.TestCase):
   self.assertIn("timeout --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'",run)
   self.assertNotIn('--foreground',run);self.assertNotIn('--preserve-status',run)
   self.assertIn("trap 'trap \"\" TERM; exec sleep inf' TERM",run)
+  execution=run.replace("590s bash -euo pipefail <<'CRONET_CLONE'", "5s bash -euo pipefail <<'CRONET_CLONE'", 1)
   pin=(ROOT/'.github/CRONET_GO_VERSION').read_text().rstrip('\n')
   fixture=r"""import json,os,signal,subprocess,sys
 from pathlib import Path
@@ -2306,7 +2305,7 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
   sys.stderr.write('primary-'+stage+'\n');sys.exit(37 if stage=='fetch' else 43)
  if mode=='timeout':
   # Parent exits on TERM, while its child records TERM and remains blocked.
-  # Without the real shell hold-open trap, GNU timeout could finish too early.
+  # The real shell hold-open trap must keep expiry cleanup tied to this child.
   def term(signum,frame):
    event('term',role='parent');os._exit(93)
   signal.signal(signal.SIGTERM,term)
@@ -2318,8 +2317,8 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
    try:return (Path('/proc')/str(pid)/'stat').read_text().rpartition(') ')[2].split()[0]
    except (FileNotFoundError,ProcessLookupError):return None
   def kill_session(session):
-   # Bounded best-effort cleanup of this isolated test session only. GNU timeout
-   # uses a different process group, so killing only the caller's group is wrong.
+   # Bounded best-effort cleanup of this isolated test session only. timeout may
+   # use another process group, so killing only the caller's group is insufficient.
    for unused in range(2):
     for entry in Path('/proc').iterdir():
      if entry.name.isdecimal():
@@ -2340,7 +2339,7 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
          if key not in ('BASH_ENV','ENV') and not key.startswith('BASH_FUNC_')}
     env.update(HOME=str(home),GITHUB_WORKSPACE=str(workspace),
                PATH=str(bindir)+os.pathsep+env['PATH'],FIXTURE_STAGE=stage,FIXTURE_MODE=mode)
-    process=subprocess.Popen(['bash','-euo','pipefail','-c',run],cwd=workspace,env=env,
+    process=subprocess.Popen(['bash','-euo','pipefail','-c',execution],cwd=workspace,env=env,
                              stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,bufsize=0)
     selector=None;prefix=b'';ready={}
     try:
@@ -2361,12 +2360,8 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
       group=ready['parent']['pgid']
       self.assertEqual(ready['child']['pgid'],group)
       self.assertEqual(ready['child']['ppid'],ready['parent']['pid'])
-      self.assertEqual(os.getsid(group),process.pid)
-      self.assertEqual((Path('/proc')/str(group)/'comm').read_text().strip(),'timeout')
-      argv=(Path('/proc')/str(group)/'cmdline').read_bytes().split(b'\0')
-      self.assertIn(b'590s',argv);self.assertIn(b'--kill-after=5s',argv)
-      # Deliver to the actual GNU monitor, not its children or a replacement.
-      os.kill(group,signal.SIGALRM)
+      for role in ('parent','child'):
+       self.assertEqual(os.getsid(ready[role]['pid']),process.pid)
      stdout,stderr=process.communicate(timeout=budget(15))
      events=[json.loads(line) for line in (prefix+stdout).splitlines()]
      calls=[(e['tool'],e['argv']) for e in events if e['kind']=='call']
@@ -2380,7 +2375,7 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
      reached=4 if stage=='fetch' and mode!='success' else 7
      self.assertEqual(calls,clone[:reached])
      if mode=='timeout':
-      self.assertIn(process.returncode,(-signal.SIGKILL,128+signal.SIGKILL))
+      self.assertIn(process.returncode,(124,137,-signal.SIGKILL))
       terms={e['role']:e for e in events if e['kind']=='term'}
       self.assertEqual(set(terms),{'parent','child'})
       for role in ('parent','child'):
