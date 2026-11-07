@@ -17,21 +17,23 @@ import (
 var _ ObservableFactory = (*defaultFactory)(nil)
 
 type defaultFactory struct {
-	ctx               context.Context
-	formatter         Formatter
-	platformFormatter Formatter
-	writer            io.Writer
-	file              *os.File
-	filePath          string
-	platformWriters   atomic.Pointer[[]PlatformWriter]
-	needConsole       bool
-	needObservable    bool
-	level             atomic.Int32
-	subscriber        *observable.Subscriber[Entry]
-	observer          *observable.Observer[Entry]
-	startAccess       sync.Mutex
-	started           atomic.Bool
-	pendingEntries    []pendingEntry
+	ctx                 context.Context
+	formatter           Formatter
+	platformFormatter   Formatter
+	writer              io.Writer
+	file                *os.File
+	filePath            string
+	platformWriters     atomic.Pointer[[]PlatformWriter]
+	needConsole         bool
+	needObservable      bool
+	sharedObservable    bool // stable runtime owner owns the bus
+	runtimeExistingFile bool // hot preparation may not create a new output path
+	level               atomic.Int32
+	subscriber          *observable.Subscriber[Entry]
+	observer            *observable.Observer[Entry]
+	startAccess         sync.Mutex
+	started             atomic.Bool
+	pendingEntries      []pendingEntry
 }
 
 type pendingEntry struct {
@@ -76,7 +78,11 @@ func NewDefaultFactory(
 func (f *defaultFactory) Start() error {
 	var err error
 	if f.filePath != "" {
-		logFile, openErr := filemanager.OpenFile(f.ctx, f.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		flags := os.O_APPEND | os.O_WRONLY
+		if !f.runtimeExistingFile {
+			flags |= os.O_CREATE
+		}
+		logFile, openErr := filemanager.OpenFile(f.ctx, f.filePath, flags, 0o644)
 		if openErr != nil {
 			err = openErr
 		} else {
@@ -85,7 +91,7 @@ func (f *defaultFactory) Start() error {
 		}
 		f.needConsole = f.writer != io.Discard
 	}
-	if f.needObservable {
+	if f.needObservable && !f.sharedObservable {
 		f.observer = observable.NewObserver[Entry](f.subscriber, 64)
 	}
 	f.startAccess.Lock()
@@ -103,6 +109,9 @@ func (f *defaultFactory) Close() error {
 	f.startAccess.Lock()
 	f.pendingEntries = nil
 	f.startAccess.Unlock()
+	if f.sharedObservable {
+		return common.Close(common.PtrOrNil(f.file))
+	}
 	return common.Close(
 		common.PtrOrNil(f.file),
 		f.subscriber,

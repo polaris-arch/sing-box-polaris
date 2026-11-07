@@ -3,6 +3,52 @@ import json,re,unittest,yaml
 import copy,os,shlex,shutil,subprocess,sys,tempfile
 from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
+def source_cost_steps_contract(gate):
+ # Retention is unconditional input metadata; only the later observation measures.
+ steps=gate['steps']
+ names=('Retain exact Source inputs before compatibility gates (not a test or native PASS)',
+        'Measure whole-migration binary and idle RSS costs')
+ selected=[]
+ for name in names:
+  matches=[step for step in steps if step.get('name')==name]
+  if len(matches)!=1:raise AssertionError('unique exact cost phase step required: '+name)
+  selected.append(matches[0])
+ early,cost=selected
+ commands=(['python','-B','scripts/ci/utls_cost.py','--retain-source-input','--output',
+            '${{ runner.temp }}/tls-fingerprint-evidence'],
+           ['python','scripts/ci/utls_cost.py','--output','${{ runner.temp }}/tls-fingerprint-evidence/cost'])
+ for step,command in zip(selected,commands):
+  try:argv=shlex.split(step.get('run',''))
+  except (ValueError,TypeError) as error:raise AssertionError('cost phase command is not well formed') from error
+  if argv!=command:raise AssertionError('cost phase command differs')
+ calls=[step for step in steps if 'utls_cost.py' in step.get('run','')]
+ if calls!=selected:raise AssertionError('exact input then measurement invocations required')
+ if 'if' in early or 'continue-on-error' in early or 'env' in early:
+  raise AssertionError('early input-only receipt must run unconditionally on all Source platforms')
+ if cost.get('if')!="always() && matrix.os == 'ubuntu-24.04'" or cost.get('continue-on-error') is not True:
+  raise AssertionError('measurement remains a nonblocking Ubuntu always observation')
+ early_index=steps.index(early)
+ for prefix in ('actions/checkout@','actions/setup-python@'):
+  before=[step for step in steps if step.get('uses','').startswith(prefix)]
+  if len(before)!=1 or steps.index(before[0])>=early_index:
+   raise AssertionError('input receipt must follow exact checkout and Python setup')
+ boundaries=([step for step in steps if step.get('uses','').startswith('actions/setup-go@')],
+             [step for step in steps if 'pip install' in step.get('run','')],
+             [step for step in steps if 'test_client_encoding.py' in step.get('run','')])
+ if any(len(group)!=1 or steps.index(group[0])<=early_index for group in boundaries):
+  raise AssertionError('input receipt must precede Go, pip and Unicode gates')
+ required={'SOURCE_BUILD':'${{ inputs.build }}',
+           'SOURCE_GENERATE_ONLY':"${{ inputs.source_generate_only && 'true' || 'false' }}",
+           'SOURCE_WINDOWS_NATIVE_PROOF':"${{ inputs.windows_native_proof && 'true' || 'false' }}",
+           'SOURCE_EVIDENCE_MODE':'${{ inputs.evidence_mode }}','SOURCE_VERSION':'${{ inputs.version }}',
+           'SOURCE_RUNNER':'${{ matrix.os }}'}
+ if any(gate.get('env',{}).get(key)!=value for key,value in required.items()):
+  raise AssertionError('early receipt must retain exact dispatched Source inputs')
+ uploads=[step for step in steps if step.get('uses','').startswith('actions/upload-artifact@')]
+ if len(uploads)!=1 or uploads[0].get('if')!='always()' or uploads[0].get('with',{}).get('if-no-files-found')!='error' or uploads[0].get('with',{}).get('path')!='${{ runner.temp }}/tls-fingerprint-evidence':
+  raise AssertionError('always-upload exact evidence directory must keep no-files failure')
+ return early,cost
+
 class TestVisionSourceContract(unittest.TestCase):
  def test_every_source_boundary_rejects_tampering(self):
   from vision_source import validate, BINDING
@@ -68,9 +114,102 @@ class TestCIContract(unittest.TestCase):
   self.assertNotIn('sudo',step['run'])
   self.assertNotIn('if',step)
   self.assertNotIn('continue-on-error',step)
-  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest'})
+  self.assertEqual(set(job['strategy']['matrix']['os']),{'ubuntu-latest','windows-latest','macos-latest','xcode-27'})
+  mac=next(s for s in job['steps'] if s.get('name')=='Test (macOS ordinary packages)')
+  self.assertEqual(mac['if'],"matrix.os == 'macos-latest' || matrix.os == 'xcode-27'")
   source=(ROOT/'scripts/ci/utls_gate.py').read_text()
   self.assertIn("receipt['visionSource'] = validate_vision_source(ROOT, diagnostics=vision_diagnostics)",source)
+ def test_automatic_ci_runs_candidate_track_and_peer_admission_regressions(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  job=workflow['jobs']['contract']
+  for filename in ('test_linux_candidate_track.py','test_native_peer_metadata.py','test_protocol_peer.py','test_windows_native_execution.py','test_windows_native_admission.py','test_cronet_windows_overlay.py'):
+   command="python -B -m unittest discover -s scripts/ci -p '"+filename+"'"
+   steps=[s for s in job['steps'] if s.get('run')==command]
+   self.assertEqual(len(steps),1,filename)
+   for control in (job,steps[0]):
+    self.assertNotIn('if',control)
+    self.assertNotIn('continue-on-error',control)
+   self.assertNotIn('env',steps[0])
+  self.assertEqual(workflow['permissions'],{'contents':'read'})
+ def test_windows_native_proof_is_separate_manual_protection_and_kernel_execution(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text());jobs=workflow['jobs']
+  field=workflow['on']['workflow_dispatch']['inputs']['windows_native_proof']
+  self.assertEqual(field['type'],'boolean');self.assertIs(field['default'],False)
+  admission=jobs['windows_native_admission'];native=jobs['native_windows_proof']
+  for job in (admission,native):
+   self.assertIn("github.event_name == 'workflow_dispatch'",job['if']);self.assertIn('inputs.windows_native_proof == true',job['if'])
+   self.assertNotIn('continue-on-error',job)
+   self.assertIn('!inputs.source_generate_only',job['if'])
+   self.assertIn("(inputs.build == 'All' || inputs.build == 'Binary')",job['if'])
+   self.assertIn("inputs.evidence_mode == 'final'",job['if'])
+   self.assertIn('!failure()',job['if']);self.assertIn('!cancelled()',job['if'])
+  self.assertEqual(admission['permissions'],{'contents':'read','actions':'read'})
+  self.assertNotIn('environment',admission);self.assertEqual(admission['runs-on'],'ubuntu-24.04')
+  acquire=next(s for s in admission['steps'] if s.get('id')=='admission')
+  self.assertEqual(acquire['run'],'python3 -B scripts/ci/windows_native_admission.py --acquire')
+  self.assertIn('EXPECTED_RELEASE_TAG_OBJECT',acquire['env']);self.assertIn('GH_TOKEN',acquire['env'])
+  self.assertEqual(native['environment'],'polaris-windows-native-proof')
+  self.assertIn('polaris-windows-system-proof',native['runs-on'])
+  self.assertIn("needs.windows_native_admission.result == 'success'",native['if'])
+  self.assertIn("inputs.evidence_mode == 'final'",native['if'])
+  execution=next(s for s in native['steps'] if s.get('env',{}).get('POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED')=='true')
+  self.assertEqual(execution['env'],{'POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED':'true'})
+  self.assertNotIn('GH_TOKEN',native.get('env',{}));self.assertNotIn('GITHUB_TOKEN',native.get('env',{}))
+  self.assertTrue(native['steps'][0]['run'].startswith('$identity = [Security.Principal.WindowsIdentity]::GetCurrent()'))
+  joined='\n'.join(s.get('run','') for s in native['steps'])
+  for forbidden in ('New-Service','Register-ScheduledTask','schtasks','psexec','sc.exe create','Set-Acl'):
+   self.assertNotIn(forbidden,joined)
+  self.assertIn('-buildvcs=true',joined);self.assertIn('main.producerSource=',joined);self.assertIn('main.producerTree=',joined)
+  index=jobs['native_index'];self.assertIn('native_windows_proof',index['needs'])
+  self.assertIn("inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success'",index['if'])
+  smoke=jobs['native_smoke']
+  for name in ('Execute final-package Cronet smoke','Upload actual smoke receipt'):
+   step=next(s for s in smoke['steps'] if s.get('name')==name)
+   self.assertIn("!(inputs.windows_native_proof == true && matrix.id == 'windows-amd64')",step['if'])
+  controls=next(s for s in jobs['utls_gate']['steps'] if s.get('name')=='Compile Windows native producer and execute unprivileged rejection controls')
+  self.assertEqual(controls['if'],"matrix.os == 'windows-2025'")
+  self.assertEqual(controls['env']['POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED'],'false')
+  self.assertIn('./cmd/internal/windows_native_execution github.com/sagernet/cronet-go/internal/cronet',controls['run'])
+  for name in ('TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad',
+               'TestNativeCustodyRecordRejectsAmbiguousAndTruncatedDebt','TestNativeCustodyRejectsForeignObjectAndJobRecoveryTargets',
+               'TestNativeCustodyReconciliationNeverGrantsAdmission','TestNativeCooperativeControlFramesOnlyCancelOriginalOwner',
+               'TestNativeCleanupRequiresActualWaitAndReaderClosure'):
+   self.assertIn(name,controls['run'])
+  source=(ROOT/'cmd/internal/windows_native_execution/process_windows.go').read_text()
+  self.assertIn('0x0002000d',source);self.assertIn('PROC_THREAD_ATTRIBUTE_HANDLE_LIST',source)
+  self.assertNotIn('AssignProcessToJobObject',source)
+  self.assertIn('c.custody.newJob()',source)
+  owner=(ROOT/'cmd/internal/windows_native_execution/main_windows.go').read_text()
+  self.assertLess(owner.index('openCustody(r, actor)'),owner.index('newCohort(journal.record.CohortID)'))
+  self.assertIn('go watchNativeCancellation(reader, cancel)',owner)
+  custody=(ROOT/'cmd/internal/windows_native_execution/custody_windows.go').read_text()
+  for token in ('custody-next.json','owner.lock','MOVEFILE_WRITE_THROUGH','reconcileBeforeAdmission','jobSecurity','ownerExited','exact owned member bytes/FileID differ'):
+   self.assertIn(token,custody)
+ def test_windows_native_overlay_is_complete_and_cold_reversible_without_rewriting_history(self):
+  import hashlib
+  from cronet_windows_overlay import validate_overlay
+  inputs=validate_overlay(ROOT)
+  self.assertEqual(len(inputs),141)
+  for name in ('release/dependency-sources/cronet-go-windows-native-observation.json',
+               'release/dependency-sources/cronet-go-windows-native-observation.patch'):
+   self.assertEqual(inputs[name],hashlib.sha256((ROOT/name).read_bytes()).hexdigest())
+  self.assertEqual(len([name for name in inputs if name.startswith('third_party/cronet-go/')]),137)
+
+ def test_exact_publisher_peer_and_oci_regressions_and_dual_checkout_remain_in_the_existing_gate(self):
+  contract=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
+  commands=[s.get('run','') for s in contract['jobs']['contract']['steps']]
+  self.assertIn("python -m unittest discover -s scripts/ci -p 'test_github_release.py'",commands)
+  suite=(ROOT/'scripts/ci/test_github_release.py').read_text()
+  self.assertIn('from publisher_peer_evidence_12_9_tests import Alpha129PeerEvidenceTests',suite)
+  self.assertIn('from publisher_peer_successor_tests import SuccessorPeerPreparationTests',suite)
+  self.assertIn('from oci_material_selection_12_9_tests import Alpha129OCISelectionTests',suite)
+  workflow=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
+  for name in ('validate','publish'):
+   steps=workflow['jobs'][name]['steps']
+   runner=next(s for s in steps if s.get('name')=='Checkout reviewed publisher revision')
+   product=next(s for s in steps if s.get('name')=='Checkout exact build source separately')
+   self.assertEqual(runner['with'],{'ref':'${{ github.sha }}','persist-credentials':False})
+   self.assertEqual(product['with'],{'ref':'${{ inputs.source_sha }}','path':'reviewed-source','persist-credentials':False})
  def test_automatic_ci_runs_cold_go_patch_controls_with_required_patch(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/ci-contract.yml').read_text())
   job=workflow['jobs']['contract']
@@ -202,30 +341,111 @@ class TestCIContract(unittest.TestCase):
       (root/'.github/workflows/build.yml').write_text(json.dumps(mutated))
       with mock.patch.object(sys.modules[__name__],'ROOT',root),self.assertRaises((AssertionError,KeyError)):
        self.test_unsigned_apple_package_overlays_cover_all_rows_and_preserve_trust()
- def test_signed_all_receipt_has_satisfiable_fail_closed_dependencies(self):
+ def _assert_all_producer_receipt_contract(self,workflow):
+  # This checks the real workflow configuration, not GitHub's scheduler.
+  jobs=workflow['jobs'];receipt=jobs['publisher_receipt']
+  expected=('calculate_version','build','build_windows7','build_darwin','build_windows',
+            'build_android_library','build_android','build_windows_client','build_linux_client',
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index','prepare_windows7','debian_materials')
+  self.assertEqual(receipt['needs'],list(expected))
+  self.assertEqual(receipt['if'],"${{ always() && inputs.build == 'All' && !inputs.source_generate_only }}")
+  self.assertNotIn('continue-on-error',receipt)
+  self.assertIn('prepare_windows7',jobs['build_windows7']['needs'])
+  index=jobs['native_index']
+  self.assertEqual(index['needs'],['calculate_version','build','build_windows7',
+                                 'build_darwin','build_windows','native_smoke','native_windows_proof','debian_materials'])
+  self.assertEqual(index['if'],"${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') && (inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success') && needs.calculate_version.result == 'success' && needs.build.result == 'success' && needs.build_windows7.result == 'success' && needs.build_darwin.result == 'success' && needs.build_windows.result == 'success' && needs.native_smoke.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}")
+  field=workflow['on']['workflow_dispatch']['inputs']['windows_native_proof']
+  self.assertEqual(field['type'],'boolean');self.assertIs(field['default'],False)
+  native=jobs['native_windows_proof']
+  self.assertEqual(native['environment'],'polaris-windows-native-proof')
+  self.assertEqual(native['runs-on'],['self-hosted','Windows','X64','polaris-windows-system-proof'])
+  steps=receipt['steps'];self.assertEqual(len(steps),3)
+  self.assertEqual(steps[0],{'uses':'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8',
+                            'with':{'fetch-depth':0}})
+  record=steps[1];upload=steps[2]
+  self.assertEqual(record['name'],'Record exact completed scope')
+  self.assertEqual(record['run'],'python3 scripts/ci/publisher_run_receipt.py')
+  self.assertEqual(record['env'],{'PUBLISHER_ROLE':'all','RELEASE_BUILD':'${{ inputs.build }}',
+                                'RELEASE_VERSION':'${{ inputs.version }}',
+                                'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false',
+                                 'POLARIS_DEBIAN_REQUIRED':'${{ needs.calculate_version.outputs.material_required }}',
+                                 'POLARIS_DEBIAN_RAW_ID':'${{ needs.debian_materials.outputs.raw_id }}',
+                                 'POLARIS_DEBIAN_RAW_DIGEST':'${{ needs.debian_materials.outputs.raw_digest }}',
+                                 'POLARIS_DEBIAN_READY_ID':'${{ needs.debian_materials.outputs.ready_id }}',
+                                 'POLARIS_DEBIAN_READY_DIGEST':'${{ needs.debian_materials.outputs.ready_digest }}',
+                                 'GH_TOKEN':'${{ github.token }}',
+                                 'NEEDS_JSON':'${{ toJSON(needs) }}',
+                                 'RECEIPT_EVIDENCE_MODE':'${{ inputs.evidence_mode }}',
+                                 'RECEIPT_SOURCE_GENERATE_ONLY':"${{ inputs.source_generate_only && 'true' || 'false' }}",
+                                 'RECEIPT_DISTRIBUTION_ENABLED':'false',
+                                 'RECEIPT_PUBLISH_GITHUB':'false'})
+  self.assertEqual(upload['uses'],'actions/upload-artifact@v4')
+  self.assertEqual(upload['with'],{'name':'publisher-run-receipt','path':'publisher-run-receipt.json',
+                                 'if-no-files-found':'error'})
+  for step in steps:
+   self.assertNotIn('if',step);self.assertNotIn('continue-on-error',step)
+ def test_all_receipt_requires_explicit_complete_producer_success(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  self._assert_all_producer_receipt_contract(workflow)
+ def test_all_receipt_configuration_mutations_are_rejected(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  self._assert_all_producer_receipt_contract(workflow)
+  receipt=workflow['jobs']['publisher_receipt'];cases=[]
+  for name in receipt['needs']:
+   self.assertEqual(receipt['needs'].count(name),1)
+   cases.append((name+':missing-need','needs',[n for n in receipt['needs'] if n!=name]))
+  cases += [('extra-need','needs',receipt['needs']+['unregistered_producer']),
+            ('generic-success','if',"success() && inputs.build == 'All' && !inputs.source_generate_only"),
+            ('failure-front-gate','if',"!failure() && !cancelled() && inputs.build == 'All' && !inputs.source_generate_only"),
+            ('unconditional-always','if','always()')]
+  for label,index,key,value in (('synthetic-record',1,'run',"printf '{}' > publisher-run-receipt.json"),
+                                ('foreign-role',1,'env',dict(receipt['steps'][1]['env'],PUBLISHER_ROLE='linux')),
+                                ('foreign-version',1,'env',dict(receipt['steps'][1]['env'],RELEASE_VERSION='1.15.0-polaris-alpha.12.10')),
+                                ('publish-stores',1,'env',dict(receipt['steps'][1]['env'],PUBLISH_STORES='true')),
+                                ('publish-registry',1,'env',dict(receipt['steps'][1]['env'],PUBLISH_REGISTRY='true')),
+                                ('conditional-upload',2,'if','false'),
+                                ('ignore-record-failure',1,'continue-on-error',True),
+                                ('allow-missing-receipt',2,'with',dict(receipt['steps'][2]['with'],**{'if-no-files-found':'ignore'}))):
+   steps=copy.deepcopy(receipt['steps']);steps[index][key]=value
+   cases.append((label,'steps',steps))
+  for label,field,value in cases:
+   with self.subTest(case=label):
+    # A broken unmodified producer must fail outside assertRaises, never feed a negative green.
+    self._assert_all_producer_receipt_contract(workflow)
+    changed=copy.deepcopy(workflow);changed['jobs']['publisher_receipt'][field]=value
+    self.assertNotEqual(value,receipt[field])
+    restored=copy.deepcopy(changed);restored['jobs']['publisher_receipt'][field]=copy.deepcopy(receipt[field])
+    self.assertEqual(restored,workflow)
+    self.assertNotEqual(changed,workflow)
+    with self.assertRaises((AssertionError,KeyError)):
+     self._assert_all_producer_receipt_contract(changed)
+  # These are configuration controls. Only a later hosted run can prove actual
+  # scheduling after a skipped optional ancestor and upload the genuine receipt.
+ def test_signed_all_receipt_has_terminal_complete_direct_dependencies(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   jobs=w['jobs'];receipt=jobs['publisher_receipt']
   expected={'calculate_version','build','build_windows7','build_darwin','build_windows',
             'build_android_library','build_android','build_windows_client','build_linux_client',
-            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index'}
-  self.assertEqual(set(receipt['needs']),expected)
-  self.assertEqual(receipt['if'],"success() && inputs.build == 'All'")
+            'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index',
+            'prepare_windows7','upload'}
+  self.assertEqual(set(receipt['needs']),expected);self.assertEqual(len(receipt['needs']),16)
+  self.assertEqual(receipt['if'],"${{ always() && inputs.build == 'All' }}")
   self.assertIn("inputs.build == 'publish-android'",jobs['publish_android']['if'])
   scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())['signed']
   self.assertNotIn('publish_android',scope['requiredJobs'])
-  self.assertEqual(set(scope['requiredJobs']),expected|{'prepare_windows7','upload'})
+  self.assertEqual(set(scope['requiredJobs']),expected)
+  self.assertEqual(scope['receiptJobs'],{name:'github_upload' if name=='upload' else 'required' for name in expected})
   self.assertIn('publisher-run-receipt',scope['requiredArtifacts'])
-  # Evaluate only this exact conjunction against inert terminal job outcomes.
-  # An optional store-only job may be skipped; every actual All producer must succeed.
-  def admitted(build,outcomes):
-   return build=='All' and all(outcomes[name]=='success' for name in receipt['needs'])
-  outcomes={name:'success' for name in expected};outcomes['publish_android']='skipped'
-  self.assertTrue(admitted('All',outcomes))
-  self.assertFalse(admitted('publish-android',outcomes))
-  for name in expected:
-   for result in ('failure','skipped','cancelled'):
-    with self.subTest(job=name,result=result):
-     self.assertFalse(admitted('All',dict(outcomes,**{name:result})))
+  env=next(s for s in receipt['steps'] if s.get('name')=='Record exact completed scope')['env']
+  self.assertEqual(env['NEEDS_JSON'],'${{ toJSON(needs) }}')
+  self.assertEqual(env['RECEIPT_EVIDENCE_MODE'],'${{ inputs.evidence_mode }}')
+  self.assertEqual(env['RECEIPT_DISTRIBUTION_ENABLED'],'${{ vars.POLARIS_DISTRIBUTION_ENABLED }}')
+  self.assertEqual(env['RECEIPT_PUBLISH_GITHUB'],"${{ inputs.publish_github && 'true' || 'false' }}")
+  # Keep publication's original repository/environment/credential boundary.
+  self.assertEqual(jobs['upload']['if'],"!failure() && !cancelled() && github.repository == 'polaris-arch/sing-box-polaris' && vars.POLARIS_DISTRIBUTION_ENABLED == 'true' && inputs.publish_github && inputs.evidence_mode == 'final' && inputs.build == 'All'")
+  for name in ('build','native_smoke','native_index','upload'):
+   self.assertNotIn('always()',jobs[name]['if'])
  def test_signed_apple_identity_skips_inactive_matrix_rows(self):
   w=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
   for job_name in ('build_apple','build_apple_app_store'):
@@ -286,6 +506,10 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(set(w['on']),{'workflow_dispatch'},filename)
    for job,matrix in baseline[up].items():
     actual=copy.deepcopy(w['jobs'][job]['strategy']['matrix'])
+    if filename=='docker.yml':
+     actual={'include':[row for name,candidate in w['jobs'].items() if name==job or name.startswith(job+'_')
+                        for row in candidate['strategy']['matrix']['include']]}
+     self.assertCountEqual(actual['include'],matrix['include'],(filename,job));continue
     if filename=='build.yml' and job=='build':
      from test_protocol_peer import normal_build_matrix
      actual=normal_build_matrix(actual)
@@ -340,12 +564,13 @@ class TestCIContract(unittest.TestCase):
   self.assert_local_annotated_checkouts('signed-release.yml',{'calculate_version','native_index','upload'})
  def assert_local_annotated_checkouts(self,filename,expected):
   workflow=yaml.safe_load((ROOT/'.github/workflows'/filename).read_text())
+  bridge_call="assemble('artifacts', measure_debian=producer_debian_materials)"
   # Both local annotated-tag gates must keep the full-history tag objects.
   # An implicit tag ref lets checkout overwrite the tag with the event commit.
   gates={name:job for name,job in workflow['jobs'].items() if any(
    'scripts/ci/release_identity.py' in step.get('run','') or
    'scripts/ci/owned_distribution.py verify-tag' in step.get('run','') or
-   'scripts/ci/native_release_index.py assemble' in step.get('run','')
+   'scripts/ci/native_release_index.py assemble' in step.get('run','') or bridge_call in step.get('run','')
    for step in job['steps'])}
   self.assertEqual(set(gates),expected)
   for name,job in gates.items():
@@ -357,7 +582,7 @@ class TestCIContract(unittest.TestCase):
     self.assertEqual(checkout['with'].get('ref'),'${{ github.sha }}')
     self.assertEqual(checkout['with'].get('fetch-depth'),0)
     for index,step in enumerate(job['steps']):
-     if any(command in step.get('run','') for command in ('scripts/ci/release_identity.py','scripts/ci/native_release_index.py assemble','scripts/ci/owned_distribution.py verify-tag')):
+     if any(command in step.get('run','') for command in ('scripts/ci/release_identity.py','scripts/ci/native_release_index.py assemble','scripts/ci/owned_distribution.py verify-tag',bridge_call)):
       self.assertLess(job['steps'].index(checkout),index)
  def test_staging_never_admits_store_publication(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/signed-release.yml').read_text())
@@ -391,7 +616,7 @@ class TestCIContract(unittest.TestCase):
  def test_docker_actual_builds_bind_dispatch_and_recheck_before_upload(self):
   w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
   self.assertIn('source',w['jobs'])
-  for name in ['build_binary','build_docker']:
+  for name in [n for n in w['jobs'] if n.startswith(('build_binary','build_docker'))]:
    job=w['jobs'][name];self.assertIn('source',job['needs'])
    checkout=next(x for x in job['steps'] if x.get('uses','').startswith('actions/checkout@'))
    self.assertEqual(checkout['with']['ref'],'${{ github.sha }}')
@@ -408,6 +633,11 @@ class TestCIContract(unittest.TestCase):
    self.assertEqual(w['on']['workflow_dispatch']['inputs']['tag']['default'],release['tag'],name)
   w=yaml.safe_load((ROOT/'.github/workflows/publish-github.yml').read_text())
   self.assertEqual(w['concurrency']['group'],'polaris-github-release-'+release['tag'])
+  import publisher_peer_successor
+  self.assertEqual(publisher_peer_successor.VERSION,release['version'])
+  self.assertEqual((ROOT/'constant/version.go').read_text(),'package constant\n\nvar Version = \"unknown\"\n')
+  self.assertIn('return C.Version',(ROOT/'experimental/libbox/setup.go').read_text())
+  self.assertIn('github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}',(ROOT/'.github/workflows/build.yml').read_text())
   w=yaml.safe_load((ROOT/'.github/workflows/docker.yml').read_text())
   step=next(s for s in w['jobs']['build_docker']['steps'] if s.get('uses','').startswith('docker/build-push-action@'))
   self.assertEqual(step['env']['DOCKER_BUILD_RECORD_UPLOAD'],'false')
@@ -442,11 +672,19 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   self.assertIn('Source',w['on']['workflow_dispatch']['inputs']['build']['options'])
   self.assertEqual(w['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'")
-  gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15'])
+  self.assertEqual(w['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'")
+  gate=w['jobs']['source_gate'];self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','macos-15','xcode-27'])
   self.assertTrue(any('unittest discover' in x.get('run','') for x in gate['steps']))
   self.assertTrue(any(x.get('run')=='python3 scripts/ci/g4_candidate.py' for x in gate['steps']))
   self.assertEqual(w['permissions']['contents'],'read')
+ def test_four_material_callers_prepare_before_download(self):
+  for file,name in [('build.yml','build'),('build.yml','build_linux_client'),('linux.yml','build'),('docker.yml','build_binary')]:
+   steps=yaml.safe_load((ROOT/'.github/workflows'/file).read_text())['jobs'][name]['steps']
+   clone,keyring,download=[next(s for s in steps if s.get('name')==n) for n in ('Clone cronet-go','Regenerate Debian keyring','Download Chromium toolchain')]
+   self.assertTrue(steps.index(clone)<steps.index(keyring)<steps.index(download))
+   self.assertTrue(clone['run'].rstrip().endswith('python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"'))
+   self.assertEqual((clone.get('timeout-minutes'),download.get('timeout-minutes')),(10,20))
+   for step in (clone,keyring,download):self.assertNotIn('continue-on-error',step)
  def test_runtime_protobuf_bootstrap_is_isolated_from_native_products(self):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   option=w['on']['workflow_dispatch']['inputs']['source_generate_only']
@@ -485,12 +723,62 @@ class TestCIContract(unittest.TestCase):
   w=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
   gate=w['jobs']['utls_gate']
   self.assertEqual(gate['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
-  self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15'])
+  self.assertEqual(gate['strategy']['matrix']['os'],['ubuntu-24.04','windows-2025','macos-15','xcode-27'])
   self.assertFalse(gate['strategy']['fail-fast'])
   self.assertTrue(any(s.get('with',{}).get('go-version-file')=='release/GO_VERSION' for s in gate['steps']))
   self.assertTrue(any('utls_gate.py' in s.get('run','') for s in gate['steps']))
-  cost=next(s for s in gate['steps'] if 'utls_cost.py' in s.get('run',''))
+  early,cost=source_cost_steps_contract(gate)
   self.assertEqual(cost['if'],"always() && matrix.os == 'ubuntu-24.04'")
+ def test_cost_input_and_measurement_invocations_coexist_without_first_match_ambiguity(self):
+  gate=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  early,cost=source_cost_steps_contract(gate)
+  calls=[step for step in gate['steps'] if 'utls_cost.py' in step.get('run','')]
+  self.assertEqual(calls,[early,cost]);self.assertIsNot(early,cost)
+  self.assertIn('--retain-source-input',shlex.split(early['run']))
+  self.assertNotIn('--retain-source-input',shlex.split(cost['run']))
+  self.assertNotIn('if',early);self.assertNotIn('continue-on-error',early)
+  self.assertEqual(cost['name'],'Measure whole-migration binary and idle RSS costs')
+  self.assertEqual(cost['if'],"always() && matrix.os == 'ubuntu-24.04'")
+  self.assertIs(cost['continue-on-error'],True)
+ def test_cost_step_duplicate_missing_renamed_and_wrong_phase_commands_are_rejected(self):
+  original=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  for mutation in ('duplicate-early','duplicate-cost','missing-early','missing-cost','renamed-cost',
+                   'early-as-measurement','measurement-as-early','wrong-cost-program','malformed-command','third-invocation','reversed'):
+   gate=copy.deepcopy(original);steps=gate['steps'];early,cost=source_cost_steps_contract(gate)
+   if mutation=='duplicate-early':steps.append(copy.deepcopy(early))
+   elif mutation=='duplicate-cost':steps.append(copy.deepcopy(cost))
+   elif mutation=='missing-early':steps.remove(early)
+   elif mutation=='missing-cost':steps.remove(cost)
+   elif mutation=='renamed-cost':cost['name']='Unreviewed cost observation'
+   elif mutation=='early-as-measurement':cost['run']=early['run']
+   elif mutation=='measurement-as-early':early['run']=cost['run']
+   elif mutation=='wrong-cost-program':cost['run']=cost['run'].replace('scripts/ci/utls_cost.py','scripts/ci/unreviewed.py')
+   elif mutation=='malformed-command':cost['run']+=" '"
+   elif mutation=='third-invocation':steps.append(dict(cost,name='Unreviewed extra invocation'))
+   else:
+    a,b=steps.index(early),steps.index(cost);steps[a],steps[b]=steps[b],steps[a]
+   with self.subTest(mutation=mutation),self.assertRaises(AssertionError):source_cost_steps_contract(gate)
+ def test_early_cost_receipt_scope_order_and_measurement_only_predicate_cannot_cross(self):
+  original=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())['jobs']['utls_gate']
+  for mutation in ('early-if','early-ignore','early-env','before-checkout','before-python',
+                   'after-go','after-pip','after-unicode','foreign-input','measurement-if','measurement-fatal','shared-output','upload-ignore'):
+   gate=copy.deepcopy(original);steps=gate['steps'];early,cost=source_cost_steps_contract(gate)
+   if mutation=='early-if':early['if']=cost['if']
+   elif mutation=='early-ignore':early['continue-on-error']=True
+   elif mutation=='early-env':early['env']={'SOURCE_BUILD':'Binary'}
+   elif mutation in ('before-checkout','before-python','after-go','after-pip','after-unicode'):
+    if mutation=='before-checkout':target=next(step for step in steps if step.get('uses','').startswith('actions/checkout@'))
+    elif mutation=='before-python':target=next(step for step in steps if step.get('uses','').startswith('actions/setup-python@'))
+    elif mutation=='after-go':target=next(step for step in steps if step.get('uses','').startswith('actions/setup-go@'))
+    elif mutation=='after-pip':target=next(step for step in steps if 'pip install' in step.get('run',''))
+    else:target=next(step for step in steps if 'test_client_encoding.py' in step.get('run',''))
+    steps.remove(early);steps.insert(steps.index(target)+(0 if mutation.startswith('before-') else 1),early)
+   elif mutation=='foreign-input':gate['env']['SOURCE_WINDOWS_NATIVE_PROOF']='true'
+   elif mutation=='measurement-if':cost['if']="matrix.os == 'ubuntu-24.04'"
+   elif mutation=='measurement-fatal':cost['continue-on-error']=False
+   elif mutation=='shared-output':cost['run']=cost['run'].replace('/tls-fingerprint-evidence/cost','/tls-fingerprint-evidence')
+   else:next(step for step in steps if step.get('uses','').startswith('actions/upload-artifact@'))['with']['if-no-files-found']='ignore'
+   with self.subTest(mutation=mutation),self.assertRaises(AssertionError):source_cost_steps_contract(gate)
  def test_new_capability_and_mobile_checks_use_original_product_jobs(self):
   for name in ['build.yml','signed-release.yml']:
    w=yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
@@ -501,7 +789,7 @@ class TestCIContract(unittest.TestCase):
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
  def expected_lint_rules(self):
-  # Keep each reviewed boundary explicit: six SA1019 rules have distinct
+  # Keep each reviewed boundary explicit: eight SA1019 rules have distinct
   # path/diagnostic identities, so the diagnostic code alone is not a key.
   return {
    'http2':{
@@ -513,6 +801,16 @@ class TestCIContract(unittest.TestCase):
     'path':r'^common/httpclient/runtime_quic_tls\.go$',
     'text':r'^SA1019: \(crypto/tls\.Config\)\.Rand has been deprecated since Go 1\.27 and an alternative has been available since Go 1\.26: this should be left nil in production\. Not all TLS configurations are guaranteed to use Rand\. Test code can use \[testing/cryptotest\.SetGlobalRandom\] instead\. $',
     'source':r'^\s*(?:if value := config\.Rand; value != nil \{|config\.Rand = runtimeQUICReader\{value, fence\})$'},
+   'runtime-h2c-import':{
+    'linters':['staticcheck'],
+    'path':r'^service/api/runtime_handoff\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c is deprecated: This package is deprecated\. It is not maintained and should not be used\. $',
+    'source':r'^\s*(?:"golang\.org/x/net/http2/h2c")$'},
+   'runtime-h2c-handler':{
+    'linters':['staticcheck'],
+    'path':r'^service/api/runtime_handoff\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $',
+    'source':r'^\s*(?:handler := h2c\.NewHandler\(next, new\(http2\.Server\)\))$'},
    'h2c-import':{
     'linters':['staticcheck'],
     'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
@@ -544,7 +842,7 @@ class TestCIContract(unittest.TestCase):
   checks=config['linters']['settings']['staticcheck']['checks']
   self.assertIn('all',checks)
   for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),7)
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),9)
   expected=self.expected_lint_rules()
   self.assertCountEqual(rules,list(expected.values()))
   by_scope={(rule['path'],rule['text']):rule for rule in rules}
@@ -605,12 +903,18 @@ class TestCIContract(unittest.TestCase):
                  signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
                  'return instance, err, report',signature+' // another line']:
    self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
- def test_reviewed_compatibility_exclusions_match_only_eight_exact_diagnostics(self):
+ def test_reviewed_compatibility_exclusions_match_only_ten_exact_diagnostics(self):
   rules=self.lint_rules()
   fixtures=[
    ('tls-rand','common/httpclient/runtime_quic_tls.go',
     'SA1019: (crypto/tls.Config).Rand has been deprecated since Go 1.27 and an alternative has been available since Go 1.26: this should be left nil in production. Not all TLS configurations are guaranteed to use Rand. Test code can use [testing/cryptotest.SetGlobalRandom] instead.',
     ['if value := config.Rand; value != nil {','config.Rand = runtimeQUICReader{value, fence}']),
+   ('runtime-h2c-import','service/api/runtime_handoff.go',
+    'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
+    ['"golang.org/x/net/http2/h2c"']),
+   ('runtime-h2c-handler','service/api/runtime_handoff.go',
+    'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.',
+    ['handler := h2c.NewHandler(next, new(http2.Server))']),
    ('h2c-import','protocol/naive/inbound_runtime_tcp.go',
     'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
     ['"golang.org/x/net/http2/h2c"']),
@@ -652,8 +956,8 @@ class TestCIContract(unittest.TestCase):
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,other_message,source))
      for other_source in ['',source+' // another statement','prefix '+source,'unrelated()']:
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,message,other_source))
-  self.assertEqual(len(matched),8)
-  self.assertEqual(len({(row[1],row[2]) for row in matched}),7)
+  self.assertEqual(len(matched),10)
+  self.assertEqual(len({(row[1],row[2]) for row in matched}),9)
   # The rejected server-only field must not inherit the client Rand exception.
   message='SA1019: (crypto/tls.Config).NameToCertificate has been deprecated since Go 1.14: NameToCertificate only allows associating a single certificate with a given name. Leave this field nil to let the library select the first compatible chain from Certificates.'
   self.assertFalse(any(self.rule_matches(rule,'staticcheck','common/httpclient/runtime_quic_tls.go',
@@ -834,8 +1138,8 @@ class TestUpstreamReleaseTrack(unittest.TestCase):
                 with self.subTest(version=version, branches=branches, tag=tag):
                     self.assert_track(branches, track, tag=tag, version=version)
 
-    def test_three_release_workflows_use_only_shared_track_helper(self):
-        for filename, job_name in [('linux.yml', 'build'), ('signed-linux.yml', 'build'),
+    def test_production_release_workflows_keep_shared_branch_track_guard(self):
+        for filename, job_name in [('signed-linux.yml', 'build'),
                                    ('publish-container.yml', 'merge')]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             calls = [(name, step) for name, job in workflow['jobs'].items()
@@ -1298,7 +1602,7 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
     }
 
     def test_manual_test_and_lint_keep_complete_jobs_behind_full_classifier(self):
-        for filename, count in [('test.yml', 3), ('lint.yml', 10)]:
+        for filename, count in [('test.yml', 4), ('lint.yml', 10)]:
             workflow = yaml.safe_load((ROOT / '.github/workflows' / filename).read_text())
             self.assertEqual(set(workflow['on']), {'pull_request', 'workflow_dispatch'})
             self.assertEqual(workflow['on']['workflow_dispatch'], {})
@@ -1507,6 +1811,683 @@ class TestFinalSourceEntrypoints(unittest.TestCase):
         self.assertNotEqual(self.run_nested(self.EXPECTED, package_pass=False), 0)
         self.assertNotEqual(self.run_nested(self.EXPECTED, returncode=1), 0)
 
+
+
+
+# Preserve the pre-supply selectors and real source ancestors, while proving
+# that a sibling canonical supplier cannot gate independent consumer jobs.
+_MATERIAL_OLD_SELECTORS = {'prepare_windows7': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')", 'build_darwin': "!inputs.source_generate_only && !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_windows': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')", 'build_android_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable'", 'build_windows_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable'", 'build_linux_client': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable'", 'build_apple_library': "!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')"}
+_MATERIAL_REQUIRED_EXPRESSIONS = {'.github/workflows/build.yml': "github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Materials') && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/')", '.github/workflows/linux.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')", '.github/workflows/docker.yml': "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')"}
+_MATERIAL_CALLERS = [['.github/workflows/build.yml', 'build', 'all', 'calculate_version', 'C1_ALL_BINARY', '${{ matrix.arch }}', "${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}", "fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'", 'dist'], ['.github/workflows/build.yml', 'build_linux_client', 'all', 'calculate_version', 'C2_ALL_LINUX_CLIENT', '${{ matrix.go_arch }}', 'glibc', 'true', 'dist'], ['.github/workflows/linux.yml', 'build', 'linux', 'calculate_version', 'C3_LINUX', '${{ matrix.arch }}', 'musl', 'matrix.naive', 'dist'], ['.github/workflows/docker.yml', 'build_binary', 'docker', 'source', 'C4_DOCKER', '${{ matrix.arch }}', 'musl', 'matrix.naive', '.']]
+
+
+def _material_gate(parent):
+ return "(needs."+parent+".outputs.material_required == 'false' || (needs."+parent+".outputs.material_required == 'true' && needs.debian_materials.result == 'success'))"
+
+
+def _material_expression(expression, bindings):
+ # Finite inert evaluation of the source expression, without importing the
+ # supplier or running products. This does not model GitHub's implicit success().
+ text=expression.strip()
+ if text.startswith('${{'):text=text[3:-2].strip()
+ for key in sorted(bindings,key=len,reverse=True):text=text.replace(key,repr(bindings[key]))
+ text=text.replace('&&',' and ').replace('||',' or ')
+ text=re.sub(r'!(?!=)','not ',text)
+ return eval(text,{'__builtins__':{},'true':True,'false':False,
+                  'startsWith':lambda value,prefix:value.startswith(prefix),'always':lambda:True},{})
+
+
+class TestDebianMaterialWiring(unittest.TestCase):
+ def workflows(self):
+  return {name:yaml.safe_load((ROOT/'.github/workflows'/name).read_text())
+          for name in ('build.yml','linux.yml','docker.yml')}
+ def assert_frontier(self,job,parent,old_selector=None):
+  self.assertEqual(job['needs'],[parent])
+  condition="!cancelled() && needs."+parent+".result == 'success'"
+  if old_selector is not None:
+   selector=old_selector.replace('!failure() && ','').replace('!cancelled() && ','')
+   condition+=' && ('+selector+')'
+  self.assertEqual(job['if'],'${{ '+condition+' }}')
+  self.assertNotIn('always()',job['if']);self.assertNotIn('success()',job['if'])
+  self.assertNotIn('continue-on-error',job)
+ def test_required_classification_is_single_source_and_checkpoint_defaults_are_empty(self):
+  for filename,workflow in self.workflows().items():
+   parent='source' if filename=='docker.yml' else 'calculate_version'
+   source=workflow['jobs'][parent]
+   self.assertEqual(source['outputs']['material_required'],'${{ steps.material_scope.outputs.required }}')
+   mode=[s for s in source['steps'] if s.get('id')=='material_scope'];self.assertEqual(len(mode),1)
+   expected=_MATERIAL_REQUIRED_EXPRESSIONS['.github/workflows/'+filename]
+   self.assertEqual(mode[0]['env']['REQUIRED'],"${{ "+expected+" && 'true' || 'false' }}")
+   self.assertEqual(mode[0]['shell'],'bash');self.assertNotIn('if',mode[0])
+   self.assertNotIn('continue-on-error',mode[0])
+   for key in ('debian_checkpoint_artifact_id','debian_checkpoint_digest'):
+    field=workflow['on']['workflow_dispatch']['inputs'][key]
+    self.assertEqual(field['type'],'string');self.assertIs(field['required'],False);self.assertEqual(field['default'],'')
+   if filename=='docker.yml':
+    self.assertNotIn('outputs',workflow['jobs']['build_binary'])
+   # All selectors, source generation, staging and branch paths retain their
+   # old behavior. Only exact current-tag Materials and full Final request supply.
+   for event in ('workflow_dispatch','push'):
+    for ref in ('refs/tags/v1.15.0-polaris-alpha.12.14','refs/heads/fix/current'):
+     for build in ('All','Materials','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
+      for evidence in ('final','staging'):
+       for source_only in (False,True):
+        values={'github.event_name':event,'github.ref':ref,'inputs.build':build,
+                'inputs.evidence_mode':evidence,'inputs.source_generate_only':source_only}
+        actual=_material_expression(mode[0]['env']['REQUIRED'],values)
+        required=event=='workflow_dispatch' and ref.startswith('refs/tags/')
+        if filename=='build.yml':required=required and build in ('All','Materials') and evidence=='final' and not source_only
+        self.assertEqual(actual,'true' if required else 'false',(filename,values))
+ def test_preexisting_all_skip_invalid_source_generation_combination_does_not_consume_checkpoint(self):
+  # Root retains the original invalid All+source_generate_only all-skip shape.
+  # This is not a second admission path or an accepted checkpoint selection.
+  workflow=self.workflows()['build.yml']
+  values={'inputs.build':'All','inputs.source_generate_only':True,
+          'inputs.evidence_mode':'final','inputs.windows_native_proof':False,
+          'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.14',
+          'cancelled()':False,'failure()':False}
+  for name,job in workflow['jobs'].items():
+   self.assertIn('if',job,name)
+   context=dict(values)
+   for token in re.findall(r'needs\.[A-Za-z0-9_]+(?:\.outputs\.[A-Za-z0-9_]+|\.result)',job['if']):
+    context[token]='skipped' if token.endswith('.result') else ''
+   with self.subTest(job=name):self.assertFalse(bool(_material_expression(job['if'],context)))
+  self.assertEqual(workflow['jobs']['source_proto']['if'],"inputs.build == 'Source' && inputs.source_generate_only")
+  self.assertEqual(workflow['jobs']['source_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
+  self.assertEqual(workflow['jobs']['utls_gate']['if'],"inputs.build == 'Source' && !inputs.source_generate_only")
+  self.assertEqual(workflow['jobs']['calculate_version']['if'],"(inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'")
+ def test_checkpoint_rejection_runs_the_actual_bounded_preflight_shell(self):
+  for filename,workflow in self.workflows().items():
+   parent='source' if filename=='docker.yml' else 'calculate_version'
+   mode=next(s for s in workflow['jobs'][parent]['steps'] if s.get('id')=='material_scope')
+   self.assertIn('printf',mode['run']);self.assertIn('$GITHUB_OUTPUT',mode['run'])
+   accepted=set()
+   for required in ('true','false','', 'unknown'):
+    for artifact_id,digest in (('',''),('123',''),('','a'*64),('123','a'*64)):
+     with self.subTest(workflow=filename,required=required,id_present=bool(artifact_id),digest_present=bool(digest)),tempfile.TemporaryDirectory() as tmp:
+      out=Path(tmp)/'output'
+      env=dict(os.environ,REQUIRED=required,MATERIALS_ONLY='false',SOURCE_GENERATE_ONLY='false',WINDOWS_NATIVE_PROOF='false',CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(out))
+      result=subprocess.run(['bash','-euo','pipefail','-c',mode['run']],env=env,capture_output=True,text=True,timeout=10)
+      allowed=(required=='true' and bool(artifact_id)==bool(digest)) or (required=='false' and not artifact_id and not digest)
+      if required not in ('true','false'):guard='invalid Debian material mode'
+      elif bool(artifact_id)!=bool(digest):guard='Debian candidate requires both artifact ID and digest'
+      elif required=='false' and artifact_id:guard='Debian candidate is only allowed for Materials or required Final'
+      else:guard=None
+      self.assertEqual(guard is None,allowed)
+      self.assertEqual(result.returncode,0 if allowed else 1)
+      self.assertEqual(result.stderr,'' if allowed else guard+'\n')
+      self.assertEqual(result.stdout,'')
+      self.assertEqual(out.read_text() if out.exists() else '',('required='+required+'\n') if allowed else '')
+      if allowed:accepted.add((required,bool(artifact_id)))
+   self.assertEqual(accepted,{('true',True),('true',False),('false',False)})
+  # Source/Source-generate never reaches calculate_version; each real Source
+  # entry therefore rejects nonempty seed inputs before checkout/preparation.
+  for name in ('source_proto','source_gate','utls_gate'):
+   first=self.workflows()['build.yml']['jobs'][name]['steps'][0]
+   self.assertEqual(first['name'],'Reject prepared candidate in Source mode');self.assertEqual(first['shell'],'bash')
+   for a,b in (('',''),('123',''),('','a'*64),('123','a'*64)):
+    result=subprocess.run(['bash','-euo','pipefail','-c',first['run']],
+                          env=dict(os.environ,CHECKPOINT_ARTIFACT_ID=a,CHECKPOINT_DIGEST=b),capture_output=True,text=True,timeout=10)
+    allowed=not a and not b
+    self.assertEqual(result.returncode,0 if allowed else 1)
+    self.assertEqual(result.stderr,'' if allowed else 'Debian checkpoint is not a Source input\n')
+    self.assertEqual(result.stdout,'')
+ def test_materials_selector_runs_only_identity_and_supplier_and_rejects_incompatible_inputs(self):
+  workflow=self.workflows()['build.yml'];jobs=workflow['jobs']
+  self.assertIn('Materials',workflow['on']['workflow_dispatch']['inputs']['build']['options'])
+  values={'inputs.build':'Materials','inputs.source_generate_only':False,
+          'inputs.evidence_mode':'final','inputs.windows_native_proof':False,
+          'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.17',
+          'cancelled()':False,'failure()':False}
+  selected=[]
+  for name,job in jobs.items():
+   context=dict(values)
+   for token in re.findall(r'needs\.[A-Za-z0-9_]+(?:\.outputs\.[A-Za-z0-9_]+|\.result)',job['if']):
+    context[token]='success' if token.endswith('.result') else 'true'
+   if _material_expression(job['if'],context):selected.append(name)
+  self.assertEqual(selected,['calculate_version','debian_materials'])
+  call=next(step for step in jobs['debian_materials']['steps'] if step.get('id')=='materials')
+  self.assertEqual(call['with']['materials-only'],"${{ inputs.build == 'Materials' && 'true' || 'false' }}")
+  action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
+  self.assertEqual(action['inputs']['materials-only']['default'],'false')
+  prepare=next(step for step in action['runs']['steps'] if step.get('id')=='prepare')
+  self.assertIn('mode_args=(--materials-only)',prepare['run'])
+  self.assertIn('"${mode_args[@]}"',prepare['run'])
+  self.assertEqual(prepare['env']['MATERIALS_ONLY'],'${{ inputs.materials-only }}')
+  mode=next(step for step in jobs['calculate_version']['steps'] if step.get('id')=='material_scope')
+  accepted=set()
+  for event in ('workflow_dispatch','push'):
+   for ref in ('refs/tags/v1.15.0-polaris-alpha.12.17','refs/heads/main'):
+    for evidence in ('final','staging'):
+     for source_only in (False,True):
+      for native in (False,True):
+       for artifact,digest in (('',''),('123','a'*64),('123',''),('','a'*64),('0','a'*64),('123','bad')):
+        bindings=dict(values,**{'github.event_name':event,'github.ref':ref,'inputs.evidence_mode':evidence,
+                               'inputs.source_generate_only':source_only,'inputs.windows_native_proof':native})
+        required=_material_expression(mode['env']['REQUIRED'],bindings)
+        with self.subTest(values=bindings,pair=(artifact,digest)),tempfile.TemporaryDirectory() as temporary:
+         output=Path(temporary)/'output'
+         env=dict(os.environ,REQUIRED=required,MATERIALS_ONLY='true',SOURCE_GENERATE_ONLY=str(source_only).lower(),
+                  WINDOWS_NATIVE_PROOF=str(native).lower(),CHECKPOINT_ARTIFACT_ID=artifact,
+                  CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(output))
+         result=subprocess.run(['bash','-euo','pipefail','-c',mode['run']],env=env,capture_output=True,text=True,timeout=10)
+         allowed=(event=='workflow_dispatch' and ref.startswith('refs/tags/') and evidence=='final'
+                  and not source_only and not native and (artifact,digest) in (('',''),('123','a'*64)))
+         if required!='true' or source_only or native:
+          guard='Materials requires exact-tag final identity and excludes source generation/native proof'
+         elif bool(artifact)!=bool(digest):guard='Debian candidate requires both artifact ID and digest'
+         elif artifact and (artifact!='123' or digest!='a'*64):guard='invalid exact candidate ID/digest'
+         else:guard=None
+         self.assertEqual(guard is None,allowed)
+         self.assertEqual(result.returncode,0 if allowed else 1)
+         self.assertEqual(result.stderr,'' if allowed else guard+'\n')
+         self.assertEqual(result.stdout,'')
+         self.assertEqual(output.read_text() if output.exists() else '', 'required=true\n' if allowed else '')
+         if allowed:accepted.add((artifact,digest))
+  self.assertEqual(accepted,{('',''),('123','a'*64)})
+  # Invalid Materials+source_generate_only must reach this rejecting preflight,
+  # rather than silently skipping every job or accidentally running Source.
+  self.assertTrue(_material_expression(jobs['calculate_version']['if'],dict(values,**{'inputs.source_generate_only':True})))
+  for filename,other in self.workflows().items():
+   if filename=='build.yml':continue
+   supplier=next(step for step in other['jobs']['debian_materials']['steps'] if step.get('id')=='materials')
+   self.assertNotIn('materials-only',supplier['with'])
+ def test_every_heavy_frontier_preserves_old_ancestors_and_handles_optional_ready(self):
+  workflows=self.workflows()
+  for filename,name in (('build.yml','build'),('build.yml','build_linux_client'),('linux.yml','build')):
+   self.assertIs(workflows[filename]['jobs'][name]['strategy']['fail-fast'],False)
+  frontier=[('build.yml',name,'calculate_version',old) for name,old in _MATERIAL_OLD_SELECTORS.items()]
+  frontier+=[('linux.yml','build','calculate_version',None),('docker.yml','build_binary','source',None)]
+  for filename,name,parent,old in frontier:
+   candidate=workflows[filename]['jobs'][name];self.assert_frontier(candidate,parent,old)
+   for mode in ('true','false','','unknown'):
+    for ancestor in ('success','failure','skipped','cancelled','','unknown'):
+     for ready in ('success','failure','skipped','cancelled','','unknown'):
+      for cancelled in (False,True):
+       for build in ('All','Materials','Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple','Apple-release','iOS','macOS','tvOS','macOS-standalone','iOS-jailbreak','publish-android'):
+        values={'needs.'+parent+'.result':ancestor,'needs.'+parent+'.outputs.material_required':mode,
+                'needs.debian_materials.result':ready,'cancelled()':cancelled,'failure()':ancestor=='failure',
+                'inputs.source_generate_only':False,'github.event_name':'workflow_dispatch','github.ref':'refs/tags/v1.15.0-polaris-alpha.12.14','inputs.build':build}
+        selector=True if old is None else _material_expression(old,values)
+        expected=bool(selector and not cancelled and ancestor=='success')
+        self.assertEqual(bool(_material_expression(candidate['if'],values)),expected,(filename,name,mode,ancestor,ready,cancelled,build))
+   # Mutate actual needs and conditions; every change must be rejected by the
+   # same assertion which first accepts the complete unmodified candidate.
+   changes=[]
+   for status in ('failure','skipped','cancelled','','unknown'):
+    changes.append(('if',candidate['if'].replace("needs."+parent+".result == 'success'","needs."+parent+".result == '"+status+"'",1)))
+   changes += [('needs',[parent,'debian_materials']),('needs',['debian_materials']),
+               ('if','always()'),('if','success()'),
+               ('if',candidate['if'].replace("needs."+parent+".result == 'success'","needs.debian_materials.result != 'failure'"))]
+   for field,value in changes:
+    wrong=copy.deepcopy(candidate);wrong[field]=value
+    with self.assertRaises(AssertionError):self.assert_frontier(wrong,parent,old)
+ def test_three_suppliers_use_one_raw_then_ready_action_without_circular_evidence(self):
+  workflows=self.workflows();action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
+  self.assertEqual(action['runs']['using'],'composite')
+  steps=action['runs']['steps'];prepare=next(s for s in steps if s.get('id')=='prepare')
+  raw=next(s for s in steps if s.get('id')=='raw-upload');ready=next(s for s in steps if s.get('id')=='ready-upload')
+  binding=next(s for s in steps if 'cronet_material_supply.py ready ' in s.get('run',''))
+  keyring=next(s for s in steps if 'generate_keyring.sh' in s.get('run',''))
+  self.assertLess(steps.index(keyring),steps.index(prepare));self.assertLess(steps.index(prepare),steps.index(raw))
+  self.assertLess(steps.index(raw),steps.index(binding));self.assertLess(steps.index(binding),steps.index(ready))
+  self.assertEqual(raw['if'],'always()')
+  self.assertEqual(binding['if'],"success() && steps.prepare.outcome == 'success' && steps.raw-upload.outcome == 'success'")
+  self.assertNotIn('if',ready) # Implicit success keeps failed raw/auth/bind from emitting READY.
+  self.assertEqual(binding['env'],{'RAW_ID':'${{ steps.raw-upload.outputs.artifact-id }}','RAW_DIGEST':'${{ steps.raw-upload.outputs.artifact-digest }}'})
+  self.assertIn('--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST"',prepare['run'])
+  self.assertNotIn('--checkpoint-digest',prepare['run'])
+  for step,name in ((raw,'debian-candidate-raw'),(ready,'debian-material-ready')):
+   self.assertEqual(step['uses'],'actions/upload-artifact@v4');self.assertEqual(step['with']['name'],name)
+   self.assertEqual(step['with']['retention-days'],7);self.assertIs(step['with']['overwrite'],False)
+   self.assertEqual(step['with']['if-no-files-found'],'error')
+  for step in steps:
+   self.assertNotIn('continue-on-error',step)
+   self.assertNotIn('timeout-minutes',step) # Workflow step key is not composite metadata.
+   self.assertFalse(step.get('uses','').startswith(('actions/cache','actions/download-artifact')))
+  for filename,workflow in workflows.items():
+   parent='source' if filename=='docker.yml' else 'calculate_version';role={'build.yml':'all','linux.yml':'linux','docker.yml':'docker'}[filename]
+   supplier=workflow['jobs']['debian_materials'];self.assertEqual(supplier['name'],'Supply verified Debian raw inputs')
+   self.assertEqual(supplier['needs'],[parent]);self.assertEqual(supplier['permissions'],{'contents':'read','actions':'read'})
+   expected="needs."+parent+".outputs.material_required == 'true'"
+   if role=='all':expected='!inputs.source_generate_only && '+expected
+   self.assertEqual(supplier['if'],'${{ '+expected+' }}')
+   call=next(s for s in supplier['steps'] if s.get('id')=='materials');self.assertEqual(call['uses'],'./.github/actions/prepare-debian-materials')
+   self.assertEqual(call['with']['role'],role)
+   self.assertEqual(call['with']['checkpoint-artifact-id'],'${{ inputs.debian_checkpoint_artifact_id }}')
+   self.assertEqual(call['with']['checkpoint-artifact-digest'],'${{ inputs.debian_checkpoint_digest }}')
+   for key,step,field in (('raw_id','raw-upload','artifact-id'),('raw_digest','raw-upload','artifact-digest'),('ready_id','ready-upload','artifact-id'),('ready_digest','ready-upload','artifact-digest')):
+    self.assertEqual(supplier['outputs'][key],'${{ steps.materials.outputs.'+key+' }}')
+    self.assertEqual(action['outputs'][key]['value'],'${{ steps.'+step+'.outputs.'+field+' }}')
+ def test_all_four_real_callers_reauthenticate_before_unchanged_go_download_and_keep_use_private(self):
+  workflows=self.workflows()
+  for path,name,role,parent,caller,arch,libc,eligible,dest in _MATERIAL_CALLERS:
+   job=workflows[Path(path).name]['jobs'][name];steps=job['steps']
+   clone,keyring,download=[next(s for s in steps if s.get('name')==n) for n in ('Clone cronet-go','Regenerate Debian keyring','Download Chromium toolchain')]
+   self.assertLess(steps.index(clone),steps.index(keyring));self.assertLess(steps.index(keyring),steps.index(download))
+   self.assertEqual((clone['timeout-minutes'],download['timeout-minutes']),(10,20))
+   run=download['run'];self.assertLess(run.index('cronet_material_supply.py" consume-local'),run.index('export POLARIS_CRONET_RAW_STORE='))
+   self.assertLess(run.index('export POLARIS_CRONET_RAW_STORE='),run.index('go run ./cmd/build-naive'))
+   self.assertIn('--caller '+caller+' --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC"',run)
+   self.assertEqual(download['env']['MATERIAL_TARGET_ARCH'],arch);self.assertEqual(download['env']['MATERIAL_LIBC'],libc)
+   self.assertEqual(download['env']['POLARIS_DEBIAN_REQUIRED'],'${{ needs.'+parent+'.outputs.material_required }}')
+   self.assertEqual(download['env']['GH_TOKEN'],'${{ github.token }}')
+   self.assertIn('--checkpoint-artifact-id \"$CHECKPOINT_ARTIFACT_ID\" --checkpoint-artifact-digest \"$CHECKPOINT_DIGEST\"',run)
+   self.assertEqual(download['env']['CHECKPOINT_ARTIFACT_ID'],'${{ inputs.debian_checkpoint_artifact_id }}')
+   self.assertEqual(download['env']['CHECKPOINT_DIGEST'],'${{ inputs.debian_checkpoint_digest }}')
+   # Exercise the actual argument assembly without invoking the product CLI.
+   fragment=run[run.index('checkpoint_args=()'):run.index('export POLARIS_CRONET_RAW_STORE=')]
+   for artifact_id,digest in (('',''),('123','a'*64),('123',''),('','a'*64)):
+    env=dict(os.environ,GITHUB_WORKSPACE='/fixture',HOME='/fixture-home',RUNNER_TEMP='/fixture-temp',
+             CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,MATERIAL_TARGET_ARCH='arm64',MATERIAL_LIBC='musl')
+    result=subprocess.run(['bash','-euo','pipefail','-c','python3() { printf \'%s\\n\' "$@"; }\n'+fragment],
+                          env=env,capture_output=True,text=True,timeout=10)
+    expected=['/fixture/scripts/ci/cronet_material_supply.py','consume-local','--cronet-root','/fixture-home/cronet-go',
+              '--role',role,'--caller',caller,'--target-arch','arm64','--libc','musl']
+    if artifact_id or digest:
+     expected+=['--checkpoint-artifact-id',artifact_id,'--checkpoint-artifact-digest',digest]
+    expected+=['--output','/fixture-temp/debian-material-use']
+    with self.subTest(path=path,caller=caller,artifact_id=artifact_id,digest=digest):
+     self.assertEqual(result.returncode,0);self.assertEqual(result.stderr,'')
+     self.assertEqual(result.stdout.splitlines(),expected)
+   self.assertEqual(job['permissions'],{'contents':'read','actions':'read'})
+   keep=next(s for s in steps if s.get('name')=='Retain exact Debian material use')
+   self.assertEqual(keep['if'],"${{ needs."+parent+".outputs.material_required == 'true' && ("+eligible+') }}')
+   self.assertEqual(keep['run'],'cp "$RUNNER_TEMP/debian-material-use/use.json" '+dest+'/debian-material-use.json')
+   self.assertLess(steps.index(download),steps.index(keep))
+   packing=[i for i,s in enumerate(steps) if s.get('name') in ('Archive','Package DEB','Package RPM','Prepare upload','Prepare artifact')]
+   self.assertTrue(packing);self.assertLess(max(packing),steps.index(keep))
+   if role=='all':
+    record=next(s for s in steps if s.get('name')=='Record actual unsigned candidate files');self.assertLess(steps.index(keep),steps.index(record))
+   for s in steps:
+    if s.get('name') in ('Archive','Package DEB','Package RPM'):self.assertNotIn('debian-material-use.json',s.get('run',''))
+   self.assertFalse(any(s.get('uses','').startswith('actions/download-artifact') and s.get('with',{}).get('name') in ('debian-candidate-raw','debian-material-ready') for s in steps))
+  commands='\n'.join(s.get('run','') for s in workflows['build.yml']['jobs']['source_gate']['steps'])
+  self.assertIn("python3 -m unittest discover -s scripts/ci -p 'test_*.py'",commands)
+  self.assertTrue((ROOT/'scripts/ci/test_cronet_material_supply.py').is_file())
+ def test_terminal_receipts_keep_full_source_owned_jobs_and_native_proof_join(self):
+  workflows=self.workflows();scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())
+  for filename,workflow in workflows.items():
+   role={'build.yml':'all','linux.yml':'linux','docker.yml':'docker'}[filename]
+   receipt=workflow['jobs']['publisher_receipt'];self.assertEqual(receipt['needs'],list(scope[role]['receiptJobs']))
+   self.assertEqual(len(receipt['needs']),{'all':16,'linux':3,'docker':21}[role])
+   self.assertIn('always()',receipt['if']);self.assertNotIn('failure()',receipt['if']);self.assertNotIn('cancelled()',receipt['if'])
+   self.assertNotIn('success()',receipt['if']);self.assertNotIn('needs.',receipt['if'])
+   parent='source' if role=='docker' else 'calculate_version'
+   record=next(s for s in receipt['steps'] if s.get('name')=='Record exact completed scope')
+   self.assertEqual(record['env']['NEEDS_JSON'],'${{ toJSON(needs) }}')
+   self.assertEqual(record['env']['POLARIS_DEBIAN_REQUIRED'],'${{ needs.'+parent+'.outputs.material_required }}')
+   for key,out in (('RAW_ID','raw_id'),('RAW_DIGEST','raw_digest'),('READY_ID','ready_id'),('READY_DIGEST','ready_digest')):
+    self.assertEqual(record['env']['POLARIS_DEBIAN_'+key],'${{ needs.debian_materials.outputs.'+out+' }}')
+   self.assertEqual(record['env']['GH_TOKEN'],'${{ github.token }}')
+  index=workflows['build.yml']['jobs']['native_index'];self.assertEqual(len(index['needs']),8)
+  self.assertIn("inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success'",index['if'])
+  for name in index['needs']:
+   if name not in ('native_windows_proof','debian_materials'):self.assertIn("needs."+name+".result == 'success'",index['if'])
+  self.assertIn(_material_gate('calculate_version'),index['if']);self.assertNotIn('always()',index['if'])
+ def test_docker_real_jobs_are_one_to_one_products_and_only_own_binary_ancestors(self):
+  workflow=self.workflows()['docker.yml'];jobs=workflow['jobs']
+  scope=json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())['docker']
+  products={'':'linux/amd64','_arm64':'linux/arm64','_386':'linux/386','_armv7':'linux/arm/v7',
+            '_armv6':'linux/arm/v6','_mipsle':'linux/mipsle','_riscv64':'linux/riscv64',
+            '_loong64':'linux/loong64','_ppc64le':'linux/ppc64le','_s390x':'linux/s390x'}
+  expected={'source','debian_materials'}
+  for suffix,platform in products.items():
+   binary='build_binary'+suffix;expected.add(binary);job=jobs[binary]
+   self.assertEqual(job['name'],binary);self.assertEqual(job['needs'],['source'])
+   self.assertIs(job['strategy']['fail-fast'],False)
+   self.assertEqual(len(job['strategy']['matrix']['include']),1)
+   self.assertEqual(job['strategy']['matrix']['include'][0]['docker_platform'],platform)
+   self.assertEqual(scope['matrices'][binary],job['strategy']['matrix'])
+   self.assertFalse(any('needs.debian_materials' in json.dumps(s) for s in job['steps']))
+   self.assertTrue(any(s.get('name')=='Build (naive)' for s in job['steps']))
+   self.assertTrue(any(s.get('name')=='Build (non-naive)' for s in job['steps']))
+   if suffix=='_mipsle':continue
+   image='build_docker'+suffix;expected.add(image);job=jobs[image]
+   self.assertEqual(job['name'],image);self.assertEqual(job['needs'],[binary,'source'])
+   self.assertIs(job['strategy']['fail-fast'],False)
+   self.assertEqual(len(job['strategy']['matrix']['include']),1)
+   self.assertEqual(job['strategy']['matrix']['include'][0]['platform'],platform)
+   self.assertEqual(scope['matrices'][image],job['strategy']['matrix'])
+   download=next(s for s in job['steps'] if s.get('name')=='Download binary')
+   self.assertEqual(download['with']['name'],'binary-${{ env.PLATFORM_PAIR }}')
+   self.assertEqual(next(s for s in job['steps'] if s.get('name')=='Prepare')['run'],
+                    'platform=${{ matrix.platform }}\necho "PLATFORM_PAIR=${platform//\\//-}" >> $GITHUB_ENV\n')
+   self.assertTrue(any(s.get('uses')=='docker/build-push-action@v6' for s in job['steps']))
+  self.assertNotIn('build_docker_mipsle',jobs)
+  self.assertEqual(set(scope['requiredJobs']),expected);self.assertEqual(set(scope['receiptJobs']),expected)
+  self.assertEqual(set(jobs['publisher_receipt']['needs']),expected)
+  self.assertEqual({n for n in jobs if n.startswith(('build_binary','build_docker'))},expected-{'source','debian_materials'})
+  self.assertEqual({r:len(json.loads((ROOT/'release/ci/publisher-upstream-scope.json').read_text())[r]['requiredArtifacts']) for r in ('all','linux','docker')},
+                   {'all':74,'linux':14,'docker':22})
+
+
+class TestNativeProducerReceiptJobs(unittest.TestCase):
+ # Independent fixed expectations: neither needs outputs nor an incomplete
+ # runtime map can choose which real producer jobs this source requires.
+ ALL=('calculate_version','build','build_windows7','build_darwin','build_windows',
+      'build_android_library','build_android','build_windows_client','build_linux_client',
+      'build_apple_library','build_apple','build_apple_app_store','native_smoke','native_index',
+      'prepare_windows7','debian_materials')
+ DOCKER_BINARY=('build_binary','build_binary_arm64','build_binary_386','build_binary_armv7',
+                'build_binary_mipsle','build_binary_riscv64','build_binary_loong64',
+                'build_binary_armv6','build_binary_ppc64le','build_binary_s390x')
+ DOCKER_IMAGE=('build_docker','build_docker_armv6','build_docker_armv7','build_docker_arm64',
+               'build_docker_386','build_docker_ppc64le','build_docker_riscv64',
+               'build_docker_s390x','build_docker_loong64')
+ def fixture(self,role):
+  ids={'all':self.ALL,'linux':('calculate_version','build','debian_materials'),
+       'docker':('source',)+self.DOCKER_BINARY+self.DOCKER_IMAGE+('debian_materials',),
+       'signed':self.ALL[:-1]+('upload',)}[role]
+  plan=json.loads((ROOT/'release/ci/github-release.json').read_text())
+  env={'PUBLISHER_ROLE':role,'GITHUB_EVENT_NAME':'workflow_dispatch',
+       'GITHUB_REPOSITORY':'polaris-arch/sing-box-polaris','GITHUB_REPOSITORY_ID':'1421657509',
+       'GITHUB_REF':'refs/tags/'+plan['tag'],'GITHUB_SHA':'a'*40,'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1',
+       'RELEASE_BUILD':'All','RELEASE_VERSION':plan['version'],'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false',
+       'RECEIPT_EVIDENCE_MODE':'final','RECEIPT_SOURCE_GENERATE_ONLY':'false',
+       'RECEIPT_DISTRIBUTION_ENABLED':'true' if role=='signed' else 'false',
+       'RECEIPT_PUBLISH_GITHUB':'false','POLARIS_DEBIAN_REQUIRED':'false' if role=='signed' else 'true'}
+  needs={name:{'result':'skipped' if name=='upload' else 'success','outputs':{}} for name in ids}
+  return env,needs
+ def record(self,env,needs,accepted,raw=None):
+  import runpy
+  with tempfile.TemporaryDirectory() as directory:
+   old=Path.cwd()
+   try:
+    os.chdir(directory);Path('release/ci').mkdir(parents=True)
+    for filename in ('github-release.json','publisher-upstream-scope.json'):
+     Path('release/ci',filename).write_text((ROOT/'release/ci'/filename).read_text())
+    env=dict(env,NEEDS_JSON=json.dumps(needs) if raw is None else raw)
+    with mock.patch.dict(os.environ,env,clear=True),mock.patch('subprocess.check_output',return_value='a'*40+'\n'), \
+         mock.patch('github_release.producer_debian_materials',return_value=None) as material:
+     if accepted:
+      runpy.run_path(str(ROOT/'scripts/ci/publisher_run_receipt.py'))
+      receipt=json.loads(Path('publisher-run-receipt.json').read_text())
+      self.assertEqual(receipt['role'],env['PUBLISHER_ROLE']);self.assertEqual(receipt['sourceCommit'],'a'*40)
+      self.assertNotIn('jobResults',receipt);self.assertNotIn('selection',receipt)
+      material.assert_called_once()
+     else:
+      with self.assertRaises((AssertionError,KeyError,ValueError,TypeError)):
+       runpy.run_path(str(ROOT/'scripts/ci/publisher_run_receipt.py'))
+      self.assertFalse(Path('publisher-run-receipt.json').exists());material.assert_not_called()
+   finally:os.chdir(old)
+ def test_all_complete_roles_write_actual_receipt_and_every_selected_job_rejects_bad_terminal_states(self):
+  for role in ('all','linux','docker','signed'):
+   env,needs=self.fixture(role);self.record(env,needs,True)
+   for name in needs:
+    if name=='upload':continue # Explicit unselected branch covered separately.
+    for result in ('failure','skipped','cancelled','unknown','','queued'):
+     wrong=copy.deepcopy(needs);wrong[name]['result']=result
+     with self.subTest(role=role,job=name,result=result):self.record(env,wrong,False)
+    wrong=copy.deepcopy(needs);del wrong[name]
+    with self.subTest(role=role,missing=name):self.record(env,wrong,False)
+   wrong=dict(needs,unregistered_producer={'result':'success','outputs':{}})
+   self.record(env,wrong,False)
+ def test_supplier_selection_is_native_and_never_taken_from_needs_outputs(self):
+  for role in ('all','linux','docker'):
+   env,needs=self.fixture(role)
+   wrong=copy.deepcopy(needs);wrong['debian_materials']['result']='failure'
+   owner='source' if role=='docker' else 'calculate_version'
+   wrong[owner]['outputs']={'material_required':'false','receiptJobs':'{}'}
+   self.record(env,wrong,False)
+   self.record(dict(env,POLARIS_DEBIAN_REQUIRED='false'),needs,False)
+   branch=dict(env,GITHUB_REF='refs/heads/fix/current',POLARIS_DEBIAN_REQUIRED='false')
+   optional=copy.deepcopy(needs);optional['debian_materials']['result']='skipped'
+   self.record(branch,optional,True)
+   for result in ('success','failure','cancelled','unknown',''):
+    wrong=copy.deepcopy(optional);wrong['debian_materials']['result']=result
+    self.record(branch,wrong,False)
+   if role=='all':
+    staging=dict(env,RECEIPT_EVIDENCE_MODE='staging',POLARIS_DEBIAN_REQUIRED='false')
+    self.record(staging,optional,True);self.record(staging,needs,False)
+ def test_signed_upload_selection_never_downgrades_failure_or_cancellation(self):
+  env,needs=self.fixture('signed');self.record(env,needs,True)
+  selected=dict(env,RECEIPT_PUBLISH_GITHUB='true')
+  complete=copy.deepcopy(needs);complete['upload']['result']='success'
+  self.record(selected,complete,True)
+  for result in ('failure','cancelled','skipped','unknown','','queued'):
+   wrong=copy.deepcopy(complete);wrong['upload']={'result':result,'outputs':{'publish_github':'false'}}
+   self.record(selected,wrong,False)
+  for result in ('success','failure','cancelled','unknown',''):
+   wrong=copy.deepcopy(needs);wrong['upload']['result']=result;self.record(env,wrong,False)
+  staging=dict(env,RECEIPT_EVIDENCE_MODE='staging')
+  self.record(staging,needs,True)
+  self.record(dict(staging,RECEIPT_PUBLISH_GITHUB='true'),needs,False)
+  self.record(dict(env,RECEIPT_DISTRIBUTION_ENABLED='false'),needs,False)
+  self.record(dict(env,GITHUB_REPOSITORY='other/repo'),needs,False)
+  missing=copy.deepcopy(needs);del missing['upload'];self.record(env,missing,False)
+ def test_native_needs_shape_partial_modes_and_selection_ambiguity_fail_before_any_material_read(self):
+  env,needs=self.fixture('all')
+  for raw in ('{}','[]','null','{','{"build":{},"build":{}}'):
+   self.record(env,needs,False,raw)
+  for item in ({'result':'success'},{'result':'success','outputs':[]},
+               {'result':'success','outputs':{},'selection':'required'},[],None):
+   wrong=copy.deepcopy(needs);wrong['build']=item;self.record(env,wrong,False)
+  for mode in ('Source','Binary','NativePeerDiagnostic','NativePeerLinux','Android','Windows','Linux','Apple'):
+   self.record(dict(env,RELEASE_BUILD=mode),needs,False)
+  for key in ('RECEIPT_SOURCE_GENERATE_ONLY','RECEIPT_DISTRIBUTION_ENABLED','RECEIPT_PUBLISH_GITHUB'):
+   for value in ('','unknown','1','True'):
+    self.record(dict(env,**{key:value}),needs,False)
+   wrong=dict(env);del wrong[key];self.record(wrong,needs,False)
+  for changes in ({'RECEIPT_SOURCE_GENERATE_ONLY':'true'}, {'RECEIPT_EVIDENCE_MODE':'unknown'},
+                  {'GITHUB_EVENT_NAME':'push'}, {'GITHUB_REF':'refs/tags/vwrong'}, {'GITHUB_REF':''},
+                  {'RECEIPT_PUBLISH_GITHUB':'true'}, {'RECEIPT_DISTRIBUTION_ENABLED':'true'},
+                  {'PUBLISH_STORES':'true'}, {'PUBLISH_REGISTRY':'true'}):
+   self.record(dict(env,**changes),needs,False)
+
+
+
+class TestSupplierCloneBudget(unittest.TestCase):
+ def test_real_supplier_script_preserves_primary_status_and_kills_term_ignoring_grandchild(self):
+  # Existing CI-contract discovery runs this Linux control on Ubuntu.
+  # Tool fixtures replace external Git/bootstrap work, never the timeout or bash.
+  # The execution copy uses a short natural expiry with the real kill-after.
+  # This is not a 590-second wall-clock or material authentication measurement.
+  import selectors,signal,time
+  wall_deadline=time.monotonic()+90
+  def budget(cap):
+   remaining=wall_deadline-time.monotonic()
+   self.assertGreater(remaining,0,'overall supplier-script fixture watchdog expired')
+   return min(cap,remaining)
+  self.assertTrue(sys.platform.startswith('linux'))
+  self.assertTrue(shutil.which('gnutimeout') or shutil.which('timeout'))
+  action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
+  selected=[s for s in action['runs']['steps'] if s.get('name')=='Clone and prepare pinned original creator']
+  self.assertEqual(len(selected),1);step=selected[0]
+  self.assertEqual(step['shell'],'bash');self.assertNotIn('timeout-minutes',step)
+  run=step['run']
+  # Execute the action's actual selector and GNU check, not a fixture-only binary.
+  self.assertIn('GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"',run)
+  self.assertIn("\"$GNU_TIMEOUT\" --version | grep -Fq '(GNU coreutils)'",run)
+  self.assertIn("\"$GNU_TIMEOUT\" --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'",run)
+  self.assertNotIn('--foreground',run);self.assertNotIn('--preserve-status',run)
+  self.assertIn("trap 'trap \"\" TERM; exec sleep inf' TERM",run)
+  execution=run.replace("590s bash -euo pipefail <<'CRONET_CLONE'", "5s bash -euo pipefail <<'CRONET_CLONE'", 1)
+  pin=(ROOT/'.github/CRONET_GO_VERSION').read_text().rstrip('\n')
+  fixture=r"""import json,os,signal,subprocess,sys
+from pathlib import Path
+def event(kind,**fields):
+ fields.update(kind=kind,pid=os.getpid(),ppid=os.getppid(),pgid=os.getpgrp())
+ os.write(1,(json.dumps(fields)+'\n').encode())
+if sys.argv[1:]==['--fixture-child']:
+ def term(signum,frame):event('term',role='child')
+ signal.signal(signal.SIGTERM,term)
+ event('ready',role='child')
+ while True:signal.pause()
+tool=Path(sys.argv[0]).name;args=sys.argv[1:]
+event('call',tool=tool,argv=args)
+if tool=='git' and args[:1]==['init']:Path(args[1]).mkdir(parents=True)
+stage='bootstrap' if tool=='python3' else ('fetch' if 'fetch' in args else '')
+if stage and stage==os.environ['FIXTURE_STAGE']:
+ mode=os.environ['FIXTURE_MODE']
+ if mode=='primary':
+  sys.stderr.write('primary-'+stage+'\n');sys.exit(37 if stage=='fetch' else 43)
+ if mode=='timeout':
+  # Parent exits on TERM, while its child records TERM and remains blocked.
+  # The real shell hold-open trap must keep expiry cleanup tied to this child.
+  def term(signum,frame):
+   event('term',role='parent');os._exit(93)
+  signal.signal(signal.SIGTERM,term)
+  subprocess.Popen([sys.executable,sys.argv[0],'--fixture-child'])
+  event('ready',role='parent')
+  while True:signal.pause()
+"""
+  def process_state(pid):
+   try:return (Path('/proc')/str(pid)/'stat').read_text().rpartition(') ')[2].split()[0]
+   except (FileNotFoundError,ProcessLookupError):return None
+  def kill_session(session):
+   # Bounded best-effort cleanup of this isolated test session only. timeout may
+   # use another process group, so killing only the caller's group is insufficient.
+   for unused in range(2):
+    for entry in Path('/proc').iterdir():
+     if entry.name.isdecimal():
+      pid=int(entry.name)
+      try:
+       if os.getsid(pid)==session:os.kill(pid,signal.SIGKILL)
+      except (ProcessLookupError,FileNotFoundError):pass
+  for stage,mode,expected in (('fetch','success',0),('fetch','primary',37),
+                              ('bootstrap','primary',43),('fetch','timeout',None),
+                              ('bootstrap','timeout',None)):
+   with self.subTest(stage=stage,mode=mode),tempfile.TemporaryDirectory() as temporary:
+    root=Path(temporary);workspace=root/'workspace';home=root/'home';bindir=root/'bin'
+    (workspace/'.github').mkdir(parents=True);home.mkdir();bindir.mkdir()
+    (workspace/'.github/CRONET_GO_VERSION').write_text(pin+'\n')
+    for tool in ('git','python3'):
+     path=bindir/tool;path.write_text('#!'+sys.executable+'\n'+fixture);path.chmod(0o700)
+    env={key:value for key,value in os.environ.items()
+         if key not in ('BASH_ENV','ENV') and not key.startswith('BASH_FUNC_')}
+    env.update(HOME=str(home),GITHUB_WORKSPACE=str(workspace),
+               PATH=str(bindir)+os.pathsep+env['PATH'],FIXTURE_STAGE=stage,FIXTURE_MODE=mode)
+    process=subprocess.Popen(['bash','-euo','pipefail','-c',execution],cwd=workspace,env=env,
+                             stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,bufsize=0)
+    selector=None;prefix=b'';ready={}
+    try:
+     if mode=='timeout':
+      selector=selectors.DefaultSelector();selector.register(process.stdout,selectors.EVENT_READ)
+      pending=b'';deadline=time.monotonic()+budget(10)
+      while len(ready)!=2:
+       remaining=deadline-time.monotonic()
+       self.assertGreater(remaining,0,'real fixture did not reach both parent/child entries')
+       self.assertTrue(selector.select(remaining),'fixture entry watchdog expired')
+       block=os.read(process.stdout.fileno(),65536)
+       self.assertTrue(block,'script exited before both real fixture entries')
+       prefix+=block;pending+=block
+       while b'\n' in pending:
+        line,pending=pending.split(b'\n',1);event=json.loads(line)
+        if event['kind']=='ready':ready[event['role']]=event
+      selector.close();selector=None
+      group=ready['parent']['pgid']
+      self.assertEqual(ready['child']['pgid'],group)
+      self.assertEqual(ready['child']['ppid'],ready['parent']['pid'])
+      for role in ('parent','child'):
+       self.assertEqual(os.getsid(ready[role]['pid']),process.pid)
+     try:
+      stdout,stderr=process.communicate(timeout=budget(15))
+     except subprocess.TimeoutExpired as error:
+      # Observe before finally cleanup; this is failure evidence, never a pass.
+      self.fail('supplier-script EOF deadline: '+json.dumps({
+       'stage':stage,'mode':mode,'outerReturncode':process.poll(),
+       'partialStdout':(prefix+(error.output or b'')).decode('utf-8','backslashreplace'),
+       'partialStderr':(error.stderr or b'').decode('utf-8','backslashreplace'),
+       'ready':ready,'preCleanupStates':{role:process_state(event['pid']) for role,event in ready.items()}
+      },sort_keys=True))
+     events=[json.loads(line) for line in (prefix+stdout).splitlines()]
+     calls=[(e['tool'],e['argv']) for e in events if e['kind']=='call']
+     clone=[('git',['init',str(home/'cronet-go')]),
+            ('git',['-C',str(home/'cronet-go'),'remote','add','origin','https://github.com/sagernet/cronet-go.git']),
+            ('git',['-C',str(home/'cronet-go'),'sparse-checkout','set','--no-cone','/*','!/lib']),
+            ('git',['-C',str(home/'cronet-go'),'fetch','--depth=1','--filter=blob:none','origin',pin]),
+            ('git',['-C',str(home/'cronet-go'),'checkout','FETCH_HEAD']),
+            ('git',['-C',str(home/'cronet-go'),'submodule','update','--init','--recursive','--depth=1']),
+            ('python3',[str(workspace/'scripts/ci/cronet_material_bootstrap.py'),'prepare','--cronet-root',str(home/'cronet-go')])]
+     reached=4 if stage=='fetch' and mode!='success' else 7
+     self.assertEqual(calls,clone[:reached])
+     if mode=='timeout':
+      self.assertIn(process.returncode,(124,137,-signal.SIGKILL))
+      terms={e['role']:e for e in events if e['kind']=='term'}
+      self.assertEqual(set(terms),{'parent','child'})
+      for role in ('parent','child'):
+       self.assertEqual(terms[role]['pid'],ready[role]['pid'])
+       # Check before finally cleanup: EOF and no runnable process are the
+       # actual group-termination postcondition, rather than cleanup's effect.
+       self.assertIn(process_state(ready[role]['pid']),(None,'Z'))
+     else:
+      self.assertEqual(process.returncode,expected)
+      if mode=='primary':self.assertIn(('primary-'+stage+'\n').encode(),stderr)
+    finally:
+     if selector is not None:selector.close()
+     kill_session(process.pid)
+     if process.poll() is None:process.kill()
+     process.communicate(timeout=3)
+
+
+
+_NATIVE_INDEX_BRIDGE = """python3 -B - <<'PY'
+import sys
+sys.path.insert(0, 'scripts/ci')
+from github_release import producer_debian_materials
+from native_release_index import assemble
+assemble('artifacts', measure_debian=producer_debian_materials)
+PY"""
+
+class TestNativeIndexProducerBridge(unittest.TestCase):
+ def assert_bridge(self,workflow):
+  job=workflow['jobs']['native_index'];steps=job['steps']
+  matches=[step for step in steps if step.get('name')=='Assemble explicitly selected final or staging index']
+  self.assertEqual(len(matches),1);step=matches[0]
+  self.assertEqual(step['run'].strip(),_NATIVE_INDEX_BRIDGE)
+  self.assertNotIn('if',step);self.assertNotIn('continue-on-error',step)
+  expression=lambda s:'$'+'{{ '+s+' }}'
+  self.assertEqual(step['env'],{
+   'VERSION':expression('needs.calculate_version.outputs.version'),
+   'REQUIRE_RELEASE_TAG':expression("inputs.evidence_mode == 'final' && 'true' || 'false'"),
+   'EXPECTED_RELEASE_TAG_OBJECT':expression('needs.calculate_version.outputs.tag_object'),
+   'POLARIS_DEBIAN_REQUIRED':expression('needs.calculate_version.outputs.material_required'),
+   'POLARIS_DEBIAN_RAW_ID':expression('needs.debian_materials.outputs.raw_id'),
+   'POLARIS_DEBIAN_RAW_DIGEST':expression('needs.debian_materials.outputs.raw_digest'),
+   'POLARIS_DEBIAN_READY_ID':expression('needs.debian_materials.outputs.ready_id'),
+   'POLARIS_DEBIAN_READY_DIGEST':expression('needs.debian_materials.outputs.ready_digest'),
+   'GH_TOKEN':expression('github.token')})
+  self.assertNotIn('GH_TOKEN',workflow.get('env',{}));self.assertNotIn('GH_TOKEN',job.get('env',{}))
+  self.assertEqual(job['permissions'],{'contents':'read','actions':'read'})
+  self.assertEqual(job['needs'],['calculate_version','build','build_windows7',
+   'build_darwin','build_windows','native_smoke','native_windows_proof','debian_materials'])
+  checkouts=[s for s in steps if s.get('uses','').startswith('actions/checkout@')]
+  self.assertEqual(len(checkouts),1);checkout=checkouts[0]
+  self.assertEqual(checkout['uses'],'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8')
+  self.assertEqual(checkout['with']['ref'],expression('github.sha'))
+  self.assertEqual(checkout['with']['fetch-depth'],0)
+  self.assertLess(steps.index(checkout),steps.index(step))
+  # Execute the actual configured fixed bridge with only its product entry
+  # intercepted. This checks the imported real capability object and arguments.
+  import github_release,native_release_index
+  with mock.patch.object(native_release_index,'assemble') as assemble, \
+       mock.patch.object(sys,'path',list(sys.path)):
+   exec(compile('\n'.join(step['run'].strip().splitlines()[1:-1]),
+                '<configured-native-index-bridge>','exec'),{})
+  assemble.assert_called_once_with('artifacts',measure_debian=github_release.producer_debian_materials)
+ def test_fixed_producer_step_passes_the_actual_measurement_function(self):
+  self.assert_bridge(yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text()))
+ def test_no_cli_provider_copied_binding_or_reordered_checkout_can_replace_the_bridge(self):
+  workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+  for case in ('old-cli','missing-measurement','copied-json','dynamic-provider','wrong-role',
+               'missing-required','missing-token','job-token','shallow-checkout','late-checkout','ignored'):
+   with self.subTest(case=case):
+    bad=copy.deepcopy(workflow);job=bad['jobs']['native_index'];steps=job['steps']
+    step=next(s for s in steps if s.get('name')=='Assemble explicitly selected final or staging index')
+    checkout=next(s for s in steps if s.get('uses','').startswith('actions/checkout@'))
+    if case=='old-cli':step['run']='python3 scripts/ci/native_release_index.py assemble artifacts'
+    elif case=='missing-measurement':step['run']=step['run'].replace('measure_debian=producer_debian_materials','measure_debian=None')
+    elif case=='copied-json':step['run']=step['run'].replace('measure_debian=producer_debian_materials',"measure_debian=lambda *a: json.loads(open('binding.json').read())")
+    elif case=='dynamic-provider':step['run']=step['run'].replace('from github_release import producer_debian_materials',"producer_debian_materials=getattr(__import__(os.environ['PROVIDER']),'producer_debian_materials')")
+    elif case=='wrong-role':step['run']=step['run'].replace("assemble('artifacts',","assemble('other-role',")
+    elif case=='missing-required':del step['env']['POLARIS_DEBIAN_REQUIRED']
+    elif case=='missing-token':del step['env']['GH_TOKEN']
+    elif case=='job-token':job['env']={'GH_TOKEN':step['env']['GH_TOKEN']}
+    elif case=='shallow-checkout':checkout['with']['fetch-depth']=1
+    elif case=='late-checkout':steps.remove(checkout);steps.append(checkout)
+    elif case=='ignored':step['continue-on-error']=True
+    with self.assertRaises((AssertionError,KeyError)):self.assert_bridge(bad)
 
 if __name__=='__main__':unittest.main()
 

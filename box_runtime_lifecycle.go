@@ -132,7 +132,10 @@ func (s *Box) startRuntime() error {
 	if err := prepared.stageRuntimePostBindEffects(c.ctx); err != nil {
 		return err
 	}
-	commit, err := prepared.fenceRuntimeFakeIP()
+	if err := s.validateRuntimeTunPublication(c.ctx, prepared); err != nil {
+		return err
+	}
+	commit, err := prepared.fenceRuntimeFakeIP(c.ctx)
 	if err != nil {
 		return err
 	}
@@ -246,6 +249,9 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 		}
 		c.access.Lock()
 		c.stopped = true
+		if c.sourceDriver != nil {
+			c.sourceDriver.cancel()
+		}
 		c.store.Seal()
 		var workDone <-chan struct{}
 		if c.preparing {
@@ -254,6 +260,12 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 		c.access.Unlock()
 		go func() {
 			c.shutdownDiagnosticPhase.Store(1) // preparation join
+			c.access.Lock()
+			driver := c.sourceDriver
+			c.access.Unlock()
+			if driver != nil {
+				<-driver.done
+			}
 			if workDone != nil {
 				<-workDone
 			}

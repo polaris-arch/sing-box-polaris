@@ -4,7 +4,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   source_proto:
-    name: Generate only the reviewed runtime protobuf
+    name: Generate only runtime protobuf source for review
     if: inputs.build == 'Source' && inputs.source_generate_only
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -13,6 +13,16 @@ jobs:
       GOFLAGS: -mod=readonly
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
+    - name: Reject prepared candidate in Source mode
+      shell: bash
+      env:
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+      run: |
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+          echo "Debian checkpoint is not a Source input" >&2
+          exit 1
+        fi
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         ref: ${{ github.sha }}
@@ -44,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15]
+        os: [ubuntu-24.04, macos-15, xcode-27]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
@@ -52,6 +62,16 @@ jobs:
       GOFLAGS: -mod=readonly
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
+    - name: Reject prepared candidate in Source mode
+      shell: bash
+      env:
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+      run: |
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+          echo "Debian checkpoint is not a Source input" >&2
+          exit 1
+        fi
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         ref: ${{ github.sha }}
@@ -108,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-15]
+        os: [ubuntu-24.04, windows-2025, macos-15, xcode-27]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
@@ -116,25 +136,74 @@ jobs:
       GOFLAGS: -mod=readonly
       GOMAXPROCS: '2'
       PYTHONDONTWRITEBYTECODE: '1'
+      SOURCE_BUILD: ${{ inputs.build }}
+      SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      SOURCE_WINDOWS_NATIVE_PROOF: ${{ inputs.windows_native_proof && 'true' || 'false' }}
+      SOURCE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      SOURCE_VERSION: ${{ inputs.version }}
+      SOURCE_RUNNER: ${{ matrix.os }}
     steps:
+    - name: Reject prepared candidate in Source mode
+      shell: bash
+      env:
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+      run: |
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+          echo "Debian checkpoint is not a Source input" >&2
+          exit 1
+        fi
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         ref: ${{ github.sha }}
         fetch-depth: 0
         persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Retain exact Source inputs before compatibility gates (not a test or native PASS)
+      run: python -B scripts/ci/utls_cost.py --retain-source-input --output "${{ runner.temp }}/tls-fingerprint-evidence"
     - uses: actions/setup-go@v5
       with:
         go-version-file: release/GO_VERSION
         cache: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
     - name: Install capability schema validator
       run: python -m pip install jsonschema==4.23.0
     - name: Verify client Unicode entrypoints on the actual runner
       run: python -m unittest discover -s scripts/ci -p 'test_client_encoding.py'
     - name: Verify raw Vision source checkout semantics on the actual runner
       run: python -B -m unittest discover -s scripts/ci -p 'test_vision_source.py'
+    - name: Compile Windows native producer and execute unprivileged rejection controls
+      if: matrix.os == 'windows-2025'
+      shell: bash
+      env:
+        CGO_ENABLED: '0'
+        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'false'
+      run: |
+        set -euo pipefail
+        evidence="$RUNNER_TEMP/windows-native-rejection-tests.jsonl"
+        go test -json -mod=readonly -count=1 -timeout=3m -tags with_purego \
+          ./cmd/internal/windows_native_execution github.com/sagernet/cronet-go/internal/cronet | tee "$evidence"
+        python - "$evidence" <<'PYWINDOWS'
+        import json,sys
+        records=[json.loads(line) for line in open(sys.argv[1],encoding='utf-8') if line.strip()]
+        required={
+          'github.com/sagernet/sing-box/cmd/internal/windows_native_execution':{
+            'TestNativeRequestRejectsUnsupportedSourceAndArchiveIdentity',
+            'TestNativeJSONRejectsDuplicateTrailingAndDeepDocuments',
+            'TestNativeConfigurationControlsKeepExpectedErrorsAndCanonicalStdin',
+            'TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution',
+            'TestNativeCustodyRecordRejectsAmbiguousAndTruncatedDebt',
+            'TestNativeCustodyRejectsForeignObjectAndJobRecoveryTargets',
+            'TestNativeCustodyReconciliationNeverGrantsAdmission',
+            'TestNativeCooperativeControlFramesOnlyCancelOriginalOwner',
+            'TestNativeCleanupRequiresActualWaitAndReaderClosure'},
+          'github.com/sagernet/cronet-go/internal/cronet':{'TestWindowsLibraryExplicitObservationRejectsUnprovenModule','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad'}}
+        for package,names in required.items():
+          passed={event.get('Test') for event in records if event.get('Package')==package and event.get('Action')=='pass'}
+          if not names<=passed or not any(event.get('Package')==package and event.get('Action')=='pass' and 'Test' not in event for event in records):
+            raise SystemExit('required unprivileged native rejection control/package PASS missing: '+package)
+        PYWINDOWS
     - name: Execute focused runtime coordinator and resource regressions natively
       timeout-minutes: 30
       shell: bash
@@ -161,6 +230,8 @@ jobs:
                      'TestRuntimeCapabilityBuildInventoryIsCanonicalAndHonest',
                      'TestRuntimeOwnerAcknowledgementIsBoundAndReplaySafe'},
             prefix + '/daemon': {'TestRuntimeActorRequiresServerOwnedTypedContext',
+                                 'TestRuntimeTLSCapabilitiesUseSameDocumentAndActiveIncarnation',
+                                 'TestRuntimeTLSCapabilitiesOldWireIsEmptyAndTagTenIsAdditive',
                                  'TestRuntimePersistenceAcknowledgementAuthenticatesFirst'},
             prefix + '/experimental/libbox': {'TestRuntimeRegenerationRequiresSeparateAppAcknowledgement'},
             prefix + '/adapter': {'TestScopeCloseDrainsAfterCallbackPanic'},
@@ -202,10 +273,11 @@ jobs:
         if-no-files-found: error
         retention-days: 7
   calculate_version:
-    if: (inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux'
+    if: (inputs.build != 'Source' && !inputs.source_generate_only) || inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux' || inputs.build == 'Materials'
     name: Calculate version
     runs-on: ubuntu-latest
     outputs:
+      material_required: ${{ steps.material_scope.outputs.required }}
       version: ${{ steps.outputs.outputs.version }}
       tag_object: ${{ steps.release_source.outputs.tag_object }}
     steps:
@@ -270,9 +342,78 @@ jobs:
     - name: Set outputs
       id: outputs
       run: echo "version=$version" >> "$GITHUB_OUTPUT"
+    - name: Classify Debian material requirement
+      id: material_scope
+      env:
+        REQUIRED: ${{ github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Materials') && inputs.evidence_mode == 'final' && !inputs.source_generate_only && startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIALS_ONLY: ${{ inputs.build == 'Materials' && 'true' || 'false' }}
+        SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        WINDOWS_NATIVE_PROOF: ${{ inputs.windows_native_proof && 'true' || 'false' }}
+      shell: bash
+      run: |
+        if [[ "$REQUIRED" != "true" && "$REQUIRED" != "false" ]]; then
+          echo "invalid Debian material mode" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" != "true" && "$MATERIALS_ONLY" != "false" ]]; then
+          echo "invalid Materials-only selector" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" == "true" && ( "$REQUIRED" != "true" || "$SOURCE_GENERATE_ONLY" != "false" || "$WINDOWS_NATIVE_PROOF" != "false" ) ]]; then
+          echo "Materials requires exact-tag final identity and excludes source generation/native proof" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && -z "$CHECKPOINT_DIGEST" || -z "$CHECKPOINT_ARTIFACT_ID" && -n "$CHECKPOINT_DIGEST" ]]; then
+          echo "Debian candidate requires both artifact ID and digest" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && ( ! "$CHECKPOINT_ARTIFACT_ID" =~ ^[1-9][0-9]*$ || ! "$CHECKPOINT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ) ]]; then
+          echo "invalid exact candidate ID/digest" >&2
+          exit 1
+        fi
+        if [[ "$REQUIRED" != "true" && ( -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ) ]]; then
+          echo "Debian candidate is only allowed for Materials or required Final" >&2
+          exit 1
+        fi
+        printf 'required=%s\n' "$REQUIRED" >> "$GITHUB_OUTPUT"
+  debian_materials:
+    name: Supply verified Debian raw inputs
+    if: ${{ !inputs.source_generate_only && needs.calculate_version.outputs.material_required == 'true' }}
+    needs: [calculate_version]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      raw_id: ${{ steps.materials.outputs.raw_id }}
+      raw_digest: ${{ steps.materials.outputs.raw_digest }}
+      ready_id: ${{ steps.materials.outputs.ready_id }}
+      ready_digest: ${{ steps.materials.outputs.ready_digest }}
+    steps:
+    - name: Checkout exact supplier source
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Supply exact Debian profile union
+      id: materials
+      uses: ./.github/actions/prepare-debian-materials
+      with:
+        checkpoint-artifact-id: ${{ inputs.debian_checkpoint_artifact_id }}
+        checkpoint-artifact-digest: ${{ inputs.debian_checkpoint_digest }}
+        materials-only: ${{ inputs.build == 'Materials' && 'true' || 'false' }}
+        role: all
+        tag: v${{ inputs.version }}
+        tag-object: ${{ needs.calculate_version.outputs.tag_object }}
+      env:
+        GH_TOKEN: ${{ github.token }}
   prepare_windows7:
     name: Prepare one verified Windows 7 Go toolchain
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
     runs-on: ubuntu-26.04
     needs: [calculate_version]
     steps:
@@ -299,11 +440,15 @@ jobs:
         retention-days: 7
   build:
     name: Build binary
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')) }}
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      actions: read
     needs:
     - calculate_version
     strategy:
+      fail-fast: false
       max-parallel: 13
       matrix: ${{ fromJSON(inputs.build == 'NativePeerLinux' && '{"include":[{"os":"linux","arch":"amd64","variant":"purego","naive":true}]}' || '{"include":[{"os":"linux","arch":"amd64","variant":"purego","naive":true},{"os":"linux","arch":"amd64","variant":"glibc","naive":true},{"os":"linux","arch":"amd64","variant":"musl","naive":true,"debian":"amd64","rpm":"x86_64","pacman":"x86_64","alpine":"x86_64","openwrt":"x86_64"},{"os":"linux","arch":"arm64","variant":"purego","naive":true},{"os":"linux","arch":"arm64","variant":"glibc","naive":true},{"os":"linux","arch":"arm64","variant":"musl","naive":true,"debian":"arm64","rpm":"aarch64","pacman":"aarch64","alpine":"aarch64","openwrt":"aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic"},{"os":"linux","arch":"386","go386":"sse2"},{"os":"linux","arch":"386","variant":"glibc","naive":true,"go386":"sse2"},{"os":"linux","arch":"386","variant":"musl","naive":true,"go386":"sse2","debian":"i386","rpm":"i386","alpine":"x86","openwrt":"i386_pentium4"},{"os":"linux","arch":"arm","goarm":"7"},{"os":"linux","arch":"arm","variant":"glibc","naive":true,"goarm":"7"},{"os":"linux","arch":"arm","variant":"musl","naive":true,"goarm":"7","debian":"armhf","rpm":"armv7hl","pacman":"armv7hl","alpine":"armv7","openwrt":"arm_cortex-a5_vfpv4 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_cortex-a15_neon-vfpv4"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","naive":true,"variant":"glibc"},{"os":"linux","arch":"mipsle","gomips":"softfloat","naive":true,"variant":"musl","debian":"mipsel","rpm":"mipsel","openwrt":"mipsel_24kc mipsel_74kc mipsel_mips32"},{"os":"linux","arch":"mips64le","gomips":"hardfloat","naive":true,"variant":"glibc","debian":"mips64el","rpm":"mips64el"},{"os":"linux","arch":"riscv64","naive":true,"variant":"glibc"},{"os":"linux","arch":"riscv64","naive":true,"variant":"musl","debian":"riscv64","rpm":"riscv64","alpine":"riscv64","openwrt":"riscv64_generic"},{"os":"linux","arch":"loong64","naive":true,"variant":"glibc"},{"os":"linux","arch":"loong64","naive":true,"variant":"musl","debian":"loongarch64","rpm":"loongarch64","alpine":"loongarch64","openwrt":"loongarch64_generic"},{"os":"linux","arch":"386","go386":"softfloat","openwrt":"i386_pentium-mmx"},{"os":"linux","arch":"arm","goarm":"5","openwrt":"arm_arm926ej-s arm_cortex-a7 arm_cortex-a9 arm_fa526 arm_xscale"},{"os":"linux","arch":"arm","goarm":"6","debian":"armel","rpm":"armv6hl","openwrt":"arm_arm1176jzf-s_vfp"},{"os":"linux","arch":"mips","gomips":"softfloat","openwrt":"mips_24kc mips_4kec mips_mips32"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","openwrt":"mipsel_24kc_24kf"},{"os":"linux","arch":"mipsle","gomips":"softfloat"},{"os":"linux","arch":"mips64","gomips":"softfloat","openwrt":"mips64_mips64r2 mips64_octeonplus"},{"os":"linux","arch":"mips64le","gomips":"hardfloat"},{"os":"linux","arch":"mips64le","gomips":"softfloat","openwrt":"mips64el_mips64r2"},{"os":"linux","arch":"s390x","debian":"s390x","rpm":"s390x"},{"os":"linux","arch":"ppc64le","debian":"ppc64el","rpm":"ppc64le"},{"os":"linux","arch":"riscv64"},{"os":"linux","arch":"loong64"},{"os":"android","arch":"arm64","ndk":"aarch64-linux-android23"},{"os":"android","arch":"arm","ndk":"armv7a-linux-androideabi23"},{"os":"android","arch":"amd64","ndk":"x86_64-linux-android23"},{"os":"android","arch":"386","ndk":"i686-linux-android23"}]}') }}
     # Optional matrix keys stay absent; the JSON view lets both partitions share these steps.
@@ -356,6 +501,7 @@ jobs:
         link-to-sdk: true
     - name: Clone cronet-go
       if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
+      timeout-minutes: 10
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -365,6 +511,7 @@ jobs:
         git -C ~/cronet-go fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
         git -C ~/cronet-go checkout FETCH_HEAD
         git -C ~/cronet-go submodule update --init --recursive --depth=1
+        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
     - name: Regenerate Debian keyring
       if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
@@ -374,14 +521,34 @@ jobs:
         GPG_TTY=/dev/null ./naiveproxy/src/build/linux/sysroot_scripts/generate_keyring.sh
     - name: Download Chromium toolchain
       if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
+      timeout-minutes: 20
       run: |
         set -xeuo pipefail
+        if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
+          checkpoint_args=()
+          if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+            checkpoint_args=(--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST")
+          fi
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
+            --cronet-root "$HOME/cronet-go" --role all \
+            --caller C1_ALL_BINARY --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            "${checkpoint_args[@]}" \
+            --output "$RUNNER_TEMP/debian-material-use"
+          export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
+        fi
         cd ~/cronet-go
         if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
         else
           go run ./cmd/build-naive --target=linux/${{ matrix.arch }} download-toolchain
         fi
+      env:
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
+        MATERIAL_LIBC: ${{ fromJSON(toJSON(matrix)).variant == 'musl' && 'musl' || 'glibc' }}
+        GH_TOKEN: ${{ github.token }}
     - name: Set Chromium toolchain environment
       if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
       run: |
@@ -685,6 +852,9 @@ jobs:
         rm -r "${DIR_NAME}"
     - name: Cleanup
       run: rm -f dist/sing-box dist/libcronet.so
+    - name: Retain exact Debian material use
+      if: ${{ needs.calculate_version.outputs.material_required == 'true' && (fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego') }}
+      run: cp "$RUNNER_TEMP/debian-material-use/use.json" dist/debian-material-use.json
     - name: Record actual unsigned candidate files
       if: success()
       run: python scripts/ci/record_candidate.py dist
@@ -723,9 +893,8 @@ jobs:
     steps: *native_archive_steps
   build_darwin:
     name: Build Darwin binaries
-    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build
-      == 'Binary') }}
-    runs-on: macos-latest
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
+    runs-on: xcode-27
     needs:
     - calculate_version
     strategy:
@@ -845,7 +1014,7 @@ jobs:
         if-no-files-found: error
   build_windows:
     name: Build Windows binaries
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary')) }}
     runs-on: windows-latest
     needs:
     - calculate_version
@@ -962,8 +1131,7 @@ jobs:
         if-no-files-found: error
   build_android_library:
     name: Build Android library (${{ matrix.go_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build ==
-      'publish-android') && github.ref != 'refs/heads/oldstable' }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build == 'publish-android') && github.ref != 'refs/heads/oldstable') }}
     runs-on: ubuntu-latest
     needs:
     - calculate_version
@@ -1150,8 +1318,7 @@ jobs:
         if-no-files-found: error
   build_windows_client:
     name: Build Windows client (${{ matrix.desktop_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref !=
-      'refs/heads/oldstable' }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable') }}
     runs-on: windows-latest
     needs:
     - calculate_version
@@ -1273,11 +1440,15 @@ jobs:
       BUILD_NUMBER: ${{ github.run_number }}
   build_linux_client:
     name: Build Linux client (${{ matrix.desktop_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable' }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable') }}
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      actions: read
     needs:
     - calculate_version
     strategy:
+      fail-fast: false
       matrix:
         include:
         - desktop_arch: x64
@@ -1360,6 +1531,7 @@ jobs:
       if: github.event_name != 'workflow_dispatch'
       run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update --nightly
     - name: Clone cronet-go
+      timeout-minutes: 10
       run: |-
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -1368,6 +1540,7 @@ jobs:
         git -C ~/cronet-go fetch --depth=1 origin "$CRONET_GO_VERSION"
         git -C ~/cronet-go checkout FETCH_HEAD
         git -C ~/cronet-go submodule update --init --recursive --depth=1
+        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
     - name: Regenerate Debian keyring
       run: |-
         set -xeuo pipefail
@@ -1375,10 +1548,30 @@ jobs:
         cd ~/cronet-go
         GPG_TTY=/dev/null ./naiveproxy/src/build/linux/sysroot_scripts/generate_keyring.sh
     - name: Download Chromium toolchain
+      timeout-minutes: 20
       run: |-
         set -xeuo pipefail
+        if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
+          checkpoint_args=()
+          if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+            checkpoint_args=(--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST")
+          fi
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
+            --cronet-root "$HOME/cronet-go" --role all \
+            --caller C2_ALL_LINUX_CLIENT --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            "${checkpoint_args[@]}" \
+            --output "$RUNNER_TEMP/debian-material-use"
+          export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
+        fi
         cd ~/cronet-go
         go run ./cmd/build-naive --target=linux/${{ matrix.go_arch }} download-toolchain
+      env:
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIAL_TARGET_ARCH: ${{ matrix.go_arch }}
+        MATERIAL_LIBC: glibc
+        GH_TOKEN: ${{ github.token }}
     - name: Set Chromium toolchain environment
       run: |-
         set -xeuo pipefail
@@ -1408,6 +1601,9 @@ jobs:
         fi
         mkdir -p dist
         cp "${artifacts[@]}" dist
+    - name: Retain exact Debian material use
+      if: ${{ needs.calculate_version.outputs.material_required == 'true' && (true) }}
+      run: cp "$RUNNER_TEMP/debian-material-use/use.json" dist/debian-material-use.json
     - name: Record actual unsigned candidate files
       if: success()
       run: python scripts/ci/record_candidate.py dist
@@ -1422,9 +1618,7 @@ jobs:
   build_apple_library:
     name: Build Apple library (${{ matrix.artifact }})
     runs-on: ${{ matrix.build && 'xcode-27' || 'ubuntu-latest' }}
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release'
-      || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone'
-      || inputs.build == 'iOS-jailbreak') }}
+    if: ${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')) }}
     needs:
     - calculate_version
     strategy:
@@ -1977,7 +2171,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON((inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux') && '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"}]}' || '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"},{"id":"windows-amd64","runner":"windows-2025","artifact":"binary-windows_amd64"},{"id":"darwin-amd64","runner":"macos-15-intel","artifact":"binary-darwin_amd64"},{"id":"darwin-arm64","runner":"macos-15","artifact":"binary-darwin_arm64"}]}') }}
+      matrix: ${{ fromJSON((inputs.build == 'NativePeerDiagnostic' || inputs.build == 'NativePeerLinux') && '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"}]}' || '{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"},{"id":"windows-amd64","runner":"windows-2025","artifact":"binary-windows_amd64"},{"id":"darwin-amd64","runner":"macos-15-intel","artifact":"binary-darwin_amd64"},{"id":"darwin-arm64","runner":"xcode-27","artifact":"binary-darwin_arm64"}]}') }}
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -2020,17 +2214,23 @@ jobs:
         PEER_VERSION: ${{ inputs.version }}
       run: python -B scripts/ci/protocol_peer.py native --fetch-diagnostic --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute final-package Cronet smoke
-      if: inputs.build != 'NativePeerDiagnostic'
+      if: inputs.build != 'NativePeerDiagnostic' && !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64')
       env:
         GOTOOLCHAIN: local
       run: python scripts/ci/native_release_index.py smoke native
     - name: Verify controlled native peer runner contracts
       if: matrix.id == 'linux-amd64-purego'
       run: python -B -m unittest discover -s scripts/ci -p 'test_protocol_peer.py'
+    - name: Acquire exact same-run Linux artifact metadata without native execution
+      if: matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'
+      timeout-minutes: 3
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python -B scripts/ci/native_peer_metadata.py --native native --output "${{ runner.temp }}/native-peer-admission/admission.json" --failure-output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
       if: matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'
       timeout-minutes: 12
-      run: python -B scripts/ci/protocol_peer.py native --output "${{ runner.temp }}/native-controlled-peer-public"
+      run: python -B scripts/ci/protocol_peer.py native --admission "${{ runner.temp }}/native-peer-admission/admission.json" --output "${{ runner.temp }}/native-controlled-peer-public"
     - name: Diagnose the original Linux product with separately bound QA code
       if: inputs.build == 'NativePeerDiagnostic'
       timeout-minutes: 12
@@ -2049,15 +2249,125 @@ jobs:
         if-no-files-found: error
         retention-days: 7
     - name: Upload actual smoke receipt
-      if: inputs.build != 'NativePeerDiagnostic'
+      if: inputs.build != 'NativePeerDiagnostic' && !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64')
       uses: actions/upload-artifact@v4
       with:
         name: smoke-${{ matrix.id }}
         path: native/native-row-*.json
         if-no-files-found: error
+  windows_native_admission:
+    name: Read existing Windows proof protection for this exact tag and attempt
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && !failure() && !cancelled() }}
+    needs: [calculate_version]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    env:
+      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
+      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
+      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
+    outputs:
+      receipt: ${{ steps.admission.outputs.receipt }}
+    steps:
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Require existing reviewer protection and one exact tag deployment policy
+      id: admission
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
+      run: python3 -B scripts/ci/windows_native_admission.py --acquire
+  native_windows_proof:
+    name: Explicit SYSTEM final-package Windows native execution proof
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && needs.windows_native_admission.result == 'success' && !failure() && !cancelled() }}
+    needs: [calculate_version, build, build_windows7, build_darwin, build_windows, windows_native_admission]
+    runs-on: [self-hosted, Windows, X64, polaris-windows-system-proof]
+    environment: polaris-windows-native-proof
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      GOTOOLCHAIN: local
+      GOFLAGS: -mod=readonly
+      CGO_ENABLED: '0'
+      PYTHONDONTWRITEBYTECODE: '1'
+      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
+      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
+      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
+      POLARIS_WINDOWS_NATIVE_ADMISSION_RECEIPT: ${{ needs.windows_native_admission.outputs.receipt }}
+    steps:
+    - name: Require preprovisioned SYSTEM and protected runner storage without changing it
+      shell: pwsh
+      run: |
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        if ($identity.User.Value -cne 'S-1-5-18' -or [Security.Principal.WindowsIdentity]::GetCurrent($true)) { throw 'Existing non-impersonating SYSTEM host required; no elevation or installation is performed' }
+        $trusted = @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464','S-1-3-0','S-1-3-4')
+        $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
+        foreach ($storage in @($env:GITHUB_WORKSPACE,$env:RUNNER_TEMP)) {
+          $acl = Get-Acl -LiteralPath $storage -ErrorAction Stop
+          $owner = ([Security.Principal.NTAccount]$acl.Owner).Translate([Security.Principal.SecurityIdentifier]).Value
+          if ($owner -notin $trusted[0..2]) { throw 'Runner storage owner is untrusted' }
+          foreach ($rule in $acl.Access) {
+            $sid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+            if ($rule.AccessControlType -eq 'Allow' -and ($rule.FileSystemRights -band $write) -ne 0 -and $sid -notin $trusted) { throw 'Runner storage admits an ordinary writer' }
+          }
+        }
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Rebind token-free protected job to exact source tag and current attempt
+      run: python -B scripts/ci/windows_native_admission.py
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
+    - name: Compile only the clean source-owned native observation producer
+      shell: pwsh
+      run: |
+        $source = (git rev-parse HEAD).Trim()
+        $tree = (git rev-parse 'HEAD^{tree}').Trim()
+        if ($source -cne $env:GITHUB_SHA -or (git status --porcelain --untracked-files=all)) { throw 'Producer source is not the exact clean workflow checkout' }
+        $slot = Join-Path $env:RUNNER_TEMP 'polaris-windows-native-execution'
+        if (Test-Path -LiteralPath $slot) { throw 'Native producer slot must be fresh' }
+        New-Item -ItemType Directory -Path $slot -ErrorAction Stop | Out-Null
+        go build -buildvcs=true -trimpath -mod=readonly -ldflags "-X main.producerSource=$source -X main.producerTree=$tree" -o "$slot/producer.exe" ./cmd/internal/windows_native_execution
+        if ($LASTEXITCODE -ne 0) { throw 'Native producer compilation failed' }
+    - uses: actions/download-artifact@v5
+      with:
+        name: binary-windows_amd64
+        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Install data schema validator
+      run: python -m pip install jsonschema==4.23.0
+    - name: Execute requested native SYSTEM proof with no API credential
+      env:
+        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'true'
+      run: python -B scripts/ci/native_release_index.py smoke "${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}"
+    - name: Preserve only the complete actual native smoke row
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-windows-amd64
+        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}/native-row-*.json
+        if-no-files-found: error
   native_index:
     name: Assemble full 44-archive native index and source/legal sidecars
-    if: '!inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == ''All'' || inputs.build == ''Binary'')'
+    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') && (inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success') && needs.calculate_version.result == 'success' && needs.build.result == 'success' && needs.build_windows7.result == 'success' && needs.build_darwin.result == 'success' && needs.build_windows.result == 'success' && needs.native_smoke.result == 'success' && (needs.calculate_version.outputs.material_required == 'false' || (needs.calculate_version.outputs.material_required == 'true' && needs.debian_materials.result == 'success')) }}
     needs:
     - calculate_version
     - build
@@ -2065,6 +2375,8 @@ jobs:
     - build_darwin
     - build_windows
     - native_smoke
+    - native_windows_proof
+    - debian_materials
     runs-on: ubuntu-latest
     steps:
     - name: Checkout exact source
@@ -2100,12 +2412,24 @@ jobs:
         pattern: smoke-*
         path: artifacts
     - name: Assemble explicitly selected final or staging index
-      run: python3 scripts/ci/native_release_index.py assemble artifacts
+      run: |-
+        python3 -B - <<'PY'
+        import sys
+        sys.path.insert(0, 'scripts/ci')
+        from github_release import producer_debian_materials
+        from native_release_index import assemble
+        assemble('artifacts', measure_debian=producer_debian_materials)
+        PY
       env:
         VERSION: ${{ needs.calculate_version.outputs.version }}
         REQUIRE_RELEASE_TAG: ${{ inputs.evidence_mode == 'final' && 'true' || 'false' }}
         EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
+        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
+        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
+        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
+        GH_TOKEN: ${{ github.token }}
     - name: Upload native index and source sidecar
       uses: actions/upload-artifact@v4
       with:
@@ -2134,8 +2458,13 @@ jobs:
     - build_apple_app_store
     - native_smoke
     - native_index
-    if: success() && inputs.build == 'All' && !inputs.source_generate_only
+    - prepare_windows7
+    - debian_materials
+    if: ${{ always() && inputs.build == 'All' && !inputs.source_generate_only }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -2144,10 +2473,21 @@ jobs:
       run: python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: all
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
+        RECEIPT_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
+        RECEIPT_DISTRIBUTION_ENABLED: 'false'
+        RECEIPT_PUBLISH_GITHUB: 'false'
         RELEASE_BUILD: ${{ inputs.build }}
         RELEASE_VERSION: ${{ inputs.version }}
         PUBLISH_STORES: 'false'
         PUBLISH_REGISTRY: 'false'
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.calculate_version.outputs.material_required }}
+        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
+        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
+        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
+        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
+        GH_TOKEN: ${{ github.token }}
     - uses: actions/upload-artifact@v4
       with:
         name: publisher-run-receipt
@@ -2156,11 +2496,21 @@ jobs:
 'on':
   workflow_dispatch:
     inputs:
+      debian_checkpoint_artifact_id:
+        description: Optional exact Materials raw seed ID; without a seed authenticate required profiles at origin
+        type: string
+        required: false
+        default: ''
+      debian_checkpoint_digest:
+        description: Paired immutable candidate ZIP SHA256; same source/tag/plan, no latest or automatic resume
+        type: string
+        required: false
+        default: ''
       version:
         description: Candidate version only; no tag or release will be pushed
         required: true
         type: string
-        default: 1.15.0-polaris-alpha.12.7
+        default: 1.15.0-polaris-alpha.12.19
       evidence_mode:
         description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
         type: choice
@@ -2171,6 +2521,10 @@ jobs:
         description: 'Source only: generate the two runtime protobuf files for review; skip native Source validation'
         type: boolean
         default: false
+      windows_native_proof:
+        description: 'Separate explicit SYSTEM execution request: needs an existing protected exact-tag environment and preprovisioned SYSTEM host; never installs or elevates'
+        type: boolean
+        default: false
       build:
         description: Full upstream artifact scope (All is unsigned and never publishes)
         required: true
@@ -2178,6 +2532,7 @@ jobs:
         default: All
         options:
         - All
+        - Materials
         - Source
         - Binary
         - NativePeerDiagnostic

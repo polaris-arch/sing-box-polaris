@@ -16,7 +16,7 @@ class Alpha127PeerEvidenceTests(historical_tests.PeerEvidenceTests):
         super().setUp()
 
     def test_historical_fixture_version_restores_current_modules_on_error(self):
-        for previous in registry.MODULES[:-1]:
+        for previous in (module for module in registry.MODULES if module is not current):
             raw = (p.ROOT / previous.PATH).read_bytes()
             self.assertNotEqual(previous.SOURCE, current.SOURCE)
             self.assertEqual(registry.select(p.ROOT, previous.SOURCE, previous.VERSION,

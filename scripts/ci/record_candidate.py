@@ -22,6 +22,10 @@ def main(directory):
  import re
  if not re.fullmatch('[A-Za-z0-9_.-]+',suffix):raise SystemExit('invalid artifact matrix key')
  record={'schema':'polaris-upstream-candidate-files-v1','repository':repo,'repositoryId':int(rid),'sourceCommit':git('rev-parse','HEAD'),'sourceTree':git('rev-parse','HEAD^{tree}'),'workflowRunId':os.environ['GITHUB_RUN_ID'],'workflowAttempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':job,'matrixKey':suffix,'signatureState':'unsigned-candidate','releasePublication':False,'runtimeAcceptance':False,'files':files}
+ use=[item for item in files if item['path']=='debian-material-use.json']
+ if use:
+  if len(use)!=1:raise ValueError('duplicate Debian material use member')
+  record['debianMaterialUse']={'member':use[0]['path'],'bytes':use[0]['bytes'],'sha256':use[0]['sha256']}
  from client_source import JOBS, collect
  if job in JOBS:record['clientSource']=collect(JOBS[job],True)
  if job == 'build_android':

@@ -112,7 +112,7 @@ func TestHeadlessRuleEmptyConditionsAreNotEmptyContainers(t *testing.T) {
 	fields := reflect.TypeFor[option.DefaultHeadlessRule]()
 	for i := range fields.NumField() {
 		field := fields.Field(i)
-		name := strings.Split(field.Tag.Get("json"), ",")[0]
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if field.Type.Kind() != reflect.Slice || name == "" || name == "-" {
 			continue
 		}

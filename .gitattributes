@@ -46,3 +46,10 @@ third_party/metacubex-utls/testdata/ClientHello-JSON-Firefox105.json whitespace=
 /release/dependency-sources/sing-vmess-replacement.json -text
 /release/dependency-sources/sing-vmess-vision.patch -text
 /release/licenses/CURRENT44-NOTICE-CANDIDATE.txt -text
+
+# Offline P2 Cronet overlay validation consumes exact committed bytes on every host.
+/third_party/cronet-go/** -text
+/release/dependency-sources/cronet-go-windows-native-observation.json -text
+/release/dependency-sources/cronet-go-windows-native-observation.patch -text
+/release/dependency-sources/cronet-go-replacement.json -text
+/release/dependency-sources/cronet-go-client-admission.patch -text

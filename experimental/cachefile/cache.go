@@ -46,6 +46,7 @@ var (
 var _ adapter.CacheFile = (*CacheFile)(nil)
 
 type CacheFile struct {
+	runtimeRecoveryJournal *FakeIPRuntimeJournal
 	runtimeClients         sync.Mutex
 	runtimeClientsClosing  bool
 	runtimeClientsReserved bool
@@ -263,6 +264,10 @@ func (c *CacheFile) start() error {
 		}
 	}
 	if err != nil {
+		return err
+	}
+	if err = c.requireRuntimeNamespaceRecovery(db); err != nil {
+		_ = db.Close()
 		return err
 	}
 	err = filemanager.Chown(c.ctx, c.path)

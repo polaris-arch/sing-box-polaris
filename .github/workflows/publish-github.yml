@@ -15,7 +15,7 @@ name: GitHub-only reviewed release
         - replace
         default: inventory
         required: true
-        description: Inventory, validate and preparation are read-only; all write modes require the existing protected environment and enabled variable
+        description: Inventory, validate and preparation are read-only; all write modes require the release environment and explicitly enabled publication variable
       source_sha:
         type: string
         required: true
@@ -51,7 +51,7 @@ name: GitHub-only reviewed release
 permissions:
   contents: read
 concurrency:
-  group: polaris-github-release-v1.15.0-polaris-alpha.12.7
+  group: polaris-github-release-v1.15.0-polaris-alpha.12.19
   cancel-in-progress: false
 jobs:
   validate:
@@ -64,6 +64,7 @@ jobs:
     - name: Checkout reviewed publisher revision
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         persist-credentials: false
     - name: Install final native index validator
       run: python3 -m pip install jsonschema==4.23.0
@@ -138,6 +139,7 @@ jobs:
     - name: Checkout reviewed publisher revision
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
+        ref: ${{ github.sha }}
         persist-credentials: false
     - name: Install final native index validator
       run: python3 -m pip install jsonschema==4.23.0
@@ -147,7 +149,7 @@ jobs:
         ref: ${{ inputs.source_sha }}
         path: reviewed-source
         persist-credentials: false
-    - name: Revalidate actual bytes and perform the explicitly selected protected publication
+    - name: Revalidate actual bytes and perform the explicitly selected publication
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

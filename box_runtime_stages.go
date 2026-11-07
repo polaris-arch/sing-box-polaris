@@ -42,6 +42,13 @@ func (s *Box) startRuntimeGraphStage(g *preparedRuntimeGraph, stage adapter.Star
 		return nil
 	}
 	if stage == adapter.StartStateInitialize {
+		for _, resource := range g.created {
+			if component := resource.components["platform-runtime"]; component != nil && component.platform != nil {
+				if err := component.platform.Start(g.platformRequest); err != nil {
+					return err
+				}
+			}
+		}
 		if g.fakeIPMigration != nil {
 			if err := g.fakeIPMigration.InitializePersistentStorage(s.runtime.ctx); err != nil {
 				return err

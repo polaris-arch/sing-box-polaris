@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 	boxService "github.com/sagernet/sing-box/adapter/service"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
+	"github.com/sagernet/sing-box/dns/transport/local"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/protocol/direct"
 )
 
 type retirementEndpoint struct {
@@ -103,10 +106,18 @@ func TestTailscaleStoreCensusRetainsOriginalAndSealsLateEndpoint(t *testing.T) {
 	}
 }
 
-func retirementOptions(registry *endpoint.Registry, tags ...string) Options {
-	ctx := Context(context.Background(), inbound.NewRegistry(), outbound.NewRegistry(), registry, dns.NewTransportRegistry(), boxService.NewRegistry(), boxCertificate.NewRegistry())
-	// This fixture tests the legacy physical store owner, not a runtime endpoint.
-	options := option.Options{Log: &option.LogOptions{Disabled: true}, Certificate: &option.CertificateOptions{}}
+func retirementOptions(t *testing.T, registry *endpoint.Registry, tags ...string) Options {
+	t.Helper()
+	dnsRegistry := dns.NewTransportRegistry()
+	local.RegisterTransport(dnsRegistry)
+	outbounds := outbound.NewRegistry()
+	direct.RegisterOutbound(outbounds)
+	ctx := Context(context.Background(), inbound.NewRegistry(), outbounds, registry, dnsRegistry, boxService.NewRegistry(), boxCertificate.NewRegistry())
+	// The physical store census excludes logical runtime endpoints. Reuse the
+	// actual directory-loader legacy boundary, not the now-supported empty store.
+	options := option.Options{Log: &option.LogOptions{Disabled: true}, Certificate: &option.CertificateOptions{
+		Store: C.CertificateStoreNone, CertificateDirectoryPath: []string{t.TempDir()},
+	}}
 	for _, tag := range tags {
 		options.Endpoints = append(options.Endpoints, option.Endpoint{Type: C.TypeTailscale, Tag: tag, Options: &struct{}{}})
 	}
@@ -116,9 +127,15 @@ func retirementOptions(registry *endpoint.Registry, tags ...string) Options {
 func TestCloseRetiresTailscaleStoresBeforeClosingScope(t *testing.T) {
 	created := map[string]*retirementEndpoint{}
 	var events []string
-	instance, err := New(retirementOptions(retirementRegistry(created, "NoStoreConstruction", &events), "ts"))
+	instance, err := New(retirementOptions(t, retirementRegistry(created, "NoStoreConstruction", &events), "ts"))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if instance.runtime != nil {
+		t.Fatal("physical store fixture selected a logical runtime endpoint")
+	}
+	if reasons := instance.runtimeEligibilityErrors; len(reasons) != 1 || reasons[0].Code != "PENDING_ADAPTER" || reasons[0].Path != "certificate.certificate_directory_path" {
+		t.Fatalf("physical store fixture lost its directory-loader boundary: %+v", reasons)
 	}
 	instance.scope.Add(func() error {
 		events = append(events, "runtime")
@@ -142,7 +159,7 @@ func TestCloseRetiresTailscaleStoresBeforeClosingScope(t *testing.T) {
 
 func TestCloseResultReportsUnknownTailscaleWriter(t *testing.T) {
 	created := map[string]*retirementEndpoint{}
-	instance, err := New(retirementOptions(retirementRegistry(created, "Unknown", nil), "ts"))
+	instance, err := New(retirementOptions(t, retirementRegistry(created, "Unknown", nil), "ts"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,12 +171,18 @@ func TestCloseResultReportsUnknownTailscaleWriter(t *testing.T) {
 
 func TestFailedConstructionRetiresTailscaleStore(t *testing.T) {
 	created := map[string]*retirementEndpoint{}
-	instance, err, report := NewWithConstructionReport(retirementOptions(retirementRegistry(created, "NoStoreConstruction", nil), "ts", "ts"))
+	instance, err, report := NewWithConstructionReport(retirementOptions(t, retirementRegistry(created, "NoStoreConstruction", nil), "ts", "ts"))
 	if instance != nil || err == nil {
 		t.Fatalf("New = %v, %v; want duplicate tag failure", instance, err)
 	}
+	if !strings.Contains(err.Error(), "duplicate endpoint tag: ts") {
+		t.Fatalf("construction failed before the intended duplicate tag: %v", err)
+	}
 	if report.CleanupError != nil {
 		t.Fatalf("report = %+v", report)
+	}
+	if created["ts"] == nil {
+		t.Fatal("original physical store was never constructed")
 	}
 	if created["ts"].retired != 1 {
 		t.Fatalf("rejected endpoint retired %d times, want 1", created["ts"].retired)

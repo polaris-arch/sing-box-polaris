@@ -31,18 +31,20 @@ type (
 		Message        string   `json:"message"`
 	}
 	RuntimeConfigPlan struct {
-		ContractVersion    uint32             `json:"contract_version"`
-		PlanID             string             `json:"plan_id"`
-		TransactionID      string             `json:"transaction_id"`
-		Expected           RuntimeIdentity    `json:"expected"`
-		CandidateDigest    string             `json:"candidate_digest"`
-		DependencyDigest   string             `json:"dependency_digest"`
-		ImpactDigest       string             `json:"impact_digest"`
-		Impacts            []RuntimeImpact    `json:"impacts"`
-		Errors             []RuntimePlanError `json:"errors"`
-		ExpiresAtUnixMilli int64              `json:"expires_at_unix_milli,string"`
-		Applicable         bool               `json:"applicable"`
-		NoOp               bool               `json:"no_op"`
+		ContractVersion            uint32                           `json:"contract_version"`
+		PlanID                     string                           `json:"plan_id"`
+		TransactionID              string                           `json:"transaction_id"`
+		Expected                   RuntimeIdentity                  `json:"expected"`
+		CandidateDigest            string                           `json:"candidate_digest"`
+		DependencyDigest           string                           `json:"dependency_digest"`
+		ImpactDigest               string                           `json:"impact_digest"`
+		Impacts                    []RuntimeImpact                  `json:"impacts"`
+		Errors                     []RuntimePlanError               `json:"errors"`
+		ExpiresAtUnixMilli         int64                            `json:"expires_at_unix_milli,string"`
+		Applicable                 bool                             `json:"applicable"`
+		NoOp                       bool                             `json:"no_op"`
+		ClientImpactPolicyVersion  RuntimeClientImpactPolicyVersion `json:"client_impact_policy_version"`
+		ImpactConfirmationRequired bool                             `json:"impact_confirmation_required"`
 	}
 )
 
@@ -73,14 +75,15 @@ type RuntimeConfigOperation struct {
 	apiHandoffs             []adapter.RuntimeAPIHandoff
 }
 type RuntimeConfigCapabilities struct {
-	ImplementationManifestDigest string                   `json:"implementation_manifest_digest"`
-	Fields                       []RuntimeFieldCapability `json:"fields"`
-	ContractVersion              uint32                   `json:"contract_version"`
-	FullConfiguration            bool                     `json:"full_configuration"`
-	Enabled                      bool                     `json:"enabled"`
-	Identity                     RuntimeIdentity          `json:"identity"`
-	SupportedPaths               []string                 `json:"supported_paths"`
-	PendingAdapters              []string                 `json:"pending_adapters"`
+	ImplementationManifestDigest        string                             `json:"implementation_manifest_digest"`
+	Fields                              []RuntimeFieldCapability           `json:"fields"`
+	ContractVersion                     uint32                             `json:"contract_version"`
+	FullConfiguration                   bool                               `json:"full_configuration"`
+	Enabled                             bool                               `json:"enabled"`
+	Identity                            RuntimeIdentity                    `json:"identity"`
+	SupportedPaths                      []string                           `json:"supported_paths"`
+	PendingAdapters                     []string                           `json:"pending_adapters"`
+	SupportedClientImpactPolicyVersions []RuntimeClientImpactPolicyVersion `json:"supported_client_impact_policy_versions"`
 }
 
 // RuntimeFieldCapability describes a bounded implementation surface. Plan still

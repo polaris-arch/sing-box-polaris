@@ -36,6 +36,12 @@ func (c *runtimeCoordinator) validatePersistenceRetry(actor string, request Runt
 	if r.operation.Durable || r.awaitingOwnerAcknowledgement {
 		return r, nil
 	}
+	// Recheck original internal-source callback authority after acquiring the
+	// control gate too. A queued retry must not survive a clean rejected new
+	// ordinary intent, or another retry's uncertain completion.
+	if r.sourceProof != nil && (r.sourceDriverEpoch != c.sourceIntentEpoch || r.persistenceUncertain) {
+		return nil, errors.New("original source callback authority revoked or uncertain")
+	}
 	if r != c.pendingPersistence || !r.persistenceRetrySafe || r.persistenceCallback == nil || r.operation.State != "COMMITTED_DURABILITY_PENDING" {
 		return nil, errors.New("original persistence callback is not retryable")
 	}
@@ -91,6 +97,7 @@ func (s *Box) retryRuntimePersistence(ctx context.Context, actor string, request
 		}
 	}
 	r.operation.Errors = filtered
+	r.persistenceUncertain = runtimePersistenceUncertain(err)
 	var ownerPending *RuntimeOwnerAcknowledgementRequiredError
 	if errors.As(err, &ownerPending) && ownerPending.Mode == "app_authoritative_regeneration" && request.PersistenceMode == ownerPending.Mode {
 		r.awaitingOwnerAcknowledgement = true
@@ -104,6 +111,9 @@ func (s *Box) retryRuntimePersistence(ctx context.Context, actor string, request
 		c.durableDesiredDigest = ""
 		c.durableDesiredRevision = ""
 		c.durableOwnerReload = false
+		if c.configurationOwner == r {
+			c.configurationOwner = nil
+		}
 		if c.pendingPersistence == r {
 			c.pendingPersistence = nil
 		}

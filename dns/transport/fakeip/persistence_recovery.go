@@ -21,6 +21,7 @@ type recoveredPersistence struct {
 	namespaces            []*memoryNamespace
 	selection             string
 	selectionAcknowledged bool
+	allocationAuthority   map[netip.Addr]adapter.FakeIPRuntimeAnswer
 }
 type recoveredImage struct {
 	handle   adapter.FakeIPRuntimeNamespace
@@ -30,6 +31,17 @@ type recoveredImage struct {
 type recoveredIdentity struct {
 	answer adapter.FakeIPRuntimeAnswer
 	image  *recoveredImage
+}
+
+// Ordinary allocator rows may lack a live answer certificate, but cannot
+// override the highest verified identity or an explicit supersession tombstone.
+// Obsolete alone ends TTL protection, not the selected allocator's batch cache.
+func (r *recoveredPersistence) permitsAllocation(address netip.Addr, domain string) bool {
+	if r == nil {
+		return true
+	}
+	identity, known := r.allocationAuthority[address]
+	return !known || !identity.Superseded && identity.Domain == domain
 }
 
 // RecoverPersistent imports recognition only. It never selects the running
@@ -275,6 +287,10 @@ func (m *Manager) RecoverPersistent(ctx context.Context, anchor adapter.FakeIPRu
 	floor, ceiling, err := recovered.backends[root].ReserveFakeIPRuntimeCounters(ctx, adapter.FakeIPRuntimeCounters{Revision: highRevision, Token: highToken}, reservedAddressCount)
 	if err != nil {
 		return err
+	}
+	recovered.allocationAuthority = make(map[netip.Addr]adapter.FakeIPRuntimeAnswer, len(byAddress))
+	for address, identity := range byAddress {
+		recovered.allocationAuthority[address] = identity.answer
 	}
 	m.mappingAccess.Lock()
 	defer m.mappingAccess.Unlock()

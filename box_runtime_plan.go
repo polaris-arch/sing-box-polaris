@@ -51,10 +51,14 @@ type runtimePlanRecord struct {
 	persistenceRetrySafe         bool
 	persistenceTailEntered       bool
 	retryInFlight                bool
+	persistenceUncertain         bool
+	sourceDriverEpoch            uint64
+	sourceProof                  *runtimeSourceApplyProof // private internal producer capability; never a wire flag
 }
 
 type runtimeCoordinator struct {
 	fakeIP                  *fakeip.Manager
+	fakeIPPersistence       *runtimeFakeIPPersistence
 	access                  sync.Mutex
 	controlEffects          runtimeEffectGate
 	ctx                     context.Context
@@ -71,6 +75,10 @@ type runtimeCoordinator struct {
 	persistenceMode         string
 	persistenceRetrySafe    bool
 	pendingPersistence      *runtimePlanRecord
+	configurationOwner      *runtimePlanRecord
+	sourceLineage           *runtimeSourcePersistenceLineage
+	sourceIntentEpoch       uint64
+	sourceDriver            *runtimeSourcePersistenceDriver
 	resources               []*runtimeResource
 	plans                   map[string]*runtimePlanRecord
 	planStorage             int
@@ -159,7 +167,23 @@ func cloneRuntimeOperation(operation RuntimeConfigOperation) RuntimeConfigOperat
 // planRuntimeConfig receives a server-authenticated actor scope, never a client
 // field or credential hash. Parsing and bounded source reads run outside guards.
 func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, selectorIntents ...RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
-	plan := RuntimeConfigPlan{ContractVersion: RuntimeConfigContractVersion, Expected: expected}
+	return s.planRuntimeConfigWithClientImpactPolicy(ctx, actor, expected, content, RuntimeClientImpactPolicyLegacy, selectorIntents...)
+}
+
+func (s *Box) planRuntimeConfigWithClientImpactPolicy(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, version RuntimeClientImpactPolicyVersion, selectorIntents ...RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
+	return s.planRuntimeConfigInternal(ctx, actor, expected, content, version, nil, selectorIntents...)
+}
+
+// sourceProducer is an unexported capability, never a context value, RPC flag
+// or actor-name shortcut. Public callers retain their original policy path.
+func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expected RuntimeIdentity, content []byte, version RuntimeClientImpactPolicyVersion, sourceProducer *runtimeSourceProducer, selectorIntents ...RuntimeSelectorIntent) (RuntimeConfigPlan, error) {
+	plan := RuntimeConfigPlan{ContractVersion: RuntimeConfigContractVersion, Expected: expected, ClientImpactPolicyVersion: version}
+	if sourceProducer != nil && (actor != runtimeSourceProducerActor || version != RuntimeClientImpactPolicyExplicit || len(selectorIntents) != 0) {
+		return plan, errors.New("invalid internal source planning scope")
+	}
+	if !runtimeClientImpactPolicySupported(version) {
+		return plan, errors.New("unsupported client impact policy version")
+	}
 	if len(content) == 0 || len(content) > runtimeConfigByteLimit {
 		return plan, errors.New("runtime config exceeds bounded input size")
 	}
@@ -183,6 +207,17 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	currentSources := append([]runtimeSourceSnapshot(nil), coordinator.currentSources...)
 	tunDependencies := coordinator.tunDependencies
 	baseRootDigest := coordinator.rootDigest
+	var sourcePlan *runtimeSourcePlan
+	if sourceProducer != nil {
+		var sourceErr error
+		sourcePlan, sourceErr = coordinator.captureRuntimeSourcePlanLocked(sourceProducer, expected, content)
+		if sourceErr != nil {
+			coordinator.access.Unlock()
+			return plan, sourceErr
+		}
+		defer sourcePlan.lease.Release()
+		provisioned = sourcePlan.available
+	}
 	coordinator.access.Unlock()
 	if err := ctx.Err(); err != nil {
 		return plan, err
@@ -194,6 +229,9 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		plan.Errors = []RuntimePlanError{{Code: "INVALID_CONFIG", Message: "configuration failed schema validation"}}
 		return plan, nil
 	}
+	// Preserve the same explicit, immutable CLI log override in stored options.
+	// DisableColor is json:"-" and is never a new wire/canonical field.
+	runtimeResolveLogOverrides(parseContext, &options)
 	selectorIntents = cloneRuntimeSelectorIntents(selectorIntents)
 	if err := runtimeValidateSelectorIntents(options, selectorIntents); err != nil {
 		plan.Errors = []RuntimePlanError{{Code: "INVALID_SELECTOR_INTENT", Path: "outbounds", Message: "selector target or member is invalid"}}
@@ -217,8 +255,11 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	if err != nil {
 		return plan, errors.New("cannot canonicalize runtime configuration")
 	}
+	if sourcePlan != nil && (len(selectorIntents) != 0 || !bytes.Equal(base, canonical)) {
+		return plan, errors.New("source producer cannot edit the accepted configuration")
+	}
 	plan.CandidateDigest = runtimeDigest(canonical)
-	plan.Impacts, plan.Errors = runtimeConfigCompatibility(parseContext, base, canonical, options)
+	plan.Impacts, plan.Errors = runtimeConfigCompatibilityWithClientImpactPolicy(parseContext, base, canonical, options, version, s.logFactory)
 	if len(plan.Errors) != 0 {
 		return cloneRuntimePlan(plan), nil
 	}
@@ -226,7 +267,7 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		plan.Errors = problems
 		return cloneRuntimePlan(plan), nil
 	}
-	if problems := runtimeFakeIPRangeProblems(coordinator.fakeIP, options); len(problems) > 0 {
+	if problems := s.runtimeClientFakeIPRangeProblems(options, uint32(version)); len(problems) > 0 {
 		plan.Errors = problems
 		plan.Impacts = append(plan.Impacts, RuntimeImpact{Path: "dns.servers", UpdateClass: "RESTART_REQUIRED", Reason: "retained fake-IP range identity changes", ReconnectRequired: true})
 		return cloneRuntimePlan(plan), nil
@@ -255,7 +296,11 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		plan.Errors = sourceErrors
 		return cloneRuntimePlan(plan), nil
 	}
-	if !runtimePlatformRequirementsAvailable(provisioned, route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS))) {
+	if sourcePlan != nil && !sourcePlan.covers(route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS))) {
+		plan.Errors = []RuntimePlanError{runtimeSourceConfirmationProblem("route", "source content requires a platform dependency outside the accepted current owner closure")}
+		return cloneRuntimePlan(plan), nil
+	}
+	if !runtimePlatformRequirementsAvailableForPolicy(parseContext, provisioned, route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS)), version) {
 		plan.Errors = []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: "route", DependencyPath: []string{"runtime.platform"}, Message: "candidate requires a platform resource not provisioned by the running instance"}}
 		plan.Impacts = append(plan.Impacts, RuntimeImpact{Path: "route", UpdateClass: "RESTART_REQUIRED", Reason: "additional platform resource required", ReconnectRequired: true})
 		return cloneRuntimePlan(plan), nil
@@ -265,10 +310,20 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		plan.Errors = []RuntimePlanError{{Code: "INVALID_DEPENDENCY_GRAPH", Path: "inbounds", Message: "candidate physical dependency graph could not be validated"}}
 		return plan, nil
 	}
+	if sourcePlan != nil && runtimeTunDependencyChanges(tunDependencies, candidateTun) {
+		plan.Errors = []RuntimePlanError{runtimeSourceConfirmationProblem("inbounds", "source refresh cannot change captured TUN physical dependencies")}
+		return cloneRuntimePlan(plan), nil
+	}
 	if runtimeTunDependencyChanges(tunDependencies, candidateTun) {
-		plan.Errors = []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: "inbounds", DependencyPath: []string{"tun.physical_dependencies"}, Message: "candidate changes a captured TUN host, route-set or flow capability dependency"}}
-		plan.Impacts = append(plan.Impacts, RuntimeImpact{Path: "inbounds", UpdateClass: "RESTART_REQUIRED", Reason: "captured TUN physical dependency changes", ReconnectRequired: true})
-		return plan, nil
+		var beforeOptions option.Options
+		if err := json.UnmarshalContext(parseContext, base, &beforeOptions); err != nil {
+			return plan, errors.New("active TUN configuration unavailable")
+		}
+		if problems := runtimeClientTunDependencyProblems(parseContext, beforeOptions, options, tunDependencies, uint32(version)); len(problems) != 0 {
+			plan.Errors = problems
+			plan.Impacts = append(plan.Impacts, RuntimeImpact{Path: "inbounds", UpdateClass: "RESTART_REQUIRED", Reason: "captured TUN physical dependency changes", ReconnectRequired: true})
+			return plan, nil
+		}
 	}
 	plan.DependencyDigest, err = runtimePlannedDependencyDigest(parseContext, options, sourceDigest)
 	if err != nil {
@@ -281,6 +336,16 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 		return plan, nil
 	}
 	plan.DependencyDigest = runtimeDigest(append(append([]byte(plan.DependencyDigest), 0), plannedRootDigest[:]...))
+	if sourcePlan != nil {
+		problems, sourceErr := sourcePlan.replacementProblems(parseContext, options, plannedRootDigest)
+		if sourceErr != nil {
+			return plan, errors.New("source replacement ownership could not be validated")
+		}
+		if len(problems) != 0 {
+			plan.Errors = problems
+			return cloneRuntimePlan(plan), nil
+		}
+	}
 	if problems, replacementErr := s.preflightRuntimeNodeReplacements(ctx, options, selectorIntents, plannedRootDigest); replacementErr != nil {
 		plan.Errors = []RuntimePlanError{{Code: "INVALID_DEPENDENCY_GRAPH", Message: "replacement ownership could not be validated"}}
 		return cloneRuntimePlan(plan), nil
@@ -327,10 +392,20 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	if plan.NoOp {
 		plan.Impacts = nil
 	}
-	impactBytes, err := json.Marshal(struct {
+	plan.ImpactConfirmationRequired = runtimeImpactConfirmationRequired(version, plan.Impacts)
+	var impactDocument any = struct {
 		Impacts         []RuntimeImpact
 		SelectorIntents []RuntimeSelectorIntent
-	}{plan.Impacts, selectorIntents})
+	}{plan.Impacts, selectorIntents}
+	if version != RuntimeClientImpactPolicyLegacy {
+		impactDocument = struct {
+			Impacts                    []RuntimeImpact
+			SelectorIntents            []RuntimeSelectorIntent
+			ClientImpactPolicyVersion  RuntimeClientImpactPolicyVersion
+			ImpactConfirmationRequired bool
+		}{plan.Impacts, selectorIntents, version, plan.ImpactConfirmationRequired}
+	}
+	impactBytes, err := json.Marshal(impactDocument)
 	if err != nil {
 		return plan, err
 	}
@@ -343,19 +418,33 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	if coordinator.initialPhase != 2 || coordinator.stopped || coordinator.active != expected {
 		return RuntimeConfigPlan{}, errors.New("stale or stopped runtime")
 	}
+	if sourceProducer != nil {
+		if err := coordinator.checkRuntimeSourcePlanLocked(sourceProducer, expected, canonical); err != nil {
+			return RuntimeConfigPlan{}, err
+		}
+		for _, impact := range plan.Impacts {
+			if impact.ReconnectRequired || impact.UpdateClass == "RESTART_REQUIRED" {
+				return RuntimeConfigPlan{}, errors.New("source refresh requires an explicit impact decision")
+			}
+		}
+	}
 	now := coordinator.now()
 	for id, record := range coordinator.plans {
 		deadline := record.plan.ExpiresAtUnixMilli
 		if record.consumed {
 			deadline = record.receiptExpires
 		}
-		if record != coordinator.pendingPersistence && !record.inFlight && !record.acknowledging && !record.retryInFlight && deadline != 0 && now.UnixMilli() >= deadline {
+		unsafeCleanup := record.operation != nil && (record.operation.State == "ABORTED_DEGRADED" || record.operation.RetirementState == "UNKNOWN")
+		if !unsafeCleanup && record != coordinator.pendingPersistence && record != coordinator.configurationOwner && !record.inFlight && !record.acknowledging && !record.retryInFlight && deadline != 0 && now.UnixMilli() >= deadline {
 			coordinator.planStorage -= record.storageCharge
 			delete(coordinator.plans, id)
 		}
 	}
 	intentBytes, _ := json.Marshal(selectorIntents)
 	charge := len(content) + 2*len(canonical) + 2*len(intentBytes)
+	if sourcePlan != nil {
+		charge += 8 * len(sourcePlan.resources) // bounded private owner-pointer census
+	}
 	for _, source := range sources {
 		charge += 2 * len(source.content)
 	}
@@ -375,6 +464,12 @@ func (s *Box) planRuntimeConfig(ctx context.Context, actor string, expected Runt
 	plan.ExpiresAtUnixMilli = now.Add(runtimePlanLifetime).UnixMilli()
 	plan.Applicable = true
 	coordinator.planStorage += charge
-	coordinator.plans[plan.TransactionID] = &runtimePlanRecord{storageCharge: charge, plan: cloneRuntimePlan(plan), actor: actor, options: options, sources: sources, selectorIntents: selectorIntents, rootDigest: plannedRootDigest, canonical: append([]byte(nil), canonical...)}
+	record := &runtimePlanRecord{storageCharge: charge, plan: cloneRuntimePlan(plan), actor: actor, options: options, sources: sources, selectorIntents: selectorIntents, rootDigest: plannedRootDigest, canonical: append([]byte(nil), canonical...)}
+	if sourcePlan != nil {
+		closure := *sourcePlan
+		closure.lease = nil // metadata only; executable Apply must still match the current graph
+		record.sourceProof = &runtimeSourceApplyProof{producer: sourceProducer, expected: expected, transactionID: plan.TransactionID, rootDigest: plannedRootDigest, tunDependencies: tunDependencies, closure: closure}
+	}
+	coordinator.plans[plan.TransactionID] = record
 	return cloneRuntimePlan(plan), nil
 }

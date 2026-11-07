@@ -30,16 +30,23 @@ var (
 )
 
 type platformInterfaceWrapper struct {
-	iif           PlatformInterface
-	useProcFS     bool
-	powerManager  *powerreport.Manager
-	myTunName     string
-	myTunAddress  []netip.Addr
-	monitorAccess sync.Mutex
-	activeMonitor *platformDefaultInterfaceMonitor
+	iif                PlatformInterface
+	useProcFS          bool
+	powerManager       *powerreport.Manager
+	myTunName          string
+	myTunAddress       []netip.Addr
+	monitorAccess      sync.Mutex
+	activeMonitor      *platformDefaultInterfaceMonitor
+	tunAccess          sync.Mutex
+	tunFrozen          bool
+	runtimeTunPlatform RuntimeTunPlatform
+	runtimeTunFailure  error
 }
 
 func (w *platformInterfaceWrapper) Initialize(networkManager adapter.NetworkManager) error {
+	w.tunAccess.Lock()
+	w.tunFrozen = true
+	w.tunAccess.Unlock()
 	monitor, ok := networkManager.InterfaceMonitor().(*platformDefaultInterfaceMonitor)
 	if !ok || monitor == nil || monitor.platform != w {
 		return E.New("platform: network manager has a different interface monitor")
@@ -63,12 +70,25 @@ func (w *platformInterfaceWrapper) UsePlatformInterface() bool {
 	return true
 }
 
-func (w *platformInterfaceWrapper) OpenInterface(options *tun.Options, platformOptions option.TunPlatformOptions) (tun.Tun, error) {
+func validatePlatformTunOptions(options *tun.Options) error {
 	if len(options.IncludeUID) > 0 || len(options.ExcludeUID) > 0 {
-		return nil, E.New("platform: unsupported uid options")
+		return E.New("platform: unsupported uid options")
 	}
 	if len(options.IncludeAndroidUser) > 0 {
-		return nil, E.New("platform: unsupported android_user option")
+		return E.New("platform: unsupported android_user option")
+	}
+	return nil
+}
+
+func (w *platformInterfaceWrapper) OpenInterface(options *tun.Options, platformOptions option.TunPlatformOptions) (tun.Tun, error) {
+	w.tunAccess.Lock()
+	registered := w.runtimeTunPlatform != nil
+	w.tunAccess.Unlock()
+	if registered {
+		return nil, errors.New("registered native TUN bridge requires the retained original session")
+	}
+	if err := validatePlatformTunOptions(options); err != nil {
+		return nil, err
 	}
 	routeRanges, err := options.BuildAutoRouteRanges(true)
 	if err != nil {
@@ -78,6 +98,11 @@ func (w *platformInterfaceWrapper) OpenInterface(options *tun.Options, platformO
 	if err != nil {
 		return nil, err
 	}
+	return w.openTunFD(options, tunFd)
+}
+
+func (w *platformInterfaceWrapper) openTunFD(options *tun.Options, tunFd int32) (tun.Tun, error) {
+	var err error
 	options.Name, err = getTunnelName(tunFd)
 	if err != nil {
 		return nil, E.Cause(err, "query tun name")
@@ -87,11 +112,20 @@ func (w *platformInterfaceWrapper) OpenInterface(options *tun.Options, platformO
 	if err != nil {
 		return nil, E.Cause(err, "dup tun file descriptor")
 	}
+	if dupFd == 0 {
+		return nil, errors.Join(errors.New("duplicate TUN descriptor collides with allocation sentinel"), closeDup(dupFd))
+	}
 	options.FileDescriptor = dupFd
+	w.tunAccess.Lock()
 	w.myTunName = options.Name
 	w.myTunAddress = myTunAddress(options)
+	w.tunAccess.Unlock()
 	w.iif.RegisterMyInterface(options.Name)
-	return tun.New(*options)
+	device, err := tun.New(*options)
+	if err != nil {
+		return nil, errors.Join(err, closeDup(dupFd))
+	}
+	return device, nil
 }
 
 func (w *platformInterfaceWrapper) ProcessPlatformOptions(options option.TunPlatformOptions) error {
@@ -110,7 +144,9 @@ func myTunAddress(options *tun.Options) []netip.Addr {
 }
 
 func (w *platformInterfaceWrapper) MyInterfaceAddress() []netip.Addr {
-	return w.myTunAddress
+	w.tunAccess.Lock()
+	defer w.tunAccess.Unlock()
+	return append([]netip.Addr(nil), w.myTunAddress...)
 }
 
 func (w *platformInterfaceWrapper) UsePlatformDefaultInterfaceMonitor() bool {
@@ -137,12 +173,15 @@ func (w *platformInterfaceWrapper) NetworkInterfaces() ([]adapter.NetworkInterfa
 	// Preserve all snapshot fields for the Expensive/Constrained projections below.
 	//nolint:staticcheck // SA4006: Windows analysis reports this assignment although isExpensive feeds Expensive below.
 	defaultInterface, isExpensive, isConstrained := w.monitorSnapshot()
+	w.tunAccess.Lock()
+	myTunName := w.myTunName
+	w.tunAccess.Unlock()
 	var interfaces []adapter.NetworkInterface
 	for _, netInterface := range iteratorToArray[*NetworkInterface](interfaceIterator) {
 		// (GOOS=windows) SA4006: this value of `isDefault` is never used
 		// Why not used?
 		//nolint:staticcheck
-		isDefault := netInterface.Name != w.myTunName && defaultInterface != nil && int(netInterface.Index) == defaultInterface.Index
+		isDefault := netInterface.Name != myTunName && defaultInterface != nil && int(netInterface.Index) == defaultInterface.Index
 		interfaces = append(interfaces, adapter.NetworkInterface{
 			Index:            int(netInterface.Index),
 			MTU:              int(netInterface.MTU),

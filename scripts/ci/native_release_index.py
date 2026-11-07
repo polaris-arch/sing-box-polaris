@@ -5,7 +5,37 @@ from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
 from release_identity import verify_checkout, public_product_name
+from cronet_windows_overlay import validate_overlay
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
+
+DEBIAN_INPUTS=('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+               'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+               '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION')
+
+def _debian_plan_sha256(measured):
+ selected={}
+ for name in DEBIAN_INPUTS:
+  value=measured.get(name)
+  if type(value) is not str or re.fullmatch(r'[0-9a-f]{64}',value) is None:
+   raise ValueError('missing or invalid measured Debian source input: '+name)
+  selected[name]=value
+ return sha((json.dumps(selected,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False)+'\n').encode())
+
+def _measure_debian_materials(measure_debian,commit,tree):
+ required=os.environ.get('POLARIS_DEBIAN_REQUIRED','false')
+ if required not in ('true','false'):raise ValueError('invalid Debian required mode')
+ refs=[os.environ.get(name,'') for name in ('POLARIS_DEBIAN_RAW_ID','POLARIS_DEBIAN_RAW_DIGEST',
+                                           'POLARIS_DEBIAN_READY_ID','POLARIS_DEBIAN_READY_DIGEST')]
+ if required=='false' and any(refs):raise ValueError('optional Debian mode carries unexpected references')
+ if measure_debian is None:
+  if required=='true':raise ValueError('required Debian material measurement missing')
+  return None
+ if not callable(measure_debian):raise ValueError('explicit Debian measurement callable required')
+ measured=measure_debian('all',commit,tree)
+ if (required=='true' and measured is None) or (required=='false' and measured is not None):
+  raise ValueError('Debian material measurement differs from required mode')
+ return measured
+
 
 def sha(b):return hashlib.sha256(b).hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
@@ -82,6 +112,7 @@ def validate_archived_source_identity(rows,source_tar,commit):
 
 def source_identity():
  hashes=source_module_hashes()
+ validate_overlay(Path.cwd())
  mod=json.loads(run('go','mod','edit','-json'));replacements=[]
  for r in mod.get('Replace',[]) or []:
   new=r['New']
@@ -117,7 +148,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def trusted_execution_definition():
  # The native schema owns the vocabulary; all producer/publisher calls use this validator.
- return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())['$defs']['linuxTrustedExecution']
+ return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))['$defs']['linuxTrustedExecution']
 
 
 def execution_run():
@@ -130,12 +161,18 @@ def execution_run():
 def derive_trusted_execution(row, proof, producer, source_root=ROOT):
  """Formal workflow admission retains its original schema and run authority."""
  import jsonschema
- schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
- kind = 'macosExecution' if isinstance(proof,dict) and proof.get('schema') == 'polaris-macos-native-execution-proof-v1' else 'sealedExecution'
+ schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
+ kind = {'polaris-macos-native-execution-proof-v1':'macosExecution','polaris-windows-native-execution-proof-v1':'windowsExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
  jsonschema.Draft202012Validator(schema['$defs'][kind]).validate(proof)
  for key in ('runId', 'runAttempt'):
   if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
    raise ValueError('sealed execution workflow run/attempt differs')
+ if kind == 'windowsExecution':
+  validate_overlay(source_root)
+  from windows_native_execution import validate_facts
+  policy=validate_facts(row,proof,source_root)
+  jsonschema.Draft202012Validator(schema['$defs']['windowsTrustedExecution']).validate(policy)
+  return policy
  return _derive_macos_execution_facts(row, proof, source_root) if kind == 'macosExecution' else _derive_execution_facts(row, proof, source_root)
 
 
@@ -161,7 +198,7 @@ def derive_local_trusted_execution(row, proof, context, source_root):
   raise ValueError('local native host/Core source differs')
  # Reuse every existing fact property's exact schema. Run/attempt are not
  # defaulted, stripped from a Formal receipt, or fabricated for this lane.
- schema=json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text())
+ schema=json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
  properties=schema['$defs']['sealedExecution']['properties']
  facts=set(properties)-{'runId','runAttempt'}
  if type(proof) is not dict or set(proof)!=facts:
@@ -416,7 +453,7 @@ def _derive_macos_execution_facts(row, proof, source_root):
              target=row['target'],expected_modules=producer_module_identities(row['buildGraph']),source_root=source_root)
     validate_configuration_checks(receipt['capabilities'],receipt['configurationChecks'])
     cronet = proof['cronet']; smoke = row['finalPackageCronetSmoke']
-    pins = json.loads((Path(source_root)/'release/polaris-candidate-inputs.json').read_text())
+    pins = json.loads((Path(source_root)/'release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
     if cronet['version'] != pins['cronetVersion']: raise ValueError('Mac source-owned Cronet version differs')
     expected = {'os':'darwin','arch':arch,'go':row['goVersion'],'linkage':'static-cgo','gvisorCompiled':True}
     if any(type(cronet.get(k)) is not type(v) or cronet[k] != v for k,v in expected.items()): raise ValueError('Mac native Cronet observation differs')
@@ -427,13 +464,17 @@ def _derive_macos_execution_facts(row, proof, source_root):
 
 def validate_trusted_execution(row, producer, source_root=ROOT):
  smoke = row.get('finalPackageCronetSmoke')
- keys = [key for key in ('sealedExecution','macosExecution') if isinstance(smoke,dict) and key in smoke]
+ keys = [key for key in ('sealedExecution','macosExecution','windowsExecution') if isinstance(smoke,dict) and key in smoke]
  if len(keys) > 1: raise ValueError('ambiguous native execution proofs')
  proof = smoke[keys[0]] if keys else None
  present = 'trustedExecution' in row
  has_proof = bool(keys)
  if not has_proof and not present: return None # historical/unsupported rows never acquire authority
  if proof is None or not present: raise ValueError('trusted execution requires both policy and native sealed proof')
+ expected_schema={'macosExecution':'polaris-macos-native-execution-proof-v1',
+                  'windowsExecution':'polaris-windows-native-execution-proof-v1'}
+ if not isinstance(proof,dict) or (keys[0] in expected_schema and proof.get('schema')!=expected_schema[keys[0]]) or (keys[0]=='sealedExecution' and 'schema' in proof):
+  raise ValueError('native execution proof key/schema differs')
  expected = derive_trusted_execution(row, proof, producer, source_root)
  if row['trustedExecution'] != expected:
   raise ValueError('trusted execution policy differs from native proof')
@@ -441,7 +482,7 @@ def validate_trusted_execution(row, producer, source_root=ROOT):
 
 
 def collect(directory,matrix):
- commit,tree=identity();d=Path(directory);row_count=0
+ commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);row_count=0
  for p in sorted(d.iterdir()):
   if not p.name.startswith('sing-box-') or not p.name.endswith(('.tar.gz','.zip')):continue
   root,members=read_archive(p);expected=expected_native(os.environ['VERSION']).get(root)
@@ -503,9 +544,27 @@ def smoke_temp_directory():
   cleanup_smoke_directory(directory)
 
 def smoke(directory):
+ validate_overlay(Path.cwd())
  d=Path(directory);rows=list(d.glob('native-row-*.json'))
  if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
- row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name'];root,members=read_archive(p)
+ row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name']
+ # Ordinary Windows diagnostics never enter this lane or acquire a policy.
+ # An explicit request on an unavailable/unsupported host fails, without a
+ # fallback to the unprivileged probe or a successful skipped proof.
+ if os.environ.get('POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED')=='true':
+  from windows_native_execution import produce,VARIANT
+  if platform.system()!='Windows' or row['target']!='windows/amd64' or row['variant']!=VARIANT:
+   raise ValueError('explicit privileged Windows proof host/modern row unavailable')
+  context=execution_run();proof=produce(row,p,context=context)
+  observed=proof['cronet'];row.pop('trustedExecution',None)
+  row['finalPackageCronetSmoke']={'status':'passed','os':'windows','arch':'amd64','go':row['goVersion'],
+    'gvisorCompiled':True,'naiveOutbound':True,'linkage':'shared-purego','version':observed['version'],
+    'librarySha256':row['sidecar']['sha256'],'coreSha256':row['core']['sha256'],'windowsExecution':proof}
+  row['trustedExecution']=derive_trusted_execution(row,proof,context)
+  validate_trusted_execution(row,context)
+  rows[0].write_text(json.dumps(row,indent=2)+'\n',encoding='utf-8',newline='\n')
+  return
+ root,members=read_archive(p)
  if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
  pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
  if Path('.github/CRONET_GO_VERSION').read_text(encoding='utf-8').strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
@@ -580,12 +639,13 @@ def validate_distribution_assessment(catalog):
  return catalog['status']=='reviewed-current-scope' and catalog['openItems']==[]
 
 
-def distribution_materials(index, root=Path('.')):
+def distribution_materials(index, root=Path('.'), *, debian_raw=None):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
+ overlay_inputs=validate_overlay(root)
  from apple_package_overlays import definition as apple_package_definition
  apple_package_definition(root)
- inputs=['go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
+ inputs=['scripts/ci/cronet_windows_overlay.py',*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/dependency-sources/sing-vmess-replacement.json',
          'release/dependency-sources/sing-vmess-vision.patch','scripts/ci/vision_source.py',
          'release/ci/client-overlays.json','release/ci/distribution-materials.json',
@@ -619,6 +679,8 @@ def distribution_materials(index, root=Path('.')):
          'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
          'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
          '.github/workflows/build.yml','.github/workflows/linux.yml','.github/workflows/docker.yml']
+ if (root/'release/ci/cronet-material-profiles.json').is_file():
+  inputs += DEBIAN_INPUTS
  if any('trustedExecution' in row for row in index['platforms']):
   inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json',
              'release/ci/native-release-contract.schema.json']
@@ -702,12 +764,14 @@ def distribution_materials(index, root=Path('.')):
                      (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else [])})
   if 'trustedExecution' in row:
    native[-1]['trustedExecutionSHA256']=sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',', ':')).encode())
-   proof_key='macosExecution' if 'macosExecution' in row['finalPackageCronetSmoke'] else 'sealedExecution'
+   proof_keys=[key for key in ('sealedExecution','macosExecution','windowsExecution') if key in row['finalPackageCronetSmoke']]
+   if len(proof_keys)!=1:raise ValueError('distribution native execution proof is ambiguous')
+   proof_key=proof_keys[0]
    native[-1][proof_key+'SHA256']=sha(json.dumps(row['finalPackageCronetSmoke'][proof_key],sort_keys=True,separators=(',', ':')).encode())
- return {'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
+ result={'schema':'polaris-distribution-materials-v1','sourceCommit':index['sourceCommit'],
          'sourceTree':index['sourceTree'],'sourceArchive':index['sourceArchive'],
          'sourceURL':'https://github.com/'+REPO+'/tree/'+index['sourceCommit'],
-         'toolchain':toolchain,'inputs':{p:sha((root/p).read_bytes()) for p in sorted(set(inputs))},
+         'toolchain':toolchain,'inputs':{p:overlay_inputs[p] if p in overlay_inputs else sha((root/p).read_bytes()) for p in sorted(set(inputs))},
          'legalFiles':{x['path']:x['sha256'] for x in index['legalFiles']},
          'modules':dict(sorted(modules.items())),'nativeArchives':native,
          'noticeSelection':{'path':'release/ci/current44-notice-mappings.json','sha256':sha((root/'release/ci/current44-notice-mappings.json').read_bytes()),'bundle':selection['noticeBundle']},
@@ -718,9 +782,55 @@ def distribution_materials(index, root=Path('.')):
                         'Module h1 is a Go directory checksum, not a downloaded ZIP SHA256.',
                         'Historical source/notice evidence remains historical.']}
 
+ if debian_raw is not None:
+  import jsonschema
+  schema=json.loads((root/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
+  jsonschema.Draft202012Validator({'$ref':'#/$defs/debianBinding','$defs':schema['$defs']}).validate(debian_raw)
+  context=debian_raw['context'];producer=index['producer']
+  expected={'repository':REPO,'repositoryID':RID,'sourceCommit':index['sourceCommit'],
+            'sourceTree':index['sourceTree'],'tag':index['tag'],'tagObject':index['tagObject'],
+            'workflow':producer['workflow'],'runID':producer['runId'],'runAttempt':producer['runAttempt'],'role':'all'}
+  if context!=expected or debian_raw['planSHA256']!=_debian_plan_sha256(result['inputs']):
+   raise ValueError('All Debian binding differs from actual native producer/source inputs')
+  result['debianRaw']=debian_raw
+ return result
 
-def assemble(directory):
- commit,tree=identity();d=Path(directory);v=os.environ['VERSION'];tag='v'+v
+
+WINDOWS_PROOF_JOB = 'Explicit SYSTEM final-package Windows native execution proof'
+
+def expected_native_job_names(rows):
+ """The retained proof kind, rather than another successful job, owns evidence."""
+ names={key:f'Native final-package Cronet and gVisor smoke ({ident})'
+        for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]}
+ selected=[row for row in rows if row.get('target')=='windows/amd64' and not row.get('variant',{}).get('legacy',False)]
+ if len(selected)!=1:raise ValueError('native job mapping requires one modern Windows row')
+ smoke=selected[0].get('finalPackageCronetSmoke')
+ if isinstance(smoke,dict) and 'windowsExecution' in smoke:
+  if 'trustedExecution' not in selected[0] or not isinstance(smoke['windowsExecution'],dict) or smoke['windowsExecution'].get('schema')!='polaris-windows-native-execution-proof-v1':
+   raise ValueError('Windows producer mapping requires retained Windows proof and policy')
+  names['win']=WINDOWS_PROOF_JOB
+ return names
+
+def select_native_jobs(rows,jobs,commit,run_id,attempt):
+ if type(run_id) is not int or run_id<=0 or type(attempt) is not int or attempt<=0:
+  raise ValueError('native job run/attempt identity differs')
+ if not isinstance(jobs,list) or len(jobs)>1000:raise ValueError('native job API evidence scope differs')
+ result={}
+ for key,name in expected_native_job_names(rows).items():
+  named=[job for job in jobs if isinstance(job,dict) and job.get('name')==name]
+  if len(named)!=1:raise ValueError('missing/duplicate native producer API evidence: '+name)
+  job=named[0]
+  if (job.get('conclusion')!='success' or job.get('status')!='completed' or job.get('head_sha')!=commit
+      or type(job.get('run_id')) is not int or job['run_id']!=run_id
+      or type(job.get('run_attempt')) is not int or job['run_attempt']!=attempt
+      or type(job.get('id')) is not int or job['id']<=0):
+   raise ValueError('native producer API source/run/attempt/status differs: '+name)
+  result[key]={'id':job['id'],'name':name}
+ if len({value['id'] for value in result.values()})!=len(result):raise ValueError('native producer job IDs collide')
+ return result
+
+def assemble(directory, *, measure_debian=None):
+ commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
  final=os.environ.get('REQUIRE_RELEASE_TAG')=='true'
  tag_object=None
  if final:
@@ -766,18 +876,16 @@ def assemble(directory):
  workflow=os.environ['GITHUB_WORKFLOW_REF'].split(REPO+'/',1)[1].split('@',1)[0]
  run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
  pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100'))
- jobs=[j for page in pages for j in page['jobs']];native_jobs={}
- for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]:
-  name=f'Native final-package Cronet and gVisor smoke ({ident})'
-  matches=[j for j in jobs if j['name']==name and j.get('conclusion')=='success' and j.get('status')=='completed' and j.get('head_sha')==commit and str(j.get('run_id'))==run_id and str(j.get('run_attempt'))==attempt]
-  if len(matches)!=1:raise ValueError('missing unique successful native smoke API evidence: '+name)
-  native_jobs[key]={'id':matches[0]['id'],'name':name}
+ jobs=[j for page in pages for j in page['jobs']]
+ native_jobs=select_native_jobs(rows.values(),jobs,commit,int(run_id),int(attempt))
  # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
  for row in rows.values():
   validate_trusted_execution(row, context)
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
- index['distributionMaterials']=distribution_materials(index)
+ debian_raw=_measure_debian_materials(measure_debian,commit,tree)
+ index['distributionMaterials']=(distribution_materials(index) if debian_raw is None
+                                else distribution_materials(index,debian_raw=debian_raw))
  if final:
   verify_checkout(tag,commit,tag_object)
   import jsonschema

@@ -1,0 +1,47 @@
+{
+  "schema": "polaris-cronet-material-inputs-v1",
+  "cronetCommit": "4d18a60dc3a8d327065b058f92fbbfc9391b84bc",
+  "naiveCommit": "be1be963131154ba82761a7ed85ba426b2027319",
+  "helper": "src/build/linux/sysroot_scripts/sysroot_creator.py",
+  "sourceSHA256": {
+    "src/get-clang.sh": "1370301cc102b936e69fac39594af25f7110308b957f9ce3a00a961eee52916d",
+    "src/get-sysroot.sh": "0a77811cf838dd166e1c4dc6d06486c1f98049a619d13bb5151251f572fd4e06",
+    "src/build/linux/sysroot_scripts/sysroot_creator.py": "52093407ea2a540caa5b72738d11ee17550f82c95502d37007be98ed176bc831"
+  },
+  "overlaySHA256": "e0c9addf8b3f9883e6c5730fc98d54ec4a42f60bff226874c3bab96b1092b38e",
+  "postimageSHA256": "5ce4a72034deab5d034a0bf5836d2876d62e158104ad5a893e0721e0e048af4f",
+  "downloadFunctionSHA256": "a22fba352577842a25700ecb31c249a34fba910802d8fff4c709700e4377269b",
+  "authorities": [
+    "snapshot.debian.org",
+    "snapshot-cloudflare.debian.org"
+  ],
+  "archivePrefixes": [
+    "/archive/debian/20250129T203412Z/",
+    "/archive/debian-ports/20250625T074124Z/"
+  ],
+  "limits": {
+    "httpRequests": 4,
+    "redirectHops": 3,
+    "sourceAttempts": 4,
+    "connectSeconds": 10,
+    "readIdleSeconds": 20,
+    "objectWallSeconds": 180,
+    "objectBytes": 67108864,
+    "creatorProcessBytes": 1073741824,
+    "logBytes": 2097152
+  },
+  "transientHTTP": [
+    408,
+    429,
+    500,
+    502,
+    503,
+    504
+  ],
+  "copyNames": {
+    "module": "polaris_cronet_material.py",
+    "policy": "polaris_cronet_material_inputs.json"
+  },
+  "cachePolicy": "v2-clang-gn-pgo-only-no-extracted-sysroot",
+  "identity": "URLs stay byte-identical except approved authority/redirect; original caller GPG, Packages SHA256 and deb SHA256/extraction remain authoritative. Byte cap is per actual creator process, not shared across host/target processes."
+}

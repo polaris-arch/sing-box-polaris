@@ -34,6 +34,7 @@ import (
 var _ adapter.NetworkManager = (*NetworkManager)(nil)
 
 type NetworkManager struct {
+	runtimeWIFIProvider     RuntimeWIFIProvider
 	runtimeInventory        RuntimeNetworkInventory
 	urlTestHistory          *urltest.HistoryStorage
 	ctx                     context.Context
@@ -57,6 +58,7 @@ type NetworkManager struct {
 	inbound                 adapter.InboundManager
 	outbound                adapter.OutboundManager
 	needWIFIState           bool
+	wifiMonitorStarted      bool
 	wifiMonitor             settings.WIFIMonitor
 	wifiState               adapter.WIFIState
 	networkEnvironment      uint64
@@ -188,6 +190,8 @@ func (r *NetworkManager) Start(stage adapter.StartStage, scope *adapter.Scope) e
 				err = r.wifiMonitor.Start()
 				if err != nil {
 					r.logger.Warn(E.Cause(err, "start WIFI monitor"))
+				} else {
+					r.wifiMonitorStarted = true
 				}
 			}
 		}
@@ -403,10 +407,24 @@ func (r *NetworkManager) PackageManager() tun.PackageManager {
 }
 
 func (r *NetworkManager) NeedWIFIState() bool {
+	if r.runtimeWIFIProvider != nil {
+		if _, need, connected := r.runtimeWIFIProvider.RuntimeWIFIState(); connected {
+			return need
+		}
+	}
 	return r.needWIFIState
 }
 
 func (r *NetworkManager) WIFIState() adapter.WIFIState {
+	if r.runtimeWIFIProvider != nil {
+		if state, _, connected := r.runtimeWIFIProvider.RuntimeWIFIState(); connected {
+			return state
+		}
+	}
+	return r.runtimeStableWIFIState()
+}
+
+func (r *NetworkManager) runtimeStableWIFIState() adapter.WIFIState {
 	r.stateAccess.RLock()
 	defer r.stateAccess.RUnlock()
 	return r.wifiState
@@ -430,6 +448,13 @@ func (r *NetworkManager) onWIFIStateChanged(state adapter.WIFIState) {
 }
 
 func (r *NetworkManager) UpdateWIFIState(ctx context.Context) {
+	if r.runtimeWIFIProvider != nil && r.runtimeWIFIProvider.RuntimeUpdateWIFIState(ctx) {
+		return
+	}
+	r.runtimeUpdateStableWIFI(ctx)
+}
+
+func (r *NetworkManager) runtimeUpdateStableWIFI(ctx context.Context) {
 	var state adapter.WIFIState
 	if r.wifiMonitor != nil {
 		state = r.wifiMonitor.ReadWIFIState(ctx)
@@ -633,4 +658,8 @@ func (r *NetworkManager) cancelPowerUpdate() {
 
 func (r *NetworkManager) OnPackagesUpdated(packages int, sharedUsers int) {
 	r.logger.Info("updated packages list: ", packages, " packages, ", sharedUsers, " shared users")
+}
+
+func (r *NetworkManager) runtimeStableWIFIAvailable() bool {
+	return r.needWIFIState && (r.wifiMonitorStarted && r.wifiMonitor != nil || r.platformInterface != nil && r.platformInterface.UsePlatformWIFIMonitor())
 }

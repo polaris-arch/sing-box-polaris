@@ -374,12 +374,7 @@ func runtimeTestEmptySourceTransitions(t *testing.T, format string) {
 	}
 	replace := func(content []byte) {
 		t.Helper()
-		if err := os.WriteFile(path+".next", content, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Rename(path+".next", path); err != nil {
-			t.Fatal(err)
-		}
+		r3SourceWrite(t, path, content)
 	}
 	replace(empty)
 	f := newRuntimeTestFixture(t, config, nil)
@@ -691,12 +686,7 @@ func TestRuntimeNonemptySRSUpdatesAndInvalidCandidatesPreserveOwners(t *testing.
 					}
 					lease.Release()
 				}
-				if err := os.WriteFile(path+".next", secondBytes, 0o600); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Rename(path+".next", path); err != nil {
-					t.Fatal(err)
-				}
+				r3SourceWrite(t, path, secondBytes)
 				runtimeTestProducer(t, f).signal()
 				select {
 				case id := <-committed:
