@@ -364,7 +364,7 @@ func runtimeClientTunShape(item map[string]stdjson.RawMessage, platform string) 
 			if len(name) == 0 || len(name) > 255 || !strings.Contains(name, ".") {
 				return false
 			}
-			for _, part := range strings.SplitSeq(name, ".") {
+			for part := range strings.SplitSeq(name, ".") {
 				if part == "" {
 					return false
 				}

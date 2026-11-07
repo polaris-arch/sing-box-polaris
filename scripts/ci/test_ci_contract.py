@@ -789,7 +789,7 @@ class TestCIContract(unittest.TestCase):
   self.assertIn('expected_sha=row[',text)
   self.assertIn('expected_modules=modules',text)
  def expected_lint_rules(self):
-  # Keep each reviewed boundary explicit: six SA1019 rules have distinct
+  # Keep each reviewed boundary explicit: eight SA1019 rules have distinct
   # path/diagnostic identities, so the diagnostic code alone is not a key.
   return {
    'http2':{
@@ -801,6 +801,16 @@ class TestCIContract(unittest.TestCase):
     'path':r'^common/httpclient/runtime_quic_tls\.go$',
     'text':r'^SA1019: \(crypto/tls\.Config\)\.Rand has been deprecated since Go 1\.27 and an alternative has been available since Go 1\.26: this should be left nil in production\. Not all TLS configurations are guaranteed to use Rand\. Test code can use \[testing/cryptotest\.SetGlobalRandom\] instead\. $',
     'source':r'^\s*(?:if value := config\.Rand; value != nil \{|config\.Rand = runtimeQUICReader\{value, fence\})$'},
+   'runtime-h2c-import':{
+    'linters':['staticcheck'],
+    'path':r'^service/api/runtime_handoff\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c is deprecated: This package is deprecated\. It is not maintained and should not be used\. $',
+    'source':r'^\s*(?:"golang\.org/x/net/http2/h2c")$'},
+   'runtime-h2c-handler':{
+    'linters':['staticcheck'],
+    'path':r'^service/api/runtime_handoff\.go$',
+    'text':r'^SA1019: golang\.org/x/net/http2/h2c\.NewHandler is deprecated: Set the \[http\.Server\] Protocols field to use unencrypted HTTP/2 instead\. $',
+    'source':r'^\s*(?:handler := h2c\.NewHandler\(next, new\(http2\.Server\)\))$'},
    'h2c-import':{
     'linters':['staticcheck'],
     'path':r'^protocol/naive/inbound_runtime_tcp\.go$',
@@ -832,7 +842,7 @@ class TestCIContract(unittest.TestCase):
   checks=config['linters']['settings']['staticcheck']['checks']
   self.assertIn('all',checks)
   for code in ['-SA1019','-ST1008']:self.assertNotIn(code,checks)
-  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),7)
+  rules=config['linters']['exclusions']['rules'];self.assertEqual(len(rules),9)
   expected=self.expected_lint_rules()
   self.assertCountEqual(rules,list(expected.values()))
   by_scope={(rule['path'],rule['text']):rule for rule in rules}
@@ -893,12 +903,18 @@ class TestCIContract(unittest.TestCase):
                  signature.replace('err error, report ConstructionReport','report ConstructionReport, err error'),
                  'return instance, err, report',signature+' // another line']:
    self.assertFalse(self.rule_matches(rule,'staticcheck','box.go',message,source))
- def test_reviewed_compatibility_exclusions_match_only_eight_exact_diagnostics(self):
+ def test_reviewed_compatibility_exclusions_match_only_ten_exact_diagnostics(self):
   rules=self.lint_rules()
   fixtures=[
    ('tls-rand','common/httpclient/runtime_quic_tls.go',
     'SA1019: (crypto/tls.Config).Rand has been deprecated since Go 1.27 and an alternative has been available since Go 1.26: this should be left nil in production. Not all TLS configurations are guaranteed to use Rand. Test code can use [testing/cryptotest.SetGlobalRandom] instead.',
     ['if value := config.Rand; value != nil {','config.Rand = runtimeQUICReader{value, fence}']),
+   ('runtime-h2c-import','service/api/runtime_handoff.go',
+    'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
+    ['"golang.org/x/net/http2/h2c"']),
+   ('runtime-h2c-handler','service/api/runtime_handoff.go',
+    'SA1019: golang.org/x/net/http2/h2c.NewHandler is deprecated: Set the [http.Server] Protocols field to use unencrypted HTTP/2 instead.',
+    ['handler := h2c.NewHandler(next, new(http2.Server))']),
    ('h2c-import','protocol/naive/inbound_runtime_tcp.go',
     'SA1019: golang.org/x/net/http2/h2c is deprecated: This package is deprecated. It is not maintained and should not be used.',
     ['"golang.org/x/net/http2/h2c"']),
@@ -940,8 +956,8 @@ class TestCIContract(unittest.TestCase):
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,other_message,source))
      for other_source in ['',source+' // another statement','prefix '+source,'unrelated()']:
       self.assertFalse(self.rule_matches(rule,'staticcheck',path,message,other_source))
-  self.assertEqual(len(matched),8)
-  self.assertEqual(len({(row[1],row[2]) for row in matched}),7)
+  self.assertEqual(len(matched),10)
+  self.assertEqual(len({(row[1],row[2]) for row in matched}),9)
   # The rejected server-only field must not inherit the client Rand exception.
   message='SA1019: (crypto/tls.Config).NameToCertificate has been deprecated since Go 1.14: NameToCertificate only allows associating a single certificate with a given name. Leave this field nil to let the library select the first compatible chain from Certificates.'
   self.assertFalse(any(self.rule_matches(rule,'staticcheck','common/httpclient/runtime_quic_tls.go',
