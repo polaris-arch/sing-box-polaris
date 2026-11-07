@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "archiveMember": "apk-tools-v3.0.9/LICENSE",
+      "bytes": 17622,
+      "path": "notices/apk-tools-v3.0.9/LICENSE",
+      "sha256": "b3c87315aae4c9f276c37168f2655dd8bd990544d7a0bbfb929664155c7ab257",
+      "sourceArchivePath": "sources/apk-tools-v3.0.9.tar.gz",
+      "sourceArchiveSHA256": "0063029a3eb228fd494b6804613ac53c30372a1a79ac83e23cefa78368767726"
+    }
+  ],
+  "historicalNoticesUnmodified": true,
+  "legalConclusion": false,
+  "newNotices": 1,
+  "producerAttempt": 1,
+  "producerRunId": 42315358374,
+  "recipeSourceOnlyOrigins": [
+    "alpine-base"
+  ],
+  "references": [
+    {
+      "bytes": 2083,
+      "path": "release/dependency-sources/oci/selections/41379223932-attempt1/notice-inventory.json",
+      "sha256": "875a57354588d22e8f387df52e15b001fe3dbd3d2d443ac77778404d12fc4a38"
+    }
+  ],
+  "schema": "polaris-exact-oci-12.19-notice-inventory-v1",
+  "sourceCommit": "d8727ed53de26cfd13c95f96d0a69235792d221b"
+}
