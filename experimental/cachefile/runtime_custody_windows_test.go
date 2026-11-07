@@ -9,7 +9,6 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/sagernet/bbolt"
 	bboltErrors "github.com/sagernet/bbolt/errors"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
