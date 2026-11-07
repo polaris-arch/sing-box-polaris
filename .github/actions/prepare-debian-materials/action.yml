@@ -2,11 +2,11 @@ name: Prepare exact Debian raw inputs
 description: Authenticate exact profiles, checkpoint complete raw data, then bind READY to its upload.
 inputs:
   materials-only:
-    description: All-role preparation permits bounded cold acquisition; Final is strict candidate-only
+    description: Independent all-role Materials preparation; optional exact seed or bounded cold acquisition
     required: false
     default: 'false'
   checkpoint-artifact-id:
-    description: Completed all-role Materials candidate ID; optional preparation resume, mandatory Final
+    description: Optional completed all-role Materials seed ID; absent seed uses bounded authenticated origin acquisition
     required: false
     default: ''
   checkpoint-artifact-digest:

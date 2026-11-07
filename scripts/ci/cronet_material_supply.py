@@ -1100,9 +1100,9 @@ def _materials_run(context, run, artifact, deadline):
 
 
 def _seed_checkpoint(args, context, output, *, profiles=None, prepared=False):
-    require(bool(args.checkpoint_artifact_id) == bool(args.checkpoint_artifact_digest),
+    require((args.checkpoint_artifact_id is None) == (args.checkpoint_artifact_digest is None),
             "checkpoint ID/digest pair")
-    if not args.checkpoint_artifact_id:
+    if args.checkpoint_artifact_id is None:
         return None
     integer(args.checkpoint_artifact_id, positive=True)
     expected_digest = normalize_digest(args.checkpoint_artifact_digest)
@@ -1167,8 +1167,6 @@ def prepare(args):
     _fresh_stage(args.cronet_root)
     materials_only = args.materials_only
     require(not materials_only or args.role == "all", "Materials prepares the all-role union only")
-    require(materials_only or (args.checkpoint_artifact_id and args.checkpoint_artifact_digest),
-            "Final NOT_READY: explicit prepared candidate ID/digest required")
     deadline = time.monotonic() + PREPARE_SECONDS
     output = new_directory(args.output)
     new_directory(output / "objects")
@@ -1179,8 +1177,8 @@ def prepare(args):
     primary = None
     try:
         _seed_checkpoint(args, context, output, prepared=True)
-        receipts = _profiles(args.cronet_root, manifest["requiredProfiles"], output, materials_only, deadline,
-                             independent=True)
+        receipts = _profiles(args.cronet_root, manifest["requiredProfiles"], output,
+                             materials_only or not args.checkpoint_artifact_id, deadline, independent=True)
         manifest = decode_json(read_regular(output / MANIFEST))
         # Discard seed candidates not actually selected/reverified this time.
         required = {url for profile in receipts for url in profile["urls"]}
@@ -1279,8 +1277,6 @@ def consume_local(args):
                     ("SYSROOT_ARCH", "target_os", "target_cpu", "EXTRA_FLAGS", "OPENWRT_FLAGS",
                      "POLARIS_CRONET_CAPTURE_DIR", "POLARIS_CRONET_CAPTURE_PROFILE", "POLARIS_CRONET_RAW_STORE")),
             "fresh local consumer environment")
-    require(args.checkpoint_artifact_id and args.checkpoint_artifact_digest,
-            "consumer NOT_READY: explicit prepared candidate ID/digest required")
     artifact, expected = resolve_consumer(args.role, args.caller, args.target_arch, args.libc)
     consumer = _consumer_job(context, args.caller, time.monotonic() + 120, artifact_name=artifact)
     output = new_directory(args.output)
@@ -1293,7 +1289,7 @@ def consume_local(args):
                 "state": "PARTIAL", "objects": [], "profiles": [], "seed": None}
     write_new(raw_store / MANIFEST, encode_json(manifest))
     _seed_checkpoint(args, context, raw_store, profiles=expected["profiles"], prepared=True)
-    receipts = _profiles(args.cronet_root, expected["profiles"], raw_store, False,
+    receipts = _profiles(args.cronet_root, expected["profiles"], raw_store, not args.checkpoint_artifact_id,
                          time.monotonic() + min(PREPARE_SECONDS, PROFILE_SECONDS * len(expected["profiles"])))
     manifest = decode_json(read_regular(raw_store / MANIFEST))
     urls = {url for receipt in receipts for url in receipt["urls"]}
@@ -1382,7 +1378,7 @@ def main():
     command.add_argument("--checkpoint-artifact-id", type=int)
     command.add_argument("--checkpoint-artifact-digest")
     command.add_argument("--materials-only", action="store_true",
-                         help="All-role preparation only; permits bounded cold origin acquisition")
+                         help="Prepare the independent all-role Materials union")
     command = sub.add_parser("ready")
     command.add_argument("--input", type=Path, required=True)
     command.add_argument("--raw-artifact-id", type=int, required=True)
@@ -1396,8 +1392,8 @@ def main():
             command.add_argument("--ready-artifact-id", type=int, required=True)
             command.add_argument("--ready-artifact-digest", required=True)
         else:
-            command.add_argument("--checkpoint-artifact-id", type=int, required=True)
-            command.add_argument("--checkpoint-artifact-digest", required=True)
+            command.add_argument("--checkpoint-artifact-id", type=int)
+            command.add_argument("--checkpoint-artifact-digest")
         command.add_argument("--caller", choices=("C1_ALL_BINARY", "C2_ALL_LINUX_CLIENT", "C3_LINUX", "C4_DOCKER"), required=True)
         command.add_argument("--target-arch", required=True)
         command.add_argument("--libc", choices=("glibc", "musl"), required=True)

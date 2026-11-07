@@ -76,10 +76,6 @@ jobs:
           echo "Debian candidate is only allowed for Materials or required Final" >&2
           exit 1
         fi
-        if [[ "$REQUIRED" == "true" && "$MATERIALS_ONLY" != "true" && -z "$CHECKPOINT_ARTIFACT_ID" ]]; then
-          echo "Final NOT_READY: an explicit completed Materials candidate is required" >&2
-          exit 1
-        fi
         printf 'required=%s\n' "$REQUIRED" >> "$GITHUB_OUTPUT"
   debian_materials:
     name: Supply verified Debian raw inputs
@@ -236,10 +232,14 @@ jobs:
       run: |
         set -xeuo pipefail
         if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
+          checkpoint_args=()
+          if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+            checkpoint_args=(--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST")
+          fi
           python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
             --cronet-root "$HOME/cronet-go" --role linux \
             --caller C3_LINUX --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
-            --checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST" \
+            "${checkpoint_args[@]}" \
             --output "$RUNNER_TEMP/debian-material-use"
           export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
         fi
@@ -394,7 +394,7 @@ jobs:
   workflow_dispatch:
     inputs:
       debian_checkpoint_artifact_id:
-        description: Exact completed Materials raw candidate ID; optional resume in Materials, mandatory in Final
+        description: Optional exact Materials raw seed ID; without a seed authenticate required profiles at origin
         type: string
         required: false
         default: ''

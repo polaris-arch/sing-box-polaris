@@ -219,23 +219,26 @@ class LocalOriginalUseTests(unittest.TestCase):
                                                output / "missing", bootstrap.load_policy())
             self.assertEqual(dict(os.environ), before)
 
-    def test_local_cli_requires_candidate_pair_and_rejects_ready_or_profile_override(self):
+    def test_local_cli_accepts_optional_seed_and_rejects_ready_or_profile_override(self):
         common = ["--cronet-root", "/fixture", "--role", "linux", "--caller", "C3_LINUX",
                   "--target-arch", "amd64", "--libc", "musl", "--output", "/fixture-out"]
         for command, extra in [("consume", []), ("consume-local", ["--ready-artifact-id", "1"]),
-                               ("consume-local", ["--checkpoint-artifact-id", "1"]),
+                               ("consume-local", ["--checkpoint-artifact-id", "not-an-integer"]),
                                ("consume-local", ["--profiles", "sid-loong64"])]:
             with self.subTest(command=command, extra=extra), \
                  mock.patch("sys.argv", ["cronet_material_supply.py", command, *common, *extra]), \
                  self.assertRaises(SystemExit), mock.patch.object(supply, "_prepared") as prepared:
                 supply.main()
             prepared.assert_not_called()
-        with mock.patch("sys.argv", ["cronet_material_supply.py", "consume-local", *common,
-                         "--checkpoint-artifact-id", "2001", "--checkpoint-artifact-digest", "a" * 64]), \
-             mock.patch.object(supply, "consume_local") as consume:
-            supply.main()
-        self.assertEqual(consume.call_args.args[0].checkpoint_artifact_id, 2001)
-        self.assertEqual(consume.call_args.args[0].checkpoint_artifact_digest, "a" * 64)
+        for extra, expected in (([], (None, None)),
+                                (["--checkpoint-artifact-id", "2001", "--checkpoint-artifact-digest", "a" * 64],
+                                 (2001, "a" * 64))):
+            with self.subTest(extra=extra), \
+                 mock.patch("sys.argv", ["cronet_material_supply.py", "consume-local", *common, *extra]), \
+                 mock.patch.object(supply, "consume_local") as consume:
+                supply.main()
+            self.assertEqual((consume.call_args.args[0].checkpoint_artifact_id,
+                              consume.call_args.args[0].checkpoint_artifact_digest), expected)
 
     def test_local_entry_rejects_inherited_capture_before_any_worker(self):
         bundle = fixture_bundle("linux")
@@ -740,7 +743,8 @@ class ExplicitCheckpointTests(unittest.TestCase):
 
     def test_checkpoint_pair_is_explicit_default_empty(self):
         context = fixture_bundle()["context"]
-        for artifact_id, artifact_digest in ((2001, None), (None, "a" * 64), (-1, "a" * 64)):
+        for artifact_id, artifact_digest in ((2001, None), (None, "a" * 64), (-1, "a" * 64),
+                                             (0, None), (None, "")):
             args = argparse.Namespace(checkpoint_artifact_id=artifact_id, checkpoint_artifact_digest=artifact_digest)
             with self.subTest(artifact_id=artifact_id), mock.patch.object(supply, "_api") as transport:
                 with self.assertRaises(ValueError):
@@ -908,23 +912,95 @@ class PreparedCandidateTests(unittest.TestCase):
                 self.assertEqual(manifest["seed"]["context"], bundle["context"])
                 self.assertFalse((args.output / supply.READY).exists())
 
-    def test_final_and_local_empty_pair_stop_before_profiles(self):
+    def test_materials_only_still_requires_the_all_role_union(self):
         bundle = self.candidate()
         with tempfile.TemporaryDirectory() as temporary:
-            args = self.args(bundle, "all", Path(temporary)); args.checkpoint_artifact_id = None
-            args.checkpoint_artifact_digest = None
-            with mock.patch.dict(os.environ, {}, clear=True), \
-                 mock.patch.object(supply, "actions_context", return_value=self.context(bundle, "all")), \
-                 mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
-                 mock.patch.object(supply, "_profiles") as worker:
-                with self.assertRaisesRegex(ValueError, "NOT_READY"): supply.prepare(args)
-                with self.assertRaisesRegex(ValueError, "NOT_READY"): supply.consume_local(args)
-                worker.assert_not_called()
-            args.materials_only = True; args.role = "linux"
+            args = self.args(bundle, "linux", Path(temporary)); args.materials_only = True
             with mock.patch.object(supply, "actions_context", return_value=self.context(bundle, "linux")), \
                  mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
                  self.assertRaisesRegex(ValueError, "all-role union"):
                 supply.prepare(args)
+
+    def test_explicit_bad_seed_never_falls_back_in_supplier_or_consumer(self):
+        for entry in (supply.prepare, supply.consume_local):
+            for failure, artifact_id, artifact_digest, guard in (
+                    ("digest", 2001, "e" * 64, "explicit checkpoint ID/digest"),
+                    ("pair", 2001, None, "checkpoint ID/digest pair"),
+                    ("zero-without-digest", 0, None, "checkpoint ID/digest pair"),
+                    ("empty-digest-without-id", None, "", "checkpoint ID/digest pair")):
+                with self.subTest(entry=entry.__name__, failure=failure), tempfile.TemporaryDirectory() as temporary:
+                    bundle = self.candidate(); root = Path(temporary); context = self.context(bundle, "all")
+                    args = self.args(bundle, "all", root)
+                    args.caller = "C1_ALL_BINARY"; args.target_arch = "arm64"; args.libc = "glibc"
+                    args.checkpoint_artifact_id = artifact_id; args.checkpoint_artifact_digest = artifact_digest
+                    with self.transport(bundle), mock.patch.dict(os.environ, {}, clear=True), \
+                         mock.patch.object(supply, "actions_context", return_value=context), \
+                         mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                         mock.patch.object(supply, "_consumer_job", return_value={"id": 4001, "key": "build",
+                                           "name": "Build binary", "runner": "fixture"}), \
+                         mock.patch.object(supply, "_profiles") as worker, \
+                         mock.patch.object(bootstrap, "download_file") as origin, \
+                         self.assertRaisesRegex(ValueError, "^Debian material admission: " + guard + "$"):
+                        entry(args)
+                    worker.assert_not_called()
+                    origin.assert_not_called()
+                    self.assertFalse((args.output / "use.json").exists())
+                    self.assertFalse((args.output / supply.READY).exists())
+
+    def test_cold_consumer_captures_only_own_profiles_and_rejects_invalid_original_receipts(self):
+        for role, artifact, own in (("all", "binary-linux_arm64-glibc", ["bullseye-amd64", "bullseye-arm64"]),
+                                    ("linux", "binary-linux_arm64", ["bullseye-amd64"]),
+                                    ("docker", "binary-linux-arm64", ["bullseye-amd64"])):
+            for invalid in (False, True):
+                with self.subTest(role=role, invalid=invalid), tempfile.TemporaryDirectory() as temporary:
+                    bundle = fixture_bundle(role); root = Path(temporary); expected = supply.expected_use(role, artifact)
+                    self.assertEqual(expected["profiles"], own)
+                    args = self.args(bundle, role, root); args.checkpoint_artifact_id = None
+                    args.checkpoint_artifact_digest = None
+                    args.caller = expected["caller"]; args.target_arch = expected["targetArch"]; args.libc = expected["libc"]
+                    wire = fixture_local_use(bundle, artifact); attempted = []
+                    class Child:
+                        pid = 4567
+                        def __init__(child, command, env, start_new_session):
+                            child.profile = command[command.index("--profile") + 1]
+                            child.receipt = Path(command[command.index("--receipt") + 1])
+                            child.env = env; child.returncode = None; attempted.append(child.profile)
+                            self.assertIn(child.profile, own)
+                            self.assertEqual(env["POLARIS_CRONET_CAPTURE_PROFILE"], child.profile)
+                            self.assertEqual(env["POLARIS_CRONET_CAPTURE_DIR"], str(args.output / "raw"))
+                        def wait(child, timeout):
+                            self.assertGreater(timeout, 0); self.assertLessEqual(timeout, supply.PROFILE_SECONDS)
+                            receipt = copy.deepcopy(next(p for p in bundle["manifest"]["profiles"] if p["id"] == child.profile))
+                            with mock.patch.dict(os.environ, child.env, clear=True):
+                                for number, url in enumerate(receipt["urls"]):
+                                    destination = child.receipt.parent / ("body-" + str(number))
+                                    destination.write_bytes(bundle["payloads"][url])
+                                    bootstrap._capture_candidate(url, destination, bootstrap.load_policy())
+                            if invalid: receipt["verified"] = False
+                            supply.write_new(child.receipt, supply.encode_json(receipt))
+                            child.returncode = 0; return 0
+                        def poll(child): return child.returncode
+                    with mock.patch.dict(os.environ, {}, clear=True), \
+                         mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
+                         mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                         mock.patch.object(supply, "_consumer_job", return_value=wire["consumerJob"]), \
+                         mock.patch.object(supply, "_api", side_effect=AssertionError("cold consumer must not select a candidate")), \
+                         mock.patch.object(supply.subprocess, "Popen", side_effect=Child):
+                        if invalid:
+                            with self.assertRaisesRegex(ValueError, "^Debian material admission: profile original verification$"):
+                                supply.consume_local(args)
+                        else:
+                            supply.consume_local(args)
+                    self.assertEqual(attempted, own[:1] if invalid else own)
+                    if invalid:
+                        self.assertFalse((args.output / "use.json").exists())
+                    else:
+                        use = supply.decode_json(supply.read_regular(args.output / "use.json"))
+                        self.assertIsNone(use["manifest"]["seed"])
+                        self.assertEqual(use["requiredProfiles"], own)
+                        self.assertTrue(all(set(item["profiles"]) <= set(own) for item in use["manifest"]["objects"]))
+                        LocalOriginalUseTests().validate(bundle, artifact, use)
+                        self.assertFalse((args.output / supply.READY).exists())
 
     def test_partial_missing_own_profile_never_contacts_origin_and_auth_failure_has_no_use(self):
         for failure in ("none", "missing", "authentication"):
@@ -1016,46 +1092,47 @@ class PreparedCandidateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "prepared candidate identity"):
                     LocalOriginalUseTests().validate(canonical, artifact, wrong)
 
-    def test_materials_attempts_other_profiles_once_preserves_complete_raw_and_reports_failure(self):
-        bundle = fixture_bundle("all")
-        profile_ids = bundle["manifest"]["requiredProfiles"]
-        for failed in (profile_ids[0], profile_ids[3], None):
-            with self.subTest(failed=failed), tempfile.TemporaryDirectory() as temporary:
-                root = Path(temporary); args = self.args(bundle, "all", root)
-                args.materials_only = True; args.checkpoint_artifact_id = None; args.checkpoint_artifact_digest = None
-                attempted = []
-                class Child:
-                    pid = 4567
-                    def __init__(self, command, env, start_new_session):
-                        self.profile = command[command.index("--profile") + 1]
-                        self.receipt = Path(command[command.index("--receipt") + 1])
-                        self.env = env; self.returncode = None; attempted.append(self.profile)
-                    def wait(child, timeout):
-                        self.assertGreater(timeout, 0); self.assertLessEqual(timeout, supply.PROFILE_SECONDS)
-                        receipt = next(p for p in bundle["manifest"]["profiles"] if p["id"] == child.profile)
-                        urls = receipt["urls"][:1] if child.profile == failed else receipt["urls"]
-                        with mock.patch.dict(os.environ, child.env, clear=True):
-                            for number, url in enumerate(urls):
-                                destination = child.receipt.parent / ("body-" + str(number))
-                                destination.write_bytes(bundle["payloads"][url])
-                                bootstrap._capture_candidate(url, destination, bootstrap.load_policy())
-                        child.returncode = 1 if child.profile == failed else 0
-                        if child.returncode == 0: supply.write_new(child.receipt, supply.encode_json(receipt))
-                        return child.returncode
-                    def poll(child): return child.returncode
-                with mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
-                     mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
-                     mock.patch.object(supply.subprocess, "Popen", side_effect=Child):
-                    if failed is None: supply.prepare(args)
-                    else:
-                        with self.assertRaisesRegex(ValueError, "profiles NOT_READY"): supply.prepare(args)
-                self.assertEqual(attempted, profile_ids)
-                manifest = supply.decode_json(supply.read_regular(args.output / supply.MANIFEST))
-                self.assertEqual([p["id"] for p in manifest["profiles"]], [p for p in profile_ids if p != failed])
-                self.assertEqual(manifest["state"], "VERIFIED" if failed is None else "PARTIAL")
-                supply.validate_manifest(manifest, context=bundle["context"],
-                                         measurements=supply._measure_local(args.output, manifest))
-                self.assertFalse((args.output / supply.READY).exists())
+    def test_cold_supplier_union_preserves_complete_raw_and_reports_each_profile_failure(self):
+        for role, materials_only in (("all", True), ("all", False), ("linux", False), ("docker", False)):
+            bundle = fixture_bundle(role)
+            profile_ids = bundle["manifest"]["requiredProfiles"]
+            for failed in dict.fromkeys((profile_ids[0], profile_ids[min(3, len(profile_ids) - 1)], None)):
+                with self.subTest(failed=failed), tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary); args = self.args(bundle, role, root)
+                    args.materials_only = materials_only; args.checkpoint_artifact_id = None; args.checkpoint_artifact_digest = None
+                    attempted = []
+                    class Child:
+                        pid = 4567
+                        def __init__(self, command, env, start_new_session):
+                            self.profile = command[command.index("--profile") + 1]
+                            self.receipt = Path(command[command.index("--receipt") + 1])
+                            self.env = env; self.returncode = None; attempted.append(self.profile)
+                        def wait(child, timeout):
+                            self.assertGreater(timeout, 0); self.assertLessEqual(timeout, supply.PROFILE_SECONDS)
+                            receipt = next(p for p in bundle["manifest"]["profiles"] if p["id"] == child.profile)
+                            urls = receipt["urls"][:1] if child.profile == failed else receipt["urls"]
+                            with mock.patch.dict(os.environ, child.env, clear=True):
+                                for number, url in enumerate(urls):
+                                    destination = child.receipt.parent / ("body-" + str(number))
+                                    destination.write_bytes(bundle["payloads"][url])
+                                    bootstrap._capture_candidate(url, destination, bootstrap.load_policy())
+                            child.returncode = 1 if child.profile == failed else 0
+                            if child.returncode == 0: supply.write_new(child.receipt, supply.encode_json(receipt))
+                            return child.returncode
+                        def poll(child): return child.returncode
+                    with mock.patch.object(supply, "actions_context", return_value=bundle["context"]), \
+                         mock.patch.object(supply, "_prepared"), mock.patch.object(supply, "_fresh_stage"), \
+                         mock.patch.object(supply.subprocess, "Popen", side_effect=Child):
+                        if failed is None: supply.prepare(args)
+                        else:
+                            with self.assertRaisesRegex(ValueError, "profiles NOT_READY"): supply.prepare(args)
+                    self.assertEqual(attempted, profile_ids)
+                    manifest = supply.decode_json(supply.read_regular(args.output / supply.MANIFEST))
+                    self.assertEqual([p["id"] for p in manifest["profiles"]], [p for p in profile_ids if p != failed])
+                    self.assertEqual(manifest["state"], "VERIFIED" if failed is None else "PARTIAL")
+                    supply.validate_manifest(manifest, context=bundle["context"],
+                                             measurements=supply._measure_local(args.output, manifest))
+                    self.assertFalse((args.output / supply.READY).exists())
 
     def test_profile_timeout_cleanup_and_whole_deadline_never_expand_preparation(self):
         bundle = fixture_bundle("all"); ids = bundle["manifest"]["requiredProfiles"]

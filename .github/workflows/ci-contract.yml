@@ -17,6 +17,7 @@ jobs:
         python-version: '3.12'
     - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
     - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
+    - run: python -B -m unittest discover -s scripts/ci -p 'test_cronet_material_supply.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
     - name: Require cold zero-fuzz Go patch controls
       shell: bash

@@ -1892,11 +1892,10 @@ class TestDebianMaterialWiring(unittest.TestCase):
       out=Path(tmp)/'output'
       env=dict(os.environ,REQUIRED=required,MATERIALS_ONLY='false',SOURCE_GENERATE_ONLY='false',WINDOWS_NATIVE_PROOF='false',CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,GITHUB_OUTPUT=str(out))
       result=subprocess.run(['bash','-euo','pipefail','-c',mode['run']],env=env,capture_output=True,text=True,timeout=10)
-      allowed=(required=='true' and bool(artifact_id) and bool(digest)) or (required=='false' and not artifact_id and not digest)
+      allowed=(required=='true' and bool(artifact_id)==bool(digest)) or (required=='false' and not artifact_id and not digest)
       if required not in ('true','false'):guard='invalid Debian material mode'
       elif bool(artifact_id)!=bool(digest):guard='Debian candidate requires both artifact ID and digest'
       elif required=='false' and artifact_id:guard='Debian candidate is only allowed for Materials or required Final'
-      elif required=='true' and not artifact_id:guard='Final NOT_READY: an explicit completed Materials candidate is required'
       else:guard=None
       self.assertEqual(guard is None,allowed)
       self.assertEqual(result.returncode,0 if allowed else 1)
@@ -1904,7 +1903,7 @@ class TestDebianMaterialWiring(unittest.TestCase):
       self.assertEqual(result.stdout,'')
       self.assertEqual(out.read_text() if out.exists() else '',('required='+required+'\n') if allowed else '')
       if allowed:accepted.add((required,bool(artifact_id)))
-   self.assertEqual(accepted,{('true',True),('false',False)})
+   self.assertEqual(accepted,{('true',True),('true',False),('false',False)})
   # Source/Source-generate never reaches calculate_version; each real Source
   # entry therefore rejects nonempty seed inputs before checkout/preparation.
   for name in ('source_proto','source_gate','utls_gate'):
@@ -2060,6 +2059,21 @@ class TestDebianMaterialWiring(unittest.TestCase):
    self.assertIn('--checkpoint-artifact-id \"$CHECKPOINT_ARTIFACT_ID\" --checkpoint-artifact-digest \"$CHECKPOINT_DIGEST\"',run)
    self.assertEqual(download['env']['CHECKPOINT_ARTIFACT_ID'],'${{ inputs.debian_checkpoint_artifact_id }}')
    self.assertEqual(download['env']['CHECKPOINT_DIGEST'],'${{ inputs.debian_checkpoint_digest }}')
+   # Exercise the actual argument assembly without invoking the product CLI.
+   fragment=run[run.index('checkpoint_args=()'):run.index('export POLARIS_CRONET_RAW_STORE=')]
+   for artifact_id,digest in (('',''),('123','a'*64),('123',''),('','a'*64)):
+    env=dict(os.environ,GITHUB_WORKSPACE='/fixture',HOME='/fixture-home',RUNNER_TEMP='/fixture-temp',
+             CHECKPOINT_ARTIFACT_ID=artifact_id,CHECKPOINT_DIGEST=digest,MATERIAL_TARGET_ARCH='arm64',MATERIAL_LIBC='musl')
+    result=subprocess.run(['bash','-euo','pipefail','-c','python3() { printf \'%s\\n\' "$@"; }\n'+fragment],
+                          env=env,capture_output=True,text=True,timeout=10)
+    expected=['/fixture/scripts/ci/cronet_material_supply.py','consume-local','--cronet-root','/fixture-home/cronet-go',
+              '--role',role,'--caller',caller,'--target-arch','arm64','--libc','musl']
+    if artifact_id or digest:
+     expected+=['--checkpoint-artifact-id',artifact_id,'--checkpoint-artifact-digest',digest]
+    expected+=['--output','/fixture-temp/debian-material-use']
+    with self.subTest(path=path,caller=caller,artifact_id=artifact_id,digest=digest):
+     self.assertEqual(result.returncode,0);self.assertEqual(result.stderr,'')
+     self.assertEqual(result.stdout.splitlines(),expected)
    self.assertEqual(job['permissions'],{'contents':'read','actions':'read'})
    keep=next(s for s in steps if s.get('name')=='Retain exact Debian material use')
    self.assertEqual(keep['if'],"${{ needs."+parent+".outputs.material_required == 'true' && ("+eligible+') }}')
