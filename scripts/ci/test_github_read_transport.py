@@ -145,5 +145,21 @@ class ReadTransportTests(unittest.TestCase):
             t.read_get('rate_limit',io.BytesIO(),100);t.read_get('repos/polaris-arch/sing-box-polaris',io.BytesIO(),100);t.read_get(self.path+'?per_page=100&page=2',io.BytesIO(),100)
             self.assertEqual(call.call_count,3)
 
+    def test_metadata_time_limits_can_only_reduce_existing_transport_budget(self):
+        for field, value in [('attempt_seconds', 601), ('total_seconds', 1321), ('max_retry_wait', 121),
+                             ('attempt_seconds', 0), ('total_seconds', True), ('max_retry_wait', float('nan'))]:
+            with self.subTest(field=field, value=value), mock.patch.object(t, '_attempt') as call:
+                with self.assertRaises(t.ReadFailure):
+                    t.read_get(self.path, io.BytesIO(), 100, **{field: value})
+                call.assert_not_called()
+        with mock.patch.object(t, '_attempt', return_value={'status':200,'headers':{},'bytes':2,'sha256':'x'}) as call:
+            t.read_get(self.path, io.BytesIO(), 100, attempt_seconds=15, total_seconds=45, max_retry_wait=4)
+            self.assertLessEqual(call.call_args.args[-1], 15)
+        with mock.patch.object(t, '_attempt', side_effect=t.ReadFailure('HTTP response',503,{'retry-after':'5'},True)) as call, \
+             mock.patch.object(t.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(t.ReadFailure, 'budget'):
+                t.read_get(self.path, io.BytesIO(), 100, budget=t.RetryBudget(), attempt_seconds=15, total_seconds=45, max_retry_wait=4)
+            call.assert_called_once(); sleep.assert_not_called()
+
 
 if __name__=='__main__':unittest.main()

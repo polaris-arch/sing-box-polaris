@@ -120,7 +120,7 @@ func runtimeClosePipe(t *testing.T) *runtimeCloseConn {
 
 func TestRuntimeProtocolCloseDrainsGraphAndCapturedDependencies(t *testing.T) {
 	for _, version := range []int{4, 6} {
-		for mode := 0; mode < 3; mode++ {
+		for mode := range 3 {
 			for _, reuse := range []bool{false, true} {
 				t.Run(fmt.Sprintf("v%d/mode%d/reuse%t", version, mode, reuse), func(t *testing.T) {
 					raw := runtimeClosePipe(t)

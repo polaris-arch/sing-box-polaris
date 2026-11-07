@@ -21,9 +21,9 @@ import subprocess
 import tempfile
 import threading
 import time
-import urllib.request
 from protocol_peer_diagnostic import event, safe_log_observation, safe_to_continue
 from protocol_peer_netlog import NativeObservationIdentityError, NativeObservationEvidenceError, failure_category
+from protocol_peer_cases import case_matrix
 
 
 SUITE_DEADLINE = None
@@ -1622,28 +1622,14 @@ def verify_same_run_context(root, row, diagnostic=False):
             'runAttempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'workflowCommit': os.environ['GITHUB_WORKFLOW_SHA']}
 
 
-def artifact_metadata(context):
-    # Public metadata of this exact repository/run; no additional token permission.
-    name = 'binary-linux_amd64-purego'
-    matches = []
-    for page in range(1, 5):
-        endpoint = f"repos/polaris-arch/sing-box-polaris/actions/runs/{context['runId']}/artifacts?per_page=100&page={page}"
-        request = urllib.request.Request('https://api.github.com/' + endpoint, headers={'Accept':'application/vnd.github+json','User-Agent':'polaris-controlled-peer'})
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read(2 * 1024 * 1024 + 1)
-        if len(raw) > 2 * 1024 * 1024: raise ValueError('artifact metadata exceeds bounded response')
-        result = json.loads(raw)
-        matches.extend(x for x in result['artifacts'] if x['name'] == name)
-        if len(result['artifacts']) < 100: break
-    else: raise ValueError('artifact inventory exceeded bounded pages')
-    if len(matches) != 1: raise ValueError('same-run Linux artifact is not unique')
-    item = matches[0]
-    if item.get('expired') or not re.fullmatch(r'sha256:[0-9a-f]{64}', item.get('digest','')):
-        raise ValueError('same-run artifact has no current immutable digest')
-    binding = item.get('workflow_run')
-    if binding and (binding.get('id') != context['runId'] or binding.get('head_sha') != context['sourceCommit']):
-        raise ValueError('artifact API producer source differs')
-    return {key:item[key] for key in ('id','name','digest','size_in_bytes','created_at','expires_at')}
+def artifact_metadata(context, admission, directory):
+    from native_peer_metadata import actions_context, bind_row, load
+    if admission is None:
+        raise ValueError('same-run artifact metadata admission missing')
+    actual = actions_context()
+    if any(actual[key] != context[key] for key in ('sourceCommit', 'workflowCommit', 'runId', 'runAttempt')):
+        raise ValueError('artifact admission and native runner context differ')
+    return load(admission, bind_row(directory, actual))
 
 
 def validate_executable_members(row, members):
@@ -1659,13 +1645,6 @@ def validate_executable_members(row, members):
         names.append(name)
     if names != ['sing-box', 'libcronet.so']:
         raise ValueError('Linux native smoke selected executable names differ')
-
-
-def case_matrix():
-    return [(kind,mutation) for kind in ('naive-h2','naive-h3','masque-h3','masque-h3-on-demand')
-            for mutation in ((None,) if kind.endswith('on-demand') else
-                (None,'wrong-auth','wrong-ca','wrong-sni') if kind.startswith('naive') else
-                (None,'wrong-auth','wrong-ca','wrong-sni','wrong-path'))]
 
 
 def execute_cases(receipt, execute, deadline):
@@ -1689,9 +1668,11 @@ def execute_cases(receipt, execute, deadline):
             blocked={'kind':kind,'mutation':mutation,'index':len(receipt['cases'])-1}
 
 
-def run_suite(directory, output, diagnostic=False):
+def run_suite(directory, output, diagnostic=False, admission=None):
     from native_release_index import read_archive, smoke_temp_directory
     root = Path(__file__).resolve().parents[2]
+    if any(os.environ.get(key) for key in ('GH_TOKEN', 'GITHUB_TOKEN')):
+        raise ValueError('native peer execution cannot inherit repository credentials')
     rows = list(directory.glob('native-row-*.json'))
     if len(rows) != 1: raise ValueError('requires one exact same-run native row')
     row_raw = rows[0].read_bytes(); row = json.loads(row_raw)
@@ -1704,7 +1685,7 @@ def run_suite(directory, output, diagnostic=False):
         if acquisition.get('producer')!=PRODUCER or acquisition.get('runner')!=context['runner']:
             raise ValueError('diagnostic artifact acquisition dual identity differs')
         actual_artifact=acquisition['artifact']
-    else: actual_artifact=artifact_metadata(context)
+    else: actual_artifact=artifact_metadata(context, admission, directory)
     archive = directory/row['archive']['name']
     if archive.parent != directory or digest(archive.read_bytes()) != row['archive']['sha256']:
         raise ValueError('same-run final archive identity differs')
@@ -1782,6 +1763,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory',type=Path,nargs='?')
     parser.add_argument('--output',type=Path)
+    parser.add_argument('--admission',type=Path)
     action=parser.add_mutually_exclusive_group()
     action.add_argument('--diagnostic',action='store_true')
     action.add_argument('--fetch-diagnostic',action='store_true')
@@ -1807,13 +1789,23 @@ def main():
             from protocol_peer_diagnostic import fetch_diagnostic
             fetch_diagnostic(args.directory.resolve(),Path(__file__).resolve().parents[2]);return
         if args.directory is None or output is None:parser.error('peer execution needs native directory and receipt output')
-        run_suite(args.directory.resolve(strict=True),output,args.diagnostic)
+        if args.diagnostic and args.admission is not None:parser.error('fixed diagnostic cannot consume same-run admission')
+        run_suite(args.directory.resolve(strict=True),output,args.diagnostic,args.admission)
     except Exception as error:
         if output is not None and not (output/'receipt.json').exists():
             output.mkdir(parents=True, exist_ok=True)
             from protocol_peer_diagnostic import safe_exception
+            known_context = {}
+            if stage == 'native_execution_preflight' and not args.diagnostic:
+                from native_peer_metadata import actions_context, bind_row
+                try:
+                    known_context = actions_context()
+                    known_context = bind_row(args.directory, known_context)
+                except Exception:
+                    pass  # Keep only the identity predicates already proved, never admit on this path.
             (output/'receipt.json').write_text(json.dumps({'schema':'polaris-native-controlled-peer-v1','status':'FAIL',
                 'stage':stage,'errorType':type(error).__name__,'error':safe_exception(error),'publicationEligible':False,
+                'context':known_context,
                 'cases':[{'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':stage+'_failed'} for kind,mutation in case_matrix()]},indent=2)+'\n')
         raise
 

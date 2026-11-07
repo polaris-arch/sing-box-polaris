@@ -595,6 +595,21 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			}
 		}
 	}
+	platformNode, platformErr := makeNode("platform-runtime", route.RuntimeRequirementsFor(routeOptions, dnsOptions), nil, false)
+	if platformErr != nil {
+		return nil, nil, platformErr
+	}
+	configs["platform-runtime"] = runtimeNodeOptions{node: platformNode}
+	for name, config := range configs {
+		capture := name == "route-router" || name == "dns-router" || config.ruleSet != nil
+		if config.transport != nil && config.transport.Type == C.DNSTypeLocal {
+			capture = true
+		}
+		if capture {
+			config.node.dependencies = append(config.node.dependencies, "platform-runtime")
+			configs[name] = config
+		}
+	}
 	// Outbound references may name an endpoint. Normalize only after the
 	// complete inventory exists, and reject ambiguous namespaces before creation.
 	endpointNames := make(map[string]string)

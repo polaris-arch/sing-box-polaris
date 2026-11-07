@@ -5,10 +5,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -292,6 +294,102 @@ func TestRuntimeAPIRealListenerHandoff(t *testing.T) {
 				} else {
 					_ = rebound.Close()
 				}
+			}
+		})
+	}
+}
+
+// Removing the secret must not turn an old credential into a fresh current-API
+// carrier. Exercise real original-transaction persistence work, not just Status
+// metadata: the old bearer must neither retry the callback nor attest durability.
+func TestRuntimeAPISecretRemovalKeepsOriginalPersistenceCustody(t *testing.T) {
+	for _, mode := range []string{"exact_configuration_file", "app_authoritative_regeneration"} {
+		t.Run(mode, func(t *testing.T) {
+			instance, api, content := newHandoffBox(t, "old")
+			var calls atomic.Int32
+			if err := instance.BindRuntimePersistenceOptions(func(box.RuntimeIdentity, []byte) error {
+				if calls.Add(1) == 1 {
+					return errors.New("transient original persistence failure")
+				}
+				if mode == "app_authoritative_regeneration" {
+					return &box.RuntimeOwnerAcknowledgementRequiredError{Mode: mode}
+				}
+				return nil
+			}, mode, true); err != nil {
+				t.Fatal(err)
+			}
+			if err := instance.Start(); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			address := api.listener.TCPListener().Addr().String()
+			original := handoffClient(t, address, "old")
+			plan := handoffPlan(t, ctx, original, strings.Replace(content, `"secret":"old"`, `"secret":""`, 1))
+			operation := applyHandoff(t, ctx, original, plan)
+			if operation.State != daemon.RuntimeOperationState_COMMITTED_DURABILITY_PENDING || operation.Durable || calls.Load() != 1 {
+				t.Fatal("fixture did not retain original persistence work", operation)
+			}
+			api.runtime.mu.Lock()
+			pending := api.runtime.pending
+			api.runtime.mu.Unlock()
+			if pending == nil {
+				t.Fatal("missing original listener handoff")
+			}
+			req := &daemon.RuntimeConfigStatusRequest{ContractVersion: 1, TransactionId: plan.TransactionId, RuntimeIncarnation: plan.Expected.Incarnation}
+			foreign := handoffClient(t, address, "old")
+			if _, err := foreign.GetRuntimeCapabilities(ctx, &emptypb.Empty{}); err == nil {
+				t.Fatal("retired credential entered ordinary current API")
+			}
+			var foreignHeaders metadata.MD
+			if _, err := foreign.GetRuntimeConfigStatus(ctx, req, grpc.Header(&foreignHeaders)); err == nil || len(foreignHeaders.Get(handoffPrefix+"key")) != 0 {
+				t.Fatal("fresh old credential acquired original receipt or key", err)
+			}
+			retry := &daemon.RuntimePersistenceRetryRequest{ContractVersion: 1, TransactionId: plan.TransactionId, Active: operation.Active, ControlRevision: operation.ControlRevision, PersistenceMode: mode}
+			if _, err := foreign.RetryRuntimePersistence(ctx, retry); err == nil || calls.Load() != 1 {
+				t.Fatal("fresh old credential retried original persistence callback", err, calls.Load())
+			}
+			// The actual current empty-secret API retains ordinary observation.
+			// Success alone is not proof of original recovery-key authority.
+			current := handoffClient(t, address, "")
+			var currentHeaders metadata.MD
+			observed, err := current.GetRuntimeConfigStatus(ctx, req, grpc.Header(&currentHeaders))
+			if err != nil || observed.LookupState != daemon.RuntimeLookupState_FOUND || observed.Operation == nil || observed.Operation.Durable || len(currentHeaders.Get(handoffPrefix+"key")) != 0 || len(currentHeaders.Get(handoffPrefix+"proof")) != 0 || len(currentHeaders.Get(handoffPrefix+"acknowledged")) != 0 {
+				t.Fatal("current empty-secret receipt observation changed", observed, err)
+			}
+			retried, err := original.RetryRuntimePersistence(ctx, retry)
+			if err != nil || calls.Load() != 2 || retried.TransactionId != plan.TransactionId || !proto.Equal(retried.Active, operation.Active) {
+				t.Fatal("original carrier lost its exact persistence callback", retried, err, calls.Load())
+			}
+			if mode == "app_authoritative_regeneration" {
+				if retried.Durable || !retried.OwnerReloadAcknowledged {
+					t.Fatal("reload receipt was confused with durable desired state", retried)
+				}
+				ack := &daemon.RuntimePersistenceAcknowledgementRequest{ContractVersion: 1, TransactionId: plan.TransactionId, Active: operation.Active, ControlRevision: operation.ControlRevision, PersistenceMode: mode, DesiredStateDigest: strings.Repeat("a", 64), DesiredStateRevision: "original-desired-1"}
+				if _, err := foreign.AcknowledgeRuntimePersistence(ctx, ack); err == nil {
+					t.Fatal("fresh old credential acknowledged original desired state")
+				}
+				stillPending, err := original.GetRuntimeConfigStatus(ctx, req)
+				if err != nil || stillPending.Operation == nil || stillPending.Operation.Durable || stillPending.Operation.DesiredStateDigest != "" {
+					t.Fatal("foreign acknowledgement changed original receipt", stillPending, err)
+				}
+				retried, err = original.AcknowledgeRuntimePersistence(ctx, ack)
+				if err != nil || retried.DesiredStateDigest != ack.DesiredStateDigest || retried.DesiredStateRevision != ack.DesiredStateRevision {
+					t.Fatal("original carrier lost desired-state acknowledgement", retried, err)
+				}
+			}
+			if !retried.Durable || retried.State != daemon.RuntimeOperationState_COMMITTED || retried.TransactionId != plan.TransactionId || !proto.Equal(retried.Active, operation.Active) || calls.Load() != 2 {
+				t.Fatal("original persistence work did not complete in place", retried, calls.Load())
+			}
+			var headers metadata.MD
+			if _, err := original.GetRuntimeConfigStatus(ctx, req, grpc.Header(&headers)); err != nil || len(headers.Get(handoffPrefix+"key")) != 1 {
+				t.Fatal("original recovery key custody lost", err)
+			}
+			api.runtime.mu.Lock()
+			retained := api.runtime.pending == pending && !pending.acknowledged && !pending.retiring
+			api.runtime.mu.Unlock()
+			if !retained {
+				t.Fatal("persistence acknowledgement retired the listener handoff")
 			}
 		})
 	}

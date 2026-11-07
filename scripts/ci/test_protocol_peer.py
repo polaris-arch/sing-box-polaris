@@ -39,6 +39,40 @@ def normal_build_matrix(matrix):
     return normal
 
 
+def workflow_job_text(source, name):
+    """Take one actual jobs sibling, independent of any later job's identity."""
+    roots=list(re.finditer(r'(?m)^jobs:[ \t]*(?:#[^\r\n]*)?$',source))
+    if len(roots)!=1:raise AssertionError('exactly one workflow jobs mapping required')
+    body=source[roots[0].end():]
+    end=re.search(r"(?m)^(?:[A-Za-z_][A-Za-z0-9_-]*|['\"][^'\"\r\n]+['\"]):",body)
+    if end is not None:body=body[:end.start()]
+    headers=list(re.finditer(r'(?m)^  ([A-Za-z_][A-Za-z0-9_-]*):[ \t]*(?:#[^\r\n]*)?$',body))
+    matches=[i for i,header in enumerate(headers) if header[1]==name]
+    if len(matches)!=1:raise AssertionError('unique workflow job required: '+name)
+    index=matches[0]
+    return body[headers[index].start():headers[index+1].start() if index+1<len(headers) else len(body)]
+
+
+def native_smoke_token_contract(workflow):
+    """Only the two named acquisition/metadata steps may receive GH_TOKEN."""
+    def mentions(value):
+        if isinstance(value,dict):return any(mentions(k) or mentions(v) for k,v in value.items())
+        if isinstance(value,list):return any(mentions(v) for v in value)
+        return isinstance(value,str) and 'GH_TOKEN' in value
+    job=workflow['jobs']['native_smoke']
+    if mentions(workflow.get('env',{})) or mentions(job.get('env',{})):
+        raise AssertionError('native peer execution cannot inherit GH_TOKEN')
+    names={'Acquire only the frozen original Linux carrier for QA',
+           'Acquire exact same-run Linux artifact metadata without native execution'}
+    token_steps=[step for step in job['steps'] if mentions(step)]
+    if len(token_steps)!=2 or {step.get('name') for step in token_steps}!=names:
+        raise AssertionError('GH_TOKEN must remain confined to two exact metadata steps')
+    for step in token_steps:
+        if step.get('env',{}).get('GH_TOKEN')!='${{ github.token }}':
+            raise AssertionError('native metadata token binding differs')
+    return token_steps
+
+
 def native_smoke_dependency_contract(workflow, source_dir=ROOT/'scripts/ci'):
     """Cover both peer modes and all smoke branches, without importing product code."""
     todo = ['test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic', 'native_release_index']
@@ -233,7 +267,58 @@ class ControlledPeerContracts(unittest.TestCase):
         self.assertEqual(external, {'yaml', 'jsonschema'})
         self.assertEqual(modules, {'test_protocol_peer', 'protocol_peer', 'protocol_peer_diagnostic', 'protocol_peer_netlog',
             'native_release_index', 'tls_fingerprint_probe', 'release_identity', 'polaris_version',
-            'apple_package_overlays', 'legacy_binary_version'})
+            'apple_package_overlays', 'legacy_binary_version', 'native_peer_metadata', 'github_read_transport', 'protocol_peer_cases',
+            'windows_native_execution', 'cronet_windows_overlay', 'windows_native_admission'})
+
+    def test_workflow_job_text_stops_at_each_sibling_and_next_top_level_mapping(self):
+        source="""name: source boundaries
+jobs:
+  native_smoke:
+    steps:
+    - run: metadata
+      env:
+        GH_TOKEN: smoke-token
+  unrelated_new_job:
+    env:
+      GH_TOKEN: other-token
+    steps:
+    - run: unrelated
+  native_index:
+    steps:
+    - run: index-only
+'on':
+  workflow_dispatch:
+    inputs:
+      GH_TOKEN:
+        default: outside-jobs
+"""
+        self.assertEqual(workflow_job_text(source,'native_smoke').count('GH_TOKEN:'),1)
+        self.assertNotIn('unrelated_new_job',workflow_job_text(source,'native_smoke'))
+        self.assertNotIn('other-token',workflow_job_text(source,'native_smoke'))
+        self.assertIn('index-only',workflow_job_text(source,'native_index'))
+        self.assertNotIn('outside-jobs',workflow_job_text(source,'native_index'))
+        self.assertRaises(AssertionError,workflow_job_text,source,'missing')
+        duplicate=source.replace('  unrelated_new_job:','  native_smoke:')
+        self.assertRaises(AssertionError,workflow_job_text,duplicate,'native_smoke')
+
+    def test_native_smoke_metadata_tokens_cannot_move_to_execution_or_be_inherited(self):
+        original=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        native_smoke_token_contract(original)
+        separate=copy.deepcopy(original)
+        separate['jobs']['unrelated_new_job']={'env':{'GH_TOKEN':'separate-metadata'}}
+        native_smoke_token_contract(separate)
+        for mutation in ('move-to-execution','missing','duplicate','job-env','workflow-env','extra-step','wrong-token'):
+            workflow=copy.deepcopy(original);job=workflow['jobs']['native_smoke'];steps=job['steps']
+            acquire=next(step for step in steps if step.get('name')=='Acquire only the frozen original Linux carrier for QA')
+            execute=next(step for step in steps if step.get('name')=='Diagnose the original Linux product with separately bound QA code')
+            if mutation=='move-to-execution':execute.setdefault('env',{})['GH_TOKEN']=acquire['env'].pop('GH_TOKEN')
+            elif mutation=='missing':acquire['env'].pop('GH_TOKEN')
+            elif mutation=='duplicate':steps.append(copy.deepcopy(acquire))
+            elif mutation=='job-env':job['env']={'GH_TOKEN':'inherited'}
+            elif mutation=='workflow-env':workflow['env']={'GH_TOKEN':'inherited'}
+            elif mutation=='extra-step':steps.append({'name':'unreviewed execution','run':'echo GH_TOKEN'})
+            else:acquire['env']['GH_TOKEN']='unreviewed-token'
+            with self.subTest(mutation=mutation),self.assertRaises(AssertionError):native_smoke_token_contract(workflow)
 
     def test_native_smoke_dependency_omission_or_conditional_or_late_install_is_rejected(self):
         original = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
@@ -249,6 +334,20 @@ class ControlledPeerContracts(unittest.TestCase):
                 elif mutation == 'ignore-failure': step['continue-on-error'] = True
                 else: steps.remove(step); steps.append(step)
                 with self.assertRaises(AssertionError): native_smoke_dependency_contract(workflow)
+
+    def test_native_smoke_missing_any_reviewed_windows_dependency_is_rejected(self):
+        workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
+        modules,_=native_smoke_dependency_contract(workflow)
+        with tempfile.TemporaryDirectory() as directory:
+            source=Path(directory)
+            for name in modules:
+                (source/(name+'.py')).write_bytes((ROOT/'scripts/ci'/(name+'.py')).read_bytes())
+            for name in ('windows_native_execution','cronet_windows_overlay','windows_native_admission'):
+                path=source/(name+'.py');raw=path.read_bytes();path.unlink()
+                try:
+                    with self.subTest(module=name),self.assertRaises(AssertionError):native_smoke_dependency_contract(workflow,source)
+                finally:
+                    path.write_bytes(raw)
 
     def test_native_smoke_new_external_or_dynamic_import_requires_review(self):
         workflow = yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text())
@@ -283,6 +382,41 @@ class ControlledPeerContracts(unittest.TestCase):
         baseline=json.loads((ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']['build.yml']['build']
         self.assertCountEqual(normal['include']+jobs['build_windows7']['strategy']['matrix']['include'],baseline['include'])
         self.assertEqual(build['needs'],['calculate_version'])
+        self.assertEqual(build['if'], "${{ !cancelled() && needs.calculate_version.result == 'success' && (!inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary' || inputs.build == 'NativePeerLinux')) }}")
+        self.assertIs(build['strategy']['fail-fast'],False)
+        # Evaluate the actual configuration's finite Boolean expression. This
+        # is not a scheduler simulation or a replacement production predicate.
+        # No sibling supplier state may gate this producer; its own source
+        # ancestor, event/role selector, generation and cancellation gates remain.
+        selectors=[('workflow_dispatch',kind,False,selected) for kind,selected in
+                   [('All',True),('Binary',True),('NativePeerLinux',True),('Source',False),
+                    ('NativePeerDiagnostic',False),('Android',False),('Windows',False),
+                    ('Linux',False),('Apple',False),('',False)]]
+        selectors += [('push','',False,True),('pull_request','',False,True),
+                      ('workflow_dispatch','NativePeerLinux',True,False),('push','',True,False)]
+        supplier_states=[('false','skipped'),('true','success'),('true','failure'),
+                         ('true','cancelled'),('','unknown'),('unknown','')]
+        for event,kind,generate,selected in selectors:
+            for ancestor in ('success','failure','skipped','cancelled','','unknown'):
+                for required,supplier in supplier_states:
+                    for canceled in (False,True):
+                        values = {'cancelled()': canceled,
+                                  'needs.calculate_version.result': ancestor,
+                                  'needs.calculate_version.outputs.material_required': required,
+                                  'needs.debian_materials.result': supplier,
+                                  'inputs.source_generate_only': generate,
+                                  'github.event_name': event,
+                                  'inputs.build': kind}
+                        expression = build['if'][3:-2].strip()
+                        for token in sorted(values, key=len, reverse=True):
+                            expression = expression.replace(token, repr(values[token]))
+                        expression = expression.replace('&&', ' and ').replace('||', ' or ')
+                        expression = re.sub(r'!(?!=)', 'not ', expression)
+                        admitted = eval(expression, {'__builtins__': {}}, {})
+                        expected = selected and not canceled and ancestor == 'success'
+                        with self.subTest(event=event,build=kind,generate=generate,required=required,
+                                          ancestor=ancestor,supplier=supplier,canceled=canceled):
+                            self.assertEqual(bool(admitted), expected)
         self.assertIn("inputs.build == 'NativePeerLinux'",build['if'])
         self.assertIn("|| inputs.build == 'NativePeerLinux'",pre['if'])
         guard=next(s for s in pre['steps'] if s.get('name')=='Reject incompatible exact-source Linux peer inputs')
@@ -543,12 +677,21 @@ print(json.dumps(receipt))
 
     def test_native_workflow_is_same_run_linux_only_no_new_privilege(self):
         source=(ROOT/'.github/workflows/build.yml').read_text()
-        job=source[source.index('  native_smoke:'):source.index('  native_index:')]
+        job=workflow_job_text(source,'native_smoke')
         start=job.index('    - name: Execute same-run Linux native Naive and MASQUE controlled peers')
         end=job.index('    - name:',start+5)
         control=job[start:end]
         self.assertIn("      if: matrix.id == 'linux-amd64-purego'",control)
         self.assertNotIn('env:',control);self.assertNotIn('continue-on-error:',control)
+        self.assertIn('--admission "${{ runner.temp }}/native-peer-admission/admission.json"',control)
+        acquire=next(step for step in yaml.safe_load(source)['jobs']['native_smoke']['steps']
+                     if step.get('name')=='Acquire exact same-run Linux artifact metadata without native execution')
+        self.assertEqual(acquire['env'],{'GH_TOKEN':'${{ github.token }}'})
+        self.assertEqual(acquire['timeout-minutes'],3)
+        self.assertEqual(acquire['if'],"matrix.id == 'linux-amd64-purego' && inputs.build != 'NativePeerDiagnostic'")
+        self.assertNotIn('continue-on-error',acquire)
+        self.assertIn('scripts/ci/native_peer_metadata.py --native native',acquire['run'])
+        self.assertLess(job.index('Acquire exact same-run Linux artifact metadata'),start)
         self.assertIn('      timeout-minutes: 12',control)
         self.assertIn('permissions:\n  contents: read\n',source)
         self.assertLess(job.index('Execute final-package Cronet smoke'),start)
@@ -856,7 +999,7 @@ class FixedNativeDiagnosticContracts(unittest.TestCase):
 
     def test_diagnostic_workflow_is_linux_only_and_does_not_mutate_producer_row(self):
         source=(ROOT/'.github/workflows/build.yml').read_text()
-        job=source[source.index('  native_smoke:'):source.index('  native_index:')]
+        job=workflow_job_text(source,'native_smoke')
         expression=next(line for line in job.splitlines() if line.strip().startswith('matrix:'))
         matrices=__import__('re').findall(r"'(\{.*?\})'",expression)
         self.assertEqual(len(matrices),2)
@@ -865,17 +1008,22 @@ class FixedNativeDiagnosticContracts(unittest.TestCase):
         self.assertEqual(diagnostic_rows['include'][0]['id'],'linux-amd64-purego')
         self.assertEqual([r['id'] for r in normal_rows['include']],['linux-amd64-purego','windows-amd64','darwin-amd64','darwin-arm64'])
         self.assertIn('      actions: read',job);self.assertNotIn('write',job.split('    needs:',1)[0])
-        self.assertEqual(job.count('GH_TOKEN:'),1)
+        workflow=yaml.safe_load(source)
+        native_smoke_token_contract(workflow)
+        self.assertEqual(job.count('GH_TOKEN:'),2)
         for name in ('Execute final-package Cronet smoke','Upload actual smoke receipt','Download exact same-run native archive'):
-            step=job[job.index('    - name: '+name):].split('\n    - name:',1)[0]
-            self.assertIn("if: inputs.build != 'NativePeerDiagnostic'",step)
-        execution=job[job.index('    - name: Diagnose the original Linux product'):].split('    - name: Preserve',1)[0]
+            steps=[step for step in workflow['jobs']['native_smoke']['steps'] if step.get('name')==name]
+            self.assertEqual(len(steps),1)
+            self.assertIn("inputs.build != 'NativePeerDiagnostic'",steps[0]['if'])
+        executions=[step for step in workflow['jobs']['native_smoke']['steps']
+                    if step.get('name')=='Diagnose the original Linux product with separately bound QA code']
+        self.assertEqual(len(executions),1)
         for forbidden in ('GH_TOKEN','sudo','docker','continue-on-error','--insecure'):
-            self.assertNotIn(forbidden,execution)
-        self.assertIn('--diagnostic --output',execution)
-        self.assertNotIn('NativePeerDiagnostic',source[source.index('  native_index:'):source.index("'on':")])
+            self.assertNotIn(forbidden,json.dumps(executions[0]))
+        self.assertIn('--diagnostic --output',executions[0]['run'])
+        self.assertNotIn('NativePeerDiagnostic',workflow_job_text(source,'native_index'))
         # Incompatible final mode is rejected before calculate_version could bind a release tag.
-        calculation=source[source.index('  calculate_version:'):source.index('  prepare_windows7:')]
+        calculation=workflow_job_text(source,'calculate_version')
         self.assertLess(calculation.index('--validate-diagnostic-dispatch'),calculation.index('Bind final evidence'))
 
 

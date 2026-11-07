@@ -36,6 +36,8 @@ type Listener struct {
 	systemProxySOCKS         bool
 	tproxy                   bool
 
+	// tcpListener belongs exclusively to legacy raw transports. Runtime TCP
+	// ownership lives in runtime.tcp and is never mirrored into this field.
 	tcpListener          net.Listener
 	systemProxy          settings.SystemProxy
 	udpConn              *net.UDPConn

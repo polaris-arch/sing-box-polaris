@@ -34,7 +34,7 @@ type RuntimeRequirements struct {
 func RuntimeRequirementsFor(options option.RouteOptions, dns option.DNSOptions) RuntimeRequirements {
 	result := RuntimeRequirements{
 		Process:        options.FindProcess || hasRule(options.Rules, isProcessRule) || hasDNSRule(dns.Rules, isProcessDNSRule),
-		Neighbor:       options.FindNeighbor || hasRule(options.Rules, isNeighborRule) || hasDNSRule(dns.Rules, isNeighborDNSRule) || hasLocalNeighborDNSServer(dns.Servers),
+		Neighbor:       len(options.DHCPLeaseFiles) != 0 || options.FindNeighbor || hasRule(options.Rules, isNeighborRule) || hasDNSRule(dns.Rules, isNeighborDNSRule) || hasLocalNeighborDNSServer(dns.Servers),
 		WIFI:           hasRule(options.Rules, isWIFIRule) || hasDNSRule(dns.Rules, isWIFIDNSRule),
 		DHCPLeaseFiles: append([]string(nil), options.DHCPLeaseFiles...),
 	}
@@ -74,3 +74,7 @@ func (r *Router) RuntimeProvisionedRequirements(requested RuntimeRequirements) R
 	}
 	return requested
 }
+
+// The platform resource is declared in the same graph closure as every rule
+// and local DNS consumer. Its owner outlives retained native lookups.
+func (r *Router) ConfigureRuntimePlatform(platform *RuntimePlatform) { r.runtimePlatform = platform }

@@ -231,3 +231,29 @@ func (s *Box) prepareRuntimeAPI(ctx context.Context, graph *preparedRuntimeGraph
 	}
 	return nil
 }
+
+// Keep the legacy address/port/secret projection unchanged. A policy-v1
+// dashboard toggle additionally requires the exact typed client shape on both
+// sides and keeps cardinality, service tag and all other raw fields fixed.
+func runtimeClientDashboardChanges(before, after stdjson.RawMessage, policy RuntimeClientImpactPolicyVersion) bool {
+	if policy != RuntimeClientImpactPolicyExplicit {
+		return false
+	}
+	var left, right []map[string]stdjson.RawMessage
+	if stdjson.Unmarshal(before, &left) != nil || stdjson.Unmarshal(after, &right) != nil || len(left) != 1 || len(right) != 1 || string(left[0]["type"]) != `"api"` || string(right[0]["type"]) != `"api"` {
+		return false
+	}
+	a, _ := stdjson.Marshal(left[0])
+	b, _ := stdjson.Marshal(right[0])
+	var oldOptions, nextOptions option.APIServiceOptions
+	if stdjson.Unmarshal(a, &oldOptions) != nil || stdjson.Unmarshal(b, &nextOptions) != nil || !adapter.RuntimeDashboardToggleEligible(oldOptions, nextOptions) {
+		return false
+	}
+	for _, key := range []string{"listen", "listen_port", "secret", "dashboard"} {
+		delete(left[0], key)
+		delete(right[0], key)
+	}
+	a, _ = stdjson.Marshal(left[0])
+	b, _ = stdjson.Marshal(right[0])
+	return bytes.Equal(a, b)
+}

@@ -9,6 +9,7 @@ jobs:
     name: Bind Docker dispatch source and annotated tag
     runs-on: ubuntu-latest
     outputs:
+      material_required: ${{ steps.material_scope.outputs.required }}
       tag_object: ${{ steps.source.outputs.tag_object }}
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -21,45 +22,90 @@ jobs:
         SOURCE_TAG: ${{ inputs.tag }}
         GH_TOKEN: ${{ github.token }}
       run: python3 scripts/ci/release_identity.py --tag "$SOURCE_TAG" --github-output "$GITHUB_OUTPUT"
+    - name: Classify Debian material requirement
+      id: material_scope
+      env:
+        REQUIRED: ${{ github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIALS_ONLY: 'false'
+        SOURCE_GENERATE_ONLY: 'false'
+        WINDOWS_NATIVE_PROOF: 'false'
+      shell: bash
+      run: |
+        if [[ "$REQUIRED" != "true" && "$REQUIRED" != "false" ]]; then
+          echo "invalid Debian material mode" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" != "true" && "$MATERIALS_ONLY" != "false" ]]; then
+          echo "invalid Materials-only selector" >&2
+          exit 1
+        fi
+        if [[ "$MATERIALS_ONLY" == "true" && ( "$REQUIRED" != "true" || "$SOURCE_GENERATE_ONLY" != "false" || "$WINDOWS_NATIVE_PROOF" != "false" ) ]]; then
+          echo "Materials requires exact-tag final identity and excludes source generation/native proof" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && -z "$CHECKPOINT_DIGEST" || -z "$CHECKPOINT_ARTIFACT_ID" && -n "$CHECKPOINT_DIGEST" ]]; then
+          echo "Debian candidate requires both artifact ID and digest" >&2
+          exit 1
+        fi
+        if [[ -n "$CHECKPOINT_ARTIFACT_ID" && ( ! "$CHECKPOINT_ARTIFACT_ID" =~ ^[1-9][0-9]*$ || ! "$CHECKPOINT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ) ]]; then
+          echo "invalid exact candidate ID/digest" >&2
+          exit 1
+        fi
+        if [[ "$REQUIRED" != "true" && ( -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ) ]]; then
+          echo "Debian candidate is only allowed for Materials or required Final" >&2
+          exit 1
+        fi
+        printf 'required=%s\n' "$REQUIRED" >> "$GITHUB_OUTPUT"
+  debian_materials:
+    name: Supply verified Debian raw inputs
+    if: ${{ needs.source.outputs.material_required == 'true' }}
+    needs: [source]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      raw_id: ${{ steps.materials.outputs.raw_id }}
+      raw_digest: ${{ steps.materials.outputs.raw_digest }}
+      ready_id: ${{ steps.materials.outputs.ready_id }}
+      ready_digest: ${{ steps.materials.outputs.ready_digest }}
+    steps:
+    - name: Checkout exact supplier source
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Supply exact Debian profile union
+      id: materials
+      uses: ./.github/actions/prepare-debian-materials
+      with:
+        checkpoint-artifact-id: ${{ inputs.debian_checkpoint_artifact_id }}
+        checkpoint-artifact-digest: ${{ inputs.debian_checkpoint_digest }}
+        role: docker
+        tag: ${{ inputs.tag }}
+        tag-object: ${{ needs.source.outputs.tag_object }}
+      env:
+        GH_TOKEN: ${{ github.token }}
   build_binary:
     needs: [source]
-    name: Build binary
+    name: build_binary
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
         - arch: amd64
           naive: true
           docker_platform: linux/amd64
-        - arch: arm64
-          naive: true
-          docker_platform: linux/arm64
-        - arch: '386'
-          naive: true
-          docker_platform: linux/386
-        - arch: arm
-          goarm: '7'
-          naive: true
-          docker_platform: linux/arm/v7
-        - arch: mipsle
-          gomips: softfloat
-          naive: true
-          docker_platform: linux/mipsle
-        - arch: riscv64
-          naive: true
-          docker_platform: linux/riscv64
-        - arch: loong64
-          naive: true
-          docker_platform: linux/loong64
-        - arch: arm
-          goarm: '6'
-          docker_platform: linux/arm/v6
-        - arch: ppc64le
-          docker_platform: linux/ppc64le
-        - arch: s390x
-          docker_platform: linux/s390x
-    steps:
+    steps: &build_binary_steps
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -78,6 +124,7 @@ jobs:
         go-version: 1.27.2
     - name: Clone cronet-go
       if: matrix.naive
+      timeout-minutes: 10
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -87,6 +134,7 @@ jobs:
         git -C ~/cronet-go fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
         git -C ~/cronet-go checkout FETCH_HEAD
         git -C ~/cronet-go submodule update --init --recursive --depth=1
+        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
     - name: Regenerate Debian keyring
       if: matrix.naive
       run: |
@@ -103,14 +151,33 @@ jobs:
           ~/cronet-go/naiveproxy/src/third_party/llvm-build/
           ~/cronet-go/naiveproxy/src/gn/out/
           ~/cronet-go/naiveproxy/src/chrome/build/pgo_profiles/
-          ~/cronet-go/naiveproxy/src/out/sysroot-build/
-        key: chromium-toolchain-${{ matrix.arch }}-musl-${{ hashFiles('.github/CRONET_GO_VERSION') }}
+        key: chromium-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.arch }}-musl-${{ hashFiles('.github/CRONET_GO_VERSION', 'release/ci/cronet-material-inputs.json', '.github/patches/cronet-sysroot-transport.patch', 'scripts/ci/cronet_material_bootstrap.py') }}
     - name: Download Chromium toolchain
       if: matrix.naive
+      timeout-minutes: 20
       run: |
         set -xeuo pipefail
+        if [[ "$POLARIS_DEBIAN_REQUIRED" == "true" ]]; then
+          checkpoint_args=()
+          if [[ -n "$CHECKPOINT_ARTIFACT_ID" || -n "$CHECKPOINT_DIGEST" ]]; then
+            checkpoint_args=(--checkpoint-artifact-id "$CHECKPOINT_ARTIFACT_ID" --checkpoint-artifact-digest "$CHECKPOINT_DIGEST")
+          fi
+          python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_supply.py" consume-local \
+            --cronet-root "$HOME/cronet-go" --role docker \
+            --caller C4_DOCKER --target-arch "$MATERIAL_TARGET_ARCH" --libc "$MATERIAL_LIBC" \
+            "${checkpoint_args[@]}" \
+            --output "$RUNNER_TEMP/debian-material-use"
+          export POLARIS_CRONET_RAW_STORE="$RUNNER_TEMP/debian-material-use/raw"
+        fi
         cd ~/cronet-go
         go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
+      env:
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.source.outputs.material_required }}
+        CHECKPOINT_ARTIFACT_ID: ${{ inputs.debian_checkpoint_artifact_id }}
+        CHECKPOINT_DIGEST: ${{ inputs.debian_checkpoint_digest }}
+        MATERIAL_TARGET_ARCH: ${{ matrix.arch }}
+        MATERIAL_LIBC: musl
+        GH_TOKEN: ${{ github.token }}
     - name: Set version
       run: |
         set -euo pipefail
@@ -173,6 +240,9 @@ jobs:
         fi
         mv sing-box "${BINARY_NAME}"
         echo "BINARY_NAME=${BINARY_NAME}" >> $GITHUB_ENV
+    - name: Retain exact Debian material use
+      if: ${{ needs.source.outputs.material_required == 'true' && (matrix.naive) }}
+      run: cp "$RUNNER_TEMP/debian-material-use/use.json" ./debian-material-use.json
     - name: Recheck binary source/tag before upload
       env:
         SOURCE_TAG: ${{ inputs.tag }}
@@ -183,30 +253,167 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: binary-${{ env.PLATFORM_PAIR }}
-        path: ${{ env.BINARY_NAME }}
+        path: |-
+          ${{ env.BINARY_NAME }}
+          debian-material-use.json
         if-no-files-found: error
         retention-days: 1
+  build_binary_arm64:
+    needs: [source]
+    name: build_binary_arm64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm64
+          naive: true
+          docker_platform: linux/arm64
+    steps: *build_binary_steps
+  build_binary_386:
+    needs: [source]
+    name: build_binary_386
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: '386'
+          naive: true
+          docker_platform: linux/386
+    steps: *build_binary_steps
+  build_binary_armv7:
+    needs: [source]
+    name: build_binary_armv7
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm
+          goarm: '7'
+          naive: true
+          docker_platform: linux/arm/v7
+    steps: *build_binary_steps
+  build_binary_mipsle:
+    needs: [source]
+    name: build_binary_mipsle
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: mipsle
+          gomips: softfloat
+          naive: true
+          docker_platform: linux/mipsle
+    steps: *build_binary_steps
+  build_binary_riscv64:
+    needs: [source]
+    name: build_binary_riscv64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: riscv64
+          naive: true
+          docker_platform: linux/riscv64
+    steps: *build_binary_steps
+  build_binary_loong64:
+    needs: [source]
+    name: build_binary_loong64
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: loong64
+          naive: true
+          docker_platform: linux/loong64
+    steps: *build_binary_steps
+  build_binary_armv6:
+    needs: [source]
+    name: build_binary_armv6
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: arm
+          goarm: '6'
+          docker_platform: linux/arm/v6
+    steps: *build_binary_steps
+  build_binary_ppc64le:
+    needs: [source]
+    name: build_binary_ppc64le
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: ppc64le
+          docker_platform: linux/ppc64le
+    steps: *build_binary_steps
+  build_binary_s390x:
+    needs: [source]
+    name: build_binary_s390x
+    if: ${{ !cancelled() && needs.source.result == 'success' }}
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: s390x
+          docker_platform: linux/s390x
+    steps: *build_binary_steps
   build_docker:
-    name: Build Docker image
+    name: build_docker
     runs-on: ubuntu-latest
     needs:
     - build_binary
     - source
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
         - platform: linux/amd64
-        - platform: linux/arm/v6
-        - platform: linux/arm/v7
-        - platform: linux/arm64
-        - platform: linux/386
-        - platform: linux/ppc64le
-        - platform: linux/riscv64
-        - platform: linux/s390x
-        - platform: linux/loong64
-          base_image: ghcr.io/loong64/alpine:edge
-    steps:
+    steps: &build_docker_steps
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -246,7 +453,7 @@ jobs:
       id: build
       uses: docker/build-push-action@v6
       env:
-        # Diagnostic records are not release payloads. Keep the exact 20-artifact scope.
+        # Diagnostic uploads stay outside the declared producer artifact scope.
         DOCKER_BUILD_RECORD_UPLOAD: 'false'
       with:
         platforms: ${{ matrix.platform }}
@@ -269,13 +476,132 @@ jobs:
         name: oci-${{ env.PLATFORM_PAIR }}
         path: ${{ runner.temp }}/image.tar
         if-no-files-found: error
+  build_docker_armv6:
+    name: build_docker_armv6
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_armv6
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm/v6
+    steps: *build_docker_steps
+  build_docker_armv7:
+    name: build_docker_armv7
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_armv7
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm/v7
+    steps: *build_docker_steps
+  build_docker_arm64:
+    name: build_docker_arm64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_arm64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/arm64
+    steps: *build_docker_steps
+  build_docker_386:
+    name: build_docker_386
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_386
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/386
+    steps: *build_docker_steps
+  build_docker_ppc64le:
+    name: build_docker_ppc64le
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_ppc64le
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/ppc64le
+    steps: *build_docker_steps
+  build_docker_riscv64:
+    name: build_docker_riscv64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_riscv64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/riscv64
+    steps: *build_docker_steps
+  build_docker_s390x:
+    name: build_docker_s390x
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_s390x
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/s390x
+    steps: *build_docker_steps
+  build_docker_loong64:
+    name: build_docker_loong64
+    runs-on: ubuntu-latest
+    needs:
+    - build_binary_loong64
+    - source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: linux/loong64
+          base_image: ghcr.io/loong64/alpine:edge
+    steps: *build_docker_steps
   publisher_receipt:
     name: Record complete producer scope
     needs:
+    - source
     - build_binary
+    - build_binary_arm64
+    - build_binary_386
+    - build_binary_armv7
+    - build_binary_mipsle
+    - build_binary_riscv64
+    - build_binary_loong64
+    - build_binary_armv6
+    - build_binary_ppc64le
+    - build_binary_s390x
     - build_docker
-    if: success()
+    - build_docker_armv6
+    - build_docker_armv7
+    - build_docker_arm64
+    - build_docker_386
+    - build_docker_ppc64le
+    - build_docker_riscv64
+    - build_docker_s390x
+    - build_docker_loong64
+    - debian_materials
+    if: ${{ always() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
@@ -286,10 +612,21 @@ jobs:
         python3 scripts/ci/publisher_run_receipt.py
       env:
         PUBLISHER_ROLE: docker
+        NEEDS_JSON: ${{ toJSON(needs) }}
+        RECEIPT_EVIDENCE_MODE: final
+        RECEIPT_SOURCE_GENERATE_ONLY: 'false'
+        RECEIPT_DISTRIBUTION_ENABLED: 'false'
+        RECEIPT_PUBLISH_GITHUB: 'false'
         RELEASE_BUILD: All
         RELEASE_VERSION: ${{ inputs.tag }}
         PUBLISH_STORES: 'false'
         PUBLISH_REGISTRY: 'false'
+        POLARIS_DEBIAN_REQUIRED: ${{ needs.source.outputs.material_required }}
+        POLARIS_DEBIAN_RAW_ID: ${{ needs.debian_materials.outputs.raw_id }}
+        POLARIS_DEBIAN_RAW_DIGEST: ${{ needs.debian_materials.outputs.raw_digest }}
+        POLARIS_DEBIAN_READY_ID: ${{ needs.debian_materials.outputs.ready_id }}
+        POLARIS_DEBIAN_READY_DIGEST: ${{ needs.debian_materials.outputs.ready_digest }}
+        GH_TOKEN: ${{ github.token }}
     - uses: actions/upload-artifact@v4
       with:
         name: publisher-run-receipt
@@ -298,10 +635,20 @@ jobs:
 'on':
   workflow_dispatch:
     inputs:
+      debian_checkpoint_artifact_id:
+        description: Optional exact Materials raw seed ID; without a seed authenticate required profiles at origin
+        type: string
+        required: false
+        default: ''
+      debian_checkpoint_digest:
+        description: Paired immutable candidate ZIP SHA256; same source/tag/plan, no latest or automatic resume
+        type: string
+        required: false
+        default: ''
       tag:
         description: Existing reviewed immutable tag; no tag creation or registry push
         required: true
         type: string
-        default: v1.15.0-polaris-alpha.12.7
+        default: v1.15.0-polaris-alpha.12.19
 permissions:
   contents: read

@@ -20,6 +20,17 @@ import errno
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 
+
+def receipt_context_fixture(role, material):
+    policies=json.loads(p.SCOPE.read_text())[role]['receiptJobs']
+    return {'GITHUB_REF':'refs/tags/'+p.TAG if material else 'refs/heads/fixture',
+            'RECEIPT_EVIDENCE_MODE':'final','RECEIPT_SOURCE_GENERATE_ONLY':'false',
+            'RECEIPT_DISTRIBUTION_ENABLED':'false','RECEIPT_PUBLISH_GITHUB':'false',
+            'POLARIS_DEBIAN_REQUIRED':'true' if material else 'false',
+            'NEEDS_JSON':json.dumps({key:{'result':'skipped' if policy=='debian_required' and not material
+                                                   else 'success','outputs':{}}
+                                     for key,policy in policies.items()})}
+
 @contextmanager
 def historical_release():
     """Exercise immutable alpha.12 recovery evidence, never the current release plan."""
@@ -56,6 +67,15 @@ def generic_algorithm_fixture():
          mock.patch.object(p.peer_evidence, 'check_inventory', side_effect=check):
         yield
 
+
+
+def native_jobs_fixture(index):
+    """Synthetic Actions data; only mocked metadata, never native authority."""
+    from native_release_index import expected_native_job_names
+    names=expected_native_job_names(index['platforms'])
+    return [{'id':i+1,'name':name,'status':'completed','conclusion':'success',
+             'head_sha':index['sourceCommit'],'run_id':42,'run_attempt':1}
+            for i,(key,name) in enumerate(names.items())]
 
 class GenericFixtureIsolationTests(unittest.TestCase):
     def test_scope_restores_real_gates_after_normal_and_exception_exit(self):
@@ -506,13 +526,75 @@ class GateTests(unittest.TestCase):
         self.enterContext(generic_algorithm_fixture())
 
     def test_scope_preserved(self):
+        import yaml
         s=json.loads(p.SCOPE.read_text())
         self.assertEqual(len(s['all']['matrices']['build']['include'])+len(s['all']['matrices']['build_windows7']['include']),38)
         for role,scope in s.items():
             self.assertEqual(set(scope['requiredArtifacts']),set(scope['payloadRules']))
             self.assertEqual(len(scope['requiredArtifacts']),len(set(scope['requiredArtifacts'])))
-        self.assertEqual(len(s['docker']['matrices']['build_binary']['include']),10)
-        self.assertEqual(len(s['docker']['matrices']['build_docker']['include']),9)
+            self.assertEqual(set(scope['receiptJobs']),set(scope['requiredJobs']))
+        self.assertEqual({role:len(s[role]['requiredArtifacts']) for role in ('all','linux','docker')},
+                         {'all':74,'linux':14,'docker':22})
+        self.assertEqual({role:len(scope['receiptJobs']) for role,scope in s.items()},
+                         {'all':16,'linux':3,'docker':21,'signed':16})
+        for role in ('all','signed'):
+            self.assertEqual(sum(len(s[role]['matrices'][job]['include'])
+                                 for job in ('build','build_windows7','build_darwin','build_windows')),44)
+        baseline=json.loads((p.ROOT/'release/ci/upstream-matrices.json').read_text())['matrices']['docker.yml']
+        jobs=yaml.safe_load((p.ROOT/'.github/workflows/docker.yml').read_text())['jobs']
+        products={'linux/amd64':'','linux/arm64':'_arm64','linux/386':'_386',
+                  'linux/arm/v7':'_armv7','linux/arm/v6':'_armv6','linux/mipsle':'_mipsle',
+                  'linux/riscv64':'_riscv64','linux/loong64':'_loong64',
+                  'linux/ppc64le':'_ppc64le','linux/s390x':'_s390x'}
+        binary_rows={row['docker_platform']:row for row in baseline['build_binary']['include']}
+        image_rows={row['platform']:row for row in baseline['build_docker']['include']}
+        self.assertEqual(len(baseline['build_binary']['include']),10)
+        self.assertEqual(len(baseline['build_docker']['include']),9)
+        self.assertEqual(set(binary_rows),set(products))
+        self.assertEqual(set(image_rows),set(products)-{'linux/mipsle'})
+        expected_jobs=set();expected_artifacts={'publisher-run-receipt','debian-candidate-raw','debian-material-ready'}
+        for platform,suffix in products.items():
+            binary='build_binary'+suffix;expected_jobs.add(binary)
+            row=binary_rows[platform];job=jobs[binary]
+            self.assertEqual(job['name'],binary)
+            self.assertEqual(job['needs'],['source'])
+            self.assertEqual(job['strategy']['matrix'],{'include':[row]})
+            self.assertEqual(s['docker']['matrices'][binary],job['strategy']['matrix'])
+            self.assertIs(job['strategy']['fail-fast'],False)
+            self.assertNotIn('needs.debian_materials',job['if'])
+            self.assertEqual(job['steps'],jobs['build_binary']['steps'])
+            for name in ('Build (naive)','Build (non-naive)'):
+                self.assertIn('go build',next(step for step in job['steps'] if step.get('name')==name)['run'])
+            prepare=next(step for step in job['steps'] if step.get('name')=='Prepare artifact')
+            self.assertIn('platform=${{ matrix.docker_platform }}',prepare['run'])
+            upload=next(step for step in job['steps'] if step.get('name')=='Upload binary')
+            self.assertEqual(upload['with']['name'],'binary-${{ env.PLATFORM_PAIR }}')
+            expected_artifacts.add('binary-'+platform.replace('/','-'))
+            if platform=='linux/mipsle':continue
+            image='build_docker'+suffix;expected_jobs.add(image);job=jobs[image]
+            self.assertEqual(job['name'],image)
+            self.assertEqual(job['needs'],[binary,'source'])
+            self.assertEqual(job['strategy']['matrix'],{'include':[image_rows[platform]]})
+            self.assertEqual(s['docker']['matrices'][image],job['strategy']['matrix'])
+            self.assertIs(job['strategy']['fail-fast'],False)
+            self.assertEqual(job['steps'],jobs['build_docker']['steps'])
+            self.assertNotIn('always()',job.get('if',''))
+            prepare=next(step for step in job['steps'] if step.get('name')=='Prepare')
+            self.assertIn('platform=${{ matrix.platform }}',prepare['run'])
+            download=next(step for step in job['steps'] if step.get('name')=='Download binary')
+            self.assertEqual(download['with'],{'name':'binary-${{ env.PLATFORM_PAIR }}','path':'.'})
+            build=next(step for step in job['steps'] if step.get('uses')=='docker/build-push-action@v6')
+            self.assertFalse(build['with']['push']);self.assertIn('type=oci,dest=',build['with']['outputs'])
+            upload=next(step for step in job['steps'] if step.get('name')=='Upload OCI archive')
+            self.assertEqual(upload['with']['name'],'oci-${{ env.PLATFORM_PAIR }}')
+            expected_artifacts.add('oci-'+platform.replace('/','-'))
+        self.assertEqual(set(s['docker']['matrices']),expected_jobs)
+        self.assertEqual({name for name in jobs if name.startswith(('build_binary','build_docker'))},expected_jobs)
+        self.assertEqual(set(s['docker']['requiredArtifacts']),expected_artifacts)
+        self.assertEqual(set(s['docker']['requiredJobs']),expected_jobs|{'source','debian_materials'})
+        self.assertEqual(jobs['publisher_receipt']['needs'],list(s['docker']['receiptJobs']))
+        self.assertEqual(s['docker']['receiptJobs'],{name:'debian_required' if name=='debian_materials' else 'required'
+                                                   for name in expected_jobs|{'source','debian_materials'}})
 
     def test_reviewed_current_version_renders_all_linux_and_signed_payloads(self):
         scope=p.release_scope(p.VERSION)
@@ -588,7 +670,7 @@ class GateTests(unittest.TestCase):
             's390x': ('s390x', 's390x'),
         }
         self.assertEqual(set(scope['requiredArtifacts']),
-                         {'binary-linux_' + arch for arch in architectures} | {'publisher-run-receipt'})
+                         {'binary-linux_' + arch for arch in architectures} | {'publisher-run-receipt','debian-candidate-raw','debian-material-ready'})
         checked = 0
         for arch, cpus in architectures.items():
             artifact = 'binary-linux_' + arch
@@ -665,7 +747,7 @@ class GateTests(unittest.TestCase):
 
     def test_docker_keeps_exact_products_and_rejects_missing_extra_or_diagnostic_assets(self):
         scope=p.release_scope(p.VERSION);required=scope['docker']['requiredArtifacts']
-        self.assertEqual(len(required),20)
+        self.assertEqual(len(required),22)
         p.verify_artifact_names(list(required),required,'docker')
         for names in [required[:-1],required+['unexpected'],required+['repository~random.dockerbuild'],
                       required[:-1]+['repository~random.dockerbuild'],required+[required[0]]]:
@@ -677,9 +759,11 @@ class GateTests(unittest.TestCase):
              'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
              'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
              'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false'}
+        env.update(receipt_context_fixture('docker',False))
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'release/ci').mkdir(parents=True)
             (root/'release/ci/github-release.json').write_text(json.dumps(release))
+            (root/'release/ci/publisher-upstream-scope.json').write_bytes(p.SCOPE.read_bytes())
             script=p.ROOT/'scripts/ci/publisher_run_receipt.py'
             with chdir(root),mock.patch.dict(os.environ,env),mock.patch('subprocess.check_output',return_value=source):
                 runpy.run_path(str(script),run_name='__main__')
@@ -1003,7 +1087,7 @@ class GateTests(unittest.TestCase):
                 'tag':p.TAG,'tagObject':'c'*40,'sourceCommit':source,'sourceTree':tree,
                 'producer':{'repository':p.REPO,'repositoryId':p.RID,'workflow':'.github/workflows/build.yml',
                             'workflowCommit':source,'runId':42,'runAttempt':1,
-                            'nativeJobs':{k:{'id':i+1,'name':'private test fixture'} for i,k in enumerate(['linux','win','mac-x64','mac-arm64'])}},
+                            'nativeJobs':{k:{'id':i+1,'name':'Native final-package Cronet and gVisor smoke ('+ident+')'} for i,(k,ident) in enumerate([('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')])}},
                 'legalFiles':[{'path':'licenses/LICENSE','content':'x','bytes':1,'sha256':'4'*64}],
                 'sourceArchive':{'name':'sing-box-polaris-source-'+source+'.tar.gz','bytes':1,'sha256':'5'*64},'platforms':rows}
         from native_release_index import distribution_materials
@@ -1011,7 +1095,8 @@ class GateTests(unittest.TestCase):
         return index
 
     def check_index(self,index):
-        p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
 
     def test_final_index_uses_original_source_root_for_distribution_materials(self):
         index=self.final_index()
@@ -1019,10 +1104,10 @@ class GateTests(unittest.TestCase):
             source_root=Path(d)/'reviewed-source'
             # The index belongs to the original producer checkout; the new
             # publisher's own script hash must not replace its source binding.
-            with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials:
+            with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials, mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
                 p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',source_root=source_root)
                 materials.assert_called_once_with(index,source_root)
-            with mock.patch('native_release_index.distribution_materials',return_value={'changed':True}),self.assertRaisesRegex(ValueError,'source/notice bindings'):
+            with mock.patch('native_release_index.distribution_materials',return_value={'changed':True}),mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)),self.assertRaisesRegex(ValueError,'source/notice bindings'):
                 p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',source_root=source_root)
         with mock.patch('native_release_index.distribution_materials',return_value=index['distributionMaterials']) as materials:
             self.check_index(index)
@@ -1102,9 +1187,9 @@ class GateTests(unittest.TestCase):
 
 class PublicAssetNameTests(unittest.TestCase):
     def test_public_version_preserves_producer_and_tag_identity(self):
-        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.7')
-        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.7')
-        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.7')
+        self.assertEqual(p.VERSION,'1.15.0-polaris-alpha.12.19')
+        self.assertEqual(p.PUBLIC_VERSION,'1.15.0-alpha.12.19')
+        self.assertEqual(p.TAG,'v1.15.0-polaris-alpha.12.19')
         self.assertEqual(p.CANONICAL_METADATA,'SFA-version-metadata.json')
 
     def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
@@ -1393,8 +1478,12 @@ class DistributionMaterialsTests(unittest.TestCase):
             with self.subTest(path=path),self.assertRaises(ValueError):self.check_index(candidate)
 
     def test_publisher_apple_policy_matches_actual_source_checkout(self):
-        paths=('release/ci/client-overlays.json','release/ci/owned-distribution.json',
+        apple_paths=('release/ci/client-overlays.json','release/ci/owned-distribution.json',
                'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py','scripts/ci/client_source.py')
+        material_paths=('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+                        'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+                        '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION')
+        paths=apple_paths+material_paths
         with tempfile.TemporaryDirectory() as directory:
             source_root=Path(directory)
             for name in paths:
@@ -1405,7 +1494,7 @@ class DistributionMaterialsTests(unittest.TestCase):
             with mock.patch.dict(os.environ,environment),mock.patch.object(p,'api',return_value={'id':p.RID}),\
                  mock.patch.object(p,'command',side_effect=lambda *args:'a'*40 if 'rev-parse' in args else ''):
                 p.identity('a'*40,source_root)
-                for name in paths[2:]:
+                for name in apple_paths[2:]:
                     path=source_root/name;original=path.read_bytes();path.write_bytes(original+b'\n')
                     with self.subTest(path=name),self.assertRaisesRegex(ValueError,'Apple package policy'):
                         p.identity('a'*40,source_root)
@@ -2670,8 +2759,11 @@ from oci_material_selection_12_5_tests import NewOCISelectionTests
 # Keep historical classes and their method IDs; do not shadow 12.5 imports.
 from publisher_peer_evidence_12_6_tests import Alpha126PeerEvidenceTests
 from publisher_peer_evidence_12_7_tests import Alpha127PeerEvidenceTests
+from publisher_peer_evidence_12_9_tests import Alpha129PeerEvidenceTests
+from publisher_peer_successor_tests import SuccessorPeerPreparationTests
 from oci_material_selection_12_6_tests import Alpha126OCISelectionTests
 from oci_material_selection_12_7_tests import Alpha127OCISelectionTests
+from oci_material_selection_12_9_tests import Alpha129OCISelectionTests
 
 if __name__=='__main__':
     unittest.main()
@@ -2687,7 +2779,8 @@ class TrustedExecutionPublisherTests(unittest.TestCase):
         return index
 
     def check(self,index):
-        p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
 
     def test_final_index_accepts_bound_synthetic_sealed_proof_and_keeps_original_row(self):
         index=self.index();before=copy.deepcopy(index)
@@ -2762,3 +2855,688 @@ class TrustedExecutionPublisherTests(unittest.TestCase):
             self.assertEqual(len(output['platforms']),44);self.assertEqual(sum('trustedExecution' in r for r in output['platforms']),1)
             actual=next(r for r in output['platforms'] if 'trustedExecution' in r)
             self.assertEqual(actual,selected);archived.assert_called_once()
+
+
+class WindowsProducerPublisherControls(unittest.TestCase):
+    def index(self):
+        from test_windows_native_execution import windows_row_fixture
+        from native_release_index import distribution_materials, select_native_jobs
+        index=GateTests().final_index();row=windows_row_fixture()
+        row['archive']['releaseName']=p.public_product_name(row['archive']['name'])
+        index['platforms']=[row if old['id']==row['id'] else old for old in index['platforms']]
+        index['producer']['nativeJobs']=select_native_jobs(index['platforms'],native_jobs_fixture(index),'a'*40,42,1)
+        index['distributionMaterials']=distribution_materials(index,p.ROOT)
+        return index
+
+    def check(self,index,jobs):
+        with mock.patch.object(p,'pages',return_value=jobs) as metadata:
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+            metadata.assert_called_once_with(f'repos/{p.REPO}/actions/runs/42/attempts/1/jobs','jobs',maximum=1000)
+
+    def test_final_consumer_binds_actual_system_job_id_name_and_exact_attempt_api(self):
+        index=self.index();self.check(index,native_jobs_fixture(index))
+
+    def test_successful_hosted_job_cannot_replace_real_system_producer(self):
+        index=self.index();jobs=native_jobs_fixture(index)
+        index['producer']['nativeJobs']['win']['name']='Native final-package Cronet and gVisor smoke (windows-amd64)'
+        jobs.append(dict(jobs[1],id=9,name=index['producer']['nativeJobs']['win']['name']))
+        with self.assertRaisesRegex(ValueError,'job mapping'):self.check(index,jobs)
+
+    def test_final_consumer_rejects_missing_wrong_skipped_duplicate_or_foreign_api_producer(self):
+        for case in ('missing','name','id','skipped','status','source','run','attempt','duplicate'):
+            with self.subTest(case=case):
+                index=self.index();jobs=native_jobs_fixture(index);job=jobs[1]
+                if case=='missing':jobs.pop(1)
+                elif case=='name':job['name']='unrelated successful job'
+                elif case=='id':job['id']=99
+                elif case=='skipped':job['conclusion']='skipped'
+                elif case=='status':job['status']='in_progress'
+                elif case=='source':job['head_sha']='f'*40
+                elif case=='run':job['run_id']=43
+                elif case=='attempt':job['run_attempt']=2
+                else:jobs.append(copy.deepcopy(job))
+                with self.assertRaises(ValueError):self.check(index,jobs)
+
+    def test_final_consumer_checks_overlay_using_original_source_root(self):
+        index=self.index();jobs=native_jobs_fixture(index);root=Path('cold-source-exact-root')
+        with mock.patch.object(p,'pages',return_value=jobs), \
+             mock.patch('native_release_index.validate_overlay',side_effect=ValueError('bad original overlay')) as overlay:
+            with self.assertRaisesRegex(ValueError,'bad original overlay'):
+                p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',root)
+            overlay.assert_called_once_with(root)
+
+    def test_job_api_pagination_enforces_bounded_total_scope(self):
+        with mock.patch.object(p,'api',return_value={'jobs':[{}]*100}) as api:
+            with self.assertRaisesRegex(ValueError,'item bound'):
+                p.pages('repos/test/actions/runs/42/attempts/1/jobs','jobs',maximum=1000)
+            self.assertEqual(api.call_count,11)
+
+    def test_existing_assembly_selects_retained_system_producer_from_exact_api_jobs(self):
+        import native_release_index as native
+        index=self.index();rows=index['platforms'];payload=b'synthetic-final-archive'
+        for row in rows:
+            row['archive']['sha256']=hashlib.sha256(payload).hexdigest()
+            if 'trustedExecution' in row:
+                row['finalPackageCronetSmoke']['windowsExecution']['archiveSha256']=row['archive']['sha256']
+        jobs=native_jobs_fixture(index)
+        jobs.append(dict(jobs[1],id=99,name='Native final-package Cronet and gVisor smoke (windows-amd64)'))
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for i,row in enumerate(rows):
+                (root/('native-row-'+str(i)+'.json')).write_text(json.dumps(row))
+                (root/row['archive']['name']).write_bytes(payload)
+            env={'VERSION':p.VERSION,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','GITHUB_WORKFLOW_SHA':'a'*40,
+                 'GITHUB_WORKFLOW_REF':native.REPO+'/.github/workflows/build.yml@refs/heads/synthetic','REQUIRE_RELEASE_TAG':'false'}
+            with mock.patch.object(native,'identity',return_value=('a'*40,'b'*40)),mock.patch.dict(os.environ,env), \
+                 mock.patch.object(native.subprocess,'check_output',return_value=b'synthetic-source-tar'), \
+                 mock.patch.object(native,'validate_archived_source_identity'), \
+                 mock.patch.object(native,'run',return_value=json.dumps([{'jobs':jobs}])), \
+                 mock.patch.object(native,'distribution_materials',return_value={'synthetic':True}):
+                native.assemble(root)
+            output=json.loads((root/'polaris-upstream-native-assets.json').read_text())
+            self.assertEqual(output['producer']['nativeJobs']['win'],{'id':2,'name':native.WINDOWS_PROOF_JOB})
+
+
+class DebianMaterialPublisherTests(unittest.TestCase):
+    """Real new validators/ZIP streams over synthetic contract data, not crypto acceptance."""
+    def bundle(self, role='linux'):
+        from test_cronet_material_supply import fixture_bundle
+        workflow={'all':'build','linux':'linux','docker':'docker'}[role]
+        context={'repository':p.REPO,'repositoryID':p.RID,'sourceCommit':'a'*40,'sourceTree':'b'*40,
+                 'tag':p.TAG,'tagObject':'c'*40,'workflow':f'.github/workflows/{workflow}.yml',
+                 'runID':42,'runAttempt':1,'role':role}
+        return fixture_bundle(role, context=context)
+
+    def run_record(self, bundle):
+        c=bundle['context']
+        return {'id':c['runID'],'repository':{'id':p.RID},'head_repository':{'id':p.RID},
+                'head_sha':c['sourceCommit'],'head_branch':c['tag'],'path':c['workflow'],
+                'event':'workflow_dispatch','status':'in_progress','conclusion':None,
+                'run_attempt':c['runAttempt'],'run_started_at':bundle['supplier_job']['started_at']}
+
+    def artifacts(self, bundle):
+        return [dict(id=bundle[key]['id'],name=bundle[key]['name'],digest=bundle[key]['digest'],
+                     size_in_bytes=bundle[key]['size_in_bytes'],expired=False,
+                     workflow_run={'id':bundle['context']['runID'],'head_sha':bundle['context']['sourceCommit']},
+                     created_at=bundle['supplier_job']['completed_at'])
+                for key in ('raw_artifact','ready_artifact')]
+
+    @contextmanager
+    def transport(self, downloads):
+        children=[]
+        class Child:
+            def __init__(self,data):
+                self.stdout=tempfile.TemporaryFile();self.stdout.write(b'HTTP/2 200 OK\r\n\r\n'+data);self.stdout.seek(0)
+                self.stderr=tempfile.TemporaryFile();self.done=False
+            def wait(self,timeout=None):self.done=True;return 0
+            def poll(self):return 0 if self.done else None
+            def terminate(self):self.done=True
+            def kill(self):self.done=True
+        def spawn(command,**kwargs):
+            ident=int(command[-1].split('/')[-2])
+            child=Child(downloads[ident]);children.append(child);return child
+        try:
+            with mock.patch.object(p.subprocess,'Popen',side_effect=spawn) as remote:
+                yield remote
+        finally:
+            for child in children:
+                child.stdout.close();child.stderr.close()
+
+    def read(self, bundle, *, context=None, artifacts=None, supplier_job=None, run=None, with_ready=False):
+        downloads={bundle['raw_artifact']['id']:bundle['raw_zip'],
+                   bundle['ready_artifact']['id']:bundle['ready_zip']}
+        with tempfile.TemporaryDirectory() as directory,self.transport(downloads):
+            root=Path(directory);budget=p.ScratchBudget(root,reserve=0)
+            try:
+                api_artifacts=self.artifacts(bundle) if artifacts is None else artifacts
+                binding,entries,manifest,ready_metadata=p.read_debian_artifacts(api_artifacts,
+                    bundle['context'] if context is None else context,
+                    self.run_record(bundle) if run is None else run,
+                    bundle['supplier_job'] if supplier_job is None else supplier_job,budget)
+                self.assertEqual(manifest,bundle['manifest'])
+                self.assertIs(ready_metadata,next(item for item in api_artifacts if item['name']==p.DEBIAN_READY))
+                return (binding,entries,ready_metadata) if with_ready else (binding,entries)
+            finally:
+                self.assertEqual(list(root.iterdir()),[])
+                self.assertEqual(budget.live,0)
+                self.assertLessEqual(budget.peak,max(len(bundle['raw_zip']),len(bundle['ready_zip'])))
+                self.assertEqual(p.SCRATCH_LIMIT,4294967296)
+
+    def rewrite(self, bundle, *, manifest=None, ready=None, extra=None):
+        """Rehash fixture containers; the production validator remains the only predicate."""
+        from cronet_material_supply import artifact_ref, encode_json
+        bundle=copy.deepcopy(bundle)
+        if manifest is not None:manifest(bundle['manifest'])
+        with zipfile.ZipFile(io.BytesIO(bundle['raw_zip'])) as archive:
+            rows=[(member.filename,archive.read(member)) for member in archive.infolist()
+                  if not member.is_dir() and member.filename!=p.DEBIAN_MANIFEST]
+        raw=encode_json(bundle['manifest'])
+        rows.append((p.DEBIAN_MANIFEST,raw))
+        if extra is not None:rows.extend(extra)
+        bundle['raw_zip']=BoundedStorageTests.zipped(rows)
+        bundle['raw_artifact'].update(size_in_bytes=len(bundle['raw_zip']),digest='sha256:'+hashlib.sha256(bundle['raw_zip']).hexdigest())
+        bundle['ready']['manifestSHA256']=hashlib.sha256(raw).hexdigest()
+        bundle['ready']['rawArtifact']=artifact_ref(bundle['raw_artifact'])
+        if ready is not None:ready(bundle['ready'])
+        bundle['ready_zip']=BoundedStorageTests.zipped([('debian-material-ready.json',encode_json(bundle['ready']))])
+        bundle['ready_artifact'].update(size_in_bytes=len(bundle['ready_zip']),digest='sha256:'+hashlib.sha256(bundle['ready_zip']).hexdigest())
+        return bundle
+
+    def eligible(self, role):
+        from cronet_material_supply import expected_use
+        return [name for name in p.release_scope(p.VERSION)[role]['requiredArtifacts'] if expected_use(role,name) is not None]
+
+    def test_all_three_roles_measure_actual_private_pair_without_retaining_raw_objects(self):
+        for role,count in [('all',18),('linux',7),('docker',7)]:
+            with self.subTest(role=role):
+                b=self.bundle(role);binding,entries=self.read(b)
+                self.assertEqual(binding,b['binding'])
+                self.assertEqual(len(self.eligible(role)),count)
+                self.assertEqual(set(entries),{p.DEBIAN_RAW,p.DEBIAN_READY})
+                self.assertEqual(entries[p.DEBIAN_RAW]['files'][p.DEBIAN_MANIFEST]['sha256'],binding['manifestSHA256'])
+                for artifact,item in entries.items():
+                    for name,record in item['files'].items():
+                        self.assertEqual(p.publication(role,artifact,name),(None,record['publicationDisposition']))
+                        self.assertIsNone(record['releaseName'])
+
+    def test_noop_rewrite_reaches_real_receiver_with_fresh_outer_zip_refs(self):
+        from cronet_material_supply import artifact_ref, encode_json
+        for role,count in [('all',8),('linux',1),('docker',1)]:
+            with self.subTest(role=role):
+                original=self.bundle(role);before=copy.deepcopy(original)
+                # Freeze each authority independently before touching the candidate graph.
+                authority={'context':copy.deepcopy(original['context']),
+                           'artifacts':copy.deepcopy(self.artifacts(original)),
+                           'run':copy.deepcopy(self.run_record(original)),
+                           'supplier':copy.deepcopy(original['supplier_job'])}
+                authority_before=copy.deepcopy(authority)
+                rewritten=self.rewrite(original)
+                self.assertEqual(rewritten['manifest'],original['manifest'])
+                artifacts=copy.deepcopy(authority['artifacts'])
+                for api,key in zip(artifacts,('raw_artifact','ready_artifact')):
+                    api.update(size_in_bytes=rewritten[key]['size_in_bytes'],digest=rewritten[key]['digest'])
+                # Only ZIP measurements change; source/run/supplier authority stays external.
+                binding,entries=self.read(rewritten,context=authority['context'],artifacts=artifacts,
+                                          run=authority['run'],supplier_job=authority['supplier'])
+                self.assertEqual(original,before)
+                self.assertEqual(authority,authority_before)
+                self.assertEqual(binding['context'],authority['context'])
+                self.assertEqual(len(binding['requiredProfiles']),count)
+                manifest=encode_json(rewritten['manifest'])
+                manifest_sha=hashlib.sha256(manifest).hexdigest()
+                self.assertEqual(binding['manifestSHA256'],manifest_sha)
+                raw_files=entries[p.DEBIAN_RAW]['files']
+                self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['bytes'],len(manifest))
+                self.assertEqual(raw_files[p.DEBIAN_MANIFEST]['sha256'],manifest_sha)
+                for api in artifacts:
+                    self.assertNotIn('size',api)
+                for key,zip_key,ref_key in [('raw_artifact','raw_zip','rawArtifact'),
+                                           ('ready_artifact','ready_zip','readyArtifact')]:
+                    api=rewritten[key];outer=rewritten[zip_key]
+                    digest='sha256:'+hashlib.sha256(outer).hexdigest()
+                    self.assertNotIn('size',api)
+                    self.assertEqual(api['size_in_bytes'],len(outer))
+                    self.assertEqual(api['digest'],digest)
+                    reference=artifact_ref(api)
+                    self.assertEqual(set(reference),{'id','name','digest','size'})
+                    self.assertEqual(binding[ref_key],reference)
+                    measured=entries[api['name']]
+                    self.assertEqual(measured['archiveBytes'],len(outer))
+                    self.assertEqual(measured['archiveSha256'],digest)
+                self.assertEqual(set(rewritten['ready']['rawArtifact']),{'id','name','digest','size'})
+                self.assertEqual(rewritten['ready']['rawArtifact'],artifact_ref(rewritten['raw_artifact']))
+
+    def test_current_source_tag_run_attempt_plan_and_profile_not_asserted_from_self_hash(self):
+        import cronet_material_supply as supply
+        changes=[
+            ('sourceCommit',lambda m:m['context'].update(sourceCommit='f'*40)),
+            ('tag',lambda m:m['context'].update(tag=p.TAG+'0')),
+            ('tagObject',lambda m:m['context'].update(tagObject='f'*40)),
+            ('sourceTree',lambda m:m['context'].update(sourceTree='f'*40)),
+            ('runID',lambda m:m['context'].update(runID=43)),
+            ('runAttempt',lambda m:m['context'].update(runAttempt=2)),
+            ('planSHA256',lambda m:m.update(planSHA256='f'*64)),
+            ('requiredProfilesEmpty',lambda m:m.update(requiredProfiles=[])),
+            ('requiredProfilesWrong',lambda m:m.update(requiredProfiles=['bullseye-arm64'])),
+            ('unlisted',lambda m:m.update(unlisted='forbidden'))]
+        for role,count in [('all',8),('linux',1),('docker',1)]:
+            for number,(axis,change) in enumerate(changes):
+                with self.subTest(role=role,number=number,axis=axis):
+                    original=self.bundle(role);before=copy.deepcopy(original)
+                    # A whole-bundle deepcopy preserves aliases; it is not an expectation.
+                    authority={'context':copy.deepcopy(original['context']),
+                               'artifacts':copy.deepcopy(self.artifacts(original)),
+                               'run':copy.deepcopy(self.run_record(original)),
+                               'supplier':copy.deepcopy(original['supplier_job'])}
+                    authority_before=copy.deepcopy(authority)
+                    self.assertEqual(len(original['manifest']['requiredProfiles']),count)
+                    rewritten=self.rewrite(original,manifest=change)
+                    for candidate_context in (rewritten['context'],rewritten['manifest']['context'],
+                                              rewritten['ready']['context'],rewritten['binding']['context']):
+                        self.assertIsNot(authority['context'],candidate_context)
+                    self.assertIsNot(authority['supplier'],rewritten['supplier_job'])
+                    artifacts=copy.deepcopy(authority['artifacts'])
+                    for pinned,api,key,zip_key in zip(authority['artifacts'],artifacts,
+                            ('raw_artifact','ready_artifact'),('raw_zip','ready_zip')):
+                        # Keep API identity/timing fixed and remeasure only the changed container.
+                        api.update(size_in_bytes=rewritten[key]['size_in_bytes'],digest=rewritten[key]['digest'])
+                        self.assertEqual(api['size_in_bytes'],len(rewritten[zip_key]))
+                        self.assertEqual(api['digest'],'sha256:'+hashlib.sha256(rewritten[zip_key]).hexdigest())
+                        self.assertEqual({k:v for k,v in api.items() if k not in ('size_in_bytes','digest')},
+                                         {k:v for k,v in pinned.items() if k not in ('size_in_bytes','digest')})
+                        self.assertIsNot(api['workflow_run'],rewritten[key]['workflow_run'])
+                    self.assertEqual(original,before)
+                    self.assertEqual(authority,authority_before)
+                    guard='candidate manifest fields' if axis=='unlisted' else 'candidate source/plan/state'
+                    # Wrap the actual imported validator; no accepting predicate replaces it.
+                    with mock.patch.object(supply,'validate_manifest',wraps=supply.validate_manifest) as manifest_guard:
+                        with self.assertRaisesRegex(ValueError,'^Debian material admission: '+guard+'$'):
+                            self.read(rewritten,context=authority['context'],artifacts=artifacts,
+                                      run=authority['run'],supplier_job=authority['supplier'])
+                    manifest_guard.assert_called_once()
+                    decoded=manifest_guard.call_args.args[0]
+                    self.assertEqual(decoded,rewritten['manifest'])
+                    self.assertIs(manifest_guard.call_args.kwargs['context'],authority['context'])
+                    if number<6:
+                        self.assertNotEqual(decoded['context'][axis],authority['context'][axis])
+                        self.assertEqual({k:v for k,v in decoded['context'].items() if k!=axis},
+                                         {k:v for k,v in authority['context'].items() if k!=axis})
+                    self.assertEqual(original,before)
+                    self.assertEqual(authority,authority_before)
+
+    def test_exact_cas_rejects_extra_missing_wrong_hash_oversize_and_object_count(self):
+        base=self.bundle()
+        cases=[
+            self.rewrite(base,extra=[('unlisted.txt',b'private')]),
+            self.rewrite(base,extra=[('objects/'+'f'*64,b'unlisted')]),
+            self.rewrite(base,manifest=lambda m:m.update(objects=[])),
+            self.rewrite(base,manifest=lambda m:m['objects'][0].update(sha256='f'*64)),
+            self.rewrite(base,manifest=lambda m:m['objects'][0].update(bytes=67108865)),
+            self.rewrite(base,manifest=lambda m:m.update(objects=[copy.deepcopy(m['objects'][0]) for _ in range(513)]))]
+        for number,bundle in enumerate(cases):
+            with self.subTest(number=number),self.assertRaises(ValueError):self.read(bundle)
+
+    def test_api_expiry_size_digest_prior_attempt_and_supplier_identity_are_independent(self):
+        b=self.bundle()
+        for change in [
+            lambda rows:rows[0].update(expired=True),
+            lambda rows:rows[0].update(id=True),
+            lambda rows:rows[0].update(size_in_bytes=1075838977),
+            lambda rows:rows[0].update(digest='sha256:'+'f'*64),
+            lambda rows:rows[1].update(digest='sha256:'+'f'*64),
+            lambda rows:rows[0]['workflow_run'].update(head_sha='f'*40),
+            lambda rows:rows[0]['workflow_run'].update(id=43),
+            lambda rows:rows[0].update(created_at='2000-01-01T00:00:00Z'),
+            lambda rows:rows[1].update(created_at=b['supplier_job']['started_at'])]:
+            rows=self.artifacts(b);change(rows)
+            with self.subTest(change=change),self.assertRaises(ValueError):self.read(b,artifacts=rows)
+        for change in [
+            lambda job:job.update(status='in_progress',conclusion=None),
+            lambda job:job.update(conclusion='failure'),
+            lambda job:job.update(run_attempt=2),
+            lambda job:job.update(head_sha='f'*40),
+            lambda job:job.update(id=True)]:
+            job=copy.deepcopy(b['supplier_job']);change(job)
+            with self.subTest(change=change),self.assertRaises(ValueError):self.read(b,supplier_job=job)
+
+    def use_files(self, bundle, artifact, *, local=False):
+        from test_cronet_material_supply import fixture_use, fixture_local_use
+        from cronet_material_supply import encode_json
+        use=(fixture_local_use if local else fixture_use)(bundle,artifact);raw=encode_json(use)
+        fact={'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+              'releaseName':None,'publicationDisposition':'private-debian-use','debianRawUse':use}
+        return {p.DEBIAN_USE:fact}
+
+    def test_all_candidate_pointer_is_written_by_existing_real_recorder(self):
+        from cronet_material_supply import encode_json, expected_use, load_profile_plan
+        b=self.bundle('all');binding,_=self.read(b)
+        jobs=[b['supplier_job'],*b['consumer_jobs']]
+        # C1 is the positive for this build environment. C2 is the original cross-job negative.
+        cases=[('binary-linux_amd64-glibc','C1_ALL_BINARY','amd64',['bullseye-amd64'],'build'),
+               ('binary-linux-client-arm64','C2_ALL_LINUX_CLIENT','arm64',
+                ['bullseye-amd64','bullseye-arm64'],'build_linux_client')]
+        for artifact,caller,arch,profiles,sidecar_key,local in [(*case,local) for case in cases for local in (False,True)]:
+            with self.subTest(artifact=artifact,caller=caller):
+                self.assertIn(artifact,self.eligible('all'))
+                self.assertEqual(expected_use('all',artifact),
+                                 {'caller':caller,'targetArch':arch,'libc':'glibc','profiles':profiles})
+                source_caller=next(item for item in load_profile_plan()['callers'] if item['id']==caller)
+                self.assertEqual(source_caller['job'],sidecar_key)
+                self.assertEqual(source_caller['workflow'],b['context']['workflow'])
+                files=self.use_files(b,artifact,local=local);use=files[p.DEBIAN_USE]['debianRawUse']
+                self.assertEqual((use['caller'],use['targetArch'],use['libc'],
+                                  [profile['id'] for profile in (use['manifest']['profiles'] if local else use['profiles'])],use['consumerJob']['key']),
+                                 (caller,arch,'glibc',profiles,sidecar_key))
+                raw=encode_json(use)
+                self.assertEqual(files[p.DEBIAN_USE]['bytes'],len(raw))
+                self.assertEqual(files[p.DEBIAN_USE]['sha256'],hashlib.sha256(raw).hexdigest())
+                env={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID),'GITHUB_JOB':'build',
+                     'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1','CANDIDATE_MATRIX_KEY':'build-0'}
+                if caller=='C1_ALL_BINARY':
+                    self.assertEqual(env['GITHUB_JOB'],source_caller['job'])
+                else:
+                    self.assertNotEqual(env['GITHUB_JOB'],source_caller['job'])
+                with tempfile.TemporaryDirectory() as directory:
+                    root=Path(directory);(root/p.DEBIAN_USE).write_bytes(raw)
+                    (root/'inert-package').write_bytes(b'inert fixture')
+                    with mock.patch.dict(os.environ,env,clear=True),mock.patch('subprocess.check_output',side_effect=lambda command,**_: 'b'*40 if command[-1]=='HEAD^{tree}' else 'a'*40):
+                        namespace=runpy.run_path(str(p.ROOT/'scripts/ci/record_candidate.py'),run_name='fixture_recorder')
+                        namespace['main'](str(root))
+                    self.assertEqual((root/p.DEBIAN_USE).read_bytes(),raw)
+                    emitted_use=json.loads((root/p.DEBIAN_USE).read_bytes())
+                    self.assertEqual(emitted_use,use)
+                    candidates=list(root.glob('polaris-candidate-manifest-*.json'))
+                    self.assertEqual(len(candidates),1)
+                    candidate=json.loads(candidates[0].read_text())
+                self.assertEqual(candidate['job'],env['GITHUB_JOB'])
+                self.assertEqual(candidate['matrixKey'],env['CANDIDATE_MATRIX_KEY'])
+                self.assertEqual((candidate['sourceCommit'],candidate['sourceTree'],
+                                  candidate['workflowRunId'],candidate['workflowAttempt']),
+                                 ('a'*40,'b'*40,'42','1'))
+                reference={'member':p.DEBIAN_USE,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
+                self.assertEqual(candidate['debianMaterialUse'],reference)
+                self.assertEqual([row for row in candidate['files'] if row['path']==p.DEBIAN_USE],
+                                 [{'path':p.DEBIAN_USE,'bytes':reference['bytes'],'sha256':reference['sha256']}])
+                self.assertEqual(emitted_use['consumerJob']['key'],source_caller['job'])
+                if caller=='C2_ALL_LINUX_CLIENT':
+                    # All other fields are valid; the real build recorder cannot claim C2's job.
+                    with self.assertRaisesRegex(ValueError,'^candidate Debian consumer job mismatch$'):
+                        p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
+                    continue
+                self.assertEqual(candidate['job'],emitted_use['consumerJob']['key'])
+                self.assertTrue(p.validate_debian_use(files,[candidate],artifact,binding,jobs=jobs,canonical_manifest=b['manifest']))
+                for change,guard in [
+                    (lambda c:c.pop('debianMaterialUse'),'candidate Debian useRef mismatch'),
+                    (lambda c:c['debianMaterialUse'].update(sha256='f'*64),'candidate Debian useRef mismatch'),
+                    (lambda c:c.update(job='build_windows'),'candidate Debian consumer job mismatch'),
+                    (lambda c:c.update(files=[]),'candidate did not measure its Debian use sidecar')]:
+                    bad=copy.deepcopy(candidate);change(bad)
+                    with self.subTest(guard=guard),self.assertRaisesRegex(ValueError,'^'+guard+'$'):
+                        p.validate_debian_use(files,[bad],artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
+
+    def test_real_use_validation_rejects_mismatched_artifact_context_target_and_profile(self):
+        for role in ['all','linux','docker']:
+            b=self.bundle(role);binding,_=self.read(b);artifact=self.eligible(role)[0]
+            files=self.use_files(b,artifact)
+            # All pointer presence is separately tested using the actual recorder.
+            if role=='all':continue
+            self.assertTrue(p.validate_debian_use(files,[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']]))
+            for change in [
+                lambda u:u['context'].update(runAttempt=2),
+                lambda u:u['context'].update(sourceCommit='f'*40),
+                lambda u:u['context'].update(tag=p.TAG+'0'),
+                lambda u:u.update(planSHA256='f'*64),
+                lambda u:u['rawArtifact'].update(id=u['rawArtifact']['id']+1),
+                lambda u:u['readyArtifact'].update(id=u['readyArtifact']['id']+1),
+                lambda u:u.update(targetArch='other'),
+                lambda u:u.update(profiles=[])]:
+                bad=copy.deepcopy(files);change(bad[p.DEBIAN_USE]['debianRawUse'])
+                with self.subTest(role=role,change=change),self.assertRaises(ValueError):
+                    p.validate_debian_use(bad,[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+            with self.assertRaises(ValueError):p.validate_debian_use({},[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+            with self.assertRaises(ValueError):p.validate_debian_use(files,[],'unlisted-artifact',binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+
+    def test_local_original_before_ready_and_legacy_timing_are_distinct(self):
+        for role in ('all','linux','docker'):
+            b=self.bundle(role);binding,_,ready_metadata=self.read(b,with_ready=True)
+            self.assertEqual(set(binding['readyArtifact']),{'id','name','digest','size'})
+            self.assertEqual(p.debian_artifact_ref(ready_metadata),binding['readyArtifact'])
+            artifact=self.eligible(role)[0]
+            row=b['consumer_job_by_artifact'][artifact]
+            row.update(started_at='2020-01-01T00:00:05Z',completed_at='2020-01-01T00:00:40Z')
+            jobs=[b['supplier_job'],*b['consumer_jobs']]
+            metadata={'created_at':'2020-01-01T00:00:40Z'}
+            files=self.use_files(b,artifact,local=True)
+            def candidates_for(members):
+                fact=members[p.DEBIAN_USE];use=fact['debianRawUse']
+                reference={'member':p.DEBIAN_USE,'bytes':fact['bytes'],'sha256':fact['sha256']}
+                return ([{'job':use['consumerJob']['key'],'debianMaterialUse':reference,
+                          'files':[dict(path=p.DEBIAN_USE,bytes=fact['bytes'],sha256=fact['sha256'])]}]
+                        if role=='all' else [])
+            candidates=candidates_for(files)
+            self.assertTrue(p.validate_debian_use(files,candidates,artifact,binding,jobs=jobs,
+                canonical_manifest=b['manifest'],artifact_metadata=metadata,ready_metadata=ready_metadata))
+            remote=self.use_files(b,artifact)
+            remote_candidates=candidates_for(remote)
+            after={'created_at':'2020-01-01T00:02:30Z'}
+            row.update(started_at='2020-01-01T00:02:10Z',completed_at='2020-01-01T00:03:00Z')
+            # The actual reader's compact binding plus authenticated API READY
+            # metadata accepts a legacy consumer after both independent gates.
+            self.assertTrue(p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=ready_metadata))
+            with self.subTest(role=role),self.assertRaisesRegex(ValueError,'Debian consumer artifact predates READY'):
+                p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                    canonical_manifest=b['manifest'],artifact_metadata=metadata,ready_metadata=ready_metadata)
+            row.update(started_at='2020-01-01T00:00:05Z')
+            with self.assertRaisesRegex(ValueError,'Debian consumer started before'):
+                p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                    canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=ready_metadata)
+            for missing_or_foreign in (None,dict(ready_metadata,id=ready_metadata['id']+1)):
+                with self.assertRaisesRegex(ValueError,'legacy authenticated READY metadata missing or mismatched'):
+                    p.validate_debian_use(remote,remote_candidates,artifact,binding,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=after,ready_metadata=missing_or_foreign)
+            for changed in ({},dict(binding,manifestSHA256='f'*64)):
+                with self.assertRaises(ValueError):
+                    p.validate_debian_use(files,candidates,artifact,changed,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=metadata)
+            for mutate in (lambda u:u.update(schema='unknown'),lambda u:u.pop('manifest'),
+                           lambda u:u.update(schema='polaris-debian-use-v1')):
+                bad=copy.deepcopy(files);mutate(bad[p.DEBIAN_USE]['debianRawUse'])
+                with self.assertRaises(ValueError):
+                    p.validate_debian_use(bad,candidates,artifact,binding,jobs=jobs,
+                        canonical_manifest=b['manifest'],artifact_metadata=metadata)
+            with self.assertRaises(ValueError):
+                p.validate_debian_use({},candidates,artifact,binding,jobs=jobs,canonical_manifest=b['manifest'])
+
+    def test_local_manifest_self_hash_cannot_replace_actual_canonical_bytes(self):
+        from cronet_material_supply import encode_json
+        b=self.bundle('linux');binding,_=self.read(b);artifact=self.eligible('linux')[0]
+        files=self.use_files(b,artifact,local=True);use=files[p.DEBIAN_USE]['debianRawUse']
+        use['manifest']['objects'][0]['bytes']+=1
+        use['manifestSHA256']=hashlib.sha256(encode_json(use['manifest'])).hexdigest()
+        with self.assertRaisesRegex(ValueError,'local URL/CAS differs from canonical bytes'):
+            p.validate_debian_use(files,[],artifact,binding,jobs=b['consumer_jobs'],canonical_manifest=b['manifest'])
+        with self.assertRaises(ValueError):
+            p.validate_debian_use(self.use_files(b,artifact,local=True),[],artifact,binding,jobs=b['consumer_jobs'])
+        self.assertFalse(p.validate_debian_use({},[],'binary-linux_s390x',binding,jobs=b['consumer_jobs'],
+                                             canonical_manifest=b['manifest']))
+        with self.assertRaises(ValueError):
+            p.validate_debian_use(files,[],'binary-linux_s390x',binding,jobs=b['consumer_jobs'],
+                                 canonical_manifest=b['manifest'])
+
+    def test_exact_payload_member_is_required_only_in_actual_consumers(self):
+        files={'package':{},p.DEBIAN_USE:{}}
+        rule=[{'pattern':'package','count':1}]
+        p.verify_payloads(files,rule,'fixture',debian_use=True)
+        for members,required in [({'package':{}},True),(files,False),
+                                 (dict(files,extra={}),True),(dict(files,**{'nested/'+p.DEBIAN_USE:{}}),True)]:
+            with self.subTest(members=members,required=required),self.assertRaises(ValueError):
+                p.verify_payloads(members,rule,'fixture',debian_use=required)
+        for role,artifact,name in [('all','binary-linux_amd64',p.DEBIAN_USE),
+                                    ('all','binary-windows_amd64',p.DEBIAN_USE),
+                                    ('signed','binary-linux_amd64_glibc',p.DEBIAN_USE),
+                                    ('linux','binary-linux_amd64','nested/'+p.DEBIAN_USE),
+                                    ('docker',p.DEBIAN_READY,'other.json'),
+                                    ('all',p.DEBIAN_RAW,'objects/not-a-digest')]:
+            with self.subTest(role=role,artifact=artifact,name=name),self.assertRaises(ValueError):
+                p.publication(role,artifact,name)
+
+    def test_optional_mode_retains_original_receipt_shape_and_never_reads_API(self):
+        with mock.patch.object(p,'api') as remote:
+            for value in [{},{'POLARIS_DEBIAN_REQUIRED':'false'}]:
+                self.assertIsNone(p.producer_debian_materials('all','a'*40,None,env=value))
+            for value in [{'POLARIS_DEBIAN_REQUIRED':'TRUE'},
+                          {'POLARIS_DEBIAN_REQUIRED':'true'},
+                          {'POLARIS_DEBIAN_REQUIRED':'false','POLARIS_DEBIAN_RAW_ID':'1'}]:
+                with self.subTest(value=value),self.assertRaises(ValueError):
+                    p.producer_debian_materials('all','a'*40,None,env=value)
+            remote.assert_not_called()
+
+    def test_producer_receipt_recomputes_same_run_binding_without_whole_run_success_cycle(self):
+        b=self.bundle('linux');c=b['context'];run=self.run_record(b);artifacts=self.artifacts(b)
+        table={f'repos/{p.REPO}/actions/runs/42':run}
+        for artifact in artifacts:table[f'repos/{p.REPO}/actions/artifacts/{artifact["id"]}']=artifact
+        env={'POLARIS_DEBIAN_REQUIRED':'true','POLARIS_DEBIAN_RAW_ID':str(b['raw_artifact']['id']),
+             'POLARIS_DEBIAN_RAW_DIGEST':b['raw_artifact']['digest'].removeprefix('sha256:'),
+             'POLARIS_DEBIAN_READY_ID':str(b['ready_artifact']['id']),'POLARIS_DEBIAN_READY_DIGEST':b['ready_artifact']['digest'],
+             'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REF':'refs/tags/'+p.TAG,'GITHUB_SHA':c['sourceCommit'],
+             'GITHUB_WORKFLOW_SHA':c['sourceCommit'],'GITHUB_WORKFLOW_REF':p.REPO+'/'+c['workflow']+'@refs/tags/'+p.TAG,
+             'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}
+        with self.transport({b['raw_artifact']['id']:b['raw_zip'],b['ready_artifact']['id']:b['ready_zip']}), \
+             mock.patch.object(p,'api',side_effect=lambda path:copy.deepcopy(table[path])), \
+             mock.patch.object(p,'pages',return_value=[b['supplier_job']]),mock.patch.object(p,'tag_identity',return_value=c['tagObject']):
+            self.assertEqual(p.producer_debian_materials('linux',c['sourceCommit'],c['sourceTree'],env=env),b['binding'])
+
+    def test_public_stream_skips_private_family_and_filters_sidecar_from_mixed_archive(self):
+        b=self.bundle('all');artifact=self.eligible('all')[0];files=self.use_files(b,artifact)
+        use_bytes=json.dumps(files[p.DEBIAN_USE]['debianRawUse']).encode()
+        public=f'sing-box-{p.VERSION}-linux-amd64.tar.gz';content=b'inert public fixture'
+        zipped=BoundedStorageTests.zipped([(public,content),(p.DEBIAN_USE,use_bytes)])
+        metadata=BoundedStorageTests.metadata(zipped,artifact,99)
+        files={}
+        for name,data in [(public,content),(p.DEBIAN_USE,use_bytes)]:
+            release,disposition=p.publication('all',artifact,name)
+            files[name]={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
+                         'releaseName':release,'publicationDisposition':disposition}
+        actual={'sourceCommit':'a'*40,'runs':{'all':{'id':'7','attempt':1,'artifacts':{
+            artifact:{'id':99,'archiveBytes':len(zipped),'archiveSha256':metadata['digest'],'files':files},
+            p.DEBIAN_RAW:{'id':100,'files':{p.DEBIAN_MANIFEST:{'releaseName':None,'publicationDisposition':'private-debian-raw'}}}}}}}
+        with tempfile.TemporaryDirectory() as directory,self.transport({99:zipped}) as remote, \
+             mock.patch.object(p,'api',return_value=metadata) as lookup:
+            budget=p.ScratchBudget(Path(directory),reserve=0)
+            with p.closing(p.public_asset_stream(actual,budget)) as supplier:
+                name,path=next(supplier);self.assertEqual(name,p.publication('all',artifact,public)[0])
+                self.assertEqual(path.read_bytes(),content)
+                with self.assertRaises(StopIteration):next(supplier)
+            self.assertEqual(lookup.call_count,1);self.assertEqual(remote.call_count,1)
+            self.assertEqual(list(Path(directory).iterdir()),[])
+        files[p.DEBIAN_USE]['releaseName']='leak.json'
+        with tempfile.TemporaryDirectory() as directory,mock.patch.object(p,'api') as lookup,self.assertRaises(ValueError):
+            list(p.public_asset_stream(actual,p.ScratchBudget(Path(directory),reserve=0)))
+        lookup.assert_not_called()
+
+
+    def test_native_index_cannot_copy_itself_as_independent_material_proof(self):
+        from native_release_index import distribution_materials
+        b=self.bundle('all');binding,_=self.read(b);index=GateTests.final_index(self)
+        index['distributionMaterials']=distribution_materials(index,p.ROOT,debian_raw=binding)
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',debian_raw=binding)
+        for change in [
+            lambda d:d['rawArtifact'].update(id=d['rawArtifact']['id']+1),
+            lambda d:d['readyArtifact'].update(digest='sha256:'+'f'*64),
+            lambda d:d['context'].update(runAttempt=2),
+            lambda d:d.update(manifestSHA256='f'*64)]:
+            bad=copy.deepcopy(index);change(bad['distributionMaterials']['debianRaw'])
+            with self.subTest(change=change),mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)),self.assertRaises(ValueError):
+                p.validate_final_index(bad,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml',debian_raw=binding)
+        # Omitting external measured evidence cannot reproduce a field carried by index.
+        with mock.patch.object(p,'pages',return_value=native_jobs_fixture(index)),self.assertRaises(ValueError):
+            p.validate_final_index(index,'a'*40,'b'*40,'c'*40,'42',1,'.github/workflows/build.yml')
+
+    def test_assemble_compares_reviewed_role_material_binding_before_any_public_write(self):
+        b=self.bundle('all');binding,_=self.read(b)
+        actual={'repository':p.REPO,'repositoryId':p.RID,'version':p.VERSION,
+                'sourceCommit':'a'*40,'sourceTree':'b'*40,'tag':p.TAG,'tagObject':'c'*40,
+                'scopeSha256':p.sha(p.SCOPE),'runs':{'all':{'id':'42','attempt':1,
+                'distributionMaterials':{'debianRaw':binding},'artifacts':{}}}}
+        for change in [lambda d:d['context'].update(runAttempt=2),
+                       lambda d:d['rawArtifact'].update(id=d['rawArtifact']['id']+1),
+                       lambda d:d.update(manifestSHA256='f'*64)]:
+            review=copy.deepcopy(actual);review['reviewed']=True;change(review['runs']['all']['distributionMaterials']['debianRaw'])
+            with tempfile.TemporaryDirectory() as directory,generic_algorithm_fixture(),self.assertRaisesRegex(ValueError,'role Debian'):
+                root=Path(directory);p.assemble(actual,review,root,root/'out',materialize=False)
+
+    def test_source_owned_scope_adds_only_two_private_artifacts_and_one_job(self):
+        scope=p.release_scope(p.VERSION)
+        for role,count in [('all',74),('linux',14),('docker',22)]:
+            self.assertEqual(len(scope[role]['requiredArtifacts']),count)
+            self.assertEqual(scope[role]['requiredJobs'].count('debian_materials'),1)
+            self.assertEqual(scope[role]['debianMaterials'],p.DEBIAN_POLICY)
+            p.debian_policy(scope,role)
+            bad=copy.deepcopy(scope);bad[role]['debianMaterials']['rawArtifact']='arbitrary'
+            with self.assertRaises(ValueError):p.debian_policy(bad,role)
+        self.assertIsNone(p.debian_policy(scope,'signed'))
+        self.assertNotIn('debian_materials',scope['signed']['requiredJobs'])
+
+    def test_receipt_script_adds_only_the_recomputed_role_binding(self):
+        release=json.loads(p.CONFIG.read_text());source='a'*40;b=self.bundle('linux')
+        env={'PUBLISHER_ROLE':'linux','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':p.REPO,
+             'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
+             'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
+             'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false','POLARIS_DEBIAN_REQUIRED':'true'}
+        env.update(receipt_context_fixture('linux',True))
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'release/ci').mkdir(parents=True)
+            (root/'release/ci/github-release.json').write_text(json.dumps(release))
+            (root/'release/ci/publisher-upstream-scope.json').write_bytes(p.SCOPE.read_bytes())
+            with chdir(root),mock.patch.dict(os.environ,env,clear=True), \
+                 mock.patch('subprocess.check_output',side_effect=lambda command,**_: 'b'*40 if command[-1]=='HEAD^{tree}' else source), \
+                 mock.patch('github_release.producer_debian_materials',return_value=b['binding']) as measured:
+                runpy.run_path(str(p.ROOT/'scripts/ci/publisher_run_receipt.py'),run_name='__main__')
+                receipt=json.loads((root/'publisher-run-receipt.json').read_text())
+            measured.assert_called_once_with('linux',source,'b'*40)
+            self.assertEqual(receipt['distributionMaterials'],{'debianRaw':b['binding']})
+            self.assertEqual(set(receipt),{'repository','repositoryId','sourceCommit','runId','attempt','version','build','role',
+                                           'publishStores','publishRegistry','distributionMaterials'})
+
+    def test_real_material_contract_hash_compares_both_source_roots(self):
+        inputs=('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+                'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+                '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION',
+                'release/ci/client-overlays.json','release/ci/owned-distribution.json',
+                'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py','scripts/ci/client_source.py')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for name in inputs:
+                if not (p.ROOT/name).is_file():continue
+                destination=root/name;destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes((p.ROOT/name).read_bytes())
+            environment={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID)}
+            with mock.patch.dict(os.environ,environment),mock.patch.object(p,'api',return_value={'id':p.RID}), \
+                 mock.patch.object(p,'command',side_effect=lambda *args:'a'*40 if 'rev-parse' in args else ''):
+                p.identity('a'*40,root)
+                for name in inputs[:6]:
+                    path=root/name;original=path.read_bytes();path.write_bytes(original+b'\n')
+                    with self.subTest(name=name),self.assertRaises(ValueError):p.identity('a'*40,root)
+                    path.write_bytes(original)
+
+
+    def test_actual_consumer_job_is_required_unique_successful_and_matches_recorded_runner(self):
+        b=self.bundle('linux');binding,_=self.read(b);artifact=self.eligible('linux')[0]
+        files=self.use_files(b,artifact);ident=files[p.DEBIAN_USE]['debianRawUse']['consumerJob']['id']
+        for change in [
+            lambda jobs:jobs.clear(),
+            lambda jobs:jobs.append(copy.deepcopy(next(j for j in jobs if j['id']==ident))),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(status='in_progress',conclusion=None),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(conclusion='failure'),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(run_id=43),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(run_attempt=2),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(head_sha='f'*40),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(name='another job'),
+            lambda jobs:next(j for j in jobs if j['id']==ident).update(runner_name='another runner')]:
+            jobs=copy.deepcopy([b['supplier_job'],*b['consumer_jobs']]);change(jobs)
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                p.validate_debian_use(files,[],artifact,binding,jobs=jobs)
+        for change in [
+            lambda u:u['consumerJob'].update(id=True),
+            lambda u:u['consumerJob'].update(id=99999999),
+            lambda u:u['consumerJob'].update(key='build_windows'),
+            lambda u:u['consumerJob'].update(name='another job'),
+            lambda u:u['consumerJob'].update(runner='another runner'),
+            lambda u:u['consumerJob'].update(unlisted='forbidden')]:
+            bad=copy.deepcopy(files);change(bad[p.DEBIAN_USE]['debianRawUse'])
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                p.validate_debian_use(bad,[],artifact,binding,jobs=[b['supplier_job'],*b['consumer_jobs']])
+
+
+    def test_actual_material_timing_never_borrows_pre_READY_producer_outputs(self):
+        b=self.bundle('linux');binding,_=self.read(b);artifact=self.eligible('linux')[0]
+        files=self.use_files(b,artifact);ident=files[p.DEBIAN_USE]['debianRawUse']['consumerJob']['id']
+        jobs=copy.deepcopy([b['supplier_job'],*b['consumer_jobs']])
+        next(job for job in jobs if job['id']==ident)['started_at']='2000-01-01T00:00:00Z'
+        with self.assertRaisesRegex(ValueError,'started before'):
+            p.validate_debian_use(files,[],artifact,binding,jobs=jobs)
+        ready=self.artifacts(b)[1]
+        p.debian_consumer_artifact({'created_at':ready['created_at']},ready)
+        with self.assertRaisesRegex(ValueError,'predates READY'):
+            p.debian_consumer_artifact({'created_at':'2000-01-01T00:00:00Z'},ready)

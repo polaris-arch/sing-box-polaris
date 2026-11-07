@@ -168,15 +168,21 @@ def _attempt(path, sink, max_bytes, timeout):
                     raise ReadFailure('child cleanup not confirmed') from None
 
 
-def read_get(path, sink, max_bytes, *, budget=None, record=None):
+def read_get(path, sink, max_bytes, *, budget=None, record=None,
+             attempt_seconds=ATTEMPT_SECONDS, total_seconds=TOTAL_SECONDS,
+             max_retry_wait=MAX_RETRY_WAIT):
     if not isinstance(path, str) or not (path in ('rate_limit', 'repos/polaris-arch/sing-box-polaris') or re.fullmatch(r'repos/polaris-arch/sing-box-polaris/[A-Za-z0-9_./?=&%+\-]+', path)):
         raise ReadFailure('unapproved GET path')
     if '..' in path.split('?', 1)[0].split('/'):
         raise ReadFailure('unapproved GET path')
     if type(max_bytes) is not int or max_bytes <= 0:
         raise ReadFailure('invalid byte limit')
+    for value, maximum in ((attempt_seconds, ATTEMPT_SECONDS), (total_seconds, TOTAL_SECONDS),
+                           (max_retry_wait, MAX_RETRY_WAIT)):
+        if type(value) not in (int, float) or not 0 < value <= maximum:
+            raise ReadFailure('invalid read time limit')
     budget = budget or PROCESS_BUDGET
-    deadline = time.monotonic() + TOTAL_SECONDS
+    deadline = time.monotonic() + total_seconds
     for attempt in range(1, ATTEMPTS + 1):
         sink.seek(0)
         sink.truncate(0)
@@ -184,7 +190,7 @@ def read_get(path, sink, max_bytes, *, budget=None, record=None):
         if remaining <= 0:
             raise ReadFailure('total read deadline')
         try:
-            result = _attempt(path, sink, max_bytes, min(ATTEMPT_SECONDS, remaining))
+            result = _attempt(path, sink, max_bytes, min(attempt_seconds, remaining))
             if record:
                 record(readAttempt=attempt, readStatus=result['status'], readHeaders=result['headers'],
                        readBytes=result['bytes'], readError=None, extraGETs=budget.extra_gets)
@@ -198,7 +204,7 @@ def read_get(path, sink, max_bytes, *, budget=None, record=None):
             if not error.retryable or attempt == ATTEMPTS or budget.extra_gets >= MAX_EXTRA_GETS:
                 raise
             delay = retry_delay(error.headers.get('retry-after'), attempt, time.time())
-            if delay >= deadline - time.monotonic() or budget.wait_seconds + delay > MAX_RETRY_WAIT:
+            if delay >= deadline - time.monotonic() or budget.wait_seconds + delay > max_retry_wait:
                 raise ReadFailure('retry budget exhausted', error.status) from None
             budget.extra_gets += 1
             budget.wait_seconds += delay

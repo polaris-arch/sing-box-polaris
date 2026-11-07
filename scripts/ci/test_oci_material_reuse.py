@@ -75,6 +75,30 @@ class OCIMaterialReuseTests(unittest.TestCase):
     def test_valid_identity_reuse_measures_new_core(self):
         result=self.check();self.assertTrue(result['sourceMaterialsReusable']);self.assertEqual(result['packageCount'],1)
         self.assertEqual(result['coreSHA256'],hashlib.sha256(b'fixture core bytes').hexdigest());self.assertFalse(result['legalConclusion'])
+    def test_explicit_selection_changes_only_reviewed_base_and_keeps_package_guards(self):
+        # Synthetic graph exercises the same parser with an independent selected
+        # reference. It never upgrades the historical default or claims S19 bytes.
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);path,source=self.fixture(root,'base')
+            default=root/'release/dependency-sources/oci/reuse-reference.json'
+            original=default.read_bytes();selected=json.loads(original)
+            with self.assertRaisesRegex(ValueError,'^OCI base changed; refresh source materials$'):
+                g.validate_oci_material_reuse(path,'oci-linux-amd64',source,'123',1,root)
+            selected['artifacts']['oci-linux-amd64']['baseDependencies']=[]
+            reference=root/'selected-reference.json';material_map=root/'selected-material-map.json'
+            material_map.write_text('{"selected-fixture":true}\n')
+            selected['materialMapSHA256']=g.sha(material_map)
+            reference.write_text(json.dumps(selected))
+            result=g.validate_oci_material_reuse(path,'oci-linux-amd64',source,'123',1,root,
+                                               reference_paths=(reference,material_map))
+            self.assertEqual(result['packageCount'],1);self.assertFalse(result['legalConclusion'])
+            for field in ('P','V','A','L','o','c','C'):
+                changed=copy.deepcopy(selected);changed['artifacts']['oci-linux-amd64']['packages'][0][field]+='-unreviewed'
+                reference.write_text(json.dumps(changed))
+                with self.subTest(field=field),self.assertRaisesRegex(ValueError,'^OCI installed packages changed; refresh source materials$'):
+                    g.validate_oci_material_reuse(path,'oci-linux-amd64',source,'123',1,root,
+                                                reference_paths=(reference,material_map))
+            self.assertEqual(default.read_bytes(),original)
     def test_final_installed_database_overrides_base_layer(self):
         single = self.check()
         layered = self.check('earlier_layer')

@@ -3,8 +3,10 @@ import publisher_peer_evidence as previous
 import publisher_peer_evidence_12_5 as current
 import publisher_peer_evidence_12_6 as latest
 import publisher_peer_evidence_12_7 as alpha127
+import publisher_peer_evidence_12_9 as alpha129
+import publisher_peer_successor as successor
 
-MODULES = (previous, current, latest, alpha127)
+MODULES = (previous, current, latest, alpha127, alpha129)
 JSON_LIMIT = previous.JSON_LIMIT
 strict_json = previous.strict_json
 
@@ -13,6 +15,10 @@ def _identity(source, version, tag):
     matches = [m for m in MODULES if source == m.SOURCE or version == m.VERSION or tag == 'v' + m.VERSION]
     previous.require(len(matches) <= 1, 'mixed historical/current selection identity')
     if not matches:
+        if version == successor.VERSION or tag == 'v' + successor.VERSION:
+            previous.require((version, tag) == (successor.VERSION, 'v' + successor.VERSION),
+                             'partial successor selection identity')
+            return successor
         return None
     m = matches[0]
     previous.require((source, version, tag) == (m.SOURCE, m.VERSION, 'v' + m.VERSION), 'partial selection identity')
@@ -40,7 +46,7 @@ def mapping(root, role, artifact, relative, source):
     for m in MODULES:
         if artifact == 'native-controlled-peer-' + m.SOURCE:
             return m.mapping(root, role, artifact, relative, source)
-    return None
+    return successor.mapping(root, role, artifact, relative, source)
 
 
 def check_api(policy, role, run, artifact):

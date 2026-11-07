@@ -202,6 +202,116 @@ class TestSmokeCleanup(unittest.TestCase):
     self.assertRaises(PermissionError,n.smoke,str(d))
    self.assertEqual(row_path.read_text(),original)
 
+
+
+class DebianPlanAndProducerBridgeTests(unittest.TestCase):
+ def test_six_measured_inputs_match_actual_supplier_without_hashing_the_larger_map(self):
+  import cronet_material_supply as supply
+  index,binding=DebianDistributionBindingTests().fixture()
+  material=n.distribution_materials(index,n.ROOT,debian_raw=binding)
+  self.assertEqual(n.DEBIAN_INPUTS,supply.INPUTS)
+  self.assertEqual(n._debian_plan_sha256(material['inputs']),supply.profile_plan_sha256(n.ROOT))
+  self.assertGreater(len(material['inputs']),len(n.DEBIAN_INPUTS))
+  larger=dict(material['inputs'],unrelated='f'*64)
+  self.assertEqual(n._debian_plan_sha256(larger),binding['planSHA256'])
+  bad=dict(binding,planSHA256=n.sha(supply.encode_json(material['inputs'])))
+  self.assertNotEqual(bad['planSHA256'],binding['planSHA256'])
+  with self.assertRaisesRegex(ValueError,'actual native producer/source inputs'):
+   n.distribution_materials(index,n.ROOT,debian_raw=bad)
+  for name in n.DEBIAN_INPUTS:
+   missing=dict(material['inputs']);del missing[name]
+   with self.subTest(name=name),self.assertRaisesRegex(ValueError,'missing or invalid'):
+    n._debian_plan_sha256(missing)
+   for value in (None,True,1,'','A'*64,'f'*63,'f'*64+'\n'):
+    invalid=dict(material['inputs']);invalid[name]=value
+    with self.subTest(name=name,value=value),self.assertRaisesRegex(ValueError,'missing or invalid'):
+     n._debian_plan_sha256(invalid)
+
+ def test_required_measurement_and_optional_refs_fail_closed(self):
+  from unittest.mock import Mock
+  names=('POLARIS_DEBIAN_RAW_ID','POLARIS_DEBIAN_RAW_DIGEST',
+         'POLARIS_DEBIAN_READY_ID','POLARIS_DEBIAN_READY_DIGEST')
+  base={name:'' for name in names}
+  for mode in ('','True','FALSE','unknown'):
+   with self.subTest(mode=mode),patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED=mode)),self.assertRaisesRegex(ValueError,'required mode'):
+    n._measure_debian_materials(None,'a'*40,'b'*40)
+  with patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED='true')):
+   self.assertRaisesRegex(ValueError,'measurement missing',n._measure_debian_materials,None,'a'*40,'b'*40)
+   self.assertRaisesRegex(ValueError,'callable required',n._measure_debian_materials,{},'a'*40,'b'*40)
+   absent=Mock(return_value=None)
+   self.assertRaisesRegex(ValueError,'differs from required mode',n._measure_debian_materials,absent,'a'*40,'b'*40)
+   absent.assert_called_once_with('all','a'*40,'b'*40)
+   failed=Mock(side_effect=ValueError('actual measurement rejected'))
+   self.assertRaisesRegex(ValueError,'actual measurement rejected',n._measure_debian_materials,failed,'a'*40,'b'*40)
+   failed.assert_called_once()
+  with patch.dict(n.os.environ,dict(base,POLARIS_DEBIAN_REQUIRED='false')):
+   self.assertIsNone(n._measure_debian_materials(None,'a'*40,'b'*40))
+   self.assertRaisesRegex(ValueError,'differs from required mode',n._measure_debian_materials,lambda *a:{},'a'*40,'b'*40)
+  for name in names:
+   env=dict(base,POLARIS_DEBIAN_REQUIRED='false');env[name]='unexpected'
+   measured=Mock()
+   with self.subTest(name=name),patch.dict(n.os.environ,env),self.assertRaisesRegex(ValueError,'unexpected references'):
+    n._measure_debian_materials(measured,'a'*40,'b'*40)
+   measured.assert_not_called()
+
+ def test_actual_producer_measurement_reads_real_zip_bundle_and_rejects_cross_context(self):
+  import copy,github_release as release
+  from test_cronet_material_supply import fixture_bundle
+  context={'repository':n.REPO,'repositoryID':n.RID,'sourceCommit':'a'*40,'sourceTree':'b'*40,
+           'tag':release.TAG,'tagObject':'c'*40,'workflow':'.github/workflows/build.yml',
+           'runID':42,'runAttempt':1,'role':'all'}
+  bundle=fixture_bundle('all',context=context)
+  artifacts={bundle[key]['id']:copy.deepcopy(bundle[key]) for key in ('raw_artifact','ready_artifact')}
+  payloads={bundle['raw_artifact']['id']:bundle['raw_zip'],bundle['ready_artifact']['id']:bundle['ready_zip']}
+  run={'id':42,'run_attempt':1,'status':'in_progress','conclusion':None,
+       'repository':{'id':n.RID},'head_repository':{'id':n.RID},'head_sha':context['sourceCommit'],
+       'head_branch':release.TAG,'path':context['workflow'],'event':'workflow_dispatch',
+       'run_started_at':bundle['supplier_job']['started_at']}
+  requests=[]
+  def api(path):
+   if path==f'repos/{n.REPO}/actions/runs/42':return copy.deepcopy(run)
+   if path.startswith(f'repos/{n.REPO}/actions/artifacts/'):
+    return copy.deepcopy(artifacts[int(path.rsplit('/',1)[1])])
+   if path==f'repos/{n.REPO}/actions/runs/42/attempts/1/jobs?per_page=100&page=1':
+    return {'total_count':1,'jobs':[copy.deepcopy(bundle['supplier_job'])]}
+   raise AssertionError('unexpected producer metadata request '+path)
+  def transfer(path,sink,maximum,**kwargs):
+   ident=int(path.split('/')[-2]);body=payloads[ident];self.assertLessEqual(len(body),maximum)
+   requests.append(ident);sink.write(body)
+   return {'bytes':len(body),'sha256':n.sha(body)}
+  env={'POLARIS_DEBIAN_REQUIRED':'true','POLARIS_DEBIAN_RAW_ID':str(bundle['raw_artifact']['id']),
+       'POLARIS_DEBIAN_RAW_DIGEST':bundle['raw_artifact']['digest'],
+       'POLARIS_DEBIAN_READY_ID':str(bundle['ready_artifact']['id']),
+       'POLARIS_DEBIAN_READY_DIGEST':bundle['ready_artifact']['digest'],
+       'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REF':'refs/tags/'+release.TAG,
+       'GITHUB_SHA':context['sourceCommit'],'GITHUB_WORKFLOW_SHA':context['sourceCommit'],
+       'GITHUB_WORKFLOW_REF':n.REPO+'/'+context['workflow']+'@refs/tags/'+release.TAG,
+       'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}
+  with patch.dict(n.os.environ,env),patch.object(release,'api',side_effect=api), \
+       patch.object(release,'read_get',side_effect=transfer), \
+       patch.object(release,'tag_identity',return_value=context['tagObject']) as tag:
+   # The actual production receiver, archive/member readers and validators run.
+   binding=n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   self.assertEqual(binding,bundle['binding']);self.assertEqual(requests,[2001,2002])
+   self.assertEqual(tag.call_count,2)
+   index,_=DebianDistributionBindingTests().fixture()
+   self.assertEqual(n.distribution_materials(index,n.ROOT,debian_raw=binding)['debianRaw'],binding)
+   for changed in ({'GITHUB_RUN_ATTEMPT':'2'},{'GITHUB_SHA':'f'*40},{'GITHUB_WORKFLOW_REF':n.REPO+'/.github/workflows/linux.yml@refs/tags/'+release.TAG}):
+    with self.subTest(changed=changed),patch.dict(n.os.environ,changed),self.assertRaises(ValueError):
+     n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   bundle['supplier_job']['conclusion']='failure'
+   try:
+    with self.assertRaisesRegex(ValueError,'supplier did not succeed'):
+     n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],context['sourceTree'])
+   finally:bundle['supplier_job']['conclusion']='success'
+   with self.assertRaises(ValueError):
+    n._measure_debian_materials(release.producer_debian_materials,context['sourceCommit'],'f'*40)
+  optional={key:'' for key in env if key.startswith('POLARIS_DEBIAN_')}
+  optional['POLARIS_DEBIAN_REQUIRED']='false'
+  with patch.dict(n.os.environ,optional),patch.object(release,'api') as remote:
+   self.assertIsNone(n._measure_debian_materials(release.producer_debian_materials,'a'*40,'b'*40))
+   remote.assert_not_called()
+
 if __name__=='__main__':unittest.main()
 
 class TestWin7ReceiptMatrix(unittest.TestCase):
@@ -844,3 +954,166 @@ class MacNativeExecutionControls(unittest.TestCase):
    core=Path(td)/'inert-core';core.write_bytes(data)
    with patch.object(n.platform,'system',return_value='Darwin'),patch.object(n.platform,'machine',return_value='arm64'),patch.object(n,'macos_native_process',return_value=False),patch.object(n.subprocess,'run') as commands:
     self.assertRaisesRegex(ValueError,'translated execution',n.observe_macos_postsign,core,row);commands.assert_not_called()
+
+
+class WindowsTrustedExecutionIntegrationControls(unittest.TestCase):
+ def fixture(self):
+  from test_windows_native_execution import windows_row_fixture
+  return windows_row_fixture()
+ def test_windows_policy_data_retains_exact_source_and_ordered_purposes(self):
+  row=self.fixture();policy=n.validate_trusted_execution(row,{'runId':42,'runAttempt':1})
+  self.assertEqual(policy,row['trustedExecution'])
+  self.assertEqual(policy['purposes'],['check-config-v1','run-main-v1'])
+  self.assertEqual(policy['loader'],'windows-helper-private-cohort-v1')
+ def test_windows_policy_and_proof_pair_are_required_without_broadening_default_matrix(self):
+  row=self.fixture()
+  self.assertEqual(len(n.expected_native(row['version'])),44)
+  for missing in ('trustedExecution','windowsExecution'):
+   import copy
+   bad=copy.deepcopy(row)
+   if missing=='trustedExecution':bad.pop(missing)
+   else:bad['finalPackageCronetSmoke'].pop(missing)
+   self.assertRaises(ValueError,n.validate_trusted_execution,bad,{'runId':42,'runAttempt':1})
+  row.pop('trustedExecution');row['finalPackageCronetSmoke'].pop('windowsExecution')
+  self.assertIsNone(n.validate_trusted_execution(row,{'runId':42,'runAttempt':1}))
+ def test_windows_proof_key_cannot_route_to_linux_or_macos_schema(self):
+  for schema in (None,'polaris-macos-native-execution-proof-v1'):
+   row=self.fixture();proof=row['finalPackageCronetSmoke']['windowsExecution']
+   if schema is None:proof.pop('schema')
+   else:proof['schema']=schema
+   with patch.object(n,'derive_trusted_execution') as derive:
+    self.assertRaisesRegex(ValueError,'key/schema',n.validate_trusted_execution,row,{'runId':42,'runAttempt':1})
+    derive.assert_not_called()
+ def test_distribution_hash_retains_complete_windows_proof_kind(self):
+  row=self.fixture()
+  release={'sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],'sourceArchive':{'name':'synthetic-source'},
+           'platforms':[row],'legalFiles':[]}
+  materials=n.distribution_materials(release,n.ROOT)
+  mapping=materials['nativeArchives'][0]
+  self.assertEqual(mapping['trustedExecutionSHA256'],n.sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',',':')).encode()))
+  self.assertEqual(mapping['windowsExecutionSHA256'],n.sha(json.dumps(row['finalPackageCronetSmoke']['windowsExecution'],sort_keys=True,separators=(',',':')).encode()))
+  self.assertNotIn('sealedExecutionSHA256',mapping);self.assertNotIn('macosExecutionSHA256',mapping)
+
+
+class NativeProducerJobMappingControls(unittest.TestCase):
+ def fixture(self, explicit=True):
+  from test_windows_native_execution import windows_row_fixture
+  row=windows_row_fixture()
+  if not explicit:
+   row.pop('trustedExecution');row['finalPackageCronetSmoke'].pop('windowsExecution')
+  names=n.expected_native_job_names([row])
+  jobs=[{'id':i+1,'name':name,'head_sha':row['sourceCommit'],'run_id':42,'run_attempt':1,
+         'status':'completed','conclusion':'success'} for i,name in enumerate(names.values())]
+  return row,jobs
+ def test_windows_retained_proof_selects_actual_system_producer_and_ordinary_keeps_hosted(self):
+  for explicit in (False,True):
+   row,jobs=self.fixture(explicit)
+   # A successful hosted job remains present in an explicit run but is not the
+   # job that actually produced this retained native proof.
+   if explicit:jobs.append({'id':9,'name':'Native final-package Cronet and gVisor smoke (windows-amd64)',
+                            'head_sha':row['sourceCommit'],'run_id':42,'run_attempt':1,'status':'completed','conclusion':'success'})
+   selected=n.select_native_jobs([row],jobs,row['sourceCommit'],42,1)
+   self.assertEqual(selected['win'],{'id':2,'name':n.WINDOWS_PROOF_JOB if explicit else 'Native final-package Cronet and gVisor smoke (windows-amd64)'})
+ def test_missing_duplicate_wrong_skipped_failed_incomplete_and_foreign_producer_fail(self):
+  import copy
+  for case in ('missing','duplicate','wrong-name','skipped','failed','in-progress','source','run','attempt','bool-id','bool-attempt','reused-id'):
+   with self.subTest(case=case):
+    row,jobs=self.fixture();job=jobs[1]
+    if case=='missing':jobs.pop(1)
+    elif case=='duplicate':jobs.append(copy.deepcopy(job))
+    elif case=='wrong-name':job['name']='Native final-package Cronet and gVisor smoke (windows-amd64)'
+    elif case in ('skipped','failed'):job['conclusion']=case
+    elif case=='in-progress':job['status']='in_progress'
+    elif case=='source':job['head_sha']='f'*40
+    elif case=='run':job['run_id']=43
+    elif case=='attempt':job['run_attempt']=2
+    elif case=='bool-id':job['id']=True
+    elif case=='bool-attempt':job['run_attempt']=True
+    else:job['id']=jobs[0]['id']
+    self.assertRaises(ValueError,n.select_native_jobs,[row],jobs,row['sourceCommit'],42,1)
+ def test_duplicate_named_job_does_not_hide_behind_success_filter_or_other_attempt(self):
+  row,jobs=self.fixture();other=dict(jobs[1],id=99,run_attempt=2,conclusion='skipped');jobs.append(other)
+  self.assertRaisesRegex(ValueError,'duplicate',n.select_native_jobs,[row],jobs,row['sourceCommit'],42,1)
+ def test_ambiguous_missing_or_unproven_windows_row_cannot_choose_producer(self):
+  import copy
+  row,jobs=self.fixture()
+  for rows in ([],[row,copy.deepcopy(row)]):self.assertRaises(ValueError,n.expected_native_job_names,rows)
+  row.pop('trustedExecution');self.assertRaises(ValueError,n.expected_native_job_names,[row])
+
+
+class OverlayProductionBoundaryControls(unittest.TestCase):
+ def test_collect_smoke_assemble_reject_bad_overlay_before_product_work(self):
+  for operation,args in ((n.collect,('unused',{})),(n.smoke,('unused',)),(n.assemble,('unused',))):
+   with self.subTest(operation=operation.__name__),patch.object(n,'identity',return_value=('a'*40,'b'*40)), \
+        patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check, \
+        patch.object(n,'read_archive') as archive,patch.object(n.subprocess,'check_output') as command:
+    self.assertRaisesRegex(ValueError,'bad overlay',operation,*args)
+    check.assert_called_once_with(Path.cwd());archive.assert_not_called();command.assert_not_called()
+ def test_source_identity_and_materials_validate_precise_source_root(self):
+  with patch.object(n,'source_module_hashes',return_value={}),patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check,patch.object(n,'run') as command:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.source_identity)
+   check.assert_called_once_with(Path.cwd());command.assert_not_called()
+  root=Path('exact-cold-source-root')
+  with patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.distribution_materials,{'platforms':[]},root)
+   check.assert_called_once_with(root)
+ def test_windows_app_data_consumer_validates_original_source_root_before_native_facts(self):
+  from test_windows_native_execution import windows_row_fixture
+  row=windows_row_fixture();root=Path('exact-original-source')
+  with patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check,patch('windows_native_execution.validate_facts') as facts:
+   self.assertRaisesRegex(ValueError,'bad overlay',n.validate_trusted_execution,row,{'runId':42,'runAttempt':1},root)
+   check.assert_called_once_with(root);facts.assert_not_called()
+ def test_distribution_inputs_bind_every_validated_overlay_file_and_helper(self):
+  from cronet_windows_overlay import validate_overlay
+  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic'},'platforms':[],'legalFiles':[]}
+  expected=validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
+  self.assertEqual({name:material['inputs'][name] for name in expected},expected)
+  self.assertEqual(material['inputs']['scripts/ci/cronet_windows_overlay.py'],n.sha((n.ROOT/'scripts/ci/cronet_windows_overlay.py').read_bytes()))
+
+
+class DebianDistributionBindingTests(unittest.TestCase):
+ def fixture(self):
+  from test_cronet_material_supply import fixture_bundle
+  version=json.loads((n.ROOT/'release/ci/github-release.json').read_text())['version']
+  context={'repository':n.REPO,'repositoryID':n.RID,'sourceCommit':'a'*40,'sourceTree':'b'*40,
+           'tag':'v'+version,'tagObject':'c'*40,'workflow':'.github/workflows/build.yml',
+           'runID':42,'runAttempt':1,'role':'all'}
+  bundle=fixture_bundle('all',context=context)
+  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'tag':context['tag'],'tagObject':'c'*40,
+         'sourceArchive':{'name':'synthetic-source'},'platforms':[],'legalFiles':[],
+         'producer':{'workflow':context['workflow'],'runId':42,'runAttempt':1}}
+  return index,bundle['binding']
+ def test_All_binds_actual_own_materials_without_any_future_linux_docker_run(self):
+  index,binding=self.fixture();material=n.distribution_materials(index,n.ROOT,debian_raw=binding)
+  self.assertEqual(material['debianRaw'],binding)
+  self.assertEqual(material['debianRaw']['context']['role'],'all')
+  for name in ('scripts/ci/cronet_material_supply.py','scripts/ci/cronet_material_bootstrap.py',
+               'release/ci/cronet-material-profiles.json','release/ci/cronet-material-inputs.json',
+               '.github/patches/cronet-sysroot-transport.patch','.github/CRONET_GO_VERSION'):
+   self.assertEqual(material['inputs'][name],n.sha((n.ROOT/name).read_bytes()))
+ def test_no_implicit_read_of_untrusted_index_debian_property(self):
+  index,binding=self.fixture();index['distributionMaterials']={'debianRaw':binding}
+  self.assertNotIn('debianRaw',n.distribution_materials(index,n.ROOT))
+ def test_closed_schema_and_exact_producer_source_profile_bindings(self):
+  import copy,jsonschema
+  index,binding=self.fixture()
+  mutations=[lambda b:b['context'].update(sourceCommit='f'*40),
+             lambda b:b['context'].update(sourceTree='f'*40),
+             lambda b:b['context'].update(tag='v1.15.0-polaris-alpha.999'),
+             lambda b:b['context'].update(tagObject='f'*40),
+             lambda b:b['context'].update(runID=43),
+             lambda b:b['context'].update(runAttempt=2),
+             lambda b:b['context'].update(role='linux'),
+             lambda b:b['rawArtifact'].update(id=True),
+             lambda b:b['readyArtifact'].update(name='unknown'),
+             lambda b:b['readyArtifact'].update(size=1048576+65537),
+             lambda b:b.update(planSHA256='f'*64),
+             lambda b:b.update(requiredProfiles=[]),
+             lambda b:b.update(requiredProfiles=['bullseye-amd64']*8),
+             lambda b:b.update(unknown='forbidden'),
+             lambda b:b['context'].update(unknown='forbidden'),
+             lambda b:b['supplierJob'].update(extra='forbidden')]
+  for number,mutate in enumerate(mutations):
+   bad=copy.deepcopy(binding);mutate(bad)
+   with self.subTest(number=number),self.assertRaises((ValueError,jsonschema.ValidationError)):
+    n.distribution_materials(index,n.ROOT,debian_raw=bad)

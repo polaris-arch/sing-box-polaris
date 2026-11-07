@@ -242,7 +242,7 @@ func TestRuntimeRootStorageReadBoundsGrowthAndCheckedClose(t *testing.T) {
 					t.Fatal("unsafe read was successful/filterable", actual, err)
 				}
 			}
-			if _, err = file.Stat(); !errors.Is(err, os.ErrClosed) {
+			if _, err = file.Stat(); !runtimeRootFileStatIsClosed(err) {
 				t.Fatal("real reader FD not closed", err)
 			}
 		})
@@ -472,7 +472,7 @@ func TestRuntimeRootStorageWriteCloseAndTempRetirementStayUnknown(t *testing.T) 
 	if !originStorageIsUnsafe(err) || errors.Is(err, os.ErrClosed) {
 		t.Fatal("temp close error was filterable", err)
 	}
-	if _, err = file.Stat(); !errors.Is(err, os.ErrClosed) {
+	if _, err = file.Stat(); !runtimeRootFileStatIsClosed(err) {
 		t.Fatal("underlying descriptor not closed", err)
 	}
 	storage := &originRootStorage{root: root}
@@ -566,7 +566,7 @@ func TestRuntimeRootStorageDirectoryReadChecksTypeAndClose(t *testing.T) {
 			if !originStorageIsUnsafe(err) || entries != nil || errors.Is(err, os.ErrNotExist) || errors.Is(err, context.Canceled) || errors.Is(err, os.ErrClosed) {
 				t.Fatal("directory safety error became benign", entries, err)
 			}
-			if _, err = file.Stat(); !errors.Is(err, os.ErrClosed) {
+			if _, err = file.Stat(); !runtimeRootFileStatIsClosed(err) {
 				t.Fatal("actual directory probe FD leaked", err)
 			}
 		})

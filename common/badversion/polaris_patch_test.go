@@ -34,16 +34,15 @@ func TestPolarisPatchContract(t *testing.T) {
 	}
 	for _, pair := range contract.Newer {
 		newer, older := Parse(pair[0]), Parse(pair[1])
-		if !newer.GreaterThan(older) || !newer.GreaterThanOrEqual(older) || newer.LessThan(older) || newer.LessThanOrEqual(older) ||
-			older.GreaterThan(newer) || older.GreaterThanOrEqual(newer) || !older.LessThan(newer) || !older.LessThanOrEqual(newer) {
-			t.Errorf("upgrade ordering changed: %s > %s", pair[0], pair[1])
-		}
+		assertPolarisUpgradeOrdering(t, newer, older)
 	}
 	for _, pair := range contract.SameSeries {
 		for _, names := range [][2]string{pair, {pair[1], pair[0]}} {
 			a, b := Parse(names[0]), Parse(names[1])
-			if a.GreaterThan(b) || a.LessThan(b) || !a.GreaterThanOrEqual(b) || !a.LessThanOrEqual(b) {
-				t.Errorf("patch identity changed upstream-series equivalence: %s, %s", names[0], names[1])
+			// Sharing the upstream series does not make distinct Polaris patches equal.
+			if a.Major != b.Major || a.Minor != b.Minor || a.Patch != b.Patch ||
+				a.PreReleaseIdentifier != b.PreReleaseIdentifier || a.PreReleaseVersion != b.PreReleaseVersion {
+				t.Errorf("patch identity changed upstream series: %s, %s", names[0], names[1])
 			}
 		}
 	}
@@ -103,5 +102,58 @@ func TestPolarisPatchPreservesUpstreamLegacySpelling(t *testing.T) {
 	}
 	if Parse("1.15.0-alpha.12-deadbee").String() != "1.15.0-alpha.12" {
 		t.Fatal("upstream commit suffix parsing changed")
+	}
+}
+
+func assertPolarisUpgradeOrdering(t *testing.T, newer, older Version) {
+	t.Helper()
+	if !newer.GreaterThan(older) || !newer.GreaterThanOrEqual(older) || newer.LessThan(older) || newer.LessThanOrEqual(older) ||
+		older.GreaterThan(newer) || older.GreaterThanOrEqual(newer) || !older.LessThan(newer) || !older.LessThanOrEqual(newer) {
+		t.Errorf("upgrade ordering changed: %s > %s", newer.String(), older.String())
+	}
+}
+
+func TestPolarisPatchNumericOrdering(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"1.15.0-polaris-alpha.12.0", "1.15.0-polaris-alpha.12"},
+		{"1.15.0-polaris-alpha.12.10", "1.15.0-polaris-alpha.12.9"},
+		{"1.15.0-polaris-alpha.12.123", "1.15.0-polaris-alpha.12.10"},
+		{"1.15.0-polaris-alpha.13", "1.15.0-polaris-alpha.12.999999999999999999999999999999"},
+		{"1.15.0-polaris-alpha.12.1000000000000000000000000000000", "1.15.0-polaris-alpha.12.999999999999999999999999999999"},
+		{"1.15.0-polaris-alpha.100000000000000000000", "1.15.0-polaris-alpha.99999999999999999999.99999999999999999999"},
+		{"1.15.0-polaris-beta.1.10", "1.15.0-polaris-beta.1.9"},
+		{"1.15.0-polaris-rc.1.10", "1.15.0-polaris-rc.1.9"},
+	} {
+		t.Run(pair[0]+">"+pair[1], func(t *testing.T) {
+			newer, older := Parse(pair[0]), Parse(pair[1])
+			assertPolarisUpgradeOrdering(t, newer, older)
+			var decoded [2]Version
+			for i, version := range [2]Version{newer, older} {
+				data, err := json.Marshal(version)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := json.Unmarshal(data, &decoded[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			assertPolarisUpgradeOrdering(t, decoded[0], decoded[1])
+		})
+	}
+}
+
+func TestPolarisPatchComparisonEquality(t *testing.T) {
+	for _, pair := range [][2]Version{
+		{Parse("1.15.0-polaris-alpha.12"), {Major: 1, Minor: 15, PreReleaseIdentifier: "polaris-alpha", PreReleaseVersion: 12}},
+		{Parse("1.15.0-polaris-alpha.12.10"), Parse("v1.15.0-polaris-alpha.12.10-deadbee")},
+		{Parse("1.3.0-beta.1"), Parse("v1.3.0-beta1")},
+		{Parse("6.14"), {Major: 6, Minor: 14}},
+	} {
+		for _, versions := range [][2]Version{pair, {pair[1], pair[0]}} {
+			a, b := versions[0], versions[1]
+			if a.GreaterThan(b) || a.LessThan(b) || !a.GreaterThanOrEqual(b) || !a.LessThanOrEqual(b) {
+				t.Errorf("equivalent version comparison changed: %s, %s", a.String(), b.String())
+			}
+		}
 	}
 }

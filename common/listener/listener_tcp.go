@@ -28,12 +28,25 @@ func (l *Listener) ListenTCP() (net.Listener, error) {
 }
 
 func (l *Listener) listenTCP() (net.Listener, error) {
+	socket, err := l.listenTCPWithSpec(nil)
+	if err == nil {
+		l.tcpListener = socket
+		l.logger.Info("tcp server started at ", socket.Addr())
+	}
+	return socket, err
+}
+
+// listenTCPWithSpec opens one real socket. Its caller immediately owns it.
+func (l *Listener) listenTCPWithSpec(spec *runtimeTCPBindSpec) (net.Listener, error) {
 	//nolint:staticcheck
 	if l.listenOptions.ProxyProtocol || l.listenOptions.ProxyProtocolAcceptNoHeader {
 		return nil, E.New("Proxy Protocol is deprecated and removed in sing-box 1.6.0")
 	}
 	var err error
 	bindAddr := M.SocksaddrFrom(l.listenOptions.Listen.Build(netip.AddrFrom4([4]byte{127, 0, 0, 1})), l.listenOptions.ListenPort)
+	if spec != nil {
+		bindAddr = M.SocksaddrFrom(spec.address, spec.port)
+	}
 	var listenConfig net.ListenConfig
 	if l.exclusive {
 		if l.listenOptions.ReuseAddr {
@@ -78,34 +91,31 @@ func (l *Listener) listenTCP() (net.Listener, error) {
 			})
 		})
 	}
+	network := M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr)
+	if spec != nil {
+		network = spec.network
+		if err := l.controlRuntimeTCPMember(&listenConfig, *spec); err != nil {
+			return nil, err
+		}
+	}
 	tcpListener, err := ListenNetworkNamespace[net.Listener](l.ctx, l.listenOptions.NetNs, func() (net.Listener, error) {
 		if l.listenOptions.TCPFastOpen {
 			var tfoConfig tfo.ListenConfig
 			tfoConfig.ListenConfig = listenConfig
-			return tfoConfig.Listen(l.ctx, M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr), bindAddr.String())
+			return tfoConfig.Listen(l.ctx, network, bindAddr.String())
 		} else {
-			return listenConfig.Listen(l.ctx, M.NetworkFromNetAddr(N.NetworkTCP, bindAddr.Addr), bindAddr.String())
+			return listenConfig.Listen(l.ctx, network, bindAddr.String())
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	if l.runtime == nil {
-		l.logger.Info("tcp server started at ", tcpListener.Addr())
-	} else {
-		l.logger.Debug("candidate tcp socket bound at ", tcpListener.Addr())
-	}
-	l.tcpListener = tcpListener
-	if l.runtime != nil {
-		l.runtime.mu.Lock()
-		l.runtime.ownsTCP = true
-		l.runtime.mu.Unlock()
-	}
-	return tcpListener, err
+	return tcpListener, nil
 }
 
-func (l *Listener) loopTCPIn() {
-	tcpListener := l.tcpListener
+func (l *Listener) loopTCPIn() { l.loopTCPInFor(l.tcpListener) }
+
+func (l *Listener) loopTCPInFor(tcpListener net.Listener) {
 	var (
 		metadata    adapter.InboundContext
 		acceptDelay time.Duration

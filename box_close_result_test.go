@@ -14,6 +14,7 @@ import (
 	"github.com/sagernet/sing-box/adapter/inbound"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	boxService "github.com/sagernet/sing-box/adapter/service"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/dns/transport/local"
 	"github.com/sagernet/sing-box/log"
@@ -178,12 +179,19 @@ func (f *countingLogFactory) Close() error {
 func TestStartFailureAfterCloseRunsLateRegistrations(t *testing.T) {
 	// This assertion covers the legacy late-registration path. Runtime startup
 	// rejects a closed instance before touching the logger (covered separately).
-	instance, constructErr := New(Options{Context: testContext(), Certificate: &option.CertificateOptions{}})
+	// Directory certificate loading still uses the real legacy constructor.
+	// An empty certificate object now has a runtime snapshot adapter.
+	instance, constructErr := New(Options{Context: testContext(), Certificate: &option.CertificateOptions{
+		Store: C.CertificateStoreNone, CertificateDirectoryPath: []string{t.TempDir()},
+	}})
 	if constructErr != nil {
 		t.Fatal(constructErr)
 	}
 	if instance.runtime != nil {
 		t.Fatal("legacy fixture selected runtime startup")
+	}
+	if reasons := instance.runtimeEligibilityErrors; len(reasons) != 1 || reasons[0].Code != "PENDING_ADAPTER" || reasons[0].Path != "certificate.certificate_directory_path" {
+		t.Fatalf("legacy fixture lost its actual directory-loader boundary: %+v", reasons)
 	}
 	factory := &countingLogFactory{Factory: instance.logFactory}
 	instance.logFactory = factory
