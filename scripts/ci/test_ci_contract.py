@@ -131,7 +131,7 @@ class TestCIContract(unittest.TestCase):
     self.assertNotIn('continue-on-error',control)
    self.assertNotIn('env',steps[0])
   self.assertEqual(workflow['permissions'],{'contents':'read'})
- def test_windows_native_proof_is_separate_manual_protection_and_kernel_execution(self):
+ def test_windows_native_proof_separates_explicit_request_from_kernel_execution(self):
   workflow=yaml.safe_load((ROOT/'.github/workflows/build.yml').read_text());jobs=workflow['jobs']
   field=workflow['on']['workflow_dispatch']['inputs']['windows_native_proof']
   self.assertEqual(field['type'],'boolean');self.assertIs(field['default'],False)
@@ -148,7 +148,7 @@ class TestCIContract(unittest.TestCase):
   acquire=next(s for s in admission['steps'] if s.get('id')=='admission')
   self.assertEqual(acquire['run'],'python3 -B scripts/ci/windows_native_admission.py --acquire')
   self.assertIn('EXPECTED_RELEASE_TAG_OBJECT',acquire['env']);self.assertIn('GH_TOKEN',acquire['env'])
-  self.assertEqual(native['environment'],'polaris-windows-native-proof')
+  self.assertNotIn('environment',native)
   self.assertIn('polaris-windows-system-proof',native['runs-on'])
   self.assertIn("needs.windows_native_admission.result == 'success'",native['if'])
   self.assertIn("inputs.evidence_mode == 'final'",native['if'])
@@ -358,7 +358,7 @@ class TestCIContract(unittest.TestCase):
   field=workflow['on']['workflow_dispatch']['inputs']['windows_native_proof']
   self.assertEqual(field['type'],'boolean');self.assertIs(field['default'],False)
   native=jobs['native_windows_proof']
-  self.assertEqual(native['environment'],'polaris-windows-native-proof')
+  self.assertNotIn('environment',native)
   self.assertEqual(native['runs-on'],['self-hosted','Windows','X64','polaris-windows-system-proof'])
   steps=receipt['steps'];self.assertEqual(len(steps),3)
   self.assertEqual(steps[0],{'uses':'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8',
