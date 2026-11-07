@@ -2274,13 +2274,16 @@ class TestSupplierCloneBudget(unittest.TestCase):
    self.assertGreater(remaining,0,'overall supplier-script fixture watchdog expired')
    return min(cap,remaining)
   self.assertTrue(sys.platform.startswith('linux'))
-  timeout=shutil.which('timeout');self.assertIsNotNone(timeout)
+  self.assertTrue(shutil.which('gnutimeout') or shutil.which('timeout'))
   action=yaml.safe_load((ROOT/'.github/actions/prepare-debian-materials/action.yml').read_text())
   selected=[s for s in action['runs']['steps'] if s.get('name')=='Clone and prepare pinned original creator']
   self.assertEqual(len(selected),1);step=selected[0]
   self.assertEqual(step['shell'],'bash');self.assertNotIn('timeout-minutes',step)
   run=step['run']
-  self.assertIn("timeout --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'",run)
+  # Execute the action's actual selector and GNU check, not a fixture-only binary.
+  self.assertIn('GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"',run)
+  self.assertIn("\"$GNU_TIMEOUT\" --version | grep -Fq '(GNU coreutils)'",run)
+  self.assertIn("\"$GNU_TIMEOUT\" --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'",run)
   self.assertNotIn('--foreground',run);self.assertNotIn('--preserve-status',run)
   self.assertIn("trap 'trap \"\" TERM; exec sleep inf' TERM",run)
   execution=run.replace("590s bash -euo pipefail <<'CRONET_CLONE'", "5s bash -euo pipefail <<'CRONET_CLONE'", 1)
@@ -2362,7 +2365,16 @@ if stage and stage==os.environ['FIXTURE_STAGE']:
       self.assertEqual(ready['child']['ppid'],ready['parent']['pid'])
       for role in ('parent','child'):
        self.assertEqual(os.getsid(ready[role]['pid']),process.pid)
-     stdout,stderr=process.communicate(timeout=budget(15))
+     try:
+      stdout,stderr=process.communicate(timeout=budget(15))
+     except subprocess.TimeoutExpired as error:
+      # Observe before finally cleanup; this is failure evidence, never a pass.
+      self.fail('supplier-script EOF deadline: '+json.dumps({
+       'stage':stage,'mode':mode,'outerReturncode':process.poll(),
+       'partialStdout':(prefix+(error.output or b'')).decode('utf-8','backslashreplace'),
+       'partialStderr':(error.stderr or b'').decode('utf-8','backslashreplace'),
+       'ready':ready,'preCleanupStates':{role:process_state(event['pid']) for role,event in ready.items()}
+      },sort_keys=True))
      events=[json.loads(line) for line in (prefix+stdout).splitlines()]
      calls=[(e['tool'],e['argv']) for e in events if e['kind']=='call']
      clone=[('git',['init',str(home/'cronet-go')]),

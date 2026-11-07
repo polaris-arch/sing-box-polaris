@@ -48,13 +48,27 @@ runs:
     shell: bash
     run: |
       set -euo pipefail
-      sudo apt-get update
-      sudo apt-get install -y --no-install-recommends python3-requests gpgv gnupg
+      timeout --signal=TERM --kill-after=5s 120s sudo apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=30 update
+      timeout --signal=TERM --kill-after=5s 120s sudo apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=30 install -y --no-install-recommends python3-requests gpgv gnupg
+      GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"
+      if [[ -z "$GNU_TIMEOUT" ]] || ! "$GNU_TIMEOUT" --version | grep -Fq '(GNU coreutils)'; then
+        timeout --signal=TERM --kill-after=5s 120s sudo apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=30 install -y --no-install-recommends gnu-coreutils
+        GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"
+      fi
+      if [[ -z "$GNU_TIMEOUT" ]] || ! "$GNU_TIMEOUT" --version | grep -Fq '(GNU coreutils)'; then
+        echo 'GNU timeout is required for supplier process-group cleanup' >&2
+        exit 1
+      fi
   - name: Clone and prepare pinned original creator
     shell: bash
     run: |
       set -euo pipefail
-      timeout --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'
+      GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"
+      if [[ -z "$GNU_TIMEOUT" ]] || ! "$GNU_TIMEOUT" --version | grep -Fq '(GNU coreutils)'; then
+        echo 'GNU timeout is required for supplier process-group cleanup' >&2
+        exit 1
+      fi
+      "$GNU_TIMEOUT" --signal=TERM --kill-after=5s 590s bash -euo pipefail <<'CRONET_CLONE'
       # Keep the monitored PID alive through group KILL when descendants ignore TERM.
       trap 'trap "" TERM; exec sleep inf' TERM
       set -euo pipefail

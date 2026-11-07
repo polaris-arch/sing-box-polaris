@@ -15,7 +15,21 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
+    - name: Install contract test dependencies including GNU timeout
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
+        GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"
+        if [[ -z "$GNU_TIMEOUT" ]] || ! "$GNU_TIMEOUT" --version | grep -Fq '(GNU coreutils)'; then
+          timeout --signal=TERM --kill-after=5s 120s sudo apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=30 update
+          timeout --signal=TERM --kill-after=5s 120s sudo apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=30 install -y --no-install-recommends gnu-coreutils
+          GNU_TIMEOUT="$(command -v gnutimeout || command -v timeout || true)"
+        fi
+        if [[ -z "$GNU_TIMEOUT" ]] || ! "$GNU_TIMEOUT" --version | grep -Fq '(GNU coreutils)'; then
+          echo 'GNU timeout is required for supplier process-group cleanup' >&2
+          exit 1
+        fi
     - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_cronet_material_supply.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
