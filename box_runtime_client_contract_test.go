@@ -142,7 +142,7 @@ func TestRuntimeClientDashboardPublicPlanBindsGenerationImpactAndPublication(t *
 	t.Cleanup(func() { _ = instance.CloseWithResult() })
 	f.start(t)
 	next := initial
-	next.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: t.TempDir(), HTTPClient: &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "select"}}}
+	next.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: t.TempDir(), HTTPClient: &option.HTTPClientOptions{Detour: "select"}}
 	candidate := options.Options
 	candidate.Services = append([]option.Service(nil), options.Services...)
 	candidate.Services[0].Options = &next
@@ -171,7 +171,7 @@ func TestRuntimeClientDashboardPublicPlanBindsGenerationImpactAndPublication(t *
 	if err != nil || replayed.Active != operation.Active || observer.published.Load() != 1 {
 		t.Fatal("replay reactivated dashboard worker", replayed, err)
 	}
-	next.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: "different", HTTPClient: &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "a"}}}
+	next.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: "different", HTTPClient: &option.HTTPClientOptions{Detour: "a"}}
 	candidate.Services[0].Options = &next
 	content, _ = json.MarshalContext(f.ctx, candidate)
 	unsupported, err := instance.PlanRuntimeConfigWithClientImpactPolicy(context.Background(), "actor-a", f.identity(), content, nil, RuntimeClientImpactPolicyExplicit)

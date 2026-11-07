@@ -102,8 +102,8 @@ func TestRuntimeOriginCATrustedTLSBootstrapsOffsetOnColdStartAndClockReplacement
 	originca.RegisterCertificateProvider(service.FromContext[adapter.CertificateProviderRegistry](f.ctx).(*certificate.Registry))
 	provider := &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"bootstrap.invalid"}, DataDirectory: filepath.Join(t.TempDir(), "cold"), APIToken: "fixture-token", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}
 	options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: provider}}
-	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Certificate: []string{string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))}}}}}
-	options.NTP = &option.NTPOptions{Enabled: true, ServerOptions: option.ServerOptions{Server: "192.0.2.123"}, DialerOptions: option.DialerOptions{Detour: "a"}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a", TLS: &option.OutboundTLSOptions{Certificate: []string{string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))}}}}
+	options.NTP = &option.NTPOptions{Enabled: true, Server: "192.0.2.123", Detour: "a"}
 	runtimeResourceNew(t, f, options)
 	if samples.Load() != 0 || issued.Load() != 0 {
 		t.Fatal("New performed clock/certificate effects")
@@ -180,10 +180,10 @@ func TestRuntimeOriginCANormalTimeAndCacheSurviveJoinedUnavailableNTP(t *testing
 					originca.RegisterCertificateProvider(service.FromContext[adapter.CertificateProviderRegistry](f.ctx).(*certificate.Registry))
 					// The current-time CA is actually trusted and hostname checked. A zero
 					// offset is valid here, and an NTP outage must not disable TLS or cache use.
-					options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{ServerName: "fixture.invalid", Certificate: []string{string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate[0]}))}}}}}
+					options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a", TLS: &option.OutboundTLSOptions{ServerName: "fixture.invalid", Certificate: []string{string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate[0]}))}}}}
 					options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"best-effort.invalid"}, DataDirectory: directory, APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}
 					if enableNTP {
-						options.NTP = &option.NTPOptions{Enabled: true, ServerOptions: option.ServerOptions{Server: "192.0.2.123"}, DialerOptions: option.DialerOptions{Detour: "a"}}
+						options.NTP = &option.NTPOptions{Enabled: true, Server: "192.0.2.123", Detour: "a"}
 					}
 					return f, options
 				}
@@ -280,7 +280,7 @@ func TestRuntimeCertificateBootstrapCancellationForeignOwnerAndUnknownCleanupSti
 			oldLease, oldView := f.acquire(t)
 			defer oldLease.Release()
 			foreign = runtimeTestResource(t, f, oldView.componentIDs["outbound:b"]).owner
-			options.NTP = &option.NTPOptions{Enabled: true, ServerOptions: option.ServerOptions{Server: "192.0.2.123"}, DialerOptions: option.DialerOptions{Detour: "a"}}
+			options.NTP = &option.NTPOptions{Enabled: true, Server: "192.0.2.123", Detour: "a"}
 			options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"fatal.invalid"}, DataDirectory: filepath.Join(t.TempDir(), "new"), APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC}}}
 			_, apply := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 			ctx, cancel := context.WithCancel(runtimeTestContext(t))

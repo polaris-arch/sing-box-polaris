@@ -264,7 +264,7 @@ func TestRealmLatePacketListenerIsJoinedAndFailureRetained(t *testing.T) {
 	t.Cleanup(releaseNow)
 	t.Cleanup(closeNow)
 	failure := errors.New("late packet close failed")
-	raw := &outboundRealmTestPacket{outboundTestConn: outboundTestConn{close: func() error { close(closeEntered); <-closeRelease; return failure }}}
+	raw := &outboundRealmTestPacket{close: func() error { close(closeEntered); <-closeRelease; return failure }}
 	d := r.guardDialer(outboundRealmTestDialer{listen: func(context.Context) (net.PacketConn, error) { close(entered); <-release; return raw, nil }})
 	done := make(chan struct{})
 	go func() { _, _ = d.ListenPacket(context.Background(), M.Socksaddr{}); close(done) }()

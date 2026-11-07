@@ -138,8 +138,7 @@ func runtimeTestPublishPrivatePlatformClosure(t *testing.T, f *runtimeTestFixtur
 			if !exists || initialID == currentID {
 				t.Errorf("bootstrap-dependent %s did not acquire its actual private owner", name)
 			}
-			if strings.HasPrefix(name, "rule-set:") {
-				tag := strings.TrimPrefix(name, "rule-set:")
+			if tag, ok := strings.CutPrefix(name, "rule-set:"); ok {
 				oldSet, oldExists := initial.router.RuleSet(tag)
 				newSet, newExists := current.router.RuleSet(tag)
 				if !oldExists || !newExists || oldSet == newSet {

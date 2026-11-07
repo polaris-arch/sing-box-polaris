@@ -97,10 +97,7 @@ func actorFor(process, thread windows.Handle, pid uint32) (_ actorFact, failure 
 }
 
 func currentActor() (actorFact, error) {
-	thread, err := windows.GetCurrentThread()
-	if err != nil {
-		return actorFact{}, err
-	}
+	thread := windows.CurrentThread()
 	return actorFor(windows.CurrentProcess(), thread, uint32(os.Getpid()))
 }
 
@@ -345,7 +342,7 @@ func (c *cohort) holdObjects(core, sidecar pin) error {
 		}
 	}
 	if c.coreFact.FileID == c.sidecarFact.FileID {
-		return errors.New("Core and DLL alias one file object")
+		return errors.New("core and DLL alias one file object")
 	}
 	return nil
 }

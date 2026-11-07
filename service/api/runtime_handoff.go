@@ -1066,13 +1066,14 @@ func (g *apiGeneration) AfterUnary(ctx context.Context, method string, request, 
 	pending.transaction = req.TransactionId
 	pending.active = result.Operation.Active
 	headers := metadata.Pairs(handoffPrefix+"protocol", handoffVersion, handoffPrefix+"generation", pending.next.id, handoffPrefix+"endpoint", pending.next.endpoint.listener.Addr().String())
-	if g == pending.origin {
+	switch g {
+	case pending.origin:
 		carrier, _ := ctx.Value(apiConnContextKey{}).(*apiOwnedConn)
 		if carrier != issued.carrier {
 			return status.Error(codes.PermissionDenied, "handoff key requires the original captured channel")
 		}
 		headers.Set(handoffPrefix+"key", hex.EncodeToString(pending.key[:]))
-	} else if g == pending.next {
+	case pending.next:
 		challenge := apiHeader(ctx, "challenge")
 		if !validAPIHex(challenge, 64) {
 			return status.Error(codes.InvalidArgument, "API handoff requires a fresh32-byte challenge")
@@ -1097,9 +1098,7 @@ func (g *apiGeneration) AfterUnary(ctx context.Context, method string, request, 
 			pending.retiring = true
 			pending.next.confirmed = pending
 			headers.Set(handoffPrefix+"acknowledged", "true")
-			h.workers.Add(1)
-			go func() {
-				defer h.workers.Done()
+			h.workers.Go(func() {
 				err := pending.origin.close()
 				if pending.origin.endpoint != pending.next.endpoint {
 					err = errors.Join(err, pending.origin.endpoint.close())
@@ -1121,14 +1120,14 @@ func (g *apiGeneration) AfterUnary(ctx context.Context, method string, request, 
 				}
 				close(pending.done)
 				h.mu.Unlock()
-			}()
+			})
 		}
 		proofKind := "proof"
 		if pending.acknowledged {
 			proofKind = "accepted"
 		}
 		headers.Set(handoffPrefix+"proof", pending.mac(proofKind, challenge, hex.EncodeToString(bodyHash[:])))
-	} else {
+	default:
 		return status.Error(codes.PermissionDenied, "API handoff ingress is not a participant")
 	}
 	return grpc.SetHeader(ctx, headers)

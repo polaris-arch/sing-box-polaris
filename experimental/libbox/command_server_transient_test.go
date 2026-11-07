@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sagernet/bbolt"
+	bboltErrors "github.com/sagernet/bbolt/errors"
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
 	"github.com/sagernet/sing-box/experimental/cachefile"
@@ -459,7 +460,7 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	if probe != nil {
 		_ = probe.Close()
 	}
-	if !errors.Is(err, bbolt.ErrTimeout) {
+	if !errors.Is(err, bboltErrors.ErrTimeout) {
 		t.Fatal("transient lifecycle released or changed primary journal custody", err)
 	}
 }
@@ -557,7 +558,7 @@ func TestCommandServerFreshJournalSurvivesNormalCloseAndRestart(t *testing.T) {
 	if probe != nil {
 		_ = probe.Close()
 	}
-	if probe != nil || !errors.Is(err, bbolt.ErrTimeout) {
+	if probe != nil || !errors.Is(err, bboltErrors.ErrTimeout) {
 		t.Fatal("normal production Start did not retain its real journal writer lock")
 	}
 	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, before) {
@@ -607,7 +608,7 @@ func TestCommandServerFreshJournalSurvivesNormalCloseAndRestart(t *testing.T) {
 	if probe != nil {
 		_ = probe.Close()
 	}
-	if probe != nil || !errors.Is(err, bbolt.ErrTimeout) {
+	if probe != nil || !errors.Is(err, bboltErrors.ErrTimeout) {
 		t.Fatal("normal restarted primary did not retain its real journal writer lock")
 	}
 	if err := next.CloseService(); err != nil {

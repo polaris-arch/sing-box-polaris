@@ -364,7 +364,7 @@ func runtimeClientTunShape(item map[string]stdjson.RawMessage, platform string) 
 			if len(name) == 0 || len(name) > 255 || !strings.Contains(name, ".") {
 				return false
 			}
-			for _, part := range strings.Split(name, ".") {
+			for _, part := range strings.SplitSeq(name, ".") {
 				if part == "" {
 					return false
 				}
@@ -463,8 +463,7 @@ func runtimeListenerPreparationError(err error) error {
 	if err == nil {
 		return nil
 	}
-	var handoff *listener.PhysicalHandoffError
-	if errors.As(err, &handoff) {
+	if _, ok := errors.AsType[*listener.PhysicalHandoffError](err); ok {
 		return &runtimeListenerHandoffError{cause: err}
 	}
 	var bind *net.OpError

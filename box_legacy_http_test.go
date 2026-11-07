@@ -100,7 +100,7 @@ func TestLegacyBoxExplicitHTTPDefaultValidation(t *testing.T) {
 			options, observer := legacyHTTPBoxOptions(t)
 			options.Route.DefaultHTTPClient = "explicit"
 			if !missing {
-				options.HTTPClients = []option.HTTPClient{{Tag: "explicit", DialerOptions: option.DialerOptions{Detour: "local-http"}}}
+				options.HTTPClients = []option.HTTPClient{{Tag: "explicit", Detour: "local-http"}}
 			}
 			instance := constructLegacyHTTPBox(t, options)
 			err := instance.Start()
@@ -132,9 +132,9 @@ func TestLegacyBoxRemoteRuleSetHTTPPolicy(t *testing.T) {
 			remote := option.RemoteRuleSet{URL: server.URL + "/rules.json"}
 			switch mode {
 			case "inline", "initial-inline":
-				remote.HTTPClient = &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "local-http"}}
+				remote.HTTPClient = &option.HTTPClientOptions{Detour: "local-http"}
 			case "named", "configured-default":
-				options.HTTPClients = []option.HTTPClient{{Tag: "explicit", DialerOptions: option.DialerOptions{Detour: "local-http"}}}
+				options.HTTPClients = []option.HTTPClient{{Tag: "explicit", Detour: "local-http"}}
 				if mode == "named" {
 					remote.HTTPClient = &option.HTTPClientOptions{Tag: "explicit"}
 				} else {
@@ -211,7 +211,7 @@ func TestLegacyBoxHTTPDeprecationProcessBoundary(t *testing.T) {
 			t.Cleanup(server.Close)
 			remote := option.RemoteRuleSet{URL: server.URL + "/rules.json"}
 			if mode == "inline" {
-				remote.HTTPClient = &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "local-http"}}
+				remote.HTTPClient = &option.HTTPClientOptions{Detour: "local-http"}
 			}
 			options.Route.RuleSet = []option.RuleSet{{Type: C.RuleSetTypeRemote, Tag: []string{"sites"}, Format: C.RuleSetFormatSource, RemoteOptions: remote}}
 		}

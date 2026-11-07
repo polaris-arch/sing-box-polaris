@@ -141,24 +141,6 @@ func raceTestRules(t *testing.T, rawRules []option.DNSRule) []adapter.DNSRule {
 	return rules
 }
 
-func raceTestExchange(router *Router, rules []adapter.DNSRule) exchangeWithRulesResult {
-	message := &mDNS.Msg{
-		Id:               1,
-		RecursionDesired: true,
-		Question: []mDNS.Question{{
-			Name:   "race.example.org.",
-			Qtype:  mDNS.TypeA,
-			Qclass: mDNS.ClassINET,
-		}},
-	}
-	metadata := &adapter.InboundContext{
-		Domain:    "race.example.org",
-		QueryType: mDNS.TypeA,
-	}
-	ctx := adapter.WithContext(context.Background(), metadata)
-	return router.exchangeWithRules(ctx, rules, message, adapter.DNSQueryOptions{}, false)
-}
-
 func evaluateRule(server string, tag string, speculative bool) option.DNSRule {
 	return option.DNSRule{
 		Type: C.RuleTypeDefault,
@@ -246,8 +228,8 @@ type controlledDNSTransport struct {
 
 func controlledDNSUpstream(tag, address string) *controlledDNSTransport {
 	upstream := &controlledDNSTransport{
-		fakeDNSTransport: fakeDNSTransport{tag: tag, rcode: mDNS.RcodeSuccess},
-		entered:          make(chan struct{}), release: make(chan struct{}),
+		tag: tag, rcode: mDNS.RcodeSuccess,
+		entered: make(chan struct{}), release: make(chan struct{}),
 		replied: make(chan struct{}), cancelSeen: make(chan struct{}),
 		cancelExit: make(chan struct{}),
 		rawDone:    make(chan struct{}), callbackDone: make(chan struct{}),

@@ -10,6 +10,7 @@ import (
 	"unsafe"
 
 	"github.com/sagernet/bbolt"
+	bboltErrors "github.com/sagernet/bbolt/errors"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
 
@@ -535,7 +536,7 @@ func TestRuntimeWindowsProductionNewJournalOwnerAndExclusiveReopen(t *testing.T)
 	if competing != nil {
 		_ = competing.Close()
 	}
-	if competing != nil || !errors.Is(err, bbolt.ErrTimeout) {
+	if competing != nil || !errors.Is(err, bboltErrors.ErrTimeout) {
 		t.Fatal("live production journal did not retain the real bbolt writer lock")
 	}
 	if runtimeWindowsJournalSecurityAtPath(t, path) != security {

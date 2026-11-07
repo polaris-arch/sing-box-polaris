@@ -426,7 +426,6 @@ func configurationCases(document tlsDocument) []checkCase {
 	add(&empty, true, document.Enabled)
 	add(nil, false, true)
 	for _, name := range []string{"polaris_unknown_profile", "default", "disabled", "follow", "safari_15_3", "safari_15_5"} {
-		name := name
 		add(&name, true, false)
 	}
 	if document.Enabled {

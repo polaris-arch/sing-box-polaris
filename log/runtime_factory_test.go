@@ -411,7 +411,7 @@ func TestRuntimeLogColdDisabledRetainsHostFileAnchorWithoutOpeningIt(t *testing.
 	if data, err := os.ReadFile(path); err != nil || string(data) != "original\n" {
 		t.Fatalf("disabled startup touched file: %q %v", data, err)
 	}
-	for index := 0; index < 2; index++ {
+	for range 2 {
 		enabled := runtimeLogPublish(t, f, option.LogOptions{Output: path})
 		if err := enabled.Retire(context.Background()); err != nil {
 			t.Fatal(err)

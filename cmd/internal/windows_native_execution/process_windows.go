@@ -62,8 +62,8 @@ func nativeBool(proc *windows.LazyProc, args ...uintptr) error {
 
 var kernel = windows.NewLazySystemDLL("kernel32.dll")
 
-func (c *nativeChild) interrupt() error {
-	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, c.pid)
+func (child *nativeChild) interrupt() error {
+	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, child.pid)
 }
 
 func actualImage(process windows.Handle) (string, error) {
@@ -384,7 +384,7 @@ func listenerOwnedBy(port int, pid uint32) (bool, error) {
 		return false, errors.New("native TCP table size query failed")
 	}
 	var buffer []byte
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		if size < 4 || size > 4<<20 {
 			return false, errors.New("native TCP table byte bound")
 		}
@@ -402,7 +402,7 @@ func listenerOwnedBy(port int, pid uint32) (bool, error) {
 		return false, errors.New("native TCP table shape bound")
 	}
 	matches := 0
-	for i := uint32(0); i < count; i++ {
+	for i := range count {
 		row := buffer[4+i*24 : 4+(i+1)*24]
 		if binary.LittleEndian.Uint32(row[:4]) == 2 && binary.LittleEndian.Uint32(row[4:8]) == 0x0100007f && int(binary.BigEndian.Uint16(row[8:10])) == port {
 			if binary.LittleEndian.Uint32(row[20:24]) != pid {

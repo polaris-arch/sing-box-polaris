@@ -10,9 +10,9 @@ import (
 
 func TestRuntimeDashboardToggleExactClientShape(t *testing.T) {
 	listen := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
-	off := option.APIServiceOptions{ListenOptions: option.ListenOptions{Listen: &listen}, Secret: "same"}
+	off := option.APIServiceOptions{Listen: &listen, Secret: "same"}
 	on := off
-	on.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: "/client/dashboard", HTTPClient: &option.HTTPClientOptions{DialerOptions: option.DialerOptions{Detour: "proxy"}}}
+	on.Dashboard = &option.APIDashboardOptions{Enabled: true, Path: "/client/dashboard", HTTPClient: &option.HTTPClientOptions{Detour: "proxy"}}
 	if !RuntimeDashboardToggleEligible(off, on) || !RuntimeDashboardToggleEligible(on, off) {
 		t.Fatal("client toggle rejected")
 	}

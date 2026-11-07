@@ -258,16 +258,14 @@ func (f *runtimeTestFixture) start(t *testing.T) {
 			if errors.As(err, &opErr) && opErr != nil {
 				t.Logf("runtime fixture start net.OpError: op=%q net=%q source=%v addr=%v cause=%T: %v", opErr.Op, opErr.Net, opErr.Source, opErr.Addr, opErr.Err, opErr.Err)
 				cause := opErr.Err
-				var syscallErr *os.SyscallError
-				if errors.As(cause, &syscallErr) {
+				if syscallErr, ok := errors.AsType[*os.SyscallError](cause); ok {
 					if syscallErr == nil {
 						return
 					}
 					t.Logf("runtime fixture start os.SyscallError: syscall=%q cause=%T: %v", syscallErr.Syscall, syscallErr.Err, syscallErr.Err)
 					cause = syscallErr.Err
 				}
-				var errno syscall.Errno
-				if errors.As(cause, &errno) {
+				if errno, ok := errors.AsType[syscall.Errno](cause); ok {
 					t.Logf("runtime fixture start syscall.Errno: %d", errno)
 				}
 			}

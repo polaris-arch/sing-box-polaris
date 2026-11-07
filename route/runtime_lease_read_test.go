@@ -70,7 +70,7 @@ func TestRuntimeLeaseTruncationAndBudgetsPreserveCompleteAcceptedTable(t *testin
 	// Each file is within its limit, but all selected files share one budget.
 	n.leaseFiles = nil
 	block := strings.Repeat("#"+strings.Repeat("x", 1022)+"\n", runtimeLeaseFileBytes/1024)
-	for index := 0; index < 5; index++ {
+	for index := range 5 {
 		path := filepath.Join(root, fmt.Sprintf("aggregate-%d.leases", index))
 		if err := os.WriteFile(path, []byte(block), 0o600); err != nil {
 			t.Fatal(err)

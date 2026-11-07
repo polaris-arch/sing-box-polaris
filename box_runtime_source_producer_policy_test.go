@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"maps"
 	"math/big"
 	"net"
 	"net/netip"
@@ -153,9 +154,7 @@ func r3SourceRoute(t *testing.T, content []byte, fields map[string]stdjson.RawMe
 	if err := stdjson.Unmarshal(root["route"], &route); err != nil {
 		t.Fatal(err)
 	}
-	for key, value := range fields {
-		route[key] = value
-	}
+	maps.Copy(route, fields)
 	root["route"], _ = stdjson.Marshal(route)
 	result, err := stdjson.Marshal(root)
 	if err != nil {

@@ -119,11 +119,11 @@ func TestHeldRetirementPreallocatedPublicationPureAndExplicitClose(t *testing.T)
 	unlocked := make(chan struct{})
 	go func() {
 		transaction.mu.Lock()
-		transaction.mu.Unlock()
+		transaction.mu.Unlock() //nolint:staticcheck // Deliberate lock-acquisition witness while the actual close is blocked.
 		old.runtime.mu.Lock()
-		old.runtime.mu.Unlock()
+		old.runtime.mu.Unlock() //nolint:staticcheck // Deliberate lock-acquisition witness while the actual close is blocked.
 		old.runtime.gateway.mu.Lock()
-		old.runtime.gateway.mu.Unlock()
+		old.runtime.gateway.mu.Unlock() //nolint:staticcheck // Deliberate lock-acquisition witness while the actual close is blocked.
 		close(unlocked)
 	}()
 	waitFixture(t, unlocked)

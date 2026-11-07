@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -60,12 +61,7 @@ func pairListenerFixture(a *admissionFixture, four, six net.Listener, port uint1
 }
 
 func fixtureHasMember(l *Listener, wanted *runtimeTCPMember) bool {
-	for _, member := range l.runtimeTCPMembers() {
-		if member == wanted {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(l.runtimeTCPMembers(), wanted)
 }
 
 func TestTwoMemberPortSwapTransfersAndReversesPhysicalPointers(t *testing.T) {
@@ -354,8 +350,7 @@ func TestExclusivePolicyMismatchRefusesBeforeOldEffects(t *testing.T) {
 			if err == nil {
 				t.Fatal("incompatible same-endpoint narrow exclusive policy admitted")
 			}
-			var physicalError *PhysicalHandoffError
-			if !errors.As(err, &physicalError) {
+			if _, ok := errors.AsType[*PhysicalHandoffError](err); !ok {
 				t.Fatal("structural exclusive refusal lost typed physical handoff contract:", err)
 			}
 			var bindError *net.OpError

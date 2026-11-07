@@ -5,6 +5,7 @@ import (
 	"context"
 	stdjson "encoding/json"
 	"errors"
+	"maps"
 	"net"
 	"net/netip"
 	"os"
@@ -52,9 +53,7 @@ func runtimeProvisionCandidate(t *testing.T, routeFields map[string]stdjson.RawM
 	if err := stdjson.Unmarshal(root["route"], &route); err != nil {
 		t.Fatal(err)
 	}
-	for key, value := range routeFields {
-		route[key] = value
-	}
+	maps.Copy(route, routeFields)
 	root["route"], _ = stdjson.Marshal(route)
 	content, err := stdjson.Marshal(root)
 	if err != nil {

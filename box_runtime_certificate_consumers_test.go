@@ -167,13 +167,13 @@ func TestRuntimeCertificateNamedAndInlineReplacementBindsRealTLSAndHTTP(t *testi
 				return &runtimeCertificateTLSConsumer{tag: tag, config: cfg}, nil
 			})
 			provider := &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"old.invalid"}, DataDirectory: filepath.Join(t.TempDir(), "old"), APIToken: "fixture-token", RequestType: option.CloudflareOriginCARequestTypeOriginECC, HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}
-			options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Insecure: true}}, DialerOptions: option.DialerOptions{Detour: "a"}}}
+			options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, TLS: &option.OutboundTLSOptions{Insecure: true}, Detour: "a"}}
 			tlsOptions := &option.InboundTLSOptions{Enabled: true, CertificateProvider: &option.CertificateProviderOptions{Type: "cloudflare-origin-ca", Options: provider}}
 			if named {
 				options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: provider}}
 				tlsOptions.CertificateProvider = &option.CertificateProviderOptions{Tag: "cert"}
 			}
-			options.Inbounds = []option.Inbound{{Type: "http", Tag: "tls", Options: &option.HTTPInboundOptions{InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{TLS: tlsOptions}}}}
+			options.Inbounds = []option.Inbound{{Type: "http", Tag: "tls", Options: &option.HTTPInboundOptions{TLS: tlsOptions}}}
 			runtimeResourceNew(t, f, options)
 			if issued.Load() != 0 {
 				t.Fatal("constructor performed issuance")
@@ -359,7 +359,7 @@ func TestRuntimeOriginCACanceledActualHTTPStagePreservesGraphAndEffectEvidence(t
 	runtimeResourceNew(t, f, options)
 	f.start(t)
 	before := f.identity()
-	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, DialerOptions: option.DialerOptions{Detour: "a"}, OutboundTLSOptionsContainer: option.OutboundTLSOptionsContainer{TLS: &option.OutboundTLSOptions{Insecure: true}}}}
+	options.HTTPClients = []option.HTTPClient{{Tag: "issuer", Version: 1, Detour: "a", TLS: &option.OutboundTLSOptions{Insecure: true}}}
 	options.CertificateProviders = []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{Domain: []string{"fixture.invalid"}, APIToken: "fixture", RequestType: option.CloudflareOriginCARequestTypeOriginECC, DataDirectory: filepath.Join(t.TempDir(), "canceled"), HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}
 	_, request := f.plan(t, runtimeResourceEncode(t, f, options.Options))
 	ctx, cancel := context.WithCancel(runtimeTestContext(t))

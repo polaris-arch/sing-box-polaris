@@ -37,7 +37,7 @@ func TestRuntimeInitialEligibilityReasonsPreserveInventory(t *testing.T) {
 			name: "retained TUN cache and plain API",
 			options: option.Options{
 				Inbounds: []option.Inbound{{Type: "tun", Options: &option.TunInboundOptions{}}},
-				Services: []option.Service{{Type: "api", Options: &option.APIServiceOptions{ListenOptions: option.ListenOptions{Listen: &listen}}}},
+				Services: []option.Service{{Type: "api", Options: &option.APIServiceOptions{Listen: &listen}}},
 				Experimental: &option.ExperimentalOptions{CacheFile: &option.CacheFileOptions{
 					Enabled: true, Path: runtimeEligibilitySecret, StoreDNS: true, StoreFakeIP: true,
 				}},
