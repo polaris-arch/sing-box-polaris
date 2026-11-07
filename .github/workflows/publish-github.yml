@@ -15,7 +15,7 @@ name: GitHub-only reviewed release
         - replace
         default: inventory
         required: true
-        description: Inventory, validate and preparation are read-only; all write modes require the existing protected environment and enabled variable
+        description: Inventory, validate and preparation are read-only; all write modes require the release environment and explicitly enabled publication variable
       source_sha:
         type: string
         required: true
@@ -149,7 +149,7 @@ jobs:
         ref: ${{ inputs.source_sha }}
         path: reviewed-source
         persist-credentials: false
-    - name: Revalidate actual bytes and perform the explicitly selected protected publication
+    - name: Revalidate actual bytes and perform the explicitly selected publication
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

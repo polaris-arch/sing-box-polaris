@@ -113,9 +113,11 @@ between tag selection and product builds.
    updated contract and independent verification. Remove the fallback only after
    new public delivery and consumer integration are both verified.
 
-All workflow write modes retain the existing protected environment, reviewer, publication
-variable and non-cancelling concurrency group. No environment allowlist change,
-registry/store publication, signing or fabricated attestation is part of this path.
+All workflow write modes retain the existing release environment, explicit publication
+variable and non-cancelling concurrency group. Under the 2026-11-07 repository
+consolidation decision, GitHub-side reviewers and deployment ref restrictions were
+removed; manual mode selection and source/hash validation remain. Registry/store
+publication, signing and fabricated attestation are not part of this path.
 
 ### Metadata-only alpha.12 public-name alignment
 
