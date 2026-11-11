@@ -32,8 +32,11 @@ func (c *runtimeCoordinator) VisitRuntimeNetwork(ctx context.Context, visit func
 	for _, entry := range entries {
 		bound := adapter.ContextWithRuntimeResourceLease(ctx, entry.lease)
 		for _, component := range entry.resource.components {
-			if component.outbound != nil || component.router != nil {
+			// Pass a literal nil: a nil *route.Router would become a non-nil adapter.Router.
+			if component.router != nil {
 				visit(bound, component.outbound, component.router)
+			} else if component.outbound != nil {
+				visit(bound, component.outbound, nil)
 			}
 			if component.endpoint != nil {
 				visit(bound, component.endpoint, nil)
