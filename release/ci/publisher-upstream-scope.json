@@ -16,7 +16,8 @@
       "native_smoke",
       "native_index",
       "prepare_windows7",
-      "build_windows7"
+      "build_windows7",
+      "debian_materials"
     ],
     "matrices": {
       "build": {
@@ -477,7 +478,7 @@
           },
           {
             "id": "darwin-arm64",
-            "runner": "macos-15",
+            "runner": "xcode-27",
             "artifact": "binary-darwin_arm64"
           }
         ]
@@ -571,7 +572,9 @@
       "unsigned-apple-ios-archive",
       "unsigned-apple-macos-archive",
       "unsigned-apple-tvos-archive",
-      "go-win7-toolchain"
+      "go-win7-toolchain",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-android-apks-other": [
@@ -1433,14 +1436,54 @@
           "pattern": "^go-win7-toolchain\\.tar\\.gz$",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
+    },
+    "receiptJobs": {
+      "calculate_version": "required",
+      "build": "required",
+      "build_windows7": "required",
+      "build_darwin": "required",
+      "build_windows": "required",
+      "build_android_library": "required",
+      "build_android": "required",
+      "build_windows_client": "required",
+      "build_linux_client": "required",
+      "build_apple_library": "required",
+      "build_apple": "required",
+      "build_apple_app_store": "required",
+      "native_smoke": "required",
+      "native_index": "required",
+      "prepare_windows7": "required",
+      "debian_materials": "debian_required"
     }
   },
   "linux": {
     "workflow": ".github/workflows/linux.yml",
     "requiredJobs": [
       "calculate_version",
-      "build"
+      "build",
+      "debian_materials"
     ],
     "matrices": {
       "build": {
@@ -1539,7 +1582,9 @@
       "binary-linux_ppc64le",
       "binary-linux_riscv64",
       "binary-linux_s390x",
-      "publisher-run-receipt"
+      "publisher-run-receipt",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-linux_386": [
@@ -1657,14 +1702,59 @@
           "pattern": "publisher\\-run\\-receipt\\.json",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
+    },
+    "receiptJobs": {
+      "calculate_version": "required",
+      "build": "required",
+      "debian_materials": "debian_required"
     }
   },
   "docker": {
     "workflow": ".github/workflows/docker.yml",
     "requiredJobs": [
+      "source",
       "build_binary",
-      "build_docker"
+      "build_binary_arm64",
+      "build_binary_386",
+      "build_binary_armv7",
+      "build_binary_mipsle",
+      "build_binary_riscv64",
+      "build_binary_loong64",
+      "build_binary_armv6",
+      "build_binary_ppc64le",
+      "build_binary_s390x",
+      "build_docker",
+      "build_docker_armv6",
+      "build_docker_armv7",
+      "build_docker_arm64",
+      "build_docker_386",
+      "build_docker_ppc64le",
+      "build_docker_riscv64",
+      "build_docker_s390x",
+      "build_docker_loong64",
+      "debian_materials"
     ],
     "matrices": {
       "build_binary": {
@@ -1673,48 +1763,84 @@
             "arch": "amd64",
             "naive": true,
             "docker_platform": "linux/amd64"
-          },
+          }
+        ]
+      },
+      "build_binary_arm64": {
+        "include": [
           {
             "arch": "arm64",
             "naive": true,
             "docker_platform": "linux/arm64"
-          },
+          }
+        ]
+      },
+      "build_binary_386": {
+        "include": [
           {
             "arch": "386",
             "naive": true,
             "docker_platform": "linux/386"
-          },
+          }
+        ]
+      },
+      "build_binary_armv7": {
+        "include": [
           {
             "arch": "arm",
             "goarm": "7",
             "naive": true,
             "docker_platform": "linux/arm/v7"
-          },
+          }
+        ]
+      },
+      "build_binary_mipsle": {
+        "include": [
           {
             "arch": "mipsle",
             "gomips": "softfloat",
             "naive": true,
             "docker_platform": "linux/mipsle"
-          },
+          }
+        ]
+      },
+      "build_binary_riscv64": {
+        "include": [
           {
             "arch": "riscv64",
             "naive": true,
             "docker_platform": "linux/riscv64"
-          },
+          }
+        ]
+      },
+      "build_binary_loong64": {
+        "include": [
           {
             "arch": "loong64",
             "naive": true,
             "docker_platform": "linux/loong64"
-          },
+          }
+        ]
+      },
+      "build_binary_armv6": {
+        "include": [
           {
             "arch": "arm",
             "goarm": "6",
             "docker_platform": "linux/arm/v6"
-          },
+          }
+        ]
+      },
+      "build_binary_ppc64le": {
+        "include": [
           {
             "arch": "ppc64le",
             "docker_platform": "linux/ppc64le"
-          },
+          }
+        ]
+      },
+      "build_binary_s390x": {
+        "include": [
           {
             "arch": "s390x",
             "docker_platform": "linux/s390x"
@@ -1725,28 +1851,60 @@
         "include": [
           {
             "platform": "linux/amd64"
-          },
+          }
+        ]
+      },
+      "build_docker_armv6": {
+        "include": [
           {
             "platform": "linux/arm/v6"
-          },
+          }
+        ]
+      },
+      "build_docker_armv7": {
+        "include": [
           {
             "platform": "linux/arm/v7"
-          },
+          }
+        ]
+      },
+      "build_docker_arm64": {
+        "include": [
           {
             "platform": "linux/arm64"
-          },
+          }
+        ]
+      },
+      "build_docker_386": {
+        "include": [
           {
             "platform": "linux/386"
-          },
+          }
+        ]
+      },
+      "build_docker_ppc64le": {
+        "include": [
           {
             "platform": "linux/ppc64le"
-          },
+          }
+        ]
+      },
+      "build_docker_riscv64": {
+        "include": [
           {
             "platform": "linux/riscv64"
-          },
+          }
+        ]
+      },
+      "build_docker_s390x": {
+        "include": [
           {
             "platform": "linux/s390x"
-          },
+          }
+        ]
+      },
+      "build_docker_loong64": {
+        "include": [
           {
             "platform": "linux/loong64",
             "base_image": "ghcr.io/loong64/alpine:edge"
@@ -1774,7 +1932,9 @@
       "oci-linux-ppc64le",
       "oci-linux-riscv64",
       "oci-linux-s390x",
-      "publisher-run-receipt"
+      "publisher-run-receipt",
+      "debian-candidate-raw",
+      "debian-material-ready"
     ],
     "payloadRules": {
       "binary-linux-386": [
@@ -1896,7 +2056,51 @@
           "pattern": "publisher\\-run\\-receipt\\.json",
           "count": 1
         }
+      ],
+      "debian-candidate-raw": [
+        {
+          "pattern": "candidate-manifest\\.json",
+          "count": 1
+        }
+      ],
+      "debian-material-ready": [
+        {
+          "pattern": "debian-material-ready\\.json",
+          "count": 1
+        }
       ]
+    },
+    "debianMaterials": {
+      "family": "debian_materials",
+      "rawArtifact": "debian-candidate-raw",
+      "readyArtifact": "debian-material-ready",
+      "manifest": "candidate-manifest.json",
+      "readyMember": "debian-material-ready.json",
+      "profilePlan": "release/ci/cronet-material-profiles.json",
+      "supplierJob": "Supply verified Debian raw inputs"
+    },
+    "receiptJobs": {
+      "source": "required",
+      "build_binary": "required",
+      "build_binary_arm64": "required",
+      "build_binary_386": "required",
+      "build_binary_armv7": "required",
+      "build_binary_mipsle": "required",
+      "build_binary_riscv64": "required",
+      "build_binary_loong64": "required",
+      "build_binary_armv6": "required",
+      "build_binary_ppc64le": "required",
+      "build_binary_s390x": "required",
+      "build_docker": "required",
+      "build_docker_armv6": "required",
+      "build_docker_armv7": "required",
+      "build_docker_arm64": "required",
+      "build_docker_386": "required",
+      "build_docker_ppc64le": "required",
+      "build_docker_riscv64": "required",
+      "build_docker_s390x": "required",
+      "build_docker_loong64": "required",
+      "debian_materials": "debian_required"
     }
   },
   "signed": {
@@ -3335,6 +3539,24 @@
           "count": 1
         }
       ]
+    },
+    "receiptJobs": {
+      "calculate_version": "required",
+      "build": "required",
+      "build_windows7": "required",
+      "build_darwin": "required",
+      "build_windows": "required",
+      "build_android_library": "required",
+      "build_android": "required",
+      "build_windows_client": "required",
+      "build_linux_client": "required",
+      "build_apple_library": "required",
+      "build_apple": "required",
+      "build_apple_app_store": "required",
+      "native_smoke": "required",
+      "native_index": "required",
+      "prepare_windows7": "required",
+      "upload": "github_upload"
     }
   }
 }

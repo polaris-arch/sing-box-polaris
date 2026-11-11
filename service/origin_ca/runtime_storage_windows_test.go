@@ -11,6 +11,11 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// Windows File.Stat returns the native invalid-handle error after Close.
+func runtimeRootFileStatIsClosed(err error) bool {
+	return errors.Is(err, os.ErrClosed) || errors.Is(err, windows.ERROR_INVALID_HANDLE)
+}
+
 func runtimeRootRenameIsSharingViolation(err error) bool {
 	return errors.Is(err, windows.ERROR_SHARING_VIOLATION)
 }
@@ -45,7 +50,7 @@ func TestRuntimeRootStorageWindowsPipeRejectedBeforeRead(t *testing.T) {
 		if !originStorageIsUnsafe(err) || value != nil {
 			t.Fatal("actual Windows pipe was read as a regular file", err)
 		}
-		if _, err = file.Stat(); !errors.Is(err, os.ErrClosed) {
+		if _, err = file.Stat(); !runtimeRootFileStatIsClosed(err) {
 			t.Fatal("rejected pipe handle leaked", err)
 		}
 		return

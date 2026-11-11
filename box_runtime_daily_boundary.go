@@ -10,6 +10,10 @@ import (
 // permission to restart Box. The application owns explanation and user choice.
 // Values are never copied into diagnostics: configurations can contain secrets.
 func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) ([]RuntimeImpact, []RuntimePlanError) {
+	return runtimeDailyStructuralChangesWithClientImpactPolicy(before, after, RuntimeClientImpactPolicyLegacy, false)
+}
+
+func runtimeDailyStructuralChangesWithClientImpactPolicy(before, after map[string]stdjson.RawMessage, policy RuntimeClientImpactPolicyVersion, logToggleEligible bool) ([]RuntimeImpact, []RuntimePlanError) {
 	paths := make(map[string]bool)
 	keys := make(map[string]bool)
 	for key := range before {
@@ -24,17 +28,20 @@ func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) 
 		}
 		switch key {
 		case "services":
-			if !runtimeAPIHandoffChanges(before[key], after[key]) {
+			if !runtimeAPIHandoffChanges(before[key], after[key]) && !runtimeClientDashboardChanges(before[key], after[key], policy) {
 				runtimeChangedLeaves(key, before[key], after[key], paths)
 			}
 		case "outbounds", "endpoints", "dns", "http_clients", "certificate_providers", "ntp":
 			// Concrete protocol/range support is checked separately. Endpoints
 			// include ordinary userspace nodes, not only host interfaces.
 		case "inbounds":
-			if !runtimeOnlyInboundProviderChanges(before[key], after[key]) {
+			if !runtimeOnlyInboundProviderChanges(before[key], after[key]) && !runtimeClientInboundChanges(before[key], after[key], uint32(policy)) {
 				runtimeChangedLeaves(key, before[key], after[key], paths)
 			}
 		case "log":
+			if policy == RuntimeClientImpactPolicyExplicit && logToggleEligible {
+				continue
+			}
 			var oldLog, newLog map[string]stdjson.RawMessage
 			_ = stdjson.Unmarshal(before[key], &oldLog)
 			_ = stdjson.Unmarshal(after[key], &newLog)
@@ -66,6 +73,10 @@ func runtimeDailyStructuralChanges(before, after map[string]stdjson.RawMessage) 
 					continue
 				}
 				switch field {
+				case "find_process", "find_neighbor", "dhcp_lease_files":
+					if policy != RuntimeClientImpactPolicyExplicit {
+						runtimeChangedLeaves("route."+field, oldRoute[field], newRoute[field], paths)
+					}
 				case "rules", "rule_set", "final", "default_http_client", "default_domain_resolver", "default_interface", "default_mark", "default_network_strategy", "default_network_type", "default_fallback_network_type", "default_fallback_delay":
 				default:
 					runtimeChangedLeaves("route."+field, oldRoute[field], newRoute[field], paths)

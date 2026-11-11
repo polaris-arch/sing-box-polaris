@@ -28,6 +28,8 @@ func (s *Box) stageRuntimeTun(ctx context.Context, g *preparedRuntimeGraph, allo
 	}
 	s.runtime.access.Lock()
 	old := append([]*runtimeResource(nil), s.runtime.resources...)
+	beforeOptions := s.runtime.options
+	captured := s.runtime.tunDependencies
 	s.runtime.access.Unlock()
 	var replaced []*runtimeResource
 	for _, resource := range old {
@@ -39,8 +41,13 @@ func (s *Box) stageRuntimeTun(ctx context.Context, g *preparedRuntimeGraph, allo
 	if len(previous) == 0 && len(next) == 0 {
 		return nil
 	}
-	if len(previous) != 0 && !allowReconnect {
-		return errors.New("TUN physical replacement requires accepted session-reset impact")
+	if len(previous) != 0 {
+		if g.clientImpactPolicy != RuntimeClientImpactPolicyExplicit || !allowReconnect {
+			return errors.New("TUN physical replacement requires the stored explicit policy and accepted session-reset impact")
+		}
+		if problems := runtimeClientTunDependencyProblems(s.runtime.ctx, beforeOptions, g.options, captured, uint32(g.clientImpactPolicy)); len(problems) != 0 {
+			return errors.New(problems[0].Message)
+		}
 	}
 	g.tunTransaction = protocolTun.NewRuntimeSetTransaction(previous, next)
 	return g.tunTransaction.Stage(ctx)

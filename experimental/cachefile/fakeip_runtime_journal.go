@@ -26,6 +26,15 @@ var (
 
 const fakeIPRuntimeJournalName = "sing-box-hot-fakeip-v1.db"
 
+// fakeIPRecoveryError adds fixed caller-owned context without changing nil or
+// the original error classification. Callers supply only static stage literals.
+func fakeIPRecoveryError(stage string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("fake-IP recovery %s: %w", stage, err)
+}
+
 type (
 	recoveryBackendView struct {
 		backend    adapter.FakeIPRuntimeBackend
@@ -58,9 +67,13 @@ type FakeIPRuntimeJournal struct {
 	cancel      context.CancelFunc
 	flushDone   chan struct{}
 	closeErr    error
+	custody     []func() error
 }
 
 func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRuntimeJournal, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fakeIPRecoveryError("journal.context-before-root", err)
+	}
 	root, present := adapter.RuntimeRecoveryRootFromContext(ctx)
 	if !present || !filepath.IsAbs(root) {
 		return nil, ErrFakeIPRecoveryRoot
@@ -68,46 +81,80 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	root = filepath.Clean(root)
 	rootInfo, err := os.Lstat(root)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrFakeIPRecoveryCustody, err)
+		return nil, fakeIPRecoveryError("journal.root-lstat", fmt.Errorf("%w: %v", ErrFakeIPRecoveryCustody, err))
 	}
-	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 || rootInfo.Mode().Perm()&0o022 != 0 {
-		return nil, ErrFakeIPRecoveryCustody
+	if !rootInfo.IsDir() || rootInfo.Mode()&os.ModeSymlink != 0 {
+		return nil, fakeIPRecoveryError("journal.root-kind", ErrFakeIPRecoveryCustody)
 	}
+	rootCustody, err := requireRuntimeJournalRootCustody(root, rootInfo)
+	if err != nil {
+		return nil, fakeIPRecoveryError("journal.root-custody", err)
+	}
+	releaseRoot := rootCustody.Close
+	var releaseFile func() error
+	retained := false
+	defer func() {
+		if !retained {
+			if releaseFile != nil {
+				_ = releaseFile()
+			}
+			_ = releaseRoot()
+		}
+	}()
 	canonical, err := filepath.EvalSymlinks(root)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("journal.root-canonical", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fakeIPRecoveryError("journal.context-after-root", err)
 	}
 	path := filepath.Join(canonical, fakeIPRuntimeJournalName)
 	created := false
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	var existingInfo os.FileInfo
+	file, err := createRuntimeJournalFile(rootCustody, path)
 	if err == nil {
 		created = true
 	} else if errors.Is(err, os.ErrExist) {
 		info, inspectErr := os.Lstat(path)
 		if inspectErr != nil {
-			return nil, inspectErr
+			return nil, fakeIPRecoveryError("journal.existing-file-lstat", inspectErr)
 		}
-		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0o077 != 0 {
-			return nil, ErrFakeIPRecoveryCustody
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, fakeIPRecoveryError("journal.existing-file-kind", ErrFakeIPRecoveryCustody)
 		}
+		releaseFile, err = rootCustody.RequireFile(path, info)
+		if err != nil {
+			return nil, fakeIPRecoveryError("journal.existing-file-custody", err)
+		}
+		existingInfo = info
 		file, err = os.OpenFile(path, os.O_RDWR, 0)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("journal.file-open", err)
 	}
 	opened, err := file.Stat()
-	if err == nil {
-		err = file.Sync()
+	err = fakeIPRecoveryError("journal.file-stat", err)
+	if err == nil && existingInfo != nil && !os.SameFile(existingInfo, opened) {
+		err = fakeIPRecoveryError("journal.existing-file-identity", ErrFakeIPRecoveryCustody)
 	}
-	closeErr := file.Close()
+	if err == nil {
+		err = fakeIPRecoveryError("journal.file-sync", file.Sync())
+	}
+	closeErr := fakeIPRecoveryError("journal.file-close", file.Close())
 	if err == nil {
 		err = closeErr
 	}
 	if err != nil {
 		return nil, err
 	}
-	if !opened.Mode().IsRegular() || opened.Mode().Perm()&0o077 != 0 {
-		return nil, ErrFakeIPRecoveryCustody
+	if !opened.Mode().IsRegular() {
+		return nil, fakeIPRecoveryError("journal.opened-file-kind", ErrFakeIPRecoveryCustody)
+	}
+	if releaseFile == nil {
+		releaseFile, err = rootCustody.RequireFile(path, opened)
+		if err != nil {
+			return nil, fakeIPRecoveryError("journal.new-file-custody", err)
+		}
 	}
 	if created {
 		if err = syncRuntimeFileCreation(path); err != nil {
@@ -116,16 +163,16 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 	}
 	cache, err := openStrictRuntimeCache(ctx, log, path, "", opened)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("journal.database-open", err)
 	}
 	currentRoot, err := os.Stat(root)
 	if err != nil || !os.SameFile(rootInfo, currentRoot) {
 		_ = closeStrictRuntimeCache(cache)
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("journal.root-after-open", ErrFakeIPRecoveryCustody)
 	}
 	if _, err = cache.RuntimeDescriptor(ctx); err != nil {
 		_ = closeStrictRuntimeCache(cache)
-		return nil, err
+		return nil, fakeIPRecoveryError("journal.descriptor", err)
 	}
 	if err = cache.runtimeUpdate(func(tx *bbolt.Tx) error {
 		root, err := runtimeRoot(tx)
@@ -136,30 +183,32 @@ func OpenFakeIPRuntimeJournal(ctx context.Context, log logger.Logger) (*FakeIPRu
 		return err
 	}); err != nil {
 		_ = closeStrictRuntimeCache(cache)
-		return nil, err
+		return nil, fakeIPRecoveryError("journal.custody-bucket", err)
 	}
 	flushCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	journal := &FakeIPRuntimeJournal{CacheFile: cache, backends: make(map[adapter.FakeIPRuntimeBackendDescriptor]*recoveryBackend), cancel: cancel, flushDone: make(chan struct{})}
 	descriptor, _ := cache.RuntimeDescriptor(ctx)
 	entry := &recoveryBackend{backend: cache, permanent: true, changed: make(chan struct{})}
 	journal.addViewLocked(entry, descriptor, cache)
+	journal.custody = []func() error{releaseFile, releaseRoot}
+	retained = true
 	go func() { defer close(journal.flushDone); cache.loopFlush(flushCtx) }()
 	return journal, nil
 }
 
 func openStrictRuntimeDatabase(ctx context.Context, path string, expected os.FileInfo) (*bbolt.DB, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("database.context", err)
 	}
 	if !filepath.IsAbs(path) {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("database.absolute-path", ErrFakeIPRecoveryCustody)
 	}
 	before, err := os.Lstat(path)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("database.before-lstat", err)
 	}
 	if !before.Mode().IsRegular() || before.Mode()&os.ModeSymlink != 0 || (expected != nil && !os.SameFile(before, expected)) {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("database.before-identity", ErrFakeIPRecoveryCustody)
 	}
 	opts := databaseOptions
 	// bbolt's exclusive writer lock bounds competing live opens. No retry,
@@ -167,16 +216,16 @@ func openStrictRuntimeDatabase(ctx context.Context, path string, expected os.Fil
 	opts.Timeout = time.Second
 	db, err := bbolt.Open(path, 0o600, &opts)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("database.open", err)
 	}
 	after, err := os.Lstat(path)
 	if err != nil || !os.SameFile(before, after) || !after.Mode().IsRegular() || after.Mode()&os.ModeSymlink != 0 {
 		_ = db.Close()
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("database.after-identity", ErrFakeIPRecoveryCustody)
 	}
 	if err = checkDatabase(db); err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fakeIPRecoveryError("database.check", err)
 	}
 	return db, nil
 }
@@ -186,12 +235,12 @@ func openStrictRuntimeCache(ctx context.Context, log logger.Logger, path, cacheI
 		var err error
 		expected, err = os.Lstat(path)
 		if err != nil {
-			return nil, err
+			return nil, fakeIPRecoveryError("backend.expected-lstat", err)
 		}
 	}
 	db, err := openStrictRuntimeDatabase(ctx, path, expected)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("backend.database-open", err)
 	}
 	cache := New(ctx, log, option.CacheFileOptions{Path: path, CacheID: cacheID})
 	cache.DB = db
@@ -199,11 +248,11 @@ func openStrictRuntimeCache(ctx context.Context, log logger.Logger, path, cacheI
 	cache.runtimeFileInfo, err = os.Lstat(path)
 	if err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fakeIPRecoveryError("backend.current-lstat", err)
 	}
 	if expected != nil && !os.SameFile(expected, cache.runtimeFileInfo) {
 		_ = db.Close()
-		return nil, ErrFakeIPRuntimeIdentity
+		return nil, fakeIPRecoveryError("backend.current-identity", ErrFakeIPRuntimeIdentity)
 	}
 	return cache, nil
 }
@@ -252,17 +301,17 @@ func (j *FakeIPRuntimeJournal) BindBackendOwned(ctx context.Context, backend ada
 	}()
 	descriptor, err := backend.RuntimeDescriptor(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("backend.descriptor", err)
 	}
 	if !filepath.IsAbs(descriptor.Path) || descriptor.DatabaseID == "" {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("backend.descriptor-identity", ErrFakeIPRecoveryCustody)
 	}
 	info, inspectErr := os.Lstat(descriptor.Path)
 	if inspectErr != nil {
-		return nil, inspectErr
+		return nil, fakeIPRecoveryError("backend.descriptor-lstat", inspectErr)
 	}
 	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
-		return nil, ErrFakeIPRecoveryCustody
+		return nil, fakeIPRecoveryError("backend.descriptor-kind", ErrFakeIPRecoveryCustody)
 	}
 	j.maintenance.Lock()
 	defer j.maintenance.Unlock()
@@ -274,7 +323,7 @@ func (j *FakeIPRuntimeJournal) BindBackendOwned(ctx context.Context, backend ada
 	entry, identityErr := j.physicalBackendLocked(descriptor)
 	if identityErr != nil {
 		j.access.Unlock()
-		return nil, identityErr
+		return nil, fakeIPRecoveryError("backend.physical-identity", identityErr)
 	}
 	if entry != nil && (entry.owned != nil || entry.failure != nil || entry.retiring || !samePhysicalRuntimeBackend(entry.backend, backend)) {
 		j.access.Unlock()
@@ -303,7 +352,7 @@ func (j *FakeIPRuntimeJournal) BindBackendOwned(ctx context.Context, backend ada
 		return putRuntimeJSON(custody, key, descriptor)
 	})
 	if err != nil {
-		return nil, err
+		return nil, fakeIPRecoveryError("backend.custody-grant-write", err)
 	}
 	j.access.Lock()
 	if entry == nil {
@@ -503,10 +552,10 @@ func (j *FakeIPRuntimeJournal) ResolveFakeIPRuntime(ctx context.Context, descrip
 			}
 			var granted adapter.FakeIPRuntimeBackendDescriptor
 			if err = readRuntimeJSON(root.Bucket(bucketRuntimeCustody), []byte(descriptor.DatabaseID+"\x00"+descriptor.CacheID), &granted); err != nil {
-				return ErrFakeIPRecoveryCustody
+				return fakeIPRecoveryError("resolver.custody-grant-read", ErrFakeIPRecoveryCustody)
 			}
 			if granted != descriptor {
-				return ErrFakeIPRecoveryCustody
+				return fakeIPRecoveryError("resolver.custody-grant-identity", ErrFakeIPRecoveryCustody)
 			}
 			return nil
 		})
@@ -530,7 +579,7 @@ func (j *FakeIPRuntimeJournal) ResolveFakeIPRuntime(ctx context.Context, descrip
 		} else {
 			cache, err := openStrictRuntimeCache(ctx, j.logger, descriptor.Path, descriptor.CacheID, nil)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fakeIPRecoveryError("resolver.backend-open", err)
 			}
 			// Never initialize an identity in a replacement file during recovery.
 			err = cache.runtimeView(func(tx *bbolt.Tx) error {
@@ -624,6 +673,12 @@ func (j *FakeIPRuntimeJournal) Close() error {
 	<-j.flushDone
 	j.flushTimer.Stop()
 	j.closeErr = closeStrictRuntimeCache(j.CacheFile)
+	if j.closeErr == nil {
+		for _, release := range j.custody {
+			j.closeErr = errors.Join(j.closeErr, release())
+		}
+		j.custody = nil
+	}
 	return j.closeErr
 }
 
@@ -687,4 +742,26 @@ func (j *FakeIPRuntimeJournal) PruneUnreferencedCustody(ctx context.Context) err
 		}
 		return nil
 	})
+}
+
+// A declared root with no usable private custody remains a legacy startup when
+// no journal exists. Existing recovery evidence is never ignored or adopted.
+// This inspection performs no creation, chmod, ACL write, reset or DB open.
+func FakeIPRuntimeRecoveryRootReady(ctx context.Context) (bool, error) {
+	root, present := adapter.RuntimeRecoveryRootFromContext(ctx)
+	if !present {
+		return false, nil
+	}
+	info, err := os.Lstat(root)
+	if err == nil {
+		var release func() error
+		release, err = requireRuntimeJournalCustody(root, info, true)
+		if err == nil {
+			return true, fakeIPRecoveryError("root-ready.close", release())
+		}
+	}
+	if _, journalErr := os.Lstat(filepath.Join(root, fakeIPRuntimeJournalName)); os.IsNotExist(journalErr) {
+		return false, nil
+	}
+	return false, fakeIPRecoveryError("root-ready.evidence-not-absent", errors.Join(ErrFakeIPRecoveryCustody, err))
 }

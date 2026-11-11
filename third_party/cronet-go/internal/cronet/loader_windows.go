@@ -24,11 +24,13 @@ var processWindowsLibrary windowsLibraryLoader
 // Dependencies belong to each invocation/instance, never to mutable test hooks.
 // A successfully registered module stays loaded while its function pointers live.
 type windowsLibraryLoader struct {
-	once     sync.Once
-	err      error
-	handle   uintptr
-	path     string
-	explicit bool
+	once      sync.Once
+	err       error
+	handle    uintptr
+	path      string
+	explicit  bool
+	capture   *windowsLibraryCapture
+	observeMu sync.Mutex
 }
 
 type windowsLibraryOps struct {
@@ -37,16 +39,24 @@ type windowsLibraryOps struct {
 	load      func(string, uintptr) (uintptr, error)
 	free      func(uintptr) error
 	register  func(uintptr) error
+	capture   func(string) (*windowsLibraryCapture, error)
+	observe   func(uintptr, *windowsLibraryCapture) (LibraryObservation, error)
 }
 
 func LoadLibrary(path string) error {
-	return processWindowsLibrary.load(path, windowsLibraryOps{
+	return processWindowsLibrary.load(path, nativeWindowsLibraryOps())
+}
+
+func nativeWindowsLibraryOps() windowsLibraryOps {
+	return windowsLibraryOps{
 		lookupEnv: os.LookupEnv,
 		discover:  findLibrary,
 		load:      loadWindowsLibrary,
 		free:      freeWindowsLibrary,
 		register:  registerWindowsLibrarySymbols,
-	})
+		capture:   captureWindowsLibrary,
+		observe:   observeWindowsLibrary,
+	}
 }
 
 func ensureLoaded() {
@@ -100,6 +110,7 @@ func (loader *windowsLibraryLoader) load(request string, ops windowsLibraryOps) 
 
 func (loader *windowsLibraryLoader) initialize(request, selector string, explicit bool, ops windowsLibraryOps) {
 	var handle uintptr
+	var capture *windowsLibraryCapture
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			loader.err = fmt.Errorf("cronet: library initialization panicked: %v", recovered)
@@ -109,6 +120,9 @@ func (loader *windowsLibraryLoader) initialize(request, selector string, explici
 				loader.err = errors.Join(loader.err, fmt.Errorf("cronet: failed to release rejected library: %w", err))
 			}
 		}
+		if capture != nil && loader.capture == nil {
+			loader.err = errors.Join(loader.err, capture.close())
+		}
 	}()
 	path, err := selectWindowsLibrary(request, selector, explicit, ops.discover)
 	if err != nil {
@@ -116,6 +130,17 @@ func (loader *windowsLibraryLoader) initialize(request, selector string, explici
 		return
 	}
 	loader.path, loader.explicit = path, explicit
+	if explicit {
+		if ops.capture == nil || ops.observe == nil {
+			loader.err = errors.New("cronet: explicit Windows object observation unavailable")
+			return
+		}
+		capture, err = ops.capture(path)
+		if err != nil {
+			loader.err = err
+			return
+		}
+	}
 	handle, err = ops.load(path, cronetLibrarySearchFlags)
 	if err != nil {
 		loader.err = fmt.Errorf("cronet: failed to load selected library %s: %w", path, err)
@@ -125,6 +150,12 @@ func (loader *windowsLibraryLoader) initialize(request, selector string, explici
 		loader.err = errors.New("cronet: loading selected library returned an empty handle")
 		return
 	}
+	if explicit {
+		if _, err = ops.observe(handle, capture); err != nil {
+			loader.err = err
+			return
+		}
+	}
 	if err := ops.register(handle); err != nil {
 		loader.err = fmt.Errorf("cronet: failed to register selected library: %w", err)
 		return
@@ -132,6 +163,7 @@ func (loader *windowsLibraryLoader) initialize(request, selector string, explici
 	// Publish only a completely registered module. No unload is safe after this
 	// point: the bindings refer to this exact module for the process lifetime.
 	loader.handle = handle
+	loader.capture = capture
 }
 
 func selectWindowsLibrary(request, selector string, explicit bool, discover func() string) (string, error) {

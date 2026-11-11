@@ -177,7 +177,7 @@ func (d *outboundOwnedDialer) ListenPacket(ctx context.Context, destination M.So
 		return nil, err
 	}
 	if raw == nil {
-		return nil, errors.New("Realm listener returned no carrier")
+		return nil, errors.New("realm listener returned no carrier")
 	}
 	guarded, fence := outbound.WrapRuntimeOwnedPacketConn(raw)
 	if err = d.owner.boundary.RegisterResource(fence); err != nil {
@@ -237,7 +237,7 @@ func (t *outboundRealmHTTPTransport) RoundTrip(request *http.Request) (*http.Res
 		begin, boundary = t.owner.mapperBegin, t.owner.mapperBoundary
 	}
 	if begin == nil {
-		return nil, errors.New("Realm HTTP used before ownership installation")
+		return nil, errors.New("realm HTTP used before ownership installation")
 	}
 	ctx, leave, err := begin(request.Context())
 	if err != nil {
@@ -284,7 +284,7 @@ type outboundRealmPacketCarrier struct {
 func newOutboundRealmPacketCarrier(raw net.PacketConn, remote net.Addr) (net.Conn, error) {
 	peer, ok := remote.(*net.UDPAddr)
 	if raw == nil || !ok || peer == nil || !peer.AddrPort().IsValid() || peer.Port <= 0 || peer.Port > 65535 {
-		return nil, errors.New("Realm QUIC requires a valid selected UDP peer")
+		return nil, errors.New("realm QUIC requires a valid selected UDP peer")
 	}
 	address := peer.AddrPort()
 	address = netip.AddrPortFrom(address.Addr().Unmap(), address.Port())

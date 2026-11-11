@@ -40,6 +40,13 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	for _, path := range []string{"outbounds", "endpoints", "dns", "route.rules", "route.rule_set", "route.final", "route.default_domain_resolver", "route.default_http_client", "route.default_interface", "route.default_mark", "route.default_network_strategy", "route.default_network_type", "route.default_fallback_network_type", "route.default_fallback_delay"} {
 		add(path, "daily-graph", "LOCAL_REPLACE", "eligible-started-instance", "build-enabled-concrete-adapter; registered-stub-is-not-support", "immutable-plan-and-control-CAS", "physical-resource-preflight", "captured-TUN-egress-dependencies-unchanged")
 	}
+	add("route.find_process", "desktop-private-process-owner-v1", "LOCAL_REPLACE", "client-impact-policy=1", "existing-private-process-owner; desktop-only; native-initialize-may-fail")
+	for _, path := range []string{"route.find_neighbor", "route.dhcp_lease_files"} {
+		add(path, "native-neighbor-and-lease-reader-v1", "LOCAL_REPLACE", "client-impact-policy=1", "Linux-or-Darwin-desktop-native-reader", "absolute-clean-bounded-lease-files", "fresh-private-sample-required", "one-second-refresh; native-I/O-joined-before-close", "new-platform-subscription-without-independent-owner-unavailable")
+	}
+	for _, path := range []string{"route.rules.wifi_ssid", "route.rules.wifi_bssid", "dns.rules.wifi_ssid", "dns.rules.wifi_bssid"} {
+		add(path, "graph-owned-wifi-reader-v1", "LOCAL_REPLACE", "client-impact-policy=1", "Linux-or-Windows-native-reader-or-existing-platform-getter", "fresh-private-read", "one-second-refresh; native-I/O-joined-before-close", "no-new-platform-permission")
+	}
 	features := runtimeCapabilityBuildFeatures(tags, known, quic, cgo)
 	featureNames := make([]string, 0, len(features))
 	for name := range features {
@@ -126,6 +133,15 @@ func runtimeCapabilityFieldsForBuild(tags string, known, quic, cgo bool) []Runti
 	}
 	variant("services", "api-loopback-handoff-v1", "", "one-API-service;stable-tag;listen-port-secret-only", "no-TLS-ReuseAddr-interface-netns-detour-or-dashboard-change", "server-owned-socket-custody-through-publication-and-ack", "original-captured-carrier-key;new-channel-HMAC-challenge;separate-handoff-ack", "prepublish-unary-and-stream-task-join;header-safe-secret", "unknown-result-status-only;never-repeat-Apply", "pending-handoff-or-close-failure-retains-claims")
 	add("runtime.persistence", "owner-contract", "RUNTIME_UPDATE_UNSPECIFIED", "unbound-or-failed-owner-remains-durability-pending", "retry-requires-original-repeat-safe-owner", "regeneration-requires-separate-owner-ack")
+	add("inbounds", "polaris-client-listener-policy1", "LOCAL_REPLACE", "stored-client-impact-policy=1;capability-is-not-consent", "fixed-mixed-in-port;127.0.0.1-loopback-or-::-allowLAN;legacy-0.0.0.0-preserved", "np-probe-in-UDP-loopback-with-closed-hijack-and-REFUSED-DNS-prefix", "main-carrier-count-and-tag-unchanged", "full-occupancy-reservation-exclusive-bind-and-compensation", "accepted-impact-digest;affected-UDP-associations-may-reset")
+	tunClass := "RUNTIME_UPDATE_UNSPECIFIED"
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		tunClass = "LOCAL_REPLACE"
+	}
+	add("inbounds", "polaris-client-tun-policy1", tunClass, "stored-client-impact-policy=1;capability-is-not-consent", "closed-client-shape;fixed-addresses;no-stack-or-foreign-TUN-options", "desktop-local-owner-or-actually-registered-original-provider-V1;GOOS-is-not-registration", "native-path-requires-original-owner-session;old-SDK-absent-or-quarantined-bridge-rejected-by-Plan", "implementation-inventory-only;mobile-readiness-is-not-advertised-by-build", "Android-fixed-/16;ios-fixed-/16-default-or-explicit-/30;optional-fixed-IPv6", "mobile-no-interface-name-dns-mode-MAC-auto-redirect-strict-route-or-platform-proxy", "Android-only-bounded-exclude-package;include-package-unimplemented", "captured-physical-dependencies-rechecked-after-stage-before-publication", "accepted-impact-digest;existing-TUN-TCP-and-UDP-sessions-reset", "MAC-filter-only-Linux-auto-route-auto-redirect", "darwin-strict-route-value-unchanged;main-carrier-count-and-tag-unchanged", "compensation-retains-unknown-physical-owner-and-does-not-resurrect-sessions")
+	add("dns.servers", "polaris-fixed-fakeip-ipv6-policy1", "LOCAL_REPLACE", "stored-client-impact-policy=1;capability-is-not-consent", "fixed-198.18.0.0/15-and-conditional-2001:2::/48-only", "original-config-persistence-owner-required", "persistent-ranges-require-private-recovered-host-root-and-bound-cache", "journal-links-bind-original-transaction-and-effective-config-identity", "original-WaitPersistence-owner-ACK-and-repeat-safe-retry", "old-valid-answer-recognition-retained")
+	add("log", "stable-options-policy1", "IN_PLACE", "stored-client-impact-policy=1;capability-is-not-consent", "disabled-toggle-with-factory-bound-original-output-and-format", "hot-file-output-must-already-exist;no-path-creation-or-change", "stable-logger-and-observable-owner", "prepare-abort-and-publication-Finish-on-every-exit", "retirement-joins-old-emission-before-close;timeout-is-not-drained")
+	add("services", "polaris-dashboard-toggle-policy1", "LOCAL_REPLACE", "stored-client-impact-policy=1;capability-is-not-consent", "one-plain-loopback-API-service;stable-tag;no-TLS-CORS-or-socket-expansion", "disabled-to-or-from-detour-only-default-URL-and-interval-dashboard", "no-enabled-to-enabled-path-URL-or-client-edit", "services-impact-reconnect-and-api_generation_handoff_v1", "same-endpoint-and-secret-still-require-fresh-HMAC-carrier-and-original-ACK", "publication-activates-prepared-worker-after-previous-worker-join;abort-keeps-old-worker")
 	sort.Slice(fields, func(i, j int) bool {
 		if fields[i].Path == fields[j].Path {
 			return fields[i].Variant < fields[j].Variant
@@ -169,15 +185,20 @@ func runtimePendingAdapters() []string {
 
 func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {
 	fields := runtimeCapabilityFields()
+	impactPolicies := []RuntimeClientImpactPolicyVersion{RuntimeClientImpactPolicyExplicit}
 	// Only strings/slices enter this encoding; no unsupported JSON value exists.
 	encoded, _ := stdjson.Marshal(struct {
-		ContractVersion uint32                   `json:"contract_version"`
-		Fields          []RuntimeFieldCapability `json:"fields"`
-	}{RuntimeConfigContractVersion, fields})
+		ContractVersion                     uint32                             `json:"contract_version"`
+		Fields                              []RuntimeFieldCapability           `json:"fields"`
+		SupportedClientImpactPolicyVersions []RuntimeClientImpactPolicyVersion `json:"supported_client_impact_policy_versions"`
+	}{RuntimeConfigContractVersion, fields, impactPolicies})
 	result := RuntimeConfigCapabilities{
-		ContractVersion:   RuntimeConfigContractVersion,
-		FullConfiguration: false, Fields: fields, ImplementationManifestDigest: runtimeDigest(encoded),
-		PendingAdapters: runtimePendingAdapters(),
+		ContractVersion:                     RuntimeConfigContractVersion,
+		FullConfiguration:                   false,
+		Fields:                              fields,
+		ImplementationManifestDigest:        runtimeDigest(encoded),
+		PendingAdapters:                     runtimePendingAdapters(),
+		SupportedClientImpactPolicyVersions: impactPolicies,
 	}
 	seenPaths := make(map[string]bool)
 	for _, field := range fields {

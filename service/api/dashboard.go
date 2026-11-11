@@ -84,12 +84,25 @@ func newDashboard(ctx context.Context, logger log.ContextLogger, serviceTag stri
 }
 
 func (d *dashboard) start(ctx context.Context) error {
+	return d.startAfter(ctx, nil, nil)
+}
+
+// Prepare validates the real handler/managed directory and transport now, but
+// does not fetch or publish files until the owning graph is published. A new
+// updater also waits for the previous generation's complete worker join.
+func (d *dashboard) startAfter(ctx context.Context, activation, previous <-chan struct{}) error {
+	return d.prepareAfter(ctx, ctx, activation, previous)
+}
+
+// The Apply RPC's cancellation can abort preparation; after publication the
+// worker belongs to the API owner and must survive completion of that RPC.
+func (d *dashboard) prepareAfter(request, owner context.Context, activation, previous <-chan struct{}) error {
 	d.lifecycle.Lock()
 	defer d.lifecycle.Unlock()
 	if d.closed || d.started {
 		return E.New("dashboard already started or closed")
 	}
-	if err := ctx.Err(); err != nil {
+	if err := request.Err(); err != nil {
 		return err
 	}
 	_, err := filemanager.ReadDir(d.ctx, d.path)
@@ -98,6 +111,12 @@ func (d *dashboard) start(ctx context.Context) error {
 	}
 	status := d.loadState()
 	if status == dashboardUserProvided {
+		if err := request.Err(); err != nil {
+			return err
+		}
+		if err := owner.Err(); err != nil {
+			return err
+		}
 		d.started = true
 		d.logger.Info("dashboard: serving user-provided files at ", d.path, ", auto-update disabled")
 		return nil
@@ -116,14 +135,41 @@ func (d *dashboard) start(ctx context.Context) error {
 		}
 		d.legacyTransport = transport
 	}
-	if err := ctx.Err(); err != nil {
+	if err := request.Err(); err != nil {
 		return err
 	}
-	worker, cancel := context.WithCancel(ctx)
+	if err := owner.Err(); err != nil {
+		return err
+	}
+	worker, cancel := context.WithCancel(owner)
 	d.cancel, d.done, d.started = cancel, make(chan struct{}), true
 	go func() {
 		defer close(d.done)
-		d.loopUpdate(worker, status)
+		if activation != nil {
+			select {
+			case <-activation:
+			case <-worker.Done():
+				return
+			}
+		}
+		if previous != nil {
+			select {
+			case <-previous:
+			case <-worker.Done():
+				return
+			}
+		}
+		if previous != nil && worker.Err() == nil {
+			// The retiring writer may have completed a directory transaction
+			// after preparation. Re-read its final owned state only after join.
+			status = d.loadState()
+			if status == dashboardUserProvided {
+				return
+			}
+		}
+		if worker.Err() == nil {
+			d.loopUpdate(worker, status)
+		}
 	}()
 	return nil
 }
@@ -446,4 +492,21 @@ func zipIsInSingleDirectory(files []*zip.File) bool {
 		}
 	}
 	return dirName != ""
+}
+
+// Cancellation does not assert drain. The owning generation's close still
+// joins done and retains all transport/body leases until the worker returns.
+func (d *dashboard) stopRuntimeWorker() {
+	d.lifecycle.Lock()
+	cancel := d.cancel
+	d.lifecycle.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (d *dashboard) runtimeWorkerDone() <-chan struct{} {
+	d.lifecycle.Lock()
+	defer d.lifecycle.Unlock()
+	return d.done
 }

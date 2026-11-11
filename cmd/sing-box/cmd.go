@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -59,7 +60,14 @@ func preRun(cmd *cobra.Command, args []string) {
 		log.SetStdLogger(logFactory.Logger())
 	}
 	if workingDir != "" {
-		_, err := os.Stat(workingDir)
+		// Capture the explicitly selected directory before Chdir. Relative -D
+		// values must not be resolved a second time against the new cwd.
+		absolute, err := filepath.Abs(workingDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		workingDir = absolute
+		_, err = os.Stat(workingDir)
 		if err != nil {
 			filemanager.MkdirAll(globalCtx, workingDir, 0o777)
 		}

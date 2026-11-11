@@ -4,7 +4,9 @@ import (
 	"encoding/hex"
 	stdjson "encoding/json"
 	"reflect"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -107,6 +109,10 @@ func TestRuntimeCapabilitiesManifestIsDetachedAndInstanceIndependent(t *testing.
 	}
 	first.Fields[0].Conditions[0] = "modified-by-caller"
 	first.SupportedPaths[0] = "modified-by-caller"
+	if !reflect.DeepEqual(first.SupportedClientImpactPolicyVersions, []RuntimeClientImpactPolicyVersion{RuntimeClientImpactPolicyExplicit}) {
+		t.Fatal("missing bounded explicit consumer protocol capability")
+	}
+	first.SupportedClientImpactPolicyVersions[0] = 99
 	if !reflect.DeepEqual(second, instance.RuntimeCapabilities()) {
 		t.Fatal("caller mutated capability storage")
 	}
@@ -240,5 +246,67 @@ func TestRuntimeResourceAdapterManifestRetainsExactUnsupportedVariants(t *testin
 		if pending == "http_clients" || pending == "certificate_providers" || pending == "ntp" {
 			t.Fatal("category-wide pending hid actual variant support", pending)
 		}
+	}
+}
+
+func TestRuntimeClientPolicyCapabilitiesDescribeFiniteRealAdapters(t *testing.T) {
+	capability := (*Box)(nil).RuntimeCapabilities()
+	if capability.FullConfiguration {
+		t.Fatal("finite client adapters advertised full schema")
+	}
+	for _, name := range []string{"polaris-client-listener-policy1", "polaris-client-tun-policy1", "polaris-fixed-fakeip-ipv6-policy1", "stable-options-policy1", "polaris-dashboard-toggle-policy1"} {
+		found := false
+		for _, field := range capability.Fields {
+			if field.Variant != name {
+				continue
+			}
+			found = true
+			if !slices.Contains(field.Conditions, "stored-client-impact-policy=1;capability-is-not-consent") {
+				t.Fatal("new adapter not bound to stored policy", field)
+			}
+		}
+		if !found {
+			t.Fatal("manifest omitted a connected finite client adapter", name)
+		}
+	}
+	if !slices.Contains(capability.PendingAdapters, "certificate_providers[acme]") {
+		t.Fatal("client policy opened unimplemented ACME")
+	}
+}
+
+func TestRuntimeNativeTunCapabilitiesAreConditionalInstanceIndependentInventory(t *testing.T) {
+	caps := (*Box)(nil).RuntimeCapabilities()
+	found := false
+	for _, field := range caps.Fields {
+		if field.Variant != "polaris-client-tun-policy1" {
+			continue
+		}
+		found = true
+		if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+			if field.UpdateClass != "RUNTIME_UPDATE_UNSPECIFIED" {
+				t.Fatal("mobile GOOS advertised a registered owner", field)
+			}
+		}
+		for _, condition := range []string{
+			"desktop-local-owner-or-actually-registered-original-provider-V1;GOOS-is-not-registration",
+			"native-path-requires-original-owner-session;old-SDK-absent-or-quarantined-bridge-rejected-by-Plan",
+			"implementation-inventory-only;mobile-readiness-is-not-advertised-by-build",
+			"captured-physical-dependencies-rechecked-after-stage-before-publication",
+		} {
+			if !slices.Contains(field.Conditions, condition) {
+				t.Fatal("missing real native prerequisite", condition)
+			}
+		}
+		if strings.Contains(strings.Join(field.Conditions, ";"), "bridge-unimplemented") {
+			t.Fatal("completed registered bridge still called unimplemented")
+		}
+	}
+	if !found || caps.FullConfiguration {
+		t.Fatal("bad finite native inventory", caps)
+	}
+	// No running Box or platform registration is used to manufacture the static
+	// implementation digest. Actual registration/quarantine is checked by Plan.
+	if caps.ImplementationManifestDigest != new(Box).RuntimeCapabilities().ImplementationManifestDigest {
+		t.Fatal("nil/zero implementation inventory differs")
 	}
 }

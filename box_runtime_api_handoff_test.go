@@ -35,7 +35,7 @@ func TestRuntimeAPIHandoffStructuralBoundary(t *testing.T) {
 func TestRuntimeAPIListenerCanonicalizationAndCredentialBoundary(t *testing.T) {
 	addr := badoption.Addr(netip.MustParseAddr("127.0.0.1"))
 	mapped := badoption.Addr(netip.MustParseAddr("::ffff:127.0.0.1"))
-	a := option.APIServiceOptions{ListenOptions: option.ListenOptions{Listen: &addr, ListenPort: 3001}, Secret: "safe"}
+	a := option.APIServiceOptions{Listen: &addr, ListenPort: 3001, Secret: "safe"}
 	b := a
 	b.Listen = &mapped
 	da, _ := adapter.RuntimeAPIConfigDigest(a)

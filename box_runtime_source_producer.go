@@ -164,8 +164,17 @@ func (p *runtimeSourceProducer) run() {
 				break
 			}
 			if wait == nil {
-				p.signal()
-				break
+				// An original persistence owner may still owe its ACK. There is
+				// no ownership-transfer notification to borrow; retry this same
+				// producer without spinning or requiring another file event.
+				timer := time.NewTimer(250 * time.Millisecond)
+				select {
+				case <-p.ctx.Done():
+					timer.Stop()
+					return
+				case <-timer.C:
+				}
+				continue
 			}
 			select {
 			case <-p.ctx.Done():
@@ -179,9 +188,13 @@ func (p *runtimeSourceProducer) run() {
 func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	c := p.box.runtime
 	c.access.Lock()
-	if c.stopped {
+	if c.stopped || p.ctx.Err() != nil {
 		c.access.Unlock()
 		return nil, false
+	}
+	if c.runtimeSourcePersistencePendingLocked() {
+		c.access.Unlock()
+		return nil, true
 	}
 	if c.preparing {
 		done := c.workDone
@@ -194,7 +207,7 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	rootDigest := c.rootDigest
 	active := false
 	for _, r := range c.resources {
-		if r.fingerprint == p.fingerprint {
+		if r.sourceProducer == p && r.fingerprint == p.fingerprint {
 			active = true
 			break
 		}
@@ -230,13 +243,27 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	if len(due) == 0 && rootsCurrent && runtimeCheckSources(p.ctx, previous) == nil {
 		return nil, false
 	}
-	const actor = "internal:runtime-source-producer"
 	planContext := context.WithValue(p.ctx, runtimeSourceRefreshKey{}, due)
-	plan, err := p.box.planRuntimeConfig(planContext, actor, expected, content)
+	plan, err := p.planSourceRefresh(planContext, expected, content)
 	if err != nil {
-		return nil, false
+		c.access.Lock()
+		retry := false
+		if !c.stopped && p.ctx.Err() == nil {
+			for _, resource := range c.resources {
+				if resource.sourceProducer == p {
+					retry = true
+					break
+				}
+			}
+		}
+		c.access.Unlock()
+		return nil, retry
 	}
 	if !plan.Applicable {
+		// Codes are bounded and do not echo credentials or mutable source bytes.
+		for _, problem := range plan.Errors {
+			p.box.logger.Warn("runtime source refresh rejected: ", problem.Code)
+		}
 		return nil, false
 	}
 	// An unchanged successful download does not consume a graph revision or
@@ -244,7 +271,7 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	// removed, under the same coordinator guard used for plan admission.
 	c.access.Lock()
 	record := c.plans[plan.TransactionID]
-	unchanged := rootsCurrent && c.active == expected && bytes.Equal(c.canonical, content) && record != nil && record.actor == actor && !record.consumed && !record.inFlight && runtimeEqualSourceSnapshots(previous, record.sources)
+	unchanged := plan.NoOp && c.active == expected && bytes.Equal(c.canonical, content) && record != nil && record.actor == runtimeSourceProducerActor && !record.consumed && !record.inFlight && runtimeEqualSourceSnapshots(previous, record.sources)
 	if unchanged {
 		c.planStorage -= record.storageCharge
 		delete(c.plans, plan.TransactionID)
@@ -253,7 +280,7 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 	if unchanged {
 		return nil, false
 	}
-	_, err = p.box.applyRuntimeConfig(p.ctx, actor, RuntimeConfigApply{
+	operation, err := p.box.applyRuntimeConfig(p.ctx, runtimeSourceProducerActor, RuntimeConfigApply{
 		ContractVersion: RuntimeConfigContractVersion, PlanID: plan.PlanID,
 		TransactionID: plan.TransactionID, Expected: expected,
 		CandidateDigest: plan.CandidateDigest, AcceptedImpactDigest: plan.ImpactDigest,
@@ -265,6 +292,9 @@ func (p *runtimeSourceProducer) refresh() (<-chan struct{}, bool) {
 		changed := c.active != expected
 		c.access.Unlock()
 		return nil, changed
+	}
+	if !plan.NoOp && operation.Active == expected {
+		p.box.logger.Warn("runtime source refresh candidate was not published; current closure retained")
 	}
 	return nil, false
 }

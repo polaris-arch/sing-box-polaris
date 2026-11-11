@@ -2,6 +2,8 @@ package box
 
 import (
 	"context"
+	"net/netip"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -119,5 +121,67 @@ func TestRuntimeTunStableBridgeFingerprintAndUnknownTopologyGap(t *testing.T) {
 	_, err = runtimeTunPhysicalInputs(ctx, option.Options{Outbounds: []option.Outbound{{Type: C.TypeBridge}}}, &option.TunInboundOptions{})
 	if err == nil || !strings.Contains(err.Error(), "bridge topology") {
 		t.Fatal("generated bridge topology was guessed", err)
+	}
+}
+
+func TestRuntimeClientTunMTUReplacementRechecksCapturedPhysicalFacts(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("desktop-local physical-owner variant")
+	}
+	host := &tunDependencyHostFixture{bridges: []string{"bridge-old"}}
+	ctx := service.ContextWithDefaultRegistry(context.Background())
+	service.MustRegister[adapter.NetworkManager](ctx, host)
+	v4 := "172.19.0.1/16"
+	if runtime.GOOS == "darwin" {
+		v4 = "172.19.0.1/30"
+	}
+	base := &option.TunInboundOptions{Address: []netip.Prefix{netip.MustParsePrefix(v4)}, MTU: 1500}
+	before := option.Options{Inbounds: []option.Inbound{{Type: C.TypeTun, Tag: "tun-in", Options: base}}}
+	captured, err := runtimeTunDependencySignatures(ctx, before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := *base
+	next.MTU = 1600
+	after := option.Options{Inbounds: []option.Inbound{{Type: C.TypeTun, Tag: "tun-in", Options: &next}}}
+	if problems := runtimeClientTunDependencyProblems(ctx, before, after, captured, 1); len(problems) != 0 {
+		t.Fatal("finite MTU replacement not admitted", problems)
+	}
+	if problems := runtimeClientTunDependencyProblems(ctx, before, after, captured, 0); len(problems) == 0 {
+		t.Fatal("old consumer acquired physical replacement")
+	}
+	host.bridges = []string{"bridge-new"}
+	if problems := runtimeClientTunDependencyProblems(ctx, before, after, captured, 1); len(problems) == 0 {
+		t.Fatal("both sides recaptured today's host, concealing drift")
+	}
+	host.bridges = []string{"bridge-old"}
+	next.InterfaceName = "foreign-device"
+	if problems := runtimeClientTunDependencyProblems(ctx, before, after, captured, 1); len(problems) == 0 {
+		t.Fatal("unrecognized device identity edit admitted")
+	}
+}
+
+func TestRuntimeTunPublicationRejectsHostDriftAfterPhysicalStage(t *testing.T) {
+	host := &tunDependencyHostFixture{bridges: []string{"bridge-at-prepare"}}
+	ctx := service.ContextWithDefaultRegistry(context.Background())
+	service.MustRegister[adapter.NetworkManager](ctx, host)
+	options := option.Options{Inbounds: []option.Inbound{{Type: C.TypeTun, Tag: "tun-in", Options: &option.TunInboundOptions{MTU: 1500}}}}
+	captured, err := runtimeTunDependencySignatures(ctx, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	instance := &Box{runtime: &runtimeCoordinator{ctx: ctx}}
+	prepared := &preparedRuntimeGraph{options: options, tunDependencies: captured}
+	if err := instance.validateRuntimeTunPublication(context.Background(), prepared); err != nil {
+		t.Fatal(err)
+	}
+	host.bridges = []string{"bridge-after-stage"}
+	if err := instance.validateRuntimeTunPublication(context.Background(), prepared); err == nil {
+		t.Fatal("publication trusted pre-stage physical inputs")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := instance.validateRuntimeTunPublication(canceled, prepared); err != context.Canceled {
+		t.Fatal("observer cancellation lost", err)
 	}
 }

@@ -20,10 +20,13 @@ type fixedPersistentSnapshot interface {
 	SnapshotFakeIP(context.Context) (adapter.FakeIPStorageSnapshot, error)
 }
 type fixedPersistentPreparation struct {
-	mu       sync.Mutex // serializes initialization I/O, never the publication fence
-	cache    adapter.CacheFile
-	snapshot fixedPersistentSnapshot
-	ready    bool // manager.mappingAccess
+	mu        sync.Mutex // serializes initialization I/O, never the publication fence
+	cache     adapter.CacheFile
+	storage   adapter.FakeIPStorage
+	snapshot  fixedPersistentSnapshot
+	recovered *recoveredPersistence
+	mappings  map[netip.Addr]string // private validated allocation snapshot, released at terminal publication
+	ready     bool                  // manager.mappingAccess
 }
 
 // PrepareInitialPersistentRanges creates a private, nonallocating handle for
@@ -43,6 +46,30 @@ func (m *Manager) PrepareInitialPersistentRanges(ctx context.Context, inet4Range
 	if !ok {
 		return nil, ErrInitialPersistentMetadata
 	}
+	var storage adapter.FakeIPStorage = cache
+	var durable *namespacePersistence
+	m.mappingAccess.Lock()
+	recovered := m.recovered
+	m.mappingAccess.Unlock()
+	if recovered != nil {
+		backend, ok := cache.(adapter.FakeIPRuntimeBackend)
+		if !ok {
+			return nil, ErrRecoveryAnchorRequired
+		}
+		descriptor, err := backend.RuntimeDescriptor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		handle, err := recoveredInitialAllocator(ctx, recovered, descriptor, recovered.selection, inet4Range.Masked(), inet6Range.Masked())
+		if err != nil {
+			return nil, err
+		}
+		if handle != nil {
+			storage = handle
+			snapshot = initialNamespaceSnapshot{handle}
+			durable = &namespacePersistence{handle: handle, backend: recovered.backends[descriptor], allocation: true}
+		}
+	}
 	done, ok := m.work.Reserve()
 	if !ok {
 		return nil, lifecycle.ErrStopped
@@ -53,12 +80,12 @@ func (m *Manager) PrepareInitialPersistentRanges(ctx context.Context, inet4Range
 		done()
 		return nil, ErrManagerNotStarted
 	}
-	if !m.active.empty || m.preparing != nil || m.recovered != nil || len(m.transitions) != 0 || m.authority != nil {
+	if !m.active.empty || m.preparing != nil || m.recovered != recovered || len(m.transitions) != 0 || (m.authority != nil && recovered == nil) {
 		done()
 		return nil, ErrPersistentMigrationRequired
 	}
 	for _, namespace := range m.namespaces {
-		if namespace != m.active && !namespace.aborted {
+		if namespace != m.active && !namespace.published && !namespace.aborted {
 			done()
 			return nil, ErrPersistencePreparing
 		}
@@ -69,9 +96,9 @@ func (m *Manager) PrepareInitialPersistentRanges(ctx context.Context, inet4Range
 	}
 	m.nextNamespace++
 	store := NewStore(m.store.ctx, m.store.logger, inet4Range.Masked(), inet6Range.Masked())
-	namespace := &memoryNamespace{id: m.nextNamespace, store: store, owned: make(map[netip.Addr]struct{})}
+	namespace := &memoryNamespace{id: m.nextNamespace, store: store, owned: make(map[netip.Addr]struct{}), durable: durable}
 	m.namespaces[namespace.id] = namespace
-	return &RangeMigration{manager: m, namespace: namespace, base: m.active, permit: NewAnswerPermit(), done: done, initial: &fixedPersistentPreparation{cache: cache, snapshot: snapshot}}, nil
+	return &RangeMigration{manager: m, namespace: namespace, base: m.active, permit: NewAnswerPermit(), done: done, initial: &fixedPersistentPreparation{cache: cache, storage: storage, snapshot: snapshot, recovered: recovered}}, nil
 }
 
 // InitializePersistentStorage follows successful stable CacheFile Initialize,
@@ -97,7 +124,7 @@ func (c *RangeMigration) InitializePersistentStorage(ctx context.Context) error 
 		m.mappingAccess.Unlock()
 		return nil
 	}
-	valid := c.state.Load() == 0 && m.active == c.base && c.base.empty && !c.namespace.aborted && m.recovered == nil && m.preparing == nil
+	valid := c.state.Load() == 0 && m.active == c.base && c.base.empty && !c.namespace.aborted && m.recovered == initial.recovered && m.preparing == nil
 	m.mappingAccess.Unlock()
 	if !valid {
 		return ErrMigrationStale
@@ -115,12 +142,13 @@ func (c *RangeMigration) InitializePersistentStorage(ctx context.Context) error 
 	}
 	m.mappingAccess.Lock()
 	defer m.mappingAccess.Unlock()
-	if c.state.Load() != 0 || m.active != c.base || c.namespace.aborted || m.recovered != nil || m.preparing != nil {
+	if c.state.Load() != 0 || m.active != c.base || c.namespace.aborted || m.recovered != initial.recovered || m.preparing != nil {
 		return ErrMigrationStale
 	}
 	store := c.namespace.store
-	store.storage = initial.cache
+	store.storage = initial.storage
 	store.inet4Current, store.inet6Current = metadata.Inet4Current, metadata.Inet6Current
+	initial.mappings = snapshot.Mappings
 	initial.ready = true
 	return nil
 }
@@ -167,4 +195,65 @@ func fixedInitialMetadata(store *Store, snapshot adapter.FakeIPStorageSnapshot) 
 		domains[key] = true
 	}
 	return metadata, nil
+}
+
+// Recovery validates all namespace/link identities before this selector runs.
+// Selection only resumes the explicitly supplied startup effective identity; it
+// never chooses configuration from whichever newer journal record is present.
+func recoveredInitialAllocator(ctx context.Context, recovered *recoveredPersistence, backend adapter.FakeIPRuntimeBackendDescriptor, effectiveID string, inet4, inet6 netip.Prefix) (adapter.FakeIPRuntimeNamespace, error) {
+	var selected adapter.FakeIPRuntimeNamespace
+	var generation uint64
+	var acknowledged adapter.FakeIPRuntimeNamespace
+	var acknowledgedGeneration uint64
+	seen := make(map[uint64]bool)
+	for _, handle := range recovered.handles {
+		descriptor := handle.Descriptor()
+		if !descriptor.Allocator || descriptor.Backend != backend || descriptor.EffectiveConfigurationID != effectiveID {
+			continue
+		}
+		snapshot, err := handle.Snapshot(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if snapshot.Metadata == nil || snapshot.Metadata.Inet4Range != inet4 || snapshot.Metadata.Inet6Range != inet6 {
+			continue
+		}
+		if descriptor.Generation == 0 || seen[descriptor.Generation] {
+			return nil, ErrPersistenceIdentity
+		}
+		seen[descriptor.Generation] = true
+		if snapshot.Issued {
+			if descriptor.Generation > generation {
+				generation, selected = descriptor.Generation, handle
+			}
+			continue
+		}
+		// A real original-transaction ACK can bind a published allocator that
+		// never emitted an answer. It must never outrank an issued allocator.
+		for _, link := range recovered.links {
+			if !link.Acknowledged || link.EffectiveConfigurationID != effectiveID {
+				continue
+			}
+			for _, member := range link.Namespaces {
+				if member == descriptor && descriptor.Generation > acknowledgedGeneration {
+					acknowledgedGeneration, acknowledged = descriptor.Generation, handle
+				}
+			}
+		}
+	}
+	if selected == nil {
+		selected = acknowledged
+	}
+	return selected, nil
+}
+
+// Allocation snapshot is memory-only and excludes already-recovered answer
+// journals. Their actual recognition/expiry custody remains with recovered.
+type initialNamespaceSnapshot struct{ adapter.FakeIPRuntimeNamespace }
+
+func (s initialNamespaceSnapshot) SnapshotFakeIP(ctx context.Context) (adapter.FakeIPStorageSnapshot, error) {
+	if err := ctx.Err(); err != nil {
+		return adapter.FakeIPStorageSnapshot{}, err
+	}
+	return s.SnapshotAllocation(), nil
 }

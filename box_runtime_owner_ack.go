@@ -95,6 +95,9 @@ func (s *Box) acknowledgeRuntimePersistence(ctx context.Context, actor string, r
 		return RuntimeConfigOperation{}, errors.New("runtime stopped before owner acknowledgement")
 	}
 	record.awaitingOwnerAcknowledgement = false
+	if c.configurationOwner == record {
+		c.configurationOwner = nil
+	}
 	if c.pendingPersistence == record {
 		c.pendingPersistence = nil
 	}

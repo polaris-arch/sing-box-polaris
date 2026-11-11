@@ -15,6 +15,7 @@ import (
 	"github.com/sagernet/sing-box/common/netns"
 	"github.com/sagernet/sing-box/common/trafficcontrol"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
 	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/experimental"
@@ -42,7 +43,7 @@ func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []Run
 	if err != nil {
 		return []RuntimePlanError{{Code: "INITIAL_CONFIG_ENCODING_FAILED", Path: "runtime", Message: "initial configuration could not be evaluated for runtime updates"}}
 	}
-	_, problems := runtimeConfigCompatibility(ctx, canonical, canonical, options.Options)
+	_, problems := runtimeConfigCompatibilityWithClientImpactPolicy(ctx, canonical, canonical, options.Options, RuntimeClientImpactPolicyExplicit, nil)
 	if len(problems) != 0 {
 		return problems
 	}
@@ -56,8 +57,17 @@ func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []Run
 			pending(problem.Path, problem.Message)
 		}
 	}
-	if options.Certificate != nil {
-		pending("certificate", "initial certificate configuration requires a runtime adapter")
+	if certificate := options.Certificate; certificate != nil {
+		switch certificate.Store {
+		case "", C.CertificateStoreSystem, C.CertificateStoreMozilla, C.CertificateStoreChrome, C.CertificateStoreNone:
+		default:
+			pending("certificate.store", "initial certificate store requires a runtime adapter")
+		}
+		// The existing directory loader skips missing directories and invalid
+		// entries. Keep that legacy behavior outside strict runtime admission.
+		if len(certificate.CertificateDirectoryPath) != 0 {
+			pending("certificate.certificate_directory_path", "initial certificate directory loading requires a runtime adapter")
+		}
 	}
 	if len(options.NetworkNamespaces) != 0 {
 		pending("network_namespaces", "initial network namespaces require a runtime adapter")
@@ -79,7 +89,9 @@ func runtimeInitialEligibilityErrors(ctx context.Context, options Options) []Run
 		switch input.Type {
 		case "socks", "http", "mixed", "tun":
 		default:
-			pending(fmt.Sprintf("inbounds[%d].lifecycle", index), "initial inbound lifecycle requires a runtime adapter")
+			if !runtimeClientCanaryInbound(input) {
+				pending(fmt.Sprintf("inbounds[%d].lifecycle", index), "initial inbound lifecycle requires a runtime adapter")
+			}
 		}
 	}
 	// Network bootstrap without an existing graph is a separate remaining
@@ -107,9 +119,10 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 		// must finish its final durable writes before the stable cache's child
 		// scope closes the physical DB. A constructor-time Scope.Add would run
 		// after the cache child because that child is registered later at Start.
-		var fakeIPErr error
-		if coordinator.fakeIP != nil {
-			fakeIPErr = lifecycle.CleanupResult("Box fake-IP allocator", coordinator.fakeIP.Close)
+		fakeIPErr := lifecycle.CleanupResult("Box fake-IP allocator", coordinator.closeRuntimeFakeIP)
+		if fakeIPErr != nil && coordinator.fakeIPPersistence != nil {
+			// Unknown allocator/journal custody must retain the physical cache.
+			return runtimeCleanupResult(fakeIPErr)
 		}
 		return errors.Join(runtimeCleanupResult(fakeIPErr), stable.scope.Close())
 	})
@@ -191,6 +204,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 		return nil, err
 	}
 	instance.network.BindRuntimeInventory(coordinator)
+	instance.network.BindRuntimeWIFIProvider(coordinator)
 	networkView, err := route.NewNetworkOptionsView(instance.network, instance.network.DefaultOptions())
 	if err != nil {
 		return nil, err
@@ -259,6 +273,9 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	identity := coordinator.active
 	identity.Revision = 1
 	identity.EffectiveDigest = runtimeDigest(canonical)
+	if err := instance.initializeRuntimeFakeIPRecovery(ctx, identity); err != nil {
+		return nil, err
+	}
 	prepared, err := instance.constructRuntimeGraph(ctx, identity, frozen, sources...)
 	if prepared != nil {
 		coordinator.initialPrepared = prepared

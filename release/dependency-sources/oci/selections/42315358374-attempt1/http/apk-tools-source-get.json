@@ -1,0 +1,26 @@
+{
+  "HTTP": 200,
+  "actualBodyBytes": 392363,
+  "actualBodySHA256": "0063029a3eb228fd494b6804613ac53c30372a1a79ac83e23cefa78368767726",
+  "actualBodySHA512": "933f9a3645e225a8e433951e57fce979d68a933b5cc066591f5da35c561c07ea476c0ada184fa81ab8eea1431f9b475735ad68c598072e26c0a74debf65a680f",
+  "actualEOF": true,
+  "effectiveURL": "https://gitlab.alpinelinux.org/alpine/apk-tools/-/archive/v3.0.9/apk-tools-v3.0.9.tar.gz",
+  "fullExpandedBytes": 1761280,
+  "fullGzipCRCAndEOF": true,
+  "materialsAccepted": false,
+  "request": {
+    "atUTC": "2026-11-07T07:51:17.145992+00:00",
+    "authSent": false,
+    "method": "GET",
+    "redirectFollowed": false,
+    "url": "https://gitlab.alpinelinux.org/alpine/apk-tools/-/archive/v3.0.9/apk-tools-v3.0.9.tar.gz"
+  },
+  "responseHeaders": {
+    "Content-Length": "392363",
+    "Content-Type": "application/octet-stream",
+    "Date": "Sat, 07 Nov 2026 07:51:17 GMT",
+    "Etag": "\"21a8b4f0627e54f8b88747e7a3fda2e8\""
+  },
+  "sourceOrRecipeExecuted": false,
+  "tarMemberCount": 453
+}

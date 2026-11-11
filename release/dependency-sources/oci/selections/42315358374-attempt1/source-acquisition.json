@@ -1,0 +1,116 @@
+{
+  "historicalReceiptsUnmodified": true,
+  "legalConclusion": false,
+  "newDownloads": 1,
+  "newSources": [
+    {
+      "bytes": 392363,
+      "getReceipt": {
+        "bytes": 1023,
+        "path": "http/apk-tools-source-get.json",
+        "sha256": "64a870d6d1a09b1e57192e2119be3acfa2d9ffba160ff76b4910b3f95fa3c987"
+      },
+      "name": "apk-tools-v3.0.9.tar.gz",
+      "path": "sources/apk-tools-v3.0.9.tar.gz",
+      "requestedURL": "https://gitlab.alpinelinux.org/alpine/apk-tools/-/archive/v3.0.9/apk-tools-v3.0.9.tar.gz",
+      "sha256": "0063029a3eb228fd494b6804613ac53c30372a1a79ac83e23cefa78368767726",
+      "sha512": "933f9a3645e225a8e433951e57fce979d68a933b5cc066591f5da35c561c07ea476c0ada184fa81ab8eea1431f9b475735ad68c598072e26c0a74debf65a680f"
+    }
+  ],
+  "producerAttempt": 1,
+  "producerRunId": 42315358374,
+  "references": [
+    {
+      "bytes": 2476,
+      "path": "release/dependency-sources/oci/selections/41379223932-attempt1/source-acquisition.json",
+      "sha256": "8dadaf2609410b24ef53591af790c391c03abcd20d5db262731beef234c792a6"
+    },
+    {
+      "bytes": 22037,
+      "path": "release/dependency-sources/oci/source-acquisition.json",
+      "sha256": "69705b5a9f423afaf634644a87a93f0590e78a3f7533f619eba37cc56041c0c8"
+    }
+  ],
+  "reusedSources": [
+    {
+      "historicalOwner": {
+        "bytes": 2476,
+        "path": "release/dependency-sources/oci/selections/41379223932-attempt1/source-acquisition.json",
+        "sha256": "8dadaf2609410b24ef53591af790c391c03abcd20d5db262731beef234c792a6"
+      },
+      "historicalRecord": {
+        "bytes": 329832,
+        "getReceipt": {
+          "bytes": 1642,
+          "path": "http/tzcode2026f.tar.gz-receipt.json",
+          "sha256": "15c32c016062c50de54dcdc5e45608232648fc616ccf172c410ce780ede34e91"
+        },
+        "getRequest": {
+          "bytes": 504,
+          "path": "http/tzcode2026f.tar.gz-request.json",
+          "sha256": "64b48a7b0d625973ec548f223c06918ce50080d077e8ef0e62c28a848a6ef15f"
+        },
+        "name": "tzcode2026f.tar.gz",
+        "path": "sources/tzcode2026f.tar.gz",
+        "requestedURL": "https://www.iana.org/time-zones/repository/releases/tzcode2026f.tar.gz",
+        "sha256": "5a18da01393679ef2559214dc687563f7f3d05691f6f58b7fbc0166f3e796cd6",
+        "sha512": "eefcea60c37857214e1eba768d1bbd096de2a8f5afc9a776555552922cc174b32892d7442097b699b77efcba4d85649ed7d13e752ffdbcaad1050749c6c7b5aa"
+      },
+      "name": "tzcode2026f.tar.gz",
+      "notReacquired": true,
+      "sourceArchiveRetainedHere": false
+    },
+    {
+      "historicalOwner": {
+        "bytes": 2476,
+        "path": "release/dependency-sources/oci/selections/41379223932-attempt1/source-acquisition.json",
+        "sha256": "8dadaf2609410b24ef53591af790c391c03abcd20d5db262731beef234c792a6"
+      },
+      "historicalRecord": {
+        "bytes": 483310,
+        "getReceipt": {
+          "bytes": 1642,
+          "path": "http/tzdata2026f.tar.gz-receipt.json",
+          "sha256": "e10cae8eaa247bee994e7056cd2c777126ede777c58aeb0b8bf1a87388ff7a63"
+        },
+        "getRequest": {
+          "bytes": 504,
+          "path": "http/tzdata2026f.tar.gz-request.json",
+          "sha256": "cd8081b04c2f2b0c42c3c59f571e246a3884f1ac740bca2d3cab1c14182cb6f5"
+        },
+        "name": "tzdata2026f.tar.gz",
+        "path": "sources/tzdata2026f.tar.gz",
+        "requestedURL": "https://www.iana.org/time-zones/repository/releases/tzdata2026f.tar.gz",
+        "sha256": "01b4a91cec5167ed48c11e8ab78f2048cead78ce94b0cafcad0ae8c5a3044d3d",
+        "sha512": "26189803c8b3e903dcc467404e2feefb7d190cb1870249a23577ce31e9dcbf187e4704e0b45c8d1366d1c501bb5b53a2e80f8e2828b2163be15e532f6acab52d"
+      },
+      "name": "tzdata2026f.tar.gz",
+      "notReacquired": true,
+      "sourceArchiveRetainedHere": false
+    },
+    {
+      "historicalOwner": {
+        "bytes": 22037,
+        "path": "release/dependency-sources/oci/source-acquisition.json",
+        "sha256": "69705b5a9f423afaf634644a87a93f0590e78a3f7533f619eba37cc56041c0c8"
+      },
+      "historicalRecord": {
+        "bytes": 3976,
+        "name": "posixtz-0.5.tar.xz",
+        "recipes": [
+          "release/dependency-sources/oci/aports/cda14c83f09d51b5e04129ba528c3273621c2d78/main/tzdata/APKBUILD",
+          "release/dependency-sources/oci/aports/faa135a1a22c90309bf381766a7cc47490dea786/main/tzdata/APKBUILD"
+        ],
+        "sha256": "e0a79e0922be2da686a1888d79cd253baaf81c2f30b4378fbbcf9ff9d632aab5",
+        "sha512": "68dbaab9f4aef166ac2f2d40b49366527b840bebe17a47599fe38345835e4adb8a767910745ece9c384b57af815a871243c3e261a29f41d71f8054df3061b3fd",
+        "url": "https://distfiles.alpinelinux.org/distfiles/v3.24/posixtz-0.5.tar.xz",
+        "verified": true
+      },
+      "name": "posixtz-0.5.tar.xz",
+      "notReacquired": true,
+      "sourceArchiveRetainedHere": false
+    }
+  ],
+  "schema": "polaris-exact-oci-12.19-source-acquisition-v1",
+  "sourceCommit": "d8727ed53de26cfd13c95f96d0a69235792d221b"
+}

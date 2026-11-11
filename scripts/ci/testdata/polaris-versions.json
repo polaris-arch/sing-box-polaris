@@ -9,6 +9,7 @@
     "1.15.0-polaris-alpha.12.4",
     "1.15.0-polaris-alpha.12.5",
     "1.15.0-polaris-alpha.12.6",
+    "1.15.0-polaris-alpha.12.10",
     "1.15.0-polaris-alpha.12.123",
     "1.15.0-polaris-alpha.13",
     "1.15.0-polaris-beta.1.2",
@@ -103,6 +104,14 @@
     [
       "1.15.0-polaris-alpha.13",
       "1.15.0-polaris-alpha.12.6"
+    ],
+    [
+      "1.15.0-polaris-alpha.12.6",
+      "1.15.0-polaris-alpha.12.5"
+    ],
+    [
+      "1.15.0-polaris-alpha.12.10",
+      "1.15.0-polaris-alpha.12.9"
     ]
   ],
   "sameSeries": [
@@ -133,6 +142,10 @@
     [
       "1.15.0-polaris-alpha.12.6",
       "1.15.0-polaris-alpha.12.5"
+    ],
+    [
+      "1.15.0-polaris-alpha.12.10",
+      "1.15.0-polaris-alpha.12.9"
     ]
   ]
 }

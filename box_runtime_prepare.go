@@ -20,6 +20,7 @@ import (
 	"github.com/sagernet/sing-box/common/listener"
 	"github.com/sagernet/sing-box/common/runtimeclock"
 	"github.com/sagernet/sing-box/common/urltest"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/dns"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
@@ -75,16 +76,28 @@ func (s *Box) constructRuntimeGraph(request context.Context, identity RuntimeIde
 func (s *Box) constructRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, sources ...runtimeSourceSnapshot) (prepared *preparedRuntimeGraph, err error) {
 	c := s.runtime
 	options = runtimeResolveGraphDefaults(options)
+	// An internal watcher may recognize an already accepted policy1 graph,
+	// but cannot allocate its way through changed source/root/physical authority.
+	// Check before logger/FakeIP/cohort/leaf/endpoint construction can run.
+	if err := s.validateRuntimeSourcePreparation(request, identity, options); err != nil {
+		return nil, err
+	}
 	canonical, marshalErr := json.MarshalContext(c.ctx, options)
 	if marshalErr != nil {
 		return nil, marshalErr
 	}
-	prepared = &preparedRuntimeGraph{options: options, initial: identity.Revision == 1}
+	prepared = &preparedRuntimeGraph{platformRequest: request, options: options, initial: identity.Revision == 1, clientImpactPolicy: runtimeClientImpactPolicyFromContext(request)}
 	logLevel := ""
 	if options.Log != nil {
 		logLevel = options.Log.Level
 	}
-	prepared.logPublication, err = log.PrepareRuntimeLevel(s.logFactory, logLevel)
+	if !prepared.initial && prepared.clientImpactPolicy == RuntimeClientImpactPolicyExplicit && log.RuntimeOptionsEligible(s.logFactory, common.PtrValueOrDefault(options.Log)) {
+		prepared.logChange, err = log.PrepareRuntimeOptions(s.logFactory, common.PtrValueOrDefault(options.Log))
+	} else {
+		// Existing NOP/default/custom factory boundaries retain their original
+		// level-only publication contract; policy capability is not authority.
+		prepared.logPublication, err = log.PrepareRuntimeLevel(s.logFactory, logLevel)
+	}
 	if err != nil {
 		return prepared, err
 	}
@@ -100,15 +113,30 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	c.access.Lock()
 	c.pendingPrepared = prepared
 	c.access.Unlock()
-	if err := s.prepareRuntimeFakeIP(request, prepared); err != nil {
+	if err := s.prepareRuntimeFakeIP(request, prepared, runtimeFakeIPBinding{Identity: identity}); err != nil {
 		return prepared, err
 	}
 	if err := s.prepareRuntimeRootStore(request, prepared, identity); err != nil {
 		return prepared, err
 	}
+	// This is the exact immutable root snapshot constructors will receive,
+	// not a later comparison after endpoint staging has already taken place.
+	if err := runtimeCheckSourcePreparedInputs(request, prepared); err != nil {
+		return prepared, err
+	}
 	nodes, configs, err := runtimeConfigNodes(c.ctx, options)
 	if err != nil {
 		return prepared, err
+	}
+	// Initial platform borrowing is never reused as a private provision owner.
+	// In particular, an initially requested but failed monitor must not satisfy
+	// a later graph merely because its requirement fingerprint is unchanged.
+	if prepared.initial {
+		for index := range nodes {
+			if nodes[index].name == "platform-runtime" {
+				nodes[index].fingerprint = runtimeDigest([]byte("bootstrap:" + nodes[index].fingerprint))
+			}
+		}
 	}
 	runtimeBindRootFingerprints(nodes, configs, prepared.rootDigest)
 	runtimeBindSelectorIntentFingerprints(nodes, intents)
@@ -134,7 +162,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	c.access.Unlock()
 	if !prepared.initial {
 		after := route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS))
-		if !runtimePlatformRequirementsAvailable(provisioned, after) {
+		if !runtimePlatformRequirementsAvailableForPolicy(c.ctx, provisioned, after, prepared.clientImpactPolicy) {
 			return prepared, errors.New("runtime platform requirement adapter pending")
 		}
 	}
@@ -259,7 +287,12 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	contexts := make(map[string]context.Context)
 	componentContext := func(name string) (context.Context, error) {
 		resource := bindings[name]
-		ctx, err := route.ContextWithRuntimeNetworkOptions(resource.owner.Context(), s.network, routeOptions, runtimeMark)
+		networkOwner := adapter.NetworkManager(s.network)
+		config := configs[name]
+		if prepared.platform != nil && (name == "route-router" || name == "dns-router" || config.ruleSet != nil || config.transport != nil && config.transport.Type == C.DNSTypeLocal) {
+			networkOwner = prepared.platform.NetworkView(networkOwner)
+		}
+		ctx, err := route.ContextWithRuntimeNetworkOptions(resource.owner.Context(), networkOwner, routeOptions, runtimeMark)
 		if err != nil {
 			return nil, err
 		}
@@ -354,6 +387,15 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}
 		return component
 	}
+	platformComponent := getComponent("platform-runtime")
+	platformResource := bindings["platform-runtime"]
+	if owned[platformResource] {
+		platformComponent.platform = route.NewRuntimePlatform(platformResource.scope.Context(), s.network, c.initialRouter, route.RuntimeRequirementsFor(routeOptions, dnsOptions), prepared.initial)
+		platformResource.scope.Add(func() error { return runtimeCleanupResult(platformComponent.platform.Close()) })
+		platformResource.addRuntimeStop(platformComponent.platform.Stop, platformComponent.platform.Stop)
+		prepared.activate = append(prepared.activate, platformComponent.platform.Activate)
+	}
+	prepared.platform = platformComponent.platform
 	if options.NTP != nil && options.NTP.Enabled {
 		component := getComponent("ntp")
 		resource := bindings["ntp"]
@@ -420,8 +462,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		leaf.AppendTracker(&c.trackers)
 		if prepared.initial {
 			leaf.ConfigureInitialRuntime(c.stable.scope)
+			prepared.platform.BindInitial(leaf)
 		} else {
 			leaf.BorrowRuntimePlatform(c.initialRouter)
+			leaf.ConfigureRuntimePlatform(prepared.platform)
 		}
 		routeComponent.router = leaf
 	} else {
@@ -719,11 +763,11 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	if err != nil {
 		return prepared, err
 	}
-	network, err := route.NewRuntimeNetworkOptionsView(s.network, networkOptions, runtimeMark, routeOptions.AutoDetectInterface)
+	network, err := route.NewRuntimeNetworkOptionsView(prepared.platform.NetworkView(s.network), networkOptions, runtimeMark, routeOptions.AutoDetectInterface)
 	if err != nil {
 		return prepared, err
 	}
-	view := &runtimeView{histories: make(map[string]*urltest.HistoryStorage), identity: identity.graphRevision(), router: leaf, dns: dnsLeaf, inbounds: inboundManager, outbounds: outboundManager, endpoints: endpointManager, transports: transportManager, httpClients: httpManager, dashboardHTTP: httpComponent.dashboardHTTP, network: network, ports: make(map[tun.Port]adapter.RuntimeResourceID), componentIDs: make(map[string]adapter.RuntimeResourceID)}
+	view := &runtimeView{platform: prepared.platform, histories: make(map[string]*urltest.HistoryStorage), identity: identity.graphRevision(), router: leaf, dns: dnsLeaf, inbounds: inboundManager, outbounds: outboundManager, endpoints: endpointManager, transports: transportManager, httpClients: httpManager, dashboardHTTP: httpComponent.dashboardHTTP, network: network, ports: make(map[tun.Port]adapter.RuntimeResourceID), componentIDs: make(map[string]adapter.RuntimeResourceID)}
 	for name, resource := range bindings {
 		view.componentIDs[name] = resource.id
 		if component := resource.components[name]; component != nil && component.outbound != nil {

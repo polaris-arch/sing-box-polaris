@@ -4,6 +4,7 @@ import (
 	"context"
 
 	box "github.com/sagernet/sing-box"
+	boxtls "github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing/common/json"
 
 	"google.golang.org/grpc/codes"
@@ -77,7 +78,15 @@ func (s *StartedService) GetRuntimeCapabilities(ctx context.Context, _ *emptypb.
 		return nil, err
 	}
 	capability := instance.RuntimeCapabilities()
+	document, err := boxtls.FingerprintCapabilitiesJSON()
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "running Core TLS capabilities unavailable")
+	}
 	result := &RuntimeCapabilities{ContractVersion: capability.ContractVersion, ConnectedHotEnabled: capability.Enabled, ImplementationManifestDigest: capability.ImplementationManifestDigest, Active: runtimeIdentity(capability.Identity), ReceiptRetentionSeconds: 300, MaxReceipts: 256, FullEffectiveSchemaSupported: capability.FullConfiguration, ControlRevision: capability.Identity.ControlRevision}
+	result.TlsFingerprintCapabilitiesJson = document
+	for _, version := range capability.SupportedClientImpactPolicyVersions {
+		result.SupportedClientImpactPolicyVersions = append(result.SupportedClientImpactPolicyVersions, uint32(version))
+	}
 	for _, field := range capability.Fields {
 		result.Fields = append(result.Fields, &RuntimeFieldCapability{EffectivePath: field.Path, Variant: field.Variant, PlatformBuild: field.PlatformBuild, UpdateClass: RuntimeUpdateClass(RuntimeUpdateClass_value[field.UpdateClass]), AdapterVersion: field.AdapterVersion, Conditions: append([]string(nil), field.Conditions...)})
 	}
@@ -91,6 +100,10 @@ func (s *StartedService) PlanRuntimeConfig(ctx context.Context, request *PlanRun
 	}
 	if request == nil || request.ContractVersion != box.RuntimeConfigContractVersion {
 		return nil, status.Error(codes.InvalidArgument, "unsupported runtime contract version")
+	}
+	policy := box.RuntimeClientImpactPolicyVersion(request.ClientImpactPolicyVersion)
+	if policy != box.RuntimeClientImpactPolicyLegacy && policy != box.RuntimeClientImpactPolicyExplicit {
+		return nil, status.Error(codes.InvalidArgument, "unsupported client impact policy version")
 	}
 	expected, err := runtimeExpected(request.Expected, request.ExpectedControlRevision)
 	if err != nil {
@@ -127,11 +140,11 @@ func (s *StartedService) PlanRuntimeConfig(ctx context.Context, request *PlanRun
 		}
 		intents = append(intents, box.RuntimeSelectorIntent{Group: intent.Group, Selected: intent.Selected, PinCurrentTCP: intent.PinCurrentTcp, ExpectedSelectionPath: append([]string(nil), intent.ExpectedSelectionPath...)})
 	}
-	plan, err := instance.PlanRuntimeConfigWithSelections(ctx, actor, expected, effective, intents)
+	plan, err := instance.PlanRuntimeConfigWithClientImpactPolicy(ctx, actor, expected, effective, intents, policy)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
-	return &RuntimeConfigPlan{ContractVersion: plan.ContractVersion, PlanId: plan.PlanID, TransactionId: plan.TransactionID, Expected: runtimeIdentity(plan.Expected), CandidateDigest: plan.CandidateDigest, DependencyDigest: plan.DependencyDigest, ImpactDigest: plan.ImpactDigest, Impacts: runtimeImpacts(plan.Impacts), Errors: runtimeErrors(plan.Errors), ExpiresAtUnixMilli: plan.ExpiresAtUnixMilli, Applicable: plan.Applicable, NoOp: plan.NoOp, ExpectedControlRevision: plan.Expected.ControlRevision}, nil
+	return &RuntimeConfigPlan{ContractVersion: plan.ContractVersion, PlanId: plan.PlanID, TransactionId: plan.TransactionID, Expected: runtimeIdentity(plan.Expected), CandidateDigest: plan.CandidateDigest, DependencyDigest: plan.DependencyDigest, ImpactDigest: plan.ImpactDigest, Impacts: runtimeImpacts(plan.Impacts), Errors: runtimeErrors(plan.Errors), ExpiresAtUnixMilli: plan.ExpiresAtUnixMilli, Applicable: plan.Applicable, NoOp: plan.NoOp, ExpectedControlRevision: plan.Expected.ControlRevision, ClientImpactPolicyVersion: uint32(plan.ClientImpactPolicyVersion), ImpactConfirmationRequired: plan.ImpactConfirmationRequired}, nil
 }
 
 func (s *StartedService) ApplyRuntimeConfig(ctx context.Context, request *ApplyRuntimeConfigRequest) (*RuntimeConfigOperation, error) {

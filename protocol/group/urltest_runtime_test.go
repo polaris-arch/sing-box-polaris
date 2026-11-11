@@ -165,7 +165,13 @@ func TestRuntimeInternalProducerDoesNotSelfPinCleanup(t *testing.T) {
 	group, history, _ := epochTestGroup(t)
 	id := adapter.RuntimeResourceID{Incarnation: "internal-producer", Sequence: 1}
 	closing := make(chan struct{})
-	owner, err := runtimegraph.NewResourceOwner(group.ctx, id, nil, func() error { close(closing); group.Close(); <-group.Done(); return nil })
+	owner, err := runtimegraph.NewResourceOwner(group.ctx, id, nil, func() error {
+		group.Close()
+		// Signal closed admission before waiting for the blocked raw producer.
+		close(closing)
+		<-group.Done()
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

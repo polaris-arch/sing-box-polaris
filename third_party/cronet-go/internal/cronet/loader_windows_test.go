@@ -31,6 +31,7 @@ type windowsLoaderProbe struct {
 	loadErr     error
 	registerErr error
 	freeErr     error
+	observeErr  error
 }
 
 func (probe *windowsLoaderProbe) ops() windowsLibraryOps {
@@ -57,6 +58,59 @@ func (probe *windowsLoaderProbe) ops() windowsLibraryOps {
 			probe.registered = append(probe.registered, handle)
 			return probe.registerErr
 		},
+		capture: func(path string) (*windowsLibraryCapture, error) { return &windowsLibraryCapture{path: path}, nil },
+		observe: func(handle uintptr, capture *windowsLibraryCapture) (LibraryObservation, error) {
+			if probe.observeErr != nil {
+				return LibraryObservation{}, probe.observeErr
+			}
+			if handle != probe.handle || capture == nil {
+				return LibraryObservation{}, errors.New("test module/capture mismatch")
+			}
+			return LibraryObservation{Path: capture.path}, nil
+		},
+	}
+}
+
+func TestWindowsLibraryExplicitObservationRejectsUnprovenModule(t *testing.T) {
+	path := windowsLibraryFixture(t, "libcronet.dll")
+	for _, mode := range []string{"missing-capture", "missing-observer", "native-observation"} {
+		t.Run(mode, func(t *testing.T) {
+			probe := &windowsLoaderProbe{selector: path, present: true, handle: uintptr(42)}
+			ops := probe.ops()
+			if mode == "missing-capture" {
+				ops.capture = nil
+			} else if mode == "missing-observer" {
+				ops.observe = nil
+			} else {
+				probe.observeErr = errors.New("actual mapped object differs")
+			}
+			var loader windowsLibraryLoader
+			if err := loader.load("", ops); err == nil {
+				t.Fatal("explicit selector accepted without actual module observation")
+			}
+			if loader.handle != 0 || loader.capture != nil || len(probe.registered) != 0 {
+				t.Fatal("unproven module published ABI or object custody")
+			}
+			if mode == "native-observation" && !reflect.DeepEqual(probe.freed, []uintptr{42}) {
+				t.Fatal("rejected loaded module was not released")
+			}
+		})
+	}
+}
+
+func TestWindowsLibraryDigestMismatchCannotEnterNativeLoad(t *testing.T) {
+	path := windowsLibraryFixture(t, "non-executable-fixture.dll")
+	probe := &windowsLoaderProbe{selector: path, present: true, handle: 42}
+	ops := probe.ops()
+	ops.capture = func(name string) (*windowsLibraryCapture, error) {
+		return captureWindowsLibraryVerified(name, strings.Repeat("0", 64))
+	}
+	var loader windowsLibraryLoader
+	if err := loader.load("", ops); err == nil {
+		t.Fatal("mismatched retained bytes were admitted")
+	}
+	if len(probe.loads) != 0 || len(probe.registered) != 0 || loader.handle != 0 {
+		t.Fatal("digest rejection occurred after executing selected DLL bytes")
 	}
 }
 

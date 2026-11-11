@@ -44,15 +44,14 @@ type runtimeListener struct {
 	outputStarted  bool
 	closeDone      chan struct{}
 	closeErr       error
+	socketCloseErr error
 	ingressErr     error
-	replacement    *Replacement
 	setReplacement *ListenerSetTransaction
 	// Test fixtures can replace binding without touching a real socket.
 	prepareSockets          func() error
 	constructionErr         error
-	ownsTCP                 bool
+	tcp                     runtimeTCPSet
 	ownsUDP                 bool
-	tcpReleased             bool
 	udpReleased             bool
 	udpLocal                atomic.Pointer[net.UDPAddr]
 	packetTransportDeclared bool
@@ -116,6 +115,11 @@ func (l *Listener) ValidateRuntime() error {
 	if l.setSystemProxy {
 		return ErrRuntimeSystemEffect
 	}
+	if common.Contains(l.network, N.NetworkTCP) {
+		if err := l.validateRuntimeTCPPolicy(); err != nil {
+			return err
+		}
+	}
 	if common.Contains(l.network, N.NetworkTCP) && l.connHandler == nil {
 		return errors.New("TCP listener has no connection handler")
 	}
@@ -172,17 +176,20 @@ func (l *Listener) Prepare() error {
 	}
 	r.phase = "preparing"
 	r.mu.Unlock()
-	var err error
-	if r.prepareSockets != nil {
-		err = r.prepareSockets()
-	} else {
-		if common.Contains(l.network, N.NetworkTCP) {
-			_, err = l.listenTCP()
+	err := runtimePrepareCall(func() error {
+		var err error
+		if r.prepareSockets != nil {
+			err = r.prepareSockets()
+		} else {
+			if common.Contains(l.network, N.NetworkTCP) {
+				err = l.prepareRuntimeTCP()
+			}
+			if err == nil && common.Contains(l.network, N.NetworkUDP) {
+				_, err = l.listenUDPWithConfig(net.ListenConfig{})
+			}
 		}
-		if err == nil && common.Contains(l.network, N.NetworkUDP) {
-			_, err = l.listenUDPWithConfig(net.ListenConfig{})
-		}
-	}
+		return err
+	})
 	r.mu.Lock()
 	if err == nil {
 		r.phase = "prepared"
@@ -211,13 +218,16 @@ func (l *Listener) ArmIngress() error {
 	r.phase = "arming"
 	r.mu.Unlock()
 	var err error
-	if l.tcpListener != nil {
-		if deadline, ok := l.tcpListener.(interface{ SetDeadline(time.Time) error }); ok {
-			err = deadline.SetDeadline(time.Time{})
+	members := l.runtimeTCPMembers()
+	if err = l.validateRuntimeTCPComplete(); err == nil {
+		for _, member := range members {
+			if deadline, ok := member.socket.(interface{ SetDeadline(time.Time) error }); ok {
+				err = errors.Join(err, runtimeSocketCall(func() error { return deadline.SetDeadline(time.Time{}) }))
+			}
 		}
 	}
 	if err == nil && l.udpConn != nil {
-		err = l.udpConn.SetReadDeadline(time.Time{})
+		err = runtimeSocketCall(func() error { return l.udpConn.SetReadDeadline(time.Time{}) })
 	}
 	r.mu.Lock()
 	if err != nil {
@@ -235,17 +245,16 @@ func (l *Listener) ArmIngress() error {
 			r.output.Add(1)
 		}
 	}
-	if l.tcpListener != nil {
-		r.ingress.Add(1)
-	}
+	r.ingress.Add(len(members))
 	if l.udpConn != nil {
 		r.ingress.Add(1)
 	}
 	startOutput := l.udpConn != nil && !l.disablePacketOutput && !l.runtimeOutputStarted.Swap(true)
 	r.phase = "armed"
 	r.mu.Unlock()
-	if l.tcpListener != nil {
-		go func() { defer r.ingress.Done(); l.loopTCPIn() }()
+	for _, member := range members {
+		socket := member.socket
+		go func() { defer r.ingress.Done(); l.loopTCPInFor(socket) }()
 	}
 	if l.udpConn != nil {
 		go func() { defer r.ingress.Done(); l.loopUDPIn() }()
@@ -298,11 +307,9 @@ func (l *Listener) pauseIngress(allowClose bool) error {
 		r.mu.Unlock()
 		return ErrRuntimeTransition
 	}
-	var tcpDeadline interface{ SetDeadline(time.Time) error }
-	if l.tcpListener != nil {
-		var ok bool
-		tcpDeadline, ok = l.tcpListener.(interface{ SetDeadline(time.Time) error })
-		if !ok && !allowClose {
+	members := append([]*runtimeTCPMember(nil), r.tcp.members[:r.tcp.count]...)
+	for _, member := range members {
+		if !runtimeTCPInterruptible(member) && (!allowClose || member.spec.narrowExclusive) {
 			r.mu.Unlock()
 			return ErrPauseRequiresRebind
 		}
@@ -313,28 +320,34 @@ func (l *Listener) pauseIngress(allowClose bool) error {
 	r.mu.Unlock()
 	r.gateway.PauseAndWait()
 	var err error
-	if tcpDeadline != nil {
-		err = tcpDeadline.SetDeadline(time.Now())
-	} else if l.tcpListener != nil {
-		err = l.tcpListener.Close()
-		if err == nil {
-			r.mu.Lock()
-			r.tcpReleased = true
-			r.mu.Unlock()
+	for _, member := range members {
+		var memberErr error
+		canClose := allowClose && !member.spec.narrowExclusive
+		if deadline, ok := member.socket.(interface{ SetDeadline(time.Time) error }); ok {
+			memberErr = runtimeSocketCall(func() error { return deadline.SetDeadline(time.Now()) })
+			if memberErr != nil && canClose {
+				memberErr = member.closeAndWait()
+				if memberErr == nil {
+					l.removeRuntimeTCPMember(member)
+				}
+			}
+		} else if canClose {
+			memberErr = member.closeAndWait()
+			if memberErr == nil {
+				l.removeRuntimeTCPMember(member)
+			}
 		}
-	}
-	if err != nil && allowClose && l.tcpListener != nil && tcpDeadline != nil {
-		err = l.tcpListener.Close()
-		if err == nil {
-			r.mu.Lock()
-			r.tcpReleased = true
-			r.mu.Unlock()
-		}
+		err = errors.Join(err, memberErr)
 	}
 	if l.udpConn != nil {
-		udpErr := l.udpConn.SetReadDeadline(time.Now())
+		udpErr := runtimeSocketCall(func() error { return l.udpConn.SetReadDeadline(time.Now()) })
 		if udpErr != nil && allowClose {
-			udpErr = l.udpConn.Close()
+			udpErr = runtimeSocketCall(l.udpConn.Close)
+			if udpErr != nil {
+				r.mu.Lock()
+				r.socketCloseErr = errors.Join(r.socketCloseErr, udpErr)
+				r.mu.Unlock()
+			}
 			if udpErr == nil {
 				r.mu.Lock()
 				r.udpReleased = true
@@ -368,7 +381,7 @@ func (l *Listener) runtimeIngressStopped() bool { return l.runtime != nil && l.r
 // RuntimeCloseAndWait is the concrete close barrier; Scope.Close is not one.
 // It never closes accepted TCP carriers, whose separate leases keep protocol
 // resources alive until their actual use ends. Errors remain non-filterable.
-func (l *Listener) RuntimeCloseAndWait() error {
+func (l *Listener) RuntimeCloseAndWait() (result error) {
 	r := l.runtime
 	if r == nil {
 		return l.Close()
@@ -387,40 +400,72 @@ func (l *Listener) RuntimeCloseAndWait() error {
 		r.mu.Unlock()
 		return ErrRuntimeTransition
 	}
+	joinedBefore := r.phase == "paused" || r.phase == "prepared" || r.phase == "released" || r.phase == "inert" || r.phase == "failed"
 	r.phase = "closing"
 	r.controlOpen = false
 	if !r.stopped.Swap(true) && r.runStop != nil {
 		close(r.runStop)
 	}
 	l.shutdown.Store(true)
-	ownedTCP, ownedUDP := r.ownsTCP && !r.tcpReleased, r.ownsUDP && !r.udpReleased
+	ownedUDP := r.ownsUDP && !r.udpReleased
 	if r.outputStarted {
 		close(l.packetOutboundClosed)
+		r.outputStarted = false
 	}
+	debt := r.socketCloseErr
 	r.mu.Unlock()
+	// Publish one sticky failure even when a foreign close panics. A later Scope
+	// close must observe this same failed barrier rather than repeat native I/O.
+	defer func() {
+		if recover() != nil {
+			result = errors.Join(result, errors.New("runtime listener close panicked; completion unknown"))
+		}
+		r.mu.Lock()
+		result = errors.Join(result, r.controlError)
+		if result != nil {
+			result = fmt.Errorf("runtime listener close completion failed: %v", result)
+		}
+		r.closeErr = result
+		r.phase = "closed"
+		close(r.closeDone)
+		r.mu.Unlock()
+	}()
 	r.gateway.SealAndWait()
-	var err error
-	if ownedTCP && l.tcpListener != nil {
-		err = l.tcpListener.Close()
+	canJoin := true
+	result = debt
+	for _, member := range l.runtimeTCPMembers() {
+		interrupted := joinedBefore
+		if deadline, ok := member.socket.(interface{ SetDeadline(time.Time) error }); ok {
+			interrupted = runtimeSocketCall(func() error { return deadline.SetDeadline(time.Now()) }) == nil || interrupted
+		}
+		closeErr := member.closeAndWait()
+		result = errors.Join(result, closeErr)
+		if closeErr == nil {
+			l.removeRuntimeTCPMember(member)
+		} else if !interrupted {
+			canJoin = false
+		}
 	}
 	if ownedUDP && l.udpConn != nil {
-		err = errors.Join(err, l.udpConn.Close())
+		interrupted := joinedBefore || runtimeSocketCall(func() error { return l.udpConn.SetReadDeadline(time.Now()) }) == nil
+		closeErr := runtimeSocketCall(l.udpConn.Close)
+		result = errors.Join(result, closeErr)
+		if closeErr != nil && !interrupted {
+			canJoin = false
+		}
 	}
-	r.ingress.Wait()
+	// Even after a Close error, a successful deadline interrupts Accept and the
+	// raw-Accept/admission gap must be joined before closeDone is published.
+	if canJoin {
+		r.ingress.Wait()
+	} else {
+		result = errors.Join(result, errors.New("runtime listener ingress join remains unconfirmed"))
+	}
 	r.controlCalls.Wait()
 	r.directWrites.Wait()
 	r.output.Wait()
 	l.releasePacketOutbound()
-	if err != nil {
-		err = fmt.Errorf("runtime listener close completion failed: %v", err)
-	}
-	r.mu.Lock()
-	err = errors.Join(err, r.controlError)
-	r.closeErr = err
-	r.phase = "closed"
-	close(r.closeDone)
-	r.mu.Unlock()
-	return err
+	return result
 }
 
 type RuntimeListenerStatus struct {

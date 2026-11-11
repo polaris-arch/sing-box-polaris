@@ -412,7 +412,7 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		s.serviceAccess.Lock()
 		s.updateStatusError(err)
 		s.serviceAccess.Unlock()
-		return err
+		return E.Cause(err, "construct service instance")
 	}
 	instance.urlTestHistoryStorage.AddUpdateHook(s.urlTestSubscriber)
 	if instance.clashMode != nil {
@@ -441,11 +441,11 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		closeErr := s.closeInstance(instance)
 		runtimeDebug.FreeOSMemory()
 		if s.strictCleanup && closeErr != nil {
-			return E.Append(err, closeErr, func(closeErr error) error {
+			return E.Append(E.Cause(err, "start service instance"), closeErr, func(closeErr error) error {
 				return E.Cause(closeErr, "cleanup after failed start")
 			})
 		}
-		return err
+		return E.Cause(err, "start service instance")
 	}
 	s.startedAt = time.Now()
 	s.updateStatus(ServiceStatus_STARTED)

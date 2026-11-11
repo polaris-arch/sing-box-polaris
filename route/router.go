@@ -25,6 +25,7 @@ import (
 var _ adapter.Router = (*Router)(nil)
 
 type Router struct {
+	runtimePlatform         *RuntimePlatform
 	runtimeLeaf             bool
 	runtimeRuleSetsExternal bool
 	immutableRuleSets       bool
@@ -116,6 +117,12 @@ func (r *Router) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		for _, ruleSet := range r.ruleSets {
 			if !r.runtimeRuleSetsExternal {
 				scope.Add(ruleSet.Close)
+			}
+		}
+		if r.runtimeLeaf && r.runtimePlatform != nil {
+			r.neighborResolver = r.runtimePlatform.NeighborResolver()
+			if r.needFindNeighbor && r.neighborResolver == nil {
+				return os.ErrInvalid
 			}
 		}
 		if r.needFindNeighbor && !r.runtimeLeaf {

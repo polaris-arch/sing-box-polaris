@@ -68,6 +68,44 @@ class PatchModuleSelectionTests(unittest.TestCase):
             self.assertIn('(cd ' + owner + ' && go test ', blocks[owner])
             self.assertIn('-tags "$tags" -ldflags "$ldflags" ./...)', blocks[owner])
 
+    def test_go_nat_selection_and_owned_workflow_runner_keep_the_product_graph(self):
+        root = Path(__file__).resolve().parents[2]
+        workflow = (root / '.github/workflows/polaris-selfcheck.yml').read_text()
+        start = 'if [ -f "$selection_dir/go-nat-selected" ]; then'
+        self.assertEqual(workflow.count(start), 1)
+        block = workflow.split(start, 1)[1].split('\n          fi', 1)[0]
+        self.assertIn("grep -Fqx 'github.com/libp2p/go-nat' \"$selection_dir/go-nat-selected\"", block)
+        self.assertIn("grep -Fqx 'module github.com/libp2p/go-nat' third_party/go-nat/go.mod", block)
+        self.assertIn("grep -Fqx 'replace github.com/libp2p/go-nat => ./third_party/go-nat' go.mod", block)
+        self.assertIn('go test -mod=readonly -race -gcflags=all=-d=checkptr=2 -count=1 -timeout=10m -v', block)
+        self.assertIn('tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"', block)
+        self.assertIn('ldflags="$(cat release/LDFLAGS)"', block)
+        self.assertIn('-tags "$tags" -ldflags "$ldflags" github.com/libp2p/go-nat/...', block)
+        self.assertNotIn('(cd ', block)
+        for name in ('TestDiscoverNATsCancellationJoinsAllFourLateProducers',
+                     'TestNATPMPDeleteRequiresExactAckAndKeepsDebtForRetry',
+                     'TestUPNPDeleteAlwaysVerifiesCurrentIdentityAndHonorsConfirmedAbsence',
+                     'TestUPNPCapturedDiscoveryJoinsEverySSDPRequestBeforeCancellation',
+                     'TestNATCallerHTTPEntryRejectsImplicitDefaultAndCanceledWork'):
+            self.assertIn("grep -q '^--- PASS: " + name + " '", block)
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self.fixture(tmp)
+            path = self.go_file(fixture, 'third_party/go-nat/mapping_test.go')
+            plan = selection(fixture, [path, path, 'third_party/go-nat/go.mod'])
+            self.assertEqual(plan['modules'], {'third_party/go-nat': {
+                'module': 'github.com/libp2p/go-nat',
+                'changedPaths': ['third_party/go-nat/go.mod', path],
+                'packages': ['./...'], 'fullValidation': True}})
+            write_plan(fixture / 'plan', plan)
+            self.assertEqual((fixture / 'plan/go-nat-selected').read_text(),
+                             'github.com/libp2p/go-nat\n')
+            self.assertEqual((fixture / 'plan/root-packages.txt').read_text(), '')
+            deeper = fixture / 'third_party/go-nat/unapproved'
+            deeper.mkdir()
+            (deeper / 'go.mod').write_text('module unapproved/nested\n')
+            with self.assertRaisesRegex(ValueError, 'no approved test runner'):
+                selection(fixture, ['third_party/go-nat/unapproved/nat.go'])
+
     def fixture(self, directory):
         root = Path(directory)
         for name, identity in MODULES.items():
@@ -94,6 +132,7 @@ class PatchModuleSelectionTests(unittest.TestCase):
                 'third_party/fswatch/start_cleanup_test.go',
                 'third_party/sing/common/udpnat/runtime_context_test.go',
                 'third_party/sing-quic/runtime_test.go',
+                'third_party/go-nat/mapping_test.go',
                 'third_party/tailscale/net/netmon/runtime_hooks_test.go',
                 'third_party/wireguard-go/device/runtime_completion_test.go',
                 'third_party/tfo-go/runtime_join_test.go', 'third_party/sing-vmess/vless/vision.go']]
@@ -129,7 +168,8 @@ class PatchModuleSelectionTests(unittest.TestCase):
             plan = selection(root, ['go.sum', 'third_party/sing-tun/go.mod',
                                     'third_party/metacubex-utls/go.sum', 'third_party/cronet-go/go.mod',
                                     'third_party/fswatch/go.mod', 'third_party/sing/go.mod',
-                                    'third_party/sing-quic/go.mod', 'third_party/tailscale/go.mod',
+                                    'third_party/sing-quic/go.mod', 'third_party/go-nat/go.mod',
+                                    'third_party/tailscale/go.mod',
                                     'third_party/wireguard-go/go.sum', 'third_party/tfo-go/go.mod',
                                     'third_party/sing-vmess/go.mod'])
             self.assertEqual(set(plan['modules']), set(MODULES))
@@ -320,6 +360,8 @@ class PatchWorkflowNetnsOrderTests(unittest.TestCase):
                 directory = root / owner
                 directory.mkdir(parents=True, exist_ok=True)
                 (directory / 'go.mod').write_text('module ' + identity + '\n\ngo 1.27.0\n')
+            with (root / 'go.mod').open('a') as module:
+                module.write('\nreplace github.com/libp2p/go-nat => ./third_party/go-nat\n')
             release = root / 'release'
             release.mkdir()
             (release / 'DEFAULT_BUILD_TAGS').write_text('with_quic\n')
@@ -422,7 +464,12 @@ go() {
       TestRuntimeWriteCancellationJoinsActualDeadlineMutation \
       TestRuntimeWriteWithoutCancellationDoesNotWaitForCallback \
       TestVisionTLSProvidersActualHandshakeAndDirect TestVisionTLSProvidersRejectBadCertificate \
-      TestVisionTLSBufferLayoutRejectsUnknownShapes; do
+      TestVisionTLSBufferLayoutRejectsUnknownShapes \
+      TestDiscoverNATsCancellationJoinsAllFourLateProducers \
+      TestNATPMPDeleteRequiresExactAckAndKeepsDebtForRetry \
+      TestUPNPDeleteAlwaysVerifiesCurrentIdentityAndHonorsConfirmedAbsence \
+      TestUPNPCapturedDiscoveryJoinsEverySSDPRequestBeforeCancellation \
+      TestNATCallerHTTPEntryRejectsImplicitDefaultAndCanceledWork; do
       printf '%s\n' "--- PASS: $name (0.00s)"
     done
   fi
@@ -446,7 +493,7 @@ go() {
             'third_party/sing-tun', 'third_party/sing-tun',
             'third_party/metacubex-utls', 'third_party/cronet-go', 'third_party/fswatch',
             'third_party/sing', 'third_party/sing-quic', '.',
-            'third_party/wireguard-go', 'third_party/tfo-go', '.']
+            'third_party/wireguard-go', 'third_party/tfo-go', '.', '.']
         if root_selected and netns_selected:
             expected.append('.')
             self.assertEqual(tests[-1][1][-1], 'github.com/sagernet/sing-box/common/netns')
@@ -454,6 +501,21 @@ go() {
             self.assertIn('-o', tests[-1][1])
             self.assertEqual(tests[-1][1][:4], ['test', '-p', '3', '-race'])
         self.assertEqual([owner for owner, _ in tests], expected)
+        nat = [(owner, args) for owner, args in tests
+               if args[-1] == 'github.com/libp2p/go-nat/...']
+        self.assertEqual(len(nat), 1)
+        self.assertEqual(nat[0][0], '.')
+        self.assertIn('-mod=readonly', nat[0][1])
+        self.assertIn('-gcflags=all=-d=checkptr=2', nat[0][1])
+        for flag in ('-timeout=10m', '-v', '-tags', '-ldflags'):
+            self.assertIn(flag, nat[0][1])
+        self.assertEqual(nat[0][1][nat[0][1].index('-tags') + 1],
+                         'with_quic,with_purego')
+        self.assertEqual(nat[0][1][nat[0][1].index('-ldflags') + 1],
+                         '-X fixture.version=mock')
+        self.assertLess(tests.index(nat[0]), next(
+            index for index, (_, args) in enumerate(tests)
+            if args[-1] == 'github.com/sagernet/sing-vmess/...'))
         sdk = next(args for owner, args in tests if SDK + '/' + SDK_PACKAGES[0] in args)
         self.assertEqual(sdk[-len(SDK_PACKAGES):], [SDK + '/' + p for p in SDK_PACKAGES])
         for _, args in tests:

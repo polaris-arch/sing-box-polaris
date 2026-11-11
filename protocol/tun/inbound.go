@@ -487,7 +487,11 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		}
 		monitor.Start("open interface")
 		if t.platformInterface != nil && t.platformInterface.UsePlatformInterface() {
-			tunInterface, err = t.platformInterface.OpenInterface(&tunOptions, t.platformOptions)
+			if t.runtimePhysical != nil && t.runtimePhysical.nativeOwner != nil {
+				tunInterface, err = t.runtimePhysical.nativeOwner.openRuntimeNativeInterface(&tunOptions, t.platformOptions)
+			} else {
+				tunInterface, err = t.platformInterface.OpenInterface(&tunOptions, t.platformOptions)
+			}
 		} else {
 			tunInterface, err = tun.New(tunOptions)
 		}

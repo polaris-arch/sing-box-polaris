@@ -20,6 +20,10 @@ type Options struct {
 }
 
 func New(options Options) (Factory, error) {
+	return newRuntimeFactory(options)
+}
+
+func newConfiguredFactory(options Options) (Factory, error) {
 	logOptions := options.Options
 
 	if logOptions.Disabled {

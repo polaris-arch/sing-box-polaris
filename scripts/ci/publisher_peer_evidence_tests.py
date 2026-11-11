@@ -58,7 +58,13 @@ class PeerEvidenceTests(unittest.TestCase):
         s = self.s
         index = old.GateTests().final_index()
         index.update(sourceCommit=e.SOURCE, sourceTree=s['sourceTree'], tagObject=s['tagObject'])
-        index['producer'].update(workflowCommit=e.SOURCE, runId=s['runId'])
+        index['producer'].update(workflow=s['workflow'], workflowCommit=e.SOURCE,
+                                 runId=s['runId'], runAttempt=s['runAttempt'])
+        # Synthetic metadata follows this exact selection, including inherited
+        # historical/current adapters. The real final consumer checks it.
+        self.native_jobs=[dict(job, head_sha=e.SOURCE, run_id=s['runId'], run_attempt=s['runAttempt'],
+                               status='completed', conclusion='success')
+                          for job in index['producer']['nativeJobs'].values()]
         self.carriers = {}
         for row in index['platforms']:
             row.update(sourceCommit=e.SOURCE, sourceTree=s['sourceTree'])
@@ -79,7 +85,7 @@ class PeerEvidenceTests(unittest.TestCase):
         self.index_raw = self.raw(index)
         s['nativeIndexSHA256'] = e.digest(self.index_raw)
         self.r = {'schema': 'polaris-native-controlled-peer-v1', 'context': {
-            'sourceCommit': e.SOURCE, 'sourceTree': s['sourceTree'], 'runId': s['runId'], 'runAttempt': 1, 'workflowCommit': e.SOURCE},
+            'sourceCommit': e.SOURCE, 'sourceTree': s['sourceTree'], 'runId': s['runId'], 'runAttempt': s['runAttempt'], 'workflowCommit': e.SOURCE},
             'status': 'PASS', 'publicationEligible': False, 'identity': copy.deepcopy(s['identity']),
             'archive': copy.deepcopy(s['archive']), 'producerRowSHA256': s['smokeRow']['sha256'],
             'privateWorkspaceDeleted': True, 'privateOriginalConfigurationArchived': False,
@@ -101,11 +107,12 @@ class PeerEvidenceTests(unittest.TestCase):
         self.downloads, self.runs, self.artifacts, self.scope = {}, {}, {}, {}
         for role, rid in [('all', str(s['runId'])), ('linux', '43'), ('docker', '44')]:
             workflow = s['workflow'] if role == 'all' else '.github/workflows/' + role + '.yml'
+            attempt = s['runAttempt'] if role == 'all' else 1
             self.runs[rid] = {'repository': {'id': p.RID}, 'head_repository': {'id': p.RID}, 'head_sha': e.SOURCE,
                 'path': workflow, 'status': 'completed', 'conclusion': 'success', 'event': 'workflow_dispatch',
-                'run_attempt': 1, 'run_started_at': '2026-10-25T05:00:00Z'}
+                'run_attempt': attempt, 'run_started_at': '2026-10-25T05:00:00Z'}
             receipt = {'repository': p.REPO, 'repositoryId': p.RID, 'sourceCommit': e.SOURCE, 'runId': rid,
-                'attempt': 1, 'version': p.VERSION, 'build': 'All', 'role': role, 'publishStores': False, 'publishRegistry': False}
+                'attempt': attempt, 'version': p.VERSION, 'build': 'All', 'role': role, 'publishStores': False, 'publishRegistry': False}
             files = {'publisher-run-receipt': {'publisher-run-receipt.json': self.raw(receipt)}}
             if role == 'all':
                 files.update({'binary-native-index': {'polaris-upstream-native-assets.json': self.index_raw, index['sourceArchive']['name']: b's'},
@@ -257,13 +264,42 @@ class PeerEvidenceTests(unittest.TestCase):
             with self.subTest(mutation=i), self.assertRaises(ValueError): e.validate_receipt(self.policy, self.measured(), r)
         with self.assertRaises(ValueError): e.validate_receipt(self.policy, dict(self.measured(), sha256='0' * 64), self.r)
 
-    def inventory(self):
+    def metadata_pages(self, path, key=None, maximum=None):
+        """Exact bounded jobs route; artifact pagination stays independent."""
+        self.inventory_metadata_queries.append({'path':path,'key':key,'maximum':maximum})
+        artifacts=re.fullmatch(re.escape(f'repos/{p.REPO}/actions/runs/')+r'([1-9][0-9]*)/artifacts',path)
+        if artifacts:
+            self.assertEqual(key,'artifacts')
+            self.assertIsNone(maximum)
+            self.assertIn(artifacts[1],self.artifacts)
+            return self.artifacts[artifacts[1]]
+        expected=f'repos/{p.REPO}/actions/runs/{self.s["runId"]}/attempts/{self.s["runAttempt"]}/jobs'
+        self.assertEqual(path,expected)
+        self.assertEqual(key,'jobs')
+        self.assertIs(type(maximum),int)
+        self.assertEqual(maximum,1000)
+        return copy.deepcopy(self.native_jobs)
+
+    def inventory(self, *, work=None):
         # Stub transport and synthetic package scope; Docker run 44 intentionally
         # has no real OCI images. Current OCI admission is exercised separately
         # by CurrentOCISelectionTests, never disabled in production. Exercise
         # actual bounded ZIP, JSON, receipt, final-index and peer cross-binding.
+        # A failed inventory can retain its already verified native index.
+        # Every independent invocation owns a fresh workspace until tearDown;
+        # explicit work reuse remains available to exercise the production
+        # exclusive-create guard rather than clearing or overwriting its files.
+        if work is None:
+            workspace = tempfile.TemporaryDirectory(prefix='inventory-', dir=self.root)
+            self.addCleanup(workspace.cleanup)
+            work = Path(workspace.name)
+        self.inventory_work = Path(work)
+        self.inventory_downloads = []
+        self.inventory_metadata_queries = []
         def transport(path, destination, maximum, **_):
-            data = self.downloads[int(path.split('/')[-2])]
+            ident = int(path.split('/')[-2])
+            self.inventory_downloads.append(ident)
+            data = self.downloads[ident]
             self.assertLessEqual(len(data), maximum)
             destination.write(data)
             return {'bytes': len(data), 'sha256': e.digest(data)}
@@ -272,10 +308,71 @@ class PeerEvidenceTests(unittest.TestCase):
              mock.patch.object(p, 'release_scope', return_value=self.scope), \
              mock.patch('oci_material_registry.supports_source', return_value=False), \
              mock.patch.object(p, 'api', side_effect=lambda path: self.runs[path.split('/')[-1]]), \
-             mock.patch.object(p, 'pages', side_effect=lambda path, key: self.artifacts[path.split('/')[-2]]), \
+             mock.patch.object(p, 'pages', side_effect=self.metadata_pages), \
              mock.patch.object(p, 'read_get', side_effect=transport), mock.patch.object(p, 'client_platform', return_value=None):
             return p.inventory({'all': str(self.s['runId']), 'linux': '43', 'docker': '44'}, e.SOURCE,
-                self.root / 'work', self.s['sourceTree'], self.s['tagObject'], budget=p.ScratchBudget(self.root / 'work', reserve=0))
+                self.inventory_work, self.s['sourceTree'], self.s['tagObject'], budget=p.ScratchBudget(self.inventory_work, reserve=0))
+
+    def test_real_shared_inventory_consumes_bounded_exact_selection_jobs_metadata(self):
+        import native_release_index as native
+        # Wrap real validators to observe the complete ordinary inventory path;
+        # neither final-index admission nor native job selection is bypassed.
+        with mock.patch.object(p,'validate_final_index',wraps=p.validate_final_index) as final, \
+             mock.patch.object(native,'select_native_jobs',wraps=native.select_native_jobs) as selected:
+            actual=self.inventory()
+        final.assert_called_once()
+        selected.assert_called_once_with(self.index['platforms'],self.native_jobs,e.SOURCE,
+                                         self.s['runId'],self.s['runAttempt'])
+        jobs_query={'path':f'repos/{p.REPO}/actions/runs/{self.s["runId"]}/attempts/{self.s["runAttempt"]}/jobs',
+                    'key':'jobs','maximum':1000}
+        self.assertEqual([q for q in self.inventory_metadata_queries if q['key']=='jobs'],[jobs_query])
+        self.assertEqual({q['path'] for q in self.inventory_metadata_queries if q['key']=='artifacts'},
+                         {f'repos/{p.REPO}/actions/runs/{rid}/artifacts' for rid in self.runs})
+        producer=self.index['producer']
+        self.assertEqual((producer['workflowCommit'],producer['runId'],producer['runAttempt']),
+                         (e.SOURCE,e.RUN_ID,self.s['runAttempt']))
+        self.assertEqual(producer['workflow'],self.s['workflow'])
+        self.assertEqual(actual['runs']['all']['id'],str(e.RUN_ID))
+        self.assertEqual(actual['runs']['all']['attempt'],self.s['runAttempt'])
+        for job,pin in zip(self.native_jobs,producer['nativeJobs'].values()):
+            self.assertEqual((job['id'],job['name']),(pin['id'],pin['name']))
+            self.assertEqual((job['head_sha'],job['run_id'],job['run_attempt']),
+                             (e.SOURCE,e.RUN_ID,self.s['runAttempt']))
+            self.assertEqual((job['status'],job['conclusion']),('completed','success'))
+        self.assertIsNone(actual['runs']['all']['artifacts'][self.s['artifact']['name']]['files']['receipt.json']['releaseName'])
+
+    def test_real_shared_inventory_rejects_foreign_missing_skipped_and_mismatched_job_metadata(self):
+        original=copy.deepcopy(self.native_jobs)
+        for mutation in ('missing','duplicate','source','run','attempt','skipped','incomplete','id','name','bool-attempt'):
+            self.native_jobs=copy.deepcopy(original)
+            job=self.native_jobs[1]
+            if mutation=='missing':self.native_jobs.pop(1)
+            elif mutation=='duplicate':self.native_jobs.append(copy.deepcopy(job))
+            elif mutation=='source':job['head_sha']='a'*40
+            elif mutation=='run':job['run_id']=self.s['runId']+1
+            elif mutation=='attempt':job['run_attempt']=self.s['runAttempt']+1
+            elif mutation=='skipped':job['conclusion']='skipped'
+            elif mutation=='incomplete':job['status']='in_progress'
+            elif mutation=='id':job['id']=999
+            elif mutation=='name':job['name']='successful unrelated producer'
+            else:job['run_attempt']=True
+            try:
+                with self.subTest(mutation=mutation),self.assertRaises(ValueError):self.inventory()
+                self.assertEqual([q['maximum'] for q in self.inventory_metadata_queries if q['key']=='jobs'],[1000])
+            finally:
+                self.native_jobs=copy.deepcopy(original)
+
+    def test_inventory_invocations_own_outputs_and_explicit_reuse_keeps_exclusive_create(self):
+        first = self.inventory(); first_work = self.inventory_work
+        second = self.inventory(); second_work = self.inventory_work
+        self.assertNotEqual(first_work, second_work)
+        self.assertEqual(first['controlledPeerEvidence'], second['controlledPeerEvidence'])
+        relative = Path('all/binary-native-index/polaris-upstream-native-assets.json')
+        self.assertEqual((first_work / relative).read_bytes(), self.index_raw)
+        self.assertEqual((second_work / relative).read_bytes(), self.index_raw)
+        with self.assertRaises(FileExistsError) as collision:
+            self.inventory(work=first_work)
+        self.assertEqual(collision.exception.filename, str(first_work / relative))
 
     def test_full_inventory_assemble_stream_excludes_peer(self):
         actual = self.inventory()
@@ -283,7 +380,7 @@ class PeerEvidenceTests(unittest.TestCase):
         reviewed = copy.deepcopy(actual); reviewed['reviewed'] = True
         real_load = e.load
         with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)):
-            receipt = p.assemble(actual, reviewed, self.root / 'work', self.root / 'dist', self.root / 'audit', materialize=False)
+            receipt = p.assemble(actual, reviewed, self.inventory_work, self.root / 'dist', self.root / 'audit', materialize=False)
             self.assertEqual(len(receipt['assets']), 45)
             self.assertNotIn('receipt.json', [f['releaseName'] for f in receipt['assets']])
             self.assertFalse((self.root / 'dist' / 'receipt.json').exists())
@@ -304,7 +401,7 @@ class PeerEvidenceTests(unittest.TestCase):
                 list(p.public_asset_stream(altered, p.ScratchBudget(self.root / ('stream-' + field), reserve=0)))
             reviewed = copy.deepcopy(altered); reviewed['reviewed'] = True
             with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), self.assertRaises(ValueError):
-                p.assemble(actual, reviewed, self.root / 'work', self.root / ('bad-' + field), materialize=False)
+                p.assemble(actual, reviewed, self.inventory_work, self.root / ('bad-' + field), materialize=False)
         for field in ('nativeIndexSHA256', 'sourceTree'):
             altered = copy.deepcopy(actual); altered['controlledPeerEvidence']['evidence'][field] = '0' * 64
             with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), self.assertRaises(ValueError):
@@ -319,12 +416,16 @@ class PeerEvidenceTests(unittest.TestCase):
     def test_missing_extra_duplicate_artifact_fails_before_download(self):
         rows = self.artifacts[str(self.s['runId'])]
         original = copy.deepcopy(rows)
-        for mode in ('missing', 'extra', 'duplicate-id'):
+        for mode in ('missing', 'extra', 'duplicate-id', 'duplicate-name'):
             rows[:] = copy.deepcopy(original)
             if mode == 'missing': rows.pop()
             elif mode == 'extra': rows.append(dict(rows[-1], name=rows[-1]['name'] + '-extra', id=900))
-            else: rows[-1]['id'] = rows[0]['id']
-            with self.subTest(mode=mode), self.assertRaises(ValueError): self.inventory()
+            elif mode == 'duplicate-id': rows[-1]['id'] = rows[0]['id']
+            else: rows[-1]['name'] = rows[0]['name']
+            message = {'duplicate-id': 'duplicate Actions artifact IDs',
+                       'duplicate-name': 'duplicate Actions artifact names'}.get(mode, 'all: incomplete or unexpected artifact scope')
+            with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, message): self.inventory()
+            self.assertEqual(self.inventory_downloads, [])
 
     def test_oci_ordinary_strict_gate_unchanged(self):
         import oci_material_registry

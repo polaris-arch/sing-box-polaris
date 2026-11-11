@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/sagernet/cronet-go"
 )
@@ -73,7 +74,7 @@ func prepareCronetLibrary(path, expected string) (string, string, error) {
 }
 
 func prepareCronetLibraryObservation(path, expected string) (cronetLibraryVerification, error) {
-	observation, selected, err := cronet.ObserveSelectedLibrary(path)
+	observation, selected, err := observeSelectedCronetLibrary(path, expected)
 	if err != nil {
 		return cronetLibraryVerification{}, err
 	}
@@ -88,7 +89,14 @@ func prepareCronetLibraryObservation(path, expected string) (cronetLibraryVerifi
 		if err := cronet.LoadLibrary(""); err != nil {
 			return cronetLibraryVerification{}, err
 		}
-		return cronetLibraryVerification{Path: observation.Path, SHA256: observation.SHA256, Bytes: observation.Bytes, Selection: "captured-sealed-fd"}, nil
+		selection := "captured-sealed-fd"
+		if runtime.GOOS == "windows" {
+			if observation.Selection != "captured-windows-module-v1" || observation.Windows == nil {
+				return cronetLibraryVerification{}, fmt.Errorf("Cronet actual Windows module observation missing")
+			}
+			selection = observation.Selection
+		}
+		return cronetLibraryVerification{Path: observation.Path, SHA256: observation.SHA256, Bytes: observation.Bytes, Selection: selection, Windows: observation.Windows}, nil
 	}
 	verified, err := verifyCronetLibraryFileObservation(path, expected)
 	if err != nil {

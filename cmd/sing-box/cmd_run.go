@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box"
+	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -138,6 +139,10 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 		options.Log.DisableColor = true
 	}
 	ctx, cancel := context.WithCancel(service.ExtendContext(globalCtx))
+	ctx = runtimeCLIRecoveryContext(ctx, workingDir)
+	if disableColor {
+		ctx = box.ContextWithRuntimeLogDisableColor(ctx)
+	}
 	instance, err := box.New(box.Options{
 		Context:                    ctx,
 		Options:                    options,
@@ -276,4 +281,13 @@ func closeMonitor(ctx context.Context) {
 	case <-timer.C:
 		log.Fatal("sing-box did not close!")
 	}
+}
+
+// Only an explicit -D, resolved by preRun, supplies the host recovery root.
+// current_dir, config-file location and environment are never fallback grants.
+func runtimeCLIRecoveryContext(ctx context.Context, explicitDirectory string) context.Context {
+	if explicitDirectory == "" || !filepath.IsAbs(explicitDirectory) {
+		return ctx
+	}
+	return adapter.ContextWithRuntimeRecoveryRoot(ctx, explicitDirectory)
 }

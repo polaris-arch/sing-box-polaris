@@ -19,22 +19,23 @@ import (
 // database, call a native resolver, or claim filesystem durability coverage.
 type runtimeFixtureBackend struct {
 	adapter.FakeIPRuntimeBackend
-	access         sync.Mutex
-	descriptor     adapter.FakeIPRuntimeBackendDescriptor
-	generation     uint64
-	namespaces     map[string]*runtimeFixtureNamespace
-	links          map[string]adapter.FakeIPRuntimeLink
-	deadlines      map[uint64]time.Time
-	highToken      uint64
-	counters       adapter.FakeIPRuntimeCounters
-	counterCalls   int
-	observeBarrier func()
-	prepareBarrier func()
-	failLink       bool
-	observed       int
-	reclaims       int
-	linkRemovals   int
-	authority      map[netip.Addr]adapter.FakeIPRuntimeAnswer
+	access            sync.Mutex
+	descriptor        adapter.FakeIPRuntimeBackendDescriptor
+	generation        uint64
+	namespaces        map[string]*runtimeFixtureNamespace
+	links             map[string]adapter.FakeIPRuntimeLink
+	deadlines         map[uint64]time.Time
+	highToken         uint64
+	counters          adapter.FakeIPRuntimeCounters
+	counterCalls      int
+	observeBarrier    func()
+	prepareBarrier    func()
+	failLink          bool
+	observed          int
+	reclaims          int
+	acknowledgedLinks []string
+	linkRemovals      int
+	authority         map[netip.Addr]adapter.FakeIPRuntimeAnswer
 }
 
 func fixtureBackend(id string) *runtimeFixtureBackend {
@@ -210,6 +211,9 @@ func (b *runtimeFixtureBackend) SaveFakeIPRuntimeLink(_ context.Context, l adapt
 		l.Acknowledged = l.Acknowledged || old.Acknowledged
 	}
 	b.links[l.ID] = l
+	if l.Acknowledged {
+		b.acknowledgedLinks = append(b.acknowledgedLinks, l.ID)
+	}
 	return nil
 }
 

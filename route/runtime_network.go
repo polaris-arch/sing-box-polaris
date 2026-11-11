@@ -17,3 +17,12 @@ type RuntimeNetworkInventory interface {
 func (r *NetworkManager) BindRuntimeInventory(inventory RuntimeNetworkInventory) {
 	r.runtimeInventory = inventory
 }
+
+type RuntimeWIFIProvider interface {
+	RuntimeWIFIState() (adapter.WIFIState, bool, bool)
+	RuntimeUpdateWIFIState(context.Context) bool
+}
+
+func (r *NetworkManager) BindRuntimeWIFIProvider(provider RuntimeWIFIProvider) {
+	r.runtimeWIFIProvider = provider
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/sagernet/sing-box/dns/transport/fakeip"
 	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
+	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	protocolTun "github.com/sagernet/sing-box/protocol/tun"
 	"github.com/sagernet/sing-box/route"
@@ -30,6 +31,7 @@ import (
 // runtimeView is immutable once passed to NewGraph. Resource maps are never
 // caller-owned and contain the complete admitted transitive closure.
 type runtimeView struct {
+	platform           *route.RuntimePlatform
 	histories          map[string]*urltest.HistoryStorage
 	historyConsumers   map[string][]*urltest.HistoryStorage
 	referenceOptions   *route.RuntimeReferenceOptions
@@ -80,6 +82,7 @@ type runtimeResource struct {
 }
 
 type runtimeComponent struct {
+	platform      *route.RuntimePlatform
 	service       adapter.Service
 	clock         *runtimeclock.Service
 	endpoint      adapter.Endpoint
@@ -96,6 +99,8 @@ type runtimeComponent struct {
 }
 
 type preparedRuntimeGraph struct {
+	platformRequest          context.Context
+	platform                 *route.RuntimePlatform
 	apiHandoffs              []adapter.RuntimeAPIHandoff
 	checkCertificateClaims   func([]runtimeCertificateClaim) error
 	bindCertificateStorage   func(string, os.FileInfo) error
@@ -112,6 +117,8 @@ type preparedRuntimeGraph struct {
 	rootSnapshot             *roots.RootSnapshot
 	rootDigest               [32]byte
 	logPublication           func()
+	logChange                *log.RuntimeOptionsChange
+	clientImpactPolicy       RuntimeClientImpactPolicyVersion
 	endpointTransaction      *runtimeEndpointTransaction
 	tunTransaction           *protocolTun.RuntimeSetTransaction
 	tunRestorationError      error
@@ -157,6 +164,9 @@ func (g *preparedRuntimeGraph) releaseConstruction() {
 func (g *preparedRuntimeGraph) abort() {
 	g.abortOnce.Do(func() {
 		if !g.published {
+			if g.logChange != nil {
+				g.compensationError = errors.Join(g.compensationError, g.logChange.Abort())
+			}
 			for _, handoff := range g.apiHandoffs {
 				g.compensationError = errors.Join(g.compensationError, handoff.Abort())
 			}

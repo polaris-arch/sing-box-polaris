@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -115,17 +116,34 @@ func TestRuntimePublicCommandRegenerationPersistenceChain(t *testing.T) {
 	if capabilities.ContractVersion != box.RuntimeConfigContractVersion || !capabilities.ConnectedHotEnabled || capabilities.FullEffectiveSchemaSupported || capabilities.ImplementationManifestDigest == "" || capabilities.GetActive().GetIncarnation() == "" || capabilities.GetActive().GetAppliedRevision() != 1 {
 		t.Fatalf("public ready capability mismatch: %+v", capabilities)
 	}
+	if !slices.Contains(capabilities.SupportedClientImpactPolicyVersions, uint32(box.RuntimeClientImpactPolicyExplicit)) {
+		t.Fatal("authenticated public Core did not advertise explicit impact confirmation")
+	}
 	if len(owner.snapshot()) != 0 {
 		t.Fatal("startup performed an unrequested persistence callback")
 	}
-	plan, err := client.PlanRuntimeConfig(ctx, &daemon.PlanRuntimeConfigRequest{
+	request := &daemon.PlanRuntimeConfigRequest{
 		ContractVersion:         capabilities.ContractVersion,
 		Expected:                capabilities.Active,
 		ExpectedControlRevision: capabilities.ControlRevision,
 		ConfigContent:           strings.Replace(content, "before.example.test", "after.example.test", 1),
-	})
+	}
+	legacyPlan, err := client.PlanRuntimeConfig(ctx, request)
+	if err != nil || !legacyPlan.GetApplicable() || legacyPlan.GetClientImpactPolicyVersion() != 0 || legacyPlan.GetImpactConfirmationRequired() {
+		t.Fatalf("legacy consumer admission changed: %+v, %v", legacyPlan, err)
+	}
+	unknownPolicy := proto.Clone(request).(*daemon.PlanRuntimeConfigRequest)
+	unknownPolicy.ClientImpactPolicyVersion = 2
+	if _, err := client.PlanRuntimeConfig(ctx, unknownPolicy); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("unknown consumer policy = %v, want InvalidArgument", err)
+	}
+	request.ClientImpactPolicyVersion = uint32(box.RuntimeClientImpactPolicyExplicit)
+	plan, err := client.PlanRuntimeConfig(ctx, request)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if plan.GetClientImpactPolicyVersion() != request.ClientImpactPolicyVersion || plan.CandidateDigest != legacyPlan.CandidateDigest || plan.ImpactDigest == legacyPlan.ImpactDigest {
+		t.Fatal("public plan did not bind the negotiated consumer policy to the same candidate")
 	}
 	if !plan.Applicable || plan.NoOp || len(plan.Errors) != 0 || plan.PlanId == "" || plan.TransactionId == "" || plan.CandidateDigest == capabilities.Active.EffectiveDigest || !proto.Equal(plan.Expected, capabilities.Active) {
 		t.Fatalf("changed graph was not publicly plannable: %+v", plan)
@@ -138,6 +156,15 @@ func TestRuntimePublicCommandRegenerationPersistenceChain(t *testing.T) {
 		ExpectedControlRevision: plan.ExpectedControlRevision,
 		CandidateDigest:         plan.CandidateDigest,
 		AcceptedImpactDigest:    plan.ImpactDigest,
+	}
+	crossPolicy := proto.Clone(apply).(*daemon.ApplyRuntimeConfigRequest)
+	crossPolicy.AcceptedImpactDigest = legacyPlan.ImpactDigest
+	if _, err := client.ApplyRuntimeConfig(ctx, crossPolicy); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("cross-policy impact acknowledgement = %v, want FailedPrecondition", err)
+	}
+	beforeApply, err := client.GetRuntimeCapabilities(ctx, &emptypb.Empty{})
+	if err != nil || !proto.Equal(beforeApply.GetActive(), capabilities.Active) || len(owner.snapshot()) != 0 {
+		t.Fatal("rejected impact acknowledgement changed the graph or called persistence")
 	}
 	operation, err := client.ApplyRuntimeConfig(ctx, apply)
 	if err != nil {

@@ -51,6 +51,13 @@ class OCIReassociation:
     def _selector_record(self):
         return {'path': 'selection-manifest.json', 'bytes': self.selector_bytes, 'sha256': self.selector_sha256}
 
+    def _selection_schema(self):
+        return f'polaris-exact-oci-source-reassociation-selection-v{self.reference_version}'
+
+    def _association_counts(self):
+        return {'sharedPackageAssociationCount': 243, 'crossArchitectureSourceAssociationCount': 0,
+                'newRecipeCount': 0}
+
 
     def _historical_sources(self, source_root, publisher_root):
         """Validate the complete predecessor closure without inventing historical API freshness."""
@@ -60,7 +67,11 @@ class OCIReassociation:
         prior._current_closure(root, selector)
         reference = legacy._json(legacy._file(root, selector['materialReference'], read=True))
         material_map = legacy._json(legacy._file(root, selector['materialMap'], read=True))
-        self.previous._reassociation(root, selector, reference, material_map, second_ref, first_root, first_map)
+        resolved = self.previous._reassociation(root, selector, reference, material_map, second_ref, first_root, first_map)
+        # A predecessor can itself store indexed references. Preserve its
+        # validated resolved packages when admitting a later material delta.
+        if resolved is not None:
+            reference = resolved
         for key in ('sourceAcquisition', 'noticeInventory'):
             for row in legacy._json(legacy._file(root, selector[key], read=True))['references']:
                 legacy._file(publisher_root, row)
@@ -165,7 +176,7 @@ class OCIReassociation:
         selector = legacy._json(legacy._file(root, self._selector_record(), read=True))
         prior._current_closure(root, selector)
         _require(self.reference_version in (1, 2) and type(self.reference_version) is int
-                 and same_identity(selector['schema'], f'polaris-exact-oci-source-reassociation-selection-v{self.reference_version}')
+                 and same_identity(selector['schema'], self._selection_schema())
                  and same_identity(selector['directory'], self.directory) and selector['legalConclusion'] is False, 'OCI reassociation selector schema mismatch')
         _require(same_identity(selector['distributionBoundary'], {
             'appendOnlyPublisherDirectory': self.directory, 'ociDistribution': 'separate-channel',
@@ -315,5 +326,5 @@ class OCIReassociation:
             'noticeInventory': dict(s['noticeInventory'], path=self.directory + '/' + s['noticeInventory']['path']),
             'nativeIndexSHA256': b['nativeIndexSHA256'], 'sourceArchive': b['sourceArchive'],
             'auditBundle': {k: bundle[k] for k in ('name', 'bytes', 'sha256')}, 'artifactCount': 9, 'packageAssociationCount': 243,
-            'sharedPackageAssociationCount': 243, 'crossArchitectureSourceAssociationCount': 0, 'newRecipeCount': 0,
+            **self._association_counts(),
             'coreBindingPolicy': s['coreBindingPolicy'], 'publicReleaseAssetSetUnchanged': True, 'ociSeparateDistributionChannel': True, 'legalConclusion': False}

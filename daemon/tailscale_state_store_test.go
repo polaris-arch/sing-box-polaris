@@ -89,14 +89,24 @@ func retirementPureHost(t *testing.T) (*StartedService, *[]*retirementTestEndpoi
 
 func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T) {
 	host, created := retirementPureHost(t)
-	// Keep the synthetic physical store owner on the existing legacy path.
-	content := `{"certificate":{},"endpoints":[{"type":"tailscale","tag":"a"},{"type":"tailscale","tag":"b"}]}`
+	// Exercise the original physical store census through the real legacy
+	// directory loader; logical runtime endpoints have a separate child census.
+	certificate, err := json.Marshal(option.CertificateOptions{
+		Store: C.CertificateStoreNone, CertificateDirectoryPath: []string{t.TempDir()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := `{"certificate":` + string(certificate) + `,"endpoints":[{"type":"tailscale","tag":"a"},{"type":"tailscale","tag":"b"}]}`
 	for range 2 {
 		host.lifecycleAccess.Lock()
 		instance, err := host.newInstance(context.Background(), content, nil, false)
 		host.lifecycleAccess.Unlock()
 		if err != nil {
 			t.Fatal(err)
+		}
+		if instance.instance.RuntimeCapabilities().Identity.Incarnation != "" {
+			t.Fatal("physical store fixture selected a logical runtime endpoint")
 		}
 		active := host.tailscaleRetirementRuns[len(host.tailscaleRetirementRuns)-1].snapshot()
 		digest := sha256.Sum256([]byte(content))
@@ -148,13 +158,16 @@ func TestTailscaleStoreActualInstanceUnstartedExportAndRetainedRuns(t *testing.T
 }
 
 func TestTailscaleStoreFailedConstructionCannotUpgrade(t *testing.T) {
-	host, _ := retirementPureHost(t)
+	host, created := retirementPureHost(t)
 	content := `{"endpoints":[{"type":"tailscale","tag":"constructed"},{"type":"test-constructor-failure","tag":"fails"}]}`
 	host.lifecycleAccess.Lock()
 	instance, err := host.newInstance(context.Background(), content, nil, false)
 	host.lifecycleAccess.Unlock()
 	if err == nil || instance != nil {
 		t.Fatal("partial construction did not fail")
+	}
+	if !strings.Contains(err.Error(), "original partial constructor failure") || len(*created) != 1 {
+		t.Fatalf("partial construction did not reach the original store and failing constructor: %v, stores=%d", err, len(*created))
 	}
 	if len(host.tailscaleRetirementRuns) != 1 {
 		t.Fatal("partial run silently omitted")

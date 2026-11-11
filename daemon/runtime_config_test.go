@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	box "github.com/sagernet/sing-box"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -60,5 +62,17 @@ func TestRuntimeRPCRejectsMissingActorBeforeReadingInstanceOrRequest(t *testing.
 	}
 	if _, err := service.GetRuntimeConfigStatus(ctx, nil); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("nil status request = %v", err)
+	}
+}
+
+func TestRuntimePlanRejectsUnknownImpactPolicyBeforeInstanceOrConfigPreparation(t *testing.T) {
+	service := new(StartedService)
+	request := &PlanRuntimeConfigRequest{ContractVersion: box.RuntimeConfigContractVersion, ClientImpactPolicyVersion: 2}
+	if _, err := service.PlanRuntimeConfig(context.Background(), request); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("policy must not bypass server actor authentication: %v", err)
+	}
+	ctx := ContextWithRuntimeActor(context.Background(), "authenticated-a")
+	if _, err := service.PlanRuntimeConfig(ctx, request); status.Code(err) != codes.InvalidArgument || status.Convert(err).Message() != "unsupported client impact policy version" {
+		t.Fatalf("unknown policy was read as legacy or reached preparation: %v", err)
 	}
 }

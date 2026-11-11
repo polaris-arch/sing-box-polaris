@@ -16,7 +16,7 @@ type Version struct {
 	Commit               string
 	PreReleaseIdentifier string
 	PreReleaseVersion    int
-	// Preserve Polaris patch identity without ranking patches within an upstream series.
+	// Preserve canonical Polaris series and patch numbers without machine integer limits.
 	preReleaseVersionString string
 }
 
@@ -33,8 +33,9 @@ func (v Version) GreaterThanOrEqual(anotherVersion Version) bool {
 }
 
 func (v Version) equal(anotherVersion Version) bool {
-	v.preReleaseVersionString = ""
-	anotherVersion.preReleaseVersionString = ""
+	if v.preReleaseVersionString != "" || anotherVersion.preReleaseVersionString != "" {
+		return v.Commit == anotherVersion.Commit && semver.Compare("v"+v.String(), "v"+anotherVersion.String()) == 0
+	}
 	return v == anotherVersion
 }
 
@@ -61,6 +62,9 @@ func (v Version) GreaterThan(anotherVersion Version) bool {
 	}
 	if v.PreReleaseIdentifier != "" && anotherVersion.PreReleaseIdentifier != "" {
 		if v.PreReleaseIdentifier == anotherVersion.PreReleaseIdentifier {
+			if v.preReleaseVersionString != "" || anotherVersion.preReleaseVersionString != "" {
+				return semver.Compare("v"+v.String(), "v"+anotherVersion.String()) > 0
+			}
 			if v.PreReleaseVersion > anotherVersion.PreReleaseVersion {
 				return true
 			} else if v.PreReleaseVersion < anotherVersion.PreReleaseVersion {

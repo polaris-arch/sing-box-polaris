@@ -282,12 +282,14 @@ def api(path, method='GET', payload=None):
     return json.loads(output) if output.strip() else None
 
 
-def pages(path, key=None):
+def pages(path, key=None, maximum=None):
     result = []
     for page in range(1, 10001):
         data = api(path + ('&' if '?' in path else '?') + f'per_page=100&page={page}')
         batch = data[key] if key else data
         result.extend(batch)
+        if maximum is not None and len(result) > maximum:
+            raise ValueError('pagination item bound exceeded')
         if len(batch) < 100:
             return result
     raise ValueError('pagination bound exceeded')
@@ -326,6 +328,14 @@ def identity(source, source_dir):
     for path in ('release/ci/apple-swift-package-overlays.json', 'scripts/ci/apple_package_overlays.py', 'scripts/ci/client_source.py'):
         require((ROOT / path).is_file() and (source_dir / path).is_file()
                 and sha(ROOT / path) == sha(source_dir / path), 'publisher Apple package policy differs from actual build source: ' + path)
+    material_plan = Path(DEBIAN_POLICY['profilePlan'])
+    if (ROOT / material_plan).exists() or (source_dir / material_plan).exists():
+        from cronet_material_supply import profile_plan_sha256
+        module = Path('scripts/ci/cronet_material_supply.py')
+        require((ROOT / module).is_file() and (source_dir / module).is_file()
+                and sha(ROOT / module) == sha(source_dir / module)
+                and profile_plan_sha256(ROOT) == profile_plan_sha256(source_dir),
+                'publisher Debian material contract differs from actual build source')
     owned = Path('release/ci/owned-distribution.json')
     if (ROOT / owned).exists() or (source_dir / owned).exists():
         require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
@@ -347,7 +357,7 @@ def upload_endpoint(release, name):
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, 'name=' + quote(name, safe=''), ''))
 
 
-def validate_final_index(index, source, tree, tag_object, run_id, attempt, workflow, source_root=ROOT):
+def validate_final_index(index, source, tree, tag_object, run_id, attempt, workflow, source_root=ROOT, *, debian_raw=None):
     # A staging index is useful evidence, but never a production publication input.
     require(index.get('schema') == 'polaris-upstream-native-assets-v1', 'final native index schema required; staging forbidden')
     import jsonschema
@@ -359,7 +369,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
     require((producer['repository'], producer['repositoryId'], producer['workflow'], producer['workflowCommit'],
              producer['runId'], producer['runAttempt']) == (REPO, RID, workflow, source, int(run_id), attempt),
             'final native producer identity mismatch')
-    from native_release_index import expected_native, validate_trusted_execution
+    from native_release_index import expected_native, validate_trusted_execution, select_native_jobs
     expected = expected_native(VERSION)
     require(len(index['platforms']) == 44 and {x['id'] for x in index['platforms']} == set(expected), 'exact 44 native identities required')
     for row in index['platforms']:
@@ -369,13 +379,32 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
         require(row['archive'].get('releaseName') == public_product_name(row['archive']['name']), 'native public archive name mismatch')
         suffix = '.zip' if row['target'].startswith('windows/') else '.tar.gz'
         require(row['archive']['root'] == row['id'] and row['archive']['name'] == row['id'] + suffix, 'native archive identity mismatch')
+    jobs = pages(f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs', 'jobs', maximum=1000)
+    require(producer['nativeJobs'] == select_native_jobs(index['platforms'], jobs, source, int(run_id), attempt),
+            'native producer job mapping differs from retained proof/API evidence')
     require(index['sourceArchive']['name'] == 'sing-box-polaris-source-' + source + '.tar.gz', 'immutable source archive basename required')
     from native_release_index import distribution_materials
-    require(index['distributionMaterials'] == distribution_materials(index, source_root), 'source/notice bindings differ from actual index or committed inputs')
+    expected_materials = (distribution_materials(index, source_root) if debian_raw is None
+                         else distribution_materials(index, source_root, debian_raw=debian_raw))
+    require(index['distributionMaterials'] == expected_materials, 'source/notice bindings differ from actual index or committed inputs')
 
 
 def producer_publication(role, artifact, relative):
     """Producer scope remains exhaustive; only upstream All binary products are public."""
+    if artifact in (DEBIAN_RAW, DEBIAN_READY):
+        require(role in ('all', 'linux', 'docker'), 'private Debian artifact in wrong role')
+        if artifact == DEBIAN_RAW:
+            require(relative == DEBIAN_MANIFEST or re.fullmatch(r'objects/[0-9a-f]{64}', relative),
+                    'unlisted private Debian raw member')
+            return None, 'private-debian-raw'
+        require(relative == DEBIAN_POLICY['readyMember'], 'unlisted private Debian READY member')
+        return None, 'private-debian-ready'
+    if PurePosixPath(relative).name == DEBIAN_USE:
+        from cronet_material_supply import expected_use
+        require(relative == DEBIAN_USE and role in ('all', 'linux', 'docker') and expected_use(role, artifact) is not None,
+                'private Debian use in nonconsumer/nested artifact')
+        return None, 'private-debian-use'
+
     basename = PurePosixPath(relative).name
     if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact in ('publisher-run-receipt', 'go-win7-toolchain'):
         return None, 'producer-evidence'
@@ -452,6 +481,234 @@ def branded_client_name(name):
     return 'sing-box-polaris-' + name
 
 
+
+DEBIAN_RAW = 'debian-candidate-raw'
+DEBIAN_READY = 'debian-material-ready'
+DEBIAN_MANIFEST = 'candidate-manifest.json'
+DEBIAN_USE = 'debian-material-use.json'
+DEBIAN_POLICY = {'family': 'debian_materials', 'rawArtifact': DEBIAN_RAW,
+                 'readyArtifact': DEBIAN_READY, 'manifest': DEBIAN_MANIFEST,
+                 'readyMember': 'debian-material-ready.json',
+                 'profilePlan': 'release/ci/cronet-material-profiles.json',
+                 'supplierJob': 'Supply verified Debian raw inputs'}
+DEBIAN_REF_ENV = ('POLARIS_DEBIAN_RAW_ID', 'POLARIS_DEBIAN_RAW_DIGEST',
+                  'POLARIS_DEBIAN_READY_ID', 'POLARIS_DEBIAN_READY_DIGEST')
+
+
+def debian_policy(scope, role):
+    policy = scope[role].get('debianMaterials')
+    if policy is not None:
+        require(role in ('all', 'linux', 'docker') and policy == DEBIAN_POLICY,
+                'unknown Debian material family or policy')
+        require(all(name in scope[role]['requiredArtifacts'] for name in (DEBIAN_RAW, DEBIAN_READY)),
+                'Debian family lacks its two exact private artifacts')
+        require(scope[role]['payloadRules'][DEBIAN_RAW] == [{'pattern': r'candidate-manifest\.json', 'count': 1}]
+                and scope[role]['payloadRules'][DEBIAN_READY] == [{'pattern': r'debian-material-ready\.json', 'count': 1}],
+                'Debian private member contract changed')
+    return policy
+
+
+def debian_artifact_ref(artifact):
+    return {'id': artifact['id'], 'name': artifact['name'],
+            'digest': artifact['digest'], 'size': artifact['size_in_bytes']}
+
+
+def debian_consumer_artifact(artifact, ready_artifact):
+    require(datetime.fromisoformat(artifact['created_at'].replace('Z', '+00:00'))
+            >= datetime.fromisoformat(ready_artifact['created_at'].replace('Z', '+00:00')),
+            'Debian consumer artifact predates READY')
+
+
+def debian_context(role, run, source, tree, tag_object):
+    require(role in ('all', 'linux', 'docker'), 'not a Debian producer role')
+    require(run['repository']['id'] == RID and run['head_repository']['id'] == RID
+            and run['head_sha'] == source and run['event'] == 'workflow_dispatch'
+            and run['head_branch'] == TAG, 'Debian input run is not this source tag')
+    workflow = release_scope(VERSION)[role]['workflow']
+    require(run['path'] == workflow, 'Debian input workflow mismatch')
+    require(type(run['id']) is int and run['id'] > 0
+            and type(run['run_attempt']) is int and run['run_attempt'] > 0,
+            'Debian run identity is not an exact positive integer')
+    require(isinstance(tree, str) and re.fullmatch(r'[0-9a-f]{40}', tree)
+            and isinstance(tag_object, str) and re.fullmatch(r'[0-9a-f]{40}', tag_object),
+            'Debian source tree/tag object missing')
+    return {'repository': REPO, 'repositoryID': RID, 'sourceCommit': source, 'sourceTree': tree,
+            'tag': TAG, 'tagObject': tag_object, 'workflow': workflow,
+            'runID': run['id'], 'runAttempt': run['run_attempt'], 'role': role}
+
+
+def debian_api_artifact(artifact, context, run):
+    require(type(artifact.get('id')) is int and artifact['id'] > 0
+            and artifact.get('expired') is False
+            and type(artifact.get('size_in_bytes')) is int
+            and 0 < artifact['size_in_bytes'] <= 1075838976
+            and isinstance(artifact.get('digest'), str)
+            and re.fullmatch(r'sha256:[0-9a-f]{64}', artifact['digest']),
+            'invalid bounded Debian API artifact')
+    arun = artifact.get('workflow_run', {})
+    require(arun.get('id') == context['runID'] and arun.get('head_sha') == context['sourceCommit'],
+            'Debian artifact is from another source/run')
+    require(datetime.fromisoformat(artifact['created_at'].replace('Z', '+00:00'))
+            >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')),
+            'Debian artifact predates this attempt')
+
+
+def read_debian_artifacts(artifacts, context, run, supplier_job, budget):
+    """Measure the exact data-only CAS once; preserve the 4 GiB shared scratch cap."""
+    from cronet_material_supply import decode_json, validate_manifest, validate_ready
+    selected = {}
+    for name in (DEBIAN_RAW, DEBIAN_READY):
+        found = [a for a in artifacts if a['name'] == name]
+        require(len(found) == 1, 'missing or duplicate exact Debian artifact: ' + name)
+        selected[name] = found[0]
+        debian_api_artifact(found[0], context, run)
+    require(selected[DEBIAN_RAW]['id'] != selected[DEBIAN_READY]['id'], 'Debian artifacts share an ID')
+    require(datetime.fromisoformat(selected[DEBIAN_RAW]['created_at'].replace('Z', '+00:00'))
+            <= datetime.fromisoformat(selected[DEBIAN_READY]['created_at'].replace('Z', '+00:00')),
+            'Debian READY artifact predates its raw candidate')
+    measured = {}
+    with artifact_archive(selected[DEBIAN_RAW], budget) as (archive, members):
+        regular = [m for m in members if not m.is_dir()]
+        require(1 <= len(regular) <= 513 and all(
+            m.filename == 'objects/' and m.file_size == 0 for m in members if m.is_dir()),
+            'invalid Debian CAS member/directory count')
+        require(sum(m.file_size for m in regular) <= 1073741824 + 1048576, 'Debian CAS exceeds union budget')
+        manifest_members = [m for m in regular if m.filename == DEBIAN_MANIFEST]
+        require(len(manifest_members) == 1, 'Debian CAS manifest member missing/duplicate')
+        manifest_measure, manifest = measure_member(archive, manifest_members[0], json_limit=1048576,
+                                                     json_decoder=decode_json)
+        measured[DEBIAN_MANIFEST] = manifest_measure
+        for member in regular:
+            if member.filename == DEBIAN_MANIFEST:
+                continue
+            require(re.fullmatch(r'objects/[0-9a-f]{64}', member.filename)
+                    and 0 < member.file_size <= 67108864, 'unlisted/non-bounded Debian CAS member')
+            fact, _ = measure_member(archive, member)
+            measured[member.filename] = fact
+        validate_manifest(manifest, context=context, measurements=measured)
+    raw_files = {name: dict(fact, releaseName=None, publicationDisposition='private-debian-raw')
+                 for name, fact in measured.items()}
+    ready_artifact = selected[DEBIAN_READY]
+    require(ready_artifact['size_in_bytes'] <= 1048576 + 65536, 'oversized Debian READY ZIP')
+    with artifact_archive(ready_artifact, budget) as (archive, members):
+        require(len(members) == 1 and not members[0].is_dir()
+                and members[0].filename == DEBIAN_POLICY['readyMember'], 'unexpected Debian READY members')
+        ready_fact, ready = measure_member(archive, members[0], json_limit=1048576, json_decoder=decode_json)
+        binding = validate_ready(ready, context=context, manifest=manifest,
+                                 raw_artifact=debian_artifact_ref(selected[DEBIAN_RAW]),
+                                 supplier_job=supplier_job)
+    require(datetime.fromisoformat(ready_artifact['created_at'].replace('Z', '+00:00'))
+            <= datetime.fromisoformat(supplier_job['completed_at'].replace('Z', '+00:00')),
+            'Debian READY artifact postdates its completed supplier')
+    binding = dict(binding, readyArtifact=debian_artifact_ref(ready_artifact))
+    entries = {
+        DEBIAN_RAW: {'id': selected[DEBIAN_RAW]['id'],
+                     'archiveBytes': selected[DEBIAN_RAW]['size_in_bytes'],
+                     'archiveSha256': selected[DEBIAN_RAW]['digest'], 'files': raw_files},
+        DEBIAN_READY: {'id': ready_artifact['id'], 'archiveBytes': ready_artifact['size_in_bytes'],
+                       'archiveSha256': ready_artifact['digest'],
+                       'files': {DEBIAN_POLICY['readyMember']: dict(ready_fact, releaseName=None,
+                                     publicationDisposition='private-debian-ready')}}}
+    return binding, entries, manifest, ready_artifact
+
+
+def debian_supplier_job(context, jobs=None):
+    rows = pages(f'repos/{REPO}/actions/runs/{context["runID"]}/attempts/{context["runAttempt"]}/jobs', 'jobs', maximum=1000) if jobs is None else jobs
+    jobs = [job for job in rows if job['name'] == DEBIAN_POLICY['supplierJob']]
+    require(len(jobs) == 1, 'missing/ambiguous Debian supplier job')
+    job = jobs[0]
+    require(job['status'] == 'completed' and job['conclusion'] == 'success'
+            and job['head_sha'] == context['sourceCommit'] and job['run_id'] == context['runID']
+            and job['run_attempt'] == context['runAttempt'], 'Debian supplier did not succeed in this attempt')
+    return job
+
+
+def producer_debian_materials(role, source, tree, *, env=None):
+    """Same-run receipts/index: supplier success is enough; never await our own run."""
+    env = os.environ if env is None else env
+    required = env.get('POLARIS_DEBIAN_REQUIRED', 'false')
+    require(required in ('true', 'false'), 'invalid Debian required mode')
+    refs = [env.get(name, '') for name in DEBIAN_REF_ENV]
+    if required == 'false':
+        require(not any(refs), 'optional Debian mode carries unexpected references')
+        return None
+    require(all(refs), 'required Debian material reference missing')
+    require(role in ('all', 'linux', 'docker') and env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
+            and env.get('GITHUB_REF') == 'refs/tags/' + TAG and env.get('GITHUB_SHA') == source
+            and env.get('GITHUB_WORKFLOW_SHA') == source, 'required Debian producer context mismatch')
+    scope = release_scope(VERSION)
+    require(debian_policy(scope, role) is not None, 'required Debian producer has no source-owned policy')
+    require(env.get('GITHUB_WORKFLOW_REF') == f'{REPO}/{scope[role]["workflow"]}@refs/tags/{TAG}',
+            'required Debian producer workflow ref differs')
+    require(re.fullmatch(r'[1-9][0-9]*', env.get('GITHUB_RUN_ID', ''))
+            and re.fullmatch(r'[1-9][0-9]*', env.get('GITHUB_RUN_ATTEMPT', '')), 'invalid Debian producer run/attempt')
+    run = api(f'repos/{REPO}/actions/runs/{env["GITHUB_RUN_ID"]}')
+    require(run['id'] == int(env['GITHUB_RUN_ID']) and run['run_attempt'] == int(env['GITHUB_RUN_ATTEMPT'])
+            and run['status'] in ('queued', 'in_progress', 'completed')
+            and (run['status'] != 'completed' or run['conclusion'] == 'success'),
+            'Debian producer run/attempt changed or failed')
+    tag_object = tag_identity(source)
+    context = debian_context(role, run, source, tree, tag_object)
+    artifacts = []
+    for name, ident, digest in ((DEBIAN_RAW, refs[0], refs[1]), (DEBIAN_READY, refs[2], refs[3])):
+        require(re.fullmatch(r'[1-9][0-9]*', ident) and re.fullmatch(r'(?:sha256:)?[0-9a-f]{64}', digest),
+                'invalid exact Debian output reference')
+        artifact = api(f'repos/{REPO}/actions/artifacts/{ident}')
+        expected_digest = digest if digest.startswith('sha256:') else 'sha256:' + digest
+        require(artifact['id'] == int(ident) and artifact['name'] == name
+                and artifact['digest'] == expected_digest, 'Debian job output/API mismatch')
+        artifacts.append(artifact)
+    with tempfile.TemporaryDirectory(prefix='polaris-debian-receipt-') as directory:
+        binding, _, _, _ = read_debian_artifacts(artifacts, context, run, debian_supplier_job(context),
+                                           ScratchBudget(Path(directory)))
+    require(tag_identity(source) == tag_object, 'Debian producer tag moved during verification')
+    return binding
+
+
+def validate_debian_use(files, candidates, artifact, binding, *, jobs=None,
+                        canonical_manifest=None, artifact_metadata=None, ready_metadata=None):
+    from cronet_material_supply import expected_use, validate_use_ref, LOCAL_USE, BINDING_KEYS
+    if binding is not None:
+        require(type(binding) is dict and set(binding) == BINDING_KEYS, 'complete Debian material binding')
+    expected = expected_use(binding['context']['role'], artifact) if binding is not None else None
+    use = files.get(DEBIAN_USE, {}).get('debianRawUse')
+    require((use is not None) == (expected is not None), 'missing/unexpected Debian consumer sidecar')
+    if expected is None:
+        require(all('debianMaterialUse' not in item for item in candidates), 'unexpected candidate Debian useRef')
+        return False
+    ref = use.get('consumerJob') if isinstance(use, dict) else None
+    require(isinstance(ref, dict) and type(ref.get('id')) is int and ref['id'] > 0
+            and isinstance(jobs, list), 'Debian use lacks actual consumer job identity')
+    consumers = [job for job in jobs if job['id'] == ref['id']]
+    require(len(consumers) == 1, 'missing/ambiguous actual Debian consumer job')
+    validate_use_ref(use, binding=binding, ready_artifact=binding['readyArtifact'],
+                     artifact_name=artifact, consumer_job=consumers[0], canonical_manifest=canonical_manifest)
+    if use['schema'] != LOCAL_USE:
+        if artifact_metadata is not None:
+            require(type(ready_metadata) is dict
+                    and {'id', 'name', 'digest', 'size_in_bytes', 'created_at'} <= set(ready_metadata)
+                    and type(ready_metadata['created_at']) is str
+                    and same_identity(debian_artifact_ref(ready_metadata), binding['readyArtifact']),
+                    'legacy authenticated READY metadata missing or mismatched')
+            debian_consumer_artifact(artifact_metadata, ready_metadata)
+        supplier = debian_supplier_job(binding['context'], jobs=jobs)
+        require(supplier['id'] == binding['supplierJob']['id']
+                and datetime.fromisoformat(consumers[0]['started_at'].replace('Z', '+00:00'))
+                    >= datetime.fromisoformat(supplier['completed_at'].replace('Z', '+00:00')),
+                'Debian consumer started before its actual supplier completed')
+    if binding['context']['role'] == 'all':
+        require(len(candidates) == 1, 'All Debian consumer needs its existing exact candidate receipt')
+        record = candidates[0]
+        expected_ref = dict(member=DEBIAN_USE, bytes=files[DEBIAN_USE]['bytes'], sha256=files[DEBIAN_USE]['sha256'])
+        require(record.get('debianMaterialUse') == expected_ref, 'candidate Debian useRef mismatch')
+        listed = [f for f in record['files'] if f['path'] == DEBIAN_USE]
+        require(listed == [dict(path=DEBIAN_USE, bytes=expected_ref['bytes'], sha256=expected_ref['sha256'])],
+                'candidate did not measure its Debian use sidecar')
+        require(record['job'] == ref['key'],
+                'candidate Debian consumer job mismatch')
+    return True
+
+
 def release_scope(version):
     # Only the current source-owned release contract selects a version. Escape
     # it as regex data; never guess it from artifact names or accept old mixes.
@@ -475,8 +732,9 @@ def verify_artifact_names(names, required, role):
     require(set(names) == set(required), f'{role}: incomplete or unexpected artifact scope: missing={set(required)-set(names)}, extra={set(names)-set(required)}')
 
 
-def verify_payloads(files, rules, artifact):
-    payloads = {p for p in files if not PurePosixPath(p).name.startswith(('polaris-candidate-manifest-', 'native-row-'))}
+def verify_payloads(files, rules, artifact, *, debian_use=False):
+    require((DEBIAN_USE in files) == debian_use, 'missing/unexpected exact private Debian use member')
+    payloads = {p for p in files if p != DEBIAN_USE and not PurePosixPath(p).name.startswith(('polaris-candidate-manifest-', 'native-row-'))}
     if artifact.startswith('smoke-'):
         require(not payloads and len(files) == 1, 'smoke evidence scope mismatch')
         return
@@ -806,7 +1064,23 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                     run['path'], [a for a in artifacts if a['name'].startswith('oci-')], source_root, ROOT)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
+        binding = None
+        canonical_manifest = None
+        ready_metadata = None
+        private_entries = {}
+        material_jobs = []
+        if debian_policy(scope, role) is not None:
+            context = debian_context(role, run, source, source_tree, tag_object)
+            require(context['runID'] == int(rid), 'Debian input run ID mismatch')
+            material_jobs = pages(f'repos/{REPO}/actions/runs/{context["runID"]}/attempts/{context["runAttempt"]}/jobs',
+                                  'jobs', maximum=1000)
+            binding, private_entries, canonical_manifest, ready_metadata = read_debian_artifacts(
+                artifacts, context, run, debian_supplier_job(context, jobs=material_jobs), budget)
+            entry['distributionMaterials'] = {'debianRaw': binding}
         for a in artifacts:
+            if a['name'] in private_entries:
+                entry['artifacts'][a['name']] = private_entries[a['name']]
+                continue
             is_peer = peer_policy is not None and a['name'] == peer_policy['selection']['artifact']['name']
             if is_peer:
                 peer_evidence.check_api(peer_policy, role, run, a)
@@ -816,6 +1090,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
             require(arun.get('id') == int(rid) and arun.get('head_sha') == source, 'artifact source mismatch')
             files = {}
             client_sources = []
+            candidate_records = []
             with artifact_archive(a, budget) as (archive, members):
                 if is_peer:
                     peer_evidence.members(peer_policy, members)
@@ -828,14 +1103,14 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                     name = PurePosixPath(relative).name
                     public_name, disposition = publication(role, a['name'], relative, source)
                     candidate = name.startswith('polaris-candidate-manifest-')
-                    evidence = is_peer or candidate or (a['name'], relative) in {
+                    evidence = is_peer or candidate or relative == DEBIAN_USE or (a['name'], relative) in {
                         ('publisher-run-receipt', 'publisher-run-receipt.json'),
                         ('binary-native-index', 'polaris-upstream-native-assets.json')}
                     limit = (3 * 1024**2 if candidate and client_platform(a['name']) else JSON_LIMIT) if evidence else None
-                    if is_peer:
+                    if is_peer or relative == DEBIAN_USE:
                         limit = peer_evidence.JSON_LIMIT
-                    decoder = peer_evidence.strict_json if is_peer else json.loads
-                    retained = materialize or a['name'] == 'binary-native-index'
+                    decoder = peer_evidence.strict_json if is_peer or relative == DEBIAN_USE else json.loads
+                    retained = (materialize and relative != DEBIAN_USE) or a['name'] == 'binary-native-index'
                     if retained:
                         target = work / role / a['name'] / relative
                         target.parent.mkdir(parents=True, exist_ok=True)
@@ -865,7 +1140,10 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                         files[relative]['controlledPeerEvidence'] = peer_evidence.validate_receipt(peer_policy, measured_file, provenance)
                     if (a['name'], relative) == ('publisher-run-receipt', 'publisher-run-receipt.json'):
                         receipt = provenance
+                    if relative == DEBIAN_USE:
+                        files[relative]['debianRawUse'] = provenance
                     if candidate:
+                        candidate_records.append(provenance)
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
                         measured = validate_client_source(provenance, a['name'], role, source)
                         if measured is not None:
@@ -880,11 +1158,17 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                                 files[relative]['androidMaterialReuse'] = validate_android_material_reuse(provenance.get('androidRuntimeMaterials'), configuration, measured)
             require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
-            verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
+            has_debian_use = validate_debian_use(files, candidate_records, a['name'], binding, jobs=material_jobs,
+                                                canonical_manifest=canonical_manifest, artifact_metadata=a,
+                                                ready_metadata=ready_metadata)
+            verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'], debian_use=has_debian_use)
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveBytes': a['size_in_bytes'], 'archiveSha256': a['digest'], 'files': files}
-        require(receipt == {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
+        expected_receipt = {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
                             'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role,
-                            'publishStores': False, 'publishRegistry': False}, 'explicit All/version/run-attempt receipt mismatch')
+                            'publishStores': False, 'publishRegistry': False}
+        if binding is not None:
+            expected_receipt['distributionMaterials'] = {'debianRaw': binding}
+        require(receipt == expected_receipt, 'producer scope/input receipt missing or inconsistent')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
         if oci_policy is not None:
@@ -904,7 +1188,12 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                 raise
         if role in ('all', 'signed'):
             index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
-            validate_final_index(index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
+            args = (index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
+            debian_raw = entry.get('distributionMaterials', {}).get('debianRaw')
+            if debian_raw is None:
+                validate_final_index(*args)
+            else:
+                validate_final_index(*args, debian_raw=debian_raw)
             if role == 'all' and peer_policy is not None:
                 require(peer_receipt is not None, 'required controlled peer receipt missing')
                 peer_evidence.cross_bind(peer_policy, index, sha(work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json'), entry)
@@ -946,6 +1235,8 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
     for role, run in actual['runs'].items():
         expected = config['runs'][role]
         require(run['id'] == expected['id'] and run['attempt'] == expected['attempt'], 'run/attempt differs from reviewed contract')
+        require(run.get('distributionMaterials') == expected.get('distributionMaterials'),
+                'reviewed role Debian material binding differs')
         require(set(run['artifacts']) == set(expected['artifacts']), 'artifact scope differs')
         for artifact, a in run['artifacts'].items():
             contract = expected['artifacts'][artifact]
@@ -960,6 +1251,7 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 require(f.get('androidRuntimeMaterials') == review.get('androidRuntimeMaterials'), 'reviewed Android runtime evidence differs')
                 require(f.get('androidMaterialReuse') == review.get('androidMaterialReuse'), 'reviewed Android material reuse evidence differs')
                 require(f.get('controlledPeerEvidence') == review.get('controlledPeerEvidence'), 'reviewed controlled peer evidence differs')
+                require(f.get('debianRawUse') == review.get('debianRawUse'), 'reviewed Debian use differs')
                 name, disposition = publication(role, artifact, relative, actual['sourceCommit'])
                 require(review['releaseName'] == f['releaseName'] == name, 'public filename differs from source-owned mapping')
                 require(review.get('publicationDisposition') == f.get('publicationDisposition') == disposition,

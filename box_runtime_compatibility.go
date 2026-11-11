@@ -18,6 +18,10 @@ import (
 // Unsupported custom/structural variants are explicit boundaries, not an implicit
 // implementation queue. No fallback invokes destructive reload.
 func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, options option.Options) ([]RuntimeImpact, []RuntimePlanError) {
+	return runtimeConfigCompatibilityWithClientImpactPolicy(ctx, previous, next, options, RuntimeClientImpactPolicyLegacy, nil)
+}
+
+func runtimeConfigCompatibilityWithClientImpactPolicy(ctx context.Context, previous, next []byte, options option.Options, policy RuntimeClientImpactPolicyVersion, factory log.Factory) ([]RuntimeImpact, []RuntimePlanError) {
 	var before, after map[string]stdjson.RawMessage
 	if err := stdjson.Unmarshal(previous, &before); err != nil {
 		return nil, []RuntimePlanError{{Code: "INVALID_ACTIVE_SNAPSHOT"}}
@@ -25,7 +29,8 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 	if err := stdjson.Unmarshal(next, &after); err != nil {
 		return nil, []RuntimePlanError{{Code: "INVALID_CANDIDATE_SNAPSHOT"}}
 	}
-	if impacts, problems := runtimeDailyStructuralChanges(before, after); len(problems) != 0 {
+	logToggleEligible := runtimeClientLogToggleEligible(ctx, before["log"], after["log"], policy, factory)
+	if impacts, problems := runtimeDailyStructuralChangesWithClientImpactPolicy(before, after, policy, logToggleEligible); len(problems) != 0 {
 		return impacts, problems
 	}
 	var problems []RuntimePlanError
@@ -79,12 +84,17 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		}
 	}
 	problems = append(problems, runtimeResourceEligibility(ctx, options)...)
+	if policy == RuntimeClientImpactPolicyExplicit {
+		problems = append(problems, runtimeClientCanaryProblems(ctx, options)...)
+	}
 
 	for i, inbound := range options.Inbounds {
 		switch inbound.Type {
 		case C.TypeSOCKS, C.TypeHTTP, C.TypeMixed, C.TypeTun:
 		default:
-			pending(fmt.Sprintf("inbounds[%d].lifecycle", i))
+			if policy != RuntimeClientImpactPolicyExplicit || !runtimeClientCanaryInbound(inbound) {
+				pending(fmt.Sprintf("inbounds[%d].lifecycle", i))
+			}
 		}
 		if httpOptions, ok := inbound.Options.(*option.HTTPInboundOptions); ok {
 			for _, version := range httpOptions.Versions() {
@@ -177,7 +187,7 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 	_ = stdjson.Unmarshal(before["route"], &oldRoute)
 	_ = stdjson.Unmarshal(after["route"], &newRoute)
 	for _, key := range []string{"find_process", "find_neighbor", "dhcp_lease_files", "auto_detect_interface", "override_android_vpn"} {
-		if !bytes.Equal(oldRoute[key], newRoute[key]) {
+		if !bytes.Equal(oldRoute[key], newRoute[key]) && !(policy == RuntimeClientImpactPolicyExplicit && (key == "find_process" || key == "find_neighbor" || key == "dhcp_lease_files")) {
 			pending("route." + key)
 		}
 	}
@@ -186,14 +196,32 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 	var impacts []RuntimeImpact
 	for _, path := range changed {
 		impact := RuntimeImpact{Path: path, UpdateClass: "LOCAL_REPLACE", Reason: "publish one validated runtime graph", AffectedSessionClasses: []string{"new admissions"}}
+		if path == "log" && logToggleEligible {
+			impact.UpdateClass = "IN_PLACE"
+			impact.Reason = "switch the stable logger emission generation; retained loggers and subscriptions keep their owner"
+			impact.AffectedSessionClasses = []string{"log emissions"}
+		}
+		if path == "services" && policy == RuntimeClientImpactPolicyExplicit {
+			impact.ReconnectRequired = true
+			impact.AffectedSessionClasses = []string{"API streams on the replaced ingress", "api_generation_handoff_v1"}
+			if runtimeClientDashboardChanges(before["services"], after["services"], policy) {
+				impact.AffectedSessionClasses = append(impact.AffectedSessionClasses, "dashboard updater")
+			}
+		}
 		if path == "services" {
 			impact.Reason = "prepare a loopback API listener while retaining the original transaction recovery channel; authenticated channel handoff is separate from persistence"
-			impact.AffectedSessionClasses = []string{"API streams on the replaced ingress"}
+			if policy == RuntimeClientImpactPolicyLegacy {
+				impact.AffectedSessionClasses = []string{"API streams on the replaced ingress"}
+			}
 		}
 		if path == "inbounds" {
 			impact.ReconnectRequired = true
 			impact.Reason = "local listener handoff may require exclusive socket rebind; compensation can require reconnect"
 			impact.AffectedSessionClasses = []string{"changed ingress admissions", "affected UDP associations"}
+			if policy == RuntimeClientImpactPolicyExplicit && runtimeClientTunInventoryChanged(before["inbounds"], after["inbounds"]) {
+				impact.Reason = "replace the TUN device or original provider FD/settings; compensation cannot restore reset sessions"
+				impact.AffectedSessionClasses = []string{"existing TUN TCP flows", "existing TUN UDP associations", "changed ingress admissions"}
+			}
 		}
 		if path == "http_clients" || path == "route" {
 			impact.Reason = "replace captured HTTP, DNS and route consumers; admitted requests and bodies retain their original resource closure"
@@ -211,4 +239,43 @@ func runtimeConfigCompatibility(ctx context.Context, previous, next []byte, opti
 		impacts = append(impacts, impact)
 	}
 	return impacts, problems
+}
+
+// Only disabled/enable toggles have a new structural log adapter. The concrete
+// stable factory checks both sides against its original output/format custody.
+func runtimeClientLogToggleEligible(ctx context.Context, before, after stdjson.RawMessage, policy RuntimeClientImpactPolicyVersion, factory log.Factory) bool {
+	if policy != RuntimeClientImpactPolicyExplicit || factory == nil {
+		return false
+	}
+	var oldLog, nextLog option.LogOptions
+	if len(before) != 0 && stdjson.Unmarshal(before, &oldLog) != nil {
+		return false
+	}
+	if len(after) != 0 && stdjson.Unmarshal(after, &nextLog) != nil {
+		return false
+	}
+	// DisableColor is deliberately json:"-". Restore the same immutable
+	// explicit host override on both decoded sides before factory eligibility.
+	oldOptions, nextOptions := option.Options{Log: &oldLog}, option.Options{Log: &nextLog}
+	runtimeResolveLogOverrides(ctx, &oldOptions)
+	runtimeResolveLogOverrides(ctx, &nextOptions)
+	return oldLog.Disabled != nextLog.Disabled && log.RuntimeOptionsEligible(factory, *oldOptions.Log) && log.RuntimeOptionsEligible(factory, *nextOptions.Log)
+}
+
+func runtimeClientTunInventoryChanged(before, after stdjson.RawMessage) bool {
+	collect := func(raw stdjson.RawMessage) []byte {
+		var items []map[string]stdjson.RawMessage
+		if stdjson.Unmarshal(raw, &items) != nil {
+			return nil
+		}
+		var selected []map[string]stdjson.RawMessage
+		for _, item := range items {
+			if string(item["type"]) == `"tun"` {
+				selected = append(selected, item)
+			}
+		}
+		encoded, _ := stdjson.Marshal(selected)
+		return encoded
+	}
+	return !bytes.Equal(collect(before), collect(after))
 }

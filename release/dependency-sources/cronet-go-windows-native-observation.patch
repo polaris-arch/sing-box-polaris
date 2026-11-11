@@ -1,0 +1,400 @@
+--- a/internal/cronet/loader_observation.go
++++ b/internal/cronet/loader_observation.go
+@@ -1,2 +0,0 @@
+-//go:build with_purego
+-
+@@ -8,3 +6,5 @@
+-	Path   string
+-	Bytes  int64
+-	SHA256 string
++	Path      string
++	Bytes     int64
++	SHA256    string
++	Selection string
++	Windows   *WindowsLibraryObservation
+@@ -11,0 +12,16 @@
++
++// WindowsLibraryObservation binds a real loaded image mapping to the object
++// retained across LoadLibraryEx. It carries no execution authority.
++type WindowsLibraryObservation struct {
++	VolumeSerial       string `json:"volumeSerial"`
++	FileID             string `json:"fileId"`
++	NativePath         string `json:"nativePath"`
++	ModulePath         string `json:"modulePath"`
++	MappedPath         string `json:"mappedPath"`
++	ModuleBase         string `json:"moduleBase"`
++	MemoryType         uint32 `json:"memoryType"`
++	LoadFlags          uint32 `json:"loadFlags"`
++	ParentFileID       string `json:"parentFileId"`
++	ParentVolumeSerial string `json:"parentVolumeSerial"`
++	ShareReadOnly      bool   `json:"shareReadOnly"`
++}
+--- a/internal/cronet/loader_observation_windows.go
++++ b/internal/cronet/loader_observation_windows.go
+@@ -5,0 +6,3 @@
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
+@@ -6,0 +10 @@
++	"io"
+@@ -7,0 +12,5 @@
++	"path/filepath"
++	"strings"
++	"unsafe"
++
++	"golang.org/x/sys/windows"
+@@ -15 +24,194 @@
+-func ObserveSelectedLibrary(string) (LibraryObservation, bool, error) {
++type windowsFileID struct {
++	Volume uint64
++	ID     [16]byte
++}
++
++const windowsImageMemoryType uint32 = 0x01000000 // MEM_IMAGE from the actual mapping query
++type windowsLibraryCapture struct {
++	file   *os.File
++	parent windows.Handle
++	path   string
++	sha256 string
++}
++
++func (capture *windowsLibraryCapture) close() error {
++	var failures []error
++	if capture.file != nil {
++		failures = append(failures, capture.file.Close())
++	}
++	if capture.parent != 0 {
++		failures = append(failures, windows.CloseHandle(capture.parent))
++	}
++	return errors.Join(failures...)
++}
++
++func windowsObjectID(handle windows.Handle) (windowsFileID, error) {
++	var result windowsFileID
++	err := windows.GetFileInformationByHandleEx(handle, windows.FileIdInfo, (*byte)(unsafe.Pointer(&result)), uint32(unsafe.Sizeof(result)))
++	return result, err
++}
++
++func windowsNativePath(handle windows.Handle) (string, error) {
++	buffer := make([]uint16, 32768)
++	n, err := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 2)
++	if err != nil {
++		return "", err
++	}
++	if n == 0 || n >= uint32(len(buffer)) {
++		return "", errors.New("cronet: native object name is truncated")
++	}
++	return windows.UTF16ToString(buffer[:n]), nil
++}
++
++func captureWindowsLibrary(path string) (_ *windowsLibraryCapture, failure error) {
++	parentPath, err := windows.UTF16PtrFromString(filepath.Dir(path))
++	if err != nil {
++		return nil, err
++	}
++	parent, err := windows.CreateFile(parentPath, windows.FILE_READ_ATTRIBUTES, windows.FILE_SHARE_READ, nil,
++		windows.OPEN_EXISTING, windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
++	if err != nil {
++		return nil, fmt.Errorf("cronet: hold selected parent: %w", err)
++	}
++	capture := &windowsLibraryCapture{parent: parent, path: path}
++	defer func() {
++		if failure != nil {
++			failure = errors.Join(failure, capture.close())
++		}
++	}()
++	var parentInfo windows.ByHandleFileInformation
++	if err = windows.GetFileInformationByHandle(parent, &parentInfo); err != nil {
++		return nil, err
++	}
++	if parentInfo.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
++		return nil, errors.New("cronet: selected parent is a reparse point")
++	}
++	name, err := windows.UTF16PtrFromString(path)
++	if err != nil {
++		return nil, err
++	}
++	handle, err := windows.CreateFile(name, windows.GENERIC_READ, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING,
++		windows.FILE_FLAG_OPEN_REPARSE_POINT|windows.FILE_FLAG_SEQUENTIAL_SCAN, 0)
++	if err != nil {
++		return nil, fmt.Errorf("cronet: hold selected object: %w", err)
++	}
++	capture.file = os.NewFile(uintptr(handle), path)
++	var info windows.ByHandleFileInformation
++	if err = windows.GetFileInformationByHandle(handle, &info); err != nil {
++		return nil, err
++	}
++	if info.FileAttributes&(windows.FILE_ATTRIBUTE_REPARSE_POINT|windows.FILE_ATTRIBUTE_DIRECTORY) != 0 || info.NumberOfLinks != 1 {
++		return nil, errors.New("cronet: selected DLL must be a single-link non-reparse file")
++	}
++	var existing windows.Handle
++	err = windows.GetModuleHandleEx(windows.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, name, &existing)
++	if err == nil {
++		return nil, errors.New("cronet: selected path was already mapped before object capture")
++	}
++	if !errors.Is(err, windows.ERROR_MOD_NOT_FOUND) {
++		return nil, fmt.Errorf("cronet: query preexisting selected module: %w", err)
++	}
++	digest := sha256.New()
++	if _, err = io.Copy(digest, capture.file); err != nil {
++		return nil, err
++	}
++	capture.sha256 = hex.EncodeToString(digest.Sum(nil))
++	return capture, nil
++}
++
++func observeWindowsLibrary(module uintptr, capture *windowsLibraryCapture) (LibraryObservation, error) {
++	if module == 0 || capture == nil || capture.file == nil || capture.parent == 0 {
++		return LibraryObservation{}, errors.New("cronet: selected native object is not retained")
++	}
++	handle := windows.Handle(capture.file.Fd())
++	id, err := windowsObjectID(handle)
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	parentID, err := windowsObjectID(capture.parent)
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	native, err := windowsNativePath(handle)
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	parentNative, err := windowsNativePath(capture.parent)
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	if !strings.EqualFold(filepath.Dir(native), parentNative) {
++		return LibraryObservation{}, errors.New("cronet: selected object left its held parent")
++	}
++	moduleName := make([]uint16, 32768)
++	n, err := windows.GetModuleFileName(windows.Handle(module), &moduleName[0], uint32(len(moduleName)))
++	if err != nil || n == 0 || n >= uint32(len(moduleName)) {
++		return LibraryObservation{}, fmt.Errorf("cronet: actual selected module name unavailable: %w", err)
++	}
++	modulePath := windows.UTF16ToString(moduleName[:n])
++	mappedName := make([]uint16, 32768)
++	query := windows.NewLazySystemDLL("kernel32.dll").NewProc("K32GetMappedFileNameW")
++	count, _, queryErr := query.Call(uintptr(windows.CurrentProcess()), module, uintptr(unsafe.Pointer(&mappedName[0])), uintptr(len(mappedName)))
++	if count == 0 || count >= uintptr(len(mappedName)) {
++		return LibraryObservation{}, fmt.Errorf("cronet: actual image mapping unavailable: %w", queryErr)
++	}
++	mappedPath := windows.UTF16ToString(mappedName[:count])
++	var memory windows.MemoryBasicInformation
++	if err = windows.VirtualQueryEx(windows.CurrentProcess(), module, &memory, unsafe.Sizeof(memory)); err != nil {
++		return LibraryObservation{}, err
++	}
++	if memory.Type != windowsImageMemoryType || memory.AllocationBase != module || !strings.EqualFold(mappedPath, native) || !sameWindowsLibraryPath(modulePath, capture.path) {
++		return LibraryObservation{}, errors.New("cronet: actual loaded image differs from the retained selected object")
++	}
++	if _, err = capture.file.Seek(0, io.SeekStart); err != nil {
++		return LibraryObservation{}, err
++	}
++	digest := sha256.New()
++	size, err := io.Copy(digest, capture.file)
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	stat, err := capture.file.Stat()
++	if err != nil {
++		return LibraryObservation{}, err
++	}
++	if !stat.Mode().IsRegular() || size != stat.Size() || size <= 0 {
++		return LibraryObservation{}, errors.New("cronet: selected object changed while observed")
++	}
++	if hex.EncodeToString(digest.Sum(nil)) != capture.sha256 {
++		return LibraryObservation{}, errors.New("cronet: retained selected object changed across native image load")
++	}
++	return LibraryObservation{Path: modulePath, Bytes: size, SHA256: hex.EncodeToString(digest.Sum(nil)), Selection: "captured-windows-module-v1", Windows: &WindowsLibraryObservation{
++		VolumeSerial: fmt.Sprintf("%016x", id.Volume), FileID: hex.EncodeToString(id.ID[:]), NativePath: native, ModulePath: modulePath, MappedPath: mappedPath,
++		ModuleBase: fmt.Sprintf("%016x", module), MemoryType: memory.Type, LoadFlags: uint32(cronetLibrarySearchFlags), ParentFileID: hex.EncodeToString(parentID.ID[:]),
++		ParentVolumeSerial: fmt.Sprintf("%016x", parentID.Volume), ShareReadOnly: true,
++	}}, nil
++}
++
++func ObserveSelectedLibrary(path string) (LibraryObservation, bool, error) {
++	return observeSelectedWindowsLibrary(path, "")
++}
++
++// The diagnostic's expected digest is checked on the retained object before a
++// first native load. Observing an actual module must not execute mismatched DLL
++// bytes merely to discover that a user's verification request was invalid.
++func ObserveSelectedLibraryVerified(path, expected string) (LibraryObservation, bool, error) {
++	decoded, err := hex.DecodeString(expected)
++	if err != nil || len(decoded) != sha256.Size {
++		return LibraryObservation{}, true, errors.New("cronet: verified module requires a SHA-256 digest")
++	}
++	return observeSelectedWindowsLibrary(path, hex.EncodeToString(decoded))
++}
++
++func captureWindowsLibraryVerified(name, expected string) (*windowsLibraryCapture, error) {
++	capture, err := captureWindowsLibrary(name)
++	if err != nil {
++		return nil, err
++	}
++	if expected != "" && capture.sha256 != expected {
++		return nil, errors.Join(errors.New("cronet: selected retained DLL digest differs before load"), capture.close())
++	}
++	return capture, nil
++}
++
++func observeSelectedWindowsLibrary(path, expected string) (LibraryObservation, bool, error) {
+@@ -19,2 +221,19 @@
+-	return LibraryObservation{}, false, nil
+-}
++	_, explicit := os.LookupEnv(cronetLibraryPathEnv)
++	if !explicit {
++		return LibraryObservation{}, false, nil
++	}
++	ops := nativeWindowsLibraryOps()
++	ops.capture = func(name string) (*windowsLibraryCapture, error) {
++		return captureWindowsLibraryVerified(name, expected)
++	}
++	if err := processWindowsLibrary.load(path, ops); err != nil {
++		return LibraryObservation{}, true, err
++	}
++	processWindowsLibrary.observeMu.Lock()
++	defer processWindowsLibrary.observeMu.Unlock()
++	observed, err := observeWindowsLibrary(processWindowsLibrary.handle, processWindowsLibrary.capture)
++	if err == nil && expected != "" && observed.SHA256 != expected {
++		return LibraryObservation{}, true, errors.New("cronet: selected retained DLL digest differs after load")
++	}
++	return observed, true, err
++}
+--- a/internal/cronet/loader_windows.go
++++ b/internal/cronet/loader_windows.go
+@@ -27,5 +27,7 @@
+-	once     sync.Once
+-	err      error
+-	handle   uintptr
+-	path     string
+-	explicit bool
++	once      sync.Once
++	err       error
++	handle    uintptr
++	path      string
++	explicit  bool
++	capture   *windowsLibraryCapture
++	observeMu sync.Mutex
+@@ -39,0 +42,2 @@
++	capture   func(string) (*windowsLibraryCapture, error)
++	observe   func(uintptr, *windowsLibraryCapture) (LibraryObservation, error)
+@@ -43 +47,5 @@
+-	return processWindowsLibrary.load(path, windowsLibraryOps{
++	return processWindowsLibrary.load(path, nativeWindowsLibraryOps())
++}
++
++func nativeWindowsLibraryOps() windowsLibraryOps {
++	return windowsLibraryOps{
+@@ -49 +57,3 @@
+-	})
++		capture:   captureWindowsLibrary,
++		observe:   observeWindowsLibrary,
++	}
+@@ -102,0 +113 @@
++	var capture *windowsLibraryCapture
+@@ -110,0 +122,3 @@
++		}
++		if capture != nil && loader.capture == nil {
++			loader.err = errors.Join(loader.err, capture.close())
+@@ -118,0 +133,11 @@
++	if explicit {
++		if ops.capture == nil || ops.observe == nil {
++			loader.err = errors.New("cronet: explicit Windows object observation unavailable")
++			return
++		}
++		capture, err = ops.capture(path)
++		if err != nil {
++			loader.err = err
++			return
++		}
++	}
+@@ -127,0 +153,6 @@
++	if explicit {
++		if _, err = ops.observe(handle, capture); err != nil {
++			loader.err = err
++			return
++		}
++	}
+@@ -134,0 +166 @@
++	loader.capture = capture
+--- a/internal/cronet/loader_windows_test.go
++++ b/internal/cronet/loader_windows_test.go
+@@ -33,0 +34 @@
++	observeErr  error
+@@ -59,0 +61,53 @@
++		capture: func(path string) (*windowsLibraryCapture, error) { return &windowsLibraryCapture{path: path}, nil },
++		observe: func(handle uintptr, capture *windowsLibraryCapture) (LibraryObservation, error) {
++			if probe.observeErr != nil {
++				return LibraryObservation{}, probe.observeErr
++			}
++			if handle != probe.handle || capture == nil {
++				return LibraryObservation{}, errors.New("test module/capture mismatch")
++			}
++			return LibraryObservation{Path: capture.path}, nil
++		},
++	}
++}
++
++func TestWindowsLibraryExplicitObservationRejectsUnprovenModule(t *testing.T) {
++	path := windowsLibraryFixture(t, "libcronet.dll")
++	for _, mode := range []string{"missing-capture", "missing-observer", "native-observation"} {
++		t.Run(mode, func(t *testing.T) {
++			probe := &windowsLoaderProbe{selector: path, present: true, handle: uintptr(42)}
++			ops := probe.ops()
++			if mode == "missing-capture" {
++				ops.capture = nil
++			} else if mode == "missing-observer" {
++				ops.observe = nil
++			} else {
++				probe.observeErr = errors.New("actual mapped object differs")
++			}
++			var loader windowsLibraryLoader
++			if err := loader.load("", ops); err == nil {
++				t.Fatal("explicit selector accepted without actual module observation")
++			}
++			if loader.handle != 0 || loader.capture != nil || len(probe.registered) != 0 {
++				t.Fatal("unproven module published ABI or object custody")
++			}
++			if mode == "native-observation" && !reflect.DeepEqual(probe.freed, []uintptr{42}) {
++				t.Fatal("rejected loaded module was not released")
++			}
++		})
++	}
++}
++
++func TestWindowsLibraryDigestMismatchCannotEnterNativeLoad(t *testing.T) {
++	path := windowsLibraryFixture(t, "non-executable-fixture.dll")
++	probe := &windowsLoaderProbe{selector: path, present: true, handle: 42}
++	ops := probe.ops()
++	ops.capture = func(name string) (*windowsLibraryCapture, error) {
++		return captureWindowsLibraryVerified(name, strings.Repeat("0", 64))
++	}
++	var loader windowsLibraryLoader
++	if err := loader.load("", ops); err == nil {
++		t.Fatal("mismatched retained bytes were admitted")
++	}
++	if len(probe.loads) != 0 || len(probe.registered) != 0 || loader.handle != 0 {
++		t.Fatal("digest rejection occurred after executing selected DLL bytes")
+--- /dev/null
++++ b/loader_observation_types.go
+@@ -0,0 +1,7 @@
++package cronet
++
++import "github.com/sagernet/cronet-go/internal/cronet"
++
++// WindowsLibraryObservation is diagnostic object data on every build target.
++// Only the Windows purego loader can populate a selected-module observation.
++type WindowsLibraryObservation = cronet.WindowsLibraryObservation
+--- /dev/null
++++ b/loader_observation_windows.go
+@@ -0,0 +1,9 @@
++//go:build with_purego && windows
++
++package cronet
++
++import "github.com/sagernet/cronet-go/internal/cronet"
++
++func ObserveSelectedLibraryVerified(path, expected string) (LibraryObservation, bool, error) {
++	return cronet.ObserveSelectedLibraryVerified(path, expected)
++}
