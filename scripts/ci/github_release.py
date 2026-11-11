@@ -871,171 +871,6 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     return evidence
 
 
-def validate_oci_material_reuse(path, artifact, source, run_id, attempt, root=ROOT, reference_paths=None, resolved_reference=None):
-    """Read OCI bytes, never execute an image; require exact reviewed source-material identities."""
-    import io
-    import tarfile
-    reference_path, map_path = reference_paths or (
-        root / 'release/dependency-sources/oci/reuse-reference.json',
-        root / 'release/dependency-sources/oci/oci-source-notice-map.json')
-    reference = resolved_reference if resolved_reference is not None else json.loads(reference_path.read_text(encoding='utf-8'))
-    require(reference['materialMapSHA256'] == sha(map_path), 'OCI source material map changed')
-    require(artifact in reference['artifacts'], 'OCI material reference lacks expected artifact')
-    expected = reference['artifacts'][artifact]
-    index_type = 'application/vnd.oci.image.index.v1+json'
-    manifest_type = 'application/vnd.oci.image.manifest.v1+json'
-    config_type = 'application/vnd.oci.image.config.v1+json'
-    layer_types = {'application/vnd.oci.image.layer.v1.tar', 'application/vnd.oci.image.layer.v1.tar+gzip'}
-    intoto_type = 'application/vnd.in-toto+json'
-    protected = ('lib/apk/db/installed', 'etc/apk/repositories', 'usr/local/bin/sing-box')
-    actual_files = {}
-    images, attestations, referenced = [], [], set()
-    with tarfile.open(path, 'r:*') as archive:
-        members = {}
-        for member in archive:
-            name = member.name.removeprefix('./')
-            require(name and not name.startswith('/') and '..' not in PurePosixPath(name).parts, 'unsafe OCI member path')
-            name = PurePosixPath(name).as_posix()
-            require(name not in members, 'duplicate OCI archive member')
-            require(member.isfile() or member.isdir(), 'nonregular OCI archive member')
-            require(member.size <= 512 * 1024**2, 'OCI member exceeds evidence budget')
-            members[name] = member
-            require(len(members) <= 256, 'OCI archive member budget exceeded')
-        def read(name, limit):
-            require(name in members and members[name].isfile() and members[name].size <= limit, 'missing/oversized OCI evidence member')
-            data = archive.extractfile(members[name]).read(limit + 1)
-            require(len(data) == members[name].size, 'OCI member truncated')
-            return data
-        require(json.loads(read('oci-layout', 1024)) == {'imageLayoutVersion': '1.0.0'}, 'unsupported OCI layout')
-        def blob(descriptor, allowed, limit=512 * 1024**2):
-            require(isinstance(descriptor, dict) and descriptor.get('mediaType') in allowed, 'unsupported OCI descriptor media type')
-            digest = descriptor.get('digest', '')
-            require(isinstance(digest, str) and re.fullmatch('sha256:[0-9a-f]{64}', digest), 'invalid OCI blob digest')
-            require(type(descriptor.get('size')) is int and 0 <= descriptor['size'] <= limit, 'invalid OCI blob size')
-            name = 'blobs/sha256/' + digest[7:]
-            data = read(name, limit)
-            require(len(data) == descriptor['size'] and hashlib.sha256(data).hexdigest() == digest[7:], 'OCI blob size/hash mismatch')
-            referenced.add(name)
-            return data
-        def walk(document, descriptor=None, depth=0):
-            require(depth <= 4 and document.get('schemaVersion') == 2, 'invalid OCI graph depth/schema')
-            if 'manifests' in document:
-                require(document.get('mediaType') == index_type and 1 <= len(document['manifests']) <= 8, 'invalid OCI index')
-                for child in document['manifests']:
-                    walk(json.loads(blob(child, {index_type, manifest_type}, 4 * 1024**2)), child, depth + 1)
-                return
-            require(descriptor is not None and document.get('mediaType') == manifest_type, 'invalid OCI image manifest')
-            is_attestation = descriptor.get('annotations', {}).get('vnd.docker.reference.type') == 'attestation-manifest'
-            config = json.loads(blob(document['config'], {'application/vnd.oci.empty.v1+json'} if is_attestation else {config_type}, 4 * 1024**2))
-            layers = document.get('layers')
-            require(isinstance(layers, list) and 1 <= len(layers) <= 32, 'invalid OCI layer count')
-            if descriptor.get('annotations', {}).get('vnd.docker.reference.type') == 'attestation-manifest':
-                require(config == {}, 'OCI attestation empty config is not empty')
-                require(descriptor.get('platform') == {'architecture': 'unknown', 'os': 'unknown'}, 'invalid OCI attestation platform')
-                for layer in layers:
-                    attestations.append((descriptor, document, json.loads(blob(layer, {intoto_type}, 16 * 1024**2))))
-            else:
-                require(descriptor.get('platform') == expected['platform'], 'OCI descriptor platform mismatch')
-                require({k: config[k] for k in ('os', 'architecture', 'variant') if k in config} == expected['platform'], 'OCI config platform mismatch')
-                images.append((descriptor, document, config))
-        walk(json.loads(read('index.json', 4 * 1024**2)))
-        require(len(images) == 1, 'OCI requires exactly one expected platform image')
-        descriptor, manifest, config = images[0]
-        labels = config.get('config', {}).get('Labels', {})
-        require(labels.get('org.opencontainers.image.revision') == source and labels.get('org.opencontainers.image.source') == 'https://github.com/' + REPO, 'OCI image source mismatch')
-        provenance = []
-        for att_descriptor, att_manifest, statement in attestations:
-            require(att_manifest.get('artifactType') == 'application/vnd.docker.attestation.manifest.v1+json', 'unsupported OCI attestation storage format')
-            require(att_manifest.get('subject') == {key: descriptor[key] for key in ('mediaType','digest','size')}, 'OCI artifact subject does not bind actual image')
-            require(att_descriptor['annotations'].get('vnd.docker.reference.digest') == descriptor['digest'], 'OCI attestation does not bind actual image')
-            if statement.get('predicateType') == 'https://slsa.dev/provenance/v1':
-                require(statement.get('_type') == 'https://in-toto.io/Statement/v1', 'invalid OCI provenance statement')
-                # Current BuildKit OCI artifact format binds the image via the
-                # attestation manifest subject; all nine measured statements use [].
-                require(statement.get('subject') == [], 'unsupported in-toto subject representation')
-                provenance.append(statement['predicate'])
-        require(len(provenance) == 1, 'OCI requires unique SLSA v1 provenance')
-        provenance = provenance[0]
-        details = provenance.get('runDetails', {})
-        require(details.get('builder', {}).get('id') == f'https://github.com/{REPO}/actions/runs/{run_id}/attempts/{attempt}', 'OCI builder run/attempt mismatch')
-        vcs = details.get('metadata', {}).get('buildkit_metadata', {}).get('vcs', {})
-        require(vcs.get('revision') == source and vcs.get('source') == 'https://github.com/' + REPO, 'OCI provenance source mismatch')
-        definition = provenance['buildDefinition']
-        require(definition.get('buildType') == 'https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md', 'unsupported OCI provenance build type')
-        require(definition.get('resolvedDependencies') == expected['baseDependencies'], 'OCI base changed; refresh source materials')
-        require(definition.get('externalParameters', {}).get('configSource', {}).get('path') == 'Dockerfile.binary', 'OCI build recipe mismatch')
-        for layer in manifest['layers']:
-            data = blob(layer, layer_types)
-            require((layer['mediaType'].endswith('+gzip') and data.startswith(b'\x1f\x8b')) or (layer['mediaType'].endswith('.tar') and not data.startswith(b'\x1f\x8b')), 'OCI layer compression differs from media type')
-            with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as content:
-                seen = set()
-                expanded_bytes = 0
-                for member in content:
-                    name = member.name.removeprefix('./').rstrip('/')
-                    require(name and not name.startswith('/') and '..' not in PurePosixPath(name).parts, 'unsafe OCI layer path')
-                    name = PurePosixPath(name).as_posix()
-                    require(name not in seen, 'duplicate OCI layer path')
-                    seen.add(name)
-                    expanded_bytes += member.size
-                    require(len(seen) <= 100000 and 0 <= member.size <= 512 * 1024**2 and expanded_bytes <= 2 * 1024**3, 'OCI expanded layer exceeds evidence budget')
-                    if name == '.': require(member.isdir(), 'OCI root must be a directory')
-                    path_parts = PurePosixPath(name)
-                    if path_parts.name.startswith('.wh.'):
-                        parent = path_parts.parent.as_posix()
-                        affected = parent if path_parts.name == '.wh..wh..opq' else str(path_parts.parent / path_parts.name[4:])
-                        affected = affected.removeprefix('./')
-                        require(not any(affected in ('', '.') or target == affected or target.startswith(affected + '/') for target in protected), 'OCI whiteout affects required material evidence')
-                    if any(target.startswith(name + '/') for target in protected):
-                        require(member.isdir(), 'OCI non-directory shadows material evidence path')
-                    if name in protected:
-                        require(member.isfile() and 0 < member.size <= (256 * 1024**2 if name.endswith('sing-box') else 4 * 1024**2), 'OCI material evidence is missing/nonregular/oversized')
-                        value = content.extractfile(member).read()
-                        require(len(value) == member.size, 'truncated OCI material evidence')
-                        actual_files[name] = value
-        require(all(name in actual_files for name in protected), 'OCI required files missing')
-        require({name for name, member in members.items() if member.isfile()} == referenced | {'index.json','oci-layout'}, 'OCI unreferenced or alternate-format file inventory')
-    repositories = actual_files['etc/apk/repositories'].decode('utf-8')
-    require(repositories == expected['repositories'], 'OCI repositories changed; refresh source materials')
-    packages = []
-    for paragraph in actual_files['lib/apk/db/installed'].decode('utf-8').strip().split('\n\n'):
-        package = {}
-        for line in paragraph.splitlines():
-            if ':' not in line:
-                continue
-            key, value = line.split(':', 1)
-            if key in ('P', 'V', 'A', 'L', 'o', 'c', 'C'):
-                require(key not in package, 'duplicate OCI installed package field')
-                package[key] = value
-        require(set(package) == {'P', 'V', 'A', 'L', 'o', 'c', 'C'} and all(package.values()), 'incomplete OCI installed source identity')
-        packages.append(package)
-    packages.sort(key=lambda item: (item['P'], item['V'], item['A']))
-    require(packages == expected['packages'], 'OCI installed packages changed; refresh source materials')
-    return {'referenceSHA256': sha(reference_path), 'materialMapSHA256': reference['materialMapSHA256'],
-            'platform': expected['platform'], 'baseDependencies': expected['baseDependencies'],
-            'packageCount': len(packages), 'installedSHA256': hashlib.sha256(actual_files['lib/apk/db/installed']).hexdigest(),
-            'coreSHA256': hashlib.sha256(actual_files['usr/local/bin/sing-box']).hexdigest(),
-            'coreBytes': len(actual_files['usr/local/bin/sing-box']),
-            'actualImageManifest': descriptor['digest'], 'sourceCommit': source,
-            'sourceMaterialsReusable': True, 'legalConclusion': False}
-
-
-def measure_oci_materials(path, artifact, source, run_id, attempt, policy=None):
-    if policy is None:
-        return validate_oci_material_reuse(path, artifact, source, run_id, attempt)
-    from oci_material_registry import check_image
-    expected = check_image(policy, artifact, path)
-    kwargs = {'reference_paths': (policy['reference_path'], policy['material_map_path'])}
-    if 'resolved_reference' in policy:
-        kwargs['resolved_reference'] = policy['resolved_reference']
-    measured = validate_oci_material_reuse(path, artifact, source, run_id, attempt, **kwargs)
-    for actual_key, expected_key in (('coreBytes', 'coreBytes'), ('coreSHA256', 'coreSHA256'),
-                                     ('installedSHA256', 'installedSHA256'), ('actualImageManifest', 'imageManifest')):
-        require(same_identity(measured[actual_key], expected[expected_key]), 'OCI supplement actual byte identity changed: ' + actual_key)
-    measured['supplementSelectorSHA256'] = policy['selector_sha256']
-    measured['materialSelection'] = 'exact-source-run-attempt-artifact-image-supplement'
-    return measured
-
-
 def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None, materialize=False):
     budget = budget or ScratchBudget(work)
     peer_policy = peer_evidence.select(ROOT, source, VERSION, TAG, source_tree, tag_object)
@@ -1056,12 +891,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         names = [x['name'] for x in artifacts]
         require(len({x['id'] for x in artifacts}) == len(artifacts), 'duplicate Actions artifact IDs')
         verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
-        oci_policy = None
-        if role == 'docker':
-            from oci_material_registry import supports_source, load_for_run
-            if supports_source(source):
-                oci_policy = load_for_run(source, source_tree, TAG, tag_object, int(rid), run['run_attempt'],
-                    run['path'], [a for a in artifacts if a['name'].startswith('oci-')], source_root, ROOT)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
         binding = None
@@ -1118,8 +947,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                         try:
                             with target.open('xb') as stream:
                                 measured_file, provenance = measure_member(archive, item, stream, limit, json_decoder=decoder)
-                            if role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
-                                measured_file['ociMaterialReuse'] = measure_oci_materials(target, a['name'], source, rid, run['run_attempt'], oci_policy)
                         except BaseException as error:
                             try:
                                 target.unlink(missing_ok=True)
@@ -1127,11 +954,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                                 error.add_note('Retained member cleanup also failed: ' + str(cleanup)[:300])
                             budget.release(item.file_size)
                             raise
-                    elif role == 'docker' and a['name'].startswith('oci-') and relative == 'image.tar':
-                        with budget.temporary(item.file_size, 'OCI ' + a['name']) as image:
-                            measured_file, provenance = measure_member(archive, item, image, limit)
-                            image.flush()
-                            measured_file['ociMaterialReuse'] = measure_oci_materials(Path(image.name), a['name'], source, rid, run['run_attempt'], oci_policy)
                     else:
                         measured_file, provenance = measure_member(archive, item, json_limit=limit, json_decoder=decoder)
                     files[relative] = dict(measured_file, releaseName=public_name, publicationDisposition=disposition)
@@ -1171,21 +993,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         require(receipt == expected_receipt, 'producer scope/input receipt missing or inconsistent')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
-        if oci_policy is not None:
-            from oci_material_registry import write_bundle, record as supplement_record, bundle_name
-            bundle = work / bundle_name(oci_policy)
-            allocation = oci_policy['bundle_maximum_bytes']
-            budget.admit(allocation, 'OCI material supplement audit bundle')
-            try:
-                write_bundle(oci_policy, bundle)
-                result['ociMaterialSupplement'] = supplement_record(oci_policy, os.environ['GITHUB_SHA'], bundle)
-            except BaseException as error:
-                try:
-                    bundle.unlink(missing_ok=True)
-                except OSError as cleanup:
-                    error.add_note('Supplement cleanup also failed: ' + str(cleanup)[:300])
-                budget.release(allocation)
-                raise
         if role in ('all', 'signed'):
             index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
             args = (index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
@@ -1206,12 +1013,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                 require(len(matches) == 1 and matches[0]['sha256'] == record['sha256'] and matches[0]['bytes'] == record['bytes'], 'native index actual hash mismatch')
     verify_metadata_pair(result)
     shared_index_path = work / 'all' / 'binary-native-index' / 'polaris-upstream-native-assets.json'
-    if 'ociMaterialSupplement' in result:
-        material = result['ociMaterialSupplement']
-        require(sha(shared_index_path) == material['nativeIndexSHA256'], 'OCI supplement native index anchor changed')
-        original_source = work / 'all' / 'binary-native-index' / material['sourceArchive']['name']
-        require(original_source.stat().st_size == material['sourceArchive']['bytes']
-                and sha(original_source) == material['sourceArchive']['sha256'], 'OCI supplement original source archive anchor changed')
     return associate_distribution_materials(result, json.loads(shared_index_path.read_text(encoding='utf-8')), sha(shared_index_path))
 
 
@@ -1220,7 +1021,6 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
     peer_evidence.check_inventory(ROOT, actual, os.environ.get('GITHUB_SHA'))
     require(actual.get('controlledPeerEvidence') == config.get('controlledPeerEvidence'), 'reviewed controlled peer selection differs')
     require(actual.get('distributionMaterials') == config.get('distributionMaterials'), 'reviewed shared materials differ')
-    require(actual.get('ociMaterialSupplement') == config.get('ociMaterialSupplement'), 'reviewed OCI supplement differs')
     for field in ('repository', 'repositoryId', 'version', 'sourceCommit', 'sourceTree', 'tag', 'tagObject', 'scopeSha256'):
         require(actual[field] == config[field], 'release contract differs: ' + field)
     require(set(actual['runs']) == set(config['runs']), 'run scope differs')
@@ -1247,7 +1047,6 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 review = contract['files'][relative]
                 require(f['bytes'] == review['bytes'] and f['sha256'] == review['sha256'], 'actual file hash differs')
                 require(f.get('distributionMaterials') == review.get('distributionMaterials'), 'reviewed per-payload materials differ')
-                require(f.get('ociMaterialReuse') == review.get('ociMaterialReuse'), 'reviewed OCI material reuse evidence differs')
                 require(f.get('androidRuntimeMaterials') == review.get('androidRuntimeMaterials'), 'reviewed Android runtime evidence differs')
                 require(f.get('androidMaterialReuse') == review.get('androidMaterialReuse'), 'reviewed Android material reuse evidence differs')
                 require(f.get('controlledPeerEvidence') == review.get('controlledPeerEvidence'), 'reviewed controlled peer evidence differs')
@@ -1273,12 +1072,6 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 receipt['assets'].append(dict(f, releaseName=name, role=role, artifact=artifact, artifactPath=relative,
                     signatureState='unverified-signed-build' if role == 'signed' else 'unsigned-candidate'))
     require(receipt['assets'], 'empty release')
-    if actual.get('ociMaterialSupplement'):
-        require(budget is not None, 'supplement audit requires bounded scratch')
-        bundle = actual['ociMaterialSupplement']['auditBundle']
-        path = work / bundle['name']
-        require(path.stat().st_size == bundle['bytes'] and sha(path) == bundle['sha256'], 'OCI audit bundle differs')
-        budget.copy(path, audit / path.name)
     if budget:
         budget.write_json(audit / RECEIPT, receipt, PROPOSAL_LIMIT)
     else:
@@ -2028,9 +1821,6 @@ def bounded_release(args, runs):
                 for material in (work / 'all' / 'binary-native-index').iterdir():
                     if material.is_file():
                         budget.copy(material, args.audit / material.name)
-                if actual.get('ociMaterialSupplement'):
-                    bundle = actual['ociMaterialSupplement']['auditBundle']
-                    budget.copy(work / bundle['name'], args.audit / bundle['name'])
                 budget.write_json(args.output, actual, PROPOSAL_LIMIT)
                 budget.record(phase='complete', result='inventory')
                 print('Inventory SHA-256: ' + sha(args.output))

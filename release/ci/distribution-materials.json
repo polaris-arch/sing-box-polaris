@@ -8,8 +8,7 @@
     "Android AAR/APK",
     "Apple libbox and unsigned archives/packages",
     "desktop clients",
-    "distro packages",
-    "OCI archives"
+    "distro packages"
   ],
   "openItems": [],
   "legalConclusion": false,
@@ -50,11 +49,6 @@
       "scope": "80 conservative engine texts and exact current fixed-source/library linkage reconciled. No concrete missing required notice or generator identified by this bounded engineering pass; no Chromium rebuild or bit-reproduction claim."
     },
     {
-      "id": "oci-current-source-and-notices",
-      "evidence": "release/dependency-sources/oci/oci-source-notice-map.json",
-      "scope": "9 actual images243package records,33 origin/commit,299 fixed aports files withGit modes,38 source inputs fullGET+SHA512,61 original/inline notices. New producer must match actual package/base identities before reuse."
-    },
-    {
       "id": "usbip-driver-source-notices",
       "evidence": "release/dependency-sources/sing-usbip/driver-source-notice-reconciliation.json",
       "scope": "20 exact driverasset SHA256,actualamd64 embedded10files,8originalVBox sidecars,VirtualBox7.2.14+usbip-win20.9.7.7/.5 fixedsources/recipes/originallicenses. Three nativeWindows variants and Desktopx64/arm64mapped; no driver execution."
@@ -68,11 +62,6 @@
       "id": "desugar-jdk11-2.1.5-source-and-original-license",
       "evidence": "release/dependency-sources/clients/runtime/desugar-2.1.5-source.json",
       "scope": "Official fixed release-preparation commit73170c345e6a762fc6a1f0301bb15218850023ef declares2.1.5;18.25MB source fullGET/9124 Git blobs verified;actual6113073-byte MavenJAR SHA matches previously acquired input. GPL2/Classpath LICENSE,ADDITIONAL_LICENSE_INFO,ASSEMBLY_EXCEPTION and22 exact build/root inputs retained. No JAR-embedded Git revision or bit-for-bit reproduction is claimed."
-    },
-    {
-      "id": "oci-actual-new-run-reuse-gate",
-      "evidence": "scripts/ci/github_release.py validate_oci_material_reuse; release/dependency-sources/oci/reuse-reference.json",
-      "scope": "Existing inventory compares actual OCI source/run/attempt,unique platform image,OCI artifact subject and explicit-empty SLSA subject,base/repositories/complete7-field package records. Every referenced blob size/hash/media checked; required-file whiteout/shadow and alternate outer formats rejected. All9 actual historical archives and hostile fixtures passed. Future new producer must pass actual comparison; no old image/core hash is reused."
     },
     {
       "id": "ghostty-finite-native-source-notices",

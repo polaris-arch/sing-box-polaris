@@ -282,9 +282,8 @@ class PeerEvidenceTests(unittest.TestCase):
 
     def inventory(self, *, work=None):
         # Stub transport and synthetic package scope; Docker run 44 intentionally
-        # has no real OCI images. Current OCI admission is exercised separately
-        # by CurrentOCISelectionTests, never disabled in production. Exercise
-        # actual bounded ZIP, JSON, receipt, final-index and peer cross-binding.
+        # has no real OCI images. Exercise actual bounded ZIP, JSON, receipt,
+        # final-index and peer cross-binding.
         # A failed inventory can retain its already verified native index.
         # Every independent invocation owns a fresh workspace until tearDown;
         # explicit work reuse remains available to exercise the production
@@ -306,7 +305,6 @@ class PeerEvidenceTests(unittest.TestCase):
         real_load = e.load
         with mock.patch.object(e, 'load', side_effect=lambda _: real_load(self.root)), \
              mock.patch.object(p, 'release_scope', return_value=self.scope), \
-             mock.patch('oci_material_registry.supports_source', return_value=False), \
              mock.patch.object(p, 'api', side_effect=lambda path: self.runs[path.split('/')[-1]]), \
              mock.patch.object(p, 'pages', side_effect=self.metadata_pages), \
              mock.patch.object(p, 'read_get', side_effect=transport), mock.patch.object(p, 'client_platform', return_value=None):
@@ -426,14 +424,6 @@ class PeerEvidenceTests(unittest.TestCase):
                        'duplicate-name': 'duplicate Actions artifact names'}.get(mode, 'all: incomplete or unexpected artifact scope')
             with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, message): self.inventory()
             self.assertEqual(self.inventory_downloads, [])
-
-    def test_oci_ordinary_strict_gate_unchanged(self):
-        import oci_material_registry
-        self.assertTrue(oci_material_registry.supports_source(e.SOURCE))
-        with mock.patch.object(p, 'validate_oci_material_reuse', side_effect=ValueError('actual OCI material drift')) as gate:
-            with self.assertRaisesRegex(ValueError, 'actual OCI material drift'):
-                p.measure_oci_materials(Path('not-executed'), 'oci-linux-loong64', e.SOURCE, '40164108947', 1)
-            gate.assert_called_once_with(Path('not-executed'), 'oci-linux-loong64', e.SOURCE, '40164108947', 1)
 
     def test_origin_repository_and_attempt_fields_fail_closed(self):
         original = self.artifacts[str(self.s['runId'])][-1]
