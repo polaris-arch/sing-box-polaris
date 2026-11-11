@@ -30,8 +30,6 @@ jobs:
           echo 'GNU timeout is required for supplier process-group cleanup' >&2
           exit 1
         fi
-    - run: python -m unittest discover -s scripts/ci -p 'test_ci_contract.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_cronet_material_supply.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
     - name: Require cold zero-fuzz Go patch controls
       shell: bash
@@ -39,25 +37,15 @@ jobs:
         set -euo pipefail
         command -v patch
         python -B -m unittest discover -s scripts/ci -p 'test_go_toolchain.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_container_source_identity.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_linux_candidate_track.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_native_peer_metadata.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_protocol_peer.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_windows_native_execution.py'
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_windows_native_admission.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_cronet_windows_overlay.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_polaris_version.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_client_branding.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_apple_package_overlays.py'
     - run: python -B -m unittest discover -s scripts/ci -p 'test_client_source.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_android_material_reuse.py'
-    - run: python -m unittest discover -s scripts/ci -p 'test_owned_publication_gate.py'
-    - run: python -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py'
-    - run: python -B -m unittest discover -s scripts -p 'test_polaris_runner_resources.py'
-    - run: PYTHONPATH=scripts python -B -m unittest test_polaris_production_release.ProductionTests.test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes
     - name: Restore pinned official formatter archive
       uses: actions/cache@v4
       with:
@@ -93,10 +81,5 @@ jobs:
     - .github/go-toolchains.json
     - .github/patches/**
     - scripts/ci/**
-    - scripts/polaris_ci_impact.py
-    - scripts/test_polaris_ci_impact.py
-    - scripts/test_polaris_runner_resources.py
-    - scripts/test_polaris_production_release.py
-    - scripts/testdata/historical-workflows/**
     - release/ci/**
   workflow_dispatch: null

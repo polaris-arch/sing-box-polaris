@@ -12,10 +12,8 @@ import time
 import urllib.parse
 import urllib.request
 
-SDK_LIMIT = 512 * 1024 * 1024
 NDK_LIMIT = 2 * 1024 * 1024 * 1024
 SHA = re.compile(r'[0-9a-f]{64}\Z')
-NAME = re.compile(r'[a-zA-Z0-9._-]{1,255}\Z')
 
 
 def require(value, message):
@@ -53,33 +51,7 @@ def archive_pin(path, expected, limit):
     return {'bytes': path.stat().st_size, 'sha256': actual}
 
 
-def openwrt_inputs(repo, root, architecture):
-    require('\n' not in str(root) and '\r' not in str(root), 'single-line cache path required')
-    require(architecture in ('x86_64', 'aarch64_generic'), 'fixed OpenWrt architecture required')
-    value = json.loads((repo / 'release/polaris-openwrt-inputs.json').read_bytes())
-    require(value['schema'] == 'polaris-openwrt-release-plan-v1', 'wrong input plan')
-    keys = ['ipk-x64' if architecture == 'x86_64' else 'ipk-arm64', 'apk-host']
-    result = {}
-    for role, key in zip(('sdk', 'apk'), keys):
-        records = [r for r in value['sdkInputs'] if r['key'] == key]
-        require(len(records) == 1, 'unique SDK pin required')
-        row = records[0]
-        require(NAME.fullmatch(row['file']) and row['file'].endswith('.tar.zst') and SHA.fullmatch(row['sha256']), 'invalid SDK archive identity')
-        require(row['url'].startswith('https://downloads.openwrt.org/releases/')
-                and row['url'].rsplit('/', 1)[-1] == row['file'], 'SDK public source differs')
-        result[role] = {'path': str(root / row['file']), 'sha256': row['sha256'], 'limitBytes': SDK_LIMIT}
-    clang = value['clangInput']
-    name = clang['url'].rsplit('/', 1)[-1]
-    require(NAME.fullmatch(name) and name.endswith('.tar.xz') and SHA.fullmatch(clang['sha256'])
-            and 0 < clang['bytes'] <= SDK_LIMIT
-            and clang['url'].startswith('https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/'),
-            'fixed Clang archive identity required')
-    result['clang'] = {'path': str(root / name), 'sha256': clang['sha256'],
-                       'bytes': clang['bytes'], 'limitBytes': clang['bytes']}
-    return result
-
-
-def inspect_inputs(rows, output, github_output=None):
+def inspect_inputs(rows, output):
     result = {'schema': 'polaris-ci-acquisition-check-v1', 'cacheAuthority': 'archive SHA only', 'inputs': {}}
     invalid = False
     for role, row in rows.items():
@@ -102,11 +74,6 @@ def inspect_inputs(rows, output, github_output=None):
     print(json.dumps(result, sort_keys=True), flush=True)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + '\n')
-    if github_output:
-        with github_output.open('a') as out:
-            for role, row in rows.items():
-                out.write(f"{role}_path={row['path']}\n{role}_digest={row['sha256']}\n")
-                out.write(f"{role}_valid={'true' if result['inputs'][role].get('valid') else 'false'}\n")
     require(not invalid, 'preserve invalid cache input and fail before using it')
     return result
 
@@ -202,40 +169,23 @@ def preserve_bad_inputs(rows, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('openwrt-plan', 'openwrt-check', 'ndk', 'preserve-openwrt', 'preserve-ndk'))
-    parser.add_argument('--repo', type=Path)
+    parser.add_argument('mode', choices=('ndk', 'preserve-ndk'))
     parser.add_argument('--root', type=Path, required=True)
-    parser.add_argument('--architecture')
     parser.add_argument('--url')
     parser.add_argument('--sha256')
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--github-output', type=Path)
     args = parser.parse_args()
-    if args.mode.startswith('openwrt') or args.mode == 'preserve-openwrt':
-        rows = openwrt_inputs(args.repo, args.root.absolute(), args.architecture)
-        if args.mode == 'openwrt-plan':
-            print(json.dumps(rows, sort_keys=True), flush=True)
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            args.output.write_text(json.dumps(rows, indent=2) + '\n')
-            with args.github_output.open('a') as out:
-                for role, row in rows.items():
-                    out.write(f"{role}_path={row['path']}\n{role}_digest={row['sha256']}\n")
-        elif args.mode == 'openwrt-check':
-            inspect_inputs(rows, args.output, args.github_output)
-        else:
-            preserve_bad_inputs(rows, args.output)
+    rows = {'ndk': {'path': str(args.root.absolute() / 'ndk.zip'), 'sha256': args.sha256, 'limitBytes': NDK_LIMIT}}
+    if args.mode == 'preserve-ndk':
+        preserve_bad_inputs(rows, args.output)
     else:
-        rows = {'ndk': {'path': str(args.root.absolute() / 'ndk.zip'), 'sha256': args.sha256, 'limitBytes': NDK_LIMIT}}
-        if args.mode == 'preserve-ndk':
-            preserve_bad_inputs(rows, args.output)
-        else:
-            try:
-                actual = acquire_ndk(args.url, args.sha256, Path(rows['ndk']['path']))
-                inspect_inputs(rows, args.output)
-                print(json.dumps({'ndkArchive': actual, 'consumerStillUnpacksFresh': True}), flush=True)
-            except (OSError, ValueError, KeyboardInterrupt):
-                preserve_bad_inputs(rows, args.output.parent / 'invalid-inputs')
-                raise
+        try:
+            actual = acquire_ndk(args.url, args.sha256, Path(rows['ndk']['path']))
+            inspect_inputs(rows, args.output)
+            print(json.dumps({'ndkArchive': actual, 'consumerStillUnpacksFresh': True}), flush=True)
+        except (OSError, ValueError, KeyboardInterrupt):
+            preserve_bad_inputs(rows, args.output.parent / 'invalid-inputs')
+            raise
 
 
 if __name__ == '__main__':

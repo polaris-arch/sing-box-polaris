@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import tempfile
 import sys
-import textwrap
 import unittest
 from unittest import mock
 
@@ -166,52 +165,38 @@ class VisionSourcePortability(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'actual worktree bytes differ'):
             self.windows()
 
-    def test_failure_diagnostic_is_preserved_before_downstream_commands(self):
-        source = (ROOT / 'scripts/ci/utls_gate.py').read_text()
-        start = source.index('        vision_diagnostics = {}')
-        end = source.index("        execute('verify-modules'", start)
-        block = source[start:end]
-        self.assertIn("receipt['errors'].append('vision-source: ' + str(error))", block)
-        self.assertIn("finally:\n            try:\n                (output / 'vision-source.json').write_text", block)
-        self.assertIn('if vision_error is None:', block)
-        self.assertIn('            raise\n', block)
 
-    def test_diagnostic_write_failure_does_not_hide_original_rejection(self):
-        source = (ROOT / 'scripts/ci/utls_gate.py').read_text()
-        start = source.index('        vision_diagnostics = {}')
-        end = source.index("        execute('verify-modules'", start)
-        block = textwrap.dedent(source[start:end])
-        output = mock.MagicMock()
-        output.__truediv__.return_value.write_text.side_effect = OSError('diagnostic disk full')
-        receipt = {'errors': []}
-        namespace = {'ROOT': self.root, 'output': output, 'receipt': receipt, 'json': json,
-                     'validate_vision_source': mock.Mock(side_effect=ValueError('source sentinel mismatch'))}
-        with self.assertRaisesRegex(ValueError, 'source sentinel mismatch'):
-            exec(block, namespace)
-        self.assertEqual(receipt['errors'], ['vision-source: source sentinel mismatch',
-                                            'vision-source diagnostics: diagnostic disk full'])
-        namespace['validate_vision_source'] = mock.Mock(return_value={'passed': True})
-        with self.assertRaisesRegex(OSError, 'diagnostic disk full'):
-            exec(block, namespace)
-
-
-    def test_outer_final_evidence_failure_preserves_primary_and_attempts_both(self):
-        from utls_gate import finalize_evidence
-        output = mock.MagicMock()
-        output.__truediv__.return_value.write_text.side_effect = OSError('disk full')
-        status = mock.Mock(side_effect=OSError('cannot save status'))
-        primary = ValueError('source exact identity rejected')
-        with self.assertRaises(ValueError) as caught:
-            try:
-                raise primary
-            finally:
-                finalize_evidence(output, {'errors': []}, status, sys.exc_info()[1])
-        self.assertIs(caught.exception, primary)
-        self.assertEqual(len(primary.__notes__), 2)
-        output.__truediv__.return_value.write_text.assert_called_once()
-        with self.assertRaisesRegex(OSError, 'cannot save status'):
-            finalize_evidence(output, {'errors': []}, status, None)
-
+class TestVisionSourceContract(unittest.TestCase):
+    def test_every_source_boundary_rejects_tampering(self):
+        from vision_source import validate, BINDING
+        for kind in ('bytes','mode','extra','missing','link','root-replace','provider-version','patch','notice','tree'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp)
+                fixture(root)
+                target=root/'third_party/sing-vmess/vless/vision.go'
+                if kind=='bytes':target.write_bytes(target.read_bytes()+b'\n')
+                elif kind=='mode':
+                    if sys.platform=='win32':git(root,'update-index','--chmod=+x','third_party/sing-vmess/vless/vision.go')
+                    else:target.chmod(0o755)
+                elif kind=='extra':(target.parent/'foreign.go').write_text('package vless\n')
+                elif kind=='missing':target.unlink()
+                elif kind=='link':target.unlink();target.symlink_to(ROOT/'third_party/sing-vmess/vless/vision.go')
+                elif kind=='root-replace':
+                    target=root/'go.mod';target.write_text(target.read_text().replace('=> ./third_party/sing-vmess','=> ../foreign'))
+                elif kind=='provider-version':
+                    target=root/'go.mod';target.write_text(target.read_text().replace('ff1b50fbbe9a','000000000000'))
+                elif kind=='patch':
+                    target=root/'release/dependency-sources/sing-vmess-vision.patch';target.write_bytes(target.read_bytes()+b'\n')
+                elif kind=='notice':
+                    target=root/'release/licenses/CURRENT44-NOTICE-CANDIDATE.txt';target.write_bytes(b'wrong')
+                else:
+                    target=root/BINDING;doc=json.loads(target.read_text());doc['replacementTree']='0'*40;target.write_text(json.dumps(doc))
+                expected={'bytes':'worktree bytes|complete source', 'mode':'HEAD/index|complete source',
+                          'extra':'worktree bytes|complete source', 'missing':'worktree bytes|complete source',
+                          'link':'replacement link', 'root-replace':'root replacement',
+                          'provider-version':'provider pin', 'patch':'patch identity', 'notice':'upstream notice',
+                          'tree':'complete source'}[kind]
+                with self.assertRaisesRegex(ValueError,expected):validate(root)
 
 
 if __name__ == '__main__':

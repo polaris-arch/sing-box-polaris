@@ -155,7 +155,7 @@ def load(path, context):
 
 
 def failure_receipt(output, context, error, records):
-    from protocol_peer_diagnostic import safe_exception
+    from protocol_peer import safe_exception
     from github_read_transport import ReadFailure
     receipt = {'schema': 'polaris-native-controlled-peer-v1', 'status': 'FAIL',
                'stage': 'artifact_metadata_admission', 'context': context,

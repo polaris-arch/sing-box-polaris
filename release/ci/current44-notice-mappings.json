@@ -10590,7 +10590,7 @@
         "buildWorkflowPath": ".github/workflows/naive-build.yml"
       },
       "sha256": "95944c74503766dd001db019f7c2e900cc0450862f6cc8686858259a4db56e86",
-      "hashSource": "release/polaris-openwrt-inputs.json",
+      "hashSource": "632709fb:release/polaris-openwrt-inputs.json",
       "remaining": "Current per-target required notice/source applicability, compiled/generated and compiler-injected runtime identification; prebuilt module ZIP is acquisition, not Chromium source."
     },
     {
@@ -10696,7 +10696,7 @@
         "buildWorkflowPath": ".github/workflows/naive-build.yml"
       },
       "sha256": "ff2137b5e96bee230727e231b979be4bb7c5f2b428102c1f46ee7337ea73f95d",
-      "hashSource": "release/polaris-openwrt-inputs.json",
+      "hashSource": "632709fb:release/polaris-openwrt-inputs.json",
       "remaining": "Current per-target required notice/source applicability, compiled/generated and compiler-injected runtime identification; prebuilt module ZIP is acquisition, not Chromium source."
     },
     {
@@ -11229,7 +11229,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 0,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11288,7 +11288,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 1,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11347,7 +11347,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 2,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11367,7 +11367,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 3,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11426,7 +11426,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 4,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11485,7 +11485,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 5,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11544,7 +11544,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 6,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11603,7 +11603,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 7,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11662,7 +11662,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 8,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11721,7 +11721,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 9,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11780,7 +11780,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 10,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11839,7 +11839,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 11,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11898,7 +11898,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 12,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11945,7 +11945,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 13,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -11992,7 +11992,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 14,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12051,7 +12051,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 15,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12110,7 +12110,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 16,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12164,7 +12164,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 17,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12223,7 +12223,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 18,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12282,7 +12282,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 19,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12341,7 +12341,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 20,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12361,7 +12361,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 21,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12420,7 +12420,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 22,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12479,7 +12479,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 23,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12498,7 +12498,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 24,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12549,7 +12549,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 25,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12608,7 +12608,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 26,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12667,7 +12667,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 27,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12726,7 +12726,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 28,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12785,7 +12785,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 29,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12844,7 +12844,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 30,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12903,7 +12903,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 31,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12962,7 +12962,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 32,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -12982,7 +12982,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 33,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13041,7 +13041,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 34,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13100,7 +13100,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 35,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13159,7 +13159,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 36,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13210,7 +13210,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 37,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13269,7 +13269,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 38,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13328,7 +13328,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 39,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13387,7 +13387,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 40,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13446,7 +13446,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 41,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13505,7 +13505,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 42,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13564,7 +13564,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 43,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13611,7 +13611,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 44,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13670,7 +13670,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 45,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13729,7 +13729,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 46,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13788,7 +13788,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 47,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13847,7 +13847,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 48,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13867,7 +13867,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 49,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13926,7 +13926,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 50,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -13985,7 +13985,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 51,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14036,7 +14036,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 52,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14054,7 +14054,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 264,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14703,7 +14703,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 63,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14762,7 +14762,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 64,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14821,7 +14821,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 65,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14880,7 +14880,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 66,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14939,7 +14939,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 67,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -14998,7 +14998,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 68,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15057,7 +15057,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 69,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15116,7 +15116,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 70,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15175,7 +15175,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 71,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15234,7 +15234,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 72,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15293,7 +15293,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 73,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15344,7 +15344,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 74,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15395,7 +15395,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 75,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15454,7 +15454,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 78,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15513,7 +15513,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 79,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15568,7 +15568,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 80,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15686,7 +15686,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 81,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15745,7 +15745,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 82,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15804,7 +15804,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 83,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15863,7 +15863,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 84,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15922,7 +15922,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 85,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -15981,7 +15981,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 86,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16040,7 +16040,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 87,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16099,7 +16099,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 88,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16512,7 +16512,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 89,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16677,7 +16677,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 90,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16736,7 +16736,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 91,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16795,7 +16795,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 92,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16831,7 +16831,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 93,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16867,7 +16867,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 94,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16926,7 +16926,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 98,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -16985,7 +16985,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 99,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17044,7 +17044,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 100,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17095,7 +17095,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 101,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17146,7 +17146,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 102,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17205,7 +17205,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 103,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17264,7 +17264,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 104,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17323,7 +17323,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 105,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17382,7 +17382,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 106,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17441,7 +17441,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 107,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17500,7 +17500,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 108,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17559,7 +17559,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 109,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17618,7 +17618,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 110,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17677,7 +17677,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 111,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17736,7 +17736,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 112,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17795,7 +17795,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 113,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17854,7 +17854,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 114,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17913,7 +17913,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 115,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -17972,7 +17972,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 116,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18031,7 +18031,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 117,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18089,7 +18089,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 119,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18147,7 +18147,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 120,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18206,7 +18206,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 121,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18265,7 +18265,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 122,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18324,7 +18324,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 130,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18383,7 +18383,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 131,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18442,7 +18442,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 132,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18501,7 +18501,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 133,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18560,7 +18560,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 134,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18583,7 +18583,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 135,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18603,7 +18603,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 136,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18658,7 +18658,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 137,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18705,7 +18705,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 138,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18759,7 +18759,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 139,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18814,7 +18814,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 140,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18873,7 +18873,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 141,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18932,7 +18932,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 142,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -18991,7 +18991,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 143,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19050,7 +19050,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 144,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19109,7 +19109,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 145,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19168,7 +19168,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 146,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19227,7 +19227,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 147,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19286,7 +19286,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 148,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19345,7 +19345,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 149,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19404,7 +19404,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 150,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19463,7 +19463,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 151,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19522,7 +19522,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 152,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19581,7 +19581,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 153,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19640,7 +19640,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 154,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19699,7 +19699,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 155,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19876,7 +19876,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 158,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -19935,7 +19935,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 159,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20230,7 +20230,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 164,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20761,7 +20761,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 173,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20820,7 +20820,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 174,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20840,7 +20840,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 175,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20899,7 +20899,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 176,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20919,7 +20919,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 177,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -20978,7 +20978,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 178,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21037,7 +21037,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 179,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21096,7 +21096,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 180,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21155,7 +21155,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 181,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21214,7 +21214,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 182,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21273,7 +21273,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 183,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }
@@ -21332,7 +21332,7 @@
       ],
       "provenance": {
         "kind": "verified-frozen-notice-slice",
-        "indexPath": "release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
+        "indexPath": "632709fb:release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-INDEX-controlled.json",
         "recordIndex": 184,
         "bundleSha256": "2bb7881f9748328b6d1093025857781b93924ba594e4d7bfc0374429993a8ae2"
       }

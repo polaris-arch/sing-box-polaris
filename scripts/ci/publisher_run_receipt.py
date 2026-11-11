@@ -27,23 +27,11 @@ def validate_needs(role, release, env):
     mode = env['RECEIPT_EVIDENCE_MODE']
     assert mode in ('final', 'staging'), 'invalid receipt evidence mode'
     generate = native_bool(env, 'RECEIPT_SOURCE_GENERATE_ONLY')
-    distribution = native_bool(env, 'RECEIPT_DISTRIBUTION_ENABLED')
-    publish = native_bool(env, 'RECEIPT_PUBLISH_GITHUB')
     assert not generate, 'source generation is not a complete producer role'
-    assert not (publish and mode != 'final'), 'GitHub publication requires final mode'
-    if role == 'signed':
-        assert distribution, 'distribution-disabled workflow is not a signed producer'
-    else:
-        assert not distribution and not publish, 'unsigned producer cannot select publication'
-    if role in ('linux', 'docker'):
-        assert mode == 'final', 'fixed complete producer role requires final mode'
     ref = env['GITHUB_REF']
     assert ref.startswith(('refs/tags/', 'refs/heads/')), 'missing native producer ref'
     if ref.startswith('refs/tags/'):
         assert ref == 'refs/tags/' + release['tag'], 'producer tag differs from release plan'
-    material = role != 'signed' and mode == 'final' and ref.startswith('refs/tags/')
-    if role != 'signed':
-        assert native_bool(env, 'POLARIS_DEBIAN_REQUIRED') == material, 'material selection differs from native inputs'
     scope = json.loads(Path('release/ci/publisher-upstream-scope.json').read_text(encoding='utf-8'))[role]
     policies = scope['receiptJobs']
     assert policies and set(policies) == set(scope['requiredJobs']), 'incomplete source-owned receipt job set'
@@ -53,22 +41,12 @@ def validate_needs(role, release, env):
         item = needs[name]
         assert type(item) is dict and set(item) == {'result', 'outputs'}, 'invalid native needs entry: ' + name
         assert type(item['outputs']) is dict, 'invalid native job outputs: ' + name
-        if policy == 'required':
-            selected = True
-        elif policy == 'debian_required':
-            assert role != 'signed' and name == 'debian_materials', 'invalid supplier receipt policy'
-            selected = material
-        elif policy == 'github_upload':
-            assert role == 'signed' and name == 'upload', 'invalid publication receipt policy'
-            selected = distribution and publish and mode == 'final'
-        else:
-            raise AssertionError('unknown source-owned receipt policy')
-        expected = 'success' if selected else 'skipped'
-        assert item['result'] == expected, 'producer job did not reach selected terminal result: ' + name
+        assert policy == 'required', 'unknown source-owned receipt policy'
+        assert item['result'] == 'success', 'producer job did not reach selected terminal result: ' + name
 
 
 role = os.environ['PUBLISHER_ROLE']
-assert role in ('all', 'linux', 'docker', 'signed')
+assert role == 'all'
 assert os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
 assert os.environ['GITHUB_REPOSITORY'] == 'polaris-arch/sing-box-polaris'
 assert os.environ['GITHUB_REPOSITORY_ID'] == '1421657509'
@@ -87,10 +65,4 @@ record = {'repository': os.environ['GITHUB_REPOSITORY'], 'repositoryId': int(os.
           'sourceCommit': head, 'runId': os.environ['GITHUB_RUN_ID'], 'attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
           'version': os.environ['RELEASE_VERSION'], 'build': os.environ['RELEASE_BUILD'], 'role': role,
           'publishStores': False, 'publishRegistry': False}
-from github_release import producer_debian_materials
-tree=(subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip()
-      if os.environ.get('POLARIS_DEBIAN_REQUIRED','false')=='true' else None)
-debian_raw=producer_debian_materials(role,head,tree)
-if debian_raw is not None:
-    record['distributionMaterials']={'debianRaw':debian_raw}
 Path('publisher-run-receipt.json').write_text(json.dumps(record, indent=2)+'\n', encoding='utf-8', newline='\n')

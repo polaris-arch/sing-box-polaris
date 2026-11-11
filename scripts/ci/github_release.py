@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitHub-only release gate. Inventory is read-only; alpha.12 reconciliation is ID-bound."""
+"""GitHub-only release gate. Inventory is read-only."""
 import argparse
 import io
 from github_read_transport import read_get
@@ -7,7 +7,7 @@ import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from release_identity import remote_tag_identity, public_product_name, validate_publication_index, same_identity
+from release_identity import remote_tag_identity, public_product_name, validate_publication_index
 from polaris_version import validate as validate_version
 import json
 import os
@@ -17,11 +17,9 @@ import shutil
 import stat
 import subprocess
 import tempfile
-import time
 import zipfile
 import struct
 import zlib
-import publisher_peer_registry as peer_evidence
 from contextlib import contextmanager, closing
 
 IO_CHUNK = 1024 * 1024
@@ -236,12 +234,9 @@ RID = 1421657509
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = ROOT / 'release/ci/publisher-upstream-scope.json'
 CONFIG = ROOT / 'release/ci/github-release.json'
-RECONCILIATION = ROOT / 'release/ci/github-release-reconciliation.json'
 CANONICAL_METADATA = 'SFA-version-metadata.json'
-NAME_ALIGNMENT = ROOT / 'release/ci/github-release-name-alignment.json'
-NAME_ALIGNMENT_SHA256 = 'c77f674bddbd0f6f77ee636b1bd93643faf8e6cd62d5d9ce7a6a667c789d8064'
-# One reviewed Apple-only manifest transition, not a general migration allowlist.
-ANDROID_OVERLAY_TRANSITION_SHA256 = '06fdfb3e24a0a6a934ad1ba8660bac3452955894d627d792f0a7317b47d6cd6f'
+# Android overlay definition reviewed together with the reused Android material reference.
+ANDROID_DEFINITION_SHA256 = '6f07e48e2cb13c83af50c4498530cc9102725d39b5503be40b5e633f2a37e265'
 VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
 PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
 TAG = 'v' + VERSION
@@ -302,22 +297,6 @@ def portable(name):
     return p
 
 
-def extract(archive, directory):
-    seen = set()
-    with zipfile.ZipFile(archive) as z:
-        for item in z.infolist():
-            p = portable(item.filename)
-            if item.is_dir():
-                continue
-            require(stat.S_IFMT(item.external_attr >> 16) in (0, stat.S_IFREG), 'non-regular archive entry')
-            require(p.as_posix().casefold() not in seen, 'duplicate ZIP path')
-            seen.add(p.as_posix().casefold())
-            target = directory.joinpath(*p.parts)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(item) as src, target.open('xb') as dst:
-                shutil.copyfileobj(src, dst)
-
-
 def identity(source, source_dir):
     require(re.fullmatch(r'[0-9a-f]{40}', source), 'full source SHA required')
     require(os.environ.get('GITHUB_REPOSITORY') == REPO and os.environ.get('GITHUB_REPOSITORY_ID') == str(RID), 'wrong workflow repository')
@@ -328,14 +307,6 @@ def identity(source, source_dir):
     for path in ('release/ci/apple-swift-package-overlays.json', 'scripts/ci/apple_package_overlays.py', 'scripts/ci/client_source.py'):
         require((ROOT / path).is_file() and (source_dir / path).is_file()
                 and sha(ROOT / path) == sha(source_dir / path), 'publisher Apple package policy differs from actual build source: ' + path)
-    material_plan = Path(DEBIAN_POLICY['profilePlan'])
-    if (ROOT / material_plan).exists() or (source_dir / material_plan).exists():
-        from cronet_material_supply import profile_plan_sha256
-        module = Path('scripts/ci/cronet_material_supply.py')
-        require((ROOT / module).is_file() and (source_dir / module).is_file()
-                and sha(ROOT / module) == sha(source_dir / module)
-                and profile_plan_sha256(ROOT) == profile_plan_sha256(source_dir),
-                'publisher Debian material contract differs from actual build source')
     owned = Path('release/ci/owned-distribution.json')
     if (ROOT / owned).exists() or (source_dir / owned).exists():
         require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
@@ -357,7 +328,7 @@ def upload_endpoint(release, name):
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, 'name=' + quote(name, safe=''), ''))
 
 
-def validate_final_index(index, source, tree, tag_object, run_id, attempt, workflow, source_root=ROOT, *, debian_raw=None):
+def validate_final_index(index, source, tree, tag_object, run_id, attempt, workflow, source_root=ROOT):
     # A staging index is useful evidence, but never a production publication input.
     require(index.get('schema') == 'polaris-upstream-native-assets-v1', 'final native index schema required; staging forbidden')
     import jsonschema
@@ -384,35 +355,17 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
             'native producer job mapping differs from retained proof/API evidence')
     require(index['sourceArchive']['name'] == 'sing-box-polaris-source-' + source + '.tar.gz', 'immutable source archive basename required')
     from native_release_index import distribution_materials
-    expected_materials = (distribution_materials(index, source_root) if debian_raw is None
-                         else distribution_materials(index, source_root, debian_raw=debian_raw))
-    require(index['distributionMaterials'] == expected_materials, 'source/notice bindings differ from actual index or committed inputs')
+    require(index['distributionMaterials'] == distribution_materials(index, source_root),
+            'source/notice bindings differ from actual index or committed inputs')
 
 
 def producer_publication(role, artifact, relative):
     """Producer scope remains exhaustive; only upstream All binary products are public."""
-    if artifact in (DEBIAN_RAW, DEBIAN_READY):
-        require(role in ('all', 'linux', 'docker'), 'private Debian artifact in wrong role')
-        if artifact == DEBIAN_RAW:
-            require(relative == DEBIAN_MANIFEST or re.fullmatch(r'objects/[0-9a-f]{64}', relative),
-                    'unlisted private Debian raw member')
-            return None, 'private-debian-raw'
-        require(relative == DEBIAN_POLICY['readyMember'], 'unlisted private Debian READY member')
-        return None, 'private-debian-ready'
-    if PurePosixPath(relative).name == DEBIAN_USE:
-        from cronet_material_supply import expected_use
-        require(relative == DEBIAN_USE and role in ('all', 'linux', 'docker') and expected_use(role, artifact) is not None,
-                'private Debian use in nonconsumer/nested artifact')
-        return None, 'private-debian-use'
-
-    basename = PurePosixPath(relative).name
-    if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact in ('publisher-run-receipt', 'go-win7-toolchain'):
-        return None, 'producer-evidence'
-    if role in ('linux', 'docker'):
-        return None, 'separate-distribution-channel'
-    if role == 'signed':
-        return None, 'separate-signed-distribution'
     require(role == 'all', 'unknown publication role')
+    basename = PurePosixPath(relative).name
+    if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact in (
+            'publisher-run-receipt', 'go-win7-toolchain', 'native-controlled-peer'):
+        return None, 'producer-evidence'
     if artifact.startswith('libbox-'):
         return None, 'internal-sdk'
     if artifact.startswith('unsigned-apple-'):
@@ -447,10 +400,7 @@ def public_asset_name(name):
     return name
 
 
-def publication(role, artifact, relative, source=None):
-    private = peer_evidence.mapping(ROOT, role, artifact, relative, source)
-    if private is not None:
-        return private
+def publication(role, artifact, relative):
     name, disposition = producer_publication(role, artifact, relative)
     return (public_asset_name(name) if name is not None else None), disposition
 
@@ -482,233 +432,6 @@ def branded_client_name(name):
 
 
 
-DEBIAN_RAW = 'debian-candidate-raw'
-DEBIAN_READY = 'debian-material-ready'
-DEBIAN_MANIFEST = 'candidate-manifest.json'
-DEBIAN_USE = 'debian-material-use.json'
-DEBIAN_POLICY = {'family': 'debian_materials', 'rawArtifact': DEBIAN_RAW,
-                 'readyArtifact': DEBIAN_READY, 'manifest': DEBIAN_MANIFEST,
-                 'readyMember': 'debian-material-ready.json',
-                 'profilePlan': 'release/ci/cronet-material-profiles.json',
-                 'supplierJob': 'Supply verified Debian raw inputs'}
-DEBIAN_REF_ENV = ('POLARIS_DEBIAN_RAW_ID', 'POLARIS_DEBIAN_RAW_DIGEST',
-                  'POLARIS_DEBIAN_READY_ID', 'POLARIS_DEBIAN_READY_DIGEST')
-
-
-def debian_policy(scope, role):
-    policy = scope[role].get('debianMaterials')
-    if policy is not None:
-        require(role in ('all', 'linux', 'docker') and policy == DEBIAN_POLICY,
-                'unknown Debian material family or policy')
-        require(all(name in scope[role]['requiredArtifacts'] for name in (DEBIAN_RAW, DEBIAN_READY)),
-                'Debian family lacks its two exact private artifacts')
-        require(scope[role]['payloadRules'][DEBIAN_RAW] == [{'pattern': r'candidate-manifest\.json', 'count': 1}]
-                and scope[role]['payloadRules'][DEBIAN_READY] == [{'pattern': r'debian-material-ready\.json', 'count': 1}],
-                'Debian private member contract changed')
-    return policy
-
-
-def debian_artifact_ref(artifact):
-    return {'id': artifact['id'], 'name': artifact['name'],
-            'digest': artifact['digest'], 'size': artifact['size_in_bytes']}
-
-
-def debian_consumer_artifact(artifact, ready_artifact):
-    require(datetime.fromisoformat(artifact['created_at'].replace('Z', '+00:00'))
-            >= datetime.fromisoformat(ready_artifact['created_at'].replace('Z', '+00:00')),
-            'Debian consumer artifact predates READY')
-
-
-def debian_context(role, run, source, tree, tag_object):
-    require(role in ('all', 'linux', 'docker'), 'not a Debian producer role')
-    require(run['repository']['id'] == RID and run['head_repository']['id'] == RID
-            and run['head_sha'] == source and run['event'] == 'workflow_dispatch'
-            and run['head_branch'] == TAG, 'Debian input run is not this source tag')
-    workflow = release_scope(VERSION)[role]['workflow']
-    require(run['path'] == workflow, 'Debian input workflow mismatch')
-    require(type(run['id']) is int and run['id'] > 0
-            and type(run['run_attempt']) is int and run['run_attempt'] > 0,
-            'Debian run identity is not an exact positive integer')
-    require(isinstance(tree, str) and re.fullmatch(r'[0-9a-f]{40}', tree)
-            and isinstance(tag_object, str) and re.fullmatch(r'[0-9a-f]{40}', tag_object),
-            'Debian source tree/tag object missing')
-    return {'repository': REPO, 'repositoryID': RID, 'sourceCommit': source, 'sourceTree': tree,
-            'tag': TAG, 'tagObject': tag_object, 'workflow': workflow,
-            'runID': run['id'], 'runAttempt': run['run_attempt'], 'role': role}
-
-
-def debian_api_artifact(artifact, context, run):
-    require(type(artifact.get('id')) is int and artifact['id'] > 0
-            and artifact.get('expired') is False
-            and type(artifact.get('size_in_bytes')) is int
-            and 0 < artifact['size_in_bytes'] <= 1075838976
-            and isinstance(artifact.get('digest'), str)
-            and re.fullmatch(r'sha256:[0-9a-f]{64}', artifact['digest']),
-            'invalid bounded Debian API artifact')
-    arun = artifact.get('workflow_run', {})
-    require(arun.get('id') == context['runID'] and arun.get('head_sha') == context['sourceCommit'],
-            'Debian artifact is from another source/run')
-    require(datetime.fromisoformat(artifact['created_at'].replace('Z', '+00:00'))
-            >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')),
-            'Debian artifact predates this attempt')
-
-
-def read_debian_artifacts(artifacts, context, run, supplier_job, budget):
-    """Measure the exact data-only CAS once; preserve the 4 GiB shared scratch cap."""
-    from cronet_material_supply import decode_json, validate_manifest, validate_ready
-    selected = {}
-    for name in (DEBIAN_RAW, DEBIAN_READY):
-        found = [a for a in artifacts if a['name'] == name]
-        require(len(found) == 1, 'missing or duplicate exact Debian artifact: ' + name)
-        selected[name] = found[0]
-        debian_api_artifact(found[0], context, run)
-    require(selected[DEBIAN_RAW]['id'] != selected[DEBIAN_READY]['id'], 'Debian artifacts share an ID')
-    require(datetime.fromisoformat(selected[DEBIAN_RAW]['created_at'].replace('Z', '+00:00'))
-            <= datetime.fromisoformat(selected[DEBIAN_READY]['created_at'].replace('Z', '+00:00')),
-            'Debian READY artifact predates its raw candidate')
-    measured = {}
-    with artifact_archive(selected[DEBIAN_RAW], budget) as (archive, members):
-        regular = [m for m in members if not m.is_dir()]
-        require(1 <= len(regular) <= 513 and all(
-            m.filename == 'objects/' and m.file_size == 0 for m in members if m.is_dir()),
-            'invalid Debian CAS member/directory count')
-        require(sum(m.file_size for m in regular) <= 1073741824 + 1048576, 'Debian CAS exceeds union budget')
-        manifest_members = [m for m in regular if m.filename == DEBIAN_MANIFEST]
-        require(len(manifest_members) == 1, 'Debian CAS manifest member missing/duplicate')
-        manifest_measure, manifest = measure_member(archive, manifest_members[0], json_limit=1048576,
-                                                     json_decoder=decode_json)
-        measured[DEBIAN_MANIFEST] = manifest_measure
-        for member in regular:
-            if member.filename == DEBIAN_MANIFEST:
-                continue
-            require(re.fullmatch(r'objects/[0-9a-f]{64}', member.filename)
-                    and 0 < member.file_size <= 67108864, 'unlisted/non-bounded Debian CAS member')
-            fact, _ = measure_member(archive, member)
-            measured[member.filename] = fact
-        validate_manifest(manifest, context=context, measurements=measured)
-    raw_files = {name: dict(fact, releaseName=None, publicationDisposition='private-debian-raw')
-                 for name, fact in measured.items()}
-    ready_artifact = selected[DEBIAN_READY]
-    require(ready_artifact['size_in_bytes'] <= 1048576 + 65536, 'oversized Debian READY ZIP')
-    with artifact_archive(ready_artifact, budget) as (archive, members):
-        require(len(members) == 1 and not members[0].is_dir()
-                and members[0].filename == DEBIAN_POLICY['readyMember'], 'unexpected Debian READY members')
-        ready_fact, ready = measure_member(archive, members[0], json_limit=1048576, json_decoder=decode_json)
-        binding = validate_ready(ready, context=context, manifest=manifest,
-                                 raw_artifact=debian_artifact_ref(selected[DEBIAN_RAW]),
-                                 supplier_job=supplier_job)
-    require(datetime.fromisoformat(ready_artifact['created_at'].replace('Z', '+00:00'))
-            <= datetime.fromisoformat(supplier_job['completed_at'].replace('Z', '+00:00')),
-            'Debian READY artifact postdates its completed supplier')
-    binding = dict(binding, readyArtifact=debian_artifact_ref(ready_artifact))
-    entries = {
-        DEBIAN_RAW: {'id': selected[DEBIAN_RAW]['id'],
-                     'archiveBytes': selected[DEBIAN_RAW]['size_in_bytes'],
-                     'archiveSha256': selected[DEBIAN_RAW]['digest'], 'files': raw_files},
-        DEBIAN_READY: {'id': ready_artifact['id'], 'archiveBytes': ready_artifact['size_in_bytes'],
-                       'archiveSha256': ready_artifact['digest'],
-                       'files': {DEBIAN_POLICY['readyMember']: dict(ready_fact, releaseName=None,
-                                     publicationDisposition='private-debian-ready')}}}
-    return binding, entries, manifest, ready_artifact
-
-
-def debian_supplier_job(context, jobs=None):
-    rows = pages(f'repos/{REPO}/actions/runs/{context["runID"]}/attempts/{context["runAttempt"]}/jobs', 'jobs', maximum=1000) if jobs is None else jobs
-    jobs = [job for job in rows if job['name'] == DEBIAN_POLICY['supplierJob']]
-    require(len(jobs) == 1, 'missing/ambiguous Debian supplier job')
-    job = jobs[0]
-    require(job['status'] == 'completed' and job['conclusion'] == 'success'
-            and job['head_sha'] == context['sourceCommit'] and job['run_id'] == context['runID']
-            and job['run_attempt'] == context['runAttempt'], 'Debian supplier did not succeed in this attempt')
-    return job
-
-
-def producer_debian_materials(role, source, tree, *, env=None):
-    """Same-run receipts/index: supplier success is enough; never await our own run."""
-    env = os.environ if env is None else env
-    required = env.get('POLARIS_DEBIAN_REQUIRED', 'false')
-    require(required in ('true', 'false'), 'invalid Debian required mode')
-    refs = [env.get(name, '') for name in DEBIAN_REF_ENV]
-    if required == 'false':
-        require(not any(refs), 'optional Debian mode carries unexpected references')
-        return None
-    require(all(refs), 'required Debian material reference missing')
-    require(role in ('all', 'linux', 'docker') and env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'
-            and env.get('GITHUB_REF') == 'refs/tags/' + TAG and env.get('GITHUB_SHA') == source
-            and env.get('GITHUB_WORKFLOW_SHA') == source, 'required Debian producer context mismatch')
-    scope = release_scope(VERSION)
-    require(debian_policy(scope, role) is not None, 'required Debian producer has no source-owned policy')
-    require(env.get('GITHUB_WORKFLOW_REF') == f'{REPO}/{scope[role]["workflow"]}@refs/tags/{TAG}',
-            'required Debian producer workflow ref differs')
-    require(re.fullmatch(r'[1-9][0-9]*', env.get('GITHUB_RUN_ID', ''))
-            and re.fullmatch(r'[1-9][0-9]*', env.get('GITHUB_RUN_ATTEMPT', '')), 'invalid Debian producer run/attempt')
-    run = api(f'repos/{REPO}/actions/runs/{env["GITHUB_RUN_ID"]}')
-    require(run['id'] == int(env['GITHUB_RUN_ID']) and run['run_attempt'] == int(env['GITHUB_RUN_ATTEMPT'])
-            and run['status'] in ('queued', 'in_progress', 'completed')
-            and (run['status'] != 'completed' or run['conclusion'] == 'success'),
-            'Debian producer run/attempt changed or failed')
-    tag_object = tag_identity(source)
-    context = debian_context(role, run, source, tree, tag_object)
-    artifacts = []
-    for name, ident, digest in ((DEBIAN_RAW, refs[0], refs[1]), (DEBIAN_READY, refs[2], refs[3])):
-        require(re.fullmatch(r'[1-9][0-9]*', ident) and re.fullmatch(r'(?:sha256:)?[0-9a-f]{64}', digest),
-                'invalid exact Debian output reference')
-        artifact = api(f'repos/{REPO}/actions/artifacts/{ident}')
-        expected_digest = digest if digest.startswith('sha256:') else 'sha256:' + digest
-        require(artifact['id'] == int(ident) and artifact['name'] == name
-                and artifact['digest'] == expected_digest, 'Debian job output/API mismatch')
-        artifacts.append(artifact)
-    with tempfile.TemporaryDirectory(prefix='polaris-debian-receipt-') as directory:
-        binding, _, _, _ = read_debian_artifacts(artifacts, context, run, debian_supplier_job(context),
-                                           ScratchBudget(Path(directory)))
-    require(tag_identity(source) == tag_object, 'Debian producer tag moved during verification')
-    return binding
-
-
-def validate_debian_use(files, candidates, artifact, binding, *, jobs=None,
-                        canonical_manifest=None, artifact_metadata=None, ready_metadata=None):
-    from cronet_material_supply import expected_use, validate_use_ref, LOCAL_USE, BINDING_KEYS
-    if binding is not None:
-        require(type(binding) is dict and set(binding) == BINDING_KEYS, 'complete Debian material binding')
-    expected = expected_use(binding['context']['role'], artifact) if binding is not None else None
-    use = files.get(DEBIAN_USE, {}).get('debianRawUse')
-    require((use is not None) == (expected is not None), 'missing/unexpected Debian consumer sidecar')
-    if expected is None:
-        require(all('debianMaterialUse' not in item for item in candidates), 'unexpected candidate Debian useRef')
-        return False
-    ref = use.get('consumerJob') if isinstance(use, dict) else None
-    require(isinstance(ref, dict) and type(ref.get('id')) is int and ref['id'] > 0
-            and isinstance(jobs, list), 'Debian use lacks actual consumer job identity')
-    consumers = [job for job in jobs if job['id'] == ref['id']]
-    require(len(consumers) == 1, 'missing/ambiguous actual Debian consumer job')
-    validate_use_ref(use, binding=binding, ready_artifact=binding['readyArtifact'],
-                     artifact_name=artifact, consumer_job=consumers[0], canonical_manifest=canonical_manifest)
-    if use['schema'] != LOCAL_USE:
-        if artifact_metadata is not None:
-            require(type(ready_metadata) is dict
-                    and {'id', 'name', 'digest', 'size_in_bytes', 'created_at'} <= set(ready_metadata)
-                    and type(ready_metadata['created_at']) is str
-                    and same_identity(debian_artifact_ref(ready_metadata), binding['readyArtifact']),
-                    'legacy authenticated READY metadata missing or mismatched')
-            debian_consumer_artifact(artifact_metadata, ready_metadata)
-        supplier = debian_supplier_job(binding['context'], jobs=jobs)
-        require(supplier['id'] == binding['supplierJob']['id']
-                and datetime.fromisoformat(consumers[0]['started_at'].replace('Z', '+00:00'))
-                    >= datetime.fromisoformat(supplier['completed_at'].replace('Z', '+00:00')),
-                'Debian consumer started before its actual supplier completed')
-    if binding['context']['role'] == 'all':
-        require(len(candidates) == 1, 'All Debian consumer needs its existing exact candidate receipt')
-        record = candidates[0]
-        expected_ref = dict(member=DEBIAN_USE, bytes=files[DEBIAN_USE]['bytes'], sha256=files[DEBIAN_USE]['sha256'])
-        require(record.get('debianMaterialUse') == expected_ref, 'candidate Debian useRef mismatch')
-        listed = [f for f in record['files'] if f['path'] == DEBIAN_USE]
-        require(listed == [dict(path=DEBIAN_USE, bytes=expected_ref['bytes'], sha256=expected_ref['sha256'])],
-                'candidate did not measure its Debian use sidecar')
-        require(record['job'] == ref['key'],
-                'candidate Debian consumer job mismatch')
-    return True
-
-
 def release_scope(version):
     # Only the current source-owned release contract selects a version. Escape
     # it as regex data; never guess it from artifact names or accept old mixes.
@@ -732,9 +455,8 @@ def verify_artifact_names(names, required, role):
     require(set(names) == set(required), f'{role}: incomplete or unexpected artifact scope: missing={set(required)-set(names)}, extra={set(names)-set(required)}')
 
 
-def verify_payloads(files, rules, artifact, *, debian_use=False):
-    require((DEBIAN_USE in files) == debian_use, 'missing/unexpected exact private Debian use member')
-    payloads = {p for p in files if p != DEBIAN_USE and not PurePosixPath(p).name.startswith(('polaris-candidate-manifest-', 'native-row-'))}
+def verify_payloads(files, rules, artifact):
+    payloads = {p for p in files if not PurePosixPath(p).name.startswith(('polaris-candidate-manifest-', 'native-row-'))}
     if artifact.startswith('smoke-'):
         require(not payloads and len(files) == 1, 'smoke evidence scope mismatch')
         return
@@ -749,13 +471,13 @@ def verify_payloads(files, rules, artifact, *, debian_use=False):
 def client_platform(artifact):
     for prefix, platform in [('binary-android-apks-', 'android'), ('binary-windows-client-', 'windows'),
                              ('binary-linux-client-', 'linux'), ('binary-apple-', 'apple'),
-                             ('unsigned-apple-', 'apple'), ('signed-apple-store-', 'apple')]:
+                             ('unsigned-apple-', 'apple')]:
         if artifact.startswith(prefix):
             return platform
     return None
 
 
-def validate_client_source(provenance, artifact, role, source):
+def validate_client_source(provenance, artifact, source):
     from client_source import validate
     platform = client_platform(artifact)
     record = provenance.get('clientSource')
@@ -763,7 +485,7 @@ def validate_client_source(provenance, artifact, role, source):
         require(record is None, 'unexpected client source receipt in core/library artifact')
     else:
         require(isinstance(record, dict), 'client artifact lacks actual client source evidence')
-        validate(record, platform, source, role != 'signed')
+        validate(record, platform, source, True)
     return record
 
 
@@ -823,29 +545,19 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     require(isinstance(client_source, dict) and all(key in client_source for key in identity_keys), 'missing Android client material identity')
     actual_identity = {key: client_source[key] for key in identity_keys}
     expected_identity = reference.get('clientSource')
-    transition_sha = None
     if actual_identity != expected_identity:
-        # A separate reviewed Apple-only edit may change the whole overlay manifest.
+        # Edits to other platforms may change the whole overlay manifest.
         # Never relabel the historical reference or relax Android/runtime byte identity.
         require(isinstance(expected_identity, dict) and
                 all(actual_identity[key] == expected_identity.get(key) for key in identity_keys if key != 'overlayManifestSHA256'),
                 'Android client source material reference drift')
-        transition_path = root / 'release/ci/android-material-overlay-transition.json'
-        require(transition_path.is_file(), 'Android overlay material reference drift: transition missing')
-        require(sha(transition_path) == ANDROID_OVERLAY_TRANSITION_SHA256, 'Android overlay material reference drift: transition changed')
-        transition = json.loads(transition_path.read_text(encoding='utf-8'))
         manifest_path = root / 'release/ci/client-overlays.json'
-        require(transition.get('schema') == 'polaris-android-material-overlay-transition-v1' and
-                transition.get('referenceSHA256') == sha(reference_path) and
-                transition.get('previousOverlayManifestSHA256') == expected_identity['overlayManifestSHA256'] and
-                transition.get('currentOverlayManifestSHA256') == actual_identity['overlayManifestSHA256'] == sha(manifest_path) and
-                transition.get('changedPlatforms') == ['apple'] and transition.get('requiresActualRuntimeArtifactComparison') is True,
-                'Android overlay material reference drift: transition identity changed')
+        require(actual_identity['overlayManifestSHA256'] == sha(manifest_path),
+                'Android overlay material reference drift: overlay manifest differs')
         android = json.loads(manifest_path.read_text(encoding='utf-8'))['platforms']['android']
         definition_sha = hashlib.sha256(json.dumps(android, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        require(definition_sha == transition.get('unchangedAndroidDefinitionSHA256'),
+        require(definition_sha == ANDROID_DEFINITION_SHA256,
                 'Android overlay material reference drift: Android definition changed')
-        transition_sha = sha(transition_path)
     actual = validate_android_runtime(record, configuration)
     expected = reference.get('variants', {}).get(configuration)
     require(isinstance(expected, dict), 'missing Android configuration material reference')
@@ -866,17 +578,13 @@ def validate_android_material_reuse(record, configuration, client_source, root=R
     evidence = {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
                 'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
                 'sourceMaterialsReusable': True, 'legalConclusion': False}
-    if transition_sha is not None:
-        evidence['overlayTransitionSHA256'] = transition_sha
     return evidence
 
 
-def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None, materialize=False):
+def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None):
     budget = budget or ScratchBudget(work)
-    peer_policy = peer_evidence.select(ROOT, source, VERSION, TAG, source_tree, tag_object)
-    scope = peer_evidence.scoped(release_scope(VERSION), peer_policy, runs)
-    peer_receipt = None
-    require(set(runs) in ({'all', 'linux', 'docker'}, {'all', 'linux', 'docker', 'signed'}), 'all, linux and docker runs are mandatory')
+    scope = release_scope(VERSION)
+    require(set(runs) == {'all'}, 'exactly the all run is mandatory')
     result = {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'sourceCommit': source,
               'scopeSha256': sha(SCOPE), 'reviewed': False, 'runs': {}, 'signedOnlyBlockers': BLOCKED,
               'sourceTree': source_tree, 'tag': TAG, 'tagObject': tag_object}
@@ -893,36 +601,14 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
-        binding = None
-        canonical_manifest = None
-        ready_metadata = None
-        private_entries = {}
-        material_jobs = []
-        if debian_policy(scope, role) is not None:
-            context = debian_context(role, run, source, source_tree, tag_object)
-            require(context['runID'] == int(rid), 'Debian input run ID mismatch')
-            material_jobs = pages(f'repos/{REPO}/actions/runs/{context["runID"]}/attempts/{context["runAttempt"]}/jobs',
-                                  'jobs', maximum=1000)
-            binding, private_entries, canonical_manifest, ready_metadata = read_debian_artifacts(
-                artifacts, context, run, debian_supplier_job(context, jobs=material_jobs), budget)
-            entry['distributionMaterials'] = {'debianRaw': binding}
         for a in artifacts:
-            if a['name'] in private_entries:
-                entry['artifacts'][a['name']] = private_entries[a['name']]
-                continue
-            is_peer = peer_policy is not None and a['name'] == peer_policy['selection']['artifact']['name']
-            if is_peer:
-                peer_evidence.check_api(peer_policy, role, run, a)
             require(not a['expired'], 'expired artifact')
             require(datetime.fromisoformat(a['created_at'].replace('Z', '+00:00')) >= datetime.fromisoformat(run['run_started_at'].replace('Z', '+00:00')), 'artifact predates current run attempt')
             arun = a.get('workflow_run', {})
             require(arun.get('id') == int(rid) and arun.get('head_sha') == source, 'artifact source mismatch')
             files = {}
             client_sources = []
-            candidate_records = []
             with artifact_archive(a, budget) as (archive, members):
-                if is_peer:
-                    peer_evidence.members(peer_policy, members)
                 for item in members:
                     if item.is_dir():
                         measure_member(archive, item)
@@ -930,23 +616,19 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                     relative = item.filename
                     budget.state.update(artifactId=a['id'], artifact=a['name'], member=relative)
                     name = PurePosixPath(relative).name
-                    public_name, disposition = publication(role, a['name'], relative, source)
+                    public_name, disposition = publication(role, a['name'], relative)
                     candidate = name.startswith('polaris-candidate-manifest-')
-                    evidence = is_peer or candidate or relative == DEBIAN_USE or (a['name'], relative) in {
+                    evidence = candidate or (a['name'], relative) in {
                         ('publisher-run-receipt', 'publisher-run-receipt.json'),
                         ('binary-native-index', 'polaris-upstream-native-assets.json')}
                     limit = (3 * 1024**2 if candidate and client_platform(a['name']) else JSON_LIMIT) if evidence else None
-                    if is_peer or relative == DEBIAN_USE:
-                        limit = peer_evidence.JSON_LIMIT
-                    decoder = peer_evidence.strict_json if is_peer or relative == DEBIAN_USE else json.loads
-                    retained = (materialize and relative != DEBIAN_USE) or a['name'] == 'binary-native-index'
-                    if retained:
+                    if a['name'] == 'binary-native-index':
                         target = work / role / a['name'] / relative
                         target.parent.mkdir(parents=True, exist_ok=True)
                         budget.admit(item.file_size, 'retained ' + relative)
                         try:
                             with target.open('xb') as stream:
-                                measured_file, provenance = measure_member(archive, item, stream, limit, json_decoder=decoder)
+                                measured_file, provenance = measure_member(archive, item, stream, limit)
                         except BaseException as error:
                             try:
                                 target.unlink(missing_ok=True)
@@ -955,19 +637,13 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                             budget.release(item.file_size)
                             raise
                     else:
-                        measured_file, provenance = measure_member(archive, item, json_limit=limit, json_decoder=decoder)
+                        measured_file, provenance = measure_member(archive, item, json_limit=limit)
                     files[relative] = dict(measured_file, releaseName=public_name, publicationDisposition=disposition)
-                    if is_peer:
-                        peer_receipt = provenance
-                        files[relative]['controlledPeerEvidence'] = peer_evidence.validate_receipt(peer_policy, measured_file, provenance)
                     if (a['name'], relative) == ('publisher-run-receipt', 'publisher-run-receipt.json'):
                         receipt = provenance
-                    if relative == DEBIAN_USE:
-                        files[relative]['debianRawUse'] = provenance
                     if candidate:
-                        candidate_records.append(provenance)
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
-                        measured = validate_client_source(provenance, a['name'], role, source)
+                        measured = validate_client_source(provenance, a['name'], source)
                         if measured is not None:
                             client_sources.append(measured)
                             # Retained in reviewed inventory and audit receipt,
@@ -980,31 +656,17 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                                 files[relative]['androidMaterialReuse'] = validate_android_material_reuse(provenance.get('androidRuntimeMaterials'), configuration, measured)
             require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
-            has_debian_use = validate_debian_use(files, candidate_records, a['name'], binding, jobs=material_jobs,
-                                                canonical_manifest=canonical_manifest, artifact_metadata=a,
-                                                ready_metadata=ready_metadata)
-            verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'], debian_use=has_debian_use)
+            verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveBytes': a['size_in_bytes'], 'archiveSha256': a['digest'], 'files': files}
         expected_receipt = {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
                             'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role,
                             'publishStores': False, 'publishRegistry': False}
-        if binding is not None:
-            expected_receipt['distributionMaterials'] = {'debianRaw': binding}
         require(receipt == expected_receipt, 'producer scope/input receipt missing or inconsistent')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
-        if role in ('all', 'signed'):
+        if role == 'all':
             index = json.loads((work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json').read_text(encoding='utf-8'))
-            args = (index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
-            debian_raw = entry.get('distributionMaterials', {}).get('debianRaw')
-            if debian_raw is None:
-                validate_final_index(*args)
-            else:
-                validate_final_index(*args, debian_raw=debian_raw)
-            if role == 'all' and peer_policy is not None:
-                require(peer_receipt is not None, 'required controlled peer receipt missing')
-                peer_evidence.cross_bind(peer_policy, index, sha(work / role / 'binary-native-index' / 'polaris-upstream-native-assets.json'), entry)
-                result['controlledPeerEvidence'] = peer_evidence.record(peer_policy, os.environ.get('GITHUB_SHA'))
+            validate_final_index(index, source, source_tree, tag_object, rid, run['run_attempt'], scope[role]['workflow'], source_root)
             indexed_names = set()
             for record in [x['archive'] for x in index['platforms']] + [index['sourceArchive']]:
                 require(record['name'] not in indexed_names, 'duplicate native index name')
@@ -1018,8 +680,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
 
 def assemble(actual, config, work, output, audit=None, materialize=True, budget=None):
     require(config.get('reviewed') is True, 'public release file scope is not reviewed')
-    peer_evidence.check_inventory(ROOT, actual, os.environ.get('GITHUB_SHA'))
-    require(actual.get('controlledPeerEvidence') == config.get('controlledPeerEvidence'), 'reviewed controlled peer selection differs')
     require(actual.get('distributionMaterials') == config.get('distributionMaterials'), 'reviewed shared materials differ')
     for field in ('repository', 'repositoryId', 'version', 'sourceCommit', 'sourceTree', 'tag', 'tagObject', 'scopeSha256'):
         require(actual[field] == config[field], 'release contract differs: ' + field)
@@ -1035,8 +695,6 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
     for role, run in actual['runs'].items():
         expected = config['runs'][role]
         require(run['id'] == expected['id'] and run['attempt'] == expected['attempt'], 'run/attempt differs from reviewed contract')
-        require(run.get('distributionMaterials') == expected.get('distributionMaterials'),
-                'reviewed role Debian material binding differs')
         require(set(run['artifacts']) == set(expected['artifacts']), 'artifact scope differs')
         for artifact, a in run['artifacts'].items():
             contract = expected['artifacts'][artifact]
@@ -1049,9 +707,7 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 require(f.get('distributionMaterials') == review.get('distributionMaterials'), 'reviewed per-payload materials differ')
                 require(f.get('androidRuntimeMaterials') == review.get('androidRuntimeMaterials'), 'reviewed Android runtime evidence differs')
                 require(f.get('androidMaterialReuse') == review.get('androidMaterialReuse'), 'reviewed Android material reuse evidence differs')
-                require(f.get('controlledPeerEvidence') == review.get('controlledPeerEvidence'), 'reviewed controlled peer evidence differs')
-                require(f.get('debianRawUse') == review.get('debianRawUse'), 'reviewed Debian use differs')
-                name, disposition = publication(role, artifact, relative, actual['sourceCommit'])
+                name, disposition = publication(role, artifact, relative)
                 require(review['releaseName'] == f['releaseName'] == name, 'public filename differs from source-owned mapping')
                 require(review.get('publicationDisposition') == f.get('publicationDisposition') == disposition,
                         'publication disposition differs from source-owned mapping')
@@ -1070,7 +726,7 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 if materialize:
                     shutil.copyfile(work / role / artifact / relative, output / name)
                 receipt['assets'].append(dict(f, releaseName=name, role=role, artifact=artifact, artifactPath=relative,
-                    signatureState='unverified-signed-build' if role == 'signed' else 'unsigned-candidate'))
+                    signatureState='unsigned-candidate'))
     require(receipt['assets'], 'empty release')
     if budget:
         budget.write_json(audit / RECEIPT, receipt, PROPOSAL_LIMIT)
@@ -1081,11 +737,10 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
 
 def public_asset_stream(actual, budget):
     """Second immutable ZIP pass; at most one public member exists on disk."""
-    peer_evidence.check_inventory(ROOT, actual, os.environ.get('GITHUB_SHA'))
     for role, run in actual['runs'].items():
         for name, expected in run['artifacts'].items():
             for relative, reviewed in expected['files'].items():
-                require(publication(role, name, relative, actual['sourceCommit']) ==
+                require(publication(role, name, relative) ==
                         (reviewed['releaseName'], reviewed['publicationDisposition']), 'public ZIP mapping changed')
             if not any(f['releaseName'] is not None for f in expected['files'].values()):
                 continue
@@ -1102,7 +757,7 @@ def public_asset_stream(actual, budget):
                         measure_member(archive, item)
                         continue
                     reviewed = expected['files'][item.filename]
-                    public_name, disposition = publication(role, name, item.filename, actual['sourceCommit'])
+                    public_name, disposition = publication(role, name, item.filename)
                     require((public_name, disposition) == (reviewed['releaseName'], reviewed['publicationDisposition']), 'public ZIP mapping changed')
                     if public_name is None:
                         measured, _ = measure_member(archive, item)
@@ -1179,217 +834,15 @@ def publish(output, source, audit=None, measured=None, budget=None):
     print(published['html_url'])
 
 
-def reconciliation_plan(actual):
-    plan = json.loads(RECONCILIATION.read_text(encoding='utf-8'))
-    require((plan['schema'], plan['repository'], plan['releaseId'], plan['tag'], plan['tagObject'], plan['sourceCommit']) ==
-            ('polaris-alpha12-release-reconciliation-v1', REPO, 416392475, 'v1.15.0-polaris-alpha.12',
-             'a85a5332432a92e1de502cfc9c680206371540b8', 'c0023dbc6dcd7b6eb2f54dd036ae150168bd8e6e'),
-            'reconciliation is limited to the reviewed existing alpha.12 release')
-    require((actual['sourceCommit'], actual['tag'], actual['tagObject']) ==
-            (plan['sourceCommit'], plan['tag'], plan['tagObject']), 'reconciliation source/tag differs')
-    rows = plan['operations']
-    require(len(rows) == 228 and len({r['id'] for r in rows}) == 228 and
-            len({r['oldName'].casefold() for r in rows}) == 228, 'invalid reconciliation baseline')
-    require({op: sum(r['operation'] == op for r in rows) for op in ('keep', 'rename', 'remove')} ==
-            plan['counts'] == {'keep': 145, 'rename': 23, 'remove': 60}, 'reconciliation scope changed')
-    require(plan['deferRemovalIds'] in ([653244600, 653251914], []), 'invalid consumer material deferral')
-    if not plan['deferRemovalIds']:
-        # Reuse the existing consumer audit reports, never a flag claiming readiness.
-        require(plan['consumerEvidence'], 'consumer verification reports required before sidecar removal')
-        for evidence in plan['consumerEvidence']:
-            path = ROOT.joinpath(*portable(evidence['path']).parts)
-            require(sha(path) == evidence['sha256'], 'consumer verification report changed')
-    public = {}
-    for row in rows:
-        require(type(row['id']) is int and row['id'] > 0 and type(row['bytes']) is int and row['bytes'] > 0 and
-                re.fullmatch(r'sha256:[0-9a-f]{64}', row['digest']), 'invalid baseline asset identity')
-        require(len(portable(row['oldName']).parts) == 1, 'baseline asset name must be a basename')
-        producer = row.get('producer')
-        if not producer:
-            require(row['oldName'] == RECEIPT and row['operation'] == 'remove', 'unknown non-producer asset')
-            continue
-        role, artifact, relative = (producer[k] for k in ('role', 'artifact', 'path'))
-        record = actual['runs'][role]['artifacts'][artifact]['files'][relative]
-        require((record['bytes'], 'sha256:' + record['sha256']) == (row['bytes'], row['digest']), 'baseline differs from original producer bytes')
-        # The immutable c002 recovery contract retains its historical outer names.
-        name = producer_publication(role, artifact, relative)[0]
-        require((name is None) == (row['operation'] == 'remove'), 'reconciliation differs from public selection')
-        if name:
-            require(name == row.get('newName', row['oldName']), 'reconciliation differs from public naming')
-            require(name.casefold() not in {x.casefold() for x in public}, 'duplicate final public name')
-            public[name] = row
-    require(len(public) == 168, 'exact upstream public set required')
-    return plan
-
-
-def reconciliation_snapshot(plan, final_body):
-    release_id = plan['releaseId']
-    require(tag_identity(plan['sourceCommit']) == plan['tagObject'], 'reconciliation tag moved')
-    require([r['id'] for r in pages(f'repos/{REPO}/releases') if r['tag_name'] == TAG] == [release_id], 'competing release')
-    release = api(f'repos/{REPO}/releases/{release_id}')
-    require(release['id'] == release_id, 'reconciliation release identity changed')
-    for field, original in plan['release'].items():
-        require(release.get(field) in (original, final_body) if field == 'body' else release.get(field) == original,
-                'release metadata changed: ' + field)
-    assets = pages(f'repos/{REPO}/releases/{release_id}/assets')
-    by_id = {a['id']: a for a in assets}
-    require(len(by_id) == len(assets) and len({a['name'].casefold() for a in assets}) == len(assets), 'duplicate remote asset')
-    rows = {r['id']: r for r in plan['operations']}
-    require(set(by_id) <= set(rows), 'unknown concurrent release asset')
-    normalized = {}
-    for ident, row in rows.items():
-        asset = by_id.get(ident)
-        if asset is None:
-            require(row['operation'] == 'remove' and ident not in plan['deferRemovalIds'], 'required asset disappeared')
-            continue
-        require(asset['name'] in {row['oldName'], row.get('newName', row['oldName'])}, 'asset name changed outside plan')
-        require(asset['state'] == 'uploaded' and (asset['size'], asset.get('digest')) == (row['bytes'], row['digest']),
-                'remote bytes/hash changed')
-        normalized[ident] = (asset['name'], asset['size'], asset['digest'])
-    return release['body'], normalized
-
-
-def recovery_references(actual, plan):
-    """Reuse already downloaded and verified producer artifacts, without copying GBs again."""
-    references, originals = {}, {}
-    for row in plan['operations']:
-        if row['operation'] != 'remove' or not row.get('producer'):
-            continue
-        producer = row['producer']
-        artifact = actual['runs'][producer['role']]['artifacts'][producer['artifact']]
-        if artifact['id'] not in originals:
-            originals[artifact['id']] = api(f'repos/{REPO}/actions/artifacts/{artifact["id"]}')
-        original = originals[artifact['id']]
-        require(original['id'] == artifact['id'] and original['name'] == producer['artifact'] and
-                original.get('digest') == artifact['archiveSha256'] and original.get('expired') is False,
-                'original producer artifact is unavailable for recovery')
-        expires = datetime.fromisoformat(original['expires_at'].replace('Z', '+00:00'))
-        require(expires > datetime.now(expires.tzinfo), 'original producer recovery copy expired')
-        references[str(row['id'])] = {'artifactId': original['id'], 'archiveDigest': original['digest'],
-                                    'expiresAt': original['expires_at'], 'producer': producer,
-                                    'bytes': row['bytes'], 'digest': row['digest']}
-    return references
-
-
-def reconciliation_notes(plan):
-    return ('GitHub-only unsigned build/package prerelease from ' + plan['sourceCommit'] + '.\n\n'
-            'Public products follow the upstream All Release selection. Client packages are sing-box-polaris '
-            'derivatives, not official SagerNet releases. Original authors, license texts and package contents '
-            'are retained. APK/EXE/PKG and DEB/RPM signing and macOS notarization are not supplied by this repair.\n\n' +
-            '\n'.join('- ' + x for x in BLOCKED) + '\n\n'
-            'Producer inventory, original source/index and recoverable asset references are retained in the '
-            'reviewed publisher Actions audit: https://github.com/' + REPO + '/actions/workflows/publish-github.yml')
-
-
-def prepare_reconciliation(actual, audit):
-    plan = reconciliation_plan(actual)
-    state = reconciliation_snapshot(plan, reconciliation_notes(plan))
-    original = {r['id']: (r['oldName'], r['bytes'], r['digest']) for r in plan['operations']}
-    require(state == (plan['release']['body'], original), 'prepare requires the complete reviewed initial snapshot; reuse prior recovery artifact after interruption')
-    references = recovery_references(actual, plan)
-    receipt = next(r for r in plan['operations'] if not r.get('producer'))
-    destination = audit / 'original-public-receipt.json'
-    with destination.open('xb') as stream:
-        subprocess.run(['gh', 'api', f'repos/{REPO}/releases/assets/{receipt["id"]}',
-                        '-H', 'Accept: application/octet-stream'], stdout=stream, check=True)
-    require((destination.stat().st_size, 'sha256:' + sha(destination)) == (receipt['bytes'], receipt['digest']),
-            'original public receipt backup mismatch')
-    record = {'planSHA256': sha(RECONCILIATION), 'sourceCommit': plan['sourceCommit'],
-              'publisherCommit': os.environ['GITHUB_SHA'], 'assets': references}
-    (audit / 'reconciliation-recovery.json').write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8', newline='\n')
-    return record
-
-
-def load_recovery(run_id, audit):
-    require(re.fullmatch(r'[1-9][0-9]*', run_id or ''), 'successful recovery preparation run required')
-    run = api(f'repos/{REPO}/actions/runs/{run_id}')
-    require(run['repository']['id'] == RID and run['head_repository']['id'] == RID and
-            run['path'] == '.github/workflows/publish-github.yml' and run['head_sha'] == os.environ['GITHUB_SHA'] and
-            run['status'] == 'completed' and run['conclusion'] == 'success', 'recovery run identity/status differs')
-    artifacts = [a for a in pages(f'repos/{REPO}/actions/runs/{run_id}/artifacts', 'artifacts')
-                 if a['name'] == 'github-release-recovery']
-    require(len(artifacts) == 1 and not artifacts[0]['expired'], 'recovery artifact missing/ambiguous/expired')
-    with tempfile.TemporaryDirectory() as temp:
-        archive = Path(temp) / 'recovery.zip'
-        with archive.open('wb') as stream:
-            subprocess.run(['gh', 'api', f'repos/{REPO}/actions/artifacts/{artifacts[0]["id"]}/zip'], stdout=stream, check=True)
-        require(artifacts[0].get('digest') == 'sha256:' + sha(archive), 'recovery archive digest differs')
-        extracted = Path(temp) / 'extracted'
-        extract(archive, extracted)
-        require({p.relative_to(extracted).as_posix() for p in extracted.rglob('*') if p.is_file()} ==
-                {'original-public-receipt.json', 'reconciliation-recovery.json'}, 'unexpected recovery scope')
-        for name in ('original-public-receipt.json', 'reconciliation-recovery.json'):
-            shutil.copyfile(extracted / name, audit / name)
-
-
-def reviewed_recovery(run_id, actual, audit):
-    load_recovery(run_id, audit)
-    plan = reconciliation_plan(actual)
-    record = json.loads((audit / 'reconciliation-recovery.json').read_text(encoding='utf-8'))
-    require((record['planSHA256'], record['sourceCommit'], record['publisherCommit']) ==
-            (sha(RECONCILIATION), plan['sourceCommit'], os.environ['GITHUB_SHA']), 'recovery contract differs')
-    require(record['assets'] == recovery_references(actual, plan), 'recovery producer copies changed')
-    receipt = next(r for r in plan['operations'] if not r.get('producer'))
-    path = audit / 'original-public-receipt.json'
-    require((path.stat().st_size, 'sha256:' + sha(path)) == (receipt['bytes'], receipt['digest']), 'recovery receipt differs')
-    return plan
-
-
-def reconcile(plan):
-    """Only bounded name changes/removals. No uploads, tag writes or arbitrary clobber."""
-    final_body = reconciliation_notes(plan)
-    current = reconciliation_snapshot(plan, final_body)
-    rows = {r['id']: r for r in plan['operations']}
-
-    def mutate(ident, name=None):
-        nonlocal current
-        require(reconciliation_snapshot(plan, final_body) == current, 'concurrent change before mutation')
-        expected = dict(current[1])
-        if name is None:
-            require(rows[ident]['operation'] == 'remove' and ident not in plan['deferRemovalIds'], 'unapproved removal')
-            api(f'repos/{REPO}/releases/assets/{ident}', 'DELETE')
-            expected.pop(ident)
-        else:
-            require(rows[ident]['operation'] == 'rename' and rows[ident]['newName'] == name, 'unapproved rename')
-            api(f'repos/{REPO}/releases/assets/{ident}', 'PATCH', {'name': name})
-            expected[ident] = (name, rows[ident]['bytes'], rows[ident]['digest'])
-        current = (current[0], expected)
-        require(reconciliation_snapshot(plan, final_body) == current, 'mutation readback mismatch; stop and inspect')
-
-    for row in plan['operations']:
-        if row['operation'] != 'rename' or current[1][row['id']][0] == row['newName']:
-            continue
-        conflicts = [ident for ident, asset in current[1].items() if asset[0] == row['newName']]
-        for ident in conflicts:
-            require(rows[ident]['operation'] == 'remove', 'rename target belongs to retained asset')
-            mutate(ident)  # Exact Linux-channel ID; original All ID and bytes are kept.
-        mutate(row['id'], row['newName'])
-    for row in plan['operations']:
-        if row['operation'] == 'remove' and row['id'] not in plan['deferRemovalIds'] and row['id'] in current[1]:
-            mutate(row['id'])
-    require(reconciliation_snapshot(plan, final_body) == current, 'concurrent change before final notes')
-    if current[0] != final_body:
-        api(f'repos/{REPO}/releases/{plan["releaseId"]}', 'PATCH', {'body': final_body})
-        current = (final_body, current[1])
-    require(reconciliation_snapshot(plan, final_body) == current, 'final reconciliation readback mismatch')
-    expected = {r['id']: (r.get('newName', r['oldName']), r['bytes'], r['digest']) for r in plan['operations']
-                if r['operation'] != 'remove' or r['id'] in plan['deferRemovalIds']}
-    require(current[1] == expected, 'final reconciliation set differs')
-    return {'releaseId': plan['releaseId'], 'assetCount': len(expected),
-            'complete': not plan['deferRemovalIds'], 'deferredAssetIds': plan['deferRemovalIds']}
-
-
-def reviewed_contract(run_id, digest, source, publisher_commit=None, artifact_identity=None, budget=None):
+def reviewed_contract(run_id, digest, source, budget=None):
     require(re.fullmatch(r'[1-9][0-9]*', run_id or ''), 'inventory run ID required')
     require(re.fullmatch(r'[0-9a-f]{64}', digest or ''), 'explicit reviewed inventory SHA-256 required')
     run = api(f'repos/{REPO}/actions/runs/{run_id}')
     require(run['repository']['id'] == RID and run['head_repository']['id'] == RID, 'foreign inventory run')
-    require(run['path'] == '.github/workflows/publish-github.yml' and run['head_sha'] == (publisher_commit or os.environ['GITHUB_SHA']), 'inventory publisher revision mismatch')
+    require(run['path'] == '.github/workflows/publish-github.yml' and run['head_sha'] == os.environ['GITHUB_SHA'], 'inventory publisher revision mismatch')
     require(run['conclusion'] == 'success' and run['status'] == 'completed', 'inventory run failed')
     candidates = [a for a in pages(f'repos/{REPO}/actions/runs/{run_id}/artifacts', 'artifacts') if a['name'] == 'github-release-validation']
     require(len(candidates) == 1 and not candidates[0]['expired'], 'inventory artifact missing/ambiguous/expired')
-    if artifact_identity is not None:
-        require((candidates[0]['id'], candidates[0].get('digest')) == artifact_identity, 'original inventory artifact identity changed')
     with tempfile.TemporaryDirectory() as temp:
         budget = budget or ScratchBudget(Path(temp))
         contract = None
@@ -1404,374 +857,6 @@ def reviewed_contract(run_id, digest, source, publisher_commit=None, artifact_id
         require(contract['sourceCommit'] == source, 'inventory source mismatch')
         contract['reviewed'] = True
         return contract
-
-
-# This is a one-shot replacement of the original alpha.12 Release, not --clobber.
-# The historical reconciliation file is used ONLY as an immutable old-asset
-# snapshot. Its old keep/rename/remove decisions never select rebuilt uploads.
-REPLACEMENT_ORIGINAL = {
-    'snapshotSHA256': '262d6d17c916e6f771c6bb50bdfa5eddae844bbf1318f31d0b7bea87ff600b20',
-    'publisherCommit': '388db8964afc4686f07e284fea5ef27185bd6daf',
-    'inventoryRun': '39124650790',
-    'inventorySHA256': 'a493800dca182ed527ba8b1959f6e2257b19f876c4e2036600f27079bbc2c711',
-    'artifactId': 12135921586,
-    'artifactDigest': 'sha256:ef48b2218d85b0b000d56bf55f1be91807fb7428c8a10453aaaf9d074a67c9c1',
-    'sourceCommit': 'c0023dbc6dcd7b6eb2f54dd036ae150168bd8e6e',
-    'tagObject': 'a85a5332432a92e1de502cfc9c680206371540b8',
-}
-
-
-def replacement_baseline():
-    lock = REPLACEMENT_ORIGINAL
-    require(sha(RECONCILIATION) == lock['snapshotSHA256'], 'replacement original snapshot changed')
-    plan = json.loads(RECONCILIATION.read_text(encoding='utf-8'))
-    require((plan['repository'], plan['releaseId'], plan['sourceCommit'], plan['tag'], plan['tagObject']) ==
-            (REPO, 416392475, lock['sourceCommit'], TAG, lock['tagObject']), 'replacement baseline identity differs')
-    # All original assets are retired after all rebuilt public files are staged.
-    # No old consumer report or old public-selection decision approves new bytes.
-    for row in plan['operations']:
-        row['operation'] = 'remove'
-        row.pop('newName', None)
-    plan['deferRemovalIds'] = []
-    return plan
-
-
-def replacement_original_inventory(plan):
-    lock = REPLACEMENT_ORIGINAL
-    actual = reviewed_contract(lock['inventoryRun'], lock['inventorySHA256'], lock['sourceCommit'],
-                               publisher_commit=lock['publisherCommit'],
-                               artifact_identity=(lock['artifactId'], lock['artifactDigest']))
-    require((actual['repository'], actual['repositoryId'], actual['tag'], actual['tagObject']) ==
-            (REPO, RID, TAG, plan['tagObject']), 'original inventory identity differs')
-    for row in plan['operations']:
-        if not row.get('producer'):
-            require(row['oldName'] == RECEIPT, 'unknown original non-producer asset')
-            continue
-        origin = row['producer']
-        record = actual['runs'][origin['role']]['artifacts'][origin['artifact']]['files'][origin['path']]
-        require((record['bytes'], 'sha256:' + record['sha256']) == (row['bytes'], row['digest']),
-                'original inventory no longer proves baseline asset bytes')
-    return actual
-
-
-def replacement_recovery(audit, run_id=None):
-    plan = replacement_baseline()
-    actual = replacement_original_inventory(plan)
-    references = recovery_references(actual, plan)
-    expected = {'schema': 'polaris-alpha12-replacement-recovery-v1',
-                'planSHA256': REPLACEMENT_ORIGINAL['snapshotSHA256'],
-                'oldInventorySHA256': REPLACEMENT_ORIGINAL['inventorySHA256'],
-                'publisherCommit': os.environ['GITHUB_SHA'], 'sourceCommit': plan['sourceCommit'],
-                'assets': references}
-    receipt = next(row for row in plan['operations'] if not row.get('producer'))
-    destination = audit / 'original-public-receipt.json'
-    if run_id is None:
-        original = {r['id']: (r['oldName'], r['bytes'], r['digest']) for r in plan['operations']}
-        require(reconciliation_snapshot(plan, plan['release']['body']) == (plan['release']['body'], original),
-                'replacement preparation requires the complete original snapshot before moving the tag')
-        with destination.open('xb') as stream:
-            subprocess.run(['gh', 'api', f'repos/{REPO}/releases/assets/{receipt["id"]}',
-                            '-H', 'Accept: application/octet-stream'], stdout=stream, check=True)
-        (audit / 'reconciliation-recovery.json').write_text(json.dumps(expected, indent=2) + '\n', encoding='utf-8', newline='\n')
-    else:
-        load_recovery(run_id, audit)
-        require(json.loads((audit / 'reconciliation-recovery.json').read_text(encoding='utf-8')) == expected,
-                'replacement recovery does not bind this publisher and all original assets')
-    require((destination.stat().st_size, 'sha256:' + sha(destination)) == (receipt['bytes'], receipt['digest']),
-            'replacement original receipt recovery mismatch')
-    return plan
-
-
-def replacement_target(source):
-    require(source == os.environ['GITHUB_SHA'] and source != REPLACEMENT_ORIGINAL['sourceCommit'],
-            'rebuilt source must be this new publisher revision, never original binaries')
-    require(os.environ.get('GITHUB_REF') == 'refs/tags/' + TAG, 'replacement writes require the exact protected tag ref')
-    return tag_identity(source)
-
-
-def replacement_notes(source, inventory_sha=None):
-    if inventory_sha is None:
-        return ('Rebuilding this unsigned alpha.12 prerelease from ' + source + '.\n\n'
-                'The original assets from ' + REPLACEMENT_ORIGINAL['sourceCommit'] +
-                ' are retained for recovery. This Release remains draft until the complete reviewed replacement is verified.')
-    return (reconciliation_notes({'sourceCommit': source}) +
-            '\n\nChanges in this alpha.12 rebuild:\n'
-            '- Fix GitHub public-product selection to match the upstream All release: 168 uploaded products.\n'
-            '- Restore canonical DEB/RPM filenames and a single Android version-metadata file.\n'
-            '- Keep SDK, container, unsigned xcarchive and source/index/receipt audit outputs out of public Assets.\n'
-            '- Replace the same-name release from one reviewed source, with verified staging and interrupted-run recovery.\n'
-            'These publication fixes do not claim new device/runtime acceptance or signing.\n\n'
-            'Rebuilt inventory SHA-256: ' + inventory_sha +
-            '. All public files were freshly validated for this source; original asset IDs are retired.')
-
-
-def replacement_expected(actual, digest):
-    require(actual.get('reviewed') is True and re.fullmatch(r'[0-9a-f]{64}', digest or ''), 'reviewed rebuilt inventory required')
-    require(actual['sourceCommit'] == os.environ['GITHUB_SHA'] and actual['tag'] == TAG and
-            actual['tagObject'] == replacement_target(actual['sourceCommit']), 'rebuilt inventory source/tag mismatch')
-    expected = {}
-    for role, run in actual['runs'].items():
-        for artifact, item in run['artifacts'].items():
-            for path, record in item['files'].items():
-                name, disposition = publication(role, artifact, path, actual['sourceCommit'])
-                require((record['releaseName'], record['publicationDisposition']) == (name, disposition),
-                        'rebuilt inventory public mapping differs')
-                if name is None:
-                    continue
-                require(name not in expected and len(portable(name).parts) == 1, 'duplicate rebuilt public name')
-                expected[name] = {'size': record['bytes'], 'digest': 'sha256:' + record['sha256'],
-                                  'stagedName': 'replacement-' + actual['sourceCommit'][:12] + '-' + digest[:12] + '-' + name}
-    require(len(expected) == 168 and len({name.casefold() for name in expected}) == 168,
-            'exact 168 rebuilt public products required')
-    return expected
-
-
-def replacement_snapshot(plan, source, tag_object, expected=None, digest=None):
-    require(replacement_target(source) == tag_object, 'replacement tag moved')
-    release_id = plan['releaseId']
-    require([r['id'] for r in pages(f'repos/{REPO}/releases') if r['tag_name'] == TAG] == [release_id], 'competing replacement release')
-    release = api(f'repos/{REPO}/releases/{release_id}')
-    require(release['id'] == release_id, 'replacement release identity changed')
-    metadata = {key: release.get(key) for key in plan['release']}
-    original = plan['release']
-    staged = dict(original, draft=True, target_commitish=source, body=replacement_notes(source))
-    final = dict(staged, draft=False, body=replacement_notes(source, digest)) if expected is not None else None
-    require(metadata in (original, staged, final), 'replacement release metadata changed outside plan')
-    assets = pages(f'repos/{REPO}/releases/{release_id}/assets')
-    require(len({a['id'] for a in assets}) == len(assets) and
-            len({a['name'].casefold() for a in assets}) == len(assets), 'duplicate replacement asset')
-    old = {row['id']: row for row in plan['operations']}
-    targets = {n: n for n in (expected or {})}
-    targets.update({r['stagedName']: n for n, r in (expected or {}).items()})
-    normalized, new = {}, {}
-    label = 'polaris-alpha12-replacement:' + source + ':' + (digest or '')
-    for asset in assets:
-        ident, name = asset['id'], asset['name']
-        require(asset['state'] == 'uploaded', 'incomplete replacement upload; retain draft and inspect')
-        if ident in old:
-            row = old[ident]
-            require((name, asset['size'], asset.get('digest')) == (row['oldName'], row['bytes'], row['digest']),
-                    'original asset changed outside replacement plan')
-            normalized[ident] = (name, asset['size'], asset['digest'], None)
-        else:
-            require(name in targets, 'unknown concurrent replacement asset')
-            canonical = targets[name]
-            row = expected[canonical]
-            require(canonical not in new and asset.get('label') == label and
-                    (asset['size'], asset.get('digest')) == (row['size'], row['digest']),
-                    'unreviewed replacement asset identity/hash')
-            new[canonical] = ident
-            normalized[ident] = (name, asset['size'], asset['digest'], label)
-    remaining = set(normalized) & set(old)
-    complete = expected is not None and len(new) == len(expected)
-    require(len(remaining) == len(old) or complete, 'old assets disappeared before all replacements were verified')
-    require(not remaining or all(normalized[ident][0] == expected[name]['stagedName'] for name, ident in new.items()),
-            'new public names appeared before original assets retired')
-    if metadata == original:
-        require(len(remaining) == len(old) and not new, 'public original Release cannot contain replacement mutations')
-    if metadata == final:
-        require(not remaining and complete and all(normalized[ident][0] == name for name, ident in new.items()),
-                'public replacement is incomplete')
-    return metadata, normalized
-
-
-def replacement_budget(writes):
-    # One authenticated core-budget read, no anonymous fallback or reset waiting.
-    # Include bounded full snapshots and a reserve for concurrent read activity.
-    core = api('rate_limit')['resources']['core']
-    needed = writes + ((writes + 79) // 80 + 5) * 9 + 32
-    require(type(core.get('remaining')) is int and core['remaining'] >= needed,
-            f"replacement API budget insufficient: remaining={core.get('remaining')}, required={needed}, reset={core.get('reset')}; stop before mutation")
-
-
-def stage_replacement(plan, source):
-    tag_object = replacement_target(source)
-    current = replacement_snapshot(plan, source, tag_object)
-    staged = dict(plan['release'], draft=True, target_commitish=source, body=replacement_notes(source))
-    if current[0] != staged:
-        replacement_budget(1)
-        require(replacement_snapshot(plan, source, tag_object) == current, 'concurrent change before replacement staging')
-        api(f'repos/{REPO}/releases/{plan["releaseId"]}', 'PATCH',
-            {'draft': True, 'target_commitish': source, 'body': staged['body']})
-        current = (staged, current[1])
-    require(replacement_snapshot(plan, source, tag_object) == current, 'replacement staging readback mismatch')
-    return {'releaseId': plan['releaseId'], 'draft': True, 'assetCount': len(current[1]), 'sourceCommit': source}
-
-
-def replace_release(plan, actual, digest, output, audit=None):
-    source, tag_object = actual['sourceCommit'], actual['tagObject']
-    expected = replacement_expected(actual, digest)
-    audit = audit or output.with_name(output.name + '-audit')
-    index_path = audit / 'polaris-upstream-native-assets.json'
-    # Inventory distributionMaterials is a three-field binding summary, not the
-    # native index's eligibility object. Preserve that actual evidence schema.
-    require(actual['distributionMaterials']['noticeIndex']['name'] == index_path.name and
-            sha(index_path) == actual['distributionMaterials']['noticeIndex']['sha256'],
-            'assembled replacement native index differs from reviewed inventory')
-    index = json.loads(index_path.read_text(encoding='utf-8'))
-    validate_publication_index(index, source, TAG, tag_object, actual['sourceTree'])
-    require({p.name for p in output.iterdir()} == set(expected), 'assembled replacement file set differs')
-    for name, row in expected.items():
-        require(((output / name).stat().st_size, 'sha256:' + sha(output / name)) == (row['size'], row['digest']),
-                'assembled replacement bytes differ')
-    snapshot = lambda: replacement_snapshot(plan, source, tag_object, expected, digest)
-    current = snapshot()
-    staged = dict(plan['release'], draft=True, target_commitish=source, body=replacement_notes(source))
-    final = dict(staged, draft=False, body=replacement_notes(source, digest))
-    if current[0] == final:
-        return {'releaseId': plan['releaseId'], 'sourceCommit': source, 'tagObject': tag_object,
-                'inventorySHA256': digest, 'assetCount': 168, 'complete': True, 'assets': current[1]}
-    require(current[0] == staged, 'stage the original Release as draft before rebuilding/replacing')
-    old = {r['id'] for r in plan['operations']}
-    replacement_budget(168 - len(set(current[1]) - old) + len(old & set(current[1])) +
-                       sum(a[0] not in expected for ident, a in current[1].items() if ident not in old) +
-                       (168 - len(set(current[1]) - old)) + 1)
-    label = 'polaris-alpha12-replacement:' + source + ':' + digest
-
-    writes = 0
-
-    def checkpoint():
-        require(snapshot() == current, 'concurrent replacement change; retain draft and inspect')
-
-    def completed_write():
-        nonlocal writes
-        writes += 1
-        # GitHub recommends no more than one content-creation request per second.
-        time.sleep(1)
-        if writes % 80 == 0:
-            checkpoint()
-
-    def mutate(path, method, payload, after):
-        nonlocal current
-        response = api(path, method, payload)
-        if '/releases/assets/' in path and method == 'PATCH':
-            ident = int(path.rsplit('/', 1)[-1])
-            require((response.get('id'), response.get('state'), response.get('name'), response.get('size'),
-                     response.get('digest'), response.get('label')) ==
-                    (ident, 'uploaded', *after[1][ident]), 'replacement rename response mismatch; retain draft and inspect')
-        current = after
-        completed_write()
-
-    release = api(f'repos/{REPO}/releases/{plan["releaseId"]}')
-    require(release.get('id') == plan['releaseId'], 'replacement upload destination changed')
-    for name, row in sorted(expected.items()):
-        if any(ident not in old and asset[0] in (name, row['stagedName']) for ident, asset in current[1].items()):
-            continue
-        url = upload_endpoint(release, row['stagedName']) + '&label=' + quote(label, safe='')
-        uploaded = json.loads(command('gh', 'api', '--method', 'POST', url,
-                                     '-H', 'Content-Type: application/octet-stream', '--input', str(output / name)))
-        ident = uploaded['id']
-        require(type(ident) is int and ident > 0 and ident not in current[1] and
-                (uploaded.get('state'), uploaded.get('name'), uploaded.get('size'), uploaded.get('digest'), uploaded.get('label')) ==
-                ('uploaded', row['stagedName'], row['size'], row['digest'], label), 'replacement upload response mismatch; retain draft and inspect')
-        after = dict(current[1]);after[ident] = (row['stagedName'], row['size'], row['digest'], label)
-        current = (current[0], after)
-        completed_write()
-    checkpoint()
-    replacement_budget(len(old & set(current[1])) + sum(a[0] not in expected for ident, a in current[1].items() if ident not in old) + 1)
-    # The snapshot forbids any removal until all 168 new byte identities exist.
-    for ident in sorted(old & set(current[1])):
-        after = dict(current[1]);after.pop(ident)
-        mutate(f'repos/{REPO}/releases/assets/{ident}', 'DELETE', None, (current[0], after))
-    checkpoint()
-    for name, row in sorted(expected.items()):
-        ident = next(ident for ident, asset in current[1].items() if asset[0] in (name, row['stagedName']))
-        if current[1][ident][0] == name:
-            continue
-        after = dict(current[1]);after[ident] = (name, row['size'], row['digest'], label)
-        mutate(f'repos/{REPO}/releases/assets/{ident}', 'PATCH', {'name': name}, (current[0], after))
-    checkpoint()
-    replacement_budget(1)
-    mutate(f'repos/{REPO}/releases/{plan["releaseId"]}', 'PATCH',
-           {'draft': False, 'target_commitish': source, 'body': final['body'], 'make_latest': 'false'}, (final, current[1]))
-    checkpoint()
-    return {'releaseId': plan['releaseId'], 'sourceCommit': source, 'tagObject': tag_object,
-            'inventorySHA256': digest, 'assetCount': 168, 'complete': True, 'assets': current[1]}
-
-
-def public_name_plan():
-    """One reviewed metadata-only repair; never a general rename/clobber input."""
-    require(sha(NAME_ALIGNMENT) == NAME_ALIGNMENT_SHA256, 'public-name snapshot changed')
-    plan = json.loads(NAME_ALIGNMENT.read_text(encoding='utf-8'))
-    require((plan['schema'], plan['repository'], plan['repositoryId'], plan['releaseId'],
-             plan['sourceCommit'], plan['sourceTree'], plan['tag'], plan['tagObject']) ==
-            ('polaris-alpha12-public-name-alignment-v1', REPO, RID, 416392475,
-             'a4d0858605b51b7f5b3c29a9969a6f2c3ae5a0ae', '830f7256af499e5ad3e7da9a79f0a377ca38fc77',
-             'v1.15.0-polaris-alpha.12', '916d9533ba0a6092e34bc53f63dace63e11fa85e'),
-            'public-name repair identity changed')
-    rows = plan['operations']
-    require(len(rows) == len({r['id'] for r in rows}) == 168 and
-            len({r['oldName'].casefold() for r in rows}) == len({r['newName'].casefold() for r in rows}) == 168,
-            'public-name repair requires exactly 168 distinct identities/names')
-    require(not ({r['oldName'].casefold() for r in rows} & {r['newName'].casefold() for r in rows}),
-            'public-name repair has a name collision')
-    for row in rows:
-        require(type(row['id']) is int and row['id'] > 0 and type(row['bytes']) is int and row['bytes'] > 0 and
-                re.fullmatch(r'sha256:[0-9a-f]{64}', row['digest']) and
-                row['newName'] == public_asset_name(row['oldName']), 'public-name repair differs from source mapping')
-    require(plan['release']['draft'] is False and plan['release']['prerelease'] is True and
-            plan['release']['target_commitish'] == plan['sourceCommit'] and
-            plan['release']['tag_name'] == plan['tag'] == TAG and
-            'unsigned' in plan['release']['body'] and 'signing and macOS notarization are not supplied' in plan['release']['body'],
-            'public-name repair must preserve unsigned release disclosure')
-    return plan
-
-
-def public_name_snapshot(plan):
-    require(plan == public_name_plan(), 'public-name plan was modified')
-    require(api(f'repos/{REPO}')['id'] == RID, 'public-name repository ID changed')
-    require(tag_identity(plan['sourceCommit']) == plan['tagObject'], 'public-name tag moved')
-    commit = api(f'repos/{REPO}/git/commits/{plan["sourceCommit"]}')
-    require(commit['sha'] == plan['sourceCommit'] and commit['tree']['sha'] == plan['sourceTree'],
-            'public-name source tree changed')
-    require([r['id'] for r in pages(f'repos/{REPO}/releases') if r['tag_name'] == TAG] == [plan['releaseId']],
-            'competing public-name Release')
-    release = api(f'repos/{REPO}/releases/{plan["releaseId"]}')
-    require(release['id'] == plan['releaseId'] and
-            {k: release.get(k) for k in plan['release']} == plan['release'], 'public-name Release metadata changed')
-    assets = pages(f'repos/{REPO}/releases/{plan["releaseId"]}/assets')
-    rows = {r['id']: r for r in plan['operations']}
-    require(len(assets) == 168 and {a['id'] for a in assets} == set(rows) and
-            len({a['name'].casefold() for a in assets}) == 168, 'unknown/missing/concurrent public-name asset')
-    current = {}
-    for asset in assets:
-        row = rows[asset['id']]
-        require(asset['name'] in (row['oldName'], row['newName']) and asset.get('state') == 'uploaded' and
-                (asset['size'], asset.get('digest'), asset.get('label')) ==
-                (row['bytes'], row['digest'], plan['assetLabel']), 'public-name asset identity changed')
-        current[asset['id']] = (asset['name'], asset['size'], asset['digest'], asset['label'])
-    return current
-
-
-def rename_public_assets(plan, execute=False):
-    current = public_name_snapshot(plan)
-    pending = [r for r in plan['operations'] if current[r['id']][0] != r['newName']]
-    if execute and pending:
-        # Existing authenticated budget gate. Include one GET immediately before
-        # each PATCH plus bounded full snapshots; no anonymous fallback or waiting.
-        replacement_budget(2 * len(pending))
-        require(public_name_snapshot(plan) == current, 'concurrent public-name change before first write')
-        for count, row in enumerate(pending, 1):
-            ident = row['id']
-            path = f'repos/{REPO}/releases/assets/{ident}'
-            before = api(path)
-            require((before.get('id'), before.get('state'), before.get('name'), before.get('size'),
-                     before.get('digest'), before.get('label')) == (ident, 'uploaded', *current[ident]),
-                    'concurrent public-name change before rename')
-            after = (row['newName'], row['bytes'], row['digest'], plan['assetLabel'])
-            response = api(path, 'PATCH', {'name': row['newName']})
-            require((response.get('id'), response.get('state'), response.get('name'), response.get('size'),
-                     response.get('digest'), response.get('label')) == (ident, 'uploaded', *after),
-                    'public-name PATCH response mismatch; stop and inspect before resuming')
-            current[ident] = after
-            time.sleep(1)
-            if count % 80 == 0:
-                require(public_name_snapshot(plan) == current, 'concurrent public-name change during rename')
-        require(public_name_snapshot(plan) == current, 'public-name final readback differs')
-    remaining = sum(current[r['id']][0] != r['newName'] for r in plan['operations'])
-    return {'releaseId': plan['releaseId'], 'sourceCommit': plan['sourceCommit'], 'tagObject': plan['tagObject'],
-            'planSHA256': NAME_ALIGNMENT_SHA256, 'assetCount': len(current), 'remaining': remaining,
-            'complete': remaining == 0, 'assets': current}
 
 
 @contextmanager
@@ -1841,12 +926,10 @@ def bounded_release(args, runs):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('mode', choices=['inventory', 'validate', 'publish', 'prepare-reconcile', 'check-reconcile', 'reconcile', 'prepare-replacement', 'check-stage-replacement', 'stage-replacement', 'check-replacement', 'replace', 'check-names', 'rename-names'])
+    p.add_argument('mode', choices=['inventory', 'validate', 'publish'])
     p.add_argument('--source', required=True)
     p.add_argument('--source-dir', type=Path, default=Path('reviewed-source'))
-    for role in ['all', 'linux', 'docker', 'signed']:
-        p.add_argument('--'+role+'-run')
-    p.add_argument('--recovery-run')
+    p.add_argument('--all-run', required=True)
     p.add_argument('--audit', type=Path, default=Path('github-release-audit'))
     p.add_argument('--inventory-run')
     p.add_argument('--inventory-sha256')
@@ -1854,99 +937,8 @@ def main():
     args = p.parse_args()
     public = json.loads(CONFIG.read_text(encoding='utf-8'))
     require(public == {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'tag': TAG, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
-    # Old ID-bound maintenance plans are historical, not a patch-release migration.
-    require(args.mode in ('inventory', 'validate', 'publish') or TAG == 'v1.15.0-polaris-alpha.12',
-            'historical alpha.12 maintenance is unavailable for the current release plan')
-    if args.mode in ('check-names', 'rename-names'):
-        plan = public_name_plan()
-        require(args.source == plan['sourceCommit'], 'public-name source differs from fixed snapshot')
-        if args.mode == 'rename-names':
-            require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
-        result = rename_public_assets(plan, execute=args.mode == 'rename-names')
-        args.audit.mkdir(parents=True, exist_ok=True)
-        (args.audit / 'public-name-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
-        print(json.dumps(result))
-        return
     identity(args.source, args.source_dir)
-    runs = {role: getattr(args, role+'_run') for role in ['all', 'linux', 'docker', 'signed'] if getattr(args, role+'_run')}
-    if args.mode in ('prepare-replacement', 'check-stage-replacement', 'stage-replacement', 'check-replacement'):
-        args.audit.mkdir(parents=True, exist_ok=False)
-        if args.mode == 'prepare-replacement':
-            require(args.source == REPLACEMENT_ORIGINAL['sourceCommit'], 'prepare must use the original source')
-            replacement_recovery(args.audit)
-        else:
-            require(args.recovery_run, 'successful replacement recovery preparation required')
-            if args.mode == 'stage-replacement':
-                plan = replacement_recovery(args.audit, args.recovery_run)
-            else:
-                load_recovery(args.recovery_run, args.audit)
-                plan = replacement_baseline()
-            tag_object = replacement_target(args.source)
-            if args.mode == 'check-replacement':
-                actual = reviewed_contract(args.inventory_run, args.inventory_sha256, args.source)
-                require(set(actual['runs']) == set(runs) and all(actual['runs'][role]['id'] == rid for role, rid in runs.items()),
-                        'replacement producer inputs differ from reviewed inventory')
-                replacement_expected(actual, args.inventory_sha256)
-                # Read-only tokens need not expose private drafts. The protected
-                # write job checks full snapshots at phase boundaries and every 80 writes.
-            else:
-                if args.mode == 'stage-replacement':
-                    require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
-                    result = stage_replacement(plan, args.source)
-                    (args.audit / 'replacement-stage.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
-        return
-    # Reconciliation consumes the already reviewed same-revision inventory. Its existing
-    # producer artifacts and exact remote Release hashes are rechecked, not re-downloaded.
-    if args.mode in ('prepare-reconcile', 'check-reconcile', 'reconcile'):
-        actual = reviewed_contract(args.inventory_run, args.inventory_sha256, args.source)
-        require(actual['scopeSha256'] == sha(SCOPE) and actual['repository'] == REPO and actual['repositoryId'] == RID and
-                actual['version'] == VERSION and actual['sourceTree'] == command('git', '-C', str(args.source_dir), 'rev-parse', 'HEAD^{tree}'),
-                'reviewed reconciliation inventory binding changed')
-        require(set(actual['runs']) == set(runs) and all(actual['runs'][role]['id'] == rid for role, rid in runs.items()),
-                'reconciliation producer inputs differ from reviewed inventory')
-        verify_metadata_pair(actual)
-        args.audit.mkdir(parents=True, exist_ok=False)
-        if args.mode == 'prepare-reconcile':
-            prepare_reconciliation(actual, args.audit)
-        else:
-            plan = reviewed_recovery(args.recovery_run, actual, args.audit)
-            reconciliation_snapshot(plan, reconciliation_notes(plan))
-            if args.mode == 'reconcile':
-                require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
-                result = reconcile(plan)
-                (args.audit / 'reconciliation-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
-                print(json.dumps(result))
-        return
-    if args.mode in ('inventory', 'validate', 'publish'):
-        return bounded_release(args, runs)
-    with tempfile.TemporaryDirectory() as temp:
-        work = Path(temp)
-        source_tree = command('git', '-C', str(args.source_dir), 'rev-parse', 'HEAD^{tree}')
-        tag_object = tag_identity(args.source)
-        actual = inventory(runs, args.source, work, source_tree, tag_object, args.source_dir, materialize=True)
-        require(tag_identity(args.source) == tag_object, 'tag changed while collecting release inventory')
-        if args.mode == 'inventory':
-            require(not args.output.exists(), 'inventory output already exists')
-            args.output.write_text(json.dumps(actual, indent=2)+'\n', encoding='utf-8', newline='\n')
-            args.audit.mkdir(parents=True, exist_ok=False)
-            for material in (work / 'all' / 'binary-native-index').iterdir():
-                if material.is_file():
-                    shutil.copyfile(material, args.audit / material.name)
-            print('Inventory SHA-256: '+sha(args.output))
-            return
-        tag_identity(args.source)
-        assemble(actual, reviewed_contract(args.inventory_run, args.inventory_sha256, args.source), work, args.output, args.audit)
-        if args.mode == 'replace':
-            require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
-            require(args.recovery_run, 'successful replacement recovery preparation required')
-            plan = replacement_recovery(args.audit, args.recovery_run)
-            actual['reviewed'] = True
-            result = replace_release(plan, actual, args.inventory_sha256, args.output, args.audit)
-            (args.audit / 'replacement-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\n')
-            print(json.dumps(result))
-        if args.mode == 'publish':
-            require(os.environ.get('POLARIS_GITHUB_PUBLISH_ENABLED') == 'true', 'GitHub publication disabled')
-            publish(args.output, args.source, args.audit)
+    return bounded_release(args, {'all': args.all_run})
 
 
 if __name__ == '__main__':

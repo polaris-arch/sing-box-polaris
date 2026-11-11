@@ -15,7 +15,6 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
-import yaml
 
 import client_source as client
 import github_release as publisher
@@ -380,28 +379,6 @@ class ClientPreflightControls(unittest.TestCase):
             self.assertEqual(result.returncode,0)
             self.assertTrue(all('-disableAutomaticPackageResolution' not in json.loads(line) for line in log.read_text().splitlines()))
 
-    def test_standalone_make_receives_the_complete_strict_unsigned_override(self):
-        workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/build.yml').read_text())
-        for job in ('build_apple','build_apple_app_store'):
-            step=next(s for s in workflow['jobs'][job]['steps'] if s.get('name')=='Build standalone packages')
-            flags=step['env']['XCODEBUILD_FLAGS'].replace('${{ runner.temp }}','/fixture/Runner Temp')
-            with self.subTest(job=job),tempfile.TemporaryDirectory(prefix='standalone argv ') as temporary:
-                root=Path(temporary);tools=root/'tools';tools.mkdir();log=root/'argv.json'
-                recorder=tools/'xcodebuild'
-                recorder.write_text('#!'+sys.executable+'\nimport json,os,sys\nopen(os.environ["ARGV_LOG"],"w").write(json.dumps(sys.argv[1:]))\n')
-                recorder.chmod(0o755)
-                # Upstream archive argument expansion with its dangerous default
-                # retained in the fixture: the workflow must override it fully.
-                (root/'Makefile').write_text('XCODEBUILD_FLAGS ?= -skipPackagePluginValidation\narchive:\n\txcodebuild archive $(XCODEBUILD_FLAGS) -scheme SFM.System -configuration Release -archivePath build/SFM.System-universal.xcarchive\n')
-                result=subprocess.run([shutil.which('make'),'--no-print-directory','-C',str(root),'archive'],
-                    env=dict(os.environ,PATH=str(tools),ARGV_LOG=str(log),XCODEBUILD_FLAGS=flags),capture_output=True,text=True,timeout=10)
-                self.assertEqual(result.returncode,0,result.stderr);args=json.loads(log.read_text())
-                self.assertEqual(args.count('-disableAutomaticPackageResolution'),1)
-                self.assertEqual(args[args.index('-clonedSourcePackagesDirPath')+1],'/fixture/Runner Temp/SourcePackages')
-                self.assertIn('CODE_SIGNING_ALLOWED=NO',args);self.assertIn('CODE_SIGNING_REQUIRED=NO',args)
-                self.assertIn('CODE_SIGN_IDENTITY=',args);self.assertNotIn('-skipPackagePluginValidation',args)
-
-
 def patch(before,after):
     result=[]
     for name in sorted(set(before)|set(after)):
@@ -484,11 +461,11 @@ class ClientSourceControls(unittest.TestCase):
             for unsigned in [True,False]:
                 with self.subTest(platform=platform,unsigned=unsigned),self.fixture(platform,unsigned) as record:
                     self.check(record)
-                    artifact='signed-apple-store-ios' if not unsigned and platform=='apple' else {
-                        'windows':'binary-windows-client-x64','linux':'binary-linux-client-x64',
-                        'android':'binary-android-apks-other','apple':'unsigned-apple-ios-archive'}[platform]
-                    self.assertEqual(publisher.validate_client_source({'clientSource':record},artifact,'all' if unsigned else 'signed','a'*40),record)
-                    with self.assertRaises(ValueError):publisher.validate_client_source({},artifact,'all' if unsigned else 'signed','a'*40)
+                    if not unsigned:continue
+                    artifact={'windows':'binary-windows-client-x64','linux':'binary-linux-client-x64',
+                              'android':'binary-android-apks-other','apple':'unsigned-apple-ios-archive'}[platform]
+                    self.assertEqual(publisher.validate_client_source({'clientSource':record},artifact,'a'*40),record)
+                    with self.assertRaises(ValueError):publisher.validate_client_source({},artifact,'a'*40)
 
     def test_identity_source_tree_mode_config_and_count_are_not_interchangeable(self):
         with self.fixture(unsigned=False) as record:
@@ -504,7 +481,7 @@ class ClientSourceControls(unittest.TestCase):
                            lambda r:r['swiftPackageOverlays']['packages'][0].update(diff='')]:
                 bad=copy.deepcopy(record);mutate(bad)
                 with self.assertRaises(ValueError):
-                    publisher.validate_client_source({'clientSource':bad},'unsigned-apple-macos-archive','all','a'*40)
+                    publisher.validate_client_source({'clientSource':bad},'unsigned-apple-macos-archive','a'*40)
         for platform,unsigned in [('android',True),('apple',False)]:
             with self.fixture(platform,unsigned) as record:
                 record['swiftPackageOverlays']={}
@@ -615,36 +592,12 @@ class ClientSourceControls(unittest.TestCase):
         for fragment in ['process.env.POLARIS_UNSIGNED_CLIENT === "1"','fs.statSync(executablePath).isFile()',
                          'continue; // Explicit unsigned candidate']:
             self.assertIn(fragment,nested)
-        workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/build.yml').read_text())
-        steps=workflow['jobs']['build_windows_client']['steps'];first=next(s for s in steps if s.get('name')=='Checkout desktop client')
-        self.assertIn('-c core.autocrlf=false -c core.eol=lf submodule update',first['run'])
-        build=next(s for s in steps if s.get('name')=='Build')
-        self.assertEqual(build['env']['POLARIS_UNSIGNED_CLIENT'],'1')
-        overlay=next(s for s in steps if 'unsigned_clients.py windows' in s.get('run',''))
-        self.assertIn('unsigned_clients.py windows\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',overlay['run'])
-        signed=yaml.safe_load((REAL_ROOT/'.github/workflows/signed-release.yml').read_text())
-        self.assertNotIn('POLARIS_UNSIGNED_CLIENT',json.dumps(signed))
 
     def test_android_min_api_guard_and_jvm_negative_controls_are_in_existing_producers(self):
         entries=client.definition('android')['files'];text='\n'.join(e.get('content','') or '\n'.join(c['new'] for c in e.get('edits',[])) for e in entries)
         for fragment in ['Build.VERSION.SDK_INT < Build.VERSION_CODES.M','@DoNotInline','@RequiresApi(Build.VERSION_CODES.M)',
                          'if (sdk < 23)','listOf(21, 22)','listOf(23, 24, 35)','SecurityException','resolve = { null }']:
             self.assertIn(fragment,text)
-        for filename in ['build.yml','signed-release.yml']:
-            workflow=yaml.safe_load((REAL_ROOT/'.github/workflows'/filename).read_text());steps=workflow['jobs']['build_android']['steps']
-            build=next(s for s in steps if './gradlew --build-cache --parallel' in s.get('run',''))
-            self.assertIn('testOtherLegacyReleaseUnitTest',build['run']);self.assertIn('testOtherReleaseUnitTest',build['run'])
-            self.assertEqual([m['variant'] for m in workflow['jobs']['build_android']['strategy']['matrix']['include']],['other','other-legacy'])
-
-    def test_signed_identity_entry_owns_composition_before_version_update(self):
-        workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/signed-release.yml').read_text())
-        for name in ['build_android','publish_android','build_windows_client','build_linux_client','build_apple','build_apple_app_store']:
-            steps=workflow['jobs'][name]['steps'];identities=[i for i,s in enumerate(steps) if 'owned_distribution.py apply' in s.get('run','')]
-            self.assertEqual(len(identities),1,name)
-            self.assertFalse(any('client_source.py apply' in s.get('run','') for s in steps),name)
-            builds=[i for i,s in enumerate(steps) if './gradlew' in s.get('run','') or 'xcodebuild archive' in s.get('run','') or 'package:win' in s.get('run','')]
-            if builds:self.assertLess(identities[0],min(builds))
-
 
     def test_android_stable_ndk_matches_both_client_layers_and_producers(self):
         spec=client.definition('android')
@@ -656,19 +609,6 @@ class ClientSourceControls(unittest.TestCase):
         properties=(REAL_ROOT/'scripts/ci/testdata/android-ae93152f/gradle.properties').read_bytes()
         entry=next(e for e in spec['files'] if e['path']=='gradle.properties')
         self.assertIn(b'ndkVersion=30.0.16248370\n',client.edits(properties,entry))
-        for filename in ['build.yml','signed-release.yml']:
-            workflow=yaml.safe_load((REAL_ROOT/'.github/workflows'/filename).read_text())
-            for job in workflow['jobs'].values():
-                for step in job.get('steps',[]):
-                    if step.get('uses','').startswith('nttld/setup-ndk@'):
-                        self.assertEqual(step['with']['ndk-version'],'r30')
-                        self.assertTrue(step['with']['link-to-sdk'])
-                    if step.get('name')=='Build Android':
-                        self.assertEqual(step['env']['ANDROID_NDK_HOME'],'${{ steps.setup-ndk.outputs.ndk-path }}')
-        workflow=yaml.safe_load((REAL_ROOT/'.github/workflows/polaris-selfcheck.yml').read_text())
-        self.assertEqual(workflow['env']['NDK_ROOT'],'android-ndk-r30')
-        self.assertEqual(workflow['env']['NDK_SHA256'],'753611f410d002cfcd3f3dc2ef49aad532089d3180b436c060a90bf0fcb64df2')
-        self.assertEqual(workflow['env']['NDK_URL'],'https://dl.google.com/android/repository/android-ndk-r30-linux.zip')
 
     def test_android_release_unit_tests_are_enabled_in_the_complete_pinned_properties(self):
         spec=client.definition('android')
@@ -688,8 +628,6 @@ class ClientSourceControls(unittest.TestCase):
             bad['edits'][0]['new']=bad['edits'][0]['new'].replace(flag+'=false',replacement)
             with self.subTest(replacement=replacement),self.assertRaisesRegex(ValueError,'result identity'):
                 client.edits(raw,bad)
-        # The adjoining producer/API controls still require both release tasks
-        # and their real API21/22 rejection inputs.
 
     def test_jailbreak_full_package_and_numeric_marketing_versions_use_complete_source(self):
         spec=client.definition('apple')
@@ -762,13 +700,3 @@ class ClientSourceControls(unittest.TestCase):
                 result,_=evaluate('1.15.0-polaris-alpha.12',marketing_version)
                 self.assertNotEqual(result.returncode,0)
                 self.assertIn('version',result.stderr.lower())
-        for filename in ['build.yml','signed-release.yml']:
-            workflow=yaml.safe_load((REAL_ROOT/'.github/workflows'/filename).read_text())
-            for job in ['build_apple','build_apple_app_store']:
-                steps=workflow['jobs'][job]['steps']
-                version=next(step for step in steps if step.get('name')=='Set tag')
-                package=next(step for step in steps if step.get('name')=='Build jailbreak package')
-                self.assertIn('echo "VERSION=${{ needs.calculate_version.outputs.version }}"',version['run'])
-                self.assertIn('make -C clients/apple build_ios_deb',package['run'])
-                for arch in ['iphoneos-arm64','iphoneos-arm64e']:
-                    self.assertIn('SFI-${VERSION}-'+arch+'.deb',package['run'])

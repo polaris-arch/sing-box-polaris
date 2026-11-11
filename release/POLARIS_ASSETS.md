@@ -1,7 +1,5 @@
 # Polaris kernel and platform-library asset contract
 
-Current canonical production selection and the exact six-desktop/four-OpenWrt
-upload contract are in [POLARIS_PRODUCTION_RELEASE.md](POLARIS_PRODUCTION_RELEASE.md).
 The current immutable `v1.15.0-alpha.12.polaris.1` release remains available while
 its active consumer migrates. Historical alpha.11 role tags/receipts retain their
 original identity. Candidate source review or a historical compile does not

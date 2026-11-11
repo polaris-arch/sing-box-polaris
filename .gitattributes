@@ -1,6 +1,3 @@
-release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-SUPERSET.txt -text -diff
-release/desktop-source-candidate/receipts/windows-amd64-producer720ead-run38072592310.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-release/desktop-source-candidate/receipts/windows-arm64-producer226e88-run38074825396.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 third_party/sing-tun/** -text
 release/dependency-sources/*.patch whitespace=-space-before-tab
 

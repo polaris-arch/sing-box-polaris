@@ -100,28 +100,15 @@ env:
     TestAddDeleteIPAddress|TestAddDeleteRoute|TestFlushDNS|TestGoConnBuffers|TestGoConnKeepalive|TestGoConnLinger|TestGoConnNoDelay|TestGoKernelBidirectionalLoss|TestGoKernelClose|TestGoKernelDeadline|TestGoKernelDeviceBackpressure|TestGoKernelFlowControl|TestGoKernelHalfClose|TestGoKernelHandshake|TestGoKernelHandshakeLoss|TestGoKernelLinkInterruption|TestGoKernelPacket|TestGoKernelPacketBatchIdle|TestGoKernelPacketBuffer|TestGoKernelPacketFragments|TestGoKernelPacketLifetime|TestGoKernelPacketMapping|TestGoKernelPacketOffload|TestGoKernelPacketRead|TestGoKernelPacketTimeout|TestGoKernelPacketWriteAfterClose|TestGoKernelReceiveWindowUpdateLoss|TestGoKernelSACKReneging|TestGoKernelSequenceWrap|TestGoKernelSpliceOwnership|TestGoKernelStream|TestGoKernelTCPLifecycle|TestGoKernelTCPRecovery|TestGoKernelTCPSendBudget|TestGoKernelTCPTransmitLifetime|TestGoKernelTCPWaiting|TestGoKernelWindowClamp|TestGoKernelWindowLimitedRecovery|TestGoKernelZeroWindow|TestGoKernelZeroWindowHalfClose|TestGoListenPrecedence|TestGoListenTCP|TestGoListenUDPPort|TestGoMemoryControlPriority|TestGoMemoryDial|TestGoMemoryMTUUpdate|TestGoMemoryNoHandler|TestGoMemoryOutboundBound|TestGoMemoryOutboundReply|TestGoMemoryPathMTU|TestGoMemoryUDP|TestGoUDPReadBuffer|TestIPChangeMTU|TestIPChangeMetric|TestIsClosed|TestNetworkUpdateMonitorReceiveOverrun|TestPing|TestSetDNS
 
 jobs:
-  classify:
-    name: Audit CI impact
+  format:
+    name: Check owned formatting
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    outputs:
-      run_full: ${{ steps.impact.outputs.run_full }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Prove conservative impact policy
-        run: python3 -B -m unittest discover -s scripts -p 'test_polaris_ci_impact.py' -v
-      - id: impact
-        name: Classify exact automatic tip or keep fixed audit full
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_REF: ${{ github.ref }}
-        run: |
-          python3 -B scripts/polaris_ci_impact.py --repo "$GITHUB_WORKSPACE" \
-            --event-file "$GITHUB_EVENT_PATH" --event-name "$EVENT_NAME" --ref "$EVENT_REF" \
-            --workflow-sha "$GITHUB_SHA" --output "$RUNNER_TEMP/ci-impact.json" --github-output "$GITHUB_OUTPUT"
       - name: Checkout exact source for cheap formatting
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
@@ -129,13 +116,11 @@ jobs:
           path: .polaris-format-source
           persist-credentials: false
       - name: Restore pinned official formatter archive
-        if: steps.impact.outputs.run_full == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/polaris-format-archive
           key: polaris-format-linux-amd64-v2.15.0-9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea
       - name: Verify and extract pinned official formatter (no product compilation)
-        if: steps.impact.outputs.run_full == 'true'
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/polaris-format-archive/golangci-lint.tar.gz"
@@ -146,25 +131,16 @@ jobs:
           printf '%s  %s\n' 9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea "$archive" | sha256sum -c -
           tar -xzf "$archive" --strip-components=1 -C "$RUNNER_TEMP/polaris-format-bin" golangci-lint-2.15.0-linux-amd64/golangci-lint
       - name: Check owned remediation formatting before platform builds
-        if: steps.impact.outputs.run_full == 'true'
         env:
           GOLANGCI_LINT: ${{ runner.temp }}/polaris-format-bin/golangci-lint
         working-directory: .polaris-format-source
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
           python3 -B "$GITHUB_WORKSPACE/scripts/ci/check_remediation_format.py"
-      - name: Preserve exact impact decision
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: polaris-box-ci-impact-${{ github.run_id }}
-          path: ${{ runner.temp }}/ci-impact.json
-          if-no-files-found: warn
-          retention-days: 14
   linux:
-    needs: classify
+    needs: format
     timeout-minutes: 90
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile' }}
     name: Linux amd64
     runs-on: ubuntu-latest
     steps:
@@ -248,9 +224,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   windows_build:
-    needs: classify
+    needs: format
     timeout-minutes: 90
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile' }}
     name: Windows amd64 (cross)
     runs-on: ubuntu-latest
     steps:
@@ -334,9 +310,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   windows_test:
-    needs: classify
+    needs: format
     timeout-minutes: 90
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile' }}
     name: Windows DNS regression
     runs-on: windows-latest
     steps:
@@ -394,14 +370,6 @@ jobs:
             go.sum
             third_party/sing-tun/go.mod
             third_party/sing-tun/go.sum
-      - name: Validate observer controls on the actual Windows host
-        timeout-minutes: 5
-        run: |
-          set -euo pipefail
-          mkdir "$RUNNER_TEMP/polaris-ci-control-tools"
-          git show "$GITHUB_SHA:scripts/polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-control-tools/polaris_ci_observe.py"
-          git show "$GITHUB_SHA:scripts/test_polaris_ci_observe.py" > "$RUNNER_TEMP/polaris-ci-control-tools/test_polaris_ci_observe.py"
-          python -B -m unittest discover -s "$RUNNER_TEMP/polaris-ci-control-tools" -p 'test_polaris_ci_observe.py' -v
       - name: Test
         timeout-minutes: 77
         run: |
@@ -428,9 +396,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   macos:
-    needs: classify
+    needs: format
     timeout-minutes: 90
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile' }}
     name: macOS ${{ matrix.arch }}
     runs-on: macos-latest
     strategy:
@@ -518,9 +486,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   android:
-    needs: classify
+    needs: format
     timeout-minutes: 120
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop' }}
     name: Android libbox (${{ matrix.go_arch }})
     runs-on: ubuntu-latest
     strategy:
@@ -697,9 +665,9 @@ jobs:
           path: ${{ runner.temp }}/ndk-cache/ndk.zip
           key: polaris-input-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.NDK_SHA256 }}
   ios:
-    needs: classify
+    needs: format
     timeout-minutes: 120
-    if: ${{ needs.classify.outputs.run_full == 'true' && ((github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop') }}
+    if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop' }}
     name: iOS libbox
     runs-on: macos-latest
     steps:
@@ -821,8 +789,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   patch_tests:
-    needs: classify
-    if: ${{ needs.classify.outputs.run_full == 'true' }}
+    needs: format
     timeout-minutes: 90
     name: Patch tests
     runs-on: ubuntu-latest

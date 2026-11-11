@@ -4,7 +4,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-import yaml
 from unittest.mock import patch
 
 spec=importlib.util.spec_from_file_location('release_binding',Path(__file__).with_name('release_identity.py'))
@@ -130,20 +129,5 @@ class AnnotatedCheckoutGitTests(unittest.TestCase):
         self.git(repo,'checkout','--force',self.source)
         # Event ref stays a tag; the source-owned explicit checkout input is SHA.
         self.verify(repo,True,'refs/tags/'+self.tag)
-
-    def test_all_five_source_owned_gate_inputs_take_real_git_preserving_path(self):
-        root=Path(__file__).resolve().parents[2]
-        for workflow,jobs in [('build.yml',('calculate_version','native_index')),
-                              ('signed-release.yml',('calculate_version','native_index','upload'))]:
-            spec=yaml.safe_load((root/'.github/workflows'/workflow).read_text())
-            for name in jobs:
-                with self.subTest(workflow=workflow,job=name):
-                    checkout=next(s for s in spec['jobs'][name]['steps'] if s.get('uses','').startswith('actions/checkout@'))
-                    self.assertEqual(checkout['with']['ref'],'${{ github.sha }}')
-                    self.assertEqual(checkout['with']['fetch-depth'],0)
-                    repo=self.fetch_full_history(workflow+'-'+name)
-                    self.git(repo,'cat-file','-e',self.source+'^{commit}')
-                    self.git(repo,'checkout','--force',self.source)
-                    self.verify(repo,True,'refs/tags/'+self.tag)
 
 if __name__=='__main__':unittest.main()

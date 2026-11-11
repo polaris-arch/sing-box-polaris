@@ -1,5 +1,0 @@
-{
-  "log": { "level": "info" },
-  "inbounds": [],
-  "outbounds": [{ "type": "direct" }]
-}

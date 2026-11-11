@@ -1,5 +1,6 @@
 """Private controlled-peer runner. Never publishes or accepts user node URLs."""
 import argparse
+import ast
 import copy
 import errno
 import contextlib
@@ -21,12 +22,216 @@ import subprocess
 import tempfile
 import threading
 import time
-from protocol_peer_diagnostic import event, safe_log_observation, safe_to_continue
 from protocol_peer_netlog import NativeObservationIdentityError, NativeObservationEvidenceError, failure_category
 from protocol_peer_cases import case_matrix
 
 
 SUITE_DEADLINE = None
+
+
+def sha(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+ERROR_CATEGORIES = {
+    'go_nil_pointer': b'panic: runtime error: invalid memory address or nil pointer dereference',
+    'go_index_bounds': b'panic: runtime error: index out of range',
+    'go_slice_bounds': b'panic: runtime error: slice bounds out of range',
+    'go_negative_waitgroup': b'panic: sync: negative WaitGroup counter',
+    'go_concurrent_map': b'fatal error: concurrent map writes',
+    'go_deadlock': b'fatal error: all goroutines are asleep - deadlock!',
+    'native_close_incomplete': b'sing-box did not closed properly',
+    'runtime_graph_cleanup_incomplete': b'runtime resource cleanup remains unconfirmed',
+    'close_observer_deadline': b'context deadline exceeded',
+    'close_context_canceled': b'context canceled',
+    'runtime_reference_cleanup_incomplete': b'runtime reference observer cleanup incomplete',
+    'runtime_owned_cleanup_incomplete': b'completion unknown',
+    'runtime_device_close_incomplete': b'device shutdown did not complete',
+    'runtime_scope_close_panic': b'panic during close:',
+    'runtime_owner_close_panic': b'resource close panic:',
+    'cleanup_snapshot_encoding_unavailable': b'runtime cleanup snapshot encoding unavailable',
+    'native_close_timeout': b'sing-box did not close!',
+    'tls_unknown_ca': b'certificate signed by unknown authority',
+    'http_auth407': b'status: 407', 'http_auth401': b'unexpected status: 401',
+    'http_path404': b'unexpected status: 404',
+    'quic_idle_timeout': b'timeout: no recent network activity',
+    'connection_refused': b'connection refused', 'connection_reset': b'connection reset by peer',
+}
+_SOURCE_SYMBOLS = None
+_EXCEPTION_MESSAGES = None
+
+
+def safe_exception(error):
+    global _EXCEPTION_MESSAGES
+    if _EXCEPTION_MESSAGES is None:
+        allowed=set()
+        for name in ('protocol_peer.py',):
+            tree=ast.parse(Path(__file__).with_name(name).read_text())
+            for node in ast.walk(tree):
+                if (isinstance(node,ast.Call) and isinstance(node.func,ast.Name)
+                        and node.func.id in {'ValueError','RuntimeError','EOFError','TimeoutError','ConnectionError','IdentityFailure'}
+                        and node.args and isinstance(node.args[0],ast.Constant) and isinstance(node.args[0].value,str)):
+                    allowed.add(node.args[0].value)
+        _EXCEPTION_MESSAGES=allowed
+    message=str(error)
+    return message if message in _EXCEPTION_MESSAGES else 'non-public exception details withheld'
+
+
+def source_symbols(root):
+    global _SOURCE_SYMBOLS
+    if _SOURCE_SYMBOLS is None:
+        modules={}
+        for module in root.rglob('go.mod'):
+            match=re.search(r'^module\s+([A-Za-z0-9_./-]+)',module.read_text(errors='replace'),re.M)
+            if match:modules[module.parent]=match[1]
+        names={}; files=set()
+        for file in root.rglob('*.go'):
+            if file.is_symlink(): continue
+            parents=[p for p in file.parents if p in modules]
+            if not parents: continue
+            module_root=parents[0];relative=file.parent.relative_to(module_root).as_posix()
+            package=modules[module_root]+('/'+relative if relative!='.' else '')
+            for receiver,name in re.findall(r'^func\s+(?:\(([^\n)]*)\)\s+)?([A-Za-z_]\w*)',file.read_text(errors='replace'),re.M):
+                if receiver:
+                    typ=re.search(r'(\*?[A-Za-z_]\w*)(?:\[[^\]]*\])?\s*$',receiver)
+                    if not typ:continue
+                    symbol=package+'.('+typ[1]+').'+name
+                else:symbol=package+'.'+name
+                names.setdefault(symbol,set()).add(file.name)
+            files.add(file.name)
+        _SOURCE_SYMBOLS=(names,files)
+    return _SOURCE_SYMBOLS
+
+
+CLEANUP_COUNT_CAP = 1000000
+
+
+def validate_cleanup_snapshot(value):
+    """Exact finite schema; no arbitrary strings, extra keys or unbounded counts."""
+    def obj(item, keys):
+        return type(item) is dict and set(item) == set(keys.split())
+    def count(item, maximum=CLEANUP_COUNT_CAP):
+        return type(item) is int and 0 <= item <= maximum
+    def flags(item, names):
+        return all(type(item[name]) is bool for name in names.split())
+    if not obj(value, 'schema atomic available preparing phase done failed truncated resourceCount resources connections reference'):
+        return False
+    if value['schema'] != 'runtime-cleanup-v1' or value['atomic'] is not False:
+        return False
+    if not flags(value, 'available preparing done failed truncated') or not count(value['phase'], 8) or not count(value['resourceCount']):
+        return False
+    resources = value['resources']
+    if type(resources) is not list or len(resources) != 10:
+        return False
+    for item in resources:
+        if not obj(item, 'owners unavailable states references dependencies endpointPhases endpointFailures ownerFailures'):
+            return False
+        if not all(count(item[key]) for key in ('owners', 'unavailable', 'references', 'dependencies', 'endpointFailures', 'ownerFailures')):
+            return False
+        for name, length in [('states', 4), ('endpointPhases', 8)]:
+            if type(item[name]) is not list or len(item[name]) != length or not all(count(n) for n in item[name]):
+                return False
+    conn = value['connections']
+    if not obj(conn, 'available closed tasks physical') or not flags(conn, 'available closed') or not count(conn['tasks']) or not count(conn['physical']):
+        return False
+    ref = value['reference']
+    if not obj(ref, 'available started stopping busy pauses quarantined failed setupDone workerDone stoppedDone'):
+        return False
+    return (flags(ref, 'available started stopping busy failed setupDone workerDone stoppedDone')
+            and count(ref['pauses']) and count(ref['quarantined']))
+
+
+def cleanup_snapshot_observations(raw):
+    observations, rejected = [], 0
+    for line in raw.splitlines():
+        marker = b'runtime cleanup snapshot: '
+        if marker not in line:
+            continue
+        encoded = line.split(marker, 1)[1]
+        # Generated fixtures disable color; reject anything outside exact JSON.
+        if len(encoded) > 16384 or len(observations) >= 4:
+            rejected += 1
+            continue
+        try:
+            # Duplicate keys are not an exact source-generated snapshot.
+            def unique_pairs(pairs):
+                item = {}
+                for key, value in pairs:
+                    if key in item:
+                        raise ValueError('duplicate cleanup snapshot key')
+                    item[key] = value
+                return item
+            value = json.loads(encoded, object_pairs_hook=unique_pairs)
+        except (ValueError, UnicodeError, RecursionError):
+            rejected += 1
+            continue
+        if validate_cleanup_snapshot(value):
+            observations.append(value)
+        else:
+            rejected += 1
+    return observations, min(rejected, CLEANUP_COUNT_CAP)
+
+
+def safe_log_observation(raw, root):
+    """Emit enumerated source-derived classifications, never arbitrary log lines."""
+    result={'sha256':sha(raw),'bytes':len(raw),'categories':[], 'goFrames':[],
+            'panicMarker':bool(re.search(rb'^panic:',raw,re.M)),
+            'fatalMarker':bool(re.search(rb'^fatal error:',raw,re.M))}
+    for code, fixed in ERROR_CATEGORIES.items():
+        position=raw.lower().find(fixed.lower())
+        if position>=0: result['categories'].append({'category':code,'byteOffset':position})
+    codes=root/'third_party/cronet-go/net_error_generated.go'
+    if codes.is_file():
+        for name,message in re.findall(r'\{NetError\w+, "(ERR_[A-Z0-9_]+)", "([a-z0-9 -]+)"',codes.read_text()):
+            # Only fixed messages from the pinned source can become categories.
+            for fixed in (name.encode(),message.encode()):
+                if len(fixed)<8: continue
+                found=re.search(rb'(?<![a-z0-9_])'+re.escape(fixed.lower())+rb'(?=$|[\r\n.,;:)]| \()',raw.lower())
+                if found:
+                    result['categories'].append({'category':name,'byteOffset':found.start()}); break
+    if result['panicMarker'] or result['fatalMarker']:
+        names,files=source_symbols(root); pending=None
+        for line in raw.decode('utf-8',errors='replace').splitlines():
+            # No arguments, pointer values or directory prefixes are emitted.
+            match=re.match(r'^(github\.com/[A-Za-z0-9_./-]+\.(?:\(\*?[A-Za-z0-9_]+\)\.)?[A-Za-z_]\w*(?:\.func\d+)*)(?:\[[^\]]*\])?\(',line)
+            if match and len(match[1])<=192:
+                symbol=re.sub(r'(?:\.func\d+)+$','',match[1])
+                if symbol in names:
+                    pending=(match[1],names[symbol]);continue
+            location=re.match(r'^\s+[^\r\n]*[/\\]([A-Za-z_][A-Za-z0-9_]*\.go):(\d+)(?:\s+\+0x[0-9a-f]+)?$',line)
+            if pending and location and location[1] in pending[1]:
+                result['goFrames'].append({'symbol':pending[0],'file':location[1],'line':int(location[2])})
+                if len(result['goFrames'])>=48: break
+            pending=None
+    result['cleanupSnapshots'], result['cleanupSnapshotsRejected'] = cleanup_snapshot_observations(raw)
+    result['unknownTextRetained']=False
+    return result
+
+
+def event(events, stage, **values):
+    if not re.fullmatch(r'[a-z][a-z0-9_.-]{0,79}',stage): raise ValueError('invalid fixed diagnostic stage')
+    item={'stage':stage,'monotonicSeconds':time.monotonic(),**values}
+    if events is not None: events.append(item)
+    return item
+
+
+def safe_to_continue(case):
+    if case.get('identityUncertain') or case.get('cleanupErrors') or not case.get('fixturesJoined'):
+        return False
+    if case.get('descendantRetirement') != {'remaining':[],'forcedKill':False,'retired':[]}:
+        return False
+    if not case.get('portsReleased') or not all(p.get('released') is True for p in case['portsReleased']):
+        return False
+    for child in case.get('cleanup',[]):
+        if (not isinstance(child,dict) or child.get('exitCode')!=0 or child.get('forcedKill')
+                or child.get('remainingGroup')!=[] or child.get('cleanupErrorLog') is not False): return False
+        identity=child.get('startIdentity')
+        if (not isinstance(identity,dict) or type(identity.get('startTicks')) is not int or identity['startTicks']<=0
+                or type(child.get('pid')) is not int or child['pid']<=0 or identity.get('pid')!=child['pid']
+                or identity.get('pgrp')!=child['pid'] or identity.get('session')!=child['pid']
+                or child.get('boundCoreSHA256')!=case.get('expectedCoreSHA256')
+                or not re.fullmatch(r'[0-9a-f]{64}',child.get('boundCoreSHA256') or '')):return False
+    return True
 
 
 class IdentityFailure(RuntimeError):
@@ -960,12 +1165,12 @@ def socks_connect(port, target, destination_port, events=None, label='client'):
         conn.close();raise
 
 
-def identity(binary, row, expected_source, expected_hash, diagnostic=False):
+def identity(binary, row, expected_source, expected_hash):
     if row['schema']!='polaris-upstream-native-receipt-v1' or row['sourceCommit']!=expected_source:
         raise ValueError('producer source mismatch')
     if row['core']['sha256']!=expected_hash or digest(binary.read_bytes())!=expected_hash:
         raise ValueError('approved core bytes differ')
-    if row['target']!='linux/amd64' or not diagnostic and row['finalPackageCronetSmoke']['status']!='passed':
+    if row['target']!='linux/amd64' or row['finalPackageCronetSmoke']['status']!='passed':
         raise ValueError('requires already smoked Linux native producer row')
     if not {'with_naive_outbound','with_quic','with_gvisor'} <= set(row['tags'].split(',')):
         raise ValueError('not the required complete native profile')
@@ -1461,7 +1666,6 @@ def run_case(binary, row, root, kind, mutation=None):
             for item in events:
                 if item['stage'].endswith('native_identity.verify') and item.get('status')=='RUNNING':
                     item.update(status='FAIL',errorType='IdentityFailure')
-        from protocol_peer_diagnostic import safe_exception
         result.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error),
                       failedOperationStages=[e['stage'] for e in events if e.get('status')=='FAIL'],
                       observedStageAtException=events[-1]['stage'] if events else 'case.setup',
@@ -1487,14 +1691,12 @@ def run_case(binary, row, root, kind, mutation=None):
         for proc in reversed([p for p in processes if p.role != 'peer']):
             try: proc.close()
             except Exception as error:
-                from protocol_peer_diagnostic import safe_exception
                 errors.append(type(error).__name__+': '+safe_exception(error))
             result['cleanup'].append(proc.cleanup)
         if relay: errors.extend(retire_udp_observer(relay,result))
         for proc in [p for p in processes if p.role == 'peer']:
             try: proc.close()
             except Exception as error:
-                from protocol_peer_diagnostic import safe_exception
                 errors.append(type(error).__name__+': '+safe_exception(error))
             result['cleanup'].append(proc.cleanup)
         try:
@@ -1507,7 +1709,6 @@ def run_case(binary, row, root, kind, mutation=None):
             if fixture:
                 try: fixture.close()
                 except Exception as error:
-                    from protocol_peer_diagnostic import safe_exception
                     errors.append(type(error).__name__+': '+safe_exception(error))
         result['fixturesJoined']=not errors
         result['echoCountersAfterRetirement']={'tcpAccepted':echo.accepted if echo else 0,
@@ -1544,20 +1745,6 @@ def collect_native_certificate(process, host, leaf, mutation, events):
     return result
 
 
-def validate_linux_dispatch(env=os.environ):
-    """A new exact-source native build, never a reuse of the old diagnostic carrier."""
-    if env.get('GITHUB_ACTIONS') != 'true' or env.get('RUNNER_OS') != 'Linux':
-        raise ValueError('Linux peer build requires its existing Actions environment')
-    if env.get('GITHUB_EVENT_NAME') != 'workflow_dispatch' or env.get('PEER_BUILD') != 'NativePeerLinux':
-        raise ValueError('Linux peer build requires its explicit manual selector')
-    if env.get('PEER_EVIDENCE_MODE') != 'staging' or env.get('PEER_SOURCE_GENERATE_ONLY') != 'false':
-        raise ValueError('Linux peer build cannot select final evidence or source generation')
-    if env.get('PEER_VERSION') != '1.15.0-polaris-alpha.12.4':
-        raise ValueError('Linux peer build version differs')
-    if env.get('GITHUB_REPOSITORY') != 'polaris-arch/sing-box-polaris' or env.get('GITHUB_REPOSITORY_ID') != '1421657509':
-        raise ValueError('Linux peer build repository differs')
-
-
 def verify_source_owned_replacements(modules):
     # Use the producer's Go parser and exact HEAD directory identities. A source
     # revision may add a vendor; neither an old count nor a partial MVS graph is
@@ -1587,7 +1774,7 @@ def verify_source_owned_replacements(modules):
         raise ValueError('native producer complete source-owned replacement closure differs')
 
 
-def verify_same_run_context(root, row, diagnostic=False):
+def verify_same_run_context(root, row):
     from native_release_index import identity as source_identity
     commit, tree = source_identity()
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('RUNNER_OS') != 'Linux':
@@ -1595,13 +1782,7 @@ def verify_same_run_context(root, row, diagnostic=False):
     if os.geteuid() == 0 or sys.platform != 'linux': raise ValueError('controlled peer execution must be nonroot Linux')
     if os.environ.get('GITHUB_SHA') != commit:
         raise ValueError('actual runner checkout differs from run')
-    if diagnostic:
-        from protocol_peer_diagnostic import verify_runner_bridge, PRODUCER
-        runner=verify_runner_bridge(root)
-        product_commit,product_tree=PRODUCER['commit'],PRODUCER['tree']
-    else:
-        product_commit,product_tree=commit,tree
-    if row['sourceCommit'] != product_commit or row['sourceTree'] != product_tree:
+    if row['sourceCommit'] != commit or row['sourceTree'] != tree:
         raise ValueError('same-run exact checkout and native producer source differ')
     if os.environ.get('GITHUB_WORKFLOW_SHA') != commit:
         raise ValueError('runner implementation is not exact same-source workflow')
@@ -1614,10 +1795,6 @@ def verify_same_run_context(root, row, diagnostic=False):
     for name, field in [('go.mod', 'goModSha256'), ('go.sum', 'goSumSha256')]:
         if digest((root/name).read_bytes()) != modules[field]: raise ValueError('producer source module bytes differ')
     verify_source_owned_replacements(modules)
-    if diagnostic:
-        return {'sourceCommit':product_commit,'sourceTree':product_tree,'runId':PRODUCER['run'],
-                'runAttempt':PRODUCER['attempt'],'workflowCommit':product_commit,
-                'runner':runner,'reusedProduct':True,'diagnosticOnly':True}
     return {'sourceCommit': commit, 'sourceTree': tree, 'runId': int(os.environ['GITHUB_RUN_ID']),
             'runAttempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'workflowCommit': os.environ['GITHUB_WORKFLOW_SHA']}
 
@@ -1659,7 +1836,6 @@ def execute_cases(receipt, execute, deadline):
             continue
         try: result=execute(kind,mutation)
         except Exception as error:
-            from protocol_peer_diagnostic import safe_exception
             result={'kind':kind,'mutation':mutation,'status':'FAIL','identityUncertain':True,
                 'errorType':type(error).__name__,'error':safe_exception(error),'continuationSafe':False}
         receipt['cases'].append(result)
@@ -1668,7 +1844,7 @@ def execute_cases(receipt, execute, deadline):
             blocked={'kind':kind,'mutation':mutation,'index':len(receipt['cases'])-1}
 
 
-def run_suite(directory, output, diagnostic=False, admission=None):
+def run_suite(directory, output, admission=None):
     from native_release_index import read_archive, smoke_temp_directory
     root = Path(__file__).resolve().parents[2]
     if any(os.environ.get(key) for key in ('GH_TOKEN', 'GITHUB_TOKEN')):
@@ -1676,16 +1852,8 @@ def run_suite(directory, output, diagnostic=False, admission=None):
     rows = list(directory.glob('native-row-*.json'))
     if len(rows) != 1: raise ValueError('requires one exact same-run native row')
     row_raw = rows[0].read_bytes(); row = json.loads(row_raw)
-    context = verify_same_run_context(root,row,diagnostic)
-    if diagnostic:
-        from protocol_peer_diagnostic import verify_product_row,validate_zip,PRODUCER
-        verify_product_row(row,row_raw)
-        validate_zip((directory/'original-artifact.zip').read_bytes())
-        acquisition=json.loads((directory/'diagnostic-acquisition.json').read_bytes())
-        if acquisition.get('producer')!=PRODUCER or acquisition.get('runner')!=context['runner']:
-            raise ValueError('diagnostic artifact acquisition dual identity differs')
-        actual_artifact=acquisition['artifact']
-    else: actual_artifact=artifact_metadata(context, admission, directory)
+    context = verify_same_run_context(root,row)
+    actual_artifact=artifact_metadata(context, admission, directory)
     archive = directory/row['archive']['name']
     if archive.parent != directory or digest(archive.read_bytes()) != row['archive']['sha256']:
         raise ValueError('same-run final archive identity differs')
@@ -1697,13 +1865,10 @@ def run_suite(directory, output, diagnostic=False, admission=None):
     receipt = {'schema':'polaris-native-controlled-peer-v1', 'context':context,
                'producerRowSHA256':digest(row_raw), 'archive':row['archive'],
                'artifact':actual_artifact,
-               'outerArtifactDigestObservation':('independently hashed exact original artifact ZIP and inner members' if diagnostic else 'API metadata and same-run download action; independently verified inner archive/member hashes'),
+               'outerArtifactDigestObservation':'API metadata and same-run download action; independently verified inner archive/member hashes',
                'status':'RUNNING', 'cases':[], 'publicationEligible':False,
                'coverage':'Linux native peer process-level IPv4; not App GUI, in-process HOT, IPv6 or other platforms',
                'privateOriginalConfigurationArchived':False}
-    if diagnostic:
-        receipt.update(diagnosticOnly=True,reusedProduct=True,producer=PRODUCER,runner=context['runner'],
-                       originalProducerRowImmutable=True,originalProducerRowSHA256=digest(row_raw))
     global SUITE_DEADLINE
     started = time.monotonic()
     SUITE_DEADLINE = started + 480
@@ -1718,16 +1883,7 @@ def run_suite(directory, output, diagnostic=False, admission=None):
             with owned_child_scope(receipt):
                 for name, raw in members.items(): private_write(work/name, raw)
                 binary = work/row['core']['member']; binary.chmod(0o700)
-                receipt['identity'] = identity(binary,row,context['sourceCommit'],row['core']['sha256'],diagnostic)
-                if diagnostic:
-                    from tls_fingerprint_probe import validate, producer_module_identities
-                    capability_raw=subprocess.check_output([str(binary),'tools','tls-fingerprints'],cwd=work,timeout=30,env=core_environment(work))
-                    document=json.loads(capability_raw)
-                    validate(document,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],
-                             target=row['target'],expected_modules=producer_module_identities(row['buildGraph']))
-                    receipt['nativeTLSCapabilityObservation']={'sha256':digest(capability_raw),'bytes':len(capability_raw),
-                        'profileIDs':[profile['id'] for profile in document['profiles']],'sourceValidated':True,
-                        'networkHandshakeValidated':False}
+                receipt['identity'] = identity(binary,row,context['sourceCommit'],row['core']['sha256'])
                 pins = json.loads((root/'release/polaris-candidate-inputs.json').read_bytes())
                 observed = json.loads(subprocess.check_output([str(binary),'tools','cronet','--expected-version',pins['cronetVersion'],
                     '--library',str(work/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']],cwd=work,text=True,timeout=30,env=core_environment(work)))
@@ -1742,7 +1898,6 @@ def run_suite(directory, output, diagnostic=False, admission=None):
         expected = 14
         receipt['status'] = 'PASS' if len(receipt['cases']) == expected and all(case['status']=='PASS' for case in receipt['cases']) else 'FAIL'
     except Exception as error:
-        from protocol_peer_diagnostic import safe_exception
         receipt.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error))
     finally:
         if rows[0].read_bytes()!=row_raw:
@@ -1764,45 +1919,22 @@ def main():
     parser.add_argument('directory',type=Path,nargs='?')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--admission',type=Path)
-    action=parser.add_mutually_exclusive_group()
-    action.add_argument('--diagnostic',action='store_true')
-    action.add_argument('--fetch-diagnostic',action='store_true')
-    action.add_argument('--validate-diagnostic-dispatch',action='store_true')
-    action.add_argument('--validate-linux-dispatch',action='store_true')
     args = parser.parse_args()
     output=args.output.resolve() if args.output else None
     stage='native_execution_preflight'
     try:
-        if args.validate_linux_dispatch:
-            if args.directory is not None:parser.error('dispatch validation has no native directory')
-            stage='dispatch_preflight'
-            validate_linux_dispatch();return
-        if args.validate_diagnostic_dispatch:
-            if args.directory is not None:parser.error('dispatch validation has no native directory')
-            stage='dispatch_preflight'
-            from protocol_peer_diagnostic import validate_dispatch
-            validate_dispatch();return
-        if args.fetch_diagnostic:
-            if args.directory is None or output is None:
-                parser.error('fixed fetch needs native directory and failure receipt output')
-            stage='artifact_acquisition'
-            from protocol_peer_diagnostic import fetch_diagnostic
-            fetch_diagnostic(args.directory.resolve(),Path(__file__).resolve().parents[2]);return
         if args.directory is None or output is None:parser.error('peer execution needs native directory and receipt output')
-        if args.diagnostic and args.admission is not None:parser.error('fixed diagnostic cannot consume same-run admission')
-        run_suite(args.directory.resolve(strict=True),output,args.diagnostic,args.admission)
+        run_suite(args.directory.resolve(strict=True),output,args.admission)
     except Exception as error:
         if output is not None and not (output/'receipt.json').exists():
             output.mkdir(parents=True, exist_ok=True)
-            from protocol_peer_diagnostic import safe_exception
             known_context = {}
-            if stage == 'native_execution_preflight' and not args.diagnostic:
-                from native_peer_metadata import actions_context, bind_row
-                try:
-                    known_context = actions_context()
-                    known_context = bind_row(args.directory, known_context)
-                except Exception:
-                    pass  # Keep only the identity predicates already proved, never admit on this path.
+            from native_peer_metadata import actions_context, bind_row
+            try:
+                known_context = actions_context()
+                known_context = bind_row(args.directory, known_context)
+            except Exception:
+                pass  # Keep only the identity predicates already proved, never admit on this path.
             (output/'receipt.json').write_text(json.dumps({'schema':'polaris-native-controlled-peer-v1','status':'FAIL',
                 'stage':stage,'errorType':type(error).__name__,'error':safe_exception(error),'publicationEligible':False,
                 'context':known_context,
@@ -1813,6 +1945,5 @@ def main():
 if __name__ == '__main__':
     try: main()
     except Exception as error:
-        from protocol_peer_diagnostic import safe_exception
         print(type(error).__name__+': '+safe_exception(error),file=sys.stderr)
         raise SystemExit(1) from None

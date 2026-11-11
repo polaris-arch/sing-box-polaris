@@ -46,7 +46,7 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_self_contained_schemas_share_the_parser_contract(self):
         import jsonschema
-        for name, count in [('native-release-index.schema.json', 5), ('native-release-contract.schema.json', 10)]:
+        for name, count in [('native-release-index.schema.json', 4), ('native-release-contract.schema.json', 10)]:
             schema = json.loads((ROOT / 'release/ci' / name).read_text())
             jsonschema.Draft202012Validator.check_schema(schema)
             refs = []
@@ -67,7 +67,6 @@ class PolarisVersionTests(unittest.TestCase):
                     ('/properties/tag/$ref', '#/$defs/polarisTag'),
                     ('/properties/platforms/items/properties/version/$ref', '#/$defs/polarisVersion'),
                     ('/properties/platforms/items/properties/tag/$ref', '#/$defs/polarisTag'),
-                    ('/$defs/debianContext/properties/tag/$ref', '#/$defs/polarisTag'),
                 ])
             for tag in [False, True]:
                 key = 'polarisTag' if tag else 'polarisVersion'
@@ -128,13 +127,12 @@ class PolarisVersionTests(unittest.TestCase):
             # Simulate a separately reviewed next plan; syntax never selects a release.
             with patch.object(publisher, 'VERSION', version):
                 scope = publisher.release_scope(version)
-                rules = scope['linux']['payloadRules']['binary-linux_amd64']
-                files = {f'sing-box-polaris-testing_{version}_linux_{cpu}.{kind}': {}
-                         for cpu, kind in [('amd64', 'deb'), ('x86_64', 'rpm')]}
-                publisher.verify_payloads(files, rules, 'binary-linux_amd64')
+                rules = scope['all']['payloadRules']['binary-linux_amd64-glibc']
+                files = {f'sing-box-{version}-linux-amd64-glibc.tar.gz': {}}
+                publisher.verify_payloads(files, rules, 'binary-linux_amd64-glibc')
                 for wrong in ['1.15.0-polaris-alpha.12', version + '0', version + '.1']:
                     with self.assertRaises(ValueError):
-                        publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64')
+                        publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64-glibc')
         self.assertEqual(publisher.VERSION, PLAN['version'])
         for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.13']:
             with self.assertRaises(ValueError):
@@ -157,32 +155,17 @@ class PolarisVersionTests(unittest.TestCase):
                 identity.remote_tag_identity(tag, source, obj)
             api.assert_not_called()
 
-    def test_current_plan_never_reuses_historical_maintenance(self):
-        modes = ['prepare-reconcile', 'check-reconcile', 'reconcile', 'prepare-replacement',
-                 'check-stage-replacement', 'stage-replacement', 'check-replacement', 'replace',
-                 'check-names', 'rename-names']
-        for mode in modes:
-            with self.subTest(mode=mode), patch.object(sys, 'argv', ['github_release.py', mode, '--source', 'a' * 40]), \
-                 patch.object(publisher, 'api') as api, patch.object(publisher, 'identity') as checkout:
-                with self.assertRaisesRegex(ValueError, 'historical alpha.12 maintenance'):
-                    publisher.main()
-                api.assert_not_called()
-                checkout.assert_not_called()
-        for loader in [publisher.replacement_baseline, publisher.public_name_plan]:
-            with self.assertRaises(ValueError):
-                loader()
-
     def test_producer_receipts_keep_patch_and_reject_unreviewed_rotation(self):
         source = 'a' * 40
         for version in [PLAN['version'], '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
             plan = dict(PLAN, version=version, tag='v' + version)
-            for role in ['all', 'linux', 'docker', 'signed']:
+            for role in ['all']:
                 with tempfile.TemporaryDirectory() as directory, chdir(directory):
                     Path('release/ci').mkdir(parents=True)
                     Path('release/ci/github-release.json').write_text(json.dumps(plan))
                     scope = json.loads((ROOT / 'release/ci/publisher-upstream-scope.json').read_text())
                     Path('release/ci/publisher-upstream-scope.json').write_text(json.dumps(scope))
-                    needs = {name: {'result': 'skipped' if name == 'upload' else 'success', 'outputs': {}}
+                    needs = {name: {'result': 'success', 'outputs': {}}
                              for name in scope[role]['receiptJobs']}
                     env = {'PUBLISHER_ROLE': role, 'GITHUB_EVENT_NAME': 'workflow_dispatch',
                            'GITHUB_REPOSITORY': PLAN['repository'], 'GITHUB_REPOSITORY_ID': str(PLAN['repositoryId']),
@@ -190,13 +173,9 @@ class PolarisVersionTests(unittest.TestCase):
                            'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1',
                            'PUBLISH_STORES': 'false', 'PUBLISH_REGISTRY': 'false',
                            'GITHUB_REF': 'refs/tags/' + plan['tag'], 'NEEDS_JSON': json.dumps(needs),
-                           'RECEIPT_EVIDENCE_MODE': 'final', 'RECEIPT_SOURCE_GENERATE_ONLY': 'false',
-                           'RECEIPT_DISTRIBUTION_ENABLED': 'true' if role == 'signed' else 'false',
-                           'RECEIPT_PUBLISH_GITHUB': 'false',
-                           'POLARIS_DEBIAN_REQUIRED': 'false' if role == 'signed' else 'true'}
+                           'RECEIPT_EVIDENCE_MODE': 'final', 'RECEIPT_SOURCE_GENERATE_ONLY': 'false'}
                     script = ROOT / 'scripts/ci/publisher_run_receipt.py'
-                    with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'), \
-                         patch.object(publisher, 'producer_debian_materials', return_value=None):
+                    with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'):
                         runpy.run_path(str(script))
                     receipt = json.loads(Path('publisher-run-receipt.json').read_text())
                     self.assertEqual(receipt['version'], version)

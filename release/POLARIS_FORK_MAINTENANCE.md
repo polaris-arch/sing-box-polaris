@@ -10,16 +10,6 @@ The original capabilities are API listener close ownership, Naive inbound HTTP/3
 
 All three CLI presets and the Android/Apple build helper retain `with_gvisor`; this compiles the capability without changing the stack default. `DEFAULT_BUILD_TAGS_OTHERS` excludes Naive/Cronet and retains its existing wider architecture consumers. Six desktop cores use prebuilt Cronet (Linux/Windows sibling .so/.dll, macOS static .a); two musl cores use fixed static .a. Android JNI and Apple framework helpers already link matching prebuilt libraries into their native artifacts. No available Cronet binary is rebuilt from Chromium merely for acquisition. The current production publisher ships only six desktop archives and four OpenWrt packages; mobile AAR/XCFramework production receipts and App final carriers belong to their agreed later owner batches. Preserving a helper or a successful package compilation is not mobile/device acceptance.
 
-## Read-only maintenance audit
-
-After all code logic is complete, the single production workflow plan performs:
-
-```
-python3 -B scripts/polaris_fork_maintenance.py --source <exact-checked-out-SHA>
-```
-
-The audit requires clean source, exact production/catalog baseline and runtime-reference ancestry, and all catalog bytes. It writes JSON to stdout only, never fetching/building/changing refs. The workflow retains the audit beside the whole-batch contract log. An optional `--observation <JSON>` consumes an actual external GitHub snapshot with timestamp, repository identity, fork main/testing, upstream testing, baseline tag and a published-release API page. It reports observed newer-release count and mirror alignment, explicitly limiting the result to that page. No observation means live upstream/lag remains unverified. The snapshot cannot advance the production baseline or certify security fixes. A testing mismatch requires history/commit/tree/active-ref review; this tool never merges or force-updates it.
-
 Source inventory plus per-file upstream differences supports the periodic semantic review; it cannot decide that upstream replaced a patch. The reviewer compares actual normal/error/cancellation/default/platform behavior and the patch's regression assertions at the selected released commit. Record retained/adjusted/retired decisions with exact source, upstream evidence and rationale. Do this at startup and once before candidate freeze; after freeze do not switch input beneath in-flight gates. Additional scheduled monitoring or an automatic force-sync bot is not implied by this maintenance contract.
 
 ## Authorized baseline migration
@@ -33,4 +23,4 @@ Source inventory plus per-file upstream differences supports the periodic semant
 
 ## Pending boundaries
 
-Live `testing` synchronization is a separately controlled ref operation when histories diverge; no sync is performed by this code. New tag/index/release/asset IDs and public pins must come from final original bytes. Actual App downloads, safe extraction, library loading, gvisor/mixed behavior and final carriers are App-owned. Android four ABI/Apple device plus simulator slices/final native links, real physical TUN/VpnService/Network Extension, distribution trust and unsupported legacy-OS runtime remain explicit validation boundaries. Refer to `POLARIS_PRODUCTION_RELEASE.md`, `POLARIS_ASSETS.md` and `POLARIS_OPENWRT.md` for the precise producer/platform contract.
+Live `testing` synchronization is a separately controlled ref operation when histories diverge; no sync is performed by this code. New tag/index/release/asset IDs and public pins must come from final original bytes. Actual App downloads, safe extraction, library loading, gvisor/mixed behavior and final carriers are App-owned. Android four ABI/Apple device plus simulator slices/final native links, real physical TUN/VpnService/Network Extension, distribution trust and unsupported legacy-OS runtime remain explicit validation boundaries. Refer to `POLARIS_ASSETS.md` for the platform contract.

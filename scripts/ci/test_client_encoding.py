@@ -66,7 +66,7 @@ class ClientEncodingTests(unittest.TestCase):
             self.assertEqual(json.loads(raw.decode('utf-8'))['files'][0]['path'], '包.exe')
 
     def test_material_text_boundaries_are_explicit(self):
-        for name in ('client_source','record_candidate','android_runtime_materials','native_release_index','github_release','owned_distribution','publisher_run_receipt'):
+        for name in ('client_source','record_candidate','android_runtime_materials','native_release_index','github_release','publisher_run_receipt'):
             tree = ast.parse((ROOT / f'scripts/ci/{name}.py').read_bytes())
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ('read_text','write_text'):

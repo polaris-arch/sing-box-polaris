@@ -1192,7 +1192,7 @@
       "bytes": 9339
     },
     {
-      "path": "scripts/ci/test_ci_contract.py",
+      "path": "632709fb:scripts/ci/test_ci_contract.py",
       "owner": "kernel-ci-remediation",
       "baseBlob": "cb405be179e0a6d41fccb2d78584d63dfdeaa795",
       "newBlob": "a0ae551a9c12e1855709afde689f9f3e62744554",
@@ -1219,7 +1219,7 @@
       "bytes": 9395
     },
     {
-      "path": "scripts/test_polaris_ci_impact.py",
+      "path": "632709fb:scripts/test_polaris_ci_impact.py",
       "owner": "native-node-dns-ci-remediation",
       "baseBlob": "138516f1ed2b354b15befd89f22ffd3b2ac81164",
       "newBlob": "661b52566fde53540318854ddc247b9c24923c84",

@@ -61,14 +61,4 @@ class AndroidRuntimeMaterialsTests(unittest.TestCase):
             receipt=json.loads((root/'receipt.json').read_text())
             self.assertEqual(receipt['variants']['other']['resolved']['deduplicatedArtifactCount'],1)
             self.assertEqual(len(json.loads((root/'other.json').read_text())['artifacts']),2)
-    def test_workflow_bounded_failure_upload(self):
-        text=(Path(__file__).resolve().parents[2]/'.github/workflows/android-runtime-materials.yml').read_text()
-        self.assertEqual(text.count('if: always()'),2)
-        self.assertIn('persist-credentials: false',text)
-        self.assertIn('timeout-minutes: 30',text)
-        self.assertIn('contents: read',text)
-        self.assertIn('code=$?',text)
-        upload=text.split('        path: |\n')[1].split('        if-no-files-found:')[0]
-        self.assertEqual([line.strip() for line in upload.splitlines()],['runtime-evidence/other.json','runtime-evidence/otherLegacy.json','runtime-evidence/receipt.json','runtime-evidence/diagnostics.json','runtime-evidence/resolution-status.tsv'])
-
 if __name__=='__main__':unittest.main()
