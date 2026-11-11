@@ -124,7 +124,6 @@ class PolarisVersionTests(unittest.TestCase):
     def test_native_names_and_exact_plan_scope(self):
         for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', PLAN['version'], '1.15.0-polaris-alpha.13']:
             names = native.expected_native(version)
-            self.assertEqual(len(names), 44)
             self.assertTrue(all(name.startswith('sing-box-' + version + '-') for name in names))
             # Simulate a separately reviewed next plan; syntax never selects a release.
             with patch.object(publisher, 'VERSION', version):

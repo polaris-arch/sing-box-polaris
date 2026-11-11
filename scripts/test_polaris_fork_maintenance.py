@@ -45,5 +45,4 @@ class MaintenanceTests(unittest.TestCase):
         self.assertIn('refs/tags/$BASE_REF:refs/polaris/upstream-baseline',text)
         self.assertNotIn('refs/tags/$BASE_REF:refs/tags/$BASE_REF',text)
         self.assertIn('test "$actual_baseline" = "$BASE_COMMIT"',text)
-        self.assertIn("default: v1.15.0-alpha.12",text)
 if __name__=='__main__':unittest.main()

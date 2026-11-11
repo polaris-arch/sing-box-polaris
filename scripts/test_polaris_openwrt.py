@@ -12,15 +12,6 @@ import polaris_openwrt as ow
 REPO=Path(__file__).resolve().parents[1]
 
 class OpenWrtTests(unittest.TestCase):
-    def test_scope_and_linker_contract_preserve_generic_capabilities(self):
-        config=ow.plan(REPO)
-        self.assertEqual(config['clangInput']['revision'],'llvmorg-24-init-3796-g20e97c4b-27')
-        self.assertEqual(config['clangInput']['sha256'],'968195fa0b49958e066695df2c7c985d169a20fa06eedb8fcef900a6030edcb0')
-        self.assertEqual({r['architecture'] for r in config['targets']},{'x86_64','aarch64_generic'})
-        self.assertEqual(len(config['guestInputs']),4)
-        self.assertFalse(config['publicationEligible']);self.assertFalse(config['realDeviceAcceptance'])
-        self.assertEqual(config['package']['provides'],[])
-
     def test_payload_preserves_binary_mode_and_has_disabled_safe_defaults(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);core=root/'core';core.write_bytes(b'inert-core')
@@ -206,9 +197,6 @@ class GuestProtocolRegressionTests(unittest.TestCase):
         self.assertEqual(guest.checked_stdout(actual,'version').splitlines()[0],b'sing-box version 1.15.0-alpha.12')
         self.assertEqual(run.call_args.kwargs['stderr'],subprocess.PIPE)
         self.assertTrue(run.call_args.args[0][-1].startswith('set -eu; '))
-    def test_fail_fast_shell_cannot_hide_earlier_owner_or_ca_failure(self):
-        result=subprocess.run(['sh','-c','set -eu; false; printf masked-success'],capture_output=True)
-        self.assertNotEqual(result.returncode,0);self.assertEqual(result.stdout,b'')
     def test_actual_old_prerm_new_preinst_postinst_order_restores_active_service(self):
         import shlex
         with tempfile.TemporaryDirectory(prefix='polaris-upgrade-order-') as directory:

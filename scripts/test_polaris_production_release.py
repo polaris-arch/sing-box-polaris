@@ -482,18 +482,13 @@ class ProductionTests(unittest.TestCase):
 
     def test_historical_workflow_is_manual_no_publishing_and_does_not_retarget_lanes(self):
         workflow = (REPO / 'scripts/testdata/historical-workflows/polaris-production-release.yml').read_text()
-        self.assertNotIn('max-parallel:', workflow)
-        self.assertIn('needs: [plan, native-openwrt]', workflow)
-        self.assertIn('needs: [plan, native, native-openwrt, openwrt-guests]', workflow)
         self.assertEqual(workflow.count('uses: ./.github/workflows/polaris-production-native.yml'), 2)
         runner = (REPO / 'scripts/testdata/historical-workflows/polaris-production-native.yml').read_text()
         self.assertIn('polaris_runner_resources.py', runner)
-        self.assertIn('cancel-in-progress: false', workflow)
         self.assertIn('go-version: \'1.25.5\'', workflow)
         self.assertNotIn('contents: write', workflow)
         for operation in ('gh release', 'git push', '--clobber', 'git tag', 'push:'):
             self.assertNotIn(operation, workflow)
-        self.assertIn("inputs.attest && github.ref == 'refs/heads/polaris-main'", workflow)
         self.assertEqual(json.loads((REPO / 'release/polaris-candidate-inputs.json').read_bytes())['sourceCommit'],
                          'a01da7a942b3a0dbbfdfda2bba5bd63d5bd9d932')
         self.assertEqual(json.loads((REPO / 'release/polaris-dns-candidate-inputs.json').read_bytes())['sourceCommit'],

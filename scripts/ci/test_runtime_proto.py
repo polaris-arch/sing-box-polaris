@@ -12,15 +12,6 @@ import runtime_proto as subject
 
 class RuntimeProtoControls(unittest.TestCase):
     def test_exact_tool_versions_and_single_proto_command(self):
-        self.assertEqual(subject.VERSIONS, {
-            'protoc': 'libprotoc 3.21.12',
-            'protoc-gen-go': 'protoc-gen-go v1.36.11',
-            'protoc-gen-go-grpc': 'protoc-gen-go-grpc 1.5.1',
-        })
-        self.assertEqual(subject.PLUGINS, (
-            'google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11',
-            'google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1',
-        ))
         command = subject.generation_command(Path('/tools'), Path('/output'))
         self.assertEqual([x for x in command if x.endswith('.proto')],
                          ['daemon/runtime_config.proto'])

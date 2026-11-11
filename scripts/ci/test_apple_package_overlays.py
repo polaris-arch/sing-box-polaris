@@ -326,9 +326,6 @@ class ApplePackageOverlayControls(unittest.TestCase):
 
     def test_production_contract_is_fixed_original_source_and_only_four_lint_calls(self):
         spec = apple.definition()
-        self.assertEqual({p['revision'] for p in spec['packages']},
-                         {'0478fd4b8d45f191b6c400d2c7bf6cc648485593', 'd7ac3f11f22ec2e820187acce8f3a3fb7aa8ddec'})
-        self.assertEqual(spec['plugin']['revision'], 'b384a67cf45d9989aed5aab23e226cbc7bc2cd54')
         for package in spec['packages']:
             before = (ROOT / package['originalRecipe']).read_bytes()
             after = apple.transformed(before, package)

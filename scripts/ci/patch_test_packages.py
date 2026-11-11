@@ -144,6 +144,13 @@ def selection(root, changed_paths):
             if (directory / 'go.mod').is_file():
                 owner = str(parent)
                 break
+        if owner == 'release':
+            # release/go.mod only keeps archived license evidence out of root ./...
+            if ((root / 'release/go.mod').read_text()
+                    != 'module github.com/polaris-arch/sing-box-polaris/release\n\ngo 1.27.0\n'
+                    or name != 'release/go.mod' and not path.is_relative_to('release/licenses')):
+                raise ValueError('unaccounted release module path: ' + name)
+            continue
         if owner not in MODULES:
             raise ValueError('changed module has no approved test runner: ' + str(owner))
         for nested in MARKERS:

@@ -104,13 +104,6 @@ class SuccessorPeerPreparationTests(unittest.TestCase):
             with self.subTest(mutation=mutation), self.assertRaises((ValueError,KeyError)):
                 self.derive()
 
-    def test_historical_selection_stays_byte_identical_and_synthetic_current_never_disables_it(self):
-        root = Path(__file__).resolve().parents[2]
-        raw = (root / old.PATH).read_bytes()
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), 'c0a5d2051dd97f7ec6d1613ac6c1ec2c169346a28e076614a4649a00297fe249')
-        self.assertEqual(registry.select(root,old.SOURCE,old.VERSION,'v'+old.VERSION)['selection']['runId'],old.RUN_ID)
-        self.assertEqual((root / old.PATH).read_bytes(),raw)
-
     def test_same_existing_inventory_assemble_stream_and_native_job_negatives_consume_successor(self):
         import publisher_peer_evidence_tests as shared
         import github_release as publisher

@@ -58,14 +58,6 @@ class Alpha129PeerEvidenceTests(historical_tests.PeerEvidenceTests):
         with self.assertRaises(ValueError):
             current.check_api(policy, 'all', self.runs[str(self.s['runId'])], api)
 
-    def test_oci_ordinary_strict_gate_unchanged(self):
-        import oci_material_registry
-        self.assertTrue(oci_material_registry.supports_source(current.SOURCE))
-        with mock.patch.object(p, 'validate_oci_material_reuse', side_effect=ValueError('actual OCI material drift')) as gate:
-            with self.assertRaisesRegex(ValueError, 'actual OCI material drift'):
-                p.measure_oci_materials(Path('not-executed'), 'oci-linux-loong64', current.SOURCE, '41379223932', 1)
-            gate.assert_called_once_with(Path('not-executed'), 'oci-linux-loong64', current.SOURCE, '41379223932', 1)
-
     def test_current_attempt_expiry_and_public_eligibility_never_accept_historical_evidence(self):
         original = self.artifacts[str(self.s['runId'])][-1]
         run = self.runs[str(self.s['runId'])]

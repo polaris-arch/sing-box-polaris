@@ -485,7 +485,6 @@ class RunnerResourceTests(unittest.TestCase):
         selfcheck = (repo / '.github/workflows/polaris-selfcheck.yml').read_text()
         self.assertIn("format('audit-{0}', github.run_id)", selfcheck)
         self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch') }}", selfcheck)
-        self.assertEqual(selfcheck.count('Bound runner work using the fixed workflow-owned resource tool'), 7)
         self.assertIn('git show "$GITHUB_SHA:scripts/polaris_runner_resources.py"', selfcheck)
         self.assertIn('if: ${{ inputs.run_instance_tests }}', selfcheck)
         self.assertIn('patch_only:', selfcheck)

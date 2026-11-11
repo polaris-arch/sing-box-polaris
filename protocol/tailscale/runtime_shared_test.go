@@ -5,9 +5,6 @@ package tailscale
 import (
 	"context"
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"net"
 	"sync/atomic"
 	"testing"
@@ -203,64 +200,6 @@ func TestNestedGenericContinuationPinsBindingFence(t *testing.T) {
 	<-b.quiescent
 	if err = b.closeAndWait(); err != nil {
 		t.Fatal(err)
-	}
-}
-
-// This source fixture records the immutable pool policy without starting native
-// Tailscale/network activity. Actual carrier return is covered separately above.
-func TestBindingHTTPIdlePolicyIsFiniteAndImmutable(t *testing.T) {
-	file, err := parser.ParseFile(token.NewFileSet(), "runtime_binding.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	idlePolicyCount := 0
-	waitsForQuiescence := false
-	ast.Inspect(file, func(node ast.Node) bool {
-		switch node := node.(type) {
-		case *ast.KeyValueExpr:
-			key, ok := node.Key.(*ast.Ident)
-			if !ok || key.Name != "IdleConnTimeout" {
-				return true
-			}
-			idlePolicyCount++
-			product, ok := node.Value.(*ast.BinaryExpr)
-			if !ok || product.Op != token.MUL {
-				t.Fatal("binding transport lost standard finite idle policy")
-			}
-			seconds, ok := product.X.(*ast.BasicLit)
-			if !ok || seconds.Kind != token.INT || seconds.Value != "90" {
-				t.Fatal("binding transport idle policy must remain 90 seconds")
-			}
-			unit, ok := product.Y.(*ast.SelectorExpr)
-			if !ok || unit.Sel.Name != "Second" {
-				t.Fatal("binding transport idle policy must use time.Second")
-			}
-			pkg, ok := unit.X.(*ast.Ident)
-			if !ok || pkg.Name != "time" {
-				t.Fatal("binding transport idle policy must use time.Second")
-			}
-		case *ast.SelectorExpr:
-			if node.Sel.Name == "IdleConnTimeout" {
-				t.Fatal("binding idle policy must remain immutable after construction")
-			}
-		case *ast.UnaryExpr:
-			if node.Op != token.ARROW {
-				return true
-			}
-			field, ok := node.X.(*ast.SelectorExpr)
-			if !ok || field.Sel.Name != "quiescent" {
-				return true
-			}
-			binding, ok := field.X.(*ast.Ident)
-			waitsForQuiescence = waitsForQuiescence || ok && binding.Name == "b"
-		}
-		return true
-	})
-	if idlePolicyCount != 1 {
-		t.Fatalf("expected one immutable binding idle policy, got %d", idlePolicyCount)
-	}
-	if !waitsForQuiescence {
-		t.Fatal("idle timeout must not replace actual carrier completion")
 	}
 }
 

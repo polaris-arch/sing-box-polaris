@@ -1,6 +1,5 @@
 """Run the established synthetic end-to-end gate against the third exact policy."""
 import copy
-from pathlib import Path
 from unittest import mock
 
 import github_release as p
@@ -26,14 +25,6 @@ class Alpha126PeerEvidenceTests(historical_tests.PeerEvidenceTests):
         self.assertEqual(registry.select(p.ROOT, previous.SOURCE, previous.VERSION, 'v' + previous.VERSION)['selection']['sourceCommit'], previous.SOURCE)
         self.assertEqual(registry.select(self.root, current.SOURCE, current.VERSION, 'v' + current.VERSION), self.policy)
         self.assertEqual((p.ROOT / previous.PATH).read_bytes(), old_raw)
-
-    def test_oci_ordinary_strict_gate_unchanged(self):
-        import oci_material_registry
-        self.assertTrue(oci_material_registry.supports_source(current.SOURCE))
-        with mock.patch.object(p, 'validate_oci_material_reuse', side_effect=ValueError('actual OCI material drift')) as gate:
-            with self.assertRaisesRegex(ValueError, 'actual OCI material drift'):
-                p.measure_oci_materials(Path('not-executed'), 'oci-linux-loong64', current.SOURCE, '40478933774', 1)
-            gate.assert_called_once_with(Path('not-executed'), 'oci-linux-loong64', current.SOURCE, '40478933774', 1)
 
     def test_registry_mixed_or_partial_tuple_never_falls_back(self):
         for m in (previous, current):

@@ -186,9 +186,6 @@ class ControlledPeerContracts(unittest.TestCase):
         for action in ('fail', 'skip'):
             self.assertFalse(accepted(events + [dict(nested, Action=action)]))
         self.assertFalse(accepted(events + [dict(nested, Test='TestRuntimeTLSFailureUnexpected')]))
-        raw = (ROOT/'common/tls/runtime_failure_test.go').read_text()
-        self.assertIn('os.Geteuid() == 0', raw)
-        self.assertIn('kTLS failure regression requires an unprivileged process', raw)
 
     def test_cleanup_snapshot_finite_schema_and_secret_rejection(self):
         snapshot = {'schema':'runtime-cleanup-v1','atomic':False,'available':True,

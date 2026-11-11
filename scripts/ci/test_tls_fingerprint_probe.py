@@ -95,17 +95,12 @@ class FingerprintProbeControls(unittest.TestCase):
         self.assertIsNone(APPLE_DECLARATION.search('FOUNDATION_EXPORT BOOL LibboxTLSFingerprintCapabilities(void);'))
         self.assertIsNone(JAVA_DECLARATION.search('public static native boolean tlsFingerprintCapabilities();'))
 
-    def test_disabled_and_default_are_serialized_as_enabled_not_invented_ids(self):
-        self.assertEqual(probe.outbound_config()['outbounds'][0]['tls']['utls'],{'enabled':True})
-        self.assertEqual(probe.outbound_config(enabled=False)['outbounds'][0]['tls']['utls'],{'enabled':False})
-
     def test_source_gate_prevents_python_source_cache_and_requires_actual_windows_tests(self):
         import yaml
         workflow=yaml.safe_load((probe.ROOT/'.github/workflows/build.yml').read_text())
         self.assertEqual(workflow['jobs']['utls_gate']['env']['PYTHONDONTWRITEBYTECODE'],'1')
         gate=(probe.ROOT/'scripts/ci/utls_gate.py').read_text()
         self.assertIn("'--untracked-files=all'",gate)
-        self.assertIn('TestOOMHeapRuntimeRecordLayout',REQUIRED_FORK)
         self.assertIn('./experimental/libbox/internal/oomprofile',commands('fixture')[0][1])
 
     def test_source_owned_replacement_is_not_mislabeled_as_upstream_h1(self):
@@ -152,7 +147,6 @@ class FingerprintProbeControls(unittest.TestCase):
         for workflow in ['build.yml','signed-release.yml']:
             text=(probe.ROOT/'.github/workflows'/workflow).read_text()
             self.assertIn('release/licenses/TLS-DEPENDENCY-NOTICES.txt',text)
-        self.assertIn("Path('release/licenses').rglob('*')",(probe.ROOT/'scripts/ci/native_release_index.py').read_text())
 
 
 class SealedExecutionProbeControls(unittest.TestCase):

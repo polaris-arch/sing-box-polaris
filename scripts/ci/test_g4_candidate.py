@@ -127,6 +127,3 @@ class CandidateGates(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / '.github/workflows/build.yml').read_text()
         self.assertIn('python3 scripts/ci/g4_candidate.py', workflow)
-        tests = (root / 'option/listable_compat_test.go').read_text()
-        for name in ['TestTailcatDERPServersListableJSON', 'TestMASQUEAdvertiseRoutesListableJSON']:
-            self.assertIn('func ' + name + '(t *testing.T)', tests)

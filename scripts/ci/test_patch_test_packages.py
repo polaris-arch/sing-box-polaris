@@ -244,6 +244,19 @@ class PatchModuleSelectionTests(unittest.TestCase):
                     selection(root, [str(Path(owner) / 'go.mod')])
                 mod.write_text(original)
 
+    def test_release_module_admits_only_license_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.fixture(tmp)
+            name = self.go_file(root, 'release/licenses/module/license_test.go')
+            marker = root / 'release/go.mod'
+            marker.write_text((Path(__file__).resolve().parents[2] / 'release/go.mod').read_text())
+            self.assertEqual(selection(root, ['release/go.mod', name])['modules'], {})
+            with self.assertRaisesRegex(ValueError, 'unaccounted release module path'):
+                selection(root, [self.go_file(root, 'release/tool/main.go')])
+            marker.write_text('module release\n')
+            with self.assertRaisesRegex(ValueError, 'unaccounted release module path'):
+                selection(root, [name])
+
     def test_nested_boundary_removal_and_new_deeper_module_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.fixture(tmp)

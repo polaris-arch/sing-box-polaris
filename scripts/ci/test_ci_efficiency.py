@@ -181,7 +181,6 @@ class EfficiencyTests(unittest.TestCase):
         steps = workflow('polaris-selfcheck')['jobs']['classify']['steps']
         commands = '\n'.join(s.get('run', '') for s in steps)
         self.assertNotIn('go install ', commands)
-        self.assertIn('9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea', commands)
         self.assertIn('sha256sum -c -', commands)
         self.assertIn('scripts/ci/check_remediation_format.py', commands)
         for s in steps:

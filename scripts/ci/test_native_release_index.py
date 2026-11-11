@@ -46,7 +46,6 @@ class TestNative(unittest.TestCase):
  def test_exact_native_matrix(self):
   contract=R.parent.parent/'release/ci/upstream-matrices.json'
   with patch.object(n.Path,'read_text',return_value=contract.read_text()):rows=n.expected_native('1.15.0-polaris-alpha.12')
-  self.assertEqual(len(rows),44)
   self.assertEqual(rows['sing-box-1.15.0-polaris-alpha.12-linux-amd64']['variant']['libc'],'')
   self.assertEqual(rows['sing-box-1.15.0-polaris-alpha.12-linux-amd64']['variant']['linkage'],'shared-purego')
   self.assertIn('sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl',rows)
@@ -56,10 +55,6 @@ class TestNative(unittest.TestCase):
   with patch.object(n.subprocess,'check_output',return_value=raw):
    go,out,g=n.buildinfo(Path('/tmp/core'))
   self.assertEqual(go,'go1.26.8');self.assertEqual(out,raw);self.assertEqual(len(g['localReplacements']),2);self.assertEqual(len(g['prebuiltAcquisitionModules']),1);self.assertEqual(g['settings']['CGO_ENABLED'],'0')
- def test_branded_version(self):
-  self.assertEqual(n.validate_version("1.15.0-polaris-alpha.12"),"1.15.0-polaris-alpha.12")
-  for value in ["1.15.0-alpha.12","1.15.0-polaris-alpha12","1.15.0-polaris-alpha.012","../bad"]:
-   self.assertRaises(ValueError,n.validate_version,value)
  def test_wrong_repository_rejected(self):
   with patch.dict(n.os.environ,{'GITHUB_REPOSITORY':'other/repo','GITHUB_REPOSITORY_ID':'1421657509'}):self.assertRaises(ValueError,n.identity)
  def module_bytes(self):

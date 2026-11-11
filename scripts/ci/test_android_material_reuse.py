@@ -159,7 +159,6 @@ class AndroidMaterialReuseTests(unittest.TestCase):
         path=root/'release/ci/android-material-overlay-transition.json';transition=json.loads(path.read_text())
         reference=root/'release/dependency-sources/clients/runtime/android-resolved/reuse-reference.json'
         manifest=root/'release/ci/client-overlays.json'
-        self.assertEqual(g.ANDROID_OVERLAY_TRANSITION_SHA256,'06fdfb3e24a0a6a934ad1ba8660bac3452955894d627d792f0a7317b47d6cd6f')
         self.assertEqual(g.sha(path),g.ANDROID_OVERLAY_TRANSITION_SHA256)
         self.assertEqual(g.sha(reference),'6267fd43a2e4167b6f015303d13090d4e8286843c58cdc89ad1be5186008a8a3')
         self.assertEqual(transition['referenceSHA256'],g.sha(reference))

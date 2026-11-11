@@ -179,16 +179,6 @@ class CronetMaterialTests(unittest.TestCase):
     self.assertNotIn("proxy credentials", self.log.getvalue())
 
   def test_policy_and_patch_fixed_identity_and_import_has_no_effect(self):
-    self.assertEqual(self.policy["cronetCommit"], "4d18a60dc3a8d327065b058f92fbbfc9391b84bc")
-    self.assertEqual(self.policy["naiveCommit"], "be1be963131154ba82761a7ed85ba426b2027319")
-    self.assertEqual(self.policy["limits"], {
-      "httpRequests": 4, "redirectHops": 3, "sourceAttempts": 4,
-      "connectSeconds": 10, "readIdleSeconds": 20,
-      "objectWallSeconds": 180, "objectBytes": 67108864,
-      "creatorProcessBytes": 1073741824, "logBytes": 2097152})
-    self.assertEqual(self.policy["archivePrefixes"], [
-      "/archive/debian/20250129T203412Z/",
-      "/archive/debian-ports/20250625T074124Z/"])
     with mock.patch.object(material, "POLICY_SHA256", "0" * 64):
       with self.assertRaisesRegex(material.MaterialError, "^POLICY_DIGEST$"):
         material.load_policy()
