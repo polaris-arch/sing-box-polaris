@@ -73,7 +73,7 @@ func runtimeFakeIPCleanupReopen(t *testing.T, path string) *cachefile.CacheFile 
 	t.Helper()
 	logger := log.NewNOPFactory().Logger()
 	scope := adapter.NewScope(context.Background(), logger)
-	cache := cachefile.New(cachefile.ContextWithFakeIPRuntimeOpen(context.Background(), nil), logger, option.CacheFileOptions{
+	cache := cachefile.New(context.Background(), logger, option.CacheFileOptions{
 		Path: path, StoreFakeIP: true,
 	})
 	if err := cache.Start(adapter.StartStateInitialize, scope); err != nil {

@@ -113,7 +113,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	c.access.Lock()
 	c.pendingPrepared = prepared
 	c.access.Unlock()
-	if err := s.prepareRuntimeFakeIP(request, prepared, runtimeFakeIPBinding{Identity: identity}); err != nil {
+	if err := s.prepareRuntimeFakeIP(request, prepared); err != nil {
 		return prepared, err
 	}
 	if err := s.prepareRuntimeRootStore(request, prepared, identity); err != nil {

@@ -20,8 +20,6 @@ type pendingWrites struct {
 	fakeIPAddress4 map[string]netip.Addr
 	fakeIPAddress6 map[string]netip.Addr
 	fakeIPMetadata *adapter.FakeIPMetadata
-	fakeIPRuntime  map[string]*runtimePending
-	fakeIPFailure  error
 	count          int
 	size           int
 }
@@ -29,7 +27,6 @@ type pendingWrites struct {
 func newPendingWrites() *pendingWrites {
 	return &pendingWrites{
 		dnsCache:       make(map[saveCacheKey]saveDNSCacheEntry),
-		fakeIPRuntime:  make(map[string]*runtimePending),
 		rdrc:           make(map[saveCacheKey]struct{}),
 		fakeIPDomain:   make(map[netip.Addr]string),
 		fakeIPAddress4: make(map[string]netip.Addr),
@@ -79,13 +76,8 @@ func (c *CacheFile) FlushFakeIP(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return c.flushPendingLocked()
-}
-
-func (c *CacheFile) flushPendingLocked() error {
 	c.pendingAccess.Lock()
 	if c.pending.count == 0 {
-		c.pending.fakeIPFailure = nil
 		c.pendingAccess.Unlock()
 		return nil
 	}
@@ -93,10 +85,9 @@ func (c *CacheFile) flushPendingLocked() error {
 	c.writing = writing
 	c.pending = newPendingWrites()
 	c.pendingAccess.Unlock()
-	// Runtime journals must not take the legacy corruption-reset path. A
-	// damaged identity is an explicit failure, never permission to replace it.
+	// A database retained by runtime views must not take the legacy reset path.
 	var err error
-	if c.runtimeStrict.Load() || len(writing.fakeIPRuntime) != 0 {
+	if c.runtimeStrict.Load() {
 		err = c.runtimeUpdate(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) })
 	} else {
 		err = c.update(func(tx *bbolt.Tx) error { return c.writePending(tx, writing) })
@@ -104,7 +95,6 @@ func (c *CacheFile) flushPendingLocked() error {
 	c.pendingAccess.Lock()
 	if err != nil {
 		c.restoreFakeIPLocked(writing)
-		c.pending.fakeIPFailure = err
 	}
 	c.writing = nil
 	c.pendingAccess.Unlock()
@@ -137,9 +127,6 @@ func (c *CacheFile) writePending(tx *bbolt.Tx, pending *pendingWrites) error {
 				return err
 			}
 		}
-	}
-	if err := writeRuntimePending(tx, pending.fakeIPRuntime); err != nil {
-		return err
 	}
 	for address, domain := range pending.fakeIPDomain {
 		err := putFakeIP(tx, address, domain)
@@ -178,4 +165,30 @@ func getCacheEntry(bucket *bbolt.Bucket, key saveCacheKey) []byte {
 	binary.BigEndian.PutUint16(keyBytes, key.QType)
 	copy(keyBytes[2:], key.QuestionName)
 	return transportBucket.Get(keyBytes)
+}
+
+func (c *CacheFile) restoreFakeIPLocked(failed *pendingWrites) {
+	// Newer pending entries win. A transaction failure never discards an
+	// issued mapping or silently turns an uncertain write into completion.
+	for address, domain := range failed.fakeIPDomain {
+		if _, newer := c.pending.fakeIPDomain[address]; !newer {
+			c.pending.fakeIPDomain[address] = domain
+			c.pending.count++
+			c.pending.size += len(domain)
+		}
+	}
+	for domain, address := range failed.fakeIPAddress4 {
+		if _, newer := c.pending.fakeIPAddress4[domain]; !newer {
+			c.pending.fakeIPAddress4[domain] = address
+		}
+	}
+	for domain, address := range failed.fakeIPAddress6 {
+		if _, newer := c.pending.fakeIPAddress6[domain]; !newer {
+			c.pending.fakeIPAddress6[domain] = address
+		}
+	}
+	if c.pending.fakeIPMetadata == nil && failed.fakeIPMetadata != nil {
+		c.pending.fakeIPMetadata = failed.fakeIPMetadata
+		c.pending.count++
+	}
 }

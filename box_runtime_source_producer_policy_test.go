@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
-	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -26,12 +25,9 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/inbound"
 	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/direct"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
-
-	mdns "github.com/miekg/dns"
 )
 
 func r3SourceWrite(t *testing.T, path string, content []byte) {
@@ -946,108 +942,6 @@ func TestRuntimeRegenerationOriginalPendingTailRemainsOriginalDebt(t *testing.T)
 	c.access.Unlock()
 	if !ok || calls.Load() != 1 {
 		t.Fatal("original actor debt replaced", calls.Load())
-	}
-}
-
-func TestRuntimeRegenerationSourceReusesRealJournalNamespaceAndDisabledRecognition(t *testing.T) {
-	root := t.TempDir()
-	path := filepath.Join(root, "sites.json")
-	r3SourceWrite(t, path, runtimeTestSourceBytes("first.example"))
-	f, options := runtimeFakeIPCleanupConstruction(t, filepath.Join(root, "cache.db"), nil)
-	direct.RegisterInbound(service.FromContext[adapter.InboundRegistry](f.ctx).(*inbound.Registry))
-	var local option.Options
-	if err := json.UnmarshalContext(f.ctx, r3SourceCanaryConfig(t, runtimeTestLocalConfig(path)), &local); err != nil {
-		t.Fatal(err)
-	}
-	options.Route, options.Outbounds, options.Inbounds = local.Route, local.Outbounds, local.Inbounds
-	// Preserve the paired hijack/terminal-REFUSED canary rules while retaining
-	// the real FakeIP server and persistent cache from the construction fixture.
-	options.DNS.Rules = local.DNS.Rules
-	options.Context = adapter.ContextWithRuntimeRecoveryRoot(options.Context, root)
-	physical := runtimeFakeIPCleanupBox(t, f, options)
-	var calls atomic.Int32
-	if err := f.box.BindRuntimePersistenceOptions(func(RuntimeIdentity, []byte) error {
-		calls.Add(1)
-		return &RuntimeOwnerAcknowledgementRequiredError{Mode: "app_authoritative_regeneration"}
-	}, "app_authoritative_regeneration", false); err != nil {
-		t.Fatal(err)
-	}
-	f.start(t)
-	address := runtimeFakeIPCleanupAllocate(t, f.box)
-	answer, err := f.box.runtime.fakeIP.ProtectAnswer(&mdns.Msg{Answer: []mdns.RR{&mdns.A{
-		Hdr: mdns.RR_Header{Name: "retained.example.", Rrtype: mdns.TypeA, Class: mdns.ClassINET, Ttl: 3600}, A: net.IP(address.AsSlice()),
-	}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	answer.Delivered(time.Now())
-	owner := f.box.runtime.fakeIPPersistence
-	if owner == nil || !owner.ready {
-		t.Fatal("actual journal owner not ready")
-	}
-	type catalogs struct{ backend, journal adapter.FakeIPRuntimeCatalog }
-	read := func() catalogs {
-		t.Helper()
-		b, e := physical.FakeIPRuntimeCatalog(context.Background())
-		if e != nil {
-			t.Fatal(e)
-		}
-		j, e := owner.journal.FakeIPRuntimeCatalog(context.Background())
-		if e != nil {
-			t.Fatal(e)
-		}
-		return catalogs{b, j}
-	}
-	before := read()
-	for n, domain := range []string{"second.example", "third.example"} {
-		r3SourceWrite(t, path, runtimeTestSourceBytes(domain))
-		runtimeTestProducer(t, f).signal()
-		r := r4SourceAtRevision(t, f, uint64(n+2))
-		after := read()
-		if fmt.Sprint(after) != fmt.Sprint(before) || r.persistenceParticipant != nil || r.persistenceTailEntered || calls.Load() != 0 {
-			t.Fatal("source-only refresh allocated/linked a namespace or borrowed native persistence", before, after, r.operation, calls.Load())
-		}
-		if domain, found := f.box.runtime.fakeIP.RecognitionStore().Lookup(address); !found || domain != "retained.example" {
-			t.Fatal("unchanged selected namespace lost its issued answer", domain, found)
-		}
-	}
-	// A genuine public removal still owns its new namespace/link and App ACK.
-	// Only after its original tail finishes may a disabled source graph refresh.
-	next := options.Options
-	copyDNS := *next.DNS
-	copyDNS.Servers = nil
-	for _, server := range next.DNS.Servers {
-		if server.Type != C.DNSTypeFakeIP {
-			copyDNS.Servers = append(copyDNS.Servers, server)
-		}
-	}
-	next.DNS = &copyDNS
-	content, err := json.MarshalContext(f.ctx, next)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, request := runtimeClientPlan(t, f, content)
-	op, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
-	if err != nil || op.Durable || !op.OwnerReloadAcknowledged || calls.Load() != 1 {
-		t.Fatal("public removal bypassed its original persistence tail", op, err)
-	}
-	op, err = f.box.AcknowledgeRuntimePersistence(context.Background(), "actor-a", RuntimePersistenceAcknowledgement{
-		ContractVersion: 1, TransactionID: op.TransactionID, Active: op.Active, PersistenceMode: "app_authoritative_regeneration",
-		DesiredStateDigest: runtimeDigest([]byte("disabled fakeip desired state")), DesiredStateRevision: "desired:disabled",
-	})
-	if err != nil || !op.Durable {
-		t.Fatal("real removal participant did not finish", op, err)
-	}
-	before = read()
-	r3SourceWrite(t, path, runtimeTestSourceBytes("fourth.example"))
-	runtimeTestProducer(t, f).signal()
-	r := r4SourceAtRevision(t, f, 5)
-	after := read()
-	if fmt.Sprint(after) != fmt.Sprint(before) || calls.Load() != 1 || r.persistenceParticipant != nil {
-		t.Fatal("disabled refresh constructed another removal/namespace/native tail", before, after, r.operation)
-	}
-	if domain, found := f.box.runtime.fakeIP.RecognitionStore().Lookup(address); !found || domain != "retained.example" {
-		t.Fatal("disabled graph refresh erased old answer recognition", domain, found)
 	}
 }
 

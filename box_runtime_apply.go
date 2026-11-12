@@ -171,7 +171,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	}()
 	// Only preparation work observes request cancellation. Committed component
 	// contexts are constructed under coordinator.ctx by prepareRuntimeGraphWithSelections.
-	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(runtimeContextWithClientImpactPolicy(runtimeContextWithFakeIPTransaction(ctx, request.TransactionID), record.plan.ClientImpactPolicyVersion), next, record.options, record.selectorIntents, record.sources...)
+	prepared, prepareErr := s.prepareRuntimeGraphWithSelections(runtimeContextWithClientImpactPolicy(ctx, record.plan.ClientImpactPolicyVersion), next, record.options, record.selectorIntents, record.sources...)
 	if prepareErr == nil && prepared.rootDigest != record.rootDigest {
 		prepareErr = errors.New("root content changed after planning")
 	}
@@ -383,29 +383,21 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	persist := coordinator.persist
 	coordinator.access.Unlock()
 	if !runtimeSourceOnlyRecord(record) && persist != nil {
-		// A persisted canonical snapshot alone does not certify completion of
-		// the migration's already-admitted namespace writers or exact links.
 		// All fallible durability work stays outside the publication guard.
-		var migration runtimePersistenceParticipant
-		if prepared.fakeIPMigration != nil {
-			migration = prepared.fakeIPMigration
-		}
 		coordinator.access.Lock()
 		record.persistenceCallback = persist
-		record.persistenceParticipant = migration
 		record.persistenceRetrySafe = coordinator.persistenceRetrySafe
 		record.persistenceTailEntered = true
 		if coordinator.active == next && (record.persistenceRetrySafe || coordinator.persistenceMode == "app_authoritative_regeneration") {
 			coordinator.pendingPersistence = record
 		}
 		coordinator.access.Unlock()
-		persistErr := coordinator.persistRuntimeTransaction(coordinator.ctx, next, record.canonical, record.selectorIntents, persist, migration)
+		persistErr := coordinator.persistRuntimeTransaction(coordinator.ctx, next, record.canonical, record.selectorIntents, persist)
 		coordinator.access.Lock()
 		record.persistenceUncertain = runtimePersistenceUncertain(persistErr)
 		var ownerPending *RuntimeOwnerAcknowledgementRequiredError
 		if errors.As(persistErr, &ownerPending) && ownerPending.Mode == "app_authoritative_regeneration" && coordinator.persistenceMode == ownerPending.Mode {
 			record.awaitingOwnerAcknowledgement = true
-			record.persistenceParticipant = migration
 			record.operation.OwnerReloadAcknowledged = true
 			record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "OWNER_ACKNOWLEDGEMENT_REQUIRED", Message: "owner reload content accepted; authoritative desired-state acknowledgement pending"})
 		} else if persistErr == nil && coordinator.persistenceMode != "app_authoritative_regeneration" {
@@ -438,10 +430,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 func (s *Box) observeRuntimeAbort(record *runtimePlanRecord, prepared *preparedRuntimeGraph) {
 	var err error
 	if prepared != nil {
-		if prepared.fakeIPMigration != nil {
-			err = prepared.fakeIPMigration.WaitPersistence(context.Background())
-		}
-		err = errors.Join(err, waitRuntimeResources(context.Background(), prepared.created))
+		err = waitRuntimeResources(context.Background(), prepared.created)
 	}
 	s.runtime.access.Lock()
 	defer s.runtime.access.Unlock()

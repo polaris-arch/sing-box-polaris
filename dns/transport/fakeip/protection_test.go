@@ -42,7 +42,7 @@ func TestFinalTTLStartsAfterActualDelayedDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := m.protection.current[address]
+	record := m.protection.mappings[mappingKey{m.active.id, address, "answer.example"}]
 	if record.pending != 1 || !record.expires.IsZero() {
 		t.Fatal("pending answer was prematurely expired")
 	}
@@ -135,7 +135,7 @@ func TestOrdinaryReuseDoesNotResurrectStaleAnswerTTL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	old := m.protection.current[address]
+	old := m.protection.mappings[mappingKey{m.active.id, address, "first.example"}]
 	if _, err := m.create("second.example", false); err != nil {
 		t.Fatal(err)
 	}

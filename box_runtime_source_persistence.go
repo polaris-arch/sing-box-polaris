@@ -153,7 +153,7 @@ func (s *Box) runOriginalSourcePersistenceDriver(d *runtimeSourcePersistenceDriv
 				c.access.Unlock()
 				break
 			}
-			if c.preparing || r.retryInFlight || r.acknowledging {
+			if c.preparing || r.retryInFlight {
 				c.access.Unlock()
 				continue
 			}

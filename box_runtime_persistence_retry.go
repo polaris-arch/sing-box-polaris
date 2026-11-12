@@ -87,7 +87,7 @@ func (s *Box) retryRuntimePersistence(ctx context.Context, actor string, request
 	}()
 	// After admission cancellation cannot detach the original synchronous tail.
 	// Close joins workDone; a stuck owner remains visibly pending, never freed.
-	err = c.persistRuntimeTransactionLocked(c.ctx, request.Active, r.canonical, r.selectorIntents, r.persistenceCallback, r.persistenceParticipant)
+	err = c.persistRuntimeTransactionLocked(c.ctx, request.Active, r.canonical, r.selectorIntents, r.persistenceCallback)
 	c.access.Lock()
 	defer c.access.Unlock()
 	filtered := r.operation.Errors[:0]

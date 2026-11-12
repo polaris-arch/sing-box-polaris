@@ -67,33 +67,7 @@ func (s *Box) acknowledgeRuntimePersistence(ctx context.Context, actor string, r
 		c.access.Unlock()
 		return RuntimeConfigOperation{}, errors.New("provider reload has not acknowledged this transaction")
 	}
-	participant := record.persistenceParticipant
-	record.acknowledging = true
-	c.preparing = true
-	c.workDone = make(chan struct{})
-	c.access.Unlock()
-	defer func() {
-		c.access.Lock()
-		record.acknowledging = false
-		c.preparing = false
-		close(c.workDone)
-		c.access.Unlock()
-	}()
-	// Post-publication persistence remains fallible. Exact active identity is
-	// fenced against controls/publication for this final namespace acknowledgement.
-	if participant != nil {
-		if err = participant.WaitPersistence(ctx); err == nil {
-			err = participant.AcknowledgePersistence(ctx, request.Active.EffectiveDigest)
-		}
-		if err != nil {
-			return RuntimeConfigOperation{}, errors.New("namespace persistence acknowledgement remains pending")
-		}
-	}
-	c.access.Lock()
 	defer c.access.Unlock()
-	if c.stopped || c.active != request.Active {
-		return RuntimeConfigOperation{}, errors.New("runtime stopped before owner acknowledgement")
-	}
 	record.awaitingOwnerAcknowledgement = false
 	if c.configurationOwner == record {
 		c.configurationOwner = nil

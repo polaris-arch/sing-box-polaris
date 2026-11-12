@@ -120,10 +120,6 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 		// scope closes the physical DB. A constructor-time Scope.Add would run
 		// after the cache child because that child is registered later at Start.
 		fakeIPErr := lifecycle.CleanupResult("Box fake-IP allocator", coordinator.closeRuntimeFakeIP)
-		if fakeIPErr != nil && coordinator.fakeIPPersistence != nil {
-			// Unknown allocator/journal custody must retain the physical cache.
-			return runtimeCleanupResult(fakeIPErr)
-		}
 		return errors.Join(runtimeCleanupResult(fakeIPErr), stable.scope.Close())
 	})
 	if err != nil {
@@ -155,7 +151,7 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 
 	experimentalOptions := common.PtrValueOrDefault(options.Experimental)
 	if options.PlatformLogWriter != nil || (experimentalOptions.CacheFile != nil && experimentalOptions.CacheFile.Enabled) {
-		cache := cachefile.New(cachefile.ContextWithFakeIPRuntimeOpen(ctx, nil), factory.NewLogger("cache-file"), common.PtrValueOrDefault(experimentalOptions.CacheFile))
+		cache := cachefile.New(ctx, factory.NewLogger("cache-file"), common.PtrValueOrDefault(experimentalOptions.CacheFile))
 		service.MustRegister[adapter.CacheFile](ctx, cache)
 		instance.internalService = append(instance.internalService, cache)
 	}
@@ -273,9 +269,6 @@ func newRuntimeBox(options Options, scope *adapter.Scope, factory log.Factory, c
 	identity := coordinator.active
 	identity.Revision = 1
 	identity.EffectiveDigest = runtimeDigest(canonical)
-	if err := instance.initializeRuntimeFakeIPRecovery(ctx, identity); err != nil {
-		return nil, err
-	}
 	prepared, err := instance.constructRuntimeGraph(ctx, identity, frozen, sources...)
 	if prepared != nil {
 		coordinator.initialPrepared = prepared
