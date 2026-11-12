@@ -1846,7 +1846,7 @@ def run_suite(directory, output, admission=None):
                     raise ValueError('native bytes changed during peer execution')
         receipt['privateWorkspaceDeleted'] = not Path(td).exists()
         if not receipt['privateWorkspaceDeleted']: raise RuntimeError('private key/config workspace was not deleted')
-        expected = 14
+        expected = len(case_matrix())
         receipt['status'] = 'PASS' if len(receipt['cases']) == expected and all(case['status']=='PASS' for case in receipt['cases']) else 'FAIL'
     except Exception as error:
         receipt.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error))
