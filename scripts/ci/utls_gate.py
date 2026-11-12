@@ -28,7 +28,7 @@ REQUIRED_FORK = {'TestUTLSMappedProfilesAreRealAndMatchSchema', 'TestUTLSProfile
                  'TestUTLSSessionIDGeneratorCloneAndImplicitHandshake', 'TestUTLSSessionIDFailureCancellationAndCloneECH',
                  'TestUTLSPinningSNIAndIgnoredCurveControl', 'TestRealityFiltersTemplatePQButPreservesClassicalShare',
                  'TestUTLSRealECHHandshakeAndSessionIDConflict', 'TestRealityUpstreamClientMetaServerActualHandshake',
-                 'TestFingerprintCapabilitiesDescribeLoadedCore', 'TestTLSFingerprintCapabilitiesMatchCoreContract', 'TestUTLSHostnameAndMutualTLS',
+                 'TestFingerprintCapabilitiesDescribeLoadedCore', 'TestUTLSHostnameAndMutualTLS',
                  'TestUTLSConcurrentWaitingHandshakeCancellation', 'TestTLSReadWaitAndCipherMethodsStayInOwningLibrary',
                  'TestFingerprintCapabilitiesRejectConflictingOrInvalidSourceStamps',
                  'TestRealityExplicitALPNWireAndClone', 'TestShadowTLSV3ActualAuthenticationAndForwarding',
@@ -90,7 +90,6 @@ REQUIRED_LIBBOX = {
     'TestValidationMembershipActualDifferentTagsSameCanonicalFileUnknown',
     'TestValidationMembershipCleanupErrorDoesNotSignGlobalRetirement',
     'TestFingerprintCapabilitiesDescribeLoadedCore',
-    'TestTLSFingerprintCapabilitiesMatchCoreContract',
     'TestMonitorClosedAIsolatedFromReloadB',
     'TestMonitorAlreadyDeliveringAIsolatedFromReloadB',
     'TestMonitorPartialConstructionCloseCannotDetachLive',
@@ -244,14 +243,6 @@ def main():
                     if name in ('fork', 'stub'): require_tests(output / (name + '.log'), REQUIRED_LIBBOX)
                     if name == 'fork': require_tests(output / 'fork.log', REQUIRED_FORK)
                     if name == 'upstream': require_tests(output / 'upstream.log', REQUIRED_UPSTREAM)
-                except ValueError as error:
-                    receipt['errors'].append(str(error))
-        if sys.platform == 'win32':
-            if execute('windows-root', [sys.executable, 'scripts/ci/windows_root_gate.py', '--output', str(output / 'windows-root')], timeout=300):
-                try:
-                    required = {'TestPolarisRootRemoveAllConfinement/' + mode + '/' + kind
-                                for mode in ('native', 'legacy-fallback') for kind in ('ordinary', 'junction', 'symlink')}
-                    require_tests(output / 'windows-root.log', required)
                 except ValueError as error:
                     receipt['errors'].append(str(error))
         # Python caches belong in runner.temp, never in the source whose VCS

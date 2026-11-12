@@ -143,36 +143,21 @@ def module_boundaries(entries):
     return tuple(modules)
 
 
-def owned_scope(inventory):
-    historical = set()
-    paths = [row['path'] for row in inventory['files']]
-    paths.extend(inventory.get('dailyHotFormattingScope', {}).get('paths', []))
-    # Preserve explicit historical fail-closed checks without claiming the new
-    # tracked union was covered by that old audit or acceptedTree.
-    for value in paths:
-        path = checked_path(value, 'inventory')
-        if not path.endswith('.go') or path.endswith('.pb.go') or excluded(path):
-            continue
-        regular_source(path)
-        historical.add(path)
+def owned_scope():
     entries = tracked_files()
     nested = module_boundaries(entries)
-    if any(path.startswith(nested) for path in historical):
-        raise SystemExit('Historical owned source moved into a nested module')
     selected = set()
-    for path in sorted(set(entries) | historical):
+    for path in sorted(entries):
         if (not path.endswith('.go') or path.endswith('.pb.go') or excluded(path)
                 or path.startswith(nested)):
             continue
-        if path not in entries or entries[path][0] not in ('100644', '100755'):
+        if entries[path][0] not in ('100644', '100755'):
             raise SystemExit('Untracked or unsafe owned Go source: ' + path)
         source = regular_source(path)
         if not generated_source(source.read_bytes()):
             selected.add(path)
     print('Owned formatting scope: ' + json.dumps({
-        'historicalSelected': len(selected & historical),
         'trackedSelected': len(selected),
-        'trackedAdditional': len(selected - historical),
         'nestedModules': len(nested),
     }, sort_keys=True), file=sys.stderr)
     return sorted(selected)
@@ -180,10 +165,7 @@ def owned_scope(inventory):
 
 def main():
     root = Path.cwd()
-    inventory = json.loads(Path('release/audit-remediation-source-inventory.json').read_text())
-    if inventory.get('schema') != 'audit-remediation-source-inventory-v1':
-        raise SystemExit('Invalid current remediation inventory; historical source is unsupported')
-    files = owned_scope(inventory)
+    files = owned_scope()
     if not files:
         raise SystemExit('Empty owned Go formatting scope')
     original = {path: Path(path).read_bytes() for path in files}

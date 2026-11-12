@@ -4,7 +4,6 @@ import (
 	"os"
  "errors"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -75,13 +74,8 @@ func NewWatcher(options Options) (*Watcher, error) {
 	if options.Direct {
 		watchTarget = options.Path
 	} else {
+		// Watches are not recursive: a parent never covers a nested directory.
 		watchTarget = common.Uniq(common.Map(options.Path, filepath.Dir))
-		// TODO: update sing to use common.Remove when it's stable
-		watchTarget = common.Filter(watchTarget, func(it string) bool {
-			return !common.Any(watchTarget, func(path string) bool {
-				return len(path) > len(it) && strings.HasPrefix(path, it)
-			})
-		})
 	}
  directories := common.Uniq(common.Map(options.Directory,filepath.Clean))
  // Parents detect a configured directory's deletion/recreation. Explicit

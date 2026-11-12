@@ -21,13 +21,9 @@ type (
 	runtimePersistenceContextKey struct{}
 )
 
-// ContextWithRuntimePersistence binds only this authenticated start request.
-// It does not mutate a service-global callback or acquire its lifecycle lock.
-func ContextWithRuntimePersistence(ctx context.Context, persist func(box.RuntimeIdentity, []byte) error) context.Context {
-	return context.WithValue(ctx, runtimePersistenceContextKey{}, runtimePersistenceBinding{persist: persist, mode: "owner_acknowledged"})
-}
-
-// ContextWithRuntimePersistenceMode captures a fixed host contract per instance.
+// ContextWithRuntimePersistenceMode binds only this authenticated start request
+// with a fixed host contract. It does not mutate a service-global callback or
+// acquire its lifecycle lock.
 func ContextWithRuntimePersistenceMode(ctx context.Context, persist func(box.RuntimeIdentity, []byte) error, mode string) (context.Context, error) {
 	return ContextWithRuntimePersistenceOptions(ctx, persist, mode, false)
 }
@@ -60,13 +56,13 @@ func runtimePersistenceModeForRequest(ctx context.Context) string {
 	return "owner_acknowledged"
 }
 
-func runtimePersistenceForRequest(ctx context.Context, fallback func(box.RuntimeIdentity, []byte) error) func(box.RuntimeIdentity, []byte) error {
+func runtimePersistenceForRequest(ctx context.Context) func(box.RuntimeIdentity, []byte) error {
 	if ctx != nil {
 		if binding, ok := ctx.Value(runtimePersistenceContextKey{}).(runtimePersistenceBinding); ok {
 			return binding.persist
 		}
 	}
-	return fallback
+	return nil
 }
 
 type runtimeFilePersistence struct {

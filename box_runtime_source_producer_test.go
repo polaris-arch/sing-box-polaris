@@ -78,7 +78,7 @@ func TestRuntimeLocalProducerPublishesNewImmutableClosure(t *testing.T) {
 	}
 	f := newRuntimeTestFixture(t, runtimeTestLocalConfig(path), nil)
 	committed := make(chan RuntimeIdentity, 8)
-	if err := f.box.BindRuntimePersistence(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }); err != nil {
+	if err := f.box.BindRuntimePersistenceOptions(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)
@@ -379,7 +379,7 @@ func runtimeTestEmptySourceTransitions(t *testing.T, format string) {
 	replace(empty)
 	f := newRuntimeTestFixture(t, config, nil)
 	committed := make(chan RuntimeIdentity, 8)
-	if err := f.box.BindRuntimePersistence(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }); err != nil {
+	if err := f.box.BindRuntimePersistenceOptions(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)
@@ -626,7 +626,7 @@ func TestRuntimeNonemptySRSUpdatesAndInvalidCandidatesPreserveOwners(t *testing.
 				config := runtimeTestBinaryLocalConfig(path)
 				f := newRuntimeTestFixture(t, config, nil)
 				committed := make(chan RuntimeIdentity, 8)
-				if err := f.box.BindRuntimePersistence(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }); err != nil {
+				if err := f.box.BindRuntimePersistenceOptions(func(id RuntimeIdentity, _ []byte) error { committed <- id; return nil }, "owner_acknowledged", false); err != nil {
 					t.Fatal(err)
 				}
 				f.start(t)

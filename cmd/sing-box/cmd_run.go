@@ -184,7 +184,7 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 	return instance, cancel, nil
 }
 
-func run() (runErr error) {
+func run() error {
 	optionsList, err := readConfig()
 	if err != nil {
 		return err
@@ -196,26 +196,6 @@ func run() (runErr error) {
 	err = runInUserNamespaceIfNeeded(options, optionsList)
 	if err != nil {
 		return err
-	}
-	finishNativeObservation, observationErr := startNativePeerNetLog()
-	if observationErr != nil {
-		return observationErr
-	}
-	if finishNativeObservation != nil {
-		defer func() {
-			// Preserve the original failure before any explicitly opted-in
-			// native observation whose state could become unknowable.
-			if runErr != nil {
-				log.Error(runErr)
-			}
-			if observationErr := finishNativeObservation(); observationErr != nil {
-				if runErr != nil {
-					log.Error(observationErr)
-				} else {
-					runErr = observationErr
-				}
-			}
-		}()
 	}
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)

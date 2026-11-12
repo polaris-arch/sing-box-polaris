@@ -213,7 +213,7 @@ replace github.com/metacubex/utls => ./third_party/metacubex-utls
 // Source-owned Cronet client admission repair; native module versions are unchanged.
 replace github.com/sagernet/cronet-go => ./third_party/cronet-go
 
-// Pinned fswatch v0.1.2 failed-Add unwind; exact upstream and delta retained in release/dependency-sources.
+// Modified fswatch v0.1.2 (GPL-3.0-or-later, third_party/fswatch/LICENSE): failed-Add unwind, Directory option, nested watch paths.
 replace github.com/sagernet/fswatch => ./third_party/fswatch
 
 // Pinned sing UDP session ownership hook; unchanged carrier manifest retained.

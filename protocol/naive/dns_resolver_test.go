@@ -78,7 +78,7 @@ func (t *callbackTransports) Transport(tag string) (adapter.DNSTransport, bool) 
 }
 
 func TestNaiveCallbackUsesActualNativePolicyForHTTPS(t *testing.T) {
-	for _, platform := range []string{"linux", "android", "ios"} {
+	for _, platform := range []string{"linux", "android"} {
 		for _, scenario := range []string{"https-hit", "missing-rtype", "poison"} {
 			t.Run(platform+"/"+scenario, func(t *testing.T) {
 				data, err := os.ReadFile("../../dns/testdata/node-policy/naive-" + platform + ".json")

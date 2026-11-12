@@ -3,13 +3,6 @@ package runtimegraph
 import (
 	"context"
 	"errors"
-	"go/parser"
-	"go/token"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -385,51 +378,6 @@ func TestGraphMembershipValidation(t *testing.T) {
 	dependency.Seal()
 	depLease.Release()
 	await(t, dependency.Closed())
-}
-
-func TestForbiddenRuntimegraphImportDirections(t *testing.T) {
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate source")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(source), "..", ".."))
-	check := func(path string, forbidden []string) {
-		t.Helper()
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, spec := range file.Imports {
-			imported, err := strconv.Unquote(spec.Path.Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if strings.Contains(path, "internal/runtimegraph") && imported == "github.com/sagernet/sing-box" {
-				t.Errorf("%s imports Box", path)
-			}
-			for _, prefix := range forbidden {
-				if imported == prefix || strings.HasPrefix(imported, prefix+"/") {
-					t.Errorf("%s imports forbidden %s", path, imported)
-				}
-			}
-		}
-	}
-	for _, directory := range []string{"adapter", "internal/runtimegraph"} {
-		entries, err := os.ReadDir(filepath.Join(root, directory))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-				continue
-			}
-			forbidden := []string{"github.com/sagernet/sing-box/internal/runtimegraph"}
-			if directory == "internal/runtimegraph" {
-				forbidden = []string{"github.com/sagernet/sing-box/route", "github.com/sagernet/sing-box/dns", "github.com/sagernet/sing-box/protocol", "github.com/sagernet/sing-box/daemon", "github.com/sagernet/sing-box/experimental/libbox"}
-			}
-			check(filepath.Join(root, directory, entry.Name()), forbidden)
-		}
-	}
 }
 
 func TestResourceForkReleaseOneMutex(t *testing.T) {

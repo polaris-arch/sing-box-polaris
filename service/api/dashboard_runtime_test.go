@@ -606,7 +606,7 @@ func TestRuntimeDashboardRealDownloadSpansHOTCommit(t *testing.T) {
 	ctx, _ := dashboardFileContext(t)
 	path := filepath.Join(t.TempDir(), "dashboard")
 	instance, api := dashboardRuntimeBox(t, ctx, path, server.URL, 0, "download-path")
-	if err := instance.BindRuntimePersistence(func(box.RuntimeIdentity, []byte) error { return nil }); err != nil {
+	if err := instance.BindRuntimePersistenceOptions(func(box.RuntimeIdentity, []byte) error { return nil }, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	observed := dashboardObserveFetches(api.dashboard)

@@ -23,14 +23,11 @@ import (
 	"github.com/sagernet/sing/common/ntp"
 )
 
-// keepAlivePeriod keeps idle HTTP/3 connections open; without it quic-go
-// closes a connection after its default 30 seconds idle timeout.
-const keepAlivePeriod = 10 * time.Second
-
 func newQUICConfig() *quic.Config {
 	return &quic.Config{
 		MaxIncomingStreams: 1 << 60,
-		KeepAlivePeriod:    keepAlivePeriod,
+		// Keep idle HTTP/3 connections open past quic-go's 30 seconds idle timeout.
+		KeepAlivePeriod:    10 * time.Second,
 		Allow0RTT:          true,
 		DisablePathManager: true,
 	}

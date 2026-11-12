@@ -251,7 +251,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 		cancel()
 		return nil, err
 	}
-	if persist := runtimePersistenceForRequest(prepared.request, s.runtimePersistence); persist != nil && boxInstance.RuntimeCapabilities().Identity.Incarnation != "" {
+	if persist := runtimePersistenceForRequest(prepared.request); persist != nil && boxInstance.RuntimeCapabilities().Identity.Incarnation != "" {
 		if err := boxInstance.BindRuntimePersistenceOptions(persist, runtimePersistenceModeForRequest(prepared.request), runtimePersistenceRetrySafeForRequest(prepared.request)); err != nil {
 			cancel()
 			_ = boxInstance.Close()

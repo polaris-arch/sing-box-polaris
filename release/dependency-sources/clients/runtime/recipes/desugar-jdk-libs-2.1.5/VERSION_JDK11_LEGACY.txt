@@ -1,2 +1,0 @@
-# Version for releasing JDK 11 based Maven artifact.
-1.2.3

@@ -130,7 +130,7 @@ func (m *ConnectionManager) spliceClose(ctx context.Context, conn io.Closer, rem
 			if onClose != nil {
 				onClose(err)
 			}
-			common.Close(conn, remote)
+			common.Close(m.closer(ctx, conn), m.closer(ctx, remote))
 		})
 	}, finish, nil
 }

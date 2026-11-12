@@ -1,24 +1,12 @@
-release/desktop-source-candidate/DESKTOP-SOURCE-NOTICE-SUPERSET.txt -text -diff
-release/desktop-source-candidate/receipts/windows-amd64-producer720ead-run38072592310.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-release/desktop-source-candidate/receipts/windows-arm64-producer226e88-run38074825396.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 third_party/sing-tun/** -text
 release/dependency-sources/*.patch whitespace=-space-before-tab
 
 # Cross-platform raw client/owned-patch identity inputs, never normalized at use.
-/release/ci/client-overlays.json -text
-/release/ci/apple-swift-package-overlays.json -text
 /release/ci/owned-distribution.json -text
 /release/ci/*.patch -text
 
-# Exact upstream baseline fixture bytes used by the source overlay regression.
-/scripts/ci/testdata/desktop-50f50384/** -text
-/scripts/ci/testdata/android-ae93152f/** -text
-/scripts/ci/testdata/apple-e232aaf2/** -text
-/scripts/ci/testdata/go1.27.2/** -text
-
 # Source-owned SHA-pinned patches must retain exact Git blob bytes on every host.
 /.github/patches/** -text
-/.github/patches/go1.27.2/windows7.patch whitespace=-space-before-tab
 /.github/go_ios_cpu_features.patch -text
 
 third_party/metacubex-utls/** -text

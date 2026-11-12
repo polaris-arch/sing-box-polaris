@@ -9,7 +9,7 @@ import (
 func TestRuntimeLaterCommitCanSupersedeFailedDurableTail(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "first.example"), nil)
 	attempts := 0
-	if err := f.box.BindRuntimePersistence(func(identity RuntimeIdentity, content []byte) error {
+	if err := f.box.BindRuntimePersistenceOptions(func(identity RuntimeIdentity, content []byte) error {
 		attempts++
 		if attempts == 1 {
 			return errors.New("durable backend unavailable")
@@ -18,7 +18,7 @@ func TestRuntimeLaterCommitCanSupersedeFailedDurableTail(t *testing.T) {
 			t.Error("persistence content and identity differ")
 		}
 		return nil
-	}); err != nil {
+	}, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)

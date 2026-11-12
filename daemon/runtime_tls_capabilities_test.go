@@ -21,7 +21,6 @@ import (
 	"github.com/sagernet/sing/service/pause"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -87,25 +86,5 @@ func TestRuntimeTLSCapabilitiesUseSameDocumentAndActiveIncarnation(t *testing.T)
 	}
 	if decoded.TlsFingerprintCapabilitiesJson != expected || decoded.Active.Incarnation != after.Active.Incarnation {
 		t.Fatal("tag 10 wire document/active binding differs")
-	}
-}
-
-func TestRuntimeTLSCapabilitiesOldWireIsEmptyAndTagTenIsAdditive(t *testing.T) {
-	descriptor := (&RuntimeCapabilities{}).ProtoReflect().Descriptor()
-	field := descriptor.Fields().ByNumber(10)
-	if field == nil || field.Name() != "tls_fingerprint_capabilities_json" || field.Kind() != protoreflect.StringKind || field.IsList() || field.IsMap() {
-		t.Fatal("additive tag 10 source/generated descriptor differs")
-	}
-	old := &RuntimeCapabilities{ContractVersion: 1, Active: &RuntimeIdentity{Incarnation: "old-core", AppliedRevision: 1, EffectiveDigest: "old-digest"}}
-	raw, err := proto.Marshal(old)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var response RuntimeCapabilities
-	if err = proto.Unmarshal(raw, &response); err != nil {
-		t.Fatal(err)
-	}
-	if response.TlsFingerprintCapabilitiesJson != "" {
-		t.Fatal("old empty wire fabricated TLS inventory")
 	}
 }

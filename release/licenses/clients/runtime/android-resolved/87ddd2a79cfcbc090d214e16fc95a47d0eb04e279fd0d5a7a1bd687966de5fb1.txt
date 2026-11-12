@@ -1,4 +1,0 @@
-/*
- * Based on GWT AbstractList
- * Copyright 2007 Google Inc.
-*/

@@ -197,15 +197,7 @@ func (s *Box) RuntimeCapabilities() RuntimeConfigCapabilities {
 		FullConfiguration:                   false,
 		Fields:                              fields,
 		ImplementationManifestDigest:        runtimeDigest(encoded),
-		PendingAdapters:                     runtimePendingAdapters(),
 		SupportedClientImpactPolicyVersions: impactPolicies,
-	}
-	seenPaths := make(map[string]bool)
-	for _, field := range fields {
-		if (field.UpdateClass == "LOCAL_REPLACE" || field.UpdateClass == "IN_PLACE") && !seenPaths[field.Path] {
-			result.SupportedPaths = append(result.SupportedPaths, field.Path)
-			seenPaths[field.Path] = true
-		}
 	}
 	reason := func(code, path string) {
 		result.Fields = append(result.Fields, RuntimeFieldCapability{
