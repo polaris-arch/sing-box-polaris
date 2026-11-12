@@ -450,7 +450,7 @@ func TestRuntimePersistenceFailureCannotRollbackOrCancelPublishedGraph(t *testin
 	t.Cleanup(barrier.open)
 	persistCalls := 0
 	var persistedIdentity RuntimeIdentity
-	if err := f.box.BindRuntimePersistence(func(identity RuntimeIdentity, content []byte) error {
+	if err := f.box.BindRuntimePersistenceOptions(func(identity RuntimeIdentity, content []byte) error {
 		persistCalls++
 		persistedIdentity = identity
 		if len(content) != 0 {
@@ -458,7 +458,7 @@ func TestRuntimePersistenceFailureCannotRollbackOrCancelPublishedGraph(t *testin
 		} // Callback receives a detached snapshot.
 		barrier.block()
 		return errors.New("injected durable-store failure")
-	}); err != nil {
+	}, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)
@@ -634,13 +634,13 @@ func TestRuntimeInlineSourceReplacementChangesOnlyCapturedClosure(t *testing.T) 
 func TestRuntimeDurableCommitAndExactCompletedRetryDoNotRepeatEffects(t *testing.T) {
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "example.org"), nil)
 	persistCalls := 0
-	if err := f.box.BindRuntimePersistence(func(identity RuntimeIdentity, content []byte) error {
+	if err := f.box.BindRuntimePersistenceOptions(func(identity RuntimeIdentity, content []byte) error {
 		persistCalls++
 		if identity != f.identity() || runtimeDigest(content) != identity.EffectiveDigest {
 			return errors.New("persistence did not receive the committed effective snapshot")
 		}
 		return nil
-	}); err != nil {
+	}, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)
@@ -669,7 +669,7 @@ func TestRuntimeDurableCommitAndExactCompletedRetryDoNotRepeatEffects(t *testing
 	if len(status.Operation.Impacts) != 0 && status.Operation.Impacts[0].AffectedSessionClasses[0] == "caller mutation" {
 		t.Fatal("plan response mutated its retained receipt")
 	}
-	if err := f.box.BindRuntimePersistence(nil); err == nil {
+	if err := f.box.BindRuntimePersistenceOptions(nil, "owner_acknowledged", false); err == nil {
 		t.Fatal("live persistence binding was mutable")
 	}
 }

@@ -275,7 +275,7 @@ func TestRuntimeFakeIPCacheEarlyInitializeRetainsFailureAndOriginalReceiver(t *t
 func TestRuntimeFakeIPPersistentRangeCannotBorrowMissingRecoveryOwner(t *testing.T) {
 	f, options := runtimeFakeIPCleanupConstruction(t, filepath.Join(t.TempDir(), "cache.db"), nil)
 	runtimeFakeIPCleanupBox(t, f, options)
-	if err := f.box.BindRuntimePersistence(func(RuntimeIdentity, []byte) error { return nil }); err != nil {
+	if err := f.box.BindRuntimePersistenceOptions(func(RuntimeIdentity, []byte) error { return nil }, "owner_acknowledged", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)

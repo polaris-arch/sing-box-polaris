@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net"
 	"sync"
@@ -312,6 +313,23 @@ func TestFinalLogicalFlowRealTCPCloseRace(t *testing.T) {
 			t.Fatal(err)
 		}
 		peer.Close()
+	}
+}
+
+// Copy loops and the final shutdown close the same TLS conn concurrently, and
+// crypto/tls reports net.ErrClosed to the later Close call.
+func TestFinalLogicalFlowTLSCloseRace(t *testing.T) {
+	for range 20 {
+		incoming, client := net.Pipe()
+		remote, server := net.Pipe()
+		m := finalManager()
+		m.NewConnection(context.Background(), finalVirtualDialer{conn: remote}, tls.Server(incoming, &tls.Config{}), adapter.InboundContext{Destination: M.ParseSocksaddr("tls.invalid:443")}, nil)
+		m.StopFinal()
+		if err := finalAwaitClose(t, m); err != nil {
+			t.Fatal(err)
+		}
+		client.Close()
+		server.Close()
 	}
 }
 

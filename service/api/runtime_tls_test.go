@@ -173,7 +173,7 @@ func TestRuntimeAPIInitialTLSKeepsRealGRPCAndRejectsPlaintext(t *testing.T) {
 	}
 }
 
-func TestRuntimeAPILegacyTLSWatcherWarningKeepsCachedCertificateAndJoinsStop(t *testing.T) {
+func TestRuntimeAPILegacyTLSMissingCertificateDirectoryKeepsCachedCertificateAndJoinsStop(t *testing.T) {
 	options, roots := apiTestCertificate(t)
 	certificatePath := filepath.Join(t.TempDir(), "certificate.pem")
 	if err := os.WriteFile(certificatePath, []byte(options.Certificate[0]), 0o600); err != nil {
@@ -184,11 +184,9 @@ func TestRuntimeAPILegacyTLSWatcherWarningKeepsCachedCertificateAndJoinsStop(t *
 	instance, api, _ := newHandoffBoxWithLog(t, "tls-secret", &option.LogOptions{Level: "warn", Output: logPath, DisableColor: true}, options)
 	observer := &apiTLSCloseObserver{ServerConfig: api.tlsConfig}
 	api.tlsConfig = observer
-	// Rotation watches the containing directory, so removing only the file
-	// legitimately remains watchable. Remove this fixture's exclusive parent
-	// too: native Add on that required target must fail during the real Start.
-	// Legacy initial TLS deliberately warns and retains its parsed certificate;
-	// it has no runtime grant that would make this watcher failure fatal.
+	// Rotation watches the containing directory and tolerates its absence, so
+	// removing the file and its exclusive directory must not prevent startup.
+	// Legacy initial TLS retains its parsed certificate.
 	if err := os.Remove(certificatePath); err != nil {
 		t.Fatal(err)
 	}
@@ -198,11 +196,6 @@ func TestRuntimeAPILegacyTLSWatcherWarningKeepsCachedCertificateAndJoinsStop(t *
 	if err := instance.Start(); err != nil {
 		t.Fatalf("legacy watcher warning prevented startup: %v", err)
 	}
-	warning, err := os.ReadFile(logPath)
-	if err != nil || !strings.Contains(strings.ToUpper(string(warning)), "WARN") || !strings.Contains(string(warning), "create fsnotify watcher:") {
-		t.Fatalf("real legacy watcher warning missing: %q %v", warning, err)
-	}
-	t.Logf("observed native watcher warning: %s", strings.TrimSpace(string(warning)))
 	if _, err := os.Stat(certificatePath); !os.IsNotExist(err) {
 		t.Fatalf("removed certificate unexpectedly available: %v", err)
 	}
@@ -233,7 +226,7 @@ func TestRuntimeAPILegacyTLSWatcherWarningKeepsCachedCertificateAndJoinsStop(t *
 	if err := instance.CloseWithResult(); err != nil {
 		t.Fatal(err)
 	}
-	dashboardWait(t, endpoint.serveDone, "legacy warning server and owned TLS read tails joined")
+	dashboardWait(t, endpoint.serveDone, "legacy server and owned TLS read tails joined")
 	endpoint.mu.Lock()
 	remaining := len(endpoint.conns)
 	endpoint.mu.Unlock()

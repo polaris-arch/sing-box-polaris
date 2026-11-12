@@ -50,17 +50,14 @@ def source_context(env):
             or env.get('GITHUB_REPOSITORY_ID') != '1421657509'
             or env.get('GITHUB_EVENT_NAME') != 'workflow_dispatch' or env.get('GITHUB_JOB') != 'utls_gate'):
         raise RuntimeError('observation requires the existing owned Source CI job')
-    if (env.get('SOURCE_BUILD') != 'Source' or env.get('SOURCE_GENERATE_ONLY') != 'false'
-            or env.get('SOURCE_WINDOWS_NATIVE_PROOF') != 'false'):
-        raise RuntimeError('observation requires Source, non-generation and no native proof request')
+    if env.get('SOURCE_BUILD') != 'Source' or env.get('SOURCE_GENERATE_ONLY') != 'false':
+        raise RuntimeError('observation requires Source and non-generation')
     numbers = [env.get('GITHUB_RUN_ID', ''), env.get('GITHUB_RUN_ATTEMPT', '')]
     if (not re.fullmatch('[0-9a-f]{40}', env.get('GITHUB_SHA', ''))
             or any(not re.fullmatch('[1-9][0-9]{0,19}', value) for value in numbers)):
         raise ValueError('exact source/run/attempt missing or out of bound')
     inputs = {name: env.get(key, '') for name, key in (
-        ('build', 'SOURCE_BUILD'), ('sourceGenerateOnly', 'SOURCE_GENERATE_ONLY'),
-        ('windowsNativeProof', 'SOURCE_WINDOWS_NATIVE_PROOF'), ('evidenceMode', 'SOURCE_EVIDENCE_MODE'),
-        ('version', 'SOURCE_VERSION'), ('runner', 'SOURCE_RUNNER'))}
+        ('build', 'SOURCE_BUILD'), ('sourceGenerateOnly', 'SOURCE_GENERATE_ONLY'), ('runner', 'SOURCE_RUNNER'))}
     if any(len(value) > 128 for value in inputs.values()):
         raise ValueError('source diagnostic input exceeds bound')
     return {'repository': REPOSITORY, 'repositoryId': 1421657509, 'sourceCommit': env['GITHUB_SHA'],

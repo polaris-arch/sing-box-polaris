@@ -1,22 +1,9 @@
-import importlib.util,io,json,tarfile,tempfile,unittest,zipfile
+import importlib.util,io,tarfile,tempfile,unittest,zipfile
 from pathlib import Path
 from unittest.mock import patch
 R=Path(__file__).parent
 spec=importlib.util.spec_from_file_location('n',R/'native_release_index.py');n=importlib.util.module_from_spec(spec);spec.loader.exec_module(n)
 class TestNative(unittest.TestCase):
- def test_shared_materials_bind_apple_contract_helper_and_original_recipes(self):
-  root=R.parent.parent
-  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic-source'},'platforms':[],'legalFiles':[]}
-  material=n.distribution_materials(index,root)
-  self.assertNotIn('scripts/ci/tls_fingerprint_probe.py',material['inputs'])
-  for path in ('release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
-               'scripts/ci/client_source.py','release/dependency-sources/clients/runtime/recipe-index.json'):
-   self.assertEqual(material['inputs'][path],n.sha((root/path).read_bytes()))
-  spec=json.loads((root/'release/ci/apple-swift-package-overlays.json').read_text())
-  recipes={r['path']:r for r in json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text())}
-  for package in spec['packages']:
-   self.assertEqual(recipes[package['originalRecipe']]['sha256'],package['beforeSHA256'])
-   self.assertNotEqual(package['beforeSHA256'],package['afterSHA256'])
  def archive(self,path,entries):
   with tarfile.open(path,'w:gz') as t:
    for name,data in entries:
@@ -48,8 +35,8 @@ class TestNative(unittest.TestCase):
   with patch.object(n.Path,'read_text',return_value=contract.read_text()):rows=n.expected_native('1.15.0-polaris-alpha.12')
   self.assertEqual(rows['sing-box-1.15.0-polaris-alpha.12-linux-amd64']['variant']['libc'],'')
   self.assertEqual(rows['sing-box-1.15.0-polaris-alpha.12-linux-amd64']['variant']['linkage'],'shared-purego')
-  self.assertIn('sing-box-1.15.0-polaris-alpha.12-linux-amd64-musl',rows)
-  self.assertIn('sing-box-1.15.0-polaris-alpha.12-windows-amd64-legacy-windows-7',rows)
+  self.assertIn('sing-box-1.15.0-polaris-alpha.12-linux-arm64',rows)
+  self.assertEqual(rows['sing-box-1.15.0-polaris-alpha.12-darwin-arm64']['variant']['linkage'],'static-cgo')
  def test_buildinfo_multiple_local_replacements(self):
   raw='/tmp/core: go1.26.8\n\tpath\tgithub.com/sagernet/sing-box/cmd/sing-box\n\tdep\tmodule/a\tv1\th1:a\n\t=>\t./third_party/a\t(devel)\t\n\tdep\tmodule/b\tv2\th1:b\n\t=>\t./third_party/b\t(devel)\t\n\tdep\tgithub.com/sagernet/cronet-go/lib/linux_amd64\tv3\th1:c\n\tbuild\tCGO_ENABLED=0\n\tbuild\t-tags=with_gvisor,with_naive_outbound\n'
   with patch.object(n.subprocess,'check_output',return_value=raw):
@@ -91,13 +78,13 @@ class TestNative(unittest.TestCase):
    for name,data in files.items():
     member=tarfile.TarInfo('sing-box-polaris-source-'+'a'*40+'/'+name);member.size=len(data);archive.addfile(member,io.BytesIO(data))
   hashes={'goModSha256':n.sha(self.module_bytes()['go.mod']),'goSumSha256':n.sha(self.module_bytes()['go.sum'])}
-  rows=[{'id':'native-'+str(i),'sourceIdentity':dict(hashes,sourceOverlay=0)} for i in range(44)]
+  rows=[{'id':'native-'+str(i),'sourceIdentity':dict(hashes,sourceOverlay=0)} for i in range(5)]
   return rows,output.getvalue()
- def test_assembled_all_44_rows_match_actual_source_tar(self):
+ def test_assembled_all_rows_match_actual_source_tar(self):
   rows,archive=self.archived_module_fixture();reads,blobs=self.module_mocks()
   with reads,blobs:n.validate_archived_source_identity(rows,archive,'a'*40)
  def test_assembled_each_row_rejects_either_module_hash_mismatch(self):
-  for position in range(44):
+  for position in range(5):
    for key in ['goModSha256','goSumSha256']:
     with self.subTest(position=position,key=key):
      rows,archive=self.archived_module_fixture();rows[position]['sourceIdentity'][key]='f'*64;reads,blobs=self.module_mocks()
@@ -117,19 +104,6 @@ class TestNative(unittest.TestCase):
     with self.subTest(path=path):
      path.read_bytes().decode('utf-8')
      self.assertNotEqual(path.suffix.lower(),'.class')
- def test_ghostty_logf_retains_all_original_notice_blocks(self):
-  root=R.parents[1]
-  index=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text())
-  rows=[row for row in index['noticeFiles'] if row['path'].endswith('-logf.c.original-header.txt')]
-  self.assertEqual(len(rows),1)
-  row=rows[0];data=(root/row['path']).read_bytes()
-  self.assertEqual(len(data),515)
-  self.assertEqual(n.sha(data),'8321493840d6ffec09121148a782785c0591b42a3a270dfda01b4ce4d5c7aa6b')
-  self.assertIn(b'Ian Lance Taylor',data)
-  self.assertIn(b'Copyright (C) 1993 by Sun Microsystems',data)
-  self.assertIn(b'is preserved.',data)
-  self.assertEqual(row['mappings'][0]['byteStart'],0)
-  self.assertEqual(row['mappings'][0]['byteEnd'],515)
 
 
 class OverlayProductionBoundaryControls(unittest.TestCase):

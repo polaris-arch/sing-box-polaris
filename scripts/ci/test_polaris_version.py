@@ -18,6 +18,8 @@ import github_release as publisher
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = json.loads((ROOT / 'scripts/ci/testdata/polaris-versions.json').read_text())
 PLAN = json.loads((ROOT / 'release/ci/github-release.json').read_text())
+VERSION = '1.15.0-polaris-alpha.12.22'
+publisher.bind_release('v' + VERSION)
 
 
 class IdentityComparisonTests(unittest.TestCase):
@@ -46,7 +48,7 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_self_contained_schemas_share_the_parser_contract(self):
         import jsonschema
-        for name, count in [('native-release-index.schema.json', 4), ('native-release-contract.schema.json', 10)]:
+        for name, count in [('native-release-index.schema.json', 4)]:
             schema = json.loads((ROOT / 'release/ci' / name).read_text())
             jsonschema.Draft202012Validator.check_schema(schema)
             refs = []
@@ -79,68 +81,34 @@ class PolarisVersionTests(unittest.TestCase):
                     with self.subTest(schema=name, value=value, tag=tag), self.assertRaises(jsonschema.ValidationError):
                         validator.validate(('v' if tag else '') + value)
 
-    def test_cli_keeps_raw_patch_and_windows_resource_bounds(self):
+    def test_cli_keeps_raw_patch(self):
         script = ROOT / 'scripts/ci/polaris_version.py'
-        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', PLAN['version']]:
-            for args in [[value], [value, '65535']]:
-                output = subprocess.check_output([sys.executable, str(script), *args], text=True)
-                self.assertEqual(output, value + '\n')
-        for args in [[PLAN['version'], '65536'], [PLAN['version'], '0'], [PLAN['version'], '01'],
-                     [PLAN['version'], '١'], ['65536.15.0-polaris-alpha.12.1', '1']]:
-            result = subprocess.run([sys.executable, str(script), *args], capture_output=True)
-            self.assertNotEqual(result.returncode, 0, args)
-
-    def test_apk_metadata_and_both_real_consumers(self):
-        cases = {'1.15.0': '1.15.0-r0', '1.15.0-alpha.12': '1.15.0_alpha12-r0',
-                 '1.15.0-beta.8': '1.15.0_beta8-r0', '1.15.0-rc.3': '1.15.0_rc3-r0',
-                 '1.15.0-polaris-alpha.12': '1.15.0_alpha12-r0',
-                 '1.15.0-polaris-alpha.12.0': '1.15.0_alpha12_p0-r0',
-                 '1.15.0-polaris-alpha.12.1': '1.15.0_alpha12_p1-r0',
-                 '1.15.0-polaris-alpha.12.2': '1.15.0_alpha12_p2-r0',
-                 '1.15.0-polaris-alpha.12.3': '1.15.0_alpha12_p3-r0',
-                 '1.15.0-polaris-alpha.12.4': '1.15.0_alpha12_p4-r0',
-                 '1.15.0-polaris-alpha.12.5': '1.15.0_alpha12_p5-r0',
-                 '1.15.0-polaris-alpha.12.6': '1.15.0_alpha12_p6-r0',
-                 '1.15.0-polaris-alpha.12.7': '1.15.0_alpha12_p7-r0',
-                 '1.15.0-polaris-alpha.12.10': '1.15.0_alpha12_p10-r0',
-                 '1.15.0-polaris-alpha.13': '1.15.0_alpha13-r0',
-                 '1.15.0-polaris-beta.1.2': '1.15.0_beta1_p2-r0',
-                 '1.15.0-polaris-rc.1.2': '1.15.0_rc1_p2-r0'}
-        for raw, expected in cases.items():
-            self.assertEqual(v.apk_version(raw), expected)
-            for name in ['build_alpine_apk.sh', 'build_openwrt_apk.sh']:
-                # Execute the actual assignment, without installing files or invoking apk.
-                text = (ROOT / '.github' / name).read_text()
-                assignment = next(line for line in text.splitlines() if line.startswith('APK_VERSION='))
-                env = dict(os.environ, PROJECT=str(ROOT), VERSION=raw)
-                actual = subprocess.check_output(['bash', '-e', '-c', assignment + '\nprintf "%s" "$APK_VERSION"'], env=env, text=True)
-                self.assertEqual(actual, expected)
-        for raw in CONTRACT['invalid']:
-            if raw not in ('1.15.0',):
-                with self.subTest(raw=raw), self.assertRaises(ValueError):
-                    v.apk_version(raw)
+        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION]:
+            output = subprocess.check_output([sys.executable, str(script), value], text=True)
+            self.assertEqual(output, value + '\n')
+        result = subprocess.run([sys.executable, str(script), 'v' + VERSION], capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
 
     def test_native_names_and_exact_plan_scope(self):
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', PLAN['version'], '1.15.0-polaris-alpha.13']:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION, '1.15.0-polaris-alpha.13']:
             names = native.expected_native(version)
             self.assertTrue(all(name.startswith('sing-box-' + version + '-') for name in names))
             # Simulate a separately reviewed next plan; syntax never selects a release.
             with patch.object(publisher, 'VERSION', version):
                 scope = publisher.release_scope(version)
-                rules = scope['all']['payloadRules']['binary-linux_amd64-glibc']
-                files = {f'sing-box-{version}-linux-amd64-glibc.tar.gz': {}}
-                publisher.verify_payloads(files, rules, 'binary-linux_amd64-glibc')
+                rules = scope['all']['payloadRules']['binary-linux_amd64-purego']
+                files = {f'sing-box-{version}-linux-amd64.tar.gz': {}}
+                publisher.verify_payloads(files, rules, 'binary-linux_amd64-purego')
                 for wrong in ['1.15.0-polaris-alpha.12', version + '0', version + '.1']:
                     with self.assertRaises(ValueError):
-                        publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64-glibc')
-        self.assertEqual(publisher.VERSION, PLAN['version'])
+                        publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64-purego')
         for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.13']:
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
     def test_full_patch_tag_is_bound_to_actual_source_and_tag_object(self):
         source, obj = 'a' * 40, 'b' * 40
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', PLAN['version']]:
+        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION]:
             tag = 'v' + version
             answers = [{'object': {'type': 'tag', 'sha': obj}},
                        {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
@@ -157,23 +125,18 @@ class PolarisVersionTests(unittest.TestCase):
 
     def test_producer_receipts_keep_patch_and_reject_unreviewed_rotation(self):
         source = 'a' * 40
-        for version in [PLAN['version'], '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
-            plan = dict(PLAN, version=version, tag='v' + version)
+        for version in [VERSION, '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
             for role in ['all']:
                 with tempfile.TemporaryDirectory() as directory, chdir(directory):
                     Path('release/ci').mkdir(parents=True)
-                    Path('release/ci/github-release.json').write_text(json.dumps(plan))
-                    scope = json.loads((ROOT / 'release/ci/publisher-upstream-scope.json').read_text())
-                    Path('release/ci/publisher-upstream-scope.json').write_text(json.dumps(scope))
-                    needs = {name: {'result': 'success', 'outputs': {}}
-                             for name in scope[role]['receiptJobs']}
+                    Path('release/ci/github-release.json').write_text(json.dumps(PLAN))
+                    needs = {'build': {'result': 'success', 'outputs': {}}}
                     env = {'PUBLISHER_ROLE': role, 'GITHUB_EVENT_NAME': 'workflow_dispatch',
                            'GITHUB_REPOSITORY': PLAN['repository'], 'GITHUB_REPOSITORY_ID': str(PLAN['repositoryId']),
                            'RELEASE_BUILD': 'All', 'RELEASE_VERSION': version, 'GITHUB_SHA': source,
                            'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1',
-                           'PUBLISH_STORES': 'false', 'PUBLISH_REGISTRY': 'false',
-                           'GITHUB_REF': 'refs/tags/' + plan['tag'], 'NEEDS_JSON': json.dumps(needs),
-                           'RECEIPT_EVIDENCE_MODE': 'final', 'RECEIPT_SOURCE_GENERATE_ONLY': 'false'}
+                           'GITHUB_REF': 'refs/tags/v' + version, 'NEEDS_JSON': json.dumps(needs),
+                           'RECEIPT_SOURCE_GENERATE_ONLY': 'false'}
                     script = ROOT / 'scripts/ci/publisher_run_receipt.py'
                     with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'):
                         runpy.run_path(str(script))
@@ -181,7 +144,7 @@ class PolarisVersionTests(unittest.TestCase):
                     self.assertEqual(receipt['version'], version)
                     self.assertEqual(receipt['sourceCommit'], source)
                     rejected = ['1.15.0-polaris-alpha.12', version + '0']
-                    if version == PLAN['version']:
+                    if version == VERSION:
                         rejected.append('1.15.0-polaris-alpha.12.6')
                     for wrong in rejected:
                         with patch.dict(os.environ, dict(env, RELEASE_VERSION=wrong)), self.assertRaises(AssertionError):

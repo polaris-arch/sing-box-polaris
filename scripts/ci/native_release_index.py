@@ -101,17 +101,11 @@ def expected_native(version):
   for matrix in matrices[job]['include']:
    m=dict(matrix);m['os']=m.get('os') or ('darwin' if job=='build_darwin' else 'windows')
    osname=m['os'];name=f"sing-box-{version}-{osname}-{m['arch']}"
-   if m.get('goarm'):name+='v'+str(m['goarm'])
-   elif m.get('go386') and m['go386']!='sse2':name+='-'+m['go386']
-   elif m.get('gomips') and m['gomips']!='hardfloat':name+='-'+m['gomips']
-   elif m.get('legacy_name'):name+='-legacy-'+m['legacy_name']
-   if m.get('variant') in ('glibc','musl'):name+='-'+m['variant']
-   naive=m.get('naive',False) or (osname=='darwin' and not m.get('legacy_osx'))
+   naive=m.get('naive',False) or osname=='darwin'
    linkage='shared-purego' if naive and (m.get('variant')=='purego' or osname=='windows') else ('static-cgo' if naive else 'other')
-   variant={'linkage':linkage,'libc':m.get('variant','') if m.get('variant') in ('glibc','musl') else '', 'goarm':str(m.get('goarm','')),'gomips':str(m.get('gomips','')),'go386':str(m.get('go386','')),'legacy':bool(m.get('legacy_osx') or m.get('legacy_win7'))}
+   variant={'linkage':linkage,'libc':'','goarm':'','gomips':'','go386':'','legacy':False}
    if name in result:raise ValueError('duplicate expected archive identity')
    result[name]={'target':osname+'/'+m['arch'],'variant':variant,'matrix':m}
- if len(result)!=44:raise ValueError('baseline native matrix no longer has 44 unique rows')
  return result
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -133,17 +127,11 @@ def derive_trusted_execution(row, proof, producer, source_root=ROOT):
  """Formal workflow admission retains its original schema and run authority."""
  import jsonschema
  schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
- kind = {'polaris-macos-native-execution-proof-v1':'macosExecution','polaris-windows-native-execution-proof-v1':'windowsExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
+ kind = {'polaris-macos-native-execution-proof-v1':'macosExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
  jsonschema.Draft202012Validator(schema['$defs'][kind]).validate(proof)
  for key in ('runId', 'runAttempt'):
   if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
    raise ValueError('sealed execution workflow run/attempt differs')
- if kind == 'windowsExecution':
-  validate_overlay(source_root)
-  from windows_native_execution import validate_facts
-  policy=validate_facts(row,proof,source_root)
-  jsonschema.Draft202012Validator(schema['$defs']['windowsTrustedExecution']).validate(policy)
-  return policy
  return _derive_macos_execution_facts(row, proof, source_root) if kind == 'macosExecution' else _derive_execution_facts(row, proof, source_root)
 
 
@@ -435,15 +423,14 @@ def _derive_macos_execution_facts(row, proof, source_root):
 
 def validate_trusted_execution(row, producer, source_root=ROOT):
  smoke = row.get('finalPackageCronetSmoke')
- keys = [key for key in ('sealedExecution','macosExecution','windowsExecution') if isinstance(smoke,dict) and key in smoke]
+ keys = [key for key in ('sealedExecution','macosExecution') if isinstance(smoke,dict) and key in smoke]
  if len(keys) > 1: raise ValueError('ambiguous native execution proofs')
  proof = smoke[keys[0]] if keys else None
  present = 'trustedExecution' in row
  has_proof = bool(keys)
  if not has_proof and not present: return None # historical/unsupported rows never acquire authority
  if proof is None or not present: raise ValueError('trusted execution requires both policy and native sealed proof')
- expected_schema={'macosExecution':'polaris-macos-native-execution-proof-v1',
-                  'windowsExecution':'polaris-windows-native-execution-proof-v1'}
+ expected_schema={'macosExecution':'polaris-macos-native-execution-proof-v1'}
  if not isinstance(proof,dict) or (keys[0] in expected_schema and proof.get('schema')!=expected_schema[keys[0]]) or (keys[0]=='sealedExecution' and 'schema' in proof):
   raise ValueError('native execution proof key/schema differs')
  expected = derive_trusted_execution(row, proof, producer, source_root)
@@ -468,21 +455,14 @@ def collect(directory,matrix):
     sig={'state':'signed' if o.returncode==0 else 'unsigned','cdHash':m.group(1) if m else None,'trustValidated':False}
   settings=graph['settings'];tags=settings.get('-tags','');osname=settings['GOOS'];arch=settings['GOARCH']
   linkage='shared-purego' if side_name else ('static-cgo' if settings.get('CGO_ENABLED')=='1' and 'with_naive_outbound' in tags.split(',') else 'other')
-  variant={'linkage':linkage,'libc':matrix.get('variant','') if osname=='linux' and matrix.get('variant') in ('glibc','musl') else '', 'goarm':str(matrix.get('goarm','')),'gomips':str(matrix.get('gomips','')),'go386':str(matrix.get('go386','')),'legacy':bool(matrix.get('legacy_win7') or matrix.get('legacy_osx'))}
+  variant={'linkage':linkage,'libc':'','goarm':'','gomips':'','go386':'','legacy':False}
   if osname!=os.environ['NATIVE_OS'] or arch!=matrix['arch']:raise ValueError('binary GOOS/GOARCH differs from matrix')
   if expected['target']!=osname+'/'+arch or expected['variant']!=variant:raise ValueError('native archive variant differs from exact upstream matrix')
-  if variant['legacy']:
-   from legacy_binary_version import minimum_version
-   print('LEGACY_PLATFORM_HEADER '+json.dumps({'target':osname+'/'+arch,'coreSHA256':sha(core),'observation':minimum_version(core,osname),'oldOSRuntimeValidated':False}),flush=True)
-  for key,value in [('GOARM',matrix.get('goarm')),('GO386',matrix.get('go386')),('GOMIPS64' if '64' in arch else 'GOMIPS',matrix.get('gomips'))]:
-   if value is not None and settings.get(key,'').split(',')[0]!=str(value):raise ValueError('binary setting differs from matrix: '+key)
   def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
   row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':commit,'sourceTree':tree,'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source_identity(),'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
   validate_trusted_execution(row, {})
   (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n');row_count+=1
  if row_count!=1:raise ValueError(f'expected one native archive, got {row_count}')
- for glob,expected in [('*.deb',int('debian' in matrix)),('*.rpm',int('rpm' in matrix)),('*.pkg.tar.zst',int('pacman' in matrix)),('*_linux_*.apk',int('alpine' in matrix)),('*.ipk',len(matrix.get('openwrt','').split())),('*_openwrt_*.apk',len(matrix.get('openwrt','').split()))]:
-  if len(list(d.glob(glob)))!=expected:raise ValueError('package inventory mismatch '+glob)
 
 def cleanup_smoke_directory(directory):
  """Retry only Windows sharing/lock violations, never turn failed cleanup into PASS."""
@@ -519,22 +499,6 @@ def smoke(directory):
  d=Path(directory);rows=list(d.glob('native-row-*.json'))
  if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
  row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name']
- # Ordinary Windows diagnostics never enter this lane or acquire a policy.
- # An explicit request on an unavailable/unsupported host fails, without a
- # fallback to the unprivileged probe or a successful skipped proof.
- if os.environ.get('POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED')=='true':
-  from windows_native_execution import produce,VARIANT
-  if platform.system()!='Windows' or row['target']!='windows/amd64' or row['variant']!=VARIANT:
-   raise ValueError('explicit privileged Windows proof host/modern row unavailable')
-  context=execution_run();proof=produce(row,p,context=context)
-  observed=proof['cronet'];row.pop('trustedExecution',None)
-  row['finalPackageCronetSmoke']={'status':'passed','os':'windows','arch':'amd64','go':row['goVersion'],
-    'gvisorCompiled':True,'naiveOutbound':True,'linkage':'shared-purego','version':observed['version'],
-    'librarySha256':row['sidecar']['sha256'],'coreSha256':row['core']['sha256'],'windowsExecution':proof}
-  row['trustedExecution']=derive_trusted_execution(row,proof,context)
-  validate_trusted_execution(row,context)
-  rows[0].write_text(json.dumps(row,indent=2)+'\n',encoding='utf-8',newline='\n')
-  return
  root,members=read_archive(p)
  if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
  pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
@@ -614,45 +578,26 @@ def distribution_materials(index, root=Path('.')):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
  overlay_inputs=validate_overlay(root)
- from apple_package_overlays import definition as apple_package_definition
- apple_package_definition(root)
  inputs=['scripts/ci/cronet_windows_overlay.py',*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/dependency-sources/sing-vmess-replacement.json',
          'release/dependency-sources/sing-vmess-vision.patch','scripts/ci/vision_source.py',
-         'release/ci/client-overlays.json','release/ci/distribution-materials.json',
-         'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py',
+         'release/ci/distribution-materials.json',
          'release/ci/current-module-sources.json','release/polaris-public-source-inputs.json',
          'release/ci/current44-notice-mappings.json','release/licenses/CURRENT44-NOTICE-CANDIDATE.txt',
-         'release/dependency-sources/sing-usbip/source-tar-materials-manifest.json',
-         'release/dependency-sources/sing-usbip/driver-source-notice-reconciliation.json',
          'release/dependency-sources/ACQUIRE-AND-BUILD-CURRENT.md',
-         'release/dependency-sources/gomobile-v0.1.13.json','cmd/internal/build_libbox/main.go',
          'scripts/ci/github_release.py',
-         'release/dependency-sources/clients/current-client-sources.json',
-         'release/dependency-sources/clients/runtime/index.json',
-         'release/dependency-sources/clients/runtime/recipe-index.json',
-         'release/dependency-sources/clients/runtime/desugar-2.1.5-source.json',
-         'release/dependency-sources/clients/runtime/ghostty-native/index.json',
-         'release/dependency-sources/clients/runtime/header-scan/index.json',
-         'release/dependency-sources/clients/runtime/notice-observation-scope.json',
-         'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json',
-         'release/dependency-sources/clients/runtime/android-resolved/reuse-reference.json',
-         'release/dependency-sources/clients/actual-desktop-notice-proof.json',
-         'release/dependency-sources/clients/actual-asar-notice-proof.json',
          'release/ci/current44-static-cronet-origin-bindings.json',
          'release/dependency-sources/windivert/current44-inclusion-proof.json',
          'release/dependency-sources/windivert/fixed-source-availability-proof.json',
          'release/dependency-sources/windivert/upstream-release-driver-proof.json',
          'release/polaris-cronet-materials.json','release/polaris-cronet-graph-kernel-materials.json',
-         'scripts/ci/client_source.py','scripts/ci/native_release_index.py',
-         'scripts/ci/android_runtime_materials.py','scripts/ci/android_runtime_materials.init.gradle',
-         'scripts/ci/record_candidate.py','.github/workflows/android-runtime-materials.yml',
+         'scripts/ci/native_release_index.py',
+         'scripts/ci/record_candidate.py',
          '.github/workflows/build.yml']
  if any('trustedExecution' in row for row in index['platforms']):
-  inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json',
-             'release/ci/native-release-contract.schema.json']
+  inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json']
  toolchain=json.loads((root/'.github/go-toolchains.json').read_text(encoding='utf-8'))
- inputs += [x['patch'] for x in toolchain['legacy'].values()]+[toolchain['iosCPU']['patch']]
+ inputs += [toolchain['iosCPU']['patch']]
  catalog=json.loads((root/'release/ci/distribution-materials.json').read_text(encoding='utf-8'))
  eligible=validate_distribution_assessment(catalog)
  selection=json.loads((root/'release/ci/current44-notice-mappings.json').read_text(encoding='utf-8'))
@@ -661,18 +606,6 @@ def distribution_materials(index, root=Path('.')):
  for notice in selection['noticeRecords']:
   data=notice_bytes[notice['byteOffset']:notice['byteOffset']+notice['bytes']]
   if len(data)!=notice['bytes'] or sha(data)!=notice['sha256']:raise ValueError('current notice slice hash mismatch')
- runtime=json.loads((root/'release/dependency-sources/clients/runtime/index.json').read_text(encoding='utf-8'))
- recipes=json.loads((root/'release/dependency-sources/clients/runtime/recipe-index.json').read_text(encoding='utf-8'))
- ghostty=json.loads((root/'release/dependency-sources/clients/runtime/ghostty-native/index.json').read_text(encoding='utf-8'))
- android=json.loads((root/'release/dependency-sources/clients/runtime/android-resolved/source-notice-map.json').read_text(encoding='utf-8'))
- if android.get('concreteUnresolvedMaterials')!=[]:raise ValueError('unresolved actual Android source/notice materials')
- for record in runtime['noticeTexts']+recipes+ghostty['noticeFiles']+ghostty['recipeFiles']+android['noticeFiles']+android['materialFiles']:
-  name=record['path']
-  if not isinstance(name,str) or not name.startswith(('release/licenses/clients/runtime/','release/dependency-sources/clients/runtime/recipes/','release/dependency-sources/clients/runtime/ghostty-native/recipes/','release/dependency-sources/clients/runtime/android-resolved/')) or '..' in Path(name).parts:
-   raise ValueError('invalid shared client material path')
-  data=(root/name).read_bytes()
-  if ('bytes' in record and len(data)!=record['bytes']) or sha(data)!=record['sha256']:
-   raise ValueError('shared client runtime material identity mismatch')
  old_sources=json.loads((root/'release/polaris-public-source-inputs.json').read_text(encoding='utf-8'))['modules']
  current_sources=json.loads((root/'release/ci/current-module-sources.json').read_text(encoding='utf-8'))['delta']
  source_key=lambda x:(x['module'],x['version'],x.get('h1',''))
@@ -726,12 +659,12 @@ def distribution_materials(index, root=Path('.')):
                  'coreSHA256':row['core']['sha256'],'goVersion':row['goVersion'],
                  'modules':ids,'localSourceIdentity':row['sourceIdentity'],
                  'cronetSidecar':row['sidecar'],
-                 'windivertSourceEvidence':'release/dependency-sources/windivert/' if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else None,
+                 'windivertSourceEvidence':'release/dependency-sources/windivert/' if row['target']=='windows/amd64' and 'with_external_windivert' not in row['tags'].split(',') else None,
                  'repositoryNoticePaths':['licenses/repository-components/JA3-LICENSE'] +
-                     (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target'] in ('windows/386','windows/amd64') and 'with_external_windivert' not in row['tags'].split(',') else [])})
+                     (['licenses/repository-components/WINDIVERT-LICENSE.txt'] if row['target']=='windows/amd64' and 'with_external_windivert' not in row['tags'].split(',') else [])})
   if 'trustedExecution' in row:
    native[-1]['trustedExecutionSHA256']=sha(json.dumps(row['trustedExecution'],sort_keys=True,separators=(',', ':')).encode())
-   proof_keys=[key for key in ('sealedExecution','macosExecution','windowsExecution') if key in row['finalPackageCronetSmoke']]
+   proof_keys=[key for key in ('sealedExecution','macosExecution') if key in row['finalPackageCronetSmoke']]
    if len(proof_keys)!=1:raise ValueError('distribution native execution proof is ambiguous')
    proof_key=proof_keys[0]
    native[-1][proof_key+'SHA256']=sha(json.dumps(row['finalPackageCronetSmoke'][proof_key],sort_keys=True,separators=(',', ':')).encode())
@@ -752,27 +685,15 @@ def distribution_materials(index, root=Path('.')):
  return result
 
 
-WINDOWS_PROOF_JOB = 'Explicit SYSTEM final-package Windows native execution proof'
+NATIVE_JOB_NAMES={key:f'Native final-package Cronet and gVisor smoke ({ident})'
+                  for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]}
 
-def expected_native_job_names(rows):
- """The retained proof kind, rather than another successful job, owns evidence."""
- names={key:f'Native final-package Cronet and gVisor smoke ({ident})'
-        for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]}
- selected=[row for row in rows if row.get('target')=='windows/amd64' and not row.get('variant',{}).get('legacy',False)]
- if len(selected)!=1:raise ValueError('native job mapping requires one modern Windows row')
- smoke=selected[0].get('finalPackageCronetSmoke')
- if isinstance(smoke,dict) and 'windowsExecution' in smoke:
-  if 'trustedExecution' not in selected[0] or not isinstance(smoke['windowsExecution'],dict) or smoke['windowsExecution'].get('schema')!='polaris-windows-native-execution-proof-v1':
-   raise ValueError('Windows producer mapping requires retained Windows proof and policy')
-  names['win']=WINDOWS_PROOF_JOB
- return names
-
-def select_native_jobs(rows,jobs,commit,run_id,attempt):
+def select_native_jobs(jobs,commit,run_id,attempt):
  if type(run_id) is not int or run_id<=0 or type(attempt) is not int or attempt<=0:
   raise ValueError('native job run/attempt identity differs')
  if not isinstance(jobs,list) or len(jobs)>1000:raise ValueError('native job API evidence scope differs')
  result={}
- for key,name in expected_native_job_names(rows).items():
+ for key,name in NATIVE_JOB_NAMES.items():
   named=[job for job in jobs if isinstance(job,dict) and job.get('name')==name]
   if len(named)!=1:raise ValueError('missing/duplicate native producer API evidence: '+name)
   job=named[0]
@@ -787,12 +708,9 @@ def select_native_jobs(rows,jobs,commit,run_id,attempt):
 
 def assemble(directory):
  commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
- final=os.environ.get('REQUIRE_RELEASE_TAG')=='true'
- tag_object=None
- if final:
-  expected_object=os.environ.get('EXPECTED_RELEASE_TAG_OBJECT')
-  if not expected_object or not re.fullmatch(r'[0-9a-f]{40}',expected_object):raise ValueError('final index requires preflight tag object')
-  tag_object=verify_checkout(tag,commit,expected_object)
+ expected_object=os.environ.get('EXPECTED_RELEASE_TAG_OBJECT')
+ if not expected_object or not re.fullmatch(r'[0-9a-f]{40}',expected_object):raise ValueError('final index requires preflight tag object')
+ tag_object=verify_checkout(tag,commit,expected_object)
  context=execution_run()
  rows={}
  for p in d.rglob('native-row-*.json'):
@@ -804,7 +722,7 @@ def assemble(directory):
    if old['finalPackageCronetSmoke'] is not None and r != old:raise ValueError('conflicting native smoke receipt')
   rows[r['id']]=r
  expected=expected_native(v)
- if set(rows)!=set(expected):raise ValueError('full upstream native index differs from exact 44 expected archive identities')
+ if set(rows)!=set(expected):raise ValueError('full upstream native index differs from exact expected archive identities')
  for key,r in rows.items():
   if r['target']!=expected[key]['target'] or r['variant']!=expected[key]['variant'] or r['archive']['root']!=key:raise ValueError('assembled native row variant differs from pinned matrix')
  for r in rows.values():
@@ -833,17 +751,16 @@ def assemble(directory):
  run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
  pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100'))
  jobs=[j for page in pages for j in page['jobs']]
- native_jobs=select_native_jobs(rows.values(),jobs,commit,int(run_id),int(attempt))
+ native_jobs=select_native_jobs(jobs,commit,int(run_id),int(attempt))
  # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
  for row in rows.values():
   validate_trusted_execution(row, context)
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
- index={'schema':'polaris-upstream-native-assets-v1' if final else 'polaris-upstream-native-staging-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
+ index={'schema':'polaris-upstream-native-assets-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
  index['distributionMaterials']=distribution_materials(index)
- if final:
-  verify_checkout(tag,commit,tag_object)
-  import jsonschema
-  jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
+ verify_checkout(tag,commit,tag_object)
+ import jsonschema
+ jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
  (d/'polaris-upstream-native-assets.json').write_text(json.dumps(index,indent=2)+'\n', encoding='utf-8', newline='\n')
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('mode',choices=['collect','smoke','assemble']);p.add_argument('directory');a=p.parse_args()

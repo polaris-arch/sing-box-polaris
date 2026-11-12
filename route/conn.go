@@ -143,35 +143,13 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 			dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 		}
 		err = E.Cause(err, "open connection to ", remoteString, dialerString)
-		N.CloseOnHandshakeFailure(conn, onClose, err)
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
 		m.logger.ErrorContext(ctx, err)
 		return
 	}
-	if !flow.replace(1, remoteConn) {
-		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
-		return
-	}
-	err = N.ReportConnHandshakeSuccess(conn, remoteConn)
-	if err != nil {
-		err = E.Cause(err, "report handshake success")
-		remoteConn.Close()
-		N.CloseOnHandshakeFailure(conn, onClose, err)
-		m.logger.ErrorContext(ctx, err)
-		return
-	}
-	if !metadata.TLSFragment && !metadata.TLSRecordFragment && metadata.TLSSpoof == "" {
-		var spliced bool
-		spliced, err = m.spliceConnection(ctx, conn, remoteConn, onClose)
-		if err != nil {
-			N.CloseOnHandshakeFailure(conn, onClose, err)
-			remoteConn.Close()
-			m.logger.ErrorContext(ctx, err)
-			return
-		}
-		if spliced {
-			return
-		}
-	}
+	// Wrap before the only publish: a late second publish would close the base
+	// outside its shared close.
+	base := remoteConn
 	if metadata.TLSFragment || metadata.TLSRecordFragment {
 		remoteConn = tf.NewConn(remoteConn, ctx, metadata.TLSFragment, metadata.TLSRecordFragment, metadata.TLSFragmentFallbackDelay)
 	}
@@ -180,15 +158,36 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		if spoofErr != nil {
 			spoofErr = E.Cause(spoofErr, "tls_spoof setup")
 			remoteConn.Close()
-			N.CloseOnHandshakeFailure(conn, onClose, spoofErr)
+			N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, spoofErr)
 			m.logger.ErrorContext(ctx, spoofErr)
 			return
 		}
 		remoteConn = spoofConn
 	}
-	if (metadata.TLSFragment || metadata.TLSRecordFragment || metadata.TLSSpoof != "") && !flow.wrap(1, remoteConn) {
-		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+	if !flow.replace(1, remoteConn, base) {
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, net.ErrClosed)
 		return
+	}
+	err = N.ReportConnHandshakeSuccess(conn, remoteConn)
+	if err != nil {
+		err = E.Cause(err, "report handshake success")
+		m.closer(ctx, remoteConn).Close()
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
+		m.logger.ErrorContext(ctx, err)
+		return
+	}
+	if !metadata.TLSFragment && !metadata.TLSRecordFragment && metadata.TLSSpoof == "" {
+		var spliced bool
+		spliced, err = m.spliceConnection(ctx, conn, remoteConn, onClose)
+		if err != nil {
+			N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
+			m.closer(ctx, remoteConn).Close()
+			m.logger.ErrorContext(ctx, err)
+			return
+		}
+		if spliced {
+			return
+		}
 	}
 	serverFirst := sniff.Skip(&metadata)
 	var done atomic.Bool
@@ -199,13 +198,13 @@ func (m *ConnectionManager) NewConnection(ctx context.Context, this N.Dialer, co
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.connectionCopy(ctx, conn, remoteConn, false, &done, onClose) }); taskErr != nil {
-		_ = remoteConn.Close()
-		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		_ = m.closer(ctx, remoteConn).Close()
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, taskErr)
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.connectionCopy(ctx, remoteConn, conn, true, &done, onClose) }); taskErr != nil {
-		_ = remoteConn.Close()
-		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		_ = m.closer(ctx, remoteConn).Close()
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, taskErr)
 		return
 	}
 }
@@ -253,12 +252,12 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 				dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 			}
 			err = E.Cause(err, "open packet connection to ", remoteString, dialerString)
-			N.CloseOnHandshakeFailure(conn, onClose, err)
+			N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
 			m.logger.ErrorContext(ctx, err)
 			return
 		}
-		if !flow.replace(1, remoteConn) {
-			N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		if !flow.replace(1, remoteConn, nil) {
+			N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, net.ErrClosed)
 			return
 		}
 		remotePacketConn = bufio.NewUnbindPacketConn(remoteConn)
@@ -280,7 +279,7 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 				dialerString = " using outbound/" + outbound.Type() + "[" + outbound.Tag() + "]"
 			}
 			err = E.Cause(err, "listen packet connection using ", dialerString)
-			N.CloseOnHandshakeFailure(conn, onClose, err)
+			N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, err)
 			m.logger.ErrorContext(ctx, err)
 			return
 		}
@@ -289,16 +288,16 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	if remoteConn != nil {
 		remoteAdmitted = flow.wrap(1, remotePacketConn)
 	} else {
-		remoteAdmitted = flow.replace(1, remotePacketConn)
+		remoteAdmitted = flow.replace(1, remotePacketConn, nil)
 	}
 	if !remoteAdmitted {
-		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, net.ErrClosed)
 		return
 	}
 	err = N.ReportPacketConnHandshakeSuccess(conn, remotePacketConn)
 	if err != nil {
-		conn.Close()
-		remotePacketConn.Close()
+		m.closer(ctx, conn).Close()
+		m.closer(ctx, remotePacketConn).Close()
 		m.logger.ErrorContext(ctx, "report handshake success: ", err)
 		return
 	}
@@ -345,18 +344,19 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 	localAdmitted := flow.wrap(0, conn)
 	remoteAdmitted = flow.wrap(1, destination)
 	if !localAdmitted || !remoteAdmitted {
-		N.CloseOnHandshakeFailure(conn, onClose, net.ErrClosed)
+		// conn may be a late wrapper; close the published local side instead.
+		N.CloseOnHandshakeFailure(&flow.closers[0], onClose, net.ErrClosed)
 		return
 	}
 	var done atomic.Bool
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.packetConnectionCopy(ctx, conn, destination, false, &done, onClose) }); taskErr != nil {
-		_ = destination.Close()
-		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		_ = m.closer(ctx, destination).Close()
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, taskErr)
 		return
 	}
 	if taskErr := m.runtimeTask(ctx, func(ctx context.Context) { m.packetConnectionCopy(ctx, destination, conn, true, &done, onClose) }); taskErr != nil {
-		_ = destination.Close()
-		N.CloseOnHandshakeFailure(conn, onClose, taskErr)
+		_ = m.closer(ctx, destination).Close()
+		N.CloseOnHandshakeFailure(m.closer(ctx, conn), onClose, taskErr)
 		return
 	}
 }
@@ -364,24 +364,24 @@ func (m *ConnectionManager) NewPacketConnection(ctx context.Context, this N.Dial
 func (m *ConnectionManager) connectionCopy(ctx context.Context, source net.Conn, destination net.Conn, direction bool, done *atomic.Bool, onClose N.CloseHandlerFunc) {
 	_, err := bufio.CopyWithIncreateBuffer(destination, source, bufio.DefaultIncreaseBufferAfter, bufio.DefaultBatchSize)
 	if err != nil {
-		common.Close(source, destination)
+		common.Close(m.closer(ctx, source), m.closer(ctx, destination))
 	} else {
 		destinationWriter, _ := N.UnwrapCountWriter(destination, nil)
 		duplexDst, isDuplex := N.UnwrapWriter(destinationWriter).(N.WriteCloser)
 		if isDuplex {
 			err = duplexDst.CloseWrite()
 			if err != nil {
-				common.Close(source, destination)
+				common.Close(m.closer(ctx, source), m.closer(ctx, destination))
 			}
 		} else {
-			destination.Close()
+			m.closer(ctx, destination).Close()
 		}
 	}
 	if done.Swap(true) {
 		if onClose != nil {
 			onClose(err)
 		}
-		common.Close(source, destination)
+		common.Close(m.closer(ctx, source), m.closer(ctx, destination))
 	}
 	if !direction {
 		if err == nil {
@@ -451,7 +451,7 @@ func (m *ConnectionManager) kickWriteHandshake(ctx context.Context, source net.C
 			onClose(err)
 		}
 	}
-	common.Close(source, destination)
+	common.Close(m.closer(ctx, source), m.closer(ctx, destination))
 	if !direction {
 		m.logger.ErrorContext(ctx, "connection upload handshake: ", err)
 	} else {
@@ -460,7 +460,7 @@ func (m *ConnectionManager) kickWriteHandshake(ctx context.Context, source net.C
 	return true
 }
 
-func (m *ConnectionManager) packetConnectionCopy(ctx context.Context, source N.PacketReader, destination N.PacketWriter, direction bool, done *atomic.Bool, onClose N.CloseHandlerFunc) {
+func (m *ConnectionManager) packetConnectionCopy(ctx context.Context, source N.PacketConn, destination N.PacketConn, direction bool, done *atomic.Bool, onClose N.CloseHandlerFunc) {
 	_, err := bufio.CopyPacket(destination, source)
 	if !direction {
 		if err == nil {
@@ -484,7 +484,7 @@ func (m *ConnectionManager) packetConnectionCopy(ctx context.Context, source N.P
 			onClose(err)
 		}
 	}
-	common.Close(source, destination)
+	common.Close(m.closer(ctx, source), m.closer(ctx, destination))
 }
 
 // All physical closes, including the original returned to a TUN splice, share

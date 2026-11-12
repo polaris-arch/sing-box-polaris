@@ -40,19 +40,11 @@ func (s *Box) GetRuntimeConfigStatus(actor, incarnation, transaction string) (Ru
 	return result, nil
 }
 
-// BindRuntimePersistence is set by the existing authenticated owner before
+// BindRuntimePersistenceOptions is set by the existing authenticated owner before
 // startup. The callback receives a detached effective snapshot after publication.
 // It cannot roll back the commit and its errors stay visible in operation status.
-func (s *Box) BindRuntimePersistence(persist func(RuntimeIdentity, []byte) error) error {
-	return s.BindRuntimePersistenceMode(persist, "owner_acknowledged")
-}
-
-func (s *Box) BindRuntimePersistenceMode(persist func(RuntimeIdentity, []byte) error, mode string) error {
-	return s.BindRuntimePersistenceOptions(persist, mode, false)
-}
-
-// BindRuntimePersistenceOptions explicitly opts a host into same-identity,
-// same-byte replay after partial success, errors or a later namespace failure.
+// retrySafe explicitly opts a host into same-identity, same-byte replay after
+// partial success, errors or a later namespace failure.
 // Callbacks are synchronous and must not call Close, Ack or control operations.
 // Generic callbacks remain non-repeatable unless their owner makes this promise.
 func (s *Box) BindRuntimePersistenceOptions(persist func(RuntimeIdentity, []byte) error, mode string, retrySafe bool) error {

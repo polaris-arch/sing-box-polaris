@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -261,9 +263,29 @@ func (c *STDServerConfig) startWatcher() error {
 	if len(watchPath) == 0 {
 		return nil
 	}
+	for i, path := range watchPath {
+		watchPath[i], _ = filepath.Abs(filemanager.BasePath(c.ctx, path))
+	}
 	watcher, err := fswatch.NewWatcher(fswatch.Options{
-		Path: watchPath,
+		// Directories also see replaced symlinks such as the ..data swap of
+		// Kubernetes secret volumes, which never touches the file names.
+		Directory: common.Map(watchPath, filepath.Dir),
 		Callback: func(path string) {
+			// A directory entry is related if it is a watched file, the
+			// directory of a watched regular file, or the target of a watched
+			// symlink or a directory that target resolves through.
+			if !common.Any(watchPath, func(it string) bool {
+				if it == path {
+					return true
+				}
+				target, _ := os.Readlink(it)
+				if !filepath.IsAbs(target) {
+					target = filepath.Join(filepath.Dir(it), target)
+				}
+				return strings.HasPrefix(target+string(filepath.Separator), path+string(filepath.Separator))
+			}) {
+				return
+			}
 			if c.runtime != nil {
 				leave, err := c.runtime.fence.Acquire()
 				if err != nil {
@@ -271,7 +293,7 @@ func (c *STDServerConfig) startWatcher() error {
 				}
 				defer leave()
 			}
-			err := c.certificateUpdated(path)
+			err := c.certificateUpdated()
 			if err != nil {
 				c.logger.Error(E.Cause(err, "reload certificate"))
 			}
@@ -291,33 +313,38 @@ func (c *STDServerConfig) startWatcher() error {
 	return nil
 }
 
-func (c *STDServerConfig) certificateUpdated(path string) error {
-	if path == c.certificatePath || path == c.keyPath {
-		switch path {
-		case c.certificatePath:
-			certificate, err := filemanager.ReadFile(c.ctx, c.certificatePath)
+func (c *STDServerConfig) certificateUpdated() error {
+	var err error
+	if c.certificatePath != "" || c.keyPath != "" {
+		certificate, key := c.certificate, c.key
+		if c.certificatePath != "" {
+			certificate, err = filemanager.ReadFile(c.ctx, c.certificatePath)
 			if err != nil {
-				return E.Cause(err, "reload certificate from ", c.certificatePath)
+				err = E.Cause(err, "reload certificate from ", c.certificatePath)
 			}
-			c.certificate = certificate
-		case c.keyPath:
-			key, err := filemanager.ReadFile(c.ctx, c.keyPath)
+		}
+		if err == nil && c.keyPath != "" {
+			key, err = filemanager.ReadFile(c.ctx, c.keyPath)
 			if err != nil {
-				return E.Cause(err, "reload key from ", c.keyPath)
+				err = E.Cause(err, "reload key from ", c.keyPath)
 			}
-			c.key = key
 		}
-		keyPair, err := tls.X509KeyPair(c.certificate, c.key)
-		if err != nil {
-			return E.Cause(err, "reload key pair")
+		if err == nil {
+			var keyPair tls.Certificate
+			keyPair, err = tls.X509KeyPair(certificate, key)
+			if err != nil {
+				err = E.Cause(err, "reload key pair")
+			} else {
+				c.access.Lock()
+				config := c.config.Clone()
+				config.Certificates = []tls.Certificate{keyPair}
+				c.config = config
+				c.access.Unlock()
+				c.logger.Info("reloaded TLS certificate")
+			}
 		}
-		c.access.Lock()
-		config := c.config.Clone()
-		config.Certificates = []tls.Certificate{keyPair}
-		c.config = config
-		c.access.Unlock()
-		c.logger.Info("reloaded TLS certificate")
-	} else if common.Contains(c.clientCertificatePath, path) {
+	}
+	if len(c.clientCertificatePath) > 0 {
 		clientCertificateCA := x509.NewCertPool()
 		var reloaded bool
 		for _, certPath := range c.clientCertificatePath {
@@ -333,26 +360,27 @@ func (c *STDServerConfig) certificateUpdated(path string) error {
 			reloaded = true
 		}
 		if !reloaded {
-			return E.New("client certificates is empty")
+			err = E.Errors(err, E.New("client certificates is empty"))
+		} else {
+			c.access.Lock()
+			config := c.config.Clone()
+			config.ClientCAs = clientCertificateCA
+			c.config = config
+			c.access.Unlock()
+			c.logger.Info("reloaded client certificates")
 		}
-		c.access.Lock()
-		config := c.config.Clone()
-		config.ClientCAs = clientCertificateCA
-		c.config = config
-		c.access.Unlock()
-		c.logger.Info("reloaded client certificates")
-	} else if path == c.echKeyPath {
-		echKey, err := filemanager.ReadFile(c.ctx, c.echKeyPath)
-		if err != nil {
-			return E.Cause(err, "reload ECH keys from ", c.echKeyPath)
-		}
-		err = c.setECHServerConfig(echKey)
-		if err != nil {
-			return err
-		}
-		c.logger.Info("reloaded ECH keys")
 	}
-	return nil
+	if c.echKeyPath != "" {
+		echKey, echErr := filemanager.ReadFile(c.ctx, c.echKeyPath)
+		if echErr != nil {
+			err = E.Errors(err, E.Cause(echErr, "reload ECH keys from ", c.echKeyPath))
+		} else if echErr = c.setECHServerConfig(echKey); echErr != nil {
+			err = E.Errors(err, echErr)
+		} else {
+			c.logger.Info("reloaded ECH keys")
+		}
+	}
+	return err
 }
 
 func (c *STDServerConfig) Close() error {

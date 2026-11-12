@@ -41,7 +41,7 @@ type appPolicyPacket struct{ net.PacketConn }
 func (*appPolicyPacket) Close() error { return nil }
 
 func TestAppGeneratedNodePolicyDialAndListen(t *testing.T) {
-	for _, platform := range []string{"linux", "android", "ios"} {
+	for _, platform := range []string{"linux", "android"} {
 		for _, scenario := range []string{"tier1-hit", "poison-tier2"} {
 			t.Run(platform+"/"+scenario, func(t *testing.T) {
 				data, err := os.ReadFile(filepath.Join("testdata", "node-policy", platform+".json"))

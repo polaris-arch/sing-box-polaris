@@ -81,8 +81,6 @@ type RuntimeConfigCapabilities struct {
 	FullConfiguration                   bool                               `json:"full_configuration"`
 	Enabled                             bool                               `json:"enabled"`
 	Identity                            RuntimeIdentity                    `json:"identity"`
-	SupportedPaths                      []string                           `json:"supported_paths"`
-	PendingAdapters                     []string                           `json:"pending_adapters"`
 	SupportedClientImpactPolicyVersions []RuntimeClientImpactPolicyVersion `json:"supported_client_impact_policy_versions"`
 }
 

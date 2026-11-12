@@ -9,7 +9,7 @@ import (
 func runtimeOwnerAckFixture(t *testing.T, callbackError error) (*runtimeTestFixture, RuntimeConfigOperation, RuntimePersistenceAcknowledgement) {
 	t.Helper()
 	f := newRuntimeTestFixture(t, runtimeTestConfig(1080, "before.example"), nil)
-	if err := f.box.BindRuntimePersistenceMode(func(RuntimeIdentity, []byte) error { return callbackError }, "app_authoritative_regeneration"); err != nil {
+	if err := f.box.BindRuntimePersistenceOptions(func(RuntimeIdentity, []byte) error { return callbackError }, "app_authoritative_regeneration", false); err != nil {
 		t.Fatal(err)
 	}
 	f.start(t)

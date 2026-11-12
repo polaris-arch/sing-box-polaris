@@ -124,7 +124,7 @@ func TestDailyTailscaleAndTailcatInventoryUsesReviewedAdapters(t *testing.T) {
 	if capabilities.Enabled || capabilities.FullConfiguration {
 		t.Fatal("source inventory enabled the public capability")
 	}
-	for _, pending := range capabilities.PendingAdapters {
+	for _, pending := range runtimePendingAdapters() {
 		if pending == "outbounds[tailcat]" || pending == "endpoints[tailscale]" {
 			t.Fatal("composed adapter still advertised as pending", pending)
 		}
@@ -137,7 +137,7 @@ func TestDailyStableAPICapabilityBoundary(t *testing.T) {
 		t.Fatal("stable API support enabled public capability")
 	}
 	found := false
-	for _, pending := range capabilities.PendingAdapters {
+	for _, pending := range runtimePendingAdapters() {
 		if pending == "services" {
 			t.Fatal("unchanged plain loopback API is not a pending adapter")
 		}

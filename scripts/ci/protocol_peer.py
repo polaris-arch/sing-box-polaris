@@ -22,7 +22,6 @@ import subprocess
 import tempfile
 import threading
 import time
-from protocol_peer_netlog import NativeObservationIdentityError, NativeObservationEvidenceError, failure_category
 from protocol_peer_cases import case_matrix
 
 
@@ -833,7 +832,7 @@ def process_group_members(group):
 
 
 class CoreProcess:
-    def __init__(self, binary, config, directory, name, expected_hash, events=None, native_netlog=None):
+    def __init__(self, binary, config, directory, name, expected_hash, events=None):
         self.events=events
         self.role=name
         self.inspection_gate=threading.RLock()
@@ -848,14 +847,8 @@ class CoreProcess:
         if name == 'peer':
             # Existing quic-go error logger only in this private controlled peer.
             env['QUIC_GO_LOG_LEVEL'] = 'error'
-        self.native_netlog_path=None;self.native_netlog_identity=None
-        arguments=[str(binary),'--disable-color','run','-c',str(self.config_path)]
-        if native_netlog is not None:
-            self.native_netlog_path=directory/(name+'.private.netlog.json')
-            arguments+=['--native-peer-netlog',str(self.native_netlog_path),'--native-peer-netlog-library',str(binary.parent/native_netlog['member']),
-                '--native-peer-netlog-sha256',native_netlog['sha256'],'--native-peer-netlog-version',native_netlog['version']]
         try:
-            self.process = subprocess.Popen(arguments,
+            self.process = subprocess.Popen([str(binary),'--disable-color','run','-c',str(self.config_path)],
                                             cwd=binary.parent, env=env, stdout=self.log, stderr=subprocess.STDOUT,
                                             start_new_session=True)
         except BaseException:
@@ -987,9 +980,6 @@ class CoreProcess:
                         'safeLog':safe_log_observation(raw,self.source_root) if log_available else {'unavailable':True},
                         'remainingGroup': members, 'cleanupErrorLog': close_error,
                         'privateLogSHA256': digest(raw) if log_available else None, 'privateLogBytes': len(raw) if log_available else None}
-        if getattr(self,'native_netlog_path',None) is not None:
-            fixed=re.findall(rb'(?m)^native peer private observation unknown: (startup|finish|shutdown)$',raw)
-            self.cleanup['nativeObservationFailureStages']=[v.decode() for v in fixed]
         self.cleanup['gracefulCleanupProven']=not (failure or resource_errors or forced or members or close_error or self.process.returncode != 0)
         self.stopped = True
         event(self.events,self.role+'.process.close.observed',exitCode=self.process.returncode,forcedKill=forced,cleanupErrorLog=close_error)
@@ -1522,13 +1512,8 @@ def run_case(binary, row, root, kind, mutation=None):
             path = directory / (label + '-check.private.json'); private_write(path, json.dumps(cfg))
             event(events,label+'.configuration.check')
             config_check(binary,path,directory,label,result['configurationChecks'])
-            observe_certificate=kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni')
-            netlog=None
-            if observe_certificate:
-                pins=json.loads((Path(__file__).resolve().parents[2]/'release/polaris-candidate-inputs.json').read_bytes())
-                netlog={**row['sidecar'],'version':pins['cronetVersion']}
             try:
-                proc = CoreProcess(binary,cfg,directory,label,row['core']['sha256'],events,**({'native_netlog':netlog} if netlog is not None else {}))
+                proc = CoreProcess(binary,cfg,directory,label,row['core']['sha256'],events)
             except Exception:
                 result['identityUncertain']=True;raise
             processes.append(proc)
@@ -1536,17 +1521,6 @@ def run_case(binary, row, root, kind, mutation=None):
                 raise IdentityFailure('actual negative configuration differs from mutation proof')
             if relay: relay.bind_owner(proc)
             proc.wait_tcp(mixed)
-            if observe_certificate:
-                from protocol_peer_netlog import private_identity
-                native_identity=event(events,label+'.netlog.native_identity.verify',status='RUNNING',pid=proc.pid)
-                try:
-                    proc.native_netlog_identity=private_identity(proc.native_netlog_path)
-                    result.setdefault('nativeCertificateProcesses',[]).append({'role':label,'pid':proc.pid,
-                        'startTicks':proc.start_identity['startTicks'],'coreSHA256':row['core']['sha256'],
-                        'actualLibrary':bound_library(proc,binary,row)})
-                except Exception as error:
-                    native_identity.update(status='FAIL',category=failure_category(error));raise
-                native_identity['status']='PASS'
             if kind.startswith('masque') and alter is None and not kind.endswith('on-demand'): proc.wait_assigned()
             return proc, mixed
         target = '127.0.0.1' if kind.startswith('naive') else '198.18.0.1'
@@ -1581,9 +1555,6 @@ def run_case(binary, row, root, kind, mutation=None):
                 udp_exchange(mixed,target,udp_echo.port,events,'healthy',result['applicationUDP'])
         if relay: relay.prepare_owner_retirement()
         healthy.close()
-        if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
-            from protocol_peer_netlog import leaf_hash
-            result['healthyNativeCertificate']=collect_native_certificate(healthy,'controlled.invalid',leaf_hash(cert),'healthy',events)
         before = echo.received
         retired = retire_old_stream(old_connection,events); old_connection = None
         time.sleep(.2)
@@ -1615,13 +1586,8 @@ def run_case(binary, row, root, kind, mutation=None):
             client_raw=client.log_path.read_bytes();peer_raw=peer.log_path.read_bytes()
             if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
                 result['negativePeerObservations']=[capture_peer_certificate_log_observation(peer_raw,peer_offset,'proof_attempt',peer)]
-            if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
-                # Exact native certificate result is checked only after this
-                # actual negative process has stopped and flushed its own file.
-                result['negative']={'nativeCertificatePending':True}
-            else:
-                result['negative'] = negative_evidence(kind, mutation, client_raw, peer_raw,
-                                                       peer_offset=peer_offset,mutation_proof=result['mutationProof'])
+            result['negative'] = negative_evidence(kind, mutation, client_raw, peer_raw,
+                                                   peer_offset=peer_offset,mutation_proof=result['mutationProof'])
             result['negative']['peerIdentity'] = {'pid':peer.pid,'startTicks':peer.start_identity['startTicks'],'coreSHA256':row['core']['sha256']}
             result['negative']['peerWindowBeforeSHA256'] = digest(peer_log_before_negative)
             result['negative'].update({'tcpAcceptDelta': 0, 'tcpByteDelta': 0, 'udpNegativeAttempted': False})
@@ -1647,9 +1613,6 @@ def run_case(binary, row, root, kind, mutation=None):
             if (echo.accepted, echo.received, udp_echo.received) != baseline:
                 raise RuntimeError('negative late fallback reached echo before complete retirement')
             result['negative']['afterCompleteClientRetirementZeroEchoDelta'] = True
-            if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
-                result['negative']['nativeCertificate']=collect_native_certificate(client,'wrong.invalid' if mutation=='wrong-sni' else 'controlled.invalid',leaf_hash(cert),mutation,events)
-                result['negative']['nativeCertificatePending']=False
         else:
             result['freshProcessTCP']=[]
             tcp_exchange(mixed,target,echo.port,(4096,),events=events,label='reconnected',facts=result['freshProcessTCP'])
@@ -1660,8 +1623,7 @@ def run_case(binary, row, root, kind, mutation=None):
         result['status'] = 'PASS'
     except Exception as error:
         primary = error
-        if isinstance(error,NativeObservationEvidenceError):result['nativeCertificateFailure']=error.evidence
-        if isinstance(error,(IdentityFailure,NativeObservationIdentityError)):
+        if isinstance(error,IdentityFailure):
             result['identityUncertain']=True
             for item in events:
                 if item['stage'].endswith('native_identity.verify') and item.get('status')=='RUNNING':
@@ -1733,17 +1695,6 @@ def run_case(binary, row, root, kind, mutation=None):
         result['privateLogs']=[{'name':path.name,**safe_log_observation(path.read_bytes(),Path(__file__).resolve().parents[2])} for path in directory.glob('*.private.log')]
         result['continuationSafe']=safe_to_continue(result)
     return result
-
-def collect_native_certificate(process, host, leaf, mutation, events):
-    from protocol_peer_netlog import collect
-    fact=event(events,process.role+'.native_certificate.verify',status='RUNNING',pid=process.pid,
-        startTicks=process.start_identity['startTicks'],coreSHA256=process.bound_sha256)
-    try:result=collect(process,host,leaf,mutation)
-    except Exception as error:
-        fact.update(status='FAIL',category=failure_category(error));raise
-    fact.update(status='PASS',verificationCount=result.get('verificationCount'))
-    return result
-
 
 def verify_source_owned_replacements(modules):
     # Use the producer's Go parser and exact HEAD directory identities. A source

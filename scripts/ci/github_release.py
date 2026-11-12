@@ -234,18 +234,17 @@ RID = 1421657509
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = ROOT / 'release/ci/publisher-upstream-scope.json'
 CONFIG = ROOT / 'release/ci/github-release.json'
-CANONICAL_METADATA = 'SFA-version-metadata.json'
-# Android overlay definition reviewed together with the reused Android material reference.
-ANDROID_DEFINITION_SHA256 = '6f07e48e2cb13c83af50c4498530cc9102725d39b5503be40b5e633f2a37e265'
-VERSION = validate_version(json.loads(CONFIG.read_text(encoding='utf-8'))['version'])
-PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
-TAG = 'v' + VERSION
-RECEIPT = 'polaris-github-release-receipt-' + VERSION + '.json'
-BLOCKED = [
-    'Signed installable iOS and tvOS IPA exports require owned signing and provisioning.',
-    'Signed macOS App Store PKG and Developer ID signed/notarized standalone PKG require owned signing.',
-    'Store/TestFlight submissions and registry pushes are outside this GitHub-only release.',
-]
+# Bound once by bind_release() from the validated build run's dispatched tag; never from a committed file.
+VERSION = PUBLIC_VERSION = TAG = RECEIPT = None
+
+
+def bind_release(tag):
+    global VERSION, PUBLIC_VERSION, TAG, RECEIPT
+    require(isinstance(tag, str) and tag.startswith('v'), 'build run must be dispatched on a version tag')
+    VERSION = validate_version(tag[1:])
+    PUBLIC_VERSION = VERSION.replace('-polaris-', '-', 1)
+    TAG = 'v' + VERSION
+    RECEIPT = 'polaris-github-release-receipt-' + VERSION + '.json'
 
 
 def require(condition, message):
@@ -303,10 +302,6 @@ def identity(source, source_dir):
     require(api(f'repos/{REPO}')['id'] == RID, 'remote repository ID mismatch')
     require(command('git', '-C', str(source_dir), 'rev-parse', 'HEAD') == source, 'publisher checkout differs from source')
     require(not command('git', '-C', str(source_dir), 'status', '--porcelain', '--untracked-files=no'), 'tracked source is dirty')
-    require(sha(ROOT / 'release/ci/client-overlays.json') == sha(source_dir / 'release/ci/client-overlays.json'), 'publisher client overlay contract differs from actual build source')
-    for path in ('release/ci/apple-swift-package-overlays.json', 'scripts/ci/apple_package_overlays.py', 'scripts/ci/client_source.py'):
-        require((ROOT / path).is_file() and (source_dir / path).is_file()
-                and sha(ROOT / path) == sha(source_dir / path), 'publisher Apple package policy differs from actual build source: ' + path)
     owned = Path('release/ci/owned-distribution.json')
     if (ROOT / owned).exists() or (source_dir / owned).exists():
         require((ROOT / owned).is_file() and (source_dir / owned).is_file() and sha(ROOT / owned) == sha(source_dir / owned), 'publisher owned identity configuration differs from source')
@@ -329,8 +324,6 @@ def upload_endpoint(release, name):
 
 
 def validate_final_index(index, source, tree, tag_object, run_id, attempt, workflow, source_root=ROOT):
-    # A staging index is useful evidence, but never a production publication input.
-    require(index.get('schema') == 'polaris-upstream-native-assets-v1', 'final native index schema required; staging forbidden')
     import jsonschema
     jsonschema.Draft202012Validator(json.loads((ROOT / 'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
     for key, value in [('repository', REPO), ('repositoryId', RID), ('version', VERSION), ('tag', TAG),
@@ -342,7 +335,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
             'final native producer identity mismatch')
     from native_release_index import expected_native, validate_trusted_execution, select_native_jobs
     expected = expected_native(VERSION)
-    require(len(index['platforms']) == 44 and {x['id'] for x in index['platforms']} == set(expected), 'exact 44 native identities required')
+    require(len(index['platforms']) == len(expected) and {x['id'] for x in index['platforms']} == set(expected), 'exact native identities required')
     for row in index['platforms']:
         validate_trusted_execution(row, producer, source_root)
         require((row['sourceCommit'], row['sourceTree'], row['version'], row['tag']) == (source, tree, VERSION, TAG), 'mixed source native row')
@@ -351,7 +344,7 @@ def validate_final_index(index, source, tree, tag_object, run_id, attempt, workf
         suffix = '.zip' if row['target'].startswith('windows/') else '.tar.gz'
         require(row['archive']['root'] == row['id'] and row['archive']['name'] == row['id'] + suffix, 'native archive identity mismatch')
     jobs = pages(f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs', 'jobs', maximum=1000)
-    require(producer['nativeJobs'] == select_native_jobs(index['platforms'], jobs, source, int(run_id), attempt),
+    require(producer['nativeJobs'] == select_native_jobs(jobs, source, int(run_id), attempt),
             'native producer job mapping differs from retained proof/API evidence')
     require(index['sourceArchive']['name'] == 'sing-box-polaris-source-' + source + '.tar.gz', 'immutable source archive basename required')
     from native_release_index import distribution_materials
@@ -364,40 +357,20 @@ def producer_publication(role, artifact, relative):
     require(role == 'all', 'unknown publication role')
     basename = PurePosixPath(relative).name
     if basename.startswith(('polaris-candidate-manifest-', 'native-row-')) or artifact in (
-            'publisher-run-receipt', 'go-win7-toolchain', 'native-controlled-peer'):
+            'publisher-run-receipt', 'native-controlled-peer'):
         return None, 'producer-evidence'
-    if artifact.startswith('libbox-'):
-        return None, 'internal-sdk'
-    if artifact.startswith('unsigned-apple-'):
-        return None, 'internal-unsigned-archive'
     if artifact == 'binary-native-index':
         return None, 'audited-source-and-index'
     require(artifact.startswith('binary-'), 'unknown public artifact')
-    if artifact in ('binary-android-apks-other', 'binary-android-apks-other-legacy') and basename.endswith('-version-metadata.json'):
-        if artifact.endswith('other-legacy'):
-            return None, 'identical-android-metadata'
-        return 'sing-box-polaris-SFA-version-metadata.json', 'upstream-public-product'
-    if artifact.startswith(('binary-android-apks-', 'binary-windows-client-',
-                            'binary-linux-client-', 'binary-apple-')):
-        return branded_client_name(basename), 'upstream-public-product'
     return public_product_name(basename), 'upstream-public-product'
 
 
 def public_asset_name(name):
     """Outer GitHub filename only; never alter producer/archive/native-index identity."""
     name = public_product_name(name)
-    if name.startswith('sing-box-polaris-SF'):
-        name = name.removeprefix('sing-box-polaris-')
-    if name == CANONICAL_METADATA:
-        return name
-    require(name.startswith(('sing-box-polaris-', 'sing-box-polaris_',
-                             'SFA-', 'SFI-', 'SFL-', 'SFM-', 'SFW-')),
-            'unknown public product filename')
+    require(name.startswith('sing-box-polaris-'), 'unknown public product filename')
     require(name.count(VERSION) == 1, 'public producer filename lacks exact Polaris version')
-    name = name.replace(VERSION, PUBLIC_VERSION, 1)
-    if name.startswith('SFA-') and name.endswith('-unsigned.apk'):
-        name = name.removesuffix('-unsigned.apk') + '.apk'
-    return name
+    return name.replace(VERSION, PUBLIC_VERSION, 1)
 
 
 def publication(role, artifact, relative):
@@ -407,29 +380,6 @@ def publication(role, artifact, relative):
 
 def default_name(role, artifact, relative):
     return publication(role, artifact, relative)[0]
-
-
-def verify_metadata_pair(result):
-    artifacts = result['runs']['all']['artifacts']
-    names = ('binary-android-apks-other', 'binary-android-apks-other-legacy')
-    rows = []
-    for name in names:
-        require(name in artifacts, 'missing Android metadata producer')
-        matches = [f for path, f in artifacts[name]['files'].items() if path.endswith('-version-metadata.json')]
-        require(len(matches) == 1, 'Android metadata scope mismatch')
-        rows.append(matches[0])
-    require((rows[0]['bytes'], rows[0]['sha256']) == (rows[1]['bytes'], rows[1]['sha256']),
-            'Android flavor metadata differs; cannot collapse')
-
-
-def branded_client_name(name):
-    """Public derivative name only; exact upstream candidate paths stay in the receipt."""
-    if name.startswith('sing-box-polaris-'):
-        return name
-    if name.startswith(('sing-box-', 'sing-box_')):
-        return public_product_name(name)
-    return 'sing-box-polaris-' + name
-
 
 
 def release_scope(version):
@@ -468,27 +418,6 @@ def verify_payloads(files, rules, artifact):
     require(matched == payloads, 'unlisted payload file in '+artifact)
 
 
-def client_platform(artifact):
-    for prefix, platform in [('binary-android-apks-', 'android'), ('binary-windows-client-', 'windows'),
-                             ('binary-linux-client-', 'linux'), ('binary-apple-', 'apple'),
-                             ('unsigned-apple-', 'apple')]:
-        if artifact.startswith(prefix):
-            return platform
-    return None
-
-
-def validate_client_source(provenance, artifact, source):
-    from client_source import validate
-    platform = client_platform(artifact)
-    record = provenance.get('clientSource')
-    if platform is None:
-        require(record is None, 'unexpected client source receipt in core/library artifact')
-    else:
-        require(isinstance(record, dict), 'client artifact lacks actual client source evidence')
-        validate(record, platform, source, True)
-    return record
-
-
 def associate_distribution_materials(result, index, index_sha):
     """Associate every public payload with the same existing immutable source/legal assets."""
     require(index['sourceCommit'] == result['sourceCommit'] and index['sourceTree'] == result['sourceTree'],
@@ -500,85 +429,11 @@ def associate_distribution_materials(result, index, index_sha):
     result['distributionMaterials'] = shared
     for role, run in result['runs'].items():
         for artifact, item in run['artifacts'].items():
-            clients = [f['clientSource'] for f in item['files'].values() if 'clientSource' in f]
-            require(len(clients) <= 1, 'duplicate client material record')
             for relative, record in item['files'].items():
                 if record['releaseName'] is None:
                     continue
                 record['distributionMaterials'] = dict(shared)
-                if clients:
-                    c = clients[0]
-                    require(c['coreSourceCommit'] == result['sourceCommit'], 'mixed client material source')
-                    sources = json.loads((ROOT / 'release/dependency-sources/clients/current-client-sources.json').read_text(encoding='utf-8'))['clients']
-                    acquired = [x for x in sources if x['repository'] == c['repository'] and x['baseCommit'] == c['baseCommit']]
-                    require(len(acquired) == 1 and acquired[0]['fullSourceGetVerified'] is True, 'actual client base differs from acquired shared source')
-                    record['distributionMaterials']['clientSource'] = {
-                        'repository': c['repository'], 'baseCommit': c['baseCommit'],
-                        'sourceURL': 'https://github.com/'+c['repository']+'/tree/'+c['baseCommit'],
-                        'overlayManifestSHA256': c['overlayManifestSHA256'],
-                        'diffSHA256': c['diffSHA256'],
-                        'sourceArchiveURL': acquired[0]['sourceURL'],
-                        'sourceArchiveSHA256': acquired[0]['sourceArchiveSHA256'],
-                        'receiptArtifactPath': next(k for k,v in item['files'].items() if 'clientSource' in v)}
-                    if 'swiftPackageOverlays' in c:
-                        packages = c['swiftPackageOverlays']
-                        record['distributionMaterials']['clientSource']['swiftPackageOverlays'] = {
-                            'manifestSHA256': packages['manifestSHA256'],
-                            'lockSHA256': packages['lockSHA256'],
-                            'evidenceSHA256': hashlib.sha256(json.dumps(packages, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
     return result
-
-
-def validate_android_material_reuse(record, configuration, client_source, root=ROOT):
-    """Reuse reviewed dependency materials only for identical actual runtime artifacts."""
-    from android_runtime_materials import validate as validate_android_runtime
-    root = Path(root)
-    directory = root / 'release/dependency-sources/clients/runtime/android-resolved'
-    reference_path = directory / 'reuse-reference.json'
-    reference = json.loads(reference_path.read_text(encoding='utf-8'))
-    require(reference.get('schema') == 'polaris-android-material-reuse-v1', 'invalid Android material reference schema')
-    material_map = directory / 'source-notice-map.json'
-    require(sha(material_map) == reference.get('materialMapSHA256'), 'Android source/notice map changed')
-    materials = json.loads(material_map.read_text(encoding='utf-8'))
-    require(materials.get('concreteUnresolvedMaterials') == [], 'Android source/notice materials remain unresolved')
-    identity_keys = ('repository', 'baseCommit', 'baseTree', 'overlayManifestSHA256', 'platform', 'unsigned')
-    require(isinstance(client_source, dict) and all(key in client_source for key in identity_keys), 'missing Android client material identity')
-    actual_identity = {key: client_source[key] for key in identity_keys}
-    expected_identity = reference.get('clientSource')
-    if actual_identity != expected_identity:
-        # Edits to other platforms may change the whole overlay manifest.
-        # Never relabel the historical reference or relax Android/runtime byte identity.
-        require(isinstance(expected_identity, dict) and
-                all(actual_identity[key] == expected_identity.get(key) for key in identity_keys if key != 'overlayManifestSHA256'),
-                'Android client source material reference drift')
-        manifest_path = root / 'release/ci/client-overlays.json'
-        require(actual_identity['overlayManifestSHA256'] == sha(manifest_path),
-                'Android overlay material reference drift: overlay manifest differs')
-        android = json.loads(manifest_path.read_text(encoding='utf-8'))['platforms']['android']
-        definition_sha = hashlib.sha256(json.dumps(android, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        require(definition_sha == ANDROID_DEFINITION_SHA256,
-                'Android overlay material reference drift: Android definition changed')
-    actual = validate_android_runtime(record, configuration)
-    expected = reference.get('variants', {}).get(configuration)
-    require(isinstance(expected, dict), 'missing Android configuration material reference')
-    # Root-project coordinates and version injection are not external distributed bytes.
-    # Only the selected external artifact identities and their exact bytes are reused.
-    fields = ('module', 'name', 'artifactIdentity', 'artifactName', 'type', 'extension',
-              'classifier', 'componentSelectedVariants', 'bytes', 'sha256')
-    def canonical(artifacts):
-        values = []
-        for artifact in artifacts:
-            item = {key: artifact[key] for key in fields}
-            item['componentSelectedVariants'] = sorted(item['componentSelectedVariants'], key=lambda v: json.dumps(v, sort_keys=True))
-            values.append(json.dumps(item, sort_keys=True, separators=(',', ':')))
-        return sorted(values)
-    require(canonical(actual['artifacts']) == canonical(expected['artifacts']), 'Android actual runtime artifact material drift')
-    mapped = set(canonical([item['artifact'] for item in materials['components']]))
-    require(set(canonical(actual['artifacts'])) <= mapped, 'Android actual artifact lacks exact source/notice mapping')
-    evidence = {'referenceSHA256': sha(reference_path), 'materialMapSHA256': sha(material_map),
-                'configuration': configuration, 'actualArtifactCount': len(actual['artifacts']),
-                'sourceMaterialsReusable': True, 'legalConclusion': False}
-    return evidence
 
 
 def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, budget=None):
@@ -586,7 +441,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
     scope = release_scope(VERSION)
     require(set(runs) == {'all'}, 'exactly the all run is mandatory')
     result = {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'sourceCommit': source,
-              'scopeSha256': sha(SCOPE), 'reviewed': False, 'runs': {}, 'signedOnlyBlockers': BLOCKED,
+              'scopeSha256': sha(SCOPE), 'reviewed': False, 'runs': {},
               'sourceTree': source_tree, 'tag': TAG, 'tagObject': tag_object}
     for role, rid in runs.items():
         require(re.fullmatch(r'[1-9][0-9]*', rid), 'invalid run ID')
@@ -598,7 +453,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
         artifacts = pages(f'repos/{REPO}/actions/runs/{rid}/artifacts', 'artifacts')
         names = [x['name'] for x in artifacts]
         require(len({x['id'] for x in artifacts}) == len(artifacts), 'duplicate Actions artifact IDs')
-        verify_artifact_names(names, scope[role]['requiredArtifacts'], role)
+        verify_artifact_names(names, scope[role]['payloadRules'], role)
         entry = {'id': rid, 'attempt': run['run_attempt'], 'workflow': run['path'], 'artifacts': {}}
         receipt = None
         for a in artifacts:
@@ -607,7 +462,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
             arun = a.get('workflow_run', {})
             require(arun.get('id') == int(rid) and arun.get('head_sha') == source, 'artifact source mismatch')
             files = {}
-            client_sources = []
             with artifact_archive(a, budget) as (archive, members):
                 for item in members:
                     if item.is_dir():
@@ -621,7 +475,7 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                     evidence = candidate or (a['name'], relative) in {
                         ('publisher-run-receipt', 'publisher-run-receipt.json'),
                         ('binary-native-index', 'polaris-upstream-native-assets.json')}
-                    limit = (3 * 1024**2 if candidate and client_platform(a['name']) else JSON_LIMIT) if evidence else None
+                    limit = JSON_LIMIT if evidence else None
                     if a['name'] == 'binary-native-index':
                         target = work / role / a['name'] / relative
                         target.parent.mkdir(parents=True, exist_ok=True)
@@ -643,24 +497,11 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                         receipt = provenance
                     if candidate:
                         require(provenance['sourceCommit'] == source and str(provenance['workflowRunId']) == rid and int(provenance['workflowAttempt']) == run['run_attempt'], 'candidate manifest source/run mismatch')
-                        measured = validate_client_source(provenance, a['name'], source)
-                        if measured is not None:
-                            client_sources.append(measured)
-                            # Retained in reviewed inventory and audit receipt,
-                            # rather than only in a discarded metadata ZIP member.
-                            files[relative]['clientSource'] = measured
-                            if client_platform(a['name']) == 'android':
-                                from android_runtime_materials import validate as validate_android_runtime
-                                configuration = 'otherLegacyReleaseRuntimeClasspath' if a['name'].endswith('other-legacy') else 'otherReleaseRuntimeClasspath'
-                                files[relative]['androidRuntimeMaterials'] = validate_android_runtime(provenance.get('androidRuntimeMaterials'), configuration)
-                                files[relative]['androidMaterialReuse'] = validate_android_material_reuse(provenance.get('androidRuntimeMaterials'), configuration, measured)
-            require(len(client_sources) == (1 if client_platform(a['name']) else 0), 'missing/duplicate client source evidence')
             require(files, 'empty artifact')
             verify_payloads(files, scope[role]['payloadRules'][a['name']], a['name'])
             entry['artifacts'][a['name']] = {'id': a['id'], 'archiveBytes': a['size_in_bytes'], 'archiveSha256': a['digest'], 'files': files}
         expected_receipt = {'repository': REPO, 'repositoryId': RID, 'sourceCommit': source, 'runId': rid,
-                            'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role,
-                            'publishStores': False, 'publishRegistry': False}
+                            'attempt': run['run_attempt'], 'version': VERSION, 'build': 'All', 'role': role}
         require(receipt == expected_receipt, 'producer scope/input receipt missing or inconsistent')
         entry['artifacts']['publisher-run-receipt']['files']['publisher-run-receipt.json']['releaseName'] = None
         result['runs'][role] = entry
@@ -673,7 +514,6 @@ def inventory(runs, source, work, source_tree, tag_object, source_root=ROOT, bud
                 indexed_names.add(record['name'])
                 matches = [f for a in entry['artifacts'].values() for name, f in a['files'].items() if name == record['name']]
                 require(len(matches) == 1 and matches[0]['sha256'] == record['sha256'] and matches[0]['bytes'] == record['bytes'], 'native index actual hash mismatch')
-    verify_metadata_pair(result)
     shared_index_path = work / 'all' / 'binary-native-index' / 'polaris-upstream-native-assets.json'
     return associate_distribution_materials(result, json.loads(shared_index_path.read_text(encoding='utf-8')), sha(shared_index_path))
 
@@ -690,7 +530,7 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
     output.mkdir(exist_ok=False)
     audit.mkdir(parents=True, exist_ok=True)
     destinations = set()
-    receipt = dict(actual, signatureState='unsigned-builds-with-explicit-signed-only-blockers', fullSignedRelease=False)
+    receipt = dict(actual, signatureState='unsigned-builds', fullSignedRelease=False)
     receipt['assets'] = []
     for role, run in actual['runs'].items():
         expected = config['runs'][role]
@@ -705,8 +545,6 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                 review = contract['files'][relative]
                 require(f['bytes'] == review['bytes'] and f['sha256'] == review['sha256'], 'actual file hash differs')
                 require(f.get('distributionMaterials') == review.get('distributionMaterials'), 'reviewed per-payload materials differ')
-                require(f.get('androidRuntimeMaterials') == review.get('androidRuntimeMaterials'), 'reviewed Android runtime evidence differs')
-                require(f.get('androidMaterialReuse') == review.get('androidMaterialReuse'), 'reviewed Android material reuse evidence differs')
                 name, disposition = publication(role, artifact, relative)
                 require(review['releaseName'] == f['releaseName'] == name, 'public filename differs from source-owned mapping')
                 require(review.get('publicationDisposition') == f.get('publicationDisposition') == disposition,
@@ -720,7 +558,7 @@ def assemble(actual, config, work, output, audit=None, materialize=True, budget=
                             shutil.copyfile(source_file, target)
                     continue
                 require(len(portable(name).parts) == 1 and name.casefold() not in destinations, 'duplicate release filename')
-                require(PUBLIC_VERSION in name or name == CANONICAL_METADATA, 'public filename lacks upstream version')
+                require(PUBLIC_VERSION in name, 'public filename lacks upstream version')
                 require(name != RECEIPT, 'receipt name reserved')
                 destinations.add(name.casefold())
                 if materialize:
@@ -790,7 +628,7 @@ def publish(output, source, audit=None, measured=None, budget=None):
                            if any(f['releaseName'] is not None for f in a['files'].values()))
         budget.admit(staging_peak, 'maximum single ZIP plus public member before draft creation')
         budget.release(staging_peak)
-    notes = 'GitHub-only unsigned build/package prerelease from '+source+'. Not a complete signed installable release.\n\nClients are sing-box-polaris derivatives of the fixed SagerNet upstream clients, not official SagerNet releases. Original authors and license texts are retained. The validated producer inventory, source index and publication mapping are retained in the publisher Actions audit artifact.\n\n'+'\n'.join('- '+x for x in BLOCKED)+'\n\nAudit: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']
+    notes = 'GitHub-only unsigned native core prerelease from '+source+'.\n\nsing-box-polaris is a derivative of the fixed SagerNet upstream, not an official SagerNet release. Original authors and license texts are retained. The validated producer inventory, source index and publication mapping are retained in the publisher Actions audit artifact.\n\nAudit: https://github.com/'+REPO+'/actions/runs/'+os.environ['GITHUB_RUN_ID']
     if budget:
         budget.record(phase='draft', remoteWriteState='draft-create-outcome-unknown')
     release = api(f'repos/{REPO}/releases', 'POST', {'tag_name': TAG, 'target_commitish': source, 'name': TAG, 'body': notes, 'draft': True, 'prerelease': True})
@@ -936,8 +774,11 @@ def main():
     p.add_argument('--output', type=Path, default=Path('github-release-dist'))
     args = p.parse_args()
     public = json.loads(CONFIG.read_text(encoding='utf-8'))
-    require(public == {'repository': REPO, 'repositoryId': RID, 'version': VERSION, 'tag': TAG, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
+    require(public == {'repository': REPO, 'repositoryId': RID, 'publication': 'github-only-unsigned-prerelease'}, 'public GitHub release configuration mismatch')
     identity(args.source, args.source_dir)
+    require(re.fullmatch(r'[1-9][0-9]*', args.all_run), 'invalid run ID')
+    # The build run is dispatched on the release tag; its tag is bound to the source by tag_identity().
+    bind_release(api(f'repos/{REPO}/actions/runs/{args.all_run}')['head_branch'])
     return bounded_release(args, {'all': args.all_run})
 
 

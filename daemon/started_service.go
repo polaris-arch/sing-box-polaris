@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sagernet/sing-box"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/networkquality"
@@ -46,7 +45,6 @@ const (
 var _ StartedServiceServer = (*StartedService)(nil)
 
 type StartedService struct {
-	runtimePersistence func(box.RuntimeIdentity, []byte) error
 	UnimplementedRuntimeConfigServiceServer
 	ctx context.Context
 	// platform adapter.PlatformInterface
@@ -88,10 +86,7 @@ type StartedService struct {
 }
 
 type ServiceOptions struct {
-	// RuntimePersistence receives a detached committed effective configuration.
-	// Returning nil certifies that the owner completed its durable write.
-	RuntimePersistence func(box.RuntimeIdentity, []byte) error
-	Context            context.Context
+	Context context.Context
 	// Platform           adapter.PlatformInterface
 	Handler           PlatformHandler
 	KeepDefaultLogger bool
@@ -110,8 +105,7 @@ type ServiceOptions struct {
 
 func NewStartedService(options ServiceOptions) *StartedService {
 	s := &StartedService{
-		ctx:                options.Context,
-		runtimePersistence: options.RuntimePersistence,
+		ctx: options.Context,
 		// platform:                options.Platform,
 		handler:           options.Handler,
 		keepDefaultLogger: options.KeepDefaultLogger,

@@ -75,7 +75,7 @@ func TestFinalLogicalFlowSealAndLateAttach(t *testing.T) {
 		t.Fatal("late task admitted")
 	}
 	remote := &finalTestCloser{}
-	if f.replace(1, remote) {
+	if f.replace(1, remote, nil) {
 		t.Fatal("late remote admitted")
 	}
 	setup()
@@ -228,7 +228,7 @@ func TestFinalLogicalFlowParallelCloseJoinsAndDoesNotHoldLock(t *testing.T) {
 	a.check = check
 	b.check = check
 	_, f, setup := finalFlow(t, m, a)
-	f.replace(1, b)
+	f.replace(1, b, nil)
 	m.StopFinal()
 	setup()
 	defer func() {
@@ -317,7 +317,7 @@ func TestFinalLogicalFlowRegisterSealRace(t *testing.T) {
 				_ = local.Close()
 				return
 			}
-			f.replace(1, &finalTestCloser{})
+			f.replace(1, &finalTestCloser{}, nil)
 			setup()
 		}()
 		close(start)
@@ -360,7 +360,7 @@ func TestFinalLogicalFlowSpliceAbortAndCompletion(t *testing.T) {
 	m := finalManager()
 	ctx, f, setup := finalFlow(t, m, &finalTestCloser{})
 	a, b := &finalTestCloser{}, &finalTestCloser{}
-	f.replace(1, b)
+	f.replace(1, b, nil)
 	callback, abort, err := m.spliceClose(ctx, a, b, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -435,7 +435,7 @@ func TestFinalLogicalFlowWrapperPreservesPrivateJoinAndErrors(t *testing.T) {
 		base, fence := outbound.WrapRuntimeOwnedConn(raw)
 		m := finalManager()
 		_, f, setup := finalFlow(t, m, &finalTestCloser{})
-		f.replace(1, base)
+		f.replace(1, base, nil)
 		wrapper := &finalWrapper{Closer: base}
 		if mixed {
 			wrapper.err = errors.New("wrapper-owned cleanup failure")
@@ -462,7 +462,7 @@ func TestFinalLogicalFlowLateWrappedBothSidesAreJoined(t *testing.T) {
 	m := finalManager()
 	a, b := &finalTestCloser{}, &finalTestCloser{}
 	_, f, setup := finalFlow(t, m, a)
-	f.replace(1, b)
+	f.replace(1, b, nil)
 	m.StopFinal()
 	wa, wb := &finalWrapper{Closer: a}, &finalWrapper{Closer: b}
 	left := f.wrap(0, wa)
@@ -474,13 +474,15 @@ func TestFinalLogicalFlowLateWrappedBothSidesAreJoined(t *testing.T) {
 	if err := finalAwaitClose(t, m); err != nil {
 		t.Fatal(err)
 	}
-	if wa.cleanup.Load() != 1 || wb.cleanup.Load() != 1 {
-		t.Fatal("late wrapper skipped by short circuit")
+	if wa.cleanup.Load() != 0 || wb.cleanup.Load() != 0 || a.calls.Load() != 1 || b.calls.Load() != 1 {
+		t.Fatal("late wrapper closed its base again")
 	}
 }
 
 func TestFinalLogicalFlowPrivateWaitPanicAndCombinedIngress(t *testing.T) {
-	if err := closeFinalConnection(finalConnectionCloser{closer: &finalTestCloser{}, wait: func() error { panic("private wait marker") }}); err == nil {
+	target := newFinalConnectionCloser(&finalTestCloser{})
+	target.wait = func() error { panic("private wait marker") }
+	if err := closeFinalConnection(&target); err == nil {
 		t.Fatal("wait panic became success")
 	}
 	a, pa := net.Pipe()

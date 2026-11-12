@@ -332,7 +332,7 @@ Server certificates chain line array, in PEM format.
 
 !!! note ""
 
-    Will be automatically reloaded if file modified.
+    Will be automatically reloaded, without closing existing connections, when the file, its directory, or a symlink in that directory (one level) is modified or replaced; replacing a symlink is only detected on Linux. Changes elsewhere, such as replacing a parent directory or rewriting a symlink target in another directory, are not detected. No `SIGHUP` is needed; `SIGHUP` fully reloads the service and closes existing connections.
 
 The path to server certificate chain, in PEM format.
 
@@ -419,7 +419,7 @@ The server private key line array, in PEM format.
 
 !!! note ""
 
-    Will be automatically reloaded if file modified.
+    Will be automatically reloaded, without closing existing connections, when the file, its directory, or a symlink in that directory (one level) is modified or replaced; replacing a symlink is only detected on Linux. Changes elsewhere, such as replacing a parent directory or rewriting a symlink target in another directory, are not detected. No `SIGHUP` is needed; `SIGHUP` fully reloads the service and closes existing connections.
 
 The path to the server private key, in PEM format.
 
@@ -458,7 +458,7 @@ Client certificate chain line array, in PEM format.
 
 !!! note ""
 
-    Will be automatically reloaded if file modified.
+    Will be automatically reloaded, without closing existing connections, when the file, its directory, or a symlink in that directory (one level) is modified or replaced; replacing a symlink is only detected on Linux. Changes elsewhere, such as replacing a parent directory or rewriting a symlink target in another directory, are not detected. No `SIGHUP` is needed; `SIGHUP` fully reloads the service and closes existing connections.
 
 List of path to client certificate chain, in PEM format.
 
@@ -721,7 +721,7 @@ ECH key line array, in PEM format.
 
 !!! note ""
 
-    Will be automatically reloaded if file modified.
+    Will be automatically reloaded, without closing existing connections, when the file, its directory, or a symlink in that directory (one level) is modified or replaced; replacing a symlink is only detected on Linux. Changes elsewhere, such as replacing a parent directory or rewriting a symlink target in another directory, are not detected. No `SIGHUP` is needed; `SIGHUP` fully reloads the service and closes existing connections.
 
 The path to ECH key, in PEM format.
 

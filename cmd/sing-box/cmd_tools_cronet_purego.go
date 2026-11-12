@@ -68,11 +68,6 @@ func verifyCronetLibraryFileObservation(path, expected string) (cronetLibraryVer
 	return cronetLibraryVerification{Path: resolved, SHA256: actual, Bytes: info.Size(), Selection: "standalone-path"}, nil
 }
 
-func prepareCronetLibrary(path, expected string) (string, string, error) {
-	verified, err := prepareCronetLibraryObservation(path, expected)
-	return verified.Path, verified.SHA256, err
-}
-
 func prepareCronetLibraryObservation(path, expected string) (cronetLibraryVerification, error) {
 	observation, selected, err := observeSelectedCronetLibrary(path, expected)
 	if err != nil {

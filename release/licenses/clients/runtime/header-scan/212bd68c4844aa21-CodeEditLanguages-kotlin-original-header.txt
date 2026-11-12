@@ -1,1 +1,0 @@
-;; Based on the nvim-treesitter highlighting, which is under the Apache license.

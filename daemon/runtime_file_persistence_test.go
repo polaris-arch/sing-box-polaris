@@ -13,21 +13,20 @@ import (
 )
 
 func TestRuntimePersistenceRequestBindingIsPerInstance(t *testing.T) {
-	var first, fallback int
+	var first int
 	original := func(box.RuntimeIdentity, []byte) error { first++; return nil }
-	other := func(box.RuntimeIdentity, []byte) error { fallback++; return nil }
-	ctx := ContextWithRuntimePersistence(context.Background(), original)
-	if err := runtimePersistenceForRequest(ctx, other)(box.RuntimeIdentity{}, nil); err != nil {
+	ctx, err := ContextWithRuntimePersistenceMode(context.Background(), original, "owner_acknowledged")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runtimePersistenceForRequest(context.Background(), other)(box.RuntimeIdentity{}, nil); err != nil {
+	if err = runtimePersistenceForRequest(ctx)(box.RuntimeIdentity{}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if first != 1 || fallback != 1 {
+	if first != 1 || runtimePersistenceForRequest(context.Background()) != nil {
 		t.Fatal("request binding leaked")
 	}
-	if runtimePersistenceForRequest(ContextWithRuntimePersistence(ctx, nil), other) != nil {
-		t.Fatal("explicit unbound owner inherited fallback")
+	if ctx, err = ContextWithRuntimePersistenceMode(ctx, nil, "owner_acknowledged"); err != nil || runtimePersistenceForRequest(ctx) != nil {
+		t.Fatal("explicit unbound owner inherited outer binding")
 	}
 }
 

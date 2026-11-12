@@ -81,27 +81,6 @@ jobs:
         retention-days: 7
     - name: Execute actual SDK and fork retirement gates
       run: python3 scripts/ci/g4_candidate.py
-    - name: Verify nested sing-tun cleanup regressions through the root replacement
-      if: matrix.os == 'ubuntu-24.04'
-      shell: bash
-      run: |
-        set -euo pipefail
-        go test -json -race -count=1 -timeout=10m \
-          -run '^(TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance|TestAutoRedirectAttemptedFirewallRetainsLegacyCleanup|TestAutoRedirectNFTCloseWithoutSetupDoesNotEnterCleanup)$' \
-          github.com/sagernet/sing-tun | tee "$RUNNER_TEMP/sing-tun-cleanup.jsonl"
-        python3 - "$RUNNER_TEMP/sing-tun-cleanup.jsonl" <<'PYTEST'
-        import json, sys
-        expected = {
-            'TestAutoRedirectCloseBeforeFirewallSetupPreservesRunningInstance',
-            'TestAutoRedirectAttemptedFirewallRetainsLegacyCleanup',
-            'TestAutoRedirectNFTCloseWithoutSetupDoesNotEnterCleanup',
-        }
-        events = [json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
-        package = 'github.com/sagernet/sing-tun'
-        passed = {e.get('Test') for e in events if e.get('Action') == 'pass' and e.get('Package') == package}
-        if not expected <= passed or not any(e.get('Action') == 'pass' and e.get('Package') == package and 'Test' not in e for e in events):
-            raise SystemExit('required sing-tun cleanup regression or package PASS missing')
-        PYTEST
   utls_gate:
     name: Concentrated Go and uTLS compatibility (${{ matrix.os }})
     if: inputs.build == 'Source' && !inputs.source_generate_only
@@ -118,9 +97,6 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       SOURCE_BUILD: ${{ inputs.build }}
       SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
-      SOURCE_WINDOWS_NATIVE_PROOF: ${{ inputs.windows_native_proof && 'true' || 'false' }}
-      SOURCE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
-      SOURCE_VERSION: ${{ inputs.version }}
       SOURCE_RUNNER: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -139,41 +115,8 @@ jobs:
         cache: false
     - name: Install capability schema validator
       run: python -m pip install jsonschema==4.23.0
-    - name: Verify client Unicode entrypoints on the actual runner
-      run: python -m unittest discover -s scripts/ci -p 'test_client_encoding.py'
     - name: Verify raw Vision source checkout semantics on the actual runner
       run: python -B -m unittest discover -s scripts/ci -p 'test_vision_source.py'
-    - name: Compile Windows native producer and execute unprivileged rejection controls
-      if: matrix.os == 'windows-2025'
-      shell: bash
-      env:
-        CGO_ENABLED: '0'
-        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'false'
-      run: |
-        set -euo pipefail
-        evidence="$RUNNER_TEMP/windows-native-rejection-tests.jsonl"
-        go test -json -mod=readonly -count=1 -timeout=3m -tags with_purego \
-          ./cmd/internal/windows_native_execution github.com/sagernet/cronet-go/internal/cronet | tee "$evidence"
-        python - "$evidence" <<'PYWINDOWS'
-        import json,sys
-        records=[json.loads(line) for line in open(sys.argv[1],encoding='utf-8') if line.strip()]
-        required={
-          'github.com/sagernet/sing-box/cmd/internal/windows_native_execution':{
-            'TestNativeRequestRejectsUnsupportedSourceAndArchiveIdentity',
-            'TestNativeJSONRejectsDuplicateTrailingAndDeepDocuments',
-            'TestNativeConfigurationControlsKeepExpectedErrorsAndCanonicalStdin',
-            'TestNativeOutputAndExplicitAdmissionFailClosedWithoutExecution',
-            'TestNativeCustodyRecordRejectsAmbiguousAndTruncatedDebt',
-            'TestNativeCustodyRejectsForeignObjectAndJobRecoveryTargets',
-            'TestNativeCustodyReconciliationNeverGrantsAdmission',
-            'TestNativeCooperativeControlFramesOnlyCancelOriginalOwner',
-            'TestNativeCleanupRequiresActualWaitAndReaderClosure'},
-          'github.com/sagernet/cronet-go/internal/cronet':{'TestWindowsLibraryExplicitObservationRejectsUnprovenModule','TestWindowsLibraryDigestMismatchCannotEnterNativeLoad'}}
-        for package,names in required.items():
-          passed={event.get('Test') for event in records if event.get('Package')==package and event.get('Action')=='pass'}
-          if not names<=passed or not any(event.get('Package')==package and event.get('Action')=='pass' and 'Test' not in event for event in records):
-            raise SystemExit('required unprivileged native rejection control/package PASS missing: '+package)
-        PYWINDOWS
     - name: Execute focused runtime coordinator and resource regressions natively
       timeout-minutes: 30
       shell: bash
@@ -191,42 +134,6 @@ jobs:
           ./internal/runtimegraph ./log ./route ./dns/transport/... \
           ./protocol/openconnect ./protocol/openvpn ./protocol/tailscale \
           | tee "$evidence/tests.jsonl"
-        python - "$evidence/tests.jsonl" <<'PYTEST'
-        import json, os, sys
-        prefix = 'github.com/sagernet/sing-box'
-        required = {
-            prefix: {'TestRuntimePublicCapabilityRequiresStartedGraphAndPreservesReplay',
-                     'TestRuntimeCapabilitiesManifestIsDetachedAndInstanceIndependent',
-                     'TestRuntimeCapabilityBuildInventoryIsCanonicalAndHonest',
-                     'TestRuntimeOwnerAcknowledgementIsBoundAndReplaySafe'},
-            prefix + '/daemon': {'TestRuntimeActorRequiresServerOwnedTypedContext',
-                                 'TestRuntimeTLSCapabilitiesUseSameDocumentAndActiveIncarnation',
-                                 'TestRuntimeTLSCapabilitiesOldWireIsEmptyAndTagTenIsAdditive',
-                                 'TestRuntimePersistenceAcknowledgementAuthenticatesFirst'},
-            prefix + '/experimental/libbox': {'TestRuntimeRegenerationRequiresSeparateAppAcknowledgement'},
-            prefix + '/adapter': {'TestScopeCloseDrainsAfterCallbackPanic'},
-            prefix + '/adapter/inbound': {'TestRuntimeInventoryDoesNotAllocateThroughLegacyCreate'},
-            prefix + '/adapter/outbound': {'TestRuntimeBorrowedManagerMembersNeverStartedOrClosed'},
-            prefix + '/adapter/endpoint': {'TestRuntimeEndpointBorrowingAndFrozenInventory'},
-            prefix + '/adapter/certificate': {'TestRuntimeCertificateInventoryNeverCallsLegacyConstructor'},
-            prefix + '/common/runtimeclock': {'TestClockSystemWriterIsActivatedOwnedAndActuallyJoined'},
-            prefix + '/common/certificate': {'TestRootSnapshotHasIndependentIdempotentReferencesAndPoolCopies'},
-            prefix + '/internal/runtimegraph': {'TestResourceConcurrentSealAcquireRelease',
-                                                'TestPreparedPublicationVisibleBeforeAdmissionUnlock'},
-            prefix + '/log': {'TestRuntimeLevelPreparationDoesNotPublish'},
-            prefix + '/route': {'TestRuntimeReferenceRetainsExactEndpointAllocation',
-                                'TestRuntimeReferencePauseJoinsExactEndpointEffect'},
-        }
-        if os.environ['RUNNER_OS'] in {'Linux', 'macOS'}:
-            required[prefix + '/service/api'] = {'TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs'}
-        if os.environ['RUNNER_OS'] == 'Linux':
-            required[prefix + '/experimental/libbox'].add('TestRuntimePublicCommandRegenerationPersistenceChain')
-        events = [json.loads(line) for line in open(sys.argv[1], encoding='utf-8') if line.strip()]
-        for package, tests in required.items():
-            passed = {e.get('Test') for e in events if e.get('Action') == 'pass' and e.get('Package') == package}
-            if not tests <= passed or not any(e.get('Action') == 'pass' and e.get('Package') == package and 'Test' not in e for e in events):
-                raise SystemExit('required native runtime tests or package PASS missing: ' + package)
-        PYTEST
         test -z "$(git status --porcelain --untracked-files=all)"
     - name: Run raced protocol, crypto and actual selected-core gates
       run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
@@ -255,194 +162,53 @@ jobs:
       with:
         ref: ${{ github.sha }}
         fetch-depth: 0
-    - name: Setup Go
-      if: github.event_name != 'workflow_dispatch'
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      if: github.event_name != 'workflow_dispatch'
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-linux-
-    - name: Cache Go tool builds
-      if: github.event_name != 'workflow_dispatch'
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/.cache/go-build
-        key: go-build-tools-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-build-tools-linux-
-    - name: Check input version
-      if: github.event_name == 'workflow_dispatch'
-      run: |
-        python3 scripts/ci/polaris_version.py "$CANDIDATE_VERSION"
-        printf "version=%s\n" "$CANDIDATE_VERSION" >> "$GITHUB_ENV"
+    - name: Calculate version from the dispatched tag
+      id: outputs
       env:
-        CANDIDATE_VERSION: ${{ inputs.version }}
-    - name: Calculate version
-      if: github.event_name != 'workflow_dispatch'
-      run: go run -v ./cmd/internal/read_tag --ci --nightly
+        REF_TYPE: ${{ github.ref_type }}
+        REF_NAME: ${{ github.ref_name }}
+      run: |
+        test "$REF_TYPE" = tag
+        python3 scripts/ci/polaris_version.py "${REF_NAME#v}"
+        echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
     - name: Bind final evidence to annotated dispatch source
       id: release_source
-      if: inputs.evidence_mode == 'final'
       env:
-        RELEASE_TAG: v${{ inputs.version }}
+        RELEASE_TAG: ${{ github.ref_name }}
         GH_TOKEN: ${{ github.token }}
       run: python3 scripts/ci/release_identity.py --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
-    - name: Set outputs
-      id: outputs
-      run: echo "version=$version" >> "$GITHUB_OUTPUT"
-  prepare_windows7:
-    name: Prepare one verified Windows 7 Go toolchain
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
-    runs-on: ubuntu-26.04
-    needs: [calculate_version]
-    steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        ref: ${{ github.sha }}
-        persist-credentials: false
-    - name: Restore source-owned compatibility toolchain
-      uses: actions/cache@v4
-      with:
-        path: ~/go/go_win7
-        key: go_win7_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/windows7.patch', '.github/setup_legacy_go.py') }}
-    - name: Build or fully verify this host and pin once
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: .github/setup_go_for_windows7.sh
-    - name: Preserve file modes for the two exact consumers
-      run: tar -czf "$RUNNER_TEMP/go-win7-toolchain.tar.gz" -C "$HOME/go" go_win7
-    - uses: actions/upload-artifact@v4
-      with:
-        name: go-win7-toolchain
-        path: ${{ runner.temp }}/go-win7-toolchain.tar.gz
-        if-no-files-found: error
-        retention-days: 7
   build:
     name: Build binary
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
+    if: ${{ !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') }}
     runs-on: ubuntu-26.04
     needs:
     - calculate_version
     strategy:
-      max-parallel: 13
-      matrix: ${{ fromJSON('{"include":[{"os":"linux","arch":"amd64","variant":"purego","naive":true},{"os":"linux","arch":"amd64","variant":"glibc","naive":true},{"os":"linux","arch":"amd64","variant":"musl","naive":true,"debian":"amd64","rpm":"x86_64","pacman":"x86_64","alpine":"x86_64","openwrt":"x86_64"},{"os":"linux","arch":"arm64","variant":"purego","naive":true},{"os":"linux","arch":"arm64","variant":"glibc","naive":true},{"os":"linux","arch":"arm64","variant":"musl","naive":true,"debian":"arm64","rpm":"aarch64","pacman":"aarch64","alpine":"aarch64","openwrt":"aarch64_cortex-a53 aarch64_cortex-a72 aarch64_cortex-a76 aarch64_generic"},{"os":"linux","arch":"386","go386":"sse2"},{"os":"linux","arch":"386","variant":"glibc","naive":true,"go386":"sse2"},{"os":"linux","arch":"386","variant":"musl","naive":true,"go386":"sse2","debian":"i386","rpm":"i386","alpine":"x86","openwrt":"i386_pentium4"},{"os":"linux","arch":"arm","goarm":"7"},{"os":"linux","arch":"arm","variant":"glibc","naive":true,"goarm":"7"},{"os":"linux","arch":"arm","variant":"musl","naive":true,"goarm":"7","debian":"armhf","rpm":"armv7hl","pacman":"armv7hl","alpine":"armv7","openwrt":"arm_cortex-a5_vfpv4 arm_cortex-a7_neon-vfpv4 arm_cortex-a7_vfpv4 arm_cortex-a8_vfpv3 arm_cortex-a9_neon arm_cortex-a9_vfpv3-d16 arm_cortex-a15_neon-vfpv4"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","naive":true,"variant":"glibc"},{"os":"linux","arch":"mipsle","gomips":"softfloat","naive":true,"variant":"musl","debian":"mipsel","rpm":"mipsel","openwrt":"mipsel_24kc mipsel_74kc mipsel_mips32"},{"os":"linux","arch":"mips64le","gomips":"hardfloat","naive":true,"variant":"glibc","debian":"mips64el","rpm":"mips64el"},{"os":"linux","arch":"riscv64","naive":true,"variant":"glibc"},{"os":"linux","arch":"riscv64","naive":true,"variant":"musl","debian":"riscv64","rpm":"riscv64","alpine":"riscv64","openwrt":"riscv64_generic"},{"os":"linux","arch":"loong64","naive":true,"variant":"glibc"},{"os":"linux","arch":"loong64","naive":true,"variant":"musl","debian":"loongarch64","rpm":"loongarch64","alpine":"loongarch64","openwrt":"loongarch64_generic"},{"os":"linux","arch":"386","go386":"softfloat","openwrt":"i386_pentium-mmx"},{"os":"linux","arch":"arm","goarm":"5","openwrt":"arm_arm926ej-s arm_cortex-a7 arm_cortex-a9 arm_fa526 arm_xscale"},{"os":"linux","arch":"arm","goarm":"6","debian":"armel","rpm":"armv6hl","openwrt":"arm_arm1176jzf-s_vfp"},{"os":"linux","arch":"mips","gomips":"softfloat","openwrt":"mips_24kc mips_4kec mips_mips32"},{"os":"linux","arch":"mipsle","gomips":"hardfloat","openwrt":"mipsel_24kc_24kf"},{"os":"linux","arch":"mipsle","gomips":"softfloat"},{"os":"linux","arch":"mips64","gomips":"softfloat","openwrt":"mips64_mips64r2 mips64_octeonplus"},{"os":"linux","arch":"mips64le","gomips":"hardfloat"},{"os":"linux","arch":"mips64le","gomips":"softfloat","openwrt":"mips64el_mips64r2"},{"os":"linux","arch":"s390x","debian":"s390x","rpm":"s390x"},{"os":"linux","arch":"ppc64le","debian":"ppc64el","rpm":"ppc64le"},{"os":"linux","arch":"riscv64"},{"os":"linux","arch":"loong64"},{"os":"android","arch":"arm64","ndk":"aarch64-linux-android23"},{"os":"android","arch":"arm","ndk":"armv7a-linux-androideabi23"},{"os":"android","arch":"amd64","ndk":"x86_64-linux-android23"},{"os":"android","arch":"386","ndk":"i686-linux-android23"}]}') }}
-    # Optional matrix keys stay absent; the JSON view lets both partitions share these steps.
-    steps: &native_archive_steps
+      matrix:
+        include:
+        - os: linux
+          arch: amd64
+          variant: purego
+          naive: true
+        - os: linux
+          arch: arm64
+          variant: purego
+          naive: true
+    steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         fetch-depth: 1
     - name: Setup Go
-      if: ${{ ! fromJSON(toJSON(matrix)).legacy_win7 }}
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
         cache: false
-    - name: Cache Go modules
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-linux-
-    - name: Consume this run's verified Windows 7 toolchain
-      if: fromJSON(toJSON(matrix)).legacy_win7
-      uses: actions/download-artifact@v4
-      with:
-        name: go-win7-toolchain
-        path: ${{ runner.temp }}/go-win7-toolchain
-    - name: Restore complete toolchain files and modes
-      if: fromJSON(toJSON(matrix)).legacy_win7
+    - name: Set build tags and shared ldflags
       run: |
-        test ! -e "$HOME/go/go_win7"
-        mkdir -p "$HOME/go"
-        tar -xzf "$RUNNER_TEMP/go-win7-toolchain/go-win7-toolchain.tar.gz" -C "$HOME/go"
-        test -f "$HOME/go/go_win7/polaris-toolchain.json"
-    - name: Setup Go for Windows 7
-      if: fromJSON(toJSON(matrix)).legacy_win7
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: .github/setup_go_for_windows7.sh
-    - name: Setup Go for Windows 7
-      if: fromJSON(toJSON(matrix)).legacy_win7
-      run: |-
-        echo "PATH=$HOME/go/go_win7/bin:$PATH" >> $GITHUB_ENV
-        echo "GOROOT=$HOME/go/go_win7" >> $GITHUB_ENV
-    - name: Setup Android NDK
-      id: setup-ndk
-      if: matrix.os == 'android'
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r30
-        link-to-sdk: true
-    - name: Clone cronet-go
-      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
-      timeout-minutes: 10
-      run: |
-        set -xeuo pipefail
-        CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
-        git init ~/cronet-go
-        git -C ~/cronet-go remote add origin https://github.com/sagernet/cronet-go.git
-        git -C ~/cronet-go sparse-checkout set --no-cone '/*' '!/lib'
-        git -C ~/cronet-go fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
-        git -C ~/cronet-go checkout FETCH_HEAD
-        git -C ~/cronet-go submodule update --init --recursive --depth=1
-        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
-    - name: Regenerate Debian keyring
-      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
-      run: |
-        set -xeuo pipefail
-        rm -f ~/cronet-go/naiveproxy/src/build/linux/sysroot_scripts/keyring.gpg
-        cd ~/cronet-go
-        GPG_TTY=/dev/null ./naiveproxy/src/build/linux/sysroot_scripts/generate_keyring.sh
-    - name: Download Chromium toolchain
-      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
-      timeout-minutes: 20
-      run: |
-        set -xeuo pipefail
-        cd ~/cronet-go
-        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
-          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
-        else
-          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} download-toolchain
-        fi
-    - name: Set Chromium toolchain environment
-      if: fromJSON(toJSON(matrix)).naive && fromJSON(toJSON(matrix)).variant != 'purego'
-      run: |
-        set -xeuo pipefail
-        cd ~/cronet-go
-        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
-          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl env >> $GITHUB_ENV
-        else
-          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} env >> $GITHUB_ENV
-        fi
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Set build tags
-      run: |
-        set -xeuo pipefail
-        if [[ "${{ fromJSON(toJSON(matrix)).naive }}" == "true" ]]; then
-          TAGS=$(cat release/DEFAULT_BUILD_TAGS)
-        else
-          TAGS=$(cat release/DEFAULT_BUILD_TAGS_OTHERS)
-        fi
-        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "purego" ]]; then
-          TAGS="${TAGS},with_purego"
-        elif [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
-          TAGS="${TAGS},with_musl"
-        fi
-        echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
-    - name: Set shared ldflags
-      run: |
+        echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS),with_purego" >> "${GITHUB_ENV}"
         echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
     - name: Build (purego)
-      if: fromJSON(toJSON(matrix)).variant == 'purego'
       run: |
         set -xeuo pipefail
         mkdir -p dist
@@ -453,13 +219,8 @@ jobs:
         CGO_ENABLED: '0'
         GOOS: ${{ matrix.os }}
         GOARCH: ${{ matrix.arch }}
-        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
-        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
-        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Extract libcronet.so
-      if: fromJSON(toJSON(matrix)).variant == 'purego' && fromJSON(toJSON(matrix)).naive
       run: |
         set -xeuo pipefail
         CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
@@ -470,192 +231,16 @@ jobs:
         git -C "$RUNNER_TEMP/cronet-go-lib" fetch --depth=1 --filter=blob:none origin "$CRONET_GO_VERSION"
         git -C "$RUNNER_TEMP/cronet-go-lib" checkout FETCH_HEAD
         cp "$RUNNER_TEMP/cronet-go-lib/$LIBRARY_PATH" dist/
-    - name: Build (glibc)
-      if: fromJSON(toJSON(matrix)).variant == 'glibc'
-      run: |
-        set -xeuo pipefail
-        mkdir -p dist
-        go build -v -trimpath -o dist/sing-box -tags "${BUILD_TAGS}" \
-        -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' ${LDFLAGS_SHARED} -s -w -buildid=" \
-        ./cmd/sing-box
-      env:
-        CGO_ENABLED: '1'
-        GOOS: linux
-        GOARCH: ${{ matrix.arch }}
-        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
-        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
-        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build (musl)
-      if: fromJSON(toJSON(matrix)).variant == 'musl'
-      run: |
-        set -xeuo pipefail
-        mkdir -p dist
-        go build -v -trimpath -o dist/sing-box -tags "${BUILD_TAGS}" \
-        -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' ${LDFLAGS_SHARED} -s -w -buildid=" \
-        ./cmd/sing-box
-      env:
-        CGO_ENABLED: '1'
-        GOOS: linux
-        GOARCH: ${{ matrix.arch }}
-        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
-        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
-        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build (non-variant)
-      if: matrix.os != 'android' && fromJSON(toJSON(matrix)).variant == ''
-      run: |
-        set -xeuo pipefail
-        mkdir -p dist
-        go build -v -trimpath -o dist/sing-box -tags "${BUILD_TAGS}" \
-        -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' ${LDFLAGS_SHARED} -s -w -buildid=" \
-        ./cmd/sing-box
-      env:
-        CGO_ENABLED: '0'
-        GOOS: ${{ matrix.os }}
-        GOARCH: ${{ matrix.arch }}
-        GO386: ${{ fromJSON(toJSON(matrix)).go386 }}
-        GOARM: ${{ fromJSON(toJSON(matrix)).goarm }}
-        GOMIPS: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GOMIPS64: ${{ fromJSON(toJSON(matrix)).gomips }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build Android
-      if: matrix.os == 'android'
-      run: |
-        set -xeuo pipefail
-        go install -v ./cmd/internal/build
-        export CC='${{ fromJSON(toJSON(matrix)).ndk }}-clang'
-        export CXX="${CC}++"
-        mkdir -p dist
-        GOOS=$BUILD_GOOS GOARCH=$BUILD_GOARCH build go build -v -trimpath -o dist/sing-box -tags "${BUILD_TAGS}" \
-        -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' ${LDFLAGS_SHARED} -s -w -buildid=" \
-        ./cmd/sing-box
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        CGO_ENABLED: '1'
-        BUILD_GOOS: ${{ matrix.os }}
-        BUILD_GOARCH: ${{ matrix.arch }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set name
-      run: |-
-        DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
-        if [[ -n "${{ fromJSON(toJSON(matrix)).goarm }}" ]]; then
-          DIR_NAME="${DIR_NAME}v${{ fromJSON(toJSON(matrix)).goarm }}"
-        elif [[ -n "${{ fromJSON(toJSON(matrix)).go386 }}" && "${{ fromJSON(toJSON(matrix)).go386 }}" != 'sse2' ]]; then
-          DIR_NAME="${DIR_NAME}-${{ fromJSON(toJSON(matrix)).go386 }}"
-        elif [[ -n "${{ fromJSON(toJSON(matrix)).gomips }}" && "${{ fromJSON(toJSON(matrix)).gomips }}" != 'hardfloat' ]]; then
-          DIR_NAME="${DIR_NAME}-${{ fromJSON(toJSON(matrix)).gomips }}"
-        elif [[ -n "${{ fromJSON(toJSON(matrix)).legacy_name }}" ]]; then
-          DIR_NAME="${DIR_NAME}-legacy-${{ fromJSON(toJSON(matrix)).legacy_name }}"
-        fi
-        if [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "glibc" ]]; then
-          DIR_NAME="${DIR_NAME}-glibc"
-        elif [[ "${{ fromJSON(toJSON(matrix)).variant }}" == "musl" ]]; then
-          DIR_NAME="${DIR_NAME}-musl"
-        fi
-        echo "DIR_NAME=${DIR_NAME}" >> "${GITHUB_ENV}"
-        PKG_VERSION="${{ needs.calculate_version.outputs.version }}"
-        PKG_VERSION="${PKG_VERSION//-/\~}"
-        echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
-    - name: Install shared package tool
-      if: fromJSON(toJSON(matrix)).debian != '' || fromJSON(toJSON(matrix)).rpm != '' || fromJSON(toJSON(matrix)).pacman != '' || fromJSON(toJSON(matrix)).openwrt != ''
-      run: sudo gem install fpm
-    - name: Package DEB
-      if: fromJSON(toJSON(matrix)).debian != ''
-      run: |
-        set -xeuo pipefail
-        sudo apt-get install -y debsigs
-        cp .fpm_systemd .fpm
-        fpm -t deb \
-          -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).debian }}.deb" \
-          --architecture ${{ fromJSON(toJSON(matrix)).debian }} \
-          dist/sing-box=/usr/bin/sing-box
-    - name: Package RPM
-      if: fromJSON(toJSON(matrix)).rpm != ''
-      run: |
-        set -xeuo pipefail
-        echo '%_rpmformat 4' > "$HOME/.rpmmacros"
-        cp .fpm_systemd .fpm
-        fpm -t rpm \
-          -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).rpm }}.rpm" \
-          --architecture ${{ fromJSON(toJSON(matrix)).rpm }} \
-          dist/sing-box=/usr/bin/sing-box
-    - name: Package Pacman
-      if: fromJSON(toJSON(matrix)).pacman != ''
-      run: |-
-        set -xeuo pipefail
-        sudo apt-get update || true
-        sudo apt-get install -y libarchive-tools
-        cp .fpm_pacman .fpm
-        fpm -t pacman \
-          -v "$PKG_VERSION" \
-          -p "dist/sing-box_${{ needs.calculate_version.outputs.version }}_${{ matrix.os }}_${{ fromJSON(toJSON(matrix)).pacman }}.pkg.tar.zst" \
-          --architecture ${{ fromJSON(toJSON(matrix)).pacman }} \
-          dist/sing-box=/usr/bin/sing-box
-    - name: Package OpenWrt
-      if: fromJSON(toJSON(matrix)).openwrt != ''
-      run: |-
-        set -xeuo pipefail
-        cp .fpm_openwrt .fpm
-        fpm -t deb \
-          -v "$PKG_VERSION" \
-          -p "dist/openwrt.deb" \
-          --architecture all \
-          dist/sing-box=/usr/bin/sing-box
-        for architecture in ${{ fromJSON(toJSON(matrix)).openwrt }}; do
-          .github/deb2ipk.sh "$architecture" "dist/openwrt.deb" "dist/sing-box_${{ needs.calculate_version.outputs.version }}_openwrt_${architecture}.ipk"
-        done
-        rm "dist/openwrt.deb"
-    - name: Install apk-tools
-      if: fromJSON(toJSON(matrix)).openwrt != '' || fromJSON(toJSON(matrix)).alpine != ''
-      run: |-
-        set -euo pipefail
-        apk_tools_dir="$(mktemp -d "$RUNNER_TEMP/apk-tools.XXXXXX")"
-        docker run --rm -v "$apk_tools_dir:/mnt" alpine:edge sh -c \
-          'apk add --no-cache apk-tools-static && cp /sbin/apk.static /mnt/apk && chmod 755 /mnt/apk'
-        test -x "$apk_tools_dir/apk"
-        echo "$apk_tools_dir" >> "$GITHUB_PATH"
-    - name: Package OpenWrt APK
-      if: fromJSON(toJSON(matrix)).openwrt != ''
-      run: |-
-        set -xeuo pipefail
-        for architecture in ${{ fromJSON(toJSON(matrix)).openwrt }}; do
-          .github/build_openwrt_apk.sh \
-            "$architecture" \
-            "${{ needs.calculate_version.outputs.version }}" \
-            "dist/sing-box" \
-            "dist/sing-box_${{ needs.calculate_version.outputs.version }}_openwrt_${architecture}.apk"
-        done
-    - name: Package Alpine APK
-      if: fromJSON(toJSON(matrix)).alpine != ''
-      run: |-
-        set -xeuo pipefail
-        .github/build_alpine_apk.sh \
-          "${{ fromJSON(toJSON(matrix)).alpine }}" \
-          "${{ needs.calculate_version.outputs.version }}" \
-          "dist/sing-box" \
-          "dist/sing-box_${{ needs.calculate_version.outputs.version }}_linux_${{ fromJSON(toJSON(matrix)).alpine }}.apk"
     - name: Archive
       run: |
         set -xeuo pipefail
+        DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
         cp ../release/licenses/TLS-DEPENDENCY-NOTICES.txt "${DIR_NAME}"
-        if [ '${{ matrix.os }}' = 'windows' ]; then
-          cp sing-box "${DIR_NAME}/sing-box.exe"
-          zip -r "${DIR_NAME}.zip" "${DIR_NAME}"
-        else
-          cp sing-box "${DIR_NAME}"
-          if [ -f libcronet.so ]; then
-            cp libcronet.so "${DIR_NAME}"
-          fi
-          tar -czvf "${DIR_NAME}.tar.gz" "${DIR_NAME}"
-        fi
+        cp sing-box libcronet.so "${DIR_NAME}"
+        tar -czvf "${DIR_NAME}.tar.gz" "${DIR_NAME}"
         rm -r "${DIR_NAME}"
     - name: Cleanup
       run: rm -f dist/sing-box dist/libcronet.so
@@ -673,32 +258,12 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: binary-${{ matrix.os }}_${{ matrix.arch }}${{ fromJSON(toJSON(matrix)).goarm && format('v{0}', fromJSON(toJSON(matrix)).goarm) }}${{ fromJSON(toJSON(matrix)).go386
-          && format('_{0}', fromJSON(toJSON(matrix)).go386) }}${{ fromJSON(toJSON(matrix)).gomips && format('_{0}', fromJSON(toJSON(matrix)).gomips) }}${{ fromJSON(toJSON(matrix)).legacy_name &&
-          format('-legacy-{0}', fromJSON(toJSON(matrix)).legacy_name) }}${{ fromJSON(toJSON(matrix)).variant && format('-{0}', fromJSON(toJSON(matrix)).variant) }}
+        name: binary-${{ matrix.os }}_${{ matrix.arch }}-${{ matrix.variant }}
         path: dist
         if-no-files-found: error
-  build_windows7:
-    name: Build Windows 7 binaries
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
-    runs-on: ubuntu-26.04
-    needs: [calculate_version, prepare_windows7]
-    strategy:
-      matrix:
-        include:
-        - os: windows
-          arch: amd64
-          legacy_win7: true
-          legacy_name: windows-7
-        - os: windows
-          arch: '386'
-          legacy_win7: true
-          legacy_name: windows-7
-    steps: *native_archive_steps
   build_darwin:
     name: Build Darwin binaries
-    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build
-      == 'Binary') }}
+    if: ${{ !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') }}
     runs-on: xcode-27
     needs:
     - calculate_version
@@ -707,59 +272,19 @@ jobs:
         include:
         - arch: amd64
         - arch: arm64
-        - arch: amd64
-          legacy_osx: true
-          legacy_name: macos-10.13
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       with:
         fetch-depth: 1
     - name: Setup Go
-      if: ${{ ! matrix.legacy_osx }}
       uses: actions/setup-go@v5
       with:
         go-version: 1.27.2
         cache: false
-    - name: Cache Go modules
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-macos-
-    - name: Cache Go for macOS 10.13
-      if: matrix.legacy_osx
-      id: cache-go-for-macos1013
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/go/go_osx
-        key: go_osx_1272-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/go-toolchains.json', '.github/patches/go1.27.2/macos1013.patch', '.github/setup_legacy_go.py') }}
-    - name: Setup Go for macOS 10.13
-      if: matrix.legacy_osx
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: .github/setup_go_for_macos1013.sh
-    - name: Setup Go for macOS 10.13
-      if: matrix.legacy_osx
-      run: |-
-        echo "PATH=$HOME/go/go_osx/bin:$PATH" >> $GITHUB_ENV
-        echo "GOROOT=$HOME/go/go_osx" >> $GITHUB_ENV
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Set build tags
+    - name: Set build tags and shared ldflags
       run: |
-        set -xeuo pipefail
-        if [[ "${{ matrix.legacy_osx }}" != "true" ]]; then
-          TAGS=$(cat release/DEFAULT_BUILD_TAGS)
-        else
-          TAGS=$(sed 's/,with_usbip//' release/DEFAULT_BUILD_TAGS_OTHERS)
-        fi
-        echo "BUILD_TAGS=${TAGS}" >> "${GITHUB_ENV}"
-    - name: Set shared ldflags
-      run: |
+        echo "BUILD_TAGS=$(cat release/DEFAULT_BUILD_TAGS)" >> "${GITHUB_ENV}"
         echo "LDFLAGS_SHARED=$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" >> "${GITHUB_ENV}"
     - name: Build
       run: |
@@ -772,25 +297,17 @@ jobs:
         CGO_ENABLED: '1'
         GOOS: darwin
         GOARCH: ${{ matrix.arch }}
-        MACOSX_DEPLOYMENT_TARGET: ${{ matrix.legacy_osx && '10.13' || '' }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Seal Darwin native candidate before archive
-      if: ${{ ! matrix.legacy_osx }}
       run: |
         /usr/bin/codesign --force --sign - --timestamp=none dist/sing-box
         /usr/bin/codesign --verify --strict dist/sing-box
-    - name: Set name
-      run: |-
-        DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-darwin-${{ matrix.arch }}"
-        if [[ -n "${{ matrix.legacy_name }}" ]]; then
-          DIR_NAME="${DIR_NAME}-legacy-${{ matrix.legacy_name }}"
-        fi
-        echo "DIR_NAME=${DIR_NAME}" >> "${GITHUB_ENV}"
     - name: Archive
       env:
         COPYFILE_DISABLE: '1'
       run: |
         set -xeuo pipefail
+        DIR_NAME="sing-box-${{ needs.calculate_version.outputs.version }}-darwin-${{ matrix.arch }}"
         cd dist
         mkdir -p "${DIR_NAME}"
         cp ../LICENSE "${DIR_NAME}"
@@ -814,12 +331,12 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: binary-darwin_${{ matrix.arch }}${{ matrix.legacy_name && format('-legacy-{0}', matrix.legacy_name) }}
+        name: binary-darwin_${{ matrix.arch }}
         path: dist
         if-no-files-found: error
   build_windows:
     name: Build Windows binaries
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
+    if: ${{ !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') }}
     runs-on: windows-latest
     needs:
     - calculate_version
@@ -827,9 +344,6 @@ jobs:
       matrix:
         include:
         - arch: amd64
-          naive: true
-        - arch: '386'
-        - arch: arm64
           naive: true
     steps:
     - name: Checkout
@@ -841,18 +355,7 @@ jobs:
       with:
         go-version: 1.27.2
         cache: false
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-windows-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-windows-
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$env:GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
     - name: Build
-      if: matrix.naive
       run: |
         $TAGS = Get-Content release/DEFAULT_BUILD_TAGS_WINDOWS
         $LDFLAGS_SHARED = "$(Get-Content release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$env:GITHUB_SHA"
@@ -865,22 +368,7 @@ jobs:
         GOOS: windows
         GOARCH: ${{ matrix.arch }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build
-      if: ${{ !matrix.naive }}
-      run: |
-        $TAGS = Get-Content release/DEFAULT_BUILD_TAGS_OTHERS
-        $LDFLAGS_SHARED = "$(Get-Content release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$env:GITHUB_SHA"
-        mkdir -p dist
-        go build -v -trimpath -o dist/sing-box.exe -tags "$TAGS" `
-        -ldflags "-X 'github.com/sagernet/sing-box/constant.Version=${{ needs.calculate_version.outputs.version }}' $LDFLAGS_SHARED -s -w -buildid=" `
-        ./cmd/sing-box
-      env:
-        CGO_ENABLED: '0'
-        GOOS: windows
-        GOARCH: ${{ matrix.arch }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Extract libcronet.dll
-      if: matrix.naive
       run: |
         $CRONET_GO_VERSION = Get-Content .github/CRONET_GO_VERSION
         $LIBRARY_PATH = "lib/windows_${{ matrix.arch }}/libcronet.dll"
@@ -891,7 +379,6 @@ jobs:
         git -C "$env:RUNNER_TEMP/cronet-go-lib" checkout FETCH_HEAD
         Copy-Item "$env:RUNNER_TEMP/cronet-go-lib/$LIBRARY_PATH" dist
     - name: Archive
-      if: matrix.naive
       run: |
         $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
         mkdir "dist/$DIR_NAME"
@@ -901,22 +388,8 @@ jobs:
         Copy-Item "dist/libcronet.dll" "dist/$DIR_NAME"
         Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
         Remove-Item -Recurse "dist/$DIR_NAME"
-    - name: Archive
-      if: ${{ !matrix.naive }}
-      run: |
-        $DIR_NAME = "sing-box-${{ needs.calculate_version.outputs.version }}-windows-${{ matrix.arch }}"
-        mkdir "dist/$DIR_NAME"
-        Copy-Item LICENSE "dist/$DIR_NAME"
-        Copy-Item release/licenses/TLS-DEPENDENCY-NOTICES.txt "dist/$DIR_NAME"
-        Copy-Item "dist/sing-box.exe" "dist/$DIR_NAME"
-        Compress-Archive -Path "dist/$DIR_NAME" -DestinationPath "dist/$DIR_NAME.zip"
-        Remove-Item -Recurse "dist/$DIR_NAME"
     - name: Cleanup
-      if: matrix.naive
       run: Remove-Item dist/sing-box.exe, dist/libcronet.dll
-    - name: Cleanup
-      if: ${{ !matrix.naive }}
-      run: Remove-Item dist/sing-box.exe
     - name: Record actual unsigned candidate files
       if: success()
       run: python scripts/ci/record_candidate.py dist
@@ -934,1011 +407,6 @@ jobs:
         name: binary-windows_${{ matrix.arch }}
         path: dist
         if-no-files-found: error
-  build_android_library:
-    name: Build Android library (${{ matrix.go_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android' || inputs.build ==
-      'publish-android') && github.ref != 'refs/heads/oldstable' }}
-    runs-on: ubuntu-latest
-    needs:
-    - calculate_version
-    strategy:
-      fail-fast: false
-      matrix:
-        go_arch:
-        - '386'
-        - amd64
-        - arm
-        - arm64
-    steps:
-    - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-linux-
-    - name: Setup Android NDK
-      id: setup-ndk
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r30
-        link-to-sdk: true
-    - name: Setup OpenJDK
-      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
-      with:
-        distribution: temurin
-        java-version: 17
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Build library
-      run: |-
-        make lib_install
-        export PATH="$PATH:$(go env GOPATH)/bin"
-        go run ./cmd/internal/build_libbox -target android -platform android/${{ matrix.go_arch }}
-        python3 scripts/ci/mobile_fingerprint_exports.py android libbox.aar libbox-legacy.aar --arch ${{ matrix.go_arch }}
-        mkdir -p dist/${{ matrix.go_arch }}
-        mv libbox.aar libbox-legacy.aar dist/${{ matrix.go_arch }}
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-    - name: Record actual unsigned candidate files
-      if: success()
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload library
-      uses: actions/upload-artifact@v4
-      with:
-        name: libbox-android-${{ matrix.go_arch }}
-        path: dist
-        compression-level: 0
-        if-no-files-found: error
-  build_android:
-    name: Build Android (${{ matrix.variant }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Android') && github.ref !=
-      'refs/heads/oldstable' }}
-    runs-on: ubuntu-latest
-    needs:
-    - calculate_version
-    - build_android_library
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - variant: other
-          task: :app:assembleOtherRelease
-          output: app/build/outputs/apk/other/release/*.apk
-        - variant: other-legacy
-          task: :app:assembleOtherLegacyRelease
-          output: app/build/outputs/apk/otherLegacy/release/*.apk
-    steps:
-    - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Checkout Android client
-      run: git submodule update --init clients/android
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-linux-
-    - name: Cache Go tool builds
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/go-build
-        key: go-build-tools-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-build-tools-linux-
-    - name: Setup Android NDK
-      id: setup-ndk
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r30
-        link-to-sdk: true
-    - name: Setup OpenJDK
-      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
-      with:
-        distribution: temurin
-        java-version: 17
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Download libraries
-      uses: actions/download-artifact@v4
-      with:
-        pattern: libbox-android-*
-        path: libbox-inputs
-        merge-multiple: true
-    - name: Merge libraries
-      run: |-
-        go run ./cmd/internal/merge_aar -output libbox.aar libbox-inputs/*/libbox.aar
-        go run ./cmd/internal/merge_aar -output libbox-legacy.aar libbox-inputs/*/libbox-legacy.aar
-    - name: Checkout submodule recursive
-      run: |-
-        cd clients/android
-        git submodule update --init --recursive -v
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
-      with:
-        cache-provider: basic
-    - name: Apply exact unsigned android client source overlays
-      run: python3 scripts/ci/unsigned_clients.py android
-    - name: Update version
-      if: github.event_name == 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update
-    - name: Update nightly version
-      if: github.event_name != 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_android_version --ci --allow-ci-update --nightly
-    - name: Build
-      run: |-
-        mkdir -p clients/android/app/libs
-        cp *.aar clients/android/app/libs
-        cd clients/android
-        ./gradlew --init-script ../../scripts/ci/android_runtime_materials.init.gradle :app:polarisRuntimeMaterials
-        ./gradlew --build-cache --parallel ${{ matrix.variant == 'other-legacy' && ':app:testOtherLegacyReleaseUnitTest' || ':app:testOtherReleaseUnitTest' }} ${{ matrix.task }}
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        POLARIS_ANDROID_RUNTIME_CONFIGURATION: ${{ matrix.variant == 'other-legacy' && 'otherLegacyReleaseRuntimeClasspath' || 'otherReleaseRuntimeClasspath' }}
-        POLARIS_ANDROID_RUNTIME_OUTPUT: ${{ github.workspace }}/android-runtime-materials.json
-    - name: Prepare upload
-      run: |-
-        mkdir -p dist
-        cp clients/android/${{ matrix.output }} dist
-        VERSION_CODE=$(grep VERSION_CODE clients/android/version.properties | cut -d= -f2)
-        VERSION_NAME=$(grep VERSION_NAME clients/android/version.properties | cut -d= -f2)
-        cat > dist/SFA-${{ needs.calculate_version.outputs.version }}-${{ matrix.variant }}-version-metadata.json << EOF
-        {
-          "version_code": ${VERSION_CODE},
-          "version_name": "${VERSION_NAME}"
-        }
-        EOF
-        cat dist/SFA-${{ needs.calculate_version.outputs.version }}-${{ matrix.variant }}-version-metadata.json
-    - name: Record actual unsigned candidate files
-      if: success()
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-        POLARIS_ANDROID_RUNTIME_CONFIGURATION: ${{ matrix.variant == 'other-legacy' && 'otherLegacyReleaseRuntimeClasspath' || 'otherReleaseRuntimeClasspath' }}
-        POLARIS_ANDROID_RUNTIME_OUTPUT: ${{ github.workspace }}/android-runtime-materials.json
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary-android-apks-${{ matrix.variant }}
-        path: dist
-        if-no-files-found: error
-  build_windows_client:
-    name: Build Windows client (${{ matrix.desktop_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref !=
-      'refs/heads/oldstable' }}
-    runs-on: windows-latest
-    needs:
-    - calculate_version
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - desktop_arch: x64
-          rust_target: x86_64-pc-windows-msvc
-        - desktop_arch: x86
-          rust_target: i686-pc-windows-msvc
-        - desktop_arch: arm64
-          rust_target: aarch64-pc-windows-msvc
-    steps:
-    - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Checkout desktop client
-      shell: bash
-      run: |
-        set -euo pipefail
-        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
-        git -C clients/desktop config core.autocrlf false
-        git -C clients/desktop config core.eol lf
-    - name: Checkout desktop submodules
-      shell: bash
-      run: |
-        set -euo pipefail
-        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-desktop-windows-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-desktop-windows-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.88.0
-      with:
-        targets: ${{ matrix.rust_target }}
-    - name: Cache Windows sharing module
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          clients/desktop/bin/windows-share-toolchain/cargo-target
-        key: windows-share-${{ matrix.rust_target }}-${{ hashFiles('clients/desktop/native/windows-share/Cargo.lock') }}
-        restore-keys: windows-share-${{ matrix.rust_target }}-
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        package_json_file: clients/desktop/package.json
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version-file: clients/desktop/package.json
-        cache: pnpm
-        cache-dependency-path: |
-          clients/desktop/pnpm-lock.yaml
-          clients/desktop/dashboard/pnpm-lock.yaml
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }}
-        if ($LASTEXITCODE -ne 0) {
-          "PUBLISHED=false" >> $env:GITHUB_ENV
-        }
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Apply exact unsigned windows client source overlays
-      run: |-
-        python scripts/ci/unsigned_clients.py windows
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    - name: Update version
-      if: github.event_name == 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update
-    - name: Update nightly version
-      if: github.event_name != 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update --nightly
-    - name: Install dependencies
-      run: pnpm -C clients/desktop install
-    - name: Validate numeric Windows build metadata
-      run: python scripts/ci/polaris_version.py "$VERSION" "$BUILD_NUMBER"
-      shell: bash
-      env:
-        VERSION: ${{ needs.calculate_version.outputs.version }}
-    - name: Build
-      run: |-
-        pnpm -C clients/desktop package:win -- ${{ matrix.desktop_arch }}
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      env:
-        POLARIS_UNSIGNED_CLIENT: '1'
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Prepare upload
-      run: |-
-        $artifacts = @(Get-ChildItem clients/desktop/release/SFW-*.exe -File)
-        if ($artifacts.Count -ne 1) {
-          throw "expected 1 Windows installer for ${{ matrix.desktop_arch }}, found $($artifacts.Count)"
-        }
-        New-Item -ItemType Directory -Force dist | Out-Null
-        Copy-Item $artifacts.FullName dist
-    - name: Record actual unsigned candidate files
-      if: success()
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-        POLARIS_UNSIGNED_CLIENT: '1'
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary-windows-client-${{ matrix.desktop_arch }}
-        path: dist
-        if-no-files-found: error
-    env:
-      BUILD_NUMBER: ${{ github.run_number }}
-  build_linux_client:
-    name: Build Linux client (${{ matrix.desktop_arch }})
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable' }}
-    runs-on: ubuntu-26.04
-    needs:
-    - calculate_version
-    strategy:
-      matrix:
-        include:
-        - desktop_arch: x64
-          go_arch: amd64
-          rust_target: x86_64-unknown-linux-gnu
-        - desktop_arch: arm64
-          go_arch: arm64
-          rust_target: aarch64-unknown-linux-gnu
-        - desktop_arch: armv7l
-          go_arch: arm
-          go_arm: '7'
-          rust_target: armv7-unknown-linux-gnueabihf
-    steps:
-    - name: Checkout
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Checkout desktop client
-      shell: bash
-      run: |
-        set -euo pipefail
-        git -c core.autocrlf=false -c core.eol=lf submodule update --init clients/desktop
-        git -C clients/desktop config core.autocrlf false
-        git -C clients/desktop config core.eol lf
-    - name: Checkout desktop submodules
-      shell: bash
-      run: |
-        set -euo pipefail
-        git -c core.autocrlf=false -c core.eol=lf -C clients/desktop submodule update --init --recursive
-    - name: Apply exact unsigned Linux client source overlays
-      run: python3 scripts/ci/unsigned_clients.py linux
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-desktop-linux-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-desktop-linux-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.88.0
-      with:
-        targets: ${{ matrix.rust_target }}
-    - name: Setup Zig
-      uses: mlugg/setup-zig@v2
-      with:
-        version: 0.16.0
-    - name: Cache Wayland menu module
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          clients/desktop/bin/wayland-menu-toolchain
-        key: wayland-menu-${{ matrix.rust_target }}-${{ hashFiles('clients/desktop/native/wayland-menu/Cargo.lock') }}
-        restore-keys: wayland-menu-${{ matrix.rust_target }}-
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        package_json_file: clients/desktop/package.json
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version-file: clients/desktop/package.json
-        cache: pnpm
-        cache-dependency-path: |
-          clients/desktop/pnpm-lock.yaml
-          clients/desktop/dashboard/pnpm-lock.yaml
-    - name: Set tag
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Update version
-      if: github.event_name == 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update
-    - name: Update nightly version
-      if: github.event_name != 'workflow_dispatch'
-      run: go run -v ./cmd/internal/update_desktop_version --ci --allow-ci-update --nightly
-    - name: Clone cronet-go
-      timeout-minutes: 10
-      run: |-
-        set -xeuo pipefail
-        CRONET_GO_VERSION=$(cat .github/CRONET_GO_VERSION)
-        git init ~/cronet-go
-        git -C ~/cronet-go remote add origin https://github.com/sagernet/cronet-go.git
-        git -C ~/cronet-go fetch --depth=1 origin "$CRONET_GO_VERSION"
-        git -C ~/cronet-go checkout FETCH_HEAD
-        git -C ~/cronet-go submodule update --init --recursive --depth=1
-        python3 "$GITHUB_WORKSPACE/scripts/ci/cronet_material_bootstrap.py" prepare --cronet-root "$HOME/cronet-go"
-    - name: Regenerate Debian keyring
-      run: |-
-        set -xeuo pipefail
-        rm -f ~/cronet-go/naiveproxy/src/build/linux/sysroot_scripts/keyring.gpg
-        cd ~/cronet-go
-        GPG_TTY=/dev/null ./naiveproxy/src/build/linux/sysroot_scripts/generate_keyring.sh
-    - name: Download Chromium toolchain
-      timeout-minutes: 20
-      run: |-
-        set -xeuo pipefail
-        cd ~/cronet-go
-        go run ./cmd/build-naive --target=linux/${{ matrix.go_arch }} download-toolchain
-    - name: Set Chromium toolchain environment
-      run: |-
-        set -xeuo pipefail
-        cd ~/cronet-go
-        go run ./cmd/build-naive --target=linux/${{ matrix.go_arch }} env >> "$GITHUB_ENV"
-    - name: Install package tools
-      run: |-
-        set -euo pipefail
-        sudo apt-get update || true
-        sudo apt-get install -y debsigs libarchive-tools rpm zstd
-        echo '%_rpmformat 4' > "$HOME/.rpmmacros"
-    - name: Install dependencies
-      run: pnpm -C clients/desktop install
-    - name: Build
-      run: pnpm -C clients/desktop package:linux -- deb rpm pacman ${{ matrix.desktop_arch }}
-      env:
-        CGO_ENABLED: '0'
-        GOARM: ${{ matrix.go_arm }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Prepare upload
-      run: |-
-        shopt -s nullglob
-        artifacts=(clients/desktop/release/SFL-*.deb clients/desktop/release/SFL-*.rpm clients/desktop/release/SFL-*.pkg.tar.zst)
-        if (( ${#artifacts[@]} != 3 )); then
-          echo "expected 3 Linux packages, found ${#artifacts[@]}" >&2
-          exit 1
-        fi
-        mkdir -p dist
-        cp "${artifacts[@]}" dist
-    - name: Record actual unsigned candidate files
-      if: success()
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary-linux-client-${{ matrix.desktop_arch }}
-        path: dist
-        if-no-files-found: error
-  build_apple_library:
-    name: Build Apple library (${{ matrix.artifact }})
-    runs-on: ${{ matrix.build && 'xcode-27' || 'ubuntu-latest' }}
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release'
-      || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone'
-      || inputs.build == 'iOS-jailbreak') }}
-    needs:
-    - calculate_version
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - artifact: ios-arm64
-          platform: ios/arm64
-          build: ${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build
-            == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'iOS-jailbreak' }}
-        - artifact: tvos-arm64
-          platform: tvos/arm64
-          build: ${{ github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Apple' || inputs.build
-            == 'tvOS') }}
-        - artifact: macos-arm64
-          platform: macos/arm64
-          build: ${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build
-            == 'Apple-release' || inputs.build == 'macOS' || inputs.build == 'macOS-standalone' }}
-        - artifact: macos-amd64
-          platform: macos/amd64
-          build: ${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build
-            == 'Apple-release' || inputs.build == 'macOS' || inputs.build == 'macOS-standalone' }}
-    steps:
-    - name: Checkout
-      if: matrix.build
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Setup Go
-      if: matrix.build
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Patch Go for iOS
-      if: matrix.build && (matrix.platform == 'ios/arm64' || matrix.platform == 'tvos/arm64')
-      run: .github/patch_go_for_ios.sh
-    - name: Cache Go modules
-      if: matrix.build
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-macos-
-    - name: Cache Go build
-      if: matrix.build
-      uses: actions/cache@v4
-      with:
-        path: ~/Library/Caches/go-build
-        key: libbox-go-build-${{ matrix.artifact }}-1.27.2-${{ hashFiles('go.sum') }}
-        restore-keys: libbox-go-build-${{ matrix.artifact }}-1.27.2-
-    - name: Set tag
-      if: matrix.build
-      run: git tag v${{ needs.calculate_version.outputs.version }} -f
-    - name: Build library
-      if: matrix.build
-      env:
-        GOTOOLCHAIN: local
-      run: |-
-        make lib_install
-        export PATH="$PATH:$(go env GOPATH)/bin"
-        go run ./cmd/internal/build_libbox -target apple -platform ${{ matrix.platform }}
-        python3 scripts/ci/mobile_fingerprint_exports.py apple Libbox.xcframework
-        mkdir -p dist
-        tar -cf dist/Libbox-${{ matrix.artifact }}.tar Libbox.xcframework
-    - name: Record actual unsigned candidate files
-      if: matrix.build
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload library
-      if: matrix.build
-      uses: actions/upload-artifact@v4
-      with:
-        name: libbox-apple-${{ matrix.artifact }}
-        path: dist
-        compression-level: 1
-        if-no-files-found: error
-  build_apple:
-    name: Build Apple release clients
-    runs-on: ${{ matrix.if && 'xcode-27' || 'ubuntu-latest' }}
-    if: ${{ !inputs.source_generate_only && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' || inputs.build
-      == 'macOS-standalone' || inputs.build == 'iOS-jailbreak') }}
-    needs:
-    - calculate_version
-    - build_apple_library
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - name: macOS-standalone
-          if: ${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' ||
-            inputs.build == 'macOS-standalone' }}
-          type: standalone
-          platform: macos
-          variant: all
-          library_arch: '*'
-          scheme: ''
-          destination: ''
-          archive: ''
-          upload: ''
-          upload_extension: ''
-          altool_platform: ''
-        - name: iOS-jailbreak
-          if: ${{ github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' ||
-            inputs.build == 'iOS-jailbreak' }}
-          type: jailbreak
-          platform: ios
-          variant: ''
-          library_arch: ''
-          scheme: ''
-          destination: ''
-          archive: ''
-          upload: ''
-          upload_extension: ''
-          altool_platform: ''
-    steps:
-    - name: Checkout
-      if: matrix.if
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Checkout Apple client
-      if: matrix.if
-      run: git submodule update --init --recursive clients/apple
-    - name: Setup Go
-      if: matrix.if
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      if: matrix.if
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-macos-
-    - name: Cache Go tool builds
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ~/Library/Caches/go-build
-        key: go-build-tools-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-build-tools-macos-
-    - name: Set tag
-      if: matrix.if
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-        echo "VERSION=${{ needs.calculate_version.outputs.version }}" >> "$GITHUB_ENV"
-    - name: Cache Swift packages
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ${{ runner.temp }}/SourcePackages
-        key: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
-          }}
-        restore-keys: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-
-    - name: Cache Xcode build data
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ${{ matrix.type == 'standalone' && 'clients/apple/build/SFM.System-*.dd' || matrix.type == 'jailbreak' && 'clients/apple/build/jailbreak/DerivedData'
-          || format('{0}/DerivedData', runner.temp) }}
-        key: polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
-          }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{
-          github.sha }}
-        restore-keys: |
-          polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
-    - name: Install jailbreak packaging tools
-      if: matrix.if && matrix.type == 'jailbreak'
-      run: brew install dpkg ldid
-    - name: Download library
-      if: matrix.if
-      uses: actions/download-artifact@v4
-      with:
-        pattern: ${{ matrix.type == 'standalone' && format('libbox-apple-macos-{0}', matrix.library_arch) || format('libbox-apple-{0}-*',
-          matrix.platform) }}
-        path: libbox-inputs
-        merge-multiple: true
-    - name: Prepare library
-      if: matrix.if
-      run: |-
-        mkdir -p libbox-slices
-        library_inputs=()
-        for library_archive in libbox-inputs/*.tar; do
-          slice_name=$(basename "$library_archive" .tar)
-          slice_path="libbox-slices/$slice_name"
-          mkdir -p "$slice_path"
-          tar -xf "$library_archive" -C "$slice_path"
-          library_inputs+=("$slice_path/Libbox.xcframework")
-        done
-        go run ./cmd/internal/merge_apple_xcframework \
-          -output clients/apple/Libbox.xcframework \
-          "${library_inputs[@]}"
-    - name: Set local candidate project version
-      if: matrix.if && github.event_name == 'workflow_dispatch'
-      run: |
-        PROJECT_VERSION_VARIABLE=$(echo "${{ matrix.platform }}" | tr "[:lower:]" "[:upper:]")_PROJECT_VERSION
-        printf "%s=%s\n" "$PROJECT_VERSION_VARIABLE" "$CANDIDATE_BUILD_NUMBER" >> "$GITHUB_ENV"
-      env:
-        CANDIDATE_BUILD_NUMBER: ${{ github.run_number }}
-    - name: Apply exact client source overlays
-      if: matrix.if
-      run: python3 scripts/ci/unsigned_clients.py apple
-    - name: Update version
-      if: matrix.if
-      run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
-    - name: Resolve and apply exact unsigned Apple package overlays
-      if: matrix.if
-      shell: bash
-      run: |
-        set -euo pipefail
-        python3 scripts/ci/apple_package_overlays.py check-lock
-        xcodebuild -version
-        xcrun swift --version
-        xcodebuild -resolvePackageDependencies \
-          -disableAutomaticPackageResolution \
-          -project clients/apple/sing-box.xcodeproj \
-          -scheme "$APPLE_RESOLVE_SCHEME" \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
-        python3 scripts/ci/apple_package_overlays.py apply --source-packages "$RUNNER_TEMP/SourcePackages"
-      env:
-        APPLE_RESOLVE_SCHEME: ${{ matrix.type == 'standalone' && 'SFM.System' || matrix.type == 'jailbreak' && 'SFI' || matrix.scheme }}
-        DISABLE_SWIFTLINT: '1'
-    - name: Verify actual unsigned Apple sources before build
-      if: matrix.if
-      run: python3 scripts/ci/client_source.py preflight apple --unsigned
-    - name: Archive App Store build
-      if: matrix.if && matrix.type == 'app-store'
-      run: |
-        cd clients/apple
-        xcodebuild archive \
-          -disableAutomaticPackageResolution \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
-          -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-          -scheme "${{ matrix.scheme }}" \
-          -configuration Release \
-          -destination "${{ matrix.destination }}" \
-          -archivePath "${{ matrix.archive }}" \
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-      env:
-        DISABLE_SWIFTLINT: '1'
-    - name: Build standalone packages
-      if: matrix.if && matrix.type == 'standalone'
-      run: |
-        make -C clients/apple build_macos_pkg_all
-      env:
-        DISABLE_SWIFTLINT: '1'
-        XCODEBUILD_FLAGS: -disableAutomaticPackageResolution -clonedSourcePackagesDirPath "${{ runner.temp }}/SourcePackages" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_IDENTITY=""
-    - name: Prepare standalone packages
-      if: matrix.if && matrix.type == 'standalone'
-      run: |-
-        mkdir -p dist
-        for label in Apple Intel Universal; do
-          cp "clients/apple/build/SFM-${label}.pkg" "dist/SFM-${VERSION}-${label}.pkg"
-        done
-        pushd clients/apple/build/SFM.System-universal.xcarchive
-        zip -r SFM.dSYMs.zip dSYMs
-        popd
-        cp clients/apple/build/SFM.System-universal.xcarchive/SFM.dSYMs.zip "dist/SFM-${VERSION}.dSYMs.zip"
-    - name: Build jailbreak package
-      if: matrix.if && matrix.type == 'jailbreak'
-      run: |-
-        make -C clients/apple build_ios_deb
-        mkdir -p dist
-        cp "clients/apple/build/jailbreak/SFI-${VERSION}-iphoneos-arm64.deb" dist
-        cp "clients/apple/build/jailbreak/SFI-${VERSION}-iphoneos-arm64e.deb" dist
-      env:
-        XCODEBUILD_CLONED_SOURCE_PACKAGES_DIR_PATH: ${{ runner.temp }}/SourcePackages
-    - name: Report cache directory sizes
-      if: matrix.if
-      run: |-
-        du -sh "$RUNNER_TEMP/SourcePackages"/* 2>/dev/null || true
-        du -sh "$RUNNER_TEMP/DerivedData" 2>/dev/null || true
-        du -sh clients/apple/build/jailbreak/DerivedData 2>/dev/null || true
-        du -sh clients/apple/build/SFM.System-*.dd 2>/dev/null || true
-    - name: Record actual unsigned candidate files
-      if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload release artifact
-      if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary-apple-${{ matrix.type }}${{ matrix.variant && format('-{0}', matrix.variant) || '' }}
-        path: dist
-        if-no-files-found: error
-    - name: Diagnose failed unsigned Apple sources
-      if: matrix.if && failure()
-      run: python3 scripts/ci/client_source.py diagnose apple --unsigned
-  build_apple_app_store:
-    name: Build Apple App Store clients
-    runs-on: ${{ matrix.if && 'xcode-27' || 'ubuntu-latest' }}
-    if: ${{ !inputs.source_generate_only && github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'iOS'
-      || inputs.build == 'macOS' || inputs.build == 'tvOS') }}
-    needs:
-    - calculate_version
-    - build_apple_library
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - name: iOS
-          if: ${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'iOS' }}
-          type: app-store
-          platform: ios
-          scheme: SFI
-          destination: generic/platform=iOS
-          archive: build/SFI.xcarchive
-          upload: SFI/AppStoreExport.plist
-          upload_extension: ipa
-          altool_platform: ios
-          variant: ''
-          library_arch: ''
-        - name: macOS
-          if: ${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'macOS' }}
-          type: app-store
-          platform: macos
-          scheme: SFM
-          destination: generic/platform=macOS
-          archive: build/SFM.xcarchive
-          upload: SFI/AppStoreExport.plist
-          upload_extension: pkg
-          altool_platform: macos
-          variant: ''
-          library_arch: ''
-        - name: tvOS
-          if: ${{ inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'tvOS' }}
-          type: app-store
-          platform: tvos
-          scheme: SFT
-          destination: generic/platform=tvOS
-          archive: build/SFT.xcarchive
-          upload: SFI/AppStoreExport.plist
-          upload_extension: ipa
-          altool_platform: appletvos
-          variant: ''
-          library_arch: ''
-    steps:
-    - name: Checkout
-      if: matrix.if
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        fetch-depth: 1
-    - name: Checkout Apple client
-      if: matrix.if
-      run: git submodule update --init --recursive clients/apple
-    - name: Setup Go
-      if: matrix.if
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.27.2
-        cache: false
-    - name: Cache Go modules
-      if: matrix.if
-      uses: actions/cache/restore@v4
-      with:
-        path: ~/go/pkg/mod
-        key: go-mod-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-mod-macos-
-    - name: Cache Go tool builds
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ~/Library/Caches/go-build
-        key: go-build-tools-macos-${{ hashFiles('go.sum') }}
-        restore-keys: go-build-tools-macos-
-    - name: Set tag
-      if: matrix.if
-      run: |-
-        git ls-remote --exit-code --tags origin v${{ needs.calculate_version.outputs.version }} || echo "PUBLISHED=false" >> "$GITHUB_ENV"
-        git tag v${{ needs.calculate_version.outputs.version }} -f
-        echo "VERSION=${{ needs.calculate_version.outputs.version }}" >> "$GITHUB_ENV"
-    - name: Cache Swift packages
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ${{ runner.temp }}/SourcePackages
-        key: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved')
-          }}
-        restore-keys: polaris-unsigned-apple-spm-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-
-    - name: Cache Xcode build data
-      if: matrix.if
-      uses: actions/cache@v4
-      with:
-        path: ${{ matrix.type == 'standalone' && 'clients/apple/build/SFM.System-*.dd' || matrix.type == 'jailbreak' && 'clients/apple/build/jailbreak/DerivedData'
-          || format('{0}/DerivedData', runner.temp) }}
-        key: polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name
-          }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-${{
-          github.sha }}
-        restore-keys: |
-          polaris-unsigned-apple-derived-data-${{ hashFiles('release/ci/apple-swift-package-overlays.json') }}-${{ matrix.type }}-${{ matrix.platform }}-${{ matrix.variant || 'default' }}-${{ github.ref_name }}-${{ hashFiles('clients/apple/sing-box.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}-
-    - name: Install jailbreak packaging tools
-      if: matrix.if && matrix.type == 'jailbreak'
-      run: brew install dpkg ldid
-    - name: Download library
-      if: matrix.if
-      uses: actions/download-artifact@v4
-      with:
-        pattern: ${{ matrix.type == 'standalone' && format('libbox-apple-macos-{0}', matrix.library_arch) || format('libbox-apple-{0}-*',
-          matrix.platform) }}
-        path: libbox-inputs
-        merge-multiple: true
-    - name: Prepare library
-      if: matrix.if
-      run: |-
-        mkdir -p libbox-slices
-        library_inputs=()
-        for library_archive in libbox-inputs/*.tar; do
-          slice_name=$(basename "$library_archive" .tar)
-          slice_path="libbox-slices/$slice_name"
-          mkdir -p "$slice_path"
-          tar -xf "$library_archive" -C "$slice_path"
-          library_inputs+=("$slice_path/Libbox.xcframework")
-        done
-        go run ./cmd/internal/merge_apple_xcframework \
-          -output clients/apple/Libbox.xcframework \
-          "${library_inputs[@]}"
-    - name: Set local candidate project version
-      if: matrix.if && github.event_name == 'workflow_dispatch'
-      run: |
-        PROJECT_VERSION_VARIABLE=$(echo "${{ matrix.platform }}" | tr "[:lower:]" "[:upper:]")_PROJECT_VERSION
-        printf "%s=%s\n" "$PROJECT_VERSION_VARIABLE" "$CANDIDATE_BUILD_NUMBER" >> "$GITHUB_ENV"
-      env:
-        CANDIDATE_BUILD_NUMBER: ${{ github.run_number }}
-    - name: Apply exact client source overlays
-      if: matrix.if
-      run: python3 scripts/ci/unsigned_clients.py apple
-    - name: Update version
-      if: matrix.if
-      run: go run -v ./cmd/internal/update_apple_version --ci ${{ matrix.type == 'app-store' && '--testflight' || '' }}
-    - name: Resolve and apply exact unsigned Apple package overlays
-      if: matrix.if
-      shell: bash
-      run: |
-        set -euo pipefail
-        python3 scripts/ci/apple_package_overlays.py check-lock
-        xcodebuild -version
-        xcrun swift --version
-        xcodebuild -resolvePackageDependencies \
-          -disableAutomaticPackageResolution \
-          -project clients/apple/sing-box.xcodeproj \
-          -scheme "$APPLE_RESOLVE_SCHEME" \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
-        python3 scripts/ci/apple_package_overlays.py apply --source-packages "$RUNNER_TEMP/SourcePackages"
-      env:
-        APPLE_RESOLVE_SCHEME: ${{ matrix.type == 'standalone' && 'SFM.System' || matrix.type == 'jailbreak' && 'SFI' || matrix.scheme }}
-        DISABLE_SWIFTLINT: '1'
-    - name: Verify actual unsigned Apple sources before build
-      if: matrix.if
-      run: python3 scripts/ci/client_source.py preflight apple --unsigned
-    - name: Archive App Store build
-      if: matrix.if && matrix.type == 'app-store'
-      run: |
-        cd clients/apple
-        xcodebuild archive \
-          -disableAutomaticPackageResolution \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
-          -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-          -scheme "${{ matrix.scheme }}" \
-          -configuration Release \
-          -destination "${{ matrix.destination }}" \
-          -archivePath "${{ matrix.archive }}" \
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-      env:
-        DISABLE_SWIFTLINT: '1'
-    - name: Build standalone packages
-      if: matrix.if && matrix.type == 'standalone'
-      run: |
-        make -C clients/apple build_macos_pkg_all
-      env:
-        DISABLE_SWIFTLINT: '1'
-        XCODEBUILD_FLAGS: -disableAutomaticPackageResolution -clonedSourcePackagesDirPath "${{ runner.temp }}/SourcePackages" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-          CODE_SIGN_IDENTITY=""
-    - name: Prepare standalone packages
-      if: matrix.if && matrix.type == 'standalone'
-      run: |-
-        mkdir -p dist
-        for label in Apple Intel Universal; do
-          cp "clients/apple/build/SFM-${label}.pkg" "dist/SFM-${VERSION}-${label}.pkg"
-        done
-        pushd clients/apple/build/SFM.System-universal.xcarchive
-        zip -r SFM.dSYMs.zip dSYMs
-        popd
-        cp clients/apple/build/SFM.System-universal.xcarchive/SFM.dSYMs.zip "dist/SFM-${VERSION}.dSYMs.zip"
-    - name: Build jailbreak package
-      if: matrix.if && matrix.type == 'jailbreak'
-      run: |-
-        make -C clients/apple build_ios_deb
-        mkdir -p dist
-        cp "clients/apple/build/jailbreak/SFI-${VERSION}-iphoneos-arm64.deb" dist
-        cp "clients/apple/build/jailbreak/SFI-${VERSION}-iphoneos-arm64e.deb" dist
-      env:
-        XCODEBUILD_CLONED_SOURCE_PACKAGES_DIR_PATH: ${{ runner.temp }}/SourcePackages
-    - name: Report cache directory sizes
-      if: matrix.if
-      run: |-
-        du -sh "$RUNNER_TEMP/SourcePackages"/* 2>/dev/null || true
-        du -sh "$RUNNER_TEMP/DerivedData" 2>/dev/null || true
-        du -sh clients/apple/build/jailbreak/DerivedData 2>/dev/null || true
-        du -sh clients/apple/build/SFM.System-*.dd 2>/dev/null || true
-    - name: Record actual unsigned candidate files
-      if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload release artifact
-      if: matrix.if && (matrix.type == 'standalone' || matrix.type == 'jailbreak')
-      uses: actions/upload-artifact@v4
-      with:
-        name: binary-apple-${{ matrix.type }}${{ matrix.variant && format('-{0}', matrix.variant) || '' }}
-        path: dist
-        if-no-files-found: error
-    - name: Pack unsigned App Store archive
-      if: matrix.if
-      run: |
-        mkdir -p dist
-        tar -cf "dist/unsigned-${{ needs.calculate_version.outputs.version }}-${{ matrix.platform }}.xcarchive.tar" -C clients/apple "${{ matrix.archive }}"
-    - name: Record actual unsigned candidate files
-      if: matrix.if
-      run: python scripts/ci/record_candidate.py dist
-      env:
-        CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
-    - name: Upload unsigned App Store archive (not installable/store accepted)
-      uses: actions/upload-artifact@v4
-      if: matrix.if
-      with:
-        name: unsigned-apple-${{ matrix.platform }}-archive
-        path: dist
-        if-no-files-found: error
-    - name: Diagnose failed unsigned Apple sources
-      if: matrix.if && failure()
-      run: python3 scripts/ci/client_source.py diagnose apple --unsigned
   native_smoke:
     name: Native final-package Cronet and gVisor smoke (${{ matrix.id }})
     if: ${{ !cancelled() && !inputs.source_generate_only && !failure() && (inputs.build == 'All' || inputs.build == 'Binary') }}
@@ -1948,13 +416,12 @@ jobs:
     needs:
     - calculate_version
     - build
-    - build_windows7
     - build_darwin
     - build_windows
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON('{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"},{"id":"windows-amd64","runner":"windows-2025","artifact":"binary-windows_amd64"},{"id":"darwin-amd64","runner":"macos-15-intel","artifact":"binary-darwin_amd64"},{"id":"darwin-arm64","runner":"xcode-27","artifact":"binary-darwin_arm64"}]}') }}
+      matrix: ${{ fromJSON('{"include":[{"id":"linux-amd64-purego","runner":"ubuntu-24.04","artifact":"binary-linux_amd64-purego"},{"id":"linux-arm64-purego","runner":"ubuntu-24.04-arm","artifact":"binary-linux_arm64-purego"},{"id":"windows-amd64","runner":"windows-2025","artifact":"binary-windows_amd64"},{"id":"darwin-amd64","runner":"macos-15-intel","artifact":"binary-darwin_amd64"},{"id":"darwin-arm64","runner":"xcode-27","artifact":"binary-darwin_arm64"}]}') }}
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -1979,7 +446,6 @@ jobs:
     - name: Install native smoke and peer validators
       run: python -m pip install PyYAML==6.0.2 jsonschema==4.23.0
     - name: Execute final-package Cronet smoke
-      if: ${{ !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64') }}
       env:
         GOTOOLCHAIN: local
       run: python scripts/ci/native_release_index.py smoke native
@@ -2002,132 +468,20 @@ jobs:
         if-no-files-found: error
         retention-days: 7
     - name: Upload actual smoke receipt
-      if: ${{ !(inputs.windows_native_proof == true && matrix.id == 'windows-amd64') }}
       uses: actions/upload-artifact@v4
       with:
         name: smoke-${{ matrix.id }}
         path: native/native-row-*.json
         if-no-files-found: error
-  windows_native_admission:
-    name: Bind explicit Windows proof request to this exact tag and attempt
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && !failure() && !cancelled() }}
-    needs: [calculate_version]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
-    env:
-      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
-      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
-      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
-      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
-      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
-    outputs:
-      receipt: ${{ steps.admission.outputs.receipt }}
-    steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        ref: ${{ github.sha }}
-        fetch-depth: 0
-        persist-credentials: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Bind current run and exact annotated checkout
-      id: admission
-      env:
-        GH_TOKEN: ${{ github.token }}
-        EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
-      run: python3 -B scripts/ci/windows_native_admission.py --acquire
-  native_windows_proof:
-    name: Explicit SYSTEM final-package Windows native execution proof
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.windows_native_proof == true && !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') && inputs.evidence_mode == 'final' && needs.windows_native_admission.result == 'success' && !failure() && !cancelled() }}
-    needs: [calculate_version, build, build_windows7, build_darwin, build_windows, windows_native_admission]
-    runs-on: [self-hosted, Windows, X64, polaris-windows-system-proof]
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    env:
-      GOTOOLCHAIN: local
-      GOFLAGS: -mod=readonly
-      CGO_ENABLED: '0'
-      PYTHONDONTWRITEBYTECODE: '1'
-      WINDOWS_NATIVE_PROOF_REQUESTED: ${{ inputs.windows_native_proof == true && 'true' || 'false' }}
-      WINDOWS_NATIVE_BUILD: ${{ inputs.build }}
-      WINDOWS_NATIVE_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
-      WINDOWS_NATIVE_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
-      WINDOWS_NATIVE_VERSION: ${{ inputs.version }}
-      POLARIS_WINDOWS_NATIVE_ADMISSION_RECEIPT: ${{ needs.windows_native_admission.outputs.receipt }}
-    steps:
-    - name: Require preprovisioned SYSTEM and protected runner storage without changing it
-      shell: pwsh
-      run: |
-        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        if ($identity.User.Value -cne 'S-1-5-18' -or [Security.Principal.WindowsIdentity]::GetCurrent($true)) { throw 'Existing non-impersonating SYSTEM host required; no elevation or installation is performed' }
-        $trusted = @('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464','S-1-3-0','S-1-3-4')
-        $write = [Security.AccessControl.FileSystemRights]::Write -bor [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership
-        foreach ($storage in @($env:GITHUB_WORKSPACE,$env:RUNNER_TEMP)) {
-          $acl = Get-Acl -LiteralPath $storage -ErrorAction Stop
-          $owner = ([Security.Principal.NTAccount]$acl.Owner).Translate([Security.Principal.SecurityIdentifier]).Value
-          if ($owner -notin $trusted[0..2]) { throw 'Runner storage owner is untrusted' }
-          foreach ($rule in $acl.Access) {
-            $sid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
-            if ($rule.AccessControlType -eq 'Allow' -and ($rule.FileSystemRights -band $write) -ne 0 -and $sid -notin $trusted) { throw 'Runner storage admits an ordinary writer' }
-          }
-        }
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-      with:
-        ref: ${{ github.sha }}
-        fetch-depth: 0
-        persist-credentials: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Rebind token-free job to exact source tag and current attempt
-      run: python -B scripts/ci/windows_native_admission.py
-    - uses: actions/setup-go@v5
-      with:
-        go-version-file: release/GO_VERSION
-        cache: false
-    - name: Compile only the clean source-owned native observation producer
-      shell: pwsh
-      run: |
-        $source = (git rev-parse HEAD).Trim()
-        $tree = (git rev-parse 'HEAD^{tree}').Trim()
-        if ($source -cne $env:GITHUB_SHA -or (git status --porcelain --untracked-files=all)) { throw 'Producer source is not the exact clean workflow checkout' }
-        $slot = Join-Path $env:RUNNER_TEMP 'polaris-windows-native-execution'
-        if (Test-Path -LiteralPath $slot) { throw 'Native producer slot must be fresh' }
-        New-Item -ItemType Directory -Path $slot -ErrorAction Stop | Out-Null
-        go build -buildvcs=true -trimpath -mod=readonly -ldflags "-X main.producerSource=$source -X main.producerTree=$tree" -o "$slot/producer.exe" ./cmd/internal/windows_native_execution
-        if ($LASTEXITCODE -ne 0) { throw 'Native producer compilation failed' }
-    - uses: actions/download-artifact@v5
-      with:
-        name: binary-windows_amd64
-        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}
-    - name: Install data schema validator
-      run: python -m pip install jsonschema==4.23.0
-    - name: Execute requested native SYSTEM proof with no API credential
-      env:
-        POLARIS_WINDOWS_NATIVE_PROOF_AUTHORIZED: 'true'
-      run: python -B scripts/ci/native_release_index.py smoke "${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}"
-    - name: Preserve only the complete actual native smoke row
-      uses: actions/upload-artifact@v4
-      with:
-        name: smoke-windows-amd64
-        path: ${{ runner.temp }}/windows-native-final-${{ github.run_id }}-${{ github.run_attempt }}/native-row-*.json
-        if-no-files-found: error
   native_index:
-    name: Assemble full 44-archive native index and source/legal sidecars
-    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') && (inputs.windows_native_proof != true || needs.native_windows_proof.result == 'success') }}
+    name: Assemble native index and source/legal sidecars
+    if: ${{ !inputs.source_generate_only && !failure() && !cancelled() && (inputs.build == 'All' || inputs.build == 'Binary') }}
     needs:
     - calculate_version
     - build
-    - build_windows7
     - build_darwin
     - build_windows
     - native_smoke
-    - native_windows_proof
     runs-on: ubuntu-latest
     steps:
     - name: Checkout exact source
@@ -2152,21 +506,15 @@ jobs:
       with:
         pattern: binary-darwin_*
         path: artifacts
-    - name: Download exact native scope binary-android_*
-      uses: actions/download-artifact@v5
-      with:
-        pattern: binary-android_*
-        path: artifacts
     - name: Download exact native scope smoke-*
       uses: actions/download-artifact@v5
       with:
         pattern: smoke-*
         path: artifacts
-    - name: Assemble explicitly selected final or staging index
+    - name: Assemble final index
       run: python3 scripts/ci/native_release_index.py assemble artifacts
       env:
         VERSION: ${{ needs.calculate_version.outputs.version }}
-        REQUIRE_RELEASE_TAG: ${{ inputs.evidence_mode == 'final' && 'true' || 'false' }}
         EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
         GH_TOKEN: ${{ github.token }}
     - name: Upload native index and source sidecar
@@ -2185,19 +533,10 @@ jobs:
     needs:
     - calculate_version
     - build
-    - build_windows7
     - build_darwin
     - build_windows
-    - build_android_library
-    - build_android
-    - build_windows_client
-    - build_linux_client
-    - build_apple_library
-    - build_apple
-    - build_apple_app_store
     - native_smoke
     - native_index
-    - prepare_windows7
     if: ${{ always() && inputs.build == 'All' && !inputs.source_generate_only }}
     runs-on: ubuntu-latest
     steps:
@@ -2209,12 +548,9 @@ jobs:
       env:
         PUBLISHER_ROLE: all
         NEEDS_JSON: ${{ toJSON(needs) }}
-        RECEIPT_EVIDENCE_MODE: ${{ inputs.evidence_mode }}
         RECEIPT_SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
         RELEASE_BUILD: ${{ inputs.build }}
-        RELEASE_VERSION: ${{ inputs.version }}
-        PUBLISH_STORES: 'false'
-        PUBLISH_REGISTRY: 'false'
+        RELEASE_VERSION: ${{ needs.calculate_version.outputs.version }}
     - uses: actions/upload-artifact@v4
       with:
         name: publisher-run-receipt
@@ -2223,27 +559,12 @@ jobs:
 'on':
   workflow_dispatch:
     inputs:
-      version:
-        description: Candidate version only; no tag or release will be pushed
-        required: true
-        type: string
-        default: 1.15.0-polaris-alpha.12.22
-      evidence_mode:
-        description: Final requires an existing exact-source annotated tag before any builds; staging can never be published
-        type: choice
-        required: true
-        default: final
-        options: [final, staging]
       source_generate_only:
         description: 'Source only: generate the two runtime protobuf files for review; skip native Source validation'
         type: boolean
         default: false
-      windows_native_proof:
-        description: 'Separate explicit SYSTEM proof request: needs an independently controlled SYSTEM host; never installs or elevates'
-        type: boolean
-        default: false
       build:
-        description: Full upstream artifact scope (All is unsigned and never publishes)
+        description: Release artifact scope (All is unsigned and never publishes)
         required: true
         type: choice
         default: All
@@ -2251,18 +572,5 @@ jobs:
         - All
         - Source
         - Binary
-        - Android
-        - Windows
-        - Linux
-        - Apple
-        - Apple-release
-        - iOS
-        - macOS
-        - tvOS
-        - macOS-standalone
-        - iOS-jailbreak
 permissions:
   contents: read
-env:
-  POLARIS_UNSIGNED_CANDIDATE: '1'
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false'

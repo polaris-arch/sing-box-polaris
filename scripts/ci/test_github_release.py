@@ -19,17 +19,16 @@ import errno
 
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+p.bind_release('v1.15.0-polaris-alpha.12.22')
 
 
 def receipt_context_fixture():
-    policies=json.loads(p.SCOPE.read_text())['all']['receiptJobs']
-    return {'GITHUB_REF':'refs/heads/fixture','RECEIPT_EVIDENCE_MODE':'final','RECEIPT_SOURCE_GENERATE_ONLY':'false',
-            'NEEDS_JSON':json.dumps({key:{'result':'success','outputs':{}} for key in policies})}
+    return {'GITHUB_REF':'refs/tags/'+p.TAG,'RECEIPT_SOURCE_GENERATE_ONLY':'false',
+            'NEEDS_JSON':json.dumps({'build':{'result':'success','outputs':{}}})}
 
 def native_jobs_fixture(index):
     """Synthetic Actions data; only mocked metadata, never native authority."""
-    from native_release_index import expected_native_job_names
-    names=expected_native_job_names(index['platforms'])
+    from native_release_index import NATIVE_JOB_NAMES as names
     return [{'id':i+1,'name':name,'status':'completed','conclusion':'success',
              'head_sha':index['sourceCommit'],'run_id':42,'run_attempt':1}
             for i,(key,name) in enumerate(names.items())]
@@ -205,14 +204,13 @@ class BoundedStorageTests(unittest.TestCase):
                 'head_sha':source,'path':workflow,'status':'completed','conclusion':'success','event':'workflow_dispatch',
                 'run_attempt':1,'run_started_at':'2026-10-22T00:00:00Z'}
             receipt={'repository':p.REPO,'repositoryId':p.RID,'sourceCommit':source,'runId':rid,'attempt':1,'version':p.VERSION,
-                     'build':'All','role':role,'publishStores':False,'publishRegistry':False}
+                     'build':'All','role':role}
             payloads={'publisher-run-receipt':[('publisher-run-receipt.json',json.dumps(receipt).encode())]}
             if role=='all':
                 payloads['binary-native-index']=[('polaris-upstream-native-assets.json',json.dumps(index).encode()),(source_name,source_bytes)]
-                payloads['libbox-internal-fixture']=[('large-private.bin',b'x'*(8*1024**2))]
-                for flavor in ('other','other-legacy'):
-                    payloads['binary-android-apks-'+flavor]=[(f'SFA-{p.VERSION}-{flavor}-version-metadata.json',b'{"version":1}')]
-            scope[role]={'workflow':workflow,'requiredArtifacts':list(payloads),'payloadRules':{}}
+                payloads['native-controlled-peer']=[('receipt.json',b'x'*(8*1024**2))]
+                payloads['binary-linux_amd64-purego']=[(f'sing-box-{p.VERSION}-linux-amd64.tar.gz',b'public')]
+            scope[role]={'workflow':workflow,'payloadRules':{}}
             artifacts[rid]=[]
             for name,rows in payloads.items():
                 data=self.zipped(rows);a=self.metadata(data,name,ident);a.update(created_at='2026-10-22T00:01:00Z',workflow_run={'id':int(rid),'head_sha':source})
@@ -227,7 +225,7 @@ class BoundedStorageTests(unittest.TestCase):
             root=Path(d);work=root/'work';budget=p.ScratchBudget(work,reserve=0)
             with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',side_effect=lambda path:runs[path.split('/')[-1]]) as remote, \
                  mock.patch.object(p,'pages',side_effect=lambda path,key:artifacts[path.split('/')[-2]]), \
-                 mock.patch.object(p.subprocess,'Popen',side_effect=child),mock.patch.object(p,'client_platform',return_value=None), \
+                 mock.patch.object(p.subprocess,'Popen',side_effect=child), \
                  mock.patch.object(p,'validate_final_index'),mock.patch.object(p,'associate_distribution_materials',side_effect=associate):
                 actual=p.inventory({'all':'7'},source,work,'b'*40,'c'*40,budget=budget)
             self.assertEqual(len(remote.call_args_list),1)
@@ -409,33 +407,16 @@ class BoundedStorageTests(unittest.TestCase):
 
 
 class GateTests(unittest.TestCase):
-    def test_scope_preserved(self):
-        s=json.loads(p.SCOPE.read_text());scope=s['all']
-        self.assertEqual(set(s),{'all'})
-        self.assertEqual(len(scope['matrices']['build']['include'])+len(scope['matrices']['build_windows7']['include']),38)
-        self.assertEqual(set(scope['requiredArtifacts']),set(scope['payloadRules']))
-        self.assertEqual(len(scope['requiredArtifacts']),len(set(scope['requiredArtifacts'])))
-        self.assertEqual(set(scope['receiptJobs']),set(scope['requiredJobs']))
-        self.assertEqual((len(scope['requiredArtifacts']),len(scope['receiptJobs'])),(73,15))
-        self.assertEqual(sum(len(scope['matrices'][job]['include'])
-                             for job in ('build','build_windows7','build_darwin','build_windows')),44)
-
     def test_reviewed_current_version_renders_all_payloads(self):
         scope=p.release_scope(p.VERSION)
         old='1.15.0-polaris-alpha.11'
         for role in ['all']:
-            rules=scope[role]['payloadRules']['binary-windows-client-x64']
-            current=f'SFW-{p.VERSION}-x64.exe';previous=f'SFW-{old}-x64.exe'
-            p.verify_payloads({current:{}},rules,'binary-windows-client-x64')
+            rules=scope[role]['payloadRules']['binary-windows_amd64']
+            current=f'sing-box-{p.VERSION}-windows-amd64.zip';previous=f'sing-box-{old}-windows-amd64.zip'
+            p.verify_payloads({current:{}},rules,'binary-windows_amd64')
             for files in [{previous:{}},{current:{},previous:{}},{current.replace('alpha.','alphaX'):{}},{}]:
                 with self.subTest(role=role,files=files),self.assertRaises(ValueError):
-                    p.verify_payloads(files,rules,'binary-windows-client-x64')
-            android=scope[role]['payloadRules']['binary-android-apks-other']
-            files={f'SFA-{p.VERSION}-{arch}.apk':{} for arch in ['universal','arm64','arm','x64','x86']}
-            files[f'SFA-{p.VERSION}-other-version-metadata.json']={}
-            p.verify_payloads(files,android,'binary-android-apks-other')
-            previous=dict(files);previous[f'SFA-{old}-other-version-metadata.json']=previous.pop(f'SFA-{p.VERSION}-other-version-metadata.json')
-            with self.assertRaises(ValueError):p.verify_payloads(previous,android,'binary-android-apks-other')
+                    p.verify_payloads(files,rules,'binary-windows_amd64')
         from native_release_index import expected_native
         for role in ['all']:
             patterns=[rule['pattern'] for rules in scope[role]['payloadRules'].values() for rule in rules]
@@ -446,58 +427,10 @@ class GateTests(unittest.TestCase):
         self.assertRaises(ValueError,p.release_scope,old)
         self.assertRaises(ValueError,p.release_scope,'v'+p.VERSION)
 
-    def test_client_payloads_bind_exact_version_and_target_architecture(self):
-        scope=p.release_scope(p.VERSION)
-        linux={'x64':{'deb':'amd64','rpm':'x86_64','pkg.tar.zst':'x64'},
-               'arm64':{'deb':'arm64','rpm':'aarch64','pkg.tar.zst':'aarch64'},
-               'armv7l':{'deb':'armv7l','rpm':'armv7l','pkg.tar.zst':'armv7l'}}
-        for role in ['all']:
-            for arch in ['x64','x86','arm64']:
-                artifact='binary-windows-client-'+arch;rules=scope[role]['payloadRules'][artifact]
-                current=f'SFW-{p.VERSION}-{arch}.exe';p.verify_payloads({current:{}},rules,artifact)
-                wrong='x86' if arch=='x64' else 'x64'
-                for invalid in [f'SFW-{p.VERSION}0-{arch}.exe',f'SFW-{p.VERSION}-{wrong}.exe',f'SFW-{p.VERSION}-extra-{arch}.exe']:
-                    with self.subTest(role=role,artifact=artifact,name=invalid),self.assertRaises(ValueError):
-                        p.verify_payloads({invalid:{}},rules,artifact)
-            for arch,formats in linux.items():
-                artifact='binary-linux-client-'+arch;rules=scope[role]['payloadRules'][artifact]
-                files={f'SFL-{p.VERSION}-{cpu}.{ext}':{} for ext,cpu in formats.items()}
-                p.verify_payloads(files,rules,artifact)
-                adjacent={name.replace(p.VERSION,p.VERSION+'0'):value for name,value in files.items()}
-                wrong_cpu='arm64' if arch=='x64' else 'amd64'
-                wrong=dict(files);wrong[f'SFL-{p.VERSION}-{wrong_cpu}.deb']=wrong.pop(f'SFL-{p.VERSION}-{formats["deb"]}.deb')
-                for invalid in [adjacent,wrong]:
-                    with self.subTest(role=role,artifact=artifact),self.assertRaises(ValueError):p.verify_payloads(invalid,rules,artifact)
-
-    def test_all_requires_each_exact_openwrt_ipk_and_apk_architecture(self):
-        source=json.loads(p.SCOPE.read_text());rendered=p.release_scope(p.VERSION)
-        for role in ['all']:
-            ipk_count=apk_count=0
-            for artifact,rules in source[role]['payloadRules'].items():
-                ipks=[x for x in rules if 'openwrt_' in x['pattern'] and x['pattern'].endswith(r'\.ipk')]
-                if not ipks:continue
-                files={}
-                for ipk in ipks:
-                    apk={'pattern':ipk['pattern'][:-len(r'\.ipk')]+r'\.apk','count':1}
-                    self.assertEqual(ipk['count'],1);self.assertIn(apk,rules)
-                    escaped=ipk['pattern'].removeprefix(r'sing\-box_{version}_openwrt_').removesuffix(r'\.ipk')
-                    arch=re.sub(r'\\(.)',r'\1',escaped)
-                    for ext in ['ipk','apk']:files[f'sing-box_{p.VERSION}_openwrt_{arch}.{ext}']={}
-                    ipk_count+=1;apk_count+=1
-                controls=[x for x in rendered[role]['payloadRules'][artifact] if 'openwrt_' in x['pattern']]
-                p.verify_payloads(files,controls,artifact)
-                chosen=next(name for name in files if name.endswith('.apk'))
-                missing=dict(files);missing.pop(chosen)
-                wrong=dict(files);wrong[chosen.removesuffix('.apk')+'-wrong.apk']=wrong.pop(chosen)
-                old=dict(files);old[chosen.replace(p.VERSION,'1.15.0-polaris-alpha.11')]=old.pop(chosen)
-                for invalid in [missing,wrong,old]:
-                    with self.subTest(role=role,artifact=artifact),self.assertRaises(ValueError):p.verify_payloads(invalid,controls,artifact)
-            self.assertEqual((ipk_count,apk_count),(32,32))
-
     def test_scope_rejects_literal_versions_unknown_tokens_and_bad_counts(self):
         raw=json.loads(p.SCOPE.read_text())
         for kind in ['literal','token','duplicate','count']:
-            value=copy.deepcopy(raw);rule=value['all']['payloadRules']['binary-windows-client-x64'][0]
+            value=copy.deepcopy(raw);rule=value['all']['payloadRules']['binary-windows_amd64'][0]
             if kind=='literal':rule['pattern']=rule['pattern'].replace('{version}',re.escape(p.VERSION))
             elif kind=='token':rule['pattern']=rule['pattern'].replace('{version}','{release_version}')
             elif kind=='duplicate':rule['pattern']+='{version}'
@@ -510,21 +443,21 @@ class GateTests(unittest.TestCase):
         release=json.loads(p.CONFIG.read_text());source='a'*40
         env={'PUBLISHER_ROLE':'all','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':p.REPO,
              'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
-             'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1',
-             'PUBLISH_STORES':'false','PUBLISH_REGISTRY':'false'}
+             'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}
         env.update(receipt_context_fixture())
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'release/ci').mkdir(parents=True)
             (root/'release/ci/github-release.json').write_text(json.dumps(release))
-            (root/'release/ci/publisher-upstream-scope.json').write_bytes(p.SCOPE.read_bytes())
             script=p.ROOT/'scripts/ci/publisher_run_receipt.py'
             with chdir(root),mock.patch.dict(os.environ,env),mock.patch('subprocess.check_output',return_value=source):
                 runpy.run_path(str(script),run_name='__main__')
                 receipt=json.loads((root/'publisher-run-receipt.json').read_text())
                 self.assertEqual((receipt['version'],receipt['sourceCommit'],receipt['role']),(p.VERSION,source,'all'))
                 for version in ['1.15.0-polaris-alpha.11',p.VERSION+'0','v'+p.VERSION]:
-                    with mock.patch.dict(os.environ,RELEASE_VERSION=version),self.assertRaises(AssertionError):
+                    with mock.patch.dict(os.environ,RELEASE_VERSION=version),self.assertRaises((AssertionError,ValueError)):
                         runpy.run_path(str(script),run_name='__main__')
+                with mock.patch.dict(os.environ,GITHUB_REF='refs/heads/'+p.TAG),self.assertRaises(AssertionError):
+                    runpy.run_path(str(script),run_name='__main__')
 
     def test_path_traversal(self):
         for name in ['../bad','/bad','x/../../bad','C:/bad','x\\bad']:
@@ -545,8 +478,6 @@ class GateTests(unittest.TestCase):
 
     def test_publication_excludes_typed_nonpublic_producer_outputs(self):
         cases=[
-            ('all','libbox-android-arm64','arm64/libbox.aar','internal-sdk'),
-            ('all','unsigned-apple-ios-archive',f'unsigned-{p.VERSION}-ios.xcarchive.tar','internal-unsigned-archive'),
             ('all','binary-native-index','polaris-upstream-native-assets.json','audited-source-and-index'),
             ('all','binary-native-index','sing-box-polaris-source-'+'a'*40+'.tar.gz','audited-source-and-index'),
             ('all','publisher-run-receipt','publisher-run-receipt.json','producer-evidence'),
@@ -637,52 +568,6 @@ class GateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'unknown public artifact'):
                 p.assemble(actual,cfg,work,root/'out')
 
-    def metadata_fixture(self):
-        result={'runs':{'all':{'artifacts':{}}}}
-        for flavor in ['other','other-legacy']:
-            name=f'SFA-{p.VERSION}-{flavor}-version-metadata.json'
-            public,disposition=p.publication('all','binary-android-apks-'+flavor,name)
-            result['runs']['all']['artifacts']['binary-android-apks-'+flavor]={'files':{
-                name:{'bytes':71,'sha256':'a'*64,'releaseName':public,'publicationDisposition':disposition}}}
-        return result
-
-    def test_android_metadata_requires_identical_bytes_and_hashes(self):
-        p.verify_metadata_pair(self.metadata_fixture())
-        for field,value in [('bytes',72),('sha256','b'*64)]:
-            result=self.metadata_fixture()
-            record=next(iter(result['runs']['all']['artifacts']['binary-android-apks-other-legacy']['files'].values()))
-            record[field]=value
-            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'metadata differs'):
-                p.verify_metadata_pair(result)
-
-    def test_android_metadata_requires_both_unique_producers(self):
-        for failure in ['missing-artifact','missing-file','duplicate-file']:
-            result=self.metadata_fixture();artifacts=result['runs']['all']['artifacts']
-            if failure=='missing-artifact':artifacts.pop('binary-android-apks-other-legacy')
-            else:
-                files=artifacts['binary-android-apks-other-legacy']['files']
-                if failure=='missing-file':files.clear()
-                else:files['duplicate-version-metadata.json']=copy.deepcopy(next(iter(files.values())))
-            with self.subTest(failure=failure),self.assertRaises(ValueError):p.verify_metadata_pair(result)
-
-    def test_assemble_accepts_single_versionless_canonical_android_metadata(self):
-        with tempfile.TemporaryDirectory() as d:
-            root=Path(d);work,actual,cfg,name=self.fixture(root);data=b'{"version":"fixture"}'
-            for flavor in ['other','other-legacy']:
-                self.add_payload(work,actual,cfg,'all','binary-android-apks-'+flavor,
-                                 f'SFA-{p.VERSION}-{flavor}-version-metadata.json',data)
-            p.verify_metadata_pair(actual)
-            receipt=p.assemble(actual,cfg,work,root/'out')
-            canonical='SFA-version-metadata.json'
-            self.assertNotIn(p.VERSION,canonical)
-            self.assertEqual({path.name for path in (root/'out').iterdir()},{p.public_asset_name(name),canonical})
-            self.assertEqual((root/'out'/canonical).read_bytes(),data)
-            metadata=[row for row in receipt['assets'] if row['releaseName']==canonical]
-            self.assertEqual(len(metadata),1)
-            self.assertEqual(metadata[0]['artifact'],'binary-android-apks-other')
-            legacy=next(iter(receipt['runs']['all']['artifacts']['binary-android-apks-other-legacy']['files'].values()))
-            self.assertEqual((legacy['releaseName'],legacy['publicationDisposition']),(None,'identical-android-metadata'))
-
     def test_assemble_keeps_nonpublic_payloads_and_receipt_in_audit_only(self):
         for custom in [False,True]:
             with self.subTest(custom_audit=custom),tempfile.TemporaryDirectory() as d:
@@ -690,8 +575,7 @@ class GateTests(unittest.TestCase):
                 audited=['polaris-upstream-native-assets.json','sing-box-polaris-source-'+'a'*40+'.tar.gz']
                 for basename in audited:self.add_payload(work,actual,cfg,'all','binary-native-index',basename)
                 for role,artifact,path in [
-                    ('all','libbox-android-arm64','arm64/libbox.aar'),
-                    ('all','unsigned-apple-ios-archive',f'unsigned-{p.VERSION}-ios.xcarchive.tar'),
+                    ('all','native-controlled-peer','receipt.json'),
                     ('all','publisher-run-receipt','publisher-run-receipt.json')]:
                     self.add_payload(work,actual,cfg,role,artifact,path)
                 audit=root/'separate'/'audit' if custom else root/'out-audit'
@@ -773,7 +657,7 @@ class GateTests(unittest.TestCase):
         class StopInventory(Exception):pass
         index=self.final_index();source='a'*40;workflow='.github/workflows/build.yml'
         required=['binary-native-index','publisher-run-receipt']
-        scope={'all':{'workflow':workflow,'requiredArtifacts':required,'payloadRules':{
+        scope={'all':{'workflow':workflow,'payloadRules':{
             'binary-native-index':[{'pattern':r'polaris-upstream-native-assets\.json','count':1}],
             'publisher-run-receipt':[{'pattern':r'publisher-run-receipt\.json','count':1}]}}}
         run={'repository':{'id':p.RID},'head_repository':{'id':p.RID},'head_sha':source,
@@ -783,7 +667,7 @@ class GateTests(unittest.TestCase):
                     'workflow_run':{'id':42,'head_sha':source},'digest':'sha256:'+'a'*64}
                    for number,name in enumerate(required,1)]
         receipt={'repository':p.REPO,'repositoryId':p.RID,'sourceCommit':source,'runId':'42',
-                 'attempt':1,'version':p.VERSION,'build':'All','role':'all','publishStores':False,'publishRegistry':False}
+                 'attempt':1,'version':p.VERSION,'build':'All','role':'all'}
         @contextmanager
         def archive_fixture(artifact,budget):
             name,value=('polaris-upstream-native-assets.json',index) if artifact['name']=='binary-native-index' else ('publisher-run-receipt.json',receipt)
@@ -807,21 +691,26 @@ class GateTests(unittest.TestCase):
         argv=['github_release.py','inventory','--source',source,'--source-dir',str(source_root),
               '--all-run','42']
         with tempfile.TemporaryDirectory() as audit_temp, mock.patch('sys.argv',argv+['--audit',str(Path(audit_temp)/'audit')]),mock.patch.object(p,'identity') as identity, \
+             mock.patch.object(p,'api',return_value={'head_branch':p.TAG}) as remote, \
              mock.patch.object(p,'command',return_value='b'*40) as command, \
              mock.patch.object(p,'tag_identity',return_value='c'*40), \
              mock.patch.object(p,'inventory',side_effect=StopInventory) as inventory:
             with self.assertRaises(StopInventory):p.main()
             identity.assert_called_once_with(source,source_root)
+            remote.assert_called_once_with(f'repos/{p.REPO}/actions/runs/42')
             command.assert_called_once_with('git','-C',str(source_root),'rev-parse','HEAD^{tree}')
             inventory.assert_called_once_with({'all':'42'},source,
                                               mock.ANY,'b'*40,'c'*40,source_root,budget=mock.ANY)
+        with mock.patch('sys.argv',argv),mock.patch.object(p,'identity'),mock.patch.object(p,'api',return_value={'head_branch':'polaris-main'}), \
+             mock.patch.object(p,'bounded_release') as release:
+            with self.assertRaisesRegex(ValueError,'version tag'):p.main()
+            release.assert_not_called()
 
-    def test_final_index_and_staging_wrong_tag_schema_mixed_source_controls(self):
+    def test_final_index_wrong_tag_schema_mixed_source_controls(self):
         index=self.final_index();self.check_index(index)
-        for kind in ['staging','wrong-object','wrong-tag','malformed-schema','mixed-source','mixed-tree','missing-row','source-name']:
+        for kind in ['wrong-object','wrong-tag','malformed-schema','mixed-source','mixed-tree','missing-row','source-name']:
             x=copy.deepcopy(index)
-            if kind=='staging':x.update(schema='polaris-upstream-native-staging-v1',tagObject=None)
-            elif kind=='wrong-object':x['tagObject']='d'*40
+            if kind=='wrong-object':x['tagObject']='d'*40
             elif kind=='wrong-tag':x['tag']='v1.15.0-polaris-alpha.999'
             elif kind=='malformed-schema':x['producer']['runId']='42'
             elif kind=='mixed-source':x['platforms'][-1]['sourceCommit']='d'*40
@@ -842,89 +731,19 @@ class GateTests(unittest.TestCase):
 
 
 class PublicAssetNameTests(unittest.TestCase):
-    def test_public_names_apply_core_branding_and_client_names_exactly_once(self):
+    def test_public_names_apply_core_branding_exactly_once(self):
         cases=[
             ('sing-box-{version}-linux-amd64.tar.gz','sing-box-polaris-{public}-linux-amd64.tar.gz'),
             ('sing-box-polaris-{version}-windows-amd64.zip','sing-box-polaris-{public}-windows-amd64.zip'),
-            ('sing-box_{version}_openwrt_mips_24kc.ipk','sing-box-polaris_{public}_openwrt_mips_24kc.ipk'),
-            ('sing-box-polaris_{version}_linux_amd64.deb','sing-box-polaris_{public}_linux_amd64.deb'),
-            ('SFA-{version}-arm64-v8a-unsigned.apk','SFA-{public}-arm64-v8a.apk'),
-            ('sing-box-polaris-SFA-{version}-legacy-android-5-x86_64-unsigned.apk','SFA-{public}-legacy-android-5-x86_64.apk'),
-            ('sing-box-polaris-SFA-version-metadata.json','SFA-version-metadata.json'),
-            ('SFA-version-metadata.json','SFA-version-metadata.json'),
-            ('SFI-{version}-iphoneos-arm64e.deb','SFI-{public}-iphoneos-arm64e.deb'),
-            ('sing-box-polaris-SFL-{version}-aarch64.pkg.tar.zst','SFL-{public}-aarch64.pkg.tar.zst'),
-            ('sing-box-polaris-SFM-{version}-universal.dmg','SFM-{public}-universal.dmg'),
-            ('sing-box-polaris-SFW-{version}-x64.exe','SFW-{public}-x64.exe'),
         ]
         for before,after in cases:
             before=before.format(version=p.VERSION);after=after.format(public=p.PUBLIC_VERSION)
             with self.subTest(name=before):
                 self.assertEqual(p.public_asset_name(before),after)
 
-    def test_unsigned_removal_is_only_the_android_apk_suffix(self):
-        cases=[
-            ('SFA-{version}-unsigned-variant.apk','SFA-{public}-unsigned-variant.apk'),
-            ('SFA-{version}-arm64-unsigned.apk.zip','SFA-{public}-arm64-unsigned.apk.zip'),
-            ('SFW-{version}-x64-unsigned.exe','SFW-{public}-x64-unsigned.exe'),
-            ('sing-box-{version}-linux-amd64-unsigned.tar.gz','sing-box-polaris-{public}-linux-amd64-unsigned.tar.gz'),
-        ]
-        for before,after in cases:
-            with self.subTest(name=before):
-                self.assertEqual(p.public_asset_name(before.format(version=p.VERSION)),after.format(public=p.PUBLIC_VERSION))
-
 class DistributionMaterialsTests(unittest.TestCase):
     final_index = GateTests.final_index
     check_index = GateTests.check_index
-    def test_apple_overlay_source_input_tampering_fails_final_native_gate(self):
-        index=self.final_index()
-        for path in ('release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py'):
-            candidate=copy.deepcopy(index)
-            candidate['distributionMaterials']['inputs'][path]='0'*64
-            with self.subTest(path=path),self.assertRaises(ValueError):self.check_index(candidate)
-
-    def test_publisher_apple_policy_matches_actual_source_checkout(self):
-        apple_paths=('release/ci/client-overlays.json','release/ci/owned-distribution.json',
-               'release/ci/apple-swift-package-overlays.json','scripts/ci/apple_package_overlays.py','scripts/ci/client_source.py')
-        paths=apple_paths
-        with tempfile.TemporaryDirectory() as directory:
-            source_root=Path(directory)
-            for name in paths:
-                if not (p.ROOT/name).exists():continue
-                destination=source_root/name;destination.parent.mkdir(parents=True,exist_ok=True)
-                destination.write_bytes((p.ROOT/name).read_bytes())
-            environment={'GITHUB_REPOSITORY':p.REPO,'GITHUB_REPOSITORY_ID':str(p.RID)}
-            with mock.patch.dict(os.environ,environment),mock.patch.object(p,'api',return_value={'id':p.RID}),\
-                 mock.patch.object(p,'command',side_effect=lambda *args:'a'*40 if 'rev-parse' in args else ''):
-                p.identity('a'*40,source_root)
-                for name in apple_paths[2:]:
-                    path=source_root/name;original=path.read_bytes();path.write_bytes(original+b'\n')
-                    with self.subTest(path=name),self.assertRaisesRegex(ValueError,'Apple package policy'):
-                        p.identity('a'*40,source_root)
-                    path.write_bytes(original)
-                (source_root/paths[2]).unlink()
-                with self.assertRaisesRegex(ValueError,'Apple package policy'):p.identity('a'*40,source_root)
-
-    def test_apple_overlay_evidence_stays_nested_without_new_public_asset(self):
-        import apple_package_overlays as apple
-        index=self.final_index();spec=apple.definition();packages=apple.expected_record(index['sourceCommit'])
-        client={'coreSourceCommit':index['sourceCommit'],'repository':spec['client']['repository'],
-                'baseCommit':spec['client']['commit'],'overlayManifestSHA256':p.sha(p.ROOT/'release/ci/client-overlays.json'),
-                'diffSHA256':'8'*64,'swiftPackageOverlays':packages}
-        result={'sourceCommit':index['sourceCommit'],'sourceTree':index['sourceTree'],
-                'runs':{'all':{'artifacts':{'binary-apple-standalone-all':{'files':{
-                    'fixture.pkg':{'releaseName':'fixture.pkg','publicationDisposition':'upstream-public-product'},
-                    'polaris-candidate-manifest-fixture.json':{'releaseName':None,'publicationDisposition':'producer-evidence','clientSource':client}}}}}}}
-        files=result['runs']['all']['artifacts']['binary-apple-standalone-all']['files'];names=set(files)
-        p.associate_distribution_materials(result,index,'9'*64)
-        self.assertEqual(set(files),names)
-        self.assertEqual(sum(value['releaseName'] is not None for value in files.values()),1)
-        extra=files['fixture.pkg']['distributionMaterials']['clientSource']['swiftPackageOverlays']
-        self.assertEqual(extra['manifestSHA256'],packages['manifestSHA256'])
-        self.assertEqual(extra['lockSHA256'],packages['lockSHA256'])
-        self.assertEqual(extra['evidenceSHA256'],hashlib.sha256(apple.canonical(packages).encode()).hexdigest())
-        self.assertNotIn('distributionMaterials',files['polaris-candidate-manifest-fixture.json'])
-
     def test_current_scope_materials_tampering_fails(self):
         index=self.final_index()
         for field,value in [('sourceCommit','d'*40),('modules',{}),('legalFiles',{})]:
