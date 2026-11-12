@@ -170,8 +170,12 @@ func (l *Listener) dispatchRuntimeConnection(ctx context.Context, conn net.Conn,
 	}
 	carrier := outbound.WrapRuntimeConn(owned, release, conn)
 	invocation = outbound.ContextWithRuntimeInboundClose(invocation, carrier)
+	// Box.Close cancels ctx before draining runtime references; a client that
+	// never finishes its handshake would otherwise hold its reference forever.
+	stop := context.AfterFunc(ctx, func() { _ = carrier.Close() })
 	go func() {
 		defer releaseInvocation()
+		defer stop()
 		l.connHandler.NewConnection(invocation, carrier, metadata, func(error) { _ = carrier.Close() })
 	}()
 }
