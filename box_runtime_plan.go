@@ -45,8 +45,6 @@ type runtimePlanRecord struct {
 	storageCharge                int
 	receiptExpires               int64
 	awaitingOwnerAcknowledgement bool
-	acknowledging                bool
-	persistenceParticipant       runtimePersistenceParticipant
 	persistenceCallback          func(RuntimeIdentity, []byte) error
 	persistenceRetrySafe         bool
 	persistenceTailEntered       bool
@@ -58,7 +56,6 @@ type runtimePlanRecord struct {
 
 type runtimeCoordinator struct {
 	fakeIP                  *fakeip.Manager
-	fakeIPPersistence       *runtimeFakeIPPersistence
 	access                  sync.Mutex
 	controlEffects          runtimeEffectGate
 	ctx                     context.Context
@@ -435,7 +432,7 @@ func (s *Box) planRuntimeConfigInternal(ctx context.Context, actor string, expec
 			deadline = record.receiptExpires
 		}
 		unsafeCleanup := record.operation != nil && (record.operation.State == "ABORTED_DEGRADED" || record.operation.RetirementState == "UNKNOWN")
-		if !unsafeCleanup && record != coordinator.pendingPersistence && record != coordinator.configurationOwner && !record.inFlight && !record.acknowledging && !record.retryInFlight && deadline != 0 && now.UnixMilli() >= deadline {
+		if !unsafeCleanup && record != coordinator.pendingPersistence && record != coordinator.configurationOwner && !record.inFlight && !record.retryInFlight && deadline != 0 && now.UnixMilli() >= deadline {
 			coordinator.planStorage -= record.storageCharge
 			delete(coordinator.plans, id)
 		}

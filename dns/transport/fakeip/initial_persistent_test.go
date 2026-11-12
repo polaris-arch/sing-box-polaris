@@ -6,7 +6,6 @@ import (
 	"maps"
 	"net/netip"
 	"testing"
-	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/log"
@@ -53,7 +52,8 @@ func (f *fixedInitialCacheFixture) FakeIPLoadDomain(domain string, ipv6 bool) (n
 
 func (f *fixedInitialCacheFixture) FakeIPReset() error {
 	f.resets++
-	return errors.New("unexpected reset")
+	f.metadata = nil
+	return f.storage.FakeIPReset()
 }
 
 func (f *fixedInitialCacheFixture) SnapshotFakeIP(context.Context) (adapter.FakeIPStorageSnapshot, error) {
@@ -190,12 +190,26 @@ func TestInitialPersistentInvalidMetadataNeverResets(t *testing.T) {
 		{Inet4Range: prefix, Inet4Current: netip.MustParseAddr("198.18.0.7")},
 	} {
 		cache := &fixedInitialCacheFixture{storage: NewMemoryStorage(), opened: true, metadata: metadata}
+		_ = cache.storage.FakeIPStore(netip.MustParseAddr("198.19.0.2"), "old.example")
 		manager := fixedInitialManager(t, cache)
 		candidate, err := manager.PrepareInitialPersistentRanges(context.Background(), prefix, netip.Prefix{}, cache)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = candidate.InitializePersistentStorage(context.Background()); !errors.Is(err, ErrInitialPersistentMetadata) {
+		err = candidate.InitializePersistentStorage(context.Background())
+		if metadata.Inet4Range != prefix {
+			// A changed range follows upstream: reset once, cursor from the start.
+			if err != nil || cache.resets != 1 || cache.writes != 0 || candidate.namespace.store.inet4Current != prefix.Addr().Next() {
+				t.Fatal("changed range did not restart on a reset cache", err, cache.resets)
+			}
+			if _, found := cache.storage.FakeIPLoad(netip.MustParseAddr("198.19.0.2")); found {
+				t.Fatal("old-range mapping survived reset")
+			}
+			candidate.Abort()
+			candidate.ActivatePersistence()
+			continue
+		}
+		if !errors.Is(err, ErrInitialPersistentMetadata) {
 			t.Fatal("invalid metadata accepted", err)
 		}
 		candidate.Abort()
@@ -214,180 +228,5 @@ func TestOrdinaryPrepareNeverReadsUnopenedPersistentCache(t *testing.T) {
 	}
 	if cache.snapshots != 0 || cache.resets != 0 || cache.writes != 0 {
 		t.Fatal("ordinary prepare touched unopened persistent cache")
-	}
-}
-
-// Reuse the existing storage/transaction fixtures through the real initial
-// cache interface. Only the legacy snapshot method needs disambiguation.
-// These model tests do not claim physical database durability coverage.
-type recoveredInitialCacheFixture struct {
-	*fixedInitialCacheFixture
-	*runtimeFixtureBackend
-}
-
-func (f *recoveredInitialCacheFixture) SnapshotFakeIP(ctx context.Context) (adapter.FakeIPStorageSnapshot, error) {
-	return f.fixedInitialCacheFixture.SnapshotFakeIP(ctx)
-}
-
-func TestRecoveredSelectedBatchMappingsRespectProtectedAndSupersededAuthority(t *testing.T) {
-	for _, startup := range []string{"initial-binding", "persistent-startup"} {
-		t.Run(startup, func(t *testing.T) {
-			ctx := context.Background()
-			now := time.Unix(100, 0)
-			prefix := netip.MustParsePrefix("198.18.0.0/29")
-			backend := fixtureBackend("selected-batch")
-			resolver := fixtureResolver(backend)
-			options := fixtureOptions(backend, resolver, "original-selected")
-			options.Backend = backend
-			previous := fixtureEmptyManager(t)
-			previous.now = func() time.Time { return now }
-			candidate, err := previous.PreparePersistentRanges(ctx, prefix, netip.Prefix{}, options)
-			if err != nil {
-				t.Fatal(err)
-			}
-			sourceReusePublishDurable(t, candidate)
-			issued := make(map[string]netip.Addr)
-			for _, domain := range []string{"protected.example", "superseded.example"} {
-				address, err := previous.create(domain, false)
-				if err != nil {
-					t.Fatal(err)
-				}
-				answer, err := previous.ProtectAnswer(fakeAnswer(address, domain, 600))
-				if err != nil {
-					t.Fatal(err)
-				}
-				answer.Delivered(now)
-				issued[domain] = address
-			}
-			if err := candidate.AcknowledgePersistence(ctx, options.EffectiveConfigurationID); err != nil {
-				t.Fatal(err)
-			}
-			backend.access.Lock()
-			observed := backend.observed
-			backend.access.Unlock()
-			batch, err := previous.create("batch.example", false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			answer, err := previous.ProtectAnswer(fakeAnswer(batch, "batch.example", 600))
-			if err != nil {
-				t.Fatal(err)
-			}
-			answer.Delivered(now)
-			backend.access.Lock()
-			if backend.observed != observed {
-				backend.access.Unlock()
-				t.Fatal("acknowledged unchanged allocation left the batch path")
-			}
-			backend.access.Unlock()
-			previous.mappingAccess.Lock()
-			handle := previous.active.durable.handle
-			cursor := previous.store.inet4Current
-			previous.mappingAccess.Unlock()
-			if err := previous.Close(); err != nil {
-				t.Fatal(err)
-			}
-			image, err := handle.Snapshot(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var veto []adapter.FakeIPRuntimeAnswer
-			for _, record := range image.Answers {
-				if record.Address == issued["superseded.example"] {
-					veto = append(veto, record)
-				}
-			}
-			if len(veto) != 1 {
-				t.Fatal("actual delivered identity did not reach the journal", veto)
-			}
-			if err := handle.Invalidate(ctx, veto); err != nil {
-				t.Fatal(err)
-			}
-			cache := &recoveredInitialCacheFixture{
-				fixedInitialCacheFixture: &fixedInitialCacheFixture{storage: NewMemoryStorage(), opened: true},
-				runtimeFixtureBackend:    backend,
-			}
-			coldContext := service.ContextWithDefaultRegistry(ctx)
-			service.MustRegister[adapter.CacheFile](coldContext, cache)
-			cold := NewEmptyManager(coldContext, log.NewNOPFactory().Logger())
-			cold.now = func() time.Time { return now }
-			if err := cold.Start(); err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := cold.Close(); err != nil {
-					t.Error(err)
-				}
-			})
-			if err := cold.RecoverPersistent(ctx, backend, resolver, options.EffectiveConfigurationID, backend); err != nil {
-				t.Fatal(err)
-			}
-			cold.mappingAccess.Lock()
-			protected := cold.authority[issued["protected.example"]]
-			cold.mappingAccess.Unlock()
-			if protected.domain != "protected.example" || protected.revision == 0 {
-				t.Fatal("real delivered certificate was not recovered", protected)
-			}
-			if startup == "initial-binding" {
-				for _, abort := range []bool{true, false} {
-					restart, err := cold.PrepareInitialPersistentRanges(ctx, prefix, netip.Prefix{}, cache)
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Cleanup(func() { restart.Abort(); restart.ActivatePersistence() })
-					if err := restart.InitializePersistentStorage(ctx); err != nil {
-						t.Fatal(err)
-					}
-					fence, _, err := restart.PrepareCommit()
-					if err != nil {
-						t.Fatal(err)
-					}
-					if abort {
-						fence.Abort()
-						restart.ActivatePersistence()
-						if _, ok := cold.RecognitionStore().Lookup(batch); ok {
-							t.Fatal("aborted initial binding exposed a selected mapping")
-						}
-					} else {
-						fence.Publish()
-						restart.ActivatePersistence()
-					}
-				}
-			} else {
-				options.TransactionID = "cold-selected"
-				restart, err := cold.PreparePersistentRanges(ctx, prefix, netip.Prefix{}, options)
-				if err != nil {
-					t.Fatal(err)
-				}
-				sourceReusePublishDurable(t, restart)
-			}
-			if domain, ok := cold.RecognitionStore().Lookup(batch); !ok || domain != "batch.example" {
-				t.Fatal("selected ordinary mapping was not recovered", domain, ok)
-			}
-			if _, ok := cold.RecognitionStore().Lookup(issued["superseded.example"]); ok {
-				t.Fatal("selected allocator resurrected an actually invalidated identity")
-			}
-			cold.mappingAccess.Lock()
-			retained := cold.authority[issued["protected.example"]]
-			cold.mappingAccess.Unlock()
-			if retained != protected {
-				t.Fatal("selected allocator replaced protected namespace/revision custody", retained, protected)
-			}
-			store, err := cold.Borrow(prefix, netip.Prefix{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer store.Close()
-			if reused, err := store.Create("batch.example", false); err != nil || reused != batch {
-				t.Fatal("same-domain mapping did not retain its actual address", reused, err)
-			}
-			next, err := store.Create("next.example", false)
-			if err != nil || next != cursor.Next() {
-				t.Fatal("selected allocator cursor did not resume", next, cursor, err)
-			}
-			if domain, ok := cold.RecognitionStore().Lookup(next); !ok || domain != "next.example" {
-				t.Fatal("resumed allocation was not authoritative", domain, ok)
-			}
-		})
 	}
 }

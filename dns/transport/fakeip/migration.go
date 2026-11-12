@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"math/big"
 	"net/netip"
 	"sync"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	ErrPersistentMigrationRequired = errors.New("persistent fake-IP namespace migration requires a recovery-capable storage adapter")
+	ErrPersistentMigrationRequired = errors.New("persistent fake-IP range change requires a restart")
 	ErrMigrationConflict           = errors.New("fake-IP range migration has no collision-safe allocation capacity")
 	ErrMigrationStale              = errors.New("fake-IP migration candidate is stale or finalized")
 	ErrAllocationConflict          = errors.New("fake-IP configured pool is exhausted by other retained namespaces")
@@ -34,13 +33,11 @@ type memoryNamespace struct {
 	aborted    bool
 	compacted  bool
 	owned      map[netip.Addr]struct{}
-	durable    *namespacePersistence
 }
 type (
 	authorityEntry struct {
 		domain    string
 		namespace *memoryNamespace
-		revision  uint64
 	}
 	domainKey struct {
 		domain string
@@ -77,9 +74,8 @@ type RangeMigration struct {
 	state      atomic.Uint32 // 0 prepared, 1 fenced, 2 published, 3 aborted
 	done       func()
 	activation sync.Once
-	persistent *persistentPreparation
 	initial    *fixedPersistentPreparation
-	mustReuse  bool // source-only selection proof; never a new namespace participant
+	mustReuse  bool // source-only selection proof; never a new namespace
 }
 
 type rangeMigrationContextKey struct{}
@@ -113,14 +109,14 @@ func (m *Manager) PrepareRanges(ctx context.Context, inet4Range, inet6Range neti
 }
 
 // PrepareUnchangedRanges retains the actual selected allocator. The constraint
-// is atomic and precedes all namespace/storage/link allocation; no fallback.
+// is atomic and precedes all namespace/storage allocation; no fallback.
 func (m *Manager) PrepareUnchangedRanges(ctx context.Context, inet4Range, inet6Range netip.Prefix) (*RangeMigration, error) {
 	return m.prepareRanges(ctx, inet4Range, inet6Range, true, false)
 }
 
 // PrepareUnchangedSelection fences a disabled graph's actual selected identity,
 // including its empty allocator and retained old-answer namespaces. It neither
-// enables allocation nor constructs a removal/persistence participant.
+// enables allocation nor constructs a new namespace.
 func (m *Manager) PrepareUnchangedSelection(ctx context.Context) (*RangeMigration, error) {
 	return m.prepareRanges(ctx, netip.Prefix{}, netip.Prefix{}, true, true)
 }
@@ -144,20 +140,6 @@ func (m *Manager) prepareRanges(ctx context.Context, inet4Range, inet6Range neti
 	}
 	inet4Range, inet6Range = inet4Range.Masked(), inet6Range.Masked()
 	m.mappingAccess.Lock()
-	if mustReuse {
-		if m.preparing != nil {
-			m.mappingAccess.Unlock()
-			done()
-			return nil, ErrPersistencePreparing
-		}
-		for _, transition := range m.transitions {
-			if !transition.acknowledged {
-				m.mappingAccess.Unlock()
-				done()
-				return nil, ErrPersistencePending
-			}
-		}
-	}
 	m.protection.prune(m.now())
 	m.collectNamespacesLocked()
 	base := m.active
@@ -253,9 +235,6 @@ type RangeCommit struct {
 }
 
 func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) {
-	if c.persistent != nil {
-		return nil, MigrationImpact{}, errors.New("durable migration requires PrepareDurableCommit before publication")
-	}
 	m := c.manager
 	m.mappingAccess.Lock()
 	if c.initial != nil && !c.initial.ready {
@@ -270,16 +249,6 @@ func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) 
 		c.state.Store(0)
 		m.mappingAccess.Unlock()
 		return nil, impact, err
-	}
-	if c.mustReuse {
-		if m.preparing != nil {
-			return fail(MigrationImpact{}, ErrPersistencePreparing)
-		}
-		for _, transition := range m.transitions {
-			if !transition.acknowledged {
-				return fail(MigrationImpact{}, ErrPersistencePending)
-			}
-		}
 	}
 	m.protection.prune(m.now())
 	impact := m.migrationImpactLocked(c.namespace)
@@ -312,34 +281,6 @@ func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) 
 			commit.owned[namespace] = owned
 		}
 	}
-	if c.initial != nil && m.authority != nil {
-		// Recovery owns the protected union. The explicitly selected allocator
-		// also owns ordinary batched mappings, which need no answer certificate.
-		// Stage both maps privately; an aborted fence cannot expose this image.
-		commit.authority = make(map[netip.Addr]authorityEntry, len(m.authority)+len(c.initial.mappings))
-		maps.Copy(commit.authority, m.authority)
-		commit.domains = make(map[domainKey]netip.Addr, len(m.domains)+len(c.initial.mappings))
-		maps.Copy(commit.domains, m.domains)
-		owned := make(map[netip.Addr]struct{})
-		commit.owned = map[*memoryNamespace]map[netip.Addr]struct{}{c.namespace: owned}
-		for address, domain := range c.initial.mappings {
-			if _, protected := commit.authority[address]; protected || !c.initial.recovered.permitsAllocation(address, domain) {
-				continue
-			}
-			commit.authority[address] = authorityEntry{domain: domain, namespace: c.namespace}
-			key := domainKey{domain, address.Is6()}
-			if _, protected := commit.domains[key]; !protected {
-				commit.domains[key] = address
-			}
-			owned[address] = struct{}{}
-		}
-	}
-	for address, entry := range commit.authority {
-		if record := m.protection.current[address]; record != nil && record.current && record.key.domain == entry.domain {
-			entry.revision = record.revision
-			commit.authority[address] = entry
-		}
-	}
 	// Freeze the permit against an outside abort/commit before publication.
 	if !c.permit.state.CompareAndSwap(0, 3) {
 		return fail(impact, ErrMigrationStale)
@@ -348,18 +289,11 @@ func (c *RangeMigration) PrepareCommit() (*RangeCommit, MigrationImpact, error) 
 }
 
 func (c *RangeCommit) Publish() {
-	expected := uint32(0)
-	if c.candidate.persistent != nil {
-		expected = 3
-	}
-	if !c.state.CompareAndSwap(expected, 1) {
+	if !c.state.CompareAndSwap(0, 1) {
 		return
 	}
 	candidate := c.candidate
 	m := candidate.manager
-	if candidate.persistent != nil {
-		candidate.persistent.publishLocked()
-	}
 	if c.authority != nil {
 		m.authority, m.domains = c.authority, c.domains
 		for namespace, owned := range c.owned {
@@ -372,9 +306,6 @@ func (c *RangeCommit) Publish() {
 		m.active = candidate.namespace
 		m.store = candidate.namespace.store
 	}
-	if candidate.initial != nil {
-		candidate.initial.mappings = nil
-	}
 	candidate.permit.state.Store(1)
 	candidate.state.Store(2)
 	m.mappingAccess.Unlock()
@@ -382,26 +313,10 @@ func (c *RangeCommit) Publish() {
 }
 
 func (c *RangeCommit) Abort() {
-	for {
-		state := c.state.Load()
-		if state != 0 && state != 3 {
-			return
-		}
-		if c.state.CompareAndSwap(state, 2) {
-			break
-		}
+	if !c.state.CompareAndSwap(0, 2) {
+		return
 	}
-	c.abortClaimedState()
-}
-
-func (c *RangeCommit) abortClaimedState() {
 	candidate := c.candidate
-	if p := candidate.persistent; p != nil {
-		p.canceled.Store(true)
-	}
-	if candidate.initial != nil {
-		candidate.initial.mappings = nil
-	}
 	candidate.permit.state.Store(2)
 	candidate.state.Store(3)
 	if candidate.namespace != candidate.base {
@@ -411,22 +326,6 @@ func (c *RangeCommit) abortClaimedState() {
 }
 
 func (c *RangeMigration) Abort() {
-	if p := c.persistent; p != nil {
-		// The handed-off fence belongs to the coordinator. Candidate cleanup
-		// cannot revoke it behind a concurrent graph publication.
-		p.cancel()
-		if p.commit.Load() != nil {
-			return
-		}
-		c.state.CompareAndSwap(0, 3)
-		c.permit.Abort()
-		c.ActivatePersistence()
-		if p.started.CompareAndSwap(false, true) {
-			p.cleanupAborted()
-			close(p.finished)
-		}
-		return
-	}
 	if !c.state.CompareAndSwap(0, 3) {
 		return
 	}
@@ -436,33 +335,20 @@ func (c *RangeMigration) Abort() {
 	if c.namespace != c.base {
 		c.namespace.aborted = true
 	}
-	if c.initial != nil {
-		c.initial.mappings = nil
-	}
 	m.collectNamespacesLocked()
 	m.mappingAccess.Unlock()
 	c.ActivatePersistence()
 }
 
 // ActivatePersistence runs only AFTER the outer publication guards are released.
-// It is required for memory fences too, where it releases preparation ownership.
-// Duplicate activation and activation before a terminal fence are harmless.
+// It releases preparation ownership of the terminal fence. Duplicate activation
+// and activation before a terminal fence are harmless.
 func (c *RangeMigration) ActivatePersistence() {
 	state := c.state.Load()
 	if state != 2 && state != 3 {
 		return
 	}
-	c.activation.Do(func() {
-		if p := c.persistent; p != nil {
-			c.manager.mappingAccess.Lock()
-			if c.manager.answerHandoff == p {
-				c.manager.answerHandoff = nil
-			}
-			c.manager.mappingAccess.Unlock()
-			p.openGate()
-		}
-		c.done()
-	})
+	c.activation.Do(c.done)
 }
 
 func allocatable(prefix netip.Prefix) *big.Int {
@@ -563,20 +449,12 @@ func (m *Manager) createFor(namespace *memoryNamespace, domain string, ipv6 bool
 
 // Reserve the baseline cursor block without holding mappingAccess. Only Create
 // serializes behind this writer; lookup, mapping pins and cancellation stay live.
-// A publication that changes storage during I/O causes a reservation retry on
-// the exact new handle, never writes through a mutable global backend pointer.
+// A publication that changes the active namespace during I/O causes a retry.
 func (m *Manager) createPrepared(origin *memoryNamespace, domain string, ipv6 bool) (netip.Addr, error) {
 	m.allocationAccess.Lock()
 	defer m.allocationAccess.Unlock()
 	for {
-		if err := m.ensureCounterCapacity(m.ctx, 1); err != nil {
-			return netip.Addr{}, err
-		}
 		m.mappingAccess.Lock()
-		if !m.counterCapacityLocked(1) {
-			m.mappingAccess.Unlock()
-			continue
-		}
 		namespace := origin
 		if namespace == nil {
 			namespace = m.active
@@ -589,12 +467,8 @@ func (m *Manager) createPrepared(origin *memoryNamespace, domain string, ipv6 bo
 			m.mappingAccess.Unlock()
 			return netip.Addr{}, ErrMigrationStale
 		}
-		store, storage := namespace.store, namespace.store.storage
+		store := namespace.store
 		namespace.operations++
-		if m.storageOperations == nil {
-			m.storageOperations = make(map[adapter.FakeIPStorage]uint64)
-		}
-		m.storageOperations[storage]++
 		legacy := m.authority == nil
 		needsReservation := true
 		if address, found := m.domains[domainKey{domain, ipv6}]; found && usableRange(store, address, ipv6) {
@@ -608,42 +482,28 @@ func (m *Manager) createPrepared(origin *memoryNamespace, domain string, ipv6 bo
 		}
 		m.mappingAccess.Unlock()
 		if legacy {
-			_, cached := storage.FakeIPLoadDomain(domain, ipv6)
+			_, cached := store.storage.FakeIPLoadDomain(domain, ipv6)
 			needsReservation = !cached
 		}
 		var reservationErr error
-		_, privateStorage := storage.(adapter.FakeIPRuntimeNamespace)
-		if needsReservation || privateStorage {
+		if needsReservation {
 			store.addressAccess.Lock()
-			// Even a cached-domain first use must persist the current cursor in
-			// the new private allocator. An old backend's reservation cannot be
-			// spent after a pointer swap; ordinary later cache hits stay RAM-only.
-			if needsReservation || store.reservationStorage != storage {
-				reservationErr = store.reserveMetadata(storage)
-			}
+			reservationErr = store.reserveMetadata()
 			store.addressAccess.Unlock()
 		}
 		m.mappingAccess.Lock()
-		finishStorage := func() {
-			namespace.operations--
-			m.storageOperations[storage]--
-			if m.storageOperations[storage] == 0 {
-				delete(m.storageOperations, storage)
-			}
-			m.persistenceChangedLocked()
-		}
 		if reservationErr != nil {
-			finishStorage()
+			namespace.operations--
 			m.mappingAccess.Unlock()
 			return netip.Addr{}, reservationErr
 		}
-		if store.storage != storage || (origin == nil && m.active != namespace) {
-			finishStorage()
+		if origin == nil && m.active != namespace {
+			namespace.operations--
 			m.mappingAccess.Unlock()
 			continue
 		}
 		address, err := m.createLocked(namespace, domain, ipv6)
-		finishStorage()
+		namespace.operations--
 		m.mappingAccess.Unlock()
 		return address, err
 	}
@@ -665,12 +525,8 @@ func (m *Manager) createLocked(namespace *memoryNamespace, domain string, ipv6 b
 		address, err := namespace.store.Create(domain, ipv6)
 		if err == nil {
 			m.protection.replaced(address, domain, m.now())
-			m.noteAllocationLocked(namespace, address, domain)
 		}
 		return address, err
-	}
-	if m.nextAnswerRevision == ^uint64(0) {
-		return netip.Addr{}, ErrPersistenceIdentity
 	}
 	allowed := func(address netip.Addr) bool {
 		for _, record := range m.protection.byAddress[address] {
@@ -684,7 +540,7 @@ func (m *Manager) createLocked(namespace *memoryNamespace, domain string, ipv6 b
 	// pool can allocate it. This shares identity across overlapping ranges.
 	if address, found := m.domains[domainKey{domain, ipv6}]; found && usableRange(namespace.store, address, ipv6) && allowed(address) {
 		if current, exists := namespace.store.storage.FakeIPLoad(address); !exists || current != domain {
-			if err := namespace.store.storeMapping(address, domain); err != nil {
+			if err := namespace.store.storage.FakeIPStore(address, domain); err != nil {
 				return netip.Addr{}, err
 			}
 		}
@@ -710,35 +566,20 @@ func usableRange(store *Store, address netip.Addr, ipv6 bool) bool {
 }
 
 func (m *Manager) assignLocked(namespace *memoryNamespace, address netip.Addr, domain string) {
-	var revision uint64
-	newOwner := true
 	if old, found := m.authority[address]; found {
-		if old.domain == domain {
-			revision = old.revision
-			newOwner = old.namespace != namespace
-		}
 		delete(old.namespace.owned, address)
 		key := domainKey{old.domain, address.Is6()}
 		if m.domains[key] == address {
 			delete(m.domains, key)
 		}
 	}
-	if revision == 0 {
-		m.nextAnswerRevision++
-		revision = m.nextAnswerRevision
-		newOwner = true
-	}
-	m.authority[address] = authorityEntry{domain: domain, namespace: namespace, revision: revision}
-	if newOwner && namespace.durable != nil {
-		namespace.durable.handle.QueueAuthority(adapter.FakeIPRuntimeAnswer{Address: address, Domain: domain, Revision: revision, Obsolete: true})
-	}
+	m.authority[address] = authorityEntry{domain: domain, namespace: namespace}
 	m.domains[domainKey{domain, address.Is6()}] = address
 	if namespace.owned == nil {
 		namespace.owned = make(map[netip.Addr]struct{})
 	}
 	namespace.owned[address] = struct{}{}
 	m.protection.replaced(address, domain, m.now())
-	m.noteAllocationLocked(namespace, address, domain)
 }
 
 // The guard is used only after an in-memory migration. Before migration the
@@ -764,7 +605,7 @@ func (s *Store) createGuarded(domain string, ipv6 bool, cached, allowed func(net
 			return netip.Addr{}, ErrAllocationConflict
 		}
 	}
-	if err := s.storeMapping(address, domain); err != nil {
+	if err := s.storage.FakeIPStore(address, domain); err != nil {
 		return netip.Addr{}, err
 	}
 	if ipv6 {
@@ -805,7 +646,7 @@ func (m *Manager) collectNamespacesLocked() {
 		}
 		delete(namespace.owned, key.address)
 		if owner != nil {
-			m.authority[key.address] = authorityEntry{domain: entry.domain, namespace: owner, revision: entry.revision}
+			m.authority[key.address] = authorityEntry{domain: entry.domain, namespace: owner}
 			owner.owned[key.address] = struct{}{}
 		} else {
 			delete(m.authority, key.address)
@@ -835,7 +676,7 @@ func (m *Manager) collectNamespacesLocked() {
 				owner := m.retainedOwnerLocked(address, entry.domain)
 				if owner != nil {
 					if owner != namespace {
-						m.authority[address] = authorityEntry{domain: entry.domain, namespace: owner, revision: entry.revision}
+						m.authority[address] = authorityEntry{domain: entry.domain, namespace: owner}
 						owner.owned[address] = struct{}{}
 						delete(namespace.owned, address)
 					}
@@ -856,7 +697,7 @@ func (m *Manager) collectNamespacesLocked() {
 				entry := m.authority[address]
 				owner := m.retainedOwnerLocked(address, entry.domain)
 				if owner != nil && owner != namespace {
-					m.authority[address] = authorityEntry{domain: entry.domain, namespace: owner, revision: entry.revision}
+					m.authority[address] = authorityEntry{domain: entry.domain, namespace: owner}
 					owner.owned[address] = struct{}{}
 					continue
 				}
@@ -871,22 +712,8 @@ func (m *Manager) collectNamespacesLocked() {
 	}
 }
 
-// PersistentRangesRequired reports the actual retained allocator kind. It is not
-// inferred from today's config flag: an earlier durable namespace may still own
-// recognition or answer custody even after allocation moves back to memory.
-func (m *Manager) PersistentRangesRequired() bool {
-	m.mappingAccess.Lock()
-	defer m.mappingAccess.Unlock()
-	if m.active != nil && !m.active.empty {
-		if _, memory := m.active.store.storage.(*MemoryStorage); !memory {
-			return true
-		}
-	}
-	return m.recovered != nil || len(m.transitions) != 0 || m.preparing != nil
-}
-
 // UnchangedSelection certifies that this candidate only owns a new answer
-// permit for the exact selected namespace, never a new persistent transition.
+// permit for the exact selected namespace, never a new allocator.
 func (c *RangeMigration) UnchangedSelection() bool {
-	return c != nil && c.mustReuse && c.namespace == c.base && c.persistent == nil && c.initial == nil
+	return c != nil && c.mustReuse && c.namespace == c.base && c.initial == nil
 }

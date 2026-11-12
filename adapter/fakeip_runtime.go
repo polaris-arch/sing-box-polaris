@@ -89,13 +89,7 @@ func ProtectFakeIPAnswer(ctx context.Context, response *dns.Msg) error {
 	if !ok || response == nil {
 		return nil
 	}
-	var answer FakeIPAnswerLease
-	var err error
-	if contextual, ok := protection.(FakeIPAnswerContextProtection); ok {
-		answer, err = contextual.ProtectAnswerContext(ctx, response)
-	} else {
-		answer, err = protection.ProtectAnswer(response)
-	}
+	answer, err := protection.ProtectAnswer(response)
 	if err != nil {
 		return err
 	}

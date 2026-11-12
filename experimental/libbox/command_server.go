@@ -73,7 +73,7 @@ func NewStrictCommandServer(handler CommandServerHandler, platformInterface Plat
 }
 
 // NewTransientCommandServer creates an independent service host without a command
-// listener, shared recovery journal, configuration, OOM, or power-report diagnostics.
+// listener, configuration, OOM, or power-report diagnostics.
 // StartOrReloadService starts its service; call CloseService before Close.
 func NewTransientCommandServer(handler CommandServerHandler, platformInterface PlatformInterface) (*CommandServer, error) {
 	return newCommandServer(handler, platformInterface, true, true)
@@ -81,11 +81,6 @@ func NewTransientCommandServer(handler CommandServerHandler, platformInterface P
 
 func newCommandServer(handler CommandServerHandler, platformInterface PlatformInterface, transient, strictCleanup bool, domains ...*adapter.TailscaleDirectoryDomain) (*CommandServer, error) {
 	ctx := baseContext(platformInterface)
-	if transient {
-		// Transient hosts do not own the App's durable recovery root. Mask the
-		// inherited capability so they cannot open or replay its primary journal.
-		ctx = adapter.ContextWithRuntimeRecoveryRoot(ctx, "")
-	}
 	var domain *adapter.TailscaleDirectoryDomain
 	if len(domains) != 0 {
 		domain = domains[0]

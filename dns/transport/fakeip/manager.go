@@ -24,44 +24,26 @@ var (
 // survives same-range transport replacement and removal. It intentionally does
 // not change the existing cursor capacity, reuse policy or cache-file format.
 // In-memory range migration uses a shared authority plus final-answer and active
-// mapping guards. Persistent namespace migration is a separate capability;
-// unchanged-range persistence remains the exact existing Store implementation.
+// mapping guards. A persistent store_fakeip allocator never changes ranges in
+// place; unchanged-range persistence remains the exact existing Store path.
 type Manager struct {
-	ctx                    context.Context
-	store                  *Store
-	work                   lifecycle.Work
-	startOnce              sync.Once
-	startErr               error
-	started                atomic.Bool
-	closeOnce              sync.Once
-	closeErr               error
-	recognition            recognitionStore
-	mappingAccess          sync.Mutex
-	allocationAccess       sync.Mutex
-	storageOperations      map[adapter.FakeIPStorage]uint64
-	protection             protectionState
-	now                    func() time.Time
-	active                 *memoryNamespace
-	namespaces             map[uint64]*memoryNamespace
-	nextNamespace          uint64
-	authority              map[netip.Addr]authorityEntry
-	domains                map[domainKey]netip.Addr
-	nextAnswerRevision     uint64
-	nextAnswerToken        uint64
-	pendingAnswers         map[uint64]*answerLease
-	answerHandoff          *persistentPreparation
-	preparing              *persistentPreparation
-	transitions            []*persistentPreparation
-	persistenceErr         error
-	persistenceWriter      persistenceExecutor
-	recovered              *recoveredPersistence
-	persistenceMaintenance sync.Mutex
-	failedCompletions      map[*persistentCompletion]struct{}
-	persistenceChanged     chan struct{}
-	counterAccess          sync.Mutex
-	persistenceResolver    adapter.FakeIPRuntimeResolver
-	counterRoot            adapter.FakeIPRuntimeBackend
-	counterCeiling         adapter.FakeIPRuntimeCounters
+	store            *Store
+	work             lifecycle.Work
+	startOnce        sync.Once
+	startErr         error
+	started          atomic.Bool
+	closeOnce        sync.Once
+	closeErr         error
+	recognition      recognitionStore
+	mappingAccess    sync.Mutex
+	allocationAccess sync.Mutex
+	protection       protectionState
+	now              func() time.Time
+	active           *memoryNamespace
+	namespaces       map[uint64]*memoryNamespace
+	nextNamespace    uint64
+	authority        map[netip.Addr]authorityEntry
+	domains          map[domainKey]netip.Addr
 }
 
 func NewManager(ctx context.Context, logger logger.Logger, inet4Range, inet6Range netip.Prefix) (*Manager, error) {
@@ -74,7 +56,7 @@ func NewManager(ctx context.Context, logger logger.Logger, inet4Range, inet6Rang
 	if inet6Range.IsValid() && (!inet6Range.Addr().Is6() || inet6Range.Addr().Is4In6() || inet6Range.Bits() > 126) {
 		return nil, errors.New("fake-IP IPv6 range has no allocatable address")
 	}
-	manager := &Manager{ctx: ctx, store: NewStore(ctx, logger, inet4Range.Masked(), inet6Range.Masked()), now: time.Now}
+	manager := &Manager{store: NewStore(ctx, logger, inet4Range.Masked(), inet6Range.Masked()), now: time.Now}
 	manager.active = &memoryNamespace{id: 1, store: manager.store, published: true}
 	manager.namespaces = map[uint64]*memoryNamespace{1: manager.active}
 	manager.nextNamespace = 1
@@ -86,7 +68,7 @@ func NewManager(ctx context.Context, logger logger.Logger, inet4Range, inet6Rang
 // Start does not open/reset fake-IP storage. First activation is prepared and
 // published through the same RangeMigration boundary as later replacements.
 func NewEmptyManager(ctx context.Context, logger logger.Logger) *Manager {
-	manager := &Manager{ctx: ctx, store: NewStore(ctx, logger, netip.Prefix{}, netip.Prefix{}), now: time.Now}
+	manager := &Manager{store: NewStore(ctx, logger, netip.Prefix{}, netip.Prefix{}), now: time.Now}
 	manager.active = &memoryNamespace{id: 1, store: manager.store, published: true, empty: true}
 	manager.namespaces = map[uint64]*memoryNamespace{1: manager.active}
 	manager.nextNamespace = 1
@@ -158,9 +140,8 @@ func (m *Manager) Close() error {
 	m.closeOnce.Do(func() {
 		m.work.Seal()
 		m.work.Wait()
-		m.persistenceWriter.close()
 		if m.started.Load() {
-			m.closeErr = lifecycle.Uncertain("Box fake-IP allocator", errors.Join(m.store.Close(), m.closePersistence()))
+			m.closeErr = lifecycle.Uncertain("Box fake-IP allocator", m.store.Close())
 		}
 	})
 	return m.closeErr
@@ -221,7 +202,6 @@ func (s *borrowedStore) Close() error {
 		m := s.manager
 		m.mappingAccess.Lock()
 		s.namespace.handles--
-		m.persistenceChangedLocked()
 		m.protection.prune(m.now())
 		m.collectNamespacesLocked()
 		m.mappingAccess.Unlock()

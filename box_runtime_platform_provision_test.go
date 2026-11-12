@@ -1,12 +1,10 @@
 package box
 
 import (
-	"bytes"
 	"context"
 	stdjson "encoding/json"
 	"errors"
 	"maps"
-	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -16,11 +14,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
-	"github.com/sagernet/sing-box/experimental/cachefile"
-	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
-
-	mdns "github.com/miekg/dns"
 )
 
 type runtimeProvisionWIFIPlatform struct {
@@ -217,88 +211,6 @@ func TestRuntimeFirstNeighborDHCPPublicFailureIsBeforePublication(t *testing.T) 
 	operation, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
 	if err != nil || operation.Active != request.Expected || len(operation.Errors) == 0 {
 		t.Fatal("unreadable first native resource published", operation, err)
-	}
-}
-
-func TestRuntimeFakeIPNamespacesCannotColdStartWithoutRecoveryRoot(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(root, "cache.db")
-	f, options := runtimeFakeIPCleanupConstruction(t, path, nil)
-	options.Context = adapter.ContextWithRuntimeRecoveryRoot(options.Context, root)
-	runtimeFakeIPCleanupBox(t, f, options)
-	if err := f.box.BindRuntimePersistenceOptions(func(RuntimeIdentity, []byte) error { return nil }, "exact_configuration_file", true); err != nil {
-		t.Fatal(err)
-	}
-	f.start(t)
-	next := runtimeClientFakeIPIPv6(t, options.Options)
-	content, err := json.MarshalContext(f.ctx, next)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, request := runtimeClientPlan(t, f, content)
-	operation, err := f.box.ApplyRuntimeConfig(context.Background(), "actor-a", request)
-	if err != nil || !operation.Durable {
-		t.Fatal("real journal migration", operation, err)
-	}
-	store, err := f.box.runtime.fakeIP.Borrow(netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("2001:2::/48"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	address, err := store.Create("actually-issued.example", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	answer, err := f.box.runtime.fakeIP.ProtectAnswer(&mdns.Msg{Answer: []mdns.RR{&mdns.A{Hdr: mdns.RR_Header{Name: "actually-issued.example.", Rrtype: mdns.TypeA, Class: mdns.ClassINET, Ttl: 3600}, A: net.IP(address.AsSlice())}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	answer.Delivered(time.Now())
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
-	runtimeFakeIPCleanupAssertSuccess(t, f.box)
-	before, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	blocked, withoutRoot := runtimeFakeIPCleanupConstruction(t, path, nil)
-	withoutRoot.Options = runtimeClientFakeIPIPv6(t, withoutRoot.Options)
-	runtimeFakeIPCleanupBox(t, blocked, withoutRoot)
-	if err := blocked.box.Start(); !errors.Is(err, cachefile.ErrFakeIPRecoveryRoot) {
-		t.Fatal("namespace fallback silently lost issued mappings", err)
-	}
-	if err := blocked.box.CloseWithResult(); err != nil {
-		t.Fatal(err)
-	}
-	after, err := os.ReadFile(path)
-	if err != nil || !bytes.Equal(before, after) {
-		t.Fatal("failed unbound cold start rewrote the cache", err)
-	}
-	recovered, withRoot := runtimeFakeIPCleanupConstruction(t, path, nil)
-	withRoot.Context = adapter.ContextWithRuntimeRecoveryRoot(withRoot.Context, root)
-	withRoot.Options = runtimeClientFakeIPIPv6(t, withRoot.Options)
-	runtimeFakeIPCleanupBox(t, recovered, withRoot)
-	recovered.start(t)
-	if domain, ok := recovered.box.runtime.fakeIP.RecognitionStore().Lookup(address); !ok || domain != "actually-issued.example" {
-		t.Fatal("explicit recovery lost issued mapping", domain, ok)
-	}
-	resumed, err := recovered.box.runtime.fakeIP.Borrow(netip.MustParsePrefix("198.18.0.0/15"), netip.MustParsePrefix("2001:2::/48"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resumed.Close()
-	if reused, err := resumed.Create("actually-issued.example", false); err != nil || reused != address {
-		t.Fatal("cold allocator did not reuse the actually issued mapping", reused, err)
-	}
-	nextAddress, err := resumed.Create("after-cold-start.example", false)
-	if err != nil || nextAddress != address.Next() {
-		t.Fatal("cold allocator did not resume its actual cursor", nextAddress, address, err)
-	}
-	if domain, ok := recovered.box.runtime.fakeIP.RecognitionStore().Lookup(nextAddress); !ok || domain != "after-cold-start.example" {
-		t.Fatal("resumed allocation was not recognized", domain, ok)
 	}
 }
 

@@ -40,13 +40,15 @@ var (
 	databaseOptions = bbolt.Options{
 		Timeout:        time.Second,
 		NoFreelistSync: true,
+		OpenFile: func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			return os.OpenFile(name, flag|noFollow, perm)
+		},
 	}
 )
 
 var _ adapter.CacheFile = (*CacheFile)(nil)
 
 type CacheFile struct {
-	runtimeRecoveryJournal *FakeIPRuntimeJournal
 	runtimeClients         sync.Mutex
 	runtimeClientsClosing  bool
 	runtimeClientsReserved bool
@@ -67,8 +69,7 @@ type CacheFile struct {
 	flushInterval          time.Duration
 	DB                     *bbolt.DB
 	dbAccess               sync.RWMutex
-	runtimeFileInfo        os.FileInfo // identity observed around the actual open; dbAccess
-	runtimeStrict          atomic.Bool // promotion permanently disables destructive legacy reset
+	runtimeStrict          atomic.Bool // a retained runtime DNS view permanently disables destructive legacy reset
 	pendingAccess          sync.RWMutex
 	pending                *pendingWrites
 	writing                *pendingWrites
@@ -221,19 +222,14 @@ func (c *CacheFile) runCacheCleanup(ctx context.Context, interval time.Duration,
 }
 
 func (c *CacheFile) start() error {
-	if request, strict := fakeIPRuntimeOpenFromContext(c.ctx); strict || c.runtimeStrict.Load() {
-		return c.startFakeIPRuntime(request)
-	}
 	const fileMode = 0o666
-	cacheFile, err := filemanager.OpenFile(c.ctx, c.path, os.O_RDWR|os.O_CREATE, fileMode)
+	cacheFile, err := filemanager.OpenFile(c.ctx, c.path, os.O_RDWR|os.O_CREATE|noFollow, fileMode)
 	if err != nil {
 		return err
 	}
 	cacheFile.Close()
 	var db *bbolt.DB
-	var runtimeFileInfo os.FileInfo
 	for range 10 {
-		before, _ := os.Lstat(c.path)
 		db, err = bbolt.Open(c.path, fileMode, &databaseOptions)
 		if err != nil {
 			if errors.Is(err, bboltErrors.ErrTimeout) {
@@ -250,10 +246,6 @@ func (c *CacheFile) start() error {
 		}
 		err = checkDatabase(db)
 		if err == nil {
-			after, _ := os.Lstat(c.path)
-			if before != nil && after != nil && os.SameFile(before, after) && after.Mode().IsRegular() && after.Mode()&os.ModeSymlink == 0 {
-				runtimeFileInfo = after
-			}
 			break
 		}
 		c.logger.Error("database corrupted: ", err, ": resetting")
@@ -264,10 +256,6 @@ func (c *CacheFile) start() error {
 		}
 	}
 	if err != nil {
-		return err
-	}
-	if err = c.requireRuntimeNamespaceRecovery(db); err != nil {
-		_ = db.Close()
 		return err
 	}
 	err = filemanager.Chown(c.ctx, c.path)
@@ -299,7 +287,6 @@ func (c *CacheFile) start() error {
 		return err
 	}
 	c.DB = db
-	c.runtimeFileInfo = runtimeFileInfo
 	return nil
 }
 
@@ -362,6 +349,24 @@ func (c *CacheFile) update(fn func(tx *bbolt.Tx) error) (err error) {
 	return db.Update(fn)
 }
 
+// runtimeUpdate never resets or replaces a database retained by runtime views.
+func (c *CacheFile) runtimeUpdate(fn func(*bbolt.Tx) error) (err error) {
+	c.dbAccess.RLock()
+	defer c.dbAccess.RUnlock()
+	if c.DB == nil {
+		return errors.New("cache database is not open")
+	}
+	if c.DB.NoSync {
+		return errors.New("cache database does not provide synchronous transactions")
+	}
+	defer func() {
+		if value := recover(); value != nil {
+			err = E.New("cache durable transaction panic: ", value)
+		}
+	}()
+	return c.DB.Update(fn)
+}
+
 func (c *CacheFile) resetDB(failedDB *bbolt.DB, reason any) {
 	c.dbAccess.Lock()
 	defer c.dbAccess.Unlock()
@@ -369,7 +374,7 @@ func (c *CacheFile) resetDB(failedDB *bbolt.DB, reason any) {
 		return
 	}
 	if c.runtimeStrict.Load() {
-		c.logger.Error("database corrupted; retained for fake-IP recovery: ", reason)
+		c.logger.Error("database corrupted; retained for runtime DNS views: ", reason)
 		return
 	}
 	c.logger.Error("database corrupted: ", reason, ": resetting")
@@ -379,7 +384,6 @@ func (c *CacheFile) resetDB(failedDB *bbolt.DB, reason any) {
 	if err == nil {
 		_ = filemanager.Chown(c.ctx, c.path)
 		c.DB = db
-		c.runtimeFileInfo = nil // legacy reset is not a trusted durable-migration open
 	}
 }
 

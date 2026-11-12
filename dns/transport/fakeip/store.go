@@ -24,11 +24,10 @@ type Store struct {
 	inet6Last  netip.Addr
 	storage    adapter.FakeIPStorage
 
-	addressAccess      sync.Mutex
-	inet4Current       netip.Addr
-	inet6Current       netip.Addr
-	reservedCount      int
-	reservationStorage adapter.FakeIPStorage // addressAccess; reservation belongs to this exact handle
+	addressAccess sync.Mutex
+	inet4Current  netip.Addr
+	inet6Current  netip.Addr
+	reservedCount int
 }
 
 func NewStore(ctx context.Context, logger logger.Logger, inet4Range netip.Prefix, inet6Range netip.Prefix) *Store {
@@ -134,7 +133,7 @@ func (s *Store) Create(domain string, isIPv6 bool) (netip.Addr, error) {
 	} else if isIPv6 && !s.inet6Current.IsValid() {
 		return netip.Addr{}, E.New("missing IPv6 fakeip address range")
 	}
-	if err := s.reserveMetadata(s.storage); err != nil {
+	if err := s.reserveMetadata(); err != nil {
 		return netip.Addr{}, err
 	}
 	s.reservedCount--
@@ -158,20 +157,10 @@ func (s *Store) Reset() error {
 	return s.storage.FakeIPReset()
 }
 
-// Namespace allocation retains ordinary buffered persistence. Only the final
-// answer observer synchronously certifies newly required migration protection.
-func (s *Store) storeMapping(address netip.Addr, domain string) error {
-	if _, runtime := s.storage.(adapter.FakeIPRuntimeNamespace); runtime {
-		s.storage.FakeIPStoreAsync(address, domain, s.logger)
-		return nil
-	}
-	return s.storage.FakeIPStore(address, domain)
-}
-
 // Caller holds addressAccess. Manager calls this before its data fence while
 // allocationAccess serializes only allocators; recognition and flow pins proceed.
-func (s *Store) reserveMetadata(storage adapter.FakeIPStorage) error {
-	if s.reservationStorage == storage && s.reservedCount != 0 {
+func (s *Store) reserveMetadata() error {
+	if s.reservedCount != 0 {
 		return nil
 	}
 	metadata := &adapter.FakeIPMetadata{
@@ -188,11 +177,10 @@ func (s *Store) reserveMetadata(storage adapter.FakeIPStorage) error {
 			metadata.Inet6Current = nextAddress(s.inet6Range, s.inet6Last, metadata.Inet6Current)
 		}
 	}
-	err := storage.FakeIPSaveMetadata(metadata)
+	err := s.storage.FakeIPSaveMetadata(metadata)
 	if err != nil {
 		return E.Cause(err, "save fakeip metadata")
 	}
 	s.reservedCount = reservedAddressCount
-	s.reservationStorage = storage
 	return nil
 }

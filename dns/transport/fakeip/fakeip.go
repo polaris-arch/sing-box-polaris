@@ -181,12 +181,3 @@ func (t *Transport) ProtectAnswer(response *mDNS.Msg) (adapter.FakeIPAnswerLease
 }
 
 var _ adapter.FakeIPAnswerProtection = (*Transport)(nil)
-
-func (t *Transport) ProtectAnswerContext(ctx context.Context, response *mDNS.Msg) (adapter.FakeIPAnswerLease, error) {
-	if store, ok := t.store.(*borrowedStore); ok {
-		return store.manager.protectAnswerContext(ctx, store.namespace, response)
-	}
-	return nil, nil
-}
-
-var _ adapter.FakeIPAnswerContextProtection = (*Transport)(nil)

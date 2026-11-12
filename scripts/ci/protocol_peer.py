@@ -1296,7 +1296,7 @@ def retire_old_stream(conn,events=None):
     return {'nonceSHA256':digest(nonce),'transportClosed':True}
 
 
-def negative_evidence(kind, mutation, client_raw, peer_raw, *, peer_offset=0, mutation_proof=None):
+def negative_evidence(kind, mutation, client_raw, peer_raw, *, peer_offset=0):
     patterns = {
         'wrong-auth': r'authorization failed|authentication required|status: 407|407 Proxy Authentication',
         'wrong-ca': r'ERR_CERT_AUTHORITY_INVALID|cert authority invalid|certificate signed by unknown authority|unknown certificate authority',
@@ -1305,11 +1305,6 @@ def negative_evidence(kind, mutation, client_raw, peer_raw, *, peer_offset=0, mu
     }
     if mutation == 'wrong-auth' and kind.startswith('masque'):
         patterns['wrong-auth'] = r'authentication failed: (?:username=|missing or malformed)|unexpected status: 401'
-    if kind == 'naive-h3' and mutation in ('wrong-ca','wrong-sni'):
-        if not mutation_proof or mutation_proof.get('singleFieldMutation') != mutation:
-            raise RuntimeError('H3 certificate rejection requires exact mutation proof')
-        proof = peer_certificate_alert(peer_raw, peer_offset)
-        return dict(proof, category=mutation, classificationSource='single-variable-fixture-with-healthy-control')
     for role, full_raw in (('client', client_raw), ('peer', peer_raw)):
         full_raw = full_raw if isinstance(full_raw,bytes) else full_raw.encode()
         offset = peer_offset if role=='peer' else 0
@@ -1348,67 +1343,6 @@ def controlled_mutation(healthy, negative, mutation):
             'negativeTrustSHA256':digest(json.dumps(negative[bucket][0]['tls']['certificate']).encode()),'healthyConfigurationSHA256':digest(json.dumps(healthy,separators=(',',':')).encode()),
             'negativeConfigurationSHA256':digest(json.dumps(negative,separators=(',',':')).encode()),
             'operationalPortChangesOnly':True}
-
-
-def capture_peer_certificate_log_observation(raw, offset, phase, owner):
-    try:return peer_certificate_log_observation(raw,offset,phase,owner)
-    except Exception:return {'phase':phase,'unavailable':True,'reason':'private_observation_failed','notProofAttempt':phase!='proof_attempt','diagnosticOnly':True}
-
-
-def peer_certificate_log_observation(raw, offset, phase, owner):
-    """Diagnostics only. Never a substitute for the unchanged exact proof gate."""
-    result={'phase':phase,'sampledMonotonic':time.monotonic(),'notProofAttempt':phase!='proof_attempt',
-        'peerPID':owner.pid,'peerStartTicks':owner.start_identity['startTicks'],'coreSHA256':owner.bound_sha256,
-        'rawSHA256':digest(raw),'rawBytes':len(raw),'windowStartByte':offset,'diagnosticOnly':True}
-    if type(offset) is not int or offset<0 or offset>len(raw) or (offset and raw[offset-1:offset]!=b'\n'):
-        return dict(result,unavailable=True,reason='invalid_window_boundary')
-    window=raw[offset:];scanned=window[:1048576]
-    result.update(windowSHA256=digest(window),windowBytes=len(window),scannedBytes=len(scanned),
-        scanTruncated=len(scanned)!=len(window),trailingIncompleteLine=bool(scanned and not scanned.endswith(b'\n')),
-        scannedCompleteLines=0,scannedUnknownLines=0,structuredEvents=[],structuredEventOverflow=0)
-    stamp=rb'(?:[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} )?'
-    line_pattern=stamp+rb'server (?P<branch>Closing connection with error|Destroying connection with error|Destroying connection|Error occurred handling initial packet): (?P<body>[^\r\n]*)\r?\n'
-    crypto=rb'CRYPTO_ERROR (?P<code>0x[0-9a-f]{1,4}) \((?P<role>remote|local)\)(?: \(frame type: 0x[0-9a-f]{1,4}\))?: [^\r\n]*'
-    codes={b'0x12a':'bad_certificate',b'0x12b':'unsupported_certificate',b'0x12c':'certificate_revoked',
-        b'0x12d':'certificate_expired',b'0x12e':'certificate_unknown',b'0x12f':'illegal_parameter',b'0x130':'unknown_ca',b'0x150':'internal_error'}
-    branches={b'Closing connection with error':'closing',b'Destroying connection with error':'destroying',b'Destroying connection':'destroying_timeout',b'Error occurred handling initial packet':'initial_packet_error'}
-    position=offset
-    for line in scanned.splitlines(keepends=True):
-        if not line.endswith(b'\n'):break
-        result['scannedCompleteLines']+=1
-        found=re.fullmatch(line_pattern,line)
-        if found:
-            match=re.fullmatch(crypto,found['body'])
-            item={'byteOffset':position,'bytes':len(line),'sha256':digest(line),'branch':branches[found['branch']],
-                'timestampShape':'default_go' if re.match(rb'[0-9]{4}/',line) else 'none',
-                'cryptoCode':match['code'].decode() if match and match['code'] in codes else 'other',
-                'certificateClass':codes.get(match['code'],'other') if match else 'other',
-                'origin':match['role'].decode() if match else 'unknown'}
-            if len(result['structuredEvents'])<32:result['structuredEvents'].append(item)
-            else:result['structuredEventOverflow']+=1
-        else:result['scannedUnknownLines']+=1
-        position+=len(line)
-    return result
-
-
-def peer_certificate_alert(raw, offset):
-    if type(offset) is not int or offset < 0 or offset > len(raw) or (offset and raw[offset-1:offset] != b'\n'):
-        raise RuntimeError('peer certificate observation window is not an exact line boundary')
-    # Ignore arbitrary reason phrases, connection IDs and all other crypto codes.
-    # Pinned utils.DefaultLogger.WithPrefix("server") uses Go log.Printf's
-    # default LstdFlags. Match the complete logger structure, not a reason substring.
-    pattern = rb'^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} server Closing connection with error: CRYPTO_ERROR 0x12e \(remote\)(?: \(frame type: 0x[0-9a-f]{1,4}\))?: [^\r\n]*\r?\n$'
-    position = offset
-    for line in raw[offset:].splitlines(keepends=True):
-        if not line.endswith(b'\n'): break
-        matched = re.fullmatch(pattern,line)
-        if matched:
-            return {'certificateAlert':'certificate_unknown','transportErrorCode':'0x12e','origin':'remote',
-                    'specificRejectionObserved':True,'logRole':'peer','windowStartByte':offset,
-                    'byteOffset':position+matched.start(),'privateRawLogSHA256':digest(raw),'privateRawLogBytes':len(raw),
-                    'proofSource':'pinned-quic-go-remote-tls-alert'}
-        position += len(line)
-    raise RuntimeError('negative lacks exact remote peer certificate alert')
 
 
 def config_check(binary, config_path, directory, name, records=None):
@@ -1584,10 +1518,7 @@ def run_case(binary, row, root, kind, mutation=None):
             if not failed or (echo.accepted, echo.received, udp_echo.received) != baseline:
                 raise RuntimeError('negative reached echo or did not reject')
             client_raw=client.log_path.read_bytes();peer_raw=peer.log_path.read_bytes()
-            if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni'):
-                result['negativePeerObservations']=[capture_peer_certificate_log_observation(peer_raw,peer_offset,'proof_attempt',peer)]
-            result['negative'] = negative_evidence(kind, mutation, client_raw, peer_raw,
-                                                   peer_offset=peer_offset,mutation_proof=result['mutationProof'])
+            result['negative'] = negative_evidence(kind, mutation, client_raw, peer_raw, peer_offset=peer_offset)
             result['negative']['peerIdentity'] = {'pid':peer.pid,'startTicks':peer.start_identity['startTicks'],'coreSHA256':row['core']['sha256']}
             result['negative']['peerWindowBeforeSHA256'] = digest(peer_log_before_negative)
             result['negative'].update({'tcpAcceptDelta': 0, 'tcpByteDelta': 0, 'udpNegativeAttempted': False})
@@ -1686,12 +1617,6 @@ def run_case(binary, row, root, kind, mutation=None):
         except OSError: errors.append('owned listening port not released')
         if errors:
             result['status'] = 'FAIL'; result['cleanupErrors'] = errors
-        if kind=='naive-h3' and mutation in ('wrong-ca','wrong-sni') and peer_offset is not None:
-            actual_peer=next((proc for proc in processes if proc.role=='peer'),None)
-            if actual_peer is not None:
-                try:observation=capture_peer_certificate_log_observation(actual_peer.log_path.read_bytes(),peer_offset,'post_cleanup',actual_peer)
-                except Exception:observation={'phase':'post_cleanup','unavailable':True,'reason':'private_observation_failed','notProofAttempt':True}
-                result.setdefault('negativePeerObservations',[]).append(observation)
         result['privateLogs']=[{'name':path.name,**safe_log_observation(path.read_bytes(),Path(__file__).resolve().parents[2])} for path in directory.glob('*.private.log')]
         result['continuationSafe']=safe_to_continue(result)
     return result

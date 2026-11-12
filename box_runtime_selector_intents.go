@@ -218,16 +218,16 @@ func runtimePersistSelectorIntents(ctx context.Context, intents []RuntimeSelecto
 	return nil
 }
 
-func (c *runtimeCoordinator) persistRuntimeTransaction(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error, migration runtimePersistenceParticipant) error {
+func (c *runtimeCoordinator) persistRuntimeTransaction(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error) error {
 	if err := c.controlEffects.LockContext(ctx); err != nil {
 		return err
 	}
 	defer c.controlEffects.Unlock()
-	return c.persistRuntimeTransactionLocked(ctx, identity, canonical, intents, persist, migration)
+	return c.persistRuntimeTransactionLocked(ctx, identity, canonical, intents, persist)
 }
 
 // The caller owns controlEffects for the entire synchronous durability tail.
-func (c *runtimeCoordinator) persistRuntimeTransactionLocked(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error, migration runtimePersistenceParticipant) (err error) {
+func (c *runtimeCoordinator) persistRuntimeTransactionLocked(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error) (err error) {
 	defer func() {
 		if recover() != nil {
 			err = errors.New("runtime persistence tail panicked; durability remains pending")
@@ -249,5 +249,5 @@ func (c *runtimeCoordinator) persistRuntimeTransactionLocked(ctx context.Context
 		}
 		return err
 	}
-	return runtimePersistCommitted(ctx, identity, canonical, checkedPersist, migration)
+	return runtimePersistCommitted(identity, canonical, checkedPersist)
 }

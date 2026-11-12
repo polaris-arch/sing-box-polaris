@@ -249,21 +249,6 @@ func TestRuntimePersistenceRetryControlsInvalidateWithoutBlocking(t *testing.T) 
 	}
 }
 
-func TestRuntimePersistenceRetryParticipantFailureStaysPending(t *testing.T) {
-	calls := 0
-	f, request, _ := retryFixture(t, "exact_configuration_file", true, func(RuntimeIdentity, []byte) error { calls++; return errors.New("offline") })
-	var events []string
-	participant := &runtimePersistenceFixture{calls: &events, waitErr: errors.New("sticky namespace writer failure")}
-	c := f.box.runtime
-	c.access.Lock()
-	c.plans[request.TransactionID].persistenceParticipant = participant
-	c.access.Unlock()
-	op, err := f.box.retryRuntimePersistence(context.Background(), "actor-a", request)
-	if err != nil || op.Durable || calls != 1 || len(events) != 1 || events[0] != "wait" {
-		t.Fatal("namespace failure bypassed", err)
-	}
-}
-
 // The predicate runs under the coordinator guard; the timer only bounds test
 // observation, never substitutes for completion of an admitted operation.
 func waitRetryState(t *testing.T, c *runtimeCoordinator, predicate func() bool) {

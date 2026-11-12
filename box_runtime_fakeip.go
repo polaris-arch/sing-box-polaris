@@ -3,9 +3,7 @@ package box
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/netip"
-	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/listener"
@@ -19,7 +17,7 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
-func (s *Box) prepareRuntimeFakeIP(ctx context.Context, prepared *preparedRuntimeGraph, bindings ...runtimeFakeIPBinding) error {
+func (s *Box) prepareRuntimeFakeIP(ctx context.Context, prepared *preparedRuntimeGraph) error {
 	if s.runtime.fakeIP == nil {
 		return errors.New("runtime fake-IP authority unavailable")
 	}
@@ -41,13 +39,9 @@ func (s *Box) prepareRuntimeFakeIP(ctx context.Context, prepared *preparedRuntim
 			return errors.New("invalid fake-IP server options")
 		}
 	}
-	// Private source-only publication cannot create a namespace or removal link.
-	// Select this before any persistent-preparation/allocation path.
+	// Private source-only publication cannot create a namespace.
+	// Select this before any allocation path.
 	if runtimeSourceOnlyContext(ctx) {
-		owner := s.runtime.fakeIPPersistence
-		if owner != nil && !owner.ready {
-			return fakeip.ErrRecoveryAnchorRequired
-		}
 		var migration *fakeip.RangeMigration
 		var err error
 		if configuration == nil {
@@ -64,42 +58,12 @@ func (s *Box) prepareRuntimeFakeIP(ctx context.Context, prepared *preparedRuntim
 	// Removal stops new answers through the graph while retaining recognition
 	// and the exact allocator for old flows and answers within their validity.
 	if configuration == nil {
-		_, _, initialized := s.runtime.fakeIP.RuntimeRangeIdentity()
-		if !initialized || prepared.initial || s.runtime.fakeIPPersistence == nil {
-			return nil
-		}
-	}
-	if s.runtime.fakeIP == nil {
-		return errors.New("runtime fake-IP authority unavailable")
+		return nil
 	}
 	var migration *fakeip.RangeMigration
 	var err error
 	cache := service.FromContext[adapter.CacheFile](s.runtime.ctx)
-	owner := s.runtime.fakeIPPersistence
-	if owner != nil && !owner.ready && !prepared.initial {
-		return fakeip.ErrRecoveryAnchorRequired
-	}
-	if owner != nil && owner.ready && !prepared.initial {
-		if len(bindings) != 1 || bindings[0].Identity.EffectiveDigest == "" {
-			return fakeip.ErrPersistenceIdentity
-		}
-		transactionID, _ := ctx.Value(runtimeFakeIPTransactionKey{}).(string)
-		if transactionID == "" {
-			return fakeip.ErrPersistenceIdentity
-		}
-		options := fakeip.PersistentMigrationOptions{
-			Anchor: owner.journal, Resolver: owner.journal,
-			TransactionID: transactionID, EffectiveConfigurationID: bindings[0].Identity.EffectiveDigest,
-		}
-		if cache != nil && cache.StoreFakeIP() {
-			options.Backend = owner.backend
-		}
-		if configuration == nil {
-			migration, err = s.runtime.fakeIP.PreparePersistentRemoval(ctx, options)
-		} else {
-			migration, err = s.runtime.fakeIP.PreparePersistentRanges(ctx, configuration.Inet4Range.Build(netip.Prefix{}), configuration.Inet6Range.Build(netip.Prefix{}), options)
-		}
-	} else if prepared.initial && cache != nil && cache.StoreFakeIP() {
+	if prepared.initial && cache != nil && cache.StoreFakeIP() {
 		migration, err = s.runtime.fakeIP.PrepareInitialPersistentRanges(ctx, configuration.Inet4Range.Build(netip.Prefix{}), configuration.Inet6Range.Build(netip.Prefix{}), cache)
 	} else {
 		migration, err = s.runtime.fakeIP.PrepareRanges(ctx, configuration.Inet4Range.Build(netip.Prefix{}), configuration.Inet6Range.Build(netip.Prefix{}))
@@ -121,11 +85,7 @@ func (g *preparedRuntimeGraph) fenceRuntimeFakeIP(contexts ...context.Context) (
 	if len(contexts) > 0 && runtimeSourceOnlyContext(contexts[0]) && !g.fakeIPMigration.UnchangedSelection() {
 		return nil, errors.New("source-only fake-IP selection changed")
 	}
-	ctx := context.Background()
-	if len(contexts) != 0 && contexts[0] != nil {
-		ctx = contexts[0]
-	}
-	commit, _, err := g.fakeIPMigration.PrepareDurableCommit(ctx)
+	commit, _, err := g.fakeIPMigration.PrepareCommit()
 	return commit, err
 }
 
@@ -212,134 +172,10 @@ func runtimeFakeIPRangeProblems(manager *fakeip.Manager, options option.Options)
 	return nil
 }
 
-type (
-	runtimeFakeIPTransactionKey struct{}
-	runtimeFakeIPBinding        struct{ Identity RuntimeIdentity }
-)
-
-func runtimeContextWithFakeIPTransaction(ctx context.Context, transactionID string) context.Context {
-	return context.WithValue(ctx, runtimeFakeIPTransactionKey{}, transactionID)
-}
-
-// The original cache object stays registered as adapter.CacheFile. Only its
-// lifecycle receiver is wrapped: early Initialize and normal startup share one
-// child scope and one result, including partial initialization failure.
-type runtimeFakeIPCacheService struct {
-	adapter.LifecycleService
-	once sync.Once
-	err  error
-}
-
-func (s *runtimeFakeIPCacheService) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	if stage == adapter.StartStateInitialize {
-		s.once.Do(func() { s.err = s.LifecycleService.Start(stage, scope) })
-		return s.err
-	}
-	if s.err != nil {
-		return s.err
-	}
-	return s.LifecycleService.Start(stage, scope)
-}
-
-type runtimeFakeIPPersistence struct {
-	journal *cachefile.FakeIPRuntimeJournal
-	backend adapter.FakeIPRuntimeBackend
-	binding *cachefile.FakeIPBackendBinding
-	ready   bool
-}
-
-// This consumes the existing explicit host recovery root; it adds no config,
-// environment or CLI authority. Absence preserves the original startup path.
-func (s *Box) initializeRuntimeFakeIPRecovery(ctx context.Context, identity RuntimeIdentity) error {
-	if _, present := adapter.RuntimeRecoveryRootFromContext(ctx); !present {
-		return nil
-	}
-	ready, rootErr := cachefile.FakeIPRuntimeRecoveryRootReady(ctx)
-	if rootErr != nil {
-		return fmt.Errorf("fake-IP recovery root-readiness: %w", rootErr)
-	}
-	if !ready {
-		return nil
-	}
-	if identity.EffectiveDigest == "" || s.runtime.fakeIP == nil {
-		return fakeip.ErrPersistenceIdentity
-	}
-	if s.runtime.fakeIPPersistence != nil {
-		return errors.New("fake-IP recovery initialization already attempted")
-	}
-	owner := &runtimeFakeIPPersistence{}
-	s.runtime.fakeIPPersistence = owner // retain every partial owner for shutdown
-	journal, err := cachefile.OpenFakeIPRuntimeJournal(ctx, s.logger)
-	if err != nil {
-		return fmt.Errorf("fake-IP recovery journal-open: %w", err)
-	}
-	owner.journal = journal
-	cache := service.FromContext[adapter.CacheFile](ctx)
-	if cache != nil {
-		actual, ok := cache.(adapter.FakeIPRuntimeBackend)
-		if !ok {
-			return fakeip.ErrRecoveryAnchorRequired
-		}
-		binder, ok := cache.(interface {
-			BindRuntimeRecoveryJournal(*cachefile.FakeIPRuntimeJournal) error
-		})
-		if !ok {
-			return fakeip.ErrRecoveryAnchorRequired
-		}
-		if err := binder.BindRuntimeRecoveryJournal(journal); err != nil {
-			return fmt.Errorf("fake-IP recovery configured-cache-bind: %w", err)
-		}
-		found := false
-		for index, component := range s.internalService {
-			if component == cache {
-				wrapper := &runtimeFakeIPCacheService{LifecycleService: component}
-				s.internalService[index] = wrapper
-				if err := s.runtime.stable.scope.Start(wrapper.Name(), wrapper, adapter.StartStateInitialize); err != nil {
-					return fmt.Errorf("fake-IP recovery configured-cache-initialize: %w", err)
-				}
-				found = true
-				break
-			}
-		}
-		if !found {
-			return errors.New("fake-IP cache has no stable lifecycle owner")
-		}
-		owner.backend = actual
-	}
-	var configured []adapter.FakeIPRuntimeBackend
-	if owner.backend != nil {
-		owner.binding, err = journal.BindBackend(ctx, owner.backend)
-		if err != nil {
-			return fmt.Errorf("fake-IP recovery configured-backend-bind: %w", err)
-		}
-		configured = append(configured, owner.backend)
-	}
-	if err = s.runtime.fakeIP.RecoverPersistent(ctx, journal, journal, identity.EffectiveDigest, configured...); err != nil {
-		return fmt.Errorf("fake-IP recovery persistent-recover: %w", err)
-	}
-	owner.ready = true
-	return nil
-}
-
 // The central stable-owner callback calls this before closing its child scopes.
-// Uncertain allocator cleanup retains the journal and the physical cache.
 func (c *runtimeCoordinator) closeRuntimeFakeIP() error {
 	if c.fakeIP != nil {
-		if err := c.fakeIP.Close(); err != nil {
-			return err
-		}
-	}
-	owner := c.fakeIPPersistence
-	if owner == nil {
-		return nil
-	}
-	if owner.binding != nil {
-		if err := owner.binding.Unbind(context.Background()); err != nil {
-			return err
-		}
-	}
-	if owner.journal != nil {
-		return owner.journal.Close()
+		return c.fakeIP.Close()
 	}
 	return nil
 }
@@ -380,12 +216,10 @@ func (s *Box) runtimeClientFakeIPRangeProblems(options option.Options, policy ui
 	if !persistBound {
 		return []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: "dns.servers", DependencyPath: []string{"fakeip.configuration_durability"}, Message: "range migration requires the original configuration persistence owner"}}
 	}
+	// A store_fakeip allocator keeps its cache.db mappings; ranges change on restart.
 	cache := service.FromContext[adapter.CacheFile](s.runtime.ctx)
-	if (cache != nil && cache.StoreFakeIP()) || s.runtime.fakeIP.PersistentRangesRequired() {
-		owner := s.runtime.fakeIPPersistence
-		if owner == nil || !owner.ready || owner.journal == nil {
-			return []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: "dns.servers", DependencyPath: []string{"fakeip.recovery_root"}, Message: "persistent range migration requires a recovered host-owned journal"}}
-		}
+	if cache != nil && cache.StoreFakeIP() {
+		return []RuntimePlanError{{Code: "RESTART_REQUIRED", Path: "dns.servers", DependencyPath: []string{"fakeip.store_fakeip"}, Message: "persistent store_fakeip ranges change only on restart"}}
 	}
 	return nil
 }

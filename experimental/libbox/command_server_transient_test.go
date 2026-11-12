@@ -13,10 +13,8 @@ import (
 	"testing"
 	"time"
 
-	bboltErrors "github.com/sagernet/bbolt/errors"
 	"github.com/sagernet/sing-box/adapter"
 	boxService "github.com/sagernet/sing-box/adapter/service"
-	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/service/oomkiller"
 	"github.com/sagernet/sing-box/service/powerreport"
@@ -251,35 +249,9 @@ func transientTestSetup(t *testing.T) {
 	})
 }
 
-func TestCommandServerRecoveryRootFollowsHostOwnership(t *testing.T) {
-	transientTestSetup(t)
-	sPowerReportEnabled = false
-	for _, test := range []struct {
-		name     string
-		newHost  func(CommandServerHandler, PlatformInterface) (*CommandServer, error)
-		wantRoot bool
-	}{
-		{"primary", NewCommandServer, true},
-		{"strict-primary", NewStrictCommandServer, true},
-		{"transient", NewTransientCommandServer, false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			server, err := test.newHost(nil, transientTestPlatform{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer server.Close()
-			root, present := adapter.RuntimeRecoveryRootFromContext(server.ctx)
-			if present != test.wantRoot || (test.wantRoot && root != filepath.Clean(sBasePath)) {
-				t.Fatalf("host recovery root = %q, present %v, want primary ownership %v", root, present, test.wantRoot)
-			}
-		})
-	}
-}
-
 func TestTransientCommandServerPreservesSharedState(t *testing.T) {
 	transientTestSetup(t)
-	paths := []string{"configuration.json", "command.sock", "sing-box-hot-fakeip-v1.db", filepath.Join(oomkiller.DraftDirectoryName, "metadata.json"), filepath.Join(powerreport.DraftDirectoryName, "metadata.json")}
+	paths := []string{"configuration.json", "command.sock", filepath.Join(oomkiller.DraftDirectoryName, "metadata.json"), filepath.Join(powerreport.DraftDirectoryName, "metadata.json")}
 	marker := []byte(`{"appVersion":"","appMarketingVersion":""}`)
 	for _, path := range paths {
 		full := filepath.Join(sBasePath, path)
@@ -365,10 +337,6 @@ func TestCommandServerRetainsSharedDiagnostics(t *testing.T) {
 
 func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	transientTestSetup(t)
-	// The positive journal premise needs native private custody, not only a path.
-	// The original short parent remains owned by transientTestSetup cleanup.
-	sBasePath = commandServerPrivateRecoveryRoot(t, sBasePath)
-	sWorkingPath, sTempPath = sBasePath, sBasePath
 	sPowerReportEnabled = false
 	defaultLogger := log.StdLogger()
 	t.Cleanup(func() { log.SetStdLogger(defaultLogger) })
@@ -377,16 +345,6 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { primary.CloseService(); primary.Close() }()
-	if root, present := adapter.RuntimeRecoveryRootFromContext(primary.ctx); !present || root != sBasePath {
-		t.Fatalf("primary recovery root premise: got %q, present=%v, want %q", root, present, sBasePath)
-	}
-	ready, err := cachefile.FakeIPRuntimeRecoveryRootReady(primary.ctx)
-	if err != nil {
-		t.Fatal("primary recovery root readiness before start:", err)
-	}
-	if !ready {
-		t.Fatal("primary recovery root readiness before start: private root not ready")
-	}
 	if err := primary.StartOrReloadService(`{"experimental":{"cache_file":{"path":"primary-cache.db"}}}`, &OverrideOptions{}); err != nil {
 		t.Fatal(err)
 	}
@@ -394,15 +352,6 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	primaryLogger := log.StdLogger()
 	if primaryLogger == defaultLogger {
 		t.Fatal("normal service did not retain default logger replacement")
-	}
-	journalPath := filepath.Join(sBasePath, "sing-box-hot-fakeip-v1.db")
-	journalBefore, err := os.ReadFile(journalPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	journalInfo, err := os.Lstat(journalPath)
-	if err != nil {
-		t.Fatal(err)
 	}
 	sharedBefore, err := os.ReadDir(sBasePath)
 	if err != nil {
@@ -426,14 +375,6 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	if log.StdLogger() != primaryLogger {
 		t.Fatal("transient lifecycle changed the primary default logger")
 	}
-	journalAfter, err := os.ReadFile(journalPath)
-	if err != nil || !bytes.Equal(journalAfter, journalBefore) {
-		t.Fatal("transient lifecycle changed the primary recovery journal", err)
-	}
-	afterInfo, err := os.Lstat(journalPath)
-	if err != nil || !os.SameFile(journalInfo, afterInfo) {
-		t.Fatal("transient lifecycle replaced the primary recovery journal", err)
-	}
 	sharedAfter, err := os.ReadDir(sBasePath)
 	if err != nil {
 		t.Fatal(err)
@@ -451,16 +392,6 @@ func TestTransientCommandServerCloseKeepsPrimaryService(t *testing.T) {
 	}
 	if len(remaining) != 0 {
 		t.Fatal("transient lifecycle removed primary state", remaining)
-	}
-	// Successful transient teardown cannot release the still-live primary's
-	// original journal lock. A real competing open must retain the bounded
-	// writer-lock failure; no larger timeout or shared-handle shortcut is used.
-	probe, err := cachefile.OpenFakeIPRuntimeJournal(primary.ctx, primaryLogger)
-	if probe != nil {
-		_ = probe.Close()
-	}
-	if !errors.Is(err, bboltErrors.ErrTimeout) {
-		t.Fatal("transient lifecycle released or changed primary journal custody", err)
 	}
 }
 
@@ -506,121 +437,5 @@ func TestCommandServerRejectedReloadKeepsSharedDiagnostics(t *testing.T) {
 	content, err := os.ReadFile(configSnapshotPath())
 	if err != nil || string(content) != config {
 		t.Fatalf("rejected reload overwrote live configuration snapshot: %v", err)
-	}
-}
-
-// Exercise normal production construction through both configured-cache paths.
-// No journal is supplied by this test before the first service starts.
-func TestCommandServerFreshJournalSurvivesNormalCloseAndRestart(t *testing.T) {
-	transientTestSetup(t)
-	sBasePath = commandServerPrivateRecoveryRoot(t, sBasePath)
-	sWorkingPath, sTempPath = sBasePath, sBasePath
-	sPowerReportEnabled = false
-	defaultLogger := log.StdLogger()
-	t.Cleanup(func() { log.SetStdLogger(defaultLogger) })
-	path := filepath.Join(sBasePath, "sing-box-hot-fakeip-v1.db")
-	cachePath := filepath.Join(sBasePath, "primary-cache.db")
-	for _, candidate := range []string{path, cachePath} {
-		if _, err := os.Lstat(candidate); !errors.Is(err, os.ErrNotExist) {
-			t.Fatal("fresh normal service journal or configured cache already exists")
-		}
-	}
-	primary, err := NewCommandServer(nil, transientTestPlatform{})
-	if err != nil {
-		t.Fatal("could not construct normal primary")
-	}
-	defer func() { primary.CloseService(); primary.Close() }()
-	if ready, err := cachefile.FakeIPRuntimeRecoveryRootReady(primary.ctx); err != nil || !ready {
-		t.Fatal("normal primary does not have verified root custody")
-	}
-	const config = `{"experimental":{"cache_file":{"path":"primary-cache.db"}}}`
-	if err := primary.StartOrReloadService(config, &OverrideOptions{}); err != nil {
-		t.Fatal("normal fresh journal and configured cache failed production Start")
-	}
-	instance := primary.Instance()
-	if instance == nil || instance.Box() == nil || log.StdLogger() == defaultLogger {
-		t.Fatal("normal production Start did not publish its instance and logger")
-	}
-	journalInfo, err := os.Lstat(path)
-	if err != nil || !journalInfo.Mode().IsRegular() {
-		t.Fatal("normal production Start did not create its journal")
-	}
-	cacheInfo, err := os.Lstat(cachePath)
-	if err != nil || !cacheInfo.Mode().IsRegular() {
-		t.Fatal("normal production Start did not create its configured cache")
-	}
-	before, err := os.ReadFile(path)
-	if err != nil || len(before) == 0 {
-		t.Fatal("normal production journal has no persisted bytes")
-	}
-	probe, err := cachefile.OpenFakeIPRuntimeJournal(primary.ctx, log.StdLogger())
-	if probe != nil {
-		_ = probe.Close()
-	}
-	if probe != nil || !errors.Is(err, bboltErrors.ErrTimeout) {
-		t.Fatal("normal production Start did not retain its real journal writer lock")
-	}
-	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, before) {
-		t.Fatal("competing journal open changed live primary journal bytes")
-	}
-	if primary.Instance() != instance || instance.Box() == nil {
-		t.Fatal("competing journal open changed the published primary")
-	}
-	if err := primary.CloseService(); err != nil {
-		t.Fatal("normal primary did not release its production service")
-	}
-	primary.Close()
-	ctx := adapter.ContextWithRuntimeRecoveryRoot(context.Background(), sBasePath)
-	journal, err := cachefile.OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
-	if err != nil {
-		t.Fatal("normal primary close did not release its journal")
-	}
-	first, err := journal.RuntimeDescriptor(ctx)
-	if err != nil || first.DatabaseID == "" {
-		_ = journal.Close()
-		t.Fatal("normal primary journal has no retained database identity")
-	}
-	if err := journal.Close(); err != nil {
-		t.Fatal("normal primary journal probe did not close")
-	}
-	next, err := NewCommandServer(nil, transientTestPlatform{})
-	if err != nil {
-		t.Fatal("could not construct next normal primary")
-	}
-	defer func() { next.CloseService(); next.Close() }()
-	if err := next.StartOrReloadService(config, &OverrideOptions{}); err != nil {
-		t.Fatal("normal existing journal and configured cache failed production restart")
-	}
-	if next.Instance() == nil || next.Instance().Box() == nil {
-		t.Fatal("normal existing-file restart did not publish its instance")
-	}
-	for _, candidate := range []struct {
-		path string
-		info os.FileInfo
-	}{{path, journalInfo}, {cachePath, cacheInfo}} {
-		after, err := os.Lstat(candidate.path)
-		if err != nil || !os.SameFile(candidate.info, after) {
-			t.Fatal("normal restart replaced a journal or configured cache object")
-		}
-	}
-	probe, err = cachefile.OpenFakeIPRuntimeJournal(next.ctx, log.StdLogger())
-	if probe != nil {
-		_ = probe.Close()
-	}
-	if probe != nil || !errors.Is(err, bboltErrors.ErrTimeout) {
-		t.Fatal("normal restarted primary did not retain its real journal writer lock")
-	}
-	if err := next.CloseService(); err != nil {
-		t.Fatal("normal restarted primary did not close")
-	}
-	next.Close()
-	journal, err = cachefile.OpenFakeIPRuntimeJournal(ctx, log.NewNOPFactory().Logger())
-	if err != nil {
-		t.Fatal("normal restarted primary did not release its journal")
-	}
-	defer journal.Close()
-	second, err := journal.RuntimeDescriptor(ctx)
-	if err != nil || second != first {
-		t.Fatal("normal production restart changed the exact journal descriptor")
 	}
 }
