@@ -29,6 +29,7 @@ import (
 	R "github.com/sagernet/sing-box/route/rule"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/common"
+	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/ntp"
 	"github.com/sagernet/sing/service"
@@ -553,7 +554,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			}
 			value, createErr := service.FromContext[adapter.EndpointRegistry](ctx).Create(ctx, c.gateway, s.logFactory.NewLogger(node.name), config.endpoint.Tag, config.endpoint.Type, config.endpoint.Options)
 			if createErr != nil {
-				return prepared, createErr
+				return prepared, E.Cause(createErr, "initialize endpoint[", config.index, "]")
 			}
 			component.endpoint = value
 			scope = bindings[node.name].scope
@@ -588,7 +589,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			bindings[node.name].scope.Add(component.history.Close)
 			value, createErr := outboundRegistry.CreateOutbound(ctx, leaf, s.logFactory.NewLogger(node.name), config.outbound.Tag, config.outbound.Type, config.outbound.Options)
 			if createErr != nil {
-				return prepared, createErr
+				return prepared, E.Cause(createErr, "initialize outbound[", config.index, "]")
 			}
 			component.outbound = value
 			scope = bindings[node.name].scope
@@ -702,7 +703,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			}
 			value, createErr := inboundRegistry.Create(ctx, inboundRouter, s.logFactory.NewLogger(node.name), config.inbound.Tag, config.inbound.Type, config.inbound.Options)
 			if createErr != nil {
-				return prepared, createErr
+				return prepared, E.Cause(createErr, "initialize inbound[", config.index, "]")
 			}
 			component.inbound = value
 			scope = bindings[node.name].scope
