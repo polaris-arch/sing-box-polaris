@@ -28,6 +28,7 @@ type runtimeNodeOptions struct {
 	transport *option.DNSServerOptions
 	ruleSet   *option.RuleSet
 	provider  *option.CertificateProvider
+	index     int
 }
 
 func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeDependencyNode, map[string]runtimeNodeOptions, error) {
@@ -268,7 +269,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime inbound")
 		}
-		configs[name] = runtimeNodeOptions{node: node, inbound: &input}
+		configs[name] = runtimeNodeOptions{node: node, inbound: &input, index: i}
 		inbounds = append(inbounds, name)
 	}
 	for i := range options.Endpoints {
@@ -299,7 +300,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime endpoint")
 		}
-		configs[name] = runtimeNodeOptions{node: node, endpoint: &endpoint}
+		configs[name] = runtimeNodeOptions{node: node, endpoint: &endpoint, index: i}
 		outbounds = append(outbounds, name)
 	}
 	for i := range options.Outbounds {
@@ -407,7 +408,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime outbound")
 		}
-		configs[name] = runtimeNodeOptions{node: node, outbound: &outbound}
+		configs[name] = runtimeNodeOptions{node: node, outbound: &outbound, index: i}
 		outbounds = append(outbounds, name)
 	}
 	for i := range options.Services {
