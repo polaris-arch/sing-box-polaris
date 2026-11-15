@@ -391,7 +391,11 @@ func (c *runtimeConn) CloseWrite() error {
 	if closer, ok := c.conn.(interface{ CloseWrite() error }); ok {
 		err = closer.CloseWrite()
 	} else {
-		err = os.ErrInvalid
+		// Match the router's full-close fallback for a non-duplex carrier.
+		// Leave this admitted method before joining the tracked cleanup.
+		release()
+		wait, _ := RuntimeConnectionCloseWaiter(c)
+		return wait()
 	}
 	release()
 	return err
