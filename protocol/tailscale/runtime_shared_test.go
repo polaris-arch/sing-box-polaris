@@ -6,13 +6,56 @@ import (
 	"context"
 	"errors"
 	"net"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 )
+
+type runtimeDirectoryTestManager struct {
+	filemanager.Manager
+	directory string
+}
+
+func (m runtimeDirectoryTestManager) ConfigurationDirectoryPath(path string) string {
+	if path == "" {
+		path = "."
+	}
+	return m.BasePath(path)
+}
+
+func (m runtimeDirectoryTestManager) BasePath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(m.directory, path)
+}
+
+func TestRuntimePhysicalDirectoriesExpandedEmptyUsesResourceDirectory(t *testing.T) {
+	directory := t.TempDir()
+	t.Setenv("POLARIS_DIRECTORY_TEST_EMPTY", "")
+	ctx := service.ContextWith[filemanager.Manager](context.Background(), runtimeDirectoryTestManager{directory: directory})
+	options := option.TailscaleEndpointOptions{
+		StateDirectory:    "$POLARIS_DIRECTORY_TEST_EMPTY",
+		TaildropDirectory: "$POLARIS_DIRECTORY_TEST_EMPTY",
+	}
+	state, taildrop, err := RuntimePhysicalDirectories(ctx, options)
+	if err != nil || state != directory || taildrop != directory {
+		t.Fatalf("directories = %q, %q, %v; want %q", state, taildrop, err, directory)
+	}
+	if actual := expandedDirectoryBasePath(ctx, options.StateDirectory); actual != directory {
+		t.Fatalf("constructor directory = %q; want %q", actual, directory)
+	}
+	if actual := expandedDirectoryBasePath(context.Background(), options.StateDirectory); actual != "" {
+		t.Fatalf("unset resource directory changed expanded empty path: %q", actual)
+	}
+}
 
 type runtimeBindingTestSource struct {
 	sequence uint64

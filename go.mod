@@ -233,3 +233,5 @@ replace github.com/sagernet/sing-vmess => ./third_party/sing-vmess
 
 // Pinned NAT discovery/mapping completion; upstream identity and full license are retained in-tree.
 replace github.com/libp2p/go-nat => ./third_party/go-nat
+
+replace github.com/sagernet/sing-openconnect => github.com/polaris-arch/sing-openconnect v0.1.1-0.20261115073945-1ec24f04ff47

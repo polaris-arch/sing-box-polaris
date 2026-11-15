@@ -132,16 +132,23 @@ func openVPNClientRemoteIsDomain(options option.OpenVPNClientEndpointOptions) bo
 	return false
 }
 
-func materialSource(name string, inlineValues []string, path string) (ovpn.Material, error) {
-	material := ovpn.Material{Path: path}
+func materialPath(ctx context.Context, path string) string {
+	if C.IsWindows && path != "" {
+		return adapter.ConfigurationDirectoryPath(ctx, path)
+	}
+	return path
+}
+
+func materialSource(ctx context.Context, name string, inlineValues []string, path string) (ovpn.Material, error) {
+	material := ovpn.Material{Path: materialPath(ctx, path)}
 	if len(inlineValues) > 0 {
 		material.Content = []byte(strings.Join(inlineValues, "\n"))
 	}
 	return material, material.Validate(name)
 }
 
-func requiredMaterialSource(name string, inlineValues []string, path string) (ovpn.Material, error) {
-	material, err := materialSource(name, inlineValues, path)
+func requiredMaterialSource(ctx context.Context, name string, inlineValues []string, path string) (ovpn.Material, error) {
+	material, err := materialSource(ctx, name, inlineValues, path)
 	if err != nil {
 		return ovpn.Material{}, err
 	}

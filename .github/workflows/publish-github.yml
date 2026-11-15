@@ -35,6 +35,8 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
     if: github.repository == 'polaris-arch/sing-box-polaris' && github.repository_id == '1421657509'
     permissions:
       contents: read
@@ -45,6 +47,10 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.27.2'
+        cache: false
     - name: Install final native index validator
       run: python3 -m pip install jsonschema==4.23.0
     - name: Checkout exact build source separately
@@ -82,6 +88,8 @@ jobs:
     needs: validate
     if: inputs.mode == 'publish' && vars.POLARIS_GITHUB_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
     environment: polaris-github-release
     permissions:
       contents: write
@@ -92,6 +100,10 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.27.2'
+        cache: false
     - name: Install final native index validator
       run: python3 -m pip install jsonschema==4.23.0
     - name: Checkout exact build source separately

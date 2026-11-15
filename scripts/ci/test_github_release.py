@@ -16,6 +16,7 @@ import io
 import struct
 import zlib
 import errno
+import subprocess
 
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
@@ -767,6 +768,44 @@ class DistributionMaterialsTests(unittest.TestCase):
         self.assertTrue(material['unmappedMaterialIdentities'])
         with mock.patch('native_release_index.validate_distribution_assessment', return_value=True):
             self.assertFalse(distribution_materials(index,p.ROOT)['publicationEligible'])
+
+    def owned_replacement(self,index):
+        item={'module':'github.com/sagernet/sing-openconnect','version':'v1.0.0','h1':'',
+              'replacement':{'module':'github.com/polaris-arch/sing-openconnect','version':'v1.0.1','h1':'h1:verified'}}
+        for row in index['platforms']:row['buildGraph']['localReplacements']=[copy.deepcopy(item)]
+        return item
+
+    def test_owned_replacement_acquired_once_and_publisher_rederives_same_binding(self):
+        from native_release_index import distribution_materials
+        index=self.final_index();item=self.owned_replacement(index)
+        acquired={'availabilityVerified':True,'noticeRecordIndexes':[116],
+                  'sourceArchive':{'zipUrl':'https://proxy.golang.org/'+item['replacement']['module']+'/@v/v1.0.1.zip',
+                                   'zipBytes':123,'zipSha256':'9'*64},'sourceEvidence':'unchanged historical notice bytes'}
+        with mock.patch('native_release_index.owned_replacement_materials',return_value=acquired) as acquire:
+            material=distribution_materials(index,p.ROOT)
+            self.assertEqual(acquire.call_count,1)
+            self.assertEqual(distribution_materials(index,p.ROOT),material)
+            self.assertEqual(acquire.call_count,2)
+            index['distributionMaterials']=material;self.check_index(index)
+            self.assertEqual(acquire.call_count,3)
+        self.assertTrue(material['publicationEligible'])
+        record=next(iter(material['modules'].values()))
+        self.assertEqual(record['replaces'],{k:v for k,v in item.items() if k!='replacement'})
+        self.assertTrue(record['availabilityVerified']);self.assertEqual(record['noticeRecordIndexes'],[116])
+
+    def test_owned_replacement_acquisition_failure_rejects_materials_and_publisher(self):
+        from native_release_index import distribution_materials
+        index=self.final_index();self.owned_replacement(index)
+        for error in (ValueError('downloaded module notices differ'),ValueError('downloaded module identity or Go h1 differs'),
+                      OSError('network unavailable'),
+                      subprocess.TimeoutExpired(['go','mod','download'],120)):
+            with self.subTest(error=type(error).__name__), \
+                 mock.patch('native_release_index.owned_replacement_materials',side_effect=error) as acquire:
+                with self.assertRaises(type(error)) as material_error:distribution_materials(index,p.ROOT)
+                self.assertIs(material_error.exception,error)
+                with self.assertRaises(type(error)) as publisher_error:self.check_index(index)
+                self.assertIs(publisher_error.exception,error)
+            self.assertEqual(acquire.call_count,2)
 
     def test_shared_materials_associate_every_public_file_and_keep_metadata_private(self):
         index=self.final_index()

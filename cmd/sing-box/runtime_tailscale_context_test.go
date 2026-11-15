@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -16,7 +19,79 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 )
+
+func TestCLIResourceDirectoryKeepsProcessWorkingDirectory(t *testing.T) {
+	unchanged := context.Background()
+	if actual, err := withResourceDirectory(unchanged, ""); err != nil || actual != unchanged {
+		t.Fatalf("unset resource directory changed the context: %v", err)
+	}
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows helper resource-directory contract")
+	}
+	root := t.TempDir()
+	resources := filepath.Join(root, "resources")
+	protected := filepath.Join(root, "runtime")
+	for _, path := range []string{resources, protected} {
+		if err := os.Mkdir(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(resources, "certificate.pem"), []byte("resource"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(protected)
+	ctx, err := withResourceDirectory(context.Background(), resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := filemanager.ReadFile(ctx, "certificate.pem")
+	if err != nil || string(content) != "resource" {
+		t.Fatalf("resource read = %q, %v", content, err)
+	}
+	if err := filemanager.WriteFile(ctx, "state", []byte("state"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(resources, "state")); err != nil {
+		t.Fatal(err)
+	}
+	if current, err := os.Getwd(); err != nil || current != protected {
+		t.Fatalf("process cwd = %q, %v; want %q", current, err, protected)
+	}
+	manager := service.FromContext[filemanager.Manager](ctx)
+	manager = &resourceFileManager{directory: `C:\Users\test\Polaris`}
+	for _, test := range []struct{ path, expected string }{
+		{"", ""},
+		{".", `C:\Users\test\Polaris`},
+		{`keys\client.pem`, `C:\Users\test\Polaris\keys\client.pem`},
+		{`..\client.pem`, `C:\Users\test\client.pem`},
+		{`\keys\client.pem`, `C:\keys\client.pem`},
+		{`/keys/client.pem`, `C:/keys/client.pem`},
+		{`C:keys\client.pem`, `C:\Users\test\Polaris\keys\client.pem`},
+		{`c:keys\client.pem`, `C:\Users\test\Polaris\keys\client.pem`},
+		{`C:`, `C:\Users\test\Polaris`},
+		{`D:keys\client.pem`, `D:\keys\client.pem`},
+		{`D:`, `D:\`},
+		{`D:\keys\client.pem`, `D:\keys\client.pem`},
+		{`\\server\share\client.pem`, `\\server\share\client.pem`},
+		{`\\?\C:\keys\client.pem`, `\\?\C:\keys\client.pem`},
+	} {
+		if actual := manager.BasePath(test.path); actual != test.expected {
+			t.Errorf("BasePath(%q) = %q; want %q", test.path, actual, test.expected)
+		}
+	}
+	t.Setenv("POLARIS_RESOURCE_TEST_UNSET", "")
+	if actual := manager.BasePath(os.ExpandEnv("$POLARIS_RESOURCE_TEST_UNSET")); actual != "" {
+		t.Errorf("expanded empty resource became %q", actual)
+	}
+	if actual := adapter.ConfigurationDirectoryPath(ctx, ""); actual != resources {
+		t.Errorf("empty configuration directory = %q; want %q", actual, resources)
+	}
+	if actual := adapter.ConfigurationDirectoryPath(context.Background(), ""); actual != "" {
+		t.Errorf("unset resource directory changed empty path to %q", actual)
+	}
+}
 
 // Exercise the real CLI entry-point context and Box constructor, but stop at
 // an inert protocol fixture before native Tailscale, filesystem or network IO.

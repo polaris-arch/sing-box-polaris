@@ -85,7 +85,7 @@ func NewServerEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		dnsRouter:      service.FromContext[adapter.DNSRouter](ctx),
 		localAddresses: options.Address,
 	}
-	serverOptions, err := buildServerOptions(options)
+	serverOptions, err := buildServerOptions(ctx, options)
 	if err != nil {
 		cancelLoop()
 		return nil, err
@@ -281,7 +281,7 @@ func (s *ServerEndpoint) Start(stage adapter.StartStage, scope *adapter.Scope) e
 	return nil
 }
 
-func buildServerOptions(options option.OpenVPNServerEndpointOptions) (ovpn.ServerOptions, error) {
+func buildServerOptions(ctx context.Context, options option.OpenVPNServerEndpointOptions) (ovpn.ServerOptions, error) {
 	mode := options.Mode
 	if mode == "" {
 		mode = ovpn.ModeTLS
@@ -312,7 +312,7 @@ func buildServerOptions(options option.OpenVPNServerEndpointOptions) (ovpn.Serve
 		return ovpn.ServerOptions{}, E.New("unsupported network: ", protocol)
 	}
 	if mode == ovpn.ModeStaticKey {
-		return buildStaticKeyServerOptions(options, protocol)
+		return buildStaticKeyServerOptions(ctx, options, protocol)
 	}
 	if options.TLS == nil {
 		return ovpn.ServerOptions{}, E.New("missing `tls` options")
@@ -320,7 +320,7 @@ func buildServerOptions(options option.OpenVPNServerEndpointOptions) (ovpn.Serve
 	if len(options.StaticKey) > 0 || options.StaticKeyPath != "" || options.KeyDirection != "" || options.Cipher != "" || options.Remote != "" || options.RemotePort != 0 || options.PeerAddress.Build(netip.Addr{}).IsValid() || options.PeerAddressIPv6.Build(netip.Addr{}).IsValid() {
 		return ovpn.ServerOptions{}, E.New("static-key server options require `mode: static_key`")
 	}
-	tlsOptions, keyDirection, err := buildServerTLSOptions(*options.TLS)
+	tlsOptions, keyDirection, err := buildServerTLSOptions(ctx, *options.TLS)
 	if err != nil {
 		return ovpn.ServerOptions{}, err
 	}
@@ -362,7 +362,7 @@ func buildServerOptions(options option.OpenVPNServerEndpointOptions) (ovpn.Serve
 	return serverOptions, nil
 }
 
-func buildStaticKeyServerOptions(options option.OpenVPNServerEndpointOptions, protocol string) (ovpn.ServerOptions, error) {
+func buildStaticKeyServerOptions(ctx context.Context, options option.OpenVPNServerEndpointOptions, protocol string) (ovpn.ServerOptions, error) {
 	if options.TLS != nil {
 		return ovpn.ServerOptions{}, E.New("`tls` options are not supported in `static_key` mode")
 	}
@@ -378,7 +378,7 @@ func buildStaticKeyServerOptions(options option.OpenVPNServerEndpointOptions, pr
 	if len(options.DataCiphers) > 0 || options.DataCiphersFallback != "" {
 		return ovpn.ServerOptions{}, E.New("`data_ciphers` and `data_ciphers_fallback` are not supported in `static_key` mode; use `cipher`")
 	}
-	staticKey, err := requiredMaterialSource("static_key", options.StaticKey, options.StaticKeyPath)
+	staticKey, err := requiredMaterialSource(ctx, "static_key", options.StaticKey, options.StaticKeyPath)
 	if err != nil {
 		return ovpn.ServerOptions{}, err
 	}
@@ -457,21 +457,21 @@ func buildStaticKeyServerOptions(options option.OpenVPNServerEndpointOptions, pr
 	}, nil
 }
 
-func buildServerTLSOptions(options option.OpenVPNInboundTLSOptions) (ovpn.ServerTLSOptions, int, error) {
+func buildServerTLSOptions(ctx context.Context, options option.OpenVPNInboundTLSOptions) (ovpn.ServerTLSOptions, int, error) {
 	switch options.VerifyClientCertificate {
 	case "", "require", "optional", "none":
 	default:
 		return ovpn.ServerTLSOptions{}, 0, E.New("invalid client certificate policy ", options.VerifyClientCertificate, ", allowed values: require, optional, none")
 	}
-	certificate, err := requiredMaterialSource("tls.certificate", options.Certificate, options.CertificatePath)
+	certificate, err := requiredMaterialSource(ctx, "tls.certificate", options.Certificate, options.CertificatePath)
 	if err != nil {
 		return ovpn.ServerTLSOptions{}, 0, err
 	}
-	key, err := requiredMaterialSource("tls.key", options.Key, options.KeyPath)
+	key, err := requiredMaterialSource(ctx, "tls.key", options.Key, options.KeyPath)
 	if err != nil {
 		return ovpn.ServerTLSOptions{}, 0, err
 	}
-	certificateAuthority, err := materialSource("tls.client_certificate", options.ClientCertificate, options.ClientCertificatePath)
+	certificateAuthority, err := materialSource(ctx, "tls.client_certificate", options.ClientCertificate, options.ClientCertificatePath)
 	if err != nil {
 		return ovpn.ServerTLSOptions{}, 0, err
 	}
@@ -501,7 +501,7 @@ func buildServerTLSOptions(options option.OpenVPNInboundTLSOptions) (ovpn.Server
 		VerifyX509Name:          options.ClientName,
 		VerifyX509Type:          clientNameType,
 		PeerFingerprint:         options.PeerFingerprint,
-		CRLVerify:               options.CRLPath,
+		CRLVerify:               materialPath(ctx, options.CRLPath),
 		RemoteCertificateKU:     options.RemoteCertificateKU,
 		RemoteCertificateEKU:    options.RemoteCertificateEKU,
 		RemoteCertificateTLS:    remoteCertificateTLS,
@@ -515,7 +515,7 @@ func buildServerTLSOptions(options option.OpenVPNInboundTLSOptions) (ovpn.Server
 	keyDirection := -1
 	controlWrap := options.ControlWrap
 	if controlWrap != nil && (controlWrap.Type != "" || len(controlWrap.Key) > 0 || controlWrap.KeyPath != "" || controlWrap.Direction != "" || controlWrap.ForceCookie) {
-		wrapKey, wrapErr := requiredMaterialSource("tls.control_wrap.key", controlWrap.Key, controlWrap.KeyPath)
+		wrapKey, wrapErr := requiredMaterialSource(ctx, "tls.control_wrap.key", controlWrap.Key, controlWrap.KeyPath)
 		if wrapErr != nil {
 			return ovpn.ServerTLSOptions{}, 0, wrapErr
 		}

@@ -574,6 +574,67 @@ def validate_distribution_assessment(catalog):
  return catalog['status']=='reviewed-current-scope' and catalog['openItems']==[]
 
 
+def owned_replacement_materials(item, root, selection, notice_bytes, go_version):
+ """Acquire only the declared owned OpenConnect fork; reuse notices only byte-for-byte."""
+ original='github.com/sagernet/sing-openconnect';owned='github.com/polaris-arch/sing-openconnect'
+ actual=item['replacement']
+ if item['module']!=original or actual['module']!=owned:
+  raise ValueError('replacement is not the owned OpenConnect source')
+ if not re.fullmatch(r'v\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?',actual['version']):
+  raise ValueError('owned replacement requires an immutable module version')
+ with tempfile.TemporaryDirectory(prefix='polaris-module-source-') as temporary:
+  env=dict(os.environ,GOENV='off',GO111MODULE='on',GOWORK='off',GOTOOLCHAIN='local',GOFLAGS='-mod=readonly',
+           GOPROXY='https://proxy.golang.org',GOSUMDB='sum.golang.org',
+           GOPRIVATE='',GONOPROXY='',GONOSUMDB='',GOINSECURE='',
+           GOMODCACHE=str(Path(temporary)/'modules'),GOPATH=str(Path(temporary)/'gopath'))
+  def command(*args,cwd=root):
+   return subprocess.check_output(['go',*args],cwd=cwd,env=env,text=True,timeout=120).strip()
+  if command('env','GOVERSION')!='go'+go_version:
+   raise ValueError('source acquisition requires the source-owned Go version')
+  mod=json.loads(command('mod','edit','-json'))
+  required=[r for r in mod.get('Require',[]) or [] if r['Path']==original]
+  replaced=[r for r in mod.get('Replace',[]) or [] if r['Old']['Path']==original
+            and r['Old'].get('Version','') in ('',item['version'])]
+  if (len(required)!=1 or required[0]['Version']!=item['version'] or len(replaced)!=1
+      or replaced[0]['New']!={'Path':owned,'Version':actual['version']}):
+   raise ValueError('BuildInfo replacement differs from source go.mod')
+  sums=[line.split() for line in (root/'go.sum').read_text(encoding='utf-8').splitlines()]
+  if [s[2] for s in sums if len(s)==3 and s[:2]==[owned,actual['version']]]!=[actual['h1']]:
+   raise ValueError('BuildInfo replacement h1 differs from source go.sum')
+  components=[c for c in selection['components'] if c.get('module')==original and c.get('version')==item['version']]
+  if len(components)!=1 or (item.get('h1') and item['h1']!=components[0].get('h1')):
+   raise ValueError('original module has no exact historical notice component')
+  indexes=components[0].get('noticeRecordIndexes',[])
+  if not indexes:raise ValueError('original module has no notice records')
+  expected={};original_prefix=original+'@'+item['version']+'/'
+  for index in indexes:
+   record=selection['noticeRecords'][index]
+   if not record['sourcePath'].startswith(original_prefix):raise ValueError('original notice source path differs')
+   expected[record['sourcePath'][len(original_prefix):]]=notice_bytes[record['byteOffset']:record['byteOffset']+record['bytes']]
+  download=json.loads(command('mod','download','-json',owned+'@'+actual['version'],cwd=temporary))
+  if (not isinstance(download,dict) or download.get('Error') or
+      (download.get('Path'),download.get('Version'),download.get('Sum'))!=(owned,actual['version'],actual['h1'])
+      or not isinstance(download.get('Zip'),str)):
+   raise ValueError('downloaded module identity or Go h1 differs')
+  archive=Path(download['Zip']).read_bytes();prefix=owned+'@'+actual['version']+'/'
+  notices={}
+  with zipfile.ZipFile(io.BytesIO(archive)) as z:
+   for member in z.infolist():
+    if member.is_dir():continue
+    if not member.filename.startswith(prefix):raise ValueError('downloaded module ZIP prefix differs')
+    path=member.filename[len(prefix):];parts=PurePosixPath(path).parts
+    if (path in expected or parts[-1].lower().startswith(('license','licence','copying','notice','copyright','patents'))
+        or any(p.lower() in ('licenses','licences','notices') for p in parts[:-1])):
+     if path in notices:raise ValueError('duplicate downloaded notice path')
+     notices[path]=z.read(member)
+  if notices!=expected:raise ValueError('downloaded module notices differ from the historical bundle')
+  escape=lambda x: ''.join('!'+c.lower() if c.isupper() else c for c in x)
+  url='https://proxy.golang.org/'+owned+'/@v/'+escape(actual['version'])+'.zip'
+  return {'availabilityVerified':True,'sourceArchive':{'zipUrl':url,'zipBytes':len(archive),'zipSha256':sha(archive)},
+          'noticeRecordIndexes':indexes,
+          'sourceEvidence':'Go module download verified against source go.mod/go.sum and BuildInfo; unchanged historical notice bytes'}
+
+
 def distribution_materials(index, root=Path('.')):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
@@ -611,7 +672,7 @@ def distribution_materials(index, root=Path('.')):
  source_key=lambda x:(x['module'],x['version'],x.get('h1',''))
  pinned_sources={source_key(x):x for x in old_sources}
  current_sources={source_key(x):x for x in current_sources}
- modules={}; native=[]; missing_materials=[]
+ modules={}; native=[]; missing_materials=[]; acquired={}
  notice_components={(x['module'],x.get('version'),x.get('h1')):x for x in selection['components'] if 'version' in x}
  def module_id(item):
   return sha(json.dumps(item,sort_keys=True,separators=(',',':')).encode())
@@ -628,17 +689,24 @@ def distribution_materials(index, root=Path('.')):
    m['delivery']='fixed-module-source-location'
    m['availabilityVerified']=False
    key=source_key(m)
-   if key not in pinned_sources and key not in current_sources:
+   owned=(item['module']=='github.com/sagernet/sing-openconnect' and m['module']=='github.com/polaris-arch/sing-openconnect'
+          and 'replacement' in item)
+   if owned:
+    identity=module_id(item)
+    if identity not in acquired:
+     acquired[identity]=owned_replacement_materials(item,root,selection,notice_bytes,toolchain['version'])
+    m.update(acquired[identity])
+   if not owned and key not in pinned_sources and key not in current_sources:
     missing_materials.append({'module':m['module'],'version':m['version'],'h1':m['h1'],'reason':'no exact source acquisition input'})
-   if key in notice_components:
+   if not owned and key in notice_components:
     m['noticeRecordIndexes']=notice_components[key].get('noticeRecordIndexes',[])
-   else:
+   elif not owned:
     missing_materials.append({'module':m['module'],'version':m['version'],'h1':m['h1'],'reason':'no exact notice component mapping'})
-   if key in pinned_sources:
+   if not owned and key in pinned_sources:
     source=pinned_sources[key]
     m['sourceArchive']={k:source[k] for k in ('zipUrl','zipBytes','zipSha256')}
     m['sourceEvidence']='release/polaris-public-source-inputs.json (exact module/version/h1 match; historical acquisition)'
-   if key in current_sources:
+   if not owned and key in current_sources:
     source=current_sources[key]
     m['sourceEvidence']='release/ci/current-module-sources.json'
     m['availabilityVerified']=source.get('verifiedH1')==m['h1']

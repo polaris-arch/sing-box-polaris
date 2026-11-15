@@ -19,10 +19,83 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/service"
+	"github.com/sagernet/sing/service/filemanager"
 
 	"github.com/caddyserver/certmagic"
 	"github.com/mholt/acmez/v3/acme"
 )
+
+type acmeResourceDirectoryManager struct {
+	filemanager.Manager
+	directory string
+}
+
+func (m acmeResourceDirectoryManager) BasePath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(m.directory, path)
+}
+
+func (m acmeResourceDirectoryManager) ConfigurationDirectoryPath(path string) string {
+	if path == "" {
+		path = "."
+	}
+	return m.BasePath(path)
+}
+
+func TestACMEFileStorageKeepsResourceDirectoryAndDefaultStorage(t *testing.T) {
+	resources := t.TempDir()
+	protected := t.TempDir()
+	t.Chdir(protected)
+	t.Setenv("POLARIS_ACME_EMPTY", "")
+	ctx := service.ContextWith[filemanager.Manager](context.Background(), acmeResourceDirectoryManager{directory: resources})
+	previous := certmagic.Default.Storage
+	t.Cleanup(func() { certmagic.Default.Storage = previous })
+	defaultStorage := &certmagic.FileStorage{Path: filepath.Join(".local", "share", "certmagic")}
+	certmagic.Default.Storage = defaultStorage
+	configStorage := func(ctx context.Context, directory string) certmagic.Storage {
+		t.Helper()
+		_, lifecycle, err := startACME(ctx, log.NewNOPFactory().Logger(), option.InboundACMEOptions{DataDirectory: directory, Domain: []string{"fixture.invalid"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = lifecycle.Close() })
+		return lifecycle.(*acmeWrapper).cfg.Storage
+	}
+	storage := configStorage(ctx, "")
+	if storage == defaultStorage || storage.(*certmagic.FileStorage).Path != filepath.Join(resources, defaultStorage.Path) {
+		t.Fatal("default file storage was not privately resolved", storage)
+	}
+	if certmagic.Default.Storage != defaultStorage || filepath.IsAbs(defaultStorage.Path) {
+		t.Fatal("process-wide default storage was modified")
+	}
+	if err := storage.Store(ctx, "fixture/test", []byte("resource")); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := os.ReadFile(filepath.Join(resources, defaultStorage.Path, "fixture", "test")); err != nil || string(content) != "resource" {
+		t.Fatalf("stored certificate resource = %q, %v", content, err)
+	}
+	if _, err := os.Stat(filepath.Join(protected, defaultStorage.Path)); !os.IsNotExist(err) {
+		t.Fatalf("protected cwd received certificate storage: %v", err)
+	}
+	if storage := configStorage(ctx, "$POLARIS_ACME_EMPTY").(*certmagic.FileStorage); storage.Path != resources {
+		t.Fatalf("expanded empty data directory = %q; want %q", storage.Path, resources)
+	}
+	if configStorage(context.Background(), "") != defaultStorage {
+		t.Fatal("unset resource directory changed default storage")
+	}
+	if storage := configStorage(context.Background(), "$POLARIS_ACME_EMPTY").(*certmagic.FileStorage); storage.Path != "" {
+		t.Fatalf("unset resource directory changed expanded empty path: %q", storage.Path)
+	}
+	opaque := &acmeFixtureStorage{}
+	certmagic.Default.Storage = opaque
+	if configStorage(ctx, "") != opaque {
+		t.Fatal("custom opaque default storage was replaced")
+	}
+}
 
 type acmeFixtureStorage struct {
 	calls atomic.Int32

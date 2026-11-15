@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/certificate"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service/filemanager"
@@ -33,7 +34,8 @@ type runtimeCertificateClaim struct {
 }
 
 func runtimeCertificateDirectory(ctx context.Context, directory string) (string, error) {
-	path, err := filepath.Abs(filemanager.BasePath(ctx, os.ExpandEnv(directory)))
+	directory = filemanager.BasePath(ctx, os.ExpandEnv(directory))
+	path, err := filepath.Abs(adapter.ConfigurationDirectoryPath(ctx, directory))
 	if err != nil {
 		return "", err
 	}

@@ -101,8 +101,15 @@ func judgeOpenConnectFlow(router adapter.Router, tag string, endpointType string
 	return adapter.JudgeFlow(router, adapter.InboundContext{Inbound: tag, InboundType: endpointType}, network, source, destination, firstPacket)
 }
 
-func materialSource(name string, inlineValues []string, path string) (openconnect.Material, error) {
-	material := openconnect.Material{Path: path}
+func materialPath(ctx context.Context, path string) string {
+	if C.IsWindows && path != "" {
+		return adapter.ConfigurationDirectoryPath(ctx, path)
+	}
+	return path
+}
+
+func materialSource(ctx context.Context, name string, inlineValues []string, path string) (openconnect.Material, error) {
+	material := openconnect.Material{Path: materialPath(ctx, path)}
 	if len(inlineValues) > 0 {
 		material.Content = []byte(strings.Join(inlineValues, "\n"))
 	}

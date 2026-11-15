@@ -130,6 +130,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
 	})
 	if options.ExternalUI != "" {
 		s.externalUI = filemanager.BasePath(ctx, os.ExpandEnv(options.ExternalUI))
+		s.externalUI = adapter.ConfigurationDirectoryPath(ctx, s.externalUI)
 		_, err := filemanager.ReadDir(ctx, s.externalUI)
 		if err != nil && !os.IsNotExist(err) {
 			return nil, E.Cause(err, "read external UI directory")

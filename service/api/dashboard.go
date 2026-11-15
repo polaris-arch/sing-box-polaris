@@ -62,6 +62,7 @@ func newDashboard(ctx context.Context, logger log.ContextLogger, serviceTag stri
 		path = "dashboard"
 	}
 	path = filemanager.BasePath(ctx, os.ExpandEnv(path))
+	path = adapter.ConfigurationDirectoryPath(ctx, path)
 	url := options.DownloadURL
 	if url == "" {
 		url = defaultDashboardURL
