@@ -524,7 +524,13 @@ func (r *NetworkManager) ReleaseMemory(ctx context.Context) {
 	}
 }
 
-func (r *NetworkManager) notifyInterfaceUpdate(_ *control.Interface, _ int) {
+func (r *NetworkManager) notifyInterfaceUpdate(_ *control.Interface, flags int) {
+	// DNS servers alone leave routes and connections valid; resolvers that read
+	// them follow through their own callbacks. A system DNS takeover lands here
+	// right after each TUN start and would otherwise drop every connection.
+	if flags&tun.FlagDNSServersUpdate != 0 {
+		return
+	}
 	r.interfaceUpdateAccess.Lock()
 	defer r.interfaceUpdateAccess.Unlock()
 	r.networkResetPending = true

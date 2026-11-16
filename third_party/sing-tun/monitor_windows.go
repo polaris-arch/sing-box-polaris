@@ -214,9 +214,10 @@ func (m *defaultInterfaceMonitor) checkUpdate() error {
 	oldInterface := m.defaultInterface.Swap(newInterface)
 	oldDNSServers := m.defaultDNSServers
 	m.defaultDNSServers = dnsServers
-	if !defaultInterfaceChanged(oldInterface, newInterface) && slices.Equal(oldDNSServers, dnsServers) {
-		return nil
+	if defaultInterfaceChanged(oldInterface, newInterface) {
+		m.emit(newInterface, 0)
+	} else if !slices.Equal(oldDNSServers, dnsServers) {
+		m.emit(newInterface, FlagDNSServersUpdate)
 	}
-	m.emit(newInterface, 0)
 	return nil
 }

@@ -13,7 +13,12 @@ type (
 	DefaultInterfaceUpdateCallback = func(defaultInterface *control.Interface, flags int)
 )
 
-const FlagAndroidVPNUpdate = 1 << iota
+const (
+	FlagAndroidVPNUpdate = 1 << iota
+	// FlagDNSServersUpdate marks an update in which only the default
+	// interface's DNS servers changed.
+	FlagDNSServersUpdate
+)
 
 type NetworkUpdateMonitor interface {
 	Start() error
