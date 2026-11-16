@@ -149,7 +149,7 @@ func (r *runtimeTunState) runPhysical(ctx context.Context, fn func() error) erro
 	r.mu.Lock()
 	if r.closing {
 		r.mu.Unlock()
-		return errors.New("TUN owner closing")
+		return errRuntimeTunOwnerClosing
 	}
 	if previous := r.operation; previous != nil {
 		select {
@@ -238,6 +238,27 @@ func (t *Inbound) RuntimeSuspendPhysical(ctx context.Context) error {
 		}
 		return physical.close()
 	})
+}
+
+var errRuntimeTunOwnerClosing = errors.New("TUN owner closing")
+
+// RuntimeShutdownPhysical stops the physical TUN before the graph drains at
+// shutdown. Its accepted flows hold generation leases until the stack closes,
+// so waiting for the owner to close it first never ends.
+func (t *Inbound) RuntimeShutdownPhysical(ctx context.Context) error {
+	if t.runtime == nil {
+		return nil
+	}
+	err := t.RuntimeSuspendPhysical(ctx)
+	if errors.Is(err, errRuntimeTunOwnerClosing) {
+		select {
+		case <-t.runtime.closed:
+			return t.runtime.closeErr
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return err
 }
 
 // RuntimeTunPublication is a prevalidated, concrete memory-only participant.
