@@ -288,13 +288,14 @@ func (c *ClientEndpoint) SetKeepIdleConnections(keep bool) {
 }
 
 func (c *ClientEndpoint) waitReady(ctx context.Context) error {
-	if !c.onDemand {
-		if !c.client.Ready() {
-			return E.New("endpoint is not ready yet")
-		}
+	if c.onDemand {
+		c.client.Resume()
+	} else if c.client.Ready() {
 		return nil
 	}
-	c.client.Resume()
+	// A session still being established is awaited, not failed: right after
+	// start the selected endpoint would otherwise drop its first flows.
+	// A failed attempt still fails fast with its error until the next retry.
 	waitCtx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 	defer cancel()
 	return c.client.WaitReady(waitCtx)
