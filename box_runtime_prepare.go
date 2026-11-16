@@ -306,7 +306,11 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		service.MustRegister[adapter.CertificateStore](ctx, snapshot)
 		ctx = adapter.ContextWithRuntimePreparation(ctx)
 		ctx = certificate.ContextWithRuntimeStorageBinding(ctx, func(info os.FileInfo) error { return prepared.bindCertificateStorage(name, info) })
-		ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, canonical)
+		// Only Tailscale physical-child registration consumes the whole graph.
+		// Other components must not each retain a private full-config copy.
+		if config.endpoint != nil && config.endpoint.Type == C.TypeTailscale {
+			ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, canonical)
+		}
 		ctx = adapter.ContextWithRuntimePreparedResourceCheck(ctx, func(id adapter.RuntimeResourceID) bool { return preparedIDs[id] })
 		ctx = adapter.ContextWithRuntimeControl(ctx, c)
 		ctx = adapter.ContextWithRuntimeResourceSource(ctx, resource.owner)
