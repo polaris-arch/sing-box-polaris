@@ -145,8 +145,8 @@ def main():
         raise ValueError('artifact directory must be a fresh child of runner temporary storage')
     required_go = 'go' + (ROOT / 'release/GO_VERSION').read_text().strip()
     actual_go = subprocess.check_output(['go', 'env', 'GOVERSION'], env=env, text=True).strip()
-    if required_go != 'go1.27.2' or actual_go != required_go:
-        raise ValueError('scoped generation requires the reviewed Go 1.27.2 pin')
+    if required_go != 'go1.27.4' or actual_go != required_go:
+        raise ValueError('scoped generation requires the reviewed Go 1.27.4 pin')
     proto_path = ROOT / PROTO
     if proto_path.is_symlink() or proto_path.resolve() != proto_path or not proto_path.is_file():
         raise ValueError('runtime proto input must be the checked-in regular source file')

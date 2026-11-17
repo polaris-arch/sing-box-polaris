@@ -1,6 +1,6 @@
 package constant
 
-const ForkGoVersion = "go1.27.2"
+const ForkGoVersion = "go1.27.4"
 
 // SourceRevision is set by clean-source producers. Empty means unbound.
 var SourceRevision string

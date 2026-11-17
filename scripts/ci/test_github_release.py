@@ -615,7 +615,7 @@ class GateTests(unittest.TestCase):
         expected=expected_native(p.VERSION);source='a'*40;tree='b'*40;rows=[]
         for ident,v in expected.items():
             rows.append({'schema':'polaris-upstream-native-receipt-v1','id':ident,'target':v['target'],'variant':v['variant'],
-                         'version':p.VERSION,'tag':p.TAG,'sourceCommit':source,'sourceTree':tree,'goVersion':'go1.27.2',
+                         'version':p.VERSION,'tag':p.TAG,'sourceCommit':source,'sourceTree':tree,'goVersion':'go1.27.4',
                          'tags':'fixture','buildID':'','rawBuildInfo':'private test fixture',
                          'buildGraph':{'settings':{},'normalModules':[],'prebuiltAcquisitionModules':[],'localReplacements':[]},
                          'sourceIdentity':{'sourceOverlay':0,'goModSha256':'0'*64,'goSumSha256':'1'*64,'replacements':[]},

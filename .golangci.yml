@@ -44,7 +44,7 @@ linters:
       - linters: [staticcheck]
         path: '^(common/httpclient/http2_(config|fallback_transport|transport)\.go|common/tls/reality_client\.go|dns/transport/https_transport\.go|transport/http/(client|client_h2_wrap|server|server_h2)\.go|transport/v2raygrpclite/(client|server)\.go|transport/v2rayhttp/(client|force_close|force_close_go127|server)\.go)$'
         text: '^SA1019:.*golang\.org/x/net/http2\.'
-      # Exact reviewed compatibility calls only (Go 1.27.2, x/net v0.59.0,
+      # Exact reviewed compatibility calls only (Go 1.27.4, x/net v0.59.0,
       # sing-shadowsocks v0.2.9-0.20260929204512-65740e0f0e3e).
       # Rand is a live caller provider: retain its read/join fence. Remove only
       # when the client contract rejects it or pinned engines stop reading it.

@@ -10295,13 +10295,13 @@
       "applicability": "Windivert embed build constraints and package reachability need final binary evidence"
     },
     {
-      "component": "go1.27.2",
+      "component": "go1.27.4",
       "noticeRecordIndexes": [
         189
       ]
     },
     {
-      "component": "go1.27.2",
+      "component": "go1.27.4",
       "noticeRecordIndexes": [
         190
       ]
@@ -11172,7 +11172,7 @@
   "noticeBundle": {
     "path": "release/licenses/CURRENT44-NOTICE-CANDIDATE.txt",
     "bytes": 1059985,
-    "sha256": "9b6dc31aff97a2cc6a4041672207a3b26d3a6ee2bef40bdc79d160df2a40d7ce"
+    "sha256": "c6765fa212d89944ac88debbb95932fc2d9622056ea6f262b90ff616d21592bd"
   },
   "noticeRecords": [
     {
@@ -21700,7 +21700,7 @@
       }
     },
     {
-      "component": "go1.27.2",
+      "component": "go1.27.4",
       "sourcePath": "LICENSE",
       "byteOffset": 662219,
       "bytes": 1453,
@@ -21753,13 +21753,13 @@
       ],
       "provenance": {
         "kind": "official-current-Go-commit",
-        "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+        "sourceCommit": "7b2881024c95a11ddb86663a616340aa3a88b67f",
         "gitBlob": "2a7cf70da6e498df9c11ab6a5eaa2ddd7af34da4",
-        "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/LICENSE"
+        "url": "https://github.com/golang/go/blob/7b2881024c95a11ddb86663a616340aa3a88b67f/LICENSE"
       }
     },
     {
-      "component": "go1.27.2",
+      "component": "go1.27.4",
       "sourcePath": "PATENTS",
       "byteOffset": 663706,
       "bytes": 1303,
@@ -21812,9 +21812,9 @@
       ],
       "provenance": {
         "kind": "official-current-Go-commit",
-        "sourceCommit": "022c8636110ebac86a9b88724cda168ed713c21f",
+        "sourceCommit": "7b2881024c95a11ddb86663a616340aa3a88b67f",
         "gitBlob": "733099041f84fa1e58611ab2e11af51c1f26d1d2",
-        "url": "https://github.com/golang/go/blob/022c8636110ebac86a9b88724cda168ed713c21f/PATENTS"
+        "url": "https://github.com/golang/go/blob/7b2881024c95a11ddb86663a616340aa3a88b67f/PATENTS"
       }
     },
     {
@@ -24847,7 +24847,7 @@
     "sourceArchiveNoticeProof": "current44-notice-source-archive-proof.json",
     "windivertSource": "windivert/fixed-source-availability-proof.json",
     "windivertDrivers": "windivert/upstream-release-driver-proof.json",
-    "currentGoNotices": "../work/release/licenses/go-1.27.2/provenance.json"
+    "currentGoNotices": "../work/release/licenses/go-1.27.4/provenance.json"
   },
   "noticeAppendHistory": [
     {

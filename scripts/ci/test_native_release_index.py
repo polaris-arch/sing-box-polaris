@@ -45,7 +45,7 @@ class TestNative(unittest.TestCase):
  def test_wrong_repository_rejected(self):
   with patch.dict(n.os.environ,{'GITHUB_REPOSITORY':'other/repo','GITHUB_REPOSITORY_ID':'1421657509'}):self.assertRaises(ValueError,n.identity)
  def module_bytes(self):
-  return {'go.mod':b'module example.org/kernel\n\ngo 1.27.2\n','go.sum':b'example.org/dependency v1.0.0 h1:baseline\n'}
+  return {'go.mod':b'module example.org/kernel\n\ngo 1.27.4\n','go.sum':b'example.org/dependency v1.0.0 h1:baseline\n'}
  def module_mocks(self,working=None):
   committed=self.module_bytes();actual=committed if working is None else working
   def read(path):return actual[path.name]
@@ -124,7 +124,7 @@ class OwnedReplacementMaterialsTests(unittest.TestCase):
        'Replace':[{'Old':{'Path':original},'New':{'Path':owned,'Version':actual['version']}}]}
   download={'Path':owned,'Version':actual['version'],'Sum':actual['h1'],'Zip':str(archive)}
   def command(args,**kwargs):
-   if args[1:]==['env','GOVERSION']:return 'go1.27.2\n'
+   if args[1:]==['env','GOVERSION']:return 'go1.27.4\n'
    if args[1:]==['mod','edit','-json']:return json.dumps(mod)
    self.assertEqual(args,['go','mod','download','-json',owned+'@'+actual['version']])
    self.assertNotEqual(Path(kwargs['cwd']),root)
@@ -135,7 +135,7 @@ class OwnedReplacementMaterialsTests(unittest.TestCase):
    root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root)
    with patch.dict(n.os.environ,{'GOPROXY':'https://private.invalid,direct','GOPRIVATE':'*','GONOSUMDB':'*','GONOPROXY':'*','GOINSECURE':'*','GOTOOLCHAIN':'auto'}), \
         patch.object(n.subprocess,'check_output',side_effect=command) as execute:
-    result=n.owned_replacement_materials(item,root,selection,license,'1.27.2')
+    result=n.owned_replacement_materials(item,root,selection,license,'1.27.4')
    self.assertTrue(result['availabilityVerified']);self.assertEqual(result['noticeRecordIndexes'],[0])
    self.assertEqual(result['sourceArchive'],{'zipUrl':'https://proxy.golang.org/'+download['Path']+'/@v/'+download['Version']+'.zip',
                     'zipBytes':archive.stat().st_size,'zipSha256':n.sha(archive.read_bytes())})
@@ -158,19 +158,19 @@ class OwnedReplacementMaterialsTests(unittest.TestCase):
     elif kind=='download-h1':download['Sum']='h1:other'
     else:item['replacement']['version']='latest'
     with patch.object(n.subprocess,'check_output',side_effect=command):
-     self.assertRaises(ValueError,n.owned_replacement_materials,item,root,selection,license,'1.27.2')
+     self.assertRaises(ValueError,n.owned_replacement_materials,item,root,selection,license,'1.27.4')
  def test_changed_missing_or_additional_notices_are_rejected(self):
   for notices in ({'LICENSE':b'changed'}, {}, {'LICENSE':b'unchanged license\n','docs/NOTICE.txt':b'new'},
                   {'LICENSE':b'unchanged license\n','licenses/third-party.txt':b'new'}):
    with self.subTest(notices=notices),tempfile.TemporaryDirectory() as temporary:
     root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root,notices)
     with patch.object(n.subprocess,'check_output',side_effect=command):
-     self.assertRaisesRegex(ValueError,'notices differ',n.owned_replacement_materials,item,root,selection,license,'1.27.2')
+     self.assertRaisesRegex(ValueError,'notices differ',n.owned_replacement_materials,item,root,selection,license,'1.27.4')
  def test_wrong_local_toolchain_stops_before_resolution_or_download(self):
   with tempfile.TemporaryDirectory() as temporary:
    root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root)
    with patch.object(n.subprocess,'check_output',return_value='go1.26.0\n') as execute:
-    self.assertRaisesRegex(ValueError,'source-owned Go version',n.owned_replacement_materials,item,root,selection,license,'1.27.2')
+    self.assertRaisesRegex(ValueError,'source-owned Go version',n.owned_replacement_materials,item,root,selection,license,'1.27.4')
    self.assertEqual(len(execute.call_args_list),1)
 
 
