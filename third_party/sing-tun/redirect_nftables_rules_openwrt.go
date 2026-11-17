@@ -18,10 +18,16 @@ func (r *autoRedirect) configureOpenWRTFirewall4(nft *nftables.Conn, cleanup boo
 	}
 	_, err := nft.ListTableOfFamily("fw4", nftables.TableFamilyINet)
 	if err != nil {
+		if cleanup {
+			return E.Cause(err, "fw4 cleanup pending: query firewall table")
+		}
 		return nil
 	}
 	fw4Path, err := exec.LookPath("fw4")
 	if err != nil {
+		if cleanup {
+			return E.Cause(err, "fw4 cleanup pending: locate fw4 executable")
+		}
 		return nil
 	}
 	rulePath := "/etc/nftables.d/0-" + r.tableName + "-auto-redirect.nft"
