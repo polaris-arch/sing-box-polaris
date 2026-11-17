@@ -59,6 +59,9 @@ type autoRedirect struct {
 	useNFTables                  bool
 	androidVPNService            bool
 	nfqueueHandler               *nfqueueHandler
+	iptablesReceipts             []iptablesReceipt
+	iptablesLocalDirty           bool
+	iptablesClosed               bool
 	iptablesAccess               sync.Mutex
 	iptablesLocalChains          []iptablesLocalChain
 	redirectRouteTableIndex      int
@@ -170,7 +173,6 @@ func (r *autoRedirect) startWithNFQueue(startNFQueue func() error) error {
 		return nil
 	}
 	r.firewallSetupAttempted.Store(true)
-	r.cleanupIPTables()
 	r.redirectRoutesSetupAttempted.Store(true)
 	err = r.setupRedirectRoutes()
 	if err != nil {
@@ -376,6 +378,9 @@ func (r *autoRedirect) startNFQueue() error {
 func (r *autoRedirect) updateIPTablesNetwork() error {
 	r.iptablesAccess.Lock()
 	defer r.iptablesAccess.Unlock()
+	if r.iptablesClosed {
+		return nil
+	}
 	err := r.updateIPTablesLocalAddresses()
 	if err != nil {
 		err = E.Cause(err, "update local address chains")
@@ -426,7 +431,7 @@ func (r *autoRedirect) Close() (closeErr error) {
 	} else {
 		r.unregisterNetworkCallback()
 		if firewallAttempted {
-			r.cleanupIPTables()
+			closeErr = E.Errors(closeErr, r.cleanupIPTables())
 		}
 		if routesAttempted {
 			closeErr = E.Errors(closeErr, r.cleanupRedirectRoutes())
