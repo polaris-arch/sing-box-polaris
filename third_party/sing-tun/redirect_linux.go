@@ -22,8 +22,11 @@ import (
 )
 
 type autoRedirect struct {
-	// NFT cleanup is armed only after a successful exclusive table commit.
-	// Other flags record attempts; none prove identity after external replacement.
+	closeAccess sync.Mutex
+	nftAccess   sync.Mutex
+	nftConn     *nftables.Conn
+	nftClosed   bool
+	// NFT tables are owned by a lasting socket; attempt flags only gate other cleanup.
 	firewallSetupAttempted       atomic.Bool
 	fw4RulesPath                 string
 	fw4RulesRemoved              bool
@@ -406,6 +409,28 @@ func (r *autoRedirect) updateIPTablesNetwork() error {
 }
 
 func (r *autoRedirect) Close() (closeErr error) {
+	r.closeAccess.Lock()
+	defer r.closeAccess.Unlock()
+	if r.useNFTables {
+		// Serialize against setup and in-flight callbacks before reading attempt
+		// flags. Unregister only after releasing this lock: a monitor may wait
+		// for an already dispatched callback to finish.
+		r.nftAccess.Lock()
+		r.nftClosed = true
+		r.nftAccess.Unlock()
+		r.unregisterNetworkCallback()
+		r.stopDockerFirewallMonitor()
+		defer func() {
+			// A vanished target namespace must not keep the owning socket alive.
+			// Closing its fd does not require entering that namespace again.
+			r.nftAccess.Lock()
+			defer r.nftAccess.Unlock()
+			if r.nftConn != nil {
+				closeErr = E.Errors(closeErr, r.nftConn.CloseLasting())
+				r.nftConn = nil
+			}
+		}()
+	}
 	// Attempt latches stay set so post-attempt cleanup retains its legacy retry
 	// behavior. Before any firewall/route setup, Close must not sweep another
 	// instance's resources just because they share a table or chain name.
@@ -416,13 +441,14 @@ func (r *autoRedirect) Close() (closeErr error) {
 	if r.useNFTables {
 		if firewallAttempted || routesAttempted {
 			closeErr = E.Errors(closeErr, runInNetworkNamespace(r.tunOptions.NetNs, func() error {
+				var cleanupErr error
 				if firewallAttempted {
-					r.cleanupNFTables()
+					cleanupErr = r.cleanupNFTables()
 				}
 				if routesAttempted {
-					return r.cleanupRedirectRoutes()
+					cleanupErr = E.Errors(cleanupErr, r.cleanupRedirectRoutes())
 				}
-				return nil
+				return cleanupErr
 			}))
 		}
 		if r.ownedNetworkMonitor {

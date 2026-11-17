@@ -18,17 +18,47 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// NFT_TABLE_F_OWNER without NFT_TABLE_F_PERSIST ties the table lifetime to
+// this socket. Older kernels must reject the transaction, never fall back to
+// unowned tables. The connection is opened inside the caller's target netns.
+const nftTableFlagOwner uint32 = 0x2
+
 func (r *autoRedirect) setupNFTables() error {
-	nft, err := nftables.New()
+	return r.setupNFTablesWithOwner(func() (*nftables.Conn, error) {
+		return nftables.New(nftables.AsLasting())
+	})
+}
+
+func (r *autoRedirect) setupNFTablesWithOwner(openOwner func() (*nftables.Conn, error)) (setupErr error) {
+	r.nftAccess.Lock()
+	defer r.nftAccess.Unlock()
+	if r.nftClosed || r.nftConn != nil {
+		return E.New("nftables owner is closed or already started")
+	}
+	nft, err := openOwner()
 	if err != nil {
 		return E.Cause(err, "create nftables connection")
 	}
-	defer nft.CloseLasting()
+	r.nftConn = nft
+	defer func() {
+		if setupErr != nil {
+			setupErr = E.Cause(setupErr, "setup owned nftables table (kernel OWNER support required; no fallback)")
+			// Set creation may Flush before commitNFTables. Close even when the
+			// final commit was never reached or its acknowledgement is uncertain.
+			if r.fw4RulesPath != "" {
+				setupErr = E.Errors(setupErr, r.configureOpenWRTFirewall4(nft, true))
+			}
+			setupErr = E.Errors(setupErr, nft.CloseLasting())
+			r.nftConn = nil
+			r.nftClosed = true
+		}
+	}()
 
 	// Refuse unknown same-name tables atomically; never adopt or pre-delete them.
 	table := nft.CreateTable(&nftables.Table{
 		Name:   r.tableName,
 		Family: nftables.TableFamilyINet,
+		Flags:  nftTableFlagOwner,
 	})
 
 	err = r.interfaceFinder.Update()
@@ -311,17 +341,21 @@ func (r *autoRedirect) setupNFTables() error {
 	return nil
 }
 
-// A failed or uncertain transaction must not arm name-based cleanup: the table
-// could belong to another process. Unknown leftovers require explicit recovery.
+// Setup failure closes the owner socket even when the transaction result is uncertain.
 func (r *autoRedirect) commitNFTables(nft *nftables.Conn) error {
 	if err := nft.Flush(); err != nil {
-		return E.Cause(err, "commit exclusive nftables table (existing table or uncertain result left untouched)")
+		return E.Cause(err, "commit exclusive owned nftables table (owner support required; no fallback)")
 	}
 	r.firewallSetupAttempted.Store(true)
 	return nil
 }
 
 func (r *autoRedirect) updateNetworkAddresses() error {
+	r.nftAccess.Lock()
+	defer r.nftAccess.Unlock()
+	if r.nftClosed || r.nftConn == nil {
+		return nil
+	}
 	err := r.nftablesUpdateLocalAddressSet()
 	if err != nil {
 		err = E.Cause(err, "update local address set")
@@ -354,18 +388,23 @@ func (r *autoRedirect) nftablesUpdateLocalAddressSet() error {
 			return it.String()
 		}), ", ")+"]")
 	}
-	nft, err := nftables.New()
-	if err != nil {
-		return E.Cause(err, "create nftables connection")
+	// Called under nftAccess; never reopen after CloseLasting (which would
+	// silently switch the dependency back to transient sockets).
+	nft := r.nftConn
+	if r.nftClosed || nft == nil {
+		return E.New("nftables owner is closed")
 	}
-	defer nft.CloseLasting()
 	table, err := nft.ListTableOfFamily(r.tableName, nftables.TableFamilyINet)
 	if err != nil {
 		return E.Cause(err, "list nftables table")
 	}
 	err = r.nftablesCreateLocalAddressSets(nft, table, newLocalAddresses, r.localAddresses)
 	if err != nil {
-		return E.Cause(err, "create local address sets")
+		// The builder can fail before Flush and the dependency has no discard
+		// operation. Never replay a possibly incomplete buffered transaction.
+		r.nftClosed = true
+		r.nftConn = nil
+		return E.Errors(E.Cause(err, "create local address sets; nftables owner stopped"), nft.CloseLasting())
 	}
 	return r.commitNFTablesLocalAddresses(nft, newLocalAddresses)
 }
@@ -380,26 +419,25 @@ func (r *autoRedirect) commitNFTablesLocalAddresses(nft *nftables.Conn, addresse
 	return nil
 }
 
-func (r *autoRedirect) cleanupNFTables() {
-	r.unregisterNetworkCallback()
-	r.stopDockerFirewallMonitor()
-	nft, err := nftables.New()
-	if err != nil {
-		return
+func (r *autoRedirect) cleanupNFTables() error {
+	r.nftAccess.Lock()
+	r.nftClosed = true
+	nft := r.nftConn
+	r.nftConn = nil
+	var cleanupErr error
+	if nft != nil {
+		cleanupErr = r.configureOpenWRTFirewall4(nft, true)
+		// No name-based DelTable: closing only our owner socket relinquishes
+		// its tables, including partially committed setup transactions.
+		cleanupErr = E.Errors(cleanupErr, nft.CloseLasting())
+	} else if r.fw4RulesPath != "" {
+		cleanupErr = E.New("fw4 cleanup remains pending after nftables owner closed")
 	}
-	nft.DelTable(&nftables.Table{
-		Name:   r.tableName,
-		Family: nftables.TableFamilyINet,
-	})
-	_ = r.configureOpenWRTFirewall4(nft, true)
-	_ = nft.Flush()
-	_ = nft.CloseLasting()
+	r.nftAccess.Unlock()
 	if r.tunOptions.NetNs == "" {
-		err = r.configureDockerFirewall(true)
-		if err != nil && r.logger != nil {
-			r.logger.Warn("cleanup docker firewall: ", err)
-		}
+		cleanupErr = E.Errors(cleanupErr, r.configureDockerFirewall(true))
 	}
+	return cleanupErr
 }
 
 func (r *autoRedirect) nftablesCreatePreMatchChains(nft *nftables.Conn, table *nftables.Table) error {
