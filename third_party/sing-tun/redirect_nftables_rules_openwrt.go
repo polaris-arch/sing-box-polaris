@@ -12,6 +12,10 @@ import (
 )
 
 func (r *autoRedirect) configureOpenWRTFirewall4(nft *nftables.Conn, cleanup bool) error {
+	// Never remove a pre-existing include merely because its name matches.
+	if cleanup && r.fw4RulesPath == "" {
+		return nil
+	}
 	_, err := nft.ListTableOfFamily("fw4", nftables.TableFamilyINet)
 	if err != nil {
 		return nil
@@ -22,7 +26,7 @@ func (r *autoRedirect) configureOpenWRTFirewall4(nft *nftables.Conn, cleanup boo
 	}
 	rulePath := "/etc/nftables.d/0-" + r.tableName + "-auto-redirect.nft"
 	if !cleanup {
-		err = os.WriteFile(rulePath, []byte(`chain input {
+		err = r.createFW4Rules(rulePath, []byte(`chain input {
 	type filter hook input priority filter; policy accept;
 	iifname "`+r.tunOptions.Name+`" counter accept comment "!`+r.tableName+`: Accept traffic from tun"
 	oifname "`+r.tunOptions.Name+`" counter accept comment "!`+r.tableName+`: Accept traffic from tun"
@@ -32,21 +36,44 @@ chain forward {
 	iifname "`+r.tunOptions.Name+`" counter accept comment "!`+r.tableName+`: Accept traffic from tun"
 	oifname "`+r.tunOptions.Name+`" counter accept comment "!`+r.tableName+`: Accept traffic from tun"
 }
-`), 0o644)
+`))
 		if err != nil {
 			return E.Cause(err, "write fw4 rules")
 		}
-	} else if _, err = os.Stat(rulePath); os.IsNotExist(err) {
-		return nil
-	} else {
-		err = os.Remove(rulePath)
-		if err != nil {
+	} else if !r.fw4RulesRemoved {
+		err = os.Remove(r.fw4RulesPath)
+		if err != nil && !os.IsNotExist(err) {
 			return E.Cause(err, "clean fw4 rules")
 		}
+		r.fw4RulesRemoved = true
 	}
 	output, err := shell.Exec(fw4Path, "reload").Read()
 	if err != nil {
 		return E.Extend(E.Cause(err, "reload fw4 rules"), output)
 	}
+	if cleanup {
+		r.fw4RulesPath = ""
+		r.fw4RulesRemoved = false
+	}
 	return nil
+}
+
+// Exclusive creation protects unknown includes (including symlinks). This
+// receipt is process-local, not a lock against later external path replacement.
+func (r *autoRedirect) createFW4Rules(path string, content []byte) error {
+	if r.fw4RulesPath != "" {
+		return E.New("fw4 rules already created by this instance")
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return E.Cause(err, "fw4 include already exists; preserve it and resolve its ownership before retrying")
+		}
+		return err
+	}
+	// Retain the receipt even if writing/closing fails, so rollback can remove
+	// this instance's incomplete file rather than touching an existing include.
+	r.fw4RulesPath = path
+	_, writeErr := file.Write(content)
+	return E.Errors(writeErr, file.Close())
 }

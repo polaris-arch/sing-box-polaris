@@ -25,6 +25,8 @@ type autoRedirect struct {
 	// NFT cleanup is armed only after a successful exclusive table commit.
 	// Other flags record attempts; none prove identity after external replacement.
 	firewallSetupAttempted       atomic.Bool
+	fw4RulesPath                 string
+	fw4RulesRemoved              bool
 	redirectRoutesSetupAttempted atomic.Bool
 	vpnServiceSetupAttempted     atomic.Bool
 	bypassRouteSetupAttempted    atomic.Bool
