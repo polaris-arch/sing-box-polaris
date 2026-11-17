@@ -9,8 +9,7 @@ import unittest
 from unittest import mock
 import re
 import os
-import runpy
-from contextlib import chdir, contextmanager
+from contextlib import contextmanager
 import zipfile
 import io
 import struct
@@ -22,10 +21,6 @@ spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 p.bind_release('v1.15.0-polaris-alpha.12.22')
 
-
-def receipt_context_fixture():
-    return {'GITHUB_REF':'refs/tags/'+p.TAG,'RECEIPT_SOURCE_GENERATE_ONLY':'false',
-            'NEEDS_JSON':json.dumps({'build':{'result':'success','outputs':{}}})}
 
 def native_jobs_fixture(index):
     """Synthetic Actions data; only mocked metadata, never native authority."""
@@ -439,26 +434,6 @@ class GateTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 path=Path(directory)/'scope.json';path.write_text(json.dumps(value))
                 with self.subTest(kind=kind),mock.patch.object(p,'SCOPE',path),self.assertRaises(ValueError):p.release_scope(p.VERSION)
-
-    def test_producer_receipt_uses_current_source_contract_and_rejects_old_or_tag_version(self):
-        release=json.loads(p.CONFIG.read_text());source='a'*40
-        env={'PUBLISHER_ROLE':'all','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':p.REPO,
-             'GITHUB_REPOSITORY_ID':str(p.RID),'RELEASE_BUILD':'All','RELEASE_VERSION':p.VERSION,
-             'GITHUB_SHA':source,'GITHUB_RUN_ID':'42','GITHUB_RUN_ATTEMPT':'1'}
-        env.update(receipt_context_fixture())
-        with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'release/ci').mkdir(parents=True)
-            (root/'release/ci/github-release.json').write_text(json.dumps(release))
-            script=p.ROOT/'scripts/ci/publisher_run_receipt.py'
-            with chdir(root),mock.patch.dict(os.environ,env),mock.patch('subprocess.check_output',return_value=source):
-                runpy.run_path(str(script),run_name='__main__')
-                receipt=json.loads((root/'publisher-run-receipt.json').read_text())
-                self.assertEqual((receipt['version'],receipt['sourceCommit'],receipt['role']),(p.VERSION,source,'all'))
-                for version in ['1.15.0-polaris-alpha.11',p.VERSION+'0','v'+p.VERSION]:
-                    with mock.patch.dict(os.environ,RELEASE_VERSION=version),self.assertRaises((AssertionError,ValueError)):
-                        runpy.run_path(str(script),run_name='__main__')
-                with mock.patch.dict(os.environ,GITHUB_REF='refs/heads/'+p.TAG),self.assertRaises(AssertionError):
-                    runpy.run_path(str(script),run_name='__main__')
 
     def test_path_traversal(self):
         for name in ['../bad','/bad','x/../../bad','C:/bad','x\\bad']:

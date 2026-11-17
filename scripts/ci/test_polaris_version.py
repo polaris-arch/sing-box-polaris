@@ -1,13 +1,9 @@
 """One version contract across producers, identities, package metadata and scope."""
 import json
-import os
 from pathlib import Path
-import runpy
 import subprocess
 import sys
-import tempfile
 import unittest
-from contextlib import chdir
 from unittest.mock import patch
 
 import polaris_version as v
@@ -122,33 +118,6 @@ class PolarisVersionTests(unittest.TestCase):
             with patch.object(identity, 'api') as api, self.assertRaises(ValueError):
                 identity.remote_tag_identity(tag, source, obj)
             api.assert_not_called()
-
-    def test_producer_receipts_keep_patch_and_reject_unreviewed_rotation(self):
-        source = 'a' * 40
-        for version in [VERSION, '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6']:
-            for role in ['all']:
-                with tempfile.TemporaryDirectory() as directory, chdir(directory):
-                    Path('release/ci').mkdir(parents=True)
-                    Path('release/ci/github-release.json').write_text(json.dumps(PLAN))
-                    needs = {'build': {'result': 'success', 'outputs': {}}}
-                    env = {'PUBLISHER_ROLE': role, 'GITHUB_EVENT_NAME': 'workflow_dispatch',
-                           'GITHUB_REPOSITORY': PLAN['repository'], 'GITHUB_REPOSITORY_ID': str(PLAN['repositoryId']),
-                           'RELEASE_BUILD': 'All', 'RELEASE_VERSION': version, 'GITHUB_SHA': source,
-                           'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1',
-                           'GITHUB_REF': 'refs/tags/v' + version, 'NEEDS_JSON': json.dumps(needs),
-                           'RECEIPT_SOURCE_GENERATE_ONLY': 'false'}
-                    script = ROOT / 'scripts/ci/publisher_run_receipt.py'
-                    with patch.dict(os.environ, env), patch('subprocess.check_output', return_value=source + '\n'):
-                        runpy.run_path(str(script))
-                    receipt = json.loads(Path('publisher-run-receipt.json').read_text())
-                    self.assertEqual(receipt['version'], version)
-                    self.assertEqual(receipt['sourceCommit'], source)
-                    rejected = ['1.15.0-polaris-alpha.12', version + '0']
-                    if version == VERSION:
-                        rejected.append('1.15.0-polaris-alpha.12.6')
-                    for wrong in rejected:
-                        with patch.dict(os.environ, dict(env, RELEASE_VERSION=wrong)), self.assertRaises(AssertionError):
-                            runpy.run_path(str(script))
 
 
 if __name__ == '__main__':

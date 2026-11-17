@@ -1,12 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+)
+
+const (
+	repository   = "polaris-arch/sing-box-polaris"
+	repositoryID = "1421657509"
 )
 
 func main() {
@@ -31,9 +38,25 @@ func run(args []string) error {
 		return checkFormat(args[1:])
 	case "runtime-proto":
 		return runtimeProto(args[1:])
+	case "record-candidate":
+		return recordCandidate(args[1:])
+	case "publisher-receipt":
+		return publisherReceipt(args[1:])
 	default:
 		return fmt.Errorf("unknown CI command: %s", args[0])
 	}
+}
+
+func nativeEnvironment(names ...string) (map[string]string, error) {
+	values := make(map[string]string, len(names))
+	for _, name := range names {
+		value, present := os.LookupEnv(name)
+		if !present {
+			return nil, fmt.Errorf("missing native environment: %s", name)
+		}
+		values[name] = value
+	}
+	return values, nil
 }
 
 func writeJSON(output io.Writer, value any) error {
@@ -41,6 +64,29 @@ func writeJSON(output io.Writer, value any) error {
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+// Native needs must not resolve duplicate object keys by last-writer wins.
+// Keep JSON numbers exact while checking the whole value.
+func uniqueJSON(input io.Reader, target any) error {
+	strict := jsontext.NewDecoder(input, jsontext.AllowDuplicateNames(false))
+	raw, err := strict.ReadValue()
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	// ReadValue's buffer belongs to strict: consume it before checking for EOF.
+	if _, err := strict.ReadToken(); err != io.EOF {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("multiple JSON values")
+	}
+	return nil
 }
 
 func writeJSONFile(filename string, value any) error {

@@ -20,7 +20,7 @@ jobs:
       with:
         go-version-file: release/GO_VERSION
         cache: false
-    - run: go test -mod=readonly ./cmd/internal/ci
+    - run: go test -mod=readonly ./cmd/internal/ci ./common/badversion
     - run: python -m unittest discover -s scripts/ci -p 'test_native_release_index.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_github_release.py'
     - run: python -m unittest discover -s scripts/ci -p 'test_release_identity.py'

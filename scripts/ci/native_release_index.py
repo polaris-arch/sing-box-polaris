@@ -653,7 +653,10 @@ def distribution_materials(index, root=Path('.')):
          'release/dependency-sources/windivert/upstream-release-driver-proof.json',
          'release/polaris-cronet-materials.json','release/polaris-cronet-graph-kernel-materials.json',
          'scripts/ci/native_release_index.py',
-         'scripts/ci/record_candidate.py',
+         'release/GO_VERSION','cmd/internal/ci/main.go','cmd/internal/ci/source.go','cmd/internal/ci/format.go',
+         'cmd/internal/ci/g4_candidate.go','cmd/internal/ci/patch_packages.go','cmd/internal/ci/runtime_proto.go',
+         'cmd/internal/ci/receipts.go',
+         'common/badversion/version.go','common/badversion/version_json.go',
          '.github/workflows/build.yml']
  if any('trustedExecution' in row for row in index['platforms']):
   inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json']

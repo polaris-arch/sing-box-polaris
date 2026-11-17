@@ -4,8 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -428,4 +430,145 @@ func TestPatchReleaseModuleOnlyAdmitsLicenseEvidence(t *testing.T) {
 	if _, err := selectPatchPackages(root, []string{"release/unowned.go"}); err == nil {
 		t.Fatal("non-license release package admitted")
 	}
+}
+
+func TestWorkflowReceiptsBindFilesSourceAndCompleteNativeScope(t *testing.T) {
+	root := moduleFixture(t)
+	t.Chdir(root)
+	fixtureFile(t, root, "release/ci/github-release.json", `{"repository":"polaris-arch/sing-box-polaris","repositoryId":1421657509}`)
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}, {"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "receipt source"}} {
+		if _, err := git(root, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	head, err := git(root, "rev-parse", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := strings.TrimSpace(string(head))
+	version := "1.15.0-polaris-alpha.12.31"
+	for name, value := range map[string]string{
+		"GITHUB_REPOSITORY": repository, "GITHUB_REPOSITORY_ID": repositoryID, "GITHUB_JOB": "build",
+		"GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "1", "GITHUB_SHA": source,
+		"PUBLISHER_ROLE": "all", "GITHUB_EVENT_NAME": "workflow_dispatch", "RELEASE_BUILD": "All",
+		"RELEASE_VERSION": version, "GITHUB_REF": "refs/tags/v" + version,
+		"RECEIPT_SOURCE_GENERATE_ONLY": "false", "NEEDS_JSON": `{"build":{"result":"success","outputs":{}}}`,
+		"CANDIDATE_MATRIX_KEY": "linux-amd64",
+	} {
+		t.Setenv(name, value)
+	}
+	artifacts := t.TempDir()
+	fixtureFile(t, artifacts, "nested/core", "actual bytes")
+	fixtureFile(t, artifacts, "polaris-candidate-manifest-old.json", "old receipt")
+	if err := run([]string{"record-candidate", artifacts}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(artifacts, "polaris-candidate-manifest-build-linux-amd64.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var candidate struct {
+		SourceCommit, SourceTree, WorkflowRunID, WorkflowAttempt, MatrixKey, SignatureState string
+		RepositoryID                                                                        int64
+		ReleasePublication, RuntimeAcceptance                                               *bool
+		Files                                                                               []candidateFile
+	}
+	if err := json.Unmarshal(data, &candidate); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := git(root, "rev-parse", "HEAD^{tree}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if candidate.SourceCommit != source || candidate.SourceTree != strings.TrimSpace(string(tree)) ||
+		candidate.WorkflowRunID != "123" || candidate.WorkflowAttempt != "1" || candidate.RepositoryID != 1421657509 ||
+		candidate.MatrixKey != "linux-amd64" || candidate.SignatureState != "unsigned-candidate" ||
+		candidate.ReleasePublication == nil || *candidate.ReleasePublication || candidate.RuntimeAcceptance == nil || *candidate.RuntimeAcceptance ||
+		!slices.Equal(candidate.Files, []candidateFile{{"nested/core", 12, sha256Hex([]byte("actual bytes"))}}) {
+		t.Fatalf("candidate receipt lost its actual identity: %+v", candidate)
+	}
+	if runtime.GOOS != "windows" {
+		link := filepath.Join(t.TempDir(), "selected-root")
+		if err := os.Symlink(artifacts, link); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"record-candidate", link}); err != nil {
+			t.Fatalf("selected directory symlink no longer supported: %v", err)
+		}
+		member := filepath.Join(artifacts, "linked-member")
+		if err := os.Symlink(filepath.Join(artifacts, "nested/core"), member); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"record-candidate", artifacts}); err == nil {
+			t.Fatal("candidate followed a member symlink")
+		}
+		if err := os.Remove(member); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := run([]string{"record-candidate", t.TempDir()}); err == nil {
+		t.Fatal("empty candidate published a receipt")
+	}
+	for _, version := range []string{version, "1.15.0-polaris-alpha.12.2"} {
+		t.Setenv("RELEASE_VERSION", version)
+		t.Setenv("GITHUB_REF", "refs/tags/v"+version)
+		if err := run([]string{"publisher-receipt"}); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile("publisher-run-receipt.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var record map[string]any
+		if err := uniqueJSON(bytes.NewReader(data), &record); err != nil {
+			t.Fatal(err)
+		}
+		if record["version"] != version || record["sourceCommit"] != source || record["role"] != "all" ||
+			record["runId"] != "123" || record["attempt"] != json.Number("1") || record["repositoryId"] != json.Number(repositoryID) {
+			t.Fatalf("publisher receipt identity differs: %v", record)
+		}
+	}
+	for _, invalid := range [][2]string{
+		{"RELEASE_VERSION", "v1.15.0-polaris-alpha.12.2"},
+		{"RELEASE_VERSION", "1.15.0-polaris-alpha.12.20"},
+		{"GITHUB_REF", "refs/heads/v1.15.0-polaris-alpha.12.2"},
+		{"GITHUB_SHA", strings.Repeat("f", 40)},
+		{"PUBLISHER_ROLE", "source"},
+		{"GITHUB_EVENT_NAME", "push"},
+		{"RELEASE_BUILD", "Binary"},
+		{"GITHUB_REPOSITORY", "other/repository"},
+		{"GITHUB_REPOSITORY_ID", "1"},
+		{"RECEIPT_SOURCE_GENERATE_ONLY", "true"},
+		{"RECEIPT_SOURCE_GENERATE_ONLY", "False"},
+		{"NEEDS_JSON", `{}`},
+		{"NEEDS_JSON", `[]`},
+		{"NEEDS_JSON", `{"build":{"result":"success","outputs":[]}}`},
+		{"NEEDS_JSON", `{"build":{"result":"success","outputs":{},"extra":true}}`},
+		{"NEEDS_JSON", `{"build":{"result":"success","outputs":{"x":1,"x":2}}}`},
+		{"NEEDS_JSON", `{"build":{"result":"success","outputs":{}},"build":{"result":"failure","outputs":{}}}`},
+	} {
+		t.Run(invalid[0]+"="+invalid[1], func(t *testing.T) {
+			t.Setenv(invalid[0], invalid[1])
+			if err := run([]string{"publisher-receipt"}); err == nil {
+				t.Fatal("invalid native producer scope admitted")
+			}
+		})
+	}
+	for _, status := range []string{"failure", "cancelled", "skipped", ""} {
+		if err := validateNeeds("false", fmt.Sprintf(`{"build":{"result":%q,"outputs":{}}}`, status)); err == nil {
+			t.Fatalf("nonterminal producer result admitted: %s", status)
+		}
+	}
+	t.Run("missing-native-context", func(t *testing.T) {
+		t.Setenv("GITHUB_RUN_ID", "placeholder")
+		if err := os.Unsetenv("GITHUB_RUN_ID"); err != nil {
+			t.Fatal(err)
+		}
+		if err := run([]string{"publisher-receipt"}); err == nil {
+			t.Fatal("missing native context admitted")
+		}
+		if err := run([]string{"record-candidate", artifacts}); err == nil {
+			t.Fatal("candidate receipt lost required native context")
+		}
+	})
 }
