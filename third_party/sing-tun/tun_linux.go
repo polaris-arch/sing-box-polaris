@@ -29,12 +29,16 @@ import (
 var _ LinuxTUN = (*NativeTun)(nil)
 
 type NativeTun struct {
+	networkNamespace    *pinnedNetworkNamespace
+	namespaceRequired   bool
 	resolved            resolvedLifecycle
 	tunFd               int
 	tunFile             *os.File
 	iovecsOutputDefault []unix.Iovec
 	interfaceCallback   *list.Element[DefaultInterfaceUpdateCallback]
 	options             Options
+	routeAccess         sync.Mutex
+	ownedRoutes         ownedLinuxRoutes
 	ruleAccess          sync.Mutex
 	ownedRules          ownedLinuxRules
 	readAccess          sync.Mutex
@@ -77,7 +81,20 @@ func New(options Options) (Tun, error) {
 
 // Keep acquisition and compensation in one production path; dependencies are
 // explicit so constructor failures can be exercised without a real TUN device.
-func newNativeTun(options Options, openDevice func(string, bool, bool) (int, bool, error), lookup func(string) (netlink.Link, error), configure func(*NativeTun, netlink.Link) error) (Tun, error) {
+func newNativeTun(options Options, openDevice func(string, bool, bool) (int, bool, error), lookup func(string) (netlink.Link, error), configure func(*NativeTun, netlink.Link) error) (result Tun, resultErr error) {
+	var namespace *pinnedNetworkNamespace
+	if options.NetNs != "" {
+		var err error
+		namespace, err = pinCurrentNetworkNamespace()
+		if err != nil {
+			return nil, E.Cause(err, "pin native network namespace")
+		}
+		defer func() {
+			if result == nil {
+				resultErr = E.Errors(resultErr, namespace.close())
+			}
+		}()
+	}
 	tunFd, multiQueue, err := openDevice(options.Name, options.GSO, options.MultiQueue)
 	if err != nil {
 		return nil, E.Cause(err, "open tun")
@@ -87,10 +104,12 @@ func newNativeTun(options Options, openDevice func(string, bool, bool) (int, boo
 		return nil, E.Errors(err, unix.Close(tunFd))
 	}
 	nativeTun := &NativeTun{
-		tunFd:      tunFd,
-		tunFile:    os.NewFile(uintptr(tunFd), "tun"),
-		options:    options,
-		multiQueue: multiQueue,
+		networkNamespace:  namespace,
+		namespaceRequired: options.NetNs != "",
+		tunFd:             tunFd,
+		tunFile:           os.NewFile(uintptr(tunFd), "tun"),
+		options:           options,
+		multiQueue:        multiQueue,
 	}
 	err = configure(nativeTun, tunLink)
 	if err != nil {
@@ -159,18 +178,29 @@ func openTun(name string, flags int) (int, error) {
 }
 
 func (t *NativeTun) openQueue() (int, error) {
-	if !t.multiQueue {
-		return -1, E.New("tun device is not multi-queue")
-	}
-	flags := unix.IFF_TUN | unix.IFF_NO_PI | unix.IFF_MULTI_QUEUE
-	if t.options.GSO {
-		flags |= unix.IFF_VNET_HDR
-	}
-	var fd int
-	err := runInNetworkNamespace(t.options.NetNs, func() error {
-		var openErr error
-		fd, openErr = openTun(t.options.Name, flags)
-		return openErr
+	return t.openQueueWith(openTun)
+}
+
+// Called by Go stack startup, not from a pin-held native configure callback.
+// Use the acquired namespace object for every queue, never the discovery path.
+func (t *NativeTun) openQueueWith(openDevice func(string, int) (int, error)) (int, error) {
+	fd := -1
+	err := t.runInOwnedNamespace(func() error {
+		t.routeAccess.Lock()
+		defer t.routeAccess.Unlock()
+		if t.ownedRoutes.closed {
+			return E.New("native device owner is closed")
+		}
+		if !t.multiQueue {
+			return E.New("tun device is not multi-queue")
+		}
+		flags := unix.IFF_TUN | unix.IFF_NO_PI | unix.IFF_MULTI_QUEUE
+		if t.options.GSO {
+			flags |= unix.IFF_VNET_HDR
+		}
+		var err error
+		fd, err = openDevice(t.options.Name, flags)
+		return err
 	})
 	if err != nil {
 		return -1, err
@@ -341,7 +371,7 @@ func (t *NativeTun) Start() error {
 		if !t.options.EXP_ExternalConfiguration && t.options.NetNs == "" {
 			t.options.InterfaceMonitor.RegisterMyInterface(t.options.Name)
 		}
-		err := runInNetworkNamespace(t.options.NetNs, t.start)
+		err := t.runInOwnedNamespace(t.start)
 		if err != nil {
 			return err
 		}
@@ -405,7 +435,6 @@ func (t *NativeTun) start() error {
 
 	err = t.setRoute(tunLink)
 	if err != nil {
-		_ = t.unsetRoute0(tunLink)
 		return E.Cause(err, "set routes")
 	}
 
@@ -433,6 +462,9 @@ func (t *NativeTun) start() error {
 
 func (t *NativeTun) Close() error {
 	t.resolved.stop()
+	t.routeAccess.Lock()
+	t.ownedRoutes.closed = true
+	t.routeAccess.Unlock()
 	// Unregistering does not drain callbacks already copied by the monitor.
 	// Seal ownership before any teardown; those callbacks may clear but never
 	// reinstall rules after this point.
@@ -443,16 +475,22 @@ func (t *NativeTun) Close() error {
 		t.options.InterfaceMonitor.UnregisterCallback(t.interfaceCallback)
 	}
 	if t.options.EXP_ExternalConfiguration {
-		return common.Close(common.PtrOrNil(t.tunFile))
+		err := common.Close(common.PtrOrNil(t.tunFile))
+		if t.networkNamespace != nil {
+			err = E.Errors(err, t.networkNamespace.close())
+		}
+		return err
 	}
-	return closeNativeTunResources(func() error {
-		return runInNetworkNamespace(t.options.NetNs, func() error {
+	var networkErr error
+	result := closeNativeTunResources(func() error {
+		networkErr = t.runInOwnedNamespace(func() error {
 			// Rules do not disappear with the TUN fd. Remove them before any
 			// potentially slow resolver subprocess can consume the stop grace.
 			rulesErr := t.unsetRules()
 			t.unsetAddresses()
 			return E.Errors(rulesErr, t.unsetRoute())
 		})
+		return networkErr
 	}, func() error {
 		if t.options.ManageLinuxResolved() {
 			return t.unsetSearchDomainForSystemdResolved()
@@ -461,6 +499,10 @@ func (t *NativeTun) Close() error {
 	}, func() error {
 		return common.Close(common.PtrOrNil(t.tunFile))
 	})
+	if networkErr == nil && t.networkNamespace != nil {
+		result = E.Errors(result, t.networkNamespace.close())
+	}
+	return result
 }
 
 func (t *NativeTun) Read(p []byte) (n int, err error) {
@@ -726,36 +768,55 @@ func prefixToIPNet(prefix netip.Prefix) *net.IPNet {
 }
 
 func (t *NativeTun) UpdateRouteOptions(tunOptions Options) error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	} else if t.options.EXP_ExternalConfiguration {
-		t.options = tunOptions
-		return nil
-	} else if !t.options.AutoRoute {
-		t.options = tunOptions
-		return nil
-	}
-	return runInNetworkNamespace(t.options.NetNs, func() error {
+	return t.runInOwnedNamespace(func() error {
+		t.routeAccess.Lock()
+		defer t.routeAccess.Unlock()
+		if t.ownedRoutes.closed {
+			return E.New("routing route owner is closed")
+		}
+		if tunOptions.Name != t.options.Name || tunOptions.NetNs != t.options.NetNs ||
+			tunOptions.FileDescriptor != t.options.FileDescriptor ||
+			tunOptions.EXP_ExternalConfiguration != t.options.EXP_ExternalConfiguration {
+			return E.New("route update cannot change native device ownership")
+		}
+		if t.options.FileDescriptor > 0 {
+			return nil
+		} else if t.options.EXP_ExternalConfiguration || !t.options.AutoRoute {
+			t.ruleAccess.Lock()
+			t.options = tunOptions
+			t.ruleAccess.Unlock()
+			return nil
+		}
 		tunLink, err := netlink.LinkByName(t.options.Name)
 		if err != nil {
 			return E.Cause(err, "find tun interface")
 		}
-		err = t.unsetRoute0(tunLink)
+		err = t.ownedRoutes.replace(func() ([]netlink.Route, error) {
+			return routesForOptions(tunOptions, tunLink)
+		}, netlink.RouteAdd, netlink.RouteDel)
 		if err != nil {
-			return E.Cause(err, "unset old routes")
+			return err
 		}
+		// Publish only after a complete installation. A failed update leaves
+		// old options and any precise cleanup debt, not a claimed new state.
+		t.ruleAccess.Lock()
 		t.options = tunOptions
-		return t.setRoute(tunLink)
+		t.ruleAccess.Unlock()
+		return nil
 	})
 }
 
 func (t *NativeTun) routes(tunLink netlink.Link) ([]netlink.Route, error) {
-	routeRanges, err := t.options.BuildAutoRouteRanges(false)
+	return routesForOptions(t.options, tunLink)
+}
+
+func routesForOptions(options Options, tunLink netlink.Link) ([]netlink.Route, error) {
+	routeRanges, err := options.BuildAutoRouteRanges(false)
 	if err != nil {
 		return nil, E.Cause(err, "build auto route ranges")
 	}
 	// Do not create gateway on linux by default
-	gateway4, gateway6 := t.options.Inet4GatewayAddr(), t.options.Inet6GatewayAddr()
+	gateway4, gateway6 := options.Inet4GatewayAddr(), options.Inet6GatewayAddr()
 	return common.Map(routeRanges, func(it netip.Prefix) netlink.Route {
 		var gateway net.IP
 		if it.Addr().Is4() && !gateway4.IsUnspecified() {
@@ -767,7 +828,7 @@ func (t *NativeTun) routes(tunLink netlink.Link) ([]netlink.Route, error) {
 			Dst:       prefixToIPNet(it),
 			Gw:        gateway,
 			LinkIndex: tunLink.Attrs().Index,
-			Table:     t.options.IPRoute2TableIndex,
+			Table:     options.IPRoute2TableIndex,
 		}
 	}), nil
 }
@@ -1211,17 +1272,11 @@ func (t *NativeTun) rules() []*netlink.Rule {
 }
 
 func (t *NativeTun) setRoute(tunLink netlink.Link) error {
-	routes, err := t.routes(tunLink)
-	if err != nil {
-		return E.Cause(err, "build routes")
-	}
-	for i, route := range routes {
-		err := netlink.RouteAdd(&route)
-		if err != nil {
-			return E.Cause(err, "add route ", i)
-		}
-	}
-	return nil
+	t.routeAccess.Lock()
+	defer t.routeAccess.Unlock()
+	return t.ownedRoutes.replace(func() ([]netlink.Route, error) {
+		return t.routes(tunLink)
+	}, netlink.RouteAdd, netlink.RouteDel)
 }
 
 func (t *NativeTun) setRules() error {
@@ -1234,23 +1289,11 @@ func (t *NativeTun) setRules() error {
 }
 
 func (t *NativeTun) unsetRoute() error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	}
-	tunLink, err := netlink.LinkByName(t.options.Name)
-	if err != nil {
-		return E.Cause(err, "find tun interface")
-	}
-	return t.unsetRoute0(tunLink)
-}
-
-func (t *NativeTun) unsetRoute0(tunLink netlink.Link) error {
-	if routes, err := t.routes(tunLink); err == nil {
-		for _, route := range routes {
-			_ = netlink.RouteDel(&route)
-		}
-	}
-	return nil
+	t.routeAccess.Lock()
+	defer t.routeAccess.Unlock()
+	// No link lookup or regenerated options: a disappeared interface must not
+	// prevent retrying the exact receipts left by this owner.
+	return t.ownedRoutes.clear(netlink.RouteDel)
 }
 
 func (t *NativeTun) unsetRules() error {
