@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -39,10 +40,19 @@ func (s *ruleSetPublication) loadSnapshot() *ruleSetSnapshot {
 }
 
 func (s *ruleSetPublication) publish(rules []adapter.HeadlessRule, metadata adapter.RuleSetMetadata, digest string) ([]adapter.RuleSetUpdateCallback, error) {
+	return s.publishContext(context.Background(), rules, metadata, digest)
+}
+
+func (s *ruleSetPublication) publishContext(ctx context.Context, rules []adapter.HeadlessRule, metadata adapter.RuleSetMetadata, digest string) ([]adapter.RuleSetUpdateCallback, error) {
 	s.access.Lock()
 	defer s.access.Unlock()
 	if s.closed {
 		return nil, E.New("rule-set is closed")
+	}
+	// The cancellation linearization point belongs under the publication lock,
+	// after hashing/building and any wait for readers or another update.
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	old := s.loadSnapshot()
 	s.snapshot.Store(&ruleSetSnapshot{rules: rules, metadata: metadata, digest: digest, revision: old.revision + 1})

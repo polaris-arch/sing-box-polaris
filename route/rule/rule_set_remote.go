@@ -104,7 +104,7 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
 			if len(savedSet.URLHash) > 0 && !bytes.Equal(savedSet.URLHash, s.urlHash[:]) {
 				s.logger.Info("cached rule-set was downloaded from another URL, will refetch")
 			} else {
-				err = s.loadBytes(savedSet.Content)
+				err = s.loadBytesContext(ctx, savedSet.Content)
 				if err != nil {
 					s.logger.Warn(E.Cause(err, "restore cached rule-set, will refetch"))
 				} else {
@@ -119,7 +119,7 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
 		var content []byte
 		content, err = filemanager.ReadFile(s.ctx, s.initialPath)
 		if err == nil {
-			err = s.loadBytes(content)
+			err = s.loadBytesContext(ctx, content)
 		}
 		if err != nil {
 			s.logger.Warn(E.Cause(err, "load initial rule-set from ", s.initialPath))
@@ -172,7 +172,11 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
 	s.callbacks.Remove(element)
 }
 
-func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
+func (s *RemoteRuleSet) loadBytes(content []byte) error {
+	return s.loadBytesContext(s.ctx, content)
+}
+
+func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (result error) {
 	s.reloadAccess.Lock()
 	var callbacks []adapter.RuleSetUpdateCallback
 	defer func() {
@@ -184,6 +188,9 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 			}
 		}
 	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	var (
 		ruleSet option.PlainRuleSetCompat
 		err     error
@@ -195,7 +202,7 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 			return err
 		}
 	case C.RuleSetFormatBinary:
-		ruleSet, err = srs.Read(bytes.NewReader(content), false)
+		ruleSet, err = srs.ReadContext(ctx, bytes.NewReader(content), false)
 		if err != nil {
 			return err
 		}
@@ -208,6 +215,9 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 	}
 	rules := make([]adapter.HeadlessRule, len(plainRuleSet.Rules))
 	for i, ruleOptions := range plainRuleSet.Rules {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		rules[i], err = NewHeadlessRule(s.ctx, ruleOptions)
 		if err != nil {
 			return E.Cause(err, "parse rule_set.rules.[", i, "]")
@@ -218,8 +228,11 @@ func (s *RemoteRuleSet) loadBytes(content []byte) (result error) {
 	if err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	sum := sha256.Sum256(content)
-	callbacks, result = s.publish(rules, metadata, hex.EncodeToString(sum[:]))
+	callbacks, result = s.publishContext(ctx, rules, metadata, hex.EncodeToString(sum[:]))
 	return result
 }
 
@@ -274,7 +287,7 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	if err != nil {
 		return err
 	}
-	err = s.loadBytes(content)
+	err = s.loadBytesContext(ctx, content)
 	if err != nil {
 		return err
 	}

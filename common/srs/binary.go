@@ -3,6 +3,7 @@ package srs
 import (
 	"bufio"
 	"compress/zlib"
+	"context"
 	"encoding/binary"
 	"io"
 	"net/netip"
@@ -53,6 +54,20 @@ const (
 )
 
 func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetCompat, err error) {
+	return ReadContext(context.Background(), reader, recover)
+}
+
+// ReadContext checks cancellation at decoded reads, including buffered ReadByte
+// loops. It verifies the compressed stream checksum and the declared rule count.
+// Bytes following the zlib stream remain accepted for existing container callers.
+func ReadContext(ctx context.Context, reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetCompat, err error) {
+	// Preserve io.ByteReader when supplied: zlib must not read ahead into an
+	// enclosing container's trailer merely because cancellation was added.
+	if byteReader, ok := reader.(io.ByteReader); ok {
+		reader = contextInputByteReader{contextReader{ctx, reader}, byteReader}
+	} else {
+		reader = contextReader{ctx, reader}
+	}
 	var magicBytes [3]byte
 	_, err = io.ReadFull(reader, magicBytes[:])
 	if err != nil {
@@ -74,7 +89,8 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 	if err != nil {
 		return
 	}
-	bReader := bufio.NewReader(compressReader)
+	defer compressReader.Close()
+	bReader := contextByteReader{ctx, bufio.NewReader(compressReader)}
 	length, err := binary.ReadUvarint(bReader)
 	if err != nil {
 		return
@@ -89,7 +105,59 @@ func Read(reader io.Reader, recover bool) (ruleSetCompat option.PlainRuleSetComp
 		}
 		ruleSetCompat.Options.Rules = append(ruleSetCompat.Options.Rules, rule)
 	}
+	// Reading through EOF verifies zlib's checksum; Close alone does not.
+	if _, readErr := bReader.ReadByte(); readErr != io.EOF {
+		if readErr == nil {
+			readErr = E.New("unexpected data after declared rules")
+		}
+		return option.PlainRuleSetCompat{}, readErr
+	}
+	if err = ctx.Err(); err != nil {
+		return option.PlainRuleSetCompat{}, err
+	}
 	return
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+
+type contextInputByteReader struct {
+	contextReader
+	byteReader io.ByteReader
+}
+
+func (r contextInputByteReader) ReadByte() (byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.byteReader.ReadByte()
+}
+
+type contextByteReader struct {
+	ctx    context.Context
+	reader *bufio.Reader
+}
+
+func (r contextByteReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
+}
+func (r contextByteReader) ReadByte() (byte, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.ReadByte()
 }
 
 func Write(writer io.Writer, ruleSet option.PlainRuleSet, generateVersion uint8) error {
