@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -20,6 +21,8 @@ import (
 	"github.com/sagernet/sing-box/common/dialer"
 	"github.com/sagernet/sing-box/common/listener"
 	"github.com/sagernet/sing-box/common/tls"
+	"github.com/sagernet/sing-box/common/usagepersist"
+	"github.com/sagernet/sing-box/common/usagetrack"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -209,6 +212,7 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	}
 	s.credentials = credentials
 
+	var usageFinalizationDelegated atomic.Bool
 	if s.usageTracker != nil {
 		err = s.usageTracker.Load()
 		if err != nil {
@@ -216,12 +220,14 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			s.usageTracker = nil
 		} else {
 			scope.Add(func() error {
-				s.usageTracker.cancelPendingSave()
-				saveErr := s.usageTracker.Save()
+				if usageFinalizationDelegated.Load() {
+					return nil
+				}
+				saveErr := s.usageTracker.Close()
 				if saveErr != nil {
 					s.logger.Error("save usage statistics: ", saveErr)
 				}
-				return nil
+				return saveErr
 			})
 		}
 	}
@@ -229,7 +235,8 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	router := chi.NewRouter()
 	router.Mount("/", s)
 
-	httpServer := &http.Server{Handler: router}
+	requestDrain := &usagepersist.RequestDrain{}
+	httpServer := &http.Server{Handler: requestDrain.Wrap(router)}
 
 	if s.tlsConfig != nil {
 		err = s.tlsConfig.Start()
@@ -252,7 +259,21 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		tcpListener = aTLS.NewListener(tcpListener, s.tlsConfig)
 	}
 
-	scope.Add(httpServer.Close)
+	usageFinalizationDelegated.Store(true)
+	scope.Add(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), C.StopTimeout)
+		defer cancel()
+		return requestDrain.Close(ctx, httpServer.Close, func() error {
+			if s.usageTracker != nil {
+				err := s.usageTracker.Close()
+				if err != nil {
+					s.logger.Error("final usage flush: ", err)
+				}
+				return err
+			}
+			return nil
+		})
+	})
 	go func() {
 		serveErr := httpServer.Serve(tcpListener)
 		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
@@ -263,7 +284,7 @@ func (s *Service) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	return nil
 }
 
-func (s *Service) getAccessToken() (string, error) {
+func (s *Service) getAccessToken(ctx context.Context) (string, error) {
 	s.accessMutex.RLock()
 	if !s.credentials.needsRefresh() {
 		token := s.credentials.AccessToken
@@ -279,7 +300,7 @@ func (s *Service) getAccessToken() (string, error) {
 		return s.credentials.AccessToken, nil
 	}
 
-	newCredentials, err := refreshToken(s.httpClient, s.credentials)
+	newCredentials, err := refreshToken(ctx, s.httpClient, s.credentials)
 	if err != nil {
 		return "", err
 	}
@@ -338,9 +359,17 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var requestModel string
 	var messagesCount int
 
+	requestTrackingComplete := true
 	if s.usageTracker != nil && r.Body != nil {
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err == nil {
+		bodyBytes, replay, complete, err := usagetrack.Peek(r.Body, usagetrack.BodyBudget)
+		if err != nil {
+			s.usageTracker.MarkIncomplete()
+			writeJSONError(w, r, http.StatusBadRequest, "invalid_request_error", "request body read failed")
+			return
+		}
+		r.Body = replay
+		requestTrackingComplete = complete
+		if complete {
 			var request struct {
 				Model    string                   `json:"model"`
 				Messages []anthropic.MessageParam `json:"messages"`
@@ -350,11 +379,12 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				requestModel = request.Model
 				messagesCount = len(request.Messages)
 			}
-			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			if err != nil { requestTrackingComplete = false }
 		}
+		if !requestTrackingComplete { s.usageTracker.MarkIncomplete() }
 	}
 
-	accessToken, err := s.getAccessToken()
+	accessToken, err := s.getAccessToken(r.Context())
 	if err != nil {
 		s.logger.Error("get access token: ", err)
 		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "Authentication failed")
@@ -410,7 +440,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(response.StatusCode)
 
-	if s.usageTracker != nil && response.StatusCode == http.StatusOK {
+	if s.usageTracker != nil && requestTrackingComplete && response.StatusCode == http.StatusOK {
 		s.handleResponseWithTracking(w, response, requestModel, anthropicBetaHeader, messagesCount, username)
 	} else {
 		mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
@@ -447,16 +477,23 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 	isStreaming := err == nil && mediaType == "text/event-stream"
 
 	if !isStreaming {
-		bodyBytes, err := io.ReadAll(response.Body)
-		if err != nil {
-			s.logger.Error("read response body: ", err)
+		capture := &usagetrack.Capture{Limit: usagetrack.BodyBudget}
+		_, err := io.Copy(io.MultiWriter(writer, capture), response.Body)
+		if err != nil || capture.Incomplete {
+			s.usageTracker.MarkIncomplete()
+			s.logger.Warn("usage accounting incomplete: response transfer or observation budget")
 			return
 		}
+		bodyBytes := capture.Data
 
 		var message anthropic.Message
 		var usage anthropic.Usage
 		var responseModel string
 		err = json.Unmarshal(bodyBytes, &message)
+		if err != nil {
+			s.usageTracker.MarkIncomplete()
+			return
+		}
 		if err == nil {
 			responseModel = string(message.Model)
 			usage = message.Usage
@@ -486,7 +523,6 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 			}
 		}
 
-		_, _ = writer.Write(bodyBytes)
 		return
 	}
 
@@ -499,21 +535,12 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 	var accumulatedUsage anthropic.Usage
 	var responseModel string
 	buffer := make([]byte, buf.BufferSize)
-	var leftover []byte
+	parser := usagetrack.Lines{LineLimit: usagetrack.LineBudget, TotalLimit: usagetrack.StreamBudget}
 
 	for {
 		n, err := response.Body.Read(buffer)
-		if n > 0 {
-			data := append(leftover, buffer[:n]...)
-			lines := bytes.Split(data, []byte("\n"))
-
-			if err == nil {
-				leftover = lines[len(lines)-1]
-				lines = lines[:len(lines)-1]
-			} else {
-				leftover = nil
-			}
-
+		lines := parser.Feed(buffer[:n], err == io.EOF)
+		{
 			for _, line := range lines {
 				line = bytes.TrimSpace(line)
 				if len(line) == 0 {
@@ -529,6 +556,7 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 					var event anthropic.MessageStreamEventUnion
 					err := json.Unmarshal(eventData, &event)
 					if err != nil {
+						parser.Incomplete = true
 						continue
 					}
 					switch event.Type {
@@ -553,15 +581,23 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 				}
 			}
 
+		}
+		if n > 0 {
 			_, writeError := writer.Write(buffer[:n])
 			if writeError != nil {
 				s.logger.Error("write streaming response: ", writeError)
+				s.usageTracker.MarkIncomplete()
 				return
 			}
 			flusher.Flush()
 		}
 
 		if err != nil {
+			if err != io.EOF || parser.Incomplete {
+				s.usageTracker.MarkIncomplete()
+				s.logger.Warn("usage accounting incomplete: stream transfer or observation budget")
+				return
+			}
 			if responseModel == "" {
 				responseModel = requestModel
 			}

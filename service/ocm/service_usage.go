@@ -55,6 +55,7 @@ type CostCombination struct {
 }
 
 type AggregatedUsage struct {
+	IncompleteObservations uint64 `json:"incomplete_observations"`
 	LastUpdated     time.Time         `json:"last_updated"`
 	Combinations    []CostCombination `json:"combinations"`
 	mutex           sync.Mutex
@@ -68,6 +69,11 @@ type AggregatedUsage struct {
 	saveMutex       sync.Mutex
 	saveWriteMutex  sync.Mutex
 	saveDirty       bool
+	saveStopping    bool
+	saveGroup       sync.WaitGroup
+	closed          bool
+	closeOnce       sync.Once
+	closeErr        error
 }
 
 type UsageStatsJSON struct {
@@ -95,6 +101,7 @@ type CostsSummaryJSON struct {
 }
 
 type AggregatedUsageJSON struct {
+	IncompleteObservations uint64 `json:"incomplete_observations"`
 	LastUpdated  time.Time             `json:"last_updated"`
 	Costs        CostsSummaryJSON      `json:"costs"`
 	Combinations []CostCombinationJSON `json:"combinations"`
@@ -1043,6 +1050,7 @@ func (u *AggregatedUsage) ToJSON() *AggregatedUsageJSON {
 
 	result := &AggregatedUsageJSON{
 		LastUpdated: u.LastUpdated,
+		IncompleteObservations: u.IncompleteObservations,
 		Costs: CostsSummaryJSON{
 			TotalUSD: 0,
 			ByUser:   make(map[string]float64),
@@ -1076,6 +1084,7 @@ func (u *AggregatedUsage) Load() error {
 	defer u.mutex.Unlock()
 
 	u.LastUpdated = time.Time{}
+	u.IncompleteObservations = 0
 	u.Combinations = nil
 
 	data, err := filemanager.ReadFile(u.ctx, u.filePath)
@@ -1087,6 +1096,7 @@ func (u *AggregatedUsage) Load() error {
 	}
 
 	var temp struct {
+		IncompleteObservations uint64 `json:"incomplete_observations"`
 		LastUpdated  time.Time         `json:"last_updated"`
 		Combinations []CostCombination `json:"combinations"`
 	}
@@ -1097,6 +1107,7 @@ func (u *AggregatedUsage) Load() error {
 	}
 
 	u.LastUpdated = temp.LastUpdated
+	u.IncompleteObservations = temp.IncompleteObservations
 	u.Combinations = temp.Combinations
 	normalizeCombinations(u.Combinations)
 
@@ -1104,9 +1115,19 @@ func (u *AggregatedUsage) Load() error {
 }
 
 func (u *AggregatedUsage) Save() error {
-	// Serialize snapshot-through-rename, including explicit final saves.
 	u.saveWriteMutex.Lock()
 	defer u.saveWriteMutex.Unlock()
+	u.mutex.Lock()
+	closed := u.closed
+	u.mutex.Unlock()
+	if closed {
+		return E.New("usage tracker is closed")
+	}
+	return u.saveLocked()
+}
+
+// saveLocked requires the full snapshot-to-rename transaction lock.
+func (u *AggregatedUsage) saveLocked() error {
 	jsonData := u.ToJSON()
 
 	data, err := json.MarshalIndent(jsonData, "", "  ")
@@ -1148,6 +1169,9 @@ func (u *AggregatedUsage) AddUsageWithCycleHint(model string, contextWindow int,
 
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
+	if u.closed {
+		return E.New("usage tracker is closed")
+	}
 
 	u.LastUpdated = observedAt
 	weekStartUnix := deriveWeekStartUnix(cycleHint)
@@ -1162,6 +1186,9 @@ func (u *AggregatedUsage) AddUsageWithCycleHint(model string, contextWindow int,
 func (u *AggregatedUsage) scheduleSave() {
 	u.saveMutex.Lock()
 	defer u.saveMutex.Unlock()
+	if u.saveStopping {
+		return
+	}
 	u.saveDirty = true
 	u.scheduleSaveLocked()
 }
@@ -1171,7 +1198,7 @@ func (u *AggregatedUsage) scheduleSave() {
 // Failed attempts also advance the cadence: new events cannot cause a hot
 // retry loop. Without a new update, failures retain the legacy no-retry policy.
 func (u *AggregatedUsage) scheduleSaveLocked() {
-	if u.pendingSave {
+	if u.pendingSave || u.saveStopping {
 		return
 	}
 	u.pendingSave = true
@@ -1180,7 +1207,9 @@ func (u *AggregatedUsage) scheduleSaveLocked() {
 		lastAttempt = u.lastSaveAttempt
 	}
 	delay := max(time.Duration(0), time.Minute-time.Since(lastAttempt))
+	u.saveGroup.Add(1)
 	u.saveTimer = time.AfterFunc(delay, func() {
+		defer u.saveGroup.Done()
 		u.saveMutex.Lock()
 		u.saveDirty = false
 		u.lastSaveAttempt = time.Now()
@@ -1210,10 +1239,49 @@ func (u *AggregatedUsage) cancelPendingSave() {
 	defer u.saveMutex.Unlock()
 
 	if u.saveTimer != nil && u.saveTimer.Stop() {
+		u.saveGroup.Done()
 		u.saveTimer = nil
 		u.pendingSave = false
 		u.saveDirty = false
 	}
 	// A callback that already started retains ownership until it returns.
 	// Producer drain/final-flush ordering remains a service-level concern.
+}
+
+// Close must follow producer drain. It rejects new updates, joins an already
+// running save, and performs exactly one final transaction before returning.
+func (u *AggregatedUsage) Close() error {
+	u.closeOnce.Do(func() {
+		u.mutex.Lock()
+		u.closed = true
+		u.mutex.Unlock()
+		u.saveMutex.Lock()
+		u.saveStopping = true
+		if u.saveTimer != nil && u.saveTimer.Stop() {
+			u.saveGroup.Done()
+			u.saveTimer = nil
+			u.pendingSave = false
+		}
+		u.saveMutex.Unlock()
+		u.saveGroup.Wait()
+		u.saveWriteMutex.Lock()
+		u.closeErr = u.saveLocked()
+		u.saveWriteMutex.Unlock()
+	})
+	return u.closeErr
+}
+
+// MarkIncomplete records missing accounting separately from known token totals.
+// It never invents a zero-token usage record or changes provider token values.
+func (u *AggregatedUsage) MarkIncomplete() {
+	u.mutex.Lock()
+	defer u.mutex.Unlock()
+	if u.closed {
+		return
+	}
+	if u.IncompleteObservations < ^uint64(0) {
+		u.IncompleteObservations++
+	}
+	u.LastUpdated = time.Now()
+	u.scheduleSave()
 }

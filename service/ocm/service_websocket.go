@@ -77,7 +77,7 @@ func isForwardableWebSocketRequestHeader(key string) bool {
 }
 
 func (s *Service) handleWebSocket(w http.ResponseWriter, r *http.Request, proxyPath string, username string) {
-	accessToken, err := s.getAccessToken()
+	accessToken, err := s.getAccessToken(r.Context())
 	if err != nil {
 		s.logger.Error("get access token for websocket: ", err)
 		writeJSONError(w, r, http.StatusUnauthorized, "authentication_error", "authentication failed")
