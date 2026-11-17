@@ -18,6 +18,7 @@ import (
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
 
+	googlenft "github.com/google/nftables"
 	"golang.org/x/sys/unix"
 )
 
@@ -78,7 +79,10 @@ type autoRedirect struct {
 	androidVPNServiceRules       []*netlink.Rule
 	androidVPNServiceRulesActive bool
 	androidIngressDiscardValues  map[netip.Addr]ingressDiscardReceipt
-	dockerFirewallMonitor        *nftables.Monitor
+	dockerFirewallAccess         sync.Mutex
+	dockerFirewallClosed         bool
+	dockerFirewallState          dockerFirewallState
+	dockerFirewallMonitor        *googlenft.Monitor
 	dockerFirewallDone           chan struct{}
 }
 
