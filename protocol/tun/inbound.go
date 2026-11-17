@@ -503,9 +503,7 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		}
 		scope.Add(func() error {
 			if t.stackShutdown != nil {
-				if err := t.stackShutdown.WaitDetached(context.Background()); err != nil {
-					return err
-				}
+				return t.stackShutdown.closeNative(context.Background(), tunInterface.Close)
 			}
 			return tunInterface.Close()
 		})
