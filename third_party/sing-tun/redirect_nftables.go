@@ -367,8 +367,17 @@ func (r *autoRedirect) nftablesUpdateLocalAddressSet() error {
 	if err != nil {
 		return E.Cause(err, "create local address sets")
 	}
-	r.localAddresses = newLocalAddresses
-	return nft.Flush()
+	return r.commitNFTablesLocalAddresses(nft, newLocalAddresses)
+}
+
+// Publish the cache only after the kernel transaction is acknowledged. A
+// failure must leave the same address change eligible for the next update.
+func (r *autoRedirect) commitNFTablesLocalAddresses(nft *nftables.Conn, addresses []netip.Prefix) error {
+	if err := nft.Flush(); err != nil {
+		return err
+	}
+	r.localAddresses = addresses
+	return nil
 }
 
 func (r *autoRedirect) cleanupNFTables() {
