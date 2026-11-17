@@ -49,6 +49,7 @@ type autoRedirect struct {
 	bypassRouteTableIndex        int
 	bypassRouteAccess            sync.Mutex
 	bypassRouteActive            bool
+	bypassOwned                  bypassOwner
 	bypassIncludeAddresses       []netip.Prefix
 	bypassExcludeAddresses       []netip.Prefix
 	redirectServer               *RedirectServer
@@ -438,7 +439,7 @@ func (r *autoRedirect) Close() (closeErr error) {
 		}
 		if r.androidVPNService {
 			if bypassAttempted {
-				r.cleanupBypassRoute()
+				closeErr = E.Errors(closeErr, r.cleanupBypassRoute())
 			}
 			if vpnServiceAttempted {
 				r.cleanupAndroidVPNServiceRules()

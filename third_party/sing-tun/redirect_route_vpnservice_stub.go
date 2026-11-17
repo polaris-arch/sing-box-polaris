@@ -20,7 +20,8 @@ func (r *autoRedirect) updateBypassRoute() error {
 	return nil
 }
 
-func (r *autoRedirect) cleanupBypassRoute() {
+func (r *autoRedirect) cleanupBypassRoute() error {
+	return nil
 }
 
 func (r *autoRedirect) UpdateRouteAddressSet() error {
