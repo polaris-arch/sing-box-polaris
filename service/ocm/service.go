@@ -427,9 +427,13 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				requestModel = request.Model
 			}
-			if err != nil { requestTrackingComplete = false }
+			if err != nil {
+				requestTrackingComplete = false
+			}
 		}
-		if !requestTrackingComplete { s.usageTracker.MarkIncomplete() }
+		if !requestTrackingComplete {
+			s.usageTracker.MarkIncomplete()
+		}
 	}
 
 	accessToken, err := s.getAccessToken(r.Context())

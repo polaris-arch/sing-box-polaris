@@ -99,7 +99,9 @@ func TestUsageUpdateDuringRunningSaveSurvivesCancel(t *testing.T) {
 	u.saveMutex.Unlock()
 	u.saveWriteMutex.Unlock()
 	locked = false
-	waitUsageSaveState(t, u, func() bool { return !u.lastSaveTime.IsZero() && u.pendingSave && u.saveDirty && u.saveTimer != runningTimer })
+	waitUsageSaveState(t, u, func() bool {
+		return !u.lastSaveTime.IsZero() && u.pendingSave && u.saveDirty && u.saveTimer != runningTimer
+	})
 	u.saveMutex.Lock()
 	firstSave := u.lastSaveTime
 	// Advance only the owned timer rather than waiting a production minute.
@@ -210,18 +212,30 @@ func TestIncompleteObservationsRoundTripWithoutInventedUsage(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "incomplete.json"), lastSaveTime: time.Now()}
 	defer u.cancelPendingSave()
 	u.MarkIncomplete()
-	if err := u.Save(); err != nil { t.Fatal(err) }
+	if err := u.Save(); err != nil {
+		t.Fatal(err)
+	}
 	v := &AggregatedUsage{ctx: context.Background(), filePath: u.filePath}
-	if err := v.Load(); err != nil { t.Fatal(err) }
-	if v.ToJSON().IncompleteObservations != 1 || len(v.Combinations) != 0 { t.Fatal("missing accounting became zero usage") }
+	if err := v.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if v.ToJSON().IncompleteObservations != 1 || len(v.Combinations) != 0 {
+		t.Fatal("missing accounting became zero usage")
+	}
 }
 
 func TestLegacyUsageWithoutIncompleteFieldLoads(t *testing.T) {
-    path := filepath.Join(t.TempDir(), "legacy.json")
-    if err := os.WriteFile(path, []byte(`{"combinations":[]}`), 0600); err != nil { t.Fatal(err) }
-    u := &AggregatedUsage{ctx: context.Background(), filePath: path}
-    if err := u.Load(); err != nil { t.Fatal(err) }
-    if u.ToJSON().IncompleteObservations != 0 { t.Fatal("legacy migration invented incomplete observations") }
+	path := filepath.Join(t.TempDir(), "legacy.json")
+	if err := os.WriteFile(path, []byte(`{"combinations":[]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	u := &AggregatedUsage{ctx: context.Background(), filePath: path}
+	if err := u.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if u.ToJSON().IncompleteObservations != 0 {
+		t.Fatal("legacy migration invented incomplete observations")
+	}
 }
 
 func TestRequestDrainFlushesLastIncompleteObservation(t *testing.T) {

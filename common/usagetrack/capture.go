@@ -32,8 +32,8 @@ func Peek(body io.ReadCloser, limit int64) ([]byte, io.ReadCloser, bool, error) 
 }
 
 type Capture struct {
-	Data []byte
-	Limit int
+	Data       []byte
+	Limit      int
 	Incomplete bool
 }
 
@@ -52,10 +52,10 @@ func (c *Capture) Write(p []byte) (int, error) {
 // Lines scans only newly received bytes. It never repeatedly scans an unfinished
 // line, and permanently disables accounting once either budget is exhausted.
 type Lines struct {
-	partial []byte
-	seen int
+	partial    []byte
+	seen       int
 	Incomplete bool
-	LineLimit int
+	LineLimit  int
 	TotalLimit int
 }
 
@@ -73,14 +73,18 @@ func (s *Lines) Feed(p []byte, eof bool) [][]byte {
 	for len(p) > 0 {
 		i := bytes.IndexByte(p, '\n')
 		end := i
-		if end < 0 { end = len(p) }
+		if end < 0 {
+			end = len(p)
+		}
 		if end > s.LineLimit-len(s.partial) {
 			s.partial = nil
 			s.Incomplete = true
 			return nil
 		}
 		s.partial = append(s.partial, p[:end]...)
-		if i < 0 { break }
+		if i < 0 {
+			break
+		}
 		lines = append(lines, s.partial)
 		s.partial = nil
 		p = p[i+1:]

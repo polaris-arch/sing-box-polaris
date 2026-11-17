@@ -47,7 +47,7 @@ func TestNativeResolverMethodsHonorExternalOwner(t *testing.T) {
 			t.Setenv("RESOLVED_TEST_TRACE", trace)
 			native := &NativeTun{options: Options{
 				Name: "test-tun", DNSMode: DNSModeHijack, LinuxResolvedExternal: external,
-				DNSAddress: []netip.Addr{netip.MustParseAddr("192.0.2.1")},
+				DNSAddress:   []netip.Addr{netip.MustParseAddr("192.0.2.1")},
 				Inet4Address: []netip.Prefix{netip.MustParsePrefix("192.0.2.2/24")},
 			}}
 			if err := native.setSearchDomainForSystemdResolved(); err != nil {

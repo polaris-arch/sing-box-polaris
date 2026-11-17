@@ -35,25 +35,25 @@ type CostCombination struct {
 }
 
 type AggregatedUsage struct {
-	IncompleteObservations uint64 `json:"incomplete_observations"`
-	LastUpdated     time.Time         `json:"last_updated"`
-	Combinations    []CostCombination `json:"combinations"`
-	mutex           sync.Mutex
-	ctx             context.Context
-	filePath        string
-	logger          log.ContextLogger
-	lastSaveTime    time.Time
-	lastSaveAttempt time.Time
-	pendingSave     bool
-	saveTimer       *time.Timer
-	saveMutex       sync.Mutex
-	saveWriteMutex  sync.Mutex
-	saveDirty       bool
-	saveStopping    bool
-	saveGroup       sync.WaitGroup
-	closed          bool
-	closeOnce       sync.Once
-	closeErr        error
+	IncompleteObservations uint64            `json:"incomplete_observations"`
+	LastUpdated            time.Time         `json:"last_updated"`
+	Combinations           []CostCombination `json:"combinations"`
+	mutex                  sync.Mutex
+	ctx                    context.Context
+	filePath               string
+	logger                 log.ContextLogger
+	lastSaveTime           time.Time
+	lastSaveAttempt        time.Time
+	pendingSave            bool
+	saveTimer              *time.Timer
+	saveMutex              sync.Mutex
+	saveWriteMutex         sync.Mutex
+	saveDirty              bool
+	saveStopping           bool
+	saveGroup              sync.WaitGroup
+	closed                 bool
+	closeOnce              sync.Once
+	closeErr               error
 }
 
 type UsageStatsJSON struct {
@@ -84,10 +84,10 @@ type CostsSummaryJSON struct {
 }
 
 type AggregatedUsageJSON struct {
-	IncompleteObservations uint64 `json:"incomplete_observations"`
-	LastUpdated  time.Time             `json:"last_updated"`
-	Costs        CostsSummaryJSON      `json:"costs"`
-	Combinations []CostCombinationJSON `json:"combinations"`
+	IncompleteObservations uint64                `json:"incomplete_observations"`
+	LastUpdated            time.Time             `json:"last_updated"`
+	Costs                  CostsSummaryJSON      `json:"costs"`
+	Combinations           []CostCombinationJSON `json:"combinations"`
 }
 
 type WeeklyCycleHint struct {
@@ -544,7 +544,7 @@ func (u *AggregatedUsage) ToJSON() *AggregatedUsageJSON {
 	defer u.mutex.Unlock()
 
 	result := &AggregatedUsageJSON{
-		LastUpdated: u.LastUpdated,
+		LastUpdated:            u.LastUpdated,
 		IncompleteObservations: u.IncompleteObservations,
 		Costs: CostsSummaryJSON{
 			TotalUSD: 0,
@@ -591,9 +591,9 @@ func (u *AggregatedUsage) Load() error {
 	}
 
 	var temp struct {
-		IncompleteObservations uint64 `json:"incomplete_observations"`
-		LastUpdated  time.Time         `json:"last_updated"`
-		Combinations []CostCombination `json:"combinations"`
+		IncompleteObservations uint64            `json:"incomplete_observations"`
+		LastUpdated            time.Time         `json:"last_updated"`
+		Combinations           []CostCombination `json:"combinations"`
 	}
 
 	err = json.Unmarshal(data, &temp)
