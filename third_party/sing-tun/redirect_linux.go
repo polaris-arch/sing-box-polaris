@@ -442,7 +442,7 @@ func (r *autoRedirect) Close() (closeErr error) {
 				closeErr = E.Errors(closeErr, r.cleanupBypassRoute())
 			}
 			if vpnServiceAttempted {
-				r.cleanupAndroidVPNServiceRules()
+				closeErr = E.Errors(closeErr, r.cleanupAndroidVPNServiceRules())
 			}
 		}
 	}

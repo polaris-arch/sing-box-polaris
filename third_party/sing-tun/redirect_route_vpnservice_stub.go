@@ -10,7 +10,8 @@ func (r *autoRedirect) updateAndroidVPNServiceRules() error {
 	return nil
 }
 
-func (r *autoRedirect) cleanupAndroidVPNServiceRules() {
+func (r *autoRedirect) cleanupAndroidVPNServiceRules() error {
+	return nil
 }
 
 func (r *autoRedirect) setupBypassRoute() {
