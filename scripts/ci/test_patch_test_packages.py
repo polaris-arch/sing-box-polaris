@@ -82,6 +82,7 @@ class PatchModuleSelectionTests(unittest.TestCase):
                 'third_party/sing/common/udpnat/runtime_context_test.go',
                 'third_party/sing-quic/runtime_test.go',
                 'third_party/go-nat/mapping_test.go',
+                'third_party/google-nftables/conn_32bit_test.go',
                 'third_party/tailscale/net/netmon/runtime_hooks_test.go',
                 'third_party/wireguard-go/device/runtime_completion_test.go',
                 'third_party/tfo-go/runtime_join_test.go', 'third_party/sing-vmess/vless/vision.go']]
@@ -118,6 +119,7 @@ class PatchModuleSelectionTests(unittest.TestCase):
                                     'third_party/metacubex-utls/go.sum', 'third_party/cronet-go/go.mod',
                                     'third_party/fswatch/go.mod', 'third_party/sing/go.mod',
                                     'third_party/sing-quic/go.mod', 'third_party/go-nat/go.mod',
+                                    'third_party/google-nftables/go.mod',
                                     'third_party/tailscale/go.mod',
                                     'third_party/wireguard-go/go.sum', 'third_party/tfo-go/go.mod',
                                     'third_party/sing-vmess/go.mod'])
