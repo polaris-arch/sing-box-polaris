@@ -102,8 +102,10 @@ func TestServeHTTPReadFailureNeverCallsUpstream(t *testing.T) {
 	tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
 	defer tracker.cancelPendingSave()
 	calls := 0
-	service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
-		httpClient: &http.Client{Transport: trackingRoundTrip(func(r *http.Request) (*http.Response, error) { calls++; return nil, errors.New("unexpected upstream") })}}
+	service := &Service{
+		usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
+		httpClient: &http.Client{Transport: trackingRoundTrip(func(r *http.Request) (*http.Response, error) { calls++; return nil, errors.New("unexpected upstream") })},
+	}
 	body := &trackingBody{Reader: &brokenRequest{}}
 	request := httptest.NewRequest(http.MethodPost, "http://example.test/v1/messages", nil)
 	request.Body = body
@@ -126,7 +128,8 @@ func TestServeHTTPReplayHeadersAndBodyClose(t *testing.T) {
 	body := &trackingBody{Reader: strings.NewReader(sent)}
 	upstreamBody := &trackingBody{Reader: strings.NewReader(`{"type":"message","model":"claude-sonnet-4-5","usage":{"input_tokens":12,"output_tokens":7}}`)}
 	calls := 0
-	service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
+	service := &Service{
+		usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
 		httpClient: &http.Client{Transport: trackingRoundTrip(func(r *http.Request) (*http.Response, error) {
 			calls++
 			got, err := io.ReadAll(r.Body)
@@ -135,7 +138,8 @@ func TestServeHTTPReplayHeadersAndBodyClose(t *testing.T) {
 				t.Fatal("request replay/header changed")
 			}
 			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}, "X-Fixture": []string{"upstream"}}, Body: upstreamBody}, nil
-		})}}
+		})},
+	}
 	request := httptest.NewRequest(http.MethodPost, "http://example.test/v1/messages", nil)
 	request.Body = body
 	request.Header.Set("X-Fixture", "preserved")
@@ -184,7 +188,8 @@ func TestServeHTTPOverBudgetRequestStillForwardsEveryByte(t *testing.T) {
 	sent := append(bytes.Repeat([]byte(" "), usagetrack.BodyBudget), []byte(`{"model":"model"}`)...)
 	body := &trackingBody{Reader: bytes.NewReader(sent)}
 	calls := 0
-	service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
+	service := &Service{
+		usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{AccessToken: "synthetic-test-only", ExpiresAt: time.Now().Add(time.Hour).UnixMilli()},
 		httpClient: &http.Client{Transport: trackingRoundTrip(func(r *http.Request) (*http.Response, error) {
 			calls++
 			got, err := io.ReadAll(r.Body)
@@ -193,7 +198,8 @@ func TestServeHTTPOverBudgetRequestStillForwardsEveryByte(t *testing.T) {
 				t.Fatal("oversized request was truncated")
 			}
 			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"model":"model","usage":{"input_tokens":12,"output_tokens":7,"prompt_tokens":12,"completion_tokens":7}}`))}, nil
-		})}}
+		})},
+	}
 	request := httptest.NewRequest(http.MethodPost, "http://example.test/v1/messages", nil)
 	request.Body = body
 	writer := httptest.NewRecorder()

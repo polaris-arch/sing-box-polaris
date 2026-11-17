@@ -239,7 +239,7 @@ func TestIncompleteObservationsRoundTripWithoutInventedUsage(t *testing.T) {
 
 func TestLegacyUsageWithoutIncompleteFieldLoads(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy.json")
-	if err := os.WriteFile(path, []byte(`{"combinations":[]}`), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(`{"combinations":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	u := &AggregatedUsage{ctx: context.Background(), filePath: path}
@@ -333,7 +333,7 @@ func TestUsageFileOwnershipSpansLoadAndFinalFlush(t *testing.T) {
 
 func TestUsageFailedLoadReleasesFileOwnership(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "usage.json")
-	if err := os.WriteFile(path, []byte("malformed"), 0600); err != nil {
+	if err := os.WriteFile(path, []byte("malformed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	first := &AggregatedUsage{ctx: context.Background(), filePath: path}

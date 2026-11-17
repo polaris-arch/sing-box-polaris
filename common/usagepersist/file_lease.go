@@ -53,7 +53,7 @@ func AcquireFile(ctx context.Context, path string) (*FileLease, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := filemanager.OpenFile(ctx, managed+".lock", os.O_CREATE|os.O_RDWR, 0600)
+	file, err := filemanager.OpenFile(ctx, managed+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
 	}

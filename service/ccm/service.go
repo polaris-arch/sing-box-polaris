@@ -584,7 +584,6 @@ func (s *Service) handleResponseWithTracking(writer http.ResponseWriter, respons
 					}
 				}
 			}
-
 		}
 		if n > 0 {
 			_, writeError := writer.Write(buffer[:n])

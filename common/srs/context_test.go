@@ -68,6 +68,7 @@ func (c *readBudgetContext) Err() error {
 	}
 	return nil
 }
+
 func TestReadContextCancelsBufferedRules(t *testing.T) {
 	body := uvarint(1000)
 	for i := 0; i < 1000; i++ {

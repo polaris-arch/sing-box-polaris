@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing-box/common/ipset"
 	"github.com/sagernet/sing/common/domain"
 	"github.com/sagernet/sing/common/varbin"
+
 	"go4.org/netipx"
 )
 

@@ -172,6 +172,7 @@ func (r contextByteReader) Read(p []byte) (int, error) {
 	}
 	return r.reader.Read(p)
 }
+
 func (r contextByteReader) ReadByte() (byte, error) {
 	if err := r.ctx.Err(); err != nil {
 		return 0, err

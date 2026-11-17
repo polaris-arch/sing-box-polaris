@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/sagernet/sing-box/common/ipset"
 	"net/netip"
 	"testing"
 
+	"github.com/sagernet/sing-box/common/ipset"
 	"github.com/sagernet/sing/common/domain"
 )
 

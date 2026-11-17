@@ -15,6 +15,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/logger"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -143,7 +144,7 @@ func TestRuleSetFileBudgetRejectsBeforeReadingAndPreservesLocalPublication(t *te
 	path := filepath.Join(t.TempDir(), "rules.srs")
 	var encoded bytes.Buffer
 	require.NoError(t, srs.Write(&encoded, option.PlainRuleSet{}, C.RuleSetVersionCurrent))
-	require.NoError(t, os.WriteFile(path, encoded.Bytes(), 0600))
+	require.NoError(t, os.WriteFile(path, encoded.Bytes(), 0o600))
 	set := &LocalRuleSet{ctx: context.Background(), logger: logger.NOP(), tag: "budget", fileFormat: C.RuleSetFormatBinary}
 	require.NoError(t, set.reloadFile(path))
 	old := set.loadSnapshot()
@@ -167,7 +168,7 @@ func TestRuleSetResourceLimitsDefaultAndConfiguredCompatibility(t *testing.T) {
 	set.options.ResourceLimits.InputBytes = int64(len(content))
 	require.NoError(t, set.loadBytes(content)) // explicit larger override takes effect
 	path := filepath.Join(t.TempDir(), "rules.json")
-	require.NoError(t, os.WriteFile(path, content, 0600))
+	require.NoError(t, os.WriteFile(path, content, 0o600))
 	local := &LocalRuleSet{ctx: ctx, logger: logger.NOP(), tag: "override-local", fileFormat: C.RuleSetFormatSource, resourceLimits: &option.RuleSetResourceLimits{InputBytes: int64(len(content) - 1)}}
 	require.ErrorIs(t, local.reloadFile(path), srs.ErrResourceLimit)
 	local.resourceLimits.InputBytes = int64(len(content))

@@ -67,7 +67,7 @@ func TestUsageFileLeaseExcludesOtherInstancesAndProcesses(t *testing.T) {
 func TestUsageFileLeaseResolvesDirectoryAliases(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "actual")
-	if err := os.Mkdir(target, 0700); err != nil {
+	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	alias := filepath.Join(dir, "alias")
@@ -97,6 +97,7 @@ type prefixingUsageManager struct {
 func (m prefixingUsageManager) BasePath(name string) string {
 	return filepath.Join(m.root, strings.TrimLeft(name, "/\\"))
 }
+
 func (m prefixingUsageManager) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 	return os.OpenFile(m.BasePath(name), flag, perm)
 }
@@ -117,7 +118,7 @@ func TestUsageLeasePreservesManagerLogicalPath(t *testing.T) {
 			t.Fatal("wrong physical path", lease.Path)
 		}
 		// The same managed name used by tracker Load/Save must resolve only once.
-		if err := filemanager.WriteFile(ctx, lease.ManagedPath, []byte("snapshot"), 0600); err != nil {
+		if err := filemanager.WriteFile(ctx, lease.ManagedPath, []byte("snapshot"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		contents, err := os.ReadFile(filepath.Join(root, "usage.json"))

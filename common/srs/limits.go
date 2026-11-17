@@ -103,6 +103,7 @@ func (r *byteLimitByteReader) ReadByte() (byte, error) {
 	}
 	return b, err
 }
+
 func limitInput(reader io.Reader, max int64) io.Reader {
 	limited := &byteLimitReader{reader: reader, remaining: max, kind: "input bytes"}
 	if b, ok := reader.(io.ByteReader); ok {
@@ -128,6 +129,7 @@ func resourceBudget(reader varbin.Reader) *decodeBudget {
 	}
 	return nil // mmap and legacy helpers have their separate storage contract.
 }
+
 func claimEntries(reader varbin.Reader, count uint64) error {
 	if b := resourceBudget(reader); b != nil {
 		if count > b.limits.Entries-b.entries {
@@ -137,12 +139,14 @@ func claimEntries(reader varbin.Reader, count uint64) error {
 	}
 	return nil
 }
+
 func checkRules(reader varbin.Reader, count uint64) error {
 	if b := resourceBudget(reader); b != nil && count > b.limits.Rules-b.rules {
 		return limitError("rules")
 	}
 	return nil
 }
+
 func readLimitedSlice[T varbin.BaseData](reader varbin.Reader, order binary.ByteOrder) ([]T, error) {
 	count, err := binary.ReadUvarint(reader)
 	if err != nil {
@@ -153,6 +157,7 @@ func readLimitedSlice[T varbin.BaseData](reader varbin.Reader, order binary.Byte
 	}
 	return varbin.ReadSliceCount[T](reader, order, count)
 }
+
 func readLimitedString(reader varbin.Reader) ([]byte, error) {
 	count, err := binary.ReadUvarint(reader)
 	if err != nil {

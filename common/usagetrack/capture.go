@@ -8,9 +8,11 @@ import (
 
 // These are observation budgets, not request/response size limits. On overflow
 // callers must report incomplete accounting and continue forwarding the stream.
-const BodyBudget = 8 << 20
-const LineBudget = 1 << 20
-const StreamBudget = 16 << 20
+const (
+	BodyBudget   = 8 << 20
+	LineBudget   = 1 << 20
+	StreamBudget = 16 << 20
+)
 
 type replayBody struct {
 	io.Reader

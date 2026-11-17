@@ -1,9 +1,10 @@
 package option
 
 import (
-	"github.com/sagernet/sing/common/json"
 	"strings"
 	"testing"
+
+	"github.com/sagernet/sing/common/json"
 )
 
 func TestRuleSetResourceLimitsRoundTripAndOmission(t *testing.T) {
