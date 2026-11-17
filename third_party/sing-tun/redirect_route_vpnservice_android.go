@@ -173,9 +173,9 @@ func (r *autoRedirect) cleanupAndroidVPNServiceRules() error {
 	r.androidVPNServiceRuleAccess.Lock()
 	defer r.androidVPNServiceRuleAccess.Unlock()
 	r.androidVPNServiceRulesActive = false
-	r.restoreAndroidIngressDiscardRulesLocked()
+	restoreErr := r.restoreAndroidIngressDiscardRulesLocked()
 	if len(r.androidVPNServiceRules) == 0 {
-		return nil
+		return restoreErr
 	}
-	return reconcileVPNServiceRules(&r.androidVPNServiceRules, nil, vpnServiceKernelOps())
+	return E.Errors(restoreErr, reconcileVPNServiceRules(&r.androidVPNServiceRules, nil, vpnServiceKernelOps()))
 }

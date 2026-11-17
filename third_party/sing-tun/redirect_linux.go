@@ -74,7 +74,7 @@ type autoRedirect struct {
 	androidVPNServiceRuleAccess  sync.Mutex
 	androidVPNServiceRules       []*netlink.Rule
 	androidVPNServiceRulesActive bool
-	androidIngressDiscardValues  map[netip.Addr][8]byte
+	androidIngressDiscardValues  map[netip.Addr]ingressDiscardReceipt
 	dockerFirewallMonitor        *nftables.Monitor
 	dockerFirewallDone           chan struct{}
 }
