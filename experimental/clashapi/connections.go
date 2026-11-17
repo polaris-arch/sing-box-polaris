@@ -104,10 +104,40 @@ func (c connectionObject) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// Bound full-table snapshots to at most 10 Hz per subscription. Keep accepting
+// positive sub-100ms requests, but clamp their effective cadence instead of
+// breaking clients that use them. The default remains one second.
+const minimumConnectionSnapshotInterval = 100 * time.Millisecond
+
+func connectionSnapshotInterval(raw string) (time.Duration, bool) {
+	if raw == "" {
+		return time.Second, true
+	}
+	milliseconds, err := strconv.ParseInt(raw, 10, 64)
+	// Check before multiplication: positive int64 milliseconds can overflow a
+	// Duration into zero, negative, or a tiny positive busy-loop interval.
+	const maximumMilliseconds = int64((1<<63 - 1) / time.Millisecond)
+	if err != nil || milliseconds <= 0 || milliseconds > maximumMilliseconds {
+		return 0, false
+	}
+	interval := time.Duration(milliseconds) * time.Millisecond
+	if interval < minimumConnectionSnapshotInterval {
+		interval = minimumConnectionSnapshotInterval
+	}
+	return interval, true
+}
+
 func getConnections(ctx context.Context, trafficManager *trafficcontrol.Manager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Upgrade") != "websocket" {
 			render.JSON(w, r, connectionsSnapshot(trafficManager))
+			return
+		}
+
+		interval, valid := connectionSnapshotInterval(r.URL.Query().Get("interval"))
+		if !valid {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, ErrBadRequest)
 			return
 		}
 
@@ -116,19 +146,6 @@ func getConnections(ctx context.Context, trafficManager *trafficcontrol.Manager)
 			return
 		}
 		defer conn.Close()
-
-		intervalStr := r.URL.Query().Get("interval")
-		interval := 1000
-		if intervalStr != "" {
-			t, err := strconv.Atoi(intervalStr)
-			if err != nil {
-				render.Status(r, http.StatusBadRequest)
-				render.JSON(w, r, ErrBadRequest)
-				return
-			}
-
-			interval = t
-		}
 
 		buf := &bytes.Buffer{}
 		sendSnapshot := func() error {
@@ -144,7 +161,7 @@ func getConnections(ctx context.Context, trafficManager *trafficcontrol.Manager)
 			return
 		}
 
-		tick := time.NewTicker(time.Millisecond * time.Duration(interval))
+		tick := time.NewTicker(interval)
 		defer tick.Stop()
 		for {
 			select {

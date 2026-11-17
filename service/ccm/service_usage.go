@@ -41,10 +41,13 @@ type AggregatedUsage struct {
 	ctx          context.Context
 	filePath     string
 	logger       log.ContextLogger
-	lastSaveTime time.Time
-	pendingSave  bool
-	saveTimer    *time.Timer
-	saveMutex    sync.Mutex
+	lastSaveTime    time.Time
+	lastSaveAttempt time.Time
+	pendingSave     bool
+	saveTimer       *time.Timer
+	saveMutex       sync.Mutex
+	saveWriteMutex  sync.Mutex
+	saveDirty       bool
 }
 
 type UsageStatsJSON struct {
@@ -596,6 +599,9 @@ func (u *AggregatedUsage) Load() error {
 }
 
 func (u *AggregatedUsage) Save() error {
+	// Serialize snapshot-through-rename, including explicit final saves.
+	u.saveWriteMutex.Lock()
+	defer u.saveWriteMutex.Unlock()
 	jsonData := u.ToJSON()
 
 	data, err := json.MarshalIndent(jsonData, "", "  ")
@@ -655,36 +661,45 @@ func (u *AggregatedUsage) AddUsageWithCycleHint(
 
 	addUsageToCombinations(&u.Combinations, model, contextWindow, weekStartUnix, messagesCount, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, cacheCreation5MinuteTokens, cacheCreation1HourTokens, user)
 
-	go u.scheduleSave()
+	u.scheduleSave()
 
 	return nil
 }
 
 func (u *AggregatedUsage) scheduleSave() {
-	const saveInterval = time.Minute
-
 	u.saveMutex.Lock()
 	defer u.saveMutex.Unlock()
+	u.saveDirty = true
+	u.scheduleSaveLocked()
+}
 
-	timeSinceLastSave := time.Since(u.lastSaveTime)
-
-	if timeSinceLastSave >= saveInterval {
-		go u.saveAsync()
-		return
-	}
-
+// At most one timer or callback belongs to a tracker. Updates during a save
+// remain dirty and coalesce into the next interval; no per-request goroutine.
+// Failed attempts also advance the cadence: new events cannot cause a hot
+// retry loop. Without a new update, failures retain the legacy no-retry policy.
+func (u *AggregatedUsage) scheduleSaveLocked() {
 	if u.pendingSave {
 		return
 	}
-
 	u.pendingSave = true
-	remainingTime := saveInterval - timeSinceLastSave
-
-	u.saveTimer = time.AfterFunc(remainingTime, func() {
+	lastAttempt := u.lastSaveTime
+	if u.lastSaveAttempt.After(lastAttempt) {
+		lastAttempt = u.lastSaveAttempt
+	}
+	delay := max(time.Duration(0), time.Minute-time.Since(lastAttempt))
+	u.saveTimer = time.AfterFunc(delay, func() {
 		u.saveMutex.Lock()
-		u.pendingSave = false
+		u.saveDirty = false
+		u.lastSaveAttempt = time.Now()
 		u.saveMutex.Unlock()
 		u.saveAsync()
+		u.saveMutex.Lock()
+		u.pendingSave = false
+		u.saveTimer = nil
+		if u.saveDirty {
+			u.scheduleSaveLocked()
+		}
+		u.saveMutex.Unlock()
 	})
 }
 
@@ -701,9 +716,11 @@ func (u *AggregatedUsage) cancelPendingSave() {
 	u.saveMutex.Lock()
 	defer u.saveMutex.Unlock()
 
-	if u.saveTimer != nil {
-		u.saveTimer.Stop()
+	if u.saveTimer != nil && u.saveTimer.Stop() {
 		u.saveTimer = nil
+		u.pendingSave = false
+		u.saveDirty = false
 	}
-	u.pendingSave = false
+	// A callback that already started retains ownership until it returns.
+	// Producer drain/final-flush ordering remains a service-level concern.
 }

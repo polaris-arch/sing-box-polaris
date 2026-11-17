@@ -21,7 +21,6 @@ import (
 	"github.com/sagernet/sing/common/control"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/rw"
-	"github.com/sagernet/sing/common/shell"
 	"github.com/sagernet/sing/common/x/list"
 
 	"golang.org/x/sys/unix"
@@ -30,12 +29,14 @@ import (
 var _ LinuxTUN = (*NativeTun)(nil)
 
 type NativeTun struct {
+	resolved            resolvedLifecycle
 	tunFd               int
 	tunFile             *os.File
 	iovecsOutputDefault []unix.Iovec
 	interfaceCallback   *list.Element[DefaultInterfaceUpdateCallback]
 	options             Options
-	ruleIndex6          []int
+	ruleAccess          sync.Mutex
+	ownedRules          ownedLinuxRules
 	readAccess          sync.Mutex
 	writeAccess         sync.Mutex
 	vnetHdr             bool
@@ -408,8 +409,7 @@ func (t *NativeTun) start() error {
 	}
 	err = t.setRules()
 	if err != nil {
-		_ = t.unsetRules()
-		return E.Cause(err, "set rules")
+		return E.Errors(E.Cause(err, "set rules"), t.unsetRules())
 	}
 
 	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
@@ -426,16 +426,23 @@ func (t *NativeTun) start() error {
 }
 
 func (t *NativeTun) Close() error {
+	// Unregistering does not drain callbacks already copied by the monitor.
+	// Seal ownership before any teardown; those callbacks may clear but never
+	// reinstall rules after this point.
+	t.ruleAccess.Lock()
+	t.ownedRules.closed = true
+	t.ruleAccess.Unlock()
 	if t.interfaceCallback != nil {
 		t.options.InterfaceMonitor.UnregisterCallback(t.interfaceCallback)
 	}
 	if t.options.EXP_ExternalConfiguration {
 		return common.Close(common.PtrOrNil(t.tunFile))
 	}
+	var dnsErr error
 	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
-		t.unsetSearchDomainForSystemdResolved()
+		dnsErr = t.unsetSearchDomainForSystemdResolved()
 	}
-	return E.Errors(runInNetworkNamespace(t.options.NetNs, func() error {
+	return E.Errors(dnsErr, runInNetworkNamespace(t.options.NetNs, func() error {
 		t.unsetAddresses()
 		return E.Errors(t.unsetRoute(), t.unsetRules())
 	}), common.Close(common.PtrOrNil(t.tunFile)))
@@ -762,7 +769,6 @@ func (t *NativeTun) nextIndex6() int {
 		}
 	}
 	minIndex--
-	t.ruleIndex6 = append(t.ruleIndex6, minIndex)
 	return minIndex
 }
 
@@ -1204,13 +1210,12 @@ func (t *NativeTun) setRoute(tunLink netlink.Link) error {
 }
 
 func (t *NativeTun) setRules() error {
-	for i, rule := range t.rules() {
-		err := netlink.RuleAdd(rule)
-		if err != nil {
-			return E.Cause(err, "add rule ", i, "/", len(t.rules()))
-		}
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	if t.ownedRules.closed {
+		return E.New("routing rule owner is closed")
 	}
-	return nil
+	return t.ownedRules.install(t.rules(), netlink.RuleAdd)
 }
 
 func (t *NativeTun) unsetRoute() error {
@@ -1234,41 +1239,9 @@ func (t *NativeTun) unsetRoute0(tunLink netlink.Link) error {
 }
 
 func (t *NativeTun) unsetRules() error {
-	if t.options.FileDescriptor > 0 {
-		return nil
-	}
-	if len(t.ruleIndex6) > 0 {
-		for _, index := range t.ruleIndex6 {
-			ruleToDel := netlink.NewRule()
-			ruleToDel.Family = unix.AF_INET6
-			ruleToDel.Priority = index
-			err := netlink.RuleDel(ruleToDel)
-			if err != nil {
-				return E.Cause(err, "unset rule6 ", index)
-			}
-		}
-		t.ruleIndex6 = nil
-	}
-	if t.options.AutoRoute {
-		ruleList, err := netlink.RuleList(netlink.FAMILY_ALL)
-		if err != nil {
-			return E.Cause(err, "list rules")
-		}
-		for _, rule := range ruleList {
-			ruleStart := t.options.IPRoute2RuleIndex
-			ruleEnd := ruleStart + 10
-			if rule.Priority >= ruleStart && rule.Priority <= ruleEnd || (t.options.AutoRedirectMarkMode && rule.Priority == t.options.IPRoute2AutoRedirectFallbackRuleIndex) {
-				ruleToDel := netlink.NewRule()
-				ruleToDel.Family = rule.Family
-				ruleToDel.Priority = rule.Priority
-				err = netlink.RuleDel(ruleToDel)
-				if err != nil {
-					return E.Cause(err, "unset rule ", rule.Priority, " for ", rule.Family)
-				}
-			}
-		}
-	}
-	return nil
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	return t.ownedRules.clear(netlink.RuleDel)
 }
 
 func (t *NativeTun) unsetAddresses() {
@@ -1290,8 +1263,9 @@ func (t *NativeTun) unsetAddresses() {
 }
 
 func (t *NativeTun) resetRules() error {
-	t.unsetRules()
-	return t.setRules()
+	t.ruleAccess.Lock()
+	defer t.ruleAccess.Unlock()
+	return t.ownedRules.reset(t.rules, netlink.RuleAdd, netlink.RuleDel)
 }
 
 func (t *NativeTun) routeUpdate(_ *control.Interface, flags int) {
@@ -1315,18 +1289,13 @@ func (t *NativeTun) setSearchDomainForSystemdResolved() error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		_ = shell.Exec(ctlPath, "domain", t.options.Name, "~.").Run()
-		_ = shell.Exec(ctlPath, "default-route", t.options.Name, "true").Run()
-		_ = shell.Exec(ctlPath, append([]string{"dns", t.options.Name}, common.Map(dnsAddress, netip.Addr.String)...)...).Run()
-	}()
-	return nil
+	return t.resolved.configure(resolvedCommand(ctlPath), t.options.Name, common.Map(dnsAddress, netip.Addr.String))
 }
 
-func (t *NativeTun) unsetSearchDomainForSystemdResolved() {
+func (t *NativeTun) unsetSearchDomainForSystemdResolved() error {
 	ctlPath, err := exec.LookPath("resolvectl")
 	if err != nil {
-		return
+		return nil
 	}
-	_ = shell.Exec(ctlPath, "revert", t.options.Name).Run()
+	return t.resolved.close(resolvedCommand(ctlPath), t.options.Name)
 }
