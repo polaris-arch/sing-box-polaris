@@ -18,9 +18,14 @@ func (r *autoRedirect) setupBypassRoute() {
 	}
 	r.bypassRouteAccess.Lock()
 	defer r.bypassRouteAccess.Unlock()
+	tableIndex, err := chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex, r.tproxyRouteTableIndex)
+	if err != nil {
+		r.logger.Warn("address set destinations keep their pre-match bypass: select bypass route table: ", err)
+		return
+	}
 	r.cleanupStaleRouteRules(r.androidVPNServiceRulePriority(), 0)
-	r.bypassRouteTableIndex = chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex, r.tproxyRouteTableIndex)
-	err := r.refreshBypassAddressesLocked()
+	r.bypassRouteTableIndex = tableIndex
+	err = r.refreshBypassAddressesLocked()
 	if err == nil {
 		err = r.rebuildBypassRouteLocked()
 	}

@@ -430,7 +430,11 @@ func (t *NativeTun) start() error {
 	}
 
 	if t.options.IPRoute2TableIndex == 0 {
-		t.options.IPRoute2TableIndex = chooseRouteTableIndex()
+		tableIndex, selectErr := chooseRouteTableIndex()
+		if selectErr != nil {
+			return E.Cause(selectErr, "select tun route table")
+		}
+		t.options.IPRoute2TableIndex = tableIndex
 	}
 
 	err = t.setRoute(tunLink)

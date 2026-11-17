@@ -4,9 +4,7 @@ package tun
 
 import (
 	"errors"
-	"math/rand"
 	"net"
-	"slices"
 
 	"github.com/sagernet/netlink"
 	"github.com/sagernet/sing/common"
@@ -26,13 +24,17 @@ func (r *autoRedirect) setupRedirectRoutes() error {
 	redirectInterfaces := r.currentRedirectInterfaces()
 	r.redirectRouteAccess.Lock()
 	defer r.redirectRouteAccess.Unlock()
+	tableIndex, err := chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.tproxyRouteTableIndex)
+	if err != nil {
+		return E.Cause(err, "select redirect route table")
+	}
 	r.redirectRoutesActive = false
 	r.cleanupRedirectRoutesLocked()
 	r.cleanupStaleRouteRules(redirectRouteRulePriority, 0)
 	if r.tproxyEnabled() {
 		r.cleanupStaleRouteRules(redirectRouteRulePriority, r.tunOptions.AutoRedirectTProxyMark)
 	}
-	r.redirectRouteTableIndex = chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.tproxyRouteTableIndex)
+	r.redirectRouteTableIndex = tableIndex
 	defer func() {
 		if err != nil {
 			r.cleanupRedirectRoutesLocked()
@@ -73,7 +75,11 @@ func (r *autoRedirect) setupRedirectRoutes() error {
 }
 
 func (r *autoRedirect) setupTProxyRouteLocked() error {
-	r.tproxyRouteTableIndex = chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex)
+	tableIndex, err := chooseRouteTableIndex(r.tunOptions.IPRoute2TableIndex, r.redirectRouteTableIndex)
+	if err != nil {
+		return E.Cause(err, "select tproxy route table")
+	}
+	r.tproxyRouteTableIndex = tableIndex
 	loopbackLink, err := netlink.LinkByName("lo")
 	if err != nil {
 		return E.Cause(err, "find loopback interface")
@@ -278,30 +284,6 @@ func redirectRouteDestinationMatches(destination *net.IPNet, address net.IP, pre
 	}
 	ones, bits := destination.Mask.Size()
 	return ones == prefixBits && bits == prefixBits
-}
-
-func chooseRouteTableIndex(excludedIndexes ...int) int {
-	for {
-		tableIndex := int(rand.Uint32() & 0x7fffffff)
-		if tableIndex <= 255 || slices.Contains(excludedIndexes, tableIndex) {
-			continue
-		}
-		if !routeTableOccupied(tableIndex) {
-			return tableIndex
-		}
-	}
-}
-
-func routeTableOccupied(tableIndex int) bool {
-	for _, family := range []int{unix.AF_INET, unix.AF_INET6} {
-		routes, err := netlink.RouteListFiltered(family,
-			&netlink.Route{Table: tableIndex},
-			netlink.RT_FILTER_TABLE)
-		if err == nil && len(routes) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func flushRouteTable(tableIndex int) {
