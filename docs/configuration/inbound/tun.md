@@ -280,6 +280,17 @@ How DNS is handled on the TUN interface.
 *On Windows with [`strict_route`](#strict_route)*: port 53 traffic going
 through interfaces other than the TUN is blocked.
 
+#### linux_resolved_external
+
+Polaris extension. Default: `false`.
+
+On Linux, set this to `true` only when an external owner such as the desktop
+Helper configures and restores `systemd-resolved` for this TUN interface. Core
+then skips both resolver setup and resolver revert. This does **not** disable
+`dns_mode: "hijack"`, DNS packet interception, or TUN routes. Other platforms
+are unaffected. Clients must use a Core version supporting this option; older
+versions may reject the unknown field.
+
 #### dns_address
 
 !!! question "Since sing-box 1.14.0"

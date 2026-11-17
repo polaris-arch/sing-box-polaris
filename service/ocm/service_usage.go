@@ -55,12 +55,12 @@ type CostCombination struct {
 }
 
 type AggregatedUsage struct {
-	LastUpdated  time.Time         `json:"last_updated"`
-	Combinations []CostCombination `json:"combinations"`
-	mutex        sync.Mutex
-	ctx          context.Context
-	filePath     string
-	logger       log.ContextLogger
+	LastUpdated     time.Time         `json:"last_updated"`
+	Combinations    []CostCombination `json:"combinations"`
+	mutex           sync.Mutex
+	ctx             context.Context
+	filePath        string
+	logger          log.ContextLogger
 	lastSaveTime    time.Time
 	lastSaveAttempt time.Time
 	pendingSave     bool

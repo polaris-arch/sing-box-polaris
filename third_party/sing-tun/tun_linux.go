@@ -56,25 +56,7 @@ type NativeTun struct {
 func New(options Options) (Tun, error) {
 	if options.FileDescriptor == 0 {
 		return execInNetworkNamespace(options.NetNs, func() (Tun, error) {
-			tunFd, multiQueue, err := open(options.Name, options.GSO, options.MultiQueue)
-			if err != nil {
-				return nil, E.Cause(err, "open tun")
-			}
-			tunLink, err := netlink.LinkByName(options.Name)
-			if err != nil {
-				return nil, E.Errors(err, unix.Close(tunFd))
-			}
-			nativeTun := &NativeTun{
-				tunFd:      tunFd,
-				tunFile:    os.NewFile(uintptr(tunFd), "tun"),
-				options:    options,
-				multiQueue: multiQueue,
-			}
-			err = nativeTun.configure(tunLink)
-			if err != nil {
-				return nil, E.Errors(err, unix.Close(tunFd))
-			}
-			return nativeTun, nil
+			return newNativeTun(options, open, netlink.LinkByName, (*NativeTun).configure)
 		})
 	}
 	nativeTun := &NativeTun{
@@ -89,6 +71,30 @@ func New(options Options) (Tun, error) {
 				options.Logger.Warn(err)
 			}
 		}
+	}
+	return nativeTun, nil
+}
+
+// Keep acquisition and compensation in one production path; dependencies are
+// explicit so constructor failures can be exercised without a real TUN device.
+func newNativeTun(options Options, openDevice func(string, bool, bool) (int, bool, error), lookup func(string) (netlink.Link, error), configure func(*NativeTun, netlink.Link) error) (Tun, error) {
+	tunFd, multiQueue, err := openDevice(options.Name, options.GSO, options.MultiQueue)
+	if err != nil {
+		return nil, E.Cause(err, "open tun")
+	}
+	tunLink, err := lookup(options.Name)
+	if err != nil {
+		return nil, E.Errors(err, unix.Close(tunFd))
+	}
+	nativeTun := &NativeTun{
+		tunFd:      tunFd,
+		tunFile:    os.NewFile(uintptr(tunFd), "tun"),
+		options:    options,
+		multiQueue: multiQueue,
+	}
+	err = configure(nativeTun, tunLink)
+	if err != nil {
+		return nil, failNativeTunConstruction(err, nativeTun.tunFile)
 	}
 	return nativeTun, nil
 }
@@ -412,7 +418,7 @@ func (t *NativeTun) start() error {
 		return E.Errors(E.Cause(err, "set rules"), t.unsetRules())
 	}
 
-	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
+	if t.options.ManageLinuxResolved() {
 		err = t.setSearchDomainForSystemdResolved()
 		if err != nil {
 			return E.Cause(err, "set search domain")
@@ -426,6 +432,7 @@ func (t *NativeTun) start() error {
 }
 
 func (t *NativeTun) Close() error {
+	t.resolved.stop()
 	// Unregistering does not drain callbacks already copied by the monitor.
 	// Seal ownership before any teardown; those callbacks may clear but never
 	// reinstall rules after this point.
@@ -438,14 +445,22 @@ func (t *NativeTun) Close() error {
 	if t.options.EXP_ExternalConfiguration {
 		return common.Close(common.PtrOrNil(t.tunFile))
 	}
-	var dnsErr error
-	if t.options.DNSModeOrDefault() != DNSModeDisabled && t.options.NetNs == "" {
-		dnsErr = t.unsetSearchDomainForSystemdResolved()
-	}
-	return E.Errors(dnsErr, runInNetworkNamespace(t.options.NetNs, func() error {
-		t.unsetAddresses()
-		return E.Errors(t.unsetRoute(), t.unsetRules())
-	}), common.Close(common.PtrOrNil(t.tunFile)))
+	return closeNativeTunResources(func() error {
+		return runInNetworkNamespace(t.options.NetNs, func() error {
+			// Rules do not disappear with the TUN fd. Remove them before any
+			// potentially slow resolver subprocess can consume the stop grace.
+			rulesErr := t.unsetRules()
+			t.unsetAddresses()
+			return E.Errors(rulesErr, t.unsetRoute())
+		})
+	}, func() error {
+		if t.options.ManageLinuxResolved() {
+			return t.unsetSearchDomainForSystemdResolved()
+		}
+		return nil
+	}, func() error {
+		return common.Close(common.PtrOrNil(t.tunFile))
+	})
 }
 
 func (t *NativeTun) Read(p []byte) (n int, err error) {
@@ -1281,6 +1296,9 @@ func (t *NativeTun) routeUpdate(_ *control.Interface, flags int) {
 }
 
 func (t *NativeTun) setSearchDomainForSystemdResolved() error {
+	if !t.options.ManageLinuxResolved() {
+		return nil
+	}
 	ctlPath, err := exec.LookPath("resolvectl")
 	if err != nil {
 		return nil
@@ -1293,6 +1311,9 @@ func (t *NativeTun) setSearchDomainForSystemdResolved() error {
 }
 
 func (t *NativeTun) unsetSearchDomainForSystemdResolved() error {
+	if !t.options.ManageLinuxResolved() {
+		return nil
+	}
 	ctlPath, err := exec.LookPath("resolvectl")
 	if err != nil {
 		return nil

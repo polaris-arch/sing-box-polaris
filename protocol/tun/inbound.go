@@ -216,6 +216,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 			MultiQueue:                            options.MultiQueue,
 			Inet4Address:                          inet4Address,
 			Inet6Address:                          inet6Address,
+			LinuxResolvedExternal:                 options.LinuxResolvedExternal,
 			DNSMode:                               options.DNSMode,
 			DNSAddress:                            options.DNSAddress,
 			AutoRoute:                             options.AutoRoute,
