@@ -12,9 +12,9 @@
 # expected_symbols set to none. source_commit pins every checkout; github.sha
 # identifies the workflow revision, not necessarily the source under test.
 #
-# The macOS and iOS jobs run on macos-latest, while upstream builds its Apple
-# library on a different runner image. Their first run result is still to be
-# confirmed.
+# Apple build checks use the supported Intel image to avoid the hosted arm64
+# capacity queue. Both Darwin architectures and the iOS arm64 library remain
+# covered; native monitor race tests run on the Intel host.
 #
 # Go, JDK and NDK follow the app's source manifest, not the upstream workflows.
 name: Polaris self-check
@@ -240,7 +240,7 @@ jobs:
     timeout-minutes: 90
     if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'mobile' }}
     name: macOS ${{ matrix.arch }}
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     strategy:
       fail-fast: false
       matrix:
@@ -367,7 +367,7 @@ jobs:
     timeout-minutes: 120
     if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop' }}
     name: iOS libbox
-    runs-on: macos-latest
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         timeout-minutes: 5
