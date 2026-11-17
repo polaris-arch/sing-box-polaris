@@ -113,7 +113,8 @@ func newNativeTun(options Options, openDevice func(string, bool, bool) (int, boo
 	}
 	err = configure(nativeTun, tunLink)
 	if err != nil {
-		return nil, failNativeTunConstruction(err, nativeTun.tunFile)
+		// Close the file owner so its finalizer cannot close a reused descriptor.
+		return nil, errors.Join(err, nativeTun.tunFile.Close())
 	}
 	return nativeTun, nil
 }

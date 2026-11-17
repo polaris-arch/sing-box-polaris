@@ -3,13 +3,13 @@ package srs
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/sagernet/sing-box/common/ipset"
-	"go4.org/netipx"
 	"math/bits"
 	"net/netip"
 
+	"github.com/sagernet/sing-box/common/ipset"
 	"github.com/sagernet/sing/common/domain"
 	"github.com/sagernet/sing/common/varbin"
+	"go4.org/netipx"
 )
 
 // checkMatcherRecovery bounds the succinct trie's expanded output before Dump

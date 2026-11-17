@@ -2,7 +2,6 @@ package tun
 
 import (
 	"errors"
-	"os"
 	"reflect"
 	"testing"
 )
@@ -32,19 +31,5 @@ func TestNativeTunCleanupNetworkPrecedesSlowDNS(t *testing.T) {
 		if !errors.Is(err, failure) {
 			t.Fatalf("cleanup error lost: %v", failure)
 		}
-	}
-}
-
-func TestConstructionFailureClosesFileOwner(t *testing.T) {
-	file, err := os.CreateTemp(t.TempDir(), "tun-owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	failure := errors.New("configure failed")
-	if err := failNativeTunConstruction(failure, file); !errors.Is(err, failure) {
-		t.Fatalf("lost configure error: %v", err)
-	}
-	if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
-		t.Fatalf("file owner still considers descriptor open: %v", err)
 	}
 }

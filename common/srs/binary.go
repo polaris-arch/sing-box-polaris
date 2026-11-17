@@ -99,7 +99,14 @@ func ReadContextWithLimits(ctx context.Context, reader io.Reader, recover bool, 
 		return
 	}
 	defer compressReader.Close()
-	bReader := &budgetReader{Reader: contextByteReader{ctx, bufio.NewReader(&byteLimitReader{reader: compressReader, remaining: limits.DecodedBytes, kind: "decoded bytes"})}, budget: &decodeBudget{limits: limits, ctx: ctx}}
+	bReader := &budgetReader{
+		Reader: contextByteReader{ctx, bufio.NewReader(&byteLimitReader{
+			reader:    compressReader,
+			remaining: limits.DecodedBytes,
+			kind:      "decoded bytes",
+		})},
+		budget: &decodeBudget{limits: limits, ctx: ctx},
+	}
 	length, err := binary.ReadUvarint(bReader)
 	if err != nil {
 		return
