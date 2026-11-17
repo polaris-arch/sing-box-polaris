@@ -1,10 +1,10 @@
 package rule
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -29,9 +29,10 @@ import (
 var _ adapter.RuleSet = (*LocalRuleSet)(nil)
 
 type LocalRuleSet struct {
-	ctx    context.Context
-	logger logger.Logger
-	tag    string
+	resourceLimits *option.RuleSetResourceLimits
+	ctx            context.Context
+	logger         logger.Logger
+	tag            string
 	ruleSetPublication
 	fileFormat      string
 	watcher         *fswatch.Watcher
@@ -40,11 +41,15 @@ type LocalRuleSet struct {
 }
 
 func NewLocalRuleSet(ctx context.Context, logger logger.Logger, tag string, options option.RuleSet) (*LocalRuleSet, error) {
+	if _, err := ruleSetLimits(options.ResourceLimits); err != nil {
+		return nil, err
+	}
 	ruleSet := &LocalRuleSet{
-		ctx:        ctx,
-		logger:     logger,
-		tag:        tag,
-		fileFormat: options.Format,
+		ctx:            ctx,
+		logger:         logger,
+		tag:            tag,
+		fileFormat:     options.Format,
+		resourceLimits: options.ResourceLimits,
 	}
 	ruleSet.watcherState = "not-started"
 	if options.Type == C.RuleSetTypeInline {
@@ -129,7 +134,7 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 	var ruleSet option.PlainRuleSetCompat
 	switch s.fileFormat {
 	case C.RuleSetFormatSource, "":
-		content, err := filemanager.ReadFile(s.ctx, path)
+		content, err := readRuleSetFile(s.ctx, path, s.resourceLimits)
 		if err != nil {
 			return err
 		}
@@ -140,18 +145,17 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 			return err
 		}
 	case C.RuleSetFormatBinary:
-		setFile, err := filemanager.Open(s.ctx, path)
+		content, err := readRuleSetFile(s.ctx, path, s.resourceLimits)
 		if err != nil {
 			return err
 		}
-		defer setFile.Close()
-		h := sha256.New()
-		reader := io.TeeReader(setFile, h)
-		ruleSet, err = srs.Read(reader, false)
-		if err == nil {
-			_, err = io.Copy(io.Discard, reader)
+		sum := sha256.Sum256(content)
+		digest = hex.EncodeToString(sum[:])
+		limits, limitsErr := ruleSetLimits(s.resourceLimits)
+		if limitsErr != nil {
+			return limitsErr
 		}
-		digest = hex.EncodeToString(h.Sum(nil))
+		ruleSet, err = srs.ReadContextWithLimits(s.ctx, bytes.NewReader(content), false, limits)
 		if err != nil {
 			return err
 		}

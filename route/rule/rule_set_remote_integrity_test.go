@@ -5,6 +5,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -106,3 +108,108 @@ func TestPublicationCancellationCheckIsInsideCommitLock(t *testing.T) {
 	require.True(t, ctx.checkedUnderLock, "cancellation must be checked inside publication critical section")
 	require.Same(t, old, publication.loadSnapshot())
 }
+
+func TestRemoteRuleSetOversizedDownloadKeepsPublicationAndETag(t *testing.T) {
+	ctx := context.Background()
+	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "budget", options: option.RuleSet{Format: C.RuleSetFormatSource}}
+	require.NoError(t, set.loadBytes([]byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
+	old := set.loadSnapshot()
+	set.lastEtag = "old"
+	set.lastUpdated = time.Unix(100, 0)
+	set.url = "http://fixture.invalid/rules"
+	body := &forbiddenOversizedBody{t: t}
+	set.httpClient = &http.Client{Transport: srsTestTransport(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, ContentLength: srs.DefaultInputBytes + 1, Header: http.Header{"Etag": []string{"new"}}, Body: body}, nil
+	})}
+	require.ErrorIs(t, set.fetch(ctx, false), srs.ErrResourceLimit)
+	require.True(t, body.closed)
+	require.Same(t, old, set.loadSnapshot())
+	require.Equal(t, "old", set.lastEtag)
+	require.Equal(t, time.Unix(100, 0), set.lastUpdated)
+}
+
+type forbiddenOversizedBody struct {
+	t      *testing.T
+	closed bool
+}
+
+func (b *forbiddenOversizedBody) Read([]byte) (int, error) {
+	b.t.Error("oversized declared body should not be read")
+	return 0, io.EOF
+}
+func (b *forbiddenOversizedBody) Close() error { b.closed = true; return nil }
+
+func TestRuleSetFileBudgetRejectsBeforeReadingAndPreservesLocalPublication(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rules.srs")
+	var encoded bytes.Buffer
+	require.NoError(t, srs.Write(&encoded, option.PlainRuleSet{}, C.RuleSetVersionCurrent))
+	require.NoError(t, os.WriteFile(path, encoded.Bytes(), 0600))
+	set := &LocalRuleSet{ctx: context.Background(), logger: logger.NOP(), tag: "budget", fileFormat: C.RuleSetFormatBinary}
+	require.NoError(t, set.reloadFile(path))
+	old := set.loadSnapshot()
+	require.NoError(t, os.Truncate(path, srs.DefaultInputBytes+1))
+	content, err := readRuleSetFile(context.Background(), path, nil)
+	require.ErrorIs(t, err, srs.ErrResourceLimit)
+	require.Nil(t, content)
+	require.ErrorIs(t, set.reloadFile(path), srs.ErrResourceLimit)
+	require.Same(t, old, set.loadSnapshot())
+}
+
+func TestRuleSetResourceLimitsDefaultAndConfiguredCompatibility(t *testing.T) {
+	ctx := context.Background()
+	content := []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)
+	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "override", options: option.RuleSet{Format: C.RuleSetFormatSource}}
+	require.NoError(t, set.loadBytes(content)) // unchanged configuration
+	old := set.loadSnapshot()
+	set.options.ResourceLimits = &option.RuleSetResourceLimits{InputBytes: int64(len(content) - 1)}
+	require.ErrorIs(t, set.loadBytes(content), srs.ErrResourceLimit)
+	require.Same(t, old, set.loadSnapshot())
+	set.options.ResourceLimits.InputBytes = int64(len(content))
+	require.NoError(t, set.loadBytes(content)) // explicit larger override takes effect
+	path := filepath.Join(t.TempDir(), "rules.json")
+	require.NoError(t, os.WriteFile(path, content, 0600))
+	local := &LocalRuleSet{ctx: ctx, logger: logger.NOP(), tag: "override-local", fileFormat: C.RuleSetFormatSource, resourceLimits: &option.RuleSetResourceLimits{InputBytes: int64(len(content) - 1)}}
+	require.ErrorIs(t, local.reloadFile(path), srs.ErrResourceLimit)
+	local.resourceLimits.InputBytes = int64(len(content))
+	require.NoError(t, local.reloadFile(path))
+	limits, err := ruleSetLimits(&option.RuleSetResourceLimits{InputBytes: 128 << 20})
+	require.NoError(t, err)
+	require.Equal(t, int64(128<<20), limits.InputBytes)
+	require.Equal(t, srs.DefaultReadLimits().DecodedBytes, limits.DecodedBytes)
+	_, err = ruleSetLimits(&option.RuleSetResourceLimits{InputBytes: -1})
+	require.Error(t, err)
+}
+
+func TestRemoteUnknownLengthBudgetKeepsOldState(t *testing.T) {
+	ctx := context.Background()
+	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "unknown-length", options: option.RuleSet{Format: C.RuleSetFormatSource}}
+	require.NoError(t, set.loadBytes([]byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
+	old := set.loadSnapshot()
+	set.options.ResourceLimits = &option.RuleSetResourceLimits{InputBytes: 3}
+	set.lastEtag = "old"
+	set.lastUpdated = time.Unix(100, 0)
+	set.url = "http://fixture.invalid/rules"
+	body := &countedBudgetBody{reader: bytes.NewReader([]byte("untrusted response longer than limit"))}
+	set.httpClient = &http.Client{Transport: srsTestTransport(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, ContentLength: -1, Header: http.Header{"Etag": []string{"new"}}, Body: body}, nil
+	})}
+	require.ErrorIs(t, set.fetch(ctx, false), srs.ErrResourceLimit)
+	require.Equal(t, 4, body.read)
+	require.True(t, body.closed)
+	require.Same(t, old, set.loadSnapshot())
+	require.Equal(t, "old", set.lastEtag)
+	require.Equal(t, time.Unix(100, 0), set.lastUpdated)
+}
+
+type countedBudgetBody struct {
+	reader io.Reader
+	read   int
+	closed bool
+}
+
+func (b *countedBudgetBody) Read(p []byte) (int, error) {
+	n, err := b.reader.Read(p)
+	b.read += n
+	return n, err
+}
+func (b *countedBudgetBody) Close() error { b.closed = true; return nil }

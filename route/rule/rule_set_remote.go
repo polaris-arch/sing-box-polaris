@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"io"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -53,6 +53,9 @@ type RemoteRuleSet struct {
 }
 
 func NewRemoteRuleSet(ctx context.Context, logger logger.ContextLogger, tag string, options option.RuleSet) (*RemoteRuleSet, error) {
+	if _, err := ruleSetLimits(options.ResourceLimits); err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	var updateInterval time.Duration
 	if options.RemoteOptions.UpdateInterval > 0 {
@@ -117,7 +120,7 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
 	var loadedFromInitialPath bool
 	if s.lastUpdated.IsZero() && s.initialPath != "" {
 		var content []byte
-		content, err = filemanager.ReadFile(s.ctx, s.initialPath)
+		content, err = readRuleSetFile(s.ctx, s.initialPath, s.options.ResourceLimits)
 		if err == nil {
 			err = s.loadBytesContext(ctx, content)
 		}
@@ -191,6 +194,13 @@ func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (r
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	limits, limitsErr := ruleSetLimits(s.options.ResourceLimits)
+	if limitsErr != nil {
+		return limitsErr
+	}
+	if int64(len(content)) > limits.InputBytes {
+		return fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+	}
 	var (
 		ruleSet option.PlainRuleSetCompat
 		err     error
@@ -202,7 +212,7 @@ func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (r
 			return err
 		}
 	case C.RuleSetFormatBinary:
-		ruleSet, err = srs.ReadContext(ctx, bytes.NewReader(content), false)
+		ruleSet, err = srs.ReadContextWithLimits(ctx, bytes.NewReader(content), false, limits)
 		if err != nil {
 			return err
 		}
@@ -246,6 +256,10 @@ func (s *RemoteRuleSet) updateOnce() {
 }
 
 func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
+	limits, limitsErr := ruleSetLimits(s.options.ResourceLimits)
+	if limitsErr != nil {
+		return limitsErr
+	}
 	s.logger.Debug("updating rule-set ", s.tag, " from URL: ", s.url)
 	request, err := http.NewRequest("GET", s.url, nil)
 	if err != nil {
@@ -264,6 +278,9 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	defer response.Body.Close()
 	switch response.StatusCode {
 	case http.StatusOK:
+		if response.ContentLength > limits.InputBytes {
+			return fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+		}
 	case http.StatusNotModified:
 		s.lastUpdated = time.Now()
 		if s.cacheFile != nil {
@@ -283,7 +300,7 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	default:
 		return E.New("unexpected status: ", response.Status)
 	}
-	content, err := io.ReadAll(response.Body)
+	content, err := srs.ReadContent(response.Body, limits.InputBytes)
 	if err != nil {
 		return err
 	}
@@ -347,4 +364,33 @@ func (s *RemoteRuleSet) Match(metadata *adapter.InboundContext) bool {
 
 func (s *RemoteRuleSet) mergeableRule() *DefaultHeadlessRule {
 	return mergeableRuleIn(s.loadSnapshot().rules)
+}
+
+// Bound file acquisition too: validating len(content) after ReadFile is too late.
+func readRuleSetFile(ctx context.Context, path string, configured *option.RuleSetResourceLimits) ([]byte, error) {
+	limits, err := ruleSetLimits(configured)
+	if err != nil {
+		return nil, err
+	}
+	file, err := filemanager.Open(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if stat.Size() > limits.InputBytes {
+		return nil, fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
+	}
+	// Still bound actual reads in case the file grows after Stat.
+	return srs.ReadContent(file, limits.InputBytes)
+}
+
+func ruleSetLimits(configured *option.RuleSetResourceLimits) (srs.ReadLimits, error) {
+	if configured == nil {
+		return srs.DefaultReadLimits(), nil
+	}
+	return srs.ResolveReadLimits(*configured)
 }
