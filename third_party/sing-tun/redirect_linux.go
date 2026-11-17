@@ -63,6 +63,8 @@ type autoRedirect struct {
 	tproxyRouteTableIndex        int
 	redirectRouteAccess          sync.Mutex
 	redirectRoutesActive         bool
+	redirectOwnedRoutes          ownedLinuxRoutes
+	redirectOwnedRules           ownedLinuxRules
 	androidVPNServiceRuleAccess  sync.Mutex
 	androidVPNServiceRules       []*netlink.Rule
 	androidVPNServiceRulesActive bool
@@ -397,7 +399,7 @@ func (r *autoRedirect) updateIPTablesNetwork() error {
 	return E.Errors(err, routeErr, vpnServiceErr, bypassErr)
 }
 
-func (r *autoRedirect) Close() error {
+func (r *autoRedirect) Close() (closeErr error) {
 	// Attempt latches stay set so post-attempt cleanup retains its legacy retry
 	// behavior. Before any firewall/route setup, Close must not sweep another
 	// instance's resources just because they share a table or chain name.
@@ -407,15 +409,15 @@ func (r *autoRedirect) Close() error {
 	bypassAttempted := r.bypassRouteSetupAttempted.Load()
 	if r.useNFTables {
 		if firewallAttempted || routesAttempted {
-			_ = runInNetworkNamespace(r.tunOptions.NetNs, func() error {
+			closeErr = E.Errors(closeErr, runInNetworkNamespace(r.tunOptions.NetNs, func() error {
 				if firewallAttempted {
 					r.cleanupNFTables()
 				}
 				if routesAttempted {
-					r.cleanupRedirectRoutes()
+					return r.cleanupRedirectRoutes()
 				}
 				return nil
-			})
+			}))
 		}
 		if r.ownedNetworkMonitor {
 			_ = r.networkMonitor.Close()
@@ -427,7 +429,7 @@ func (r *autoRedirect) Close() error {
 			r.cleanupIPTables()
 		}
 		if routesAttempted {
-			r.cleanupRedirectRoutes()
+			closeErr = E.Errors(closeErr, r.cleanupRedirectRoutes())
 		}
 		if r.androidVPNService {
 			if bypassAttempted {
@@ -445,9 +447,9 @@ func (r *autoRedirect) Close() error {
 	if r.redirectServer != nil {
 		err := r.redirectServer.Close()
 		r.redirectServer = nil
-		return err
+		closeErr = E.Errors(closeErr, err)
 	}
-	return nil
+	return closeErr
 }
 
 func (r *autoRedirect) initializeNFTables() error {

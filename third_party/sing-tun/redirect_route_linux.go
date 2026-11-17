@@ -5,6 +5,7 @@ package tun
 import (
 	"errors"
 	"net"
+	"slices"
 
 	"github.com/sagernet/netlink"
 	"github.com/sagernet/sing/common"
@@ -16,8 +17,8 @@ import (
 
 const redirectRouteRulePriority = 1
 
-func (r *autoRedirect) setupRedirectRoutes() error {
-	err := r.interfaceFinder.Update()
+func (r *autoRedirect) setupRedirectRoutes() (err error) {
+	err = r.interfaceFinder.Update()
 	if err != nil {
 		return E.Cause(err, "update interfaces")
 	}
@@ -29,15 +30,15 @@ func (r *autoRedirect) setupRedirectRoutes() error {
 		return E.Cause(err, "select redirect route table")
 	}
 	r.redirectRoutesActive = false
-	r.cleanupRedirectRoutesLocked()
-	r.cleanupStaleRouteRules(redirectRouteRulePriority, 0)
-	if r.tproxyEnabled() {
-		r.cleanupStaleRouteRules(redirectRouteRulePriority, r.tunOptions.AutoRedirectTProxyMark)
+	if err = r.cleanupRedirectRoutesLocked(); err != nil {
+		return err
 	}
+	// Priority/table discovery is not ownership. Never sweep another live
+	// instance's rules as a substitute for explicit crash recovery.
 	r.redirectRouteTableIndex = tableIndex
 	defer func() {
 		if err != nil {
-			r.cleanupRedirectRoutesLocked()
+			err = errors.Join(err, r.cleanupRedirectRoutesLocked())
 		}
 	}()
 	err = r.reconcileRedirectRoutesLocked(redirectInterfaces)
@@ -49,7 +50,7 @@ func (r *autoRedirect) setupRedirectRoutes() error {
 		rule.Priority = redirectRouteRulePriority
 		rule.Table = r.redirectRouteTableIndex
 		rule.Family = unix.AF_INET
-		err = netlink.RuleAdd(rule)
+		err = r.addOwnedRedirectRule(rule)
 		if err != nil {
 			return E.Cause(err, "add ipv4 redirect rule")
 		}
@@ -59,7 +60,7 @@ func (r *autoRedirect) setupRedirectRoutes() error {
 		rule.Priority = redirectRouteRulePriority
 		rule.Table = r.redirectRouteTableIndex
 		rule.Family = unix.AF_INET6
-		err = netlink.RuleAdd(rule)
+		err = r.addOwnedRedirectRule(rule)
 		if err != nil {
 			return E.Cause(err, "add ipv6 redirect rule")
 		}
@@ -87,16 +88,18 @@ func (r *autoRedirect) setupTProxyRouteLocked() error {
 	route := netlink.Route{
 		LinkIndex: loopbackLink.Attrs().Index,
 		Dst:       defaultDestination(unix.AF_INET6),
+		Priority:  1024, // IP6_RT_PRIO_USER, explicit to match kernel readback.
 		Table:     r.tproxyRouteTableIndex,
 		Type:      unix.RTN_LOCAL,
+		Protocol:  unix.RTPROT_BOOT,
 		Scope:     netlink.SCOPE_HOST,
 	}
-	err = netlink.RouteAdd(&route)
+	err = r.addOwnedRedirectRoute(&route, netlink.RouteAdd)
 	if err != nil {
 		return E.Cause(err, "add tproxy route")
 	}
 	rule := r.tproxyRouteRule()
-	err = netlink.RuleAdd(rule)
+	err = r.addOwnedRedirectRule(rule)
 	if err != nil {
 		return E.Cause(err, "add tproxy rule")
 	}
@@ -147,41 +150,41 @@ func (r *autoRedirect) updateRedirectRoutes() error {
 	return r.reconcileRedirectRoutesLocked(redirectInterfaces)
 }
 
-func (r *autoRedirect) cleanupRedirectRoutes() {
+func (r *autoRedirect) cleanupRedirectRoutes() error {
 	r.redirectRouteAccess.Lock()
 	defer r.redirectRouteAccess.Unlock()
 	r.redirectRoutesActive = false
-	r.cleanupRedirectRoutesLocked()
+	return r.cleanupRedirectRoutesLocked()
 }
 
-func (r *autoRedirect) cleanupRedirectRoutesLocked() {
-	if r.redirectRouteTableIndex == 0 {
-		return
+func (r *autoRedirect) cleanupRedirectRoutesLocked() error {
+	return r.clearOwnedRedirectRoutes(netlink.RouteDel, netlink.RuleDel)
+}
+
+// Caller holds redirectRouteAccess. Every failed deletion keeps its receipt.
+func (r *autoRedirect) clearOwnedRedirectRoutes(removeRoute func(*netlink.Route) error, removeRule func(*netlink.Rule) error) error {
+	return errors.Join(r.redirectOwnedRules.clear(removeRule), r.redirectOwnedRoutes.clear(func(route *netlink.Route) error {
+		normalized := normalizeRedirectReceipt(*route)
+		return removeRoute(&normalized)
+	}))
+}
+
+func (r *autoRedirect) addOwnedRedirectRoute(route *netlink.Route, add func(*netlink.Route) error) error {
+	receipt := cloneOwnedRoute(*route)
+	if err := add(route); err != nil {
+		return err
 	}
-	routes, _ := netlink.RouteListFiltered(netlink.FAMILY_ALL,
-		&netlink.Route{Table: r.redirectRouteTableIndex},
-		netlink.RT_FILTER_TABLE)
-	for _, route := range routes {
-		_ = netlink.RouteDel(&route)
+	r.redirectOwnedRoutes.routes = append(r.redirectOwnedRoutes.routes, receipt)
+	return nil
+}
+
+func (r *autoRedirect) addOwnedRedirectRule(rule *netlink.Rule) error {
+	if err := netlink.RuleAdd(rule); err != nil {
+		return err
 	}
-	if r.enableIPv4 {
-		rule := netlink.NewRule()
-		rule.Priority = redirectRouteRulePriority
-		rule.Table = r.redirectRouteTableIndex
-		rule.Family = unix.AF_INET
-		_ = netlink.RuleDel(rule)
-	}
-	if r.enableIPv6 {
-		rule := netlink.NewRule()
-		rule.Priority = redirectRouteRulePriority
-		rule.Table = r.redirectRouteTableIndex
-		rule.Family = unix.AF_INET6
-		_ = netlink.RuleDel(rule)
-	}
-	if r.tproxyRouteTableIndex != 0 {
-		flushRouteTable(r.tproxyRouteTableIndex)
-		_ = netlink.RuleDel(r.tproxyRouteRule())
-	}
+	receipt := *rule
+	r.redirectOwnedRules.rules = append(r.redirectOwnedRules.rules, &receipt)
+	return nil
 }
 
 type redirectRouteKey struct {
@@ -190,12 +193,36 @@ type redirectRouteKey struct {
 }
 
 func (r *autoRedirect) reconcileRedirectRoutesLocked(redirectInterfaces []control.Interface) error {
-	currentRoutes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL,
-		&netlink.Route{Table: r.redirectRouteTableIndex},
-		netlink.RT_FILTER_TABLE)
+	return r.reconcileRedirectRoutesWith(redirectInterfaces, func() ([]netlink.Route, error) {
+		return netlink.RouteListFiltered(netlink.FAMILY_ALL, &netlink.Route{Table: r.redirectRouteTableIndex}, netlink.RT_FILTER_TABLE)
+	}, netlink.RouteAppend, netlink.RouteDel)
+}
+
+func (r *autoRedirect) reconcileRedirectRoutesWith(redirectInterfaces []control.Interface, listLive func() ([]netlink.Route, error), add, remove func(*netlink.Route) error) error {
+	live, err := listLive()
 	if err != nil {
-		return E.Cause(err, "list redirect routes")
+		return E.Cause(err, "list live redirect routes")
 	}
+	// Receipts prove origin, not continued existence. Drop only receipts
+	// positively absent from this successful live snapshot; do not adopt foreign.
+	var currentRoutes []netlink.Route
+	retained := make([]netlink.Route, 0, len(r.redirectOwnedRoutes.routes))
+	for _, receipt := range r.redirectOwnedRoutes.routes {
+		if receipt.Table != r.redirectRouteTableIndex {
+			retained = append(retained, receipt)
+			continue
+		}
+		if slices.ContainsFunc(live, func(route netlink.Route) bool { return redirectReceiptMatchesLive(receipt, route) }) {
+			currentRoutes = append(currentRoutes, receipt)
+			retained = append(retained, receipt)
+		} else if slices.ContainsFunc(live, func(route netlink.Route) bool { return redirectRouteSlotMatches(receipt, route) }) {
+			// A changed selector is not proof of deletion. Preserve all debt
+			// and stop before writes rather than adopt or overwrite it.
+			return E.New("redirect route identity is ambiguous; cleanup receipt retained")
+		}
+	}
+	clear(r.redirectOwnedRoutes.routes[len(retained):])
+	r.redirectOwnedRoutes.routes = retained
 	routesToAdd, routesToDelete := calculateRedirectRouteChanges(
 		r.redirectRouteTableIndex,
 		redirectInterfaces,
@@ -205,19 +232,51 @@ func (r *autoRedirect) reconcileRedirectRoutesLocked(redirectInterfaces []contro
 	)
 	for index := range routesToDelete {
 		route := &routesToDelete[index]
-		err = netlink.RouteDel(route)
+		normalized := normalizeRedirectReceipt(*route)
+		err = remove(&normalized)
 		if err != nil && !errors.Is(err, unix.ESRCH) && !errors.Is(err, unix.ENOENT) {
 			return E.Cause(err, "delete redirect route ", route)
+		}
+		for i := range r.redirectOwnedRoutes.routes {
+			if r.redirectOwnedRoutes.routes[i].Equal(*route) {
+				r.redirectOwnedRoutes.routes = slices.Delete(r.redirectOwnedRoutes.routes, i, i+1)
+				break
+			}
 		}
 	}
 	for index := range routesToAdd {
 		route := &routesToAdd[index]
-		err = netlink.RouteAppend(route)
+		err = r.addOwnedRedirectRoute(route, add)
 		if err != nil {
 			return E.Cause(err, "append redirect route ", route)
 		}
 	}
 	return nil
+}
+
+// Linux fills an omitted IPv6 metric with IP6_RT_PRIO_USER (1024).
+// Only runtime nexthop health bits are ignored; configured selectors remain
+// compared. A same-slot mismatch must not discard the ownership receipt.
+func normalizeRedirectReceipt(receipt netlink.Route) netlink.Route {
+	if receipt.Dst != nil && receipt.Dst.IP.To4() == nil && receipt.Priority == 0 {
+		receipt.Priority = 1024
+	}
+	return receipt
+}
+
+func redirectReceiptMatchesLive(receipt, live netlink.Route) bool {
+	receipt = normalizeRedirectReceipt(receipt)
+	const dynamicFlags = unix.RTNH_F_DEAD | unix.RTNH_F_LINKDOWN
+	receipt.Flags &^= dynamicFlags
+	live.Flags &^= dynamicFlags
+	return receipt.Equal(live)
+}
+
+func redirectRouteSlotMatches(receipt, live netlink.Route) bool {
+	if receipt.Table != live.Table || receipt.LinkIndex != live.LinkIndex || receipt.Dst == nil || live.Dst == nil {
+		return false
+	}
+	return receipt.Dst.String() == live.Dst.String()
 }
 
 func calculateRedirectRouteChanges(
@@ -259,11 +318,17 @@ func newRedirectRoute(tableIndex int, key redirectRouteKey) netlink.Route {
 	if key.family == unix.AF_INET {
 		destination = net.IPv4(127, 0, 0, 1)
 	}
+	priority := 0
+	if key.family == unix.AF_INET6 {
+		priority = 1024
+	} // IP6_RT_PRIO_USER
 	return netlink.Route{
+		Priority:  priority,
 		LinkIndex: key.linkIndex,
 		Dst:       netlink.NewIPNet(destination),
 		Table:     tableIndex,
 		Type:      unix.RTN_LOCAL,
+		Protocol:  unix.RTPROT_BOOT,
 		Scope:     netlink.SCOPE_HOST,
 	}
 }
