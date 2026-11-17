@@ -3,6 +3,7 @@ package ocm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/common/usagepersist"
+	"github.com/sagernet/sing/service/filemanager"
 )
 
 func TestUsageSaveSchedulingCoalescesRequests(t *testing.T) {
@@ -38,6 +40,7 @@ func TestUsageSaveSchedulingCoalescesRequests(t *testing.T) {
 
 func TestUsageConcurrentExplicitSavesSerializeRename(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	var group sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		group.Add(1)
@@ -75,6 +78,7 @@ func waitUsageSaveState(t *testing.T, u *AggregatedUsage, ready func() bool) {
 
 func TestUsageUpdateDuringRunningSaveSurvivesCancel(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	u.saveWriteMutex.Lock()
 	locked := true
 	defer func() {
@@ -116,6 +120,7 @@ func TestUsageUpdateDuringRunningSaveSurvivesCancel(t *testing.T) {
 
 func TestUsageFailedAttemptThrottlesNewUpdates(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "missing", "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	u.scheduleSave()
 	waitUsageSaveState(t, u, func() bool { return !u.lastSaveAttempt.IsZero() && !u.pendingSave })
 	u.scheduleSave()
@@ -136,6 +141,7 @@ func TestUsageFailedAttemptThrottlesNewUpdates(t *testing.T) {
 
 func TestUsageCloseJoinsActiveSaveAndFinalFlush(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	u.saveWriteMutex.Lock()
 	locked := true
 	defer func() {
@@ -172,6 +178,7 @@ func TestUsageCloseJoinsActiveSaveAndFinalFlush(t *testing.T) {
 
 func TestUsageCloseReturnsFinalFlushFailure(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "missing", "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	if err := u.Close(); err == nil {
 		t.Fatal("failed final flush reported success")
 	}
@@ -179,6 +186,7 @@ func TestUsageCloseReturnsFinalFlushFailure(t *testing.T) {
 
 func TestRequestDrainFlushesLastUsageEvent(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	var drain usagepersist.RequestDrain
 	entered := make(chan struct{})
 	handler := drain.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -210,12 +218,17 @@ func TestRequestDrainFlushesLastUsageEvent(t *testing.T) {
 
 func TestIncompleteObservationsRoundTripWithoutInventedUsage(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "incomplete.json"), lastSaveTime: time.Now()}
+	t.Cleanup(func() { _ = u.Close() })
 	defer u.cancelPendingSave()
 	u.MarkIncomplete()
 	if err := u.Save(); err != nil {
 		t.Fatal(err)
 	}
+	if err := u.Close(); err != nil {
+		t.Fatal(err)
+	}
 	v := &AggregatedUsage{ctx: context.Background(), filePath: u.filePath}
+	t.Cleanup(func() { _ = v.Close() })
 	if err := v.Load(); err != nil {
 		t.Fatal(err)
 	}
@@ -230,6 +243,7 @@ func TestLegacyUsageWithoutIncompleteFieldLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	u := &AggregatedUsage{ctx: context.Background(), filePath: path}
+	t.Cleanup(func() { _ = u.Close() })
 	if err := u.Load(); err != nil {
 		t.Fatal(err)
 	}
@@ -240,6 +254,7 @@ func TestLegacyUsageWithoutIncompleteFieldLoads(t *testing.T) {
 
 func TestRequestDrainFlushesLastIncompleteObservation(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
+	t.Cleanup(func() { _ = u.Close() })
 	var drain usagepersist.RequestDrain
 	entered := make(chan struct{})
 	handler := drain.Wrap(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -274,5 +289,86 @@ func TestRequestDrainFlushesLastIncompleteObservation(t *testing.T) {
 	u.saveMutex.Unlock()
 	if pending {
 		t.Fatal("closed tracker scheduled another save")
+	}
+}
+
+func TestUsageFileOwnershipSpansLoadAndFinalFlush(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+	first := &AggregatedUsage{ctx: context.Background(), filePath: path, lastSaveTime: time.Now()}
+	t.Cleanup(func() { _ = first.Close() })
+	if err := first.Load(); err != nil {
+		t.Fatal(err)
+	}
+	second := &AggregatedUsage{ctx: context.Background(), filePath: path, lastSaveTime: time.Now()}
+	t.Cleanup(func() { _ = second.Close() })
+	if err := second.Load(); !errors.Is(err, usagepersist.ErrFileInUse) {
+		t.Fatalf("second load admitted: %v", err)
+	}
+	if err := second.Save(); !errors.Is(err, usagepersist.ErrFileInUse) {
+		t.Fatalf("second save admitted: %v", err)
+	}
+	first.MarkIncomplete()
+	// The finalizer still owns the file while waiting for an earlier transaction.
+	first.saveWriteMutex.Lock()
+	done := make(chan error, 1)
+	go func() { done <- first.Close() }()
+	waitUsageSaveState(t, first, func() bool { return first.saveStopping })
+	if err := second.Load(); !errors.Is(err, usagepersist.ErrFileInUse) {
+		t.Errorf("pending close released ownership: %v", err)
+	}
+	first.saveWriteMutex.Unlock()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if err := second.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if second.IncompleteObservations != 1 {
+		t.Fatal("successor loaded stale snapshot")
+	}
+	if err := first.Load(); err == nil {
+		t.Fatal("closed tracker reacquired file")
+	}
+}
+
+func TestUsageFailedLoadReleasesFileOwnership(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "usage.json")
+	if err := os.WriteFile(path, []byte("malformed"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	first := &AggregatedUsage{ctx: context.Background(), filePath: path}
+	if err := first.Load(); err == nil {
+		t.Fatal("invalid snapshot loaded")
+	}
+	// Do not Close the rejected tracker: production disables it after Load fails.
+	lease, err := usagepersist.AcquireFile(context.Background(), path)
+	if err != nil {
+		t.Fatal("load failure leaked owner", err)
+	}
+	lease.Close()
+}
+
+func TestUsageTrackerWithNonemptyFileManagerBase(t *testing.T) {
+	root := t.TempDir()
+	ctx := filemanager.WithDefault(context.Background(), root, "", os.Getuid(), os.Getgid())
+	first := &AggregatedUsage{ctx: ctx, filePath: "usage.json", lastSaveTime: time.Now()}
+	t.Cleanup(func() { _ = first.Close() })
+	if err := first.Load(); err != nil {
+		t.Fatal(err)
+	}
+	first.MarkIncomplete()
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	second := &AggregatedUsage{ctx: ctx, filePath: "usage.json", lastSaveTime: time.Now()}
+	t.Cleanup(func() { _ = second.Close() })
+	if err := second.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if second.IncompleteObservations != 1 {
+		t.Fatal("manager-backed snapshot was not preserved")
+	}
+	if _, err := os.Stat(filepath.Join(root, "usage.json")); err != nil {
+		t.Fatal(err)
 	}
 }

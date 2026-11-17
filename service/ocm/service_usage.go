@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sagernet/sing-box/common/usagepersist"
 	"github.com/sagernet/sing-box/log"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service/filemanager"
@@ -68,6 +69,7 @@ type AggregatedUsage struct {
 	saveTimer              *time.Timer
 	saveMutex              sync.Mutex
 	saveWriteMutex         sync.Mutex
+	fileLease              *usagepersist.FileLease
 	saveDirty              bool
 	saveStopping           bool
 	saveGroup              sync.WaitGroup
@@ -1079,7 +1081,24 @@ func (u *AggregatedUsage) ToJSON() *AggregatedUsageJSON {
 	return result
 }
 
-func (u *AggregatedUsage) Load() error {
+func (u *AggregatedUsage) Load() (result error) {
+	u.saveWriteMutex.Lock()
+	defer u.saveWriteMutex.Unlock()
+	u.mutex.Lock()
+	closed := u.closed
+	u.mutex.Unlock()
+	if closed {
+		return E.New("usage tracker is closed")
+	}
+	if err := u.acquireFileLocked(); err != nil {
+		return err
+	}
+	defer func() {
+		if result != nil {
+			result = E.Errors(result, u.fileLease.Close())
+			u.fileLease = nil
+		}
+	}()
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
@@ -1128,6 +1147,9 @@ func (u *AggregatedUsage) Save() error {
 
 // saveLocked requires the full snapshot-to-rename transaction lock.
 func (u *AggregatedUsage) saveLocked() error {
+	if err := u.acquireFileLocked(); err != nil {
+		return err
+	}
 	jsonData := u.ToJSON()
 
 	data, err := json.MarshalIndent(jsonData, "", "  ")
@@ -1266,6 +1288,10 @@ func (u *AggregatedUsage) Close() error {
 		u.saveGroup.Wait()
 		u.saveWriteMutex.Lock()
 		u.closeErr = u.saveLocked()
+		if u.fileLease != nil {
+			u.closeErr = E.Errors(u.closeErr, u.fileLease.Close())
+			u.fileLease = nil
+		}
 		u.saveWriteMutex.Unlock()
 	})
 	return u.closeErr
@@ -1284,4 +1310,18 @@ func (u *AggregatedUsage) MarkIncomplete() {
 	}
 	u.LastUpdated = time.Now()
 	u.scheduleSave()
+}
+
+// Caller holds saveWriteMutex through Load or the entire save transaction.
+func (u *AggregatedUsage) acquireFileLocked() error {
+	if u.fileLease != nil {
+		return nil
+	}
+	lease, err := usagepersist.AcquireFile(u.ctx, u.filePath)
+	if err != nil {
+		return err
+	}
+	u.fileLease = lease
+	u.filePath = lease.ManagedPath
+	return nil
 }
