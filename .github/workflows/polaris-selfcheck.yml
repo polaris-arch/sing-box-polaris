@@ -105,6 +105,21 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: release/GO_VERSION
+          cache: false
+      - name: Verify and compile shared CI tooling from the workflow revision
+        run: |
+          go test -mod=readonly ./cmd/internal/ci
+          go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
+      - name: Share workflow tooling for exact historical source checkouts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: polaris-ci-tooling
+          path: ${{ runner.temp }}/polaris-ci
+          if-no-files-found: error
+          retention-days: 1
       - name: Checkout exact source for cheap formatting
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
@@ -132,7 +147,7 @@ jobs:
         working-directory: .polaris-format-source
         run: |
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          python3 -B "$GITHUB_WORKSPACE/scripts/ci/check_remediation_format.py"
+          "$RUNNER_TEMP/polaris-ci" check-format
   linux:
     needs: format
     timeout-minutes: 90
@@ -435,6 +450,12 @@ jobs:
     name: Patch tests
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: polaris-ci-tooling
+          path: ${{ runner.temp }}/polaris-ci-tooling
+      - name: Enable the shared workflow tool
+        run: chmod 700 "$RUNNER_TEMP/polaris-ci-tooling/polaris-ci"
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         timeout-minutes: 5
         with:
@@ -488,9 +509,8 @@ jobs:
           git merge-base --is-ancestor "$BASE_COMMIT" HEAD
           # Partition every changed Go/input path by its actual go.mod owner.
           # Unknown modules fail closed instead of silently losing coverage.
-          python3 -B -m unittest discover -s scripts/ci -p 'test_patch_test_packages.py'
           selection_dir="$RUNNER_TEMP/polaris-ci/patch-test-packages"
-          python3 -B scripts/ci/patch_test_packages.py --base "$BASE_COMMIT" --output-directory "$selection_dir"
+          "$RUNNER_TEMP/polaris-ci-tooling/polaris-ci" patch-packages --base "$BASE_COMMIT" --output-directory "$selection_dir"
           mapfile -t packages < "$selection_dir/root-packages.txt"
           netns_selected=false
           if [ "${#packages[@]}" -eq 0 ]; then
@@ -568,23 +588,7 @@ jobs:
             # Resolve from the product root: the SDK must use the exact verified
             # local carrier and the product's selected dependency replacements.
             go list -mod=readonly -m -json github.com/sagernet/tailscale > "$selection_dir/tailscale-module.json"
-            python3 -B - "$selection_dir" <<'PYSDK'
-          import json, sys
-          from pathlib import Path
-          sys.path.insert(0, 'scripts/ci')
-          from g4_candidate import LOCAL_SDK, SDK, SDK_PACKAGES, require_owned_sdk
-          directory = Path(sys.argv[1])
-          expected = [SDK + '/' + package for package in SDK_PACKAGES]
-          selected = json.loads((directory / 'selection.json').read_text())['modules']['third_party/tailscale']
-          if (not expected or selected['module'] != SDK or selected['packages'] != expected
-                  or selected['fullValidation'] is not False
-                  or (directory / 'tailscale-packages.txt').read_text().splitlines() != expected):
-              raise SystemExit('Tailscale selection differs from the bounded G4 package contract')
-          module = json.loads((directory / 'tailscale-module.json').read_text())
-          if require_owned_sdk(module, Path.cwd())['Path'] != LOCAL_SDK:
-              raise SystemExit('Tailscale patch marker requires the exact selected local carrier')
-          print(json.dumps({'selectedSDK': module}, sort_keys=True))
-          PYSDK
+            "$RUNNER_TEMP/polaris-ci-tooling/polaris-ci" check-sdk-selection "$selection_dir"
             mapfile -t tailscale_packages < "$selection_dir/tailscale-packages.txt"
             test "${#tailscale_packages[@]}" -gt 0
             tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"

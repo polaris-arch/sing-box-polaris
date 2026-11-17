@@ -1,0 +1,431 @@
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+)
+
+func TestPatchGitHistoryRequiresMergedBaseline(t *testing.T) {
+	root := moduleFixture(t)
+	t.Chdir(root)
+	commit := func(args ...string) string {
+		t.Helper()
+		output, err := git(root, append([]string{"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid"}, args...)...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	commit("init", "-q")
+	commit("add", ".")
+	commit("commit", "-qm", "common")
+	common := commit("rev-parse", "HEAD")
+	fixtureFile(t, root, "official.go", "package fixture\n")
+	commit("add", ".")
+	commit("commit", "-qm", "official")
+	official := commit("rev-parse", "HEAD")
+	commit("checkout", "-q", "--detach", common)
+	fixtureFile(t, root, "changed.go", "package fixture\n")
+	commit("add", ".")
+	commit("commit", "-qm", "rewritten")
+	output := filepath.Join(t.TempDir(), "plan")
+	if err := patchPackages([]string{"--base", official, "--output-directory", output}); err == nil {
+		t.Fatal("divergent baseline admitted")
+	}
+	if _, err := os.Lstat(output); !os.IsNotExist(err) {
+		t.Fatal("rejected history wrote an output plan")
+	}
+	commit("merge", "--no-ff", "--no-edit", official)
+	if err := patchPackages([]string{"--base", official, "--output-directory", output}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(output, "selection.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan patchPlan
+	if err := json.Unmarshal(data, &plan); err != nil {
+		t.Fatal(err)
+	}
+	if plan.BaseCommit != official || plan.MergeBase != official || !plan.BaseIsAncestor ||
+		plan.SourceCommit != commit("rev-parse", "HEAD") || !slices.Equal(plan.Modules["."].ChangedPaths, []string{"changed.go"}) {
+		t.Fatalf("merged history differs: %+v", plan)
+	}
+}
+
+func TestScopedProtoArchiveAdmission(t *testing.T) {
+	original := runtimeProtoc
+	t.Cleanup(func() { runtimeProtoc = original })
+	for _, fault := range []string{"", "digest", "size", "missing", "duplicate", "symlink"} {
+		t.Run(fault, func(t *testing.T) {
+			var buffer bytes.Buffer
+			archive := zip.NewWriter(&buffer)
+			members := append([]string{}, protocMembers...)
+			if fault == "missing" {
+				members = members[:1]
+			} else if fault == "duplicate" {
+				members = append(members, protocMembers[0])
+			}
+			members = append(members, "../unrequested")
+			for _, name := range members {
+				header := &zip.FileHeader{Name: name}
+				header.SetMode(0o644)
+				if fault == "symlink" && name == protocMembers[0] {
+					header.SetMode(os.ModeSymlink | 0o777)
+				}
+				writer, err := archive.CreateHeader(header)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := writer.Write([]byte("fixture")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := archive.Close(); err != nil {
+				t.Fatal(err)
+			}
+			data := buffer.Bytes()
+			runtimeProtoc.Bytes, runtimeProtoc.SHA256 = int64(len(data)), sha256Hex(data)
+			if fault == "digest" {
+				data = bytes.Clone(data)
+				data[0] ^= 1
+			} else if fault == "size" {
+				data = append(data, 'x')
+			}
+			directory := t.TempDir()
+			tools := filepath.Join(directory, "tools")
+			err := extractProtoc(data, tools)
+			if fault != "" {
+				if err == nil {
+					t.Fatal("invalid archive admitted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range protocMembers {
+				data, err := os.ReadFile(filepath.Join(tools, filepath.FromSlash(name)))
+				if err != nil || string(data) != "fixture" {
+					t.Fatalf("fixed member differs: %s: %v", name, err)
+				}
+			}
+			if _, err := os.Lstat(filepath.Join(directory, "unrequested")); !os.IsNotExist(err) {
+				t.Fatal("unrequested ZIP path extracted")
+			}
+		})
+	}
+}
+
+func TestScopedProtoOutputAndSourceAdmission(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "false")
+	t.Setenv("PATH", t.TempDir())
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtimeProtoIdentity(root); err == nil || !strings.Contains(err.Error(), "GitHub-hosted") {
+		t.Fatal("non-CI invocation reached subprocess execution")
+	}
+	for _, name := range []string{root, filepath.Join(root, "daemon/generated"), "relative", root + "/../aliased"} {
+		if _, err := outsideSource(root, name); err == nil {
+			t.Fatalf("unsafe output admitted: %s", name)
+		}
+	}
+	parent, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "fresh/output")
+	if actual, err := outsideSource(root, outside); err != nil || actual != outside {
+		t.Fatalf("fresh external output rejected: %v", err)
+	}
+	for _, fault := range []string{"", "different", "missing", "extra", "header", "symlink"} {
+		t.Run(fault, func(t *testing.T) {
+			generated, checked := t.TempDir(), t.TempDir()
+			for _, name := range runtimeProtoOutputs {
+				fixtureFile(t, generated, name, "// Code generated by protoc-gen-go. DO NOT EDIT.\npackage daemon\n")
+				fixtureFile(t, checked, name, "// Code generated by protoc-gen-go. DO NOT EDIT.\npackage daemon\n")
+			}
+			name := runtimeProtoOutputs[0]
+			switch fault {
+			case "different":
+				fixtureFile(t, checked, name, "different")
+			case "missing":
+				if err := os.Remove(filepath.Join(generated, filepath.FromSlash(name))); err != nil {
+					t.Fatal(err)
+				}
+			case "extra":
+				fixtureFile(t, generated, "unrelated.pb.go", "unrelated")
+			case "header":
+				fixtureFile(t, generated, name, "package daemon\n")
+			case "symlink":
+				if err := os.Symlink(checked, filepath.Join(generated, "alias")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			inventory, err := runtimeGenerated(generated, checked)
+			if fault != "" {
+				if err == nil {
+					t.Fatal("invalid generated source admitted")
+				}
+			} else if err != nil || len(inventory) != len(runtimeProtoOutputs) {
+				t.Fatalf("valid output rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestSDKSelectionRequiresBoundedLocalCarrier(t *testing.T) {
+	root := moduleFixture(t)
+	t.Chdir(root)
+	for _, fault := range []string{"", "packages", "full-validation", "missing-validation", "directory", "remote"} {
+		t.Run(fault, func(t *testing.T) {
+			name := fixtureFile(t, root, "third_party/tailscale/fixture.go", "package fixture\n")
+			plan, err := selectPatchPackages(root, []string{name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			directory := filepath.Join(t.TempDir(), "plan")
+			if err := writePatchPlan(directory, plan); err != nil {
+				t.Fatal(err)
+			}
+			module := goModule{Path: tailscaleModule, Replace: &goModule{Path: localSDK, Dir: filepath.Join(root, "third_party/tailscale")}}
+			switch fault {
+			case "packages":
+				fixtureFile(t, directory, "tailscale-packages.txt", tailscaleModule+"/unbounded\n")
+			case "full-validation":
+				plan.Modules["third_party/tailscale"].FullValidation = true
+				if err := writeJSONFile(filepath.Join(directory, "selection.json"), plan); err != nil {
+					t.Fatal(err)
+				}
+			case "missing-validation":
+				if err := writeJSONFile(filepath.Join(directory, "selection.json"), map[string]any{
+					"modules": map[string]any{"third_party/tailscale": map[string]any{"module": tailscaleModule, "packages": sdkTestPackages()}},
+				}); err != nil {
+					t.Fatal(err)
+				}
+			case "directory":
+				module.Replace.Dir = root
+			case "remote":
+				module.Replace = &goModule{Path: ownedSDK, Version: "v1.0.0", Sum: "h1:fixture"}
+			}
+			if err := writeJSONFile(filepath.Join(directory, "tailscale-module.json"), module); err != nil {
+				t.Fatal(err)
+			}
+			err = checkSDKSelection([]string{directory})
+			if fault != "" && err == nil || fault == "" && err != nil {
+				t.Fatalf("SDK selection %q: %v", fault, err)
+			}
+		})
+	}
+}
+
+func TestFormatScopeUsesTrackedModulesAndGoGeneratedMarker(t *testing.T) {
+	root := t.TempDir()
+	fixtureFile(t, root, "go.mod", "module fixture\n\ngo 1.27.0\n")
+	fixtureFile(t, root, "owned.go", "package fixture\n")
+	fixtureFile(t, root, "marked.go", "// Code generated by fixture. DO NOT EDIT.\npackage fixture\n")
+	fixtureFile(t, root, "false-marker.go", "/* // Code generated by fixture. DO NOT EDIT. */\npackage fixture\n")
+	fixtureFile(t, root, "nested/go.mod", "module nested\n\ngo 1.27.0\n")
+	fixtureFile(t, root, "nested/independent.go", "package nested\n")
+	fixtureFile(t, root, "testdata/fixture.go", "package fixture\n")
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}} {
+		if _, err := git(root, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	scope, err := ownedFormatScope(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(scope) != 2 || scope["owned.go"] != sha256Hex([]byte("package fixture\n")) || scope["false-marker.go"] == "" {
+		t.Fatalf("owned format scope differs: %v", scope)
+	}
+	fixtureFile(t, root, "go.mod", "module changed\n\ngo 1.27.0\n")
+	if _, err := ownedFormatScope(root); err == nil {
+		t.Fatal("changed tracked module boundary admitted")
+	}
+}
+
+func fixtureFile(t *testing.T, root, name, contents string) string {
+	t.Helper()
+	filename := filepath.Join(root, filepath.FromSlash(name))
+	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filename, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return name
+}
+
+func moduleFixture(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	for owner, runner := range moduleRunners {
+		fixtureFile(t, root, filepath.ToSlash(filepath.Join(owner, "go.mod")), "module "+runner.module+"\n\ngo 1.27.0\n")
+	}
+	return root
+}
+
+func TestPatchPackagesPartitionActualModuleBoundaries(t *testing.T) {
+	root := moduleFixture(t)
+	paths := []string{}
+	for owner := range moduleRunners {
+		paths = append(paths, fixtureFile(t, root, filepath.ToSlash(filepath.Join(owner, "fixture.go")), "package fixture\n"))
+	}
+	paths = append(paths, fixtureFile(t, root, "common/tls/client.go", "package fixture\n"))
+	paths = append(paths, fixtureFile(t, root, "third_party/helper/helper.go", "package fixture\n"))
+	plan, err := selectPatchPackages(root, append(slices.Clone(paths), paths[0], "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounted := []string{}
+	for owner, entry := range plan.Modules {
+		if entry.Module != moduleRunners[owner].module {
+			t.Fatalf("wrong identity for %s", owner)
+		}
+		accounted = append(accounted, entry.ChangedPaths...)
+		if owner == "." {
+			if entry.FullValidation || !slices.Equal(entry.Packages, []string{".", "./common/tls", "./third_party/helper"}) {
+				t.Fatalf("root partition: %+v", entry)
+			}
+		} else if owner == "third_party/tailscale" {
+			for i, name := range sdkPackages {
+				if entry.Packages[i] != tailscaleModule+"/"+name {
+					t.Fatal("SDK package selection differs")
+				}
+			}
+			if entry.FullValidation {
+				t.Fatal("SDK must retain the bounded runtime selection")
+			}
+		} else if !entry.FullValidation || !slices.Equal(entry.Packages, []string{"./..."}) {
+			t.Fatalf("nested module lost full validation: %s", owner)
+		}
+	}
+	slices.Sort(paths)
+	slices.Sort(accounted)
+	if !slices.Equal(accounted, paths) {
+		t.Fatalf("lost or duplicated paths: %v", accounted)
+	}
+	directory := filepath.Join(root, "plan")
+	if err := writePatchPlan(directory, plan); err != nil {
+		t.Fatal(err)
+	}
+	for owner, runner := range moduleRunners {
+		if runner.marker == "" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(directory, runner.marker))
+		if err != nil || string(data) != plan.Modules[owner].Module+"\n" {
+			t.Fatalf("marker does not identify actual module: %s: %v", owner, err)
+		}
+	}
+	if err := writePatchPlan(directory, plan); !os.IsExist(err) {
+		t.Fatalf("stale plan directory reused: %v", err)
+	}
+}
+
+func TestPatchMetadataAndDeletedPackagesRetainValidation(t *testing.T) {
+	root := moduleFixture(t)
+	paths := []string{"go.sum"}
+	for owner := range moduleRunners {
+		if owner != "." {
+			paths = append(paths, owner+"/go.mod")
+		}
+	}
+	plan, err := selectPatchPackages(root, paths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for owner, entry := range plan.Modules {
+		if owner != "third_party/tailscale" && (!entry.FullValidation || !slices.Equal(entry.Packages, []string{"./..."})) {
+			t.Fatalf("metadata lost full validation: %s", owner)
+		}
+	}
+	plan, err = selectPatchPackages(root, []string{"removed/package/file.go"})
+	if err != nil || !slices.Equal(plan.Modules["."].Packages, []string{"./..."}) {
+		t.Fatalf("removed package was not accounted for: %v", err)
+	}
+	fixtureFile(t, root, "daemon/runtime_config.proto", "syntax = \"proto3\";\n")
+	plan, err = selectPatchPackages(root, []string{"daemon/runtime_config.proto"})
+	if err != nil || plan.Modules["."].FullValidation || !slices.Equal(plan.Modules["."].Packages, []string{"./daemon"}) {
+		t.Fatalf("schema input lost generated package: %v", err)
+	}
+}
+
+func TestPatchUnknownAndChangedModuleIdentitiesAreRejected(t *testing.T) {
+	root := moduleFixture(t)
+	fixtureFile(t, root, "third_party/unknown/go.mod", "module unknown\n")
+	for _, name := range []string{"third_party/unknown/conn.go", "third_party/unknown/go.mod"} {
+		if _, err := selectPatchPackages(root, []string{name}); err == nil || !strings.Contains(err.Error(), "no approved test runner") {
+			t.Fatalf("unknown module admitted: %s: %v", name, err)
+		}
+	}
+	for owner, runner := range moduleRunners {
+		mod := filepath.ToSlash(filepath.Join(owner, "go.mod"))
+		fixtureFile(t, root, mod, "module wrong/identity\n")
+		if _, err := selectPatchPackages(root, []string{mod}); err == nil || !strings.Contains(err.Error(), "identity mismatch") {
+			t.Fatalf("changed identity admitted: %s: %v", owner, err)
+		}
+		fixtureFile(t, root, mod, "module "+runner.module+"\n\ngo 1.27.0\n")
+	}
+}
+
+func TestPatchRemovedAndDeeperBoundariesAreRejected(t *testing.T) {
+	root := moduleFixture(t)
+	for owner, runner := range moduleRunners {
+		if runner.marker == "" {
+			continue
+		}
+		mod := filepath.Join(root, filepath.FromSlash(owner), "go.mod")
+		if err := os.Remove(mod); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := selectPatchPackages(root, []string{owner + "/fixture.go"}); err == nil || !strings.Contains(err.Error(), "nested module boundary") {
+			t.Fatalf("removed boundary admitted: %s: %v", owner, err)
+		}
+		fixtureFile(t, root, owner+"/go.mod", "module "+runner.module+"\n")
+	}
+	fixtureFile(t, root, "third_party/sing-tun/deeper/go.mod", "module another/module\n")
+	if _, err := selectPatchPackages(root, []string{"third_party/sing-tun/deeper/fixture.go"}); err == nil {
+		t.Fatal("new deeper module admitted")
+	}
+	if _, err := selectPatchPackages(root, []string{"third_party/sing-tun/missing/go.sum"}); err == nil {
+		t.Fatal("unowned metadata boundary admitted")
+	}
+}
+
+func TestPatchUnsafePathsAndSymlinksAreRejected(t *testing.T) {
+	root := moduleFixture(t)
+	for _, name := range []string{"../box.go", "/box.go", "common/../box.go", "common//box.go", "box\n.go", "common\\box.go", "bad\x00.go"} {
+		if _, err := selectPatchPackages(root, []string{name}); err == nil {
+			t.Fatalf("unsafe path admitted: %q", name)
+		}
+	}
+	if err := os.Symlink(filepath.Join(root, "third_party/sing-tun"), filepath.Join(root, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := selectPatchPackages(root, []string{"linked/fixture.go"}); err == nil {
+		t.Fatal("symlinked source boundary admitted")
+	}
+}
+
+func TestPatchReleaseModuleOnlyAdmitsLicenseEvidence(t *testing.T) {
+	root := moduleFixture(t)
+	fixtureFile(t, root, "release/go.mod", "module github.com/polaris-arch/sing-box-polaris/release\n\ngo 1.27.0\n")
+	plan, err := selectPatchPackages(root, []string{"release/go.mod", "release/licenses/archived/license_test.go"})
+	if err != nil || len(plan.Modules) != 0 {
+		t.Fatalf("license evidence partition: %v", err)
+	}
+	if _, err := selectPatchPackages(root, []string{"release/unowned.go"}); err == nil {
+		t.Fatal("non-license release package admitted")
+	}
+}
