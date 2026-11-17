@@ -22,8 +22,8 @@ import (
 )
 
 type autoRedirect struct {
-	// These flags only record whether legacy cleanup may be needed. They do
-	// not prove ownership of same-name resources or an uncertain mutation.
+	// NFT cleanup is armed only after a successful exclusive table commit.
+	// Other flags record attempts; none prove identity after external replacement.
 	firewallSetupAttempted       atomic.Bool
 	redirectRoutesSetupAttempted atomic.Bool
 	vpnServiceSetupAttempted     atomic.Bool
@@ -148,8 +148,6 @@ func (r *autoRedirect) startWithNFQueue(startNFQueue func() error) error {
 			r.ownedNetworkMonitor = true
 		}
 		err = runInNetworkNamespace(r.tunOptions.NetNs, func() error {
-			r.firewallSetupAttempted.Store(true)
-			r.cleanupNFTables()
 			setupErr := r.setupNFTables()
 			if setupErr != nil {
 				return E.Cause(setupErr, "setup nftables")

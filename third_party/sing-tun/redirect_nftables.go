@@ -25,7 +25,8 @@ func (r *autoRedirect) setupNFTables() error {
 	}
 	defer nft.CloseLasting()
 
-	table := nft.AddTable(&nftables.Table{
+	// Refuse unknown same-name tables atomically; never adopt or pre-delete them.
+	table := nft.CreateTable(&nftables.Table{
 		Name:   r.tableName,
 		Family: nftables.TableFamilyINet,
 	})
@@ -284,13 +285,14 @@ func (r *autoRedirect) setupNFTables() error {
 		})
 	}
 
+	err = r.commitNFTables(nft)
+	if err != nil {
+		return err
+	}
+	// External fw4 side effects must not precede the atomic table commit.
 	err = r.configureOpenWRTFirewall4(nft, false)
 	if err != nil {
 		return E.Cause(err, "configure openwrt firewall4")
-	}
-	err = nft.Flush()
-	if err != nil {
-		return E.Cause(err, "flush nftables")
 	}
 	if r.tunOptions.NetNs == "" {
 		r.startDockerFirewallMonitor()
@@ -306,6 +308,16 @@ func (r *autoRedirect) setupNFTables() error {
 			r.logger.Error(updateErr)
 		}
 	})
+	return nil
+}
+
+// A failed or uncertain transaction must not arm name-based cleanup: the table
+// could belong to another process. Unknown leftovers require explicit recovery.
+func (r *autoRedirect) commitNFTables(nft *nftables.Conn) error {
+	if err := nft.Flush(); err != nil {
+		return E.Cause(err, "commit exclusive nftables table (existing table or uncertain result left untouched)")
+	}
+	r.firewallSetupAttempted.Store(true)
 	return nil
 }
 
