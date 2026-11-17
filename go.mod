@@ -235,3 +235,6 @@ replace github.com/sagernet/sing-vmess => ./third_party/sing-vmess
 replace github.com/libp2p/go-nat => ./third_party/go-nat
 
 replace github.com/sagernet/sing-openconnect => github.com/polaris-arch/sing-openconnect v0.1.1-0.20261115073945-1ec24f04ff47
+
+// Pinned official nftables: one 32-bit panic-format fix; provenance/removal gate in third_party/google-nftables/UPSTREAM.json.
+replace github.com/google/nftables => ./third_party/google-nftables

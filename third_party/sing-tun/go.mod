@@ -31,3 +31,6 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Pinned official nftables: one 32-bit panic-format fix; provenance/removal gate in third_party/google-nftables/UPSTREAM.json.
+replace github.com/google/nftables => ../google-nftables
