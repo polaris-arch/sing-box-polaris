@@ -233,68 +233,12 @@ func executeNativeSmoke(ctx context.Context, root string, row map[string]any, me
 		}
 	}
 
-	tls, err := observeTLSRuntime(ctx, core, corePin["sha256"].(string), execution.command, func(raw []byte) (tlsCapabilities, error) {
-		capabilities, err := validateTLSCapabilities(root, raw, row["sourceCommit"].(string), row["version"].(string), row["goVersion"].(string), target, true)
-		if err != nil {
-			return capabilities, err
-		}
-		return capabilities, verifyNativeTLSModules(row, capabilities)
-	})
-	if err != nil {
-		return err
-	}
-
-	cronetArgs := []string{"tools", "cronet", "--expected-version", version}
-	var sidecarHash any
-	if sidecar != nil {
-		sidecarHash = sidecar["sha256"]
-		if execution.proofKey != "sealedExecution" {
-			cronetArgs = append(cronetArgs, "--library", filepath.Join(scratch, sidecar["member"].(string)))
-		}
-		cronetArgs = append(cronetArgs, "--sha256", sidecarHash.(string))
-	}
-	cronetContext, cancel := context.WithTimeout(ctx, 30*time.Second)
-	stdout, stderr, code, err := sourceCaptureOutput(cronetContext, execution.command(cronetContext, cronetArgs...), 1<<20)
-	cancel()
-	if err != nil {
-		return err
-	}
-	if code == nil || *code != 0 {
-		return fmt.Errorf("Cronet native smoke failed: %s", strings.TrimSpace(stderr))
-	}
-	var observed map[string]any
-	if err := decodeNativeJSON(strings.NewReader(stdout), &observed); err != nil {
-		return fmt.Errorf("native Cronet observation: %w", err)
-	}
-	expected := map[string]any{"os": goos, "arch": goarch, "go": row["goVersion"], "linkage": linkage, "gvisorCompiled": true, "version": version}
-	if !nativeFieldsMatch(observed, expected) || sidecar != nil && observed["sha256"] != sidecarHash {
-		return fmt.Errorf("Cronet native smoke differs from producer row")
-	}
-	smoke := expected
-	maps.Copy(smoke, map[string]any{"status": "passed", "naiveOutbound": true, "librarySha256": sidecarHash, "coreSha256": corePin["sha256"]})
-	row["finalPackageCronetSmoke"] = smoke
-	if execution.proofKey == "" {
-		return nil
-	}
-
-	proof, err := execution.observe()
-	if err != nil {
+	proof, err := observeNativeSmokeRuntime(ctx, root, core, version, row, execution, os.Stdout, "")
+	if err != nil || proof == nil {
 		return err
 	}
 	maps.Copy(proof, producer)
-	for _, key := range []string{"sourceCommit", "sourceTree", "version", "target", "core"} {
-		proof[key] = row[key]
-	}
-	proof["archiveSha256"], proof["tlsProbe"], proof["cronet"] = row["archive"].(map[string]any)["sha256"], tls, observed
-	encoded, err := json.Marshal(proof)
-	if err != nil {
-		return err
-	}
-	// Publisher validation expects the same exact JSON number and array types it
-	// sees on the wire. Use that representation at the producer boundary too.
-	if err := decodeNativeJSON(strings.NewReader(string(encoded)), &proof); err != nil {
-		return err
-	}
+	smoke := row["finalPackageCronetSmoke"].(map[string]any)
 	smoke[execution.proofKey] = proof
 	row["trustedExecution"] = nativeExecutionPolicy(row, execution.proofKey == "macosExecution")
 	fragment := "#/$defs/" + execution.proofKey
@@ -302,6 +246,89 @@ func executeNativeSmoke(ctx context.Context, root string, row map[string]any, me
 		return fmt.Errorf("invalid native execution proof: %w", err)
 	}
 	return validateTrustedNativeExecution(row, producer, root)
+}
+
+// Observe the selected product once. Formal and local callers supply their
+// own admission context and retain this same execution evidence.
+func observeNativeSmokeRuntime(ctx context.Context, root, core, version string, row map[string]any, execution nativeSmokeExecution, report io.Writer, cronetReceipt string) (map[string]any, error) {
+	target := row["target"].(string)
+	goos, goarch, _ := strings.Cut(target, "/")
+	linkage := row["variant"].(map[string]any)["linkage"]
+	corePin := row["core"].(map[string]any)
+	sidecar, _ := row["sidecar"].(map[string]any)
+	capabilityReceiptLimit := 8 << 20
+	if cronetReceipt != "" {
+		capabilityReceiptLimit = 2 << 20
+	}
+	tls, err := observeTLSRuntime(ctx, core, corePin["sha256"].(string), report, capabilityReceiptLimit, cronetReceipt != "", execution.command, func(raw []byte) (tlsCapabilities, error) {
+		capabilities, err := validateTLSCapabilities(root, raw, row["sourceCommit"].(string), row["version"].(string), row["goVersion"].(string), target, true)
+		if err != nil {
+			return capabilities, err
+		}
+		return capabilities, verifyNativeTLSModules(row, capabilities)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	cronetArgs := []string{"tools", "cronet", "--expected-version", version}
+	var sidecarHash any
+	if sidecar != nil {
+		sidecarHash = sidecar["sha256"]
+		if execution.proofKey != "sealedExecution" {
+			cronetArgs = append(cronetArgs, "--library", filepath.Join(filepath.Dir(core), sidecar["member"].(string)))
+		}
+		cronetArgs = append(cronetArgs, "--sha256", sidecarHash.(string))
+		if cronetReceipt != "" {
+			cronetArgs = []string{"tools", "cronet", "--sha256", sidecarHash.(string), "--expected-version", version}
+		}
+	}
+	cronetContext, cancel := context.WithTimeout(ctx, 30*time.Second)
+	stdout, stderr, code, err := sourceCaptureOutput(cronetContext, execution.command(cronetContext, cronetArgs...), 1<<20)
+	cancel()
+	if cronetReceipt != "" {
+		saveErr := sourceReceipt(cronetReceipt, map[string]any{"argv": cronetArgs, "exitCode": code, "stdout": stdout, "stderr": stderr}, true, 2<<20)
+		err = errors.Join(err, saveErr)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if code == nil || *code != 0 {
+		return nil, fmt.Errorf("Cronet native smoke failed: %s", strings.TrimSpace(stderr))
+	}
+	var observed map[string]any
+	if err := decodeNativeJSON(strings.NewReader(stdout), &observed); err != nil {
+		return nil, fmt.Errorf("native Cronet observation: %w", err)
+	}
+	expected := map[string]any{"os": goos, "arch": goarch, "go": row["goVersion"], "linkage": linkage, "gvisorCompiled": true, "version": version}
+	if !nativeFieldsMatch(observed, expected) || sidecar != nil && observed["sha256"] != sidecarHash {
+		return nil, fmt.Errorf("Cronet native smoke differs from producer row")
+	}
+	smoke := expected
+	maps.Copy(smoke, map[string]any{"status": "passed", "naiveOutbound": true, "librarySha256": sidecarHash, "coreSha256": corePin["sha256"]})
+	row["finalPackageCronetSmoke"] = smoke
+	if execution.proofKey == "" {
+		return nil, nil
+	}
+
+	proof, err := execution.observe()
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range []string{"sourceCommit", "sourceTree", "version", "target", "core"} {
+		proof[key] = row[key]
+	}
+	proof["archiveSha256"], proof["tlsProbe"], proof["cronet"] = row["archive"].(map[string]any)["sha256"], tls, observed
+	encoded, err := json.Marshal(proof)
+	if err != nil {
+		return nil, err
+	}
+	// Publisher validation expects the same exact JSON number and array types it
+	// sees on the wire. Use that representation at the producer boundary too.
+	if err := decodeNativeJSON(strings.NewReader(string(encoded)), &proof); err != nil {
+		return nil, err
+	}
+	return proof, nil
 }
 
 func removeNativeSmokeDirectory(directory string) error {

@@ -55,6 +55,10 @@ func run(args []string) error {
 		return peerRun(ctx, args[1:])
 	case "cronet-overlay":
 		return cronetOverlayCommand(args[1:])
+	case "local-native":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return localNative(ctx, args[1:])
 	case "collect-native-index":
 		return collectNativeIndex(args[1:])
 	case "smoke-native-index":

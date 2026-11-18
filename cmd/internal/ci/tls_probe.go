@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -322,7 +323,7 @@ func probeTLSRuntime(parent context.Context, root, core string, environment []st
 	if err != nil {
 		return nil, err
 	}
-	return observeTLSRuntime(parent, core, "", func(ctx context.Context, args ...string) *exec.Cmd {
+	return observeTLSRuntime(parent, core, "", os.Stdout, 8<<20, false, func(ctx context.Context, args ...string) *exec.Cmd {
 		command := exec.CommandContext(ctx, core, args...)
 		command.Dir, command.Env = root, environment
 		return command
@@ -331,7 +332,7 @@ func probeTLSRuntime(parent context.Context, root, core string, environment []st
 	})
 }
 
-func observeTLSRuntime(parent context.Context, core, expectedHash string, invoke func(context.Context, ...string) *exec.Cmd, validate func([]byte) (tlsCapabilities, error)) (receipt map[string]any, err error) {
+func observeTLSRuntime(parent context.Context, core, expectedHash string, report io.Writer, receiptLimit int, exclusive bool, invoke func(context.Context, ...string) *exec.Cmd, validate func([]byte) (tlsCapabilities, error)) (receipt map[string]any, err error) {
 	hash, err := fileSHA256(core)
 	if err != nil {
 		return nil, err
@@ -344,7 +345,7 @@ func observeTLSRuntime(parent context.Context, core, expectedHash string, invoke
 	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 	cancel()
 	query := map[string]any{"command": []string{core, "tools", "tls-fingerprints"}, "exitCode": code, "stdout": stdout, "stderr": stderr, "timedOut": timedOut}
-	if saveError := sourceReceipt(core+"-capability-query.json", query, false, 8*1024*1024); saveError != nil {
+	if saveError := sourceReceipt(core+"-capability-query.json", query, exclusive, receiptLimit); saveError != nil {
 		return nil, errors.Join(queryError, saveError)
 	}
 	if queryError != nil {
@@ -397,6 +398,6 @@ func observeTLSRuntime(parent context.Context, core, expectedHash string, invoke
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("TLS_FINGERPRINT_PROBE " + string(encoded))
+	fmt.Fprintln(report, "TLS_FINGERPRINT_PROBE "+string(encoded))
 	return receipt, nil
 }

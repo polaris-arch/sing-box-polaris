@@ -34,11 +34,16 @@ type moduleGraph struct {
 }
 
 func nativeBuildInfo(filename string) (string, string, moduleGraph, error) {
-	graph := moduleGraph{map[string]string{}, []moduleRecord{}, []moduleRecord{}, []moduleRecord{}}
 	info, err := buildinfo.ReadFile(filename)
 	if err != nil {
-		return "", "", graph, err
+		return "", "", moduleGraph{}, err
 	}
+	version, raw, graph := describeNativeBuildInfo(filename, info)
+	return version, raw, graph, nil
+}
+
+func describeNativeBuildInfo(filename string, info *buildinfo.BuildInfo) (string, string, moduleGraph) {
+	graph := moduleGraph{map[string]string{}, []moduleRecord{}, []moduleRecord{}, []moduleRecord{}}
 	for _, setting := range info.Settings {
 		graph.Settings[setting.Key] = setting.Value
 	}
@@ -59,7 +64,7 @@ func nativeBuildInfo(filename string) (string, string, moduleGraph, error) {
 	if module := info.String(); len(module) > 0 {
 		raw += "\t" + strings.ReplaceAll(module[:len(module)-1], "\n", "\n\t") + "\n"
 	}
-	return version, raw, graph, nil
+	return version, raw, graph
 }
 
 var (
