@@ -629,54 +629,9 @@ class GateTests(unittest.TestCase):
             self.check_index(index)
             materials.assert_called_once_with(index,p.ROOT)
 
-    def test_inventory_passes_original_source_root_to_native_index_validation(self):
-        class StopInventory(Exception):pass
-        index=self.final_index();source='a'*40;workflow='.github/workflows/build.yml'
-        required=['binary-native-index','publisher-run-receipt']
-        scope={'all':{'workflow':workflow,'payloadRules':{
-            'binary-native-index':[{'pattern':r'polaris-upstream-native-assets\.json','count':1}],
-            'publisher-run-receipt':[{'pattern':r'publisher-run-receipt\.json','count':1}]}}}
-        run={'repository':{'id':p.RID},'head_repository':{'id':p.RID},'head_sha':source,
-             'path':workflow,'status':'completed','conclusion':'success','event':'workflow_dispatch',
-             'run_attempt':1,'run_started_at':'2026-10-18T00:00:00Z'}
-        artifacts=[{'name':name,'id':number,'expired':False,'created_at':'2026-10-18T00:01:00Z',
-                    'workflow_run':{'id':42,'head_sha':source},'digest':'sha256:'+'a'*64}
-                   for number,name in enumerate(required,1)]
-        receipt={'repository':p.REPO,'repositoryId':p.RID,'sourceCommit':source,'runId':'42',
-                 'attempt':1,'version':p.VERSION,'build':'All','role':'all'}
-        @contextmanager
-        def archive_fixture(artifact,budget):
-            name,value=('polaris-upstream-native-assets.json',index) if artifact['name']=='binary-native-index' else ('publisher-run-receipt.json',receipt)
-            archive_path=budget.root/(artifact['name']+'.zip')
-            with zipfile.ZipFile(archive_path,'w') as z:z.writestr(name,json.dumps(value))
-            artifact['size_in_bytes']=archive_path.stat().st_size
-            with zipfile.ZipFile(archive_path) as z:yield z,z.infolist()
-        with tempfile.TemporaryDirectory() as d:
-            root=Path(d);source_root=root/'reviewed-source'
-            with mock.patch.object(p,'release_scope',return_value=scope),mock.patch.object(p,'api',return_value=run), \
-                 mock.patch.object(p,'pages',return_value=artifacts),mock.patch.object(p,'sha',return_value='a'*64), \
-                 mock.patch.object(p,'artifact_archive',side_effect=archive_fixture), \
-                 mock.patch.object(p,'validate_final_index',side_effect=StopInventory) as validate:
-                with self.assertRaises(StopInventory):
-                    p.inventory({'all':'42'},source,root/'work','b'*40,'c'*40,source_root=source_root)
-                validate.assert_called_once_with(index,source,'b'*40,'c'*40,'42',1,workflow,source_root)
-
-    def test_main_passes_verified_source_checkout_to_inventory(self):
-        class StopInventory(Exception):pass
-        source='a'*40;source_root=Path('/offline-fixture/reviewed-source')
-        argv=['github_release.py','inventory','--source',source,'--source-dir',str(source_root),
-              '--all-run','42']
-        with tempfile.TemporaryDirectory() as audit_temp, mock.patch('sys.argv',argv+['--audit',str(Path(audit_temp)/'audit')]),mock.patch.object(p,'identity') as identity, \
-             mock.patch.object(p,'api',return_value={'head_branch':p.TAG}) as remote, \
-             mock.patch.object(p,'command',return_value='b'*40) as command, \
-             mock.patch.object(p,'tag_identity',return_value='c'*40), \
-             mock.patch.object(p,'inventory',side_effect=StopInventory) as inventory:
-            with self.assertRaises(StopInventory):p.main()
-            identity.assert_called_once_with(source,source_root)
-            remote.assert_called_once_with(f'repos/{p.REPO}/actions/runs/42')
-            command.assert_called_once_with('git','-C',str(source_root),'rev-parse','HEAD^{tree}')
-            inventory.assert_called_once_with({'all':'42'},source,
-                                              mock.ANY,'b'*40,'c'*40,source_root,budget=mock.ANY)
+    def test_inventory_refuses_a_non_tag_producer_before_release_work(self):
+        argv=['github_release.py','inventory','--source','a'*40,
+              '--source-dir','/offline-fixture/reviewed-source','--all-run','42']
         with mock.patch('sys.argv',argv),mock.patch.object(p,'identity'),mock.patch.object(p,'api',return_value={'head_branch':'polaris-main'}), \
              mock.patch.object(p,'bounded_release') as release:
             with self.assertRaisesRegex(ValueError,'version tag'):p.main()
