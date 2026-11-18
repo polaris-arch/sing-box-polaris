@@ -811,6 +811,42 @@ func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
 }
 
 func TestReleaseDispatchBindsExactVersionAndAnnotatedSource(t *testing.T) {
+	const contractFile = "../../../scripts/ci/testdata/polaris-versions.json"
+	var versions struct {
+		Valid   []string
+		Invalid []string
+	}
+	raw, err := os.ReadFile(contractFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &versions); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("native index version and tag canonicality", func(t *testing.T) {
+		const schema = "../../../release/ci/native-release-index.schema.json"
+		for _, location := range []string{"/properties", "/properties/platforms/items/properties"} {
+			for field, prefix := range map[string]string{"version": "", "tag": "v"} {
+				fragment := "#" + location + "/" + field
+				for _, version := range versions.Valid {
+					if err := validateDocument(schema, fragment, prefix+version); err != nil {
+						t.Fatalf("%s rejects %q: %v", fragment, prefix+version, err)
+					}
+				}
+				for _, version := range versions.Invalid {
+					if err := validateDocument(schema, fragment, prefix+version); err == nil {
+						t.Fatalf("%s admits %q", fragment, prefix+version)
+					}
+				}
+				for _, value := range []any{nil, 12, true} {
+					if err := validateDocument(schema, fragment, value); err == nil {
+						t.Fatalf("%s admits nonstring %#v", fragment, value)
+					}
+				}
+			}
+		}
+	})
+
 	root := t.TempDir()
 	fixtureSourceGit(t, root, "init", "-q")
 	fixtureFile(t, root, "source", "tracked bytes")
@@ -837,11 +873,22 @@ func TestReleaseDispatchBindsExactVersionAndAnnotatedSource(t *testing.T) {
 	if err := run(command); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(output)
+	raw, err = os.ReadFile(output)
 	want := "version=" + version + "\ntag_object=" + object + "\n"
 	if err != nil || string(raw) != want {
 		t.Fatalf("unexpected release outputs: %s, %v", raw, err)
 	}
+	t.Run("invalid tags cannot read release metadata", func(t *testing.T) {
+		read := func(endpoint string, _ any) error {
+			t.Fatalf("malformed tag reached GitHub: %s", endpoint)
+			return nil
+		}
+		for _, invalid := range versions.Invalid {
+			if _, err := remoteTagIdentity("v"+invalid, source, object, read); err == nil {
+				t.Fatalf("malformed annotated tag %q admitted", "v"+invalid)
+			}
+		}
+	})
 	t.Run("publisher observes the exact remote object", func(t *testing.T) {
 		t.Chdir(t.TempDir())
 		remote := []string{"release-identity", "--scope", "remote", "--source", source, "--tag", tag, "--expected-tag-object", object}

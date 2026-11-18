@@ -20,6 +20,7 @@ import subprocess
 spec=importlib.util.spec_from_file_location('publisher',Path(__file__).with_name('github_release.py'))
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 p.bind_release('v1.15.0-polaris-alpha.12.22')
+VERSION_CONTRACT=json.loads((p.ROOT/'scripts/ci/testdata/polaris-versions.json').read_text(encoding='utf-8'))
 
 
 def native_jobs_fixture(index):
@@ -404,24 +405,30 @@ class BoundedStorageTests(unittest.TestCase):
 
 class GateTests(unittest.TestCase):
     def test_reviewed_current_version_renders_all_payloads(self):
-        scope=p.release_scope(p.VERSION)
-        old='1.15.0-polaris-alpha.11'
-        for role in ['all']:
-            rules=scope[role]['payloadRules']['binary-windows_amd64']
-            current=f'sing-box-{p.VERSION}-windows-amd64.zip';previous=f'sing-box-{old}-windows-amd64.zip'
-            p.verify_payloads({current:{}},rules,'binary-windows_amd64')
-            for files in [{previous:{}},{current:{},previous:{}},{current.replace('alpha.','alphaX'):{}},{}]:
-                with self.subTest(role=role,files=files),self.assertRaises(ValueError):
-                    p.verify_payloads(files,rules,'binary-windows_amd64')
         from native_release_index import expected_native
-        for role in ['all']:
-            patterns=[rule['pattern'] for rules in scope[role]['payloadRules'].values() for rule in rules]
-            for name,value in expected_native(p.VERSION).items():
-                archive=name+('.zip' if value['target'].startswith('windows/') else '.tar.gz')
-                self.assertTrue(any(re.fullmatch(pattern,archive) for pattern in patterns),(role,archive))
-                self.assertFalse(any(re.fullmatch(pattern,archive.replace(p.VERSION,old)) for pattern in patterns),(role,archive))
-        self.assertRaises(ValueError,p.release_scope,old)
-        self.assertRaises(ValueError,p.release_scope,'v'+p.VERSION)
+        for reviewed in [p.VERSION,'1.15.0-polaris-alpha.13']:
+            with self.subTest(reviewed=reviewed),mock.patch.object(p,'VERSION',reviewed):
+                payloads=p.release_scope(reviewed)['all']['payloadRules']
+                artifact='binary-windows_amd64'
+                current=f'sing-box-{reviewed}-windows-amd64.zip'
+                p.verify_payloads({current:{}},payloads[artifact],artifact)
+                wrong=['1.15.0-polaris-alpha.12','1.15.0-polaris-alpha.12.2',reviewed+'0',reviewed+'.1']
+                for version in wrong:
+                    previous=current.replace(reviewed,version)
+                    with self.assertRaises(ValueError):
+                        p.verify_payloads({previous:{}},payloads[artifact],artifact)
+                    self.assertRaises(ValueError,p.release_scope,version)
+                previous=current.replace(reviewed,wrong[0])
+                for files in [{current:{},previous:{}},{current.replace('alpha.','alphaX'):{}},{}]:
+                    with self.assertRaises(ValueError):
+                        p.verify_payloads(files,payloads[artifact],artifact)
+                self.assertRaises(ValueError,p.release_scope,'v'+reviewed)
+                patterns=[rule['pattern'] for rules in payloads.values() for rule in rules]
+                for name,value in expected_native(reviewed).items():
+                    self.assertTrue(name.startswith('sing-box-'+reviewed+'-'),name)
+                    archive=name+('.zip' if value['target'].startswith('windows/') else '.tar.gz')
+                    self.assertTrue(any(re.fullmatch(pattern,archive) for pattern in patterns),archive)
+                    self.assertFalse(any(re.fullmatch(pattern,archive.replace(reviewed,wrong[0])) for pattern in patterns),archive)
 
     def test_scope_rejects_literal_versions_unknown_tokens_and_bad_counts(self):
         raw=json.loads(p.SCOPE.read_text())
@@ -629,13 +636,25 @@ class GateTests(unittest.TestCase):
             self.check_index(index)
             materials.assert_called_once_with(index,p.ROOT)
 
-    def test_inventory_refuses_a_non_tag_producer_before_release_work(self):
+    def test_inventory_binds_only_canonical_dispatched_tags_before_release_work(self):
         argv=['github_release.py','inventory','--source','a'*40,
               '--source-dir','/offline-fixture/reviewed-source','--all-run','42']
-        with mock.patch('sys.argv',argv),mock.patch.object(p,'identity'),mock.patch.object(p,'api',return_value={'head_branch':'polaris-main'}), \
-             mock.patch.object(p,'bounded_release') as release:
-            with self.assertRaisesRegex(ValueError,'version tag'):p.main()
-            release.assert_not_called()
+        with mock.patch('sys.argv',argv),mock.patch.object(p,'identity'),mock.patch.object(p,'api') as api, \
+             mock.patch.object(p,'bounded_release') as release, \
+             mock.patch.multiple(p,VERSION=p.VERSION,PUBLIC_VERSION=p.PUBLIC_VERSION,TAG=p.TAG,RECEIPT=p.RECEIPT):
+            for version in VERSION_CONTRACT['valid']:
+                with self.subTest(version=version):
+                    api.return_value={'head_branch':'v'+version}
+                    p.main()
+                    self.assertEqual((p.VERSION,p.TAG,p.RECEIPT),
+                                     (version,'v'+version,'polaris-github-release-receipt-'+version+'.json'))
+                    release.assert_called_once()
+                    release.reset_mock()
+            for tag in ['polaris-main',None,12]+['v'+version for version in VERSION_CONTRACT['invalid']]:
+                with self.subTest(tag=tag):
+                    api.return_value={'head_branch':tag}
+                    with self.assertRaises(ValueError):p.main()
+                    release.assert_not_called()
 
     def test_final_index_wrong_tag_schema_mixed_source_controls(self):
         index=self.final_index();self.check_index(index)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Bind actual producer checkout to dispatch SHA and one immutable annotated tag."""
 import json
-import math
 import os
 import re
 import subprocess
@@ -10,20 +9,6 @@ import subprocess
 def require(condition, message):
     if not condition:
         raise ValueError(message)
-
-
-def same_identity(actual, expected):
-    """Compare nested evidence identities without Python bool/int/float coercion."""
-    if type(actual) is not type(expected):
-        return False
-    if type(actual) is dict:
-        return (actual.keys() == expected.keys() and all(type(key) is str for key in actual)
-                and all(same_identity(actual[key], expected[key]) for key in actual))
-    if type(actual) in (list, tuple):
-        return len(actual) == len(expected) and all(same_identity(a, b) for a, b in zip(actual, expected))
-    if type(actual) is float and not math.isfinite(actual):
-        return False
-    return actual == expected
 
 
 def public_product_name(name):
