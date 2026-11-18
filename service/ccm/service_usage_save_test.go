@@ -17,7 +17,7 @@ import (
 )
 
 func TestUsageSaveSchedulingCoalescesRequests(t *testing.T) {
-	u := &AggregatedUsage{lastSaveTime: time.Now()}
+	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
 	u.scheduleSave()
 	u.saveMutex.Lock()
 	first := u.saveTimer
@@ -30,7 +30,9 @@ func TestUsageSaveSchedulingCoalescesRequests(t *testing.T) {
 		t.Error("updates did not coalesce into one pending timer")
 	}
 	u.saveMutex.Unlock()
-	u.cancelPendingSave()
+	if err := u.Close(); err != nil {
+		t.Fatal(err)
+	}
 	u.saveMutex.Lock()
 	defer u.saveMutex.Unlock()
 	if u.pendingSave || u.saveTimer != nil {
@@ -76,7 +78,7 @@ func waitUsageSaveState(t *testing.T, u *AggregatedUsage, ready func() bool) {
 	t.Fatal("timed out waiting for save state")
 }
 
-func TestUsageUpdateDuringRunningSaveSurvivesCancel(t *testing.T) {
+func TestUsageUpdateDuringRunningSaveSchedulesFollowUp(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json")}
 	t.Cleanup(func() { _ = u.Close() })
 	u.saveWriteMutex.Lock()
@@ -85,20 +87,17 @@ func TestUsageUpdateDuringRunningSaveSurvivesCancel(t *testing.T) {
 		if locked {
 			u.saveWriteMutex.Unlock()
 		}
-		u.cancelPendingSave()
 	}()
 	u.scheduleSave()
 	waitUsageSaveState(t, u, func() bool { return !u.lastSaveAttempt.IsZero() })
-	// The callback has fired and is blocked on the transaction lock. Stop must
-	// fail without releasing its ownership, and a real update must stay dirty.
+	// A new update must stay dirty while the active save holds ownership.
 	if err := u.AddUsage("claude-sonnet", 200000, 1, 1, 1, 0, 0, 0, 0, "test"); err != nil {
 		t.Fatal(err)
 	}
-	u.cancelPendingSave()
 	u.saveMutex.Lock()
 	runningTimer := u.saveTimer
 	if !u.pendingSave || !u.saveDirty {
-		t.Error("active callback or dirty update lost after Stop(false)")
+		t.Error("active callback or dirty update lost")
 	}
 	u.saveMutex.Unlock()
 	u.saveWriteMutex.Unlock()
@@ -136,7 +135,6 @@ func TestUsageFailedAttemptThrottlesNewUpdates(t *testing.T) {
 		t.Error("failed save caused immediate retry storm")
 	}
 	u.saveMutex.Unlock()
-	u.cancelPendingSave()
 }
 
 func TestUsageCloseJoinsActiveSaveAndFinalFlush(t *testing.T) {
@@ -219,7 +217,6 @@ func TestRequestDrainFlushesLastUsageEvent(t *testing.T) {
 func TestIncompleteObservationsRoundTripWithoutInventedUsage(t *testing.T) {
 	u := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "incomplete.json"), lastSaveTime: time.Now()}
 	t.Cleanup(func() { _ = u.Close() })
-	defer u.cancelPendingSave()
 	u.MarkIncomplete()
 	if err := u.Save(); err != nil {
 		t.Fatal(err)

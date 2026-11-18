@@ -19,7 +19,7 @@ import (
 func TestTrackingOverflowPreservesBodyAndMarksIncomplete(t *testing.T) {
 	for _, contentType := range []string{"application/json", "text/event-stream"} {
 		tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-		defer tracker.cancelPendingSave()
+		t.Cleanup(func() { _ = tracker.Close() })
 		service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger()}
 		body := bytes.Repeat([]byte("x"), usagetrack.BodyBudget+1)
 		response := &http.Response{Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(bytes.NewReader(body))}
@@ -50,7 +50,7 @@ data: {broken
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-			defer tracker.cancelPendingSave()
+			t.Cleanup(func() { _ = tracker.Close() })
 			service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger()}
 			response := &http.Response{Header: http.Header{"Content-Type": []string{tc.kind}}, Body: io.NopCloser(strings.NewReader(tc.body))}
 			writer := httptest.NewRecorder()
@@ -98,7 +98,7 @@ func (b *brokenRequest) Read(p []byte) (int, error) {
 
 func TestServeHTTPReadFailureNeverCallsUpstream(t *testing.T) {
 	tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-	defer tracker.cancelPendingSave()
+	t.Cleanup(func() { _ = tracker.Close() })
 	calls := 0
 	service := &Service{
 		usageTracker: tracker, logger: log.NewNOPFactory().Logger(), credentials: &oauthCredentials{APIKey: "synthetic-test-only"},
@@ -121,7 +121,7 @@ func TestServeHTTPReadFailureNeverCallsUpstream(t *testing.T) {
 
 func TestServeHTTPReplayHeadersAndBodyClose(t *testing.T) {
 	tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-	defer tracker.cancelPendingSave()
+	t.Cleanup(func() { _ = tracker.Close() })
 	sent := `{"model":"model","messages":[]}`
 	body := &trackingBody{Reader: strings.NewReader(sent)}
 	upstreamBody := &trackingBody{Reader: strings.NewReader(`{"model":"gpt-5","usage":{"prompt_tokens":12,"completion_tokens":7}}`)}
@@ -166,7 +166,7 @@ func (r *failedTrackingResponse) Read(p []byte) (int, error) {
 
 func TestResponseReadFailureIsIncompleteAndPreservesDeliveredPrefix(t *testing.T) {
 	tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-	defer tracker.cancelPendingSave()
+	t.Cleanup(func() { _ = tracker.Close() })
 	service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger()}
 	prefix := []byte("data: {}\n")
 	response := &http.Response{Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(&failedTrackingResponse{body: prefix})}
@@ -182,7 +182,7 @@ func TestResponseReadFailureIsIncompleteAndPreservesDeliveredPrefix(t *testing.T
 
 func TestServeHTTPOverBudgetRequestStillForwardsEveryByte(t *testing.T) {
 	tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-	defer tracker.cancelPendingSave()
+	t.Cleanup(func() { _ = tracker.Close() })
 	sent := append(bytes.Repeat([]byte(" "), usagetrack.BodyBudget), []byte(`{"model":"model"}`)...)
 	body := &trackingBody{Reader: bytes.NewReader(sent)}
 	calls := 0
@@ -219,7 +219,7 @@ func (w failingTrackingWriter) Write(p []byte) (int, error) {
 func TestDownstreamWriteFailureMarksIncomplete(t *testing.T) {
 	for _, kind := range []string{"application/json", "text/event-stream"} {
 		tracker := &AggregatedUsage{ctx: context.Background(), filePath: filepath.Join(t.TempDir(), "usage.json"), lastSaveTime: time.Now()}
-		defer tracker.cancelPendingSave()
+		t.Cleanup(func() { _ = tracker.Close() })
 		service := &Service{usageTracker: tracker, logger: log.NewNOPFactory().Logger()}
 		response := &http.Response{Header: http.Header{"Content-Type": []string{kind}}, Body: io.NopCloser(strings.NewReader("data: {}\n"))}
 		writer := failingTrackingWriter{httptest.NewRecorder()}

@@ -1236,7 +1236,9 @@ func (u *AggregatedUsage) scheduleSaveLocked() {
 		u.saveDirty = false
 		u.lastSaveAttempt = time.Now()
 		u.saveMutex.Unlock()
-		u.saveAsync()
+		if err := u.Save(); err != nil && u.logger != nil {
+			u.logger.Error("save usage statistics: ", err)
+		}
 		u.saveMutex.Lock()
 		u.pendingSave = false
 		u.saveTimer = nil
@@ -1245,29 +1247,6 @@ func (u *AggregatedUsage) scheduleSaveLocked() {
 		}
 		u.saveMutex.Unlock()
 	})
-}
-
-func (u *AggregatedUsage) saveAsync() {
-	err := u.Save()
-	if err != nil {
-		if u.logger != nil {
-			u.logger.Error("save usage statistics: ", err)
-		}
-	}
-}
-
-func (u *AggregatedUsage) cancelPendingSave() {
-	u.saveMutex.Lock()
-	defer u.saveMutex.Unlock()
-
-	if u.saveTimer != nil && u.saveTimer.Stop() {
-		u.saveGroup.Done()
-		u.saveTimer = nil
-		u.pendingSave = false
-		u.saveDirty = false
-	}
-	// A callback that already started retains ownership until it returns.
-	// Producer drain/final-flush ordering remains a service-level concern.
 }
 
 // Close must follow producer drain. It rejects new updates, joins an already
