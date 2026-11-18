@@ -116,6 +116,7 @@ func releaseIdentity(args []string) error {
 	tag := flags.String("tag", "", "annotated version tag")
 	source := flags.String("source", os.Getenv("GITHUB_SHA"), "dispatch commit")
 	expected := flags.String("expected-tag-object", "", "reviewed tag object")
+	scope := flags.String("scope", "dispatch", "tag binding to verify: dispatch, checkout, or remote")
 	output := flags.String("github-output", "", "native action output")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -123,14 +124,22 @@ func releaseIdentity(args []string) error {
 	if flags.NArg() != 0 {
 		return fmt.Errorf("unexpected release-identity arguments")
 	}
-	if os.Getenv("GITHUB_REF_TYPE") != "tag" || os.Getenv("GITHUB_REF_NAME") != *tag {
-		return fmt.Errorf("release identity requires the exact dispatched tag")
+	if *scope != "dispatch" && *output != "" {
+		return fmt.Errorf("only a verified dispatch can write GitHub outputs")
 	}
-	root, err := os.Getwd()
-	if err != nil {
-		return err
+	var object string
+	var err error
+	switch *scope {
+	case "dispatch", "checkout":
+		if *scope == "dispatch" && (os.Getenv("GITHUB_REF_TYPE") != "tag" || os.Getenv("GITHUB_REF_NAME") != *tag) {
+			return fmt.Errorf("release identity requires the exact dispatched tag")
+		}
+		object, err = verifyCheckout(".", *tag, *source, *expected, githubJSON)
+	case "remote":
+		object, err = remoteTagIdentity(*tag, *source, *expected, githubJSON)
+	default:
+		return fmt.Errorf("unknown release identity scope %q", *scope)
 	}
-	object, err := verifyCheckout(root, *tag, *source, *expected, githubJSON)
 	if err != nil {
 		return err
 	}

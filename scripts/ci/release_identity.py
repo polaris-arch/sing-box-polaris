@@ -3,13 +3,8 @@
 import json
 import math
 import os
-from pathlib import Path
 import re
 import subprocess
-from polaris_version import validate as validate_version
-
-REPO = 'polaris-arch/sing-box-polaris'
-RID = 1421657509
 
 
 def require(condition, message):
@@ -31,10 +26,6 @@ def same_identity(actual, expected):
     return actual == expected
 
 
-def api(path):
-    return json.loads(subprocess.check_output(['gh', 'api', path]))
-
-
 def public_product_name(name):
     """Rename only the public product prefix; candidate/internal identities stay exact."""
     require(isinstance(name, str) and re.fullmatch(r'[A-Za-z0-9_.+ -]+', name) and name not in ('.', '..'),
@@ -48,37 +39,13 @@ def public_product_name(name):
     return name
 
 
-def remote_tag_identity(tag, source, expected_object=None):
-    require(isinstance(tag, str) and tag.startswith('v'), 'versioned source tag required')
-    validate_version(tag[1:])
-    require(isinstance(source, str) and re.fullmatch(r'[0-9a-f]{40}', source), 'full source SHA required')
-    if expected_object is not None:
-        require(isinstance(expected_object, str) and re.fullmatch(r'[0-9a-f]{40}', expected_object), 'full expected tag object required')
-    ref = api(f'repos/{REPO}/git/ref/tags/{tag}')
-    require(ref['object']['type'] == 'tag', 'annotated tag required')
-    oid = ref['object']['sha']
-    require(re.fullmatch(r'[0-9a-f]{40}', oid), 'invalid tag object')
-    require(expected_object is None or oid == expected_object, 'source tag object moved')
-    obj = api(f'repos/{REPO}/git/tags/{oid}')
-    require(obj['sha'] == oid and obj['tag'] == tag and obj['object']['type'] == 'commit' and obj['object']['sha'] == source,
-            'annotated tag must directly identify dispatch source')
-    return oid
-
-
-def git(*args):
-    return subprocess.check_output(['git', *args], text=True).strip()
-
-
-def verify_checkout(tag, source, expected_object=None):
-    require(os.environ.get('GITHUB_REPOSITORY') == REPO and os.environ.get('GITHUB_REPOSITORY_ID') == str(RID), 'wrong producer repository')
-    require(source == os.environ.get('GITHUB_SHA'), 'expected source differs from dispatch SHA')
-    require(git('rev-parse', 'HEAD') == source, 'actual producer checkout differs from dispatch SHA')
-    require(not git('status', '--porcelain', '--untracked-files=no'), 'tracked producer source is dirty')
-    oid = remote_tag_identity(tag, source, expected_object)
-    require(git('cat-file', '-t', 'refs/tags/' + tag) == 'tag', 'local annotated tag missing')
-    require(git('rev-parse', 'refs/tags/' + tag) == oid, 'local and remote tag objects differ')
-    require(git('rev-parse', 'refs/tags/' + tag + '^{commit}') == source, 'local tag differs from dispatch source')
-    return oid
+def release_tag_object(scope, tag, source, expected=None):
+    args = ['go', 'run', '-mod=readonly', './cmd/internal/ci', 'release-identity',
+            '--scope', scope, '--tag', tag, '--source', source]
+    if expected is not None:
+        args.extend(['--expected-tag-object', expected])
+    env = {**os.environ, 'GOWORK': 'off', 'GOTOOLCHAIN': 'local'}
+    return json.loads(subprocess.check_output(args, env=env))['tagObject']
 
 
 def validate_publication_index(index, source, tag, tag_object, tree=None):

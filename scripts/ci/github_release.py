@@ -7,7 +7,7 @@ import hashlib
 from datetime import datetime
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from release_identity import remote_tag_identity, public_product_name, validate_publication_index
+from release_identity import release_tag_object, public_product_name, validate_publication_index
 from polaris_version import validate as validate_version
 import json
 import os
@@ -308,7 +308,7 @@ def identity(source, source_dir):
 
 
 def tag_identity(source):
-    return remote_tag_identity(TAG, source)
+    return release_tag_object('remote', TAG, source)
 
 
 def upload_endpoint(release, name):

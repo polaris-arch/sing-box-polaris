@@ -4,7 +4,7 @@ import argparse,gzip,hashlib,io,json,os,platform,re,shlex,shutil,subprocess,sys,
 from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
-from release_identity import verify_checkout, public_product_name
+from release_identity import release_tag_object, public_product_name
 from cronet_windows_overlay import validate_overlay
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
@@ -800,7 +800,7 @@ def assemble(directory):
  commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
  expected_object=os.environ.get('EXPECTED_RELEASE_TAG_OBJECT')
  if not expected_object or not re.fullmatch(r'[0-9a-f]{40}',expected_object):raise ValueError('final index requires preflight tag object')
- tag_object=verify_checkout(tag,commit,expected_object)
+ tag_object=release_tag_object('checkout',tag,commit,expected_object)
  context=execution_run()
  rows={}
  for p in d.rglob('native-row-*.json'):
@@ -843,7 +843,7 @@ def assemble(directory):
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
  index={'schema':'polaris-upstream-native-assets-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':file_sha(source)},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
  index['distributionMaterials']=distribution_materials(index)
- verify_checkout(tag,commit,tag_object)
+ release_tag_object('checkout',tag,commit,tag_object)
  import jsonschema
  jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
  (d/'polaris-upstream-native-assets.json').write_text(json.dumps(index,indent=2)+'\n', encoding='utf-8', newline='\n')

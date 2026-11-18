@@ -842,6 +842,61 @@ func TestReleaseDispatchBindsExactVersionAndAnnotatedSource(t *testing.T) {
 	if err != nil || string(raw) != want {
 		t.Fatalf("unexpected release outputs: %s, %v", raw, err)
 	}
+	t.Run("publisher observes the exact remote object", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		remote := []string{"release-identity", "--scope", "remote", "--source", source, "--tag", tag, "--expected-tag-object", object}
+		if err := run(remote); err != nil {
+			t.Fatal(err)
+		}
+		if err := run(append(remote, "--expected-tag-object", strings.Repeat("f", 40))); err == nil {
+			t.Fatal("changed tag object admitted")
+		}
+		for _, response := range []struct {
+			tag, kind, target string
+		}{
+			{tag, "commit", strings.Repeat("f", 40)},
+			{tag, "tag", source},
+			{tag + ".1", "commit", source},
+		} {
+			reply, err := json.Marshal(map[string]any{"sha": object, "tag": response.tag, "object": gitObject{Type: response.kind, SHA: response.target}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("POLARIS_CI_TEST_TAG_OBJECT", string(reply))
+			if err := run(remote); err == nil {
+				t.Fatal("tag name or target mismatch admitted", response)
+			}
+		}
+	})
+	t.Run("assembler needs the original local annotation", func(t *testing.T) {
+		clone := t.TempDir()
+		fixtureSourceGit(t, clone, "clone", "--no-local", root, ".")
+		t.Chdir(clone)
+		t.Setenv("GITHUB_REF_TYPE", "branch")
+		checkout := []string{"release-identity", "--scope", "checkout", "--source", source, "--tag", tag, "--expected-tag-object", object}
+		if err := run(checkout); err != nil {
+			t.Fatal(err)
+		}
+		fixtureSourceGit(t, clone, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-qm", "different checkout")
+		if err := run(checkout); err == nil {
+			t.Fatal("checkout at another commit admitted")
+		}
+		fixtureSourceGit(t, clone, "checkout", "--detach", source)
+		if err := run(checkout); err != nil {
+			t.Fatal(err)
+		}
+		fixtureSourceGit(t, clone, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "tag", "-fa", tag, "-m", "different annotation")
+		if err := run(checkout); err == nil {
+			t.Fatal("recreated local annotation admitted")
+		}
+		fixtureSourceGit(t, clone, "fetch", "--no-tags", "origin", "+"+source+":refs/tags/"+tag)
+		if err := run(checkout); err == nil {
+			t.Fatal("checkout with a peeled local tag admitted")
+		}
+		if err := run(append(checkout, "--github-output", output)); err == nil {
+			t.Fatal("assembler wrote dispatch outputs")
+		}
+	})
 	t.Setenv("POLARIS_CI_TEST_TAG_REF", fmt.Sprintf(`{"object":{"type":"commit","sha":"%s"}}`, source))
 	if err := run(command); err == nil {
 		t.Fatal("lightweight tag admitted")

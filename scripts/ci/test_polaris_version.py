@@ -70,22 +70,6 @@ class PolarisVersionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
-    def test_full_patch_tag_is_bound_to_actual_source_and_tag_object(self):
-        source, obj = 'a' * 40, 'b' * 40
-        tag = 'v' + VERSION
-        answers = [{'object': {'type': 'tag', 'sha': obj}},
-                   {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
-        with patch.object(identity, 'api', side_effect=answers) as api:
-            self.assertEqual(identity.remote_tag_identity(tag, source, obj), obj)
-            self.assertTrue(api.call_args_list[0].args[0].endswith('/' + tag))
-        answers[1]['tag'] = 'v1.15.0-polaris-alpha.12'
-        with patch.object(identity, 'api', side_effect=answers), self.assertRaises(ValueError):
-            identity.remote_tag_identity(tag, source, obj)
-        for tag in ['v1.15.0-alpha.12.1', 'v1.15.0-polaris-alpha.12.1;bad']:
-            with patch.object(identity, 'api') as api, self.assertRaises(ValueError):
-                identity.remote_tag_identity(tag, source, obj)
-            api.assert_not_called()
-
 
 if __name__ == '__main__':
     unittest.main()
