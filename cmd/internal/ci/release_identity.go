@@ -68,26 +68,37 @@ func remoteTagIdentity(tag, source, expectedObject string, read githubReader) (s
 }
 
 func verifyCheckout(root, tag, source, expectedObject string, read githubReader) (string, error) {
+	if err := verifyProducerCheckout(root, source); err != nil {
+		return "", err
+	}
+	return verifyCheckoutTag(root, tag, source, expectedObject, read)
+}
+
+func verifyProducerCheckout(root, source string) error {
 	if os.Getenv("GITHUB_REPOSITORY") != repository || os.Getenv("GITHUB_REPOSITORY_ID") != repositoryID {
-		return "", fmt.Errorf("wrong producer repository")
+		return fmt.Errorf("wrong producer repository")
 	}
 	if source != os.Getenv("GITHUB_SHA") {
-		return "", fmt.Errorf("expected source differs from dispatch SHA")
+		return fmt.Errorf("expected source differs from dispatch SHA")
 	}
 	head, err := git(root, "rev-parse", "HEAD")
 	if err != nil {
-		return "", err
+		return err
 	}
 	if strings.TrimSpace(string(head)) != source {
-		return "", fmt.Errorf("actual producer checkout differs from dispatch SHA")
+		return fmt.Errorf("actual producer checkout differs from dispatch SHA")
 	}
 	status, err := git(root, "status", "--porcelain", "--untracked-files=no")
 	if err != nil {
-		return "", err
+		return err
 	}
 	if len(strings.TrimSpace(string(status))) != 0 {
-		return "", fmt.Errorf("tracked producer source is dirty")
+		return fmt.Errorf("tracked producer source is dirty")
 	}
+	return nil
+}
+
+func verifyCheckoutTag(root, tag, source, expectedObject string, read githubReader) (string, error) {
 	object, err := remoteTagIdentity(tag, source, expectedObject, read)
 	if err != nil {
 		return "", err

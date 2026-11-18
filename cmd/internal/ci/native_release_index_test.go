@@ -1,10 +1,13 @@
 package main
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,12 +82,8 @@ func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 		}
 		return data
 	}
-	var materialJSON bytes.Buffer
-	if err := distributionMaterialsCommand([]string{"--source-root", root}, bytes.NewReader(encode(document)), &materialJSON); err != nil {
-		t.Fatal(err)
-	}
-	var material map[string]any
-	if err := uniqueJSON(&materialJSON, &material); err != nil {
+	material, err := distributionMaterials(document, root, downloadOwnedReplacement)
+	if err != nil {
 		t.Fatal(err)
 	}
 	document["distributionMaterials"] = material
@@ -129,6 +128,134 @@ func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 				t.Fatal("accepted changed producer identity or source materials")
 			}
 		})
+	}
+}
+
+func TestNativeAssemblyBindsArchivedModuleBytesAndPreservesPreviousOutput(t *testing.T) {
+	root, destination, stage := t.TempDir(), t.TempDir(), t.TempDir()
+	modules := map[string]string{"go.mod": "module example.org/kernel\n\ngo 1.27.4\n", "go.sum": "example.org/dependency v1.0.0 h1:baseline\n"}
+	identity := make(map[string]any)
+	expected := make(map[string]string)
+	for _, module := range nativeSourceModules {
+		fixtureFile(t, root, module.name, modules[module.name])
+		expected[module.field] = sha256Hex([]byte(modules[module.name]))
+		identity[module.field] = expected[module.field]
+	}
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureSourceGit(t, root, "config", "core.autocrlf", "false")
+	fixtureSourceGit(t, root, "add", "go.mod", "go.sum")
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
+	prefix := "sing-box-polaris-source-" + source
+	var platforms []any
+	for i := range 5 {
+		platforms = append(platforms, map[string]any{"id": fmt.Sprint(i), "sourceIdentity": identity})
+	}
+	record, err := stageNativeSourceArchive(t.Context(), root, stage, source, platforms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filename := record["name"].(string)
+	file, err := os.ReadFile(filepath.Join(stage, filename))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record["sha256"] != sha256Hex(file) || record["bytes"] != json.Number(fmt.Sprint(len(file))) {
+		t.Fatal("source index does not identify the compressed bytes")
+	}
+	compressed, err := gzip.NewReader(bytes.NewReader(file))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := io.ReadAll(compressed)
+	compressed.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := git(root, "archive", "--format=tar", "--prefix="+prefix+"/", source)
+	if err != nil || !bytes.Equal(raw, want) {
+		t.Fatalf("staged gzip changed the committed tar stream: %v", err)
+	}
+	fixtureFile(t, stage, publisherIndexFile, "assembled")
+	if err := installNativeIndex(stage, destination, filename); err != nil {
+		t.Fatal(err)
+	}
+
+	for i, item := range platforms {
+		row := item.(map[string]any)
+		for _, key := range []string{"goModSha256", "goSumSha256", ""} {
+			changed := map[string]any{"goModSha256": identity["goModSha256"], "goSumSha256": identity["goSumSha256"]}
+			if key == "" {
+				delete(row, "sourceIdentity")
+			} else {
+				changed[key] = strings.Repeat("0", 64)
+				row["sourceIdentity"] = changed
+			}
+			if _, err := stageNativeSourceArchive(t.Context(), root, stage, source, platforms); err == nil ||
+				!strings.Contains(err.Error(), "native row module identity differs") {
+				t.Fatalf("row %d accepted changed/missing %s: %v", i, key, err)
+			}
+			row["sourceIdentity"] = identity
+			retained, err := os.ReadFile(filepath.Join(destination, filename))
+			if err != nil || !bytes.Equal(file, retained) {
+				t.Fatalf("failed assembly changed the previously issued archive: %v", err)
+			}
+		}
+	}
+	for _, module := range nativeSourceModules {
+		for _, change := range []string{strings.ReplaceAll(modules[module.name], "\n", "\r\n"), modules[module.name] + "\x00"} {
+			var fixture bytes.Buffer
+			z := gzip.NewWriter(&fixture)
+			archive := tar.NewWriter(z)
+			for _, entry := range nativeSourceModules {
+				data := modules[entry.name]
+				if entry.name == module.name {
+					data = change
+				}
+				if err := archive.WriteHeader(&tar.Header{Name: prefix + "/" + entry.name, Mode: 0o644, Size: int64(len(data))}); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := io.WriteString(archive, data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := archive.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := z.Close(); err != nil {
+				t.Fatal(err)
+			}
+			err := validateNativeSourceArchive(&fixture, prefix, platforms, expected)
+			if err == nil || !strings.Contains(err.Error(), "archived module bytes differ") {
+				t.Fatalf("changed archived %s accepted: %v", module.name, err)
+			}
+		}
+	}
+	fixtureFile(t, stage, filename, "replacement")
+	if err := installNativeIndex(stage, destination, filename); err == nil {
+		t.Fatal("a missing staged index was reported as assembled")
+	}
+	retained, err := os.ReadFile(filepath.Join(destination, filename))
+	if err != nil || !bytes.Equal(file, retained) {
+		t.Fatalf("index install failure failed to restore the previous archive: %v", err)
+	}
+}
+
+func TestNativeAssemblyChecksOverlayBeforeReadingReleaseEvidence(t *testing.T) {
+	root := t.TempDir()
+	fixtureFile(t, root, "README", "checked out")
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureSourceGit(t, root, "add", ".")
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+	t.Setenv("GITHUB_REPOSITORY", repository)
+	t.Setenv("GITHUB_REPOSITORY_ID", repositoryID)
+	t.Setenv("GITHUB_SHA", fixtureSourceGit(t, root, "rev-parse", "HEAD"))
+	err := assembleNativeIndex(t.Context(), root, filepath.Join(root, "absent"), nativeIndexSchema, func(path string, _ any) error {
+		t.Fatalf("invalid checkout reached GitHub: %s", path)
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "Cronet Windows overlay") {
+		t.Fatalf("assembly did not reject the overlay before release/artifact work: %v", err)
 	}
 }
 

@@ -299,7 +299,7 @@ func (p *publisher) inventory() (*publisherInventory, error) {
 	if run.Status != "completed" || run.Conclusion != "success" || run.Event != "workflow_dispatch" || run.Attempt < 1 {
 		return nil, fmt.Errorf("unsuccessful or non-dispatched input run")
 	}
-	artifacts, err := publisherPages[publisherArtifactMetadata](p, runPath+"/artifacts", "artifacts", 0)
+	artifacts, err := githubPages[publisherArtifactMetadata](p.get, runPath+"/artifacts", "artifacts", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func (p *publisher) inventory() (*publisherInventory, error) {
 		ScopeSHA256: scopeSHA, Runs: map[string]*publisherRun{"all": entry}, SourceTree: p.sourceTree, Tag: p.tag, TagObject: p.tagObject,
 	}
 	jobs := func() ([]map[string]any, error) {
-		return publisherPages[map[string]any](p, fmt.Sprintf("%s/attempts/%d/jobs", runPath, run.Attempt), "jobs", 1000)
+		return githubPages[map[string]any](p.get, fmt.Sprintf("%s/attempts/%d/jobs", runPath, run.Attempt), "jobs", 1000)
 	}
 	if err := p.bindNativeIndex(result, runID, jobs); err != nil {
 		return nil, err
@@ -465,7 +465,7 @@ func (p *publisher) reviewedInventory() (*publisherInventory, error) {
 		run.Path != publisherWorkflow || run.HeadSHA != os.Getenv("GITHUB_SHA") || run.Status != "completed" || run.Conclusion != "success" {
 		return nil, fmt.Errorf("foreign, failed or mismatched inventory run")
 	}
-	artifacts, err := publisherPages[publisherArtifactMetadata](p, endpoint+"/artifacts", "artifacts", 0)
+	artifacts, err := githubPages[publisherArtifactMetadata](p.get, endpoint+"/artifacts", "artifacts", 0)
 	if err != nil {
 		return nil, err
 	}

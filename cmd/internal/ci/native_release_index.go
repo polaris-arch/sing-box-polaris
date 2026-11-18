@@ -61,29 +61,8 @@ func validateNativeIndex(index io.Reader, schema, sourceRoot, source, tree, tag,
 			return fmt.Errorf("unexpected or duplicate native identity %s", id)
 		}
 		delete(expected, id)
-		if !nativeFieldsMatch(row, map[string]any{
-			"target": target.target, "sourceCommit": source, "sourceTree": tree, "version": version, "tag": tag,
-			"variant": map[string]any{"linkage": target.linkage, "libc": "", "goarm": "", "gomips": "", "go386": "", "legacy": false},
-		}) {
-			return fmt.Errorf("native source or matrix binding differs: %s", id)
-		}
-		suffix := ".tar.gz"
-		if strings.HasPrefix(target.target, "windows/") {
-			suffix = ".zip"
-		}
-		filename := id + suffix
-		publicName, err := publicProductName(filename)
-		if err != nil {
+		if err := validateNativePlatform(row, target, sourceRoot, source, tree, version, tag, producer); err != nil {
 			return err
-		}
-		archive := row["archive"].(map[string]any)
-		if !nativeFieldsMatch(archive, map[string]any{
-			"root": id, "name": filename, "releaseName": publicName,
-		}) {
-			return fmt.Errorf("native archive identity mismatch: %s", id)
-		}
-		if err := validateTrustedNativeExecution(row, producer, sourceRoot); err != nil {
-			return fmt.Errorf("native execution proof for %s: %w", id, err)
 		}
 	}
 	jobs, err := fetchJobs()
@@ -106,6 +85,35 @@ func validateNativeIndex(index io.Reader, schema, sourceRoot, source, tree, tag,
 	}
 	if !reflect.DeepEqual(document["distributionMaterials"], materials) {
 		return fmt.Errorf("source/notice bindings differ from actual index or committed inputs")
+	}
+	return nil
+}
+
+func validateNativePlatform(row map[string]any, target nativeTarget, sourceRoot, source, tree, version, tag string, producer map[string]any) error {
+	id := row["id"].(string)
+	if !nativeFieldsMatch(row, map[string]any{
+		"target": target.target, "sourceCommit": source, "sourceTree": tree, "version": version, "tag": tag,
+		"variant": map[string]any{"linkage": target.linkage, "libc": "", "goarm": "", "gomips": "", "go386": "", "legacy": false},
+	}) {
+		return fmt.Errorf("native source or matrix binding differs: %s", id)
+	}
+	suffix := ".tar.gz"
+	if strings.HasPrefix(target.target, "windows/") {
+		suffix = ".zip"
+	}
+	filename := id + suffix
+	publicName, err := publicProductName(filename)
+	if err != nil {
+		return err
+	}
+	archive := row["archive"].(map[string]any)
+	if !nativeFieldsMatch(archive, map[string]any{
+		"root": id, "name": filename, "releaseName": publicName,
+	}) {
+		return fmt.Errorf("native archive identity mismatch: %s", id)
+	}
+	if err := validateTrustedNativeExecution(row, producer, sourceRoot); err != nil {
+		return fmt.Errorf("native execution proof for %s: %w", id, err)
 	}
 	return nil
 }

@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Collect actual native archives and assemble run-bound index; never invent smoke/release facts."""
-import argparse,gzip,hashlib,json,os,platform,re,shlex,shutil,subprocess,sys,tarfile,tempfile,time,zipfile
+"""Collect and smoke-test actual native archives; never invent execution facts."""
+import argparse,hashlib,json,os,platform,re,shlex,shutil,subprocess,sys,tarfile,tempfile,time,zipfile
 from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
-from release_identity import ci_command, release_tag_object, public_product_name
+from release_identity import ci_command
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
-def file_sha(path):
- with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
 def git(*args):return run('git',*args)
 def identity():
@@ -72,33 +70,6 @@ def source_module_hashes():
   if actual!=committed:raise ValueError(name+' working-tree bytes differ from HEAD blob')
   hashes[key]=sha(actual)
  return hashes
-
-def validate_archived_source_identity(rows,source_tar,commit):
- expected=source_module_hashes();prefix='sing-box-polaris-source-'+commit+'/'
- members={prefix+'go.mod':'goModSha256',prefix+'go.sum':'goSumSha256'};archived={}
- with tarfile.open(fileobj=source_tar,mode='r|gz') as archive:
-  for member in archive:
-   key=members.get(member.name)
-   if key is None:continue
-   if key in archived or not member.isfile():raise ValueError('ambiguous archived source module: '+member.name)
-   with archive.extractfile(member) as stream:archived[key]=hashlib.file_digest(stream,'sha256').hexdigest()
- if archived!=expected:raise ValueError('archived module bytes differ from checked source')
- for row in rows:
-  identity=row.get('sourceIdentity',{})
-  if any(identity.get(key)!=value for key,value in archived.items()):raise ValueError('native row module identity differs from archived source: '+row['id'])
-
-def write_source_archive(directory,rows,commit):
- # Source archive is the exact committed kernel tree, including tracked replacements/materials.
- source_name=f'sing-box-polaris-source-{commit}.tar.gz';source=directory/source_name
- with tempfile.TemporaryDirectory(dir=directory) as scratch:
-  candidate=Path(scratch)/source_name
-  args=['git','archive','--format=tar','--prefix',f'sing-box-polaris-source-{commit}/',commit]
-  with candidate.open('wb') as out,subprocess.Popen(args,stdout=subprocess.PIPE) as producer,producer.stdout as tar:
-   with gzip.GzipFile(filename='',mode='wb',fileobj=out,mtime=0) as gz:shutil.copyfileobj(tar,gz)
-   if producer.wait():raise subprocess.CalledProcessError(producer.returncode,args)
-  with candidate.open('rb') as stream:validate_archived_source_identity(rows,stream,commit)
-  candidate.replace(source)
- return source
 
 def validate_overlay(root):
  env=dict(os.environ,GOWORK='off',GOTOOLCHAIN='local')
@@ -587,89 +558,7 @@ def smoke(directory):
  rows[0].write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n')
 
 
-def distribution_materials(index, root=Path('.')):
- """Derive source and notice bindings with the same validator as the publisher."""
- env=dict(os.environ,GOWORK='off',GOTOOLCHAIN='local')
- args=ci_command('distribution-materials','--source-root',str(Path(root).absolute()))
- result=subprocess.run(args,cwd=ROOT,env=env,input=json.dumps(index),capture_output=True,encoding='utf-8')
- if result.returncode:raise ValueError(result.stderr.strip() or 'distribution materials command failed')
- return json.loads(result.stdout)
-
-
-NATIVE_JOB_NAMES={key:f'Native final-package Cronet and gVisor smoke ({ident})'
-                  for key,ident in [('linux','linux-amd64-purego'),('win','windows-amd64'),('mac-x64','darwin-amd64'),('mac-arm64','darwin-arm64')]}
-
-def select_native_jobs(jobs,commit,run_id,attempt):
- if type(run_id) is not int or run_id<=0 or type(attempt) is not int or attempt<=0:
-  raise ValueError('native job run/attempt identity differs')
- if not isinstance(jobs,list) or len(jobs)>1000:raise ValueError('native job API evidence scope differs')
- result={}
- for key,name in NATIVE_JOB_NAMES.items():
-  named=[job for job in jobs if isinstance(job,dict) and job.get('name')==name]
-  if len(named)!=1:raise ValueError('missing/duplicate native producer API evidence: '+name)
-  job=named[0]
-  if (job.get('conclusion')!='success' or job.get('status')!='completed' or job.get('head_sha')!=commit
-      or type(job.get('run_id')) is not int or job['run_id']!=run_id
-      or type(job.get('run_attempt')) is not int or job['run_attempt']!=attempt
-      or type(job.get('id')) is not int or job['id']<=0):
-   raise ValueError('native producer API source/run/attempt/status differs: '+name)
-  result[key]={'id':job['id'],'name':name}
- if len({value['id'] for value in result.values()})!=len(result):raise ValueError('native producer job IDs collide')
- return result
-
-def assemble(directory):
- commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);v=os.environ['VERSION'];tag='v'+v
- expected_object=os.environ.get('EXPECTED_RELEASE_TAG_OBJECT')
- if not expected_object or not re.fullmatch(r'[0-9a-f]{40}',expected_object):raise ValueError('final index requires preflight tag object')
- tag_object=release_tag_object('checkout',tag,commit,expected_object)
- context=execution_run()
- rows={}
- for p in d.rglob('native-row-*.json'):
-  r=json.loads(p.read_text(encoding='utf-8'));validate_trusted_execution(r, context);old=rows.get(r['id'])
-  if old:
-   plain=lambda row:{k:v for k,v in row.items() if k not in ('trustedExecution','finalPackageCronetSmoke')}
-   if plain(r)!=plain(old):raise ValueError('conflicting native receipt')
-   if r['finalPackageCronetSmoke'] is None:continue
-   if old['finalPackageCronetSmoke'] is not None and r != old:raise ValueError('conflicting native smoke receipt')
-  rows[r['id']]=r
- expected=expected_native(v)
- if set(rows)!=set(expected):raise ValueError('full upstream native index differs from exact expected archive identities')
- for key,r in rows.items():
-  if r['target']!=expected[key]['target'] or r['variant']!=expected[key]['variant'] or r['archive']['root']!=key:raise ValueError('assembled native row variant differs from pinned matrix')
- for r in rows.values():
-  if (r['sourceCommit'],r['sourceTree'],r['version'])!=(commit,tree,v):raise ValueError('mixed source native receipts')
-  matches=list(d.rglob(r['archive']['name']))
-  if not matches or any(file_sha(x)!=r['archive']['sha256'] for x in matches):raise ValueError('native archive hash mismatch')
- source=write_source_archive(d,rows.values(),commit)
- legal=[]
- for src,dest in [('LICENSE','licenses/LICENSE'),('release/licenses/NOTICE','licenses/NOTICE')]:
-  data=Path(src).read_bytes();legal.append({'path':dest,'content':data.decode(),'bytes':len(data),'sha256':sha(data)})
- for p in sorted(Path('release/licenses').rglob('*')):
-  if p.is_file() and p.name!='NOTICE':
-   data=p.read_bytes();legal.append({'path':'licenses/'+p.relative_to('release/licenses').as_posix(),'content':data.decode(),'bytes':len(data),'sha256':sha(data)})
- dedup={}
- for item in legal:
-  old=dedup.get(item['path'])
-  if old and old!=item:raise ValueError('conflicting legal file path')
-  dedup[item['path']]=item
- legal=list(dedup.values())
- workflow=os.environ['GITHUB_WORKFLOW_REF'].split(REPO+'/',1)[1].split('@',1)[0]
- run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
- pages=json.loads(run('gh','api','--paginate','--slurp',f'repos/{REPO}/actions/runs/{run_id}/attempts/{attempt}/jobs?per_page=100'))
- jobs=[j for page in pages for j in page['jobs']]
- native_jobs=select_native_jobs(jobs,commit,int(run_id),int(attempt))
- # Preserve actual candidate names/root/member hashes; publish explicit derivative basenames.
- for row in rows.values():
-  validate_trusted_execution(row, context)
-  row['archive']['releaseName']=public_product_name(row['archive']['name'])
- index={'schema':'polaris-upstream-native-assets-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':file_sha(source)},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
- index['distributionMaterials']=distribution_materials(index)
- release_tag_object('checkout',tag,commit,tag_object)
- import jsonschema
- jsonschema.Draft202012Validator(json.loads(Path('release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))).validate(index)
- (d/'polaris-upstream-native-assets.json').write_text(json.dumps(index,indent=2)+'\n', encoding='utf-8', newline='\n')
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('mode',choices=['collect','smoke','assemble']);p.add_argument('directory');a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('mode',choices=['collect','smoke']);p.add_argument('directory');a=p.parse_args()
  if a.mode=='collect':collect(a.directory,json.loads(os.environ['NATIVE_MATRIX']))
- elif a.mode=='smoke':smoke(a.directory)
- else:assemble(a.directory)
+ else:smoke(a.directory)

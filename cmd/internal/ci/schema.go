@@ -20,17 +20,21 @@ func validateDocument(filename, fragment string, document any) error {
 }
 
 func validateSchema(schema any, fragment string, document any) error {
+	compiled, err := compileSchema(schema, fragment)
+	if err != nil {
+		return err
+	}
+	return compiled.Validate(document)
+}
+
+func compileSchema(schema any, fragment string) (*jsonschema.Schema, error) {
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft2020)
 	compiler.UseLoader(jsonschema.SchemeURLLoader{})
 
 	const resource = "urn:polaris:ci-schema"
 	if err := compiler.AddResource(resource, schema); err != nil {
-		return err
+		return nil, err
 	}
-	compiled, err := compiler.Compile(resource + fragment)
-	if err != nil {
-		return err
-	}
-	return compiled.Validate(document)
+	return compiler.Compile(resource + fragment)
 }

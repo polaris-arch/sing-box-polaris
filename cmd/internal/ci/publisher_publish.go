@@ -253,7 +253,7 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 		return err
 	}
 	releasesPath := publisherRepositoryPath + "/releases"
-	releases, err := publisherPages[publisherRelease](p, releasesPath, "", 0)
+	releases, err := githubPages[publisherRelease](p.get, releasesPath, "", 0)
 	if err != nil {
 		return err
 	}
@@ -330,7 +330,7 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 		Digest string
 		Size   int64
 	}
-	assets, err := publisherPages[uploadedAsset](p, releasePath+"/assets", "", 0)
+	assets, err := githubPages[uploadedAsset](p.get, releasePath+"/assets", "", 0)
 	if err != nil {
 		return err
 	}
@@ -348,7 +348,7 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	if err := p.requireTag("tag changed; retained as draft"); err != nil {
 		return err
 	}
-	releases, err = publisherPages[publisherRelease](p, releasesPath, "", 0)
+	releases, err = githubPages[publisherRelease](p.get, releasesPath, "", 0)
 	if err != nil {
 		return err
 	}

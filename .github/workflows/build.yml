@@ -512,8 +512,6 @@ jobs:
       with:
         go-version: '1.27.4'
         cache: false
-    - name: Install index schema validator
-      run: python3 -m pip install jsonschema==4.23.0
     - name: Download exact native scope binary-linux_*
       uses: actions/download-artifact@v5
       with:
@@ -537,9 +535,9 @@ jobs:
     - name: Build the CI tool for assembly provenance
       run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Assemble final index
-      run: python3 scripts/ci/native_release_index.py assemble artifacts
+      run: |
+        "$RUNNER_TEMP/polaris-ci" assemble-native-index artifacts
       env:
-        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
         EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
         GH_TOKEN: ${{ github.token }}

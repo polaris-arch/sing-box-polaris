@@ -115,7 +115,7 @@ func (p *publisher) get(endpoint string, result any) error {
 	return publisherRemoteJSON(p.ctx, endpoint, result, &p.reads)
 }
 
-func publisherPages[T any](p *publisher, endpoint, key string, maximum int) ([]T, error) {
+func githubPages[T any](read githubReader, endpoint, key string, maximum int) ([]T, error) {
 	separator := "?"
 	if strings.Contains(endpoint, "?") {
 		separator = "&"
@@ -125,13 +125,13 @@ func publisherPages[T any](p *publisher, endpoint, key string, maximum int) ([]T
 		request := fmt.Sprintf("%s%sper_page=100&page=%d", endpoint, separator, page)
 		var batch []T
 		if key == "" {
-			if err := p.get(request, &batch); err != nil {
+			if err := read(request, &batch); err != nil {
 				return nil, err
 			}
 		} else {
 			// Other envelope fields can hold unrelated scalar values.
 			var fields map[string]json.RawMessage
-			if err := p.get(request, &fields); err != nil {
+			if err := read(request, &fields); err != nil {
 				return nil, err
 			}
 			if fields[key] == nil {

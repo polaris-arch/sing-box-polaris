@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"maps"
@@ -21,41 +20,6 @@ const (
 	distributionNoticeSelection = "release/ci/current44-notice-mappings.json"
 	moduleProxy                 = "https://proxy.golang.org"
 )
-
-// The assembler passes its existing index document before adding the derived
-// materials. Keep its input under the same schema as the final publisher.
-func distributionMaterialsCommand(args []string, input io.Reader, output io.Writer) error {
-	flags := flag.NewFlagSet("distribution-materials", flag.ContinueOnError)
-	root := flags.String("source-root", "", "verified producer source directory")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	if flags.NArg() != 0 || *root == "" {
-		return fmt.Errorf("distribution-materials requires a source root")
-	}
-	var index, schema map[string]any
-	if err := decodeNativeJSON(input, &index); err != nil {
-		return err
-	}
-	if err := readNativeSourceJSON(".", nativeIndexSchema, &schema); err != nil {
-		return err
-	}
-	if _, final := index["distributionMaterials"]; !final {
-		required, ok := schema["required"].([]any)
-		if !ok || !slices.Contains(required, any("distributionMaterials")) {
-			return fmt.Errorf("native index schema no longer requires distribution materials")
-		}
-		schema["required"] = slices.DeleteFunc(required, func(key any) bool { return key == "distributionMaterials" })
-	}
-	if err := validateSchema(schema, "", index); err != nil {
-		return err
-	}
-	materials, err := distributionMaterials(index, *root, downloadOwnedReplacement)
-	if err != nil {
-		return err
-	}
-	return writeJSON(output, materials)
-}
 
 func openNativeSource(root, name string) (*os.File, error) {
 	filename, err := regularSource(root, name)
