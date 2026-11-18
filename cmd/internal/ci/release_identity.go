@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/sagernet/sing-box/common/badversion"
@@ -109,6 +110,37 @@ func verifyCheckout(root, tag, source, expectedObject string, read githubReader)
 		}
 	}
 	return object, nil
+}
+
+var publicFilename = regexp.MustCompile(`^[A-Za-z0-9_.+ -]+$`)
+
+func publicProductName(name string) (string, error) {
+	if !publicFilename.MatchString(name) || name == "." || name == ".." {
+		return "", fmt.Errorf("public product filename must be a safe basename")
+	}
+	if strings.HasPrefix(name, "sing-box-polaris-") || strings.HasPrefix(name, "sing-box-polaris_") {
+		return name, nil
+	}
+	for _, separator := range []string{"-", "_"} {
+		if strings.HasPrefix(name, "sing-box"+separator) {
+			return "sing-box-polaris" + separator + strings.TrimPrefix(name, "sing-box"+separator), nil
+		}
+	}
+	return name, nil
+}
+
+func validatePublicationIndex(index map[string]any, source, tag, tagObject, tree string) error {
+	if index["schema"] != "polaris-upstream-native-assets-v1" || index["tag"] != tag || index["tagObject"] != tagObject || index["sourceCommit"] != source {
+		return fmt.Errorf("assembled final index no longer matches source tag")
+	}
+	if tree != "" && index["sourceTree"] != tree {
+		return fmt.Errorf("assembled final index source tree differs")
+	}
+	materials, ok := index["distributionMaterials"].(map[string]any)
+	if !ok || materials["publicationEligible"] != true {
+		return fmt.Errorf("current source/notice review remains unresolved")
+	}
+	return nil
 }
 
 func releaseIdentity(args []string) error {

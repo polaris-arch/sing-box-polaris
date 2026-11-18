@@ -40,12 +40,16 @@ func run(args []string) error {
 		return runtimeProto(args[1:])
 	case "record-candidate":
 		return recordCandidate(args[1:])
+	case "publish-github":
+		return publishGitHub(args[1:])
 	case "publisher-receipt":
 		return publisherReceipt(args[1:])
 	case "peer-metadata":
 		return peerMetadata(args[1:])
 	case "cronet-overlay":
 		return cronetOverlayCommand(args[1:])
+	case "distribution-materials":
+		return distributionMaterialsCommand(args[1:], os.Stdin, os.Stdout)
 	case "release-identity":
 		return releaseIdentity(args[1:])
 	case "tls-gate":

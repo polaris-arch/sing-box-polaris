@@ -35,16 +35,3 @@ def release_tag_object(scope, tag, source, expected=None):
         args.extend(['--expected-tag-object', expected])
     env = {**os.environ, 'GOWORK': 'off', 'GOTOOLCHAIN': 'local'}
     return json.loads(subprocess.check_output(args, env=env))['tagObject']
-
-
-def validate_publication_index(index, source, tag, tag_object, tree=None):
-    """Shared final-source and eligibility gate, before any release mutation."""
-    require(isinstance(index, dict), 'final native index must be an object')
-    require(index.get('schema') == 'polaris-upstream-native-assets-v1' and
-            index.get('tag') == tag and index.get('tagObject') == tag_object and
-            index.get('sourceCommit') == source, 'assembled final index no longer matches source tag')
-    if tree is not None:
-        require(index.get('sourceTree') == tree, 'assembled final index source tree differs')
-    materials = index.get('distributionMaterials')
-    require(isinstance(materials, dict) and materials.get('publicationEligible') is True,
-            'current source/notice review remains unresolved')

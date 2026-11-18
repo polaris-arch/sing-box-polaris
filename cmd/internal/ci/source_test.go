@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,9 @@ func TestMain(tests *testing.M) {
 	mode := os.Getenv("POLARIS_CI_TEST_GH_MODE")
 	if mode == "" || !strings.HasPrefix(filepath.Base(os.Args[0]), "gh") {
 		os.Exit(tests.Run())
+	}
+	if mode == "publisher" {
+		os.Exit(publisherFixtureGitHub())
 	}
 	// Exercise the actual subprocess/pipes without network access or a Python fixture.
 	if mode == "tls" {
@@ -659,7 +663,7 @@ func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer sink.Close()
-			result, err := githubAttempt(path, sink, 10, 2*time.Second)
+			result, err := githubAttempt(context.Background(), path, sink, 10, 2*time.Second)
 			good := mode == "success" || mode == "stderr-flood"
 			if (err == nil) != good {
 				t.Fatalf("%s: %v", mode, err)
@@ -686,13 +690,25 @@ func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
 			}
 		})
 	}
+	t.Run("cancellation", func(t *testing.T) {
+		t.Setenv("POLARIS_CI_TEST_GH_MODE", "idle")
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		if _, err := githubAttempt(ctx, path, io.Discard, 10, 6*time.Second); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("cancelled transport failure differs: %v", err)
+		}
+	})
+	if _, err := retryDelay(map[string]string{"retry-after": "Mon, 01 Jan 2001 00:00:00 -0000"}, 1, time.Now()); err == nil {
+		t.Fatal("Retry-After with unspecified time zone admitted")
+	}
+
 	t.Setenv("POLARIS_CI_TEST_GH_MODE", "success")
 	sink, err := os.CreateTemp(t.TempDir(), "closed")
 	if err != nil {
 		t.Fatal(err)
 	}
 	sink.Close()
-	if _, err := githubAttempt(path, sink, 10, 2*time.Second); !errors.Is(err, os.ErrClosed) {
+	if _, err := githubAttempt(context.Background(), path, sink, 10, 2*time.Second); !errors.Is(err, os.ErrClosed) {
 		t.Fatalf("primary sink error lost: %v", err)
 	}
 	t.Setenv("POLARIS_CI_TEST_GH_MODE", "retry")
@@ -717,6 +733,18 @@ func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
 	if err != nil || string(body) != "hello" {
 		t.Fatalf("partial body survived retry: %q, %v", body, err)
 	}
+	budget = retryBudget{}
+	for round := 1; round <= 9; round++ {
+		t.Setenv("POLARIS_CI_TEST_GH_COUNTER", filepath.Join(directory, fmt.Sprintf("budget-%d", round)))
+		_, err := readGitHub(path, sink, 10, &budget, readLimits{2 * time.Second, 6 * time.Second, time.Second}, nil)
+		if round <= 8 && err != nil || round == 9 && (err == nil || !strings.Contains(err.Error(), "HTTP 503")) {
+			t.Fatalf("request %d shared budget: %v", round, err)
+		}
+	}
+	if budget.ExtraGETs != 8 {
+		t.Fatalf("shared GET budget changed: %v", budget)
+	}
+
 }
 
 func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
@@ -1371,6 +1399,120 @@ func TestPatchReleaseModuleOnlyAdmitsLicenseEvidence(t *testing.T) {
 	if _, err := selectPatchPackages(root, []string{"release/unowned.go"}); err == nil {
 		t.Fatal("non-license release package admitted")
 	}
+}
+
+func TestArtifactArchiveChecksMetadataBeforeAllocationAndOriginalMemberBytes(t *testing.T) {
+	for _, fault := range []string{"", "stored", "zip64", "zip64-count", "count", "directory-size", "local-name", "overlap", "crc", "inflated-size", "trailing-deflate", "duplicate", "case", "prefix", "symlink", "encrypted", "method"} {
+		t.Run(fault, func(t *testing.T) {
+			headers := []zip.FileHeader{{Name: "parent/file", Method: zip.Deflate}, {Name: "parent/other", Method: zip.Deflate}}
+			switch fault {
+			case "stored":
+				headers[0].Method = zip.Store
+			case "duplicate":
+				headers[1].Name = headers[0].Name
+			case "case":
+				headers[1].Name = "parent/FILE"
+			case "prefix":
+				headers[1].Name = "parent/file/child"
+			case "symlink":
+				headers[0].SetMode(os.ModeSymlink | 0o777)
+			}
+			data := fixtureZIP(t, headers...)
+			order := binary.LittleEndian
+			end := len(data) - 22
+			central := int(order.Uint32(data[end+16:]))
+			switch fault {
+			case "zip64", "zip64-count":
+				record := make([]byte, 76)
+				copy(record, "PK\x06\x06")
+				order.PutUint64(record[4:], 44)
+				order.PutUint16(record[12:], 45)
+				order.PutUint16(record[14:], 45)
+				count := uint64(2)
+				if fault == "zip64-count" {
+					count = 16385
+				}
+				order.PutUint64(record[24:], count)
+				order.PutUint64(record[32:], count)
+				order.PutUint64(record[40:], uint64(order.Uint32(data[end+12:])))
+				order.PutUint64(record[48:], uint64(central))
+				copy(record[56:], "PK\x06\x07")
+				order.PutUint64(record[64:], uint64(end))
+				order.PutUint32(record[72:], 1)
+				ending := bytes.Clone(data[end:])
+				order.PutUint16(ending[8:], 65535)
+				order.PutUint16(ending[10:], 65535)
+				order.PutUint32(ending[12:], 0xffffffff)
+				order.PutUint32(ending[16:], 0xffffffff)
+				data = append(append(data[:end], record...), ending...)
+			case "count":
+				order.PutUint16(data[end+8:], 16385)
+				order.PutUint16(data[end+10:], 16385)
+			case "directory-size":
+				order.PutUint32(data[end+12:], 32<<20+1)
+			case "local-name":
+				data[30] = 'X'
+			case "overlap":
+				order.PutUint32(data[central+20:], uint32(len(data)))
+			case "crc":
+				data[central+16] ^= 1
+			case "inflated-size":
+				order.PutUint32(data[central+24:], 1)
+			case "trailing-deflate":
+				order.PutUint32(data[central+20:], order.Uint32(data[central+20:])+1)
+			case "encrypted":
+				order.PutUint16(data[6:], order.Uint16(data[6:])|1)
+				order.PutUint16(data[central+8:], order.Uint16(data[central+8:])|1)
+			case "method":
+				order.PutUint16(data[8:], 99)
+				order.PutUint16(data[central+10:], 99)
+			}
+			filename := filepath.Join(t.TempDir(), "artifact.zip")
+			if err := os.WriteFile(filename, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			file, err := os.Open(filename)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer file.Close()
+			archive, err := openArtifactZIP(file)
+			var copied bytes.Buffer
+			if err == nil {
+				_, err = archive.copyMember(archive.members[0], &copied)
+			}
+			valid := fault == "" || fault == "stored" || fault == "zip64"
+			if valid {
+				if err != nil || copied.String() != "fixture" {
+					t.Fatalf("valid archive changed: %q: %v", copied.String(), err)
+				}
+			} else if err == nil {
+				t.Fatal("invalid archive admitted")
+			}
+			if fault == "inflated-size" && copied.Len() > 1 {
+				t.Fatal("undeclared bytes reached the destination")
+			}
+		})
+	}
+}
+
+func fixtureZIP(t *testing.T, headers ...zip.FileHeader) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	archive := zip.NewWriter(&buffer)
+	for _, header := range headers {
+		writer, err := archive.CreateHeader(&header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(writer, "fixture"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buffer.Bytes()
 }
 
 func TestWorkflowReceiptsBindFilesSourceAndCompleteNativeScope(t *testing.T) {

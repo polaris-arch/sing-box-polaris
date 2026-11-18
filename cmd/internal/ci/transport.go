@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ type readLimits struct {
 var (
 	defaultReadLimits = readLimits{600 * time.Second, 1320 * time.Second, 120 * time.Second}
 	githubGETPath     = regexp.MustCompile(`^repos/polaris-arch/sing-box-polaris/[A-Za-z0-9_./?=&%+\-]+$`)
+	unknownMailZone   = regexp.MustCompile(`[ \t]-0000(?:[ \t]*\([^)]*\))?[ \t]*$`)
 	responseStatus    = regexp.MustCompile(`^HTTP/\S+ ([0-9]{3})(?: .*)?$`)
 )
 
@@ -72,7 +74,7 @@ func retryDelay(headers map[string]string, attempt int, now time.Time) (time.Dur
 		return time.Duration(seconds) * time.Second, nil
 	}
 	parsed, err := mail.ParseDate(value)
-	if err != nil {
+	if err != nil || unknownMailZone.MatchString(value) {
 		return 0, &readFailure{Kind: "invalid Retry-After"}
 	}
 	return max(0, parsed.Sub(now)), nil
@@ -143,7 +145,10 @@ type readResult struct {
 
 // Use owned pipes on both platforms. Waiting for gh and draining both streams
 // are separate conditions, including EOF while the child is still alive.
-func githubAttempt(path string, sink *os.File, maximum int64, timeout time.Duration) (result readResult, err error) {
+func githubAttempt(ctx context.Context, path string, sink io.Writer, maximum int64, timeout time.Duration) (result readResult, err error) {
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
 	deadline := time.Now().Add(timeout)
 	work := time.NewTimer(timeout - min(5*time.Second, timeout/2))
 	defer work.Stop()
@@ -181,7 +186,7 @@ func githubAttempt(path string, sink *os.File, maximum int64, timeout time.Durat
 			return
 		}
 		child.Process.Kill()
-		cleanup := time.NewTimer(max(time.Millisecond, time.Until(deadline)))
+		cleanup := time.NewTimer(min(5*time.Second, max(time.Millisecond, time.Until(deadline))))
 		defer cleanup.Stop()
 		select {
 		case <-wait:
@@ -206,6 +211,8 @@ func githubAttempt(path string, sink *os.File, maximum int64, timeout time.Durat
 		case exit = <-wait:
 			waited = true
 			wait = nil
+		case <-ctx.Done():
+			return result, ctx.Err()
 		case <-work.C:
 			return result, failure("read deadline", result.Status == 0 || result.Status == 200 || retryStatus(result.Status))
 		case event := <-events:
@@ -273,6 +280,19 @@ func githubAttempt(path string, sink *os.File, maximum int64, timeout time.Durat
 }
 
 func readGitHub(path string, sink *os.File, maximum int64, budget *retryBudget, limits readLimits, record func(map[string]any)) (readResult, error) {
+	return readGitHubFile(context.Background(), path, sink, maximum, budget, limits, record)
+}
+
+func readGitHubFile(ctx context.Context, path string, sink *os.File, maximum int64, budget *retryBudget, limits readLimits, record func(map[string]any)) (readResult, error) {
+	return readGitHubSink(ctx, path, sink, func() error {
+		if _, err := sink.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+		return sink.Truncate(0)
+	}, maximum, budget, limits, record)
+}
+
+func readGitHubSink(ctx context.Context, path string, sink io.Writer, reset func() error, maximum int64, budget *retryBudget, limits readLimits, record func(map[string]any)) (readResult, error) {
 	if path != "rate_limit" && path != "repos/"+repository && !githubGETPath.MatchString(path) || slices.Contains(strings.Split(strings.SplitN(path, "?", 2)[0], "/"), "..") {
 		return readResult{}, &readFailure{Kind: "unapproved GET path"}
 	}
@@ -283,12 +303,6 @@ func readGitHub(path string, sink *os.File, maximum int64, budget *retryBudget, 
 		budget = &processReadBudget
 	}
 	deadline := time.Now().Add(limits.Total)
-	reset := func() error {
-		if _, err := sink.Seek(0, io.SeekStart); err != nil {
-			return err
-		}
-		return sink.Truncate(0)
-	}
 	for attempt := 1; attempt <= 3; attempt++ {
 		if err := reset(); err != nil {
 			return readResult{}, err
@@ -297,7 +311,7 @@ func readGitHub(path string, sink *os.File, maximum int64, budget *retryBudget, 
 		if remaining <= 0 {
 			return readResult{}, &readFailure{Kind: "total read deadline"}
 		}
-		result, err := githubAttempt(path, sink, maximum, min(limits.Attempt, remaining))
+		result, err := githubAttempt(ctx, path, sink, maximum, min(limits.Attempt, remaining))
 		if record != nil {
 			headers := result.Headers
 			if headers == nil {
@@ -326,7 +340,7 @@ func readGitHub(path string, sink *os.File, maximum int64, budget *retryBudget, 
 			return result, nil
 		}
 		if resetErr := reset(); resetErr != nil {
-			return readResult{}, resetErr
+			return readResult{}, errors.Join(err, resetErr)
 		}
 		var failure *readFailure
 		if !errors.As(err, &failure) || !failure.Retryable || attempt == 3 || budget.ExtraGETs >= 8 {
@@ -341,7 +355,13 @@ func readGitHub(path string, sink *os.File, maximum int64, budget *retryBudget, 
 		}
 		budget.ExtraGETs++
 		budget.Wait += delay
-		time.Sleep(delay)
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return readResult{}, ctx.Err()
+		case <-timer.C:
+		}
 	}
 	panic("unreachable GitHub read attempt")
 }

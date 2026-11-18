@@ -119,74 +119,6 @@ class TestNative(unittest.TestCase):
      self.assertNotEqual(path.suffix.lower(),'.class')
 
 
-class OwnedReplacementMaterialsTests(unittest.TestCase):
- def fixture(self,root,notices=None):
-  original='github.com/sagernet/sing-openconnect';owned='github.com/polaris-arch/sing-openconnect'
-  item={'module':original,'version':'v1.0.0','h1':'',
-        'replacement':{'module':owned,'version':'v1.0.1-0.20261115000000-123456789abc','h1':'h1:verified'}}
-  actual=item['replacement'];license=b'unchanged license\n'
-  (root/'go.sum').write_text(owned+' '+actual['version']+' '+actual['h1']+'\n')
-  archive=root/'source.zip'
-  with zipfile.ZipFile(archive,'w') as z:
-   z.writestr(owned+'@'+actual['version']+'/client.go','package openconnect\n')
-   for name,data in (notices if notices is not None else {'LICENSE':license}).items():
-    z.writestr(owned+'@'+actual['version']+'/'+name,data)
-  selection={'components':[dict(item,noticeRecordIndexes=[0])],
-             'noticeRecords':[{'sourcePath':original+'@v1.0.0/LICENSE','byteOffset':0,'bytes':len(license),'sha256':n.sha(license)}]}
-  mod={'Require':[{'Path':original,'Version':item['version']}],
-       'Replace':[{'Old':{'Path':original},'New':{'Path':owned,'Version':actual['version']}}]}
-  download={'Path':owned,'Version':actual['version'],'Sum':actual['h1'],'Zip':str(archive)}
-  def command(args,**kwargs):
-   if args[1:]==['env','GOVERSION']:return 'go1.27.4\n'
-   if args[1:]==['mod','edit','-json']:return json.dumps(mod)
-   self.assertEqual(args,['go','mod','download','-json',owned+'@'+actual['version']])
-   self.assertNotEqual(Path(kwargs['cwd']),root)
-   return json.dumps(download)
-  return item,selection,license,mod,download,command,archive
- def test_exact_source_h1_and_unchanged_notices_use_fixed_public_download(self):
-  with tempfile.TemporaryDirectory() as temporary:
-   root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root)
-   with patch.dict(n.os.environ,{'GOPROXY':'https://private.invalid,direct','GOPRIVATE':'*','GONOSUMDB':'*','GONOPROXY':'*','GOINSECURE':'*','GOTOOLCHAIN':'auto'}), \
-        patch.object(n.subprocess,'check_output',side_effect=command) as execute:
-    result=n.owned_replacement_materials(item,root,selection,license,'1.27.4')
-   self.assertTrue(result['availabilityVerified']);self.assertEqual(result['noticeRecordIndexes'],[0])
-   self.assertEqual(result['sourceArchive'],{'zipUrl':'https://proxy.golang.org/'+download['Path']+'/@v/'+download['Version']+'.zip',
-                    'zipBytes':archive.stat().st_size,'zipSha256':n.sha(archive.read_bytes())})
-   for call in execute.call_args_list:
-    env=call.kwargs['env']
-    self.assertEqual({key:env[key] for key in ('GOENV','GO111MODULE','GOWORK','GOTOOLCHAIN','GOPROXY','GOSUMDB','GOPRIVATE','GONOSUMDB','GONOPROXY','GOINSECURE')},
-                     {'GOENV':'off','GO111MODULE':'on','GOWORK':'off','GOTOOLCHAIN':'local','GOPROXY':'https://proxy.golang.org','GOSUMDB':'sum.golang.org','GOPRIVATE':'','GONOSUMDB':'','GONOPROXY':'','GOINSECURE':''})
-    self.assertEqual(call.kwargs['timeout'],120)
-    self.assertNotEqual(env['GOMODCACHE'],str(root))
- def test_source_identity_and_download_mismatches_are_rejected(self):
-  for kind in ('original-version','replace-path','replace-version','source-h1','download-path','download-version','download-h1','mutable-version'):
-   with self.subTest(kind=kind),tempfile.TemporaryDirectory() as temporary:
-    root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root)
-    if kind=='original-version':item['version']='v9.0.0'
-    elif kind=='replace-path':mod['Replace'][0]['New']['Path']='github.com/other/fork'
-    elif kind=='replace-version':mod['Replace'][0]['New']['Version']='v9.0.0'
-    elif kind=='source-h1':(root/'go.sum').write_text(download['Path']+' '+download['Version']+' h1:other\n')
-    elif kind=='download-path':download['Path']='github.com/other/fork'
-    elif kind=='download-version':download['Version']='v9.0.0'
-    elif kind=='download-h1':download['Sum']='h1:other'
-    else:item['replacement']['version']='latest'
-    with patch.object(n.subprocess,'check_output',side_effect=command):
-     self.assertRaises(ValueError,n.owned_replacement_materials,item,root,selection,license,'1.27.4')
- def test_changed_missing_or_additional_notices_are_rejected(self):
-  for notices in ({'LICENSE':b'changed'}, {}, {'LICENSE':b'unchanged license\n','docs/NOTICE.txt':b'new'},
-                  {'LICENSE':b'unchanged license\n','licenses/third-party.txt':b'new'}):
-   with self.subTest(notices=notices),tempfile.TemporaryDirectory() as temporary:
-    root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root,notices)
-    with patch.object(n.subprocess,'check_output',side_effect=command):
-     self.assertRaisesRegex(ValueError,'notices differ',n.owned_replacement_materials,item,root,selection,license,'1.27.4')
- def test_wrong_local_toolchain_stops_before_resolution_or_download(self):
-  with tempfile.TemporaryDirectory() as temporary:
-   root=Path(temporary);item,selection,license,mod,download,command,archive=self.fixture(root)
-   with patch.object(n.subprocess,'check_output',return_value='go1.26.0\n') as execute:
-    self.assertRaisesRegex(ValueError,'source-owned Go version',n.owned_replacement_materials,item,root,selection,license,'1.27.4')
-   self.assertEqual(len(execute.call_args_list),1)
-
-
 class OverlayProductionBoundaryControls(unittest.TestCase):
  def test_collect_smoke_assemble_reject_bad_overlay_before_product_work(self):
   for operation,args in ((n.collect,('unused',{})),(n.smoke,('unused',)),(n.assemble,('unused',))):
@@ -195,20 +127,10 @@ class OverlayProductionBoundaryControls(unittest.TestCase):
         patch.object(n,'read_archive') as archive,patch.object(n.subprocess,'check_output') as command:
     self.assertRaisesRegex(ValueError,'bad overlay',operation,*args)
     check.assert_called_once_with(Path.cwd());archive.assert_not_called();command.assert_not_called()
- def test_source_identity_and_materials_validate_precise_source_root(self):
+ def test_source_identity_checks_overlay_before_working_with_modules(self):
   with patch.object(n,'source_module_hashes',return_value={}),patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check,patch.object(n,'run') as command:
    self.assertRaisesRegex(ValueError,'bad overlay',n.source_identity)
    check.assert_called_once_with(Path.cwd());command.assert_not_called()
-  root=Path('exact-cold-source-root')
-  with patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check:
-   self.assertRaisesRegex(ValueError,'bad overlay',n.distribution_materials,{'platforms':[]},root)
-   check.assert_called_once_with(root)
- def test_distribution_inputs_bind_every_validated_overlay_file_and_helper(self):
-  index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic'},'platforms':[],'legalFiles':[]}
-  expected=n.validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
-  self.assertEqual({name:material['inputs'][name] for name in expected},expected)
-  helper='cmd/internal/ci/cronet_overlay.go'
-  self.assertEqual(material['inputs'][helper],n.sha((n.ROOT/helper).read_bytes()))
 
 
 if __name__=='__main__':unittest.main()

@@ -16,6 +16,10 @@ func validateDocument(filename, fragment string, document any) error {
 	if err != nil {
 		return err
 	}
+	return validateSchema(schema, fragment, document)
+}
+
+func validateSchema(schema any, fragment string, document any) error {
 	compiler := jsonschema.NewCompiler()
 	compiler.DefaultDraft(jsonschema.Draft2020)
 	compiler.UseLoader(jsonschema.SchemeURLLoader{})
