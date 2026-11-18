@@ -763,7 +763,5 @@ class DistributionMaterialsTests(unittest.TestCase):
         self.assertFalse(validate_distribution_assessment({'schema':1,'status':'current-scope-review-required','openItems':[]}))
 
 
-from test_github_read_transport import ReadTransportTests
-
 if __name__=='__main__':
     unittest.main()
