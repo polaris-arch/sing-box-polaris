@@ -247,11 +247,10 @@ jobs:
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
-      run: python scripts/ci/native_release_index.py collect dist
+      run: '"$RUNNER_TEMP/polaris-ci" collect-native-index dist'
       env:
-        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
-        NATIVE_MATRIX: ${{ toJSON(matrix) }}
+        NATIVE_ARCH: ${{ matrix.arch }}
         NATIVE_OS: ${{ matrix.os }}
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -323,11 +322,10 @@ jobs:
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
-      run: python scripts/ci/native_release_index.py collect dist
+      run: '"$RUNNER_TEMP/polaris-ci" collect-native-index dist'
       env:
-        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
-        NATIVE_MATRIX: ${{ toJSON(matrix) }}
+        NATIVE_ARCH: ${{ matrix.arch }}
         NATIVE_OS: darwin
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -399,11 +397,10 @@ jobs:
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
-      run: python scripts/ci/native_release_index.py collect dist
+      run: '& "$env:RUNNER_TEMP/polaris-ci.exe" collect-native-index dist'
       env:
-        POLARIS_CI: ${{ runner.temp }}/polaris-ci.exe
         VERSION: ${{ needs.calculate_version.outputs.version }}
-        NATIVE_MATRIX: ${{ toJSON(matrix) }}
+        NATIVE_ARCH: ${{ matrix.arch }}
         NATIVE_OS: windows
     - name: Upload artifact
       uses: actions/upload-artifact@v4

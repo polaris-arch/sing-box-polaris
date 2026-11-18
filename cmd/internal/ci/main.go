@@ -48,6 +48,8 @@ func run(args []string) error {
 		return peerMetadata(args[1:])
 	case "cronet-overlay":
 		return cronetOverlayCommand(args[1:])
+	case "collect-native-index":
+		return collectNativeIndex(args[1:])
 	case "assemble-native-index":
 		return assembleNativeIndexCommand(args[1:])
 	case "release-identity":

@@ -17,6 +17,38 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
+func readNativeArchive(filename string) (string, map[string][]byte, error) {
+	archive, err := os.Open(filename)
+	if err != nil {
+		return "", nil, err
+	}
+	defer archive.Close()
+	return readNativeArchiveFile(archive)
+}
+
+func TestNativeArchiveRejectsOversizedMemberBeforeExpansion(t *testing.T) {
+	var data bytes.Buffer
+	compressed := gzip.NewWriter(&data)
+	archive := tar.NewWriter(compressed)
+	if err := archive.WriteHeader(&tar.Header{
+		Name: "sing-box-fixture/sing-box",
+		Mode: 0o755,
+		Size: 1 << 30,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := compressed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(t.TempDir(), "fixture.tar.gz")
+	if err := os.WriteFile(file, data.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := readNativeArchive(file); err == nil || !strings.Contains(err.Error(), "expanded byte budget") {
+		t.Fatalf("oversized member was not rejected before reading its bytes: %v", err)
+	}
+}
+
 func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 	root, err := filepath.Abs("../../..")
 	if err != nil {

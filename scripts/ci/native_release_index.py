@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect and smoke-test actual native archives; never invent execution facts."""
+"""Smoke-test actual native archives; never invent execution facts."""
 import argparse,hashlib,json,os,platform,re,shlex,shutil,subprocess,sys,tarfile,tempfile,time,zipfile
 from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
@@ -63,21 +63,6 @@ def validate_overlay(root, *, native_source=False):
  result=subprocess.run(args,cwd=ROOT,env=env,capture_output=True,encoding='utf-8')
  if result.returncode:raise ValueError(result.stderr.strip() or 'Cronet Windows overlay command failed')
  return json.loads(result.stdout)
-
-def expected_native(version):
- validate_version(version)
- matrices=json.loads(Path('release/ci/upstream-matrices.json').read_text(encoding='utf-8'))['matrices']['build.yml']
- result={}
- for job in ['build','build_darwin','build_windows']:
-  for matrix in matrices[job]['include']:
-   m=dict(matrix);m['os']=m.get('os') or ('darwin' if job=='build_darwin' else 'windows')
-   osname=m['os'];name=f"sing-box-{version}-{osname}-{m['arch']}"
-   naive=m.get('naive',False) or osname=='darwin'
-   linkage='shared-purego' if naive and (m.get('variant')=='purego' or osname=='windows') else ('static-cgo' if naive else 'other')
-   variant={'linkage':linkage,'libc':'','goarm':'','gomips':'','go386':'','legacy':False}
-   if name in result:raise ValueError('duplicate expected archive identity')
-   result[name]={'target':osname+'/'+m['arch'],'variant':variant,'matrix':m}
- return result
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -410,31 +395,6 @@ def validate_trusted_execution(row, producer, source_root=ROOT):
  return expected
 
 
-def collect(directory,matrix):
- source=validate_overlay(Path.cwd(),native_source=True);d=Path(directory);row_count=0
- for p in sorted(d.iterdir()):
-  if not p.name.startswith('sing-box-') or not p.name.endswith(('.tar.gz','.zip')):continue
-  root,members=read_archive(p);expected=expected_native(os.environ['VERSION']).get(root)
-  if expected is None:raise ValueError('archive absent from exact upstream matrix')
-  core_name='sing-box.exe' if 'sing-box.exe' in members else 'sing-box'
-  core=members[core_name];side_name=next((x for x in ['libcronet.so','libcronet.dll'] if x in members),None)
-  with tempfile.TemporaryDirectory() as td:
-   cp=Path(td)/core_name;cp.write_bytes(core)
-   go,raw,graph=buildinfo(cp);bid=run('go','tool','buildid',str(cp));sig=None
-   if platform.system()=='Darwin' and graph['settings'].get('GOOS')=='darwin':
-    o=subprocess.run(['codesign','-d','--verbose=4',str(cp)],capture_output=True,text=True);m=re.search(r'CDHash=([a-f0-9]{40})',o.stderr)
-    sig={'state':'signed' if o.returncode==0 else 'unsigned','cdHash':m.group(1) if m else None,'trustValidated':False}
-  settings=graph['settings'];tags=settings.get('-tags','');osname=settings['GOOS'];arch=settings['GOARCH']
-  linkage='shared-purego' if side_name else ('static-cgo' if settings.get('CGO_ENABLED')=='1' and 'with_naive_outbound' in tags.split(',') else 'other')
-  variant={'linkage':linkage,'libc':'','goarm':'','gomips':'','go386':'','legacy':False}
-  if osname!=os.environ['NATIVE_OS'] or arch!=matrix['arch']:raise ValueError('binary GOOS/GOARCH differs from matrix')
-  if expected['target']!=osname+'/'+arch or expected['variant']!=variant:raise ValueError('native archive variant differs from exact upstream matrix')
-  def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
-  row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':source['sourceCommit'],'sourceTree':source['sourceTree'],'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source['sourceIdentity'],'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
-  validate_trusted_execution(row, {})
-  (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n');row_count+=1
- if row_count!=1:raise ValueError(f'expected one native archive, got {row_count}')
-
 def cleanup_smoke_directory(directory):
  """Retry only Windows sharing/lock violations, never turn failed cleanup into PASS."""
  started=time.monotonic();attempt=0
@@ -533,6 +493,5 @@ def smoke(directory):
 
 
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('mode',choices=['collect','smoke']);p.add_argument('directory');a=p.parse_args()
- if a.mode=='collect':collect(a.directory,json.loads(os.environ['NATIVE_MATRIX']))
- else:smoke(a.directory)
+ p=argparse.ArgumentParser();p.add_argument('mode',choices=['smoke']);p.add_argument('directory');a=p.parse_args()
+ smoke(a.directory)
