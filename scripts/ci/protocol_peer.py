@@ -22,10 +22,22 @@ import subprocess
 import tempfile
 import threading
 import time
-from protocol_peer_cases import case_matrix
 
 
 SUITE_DEADLINE = None
+
+# Execution and failure receipts use the same ordered cases. Naive H3 cannot
+# observe certificate alerts over QUIC, so H2 and MASQUE cover those rejections.
+PEER_CASES = tuple(
+    (kind, mutation)
+    for kind, mutations in (
+        ('naive-h2', (None, 'wrong-auth', 'wrong-ca', 'wrong-sni')),
+        ('naive-h3', (None, 'wrong-auth')),
+        ('masque-h3', (None, 'wrong-auth', 'wrong-ca', 'wrong-sni', 'wrong-path')),
+        ('masque-h3-on-demand', (None,)),
+    )
+    for mutation in mutations
+)
 
 
 def sha(raw):
@@ -1700,7 +1712,7 @@ def validate_executable_members(row, members):
 
 def execute_cases(receipt, execute, deadline):
     blocked=None
-    for kind,mutation in case_matrix():
+    for kind,mutation in PEER_CASES:
         if blocked:
             receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN',
                 'reason':'blocked_by_cleanup_or_identity','blockedByCase':blocked})
@@ -1769,7 +1781,7 @@ def run_suite(directory, output, admission, metadata_tool):
                     raise ValueError('native bytes changed during peer execution')
         receipt['privateWorkspaceDeleted'] = not Path(td).exists()
         if not receipt['privateWorkspaceDeleted']: raise RuntimeError('private key/config workspace was not deleted')
-        expected = len(case_matrix())
+        expected = len(PEER_CASES)
         receipt['status'] = 'PASS' if len(receipt['cases']) == expected and all(case['status']=='PASS' for case in receipt['cases']) else 'FAIL'
     except Exception as error:
         receipt.update(status='FAIL',errorType=type(error).__name__,error=safe_exception(error))
@@ -1777,7 +1789,7 @@ def run_suite(directory, output, admission, metadata_tool):
         if rows[0].read_bytes()!=row_raw:
             receipt.update(status='FAIL',originalProducerRowImmutable=False,error='original native row changed during QA')
         completed={(case['kind'],case.get('mutation')) for case in receipt['cases']}
-        for kind,mutation in case_matrix():
+        for kind,mutation in PEER_CASES:
             if (kind,mutation) not in completed:
                 receipt['cases'].append({'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':'suite_preflight_or_safety_failure'})
         SUITE_DEADLINE = None
@@ -1793,7 +1805,7 @@ def write_preflight_failure(output, stage, facts):
     receipt = {**facts, 'schema': 'polaris-native-controlled-peer-v1', 'status': 'FAIL', 'stage': stage,
                'publicationEligible': False,
                'cases': [{'kind': kind, 'mutation': mutation, 'status': 'NOT_RUN', 'reason': stage + '_failed'}
-                         for kind, mutation in case_matrix()]}
+                         for kind, mutation in PEER_CASES]}
     (output/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8')
 
 
