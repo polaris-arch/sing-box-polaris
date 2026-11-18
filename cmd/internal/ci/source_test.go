@@ -231,10 +231,15 @@ func TestSourceInputReceiptsAndIncompleteCostCannotClaimMeasurements(t *testing.
 		if actual["measurementsComplete"] != false || actual["status"] != "incomplete" || actual["delta"] != nil || actual["baselineWorktreeRetired"] != false {
 			t.Fatalf("incomplete observation claimed a measurement: %v", actual)
 		}
+	} else if err := measureTLSCost(root, t.TempDir()); err == nil || !strings.Contains(err.Error(), "restricted to the existing owned Linux CI job") {
+		t.Fatalf("non-Linux cost observation admitted: %v", err)
 	}
 }
 
 func TestSourceCostRetiresOnlyItsOwnedWorkspaceAndReportsDebt(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("cost workspaces are only created by the Linux Source observation")
+	}
 	for _, kind := range []string{"clean", "dirty", "partial", "foreign-file"} {
 		t.Run(kind, func(t *testing.T) {
 			root := moduleFixture(t)
