@@ -1633,65 +1633,13 @@ def run_case(binary, row, root, kind, mutation=None):
         result['continuationSafe']=safe_to_continue(result)
     return result
 
-def verify_source_owned_replacements(modules):
-    # Use the producer's Go parser and exact HEAD directory identities. A source
-    # revision may add a vendor; neither an old count nor a partial MVS graph is
-    # the complete source-owned replacement inventory.
-    from native_release_index import source_identity
-    expected = source_identity()
-    if (not isinstance(modules, dict) or set(modules) != set(expected)
-            or type(modules.get('sourceOverlay')) is not int or modules['sourceOverlay'] != 0
-            or any(modules.get(key) != expected[key] for key in ('goModSha256', 'goSumSha256'))):
-        raise ValueError('native producer source module identity differs')
-    replacements = modules['replacements']
-    declared = expected['replacements']
-    if not isinstance(replacements, list) or not declared:
-        raise ValueError('complete source-owned replacement closure missing')
-    for item in replacements + declared:
-        if (not isinstance(item, dict) or set(item) != {'module', 'path', 'tree'}
-                or not isinstance(item['module'], str) or not item['module']
-                or not isinstance(item['path'], str)
-                or not re.fullmatch(r'\./third_party/[A-Za-z0-9_-]+', item['path'])
-                or not isinstance(item['tree'], str) or not re.fullmatch(r'[0-9a-f]{40}', item['tree'])):
-            raise ValueError('invalid source-owned replacement binding')
-    if (len(replacements) != len(declared)
-            or len({item['path'] for item in replacements}) != len(replacements)
-            or len({item['module'] for item in replacements}) != len(replacements)
-            or sorted(replacements, key=lambda item: item['path'])
-            != sorted(declared, key=lambda item: item['path'])):
-        raise ValueError('native producer complete source-owned replacement closure differs')
-
-
-def verify_same_run_context(root, row):
-    from native_release_index import identity as source_identity
-    commit, tree = source_identity()
-    if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('RUNNER_OS') != 'Linux':
-        raise ValueError('controlled native peer execution requires the existing Linux Actions job')
-    if os.geteuid() == 0 or sys.platform != 'linux': raise ValueError('controlled peer execution must be nonroot Linux')
-    if os.environ.get('GITHUB_SHA') != commit:
-        raise ValueError('actual runner checkout differs from run')
-    if row['sourceCommit'] != commit or row['sourceTree'] != tree:
-        raise ValueError('same-run exact checkout and native producer source differ')
-    if os.environ.get('GITHUB_WORKFLOW_SHA') != commit:
-        raise ValueError('runner implementation is not exact same-source workflow')
-    if not re.fullmatch(r'[1-9][0-9]*', os.environ.get('GITHUB_RUN_ID', '')) or not re.fullmatch(r'[1-9][0-9]*', os.environ.get('GITHUB_RUN_ATTEMPT', '')):
-        raise ValueError('run/attempt identity missing')
-    if row['target'] != 'linux/amd64' or row['variant']['linkage'] != 'shared-purego':
-        raise ValueError('initial peer matrix accepts only actual existing Linux amd64 native smoke profile')
-    if row['goVersion'] != 'go' + (root/'release/GO_VERSION').read_text().strip(): raise ValueError('producer Go pin differs')
-    modules = row['sourceIdentity']
-    for name, field in [('go.mod', 'goModSha256'), ('go.sum', 'goSumSha256')]:
-        if digest((root/name).read_bytes()) != modules[field]: raise ValueError('producer source module bytes differ')
-    verify_source_owned_replacements(modules)
-    return {'sourceCommit': commit, 'sourceTree': tree, 'runId': int(os.environ['GITHUB_RUN_ID']),
-            'runAttempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'workflowCommit': os.environ['GITHUB_WORKFLOW_SHA']}
-
-
 def read_peer_metadata(tool, mode, directory, admission=None):
     command = [str(tool), 'peer-metadata', '--mode', mode, '--native', str(directory)]
     if admission is not None:
         command += ['--admission', str(admission)]
-    result = subprocess.run(command, check=True, capture_output=True, timeout=20)
+    result = subprocess.run(command, capture_output=True, timeout=20, encoding='utf-8')
+    if result.returncode:
+        raise ValueError(result.stderr.strip() or 'peer metadata tool failed')
     return json.loads(result.stdout)
 
 
@@ -1738,8 +1686,14 @@ def run_suite(directory, output, admission, metadata_tool):
     rows = list(directory.glob('native-row-*.json'))
     if len(rows) != 1: raise ValueError('requires one exact same-run native row')
     row_raw = rows[0].read_bytes(); row = json.loads(row_raw)
-    context = verify_same_run_context(root,row)
-    actual_artifact=read_peer_metadata(metadata_tool, 'verify', directory, admission)
+    if sys.platform != 'linux' or os.geteuid() == 0:
+        raise ValueError('controlled peer execution must be nonroot Linux')
+    admitted = read_peer_metadata(metadata_tool, 'verify', directory, admission)
+    observed = admitted['context']
+    if observed['producerRowSHA256'] != digest(row_raw):
+        raise ValueError('native row changed during source admission')
+    context = {key:observed[key] for key in ('sourceCommit','sourceTree','runId','runAttempt','workflowCommit')}
+    actual_artifact = admitted['artifact']
     archive = directory/row['archive']['name']
     if archive.parent != directory or digest(archive.read_bytes()) != row['archive']['sha256']:
         raise ValueError('same-run final archive identity differs')

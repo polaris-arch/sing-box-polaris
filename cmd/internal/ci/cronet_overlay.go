@@ -85,8 +85,18 @@ type cronetOverlayManifestData struct {
 }
 
 func cronetOverlayCommand(args []string) error {
-	if len(args) != 2 || args[0] != "--source-root" || args[1] == "" {
-		return fmt.Errorf("expected cronet-overlay --source-root DIRECTORY")
+	if len(args) < 2 || args[0] != "--source-root" || args[1] == "" {
+		return fmt.Errorf("expected cronet-overlay --source-root DIRECTORY [--native-source-identity]")
+	}
+	if len(args) == 3 && args[2] == "--native-source-identity" {
+		source, err := nativeCollectorSource(args[1])
+		if err != nil {
+			return err
+		}
+		return writeJSON(os.Stdout, source)
+	}
+	if len(args) != 2 {
+		return fmt.Errorf("unexpected cronet-overlay arguments")
 	}
 	inputs, err := validateCronetOverlay(args[1])
 	if err != nil {

@@ -284,25 +284,10 @@ func nativeLegalFiles(root string) ([]any, error) {
 	return legal, err
 }
 
-var nativeSourceModules = [...]struct{ name, field string }{
-	{"go.mod", "goModSha256"}, {"go.sum", "goSumSha256"},
-}
-
 func stageNativeSourceArchive(ctx context.Context, root, stage, source string, platforms []any) (map[string]any, error) {
-	expected := make(map[string]string, len(nativeSourceModules))
-	for _, module := range nativeSourceModules {
-		actual, err := readNativeSource(root, module.name)
-		if err != nil {
-			return nil, err
-		}
-		committed, err := git(root, "show", source+":"+module.name)
-		if err != nil {
-			return nil, err
-		}
-		if !bytes.Equal(actual, committed) {
-			return nil, fmt.Errorf("%s working-tree bytes differ from HEAD blob", module.name)
-		}
-		expected[module.field] = sha256Hex(committed)
+	_, expected, err := nativeSourceModuleBytes(root, source)
+	if err != nil {
+		return nil, err
 	}
 	prefix := "sing-box-polaris-source-" + source
 	name := prefix + ".tar.gz"

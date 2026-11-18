@@ -14,13 +14,26 @@ import (
 	"testing"
 )
 
-func TestCronetOverlayColdSource(t *testing.T) {
-	checkout := "../../.."
-	vendor := os.DirFS(filepath.Join(checkout, cronetVendor))
-	root := t.TempDir()
-	if err := os.CopyFS(filepath.Join(root, cronetVendor), vendor); err != nil {
+func fixtureCronetOverlay(t *testing.T, root string) []string {
+	t.Helper()
+	const checkout = "../../.."
+	if err := os.CopyFS(filepath.Join(root, cronetVendor), os.DirFS(filepath.Join(checkout, cronetVendor))); err != nil {
 		t.Fatal(err)
 	}
+	materials := append(slices.Sorted(maps.Keys(cronetHistory)), cronetOverlayManifest, cronetOverlayPatch)
+	for _, name := range materials {
+		raw, err := os.ReadFile(filepath.Join(checkout, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtureFile(t, root, name, string(raw))
+	}
+	return materials
+}
+
+func TestCronetOverlayColdSource(t *testing.T) {
+	root := t.TempDir()
+	materials := fixtureCronetOverlay(t, root)
 	read := func(root, name string) []byte {
 		t.Helper()
 		raw, err := os.ReadFile(filepath.Join(root, name))
@@ -28,10 +41,6 @@ func TestCronetOverlayColdSource(t *testing.T) {
 			t.Fatal(err)
 		}
 		return raw
-	}
-	materials := append(slices.Sorted(maps.Keys(cronetHistory)), cronetOverlayManifest, cronetOverlayPatch)
-	for _, name := range materials {
-		fixtureFile(t, root, name, string(read(checkout, name)))
 	}
 	t.Setenv("PATH", t.TempDir())
 	inputs, err := validateCronetOverlay(root)

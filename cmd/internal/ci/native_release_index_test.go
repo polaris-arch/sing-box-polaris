@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -128,6 +129,63 @@ func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 				t.Fatal("accepted changed producer identity or source materials")
 			}
 		})
+	}
+}
+
+func TestNativeCollectorBindsExactSourceBeforeProductWork(t *testing.T) {
+	root := t.TempDir()
+	modules := map[string]string{
+		"go.mod": "module example.org/kernel\n\ngo 1.27.4\n" +
+			"replace example.org/local => ./third_party/local\nreplace example.org/remote => example.org/fork v1.1.0\n",
+		"go.sum": "example.org/dependency v1.0.0 h1:baseline\n",
+	}
+	for name, contents := range modules {
+		fixtureFile(t, root, name, contents)
+	}
+	fixtureFile(t, root, "third_party/local/source", "pinned replacement")
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureSourceGit(t, root, "config", "core.autocrlf", "false")
+	fixtureSourceGit(t, root, "add", ".")
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "native source")
+	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
+	tree := fixtureSourceGit(t, root, "rev-parse", "HEAD^{tree}")
+	replacement := fixtureSourceGit(t, root, "rev-parse", "HEAD:third_party/local")
+	t.Setenv("GITHUB_SHA", source)
+	t.Setenv("GITHUB_REPOSITORY_ID", repositoryID)
+	t.Setenv("GITHUB_REPOSITORY", "other/repository")
+	args := []string{"cronet-overlay", "--source-root", root, "--native-source-identity"}
+	if err := run(args); err == nil || !strings.Contains(err.Error(), "wrong producer repository") {
+		t.Fatalf("collector did not reject the repository before validating the overlay: %v", err)
+	}
+	t.Setenv("GITHUB_REPOSITORY", repository)
+	if err := run(args); err == nil || !strings.Contains(err.Error(), "Cronet Windows overlay") {
+		t.Fatalf("collector did not reject the overlay before product work: %v", err)
+	}
+	fixtureCronetOverlay(t, root)
+	got, err := nativeCollectorSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{
+		"sourceCommit": source, "sourceTree": tree,
+		"sourceIdentity": map[string]any{
+			"sourceOverlay": 0, "goModSha256": sha256Hex([]byte(modules["go.mod"])), "goSumSha256": sha256Hex([]byte(modules["go.sum"])),
+			"replacements": []nativeLocalReplacement{{"example.org/local", "./third_party/local", replacement}},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("collector's exact source identity differs: %v", got)
+	}
+	for _, module := range nativeSourceModules {
+		original := modules[module.name]
+		for _, changed := range []string{strings.ReplaceAll(original, "\n", "\r\n"), original + "\x00", original[:len(original)-1], "X" + original[1:]} {
+			fixtureFile(t, root, module.name, changed)
+			raw, _, err := nativeSourceModuleBytes(root, source)
+			if raw != nil || err == nil || !strings.Contains(err.Error(), module.name+" working-tree bytes differ") {
+				t.Fatalf("changed %s became available for parsing: %v", module.name, err)
+			}
+		}
+		fixtureFile(t, root, module.name, original)
 	}
 }
 

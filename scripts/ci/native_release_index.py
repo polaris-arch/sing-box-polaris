@@ -5,15 +5,9 @@ from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
 from release_identity import ci_command
-REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
-def git(*args):return run('git',*args)
-def identity():
- if os.environ.get('GITHUB_REPOSITORY')!=REPO or os.environ.get('GITHUB_REPOSITORY_ID')!=str(RID):raise ValueError('repository mismatch')
- if git('status','--porcelain','--untracked-files=no'):raise ValueError('tracked source is dirty')
- return git('rev-parse','HEAD'),git('rev-parse','HEAD^{tree}')
 def read_archive(p):
  out={};roots=set();folded=set()
  def add(name,data):
@@ -62,33 +56,13 @@ def buildinfo(core):
    graph['normalModules'].remove(x);graph['prebuiltAcquisitionModules'].append(x)
  return go,raw,graph
 
-def source_module_hashes():
- hashes={}
- for name,key in [('go.mod','goModSha256'),('go.sum','goSumSha256')]:
-  actual=Path(name).read_bytes()
-  committed=subprocess.check_output(['git','show','HEAD:'+name])
-  if actual!=committed:raise ValueError(name+' working-tree bytes differ from HEAD blob')
-  hashes[key]=sha(actual)
- return hashes
-
-def validate_overlay(root):
+def validate_overlay(root, *, native_source=False):
  env=dict(os.environ,GOWORK='off',GOTOOLCHAIN='local')
  args=ci_command('cronet-overlay','--source-root',str(Path(root).absolute()))
+ if native_source:args.append('--native-source-identity')
  result=subprocess.run(args,cwd=ROOT,env=env,capture_output=True,encoding='utf-8')
  if result.returncode:raise ValueError(result.stderr.strip() or 'Cronet Windows overlay command failed')
  return json.loads(result.stdout)
-
-def source_identity():
- hashes=source_module_hashes()
- validate_overlay(Path.cwd())
- mod=json.loads(run('go','mod','edit','-json'));replacements=[]
- for r in mod.get('Replace',[]) or []:
-  new=r['New']
-  if new.get('Version'):continue
-  path=new['Path']
-  if not path.startswith('./') or '..' in PurePosixPath(path).parts:raise ValueError('non-repository local replacement')
-  replacements.append({'module':r['Old']['Path'],'path':path,'tree':git('rev-parse','HEAD:'+path[2:])})
- return {'sourceOverlay':0,**hashes,'replacements':replacements}
 
 def expected_native(version):
  validate_version(version)
@@ -437,7 +411,7 @@ def validate_trusted_execution(row, producer, source_root=ROOT):
 
 
 def collect(directory,matrix):
- commit,tree=identity();validate_overlay(Path.cwd());d=Path(directory);row_count=0
+ source=validate_overlay(Path.cwd(),native_source=True);d=Path(directory);row_count=0
  for p in sorted(d.iterdir()):
   if not p.name.startswith('sing-box-') or not p.name.endswith(('.tar.gz','.zip')):continue
   root,members=read_archive(p);expected=expected_native(os.environ['VERSION']).get(root)
@@ -456,7 +430,7 @@ def collect(directory,matrix):
   if osname!=os.environ['NATIVE_OS'] or arch!=matrix['arch']:raise ValueError('binary GOOS/GOARCH differs from matrix')
   if expected['target']!=osname+'/'+arch or expected['variant']!=variant:raise ValueError('native archive variant differs from exact upstream matrix')
   def fact(name):return {'member':name,'bytes':len(members[name]),'sha256':sha(members[name])}
-  row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':commit,'sourceTree':tree,'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source_identity(),'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
+  row={'schema':'polaris-upstream-native-receipt-v1','id':p.name.removesuffix('.tar.gz').removesuffix('.zip'),'target':osname+'/'+arch,'variant':variant,'version':os.environ['VERSION'],'tag':'v'+os.environ['VERSION'],'sourceCommit':source['sourceCommit'],'sourceTree':source['sourceTree'],'goVersion':go,'tags':tags,'buildID':bid,'rawBuildInfo':raw,'buildGraph':graph,'sourceIdentity':source['sourceIdentity'],'archive':{'name':p.name,'bytes':p.stat().st_size,'sha256':sha(p.read_bytes()),'root':root,'members':{root+'/'+k:sha(v) for k,v in members.items()}},'core':fact(core_name),'sidecar':fact(side_name) if side_name else None,'signatureObservation':sig,'finalPackageCronetSmoke':None}
   validate_trusted_execution(row, {})
   (d/('native-row-'+row['id']+'.json')).write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n');row_count+=1
  if row_count!=1:raise ValueError(f'expected one native archive, got {row_count}')

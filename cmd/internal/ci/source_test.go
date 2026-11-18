@@ -765,7 +765,16 @@ func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
 func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
 	root := t.TempDir()
 	fixtureSourceGit(t, root, "init", "-q")
-	fixtureFile(t, root, "source", "tracked bytes")
+	fixtureCronetOverlay(t, root)
+	const goMod = "module example.org/kernel\n\ngo 1.27.4\n" +
+		"replace example.org/a => ./third_party/a\nreplace example.org/b => ./third_party/b\n"
+	const goSum = "example.org/dependency v1.0.0 h1:baseline\n"
+	fixtureFile(t, root, "go.mod", goMod)
+	fixtureFile(t, root, "go.sum", goSum)
+	fixtureFile(t, root, "release/GO_VERSION", "1.27.4\n")
+	fixtureFile(t, root, "third_party/a/source", "pinned a")
+	fixtureFile(t, root, "third_party/b/source", "pinned b")
+	fixtureSourceGit(t, root, "config", "core.autocrlf", "false")
 	fixtureSourceGit(t, root, "add", ".")
 	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "peer source")
 	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
@@ -784,10 +793,31 @@ func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
 	t.Setenv("PATH", filepath.Dir(child)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("POLARIS_CI_TEST_GH_MODE", "peer")
 	native := t.TempDir()
-	row := fmt.Sprintf(`{"sourceCommit":"%s","sourceTree":"%s","version":"1.15.0-polaris-alpha.12.31","tag":"v1.15.0-polaris-alpha.12.31","target":"linux/amd64","variant":{"linkage":"shared-purego"}}`, source, tree)
-	fixtureFile(t, native, "native-row-fixture.json", row)
+	rowFile := "native-row-fixture.json"
+	const version = "1.15.0-polaris-alpha.12.31"
+	identities := []nativeLocalReplacement{
+		{"example.org/b", "./third_party/b", fixtureSourceGit(t, root, "rev-parse", "HEAD:third_party/b")},
+		{"example.org/a", "./third_party/a", fixtureSourceGit(t, root, "rev-parse", "HEAD:third_party/a")},
+	}
+	sourceIdentity := map[string]any{
+		"sourceOverlay": 0, "goModSha256": sha256Hex([]byte(goMod)), "goSumSha256": sha256Hex([]byte(goSum)), "replacements": identities,
+	}
+	fields := map[string]any{
+		"sourceCommit": source, "sourceTree": tree, "version": version, "tag": "v" + version, "goVersion": "go1.27.4",
+		"target": "linux/amd64", "variant": map[string]any{"linkage": "shared-purego"}, "sourceIdentity": sourceIdentity,
+	}
+	writeRow := func() string {
+		t.Helper()
+		data, err := json.Marshal(fields)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtureFile(t, native, rowFile, string(data))
+		return string(data)
+	}
+	row := writeRow()
 	context := map[string]any{}
-	if err := peerLocalContext(root, native, context); err != nil {
+	if err := peerLocalContext(root, native, context, false); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
@@ -830,13 +860,37 @@ func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
 	if _, err := os.Stat(failure); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("unexpected acquisition failure facts: %v", err)
 	}
-	// The credential-free consumer freshly binds the native row's raw bytes.
-	fixtureFile(t, native, "native-row-fixture.json", row+"\n")
-	if err := run([]string{"peer-metadata", "--mode", "verify", "--native", native, "--admission", admission}); err == nil {
-		t.Fatal("changed native row retained metadata authority")
+	t.Setenv("GH_TOKEN", "")
+	verify := []string{"peer-metadata", "--mode", "verify", "--native", native, "--admission", admission}
+	if err := run(verify); err != nil {
+		t.Fatalf("exact source and order-independent replacements were not admitted: %v", err)
 	}
-
-	fixtureFile(t, native, "native-row-fixture.json", row)
+	// The credential-free consumer freshly binds the native row's raw bytes.
+	fixtureFile(t, native, rowFile, row+"\n")
+	if err := run(verify); err == nil || !strings.Contains(err.Error(), "metadata admission context differs") {
+		t.Fatalf("changed native row retained metadata authority: %v", err)
+	}
+	for _, check := range []struct {
+		field string
+		value any
+		error string
+	}{
+		{"goModSha256", strings.Repeat("0", 64), "producer source module bytes differ"},
+		{"goSumSha256", strings.Repeat("0", 64), "producer source module bytes differ"},
+		{"sourceOverlay", false, "native producer source module identity differs"},
+		{"replacements", identities[:1], "complete source-owned replacement closure missing"},
+		{"replacements", []nativeLocalReplacement{identities[0], identities[0]}, "replacement closure differs"},
+	} {
+		saved := sourceIdentity[check.field]
+		sourceIdentity[check.field] = check.value
+		writeRow()
+		if err := run(verify); err == nil || !strings.Contains(err.Error(), check.error) {
+			t.Fatalf("invalid %s reached metadata admission: %v", check.field, err)
+		}
+		sourceIdentity[check.field] = saved
+	}
+	fixtureFile(t, native, rowFile, row)
+	t.Setenv("GH_TOKEN", "inert-fixture-token")
 	for _, item := range []struct {
 		name     string
 		response map[string]any

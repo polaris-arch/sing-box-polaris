@@ -24,13 +24,14 @@ const (
 )
 
 var (
-	peerRef    = regexp.MustCompile(`^refs/(heads|tags)/[A-Za-z0-9_./-]+$`)
-	peerNumber = regexp.MustCompile(`^[1-9][0-9]*$`)
-	peerDigest = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-	peerTime   = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`)
+	peerRef         = regexp.MustCompile(`^refs/(heads|tags)/[A-Za-z0-9_./-]+$`)
+	peerNumber      = regexp.MustCompile(`^[1-9][0-9]*$`)
+	peerDigest      = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	peerReplacement = regexp.MustCompile(`^\./third_party/[A-Za-z0-9_-]+$`)
+	peerTime        = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`)
 )
 
-func peerLocalContext(root, native string, context map[string]any) error {
+func peerLocalContext(root, native string, context map[string]any, forExecution bool) error {
 	env, err := nativeEnvironment("GITHUB_ACTIONS", "RUNNER_OS", "GITHUB_REPOSITORY", "GITHUB_REPOSITORY_ID",
 		"GITHUB_EVENT_NAME", "GITHUB_SHA", "GITHUB_WORKFLOW_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT",
 		"GITHUB_REF", "GITHUB_WORKFLOW_REF")
@@ -45,13 +46,8 @@ func peerLocalContext(root, native string, context map[string]any) error {
 		!peerNumber.MatchString(env["GITHUB_RUN_ID"]) || !peerNumber.MatchString(env["GITHUB_RUN_ATTEMPT"]) {
 		return fmt.Errorf("metadata admission workflow identity differs")
 	}
-	head, err := git(root, "rev-parse", "HEAD")
-	if err != nil || strings.TrimSpace(string(head)) != source {
-		return fmt.Errorf("metadata admission checkout source differs")
-	}
-	status, err := git(root, "status", "--porcelain", "--untracked-files=no")
-	if err != nil || len(status) != 0 {
-		return fmt.Errorf("metadata admission tracked checkout is dirty or unavailable")
+	if err := verifyProducerCheckout(root, source); err != nil {
+		return err
 	}
 	context["repository"], context["repositoryId"] = repository, json.Number(repositoryID)
 	context["sourceCommit"], context["workflowCommit"] = source, source
@@ -67,12 +63,14 @@ func peerLocalContext(root, native string, context map[string]any) error {
 		return err
 	}
 	var row struct {
-		Source  string `json:"sourceCommit"`
-		Tree    string `json:"sourceTree"`
-		Tag     string `json:"tag"`
-		Version string `json:"version"`
-		Target  string `json:"target"`
-		Variant struct {
+		Source         string         `json:"sourceCommit"`
+		Tree           string         `json:"sourceTree"`
+		Tag            string         `json:"tag"`
+		Version        string         `json:"version"`
+		Target         string         `json:"target"`
+		GoVersion      string         `json:"goVersion"`
+		SourceIdentity map[string]any `json:"sourceIdentity"`
+		Variant        struct {
 			Linkage string `json:"linkage"`
 		} `json:"variant"`
 	}
@@ -87,6 +85,62 @@ func peerLocalContext(root, native string, context map[string]any) error {
 	}
 	context["sourceTree"], context["version"], context["tag"] = row.Tree, row.Version, row.Tag
 	context["producerRowSHA256"] = sha256Hex(raw)
+	if forExecution {
+		return verifyPeerSourceIdentity(root, source, row.GoVersion, row.SourceIdentity)
+	}
+	return nil
+}
+
+func verifyPeerSourceIdentity(root, source, goVersion string, identity map[string]any) error {
+	version, err := readNativeSource(root, "release/GO_VERSION")
+	if err != nil {
+		return err
+	}
+	if goVersion != "go"+strings.TrimSpace(string(version)) {
+		return fmt.Errorf("producer Go pin differs")
+	}
+	goMod, hashes, err := nativeSourceModuleBytes(root, source)
+	if err != nil {
+		return err
+	}
+	for field, want := range hashes {
+		if identity[field] != want {
+			return fmt.Errorf("producer source module bytes differ: %s", field)
+		}
+	}
+	if _, err := validateCronetOverlay(root); err != nil {
+		return err
+	}
+	declared, err := nativeLocalReplacements(root, source, goMod)
+	if err != nil {
+		return err
+	}
+	if len(identity) != 4 || identity["sourceOverlay"] != json.Number("0") {
+		return fmt.Errorf("native producer source module identity differs")
+	}
+	replacements, _ := identity["replacements"].([]any)
+	if len(declared) == 0 || len(replacements) != len(declared) {
+		return fmt.Errorf("complete source-owned replacement closure missing")
+	}
+	expected := make(map[string]nativeLocalReplacement, len(declared))
+	modules := make(map[string]bool, len(declared))
+	for _, item := range declared {
+		if item.Module == "" || !peerReplacement.MatchString(item.Path) || !sourceCommit.MatchString(item.Tree) ||
+			expected[item.Path].Module != "" || modules[item.Module] {
+			return fmt.Errorf("invalid source-owned replacement binding")
+		}
+		expected[item.Path] = item
+		modules[item.Module] = true
+	}
+	for _, raw := range replacements {
+		item, _ := raw.(map[string]any)
+		path, _ := item["path"].(string)
+		want, found := expected[path]
+		if !found || len(item) != 3 || item["module"] != want.Module || item["tree"] != want.Tree {
+			return fmt.Errorf("native producer complete source-owned replacement closure differs")
+		}
+		delete(expected, path)
+	}
 	return nil
 }
 
@@ -312,7 +366,7 @@ func peerMetadata(args []string) error {
 		return err
 	}
 	context := map[string]any{}
-	err = peerLocalContext(root, *native, context)
+	err = peerLocalContext(root, *native, context, *mode == "verify")
 	if *mode == "describe" {
 		return writeJSON(os.Stdout, context)
 	}
@@ -324,7 +378,7 @@ func peerMetadata(args []string) error {
 		if err != nil {
 			return err
 		}
-		return writeJSON(os.Stdout, artifact)
+		return writeJSON(os.Stdout, map[string]any{"context": context, "artifact": artifact})
 	}
 	records := []map[string]any{}
 	if err == nil {
