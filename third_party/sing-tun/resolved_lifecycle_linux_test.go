@@ -26,7 +26,7 @@ func TestResolvedCloseCancelsSetup(t *testing.T) {
 	}
 	done := make(chan error, 1)
 	go func() {
-		done <- lifecycle.configure(run, "tun-test", []string{"192.0.2.1"})
+		done <- lifecycle.configure(context.Background(), run, "tun-test", []string{"192.0.2.1"})
 	}()
 	<-entered
 	if err := lifecycle.close(run, "tun-test"); err != nil {
@@ -38,7 +38,7 @@ func TestResolvedCloseCancelsSetup(t *testing.T) {
 	if want := []string{"dns", "revert"}; !reflect.DeepEqual(commands, want) {
 		t.Fatalf("commands = %v, want %v", commands, want)
 	}
-	if err := lifecycle.configure(run, "tun-test", nil); err == nil {
+	if err := lifecycle.configure(context.Background(), run, "tun-test", nil); err == nil {
 		t.Fatal("setup after close accepted")
 	}
 	if err := lifecycle.close(run, "tun-test"); err != nil {
@@ -46,6 +46,35 @@ func TestResolvedCloseCancelsSetup(t *testing.T) {
 	}
 	if len(commands) != 2 {
 		t.Fatal("successful revert repeated")
+	}
+}
+
+func TestResolvedOwnerCancellationPreservesIndependentRevert(t *testing.T) {
+	var lifecycle resolvedLifecycle
+	owner, cancelOwner := context.WithCancel(context.Background())
+	defer cancelOwner()
+	var commands []string
+	run := func(ctx context.Context, args ...string) error {
+		commands = append(commands, args[0])
+		switch args[0] {
+		case "domain":
+			cancelOwner()
+			return ctx.Err()
+		case "revert":
+			if err := ctx.Err(); err != nil {
+				t.Fatalf("owner cancellation reached cleanup: %v", err)
+			}
+		}
+		return nil
+	}
+	if err := lifecycle.configure(owner, run, "tun-test", nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("lost owner setup cancellation: %v", err)
+	}
+	if err := lifecycle.close(run, "tun-test"); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"dns", "domain", "revert"}; !reflect.DeepEqual(commands, want) {
+		t.Fatalf("commands = %v, want %v", commands, want)
 	}
 }
 
@@ -60,7 +89,7 @@ func TestResolvedFailureReportedAndPartialSetupReverted(t *testing.T) {
 		}
 		return nil
 	}
-	if err := lifecycle.configure(run, "tun-test", nil); !errors.Is(err, failure) {
+	if err := lifecycle.configure(context.Background(), run, "tun-test", nil); !errors.Is(err, failure) {
 		t.Fatalf("lost setup error: %v", err)
 	}
 	if err := lifecycle.close(run, "tun-test"); err != nil {
@@ -80,7 +109,7 @@ func TestResolvedUnstartedCloseDoesNotRevert(t *testing.T) {
 	if err := lifecycle.close(run, "tun-test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := lifecycle.configure(run, "tun-test", nil); err == nil {
+	if err := lifecycle.configure(context.Background(), run, "tun-test", nil); err == nil {
 		t.Fatal("setup after close accepted")
 	}
 }
@@ -88,7 +117,7 @@ func TestResolvedUnstartedCloseDoesNotRevert(t *testing.T) {
 func TestResolvedFailedRevertCanRetry(t *testing.T) {
 	var lifecycle resolvedLifecycle
 	run := func(context.Context, ...string) error { return nil }
-	if err := lifecycle.configure(run, "tun-test", nil); err != nil {
+	if err := lifecycle.configure(context.Background(), run, "tun-test", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := lifecycle.close(func(context.Context, ...string) error {
@@ -103,7 +132,7 @@ func TestResolvedFailedRevertCanRetry(t *testing.T) {
 
 func TestResolvedRevertUsesShortShutdownBudget(t *testing.T) {
 	var lifecycle resolvedLifecycle
-	if err := lifecycle.configure(func(context.Context, ...string) error { return nil }, "tun-test", nil); err != nil {
+	if err := lifecycle.configure(context.Background(), func(context.Context, ...string) error { return nil }, "tun-test", nil); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Now()

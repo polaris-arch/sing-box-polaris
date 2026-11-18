@@ -19,6 +19,19 @@ func runtimeTunFixture(open func(*runtimeTunPhysical) error) *Inbound {
 	return owner
 }
 
+type runtimeTunObservedContext struct {
+	context.Context
+	waiting chan struct{}
+}
+
+func (c runtimeTunObservedContext) Done() <-chan struct{} {
+	select {
+	case c.waiting <- struct{}{}:
+	default:
+	}
+	return c.Context.Done()
+}
+
 func TestRuntimeTunStageDoesNotOpenPacketAdmission(t *testing.T) {
 	owner := runtimeTunFixture(func(*runtimeTunPhysical) error { return nil })
 	defer owner.RuntimeCloseAndWait()
@@ -86,11 +99,42 @@ func TestRuntimeTunCanceledWaitRetainsRunningConstruction(t *testing.T) {
 	if err := owner.RuntimeSuspendPhysical(context.Background()); err == nil {
 		t.Fatal("overlapping physical operation admitted")
 	}
+	if err := owner.RuntimeShutdownPhysical(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal("shutdown did not respect canceled observation", err)
+	}
+	shutdownContext := runtimeTunObservedContext{Context: context.Background(), waiting: make(chan struct{}, 1)}
+	shutdown := make(chan error, 1)
+	go func() { shutdown <- owner.RuntimeShutdownPhysical(shutdownContext) }()
+	select {
+	case <-shutdownContext.waiting:
+	case err := <-shutdown:
+		t.Fatal("shutdown returned before joining the held constructor", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("shutdown wait watchdog")
+	}
+	select {
+	case <-physical.done:
+		t.Fatal("shutdown closed the in-flight constructor")
+	default:
+	}
 	finish()
 	select {
-	case <-operation.done:
+	case err := <-shutdown:
+		if err != nil {
+			t.Fatal(err)
+		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("constructor terminal watchdog")
+		t.Fatal("shutdown terminal watchdog")
+	}
+	select {
+	case <-operation.done:
+	default:
+		t.Fatal("shutdown did not join the tracked constructor")
+	}
+	select {
+	case <-physical.done:
+	default:
+		t.Fatal("shutdown did not close the tracked physical owner")
 	}
 }
 

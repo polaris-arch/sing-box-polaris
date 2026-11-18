@@ -556,7 +556,11 @@ func (t *Inbound) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 			return E.Cause(err, "starting tun stack")
 		}
 		monitor.Start("starting tun interface")
-		err = t.tunIf.Start()
+		if starter, ok := t.tunIf.(interface{ StartContext(context.Context) error }); ok && t.runtimePhysical != nil {
+			err = starter.StartContext(scope.Context())
+		} else {
+			err = t.tunIf.Start()
+		}
 		monitor.Finish()
 		if err != nil {
 			return E.Cause(err, "starting TUN interface")

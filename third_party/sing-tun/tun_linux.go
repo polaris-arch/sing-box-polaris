@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -368,11 +369,17 @@ func (t *NativeTun) Name() (string, error) {
 }
 
 func (t *NativeTun) Start() error {
+	return t.StartContext(context.Background())
+}
+
+// StartContext allows the TUN owner to cancel resolver setup. Cleanup retains
+// its own deadline so it can revert any systemd-resolved changes after that.
+func (t *NativeTun) StartContext(ctx context.Context) error {
 	if t.options.FileDescriptor == 0 {
 		if !t.options.EXP_ExternalConfiguration && t.options.NetNs == "" {
 			t.options.InterfaceMonitor.RegisterMyInterface(t.options.Name)
 		}
-		err := t.runInOwnedNamespace(t.start)
+		err := t.runInOwnedNamespace(func() error { return t.start(ctx) })
 		if err != nil {
 			return err
 		}
@@ -392,7 +399,7 @@ func (t *NativeTun) Start() error {
 	return nil
 }
 
-func (t *NativeTun) start() error {
+func (t *NativeTun) start(ctx context.Context) error {
 	tunLink, err := netlink.LinkByName(t.options.Name)
 	if err != nil {
 		return E.Cause(err, "find tun interface")
@@ -453,7 +460,7 @@ func (t *NativeTun) start() error {
 	}
 
 	if t.options.ManageLinuxResolved() {
-		err = t.setSearchDomainForSystemdResolved()
+		err = t.setSearchDomainForSystemdResolved(ctx)
 		if err != nil {
 			return E.Cause(err, "set search domain")
 		}
@@ -1343,7 +1350,7 @@ func (t *NativeTun) routeUpdate(_ *control.Interface, flags int) {
 	}
 }
 
-func (t *NativeTun) setSearchDomainForSystemdResolved() error {
+func (t *NativeTun) setSearchDomainForSystemdResolved(ctx context.Context) error {
 	if !t.options.ManageLinuxResolved() {
 		return nil
 	}
@@ -1355,7 +1362,7 @@ func (t *NativeTun) setSearchDomainForSystemdResolved() error {
 	if err != nil {
 		return err
 	}
-	return t.resolved.configure(resolvedCommand(ctlPath), t.options.Name, common.Map(dnsAddress, netip.Addr.String))
+	return t.resolved.configure(ctx, resolvedCommand(ctlPath), t.options.Name, common.Map(dnsAddress, netip.Addr.String))
 }
 
 func (t *NativeTun) unsetSearchDomainForSystemdResolved() error {

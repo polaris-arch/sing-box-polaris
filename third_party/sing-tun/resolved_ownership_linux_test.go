@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"context"
 	"fmt"
 	"net/netip"
 	"os"
@@ -50,7 +51,7 @@ func TestNativeResolverMethodsHonorExternalOwner(t *testing.T) {
 				DNSAddress:   []netip.Addr{netip.MustParseAddr("192.0.2.1")},
 				Inet4Address: []netip.Prefix{netip.MustParsePrefix("192.0.2.2/24")},
 			}}
-			if err := native.setSearchDomainForSystemdResolved(); err != nil {
+			if err := native.setSearchDomainForSystemdResolved(context.Background()); err != nil {
 				t.Fatal(err)
 			}
 			if err := native.unsetSearchDomainForSystemdResolved(); err != nil {

@@ -21,7 +21,7 @@ type resolvedLifecycle struct {
 	attempted bool
 }
 
-func (r *resolvedLifecycle) configure(run func(context.Context, ...string) error, name string, servers []string) error {
+func (r *resolvedLifecycle) configure(parent context.Context, run func(context.Context, ...string) error, name string, servers []string) error {
 	r.access.Lock()
 	defer r.access.Unlock()
 	r.state.Lock()
@@ -29,7 +29,7 @@ func (r *resolvedLifecycle) configure(run func(context.Context, ...string) error
 		r.state.Unlock()
 		return fmt.Errorf("resolver configuration already closed")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
 	r.cancel = cancel
 	r.state.Unlock()
 	defer func() {
