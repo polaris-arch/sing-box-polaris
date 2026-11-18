@@ -241,12 +241,15 @@ jobs:
       run: rm -f dist/sing-box dist/libcronet.so
     - name: Record actual unsigned candidate files
       if: success()
-      run: go run -mod=readonly ./cmd/internal/ci record-candidate dist
+      run: |
+        go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
+        "$RUNNER_TEMP/polaris-ci" record-candidate dist
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
       run: python scripts/ci/native_release_index.py collect dist
       env:
+        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
         NATIVE_MATRIX: ${{ toJSON(matrix) }}
         NATIVE_OS: ${{ matrix.os }}
@@ -314,12 +317,15 @@ jobs:
       run: rm dist/sing-box
     - name: Record actual unsigned candidate files
       if: success()
-      run: go run -mod=readonly ./cmd/internal/ci record-candidate dist
+      run: |
+        go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
+        "$RUNNER_TEMP/polaris-ci" record-candidate dist
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
       run: python scripts/ci/native_release_index.py collect dist
       env:
+        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
         NATIVE_MATRIX: ${{ toJSON(matrix) }}
         NATIVE_OS: darwin
@@ -387,12 +393,15 @@ jobs:
       run: Remove-Item dist/sing-box.exe, dist/libcronet.dll
     - name: Record actual unsigned candidate files
       if: success()
-      run: go run -mod=readonly ./cmd/internal/ci record-candidate dist
+      run: |
+        go build -mod=readonly -o "$env:RUNNER_TEMP/polaris-ci.exe" ./cmd/internal/ci
+        & "$env:RUNNER_TEMP/polaris-ci.exe" record-candidate dist
       env:
         CANDIDATE_MATRIX_KEY: ${{ github.job }}-${{ strategy.job-index }}
     - name: Collect actual native archive receipt
       run: python scripts/ci/native_release_index.py collect dist
       env:
+        POLARIS_CI: ${{ runner.temp }}/polaris-ci.exe
         VERSION: ${{ needs.calculate_version.outputs.version }}
         NATIVE_MATRIX: ${{ toJSON(matrix) }}
         NATIVE_OS: windows
@@ -429,8 +438,7 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: native
-    - name: Setup source-owned Go for native metadata
-      if: startsWith(matrix.id, 'darwin-') || matrix.id == 'linux-amd64-purego'
+    - name: Setup source-owned Go for overlay validation and native metadata
       uses: actions/setup-go@v5
       with:
         go-version-file: release/GO_VERSION
@@ -440,15 +448,15 @@ jobs:
         python-version: '3.12'
     - name: Install native smoke and peer validators
       run: python -m pip install jsonschema==4.23.0
+    - name: Build the CI tool for overlay validation and native metadata
+      env:
+        GOTOOLCHAIN: local
+      run: go build -mod=readonly -o "${{ runner.temp }}/polaris-ci${{ runner.os == 'Windows' && '.exe' || '' }}" ./cmd/internal/ci
     - name: Execute final-package Cronet smoke
       env:
         GOTOOLCHAIN: local
+        POLARIS_CI: ${{ runner.temp }}/polaris-ci${{ runner.os == 'Windows' && '.exe' || '' }}
       run: python scripts/ci/native_release_index.py smoke native
-    - name: Build the existing CI tool for native metadata
-      if: matrix.id == 'linux-amd64-purego'
-      env:
-        GOTOOLCHAIN: local
-      run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Acquire exact same-run Linux artifact metadata without native execution
       if: matrix.id == 'linux-amd64-purego'
       timeout-minutes: 3
@@ -526,9 +534,12 @@ jobs:
       with:
         pattern: smoke-*
         path: artifacts
+    - name: Build the CI tool for assembly provenance
+      run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Assemble final index
       run: python3 scripts/ci/native_release_index.py assemble artifacts
       env:
+        POLARIS_CI: ${{ runner.temp }}/polaris-ci
         VERSION: ${{ needs.calculate_version.outputs.version }}
         EXPECTED_RELEASE_TAG_OBJECT: ${{ needs.calculate_version.outputs.tag_object }}
         GH_TOKEN: ${{ github.token }}

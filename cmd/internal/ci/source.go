@@ -5,13 +5,16 @@ import (
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -30,6 +33,29 @@ func gitObjectHash(kind string, data []byte) string {
 	fmt.Fprintf(hash, "%s %d\x00", kind, len(data))
 	hash.Write(data)
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func gitTreeHash(entries map[string]indexEntry) (string, error) {
+	order := func(name string) string {
+		if entries[name].Mode == "40000" {
+			return name + "/"
+		}
+		return name
+	}
+	names := slices.SortedFunc(maps.Keys(entries), func(left, right string) int {
+		return strings.Compare(order(left), order(right))
+	})
+	var raw bytes.Buffer
+	for _, name := range names {
+		entry := entries[name]
+		oid, err := hex.DecodeString(entry.Blob)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&raw, "%s %s\x00", entry.Mode, name)
+		raw.Write(oid)
+	}
+	return gitObjectHash("tree", raw.Bytes()), nil
 }
 
 func sha256Hex(data []byte) string {
@@ -152,7 +178,7 @@ func regularSource(root, name string) (string, error) {
 	}
 	for current := name; current != "."; current = path.Dir(current) {
 		info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(current)))
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || current == name && !info.Mode().IsRegular() {
+		if err != nil || redirectedSource(info) || current == name && !info.Mode().IsRegular() {
 			return "", fmt.Errorf("missing or unsafe owned source: %s", name)
 		}
 	}

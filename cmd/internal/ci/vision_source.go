@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -221,11 +220,7 @@ func validateVisionSource(root string, diagnostics map[string]any) (map[string]a
 		if err != nil {
 			return "", err
 		}
-		type treeRow struct {
-			key  string
-			data []byte
-		}
-		rows := []treeRow{}
+		rows := make(map[string]indexEntry, len(entries))
 		for _, entry := range entries {
 			filename := filepath.Join(directory, entry.Name())
 			info, err := os.Lstat(filename)
@@ -235,7 +230,7 @@ func validateVisionSource(root string, diagnostics map[string]any) (map[string]a
 			if redirectedSource(info) {
 				return "", fmt.Errorf("Vision replacement link")
 			}
-			mode, blob, key := "40000", "", entry.Name()+"/"
+			mode, blob := "40000", ""
 			if info.IsDir() {
 				blob, err = tree(filename)
 				if err != nil {
@@ -269,24 +264,14 @@ func validateVisionSource(root string, diagnostics map[string]any) (map[string]a
 						mode = "untracked"
 					}
 				}
-				blob, key = gitObjectHash("blob", data), entry.Name()
+				blob = gitObjectHash("blob", data)
 				observed[name] = sourceRow{sha256Hex(data), blob, mode, int64(len(data))}
 			} else {
 				return "", fmt.Errorf("Vision non-regular source")
 			}
-			oid, err := hex.DecodeString(blob)
-			if err != nil {
-				return "", err
-			}
-			row := append([]byte(mode+" "+entry.Name()+"\x00"), oid...)
-			rows = append(rows, treeRow{key, row})
+			rows[entry.Name()] = indexEntry{mode, blob}
 		}
-		slices.SortFunc(rows, func(a, b treeRow) int { return strings.Compare(a.key, b.key) })
-		var raw bytes.Buffer
-		for _, row := range rows {
-			raw.Write(row.data)
-		}
-		return gitObjectHash("tree", raw.Bytes()), nil
+		return gitTreeHash(rows)
 	}
 	actualTree, err := tree(nested)
 	if err != nil {

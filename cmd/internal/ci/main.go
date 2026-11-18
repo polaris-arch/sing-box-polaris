@@ -44,6 +44,8 @@ func run(args []string) error {
 		return publisherReceipt(args[1:])
 	case "peer-metadata":
 		return peerMetadata(args[1:])
+	case "cronet-overlay":
+		return cronetOverlayCommand(args[1:])
 	case "release-identity":
 		return releaseIdentity(args[1:])
 	case "tls-gate":

@@ -39,9 +39,13 @@ def public_product_name(name):
     return name
 
 
+def ci_command(*args):
+    tool = os.environ.get('POLARIS_CI')
+    return [tool, *args] if tool else ['go', 'run', '-mod=readonly', '-buildvcs=false', './cmd/internal/ci', *args]
+
+
 def release_tag_object(scope, tag, source, expected=None):
-    args = ['go', 'run', '-mod=readonly', './cmd/internal/ci', 'release-identity',
-            '--scope', scope, '--tag', tag, '--source', source]
+    args = ci_command('release-identity', '--scope', scope, '--tag', tag, '--source', source)
     if expected is not None:
         args.extend(['--expected-tag-object', expected])
     env = {**os.environ, 'GOWORK': 'off', 'GOTOOLCHAIN': 'local'}

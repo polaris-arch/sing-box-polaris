@@ -4,8 +4,7 @@ import argparse,gzip,hashlib,io,json,os,platform,re,shlex,shutil,subprocess,sys,
 from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
-from release_identity import release_tag_object, public_product_name
-from cronet_windows_overlay import validate_overlay
+from release_identity import ci_command, release_tag_object, public_product_name
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -100,6 +99,13 @@ def write_source_archive(directory,rows,commit):
   with candidate.open('rb') as stream:validate_archived_source_identity(rows,stream,commit)
   candidate.replace(source)
  return source
+
+def validate_overlay(root):
+ env=dict(os.environ,GOWORK='off',GOTOOLCHAIN='local')
+ args=ci_command('cronet-overlay','--source-root',str(Path(root).absolute()))
+ result=subprocess.run(args,cwd=ROOT,env=env,capture_output=True,encoding='utf-8')
+ if result.returncode:raise ValueError(result.stderr.strip() or 'Cronet Windows overlay command failed')
+ return json.loads(result.stdout)
 
 def source_identity():
  hashes=source_module_hashes()
@@ -659,7 +665,7 @@ def distribution_materials(index, root=Path('.')):
  """Bind existing shared source/legal assets to actual native bytes; never attest closure."""
  root=Path(root)
  overlay_inputs=validate_overlay(root)
- inputs=['scripts/ci/cronet_windows_overlay.py',*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
+ inputs=[*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/dependency-sources/sing-vmess-replacement.json',
          'release/dependency-sources/sing-vmess-vision.patch',
          'release/ci/distribution-materials.json',
@@ -672,7 +678,7 @@ def distribution_materials(index, root=Path('.')):
          'release/dependency-sources/windivert/fixed-source-availability-proof.json',
          'release/dependency-sources/windivert/upstream-release-driver-proof.json',
          'release/polaris-cronet-materials.json','release/polaris-cronet-graph-kernel-materials.json',
-         'scripts/ci/native_release_index.py',
+         'scripts/ci/native_release_index.py','scripts/ci/release_identity.py',
          'release/GO_VERSION',
          'common/badversion/version.go','common/badversion/version_json.go',
          '.github/workflows/build.yml']

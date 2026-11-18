@@ -204,11 +204,11 @@ class OverlayProductionBoundaryControls(unittest.TestCase):
    self.assertRaisesRegex(ValueError,'bad overlay',n.distribution_materials,{'platforms':[]},root)
    check.assert_called_once_with(root)
  def test_distribution_inputs_bind_every_validated_overlay_file_and_helper(self):
-  from cronet_windows_overlay import validate_overlay
   index={'sourceCommit':'a'*40,'sourceTree':'b'*40,'sourceArchive':{'name':'synthetic'},'platforms':[],'legalFiles':[]}
-  expected=validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
+  expected=n.validate_overlay(n.ROOT);material=n.distribution_materials(index,n.ROOT)
   self.assertEqual({name:material['inputs'][name] for name in expected},expected)
-  self.assertEqual(material['inputs']['scripts/ci/cronet_windows_overlay.py'],n.sha((n.ROOT/'scripts/ci/cronet_windows_overlay.py').read_bytes()))
+  helper='cmd/internal/ci/cronet_overlay.go'
+  self.assertEqual(material['inputs'][helper],n.sha((n.ROOT/helper).read_bytes()))
 
 
 if __name__=='__main__':unittest.main()
