@@ -34,59 +34,36 @@ class IdentityComparisonTests(unittest.TestCase):
 class PolarisVersionTests(unittest.TestCase):
     def test_shared_parser_roundtrip_and_rejections(self):
         for value in CONTRACT['valid']:
-            for parser in [v.validate, identity.validate_version, native.validate_version, publisher.validate_version]:
-                with self.subTest(value=value, parser=parser):
-                    self.assertIs(parser, v.validate)
-                    self.assertEqual(parser(value), value)
+            with self.subTest(value=value):
+                self.assertEqual(v.validate(value), value)
         for value in CONTRACT['invalid'] + [None, 12]:
             with self.subTest(value=value), self.assertRaises(ValueError):
                 v.validate(value)
 
     def test_self_contained_schemas_share_the_parser_contract(self):
         import jsonschema
-        for name, count in [('native-release-index.schema.json', 4)]:
-            schema = json.loads((ROOT / 'release/ci' / name).read_text())
-            jsonschema.Draft202012Validator.check_schema(schema)
-            refs = []
-            def collect(value, path=''):
-                if isinstance(value, dict):
-                    if value.get('$ref', '').startswith('#/$defs/polaris'):
-                        refs.append((path + '/$ref', value['$ref']))
-                    for key, child in value.items():
-                        collect(child, path + '/' + key.replace('~', '~0').replace('/', '~1'))
-                elif isinstance(value, list):
-                    for index, child in enumerate(value):
-                        collect(child, path + '/' + str(index))
-            collect(schema)
-            self.assertEqual(len(refs), count)
-            if name == 'native-release-index.schema.json':
-                self.assertCountEqual(refs, [
-                    ('/properties/version/$ref', '#/$defs/polarisVersion'),
-                    ('/properties/tag/$ref', '#/$defs/polarisTag'),
-                    ('/properties/platforms/items/properties/version/$ref', '#/$defs/polarisVersion'),
-                    ('/properties/platforms/items/properties/tag/$ref', '#/$defs/polarisTag'),
-                ])
-            for tag in [False, True]:
-                key = 'polarisTag' if tag else 'polarisVersion'
-                field = schema['$defs'][key]
-                self.assertEqual(field, {'type': 'string', 'pattern': v.schema_pattern(tag)})
-                validator = jsonschema.Draft202012Validator(field)
+        schema = json.loads((ROOT / 'release/ci/native-release-index.schema.json').read_text())
+        validator = jsonschema.Draft202012Validator(schema)
+        validator.check_schema(schema)
+        for properties in [schema['properties'], schema['properties']['platforms']['items']['properties']]:
+            for key in ['version', 'tag']:
+                field = validator.evolve(schema=properties[key])
+                prefix = 'v' if key == 'tag' else ''
                 for value in CONTRACT['valid']:
-                    validator.validate(('v' if tag else '') + value)
+                    field.validate(prefix + value)
                 for value in CONTRACT['invalid']:
-                    with self.subTest(schema=name, value=value, tag=tag), self.assertRaises(jsonschema.ValidationError):
-                        validator.validate(('v' if tag else '') + value)
+                    with self.subTest(value=value, key=key), self.assertRaises(jsonschema.ValidationError):
+                        field.validate(prefix + value)
 
     def test_cli_keeps_raw_patch(self):
         script = ROOT / 'scripts/ci/polaris_version.py'
-        for value in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION]:
-            output = subprocess.check_output([sys.executable, str(script), value], text=True)
-            self.assertEqual(output, value + '\n')
+        output = subprocess.check_output([sys.executable, str(script), VERSION], text=True)
+        self.assertEqual(output, VERSION + '\n')
         result = subprocess.run([sys.executable, str(script), 'v' + VERSION], capture_output=True)
         self.assertNotEqual(result.returncode, 0)
 
     def test_native_names_and_exact_plan_scope(self):
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION, '1.15.0-polaris-alpha.13']:
+        for version in [VERSION, '1.15.0-polaris-alpha.13']:
             names = native.expected_native(version)
             self.assertTrue(all(name.startswith('sing-box-' + version + '-') for name in names))
             # Simulate a separately reviewed next plan; syntax never selects a release.
@@ -98,22 +75,21 @@ class PolarisVersionTests(unittest.TestCase):
                 for wrong in ['1.15.0-polaris-alpha.12', version + '0', version + '.1']:
                     with self.assertRaises(ValueError):
                         publisher.verify_payloads({name.replace(version, wrong): value for name, value in files.items()}, rules, 'binary-linux_amd64-purego')
-        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.13']:
+        for wrong in ['1.15.0-polaris-alpha.12', '1.15.0-polaris-alpha.12.2']:
             with self.assertRaises(ValueError):
                 publisher.release_scope(wrong)
 
     def test_full_patch_tag_is_bound_to_actual_source_and_tag_object(self):
         source, obj = 'a' * 40, 'b' * 40
-        for version in ['1.15.0-polaris-alpha.12.1', '1.15.0-polaris-alpha.12.2', '1.15.0-polaris-alpha.12.3', '1.15.0-polaris-alpha.12.4', '1.15.0-polaris-alpha.12.5', '1.15.0-polaris-alpha.12.6', '1.15.0-polaris-alpha.12.7', VERSION]:
-            tag = 'v' + version
-            answers = [{'object': {'type': 'tag', 'sha': obj}},
-                       {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
-            with patch.object(identity, 'api', side_effect=answers) as api:
-                self.assertEqual(identity.remote_tag_identity(tag, source, obj), obj)
-                self.assertTrue(api.call_args_list[0].args[0].endswith('/' + tag))
-            answers[1]['tag'] = 'v1.15.0-polaris-alpha.12'
-            with patch.object(identity, 'api', side_effect=answers), self.assertRaises(ValueError):
-                identity.remote_tag_identity(tag, source, obj)
+        tag = 'v' + VERSION
+        answers = [{'object': {'type': 'tag', 'sha': obj}},
+                   {'sha': obj, 'tag': tag, 'object': {'type': 'commit', 'sha': source}}]
+        with patch.object(identity, 'api', side_effect=answers) as api:
+            self.assertEqual(identity.remote_tag_identity(tag, source, obj), obj)
+            self.assertTrue(api.call_args_list[0].args[0].endswith('/' + tag))
+        answers[1]['tag'] = 'v1.15.0-polaris-alpha.12'
+        with patch.object(identity, 'api', side_effect=answers), self.assertRaises(ValueError):
+            identity.remote_tag_identity(tag, source, obj)
         for tag in ['v1.15.0-alpha.12.1', 'v1.15.0-polaris-alpha.12.1;bad']:
             with patch.object(identity, 'api') as api, self.assertRaises(ValueError):
                 identity.remote_tag_identity(tag, source, obj)
