@@ -94,15 +94,19 @@ func (s *RemoteRuleSet) String() string {
 }
 
 func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.HTTPStartContext) error {
+	limits, err := ruleSetLimits(s.options.ResourceLimits)
+	if err != nil {
+		return err
+	}
 	s.cacheFile = service.FromContext[adapter.CacheFile](s.ctx)
 	transport, err := s.resolveTransport()
 	if err != nil {
 		return E.Cause(err, "create rule-set http client")
 	}
 	startContext.Register(transport)
-	s.httpClient = &http.Client{Transport: transport}
+	s.httpClient = &http.Client{Transport: transport, Timeout: C.RuleSetDownloadTimeout}
 	if s.cacheFile != nil {
-		savedSet := s.cacheFile.LoadRuleSet(s.tag)
+		savedSet := s.cacheFile.LoadRuleSet(s.tag, limits.InputBytes)
 		if savedSet != nil {
 			if len(savedSet.URLHash) > 0 && !bytes.Equal(savedSet.URLHash, s.urlHash[:]) {
 				s.logger.Info("cached rule-set was downloaded from another URL, will refetch")
@@ -280,7 +284,7 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	case http.StatusNotModified:
 		s.lastUpdated = time.Now()
 		if s.cacheFile != nil {
-			savedRuleSet := s.cacheFile.LoadRuleSet(s.tag)
+			savedRuleSet := s.cacheFile.LoadRuleSet(s.tag, limits.InputBytes)
 			if savedRuleSet != nil {
 				savedRuleSet.LastUpdated = s.lastUpdated
 				savedRuleSet.URLHash = s.urlHash[:]

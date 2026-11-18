@@ -3,6 +3,7 @@ package rule
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"io"
 	"net/http"
 	"os"
@@ -10,11 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sagernet/bbolt"
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/experimental/cachefile"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/logger"
+	"github.com/sagernet/sing/service"
 
 	"github.com/stretchr/testify/require"
 )
@@ -22,6 +26,121 @@ import (
 type srsTestTransport func(*http.Request) (*http.Response, error)
 
 func (f srsTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+func (f srsTestTransport) CloseIdleConnections()                             {}
+func (f srsTestTransport) Reset()                                            {}
+
+type ruleSetTestHTTPClientManager struct {
+	adapter.HTTPClientManager
+	transport srsTestTransport
+}
+
+func (m ruleSetTestHTTPClientManager) DefaultTransport() adapter.HTTPTransport { return m.transport }
+
+func TestRemoteRuleSetDownloadDeadline(t *testing.T) {
+	for _, shorter := range []bool{false, true} {
+		name := "default"
+		if shorter {
+			name = "earlier caller deadline"
+		}
+		t.Run(name, func(t *testing.T) {
+			var deadline time.Time
+			transport := srsTestTransport(func(request *http.Request) (*http.Response, error) {
+				var ok bool
+				deadline, ok = request.Context().Deadline()
+				require.True(t, ok, "default transport received no request deadline")
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"version":4,"rules":[]}`))}, nil
+			})
+			owner := service.ContextWith[adapter.HTTPClientManager](t.Context(), ruleSetTestHTTPClientManager{transport: transport})
+			ctx := owner
+			if shorter {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(owner, 10*time.Second)
+				defer cancel()
+			}
+			set, err := NewRemoteRuleSet(owner, logger.NOP(), "deadline", option.RuleSet{
+				Format: C.RuleSetFormatSource, RemoteOptions: option.RemoteRuleSet{URL: "http://127.0.0.1/rules"},
+			})
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, set.Close()) })
+			start := time.Now()
+			require.NoError(t, set.StartContext(ctx, adapter.NewHTTPStartContext()))
+			if shorter {
+				want, _ := ctx.Deadline()
+				require.Equal(t, want, deadline)
+			} else {
+				require.WithinRange(t, deadline, start.Add(C.RuleSetDownloadTimeout), time.Now().Add(C.RuleSetDownloadTimeout))
+			}
+		})
+	}
+}
+
+func TestRemoteRuleSetCacheUsesActiveContentLimit(t *testing.T) {
+	const url = "http://127.0.0.1/rules"
+	const tag = "cache-budget"
+	content := []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)
+	limit := int64(len(content))
+	path := filepath.Join(t.TempDir(), "cache.db")
+	cache := cachefile.New(t.Context(), logger.NOP(), option.CacheFileOptions{Path: path})
+	db, err := bbolt.Open(path, 0o600, nil)
+	require.NoError(t, err)
+	cache.DB = db
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	urlHash := sha256.Sum256([]byte(url))
+	previous := &adapter.SavedBinary{
+		Content: append(bytes.Clone(content), ' '), LastUpdated: time.Unix(20, 0), LastEtag: "cached", URLHash: urlHash[:],
+	}
+	require.NoError(t, cache.SaveRuleSet(tag, previous))
+	require.Equal(t, previous, cache.LoadRuleSet(tag, limit+1))
+	require.Nil(t, cache.LoadRuleSet(tag, limit))
+	requests := 0
+	transport := srsTestTransport(func(request *http.Request) (*http.Response, error) {
+		requests++
+		if requests == 2 {
+			require.Equal(t, "fresh", request.Header.Get("If-None-Match"))
+			return &http.Response{StatusCode: http.StatusNotModified, Body: http.NoBody}, nil
+		}
+		require.Empty(t, request.Header.Get("If-None-Match"))
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Etag": []string{"fresh"}}, Body: io.NopCloser(bytes.NewReader(content))}, nil
+	})
+	ctx := service.ContextWith[adapter.HTTPClientManager](t.Context(), ruleSetTestHTTPClientManager{transport: transport})
+	ctx = service.ContextWith[adapter.CacheFile](ctx, cache)
+	set, err := NewRemoteRuleSet(ctx, logger.NOP(), tag, option.RuleSet{
+		Format: C.RuleSetFormatSource, RemoteOptions: option.RemoteRuleSet{URL: url},
+		ResourceLimits: &option.RuleSetResourceLimits{InputBytes: limit},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, set.Close()) })
+	require.NoError(t, set.StartContext(ctx, adapter.NewHTTPStartContext()))
+	require.Equal(t, 1, requests)
+	require.True(t, set.Match(&adapter.InboundContext{Domain: "example.com"}))
+	fresh := cache.LoadRuleSet(tag, limit)
+	require.NotNil(t, fresh)
+	require.Equal(t, content, fresh.Content)
+	require.Equal(t, "fresh", fresh.LastEtag)
+	require.Equal(t, urlHash[:], fresh.URLHash)
+
+	// A same-tag record from a different configured limit must not be read
+	// and written back under this rule-set's limit on a 304 response.
+	require.NoError(t, cache.SaveRuleSet(tag, previous))
+	current := set.loadSnapshot()
+	require.NoError(t, set.fetch(ctx, false))
+	require.Equal(t, 2, requests)
+	require.Same(t, current, set.loadSnapshot())
+	require.Equal(t, previous, cache.LoadRuleSet(tag, limit+1))
+}
+
+func TestRemoteRuleSetLegacyCacheContentLimit(t *testing.T) {
+	// Version 1: length-prefixed content, big-endian update seconds, and ETag.
+	legacy := []byte{1, 2, 'r', 's', 0, 0, 0, 0, 0, 0, 0, 20, 3, 'o', 'l', 'd'}
+	var decoded adapter.SavedBinary
+	require.Error(t, decoded.UnmarshalBinaryWithContentLimit(legacy, 1))
+	require.Nil(t, decoded.Content)
+	require.NoError(t, decoded.UnmarshalBinaryWithContentLimit(legacy, 2))
+	require.Equal(t, []byte("rs"), decoded.Content)
+	require.Equal(t, "old", decoded.LastEtag)
+	require.Equal(t, time.Unix(20, 0), decoded.LastUpdated)
+	require.Empty(t, decoded.URLHash)
+}
 
 func TestRemoteRuleSetIntegrityFailurePreservesPublicationAndETag(t *testing.T) {
 	ctx := context.Background()

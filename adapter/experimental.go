@@ -45,7 +45,7 @@ type CacheFile interface {
 	StoreSelected(group string, selected string) error
 	LoadGroupExpand(group string) (isExpand bool, loaded bool)
 	StoreGroupExpand(group string, expand bool) error
-	LoadRuleSet(tag string) *SavedBinary
+	LoadRuleSet(tag string, maxContentBytes int64) *SavedBinary
 	SaveRuleSet(tag string, set *SavedBinary) error
 }
 
@@ -93,7 +93,7 @@ func (s *SavedBinary) MarshalBinary() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (s *SavedBinary) UnmarshalBinary(data []byte) error {
+func (s *SavedBinary) UnmarshalBinaryWithContentLimit(data []byte, maxContentBytes int64) error {
 	reader := bytes.NewReader(data)
 	var version uint8
 	err := binary.Read(reader, binary.BigEndian, &version)
@@ -106,6 +106,9 @@ func (s *SavedBinary) UnmarshalBinary(data []byte) error {
 	}
 	if contentLength > uint64(reader.Len()) {
 		return E.New("invalid content length: ", contentLength)
+	}
+	if maxContentBytes < 0 || contentLength > uint64(maxContentBytes) {
+		return E.New("cached rule-set exceeds input bytes limit: ", contentLength)
 	}
 	s.Content = make([]byte, contentLength)
 	_, err = io.ReadFull(reader, s.Content)

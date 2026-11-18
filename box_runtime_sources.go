@@ -290,7 +290,7 @@ func runtimePrepareRemoteSources(request context.Context, options option.Options
 			}
 			// Timeout requests cancellation; synchronous return/body close and the
 			// session join, not the timeout, establish actual worker completion.
-			fetchContext, fetchCancel := context.WithTimeout(ctx, time.Minute)
+			fetchContext, fetchCancel := context.WithTimeout(ctx, C.RuleSetDownloadTimeout)
 			content, err := runtimeDownloadSource(fetchContext, address, transport)
 			fetchCancel()
 			if err != nil {
