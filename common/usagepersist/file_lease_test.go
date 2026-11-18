@@ -104,6 +104,11 @@ func (m prefixingUsageManager) OpenFile(name string, flag int, perm os.FileMode)
 
 func TestUsageLeasePreservesManagerLogicalPath(t *testing.T) {
 	root := t.TempDir()
+	physicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(physicalRoot, "usage.json")
 	for _, forcePrefix := range []bool{false, true} {
 		ctx := filemanager.WithDefault(context.Background(), root, "", os.Getuid(), os.Getgid())
 		if forcePrefix {
@@ -114,8 +119,9 @@ func TestUsageLeasePreservesManagerLogicalPath(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if filepath.Clean(lease.Path) != filepath.Join(root, "usage.json") {
-			t.Fatal("wrong physical path", lease.Path)
+		t.Cleanup(func() { _ = lease.Close() })
+		if lease.Path != want {
+			t.Fatalf("physical path = %q, want %q", lease.Path, want)
 		}
 		// The same managed name used by tracker Load/Save must resolve only once.
 		if err := filemanager.WriteFile(ctx, lease.ManagedPath, []byte("snapshot"), 0o600); err != nil {
