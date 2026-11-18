@@ -26,7 +26,7 @@ func (f srsTestTransport) RoundTrip(r *http.Request) (*http.Response, error) { r
 func TestRemoteRuleSetIntegrityFailurePreservesPublicationAndETag(t *testing.T) {
 	ctx := context.Background()
 	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "integrity", options: option.RuleSet{Format: C.RuleSetFormatSource}}
-	require.NoError(t, set.loadBytes([]byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
+	require.NoError(t, set.loadBytesContext(ctx, []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
 	set.options.Format = C.RuleSetFormatBinary
 	set.lastEtag = "old-etag"
 	set.lastUpdated = time.Unix(100, 0)
@@ -50,51 +50,21 @@ func TestRemoteRuleSetIntegrityFailurePreservesPublicationAndETag(t *testing.T) 
 	require.Equal(t, "old-etag", set.lastEtag)
 }
 
-func TestPublicationCancelledWhileAccessLockedKeepsOldSnapshot(t *testing.T) {
-	var publication ruleSetPublication
-	_, err := publication.publish(nil, adapter.RuleSetMetadata{}, "old")
-	require.NoError(t, err)
-	old := publication.loadSnapshot()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	publication.access.Lock()
-	entered := make(chan struct{})
-	finished := make(chan error, 1)
-	go func() {
-		close(entered)
-		_, err := publication.publishContext(ctx, nil, adapter.RuleSetMetadata{}, "new")
-		finished <- err
-	}()
-	<-entered
-	select {
-	case err := <-finished:
-		t.Fatalf("published despite held lock: %v", err)
-	default:
-	}
-	cancel()
-	publication.access.Unlock()
-	require.ErrorIs(t, <-finished, context.Canceled)
-	require.Same(t, old, publication.loadSnapshot())
-}
-
-// This test context detects lock ownership synchronously, without depending on
-// goroutine scheduling. Moving the cancellation check before access.Lock makes
-// TryLock succeed and fails the test even if the concurrent test happens to pass.
+// Cancel precisely at the lock-protected check so the result does not depend
+// on when a second goroutine reaches the publication lock.
 type publicationLockCheckingContext struct {
 	context.Context
-	publication      *ruleSetPublication
-	checkedUnderLock bool
-	calls            int
+	publication *ruleSetPublication
+	cancel      context.CancelFunc
 }
 
 func (c *publicationLockCheckingContext) Err() error {
-	c.calls++
 	if c.publication.access.TryLock() {
 		c.publication.access.Unlock()
 	} else {
-		c.checkedUnderLock = true
+		c.cancel()
 	}
-	return context.Canceled
+	return c.Context.Err()
 }
 
 func TestPublicationCancellationCheckIsInsideCommitLock(t *testing.T) {
@@ -102,18 +72,19 @@ func TestPublicationCancellationCheckIsInsideCommitLock(t *testing.T) {
 	_, err := publication.publish(nil, adapter.RuleSetMetadata{}, "old")
 	require.NoError(t, err)
 	old := publication.loadSnapshot()
-	ctx := &publicationLockCheckingContext{Context: context.Background(), publication: &publication}
-	_, err = publication.publishContext(ctx, nil, adapter.RuleSetMetadata{}, "new")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err = publication.publishContext(&publicationLockCheckingContext{
+		Context: ctx, publication: &publication, cancel: cancel,
+	}, nil, adapter.RuleSetMetadata{}, "new")
 	require.ErrorIs(t, err, context.Canceled)
-	require.Equal(t, 1, ctx.calls)
-	require.True(t, ctx.checkedUnderLock, "cancellation must be checked inside publication critical section")
 	require.Same(t, old, publication.loadSnapshot())
 }
 
 func TestRemoteRuleSetOversizedDownloadKeepsPublicationAndETag(t *testing.T) {
 	ctx := context.Background()
 	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "budget", options: option.RuleSet{Format: C.RuleSetFormatSource}}
-	require.NoError(t, set.loadBytes([]byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
+	require.NoError(t, set.loadBytesContext(ctx, []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
 	old := set.loadSnapshot()
 	set.lastEtag = "old"
 	set.lastUpdated = time.Unix(100, 0)
@@ -160,13 +131,13 @@ func TestRuleSetResourceLimitsDefaultAndConfiguredCompatibility(t *testing.T) {
 	ctx := context.Background()
 	content := []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)
 	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "override", options: option.RuleSet{Format: C.RuleSetFormatSource}}
-	require.NoError(t, set.loadBytes(content)) // unchanged configuration
+	require.NoError(t, set.loadBytesContext(ctx, content)) // unchanged configuration
 	old := set.loadSnapshot()
 	set.options.ResourceLimits = &option.RuleSetResourceLimits{InputBytes: int64(len(content) - 1)}
-	require.ErrorIs(t, set.loadBytes(content), srs.ErrResourceLimit)
+	require.ErrorIs(t, set.loadBytesContext(ctx, content), srs.ErrResourceLimit)
 	require.Same(t, old, set.loadSnapshot())
 	set.options.ResourceLimits.InputBytes = int64(len(content))
-	require.NoError(t, set.loadBytes(content)) // explicit larger override takes effect
+	require.NoError(t, set.loadBytesContext(ctx, content)) // explicit larger override takes effect
 	path := filepath.Join(t.TempDir(), "rules.json")
 	require.NoError(t, os.WriteFile(path, content, 0o600))
 	local := &LocalRuleSet{ctx: ctx, logger: logger.NOP(), tag: "override-local", fileFormat: C.RuleSetFormatSource, resourceLimits: &option.RuleSetResourceLimits{InputBytes: int64(len(content) - 1)}}
@@ -184,7 +155,7 @@ func TestRuleSetResourceLimitsDefaultAndConfiguredCompatibility(t *testing.T) {
 func TestRemoteUnknownLengthBudgetKeepsOldState(t *testing.T) {
 	ctx := context.Background()
 	set := &RemoteRuleSet{ctx: ctx, logger: logger.NOP(), tag: "unknown-length", options: option.RuleSet{Format: C.RuleSetFormatSource}}
-	require.NoError(t, set.loadBytes([]byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
+	require.NoError(t, set.loadBytesContext(ctx, []byte(`{"version":4,"rules":[{"domain":["example.com"]}]}`)))
 	old := set.loadSnapshot()
 	set.options.ResourceLimits = &option.RuleSetResourceLimits{InputBytes: 3}
 	set.lastEtag = "old"

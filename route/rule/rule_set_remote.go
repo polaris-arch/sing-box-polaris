@@ -175,10 +175,6 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
 	s.callbacks.Remove(element)
 }
 
-func (s *RemoteRuleSet) loadBytes(content []byte) error {
-	return s.loadBytesContext(s.ctx, content)
-}
-
 func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (result error) {
 	s.reloadAccess.Lock()
 	var callbacks []adapter.RuleSetUpdateCallback
