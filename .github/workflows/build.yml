@@ -440,10 +440,6 @@ jobs:
       with:
         go-version-file: release/GO_VERSION
         cache: false
-    - uses: actions/setup-python@v5
-      if: matrix.id == 'linux-amd64-purego'
-      with:
-        python-version: '3.12'
     - name: Build the CI tool for native validation
       env:
         GOTOOLCHAIN: local
@@ -466,7 +462,10 @@ jobs:
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
       if: matrix.id == 'linux-amd64-purego'
       timeout-minutes: 12
-      run: python -B scripts/ci/protocol_peer.py native --metadata-tool "$RUNNER_TEMP/polaris-ci" --admission "$RUNNER_TEMP/native-peer-admission/admission.json" --output "$RUNNER_TEMP/native-controlled-peer-public"
+      run: |
+        "$RUNNER_TEMP/polaris-ci" peer-run --native native \
+          --admission "$RUNNER_TEMP/native-peer-admission/admission.json" \
+          --output "$RUNNER_TEMP/native-controlled-peer-public"
     - name: Preserve sanitized native peer receipt only
       if: always() && matrix.id == 'linux-amd64-purego'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

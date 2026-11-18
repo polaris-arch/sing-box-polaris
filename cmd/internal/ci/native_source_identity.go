@@ -20,6 +20,10 @@ type nativeLocalReplacement struct {
 }
 
 func nativeSourceModuleBytes(root, source string) ([]byte, map[string]string, error) {
+	return nativeSourceModuleBytesWithGit(root, source, git)
+}
+
+func nativeSourceModuleBytesWithGit(root, source string, readGit gitSourceReader) ([]byte, map[string]string, error) {
 	var goMod []byte
 	hashes := make(map[string]string, len(nativeSourceModules))
 	for _, module := range nativeSourceModules {
@@ -27,7 +31,7 @@ func nativeSourceModuleBytes(root, source string) ([]byte, map[string]string, er
 		if err != nil {
 			return nil, nil, err
 		}
-		committed, err := git(root, "show", source+":"+module.name)
+		committed, err := readGit(root, "show", source+":"+module.name)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -42,7 +46,7 @@ func nativeSourceModuleBytes(root, source string) ([]byte, map[string]string, er
 	return goMod, hashes, nil
 }
 
-func nativeLocalReplacements(root, source string, goMod []byte) ([]nativeLocalReplacement, error) {
+func nativeLocalReplacements(root, source string, goMod []byte, readGit gitSourceReader) ([]nativeLocalReplacement, error) {
 	module, err := modfile.Parse("go.mod", goMod, nil)
 	if err != nil {
 		return nil, err
@@ -56,7 +60,7 @@ func nativeLocalReplacements(root, source string, goMod []byte) ([]nativeLocalRe
 		if !local || !checkedRelative(name) {
 			return nil, fmt.Errorf("non-repository local replacement")
 		}
-		tree, err := git(root, "rev-parse", source+":"+name)
+		tree, err := readGit(root, "rev-parse", source+":"+name)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +85,7 @@ func nativeCollectorSource(root string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	replacements, err := nativeLocalReplacements(root, source, goMod)
+	replacements, err := nativeLocalReplacements(root, source, goMod, git)
 	if err != nil {
 		return nil, err
 	}

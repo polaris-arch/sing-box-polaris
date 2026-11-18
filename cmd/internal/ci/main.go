@@ -49,6 +49,10 @@ func run(args []string) error {
 		return publisherReceipt(args[1:])
 	case "peer-metadata":
 		return peerMetadata(args[1:])
+	case "peer-run":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return peerRun(ctx, args[1:])
 	case "cronet-overlay":
 		return cronetOverlayCommand(args[1:])
 	case "collect-native-index":
@@ -124,6 +128,8 @@ func writeJSONFile(filename string, value any) error {
 	}
 	return closeErr
 }
+
+type gitSourceReader func(directory string, args ...string) ([]byte, error)
 
 func git(directory string, args ...string) ([]byte, error) {
 	command := exec.Command("git", args...)

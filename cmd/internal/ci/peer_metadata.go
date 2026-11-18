@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -22,10 +24,22 @@ const (
 	peerAdmissionSchema = "polaris-native-peer-artifact-admission-v1"
 	peerArtifactName    = "binary-linux_amd64-purego"
 	peerMetadataLimit   = 2 << 20
+	peerMetadataWindow  = 20 * time.Second
 )
 
 //go:embed peer-cases.json
 var peerCaseSchedule []byte
+
+type peerScheduledCase struct {
+	Kind     string  `json:"kind"`
+	Mutation *string `json:"mutation"`
+}
+
+func decodePeerCaseSchedule() ([]peerScheduledCase, error) {
+	var schedule []peerScheduledCase
+	err := json.Unmarshal(peerCaseSchedule, &schedule)
+	return schedule, err
+}
 
 var (
 	peerRef         = regexp.MustCompile(`^refs/(heads|tags)/[A-Za-z0-9_./-]+$`)
@@ -35,7 +49,36 @@ var (
 	peerTime        = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$`)
 )
 
-func peerLocalContext(root, native string, context map[string]any, forExecution bool) error {
+func peerLocalContext(root, native string, facts map[string]any, forExecution bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), peerMetadataWindow)
+	defer cancel()
+	return peerLocalContextWithin(ctx, root, native, facts, forExecution)
+}
+
+func peerLocalContextWithin(ctx context.Context, root, native string, facts map[string]any, forExecution bool) (err error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	defer func() {
+		if canceled := ctx.Err(); canceled != nil {
+			err = canceled
+		}
+	}()
+	readGit := func(directory string, args ...string) ([]byte, error) {
+		command := exec.CommandContext(ctx, "git", args...)
+		command.Dir = directory
+		sourceProcessGroup(command)
+		command.Cancel = func() error { return terminateSourceProcess(command, true) }
+		command.WaitDelay = time.Second
+		raw, err := command.Output()
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		}
+		return raw, nil
+	}
 	env, err := nativeEnvironment("GITHUB_ACTIONS", "RUNNER_OS", "GITHUB_REPOSITORY", "GITHUB_REPOSITORY_ID",
 		"GITHUB_EVENT_NAME", "GITHUB_SHA", "GITHUB_WORKFLOW_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT",
 		"GITHUB_REF", "GITHUB_WORKFLOW_REF")
@@ -50,13 +93,13 @@ func peerLocalContext(root, native string, context map[string]any, forExecution 
 		!peerNumber.MatchString(env["GITHUB_RUN_ID"]) || !peerNumber.MatchString(env["GITHUB_RUN_ATTEMPT"]) {
 		return fmt.Errorf("metadata admission workflow identity differs")
 	}
-	if err := verifyProducerCheckout(root, source); err != nil {
+	if err := verifyProducerCheckoutWithGit(root, source, readGit); err != nil {
 		return err
 	}
-	context["repository"], context["repositoryId"] = repository, json.Number(repositoryID)
-	context["sourceCommit"], context["workflowCommit"] = source, source
-	context["runId"], context["runAttempt"] = json.Number(env["GITHUB_RUN_ID"]), json.Number(env["GITHUB_RUN_ATTEMPT"])
-	context["ref"] = ref
+	facts["repository"], facts["repositoryId"] = repository, json.Number(repositoryID)
+	facts["sourceCommit"], facts["workflowCommit"] = source, source
+	facts["runId"], facts["runAttempt"] = json.Number(env["GITHUB_RUN_ID"]), json.Number(env["GITHUB_RUN_ATTEMPT"])
+	facts["ref"] = ref
 
 	rows, err := filepath.Glob(filepath.Join(native, "native-row-*.json"))
 	if err != nil || len(rows) != 1 {
@@ -81,21 +124,21 @@ func peerLocalContext(root, native string, context map[string]any, forExecution 
 	if err := uniqueJSON(bytes.NewReader(raw), &row); err != nil {
 		return fmt.Errorf("metadata admission native row JSON differs")
 	}
-	tree, err := git(root, "rev-parse", "HEAD^{tree}")
+	tree, err := readGit(root, "rev-parse", "HEAD^{tree}")
 	if err != nil || row.Source != source || row.Tree != strings.TrimSpace(string(tree)) ||
 		!badversion.IsCanonicalPolaris(row.Version) || row.Tag != "v"+row.Version ||
 		row.Target != "linux/amd64" || row.Variant.Linkage != "shared-purego" {
 		return fmt.Errorf("metadata admission native row identity differs")
 	}
-	context["sourceTree"], context["version"], context["tag"] = row.Tree, row.Version, row.Tag
-	context["producerRowSHA256"] = sha256Hex(raw)
+	facts["sourceTree"], facts["version"], facts["tag"] = row.Tree, row.Version, row.Tag
+	facts["producerRowSHA256"] = sha256Hex(raw)
 	if forExecution {
-		return verifyPeerSourceIdentity(root, source, row.GoVersion, row.SourceIdentity)
+		return verifyPeerSourceIdentity(root, source, row.GoVersion, row.SourceIdentity, readGit)
 	}
 	return nil
 }
 
-func verifyPeerSourceIdentity(root, source, goVersion string, identity map[string]any) error {
+func verifyPeerSourceIdentity(root, source, goVersion string, identity map[string]any, readGit gitSourceReader) error {
 	version, err := readNativeSource(root, "release/GO_VERSION")
 	if err != nil {
 		return err
@@ -103,7 +146,7 @@ func verifyPeerSourceIdentity(root, source, goVersion string, identity map[strin
 	if goVersion != "go"+strings.TrimSpace(string(version)) {
 		return fmt.Errorf("producer Go pin differs")
 	}
-	goMod, hashes, err := nativeSourceModuleBytes(root, source)
+	goMod, hashes, err := nativeSourceModuleBytesWithGit(root, source, readGit)
 	if err != nil {
 		return err
 	}
@@ -115,7 +158,7 @@ func verifyPeerSourceIdentity(root, source, goVersion string, identity map[strin
 	if _, err := validateCronetOverlay(root); err != nil {
 		return err
 	}
-	declared, err := nativeLocalReplacements(root, source, goMod)
+	declared, err := nativeLocalReplacements(root, source, goMod, readGit)
 	if err != nil {
 		return err
 	}
@@ -417,32 +460,29 @@ func peerMetadata(args []string) error {
 			}
 		}
 		facts["error"] = message
-		if failureErr := writePeerMetadataFailure(*failure, facts); failureErr != nil {
+		if failureErr := os.MkdirAll(filepath.Dir(*failure), 0o700); failureErr != nil {
+			return fmt.Errorf("metadata admission and failure receipt both failed")
+		}
+		if failureErr := writePeerFailure(*failure, "artifact_metadata_admission", facts); failureErr != nil {
 			return fmt.Errorf("metadata admission and failure receipt both failed")
 		}
 	}
 	return err
 }
 
-func writePeerMetadataFailure(filename string, facts map[string]any) error {
-	var schedule []struct {
-		Kind     string  `json:"kind"`
-		Mutation *string `json:"mutation"`
-	}
-	if err := json.Unmarshal(peerCaseSchedule, &schedule); err != nil {
+func writePeerFailure(filename, stage string, facts map[string]any) error {
+	schedule, err := decodePeerCaseSchedule()
+	if err != nil {
 		return err
 	}
 	cases := make([]map[string]any, 0, len(schedule))
 	for _, entry := range schedule {
 		cases = append(cases, map[string]any{
 			"kind": entry.Kind, "mutation": entry.Mutation, "status": "NOT_RUN",
-			"reason": "artifact_metadata_admission_failed",
+			"reason": stage + "_failed",
 		})
 	}
-	facts["schema"], facts["status"], facts["stage"] = "polaris-native-controlled-peer-v1", "FAIL", "artifact_metadata_admission"
+	facts["schema"], facts["status"], facts["stage"] = "polaris-native-controlled-peer-v1", "FAIL", stage
 	facts["publicationEligible"], facts["cases"] = false, cases
-	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
-		return err
-	}
 	return sourceReceipt(filename, facts, true, peerMetadataLimit)
 }

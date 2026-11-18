@@ -75,20 +75,24 @@ func verifyCheckout(root, tag, source, expectedObject string, read githubReader)
 }
 
 func verifyProducerCheckout(root, source string) error {
+	return verifyProducerCheckoutWithGit(root, source, git)
+}
+
+func verifyProducerCheckoutWithGit(root, source string, readGit gitSourceReader) error {
 	if os.Getenv("GITHUB_REPOSITORY") != repository || os.Getenv("GITHUB_REPOSITORY_ID") != repositoryID {
 		return fmt.Errorf("wrong producer repository")
 	}
 	if source != os.Getenv("GITHUB_SHA") {
 		return fmt.Errorf("expected source differs from dispatch SHA")
 	}
-	head, err := git(root, "rev-parse", "HEAD")
+	head, err := readGit(root, "rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
 	if strings.TrimSpace(string(head)) != source {
 		return fmt.Errorf("actual producer checkout differs from dispatch SHA")
 	}
-	status, err := git(root, "status", "--porcelain", "--untracked-files=no")
+	status, err := readGit(root, "status", "--porcelain", "--untracked-files=no")
 	if err != nil {
 		return err
 	}
