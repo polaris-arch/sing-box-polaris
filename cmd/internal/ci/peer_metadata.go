@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -22,6 +23,9 @@ const (
 	peerArtifactName    = "binary-linux_amd64-purego"
 	peerMetadataLimit   = 2 << 20
 )
+
+//go:embed peer-cases.json
+var peerCaseSchedule []byte
 
 var (
 	peerRef         = regexp.MustCompile(`^refs/(heads|tags)/[A-Za-z0-9_./-]+$`)
@@ -352,7 +356,7 @@ func peerMetadata(args []string) error {
 	flags := flag.NewFlagSet("peer-metadata", flag.ContinueOnError)
 	native := flags.String("native", "", "downloaded same-run native row directory")
 	admission := flags.String("admission", "", "exact metadata admission")
-	failure := flags.String("failure", "", "private acquisition failure facts")
+	failure := flags.String("failure", "", "sanitized controlled-peer receipt on acquisition failure")
 	mode := flags.String("mode", "", "acquire, verify or describe")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -413,9 +417,32 @@ func peerMetadata(args []string) error {
 			}
 		}
 		facts["error"] = message
-		if failureErr := sourceReceipt(*failure, facts, true, peerMetadataLimit); failureErr != nil {
+		if failureErr := writePeerMetadataFailure(*failure, facts); failureErr != nil {
 			return fmt.Errorf("metadata admission and failure receipt both failed")
 		}
 	}
 	return err
+}
+
+func writePeerMetadataFailure(filename string, facts map[string]any) error {
+	var schedule []struct {
+		Kind     string  `json:"kind"`
+		Mutation *string `json:"mutation"`
+	}
+	if err := json.Unmarshal(peerCaseSchedule, &schedule); err != nil {
+		return err
+	}
+	cases := make([]map[string]any, 0, len(schedule))
+	for _, entry := range schedule {
+		cases = append(cases, map[string]any{
+			"kind": entry.Kind, "mutation": entry.Mutation, "status": "NOT_RUN",
+			"reason": "artifact_metadata_admission_failed",
+		})
+	}
+	facts["schema"], facts["status"], facts["stage"] = "polaris-native-controlled-peer-v1", "FAIL", "artifact_metadata_admission"
+	facts["publicationEligible"], facts["cases"] = false, cases
+	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
+		return err
+	}
+	return sourceReceipt(filename, facts, true, peerMetadataLimit)
 }

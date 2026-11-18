@@ -1,0 +1,14 @@
+[
+  {"kind": "naive-h2", "mutation": null},
+  {"kind": "naive-h2", "mutation": "wrong-auth"},
+  {"kind": "naive-h2", "mutation": "wrong-ca"},
+  {"kind": "naive-h2", "mutation": "wrong-sni"},
+  {"kind": "naive-h3", "mutation": null},
+  {"kind": "naive-h3", "mutation": "wrong-auth"},
+  {"kind": "masque-h3", "mutation": null},
+  {"kind": "masque-h3", "mutation": "wrong-auth"},
+  {"kind": "masque-h3", "mutation": "wrong-ca"},
+  {"kind": "masque-h3", "mutation": "wrong-sni"},
+  {"kind": "masque-h3", "mutation": "wrong-path"},
+  {"kind": "masque-h3-on-demand", "mutation": null}
+]

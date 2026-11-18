@@ -481,3 +481,40 @@ func TestOwnedReplacementRequiresPinnedSourceAndUnchangedNotices(t *testing.T) {
 		t.Fatal("mismatched source go.sum was accepted")
 	}
 }
+
+func TestPeerMetadataFailureWritesControlledPeerReceipt(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "false")
+	directory := t.TempDir()
+	admission := filepath.Join(directory, "private", "admission.json")
+	output := filepath.Join(directory, "public", "receipt.json")
+	args := []string{"--mode", "acquire", "--native", directory, "--admission", admission, "--failure", output}
+	if err := peerMetadata(args); err == nil || !strings.Contains(err.Error(), "approved repository") {
+		t.Fatalf("unexpected acquisition result: %v", err)
+	}
+	if _, err := os.Stat(admission); !os.IsNotExist(err) {
+		t.Fatalf("failed acquisition produced admission: %v", err)
+	}
+	var schedule []map[string]any
+	if err := json.Unmarshal(peerCaseSchedule, &schedule); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range schedule {
+		item["status"], item["reason"] = "NOT_RUN", "artifact_metadata_admission_failed"
+	}
+	var receipt map[string]any
+	if err := readNativeSourceJSON(filepath.Dir(output), filepath.Base(output), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	cases := make([]any, len(schedule))
+	for i, item := range schedule {
+		cases[i] = item
+	}
+	expected := map[string]any{
+		"schema": "polaris-native-controlled-peer-v1", "status": "FAIL", "stage": "artifact_metadata_admission",
+		"publicationEligible": false, "cases": cases, "context": map[string]any{}, "metadataReads": []any{},
+		"errorType": "MetadataError", "error": "metadata admission requires Linux Actions in the approved repository",
+	}
+	if !reflect.DeepEqual(receipt, expected) {
+		t.Fatalf("controlled peer receipt differs: %#v", receipt)
+	}
+}

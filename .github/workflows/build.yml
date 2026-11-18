@@ -460,15 +460,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        set -euo pipefail
-        scratch="$RUNNER_TEMP/native-peer-admission"
-        mkdir -m 700 "$scratch"
-        if ! "$RUNNER_TEMP/polaris-ci" peer-metadata --mode acquire --native native \
-            --admission "$scratch/admission.json" --failure "$scratch/failure.json"; then
-          python -B scripts/ci/protocol_peer.py --admission-failure "$scratch/failure.json" \
-            --output "$RUNNER_TEMP/native-controlled-peer-public"
-          exit 1
-        fi
+        "$RUNNER_TEMP/polaris-ci" peer-metadata --mode acquire --native native \
+          --admission "$RUNNER_TEMP/native-peer-admission/admission.json" \
+          --failure "$RUNNER_TEMP/native-controlled-peer-public/receipt.json"
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
       if: matrix.id == 'linux-amd64-purego'
       timeout-minutes: 12

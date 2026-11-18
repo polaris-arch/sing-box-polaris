@@ -29,14 +29,8 @@ SUITE_DEADLINE = None
 # Execution and failure receipts use the same ordered cases. Naive H3 cannot
 # observe certificate alerts over QUIC, so H2 and MASQUE cover those rejections.
 PEER_CASES = tuple(
-    (kind, mutation)
-    for kind, mutations in (
-        ('naive-h2', (None, 'wrong-auth', 'wrong-ca', 'wrong-sni')),
-        ('naive-h3', (None, 'wrong-auth')),
-        ('masque-h3', (None, 'wrong-auth', 'wrong-ca', 'wrong-sni', 'wrong-path')),
-        ('masque-h3-on-demand', (None,)),
-    )
-    for mutation in mutations
+    (entry['kind'], entry['mutation'])
+    for entry in json.loads((Path(__file__).resolve().parents[2]/'cmd/internal/ci/peer-cases.json').read_bytes())
 )
 
 
@@ -1769,18 +1763,8 @@ def main():
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--admission',type=Path)
     parser.add_argument('--metadata-tool',type=Path)
-    parser.add_argument('--admission-failure',type=Path)
     args = parser.parse_args()
     output = args.output.resolve()
-    if args.admission_failure:
-        owned = args.admission_failure
-        facts = {'context': {}, 'metadataReads': [], 'errorType': 'MetadataError',
-                 'error': 'metadata tool failed before recording details'}
-        if owned.is_file() and not owned.is_symlink() and owned.stat().st_size <= 2*1024**2:
-            recorded = json.loads(owned.read_bytes())
-            facts.update({key: recorded[key] for key in (*facts, 'transportFailure') if key in recorded})
-        write_preflight_failure(output, 'artifact_metadata_admission', facts)
-        return
     try:
         if args.directory is None or args.metadata_tool is None or args.admission is None:
             raise ValueError('peer execution needs native directory and metadata admission')
