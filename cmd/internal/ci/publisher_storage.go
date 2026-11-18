@@ -48,8 +48,10 @@ func withPublisherStorage(audit string, use func(*publisherStorage) error) (err 
 	if err != nil {
 		return err
 	}
-	storage := &publisherStorage{root: root, audit: audit, limit: publisherScratchLimit, reserve: publisherSpaceReserve,
-		state: map[string]any{"phase": "preflight", "remoteWriteState": "none"}}
+	storage := &publisherStorage{
+		root: root, audit: audit, limit: publisherScratchLimit, reserve: publisherSpaceReserve,
+		state: map[string]any{"phase": "preflight", "remoteWriteState": "none"},
+	}
 	err = use(storage)
 	cleanup := os.RemoveAll(root)
 	if cleanup == nil && err == nil {
@@ -66,8 +68,10 @@ func withPublisherStorage(audit string, use func(*publisherStorage) error) (err 
 		notes = []string{}
 	}
 	message := cause.Error()
-	fields := map[string]any{"result": "failed", "errorType": reflect.TypeOf(cause).String(),
-		"error": message[:min(600, len(message))], "cleanupNotes": notes}
+	fields := map[string]any{
+		"result": "failed", "errorType": reflect.TypeOf(cause).String(),
+		"error": message[:min(600, len(message))], "cleanupNotes": notes,
+	}
 	if cleanup != nil {
 		fields["scratchCleanupFailed"] = true
 	}
@@ -83,9 +87,11 @@ func (storage *publisherStorage) admit(size int64, context string) error {
 	if err != nil {
 		return err
 	}
-	maps.Copy(storage.state, map[string]any{"context": context[:min(400, len(context))], "requestedBytes": size,
+	maps.Copy(storage.state, map[string]any{
+		"context": context[:min(400, len(context))], "requestedBytes": size,
 		"liveBytes": storage.live, "peakBytes": storage.peak, "freeBytes": free,
-		"limitBytes": storage.limit, "reserveBytes": storage.reserve})
+		"limitBytes": storage.limit, "reserveBytes": storage.reserve,
+	})
 	if size > storage.limit-storage.live {
 		return fmt.Errorf("scratch budget exceeded: %s", context)
 	}

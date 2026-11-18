@@ -17,8 +17,10 @@ import (
 	"golang.org/x/mod/module"
 )
 
-const distributionNoticeSelection = "release/ci/current44-notice-mappings.json"
-const moduleProxy = "https://proxy.golang.org"
+const (
+	distributionNoticeSelection = "release/ci/current44-notice-mappings.json"
+	moduleProxy                 = "https://proxy.golang.org"
+)
 
 // The assembler passes its existing index document before adding the derived
 // materials. Keep its input under the same schema as the final publisher.

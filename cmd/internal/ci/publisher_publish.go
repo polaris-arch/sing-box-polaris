@@ -107,8 +107,10 @@ func (p *publisher) assemble(actual, review *publisherInventory) (*publisherRece
 				return nil, fmt.Errorf("invalid or duplicate release filename: %s", *name)
 			}
 			destinations[key] = true
-			receipt.Assets = append(receipt.Assets, publisherAsset{publisherFile: *file, Role: "all", Artifact: artifactName,
-				ArtifactPath: relative, SignatureState: "unsigned-candidate"})
+			receipt.Assets = append(receipt.Assets, publisherAsset{
+				publisherFile: *file, Role: "all", Artifact: artifactName,
+				ArtifactPath: relative, SignatureState: "unsigned-candidate",
+			})
 		}
 	}
 	if len(receipt.Assets) == 0 {

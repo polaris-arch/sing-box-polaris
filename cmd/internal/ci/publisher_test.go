@@ -178,24 +178,32 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 	releases := api + "/releases"
 	routes := map[string]string{
 		"GET " + api: encode(repo),
-		"GET " + api + "/actions/runs/" + runID: encode(map[string]any{"repository": repo, "head_repository": repo,
+		"GET " + api + "/actions/runs/" + runID: encode(map[string]any{
+			"repository": repo, "head_repository": repo,
 			"head_branch": tag, "head_sha": source, "path": ".github/workflows/build.yml", "status": "completed", "conclusion": "success",
-			"event": "workflow_dispatch", "run_attempt": 1, "run_started_at": "2026-11-18T00:00:00Z"}),
-		"GET " + api + "/actions/runs/" + reviewedRun: encode(map[string]any{"repository": repo, "head_repository": repo,
-			"head_sha": os.Getenv("GITHUB_SHA"), "path": publisherWorkflow, "status": "completed", "conclusion": "success"}),
+			"event": "workflow_dispatch", "run_attempt": 1, "run_started_at": "2026-11-18T00:00:00Z",
+		}),
+		"GET " + api + "/actions/runs/" + reviewedRun: encode(map[string]any{
+			"repository": repo, "head_repository": repo,
+			"head_sha": os.Getenv("GITHUB_SHA"), "path": publisherWorkflow, "status": "completed", "conclusion": "success",
+		}),
 		"GET " + api + "/git/ref/tags/" + tag:                                 encode(map[string]any{"object": map[string]any{"type": "tag", "sha": tagObject}}),
 		"GET " + api + "/git/tags/" + tagObject:                               encode(map[string]any{"sha": tagObject, "tag": tag, "object": map[string]any{"type": "commit", "sha": source}}),
 		"GET " + api + "/actions/runs/42/attempts/1/jobs?per_page=100&page=1": `{"jobs":[{"id":39}]}`,
 		"GET " + releases + "?per_page=100&page=1":                            "[]",
 	}
-	draft := encode(map[string]any{"id": 9, "tag_name": tag, "draft": true,
-		"upload_url": "https://uploads.github.com/" + releases + "/9/assets{?name,label}"})
+	draft := encode(map[string]any{
+		"id": 9, "tag_name": tag, "draft": true,
+		"upload_url": "https://uploads.github.com/" + releases + "/9/assets{?name,label}",
+	})
 	finalized := encode(map[string]any{"id": 9, "tag_name": tag, "draft": false, "html_url": "https://fixture.invalid/release/9"})
 	routes["POST "+releases], routes["PATCH "+releases+"/9"] = draft, finalized
 	routes["draft-record"], routes["finalized"] = draft, finalized
 	routes["GET listed-draft"] = "[" + draft + "]"
-	routes["GET "+releases+"/9/assets?per_page=100&page=1"] = encode([]map[string]any{{"name": publicName, "state": "uploaded",
-		"size": len("fixture public bytes"), "digest": "sha256:" + sha256Hex([]byte("fixture public bytes"))}})
+	routes["GET "+releases+"/9/assets?per_page=100&page=1"] = encode([]map[string]any{{
+		"name": publicName, "state": "uploaded",
+		"size": len("fixture public bytes"), "digest": "sha256:" + sha256Hex([]byte("fixture public bytes")),
+	}})
 
 	artifact := func(id int64, name string, entries [][2]string) publisherArtifactMetadata {
 		t.Helper()
@@ -216,20 +224,30 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 		idString := fmt.Sprint(id)
 		fixtureFile(t, root, idString+".zip", data.String())
 		expired := false
-		metadata := publisherArtifactMetadata{ID: id, Name: name, Size: int64(data.Len()),
-			Digest: "sha256:" + sha256Hex(data.Bytes()), Expired: &expired, CreatedAt: "2026-11-18T00:01:00Z"}
+		metadata := publisherArtifactMetadata{
+			ID: id, Name: name, Size: int64(data.Len()),
+			Digest: "sha256:" + sha256Hex(data.Bytes()), Expired: &expired, CreatedAt: "2026-11-18T00:01:00Z",
+		}
 		metadata.WorkflowRun.ID, metadata.WorkflowRun.HeadSHA = 42, source
 		routes["GET "+api+"/actions/artifacts/"+idString+"/zip"] = "@" + idString + ".zip"
 		routes["GET "+api+"/actions/artifacts/"+idString] = encode(metadata)
 		return metadata
 	}
-	index := encode(map[string]any{"schema": "polaris-upstream-native-assets-v1", "sourceCommit": source, "sourceTree": tree,
-		"tag": tag, "tagObject": tagObject, "sourceArchive": map[string]any{"name": sourceFile, "sha256": sha256Hex([]byte("archive")),
-			"bytes": 7}, "platforms": []any{map[string]any{"archive": map[string]any{"name": publicPayload,
-			"sha256": sha256Hex([]byte("fixture public bytes")), "bytes": len("fixture public bytes")}}},
-		"distributionMaterials": map[string]any{"publicationEligible": true}})
-	producerReceipt := encode(map[string]any{"repository": repository, "repositoryId": 1421657509, "sourceCommit": source,
-		"runId": runID, "attempt": 1, "version": version, "build": "All", "role": "all"})
+	index := encode(map[string]any{
+		"schema": "polaris-upstream-native-assets-v1", "sourceCommit": source, "sourceTree": tree,
+		"tag": tag, "tagObject": tagObject, "sourceArchive": map[string]any{
+			"name": sourceFile, "sha256": sha256Hex([]byte("archive")),
+			"bytes": 7,
+		}, "platforms": []any{map[string]any{"archive": map[string]any{
+			"name":   publicPayload,
+			"sha256": sha256Hex([]byte("fixture public bytes")), "bytes": len("fixture public bytes"),
+		}}},
+		"distributionMaterials": map[string]any{"publicationEligible": true},
+	})
+	producerReceipt := encode(map[string]any{
+		"repository": repository, "repositoryId": 1421657509, "sourceCommit": source,
+		"runId": runID, "attempt": 1, "version": version, "build": "All", "role": "all",
+	})
 	routes["GET "+api+"/actions/runs/42/artifacts?per_page=100&page=1"] = encode(map[string]any{"artifacts": []publisherArtifactMetadata{
 		artifact(31, artifactName, [][2]string{{publicPayload, "fixture public bytes"}}),
 		artifact(32, publisherIndexArtifact, [][2]string{{publisherIndexFile, index}, {sourceFile, "archive"}}),
@@ -253,8 +271,10 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 		return err
 	}
 	runContext := func(ctx context.Context, mode, nickname, reviewedSHA string) error {
-		args := []string{mode, "--source", source, "--source-dir", producer, "--all-run", runID,
-			"--output", filepath.Join(root, nickname+"-output"), "--audit", filepath.Join(root, nickname+"-audit")}
+		args := []string{
+			mode, "--source", source, "--source-dir", producer, "--all-run", runID,
+			"--output", filepath.Join(root, nickname+"-output"), "--audit", filepath.Join(root, nickname+"-audit"),
+		}
 		if mode != "inventory" {
 			args = append(args, "--inventory-run", reviewedRun, "--inventory-sha256", reviewedSHA)
 		}

@@ -38,8 +38,10 @@ func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 	}
 	var rows []any
 	for _, platform := range []struct{ target, linkage, suffix string }{
-		{"darwin/amd64", "static-cgo", ".tar.gz"}, {"darwin/arm64", "static-cgo", ".tar.gz"},
-		{"linux/amd64", "shared-purego", ".tar.gz"}, {"linux/arm64", "shared-purego", ".tar.gz"},
+		{"darwin/amd64", "static-cgo", ".tar.gz"},
+		{"darwin/arm64", "static-cgo", ".tar.gz"},
+		{"linux/amd64", "shared-purego", ".tar.gz"},
+		{"linux/arm64", "shared-purego", ".tar.gz"},
 		{"windows/amd64", "shared-purego", ".zip"},
 	} {
 		id := "sing-box-" + version + "-" + strings.ReplaceAll(platform.target, "/", "-")

@@ -217,8 +217,10 @@ func (scope publisherScope) verifyFiles(artifact string, files map[string]*publi
 }
 
 func (p *publisher) artifactInventory(metadata publisherArtifactMetadata, attempt int, producerReceipt *map[string]any) (*publisherArtifact, error) {
-	record := &publisherArtifact{ID: metadata.ID, ArchiveBytes: metadata.Size, ArchiveSHA256: metadata.Digest,
-		Files: make(map[string]*publisherFile)}
+	record := &publisherArtifact{
+		ID: metadata.ID, ArchiveBytes: metadata.Size, ArchiveSHA256: metadata.Digest,
+		Files: make(map[string]*publisherFile),
+	}
 	err := p.withArchive(metadata, func(archive *artifactZIP) error {
 		for _, member := range archive.members {
 			relative := member.Name
@@ -338,14 +340,18 @@ func (p *publisher) inventory() (*publisherInventory, error) {
 		entry.artifactOrder = append(entry.artifactOrder, artifact.Name)
 	}
 
-	expected := map[string]any{"repository": repository, "repositoryId": json.Number(repositoryID), "sourceCommit": p.source,
-		"runId": p.allRun, "attempt": json.Number(strconv.Itoa(run.Attempt)), "version": p.version, "build": "All", "role": "all"}
+	expected := map[string]any{
+		"repository": repository, "repositoryId": json.Number(repositoryID), "sourceCommit": p.source,
+		"runId": p.allRun, "attempt": json.Number(strconv.Itoa(run.Attempt)), "version": p.version, "build": "All", "role": "all",
+	}
 	if !reflect.DeepEqual(receipt, expected) {
 		return nil, fmt.Errorf("producer scope/input receipt missing or inconsistent")
 	}
 	repoID, _ := strconv.ParseInt(repositoryID, 10, 64)
-	result := &publisherInventory{Repository: repository, RepositoryID: repoID, Version: p.version, SourceCommit: p.source,
-		ScopeSHA256: scopeSHA, Runs: map[string]*publisherRun{"all": entry}, SourceTree: p.sourceTree, Tag: p.tag, TagObject: p.tagObject}
+	result := &publisherInventory{
+		Repository: repository, RepositoryID: repoID, Version: p.version, SourceCommit: p.source,
+		ScopeSHA256: scopeSHA, Runs: map[string]*publisherRun{"all": entry}, SourceTree: p.sourceTree, Tag: p.tag, TagObject: p.tagObject,
+	}
 	jobs := func() ([]map[string]any, error) {
 		return publisherPages[map[string]any](p, fmt.Sprintf("%s/attempts/%d/jobs", runPath, run.Attempt), "jobs", 1000)
 	}
@@ -432,8 +438,10 @@ func (p *publisher) bindNativeIndex(result *publisherInventory, runID int64, job
 	if err != nil {
 		return err
 	}
-	result.DistributionMaterials = map[string]any{"sourceArchive": index.SourceArchive,
-		"noticeIndex": map[string]any{"name": publisherIndexFile, "sha256": indexSHA}, "bindingSHA256": sha256Hex(binding)}
+	result.DistributionMaterials = map[string]any{
+		"sourceArchive": index.SourceArchive,
+		"noticeIndex":   map[string]any{"name": publisherIndexFile, "sha256": indexSHA}, "bindingSHA256": sha256Hex(binding),
+	}
 	for _, artifact := range run.Artifacts {
 		for _, file := range artifact.Files {
 			if file.ReleaseName != nil {
