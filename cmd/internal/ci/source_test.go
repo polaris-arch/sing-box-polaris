@@ -62,6 +62,14 @@ func TestMain(tests *testing.M) {
 		fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\nX-GitHub-Request-Id: fixture\r\n\r\n", os.Getenv(key))
 		os.Exit(0)
 	}
+	if mode == "release-tag" {
+		key := "POLARIS_CI_TEST_TAG_OBJECT"
+		if strings.Contains(os.Args[5], "/git/ref/tags/") {
+			key = "POLARIS_CI_TEST_TAG_REF"
+		}
+		fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\n\r\n", os.Getenv(key))
+		os.Exit(0)
+	}
 	if mode == "idle" {
 		os.Stdout.Close()
 		os.Stderr.Close()
@@ -799,6 +807,48 @@ func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
 				t.Fatal("unsafe inventory admitted")
 			}
 		})
+	}
+}
+
+func TestReleaseDispatchBindsExactVersionAndAnnotatedSource(t *testing.T) {
+	root := t.TempDir()
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureFile(t, root, "source", "tracked bytes")
+	fixtureSourceGit(t, root, "add", ".")
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "release source")
+	const version = "1.15.0-polaris-alpha.12.31"
+	tag := "v" + version
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "tag", "-a", "-m", "release", tag)
+	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
+	object := fixtureSourceGit(t, root, "rev-parse", "refs/tags/"+tag)
+	t.Chdir(root)
+	t.Setenv("GITHUB_REPOSITORY", repository)
+	t.Setenv("GITHUB_REPOSITORY_ID", repositoryID)
+	t.Setenv("GITHUB_SHA", source)
+	t.Setenv("GITHUB_REF_TYPE", "tag")
+	t.Setenv("GITHUB_REF_NAME", tag)
+	child := fixtureSourceCLI(t)
+	t.Setenv("PATH", filepath.Dir(child)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "release-tag")
+	t.Setenv("POLARIS_CI_TEST_TAG_REF", fmt.Sprintf(`{"object":{"type":"tag","sha":"%s"}}`, object))
+	t.Setenv("POLARIS_CI_TEST_TAG_OBJECT", fmt.Sprintf(`{"sha":"%s","tag":"%s","object":{"type":"commit","sha":"%s"}}`, object, tag, source))
+	output := filepath.Join(t.TempDir(), "github-output")
+	command := []string{"release-identity", "--tag", tag, "--github-output", output}
+	if err := run(command); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(output)
+	want := "version=" + version + "\ntag_object=" + object + "\n"
+	if err != nil || string(raw) != want {
+		t.Fatalf("unexpected release outputs: %s, %v", raw, err)
+	}
+	t.Setenv("POLARIS_CI_TEST_TAG_REF", fmt.Sprintf(`{"object":{"type":"commit","sha":"%s"}}`, source))
+	if err := run(command); err == nil {
+		t.Fatal("lightweight tag admitted")
+	}
+	raw, err = os.ReadFile(output)
+	if err != nil || string(raw) != want {
+		t.Fatalf("refused tag changed existing output: %s, %v", raw, err)
 	}
 }
 

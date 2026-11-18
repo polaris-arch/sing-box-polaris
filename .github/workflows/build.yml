@@ -151,7 +151,7 @@ jobs:
     name: Calculate version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.outputs.outputs.version }}
+      version: ${{ steps.release_source.outputs.version }}
       tag_object: ${{ steps.release_source.outputs.tag_object }}
     steps:
     - name: Checkout
@@ -159,21 +159,17 @@ jobs:
       with:
         ref: ${{ github.sha }}
         fetch-depth: 0
-    - name: Calculate version from the dispatched tag
-      id: outputs
-      env:
-        REF_TYPE: ${{ github.ref_type }}
-        REF_NAME: ${{ github.ref_name }}
-      run: |
-        test "$REF_TYPE" = tag
-        python3 scripts/ci/polaris_version.py "${REF_NAME#v}"
-        echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
-    - name: Bind final evidence to annotated dispatch source
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: release/GO_VERSION
+        cache: false
+    - name: Bind release version and evidence to annotated dispatch source
       id: release_source
       env:
         RELEASE_TAG: ${{ github.ref_name }}
         GH_TOKEN: ${{ github.token }}
-      run: python3 scripts/ci/release_identity.py --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
+        GOTOOLCHAIN: local
+      run: go run -mod=readonly ./cmd/internal/ci release-identity --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
   build:
     name: Build binary
     if: ${{ !inputs.source_generate_only && (inputs.build == 'All' || inputs.build == 'Binary') }}

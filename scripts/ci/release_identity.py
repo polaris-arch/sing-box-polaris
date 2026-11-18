@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Bind actual producer checkout to dispatch SHA and one immutable annotated tag."""
-import argparse
 import json
 import math
 import os
@@ -93,21 +92,3 @@ def validate_publication_index(index, source, tag, tag_object, tree=None):
     materials = index.get('distributionMaterials')
     require(isinstance(materials, dict) and materials.get('publicationEligible') is True,
             'current source/notice review remains unresolved')
-
-
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument('--tag', required=True)
-    p.add_argument('--source', default=os.environ.get('GITHUB_SHA'))
-    p.add_argument('--expected-tag-object')
-    p.add_argument('--github-output', type=Path)
-    a = p.parse_args()
-    oid = verify_checkout(a.tag, a.source, a.expected_tag_object)
-    if a.github_output:
-        with a.github_output.open('a') as f:
-            f.write('tag_object=' + oid + '\n')
-    print(json.dumps({'sourceCommit': a.source, 'tag': a.tag, 'tagObject': oid}))
-
-
-if __name__ == '__main__':
-    main()

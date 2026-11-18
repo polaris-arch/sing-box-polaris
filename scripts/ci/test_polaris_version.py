@@ -1,8 +1,6 @@
 """One version contract across producers, identities, package metadata and scope."""
 import json
 from pathlib import Path
-import subprocess
-import sys
 import unittest
 from unittest.mock import patch
 
@@ -54,13 +52,6 @@ class PolarisVersionTests(unittest.TestCase):
                 for value in CONTRACT['invalid']:
                     with self.subTest(value=value, key=key), self.assertRaises(jsonschema.ValidationError):
                         field.validate(prefix + value)
-
-    def test_cli_keeps_raw_patch(self):
-        script = ROOT / 'scripts/ci/polaris_version.py'
-        output = subprocess.check_output([sys.executable, str(script), VERSION], text=True)
-        self.assertEqual(output, VERSION + '\n')
-        result = subprocess.run([sys.executable, str(script), 'v' + VERSION], capture_output=True)
-        self.assertNotEqual(result.returncode, 0)
 
     def test_native_names_and_exact_plan_scope(self):
         for version in [VERSION, '1.15.0-polaris-alpha.13']:
