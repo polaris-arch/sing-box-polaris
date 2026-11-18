@@ -74,15 +74,28 @@ class TestNative(unittest.TestCase):
    self.assertRaisesRegex(ValueError,'changed module bytes',n.source_identity);runner.assert_not_called()
  def archived_module_fixture(self,overrides=None):
   files=self.module_bytes();files.update(overrides or {});output=io.BytesIO()
-  with tarfile.open(fileobj=output,mode='w') as archive:
+  with tarfile.open(fileobj=output,mode='w:gz') as archive:
    for name,data in files.items():
     member=tarfile.TarInfo('sing-box-polaris-source-'+'a'*40+'/'+name);member.size=len(data);archive.addfile(member,io.BytesIO(data))
   hashes={'goModSha256':n.sha(self.module_bytes()['go.mod']),'goSumSha256':n.sha(self.module_bytes()['go.sum'])}
   rows=[{'id':'native-'+str(i),'sourceIdentity':dict(hashes,sourceOverlay=0)} for i in range(5)]
-  return rows,output.getvalue()
+  output.seek(0)
+  return rows,output
  def test_assembled_all_rows_match_actual_source_tar(self):
-  rows,archive=self.archived_module_fixture();reads,blobs=self.module_mocks()
-  with reads,blobs:n.validate_archived_source_identity(rows,archive,'a'*40)
+  import gzip,subprocess
+  from contextlib import chdir
+  with tempfile.TemporaryDirectory() as temp,chdir(temp):
+   root=Path(temp)
+   for name,data in self.module_bytes().items():(root/name).write_bytes(data)
+   n.git('init','--quiet');n.git('add','go.mod','go.sum')
+   n.git('-c','user.name=test','-c','user.email=test@localhost','-c','commit.gpgsign=false','commit','--quiet','-m','fixture')
+   commit=n.git('rev-parse','HEAD');rows=[{'id':'native','sourceIdentity':n.source_module_hashes()}]
+   source=n.write_source_archive(root,rows,commit)
+   expected=subprocess.check_output(['git','archive','--format=tar','--prefix',f'sing-box-polaris-source-{commit}/',commit])
+   with gzip.open(source,'rb') as archive:self.assertEqual(archive.read(),expected)
+   original=n.file_sha(source);rows[0]['sourceIdentity']['goModSha256']='0'*64
+   with self.assertRaisesRegex(ValueError,'native row module identity differs'):n.write_source_archive(root,rows,commit)
+   self.assertEqual(n.file_sha(source),original)
  def test_assembled_each_row_rejects_either_module_hash_mismatch(self):
   for position in range(5):
    for key in ['goModSha256','goSumSha256']:

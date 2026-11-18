@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Collect actual native archives and assemble run-bound index; never invent smoke/release facts."""
-import argparse,gzip,hashlib,io,json,os,platform,re,shlex,subprocess,sys,tarfile,tempfile,time,zipfile
+import argparse,gzip,hashlib,io,json,os,platform,re,shlex,shutil,subprocess,sys,tarfile,tempfile,time,zipfile
 from contextlib import contextmanager,ExitStack
 from pathlib import Path,PurePosixPath
 from polaris_version import validate as validate_version
@@ -9,6 +9,8 @@ from cronet_windows_overlay import validate_overlay
 REPO='polaris-arch/sing-box-polaris';RID=1421657509
 
 def sha(b):return hashlib.sha256(b).hexdigest()
+def file_sha(path):
+ with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
 def git(*args):return run('git',*args)
 def identity():
@@ -74,12 +76,30 @@ def source_module_hashes():
 
 def validate_archived_source_identity(rows,source_tar,commit):
  expected=source_module_hashes();prefix='sing-box-polaris-source-'+commit+'/'
- with tarfile.open(fileobj=io.BytesIO(source_tar),mode='r:') as archive:
-  archived={key:sha(archive.extractfile(prefix+name).read()) for name,key in [('go.mod','goModSha256'),('go.sum','goSumSha256')]}
+ members={prefix+'go.mod':'goModSha256',prefix+'go.sum':'goSumSha256'};archived={}
+ with tarfile.open(fileobj=source_tar,mode='r|gz') as archive:
+  for member in archive:
+   key=members.get(member.name)
+   if key is None:continue
+   if key in archived or not member.isfile():raise ValueError('ambiguous archived source module: '+member.name)
+   with archive.extractfile(member) as stream:archived[key]=hashlib.file_digest(stream,'sha256').hexdigest()
  if archived!=expected:raise ValueError('archived module bytes differ from checked source')
  for row in rows:
   identity=row.get('sourceIdentity',{})
   if any(identity.get(key)!=value for key,value in archived.items()):raise ValueError('native row module identity differs from archived source: '+row['id'])
+
+def write_source_archive(directory,rows,commit):
+ # Source archive is the exact committed kernel tree, including tracked replacements/materials.
+ source_name=f'sing-box-polaris-source-{commit}.tar.gz';source=directory/source_name
+ with tempfile.TemporaryDirectory(dir=directory) as scratch:
+  candidate=Path(scratch)/source_name
+  args=['git','archive','--format=tar','--prefix',f'sing-box-polaris-source-{commit}/',commit]
+  with candidate.open('wb') as out,subprocess.Popen(args,stdout=subprocess.PIPE) as producer,producer.stdout as tar:
+   with gzip.GzipFile(filename='',mode='wb',fileobj=out,mtime=0) as gz:shutil.copyfileobj(tar,gz)
+   if producer.wait():raise subprocess.CalledProcessError(producer.returncode,args)
+  with candidate.open('rb') as stream:validate_archived_source_identity(rows,stream,commit)
+  candidate.replace(source)
+ return source
 
 def source_identity():
  hashes=source_module_hashes()
@@ -798,13 +818,8 @@ def assemble(directory):
  for r in rows.values():
   if (r['sourceCommit'],r['sourceTree'],r['version'])!=(commit,tree,v):raise ValueError('mixed source native receipts')
   matches=list(d.rglob(r['archive']['name']))
-  if not matches or any(sha(x.read_bytes())!=r['archive']['sha256'] for x in matches):raise ValueError('native archive hash mismatch')
- # Source archive is the exact committed kernel tree, including tracked replacements/materials.
- source_name=f'sing-box-polaris-source-{commit}.tar.gz';source=d/source_name
- tar=subprocess.check_output(['git','archive','--format=tar','--prefix',f'sing-box-polaris-source-{commit}/',commit])
- validate_archived_source_identity(rows.values(),tar,commit)
- with source.open('wb') as out:
-  with gzip.GzipFile(filename='',mode='wb',fileobj=out,mtime=0) as gz:gz.write(tar)
+  if not matches or any(file_sha(x)!=r['archive']['sha256'] for x in matches):raise ValueError('native archive hash mismatch')
+ source=write_source_archive(d,rows.values(),commit)
  legal=[]
  for src,dest in [('LICENSE','licenses/LICENSE'),('release/licenses/NOTICE','licenses/NOTICE')]:
   data=Path(src).read_bytes();legal.append({'path':dest,'content':data.decode(),'bytes':len(data),'sha256':sha(data)})
@@ -826,7 +841,7 @@ def assemble(directory):
  for row in rows.values():
   validate_trusted_execution(row, context)
   row['archive']['releaseName']=public_product_name(row['archive']['name'])
- index={'schema':'polaris-upstream-native-assets-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':sha(source.read_bytes())},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
+ index={'schema':'polaris-upstream-native-assets-v1','repository':REPO,'repositoryId':RID,'version':v,'tag':tag,'tagObject':tag_object,'sourceCommit':commit,'sourceTree':tree,'producer':{'repository':REPO,'repositoryId':RID,'workflow':workflow,'workflowCommit':os.environ['GITHUB_WORKFLOW_SHA'],'runId':int(os.environ['GITHUB_RUN_ID']),'runAttempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'nativeJobs':native_jobs},'legalFiles':legal,'sourceArchive':{'name':source.name,'bytes':source.stat().st_size,'sha256':file_sha(source)},'platforms':sorted(rows.values(),key=lambda r:r['id'])}
  index['distributionMaterials']=distribution_materials(index)
  verify_checkout(tag,commit,tag_object)
  import jsonschema
