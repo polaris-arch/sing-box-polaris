@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -316,17 +317,30 @@ func tlsConfigurationCases(document tlsCapabilities) []tlsConfigurationCase {
 	return cases
 }
 
-func probeTLSRuntime(parent context.Context, root, core string, environment []string, source, version, goVersion, target string, enabled bool) (receipt map[string]any, err error) {
-	core, err = filepath.Abs(core)
+func probeTLSRuntime(parent context.Context, root, core string, environment []string, source, version, goVersion, target string, enabled bool) (map[string]any, error) {
+	core, err := filepath.Abs(core)
 	if err != nil {
 		return nil, err
 	}
+	return observeTLSRuntime(parent, core, "", func(ctx context.Context, args ...string) *exec.Cmd {
+		command := exec.CommandContext(ctx, core, args...)
+		command.Dir, command.Env = root, environment
+		return command
+	}, func(raw []byte) (tlsCapabilities, error) {
+		return validateTLSCapabilities(root, raw, source, version, goVersion, target, enabled)
+	})
+}
+
+func observeTLSRuntime(parent context.Context, core, expectedHash string, invoke func(context.Context, ...string) *exec.Cmd, validate func([]byte) (tlsCapabilities, error)) (receipt map[string]any, err error) {
 	hash, err := fileSHA256(core)
 	if err != nil {
 		return nil, err
 	}
+	if expectedHash != "" && hash != expectedHash {
+		return nil, fmt.Errorf("actual selected Core bytes differ from producer row")
+	}
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
-	stdout, stderr, code, queryError := sourceCommandOutput(ctx, root, environment, 1024*1024, core, "tools", "tls-fingerprints")
+	stdout, stderr, code, queryError := sourceCaptureOutput(ctx, invoke(ctx, "tools", "tls-fingerprints"), 1024*1024)
 	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 	cancel()
 	query := map[string]any{"command": []string{core, "tools", "tls-fingerprints"}, "exitCode": code, "stdout": stdout, "stderr": stderr, "timedOut": timedOut}
@@ -339,7 +353,7 @@ func probeTLSRuntime(parent context.Context, root, core string, environment []st
 	if code == nil || *code != 0 {
 		return nil, fmt.Errorf("actual core capability query failed; original query retained")
 	}
-	document, err := validateTLSCapabilities(root, []byte(stdout), source, version, goVersion, target, enabled)
+	document, err := validate([]byte(stdout))
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +369,7 @@ func probeTLSRuntime(parent context.Context, root, core string, environment []st
 			return nil, err
 		}
 		ctx, cancel := context.WithTimeout(parent, 30*time.Second)
-		output, code, checkError := sourceCombinedOutput(ctx, root, environment, 1024*1024, core, "check", "-c", config)
+		output, code, checkError := sourceCaptureCombined(ctx, invoke(ctx, "check", "-c", config), 1024*1024)
 		cancel()
 		if checkError != nil {
 			return nil, checkError

@@ -66,6 +66,10 @@ func runSourceProcess(ctx context.Context, command *exec.Cmd) (*int, error) {
 func sourceCommandOutput(ctx context.Context, directory string, environment []string, limit int, args ...string) (string, string, *int, error) {
 	command := exec.CommandContext(ctx, args[0], args[1:]...)
 	command.Dir, command.Env = directory, environment
+	return sourceCaptureOutput(ctx, command, limit)
+}
+
+func sourceCaptureOutput(ctx context.Context, command *exec.Cmd, limit int) (string, string, *int, error) {
 	stdout, stderr := &sourceOutput{limit: limit}, &sourceOutput{limit: limit}
 	command.Stdout, command.Stderr = stdout, stderr
 	code, err := runSourceProcess(ctx, command)
@@ -78,6 +82,10 @@ func sourceCommandOutput(ctx context.Context, directory string, environment []st
 func sourceCombinedOutput(ctx context.Context, directory string, environment []string, limit int, args ...string) (string, *int, error) {
 	command := exec.CommandContext(ctx, args[0], args[1:]...)
 	command.Dir, command.Env = directory, environment
+	return sourceCaptureCombined(ctx, command, limit)
+}
+
+func sourceCaptureCombined(ctx context.Context, command *exec.Cmd, limit int) (string, *int, error) {
 	output := &sourceOutput{limit: limit}
 	command.Stdout, command.Stderr = output, output
 	code, err := runSourceProcess(ctx, command)

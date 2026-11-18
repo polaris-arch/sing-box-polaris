@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 const (
@@ -50,6 +53,10 @@ func run(args []string) error {
 		return cronetOverlayCommand(args[1:])
 	case "collect-native-index":
 		return collectNativeIndex(args[1:])
+	case "smoke-native-index":
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return smokeNativeIndex(ctx, ".", args[1:])
 	case "assemble-native-index":
 		return assembleNativeIndexCommand(args[1:])
 	case "release-identity":

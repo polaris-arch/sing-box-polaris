@@ -33,11 +33,9 @@ func validateTrustedNativeExecution(row, producer map[string]any, root string) e
 	if hasSealed == hasMac || !hasPolicy {
 		return fmt.Errorf("trusted execution requires one proof and its policy")
 	}
-	proof, loader := sealed, "linux-sealed-fd-v1"
-	purposes := []any{"check-config-v1", "tls-inventory-v1", "run-main-v1", "run-login-v1", "run-speedtest-v1"}
+	proof := sealed
 	if hasMac {
-		proof, loader = mac, "macos-root-private-v1"
-		purposes = []any{"check-config-v1", "run-main-v1"}
+		proof = mac
 	}
 	evidence := proof.(map[string]any)
 	for _, field := range []string{"runId", "runAttempt"} {
@@ -65,13 +63,23 @@ func validateTrustedNativeExecution(row, producer map[string]any, root string) e
 	if err := verifyNativeTLS(root, row, evidence["tlsProbe"].(map[string]any)); err != nil {
 		return err
 	}
-	if !reflect.DeepEqual(policy, map[string]any{
-		"schema": "polaris-trusted-execution-v1", "sourceCommit": row["sourceCommit"], "sourceTree": row["sourceTree"],
-		"loader": loader, "purposes": purposes,
-	}) {
+	if !reflect.DeepEqual(policy, nativeExecutionPolicy(row, hasMac)) {
 		return fmt.Errorf("trusted execution policy differs from native proof")
 	}
 	return nil
+}
+
+func nativeExecutionPolicy(row map[string]any, mac bool) map[string]any {
+	loader := "linux-sealed-fd-v1"
+	purposes := []any{"check-config-v1", "tls-inventory-v1", "run-main-v1", "run-login-v1", "run-speedtest-v1"}
+	if mac {
+		loader = "macos-root-private-v1"
+		purposes = []any{"check-config-v1", "run-main-v1"}
+	}
+	return map[string]any{
+		"schema": "polaris-trusted-execution-v1", "sourceCommit": row["sourceCommit"], "sourceTree": row["sourceTree"],
+		"loader": loader, "purposes": purposes,
+	}
 }
 
 func nativeArchiveMember(archive, pin map[string]any, name string) bool {
@@ -135,7 +143,7 @@ func verifyLinuxNativeEvidence(row, archive, evidence, smoke map[string]any) err
 	return verifyNativeSmoke(row, smoke, expected, cronet["version"], sidecar["sha256"])
 }
 
-func verifyMacNativeEvidence(row, archive, evidence, smoke map[string]any, root string) error {
+func validateMacNativeRow(row, archive map[string]any) error {
 	target := row["target"].(string)
 	arch := strings.TrimPrefix(target, "darwin/")
 	variant := row["variant"].(map[string]any)
@@ -158,6 +166,14 @@ func verifyMacNativeEvidence(row, archive, evidence, smoke map[string]any, root 
 			return err
 		}
 	}
+	return nil
+}
+
+func verifyMacNativeEvidence(row, archive, evidence, smoke map[string]any, root string) error {
+	if err := validateMacNativeRow(row, archive); err != nil {
+		return err
+	}
+	arch := strings.TrimPrefix(row["target"].(string), "darwin/")
 	core := row["core"].(map[string]any)
 	post := evidence["postSign"].(map[string]any)
 	native := post["nativeLoader"].(map[string]any)
@@ -173,14 +189,8 @@ func verifyMacNativeEvidence(row, archive, evidence, smoke map[string]any, root 
 		return fmt.Errorf("Mac post-sign exact signature range differs")
 	}
 	for _, item := range native["libraries"].([]any) {
-		library := item.(string)
-		if !strings.HasPrefix(library, "/usr/lib/") && !strings.HasPrefix(library, "/System/Library/") {
+		if !nativeMacSystemLibrary(item.(string)) {
 			return fmt.Errorf("Mac dependency closure differs")
-		}
-		for segment := range strings.SplitSeq(library[1:], "/") {
-			if segment == "" || segment == "." || segment == ".." {
-				return fmt.Errorf("Mac dependency closure differs")
-			}
 		}
 	}
 
@@ -194,6 +204,18 @@ func verifyMacNativeEvidence(row, archive, evidence, smoke map[string]any, root 
 		return fmt.Errorf("Mac source-owned Cronet version/native observation differs")
 	}
 	return verifyNativeSmoke(row, smoke, expected, cronet["version"], nil)
+}
+
+func nativeMacSystemLibrary(library string) bool {
+	if !strings.HasPrefix(library, "/usr/lib/") && !strings.HasPrefix(library, "/System/Library/") {
+		return false
+	}
+	for segment := range strings.SplitSeq(library[1:], "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return false
+		}
+	}
+	return true
 }
 
 func verifyNativeSmoke(row, smoke, expected map[string]any, version, sidecarHash any) error {
@@ -223,6 +245,34 @@ func verifyNativeTLS(root string, row, receipt map[string]any) error {
 	if err != nil {
 		return err
 	}
+	if err := verifyNativeTLSModules(row, capabilities); err != nil {
+		return err
+	}
+
+	cases := tlsConfigurationCases(capabilities)
+	checks := receipt["configurationChecks"].([]any)
+	if len(checks) != len(cases) {
+		return fmt.Errorf("incomplete native TLS configuration controls")
+	}
+	for i, c := range cases {
+		check, _ := checks[i].(map[string]any)
+		code, integer := check["exitCode"].(json.Number)
+		exitCode, err := code.Int64()
+		output, text := check["output"].(string)
+		for k, value := range c.expected {
+			if integer, ok := value.(int); ok {
+				c.expected[k] = json.Number(fmt.Sprint(integer))
+			}
+		}
+		if len(check) != len(c.expected)+2 || !nativeFieldsMatch(check, c.expected) || !integer || err != nil || !text ||
+			(exitCode == 0) != c.expected["expectedPass"] || !strings.Contains(output, c.errorText) {
+			return fmt.Errorf("native TLS configuration observation %d differs", i)
+		}
+	}
+	return nil
+}
+
+func verifyNativeTLSModules(row map[string]any, capabilities tlsCapabilities) error {
 	graph := row["buildGraph"].(map[string]any)
 	expected := make(map[string]tlsModule, len(capabilities.Modules))
 	for _, module := range capabilities.Modules {
@@ -251,26 +301,6 @@ func verifyNativeTLS(root string, row, receipt map[string]any) error {
 		return fmt.Errorf("producer uTLS module graph differs from source-owned direct pins")
 	}
 
-	cases := tlsConfigurationCases(capabilities)
-	checks := receipt["configurationChecks"].([]any)
-	if len(checks) != len(cases) {
-		return fmt.Errorf("incomplete native TLS configuration controls")
-	}
-	for i, c := range cases {
-		check, _ := checks[i].(map[string]any)
-		code, integer := check["exitCode"].(json.Number)
-		exitCode, err := code.Int64()
-		output, text := check["output"].(string)
-		for k, value := range c.expected {
-			if integer, ok := value.(int); ok {
-				c.expected[k] = json.Number(fmt.Sprint(integer))
-			}
-		}
-		if len(check) != len(c.expected)+2 || !nativeFieldsMatch(check, c.expected) || !integer || err != nil || !text ||
-			(exitCode == 0) != c.expected["expectedPass"] || !strings.Contains(output, c.errorText) {
-			return fmt.Errorf("native TLS configuration observation %d differs", i)
-		}
-	}
 	return nil
 }
 

@@ -43,14 +43,4 @@ class TestNative(unittest.TestCase):
      self.assertNotEqual(path.suffix.lower(),'.class')
 
 
-class OverlayProductionBoundaryControls(unittest.TestCase):
- def test_smoke_rejects_bad_overlay_before_product_work(self):
-  for operation,args in ((n.smoke,('unused',)),):
-   with self.subTest(operation=operation.__name__), \
-        patch.object(n,'validate_overlay',side_effect=ValueError('bad overlay')) as check, \
-        patch.object(n,'read_archive') as archive,patch.object(n.subprocess,'check_output') as command:
-    self.assertRaisesRegex(ValueError,'bad overlay',operation,*args)
-    check.assert_called_once_with(Path.cwd());archive.assert_not_called();command.assert_not_called()
-
-
 if __name__=='__main__':unittest.main()

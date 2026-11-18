@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Smoke-test actual native archives; never invent execution facts."""
-import argparse,hashlib,json,os,platform,re,shlex,shutil,subprocess,sys,tarfile,tempfile,time,zipfile
-from contextlib import contextmanager,ExitStack
+"""Native archive helpers for the controlled peer and private local producer."""
+import json,os,re,subprocess,sys,tarfile,tempfile,time,zipfile
+from contextlib import contextmanager
 from pathlib import Path,PurePosixPath
-from polaris_version import validate as validate_version
-from release_identity import ci_command
 
-def sha(b):return hashlib.sha256(b).hexdigest()
 def run(*args,cwd=None):return subprocess.check_output(args,text=True,cwd=cwd).strip()
 def read_archive(p):
  out={};roots=set();folded=set()
@@ -56,46 +53,19 @@ def buildinfo(core):
    graph['normalModules'].remove(x);graph['prebuiltAcquisitionModules'].append(x)
  return go,raw,graph
 
-def validate_overlay(root, *, native_source=False):
- env=dict(os.environ,GOWORK='off',GOTOOLCHAIN='local')
- args=ci_command('cronet-overlay','--source-root',str(Path(root).absolute()))
- if native_source:args.append('--native-source-identity')
- result=subprocess.run(args,cwd=ROOT,env=env,capture_output=True,encoding='utf-8')
- if result.returncode:raise ValueError(result.stderr.strip() or 'Cronet Windows overlay command failed')
- return json.loads(result.stdout)
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def trusted_execution_definition():
- # The native schema owns the vocabulary; all producer/publisher calls use this validator.
+ # The native schema owns the vocabulary shared with the private local lane.
  return json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))['$defs']['linuxTrustedExecution']
-
-
-def execution_run():
- values = [os.environ.get('GITHUB_RUN_ID', ''), os.environ.get('GITHUB_RUN_ATTEMPT', '')]
- if any(not re.fullmatch('[1-9][0-9]*', value) for value in values):
-  raise ValueError('sealed execution requires actual workflow run/attempt')
- return dict(zip(('runId', 'runAttempt'), map(int, values)))
-
-
-def derive_trusted_execution(row, proof, producer, source_root=ROOT):
- """Formal workflow admission retains its original schema and run authority."""
- import jsonschema
- schema = json.loads((ROOT/'release/ci/native-release-index.schema.json').read_text(encoding='utf-8'))
- kind = {'polaris-macos-native-execution-proof-v1':'macosExecution'}.get(proof.get('schema') if isinstance(proof,dict) else None,'sealedExecution')
- jsonschema.Draft202012Validator(schema['$defs'][kind]).validate(proof)
- for key in ('runId', 'runAttempt'):
-  if type(producer[key]) is not int or type(proof[key]) is not int or proof[key] != producer[key]:
-   raise ValueError('sealed execution workflow run/attempt differs')
- return _derive_macos_execution_facts(row, proof, source_root) if kind == 'macosExecution' else _derive_execution_facts(row, proof, source_root)
 
 
 def derive_local_trusted_execution(row, proof, context, source_root):
  """Private local producer entry. Never accepts or invents workflow identity.
 
  Developer compilation selects its lane; this closed context is provenance,
- not a signature, credential, or a replacement for the Formal wrapper above.
+ not a signature, credential, or a replacement for Formal workflow admission.
  """
  import jsonschema
  keys={'schema','coreSource','producerSource','host'}
@@ -176,225 +146,6 @@ def _derive_execution_facts(row, proof, source_root):
 
 
 
-def macos_native_row(row):
-    target = row['target']
-    if target not in ('darwin/amd64', 'darwin/arm64') or type(row['variant'].get('legacy')) is not bool or row['variant'] != {
-        'linkage':'static-cgo', 'libc':'', 'goarm':'', 'gomips':'', 'go386':'', 'legacy':False
-    } or row['sidecar'] is not None or row['core']['member'] != 'sing-box':
-        raise ValueError('Mac execution requires a modern thin static-CGO Core without sidecar')
-    validate_version(row['version'])
-    if type(row['archive']['bytes']) is not int or row['archive']['bytes'] <= 0: raise ValueError('Mac exact archive byte type differs')
-    settings = row['buildGraph']['settings']; tags = row['tags'].split(',')
-    if ((settings.get('GOOS'), settings.get('GOARCH'), settings.get('CGO_ENABLED')) !=
-        ('darwin', target.split('/')[1], '1') or len(tags) != len(set(tags)) or
-        set(settings.get('-tags','').split(',')) != set(tags) or
-        not {'with_naive_outbound','with_utls','with_gvisor'} <= set(tags) or
-        {'with_purego','with_cronet_purego'} & set(tags)):
-        raise ValueError('Mac actual Go target/tags differ')
-    # Go trimpath builds can omit -ldflags from buildinfo entirely. Absence is
-    # not an identity claim: the held final bytes must still report matching
-    # runtime capabilities/configuration before _derive_macos_execution_facts
-    # can issue the policy. Present stamp metadata remains independently strict.
-    if '-ldflags' in settings:
-        if type(settings['-ldflags']) is not str: raise ValueError('Mac malformed Go source flags')
-        tokens = shlex.split(settings['-ldflags']); values = {}; i = 0
-        while i < len(tokens):
-            token = tokens[i]; i += 1
-            if token == '-X':
-                if i == len(tokens): raise ValueError('Mac truncated Go source flags')
-                assignment = tokens[i]; i += 1
-            elif token.startswith('-X='): assignment = token[3:]
-            else: continue
-            key, separator, value = assignment.partition('=')
-            if not separator or key in values: raise ValueError('Mac ambiguous Go source flags')
-            values[key] = value
-        stamps = [('SourceRevision',row['sourceCommit']), ('Version',row['version'])]
-        if 'github.com/sagernet/sing-box/constant.DirectoryRetirementSourceIdentity' in values:
-            stamps.append(('DirectoryRetirementSourceIdentity',row['sourceCommit']))
-        for key, value in stamps:
-            if values.get('github.com/sagernet/sing-box/constant.'+key) != value:
-                raise ValueError('Mac compiled source/version binding differs: '+key)
-    if settings.get('vcs.revision',row['sourceCommit']) != row['sourceCommit'] or settings.get('vcs.modified','false') != 'false':
-        raise ValueError('Mac dirty or mismatched Go source')
-    return target.split('/')[1]
-
-
-def macos_loader_metadata(data, arch):
-    """The closed thin-Mach-O profile also enforced by the Mac private factory.
-
-    This is static loader acceptance, not proof of root birth, custody or wait.
-    """
-    import struct
-    if len(data) < 32 or arch not in ('amd64','arm64'):
-        raise ValueError('Mac truncated or unsupported native header')
-    magic,cpu,_,kind,count,size,_,_ = struct.unpack_from('<8I',data)
-    if magic != 0xfeedfacf or cpu != {'amd64':0x01000007,'arm64':0x0100000c}[arch] or kind != 2 or not 0 < count <= 4096 or size > 1024*1024 or 32+size > len(data):
-        raise ValueError('Mac thin native execution graph differs')
-    offset = 32; end = offset+size; signature = None; dyld = None; libraries = []
-    def name(command, minimum):
-        if len(command) < minimum: raise ValueError('Mac truncated loader command')
-        start = struct.unpack_from('<I',command,8)[0]
-        if start < minimum or start >= len(command): raise ValueError('Mac loader name offset differs')
-        raw = command[start:]; zero = raw.find(b'\0')
-        if zero < 0: raise ValueError('Mac unterminated loader name')
-        value = raw[:zero].decode('utf-8',errors='strict')
-        if not value.startswith('/') or any(part in ('','.', '..') for part in value[1:].split('/')):
-            raise ValueError('Mac relative or ambiguous loader name')
-        return value
-    for _ in range(count):
-        if offset+8 > end: raise ValueError('Mac truncated load command')
-        command,length = struct.unpack_from('<II',data,offset)
-        if length < 8 or length % 8 or offset+length > end: raise ValueError('Mac invalid load command size')
-        payload = data[offset:offset+length]
-        if command in (0xc,0x80000018,0x8000001f,0x80000023,0x20):
-            library = name(payload,24)
-            if not library.startswith(('/usr/lib/','/System/Library/')): raise ValueError('Mac non-system dependency needs its own proof')
-            libraries.append(library)
-        elif command == 0xe:
-            if dyld is not None or name(payload,12) != '/usr/lib/dyld': raise ValueError('Mac ambiguous or unsupported dyld')
-            dyld = '/usr/lib/dyld'
-        elif command == 0x1d:
-            if len(payload) != 16 or signature is not None: raise ValueError('Mac ambiguous signature command')
-            start,amount = struct.unpack_from('<II',payload,8)
-            if not amount or start < end or start+amount > len(data): raise ValueError('Mac invalid post-sign range')
-            signature = {'signatureOffset':start,'signatureBytes':amount,'signatureSHA256':sha(data[start:start+amount])}
-        elif command not in (0x19,0x2,0xb,0x1b,0x32,0x2a,0x80000028,0x26,0x29,0x80000022,0x80000033,0x80000034,0x24,0x4,0x5):
-            raise ValueError('Mac unknown/search/environment/encrypted loader command')
-        offset += length
-    if offset != end or signature is None or dyld is None: raise ValueError('Mac incomplete signed loader graph')
-    return {'arch':arch,'dyld':dyld,'libraries':sorted(set(libraries)),
-            'commandsSHA256':sha(data[:end]), **signature}
-
-
-
-def macos_native_process():
-    # https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment
-    # ENOENT means native; every other query error remains unsupported.
-    import ctypes, errno
-    try:
-        function = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True).sysctlbyname
-    except (OSError, AttributeError) as error:
-        raise ValueError('Mac native translation state is unavailable') from error
-    function.argtypes = [ctypes.c_char_p,ctypes.c_void_p,ctypes.POINTER(ctypes.c_size_t),ctypes.c_void_p,ctypes.c_size_t]
-    function.restype = ctypes.c_int
-    value = ctypes.c_int(); size = ctypes.c_size_t(ctypes.sizeof(value))
-    result = function(b'sysctl.proc_translated',ctypes.byref(value),ctypes.byref(size),None,0)
-    if result == -1 and ctypes.get_errno() == errno.ENOENT: return True
-    if result != 0 or size.value != ctypes.sizeof(value) or value.value not in (0,1):
-        raise ValueError('Mac native translation state is unknown')
-    return value.value == 0
-
-@contextmanager
-def macos_postsign_observer(core, row):
-    """Hold the original producer input across all native observations/probes.
-
-    Held-FD/namespace checks detect producer-input drift; they are not a frozen
-    execution object. Runtime root private-factory consumption is a separate gate.
-    """
-    import stat
-    arch = macos_native_row(row)
-    if platform.system() != 'Darwin' or {'arm64':'arm64','x86_64':'amd64'}.get(platform.machine()) != arch:
-        raise ValueError('Mac post-sign proof requires the matching actual native host')
-    if not macos_native_process(): raise ValueError('Mac translated execution cannot provide native proof')
-    if any(key.startswith(('DYLD_','LD_')) for key in os.environ): raise ValueError('Mac ambient loader overrides are unsupported')
-    fd = os.open(core,os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
-    try:
-        before = os.fstat(fd)
-        def stamp(value): return (value.st_dev,value.st_ino,value.st_mode,value.st_nlink,value.st_size,value.st_mtime_ns,value.st_ctime_ns)
-        def current():
-            if stamp(os.fstat(fd)) != stamp(before) or stamp(os.lstat(core)) != stamp(before):
-                raise ValueError('Mac post-sign object/namespace changed')
-        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size != row['core']['bytes']:
-            raise ValueError('Mac final Core object differs')
-        with os.fdopen(os.dup(fd),'rb') as stream: data = stream.read()
-        if sha(data) != row['core']['sha256']: raise ValueError('Mac final post-sign digest differs')
-        metadata = macos_loader_metadata(data, arch)
-        def observe():
-            current()
-            go,_,graph = buildinfo(core)
-            if go != row['goVersion'] or graph != row['buildGraph'] or run('go','tool','buildid',str(core)) != row['buildID']:
-                raise ValueError('Mac actual post-sign Go metadata differs')
-            current()
-            verified = subprocess.run(['/usr/bin/codesign','--verify','--strict',str(core)],capture_output=True,text=True,timeout=30)
-            displayed = subprocess.run(['/usr/bin/codesign','--display','--verbose=4',str(core)],capture_output=True,text=True,timeout=30)
-            hashes = re.findall(r'^CDHash=([0-9a-f]{40})$',displayed.stderr,re.M)
-            if verified.returncode != 0 or displayed.returncode != 0 or len(hashes) != 1:
-                raise ValueError('Mac actual strict signature verification failed')
-            expected = {'state':'signed','cdHash':hashes[0],'trustValidated':False}
-            if row['signatureObservation'] != expected: raise ValueError('Mac collected signature differs from final bytes')
-            current(); os.lseek(fd,0,os.SEEK_SET)
-            with os.fdopen(os.dup(fd),'rb') as stream: after = stream.read()
-            current()
-            if after != data: raise ValueError('Mac post-sign bytes changed during observation')
-            return {'coreSHA256':sha(after),'coreBytes':len(after),'cdHash':hashes[0],
-                    'signatureVerified':True,'nativeLoader':metadata}
-        yield observe
-    finally:
-        os.close(fd)
-
-
-def observe_macos_postsign(core, row):
-    with macos_postsign_observer(core, row) as observe:
-        return observe()
-
-
-def _derive_macos_execution_facts(row, proof, source_root):
-    from tls_fingerprint_probe import validate, validate_configuration_checks, producer_module_identities
-    arch = macos_native_row(row)
-    for key in ('sourceCommit','sourceTree','version','target'):
-        if proof[key] != row[key]: raise ValueError('Mac source/target binding differs: '+key)
-    if proof['archiveSha256'] != row['archive']['sha256'] or proof['core'] != row['core']:
-        raise ValueError('Mac final package bytes differ')
-    for pin in (row['core'],proof['core']):
-        if type(pin['bytes']) is not int or pin['bytes'] <= 0: raise ValueError('Mac exact Core byte type differs')
-    if row['archive']['members'].get(row['archive']['root']+'/'+row['core']['member']) != row['core']['sha256']:
-        raise ValueError('Mac archive member binding differs')
-    post = proof['postSign']; native = post['nativeLoader']
-    if post['coreSHA256'] != row['core']['sha256'] or type(post['coreBytes']) is not int or post['coreBytes'] != row['core']['bytes']:
-        raise ValueError('Mac post-sign Core binding differs')
-    if row['signatureObservation'] != {'state':'signed','cdHash':post['cdHash'],'trustValidated':False} or native['arch'] != arch:
-        raise ValueError('Mac post-sign signature/native architecture differs')
-    if any(type(native[k]) is not int or native[k] <= 0 for k in ('signatureOffset','signatureBytes')) or native['signatureOffset']+native['signatureBytes'] > post['coreBytes']:
-        raise ValueError('Mac post-sign exact signature range differs')
-    for library in native['libraries']:
-        if any(part in ('','.', '..') for part in library[1:].split('/')) or not library.startswith(('/usr/lib/','/System/Library/')):
-            raise ValueError('Mac dependency closure differs')
-    receipt = proof['tlsProbe']
-    if receipt['coreSHA256'] != row['core']['sha256'] or type(receipt['coreBytes']) is not int or receipt['coreBytes'] != row['core']['bytes'] or set(receipt['capabilities']['buildTags'].split(',')) != set(row['tags'].split(',')):
-        raise ValueError('Mac capability/Core binding differs')
-    # Mandatory even when buildinfo has no linker metadata: actual runtime
-    # version, clean source, target, Go and modules close the final-byte binding.
-    validate(receipt['capabilities'],source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],
-             target=row['target'],expected_modules=producer_module_identities(row['buildGraph']),source_root=source_root)
-    validate_configuration_checks(receipt['capabilities'],receipt['configurationChecks'])
-    cronet = proof['cronet']; smoke = row['finalPackageCronetSmoke']
-    pins = json.loads((Path(source_root)/'release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
-    if cronet['version'] != pins['cronetVersion']: raise ValueError('Mac source-owned Cronet version differs')
-    expected = {'os':'darwin','arch':arch,'go':row['goVersion'],'linkage':'static-cgo','gvisorCompiled':True}
-    if any(type(cronet.get(k)) is not type(v) or cronet[k] != v for k,v in expected.items()): raise ValueError('Mac native Cronet observation differs')
-    expected.update(status='passed',naiveOutbound=True,version=cronet['version'],librarySha256=None,coreSha256=row['core']['sha256'])
-    if not smoke or any(type(smoke.get(k)) is not type(v) or smoke[k] != v for k,v in expected.items()): raise ValueError('Mac native smoke and proof differ')
-    return {'schema':'polaris-trusted-execution-v1','sourceCommit':row['sourceCommit'],'sourceTree':row['sourceTree'],
-            'loader':'macos-root-private-v1','purposes':['check-config-v1','run-main-v1']}
-
-def validate_trusted_execution(row, producer, source_root=ROOT):
- smoke = row.get('finalPackageCronetSmoke')
- keys = [key for key in ('sealedExecution','macosExecution') if isinstance(smoke,dict) and key in smoke]
- if len(keys) > 1: raise ValueError('ambiguous native execution proofs')
- proof = smoke[keys[0]] if keys else None
- present = 'trustedExecution' in row
- has_proof = bool(keys)
- if not has_proof and not present: return None # historical/unsupported rows never acquire authority
- if proof is None or not present: raise ValueError('trusted execution requires both policy and native sealed proof')
- expected_schema={'macosExecution':'polaris-macos-native-execution-proof-v1'}
- if not isinstance(proof,dict) or (keys[0] in expected_schema and proof.get('schema')!=expected_schema[keys[0]]) or (keys[0]=='sealedExecution' and 'schema' in proof):
-  raise ValueError('native execution proof key/schema differs')
- expected = derive_trusted_execution(row, proof, producer, source_root)
- if row['trustedExecution'] != expected:
-  raise ValueError('trusted execution policy differs from native proof')
- return expected
-
-
 def cleanup_smoke_directory(directory):
  """Retry only Windows sharing/lock violations, never turn failed cleanup into PASS."""
  started=time.monotonic();attempt=0
@@ -424,74 +175,3 @@ def smoke_temp_directory():
   raise
  else:
   cleanup_smoke_directory(directory)
-
-def smoke(directory):
- validate_overlay(Path.cwd())
- d=Path(directory);rows=list(d.glob('native-row-*.json'))
- if len(rows)!=1:raise ValueError('smoke requires exactly one native row')
- row=json.loads(rows[0].read_text(encoding='utf-8'));p=d/row['archive']['name']
- root,members=read_archive(p)
- if sha(p.read_bytes())!=row['archive']['sha256']:raise ValueError('archive changed')
- pins=json.loads(Path('release/polaris-candidate-inputs.json').read_text(encoding='utf-8'))
- if Path('.github/CRONET_GO_VERSION').read_text(encoding='utf-8').strip()!=pins['wrapperCommit']:raise ValueError('Cronet smoke pin mismatch')
- # Never reuse a policy/proof from an earlier invocation or different final bytes.
- row.pop('trustedExecution', None)
- protected = platform.system() == 'Linux' and row['target'] == 'linux/amd64' and row['variant']['linkage'] == 'shared-purego' and not row['variant'].get('legacy') and not row['variant'].get('libc')
- protected_mac = platform.system() == 'Darwin' and row['target'] in ('darwin/amd64','darwin/arm64') and not row['variant'].get('legacy')
- with smoke_temp_directory() as td, ExitStack() as observers:
-  if root!=row['archive']['root'] or {root+'/'+k for k in members}!=set(row['archive']['members']):raise ValueError('archive member inventory changed')
-  for name,data in members.items():
-   if sha(data)!=row['archive']['members'][root+'/'+name]:raise ValueError('member changed')
-  for name,data in members.items():(Path(td)/name).write_bytes(data)
-  core=Path(td)/row['core']['member'];core.chmod(0o755)
-  from tls_fingerprint_probe import probe, producer_module_identities
-  modules=producer_module_identities(row['buildGraph'])
-  proof = None; mac_postsign = None
-  if protected_mac:
-   context = execution_run()
-   if p.stat().st_size != row['archive']['bytes']: raise ValueError('Mac actual archive byte count differs')
-   mac_observe = observers.enter_context(macos_postsign_observer(core,row))
-   mac_postsign = mac_observe()
-  if protected:
-   from tls_fingerprint_probe import sealed_execution
-   import fcntl
-   context = execution_run()
-   with sealed_execution(core, Path(td)/row['sidecar']['member'], row['core'], row['sidecar']) as execution:
-    receipt = probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules,execution=execution)
-    result = execution.run(['tools','cronet','--expected-version',pins['cronetVersion'],'--sha256',row['sidecar']['sha256']],cwd=td,text=True,capture_output=True,timeout=30)
-    if result.returncode != 0: raise ValueError('sealed Cronet native smoke failed: '+result.stderr)
-    observed = json.loads(result.stdout)
-    proof = {**{key:row[key] for key in ('sourceCommit','sourceTree','version','target')}, **context,
-             'archiveSha256':row['archive']['sha256'],'core':row['core'],'sidecar':row['sidecar'],
-             'coreSeals':fcntl.fcntl(execution.core_fd, fcntl.F_GET_SEALS),
-             'sidecarSeals':fcntl.fcntl(execution.library_fd, fcntl.F_GET_SEALS),
-             'tlsProbe':receipt,'cronet':observed}
-  else:
-   receipt = probe(core,source=row['sourceCommit'],version=row['version'],go_version=row['goVersion'],target=row['target'],expected_sha=row['core']['sha256'],expected_modules=modules)
-   args=[str(core),'tools','cronet','--expected-version',pins['cronetVersion']]
-   if row['sidecar']:args+=['--library',str(Path(td)/row['sidecar']['member']),'--sha256',row['sidecar']['sha256']]
-   observed=json.loads(run(*args,cwd=td))
-  if protected_mac:
-   after = mac_observe()
-   if after != mac_postsign: raise ValueError('Mac post-sign observation changed during native smoke')
-   proof = {**{key:row[key] for key in ('sourceCommit','sourceTree','version','target')}, **context,
-            'schema':'polaris-macos-native-execution-proof-v1','archiveSha256':row['archive']['sha256'],
-            'core':row['core'],'postSign':after,'tlsProbe':receipt,'cronet':observed}
-  expected_os,expected_arch=row['target'].split('/')
-  for k,v in [('os',expected_os),('arch',expected_arch),('go',row['goVersion']),('linkage',row['variant']['linkage']),('gvisorCompiled',True),('version',pins['cronetVersion'])]:
-   if observed.get(k)!=v:raise ValueError('Cronet smoke mismatch '+k)
-  if row['sidecar'] and observed.get('sha256')!=row['sidecar']['sha256']:raise ValueError('Cronet sidecar mismatch')
-  if 'with_naive_outbound' not in row['tags'].split(','):raise ValueError('Naive tag missing')
-  row['finalPackageCronetSmoke']={'status':'passed','os':expected_os,'arch':expected_arch,'go':observed['go'],'gvisorCompiled':True,'naiveOutbound':True,'linkage':observed['linkage'],'version':observed['version'],'librarySha256':row['sidecar']['sha256'] if row['sidecar'] else None,'coreSha256':row['core']['sha256']}
-  if proof:
-   row['finalPackageCronetSmoke']['macosExecution' if protected_mac else 'sealedExecution'] = proof
-   row['trustedExecution'] = derive_trusted_execution(row, proof, context)
-   validate_trusted_execution(row, context)
- # No result survives a changed final archive or failed cleanup.
- if sha(p.read_bytes()) != row['archive']['sha256']: raise ValueError('archive changed during native smoke')
- rows[0].write_text(json.dumps(row,indent=2)+'\n', encoding='utf-8', newline='\n')
-
-
-if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('mode',choices=['smoke']);p.add_argument('directory');a=p.parse_args()
- smoke(a.directory)

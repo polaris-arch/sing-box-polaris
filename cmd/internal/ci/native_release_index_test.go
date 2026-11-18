@@ -349,6 +349,14 @@ func TestNativeAssemblyChecksOverlayBeforeReadingReleaseEvidence(t *testing.T) {
 	}
 }
 
+func TestNativeSmokeChecksOverlayBeforeReadingReleaseEvidence(t *testing.T) {
+	root := t.TempDir()
+	err := smokeNativeIndex(t.Context(), root, []string{filepath.Join(root, "absent")})
+	if err == nil || !strings.Contains(err.Error(), "Cronet Windows overlay") {
+		t.Fatalf("smoke did not reject the overlay before artifact work: %v", err)
+	}
+}
+
 func TestDistributionAssessmentAndUnknownModuleRemainUnapproved(t *testing.T) {
 	catalog := map[string]any{"schema": json.Number("1"), "status": "reviewed-current-scope", "openItems": []any{}}
 	approved, err := validateDistributionAssessment(catalog)
