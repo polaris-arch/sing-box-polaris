@@ -5,14 +5,20 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
+	"unicode/utf8"
 
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -46,6 +52,189 @@ func TestNativeArchiveRejectsOversizedMemberBeforeExpansion(t *testing.T) {
 	}
 	if _, _, err := readNativeArchive(file); err == nil || !strings.Contains(err.Error(), "expanded byte budget") {
 		t.Fatalf("oversized member was not rejected before reading its bytes: %v", err)
+	}
+}
+
+func TestNativeReleaseArchiveMemberContract(t *testing.T) {
+	const root = "sing-box-fixture"
+	const member = root + "/sing-box"
+	core := []byte{0, 0xff, 0x7f}
+	for _, test := range []struct {
+		name    string
+		members []string
+		pass    bool
+	}{
+		{"original bytes", []string{root + "/LICENSE", member}, true},
+		{"traversal", []string{root + "/../evil"}, false},
+		{"duplicate", []string{member, member}, false},
+		{"case-fold collision", []string{root + "/LICENSE", root + "/license"}, false},
+		{"backslash", []string{root + `/..\evil`}, false},
+		{"Windows drive", []string{root + `/C:\evil`}, false},
+		{"Windows device", []string{root + "/CON"}, false},
+		{"Windows device with extension", []string{root + "/NUL.txt"}, false},
+		{"trailing dot", []string{root + "/endsdot."}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var data bytes.Buffer
+			compressed := gzip.NewWriter(&data)
+			archive := tar.NewWriter(compressed)
+			for _, name := range test.members {
+				raw := core
+				if name == root+"/LICENSE" {
+					raw = []byte("license text\n")
+				}
+				if err := archive.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: int64(len(raw))}); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := archive.Write(raw); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := archive.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := compressed.Close(); err != nil {
+				t.Fatal(err)
+			}
+			filename := filepath.Join(t.TempDir(), "fixture.tar.gz")
+			if err := os.WriteFile(filename, data.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			archiveRoot, members, err := readNativeArchive(filename)
+			if !test.pass {
+				if err == nil {
+					t.Fatalf("admitted unsafe native members: %q", test.members)
+				}
+				return
+			}
+			want := map[string][]byte{"LICENSE": []byte("license text\n"), "sing-box": core}
+			if err != nil || archiveRoot != root || !reflect.DeepEqual(members, want) {
+				t.Fatalf("native archive did not return the original members: %q %v %v", archiveRoot, members, err)
+			}
+		})
+	}
+	t.Run("ZIP symlink", func(t *testing.T) {
+		header := zip.FileHeader{Name: member, Method: zip.Deflate}
+		header.SetMode(os.ModeSymlink | 0o777)
+		filename := filepath.Join(t.TempDir(), "fixture.zip")
+		if err := os.WriteFile(filename, fixtureZIP(t, header), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := readNativeArchive(filename); err == nil {
+			t.Fatal("admitted a native archive symlink")
+		}
+	})
+}
+
+func TestNativeBuildInfoPartitionsRealLinkedModules(t *testing.T) {
+	const acquisition = "github.com/sagernet/cronet-go/lib/linux_amd64"
+	const tags = "with_gvisor,with_naive_outbound"
+	root := t.TempDir()
+	fixtureFile(t, root, "go.mod", "module example.org/native\ngo 1.27.0\n"+
+		"require (\nexample.org/first v1.0.0\nexample.org/second v1.0.0\n"+acquisition+" v1.2.3\n)\n"+
+		"replace example.org/first => ./first\nreplace example.org/second => ./second\n")
+	for _, name := range []string{"first", "second"} {
+		fixtureFile(t, root, name+"/go.mod", "module example.org/"+name+"\ngo 1.27.0\n")
+		fixtureFile(t, root, name+"/value.go", "package "+name+"\nconst Value = 1\n")
+	}
+	fixtureFile(t, root, "main.go", fmt.Sprintf(`package main
+import (
+	"example.org/first"
+	"example.org/second"
+	%q
+)
+func main() { println(first.Value + second.Value + acquisition.Value) }
+`, acquisition))
+
+	// A file-only module proxy makes the acquisition record a genuine
+	// downloaded dependency without a network or a pre-populated cache.
+	proxy := filepath.Join(root, "proxy")
+	moduleFile := "module " + acquisition + "\ngo 1.27.0\n"
+	base := acquisition + "/@v/v1.2.3"
+	fixtureFile(t, proxy, base+".mod", moduleFile)
+	fixtureFile(t, proxy, base+".info", `{"Version":"v1.2.3","Time":"2000-01-01T00:00:00Z"}`)
+	var data bytes.Buffer
+	moduleArchive := zip.NewWriter(&data)
+	for _, file := range []struct{ name, contents string }{
+		{"go.mod", moduleFile}, {"value.go", "package acquisition\nconst Value = 1\n"},
+	} {
+		member, err := moduleArchive.Create(acquisition + "@v1.2.3/" + file.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(member, file.contents); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := moduleArchive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	moduleZip := fixtureFile(t, proxy, base+".zip", data.String())
+	moduleSum, err := dirhash.HashZip(filepath.Join(proxy, moduleZip), dirhash.Hash1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxyPath := filepath.ToSlash(proxy)
+	if !strings.HasPrefix(proxyPath, "/") {
+		proxyPath = "/" + proxyPath
+	}
+	proxyURL := url.URL{Scheme: "file", Path: proxyPath}
+	t.Setenv("GOPROXY", proxyURL.String())
+	t.Setenv("GONOPROXY", "none")
+	t.Setenv("GOSUMDB", "off")
+	t.Setenv("GOVCS", "*:off")
+	t.Setenv("GOMODCACHE", filepath.Join(root, "module-cache"))
+	t.Setenv("GOENV", "off")
+	t.Setenv("GOFLAGS", "")
+	t.Setenv("GOWORK", "off")
+	t.Setenv("GOTOOLCHAIN", "local")
+	t.Setenv("GOOS", runtime.GOOS)
+	t.Setenv("GOARCH", runtime.GOARCH)
+	t.Setenv("CGO_ENABLED", "0")
+	goTool := filepath.Join(runtime.GOROOT(), "bin", "go")
+	executable := filepath.Join(root, "core-fixture")
+	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+	defer cancel()
+	_, diagnostic, code, err := sourceCommandOutput(ctx, root, nil, 1<<20, goTool,
+		"build", "-mod=mod", "-modcacherw", "-buildvcs=false", "-p=1", "-tags="+tags, "-o", executable, ".")
+	if err != nil || code == nil || *code != 0 {
+		t.Fatalf("compile offline native buildinfo fixture: %v\n%s", err, diagnostic)
+	}
+	version, raw, graph, err := nativeBuildInfo(executable)
+	if err != nil || version != runtime.Version() || graph.Settings["CGO_ENABLED"] != "0" || graph.Settings["-tags"] != tags {
+		t.Fatalf("actual native settings differ: %s %#v %v", version, graph.Settings, err)
+	}
+	if len(graph.NormalModules) != 0 || !reflect.DeepEqual(graph.LocalReplacements, []moduleRecord{
+		{Module: "example.org/first", Version: "v1.0.0", Replacement: &moduleRecord{Module: "./first", Version: "(devel)"}},
+		{Module: "example.org/second", Version: "v1.0.0", Replacement: &moduleRecord{Module: "./second", Version: "(devel)"}},
+	}) || !reflect.DeepEqual(graph.AcquisitionModules, []moduleRecord{
+		{Module: acquisition, Version: "v1.2.3", H1: moduleSum},
+	}) {
+		t.Fatalf("native module partitions differ: %#v", graph)
+	}
+	expected, diagnostic, code, err := sourceCommandOutput(ctx, root, nil, 1<<20, goTool, "version", "-m", executable)
+	if err != nil || code == nil || *code != 0 || raw != expected {
+		t.Fatalf("native raw buildinfo differs from go version -m: %v\n%s\n%s\n%s", err, diagnostic, raw, expected)
+	}
+}
+
+func TestDistributionLicenseFilesAreSourceText(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	err := fs.WalkDir(os.DirFS(root), "release/licenses", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		data, err := readNativeSource(root, path)
+		if err != nil {
+			return err
+		}
+		if !utf8.Valid(data) || strings.EqualFold(filepath.Ext(path), ".class") {
+			return fmt.Errorf("shared notice file must be UTF-8 text: %s", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

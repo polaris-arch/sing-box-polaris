@@ -12,16 +12,11 @@ jobs:
       with:
         ref: ${{ github.sha }}
         persist-credentials: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - run: python -m pip install jsonschema==4.23.0
     - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
       with:
         go-version-file: release/GO_VERSION
         cache: false
     - run: go test -mod=readonly ./cmd/internal/ci ./common/badversion
-    - run: python -B -m unittest discover -s scripts/ci -p 'test_*.py'
     - name: Restore pinned official formatter archive
       uses: actions/cache@v4
       with:
