@@ -431,8 +431,8 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: native
-    - name: Setup source-owned Go for Darwin metadata
-      if: startsWith(matrix.id, 'darwin-')
+    - name: Setup source-owned Go for native metadata
+      if: startsWith(matrix.id, 'darwin-') || matrix.id == 'linux-amd64-purego'
       uses: actions/setup-go@v5
       with:
         go-version-file: release/GO_VERSION
@@ -446,16 +446,30 @@ jobs:
       env:
         GOTOOLCHAIN: local
       run: python scripts/ci/native_release_index.py smoke native
+    - name: Build the existing CI tool for native metadata
+      if: matrix.id == 'linux-amd64-purego'
+      env:
+        GOTOOLCHAIN: local
+      run: go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
     - name: Acquire exact same-run Linux artifact metadata without native execution
       if: matrix.id == 'linux-amd64-purego'
       timeout-minutes: 3
       env:
         GH_TOKEN: ${{ github.token }}
-      run: python -B scripts/ci/native_peer_metadata.py --native native --output "${{ runner.temp }}/native-peer-admission/admission.json" --failure-output "${{ runner.temp }}/native-controlled-peer-public"
+      run: |
+        set -euo pipefail
+        scratch="$RUNNER_TEMP/native-peer-admission"
+        mkdir -m 700 "$scratch"
+        if ! "$RUNNER_TEMP/polaris-ci" peer-metadata --mode acquire --native native \
+            --admission "$scratch/admission.json" --failure "$scratch/failure.json"; then
+          python -B scripts/ci/protocol_peer.py --admission-failure "$scratch/failure.json" \
+            --output "$RUNNER_TEMP/native-controlled-peer-public"
+          exit 1
+        fi
     - name: Execute same-run Linux native Naive and MASQUE controlled peers
       if: matrix.id == 'linux-amd64-purego'
       timeout-minutes: 12
-      run: python -B scripts/ci/protocol_peer.py native --admission "${{ runner.temp }}/native-peer-admission/admission.json" --output "${{ runner.temp }}/native-controlled-peer-public"
+      run: python -B scripts/ci/protocol_peer.py native --metadata-tool "$RUNNER_TEMP/polaris-ci" --admission "$RUNNER_TEMP/native-peer-admission/admission.json" --output "$RUNNER_TEMP/native-controlled-peer-public"
     - name: Preserve sanitized native peer receipt only
       if: always() && matrix.id == 'linux-amd64-purego'
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

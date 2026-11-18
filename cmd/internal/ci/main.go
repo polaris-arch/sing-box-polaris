@@ -42,6 +42,8 @@ func run(args []string) error {
 		return recordCandidate(args[1:])
 	case "publisher-receipt":
 		return publisherReceipt(args[1:])
+	case "peer-metadata":
+		return peerMetadata(args[1:])
 	case "tls-gate":
 		return tlsGate(args[1:])
 	case "tls-cost":

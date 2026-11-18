@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -51,10 +52,39 @@ func TestMain(tests *testing.M) {
 	if len(os.Args) != 6 || !slices.Equal(os.Args[1:5], []string{"api", "--include", "--method", "GET"}) {
 		os.Exit(2)
 	}
+	if mode == "peer" {
+		key := "POLARIS_CI_TEST_PEER_RUN"
+		if strings.HasSuffix(os.Args[5], "/artifacts?per_page=100&page=1") {
+			key = "POLARIS_CI_TEST_PEER_ARTIFACTS"
+		} else if !strings.HasSuffix(os.Args[5], "/actions/runs/123") {
+			os.Exit(4)
+		}
+		fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\nX-GitHub-Request-Id: fixture\r\n\r\n", os.Getenv(key))
+		os.Exit(0)
+	}
 	if mode == "idle" {
 		os.Stdout.Close()
 		os.Stderr.Close()
 		time.Sleep(10 * time.Second)
+		os.Exit(0)
+	}
+	if mode == "retry" {
+		counter := os.Getenv("POLARIS_CI_TEST_GH_COUNTER")
+		if _, err := os.Stat(counter); os.IsNotExist(err) {
+			if err := os.WriteFile(counter, []byte("first"), 0o600); err != nil {
+				os.Exit(3)
+			}
+			fmt.Fprint(os.Stdout, "HTTP/2 503 unavailable\r\nRetry-After: 0\r\n\r\nsecret")
+			os.Exit(1)
+		}
+		mode = "success"
+	}
+	if strings.HasPrefix(mode, "status-") {
+		fmt.Fprintf(os.Stdout, "HTTP/2 %s error\r\nRetry-After: 0\r\n\r\nsecret", strings.TrimPrefix(mode, "status-"))
+		os.Exit(1)
+	}
+	if mode == "malformed" {
+		fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\nRetry-After: 1\r\nRetry-After: 2\r\n\r\nbody")
 		os.Exit(0)
 	}
 	if mode == "stderr-flood" {
@@ -66,6 +96,9 @@ func TestMain(tests *testing.M) {
 
 func fixtureSourceCLI(t *testing.T) string {
 	t.Helper()
+	// A copied race test binary is the child fixture, so avoid the race
+	// runtime's default one-second delay before its successful exit.
+	t.Setenv("GORACE", strings.TrimSpace(os.Getenv("GORACE")+" atexit_sleep_ms=0"))
 	executable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -600,6 +633,170 @@ func TestVisionGitInventoryAndTrustedExecutableMetadata(t *testing.T) {
 						t.Fatalf("invalid executable metadata claimed a tree: %v", full)
 					}
 				}
+			}
+		})
+	}
+}
+
+func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
+	child := fixtureSourceCLI(t)
+	directory := filepath.Dir(child)
+	t.Setenv("PATH", directory+string(os.PathListSeparator)+os.Getenv("PATH"))
+	path := "repos/polaris-arch/sing-box-polaris/actions/artifacts/31/zip"
+	for _, mode := range []string{"success", "stderr-flood", "malformed", "idle", "status-400", "status-403", "status-404", "status-429", "status-500", "status-503"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Setenv("POLARIS_CI_TEST_GH_MODE", mode)
+			sink, err := os.CreateTemp(t.TempDir(), "body")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer sink.Close()
+			result, err := githubAttempt(path, sink, 10, 2*time.Second)
+			good := mode == "success" || mode == "stderr-flood"
+			if (err == nil) != good {
+				t.Fatalf("%s: %v", mode, err)
+			}
+			if good {
+				encoded, err := json.Marshal(result)
+				if err != nil || strings.Contains(string(encoded), "secret") {
+					t.Fatalf("private response headers retained: %s, %v", encoded, err)
+				}
+				if result.Bytes != 5 || result.SHA256 != sha256Hex([]byte("hello")) || result.Headers["x-github-request-id"] != "safe" {
+					t.Fatalf("stream identity differs: %+v", result)
+				}
+			} else {
+				var failure *readFailure
+				if !errors.As(err, &failure) || failure.Cleanup || strings.Contains(err.Error(), "secret") {
+					t.Fatalf("unsafe or unreaped failure: %v", err)
+				}
+				if strings.HasPrefix(mode, "status-") {
+					status, _ := strconv.Atoi(strings.TrimPrefix(mode, "status-"))
+					if failure.Retryable != retryStatus(status) || result.Bytes != 0 {
+						t.Fatalf("HTTP failure retained bytes or changed retry class: %+v", result)
+					}
+				}
+			}
+		})
+	}
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "success")
+	sink, err := os.CreateTemp(t.TempDir(), "closed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink.Close()
+	if _, err := githubAttempt(path, sink, 10, 2*time.Second); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("primary sink error lost: %v", err)
+	}
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "retry")
+	t.Setenv("POLARIS_CI_TEST_GH_COUNTER", filepath.Join(directory, "attempt"))
+	sink, err = os.CreateTemp(t.TempDir(), "retry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sink.Close()
+	if _, err := sink.WriteString("old"); err != nil {
+		t.Fatal(err)
+	}
+	budget := retryBudget{}
+	result, err := readGitHub(path, sink, 10, &budget, readLimits{2 * time.Second, 6 * time.Second, time.Second}, nil)
+	if err != nil || budget.ExtraGETs != 1 || result.SHA256 != sha256Hex([]byte("hello")) {
+		t.Fatalf("retry body/hash/budget differs: %+v, %v", result, err)
+	}
+	if _, err := sink.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(sink)
+	if err != nil || string(body) != "hello" {
+		t.Fatalf("partial body survived retry: %q, %v", body, err)
+	}
+}
+
+func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
+	root := t.TempDir()
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureFile(t, root, "source", "tracked bytes")
+	fixtureSourceGit(t, root, "add", ".")
+	fixtureSourceGit(t, root, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "peer source")
+	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
+	tree := fixtureSourceGit(t, root, "rev-parse", "HEAD^{tree}")
+	t.Chdir(root)
+	for key, value := range map[string]string{
+		"GITHUB_ACTIONS": "true", "RUNNER_OS": "Linux", "GITHUB_REPOSITORY": repository,
+		"GITHUB_REPOSITORY_ID": repositoryID, "GITHUB_EVENT_NAME": "workflow_dispatch",
+		"GITHUB_SHA": source, "GITHUB_WORKFLOW_SHA": source, "GITHUB_RUN_ID": "123", "GITHUB_RUN_ATTEMPT": "2",
+		"GITHUB_REF": "refs/tags/v1.15.0-polaris-alpha.12.31", "GH_TOKEN": "inert-fixture-token",
+		"GITHUB_WORKFLOW_REF": repository + "/.github/workflows/build.yml@refs/tags/v1.15.0-polaris-alpha.12.31",
+	} {
+		t.Setenv(key, value)
+	}
+	child := fixtureSourceCLI(t)
+	t.Setenv("PATH", filepath.Dir(child)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "peer")
+	native := t.TempDir()
+	row := fmt.Sprintf(`{"sourceCommit":"%s","sourceTree":"%s","version":"1.15.0-polaris-alpha.12.31","tag":"v1.15.0-polaris-alpha.12.31","target":"linux/amd64","variant":{"linkage":"shared-purego"}}`, source, tree)
+	fixtureFile(t, native, "native-row-fixture.json", row)
+	context := map[string]any{}
+	if err := peerLocalContext(root, native, context); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	reference := "v1.15.0-polaris-alpha.12.31"
+	repo := map[string]any{"id": json.Number(repositoryID), "full_name": repository}
+	runRow := map[string]any{
+		"id": 123, "run_attempt": 2, "head_sha": source, "head_branch": reference,
+		"event": "workflow_dispatch", "path": ".github/workflows/build.yml", "repository": repo, "head_repository": repo,
+		"run_started_at": now.Add(-time.Minute).Format(time.RFC3339),
+	}
+	item := map[string]any{
+		"id": 31, "name": peerArtifactName, "digest": "sha256:" + strings.Repeat("0", 64), "size_in_bytes": 5,
+		"created_at": now.Add(-time.Second).Format(time.RFC3339), "expires_at": now.Add(time.Hour).Format(time.RFC3339), "expired": false,
+		"workflow_run": map[string]any{
+			"id": 123, "repository_id": json.Number(repositoryID),
+			"head_repository_id": json.Number(repositoryID), "head_sha": source, "head_branch": reference,
+		},
+	}
+	fixtureReply := func(key string, payload any) {
+		t.Helper()
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv(key, string(raw))
+	}
+	fixtureReply("POLARIS_CI_TEST_PEER_RUN", runRow)
+	fixtureReply("POLARIS_CI_TEST_PEER_ARTIFACTS", map[string]any{"total_count": 1, "artifacts": []any{item}})
+	out := t.TempDir()
+	admission := filepath.Join(out, "admission.json")
+	failure := filepath.Join(out, "failure.json")
+	args := []string{"peer-metadata", "--mode", "acquire", "--native", native, "--admission", admission, "--failure", failure}
+	if err := run(args); err != nil {
+		t.Fatal(err)
+	}
+	artifact, err := verifyPeerAdmission(admission, context)
+	if err != nil || artifact["id"] != json.Number("31") || artifact["digest"] != item["digest"] || len(artifact) != 6 {
+		t.Fatalf("exact same-run artifact verification: %v, %v", artifact, err)
+	}
+	if _, err := os.Stat(failure); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unexpected acquisition failure facts: %v", err)
+	}
+	// The credential-free consumer freshly binds the native row's raw bytes.
+	fixtureFile(t, native, "native-row-fixture.json", row+"\n")
+	if err := run([]string{"peer-metadata", "--mode", "verify", "--native", native, "--admission", admission}); err == nil {
+		t.Fatal("changed native row retained metadata authority")
+	}
+
+	fixtureFile(t, native, "native-row-fixture.json", row)
+	for _, item := range []struct {
+		name     string
+		response map[string]any
+	}{
+		{"duplicate", map[string]any{"total_count": 2, "artifacts": []any{item, item}}},
+		{"incomplete", map[string]any{"total_count": 2, "artifacts": []any{item}}},
+	} {
+		t.Run(item.name, func(t *testing.T) {
+			fixtureReply("POLARIS_CI_TEST_PEER_ARTIFACTS", item.response)
+			if _, err := acquirePeerAdmission(context, func(map[string]any) {}); err == nil {
+				t.Fatal("unsafe inventory admitted")
 			}
 		})
 	}

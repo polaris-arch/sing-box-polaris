@@ -1675,14 +1675,12 @@ def verify_same_run_context(root, row):
             'runAttempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'workflowCommit': os.environ['GITHUB_WORKFLOW_SHA']}
 
 
-def artifact_metadata(context, admission, directory):
-    from native_peer_metadata import actions_context, bind_row, load
-    if admission is None:
-        raise ValueError('same-run artifact metadata admission missing')
-    actual = actions_context()
-    if any(actual[key] != context[key] for key in ('sourceCommit', 'workflowCommit', 'runId', 'runAttempt')):
-        raise ValueError('artifact admission and native runner context differ')
-    return load(admission, bind_row(directory, actual))
+def read_peer_metadata(tool, mode, directory, admission=None):
+    command = [str(tool), 'peer-metadata', '--mode', mode, '--native', str(directory)]
+    if admission is not None:
+        command += ['--admission', str(admission)]
+    result = subprocess.run(command, check=True, capture_output=True, timeout=20)
+    return json.loads(result.stdout)
 
 
 def validate_executable_members(row, members):
@@ -1720,7 +1718,7 @@ def execute_cases(receipt, execute, deadline):
             blocked={'kind':kind,'mutation':mutation,'index':len(receipt['cases'])-1}
 
 
-def run_suite(directory, output, admission=None):
+def run_suite(directory, output, admission, metadata_tool):
     from native_release_index import read_archive, smoke_temp_directory
     root = Path(__file__).resolve().parents[2]
     if any(os.environ.get(key) for key in ('GH_TOKEN', 'GITHUB_TOKEN')):
@@ -1729,7 +1727,7 @@ def run_suite(directory, output, admission=None):
     if len(rows) != 1: raise ValueError('requires one exact same-run native row')
     row_raw = rows[0].read_bytes(); row = json.loads(row_raw)
     context = verify_same_run_context(root,row)
-    actual_artifact=artifact_metadata(context, admission, directory)
+    actual_artifact=read_peer_metadata(metadata_tool, 'verify', directory, admission)
     archive = directory/row['archive']['name']
     if archive.parent != directory or digest(archive.read_bytes()) != row['archive']['sha256']:
         raise ValueError('same-run final archive identity differs')
@@ -1790,31 +1788,47 @@ def run_suite(directory, output, admission=None):
     return receipt
 
 
+def write_preflight_failure(output, stage, facts):
+    output.mkdir(parents=True, exist_ok=False)
+    receipt = {**facts, 'schema': 'polaris-native-controlled-peer-v1', 'status': 'FAIL', 'stage': stage,
+               'publicationEligible': False,
+               'cases': [{'kind': kind, 'mutation': mutation, 'status': 'NOT_RUN', 'reason': stage + '_failed'}
+                         for kind, mutation in case_matrix()]}
+    (output/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n', encoding='utf-8')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory',type=Path,nargs='?')
-    parser.add_argument('--output',type=Path)
+    parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--admission',type=Path)
+    parser.add_argument('--metadata-tool',type=Path)
+    parser.add_argument('--admission-failure',type=Path)
     args = parser.parse_args()
-    output=args.output.resolve() if args.output else None
-    stage='native_execution_preflight'
+    output = args.output.resolve()
+    if args.admission_failure:
+        owned = args.admission_failure
+        facts = {'context': {}, 'metadataReads': [], 'errorType': 'MetadataError',
+                 'error': 'metadata tool failed before recording details'}
+        if owned.is_file() and not owned.is_symlink() and owned.stat().st_size <= 2*1024**2:
+            recorded = json.loads(owned.read_bytes())
+            facts.update({key: recorded[key] for key in (*facts, 'transportFailure') if key in recorded})
+        write_preflight_failure(output, 'artifact_metadata_admission', facts)
+        return
     try:
-        if args.directory is None or output is None:parser.error('peer execution needs native directory and receipt output')
-        run_suite(args.directory.resolve(strict=True),output,args.admission)
+        if args.directory is None or args.metadata_tool is None or args.admission is None:
+            raise ValueError('peer execution needs native directory and metadata admission')
+        run_suite(args.directory.resolve(strict=True), output, args.admission, args.metadata_tool)
     except Exception as error:
-        if output is not None and not (output/'receipt.json').exists():
-            output.mkdir(parents=True, exist_ok=True)
-            known_context = {}
-            from native_peer_metadata import actions_context, bind_row
-            try:
-                known_context = actions_context()
-                known_context = bind_row(args.directory, known_context)
-            except Exception:
-                pass  # Keep only the identity predicates already proved, never admit on this path.
-            (output/'receipt.json').write_text(json.dumps({'schema':'polaris-native-controlled-peer-v1','status':'FAIL',
-                'stage':stage,'errorType':type(error).__name__,'error':safe_exception(error),'publicationEligible':False,
-                'context':known_context,
-                'cases':[{'kind':kind,'mutation':mutation,'status':'NOT_RUN','reason':stage+'_failed'} for kind,mutation in case_matrix()]},indent=2)+'\n')
+        if not (output/'receipt.json').exists():
+            context = {}
+            if args.metadata_tool is not None and args.directory is not None:
+                try:
+                    context = read_peer_metadata(args.metadata_tool, 'describe', args.directory)
+                except (OSError, ValueError, subprocess.SubprocessError):
+                    pass  # Retain only identity facts already proved.
+            write_preflight_failure(output, 'native_execution_preflight',
+                {'context': context, 'errorType': type(error).__name__, 'error': safe_exception(error)})
         raise
 
 
