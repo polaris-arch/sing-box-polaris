@@ -641,7 +641,7 @@ def distribution_materials(index, root=Path('.')):
  overlay_inputs=validate_overlay(root)
  inputs=['scripts/ci/cronet_windows_overlay.py',*overlay_inputs,'go.mod','go.sum','.gitmodules','.github/go-toolchains.json',
          'release/dependency-sources/sing-vmess-replacement.json',
-         'release/dependency-sources/sing-vmess-vision.patch','scripts/ci/vision_source.py',
+         'release/dependency-sources/sing-vmess-vision.patch',
          'release/ci/distribution-materials.json',
          'release/ci/current-module-sources.json','release/polaris-public-source-inputs.json',
          'release/ci/current44-notice-mappings.json','release/licenses/CURRENT44-NOTICE-CANDIDATE.txt',
@@ -653,11 +653,10 @@ def distribution_materials(index, root=Path('.')):
          'release/dependency-sources/windivert/upstream-release-driver-proof.json',
          'release/polaris-cronet-materials.json','release/polaris-cronet-graph-kernel-materials.json',
          'scripts/ci/native_release_index.py',
-         'release/GO_VERSION','cmd/internal/ci/main.go','cmd/internal/ci/source.go','cmd/internal/ci/format.go',
-         'cmd/internal/ci/g4_candidate.go','cmd/internal/ci/patch_packages.go','cmd/internal/ci/runtime_proto.go',
-         'cmd/internal/ci/receipts.go',
+         'release/GO_VERSION',
          'common/badversion/version.go','common/badversion/version_json.go',
          '.github/workflows/build.yml']
+ inputs += [p.relative_to(root).as_posix() for p in (root/'cmd/internal/ci').glob('*.go') if not p.name.endswith('_test.go')]
  if any('trustedExecution' in row for row in index['platforms']):
   inputs += ['scripts/ci/tls_fingerprint_probe.py','release/ci/native-release-index.schema.json']
  toolchain=json.loads((root/'.github/go-toolchains.json').read_text(encoding='utf-8'))

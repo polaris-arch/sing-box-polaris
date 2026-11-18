@@ -3,15 +3,602 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestMain(tests *testing.M) {
+	mode := os.Getenv("POLARIS_CI_TEST_GH_MODE")
+	if mode == "" || !strings.HasPrefix(filepath.Base(os.Args[0]), "gh") {
+		os.Exit(tests.Run())
+	}
+	// Exercise the actual subprocess/pipes without network access or a Python fixture.
+	if mode == "tls" {
+		if len(os.Args) == 3 && slices.Equal(os.Args[1:], []string{"tools", "tls-fingerprints"}) {
+			fmt.Fprint(os.Stdout, os.Getenv("POLARIS_CI_TEST_TLS_DOCUMENT"))
+			os.Exit(0)
+		}
+		if len(os.Args) != 4 || os.Args[1] != "check" || os.Args[2] != "-c" {
+			os.Exit(2)
+		}
+		data, err := os.ReadFile(os.Args[3])
+		if err != nil {
+			os.Exit(3)
+		}
+		var configuration map[string]any
+		if err := json.Unmarshal(data, &configuration); err != nil {
+			os.Exit(3)
+		}
+		outbound := configuration["outbounds"].([]any)[0].(map[string]any)
+		settings := outbound["tls"].(map[string]any)["utls"].(map[string]any)
+		if settings["enabled"] == true {
+			fmt.Fprint(os.Stderr, "stub uTLS unavailable")
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	if len(os.Args) != 6 || !slices.Equal(os.Args[1:5], []string{"api", "--include", "--method", "GET"}) {
+		os.Exit(2)
+	}
+	if mode == "idle" {
+		os.Stdout.Close()
+		os.Stderr.Close()
+		time.Sleep(10 * time.Second)
+		os.Exit(0)
+	}
+	if mode == "stderr-flood" {
+		fmt.Fprint(os.Stderr, strings.Repeat("secret", 50000))
+	}
+	fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\nLocation: https://secret.invalid/?sig=secret\r\nX-GitHub-Request-Id: safe\r\n\r\nhello")
+	os.Exit(0)
+}
+
+func fixtureSourceCLI(t *testing.T) string {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "gh"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	filename := filepath.Join(t.TempDir(), name)
+	if err := os.Link(executable, filename); err != nil {
+		source, err := os.Open(executable)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer source.Close()
+		target, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o700)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, copyErr := io.Copy(target, source)
+		if err := errors.Join(copyErr, target.Close()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return filename
+}
+
+func fixtureTLSCapabilities(version, source, goVersion string) map[string]any {
+	return map[string]any{
+		"schema":      "polaris-tls-fingerprint-capabilities-v1",
+		"coreVersion": version, "sourceCommit": source, "goVersion": goVersion, "requiredGoVersion": goVersion,
+		"buildTags": "stub", "os": runtime.GOOS, "arch": runtime.GOARCH,
+		"enabled": false, "sourceModified": false, "defaultFingerprint": "chrome",
+		"randomSemantics": "process browser selection", "randomizedSemantics": "process seeded generator",
+		"realityX25519MLKEM768": "offer only", "negotiationEvidence": "runtime handshake is separate",
+		"shadowTLSSessionIDWithECHSupported": false, "curvePreferencesSupported": false,
+		"modules": []any{}, "profiles": []any{}, "legacyChromeAliases": []any{},
+	}
+}
+
+func TestSourceCommandBoundsRetirementAndRealTestExecution(t *testing.T) {
+	child := fixtureSourceCLI(t)
+	args := []string{child, "api", "--include", "--method", "GET", "repos/polaris-arch/sing-box-polaris"}
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "success")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	stdout, _, code, err := sourceCommandOutput(ctx, "", nil, 4096, args...)
+	cancel()
+	if err != nil || code == nil || *code != 0 || !strings.HasSuffix(stdout, "hello") {
+		t.Fatalf("owned child failed: %v, %v", code, err)
+	}
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "stderr-flood")
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	_, stderr, _, err := sourceCommandOutput(ctx, "", nil, 4096, args...)
+	cancel()
+	if err == nil || len(stderr) > 4096 || !strings.Contains(err.Error(), "byte bound") {
+		t.Fatalf("diagnostic flood admitted: %d, %v", len(stderr), err)
+	}
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "idle")
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	command := exec.CommandContext(ctx, args[0], args[1:]...)
+	command.Stdout, command.Stderr = io.Discard, io.Discard
+	code, err = runSourceProcess(ctx, command)
+	cancel()
+	if !errors.Is(err, context.DeadlineExceeded) || code != nil || command.ProcessState == nil {
+		t.Fatalf("idle child was not retired: %v, %v", code, err)
+	}
+	logfile := filepath.Join(t.TempDir(), "tests.jsonl")
+	for _, record := range []struct {
+		data  string
+		valid bool
+	}{
+		{"unframed diagnostic\n{\"Action\":\"pass\",\"Test\":\"TestOwned\"}\n", true},
+		{"", false},
+		{"{\"Action\":\"pass\",\"Test\":\"AnotherTest\"}\n", false},
+		{"{\"Action\":\"pass\",\"Test\":\"TestOwned\"}\n{\"Action\":\"skip\",\"Test\":\"TestOwned\"}\n", false},
+	} {
+		if err := os.WriteFile(logfile, []byte(record.data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := requireSourceTests(logfile, []string{"TestOwned"}); (err == nil) != record.valid {
+			t.Fatalf("terminal test execution differs: %v", err)
+		}
+	}
+}
+
+func TestSourceInputReceiptsAndIncompleteCostCannotClaimMeasurements(t *testing.T) {
+	root := moduleFixture(t)
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureSourceGit(t, root, "add", ".")
+	fixtureSourceGit(t, root, "commit", "-qm", "source input fixture")
+	source := fixtureSourceGit(t, root, "rev-parse", "HEAD")
+	for key, value := range map[string]string{
+		"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": repository, "GITHUB_REPOSITORY_ID": repositoryID,
+		"GITHUB_EVENT_NAME": "workflow_dispatch", "GITHUB_JOB": "utls_gate", "GITHUB_SHA": source,
+		"GITHUB_RUN_ID": "99999999999999999999", "GITHUB_RUN_ATTEMPT": "1",
+		"SOURCE_BUILD": "Source", "SOURCE_GENERATE_ONLY": "false", "SOURCE_RUNNER": "fixture",
+		"RUNNER_TEMP": t.TempDir(), "RUNNER_OS": "Linux",
+	} {
+		t.Setenv(key, value)
+	}
+	t.Setenv("TMPDIR", os.Getenv("TMPDIR"))
+	for _, changed := range []struct{ key, value string }{
+		{"GITHUB_RUN_ID", "0"}, {"SOURCE_BUILD", "Binary"}, {"SOURCE_GENERATE_ONLY", "true"}, {"GITHUB_JOB", "other"}, {"GITHUB_REPOSITORY_ID", "1"},
+	} {
+		t.Run(changed.key, func(t *testing.T) {
+			t.Setenv(changed.key, changed.value)
+			if _, err := sourceGateContext(); err == nil {
+				t.Fatal("unowned Source observation admitted")
+			}
+		})
+	}
+	if _, err := sourceGateContext(); err != nil {
+		t.Fatal(err)
+	}
+	read := func(filename string) map[string]any {
+		t.Helper()
+		file, err := os.Open(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		var value map[string]any
+		if err := uniqueJSON(file, &value); err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	output := t.TempDir()
+	if err := retainSourceInput(root, output); err != nil {
+		t.Fatal(err)
+	}
+	filename := filepath.Join(output, "source-ci-input.json")
+	actual := read(filename)
+	if actual["runId"] != json.Number("99999999999999999999") || actual["checkoutIdentityVerified"] != true || actual["testOrNativePASS"] != false || actual["measurementsComplete"] != false {
+		t.Fatalf("input receipt changed authority or number identity: %v", actual)
+	}
+	before, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := retainSourceInput(root, output); err == nil {
+		t.Fatal("exclusive input receipt overwritten")
+	}
+	after, err := os.ReadFile(filename)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatalf("retained source receipt changed: %v", err)
+	}
+	fixtureFile(t, root, "untracked-input", "dirty")
+	failed := t.TempDir()
+	if err := retainSourceInput(root, failed); err == nil {
+		t.Fatal("dirty Source checkout admitted")
+	}
+	actual = read(filepath.Join(failed, "source-ci-input.json"))
+	if actual["checkoutIdentityVerified"] != false || actual["error"] == nil {
+		t.Fatalf("failed source identity not retained: %v", actual)
+	}
+	if runtime.GOOS == "linux" {
+		cost := t.TempDir()
+		if err := measureTLSCost(root, cost); err == nil {
+			t.Fatal("dirty source reached cost measurement")
+		}
+		actual = read(filepath.Join(cost, "cost.json"))
+		if actual["measurementsComplete"] != false || actual["status"] != "incomplete" || actual["delta"] != nil || actual["baselineWorktreeRetired"] != false {
+			t.Fatalf("incomplete observation claimed a measurement: %v", actual)
+		}
+	}
+}
+
+func TestSourceCostRetiresOnlyItsOwnedWorkspaceAndReportsDebt(t *testing.T) {
+	for _, kind := range []string{"clean", "dirty", "partial", "foreign-file"} {
+		t.Run(kind, func(t *testing.T) {
+			root := moduleFixture(t)
+			fixtureSourceGit(t, root, "init", "-q")
+			fixtureSourceGit(t, root, "add", ".")
+			fixtureSourceGit(t, root, "commit", "-qm", "baseline fixture")
+			owner, err := os.MkdirTemp(t.TempDir(), "cost-owner-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			slot := filepath.Join(owner, "baseline")
+			if kind == "partial" {
+				if err := os.Mkdir(slot, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				fixtureSourceGit(t, root, "worktree", "add", "--detach", slot, "HEAD")
+			}
+			if kind == "dirty" {
+				fixtureFile(t, slot, "untracked", "preserve")
+			}
+			if kind == "foreign-file" {
+				fixtureFile(t, owner, "foreign", "preserve")
+			}
+			err = retireTLSWorkspace(root, owner, slot, nil)
+			if (err == nil) != (kind == "clean") {
+				t.Fatalf("%s retirement result differs: %v", kind, err)
+			}
+			if kind == "clean" {
+				if _, err := os.Stat(owner); !os.IsNotExist(err) {
+					t.Fatalf("owned workspace retained after success: %v", err)
+				}
+			} else {
+				if _, err := os.Stat(owner); err != nil {
+					t.Fatalf("cleanup debt path lost: %v", err)
+				}
+				if kind == "dirty" {
+					data, err := os.ReadFile(filepath.Join(slot, "untracked"))
+					if err != nil || string(data) != "preserve" {
+						t.Fatalf("unowned bytes removed: %v", err)
+					}
+				}
+				if kind == "foreign-file" {
+					data, err := os.ReadFile(filepath.Join(owner, "foreign"))
+					if err != nil || string(data) != "preserve" {
+						t.Fatalf("unknown owner bytes removed: %v", err)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestTLSRuntimeCapabilityAdmission(t *testing.T) {
+	root := "../../.."
+	pin, err := os.ReadFile(filepath.Join(root, "release/GO_VERSION"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	version, source, goVersion := "1.15.0-polaris-alpha.12", strings.Repeat("a", 40), "go"+strings.TrimSpace(string(pin))
+	document := func() map[string]any { return fixtureTLSCapabilities(version, source, goVersion) }
+	check := func(value map[string]any) error {
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		_, err = validateTLSCapabilities(root, raw, source, version, goVersion, runtime.GOOS+"/"+runtime.GOARCH, false)
+		return err
+	}
+	if err := check(document()); err != nil {
+		t.Fatalf("valid stub rejected: %v", err)
+	}
+	for _, change := range []func(map[string]any){
+		func(value map[string]any) { value["sourceModified"] = nil },
+		func(value map[string]any) { value["sourceModified"] = true },
+		func(value map[string]any) { value["sourceModified"] = "false" },
+		func(value map[string]any) { value["sourceCommit"] = strings.Repeat("b", 40) },
+		func(value map[string]any) { value["legacyChromeAliases"] = []string{"chrome_133"} },
+	} {
+		value := document()
+		change(value)
+		if err := check(value); err == nil {
+			t.Fatalf("invalid runtime binding admitted: %v", value)
+		}
+	}
+	if modules, err := linkedTLSModules(root); err != nil || modules[metaModule].Replace == nil {
+		t.Fatalf("source-owned linked module identities differ: %v, %v", modules, err)
+	}
+}
+
+func TestTLSRuntimeProbeOwnsQueryControlsAndFailureEvidence(t *testing.T) {
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin, err := os.ReadFile(filepath.Join(root, "release/GO_VERSION"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	version, source, goVersion := tlsGateVersion, strings.Repeat("a", 40), "go"+strings.TrimSpace(string(pin))
+	document := fixtureTLSCapabilities(version, source, goVersion)
+	child := fixtureSourceCLI(t)
+	t.Setenv("POLARIS_CI_TEST_GH_MODE", "tls")
+	publish := func() {
+		t.Helper()
+		raw, err := json.Marshal(document)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("POLARIS_CI_TEST_TLS_DOCUMENT", string(raw))
+	}
+	publish()
+	probe := func() (map[string]any, error) {
+		return probeTLSRuntime(context.Background(), root, child, nil, source, version, goVersion, runtime.GOOS+"/"+runtime.GOARCH, false)
+	}
+	receipt, err := probe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt["networkHandshakeValidated"] != false || receipt["coreSHA256"] == "" {
+		t.Fatalf("probe scope or identity changed: %v", receipt)
+	}
+	admitted := false
+	for _, observation := range receipt["configurationChecks"].([]map[string]any) {
+		if observation["expectedPass"] == true {
+			if observation["enabled"] != false || observation["exitCode"] != 0 {
+				t.Fatalf("stub admitted enabled uTLS: %v", observation)
+			}
+			admitted = true
+		}
+	}
+	if !admitted {
+		t.Fatal("disabled uTLS control was not executed")
+	}
+	query := child + "-capability-query.json"
+	if _, err := os.Stat(query); err != nil {
+		t.Fatal("original capability query missing")
+	}
+	document["sourceModified"] = nil
+	publish()
+	if _, err := probe(); err == nil {
+		t.Fatal("nullable source identity entered actual runtime controls")
+	}
+	document["sourceModified"] = false
+	publish()
+	if err := os.Remove(query); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(query, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := probe(); err == nil {
+		t.Fatal("probe succeeded without retaining its original query")
+	}
+}
+
+func fixtureSourceGit(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	output, err := git(root, append([]string{"-c", "user.name=Source fixture", "-c", "user.email=fixture@example.invalid"}, args...)...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(output))
+}
+
+func fixtureVisionSource(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	original, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"go.mod", ".gitattributes", visionBinding, "release/dependency-sources/sing-vmess-vision.patch", "release/licenses/CURRENT44-NOTICE-CANDIDATE.txt"} {
+		data, err := os.ReadFile(filepath.Join(original, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixtureFile(t, root, name, string(data))
+	}
+	nested := filepath.Join(root, "third_party/sing-vmess")
+	if err := os.MkdirAll(filepath.Dir(nested), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.CopyFS(nested, os.DirFS(filepath.Join(original, "third_party/sing-vmess"))); err != nil {
+		t.Fatal(err)
+	}
+	fixtureSourceGit(t, root, "init", "-q")
+	fixtureSourceGit(t, root, "config", "core.autocrlf", "false")
+	fixtureSourceGit(t, root, "add", "--all")
+	fixtureSourceGit(t, root, "update-index", "--chmod=+x", "third_party/sing-vmess/.github/update_dependencies.sh")
+	fixtureSourceGit(t, root, "commit", "-qm", "exact source fixture")
+	return root
+}
+
+func TestVisionSourceByteModeAndCheckoutBoundaries(t *testing.T) {
+	for _, kind := range []string{"valid", "bytes", "mode", "extra", "missing", "link", "root-replace", "provider-version", "patch", "notice", "tree", "crlf", "old-attributes"} {
+		t.Run(kind, func(t *testing.T) {
+			root := fixtureVisionSource(t)
+			target := filepath.Join(root, "third_party/sing-vmess/vless/vision.go")
+			replace := func(name, old, new string) {
+				t.Helper()
+				data, err := os.ReadFile(filepath.Join(root, name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(string(data), old) {
+					t.Fatalf("fixture input missing: %s", old)
+				}
+				fixtureFile(t, root, name, strings.ReplaceAll(string(data), old, new))
+			}
+			switch kind {
+			case "bytes":
+				data, err := os.ReadFile(target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(target, append(data, '\n'), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			case "mode":
+				if runtime.GOOS == "windows" {
+					fixtureSourceGit(t, root, "update-index", "--chmod=+x", "third_party/sing-vmess/vless/vision.go")
+				} else if err := os.Chmod(target, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			case "extra":
+				fixtureFile(t, root, "third_party/sing-vmess/foreign.go", "package vmess\n")
+			case "missing":
+				if err := os.Remove(target); err != nil {
+					t.Fatal(err)
+				}
+			case "link":
+				if runtime.GOOS == "windows" {
+					// A private junction exercises real reparse metadata without symlink privileges.
+					directory := filepath.Dir(target)
+					foreign := filepath.Join(t.TempDir(), "provider-files")
+					if err := os.Rename(directory, foreign); err != nil {
+						t.Fatal(err)
+					}
+					if output, err := exec.Command("cmd", "/c", "mklink", "/J", directory, foreign).CombinedOutput(); err != nil {
+						t.Fatalf("private junction: %s: %v", output, err)
+					}
+				} else {
+					if err := os.Remove(target); err != nil {
+						t.Fatal(err)
+					}
+					foreign := filepath.Join(t.TempDir(), "vision.go")
+					fixtureFile(t, filepath.Dir(foreign), filepath.Base(foreign), "package vless\n")
+					if err := os.Symlink(foreign, target); err != nil {
+						t.Fatal(err)
+					}
+				}
+			case "root-replace":
+				replace("go.mod", "=> ./third_party/sing-vmess", "=> ../foreign")
+			case "provider-version":
+				replace("go.mod", refractionVersion, "v0.0.1")
+			case "patch":
+				fixtureFile(t, root, "release/dependency-sources/sing-vmess-vision.patch", "different patch")
+			case "notice":
+				fixtureFile(t, root, "release/licenses/CURRENT44-NOTICE-CANDIDATE.txt", "different notice")
+			case "tree":
+				replace(visionBinding, `"replacementTree": "c06c20c35da9997e56b5f6169143e3c0261da672"`, `"replacementTree": "0000000000000000000000000000000000000000"`)
+			}
+			if kind == "crlf" || kind == "old-attributes" {
+				if kind == "old-attributes" {
+					attributes, err := os.ReadFile(filepath.Join(root, ".gitattributes"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					marker := bytes.Index(attributes, []byte("# Source-owned Vision closure"))
+					if marker < 0 {
+						t.Fatal("Vision attribute section missing")
+					}
+					fixtureFile(t, root, ".gitattributes", string(attributes[:marker]))
+					fixtureSourceGit(t, root, "add", ".gitattributes")
+					fixtureSourceGit(t, root, "commit", "-qm", "old checkout attributes")
+				}
+				fixtureSourceGit(t, root, "config", "core.autocrlf", "true")
+				paths := []string{"third_party/sing-vmess", visionBinding, "release/dependency-sources/sing-vmess-vision.patch", "release/licenses/CURRENT44-NOTICE-CANDIDATE.txt"}
+				for _, name := range paths {
+					if err := os.RemoveAll(filepath.Join(root, name)); err != nil {
+						t.Fatal(err)
+					}
+				}
+				fixtureSourceGit(t, root, append([]string{"checkout", "HEAD", "--"}, paths...)...)
+				if kind == "old-attributes" {
+					data, err := os.ReadFile(target)
+					if err != nil || !bytes.Contains(data, []byte("\r\n")) {
+						t.Fatalf("old attribute fixture did not produce CRLF: %v", err)
+					}
+				}
+			}
+			diagnostics := map[string]any{}
+			actual, err := validateVisionSource(root, diagnostics)
+			if good := kind == "valid" || kind == "crlf"; (err == nil) != good {
+				t.Fatalf("Vision %s boundary differs: %v", kind, err)
+			}
+			if err == nil && actual["replacementTree"] != "c06c20c35da9997e56b5f6169143e3c0261da672" {
+				t.Fatalf("raw checkout tree changed: %v", actual)
+			}
+		})
+	}
+}
+
+func TestVisionGitInventoryAndTrustedExecutableMetadata(t *testing.T) {
+	for _, kind := range []string{"valid", "index-mode", "index-blob", "unmerged", "head-index-tamper", "missing-git"} {
+		t.Run(kind, func(t *testing.T) {
+			root := fixtureVisionSource(t)
+			path := "third_party/sing-vmess/vless/vision.go"
+			switch kind {
+			case "index-mode":
+				fixtureSourceGit(t, root, "update-index", "--chmod=-x", "third_party/sing-vmess/.github/update_dependencies.sh")
+			case "index-blob", "head-index-tamper":
+				data, err := os.ReadFile(filepath.Join(root, path))
+				if err != nil {
+					t.Fatal(err)
+				}
+				fixtureFile(t, root, path, string(data)+"\n")
+				fixtureSourceGit(t, root, "add", path)
+				if kind == "head-index-tamper" {
+					fixtureSourceGit(t, root, "commit", "-qm", "changed source")
+				}
+			case "unmerged":
+				blob := fixtureSourceGit(t, root, "rev-parse", "HEAD:"+path)
+				fixtureSourceGit(t, root, "update-index", "--force-remove", path)
+				command := exec.Command("git", "update-index", "--index-info")
+				command.Dir = root
+				command.Stdin = strings.NewReader("100644 " + blob + " 1\t" + path + "\n")
+				if output, err := command.CombinedOutput(); err != nil {
+					t.Fatalf("index stage fixture: %v: %s", err, output)
+				}
+			case "missing-git":
+				if err := os.Rename(filepath.Join(root, ".git"), filepath.Join(root, "disabled-git-metadata")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			diagnostics := map[string]any{}
+			_, err := visionGitInventory(root, diagnostics)
+			good := kind == "valid" || kind == "head-index-tamper"
+			if (err == nil) != good {
+				t.Fatalf("Git inventory %s boundary differs: %v", kind, err)
+			}
+			if runtime.GOOS == "windows" {
+				if kind == "valid" {
+					executable := filepath.Join(root, "third_party/sing-vmess/.github/update_dependencies.sh")
+					if err := os.Chmod(executable, 0o644); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := validateVisionSource(root, map[string]any{}); err != nil {
+						t.Fatalf("trusted executable Git mode rejected: %v", err)
+					}
+				} else {
+					full := map[string]any{}
+					if _, err := validateVisionSource(root, full); err == nil {
+						t.Fatal("invalid Windows source metadata admitted")
+					}
+					if kind == "unmerged" && (full["actualTree"] != nil || full["treeUnavailableReason"] == nil || full["invalidGitEntry"] == nil) {
+						t.Fatalf("invalid executable metadata claimed a tree: %v", full)
+					}
+				}
+			}
+		})
+	}
+}
 
 func TestPatchGitHistoryRequiresMergedBaseline(t *testing.T) {
 	root := moduleFixture(t)

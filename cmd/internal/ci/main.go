@@ -42,6 +42,10 @@ func run(args []string) error {
 		return recordCandidate(args[1:])
 	case "publisher-receipt":
 		return publisherReceipt(args[1:])
+	case "tls-gate":
+		return tlsGate(args[1:])
+	case "tls-cost":
+		return tlsCost(args[1:])
 	default:
 		return fmt.Errorf("unknown CI command: %s", args[0])
 	}

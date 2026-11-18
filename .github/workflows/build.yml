@@ -92,7 +92,7 @@ jobs:
       GOTOOLCHAIN: local
       GOFLAGS: -mod=readonly
       GOMAXPROCS: '2'
-      PYTHONDONTWRITEBYTECODE: '1'
+      GOCACHE: ${{ runner.temp }}/tls-fingerprint-go-cache
       SOURCE_BUILD: ${{ inputs.build }}
       SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
       SOURCE_RUNNER: ${{ matrix.os }}
@@ -102,19 +102,14 @@ jobs:
         ref: ${{ github.sha }}
         fetch-depth: 0
         persist-credentials: false
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Retain exact Source inputs before compatibility gates (not a test or native PASS)
-      run: python -B scripts/ci/utls_cost.py --retain-source-input --output "${{ runner.temp }}/tls-fingerprint-evidence"
     - uses: actions/setup-go@v5
       with:
         go-version-file: release/GO_VERSION
         cache: false
-    - name: Install capability schema validator
-      run: python -m pip install jsonschema==4.23.0
-    - name: Verify raw Vision source checkout semantics on the actual runner
-      run: python -B -m unittest discover -s scripts/ci -p 'test_vision_source.py'
+    - name: Retain exact Source inputs before compatibility gates (not a test or native PASS)
+      run: go run -mod=readonly ./cmd/internal/ci tls-cost --retain-source-input --output "${{ runner.temp }}/tls-fingerprint-evidence"
+    - name: Verify Source tool and raw Vision checkout controls on the actual runner
+      run: go test -mod=readonly ./cmd/internal/ci
     - name: Execute focused runtime coordinator and resource regressions natively
       timeout-minutes: 30
       shell: bash
@@ -134,11 +129,11 @@ jobs:
           | tee "$evidence/tests.jsonl"
         test -z "$(git status --porcelain --untracked-files=all)"
     - name: Run raced protocol, crypto and actual selected-core gates
-      run: python scripts/ci/utls_gate.py --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
+      run: go run -mod=readonly ./cmd/internal/ci tls-gate --output "${{ runner.temp }}/tls-fingerprint-evidence/gate"
     - name: Measure whole-migration binary and idle RSS costs
       if: always() && matrix.os == 'ubuntu-24.04'
       continue-on-error: true # Observation result, not an extra product-compatibility gate.
-      run: python scripts/ci/utls_cost.py --output "${{ runner.temp }}/tls-fingerprint-evidence/cost"
+      run: go run -mod=readonly ./cmd/internal/ci tls-cost --output "${{ runner.temp }}/tls-fingerprint-evidence/cost"
     - name: Preserve original commands, logs, identities and necessary binaries
       if: always()
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

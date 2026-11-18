@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -48,21 +50,41 @@ func fileSHA256(filename string) (string, error) {
 }
 
 func pinnedGoVersion(root string, env []string) (string, error) {
+	return sourceGoVersion(context.Background(), root, env)
+}
+
+func sourceGoVersion(parent context.Context, root string, env []string) (string, error) {
 	version, err := os.ReadFile(filepath.Join(root, "release/GO_VERSION"))
 	if err != nil {
 		return "", err
 	}
-	command := exec.Command("go", "env", "GOVERSION")
-	command.Dir, command.Env = root, env
-	actual, err := command.Output()
+	actual, err := sourceGoEnvironment(parent, root, env, "GOVERSION")
 	if err != nil {
 		return "", err
 	}
 	required := "go" + strings.TrimSpace(string(version))
-	if strings.TrimSpace(string(actual)) != required {
+	if actual[0] != required {
 		return "", fmt.Errorf("source gates require pinned %s", required)
 	}
 	return required, nil
+}
+
+func sourceGoEnvironment(parent context.Context, root string, env []string, keys ...string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(parent, 20*time.Second)
+	defer cancel()
+	args := append([]string{"go", "env"}, keys...)
+	output, _, code, err := sourceCommandOutput(ctx, root, env, 16384, args...)
+	if err != nil {
+		return nil, err
+	}
+	values := strings.Split(strings.TrimSpace(output), "\n")
+	for index := range values {
+		values[index] = strings.TrimSpace(values[index])
+	}
+	if code == nil || *code != 0 || len(values) != len(keys) {
+		return nil, fmt.Errorf("source Go environment query failed")
+	}
+	return values, nil
 }
 
 func checkedRelative(name string) bool {

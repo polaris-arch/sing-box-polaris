@@ -64,6 +64,7 @@ require (
 	github.com/sagernet/tailscale v1.102.1-sing-box-1.14-mod.5.0.20260925112514-35e61219dedd
 	github.com/sagernet/wireguard-go v0.0.8-0.20260929150556-ca3bc60c4ce7
 	github.com/sagernet/ws v0.0.0-20231204124109-acfe8907c854
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.0
 	github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
