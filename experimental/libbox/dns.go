@@ -74,6 +74,11 @@ func (p *platformTransport) close() error {
 func (p *platformTransport) Reset() {
 }
 
+// Platform lookups are per exchange and have no idle connections owned by this transport.
+// Active queries and cancellation callbacks remain governed by the call gate.
+func (*platformTransport) SetKeepIdleConnections(bool) {}
+func (*platformTransport) CloseIdleConnections()       {}
+
 func (p *platformTransport) PreferredDomain(domain string) bool {
 	return p.preferredResolver.PreferredDomain(domain)
 }
@@ -360,4 +365,5 @@ var (
 	_ adapter.DNSTransportWithPreferredDomain = (*platformTransport)(nil)
 	_ adapter.DNSTransportWithConfiguration   = (*platformTransport)(nil)
 	_ adapter.DNSTransportWithEnvironment     = (*platformTransport)(nil)
+	_ adapter.IdleConnectionKeeper            = (*platformTransport)(nil)
 )
