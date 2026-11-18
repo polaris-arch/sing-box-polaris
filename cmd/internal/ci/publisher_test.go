@@ -5,14 +5,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Reuse the repository's fake gh test binary. Test requests have no network path.
@@ -52,9 +54,18 @@ func publisherFixtureGitHub() int {
 		if err != nil {
 			return 7
 		}
+		if bytes.Contains(payload, []byte(`"draft":false`)) {
+			if reply := routes["final-get"]; reply != "" {
+				payload = []byte(reply)
+			}
+		} else if reply := routes["draft-get"]; reply != "" {
+			payload = []byte(reply)
+		}
 		fmt.Fprint(os.Stdout, "HTTP/2 200 OK\r\n\r\n")
 		fmt.Fprint(os.Stdout, string(payload))
 		return 0
+	case get && draftErr == nil && endpoint == publisherRepositoryPath+"/actions/artifacts/31/zip" && routes["GET second-zip"] != "":
+		endpoint = "second-zip"
 	case !get && method == "POST" && endpoint == publisherRepositoryPath+"/releases":
 		var request map[string]any
 		if err := uniqueJSON(os.Stdin, &request); err != nil || request["draft"] != true || request["prerelease"] != true {
@@ -71,8 +82,12 @@ func publisherFixtureGitHub() int {
 		if err := os.WriteFile(draft, []byte(routes["finalized"]), 0o600); err != nil {
 			return 11
 		}
-		if _, err := os.Stat(filepath.Join(root, "lose-patch-response")); err == nil {
-			return 12
+		if _, err := os.Stat(filepath.Join(root, "cancel-patch")); err == nil {
+			if err := os.WriteFile(filepath.Join(root, "patch-entered"), nil, 0o600); err != nil {
+				return 12
+			}
+			time.Sleep(30 * time.Second)
+			return 19
 		}
 	case !get && method == "POST" && strings.HasPrefix(endpoint, "https://uploads.github.com/"):
 		if len(args) != 8 || args[6] != "--input" {
@@ -237,18 +252,21 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 		}
 		return err
 	}
-	run := func(mode, nickname, reviewedSHA string) error {
+	runContext := func(ctx context.Context, mode, nickname, reviewedSHA string) error {
 		args := []string{mode, "--source", source, "--source-dir", producer, "--all-run", runID,
 			"--output", filepath.Join(root, nickname+"-output"), "--audit", filepath.Join(root, nickname+"-audit")}
 		if mode != "inventory" {
 			args = append(args, "--inventory-run", reviewedRun, "--inventory-sha256", reviewedSHA)
 		}
-		err := runPublisher(context.Background(), args, checkNative)
+		err := runPublisher(ctx, args, checkNative)
 		files, readErr := os.ReadDir(runner)
 		if readErr != nil || len(files) != 0 {
 			t.Fatalf("publisher scratch survived %s: %v %v", nickname, files, readErr)
 		}
 		return err
+	}
+	run := func(mode, nickname, reviewedSHA string) error {
+		return runContext(t.Context(), mode, nickname, reviewedSHA)
 	}
 	read := func(name string) []byte {
 		t.Helper()
@@ -286,8 +304,9 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 	if err := run("publish", "publish", sha256Hex(proposal)); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.HasSuffix(read("uploaded"), []byte("name="+publicName)) {
-		t.Fatal("upload lost the reviewed asset name")
+	upload := "https://uploads.github.com/" + releases + "/9/assets?name=" + publicName
+	if string(read("uploaded")) != upload {
+		t.Fatal("upload used an unexpected release or asset name")
 	}
 	status := string(read("publish-audit/storage-status.json"))
 	if !strings.Contains(status, `"remoteWriteState": "published"`) {
@@ -296,27 +315,11 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "draft")); err != nil {
 		t.Fatal(err)
 	}
-	fixtureFile(t, root, "lose-patch-response", "")
-	if err := run("publish", "uncertain", sha256Hex(proposal)); err == nil {
-		t.Fatal("lost finalization reply reported success")
-	}
-	log := strings.Split(strings.TrimSpace(string(read("calls"))), "\n")
-	last := log[len(log)-2:]
-	if !slices.Equal(last, []string{"PATCH " + releases + "/9", "GET " + releases + "/9"}) {
-		t.Fatalf("uncertain PATCH changed readback/retry behavior: %v", last)
-	}
-	status = string(read("uncertain-audit/storage-status.json"))
-	if !strings.Contains(status, `"remoteWriteState": "finalization-readback"`) || !strings.Contains(status, `"observedDraft": false`) {
-		t.Fatalf("missing uncertain publication readback: %s", status)
-	}
-	if err := os.Remove(filepath.Join(root, "draft")); err != nil {
-		t.Fatal(err)
-	}
 	fixtureFile(t, root, "lose-upload", "")
 	if err := run("publish", "upload-failure", sha256Hex(proposal)); err == nil {
 		t.Fatal("lost upload reported success")
 	}
-	log = strings.Split(strings.TrimSpace(string(read("calls"))), "\n")
+	log := strings.Split(strings.TrimSpace(string(read("calls"))), "\n")
 	if !strings.HasPrefix(log[len(log)-1], "POST https://uploads.github.com/") {
 		t.Fatalf("an uncertain upload triggered further writes: %v", log[len(log)-3:])
 	}
@@ -326,7 +329,102 @@ func TestPublisherModesShareBoundedArtifactFlow(t *testing.T) {
 	if err := run("publish", "existing-draft", sha256Hex(proposal)); err == nil || !strings.Contains(err.Error(), "existing Release") {
 		t.Fatalf("existing release was not rejected: %v", err)
 	}
-
+	resetAttempt := func() {
+		t.Helper()
+		for _, name := range []string{"draft", "lose-upload", "cancel-patch", "patch-entered"} {
+			if err := os.Remove(filepath.Join(root, name)); err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+		}
+	}
+	normalRoutes := maps.Clone(routes)
+	wrongDraft := strings.Replace(draft, `"id":9`, `"id":90`, 1)
+	wrongResult := strings.Replace(finalized, `"id":9`, `"id":90`, 1)
+	metadataRoute := "GET " + api + "/actions/artifacts/31"
+	var changedMetadata publisherArtifactMetadata
+	if err := json.Unmarshal([]byte(normalRoutes[metadataRoute]), &changedMetadata); err != nil {
+		t.Fatal(err)
+	}
+	changedMetadata.Digest = "sha256:" + strings.Repeat("f", 64)
+	changedZIP := read("31.zip")
+	changedZIP[len(changedZIP)-1] ^= 1
+	fixtureFile(t, root, "changed.zip", string(changedZIP))
+	assertReadback := func(t *testing.T, name, calls, state string) {
+		t.Helper()
+		if strings.Count(calls, "PATCH ") != 1 || !strings.HasSuffix(calls, "PATCH "+releases+"/9\nGET "+releases+"/9\n") {
+			t.Fatalf("uncertain finalization did not read back only the target: %s", calls)
+		}
+		status := string(read(name + "-audit/storage-status.json"))
+		if !strings.Contains(status, `"remoteWriteState": "`+state+`"`) ||
+			(state == "finalization-readback") != strings.Contains(status, `"observedDraft": false`) {
+			t.Fatalf("unbound publication status: %s", status)
+		}
+	}
+	for _, test := range []struct {
+		name, message, finalState string
+		override                  map[string]string
+		noUpload                  bool
+	}{
+		{"wrong-draft-tag", "draft creation response", "", map[string]string{"POST " + releases: strings.Replace(draft, tag, "different", 1)}, true},
+		{"wrong-draft-id", "draft identity or state changed", "", map[string]string{"draft-get": wrongDraft}, false},
+		{"lost-final-reply", "PATCH failed", "finalization-readback", map[string]string{"PATCH " + releases + "/9": "@absent"}, false},
+		{"wrong-final-id", "finalization response", "finalization-readback", map[string]string{"PATCH " + releases + "/9": wrongResult}, false},
+		{"unbound-readback", "finalization response", "finalization-outcome-unknown", map[string]string{"PATCH " + releases + "/9": "{}", "final-get": wrongResult}, false},
+		{"changed-second-metadata", "public ZIP identity changed", "", map[string]string{metadataRoute: encode(changedMetadata)}, true},
+		{"short-second-download", "Actions artifact ZIP size differs", "", map[string]string{"GET second-zip": "short"}, true},
+		{"changed-second-download", "Actions artifact digest missing or mismatched", "", map[string]string{"GET second-zip": "@changed.zip"}, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			resetAttempt()
+			routes = maps.Clone(normalRoutes)
+			maps.Copy(routes, test.override)
+			writeRoutes()
+			start := len(read("calls"))
+			if err := run("publish", test.name, sha256Hex(proposal)); err == nil || !strings.Contains(err.Error(), test.message) {
+				t.Fatalf("publication result differs: %v", err)
+			}
+			calls := string(read("calls")[start:])
+			if test.noUpload && strings.Contains(calls, "POST https://uploads.github.com/") {
+				t.Fatal("asset written without matching release or bytes")
+			}
+			if test.finalState != "" {
+				assertReadback(t, test.name, calls, test.finalState)
+			} else if strings.Contains(calls, "PATCH ") {
+				t.Fatalf("unconfirmed draft reached finalization: %s", calls)
+			}
+		})
+	}
+	resetAttempt()
+	routes = normalRoutes
+	writeRoutes()
+	fixtureFile(t, root, "cancel-patch", "")
+	start := len(read("calls"))
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if _, err := os.Stat(filepath.Join(root, "patch-entered")); err == nil {
+					cancel()
+					return
+				}
+			}
+		}
+	}()
+	err = runContext(ctx, "publish", "cancelled", sha256Hex(proposal))
+	cancel()
+	<-done
+	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "PATCH failed") {
+		t.Fatalf("original cancelled PATCH error lost: %v", err)
+	}
+	assertReadback(t, "cancelled", string(read("calls")[start:]), "finalization-readback")
 }
 
 func TestPublisherScratchAdmissionPrecedesDownloadAndKeepsExistingEvidence(t *testing.T) {
@@ -348,6 +446,26 @@ func TestPublisherScratchAdmissionPrecedesDownloadAndKeepsExistingEvidence(t *te
 	data, err := os.ReadFile(filename)
 	if err != nil || string(data) != "existing" || storage.live != 0 {
 		t.Fatalf("existing evidence or accounting changed: %q (%d) %v", data, storage.live, err)
+	}
+	const note = "partial retained file cleanup also failed"
+	primary := errors.New("injected partial write")
+	partial := filepath.Join(root, "partial")
+	err = storage.retained(partial, 1, "failed audit copy", func(file io.Writer) error {
+		if _, err := io.WriteString(file, "x"); err != nil {
+			return err
+		}
+		return primary
+	})
+	if !errors.Is(err, primary) || storage.live != 0 {
+		t.Fatalf("partial write error or accounting changed: %v (%d)", err, storage.live)
+	}
+	if _, err := os.Stat(partial); !os.IsNotExist(err) {
+		t.Fatalf("partial destination survived cleanup: %v", err)
+	}
+	var annotated *publisherCleanupError
+	err = publisherCleanup(primary, os.ErrPermission, note)
+	if !errors.Is(err, primary) || !errors.As(err, &annotated) || !strings.HasPrefix(annotated.note, note) {
+		t.Fatalf("cleanup failure replaced the primary failure or lost its note: %v", err)
 	}
 }
 
@@ -379,6 +497,7 @@ func TestPublisherUploadEndpointBindsExactReleaseAndAsset(t *testing.T) {
 		allowed + "?replace=true",
 		allowed + "#fragment",
 		allowed + "/extra",
+		strings.Replace(allowed, "/12/assets", "/13/assets", 1),
 	} {
 		if _, err := publisherUploadEndpoint(publisherRelease{ID: 12, UploadURL: endpoint}, "asset.zip"); err == nil {
 			t.Fatalf("unapproved asset endpoint admitted: %s", endpoint)

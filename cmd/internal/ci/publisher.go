@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -203,11 +204,7 @@ func (p *publisher) identity() error {
 }
 
 func (p *publisher) currentTag() (string, error) {
-	// Each existing annotated-tag verification admitted its own two GETs.
-	var budget retryBudget
-	return remoteTagIdentity(p.tag, p.source, "", func(endpoint string, target any) error {
-		return publisherRemoteJSON(p.ctx, endpoint, target, &budget)
-	})
+	return remoteTagIdentity(p.tag, p.source, "", p.get)
 }
 
 func (p *publisher) requireTag(message string) error {
@@ -315,7 +312,7 @@ func publisherWriteRelease(ctx context.Context, method, endpoint string, payload
 	// Writes are issued once; the caller owns finalization readback.
 	output, err := command.Output()
 	if err != nil {
-		return fmt.Errorf("GitHub release %s failed: %w", method, err)
+		return fmt.Errorf("GitHub release %s failed: %w", method, errors.Join(err, ctx.Err()))
 	}
 	if len(bytes.TrimSpace(output)) == 0 {
 		return io.ErrUnexpectedEOF

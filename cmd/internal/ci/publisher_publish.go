@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type publisherAsset struct {
@@ -124,6 +126,10 @@ type publisherRelease struct {
 	Draft     *bool  `json:"draft"`
 	UploadURL string `json:"upload_url"`
 	HTMLURL   string `json:"html_url"`
+}
+
+func (release publisherRelease) hasIdentity(id int64, tag string) bool {
+	return id > 0 && release.ID == id && release.Tag == tag
 }
 
 func publisherUploadEndpoint(release publisherRelease, name string) (string, error) {
@@ -284,6 +290,9 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	}, &release); err != nil {
 		return err
 	}
+	if release.ID <= 0 || release.Tag != p.tag || release.Draft == nil || !*release.Draft {
+		return fmt.Errorf("draft creation response did not confirm the requested release")
+	}
 	p.storage.record(map[string]any{"phase": "upload", "remoteWriteState": "draft-created", "releaseId": release.ID})
 	if err := p.uploadAssets(actual, func(name, filename string) error {
 		if err := p.requireTag("tag changed before upload; retained as draft"); err != nil {
@@ -310,6 +319,9 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	if err := p.get(releasePath, &checked); err != nil {
 		return err
 	}
+	if !checked.hasIdentity(release.ID, p.tag) || checked.Draft == nil || !*checked.Draft {
+		return fmt.Errorf("draft identity or state changed")
+	}
 	type uploadedAsset struct {
 		Name   string
 		State  string
@@ -319,9 +331,6 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	assets, err := publisherPages[uploadedAsset](p, releasePath+"/assets", "", 0)
 	if err != nil {
 		return err
-	}
-	if checked.Draft == nil || !*checked.Draft || checked.Tag != p.tag {
-		return fmt.Errorf("draft state changed")
 	}
 	if len(assets) != len(expected) {
 		return fmt.Errorf("remote asset scope mismatch; retained as draft")
@@ -344,8 +353,8 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	count := 0
 	for _, item := range releases {
 		if item.Tag == p.tag {
-			if item.ID != release.ID {
-				return fmt.Errorf("competing release; retained as draft")
+			if !item.hasIdentity(release.ID, p.tag) || item.Draft == nil || !*item.Draft {
+				return fmt.Errorf("competing release or draft state changed")
 			}
 			count++
 		}
@@ -353,17 +362,25 @@ func (p *publisher) publish(actual *publisherInventory, receipt *publisherReceip
 	if count != 1 {
 		return fmt.Errorf("competing release; retained as draft")
 	}
+	if err := p.ctx.Err(); err != nil {
+		return err
+	}
 	p.storage.record(map[string]any{"phase": "finalize", "remoteWriteState": "finalization-outcome-unknown"})
 	var finalized publisherRelease
-	if err := publisherWriteRelease(p.ctx, "PATCH", releasePath, map[string]any{"draft": false, "make_latest": "false"}, &finalized); err != nil {
+	err = publisherWriteRelease(p.ctx, "PATCH", releasePath, map[string]any{"draft": false, "make_latest": "false"}, &finalized)
+	if err == nil && (!finalized.hasIdentity(release.ID, p.tag) || finalized.Draft == nil || *finalized.Draft) {
+		err = fmt.Errorf("finalization response did not confirm the requested release")
+	}
+	if err != nil {
+		// Only this readback may outlive cancellation of the original write.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(p.ctx), 15*time.Second)
+		defer cancel()
 		var observed publisherRelease
-		if readErr := p.get(releasePath, &observed); readErr == nil {
+		if readErr := publisherRemoteJSON(ctx, releasePath, &observed, &p.reads); readErr == nil &&
+			observed.hasIdentity(release.ID, p.tag) && observed.Draft != nil {
 			p.storage.record(map[string]any{"remoteWriteState": "finalization-readback", "observedDraft": observed.Draft, "observedTag": observed.Tag})
 		}
 		return err
-	}
-	if finalized.Draft == nil || *finalized.Draft {
-		return fmt.Errorf("publication not confirmed")
 	}
 	p.storage.record(map[string]any{"phase": "complete", "remoteWriteState": "published"})
 	fmt.Println(finalized.HTMLURL)

@@ -86,7 +86,11 @@ func TestMain(tests *testing.M) {
 			if err := os.WriteFile(counter, []byte("first"), 0o600); err != nil {
 				os.Exit(3)
 			}
-			fmt.Fprint(os.Stdout, "HTTP/2 503 unavailable\r\nRetry-After: 0\r\n\r\nsecret")
+			delay := os.Getenv("POLARIS_CI_TEST_GH_RETRY_AFTER")
+			if delay == "" {
+				delay = "0"
+			}
+			fmt.Fprintf(os.Stdout, "HTTP/2 503 unavailable\r\nRetry-After: %s\r\n\r\nsecret", delay)
 			os.Exit(1)
 		}
 		mode = "success"
@@ -744,7 +748,18 @@ func TestGitHubReadOwnsStreamsErrorsAndRetryBudget(t *testing.T) {
 	if budget.ExtraGETs != 8 {
 		t.Fatalf("shared GET budget changed: %v", budget)
 	}
-
+	t.Setenv("POLARIS_CI_TEST_GH_COUNTER", filepath.Join(directory, "budget-tag"))
+	publisher := publisher{ctx: t.Context(), tag: "v1.15.0-polaris-alpha.12.22", source: strings.Repeat("a", 40), reads: budget}
+	if _, err := publisher.currentTag(); err == nil || !strings.Contains(err.Error(), "HTTP 503") || publisher.reads.ExtraGETs != 8 {
+		t.Fatalf("tag read escaped the shared GET budget: %v", err)
+	}
+	t.Setenv("POLARIS_CI_TEST_GH_COUNTER", filepath.Join(directory, "budget-wait"))
+	t.Setenv("POLARIS_CI_TEST_GH_RETRY_AFTER", "1")
+	budget = retryBudget{Wait: time.Second}
+	if _, err := readGitHub(path, sink, 10, &budget, readLimits{2 * time.Second, 6 * time.Second, time.Second}, nil); err == nil ||
+		!strings.Contains(err.Error(), "retry budget exhausted") || budget.ExtraGETs != 0 {
+		t.Fatalf("retry escaped accumulated wait budget: %v (%+v)", err, budget)
+	}
 }
 
 func TestPeerAdmissionBindsActualCheckoutAndArtifact(t *testing.T) {
