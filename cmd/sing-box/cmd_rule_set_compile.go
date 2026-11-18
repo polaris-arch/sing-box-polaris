@@ -36,16 +36,7 @@ func init() {
 }
 
 func compileRuleSet(sourcePath string) error {
-	reader := os.Stdin
-	if sourcePath != "stdin" {
-		file, err := os.Open(sourcePath)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		reader = file
-	}
-	content, err := srs.ReadContent(reader, srs.DefaultInputBytes)
+	content, err := readRuleSetContent(sourcePath, srs.DefaultInputBytes)
 	if err != nil {
 		return err
 	}

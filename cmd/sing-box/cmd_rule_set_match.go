@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -41,19 +39,7 @@ func init() {
 }
 
 func ruleSetMatch(sourcePath string, domain string) error {
-	var (
-		reader io.Reader
-		err    error
-	)
-	if sourcePath == "stdin" {
-		reader = os.Stdin
-	} else {
-		reader, err = os.Open(sourcePath)
-		if err != nil {
-			return E.Cause(err, "read rule-set")
-		}
-	}
-	content, err := io.ReadAll(reader)
+	content, err := readRuleSetContent(sourcePath, srs.DefaultInputBytes)
 	if err != nil {
 		return E.Cause(err, "read rule-set")
 	}

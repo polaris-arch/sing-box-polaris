@@ -60,6 +60,12 @@ func ReadContent(reader io.Reader, limit int64) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
+// LimitInput streams up to DefaultInputBytes and reports ErrResourceLimit when
+// an additional input byte is read.
+func LimitInput(reader io.Reader) io.Reader {
+	return limitInput(reader, DefaultInputBytes)
+}
+
 type byteLimitReader struct {
 	reader    io.Reader
 	remaining int64
