@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,7 +15,115 @@ import (
 
 	"github.com/sagernet/sing-box/common/usagetrack"
 	"github.com/sagernet/sing-box/log"
+	"github.com/sagernet/ws"
+	"github.com/sagernet/ws/wsutil"
 )
+
+func TestWebSocketMessageBoundIncludesFragments(t *testing.T) {
+	var wire bytes.Buffer
+	upstream := &webSocketPeer{stream: &wire, state: ws.StateClientSide}
+	part := bytes.Repeat([]byte{'x'}, maxWebSocketMessageBytes/2)
+	writeFrame := func(frame ws.Frame) {
+		t.Helper()
+		if err := ws.WriteFrame(&wire, frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeFrame(ws.NewFrame(ws.OpBinary, false, part))
+	writeFrame(ws.NewFrame(ws.OpContinuation, true, part))
+	data, opCode, err := upstream.readData()
+	if err != nil || opCode != ws.OpBinary || len(data) != maxWebSocketMessageBytes {
+		t.Fatalf("valid message at the limit changed: %d bytes, %v, %v", len(data), opCode, err)
+	}
+
+	wire.Reset()
+	writeFrame(ws.NewFrame(ws.OpBinary, false, part))
+	writeFrame(ws.NewFrame(ws.OpContinuation, false, part))
+	if err = ws.WriteHeader(&wire, ws.Header{Fin: true, OpCode: ws.OpContinuation, Length: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = upstream.readData(); !errors.Is(err, errWebSocketMessageTooLarge) {
+		t.Fatalf("expected aggregate message limit, got %v", err)
+	}
+
+	wire.Reset()
+	if err := ws.WriteHeader(&wire, ws.Header{Fin: true, OpCode: ws.OpBinary, Length: maxWebSocketMessageBytes + 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = upstream.readData(); !errors.Is(err, wsutil.ErrFrameTooLarge) {
+		t.Fatalf("expected header to be rejected before reading payload, got %v", err)
+	}
+
+	wire.Reset()
+	writeFrame(ws.MaskFrame(ws.NewTextFrame([]byte("payload"))))
+	client := &webSocketPeer{stream: &wire, state: ws.StateServerSide}
+	data, opCode, err = client.readData()
+	if err != nil || opCode != ws.OpText || string(data) != "payload" {
+		t.Fatalf("valid masked WebSocket message changed: %q, %v, %v", data, opCode, err)
+	}
+	wire.Reset()
+	if err := upstream.writeMessage(opCode, data); err != nil {
+		t.Fatal(err)
+	}
+	data, opCode, err = client.readData()
+	if err != nil || opCode != ws.OpText || string(data) != "payload" {
+		t.Fatalf("upstream forwarding changed the masked message: %q, %v, %v", data, opCode, err)
+	}
+}
+
+func TestWebSocketLimitReportsMessageTooBig(t *testing.T) {
+	for _, state := range []ws.State{ws.StateServerSide, ws.StateClientSide} {
+		sender, peer := net.Pipe()
+		relay := &webSocketPeer{conn: sender, stream: sender, state: state}
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			defer sender.Close()
+			relay.reportSizeLimit(errWebSocketMessageTooLarge)
+		}()
+		frame, err := ws.ReadFrame(peer)
+		_ = peer.Close()
+		<-done
+		if err != nil || frame.Header.OpCode != ws.OpClose || frame.Header.Masked != (state == ws.StateClientSide) {
+			t.Fatalf("incorrect close frame for state %v: %v, %v", state, frame.Header, err)
+		}
+		if frame.Header.Masked {
+			frame = ws.UnmaskFrameInPlace(frame)
+		}
+		status, _ := ws.ParseCloseFrameData(frame.Payload)
+		if status != ws.StatusMessageTooBig {
+			t.Fatalf("wrong close code: %v", status)
+		}
+		if err = relay.writeMessage(ws.OpBinary, []byte("late")); !errors.Is(err, net.ErrClosed) {
+			t.Fatalf("wanted a closed peer after 1009, got %v", err)
+		}
+	}
+}
+
+func TestWebSocketLimitUnblocksAnInFlightWrite(t *testing.T) {
+	sender, peer := net.Pipe()
+	defer sender.Close()
+	defer peer.Close()
+	relay := &webSocketPeer{conn: sender, stream: sender, state: ws.StateServerSide}
+	writing := make(chan struct{})
+	go func() {
+		relay.writeMu.Lock()
+		defer relay.writeMu.Unlock()
+		close(writing)
+		_ = wsutil.WriteMessage(sender, ws.StateServerSide, ws.OpBinary, []byte("unread"))
+	}()
+	<-writing
+	done := make(chan struct{})
+	go func() {
+		relay.reportSizeLimit(errWebSocketMessageTooLarge)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("close notification waited for an unresponsive sender")
+	}
+}
 
 func TestTrackingOverflowPreservesBodyAndMarksIncomplete(t *testing.T) {
 	for _, contentType := range []string{"application/json", "text/event-stream"} {

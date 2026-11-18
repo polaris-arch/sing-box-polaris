@@ -1,9 +1,11 @@
 package ocm
 
 import (
+	"bytes"
 	"context"
 	stdTLS "crypto/tls"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -20,6 +22,10 @@ import (
 
 	"github.com/openai/openai-go/v3/responses"
 )
+
+const maxWebSocketMessageBytes = 16 * 1024 * 1024
+
+var errWebSocketMessageTooLarge = errors.New("websocket message exceeds 16 MiB")
 
 type webSocketSession struct {
 	clientConn   net.Conn
@@ -169,6 +175,8 @@ func (s *Service) handleWebSocket(w http.ResponseWriter, r *http.Request, proxyP
 	} else {
 		upstreamReadWriter = upstreamConn
 	}
+	clientPeer := &webSocketPeer{conn: clientConn, stream: clientConn, state: ws.StateServerSide}
+	upstreamPeer := &webSocketPeer{conn: upstreamConn, stream: upstreamReadWriter, state: ws.StateClientSide}
 
 	modelChannel := make(chan string, 1)
 	var waitGroup sync.WaitGroup
@@ -177,20 +185,142 @@ func (s *Service) handleWebSocket(w http.ResponseWriter, r *http.Request, proxyP
 	go func() {
 		defer waitGroup.Done()
 		defer session.Close()
-		s.proxyWebSocketClientToUpstream(clientConn, upstreamConn, modelChannel)
+		s.proxyWebSocketClientToUpstream(clientPeer, upstreamPeer, modelChannel)
 	}()
 	go func() {
 		defer waitGroup.Done()
 		defer session.Close()
-		s.proxyWebSocketUpstreamToClient(upstreamReadWriter, clientConn, modelChannel, username, weeklyCycleHint)
+		s.proxyWebSocketUpstreamToClient(upstreamPeer, clientPeer, modelChannel, username, weeklyCycleHint)
 	}()
 	waitGroup.Wait()
 }
 
-func (s *Service) proxyWebSocketClientToUpstream(clientConn net.Conn, upstreamConn net.Conn, modelChannel chan<- string) {
+type webSocketPeer struct {
+	conn    net.Conn
+	stream  io.ReadWriter
+	state   ws.State
+	writeMu sync.Mutex
+	closing bool
+}
+
+// writeMessage consumes the payload so an upstream write can mask it in place.
+func (p *webSocketPeer) writeMessage(opCode ws.OpCode, data []byte) error {
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if p.closing {
+		return net.ErrClosed
+	}
+	frame := ws.NewFrame(opCode, true, data)
+	if p.state.ClientSide() {
+		frame = ws.MaskFrameInPlace(frame)
+	}
+	return ws.WriteFrame(p.stream, frame)
+}
+
+func (p *webSocketPeer) readData() ([]byte, ws.OpCode, error) {
+	writeControl := wsutil.ControlFrameHandler(p.stream, p.state)
+	handleControl := func(header ws.Header, frame io.Reader) error {
+		var payload [ws.MaxControlFramePayloadSize]byte
+		data := payload[:int(header.Length)]
+		if _, err := io.ReadFull(frame, data); err != nil {
+			return err
+		}
+		p.writeMu.Lock()
+		defer p.writeMu.Unlock()
+		if p.closing {
+			return net.ErrClosed
+		}
+		p.closing = header.OpCode == ws.OpClose
+		return writeControl(header, bytes.NewReader(data))
+	}
+	var declaredBytes int64
+	reader := wsutil.Reader{
+		Source:         p.stream,
+		State:          p.state,
+		CheckUTF8:      true,
+		OnIntermediate: handleControl,
+		MaxFrameSize:   maxWebSocketMessageBytes,
+		OnContinuation: func(header ws.Header, _ io.Reader) error {
+			if header.Length > maxWebSocketMessageBytes-declaredBytes {
+				return errWebSocketMessageTooLarge
+			}
+			declaredBytes += header.Length
+			return nil
+		},
+	}
 	for {
-		data, opCode, err := wsutil.ReadClientData(clientConn)
+		header, err := reader.NextFrame()
 		if err != nil {
+			return nil, 0, err
+		}
+		if header.OpCode.IsControl() {
+			if err := handleControl(header, &reader); err != nil {
+				return nil, 0, err
+			}
+			continue
+		}
+		declaredBytes = header.Length
+		data, err := readWebSocketPayload(&reader, int(declaredBytes))
+		if err != nil {
+			return nil, 0, err
+		}
+		return data, header.OpCode, nil
+	}
+}
+
+func readWebSocketPayload(reader *wsutil.Reader, firstFrameBytes int) ([]byte, error) {
+	// Don't reserve the entire declared length before bytes arrive.
+	data := make([]byte, 0, min(firstFrameBytes, 64*1024))
+	var next [1]byte
+	for {
+		tail := data[len(data):cap(data)]
+		if len(tail) == 0 {
+			// Check the end of the message before growing the allocation.
+			tail = next[:]
+		}
+		n, err := reader.Read(tail)
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		if len(data)+n > cap(data) {
+			if len(data) == maxWebSocketMessageBytes {
+				return nil, errWebSocketMessageTooLarge
+			}
+			capacity := min(maxWebSocketMessageBytes, max(4096, 2*cap(data)))
+			grown := make([]byte, len(data)+n, capacity)
+			copy(grown, data)
+			grown[len(data)] = next[0]
+			data = grown
+		} else {
+			data = data[:len(data)+n]
+		}
+		if err == io.EOF {
+			return data, nil
+		}
+	}
+}
+
+func (p *webSocketPeer) reportSizeLimit(err error) {
+	if !errors.Is(err, wsutil.ErrFrameTooLarge) && !errors.Is(err, errWebSocketMessageTooLarge) {
+		return
+	}
+	// Bound both the current writer and the best-effort close notification.
+	if p.conn.SetWriteDeadline(time.Now().Add(time.Second)) == nil {
+		p.writeMu.Lock()
+		defer p.writeMu.Unlock()
+		if !p.closing {
+			p.closing = true
+			body := ws.NewCloseFrameBody(ws.StatusMessageTooBig, "message exceeds 16 MiB")
+			_ = wsutil.WriteMessage(p.stream, p.state, ws.OpClose, body)
+		}
+	}
+}
+
+func (s *Service) proxyWebSocketClientToUpstream(client, upstream *webSocketPeer, modelChannel chan<- string) {
+	for {
+		data, opCode, err := client.readData()
+		if err != nil {
+			client.reportSizeLimit(err)
 			if !E.IsClosedOrCanceled(err) {
 				s.logger.Debug("read client websocket: ", err)
 			}
@@ -210,7 +340,7 @@ func (s *Service) proxyWebSocketClientToUpstream(clientConn net.Conn, upstreamCo
 			}
 		}
 
-		err = wsutil.WriteClientMessage(upstreamConn, opCode, data)
+		err = upstream.writeMessage(opCode, data)
 		if err != nil {
 			if !E.IsClosedOrCanceled(err) {
 				s.logger.Debug("write upstream websocket: ", err)
@@ -220,11 +350,12 @@ func (s *Service) proxyWebSocketClientToUpstream(clientConn net.Conn, upstreamCo
 	}
 }
 
-func (s *Service) proxyWebSocketUpstreamToClient(upstreamReadWriter io.ReadWriter, clientConn net.Conn, modelChannel <-chan string, username string, weeklyCycleHint *WeeklyCycleHint) {
+func (s *Service) proxyWebSocketUpstreamToClient(upstream, client *webSocketPeer, modelChannel <-chan string, username string, weeklyCycleHint *WeeklyCycleHint) {
 	var requestModel string
 	for {
-		data, opCode, err := wsutil.ReadServerData(upstreamReadWriter)
+		data, opCode, err := upstream.readData()
 		if err != nil {
+			upstream.reportSizeLimit(err)
 			if !E.IsClosedOrCanceled(err) {
 				s.logger.Debug("read upstream websocket: ", err)
 			}
@@ -274,7 +405,7 @@ func (s *Service) proxyWebSocketUpstreamToClient(upstreamReadWriter io.ReadWrite
 			}
 		}
 
-		err = wsutil.WriteServerMessage(clientConn, opCode, data)
+		err = client.writeMessage(opCode, data)
 		if err != nil {
 			if !E.IsClosedOrCanceled(err) {
 				s.logger.Debug("write client websocket: ", err)
