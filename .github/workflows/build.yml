@@ -92,7 +92,6 @@ jobs:
       GOTOOLCHAIN: local
       GOFLAGS: -mod=readonly
       GOMAXPROCS: '2'
-      GOCACHE: ${{ runner.temp }}/tls-fingerprint-go-cache
       SOURCE_BUILD: ${{ inputs.build }}
       SOURCE_GENERATE_ONLY: ${{ inputs.source_generate_only && 'true' || 'false' }}
       SOURCE_RUNNER: ${{ matrix.os }}
@@ -107,7 +106,12 @@ jobs:
         go-version-file: release/GO_VERSION
         cache: false
     - name: Retain exact Source inputs before compatibility gates (not a test or native PASS)
-      run: go run -mod=readonly ./cmd/internal/ci tls-cost --retain-source-input --output "${{ runner.temp }}/tls-fingerprint-evidence"
+      shell: bash
+      run: |
+        set -euo pipefail
+        export GOCACHE="$RUNNER_TEMP/tls-fingerprint-go-cache"
+        echo "GOCACHE=$GOCACHE" >> "$GITHUB_ENV"
+        go run -mod=readonly ./cmd/internal/ci tls-cost --retain-source-input --output "$RUNNER_TEMP/tls-fingerprint-evidence"
     - name: Verify Source tool and raw Vision checkout controls on the actual runner
       run: go test -mod=readonly ./cmd/internal/ci
     - name: Execute focused runtime coordinator and resource regressions natively
