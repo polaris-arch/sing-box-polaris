@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"strings"
 
@@ -37,19 +36,16 @@ func init() {
 }
 
 func compileRuleSet(sourcePath string) error {
-	var (
-		reader io.Reader
-		err    error
-	)
-	if sourcePath == "stdin" {
-		reader = os.Stdin
-	} else {
-		reader, err = os.Open(sourcePath)
+	reader := os.Stdin
+	if sourcePath != "stdin" {
+		file, err := os.Open(sourcePath)
 		if err != nil {
 			return err
 		}
+		defer file.Close()
+		reader = file
 	}
-	content, err := io.ReadAll(reader)
+	content, err := srs.ReadContent(reader, srs.DefaultInputBytes)
 	if err != nil {
 		return err
 	}
