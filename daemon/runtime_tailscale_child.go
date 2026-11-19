@@ -156,6 +156,9 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	if err != nil {
 		return nil, err
 	}
+	if parent != nil && request.NativeWriter == nil && adapter.RuntimeTailscaleStartupChild(ctx) {
+		parent.recordStartupChild(run)
+	}
 	go child.observeActualClose()
 	return child, nil
 }

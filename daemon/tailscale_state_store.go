@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"sync"
 
@@ -17,7 +18,9 @@ import (
 
 const (
 	tailscaleStoreRetirementVersion = "polaris-ts-auth-writer-retirement-v1"
+	tailscaleStartupCohortVersion   = "polaris-ts-startup-cohort-v1"
 	maxTailscaleRetirementRuns      = 256
+	maxTailscaleStartupCohortBytes  = 1 << 20
 )
 
 type tailscaleRetirementInstance struct {
@@ -33,7 +36,7 @@ type tailscaleRetirementRun struct {
 	closeFinished           <-chan struct{}
 	originalCloseSucceeded  bool
 	runtimeNoAcquisition    bool // exact runtime child marker plus actual never-entered preparation
-	nativeHistoryPinned     bool // original census observed with a retained native writer
+	historyPinned           bool // original native-writer or typed startup census
 	nativeChildReservations int
 	directoryPreparation    preparedDirectoryResources
 	directoryAuthority      *adapter.TailscaleDirectoryDomain
@@ -43,6 +46,9 @@ type tailscaleRetirementRun struct {
 	access                  sync.Mutex
 	binding                 adapter.TailscaleStoreRunBinding
 	expected                []string
+	startupExpected         []string
+	startupChildren         []*tailscaleRetirementRun
+	startupSealed           bool
 	active                  []adapter.TailscaleStoreNode
 	final                   *tailscaleRetirementInstance
 }
@@ -57,8 +63,15 @@ func newTailscaleRetirementRunWithDigest(digest string, options option.Options) 
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, err
 	}
-	run := &tailscaleRetirementRun{binding: adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: digest}}
-	for index, endpoint := range options.Endpoints {
+	return &tailscaleRetirementRun{
+		binding:  adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: digest},
+		expected: tailscaleRetirementTags(options.Endpoints),
+	}, nil
+}
+
+func tailscaleRetirementTags(endpoints []option.Endpoint) []string {
+	var tags []string
+	for index, endpoint := range endpoints {
 		if endpoint.Type != C.TypeTailscale {
 			continue
 		}
@@ -66,9 +79,87 @@ func newTailscaleRetirementRunWithDigest(digest string, options option.Options) 
 		if tag == "" {
 			tag = format.ToString(index)
 		}
-		run.expected = append(run.expected, tag)
+		tags = append(tags, tag)
 	}
-	return run, nil
+	return tags
+}
+
+func (r *tailscaleRetirementRun) recordStartupChild(child *tailscaleRetirementRun) {
+	r.access.Lock()
+	defer r.access.Unlock()
+	if !r.startupSealed {
+		r.startupChildren = append(r.startupChildren, child)
+	}
+}
+
+type tailscaleStartupCohort struct {
+	ContractVersion string                        `json:"contractVersion"`
+	CensusComplete  bool                          `json:"censusComplete"`
+	Parent          tailscaleRetirementInstance   `json:"parent"`
+	InitialChildren []tailscaleRetirementInstance `json:"initialChildren"`
+}
+
+func (r *tailscaleRetirementRun) sealStartup(observe bool) string {
+	r.access.Lock()
+	r.startupSealed = true
+	expected := r.startupExpected
+	children := r.startupChildren
+	r.startupExpected = nil
+	r.startupChildren = nil
+	r.access.Unlock()
+	if !observe {
+		return ""
+	}
+	parent, complete := r.startupScope()
+	cohort := tailscaleStartupCohort{
+		ContractVersion: tailscaleStartupCohortVersion,
+		Parent:          parent,
+		InitialChildren: make([]tailscaleRetirementInstance, 0, len(children)),
+	}
+	tags := make(map[string]bool, len(expected))
+	for _, tag := range expected {
+		complete = complete && !tags[tag]
+		tags[tag] = true
+	}
+	files := make(map[string]bool, len(tags))
+	consume := func(row tailscaleRetirementInstance) {
+		for _, node := range row.Nodes {
+			complete = complete && tags[node.Tag] && !files[node.StateFile]
+			delete(tags, node.Tag)
+			files[node.StateFile] = true
+		}
+	}
+	consume(parent)
+	for _, child := range children {
+		row, known := child.startupScope()
+		complete = complete && known
+		consume(row)
+		cohort.InitialChildren = append(cohort.InitialChildren, row)
+	}
+	cohort.CensusComplete = complete && len(tags) == 0
+	payload, err := json.Marshal(cohort)
+	if err != nil || len(payload) > maxTailscaleStartupCohortBytes {
+		return ""
+	}
+	// Retain the same original row after later whole-service reloads, even
+	// when its exact observed startup/terminal census has no StateStore.
+	r.access.Lock()
+	r.historyPinned = true
+	r.access.Unlock()
+	return string(payload)
+}
+
+func (r *tailscaleRetirementRun) startupScope() (tailscaleRetirementInstance, bool) {
+	r.access.Lock()
+	defer r.access.Unlock()
+	row := r.snapshotUnderLock()
+	complete := r.active != nil && r.final == nil && len(row.Nodes) == len(r.expected)
+	for _, node := range row.Nodes {
+		complete = complete && slices.Contains(r.expected, node.Tag) &&
+			node.RunNonce == r.binding.RunNonce && node.ConfigDigest == r.binding.ConfigDigest &&
+			filepath.IsAbs(node.StateDirectory) && filepath.Join(node.StateDirectory, "tailscaled.state") == node.StateFile
+	}
+	return row, complete
 }
 
 func (r *tailscaleRetirementRun) capture(nodes []adapter.TailscaleStoreNode) {
@@ -190,7 +281,7 @@ func (r *tailscaleRetirementRun) reclaimableEmptyRun() bool {
 	default:
 		return false
 	}
-	return !r.nativeHistoryPinned && r.nativeChildReservations == 0 && r.originalCloseSucceeded &&
+	return !r.historyPinned && r.nativeChildReservations == 0 && r.originalCloseSucceeded &&
 		(len(r.expected) == 0 || r.runtimeNoAcquisition) &&
 		r.final != nil && r.final.CensusComplete && r.final.Terminal == "NoStoreConstruction" && len(r.final.Nodes) == 0 &&
 		r.directoryFinal != nil && r.directoryFinal.CensusComplete && r.directoryFinal.Terminal == "NoDirectoryConstruction" && len(r.directoryFinal.Nodes) == 0
@@ -236,7 +327,7 @@ func (s *StartedService) reserveNativeTailscaleRetirementRun(run, parent *tailsc
 		parent.nativeChildReservations++
 		parent.access.Unlock()
 	}
-	run.nativeHistoryPinned = true
+	run.historyPinned = true
 	s.tailscaleReservedRuns++
 	return &nativeTailscaleRunReservation{host: s, run: run, parent: parent}, nil
 }
@@ -254,7 +345,7 @@ func (r *nativeTailscaleRunReservation) finish(retain bool) {
 			if retain {
 				// The host native ledger can observe both original rows. Keep the
 				// empty parent even when the old Box closes at strict Reload.
-				r.parent.nativeHistoryPinned = true
+				r.parent.historyPinned = true
 			}
 			r.parent.access.Unlock()
 		}

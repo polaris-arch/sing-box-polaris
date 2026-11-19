@@ -212,6 +212,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 	if prepared.runtimeGraph {
 		ctx = s.runtimeTailscaleContext(ctx, retirement)
 	}
+	retirement.startupExpected = tailscaleRetirementTags(options.Endpoints)
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)
 	ctx = context.WithValue(ctx, runtimeStartupOverridesKey{}, cloneRuntimeOverrides(prepared.runtimeOverrides))

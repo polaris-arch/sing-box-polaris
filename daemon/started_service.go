@@ -328,6 +328,18 @@ func (s *StartedService) StartOrReloadService(ctx context.Context, profileConten
 // under the same lifecycle lock as the terminal check. A closed old host must
 // never write shared configuration after its CloseService acknowledged.
 func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func()) error {
+	return s.startOrReloadService(ctx, profileContent, options, beforeStart, nil)
+}
+
+// StartOrReloadServiceWithTailscaleStartup takes the startup census before
+// another management listener can replace this exact successfully started Box.
+func (s *StartedService) StartOrReloadServiceWithTailscaleStartup(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func()) (string, error) {
+	var startup string
+	err := s.startOrReloadService(ctx, profileContent, options, beforeStart, &startup)
+	return startup, err
+}
+
+func (s *StartedService) startOrReloadService(ctx context.Context, profileContent string, options *OverrideOptions, beforeStart func(), startup *string) error {
 	s.interruptStart()
 	s.lifecycleAccess.Lock()
 	defer s.lifecycleAccess.Unlock()
@@ -443,6 +455,10 @@ func (s *StartedService) StartOrReloadServiceWithBeforeStart(ctx context.Context
 		return E.Cause(err, "start service instance")
 	}
 	s.startedAt = time.Now()
+	cohort := instance.tailscaleRetirement.sealStartup(startup != nil)
+	if startup != nil {
+		*startup = cohort
+	}
 	s.updateStatus(ServiceStatus_STARTED)
 	s.serviceAccess.Unlock()
 	runtimeDebug.FreeOSMemory()

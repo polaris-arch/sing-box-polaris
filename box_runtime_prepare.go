@@ -311,7 +311,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		// Other components must not each retain a private full-config copy.
 		if config.endpoint != nil && config.endpoint.Type == C.TypeTailscale {
 			ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, canonical)
-			if !prepared.initial && adapter.RuntimeTailscaleWriterFromContext(c.ctx) != nil {
+			if prepared.initial {
+				ctx = adapter.ContextWithRuntimeTailscaleStartupChild(ctx)
+			} else if adapter.RuntimeTailscaleWriterFromContext(c.ctx) != nil {
 				if tailscalePlanDigest == "" {
 					tailscalePlanDigest = runtimeDigest(planCanonical)
 					if len(planCanonical) == 0 || tailscalePlanDigest != identity.EffectiveDigest {

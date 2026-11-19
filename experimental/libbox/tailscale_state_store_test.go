@@ -8,6 +8,10 @@ import (
 // Compile the exact gomobile-compatible no-argument method signature.
 var _ interface{ ExportTailscaleStoreRetirement() string } = (*CommandServer)(nil)
 
+var _ interface {
+	StartOrReloadServiceWithTailscaleStartup(string, *OverrideOptions, RuntimePersistenceHandler) (string, error)
+} = (*CommandServer)(nil)
+
 func TestTailscaleStoreNativeExportIsReadOnlyWithoutInstance(t *testing.T) {
 	transientTestSetup(t)
 	server, err := NewTransientCommandServer(nil, transientTestPlatform{})

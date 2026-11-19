@@ -70,7 +70,18 @@ type (
 	runtimeTailscaleChildRegistrarKey struct{}
 	runtimeTailscaleChildCapacityKey  struct{}
 	runtimeTailscaleNativeWriterKey   struct{}
+	runtimeTailscaleStartupChildKey   struct{}
 )
+
+// Only the original initial graph builder marks a constructor with this key.
+func ContextWithRuntimeTailscaleStartupChild(ctx context.Context) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleStartupChildKey{}, true)
+}
+
+func RuntimeTailscaleStartupChild(ctx context.Context) bool {
+	initial, _ := ctx.Value(runtimeTailscaleStartupChildKey{}).(bool)
+	return initial
+}
 
 func ContextWithRuntimeTailscaleChildRegistrar(ctx context.Context, registrar RuntimeTailscaleChildRegistrar) context.Context {
 	return context.WithValue(ctx, runtimeTailscaleChildRegistrarKey{}, registrar)

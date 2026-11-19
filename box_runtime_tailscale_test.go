@@ -74,6 +74,9 @@ func TestRuntimeTailscaleAndroidPlanRequiresCapacityAndApplyUsesOriginalRegistra
 	var observedPlanDigest string
 	var frozenConstruction []byte
 	ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, func(ctx context.Context, child adapter.RuntimeTailscaleChildRequest) (adapter.RuntimeTailscaleChildRegistration, error) {
+		if adapter.RuntimeTailscaleStartupChild(ctx) {
+			t.Error("warm Apply marked its child as part of the original startup")
+		}
 		reservations = append(reservations, child)
 		observedPlanDigest, _ = adapter.RuntimeTailscalePlanDigest(ctx)
 		frozenConstruction, _ = adapter.RuntimeTailscaleConfiguration(ctx)
