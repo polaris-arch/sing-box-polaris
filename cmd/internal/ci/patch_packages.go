@@ -31,6 +31,7 @@ var sdkPackages = []string{
 // Identity and marker share one registry; unknown module boundaries stay errors.
 var moduleRunners = map[string]moduleRunner{
 	".":                           {module: "github.com/sagernet/sing-box"},
+	"test":                        {"test", "integration-tests-selected"},
 	"third_party/sing-tun":        {"github.com/sagernet/sing-tun", "sing-tun-selected"},
 	"third_party/metacubex-utls":  {"github.com/metacubex/utls", "metacubex-utls-selected"},
 	"third_party/cronet-go":       {"github.com/sagernet/cronet-go", "cronet-go-selected"},
@@ -78,7 +79,7 @@ func selectPatchPackages(root string, changedPaths []string) (patchPlan, error) 
 		if name == "daemon/runtime_config.proto" {
 			schemaPackage = "./daemon"
 		}
-		if path.Ext(name) != ".go" && path.Base(name) != "go.mod" && path.Base(name) != "go.sum" && schemaPackage == "" {
+		if path.Ext(name) != ".go" && path.Base(name) != "go.mod" && path.Base(name) != "go.sum" && schemaPackage == "" && !within(name, "test") {
 			continue
 		}
 		if !utf8.ValidString(name) || path.IsAbs(name) || path.Clean(name) != name || strings.ContainsAny(name, "\r\n\x00\\") || name == ".." || strings.HasPrefix(name, "../") {
@@ -138,6 +139,9 @@ func selectPatchPackages(root string, changedPaths []string) (patchPlan, error) 
 		if err != nil || module.Module == nil || module.Module.Mod.Path != runner.module {
 			return plan, fmt.Errorf("module identity mismatch: %s", owner)
 		}
+		if owner == "test" && name != "test/wireguard_test.go" {
+			return plan, fmt.Errorf("integration test path has no approved test runner: %s", name)
+		}
 		entry := plan.Modules[owner]
 		if entry == nil {
 			entry = &selectedModule{Module: runner.module, Packages: []string{}, FullValidation: owner != "."}
@@ -168,6 +172,9 @@ func selectPatchPackages(root string, changedPaths []string) (patchPlan, error) 
 		if owner == "third_party/tailscale" {
 			entry.Packages = nil
 			entry.Packages = sdkTestPackages()
+			entry.FullValidation = false
+		} else if owner == "test" {
+			entry.Packages = []string{"."}
 			entry.FullValidation = false
 		} else if entry.FullValidation || len(entry.Packages) == 0 {
 			entry.Packages = []string{"./..."}

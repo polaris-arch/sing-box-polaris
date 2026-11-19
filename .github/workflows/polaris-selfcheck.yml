@@ -548,6 +548,26 @@ jobs:
               grep -q '^ok' test.log
             fi
           fi
+          if [ -f "$selection_dir/integration-tests-selected" ]; then
+            grep -Fxq 'test' "$selection_dir/integration-tests-selected"
+            grep -Fxq 'module test' test/go.mod
+            tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"
+            ldflags="$(cat release/LDFLAGS)"
+            source_dir="$PWD"
+            (
+              cd "$selection_dir"
+              GOWORK=off go work init "$source_dir" "$source_dir/test"
+              export GOWORK="$selection_dir/go.work"
+              cd "$source_dir"
+              # Resolve the test module's sibling replacement to the product's committed carrier.
+              go work edit -replace "github.com/sagernet/sing-tun=$source_dir/third_party/sing-tun"
+              go test -mod=readonly -race -count=1 -timeout=10m -v \
+                -tags "$tags" -ldflags "$ldflags" \
+                -run '^TestWireGuardEndpointDataPlane$/^system=false$' ./test
+            ) | tee "$selection_dir/wireguard-integration-test.log"
+            grep -Eq '^[[:space:]]*--- PASS: TestWireGuardEndpointDataPlane/system=false ' "$selection_dir/wireguard-integration-test.log"
+            printf '%s\n' 'WireGuard integration: userspace raced; kernel TUN variant compiled.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f "$selection_dir/sing-tun-selected" ]; then
             grep -qx 'module github.com/sagernet/sing-tun' third_party/sing-tun/go.mod
             tags="$(cat release/DEFAULT_BUILD_TAGS),with_purego"

@@ -1319,7 +1319,11 @@ func TestPatchPackagesPartitionActualModuleBoundaries(t *testing.T) {
 	root := moduleFixture(t)
 	paths := []string{}
 	for owner := range moduleRunners {
-		paths = append(paths, fixtureFile(t, root, filepath.ToSlash(filepath.Join(owner, "fixture.go")), "package fixture\n"))
+		name := filepath.ToSlash(filepath.Join(owner, "fixture.go"))
+		if owner == "test" {
+			name = "test/wireguard_test.go"
+		}
+		paths = append(paths, fixtureFile(t, root, name, "package fixture\n"))
 	}
 	paths = append(paths, fixtureFile(t, root, "common/tls/client.go", "package fixture\n"))
 	paths = append(paths, fixtureFile(t, root, "third_party/helper/helper.go", "package fixture\n"))
@@ -1345,6 +1349,10 @@ func TestPatchPackagesPartitionActualModuleBoundaries(t *testing.T) {
 			}
 			if entry.FullValidation {
 				t.Fatal("SDK must retain the bounded runtime selection")
+			}
+		} else if owner == "test" {
+			if entry.FullValidation || !slices.Equal(entry.Packages, []string{"."}) || !slices.Equal(entry.ChangedPaths, []string{"test/wireguard_test.go"}) {
+				t.Fatalf("integration module lost the WireGuard selection: %+v", entry)
 			}
 		} else if !entry.FullValidation || !slices.Equal(entry.Packages, []string{"./..."}) {
 			t.Fatalf("nested module lost full validation: %s", owner)
@@ -1377,7 +1385,7 @@ func TestPatchMetadataAndDeletedPackagesRetainValidation(t *testing.T) {
 	root := moduleFixture(t)
 	paths := []string{"go.sum"}
 	for owner := range moduleRunners {
-		if owner != "." {
+		if owner != "." && owner != "test" {
 			paths = append(paths, owner+"/go.mod")
 		}
 	}
@@ -1404,7 +1412,7 @@ func TestPatchMetadataAndDeletedPackagesRetainValidation(t *testing.T) {
 func TestPatchUnknownAndChangedModuleIdentitiesAreRejected(t *testing.T) {
 	root := moduleFixture(t)
 	fixtureFile(t, root, "third_party/unknown/go.mod", "module unknown\n")
-	for _, name := range []string{"third_party/unknown/conn.go", "third_party/unknown/go.mod"} {
+	for _, name := range []string{"third_party/unknown/conn.go", "third_party/unknown/go.mod", "test/other_test.go", "test/config/wireguard.conf", "test/go.mod"} {
 		if _, err := selectPatchPackages(root, []string{name}); err == nil || !strings.Contains(err.Error(), "no approved test runner") {
 			t.Fatalf("unknown module admitted: %s: %v", name, err)
 		}
