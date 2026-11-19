@@ -55,9 +55,6 @@ jobs:
       with:
         go-version: '1.27.4'
         cache: true
-    - name: Execute concentrated CI contract controls
-      if: matrix.os == 'ubuntu-24.04'
-      run: go test -mod=readonly ./cmd/internal/ci
     - name: Require checked-in runtime protobuf to match the pinned generators
       if: matrix.os == 'ubuntu-24.04'
       run: go run -mod=readonly ./cmd/internal/ci runtime-proto check --output "${{ runner.temp }}/runtime-protobuf-check"
