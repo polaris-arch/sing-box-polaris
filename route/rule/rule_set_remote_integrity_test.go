@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,8 +96,19 @@ func TestRemoteRuleSetCacheUsesActiveContentLimit(t *testing.T) {
 	requests := 0
 	transport := srsTestTransport(func(request *http.Request) (*http.Response, error) {
 		requests++
-		if requests == 2 {
+		switch requests {
+		case 2, 3, 4:
 			require.Equal(t, "fresh", request.Header.Get("If-None-Match"))
+			return &http.Response{StatusCode: http.StatusNotModified, Body: http.NoBody}, nil
+		case 5:
+			require.Equal(t, "fresh", request.Header.Get("If-None-Match"))
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Etag": []string{strings.Repeat("x", http.DefaultMaxHeaderBytes+1)}},
+				Body:       io.NopCloser(bytes.NewReader(content)),
+			}, nil
+		case 6:
+			require.Empty(t, request.Header.Get("If-None-Match"))
 			return &http.Response{StatusCode: http.StatusNotModified, Body: http.NoBody}, nil
 		}
 		require.Empty(t, request.Header.Get("If-None-Match"))
@@ -119,14 +131,52 @@ func TestRemoteRuleSetCacheUsesActiveContentLimit(t *testing.T) {
 	require.Equal(t, "fresh", fresh.LastEtag)
 	require.Equal(t, urlHash[:], fresh.URLHash)
 
-	// A same-tag record from a different configured limit must not be read
-	// and written back under this rule-set's limit on a 304 response.
-	require.NoError(t, cache.SaveRuleSet(tag, previous))
 	current := set.loadSnapshot()
+	fresh.LastUpdated = time.Unix(20, 0)
+	require.NoError(t, cache.SaveRuleSet(tag, fresh))
 	require.NoError(t, set.fetch(ctx, false))
 	require.Equal(t, 2, requests)
 	require.Same(t, current, set.loadSnapshot())
+	fresh.LastUpdated = set.lastUpdated.Truncate(time.Second)
+	require.Equal(t, fresh, cache.LoadRuleSet(tag, limit))
+
+	// A same-tag record from a different configured limit must not be read
+	// and written back under this rule-set's limit on a 304 response.
+	require.NoError(t, cache.SaveRuleSet(tag, previous))
+	require.NoError(t, set.fetch(ctx, false))
+	require.Equal(t, 3, requests)
+	require.Same(t, current, set.loadSnapshot())
 	require.Equal(t, previous, cache.LoadRuleSet(tag, limit+1))
+
+	// A 304 for the active URL must not rebind an older row with the same
+	// tag and validator. This can happen if the last cache write failed.
+	otherHash := sha256.Sum256([]byte("http://127.0.0.1/previous"))
+	foreign := *fresh
+	foreign.URLHash = otherHash[:]
+	foreign.LastUpdated = time.Unix(20, 0)
+	require.NoError(t, cache.SaveRuleSet(tag, &foreign))
+	require.NoError(t, set.fetch(ctx, false))
+	require.Equal(t, 4, requests)
+	require.Same(t, current, set.loadSnapshot())
+	require.Equal(t, &foreign, cache.LoadRuleSet(tag, limit))
+
+	// A successful download stays usable when its optional ETag is oversized.
+	require.NoError(t, set.fetch(ctx, false))
+	require.Equal(t, 5, requests)
+	require.Zero(t, len(set.lastEtag))
+	fresh = cache.LoadRuleSet(tag, limit)
+	require.NotNil(t, fresh)
+	require.Equal(t, content, fresh.Content)
+	require.Zero(t, len(fresh.LastEtag))
+	require.Equal(t, urlHash[:], fresh.URLHash)
+
+	current = set.loadSnapshot()
+	updated := set.lastUpdated
+	require.ErrorContains(t, set.fetch(ctx, false), "without a rule-set validator")
+	require.Equal(t, 6, requests)
+	require.Same(t, current, set.loadSnapshot())
+	require.Equal(t, updated, set.lastUpdated)
+	require.Equal(t, fresh, cache.LoadRuleSet(tag, limit))
 }
 
 func TestRemoteRuleSetLegacyCacheContentLimit(t *testing.T) {
@@ -140,6 +190,27 @@ func TestRemoteRuleSetLegacyCacheContentLimit(t *testing.T) {
 	require.Equal(t, "old", decoded.LastEtag)
 	require.Equal(t, time.Unix(20, 0), decoded.LastUpdated)
 	require.Empty(t, decoded.URLHash)
+
+	// A legacy v2 record may carry a large optional validator, but its URL
+	// identity still needs to be the real digest size when it is present.
+	digest := sha256.Sum256([]byte("https://fixture.invalid/rules"))
+	saved := adapter.SavedBinary{
+		Content:     []byte("rs"),
+		LastUpdated: time.Unix(20, 0),
+		LastEtag:    strings.Repeat("x", http.DefaultMaxHeaderBytes+1),
+		URLHash:     digest[:],
+	}
+	encoded, err := saved.MarshalBinary()
+	require.NoError(t, err)
+	require.NoError(t, decoded.UnmarshalBinaryWithContentLimit(encoded, 2))
+	require.Equal(t, saved.Content, decoded.Content)
+	require.Equal(t, digest[:], decoded.URLHash)
+	require.Zero(t, len(decoded.LastEtag))
+	saved.LastEtag = "in-range"
+	saved.URLHash = append(digest[:], 0)
+	encoded, err = saved.MarshalBinary()
+	require.NoError(t, err)
+	require.ErrorContains(t, decoded.UnmarshalBinaryWithContentLimit(encoded, 2), "invalid url hash length")
 }
 
 func TestRemoteRuleSetIntegrityFailurePreservesPublicationAndETag(t *testing.T) {

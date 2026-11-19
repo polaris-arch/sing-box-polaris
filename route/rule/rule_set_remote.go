@@ -282,12 +282,16 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 			return fmt.Errorf("%w: input bytes", srs.ErrResourceLimit)
 		}
 	case http.StatusNotModified:
+		if s.lastEtag == "" {
+			return E.New("unexpected 304 response without a rule-set validator")
+		}
 		s.lastUpdated = time.Now()
 		if s.cacheFile != nil {
 			savedRuleSet := s.cacheFile.LoadRuleSet(s.tag, limits.InputBytes)
-			if savedRuleSet != nil {
+			// A conditional response confirms the validator that was sent.
+			// A same-tag disk entry can still belong to another URL or version.
+			if savedRuleSet != nil && savedRuleSet.LastEtag == s.lastEtag && bytes.Equal(savedRuleSet.URLHash, s.urlHash[:]) {
 				savedRuleSet.LastUpdated = s.lastUpdated
-				savedRuleSet.URLHash = s.urlHash[:]
 				err = s.cacheFile.SaveRuleSet(s.tag, savedRuleSet)
 				if err != nil {
 					s.logger.Error("save rule-set updated time: ", err)
@@ -308,9 +312,9 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, isStart bool) error {
 	if err != nil {
 		return err
 	}
-	eTagHeader := response.Header.Get("Etag")
-	if eTagHeader != "" {
-		s.lastEtag = eTagHeader
+	s.lastEtag = response.Header.Get("Etag")
+	if len(s.lastEtag) > http.DefaultMaxHeaderBytes {
+		s.lastEtag = ""
 	}
 	s.lastUpdated = time.Now()
 	if s.cacheFile != nil {

@@ -3,8 +3,10 @@ package adapter
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
 	"io"
+	"net/http"
 	"time"
 
 	E "github.com/sagernet/sing/common/exceptions"
@@ -128,20 +130,26 @@ func (s *SavedBinary) UnmarshalBinaryWithContentLimit(data []byte, maxContentByt
 	if etagLength > uint64(reader.Len()) {
 		return E.New("invalid etag length: ", etagLength)
 	}
-	etagBytes := make([]byte, etagLength)
-	_, err = io.ReadFull(reader, etagBytes)
+	// A validator is optional. Keep usable rule content from old caches
+	// without allocating or sending an oversized validator.
+	s.LastEtag = ""
+	if etagLength <= http.DefaultMaxHeaderBytes {
+		etagStart := len(data) - reader.Len()
+		s.LastEtag = string(data[etagStart : etagStart+int(etagLength)])
+	}
+	_, err = reader.Seek(int64(etagLength), io.SeekCurrent)
 	if err != nil {
 		return err
 	}
-	s.LastEtag = string(etagBytes)
 	if version < 2 {
+		s.URLHash = nil
 		return nil
 	}
 	urlHashLength, err := binary.ReadUvarint(reader)
 	if err != nil {
 		return err
 	}
-	if urlHashLength > uint64(reader.Len()) {
+	if (urlHashLength != 0 && urlHashLength != sha256.Size) || urlHashLength > uint64(reader.Len()) {
 		return E.New("invalid url hash length: ", urlHashLength)
 	}
 	s.URLHash = make([]byte, urlHashLength)
