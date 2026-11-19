@@ -38,6 +38,7 @@ type runtimeEndpointPhysical struct {
 	carriers         *outbound.RuntimeIOFenceSet
 	begin            func(context.Context) (context.Context, func(), error)
 	registration     adapter.RuntimeTailscaleChildRegistration
+	nativeWriter     *adapter.RuntimeTailscaleDirectories
 	reservationErr   error
 	cancel           context.CancelFunc
 	attachments      map[*runtimeEndpointBinding]struct{}
@@ -288,10 +289,20 @@ func (t *Endpoint) RuntimeReservePhysical(ctx context.Context) error {
 		return err
 	}
 	registrationContext := adapter.ContextWithRuntimeTailscaleChildBase(t.ctx, p.ctx)
-	p.registration, err = adapter.RegisterRuntimeTailscaleChild(registrationContext, adapter.RuntimeTailscaleChildRequest{
+	request := adapter.RuntimeTailscaleChildRequest{
 		ResourceID: r.source.ID(), Generation: p.generation, Tag: t.Tag(), StateDirectory: r.stateDirectory, TaildropDirectory: r.taildropDirectory,
 		ConstructionDone: p.constructionDone, CloseDone: p.closeDone, ConstructionResult: p.constructionResult, CloseResult: p.closeResult, StoreScopes: p.storeScopes, DirectoryScopes: p.directoryScopes,
-	})
+	}
+	if adapter.RuntimeTailscaleNativeWriterRequired(ctx) {
+		state, taildrop, directoryErr := RuntimePhysicalDirectories(r.baseContext, r.options)
+		if directoryErr != nil {
+			p.reservationErr = directoryErr
+			return directoryErr
+		}
+		p.nativeWriter = &adapter.RuntimeTailscaleDirectories{State: state, Taildrop: taildrop}
+		request.NativeWriter = p.nativeWriter
+	}
+	p.registration, err = adapter.RegisterRuntimeTailscaleChild(registrationContext, request)
 	p.reservationErr = err
 	return err
 }

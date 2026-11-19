@@ -197,6 +197,10 @@ func NewEndpoint(ctx context.Context, router adapter.Router, logger log.ContextL
 	}
 	taildropDirectory = expandedDirectoryBasePath(ctx, taildropDirectory)
 	taildropDirectory, _ = filepath.Abs(taildropDirectory)
+	if physical != nil && physical.nativeWriter != nil &&
+		(physical.nativeWriter.State != stateDirectory || physical.nativeWriter.Taildrop != taildropDirectory) {
+		return nil, E.New("Tailscale writer paths changed after original native admission")
+	}
 	// Only the trusted original native owner can supply this whole-config plan.
 	// Filesystem selection is atomic under the directory protocol, before any
 	// SDK store/server/taildrop handle can capture a path.

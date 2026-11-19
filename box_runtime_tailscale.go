@@ -51,6 +51,20 @@ func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRun
 			kept[value] = true
 		}
 	}
+	if platform := adapter.RuntimeTailscaleWriterFromContext(s.runtime.ctx); !g.initial && platform != nil {
+		for _, old := range prior {
+			if !kept[old] {
+				return t, runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
+			}
+		}
+		if len(t.next) > 0 {
+			value := t.next[0]
+			if err := validateRuntimeTailscaleWriter(s.runtime.ctx, platform, len(t.next), value.Tag(), value.RuntimePhysicalOptions()); err != nil {
+				return t, err
+			}
+			ctx = adapter.ContextWithRuntimeTailscaleNativeWriter(ctx)
+		}
+	}
 	selected := make(map[*protocolTS.Endpoint]*protocolTS.Endpoint)
 	// Validate and select all physical owners before opening a new native child.
 	for _, value := range t.next {
@@ -221,10 +235,11 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 		}
 		inputs = append(inputs, input{tag, *value})
 	}
-	if len(inputs) == 0 {
+	c := s.runtime
+	platform := adapter.RuntimeTailscaleWriterFromContext(c.ctx)
+	if len(inputs) == 0 && platform == nil {
 		return nil
 	}
-	c := s.runtime
 	c.access.Lock()
 	c.pruneRuntimeCatalogLocked()
 	current := append([]*runtimeResource(nil), c.resources...)
@@ -240,14 +255,29 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 		return err
 	}
 	kept := make(map[string]bool)
+	additions := 0
 	for _, value := range inputs {
 		if !replaced["endpoint:"+value.tag] {
 			kept[value.tag] = true
+		} else {
+			additions++
+		}
+	}
+	if platform != nil {
+		for _, old := range runtimeTailscaleParticipants(current) {
+			if !kept[old.Tag()] {
+				return runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
+			}
 		}
 	}
 	for index, value := range inputs {
 		if !replaced["endpoint:"+value.tag] {
 			continue
+		}
+		if platform != nil {
+			if err := validateRuntimeTailscaleWriter(c.ctx, platform, additions, value.tag, value.options); err != nil {
+				return err
+			}
 		}
 		// No candidate may publish two logical bindings for one directory identity.
 		for otherIndex, other := range inputs {
@@ -288,6 +318,21 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 			}
 			return runtimeEndpointRestart(value.tag, "Tailscale state or Taildrop directory is still owned by an incompatible physical identity")
 		}
+	}
+	return nil
+}
+
+func validateRuntimeTailscaleWriter(ctx context.Context, platform adapter.RuntimeTailscaleWriterPlatform, additions int, tag string, options option.TailscaleEndpointOptions) error {
+	if additions != 1 || options.SystemInterface || options.StateDirectory == "" || options.SSHServer != nil && options.SSHServer.Enabled {
+		return runtimeEndpointRestart(tag, "Android warm Tailscale requires one new scoped userspace endpoint with an explicit state directory")
+	}
+	state, taildrop, err := protocolTS.RuntimePhysicalDirectories(ctx, options)
+	if err != nil {
+		return err
+	}
+	if !adapter.RuntimeTailscaleChildHasCapacity(ctx) ||
+		!platform.ValidateRuntimeTailscaleWriter(tag, adapter.RuntimeTailscaleDirectories{State: state, Taildrop: taildrop}) {
+		return runtimeEndpointRestart(tag, "Android warm Tailscale writer admission is unavailable")
 	}
 	return nil
 }

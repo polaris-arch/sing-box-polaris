@@ -170,7 +170,7 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloading bool) (*Instance, error) {
 	ctx, profileContent, options := prepared.ctx, prepared.profileContent, prepared.options
 	if prepared.runtimeGraph {
-		ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, s.registerRuntimeTailscaleChild)
+		ctx = s.runtimeTailscaleContext(ctx)
 	}
 	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil && prepared.directoryPlan == nil {
 		if !domain.Activated() {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -20,7 +21,26 @@ import (
 // same original signals, validation and capacity limits as StartedService.
 func ContextWithRuntimeTailscaleChildren(ctx context.Context) context.Context {
 	host := &StartedService{}
-	return adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, host.registerRuntimeTailscaleChild)
+	return host.runtimeTailscaleContext(ctx)
+}
+
+func (s *StartedService) runtimeTailscaleContext(ctx context.Context) context.Context {
+	ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, s.registerRuntimeTailscaleChild)
+	return adapter.ContextWithRuntimeTailscaleChildCapacity(ctx, s.runtimeTailscaleChildHasCapacity)
+}
+
+// Plan may inspect capacity without reserving or pruning original runs. Apply
+// still requires an actual slot via appendTailscaleRetirementRun.
+func (s *StartedService) runtimeTailscaleChildHasCapacity() bool {
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	retained := 0
+	for _, run := range s.tailscaleRetirementRuns {
+		if !run.reclaimableEmptyRun() {
+			retained++
+		}
+	}
+	return retained < maxTailscaleRetirementRuns
 }
 
 type runtimeChildDirectoryPlan interface {
@@ -36,6 +56,10 @@ type runtimeTailscaleChild struct {
 	options                     option.Options
 	selected                    option.Endpoint
 	plan                        runtimeChildDirectoryPlan
+	native                      adapter.RuntimeTailscaleWriterPlatform
+	nativeScope                 adapter.RuntimeTailscaleWriterScope
+	claimKnown, claimed         bool
+	directoryEntered            bool
 	entered, committed, aborted bool
 	abortErr                    error
 }
@@ -62,6 +86,10 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 		if !ok || os.ExpandEnv(settings.StateDirectory) != request.StateDirectory || os.ExpandEnv(settings.TaildropDirectory) != request.TaildropDirectory {
 			return nil, errors.New("tailscale physical child paths differ from captured configuration")
 		}
+		if request.NativeWriter != nil && (settings.SystemInterface || settings.StateDirectory == "" || settings.SSHServer != nil && settings.SSHServer.Enabled ||
+			!filepath.IsAbs(request.NativeWriter.State) || !filepath.IsAbs(request.NativeWriter.Taildrop)) {
+			return nil, errors.New("invalid native Tailscale writer directories")
+		}
 		selected = endpoint
 		found = true
 	}
@@ -74,6 +102,19 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	}
 	run.closeFinished = request.CloseDone
 	child := &runtimeTailscaleChild{run: run, request: request, options: options, selected: selected}
+	if request.NativeWriter != nil {
+		child.native = adapter.RuntimeTailscaleWriterFromContext(s.ctx)
+		if child.native == nil {
+			return nil, errors.New("original native Tailscale writer admission unavailable")
+		}
+		child.nativeScope = adapter.RuntimeTailscaleWriterScope{
+			ResourceID:  request.ResourceID,
+			Generation:  request.Generation,
+			Binding:     run.binding,
+			Tag:         request.Tag,
+			Directories: *request.NativeWriter,
+		}
+	}
 	physicalBase := ctx
 	if base, ok := adapter.RuntimeTailscaleChildBase(ctx); ok {
 		physicalBase = base
@@ -108,6 +149,25 @@ func (c *runtimeTailscaleChild) Prepare(request context.Context) error {
 	c.mu.Unlock()
 	// Lifecycle sequencing owns this method; cancellation never launches an
 	// asynchronous plan Abort that could race its actual constructor binding.
+	if c.native != nil {
+		c.claimKnown = true // guard the no-callback cancellation path
+		if err := request.Err(); err != nil {
+			return err
+		}
+		c.claimKnown = false
+		claimed, err := c.native.ClaimRuntimeTailscaleWriter(c.nativeScope)
+		if err != nil {
+			return err // an uncertain host claim stays with this original child
+		}
+		c.claimKnown, c.claimed = true, claimed
+		if !claimed {
+			return errors.New("native Tailscale writer is already owned or unavailable")
+		}
+		if err := request.Err(); err != nil {
+			return err
+		}
+		c.directoryEntered = true
+	}
 	ctx, plan, err := prepareRuntimeChildDirectories(c.ctx, c.options, c.selected)
 	if err != nil {
 		return err
@@ -219,7 +279,12 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 	entered, committed, abortErr := c.entered, c.committed, c.abortErr
 	c.mu.Unlock()
 	noAcquisition, marker := constructionErr.(interface{ RuntimeTailscaleNoAcquisition() bool })
-	if !entered && marker && noAcquisition.RuntimeTailscaleNoAcquisition() && closeErr == nil && abortErr == nil {
+	neverEntered := !entered && marker && noAcquisition.RuntimeTailscaleNoAcquisition()
+	nativeNeverEntered := c.native != nil && c.claimKnown && !c.directoryEntered
+	if (neverEntered || nativeNeverEntered) && closeErr == nil && abortErr == nil {
+		if c.claimed && c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, false) != nil {
+			return
+		}
 		c.run.access.Lock()
 		c.run.runtimeNoAcquisition = true
 		c.run.originalCloseSucceeded = true
@@ -232,5 +297,15 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 	c.run.freezeDirectories(c.request.DirectoryScopes(), committed && constructionErr == nil && closeErr == nil && abortErr == nil)
 	c.run.access.Lock()
 	c.run.originalCloseSucceeded = closeErr == nil && abortErr == nil
+	// The original physical Close waits for the actual Store, directory scope,
+	// Taildrop and detached stack. The two censuses correlate that result with
+	// this child. Android's ordinary directory export still has no managed
+	// deletion authority and must not be promoted to SealedDrained here.
+	writerClosed := c.run.final.CensusComplete && c.run.directoryFinal.CensusComplete
 	c.run.access.Unlock()
+	if c.claimed && writerClosed {
+		// The native host keeps custody if it cannot acknowledge release. Go's
+		// original close observations remain true and are retained separately.
+		_ = c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, true)
+	}
 }

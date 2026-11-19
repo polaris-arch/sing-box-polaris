@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -89,9 +90,10 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 	powerManager := powerreport.NewManager()
 	service.MustRegister[*powerreport.Manager](ctx, powerManager)
 	platformWrapper := &platformInterfaceWrapper{
-		iif:          platformInterface,
-		useProcFS:    platformInterface.UseProcFS(),
-		powerManager: powerManager,
+		iif:                  platformInterface,
+		useProcFS:            platformInterface.UseProcFS(),
+		powerManager:         powerManager,
+		androidTailscaleHost: runtime.GOOS == "android",
 	}
 	service.MustRegister[adapter.PlatformInterface](ctx, platformWrapper)
 	server := &CommandServer{

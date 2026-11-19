@@ -3,6 +3,8 @@ package adapter
 import (
 	"context"
 	"errors"
+
+	"github.com/sagernet/sing/service"
 )
 
 // The logical endpoint owns these actual physical-child completion signals.
@@ -17,7 +19,40 @@ type RuntimeTailscaleChildRequest struct {
 	CloseResult                            func() error
 	StoreScopes                            func() []TailscaleStoreNode
 	DirectoryScopes                        func() []TailscaleDirectoryNode
+	NativeWriter                           *RuntimeTailscaleDirectories
 }
+
+// RuntimeTailscaleDirectories are the configured paths resolved by the actual
+// constructor. The native host resolves aliases in its own ownership domain.
+type RuntimeTailscaleDirectories struct {
+	State, Taildrop string
+}
+
+type RuntimeTailscaleWriterScope struct {
+	ResourceID  RuntimeResourceID
+	Generation  uint64
+	Binding     TailscaleStoreRunBinding
+	Tag         string
+	Directories RuntimeTailscaleDirectories
+}
+
+// RuntimeTailscaleWriterPlatform is optional. Platforms requiring this fence
+// may enable a warm writer only via their original native command owner.
+type RuntimeTailscaleWriterPlatform interface {
+	RequiresRuntimeTailscaleWriter() bool
+	ValidateRuntimeTailscaleWriter(tag string, directories RuntimeTailscaleDirectories) bool
+	ClaimRuntimeTailscaleWriter(scope RuntimeTailscaleWriterScope) (bool, error)
+	ReleaseRuntimeTailscaleWriter(scope RuntimeTailscaleWriterScope, acquired bool) error
+}
+
+func RuntimeTailscaleWriterFromContext(ctx context.Context) RuntimeTailscaleWriterPlatform {
+	platform, _ := service.FromContext[PlatformInterface](ctx).(RuntimeTailscaleWriterPlatform)
+	if platform == nil || !platform.RequiresRuntimeTailscaleWriter() {
+		return nil
+	}
+	return platform
+}
+
 type RuntimeTailscaleChildRegistration interface {
 	Context() context.Context
 	Prepare(context.Context) error
@@ -27,10 +62,30 @@ type RuntimeTailscaleChildRegistration interface {
 type (
 	RuntimeTailscaleChildRegistrar    func(context.Context, RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error)
 	runtimeTailscaleChildRegistrarKey struct{}
+	runtimeTailscaleChildCapacityKey  struct{}
+	runtimeTailscaleNativeWriterKey   struct{}
 )
 
 func ContextWithRuntimeTailscaleChildRegistrar(ctx context.Context, registrar RuntimeTailscaleChildRegistrar) context.Context {
 	return context.WithValue(ctx, runtimeTailscaleChildRegistrarKey{}, registrar)
+}
+
+func ContextWithRuntimeTailscaleChildCapacity(ctx context.Context, check func() bool) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleChildCapacityKey{}, check)
+}
+
+func RuntimeTailscaleChildHasCapacity(ctx context.Context) bool {
+	check, _ := ctx.Value(runtimeTailscaleChildCapacityKey{}).(func() bool)
+	return check != nil && check()
+}
+
+func ContextWithRuntimeTailscaleNativeWriter(ctx context.Context) context.Context {
+	return context.WithValue(ctx, runtimeTailscaleNativeWriterKey{}, true)
+}
+
+func RuntimeTailscaleNativeWriterRequired(ctx context.Context) bool {
+	required, _ := ctx.Value(runtimeTailscaleNativeWriterKey{}).(bool)
+	return required
 }
 
 func RegisterRuntimeTailscaleChild(ctx context.Context, request RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error) {
