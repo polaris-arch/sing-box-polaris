@@ -318,6 +318,12 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 		if prepareErr != nil {
 			record.operation.State = "ABORTING_UNAPPLIED"
 			record.operation.Errors = []RuntimePlanError{{Code: "PREPARATION_FAILED", Message: "candidate was not published"}}
+			switch {
+			case errors.Is(prepareErr, context.DeadlineExceeded):
+				record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PREPARATION_DEADLINE_EXCEEDED", Message: "candidate preparation deadline exceeded before publication"})
+			case errors.Is(prepareErr, context.Canceled):
+				record.operation.Errors = append(record.operation.Errors, RuntimePlanError{Code: "PREPARATION_CANCELED", Message: "candidate preparation canceled before publication"})
+			}
 			var structured interface{ RuntimePlanError() RuntimePlanError }
 			if errors.As(prepareErr, &structured) {
 				record.operation.Errors = append(record.operation.Errors, structured.RuntimePlanError())
