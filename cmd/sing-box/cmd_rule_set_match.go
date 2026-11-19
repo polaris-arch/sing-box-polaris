@@ -13,7 +13,6 @@ import (
 	"github.com/sagernet/sing-box/route/rule"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
-	"github.com/sagernet/sing/common/json"
 	M "github.com/sagernet/sing/common/metadata"
 
 	"github.com/spf13/cobra"
@@ -54,7 +53,7 @@ func ruleSetMatch(sourcePath string, domain string) error {
 	var ruleSet option.PlainRuleSetCompat
 	switch flagRuleSetMatchFormat {
 	case C.RuleSetFormatSource:
-		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+		ruleSet, err = decodeRuleSetSource(content)
 		if err != nil {
 			return err
 		}

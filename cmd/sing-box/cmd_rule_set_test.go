@@ -44,6 +44,16 @@ func TestCompileRuleSetOversizePreservesOutputAndStdin(t *testing.T) {
 	if offset, err := input.Seek(0, io.SeekCurrent); err != nil || offset != srs.DefaultInputBytes+1 {
 		t.Fatalf("stdin closed or consumed past the sentinel: offset=%d, err=%v", offset, err)
 	}
+	content := `{"version":1,"rules":[` + strings.Repeat(`{"domain":"example.org"},`, int(srs.DefaultReadLimits().Rules)) + `{"domain":"last.example"}]}`
+	if err := os.WriteFile(sourcePath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := compileRuleSet(sourcePath); !errors.Is(err, srs.ErrResourceLimit) {
+		t.Fatalf("expected rule count limit error, got %v", err)
+	}
+	if output, err := os.ReadFile(flagRuleSetCompileOutput); err != nil || string(output) != existing {
+		t.Fatalf("existing output changed: %q, %v", output, err)
+	}
 }
 
 func TestRuleSetOversizePreservesInPlaceSource(t *testing.T) {

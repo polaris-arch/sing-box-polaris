@@ -77,6 +77,25 @@ func TestSRSBudgetsAreCumulativeAndExplicitlyAdjustable(t *testing.T) {
 	if _, err := ReadContextWithLimits(context.Background(), bytes.NewReader(data), false, ReadLimits{Rules: 3}); err != nil {
 		t.Fatal(err)
 	}
+	source := []byte(`{/* comment */"version": 1, "RULES": [{"type":"logical","mode":"or","rules":[{},{}]}]}`)
+	if _, err := ReadSourceContextWithLimits(context.Background(), source, ReadLimits{Rules: 2}); !errors.Is(err, ErrResourceLimit) {
+		t.Fatal(err)
+	}
+	if _, err := ReadSourceContextWithLimits(context.Background(), source, ReadLimits{Rules: 3}); err != nil {
+		t.Fatal(err)
+	}
+	var nesting bytes.Buffer
+	nesting.WriteString(`{"version":1,"rules":[`)
+	for range maxLogicalRuleDepth + 1 {
+		nesting.WriteString(`{"type":"logical","mode":"or","rules":[`)
+	}
+	nesting.WriteString(`{}`)
+	for range maxLogicalRuleDepth + 2 {
+		nesting.WriteString(`]}`)
+	}
+	if _, err := ReadSourceContextWithLimits(context.Background(), nesting.Bytes(), ReadLimits{}); err == nil || err.Error() != "logical rule nested too deep" {
+		t.Fatalf("expected logical depth limit, got %v", err)
+	}
 	// Two fields cannot each independently consume the entire entry allowance.
 	body = []byte{1, 0, ruleItemDomainKeyword, 1, 1, 'a', ruleItemDomainRegex, 1, 1, 'b', ruleItemFinal, 0}
 	data = craftRuleSet(body)

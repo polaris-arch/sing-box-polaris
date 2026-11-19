@@ -58,7 +58,7 @@ func readRuleSet() ([]*RuleSetEntry, error) {
 			return E.Cause(err, "read config at ", path)
 		}
 		remaining -= int64(len(content))
-		options, err := json.UnmarshalExtendedContext[option.PlainRuleSetCompat](globalCtx, content)
+		options, err := decodeRuleSetSource(content)
 		if err != nil {
 			return E.Cause(err, "decode config at ", path)
 		}
@@ -111,7 +111,7 @@ func readRuleSetAndMerge() (option.PlainRuleSetCompat, error) {
 			return option.PlainRuleSetCompat{}, E.Cause(err, "merge config at ", options.path)
 		}
 	}
-	mergedOptions, err := json.UnmarshalExtendedContext[option.PlainRuleSetCompat](globalCtx, mergedMessage)
+	mergedOptions, err := decodeRuleSetSource(mergedMessage)
 	if err != nil {
 		return option.PlainRuleSetCompat{}, E.Cause(err, "unmarshal merged config")
 	}

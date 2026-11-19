@@ -20,7 +20,6 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
-	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
 	"github.com/sagernet/sing/service"
@@ -207,7 +206,7 @@ func (s *RemoteRuleSet) loadBytesContext(ctx context.Context, content []byte) (r
 	)
 	switch s.options.Format {
 	case C.RuleSetFormatSource:
-		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+		ruleSet, err = srs.ReadSourceContextWithLimits(ctx, content, limits)
 		if err != nil {
 			return err
 		}

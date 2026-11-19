@@ -9,7 +9,6 @@ import (
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route/rule"
-	"github.com/sagernet/sing/common/json"
 
 	"github.com/spf13/cobra"
 )
@@ -40,7 +39,7 @@ func compileRuleSet(sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	plainRuleSet, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+	plainRuleSet, err := decodeRuleSetSource(content)
 	if err != nil {
 		return err
 	}

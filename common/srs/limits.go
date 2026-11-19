@@ -1,13 +1,16 @@
 package srs
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/varbin"
 )
 
@@ -48,6 +51,101 @@ func ResolveReadLimits(l ReadLimits) (ReadLimits, error) {
 		return l, errors.New("SRS byte limits must be positive")
 	}
 	return l, nil
+}
+
+// ReadSourceContextWithLimits applies input, rule count and logical depth
+// limits before decoding a JSON rule-set. The remaining limits describe
+// allocations and recovery from the binary representation.
+func ReadSourceContextWithLimits(ctx context.Context, content []byte, limits ReadLimits) (option.PlainRuleSetCompat, error) {
+	var empty option.PlainRuleSetCompat
+	limits, err := ResolveReadLimits(limits)
+	if err != nil {
+		return empty, err
+	}
+	if int64(len(content)) > limits.InputBytes {
+		return empty, limitError("input bytes")
+	}
+	decoder := json.NewDecoder(contextReader{ctx, bytes.NewReader(content)})
+	token, err := decoder.Token()
+	if err != nil {
+		return empty, err
+	}
+	if token != json.Delim('{') {
+		return empty, errors.New("rule-set source must be an object")
+	}
+	if err := checkSourceRuleObject(ctx, decoder, &limits.Rules, 0); err != nil {
+		return empty, err
+	}
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
+	ruleSet, err := json.UnmarshalExtendedContext[option.PlainRuleSetCompat](ctx, content)
+	if err != nil {
+		return empty, err
+	}
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
+	return ruleSet, nil
+}
+
+// Skip a value without materializing a second tree. The typed decoder below
+// still validates every field and determines which condition is represented.
+type skippedSourceValue struct{}
+
+func (*skippedSourceValue) UnmarshalJSON([]byte) error { return nil }
+
+func checkSourceRuleObject(ctx context.Context, decoder *json.Decoder, remaining *uint64, depth int) error {
+	var skip skippedSourceValue
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if name, ok := key.(string); !ok || !strings.EqualFold(name, "rules") {
+			if err := decoder.Decode(&skip); err != nil {
+				return err
+			}
+			continue
+		}
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if token == nil { // The typed format accepts null for a rule array.
+			continue
+		}
+		if token != json.Delim('[') {
+			return errors.New("rule-set source rules must be an array")
+		}
+		for decoder.More() {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if *remaining == 0 {
+				return limitError("rules")
+			}
+			if depth > maxLogicalRuleDepth {
+				return errors.New("logical rule nested too deep")
+			}
+			*remaining--
+			rule, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			if rule != json.Delim('{') {
+				return errors.New("rule-set source rule must be an object")
+			}
+			if err := checkSourceRuleObject(ctx, decoder, remaining, depth+1); err != nil {
+				return err
+			}
+		}
+		if _, err := decoder.Token(); err != nil {
+			return err
+		}
+	}
+	_, err := decoder.Token()
+	return err
 }
 
 // ReadContent bounds acquisition before io.ReadAll can grow without limit. It

@@ -18,7 +18,6 @@ import (
 	"github.com/sagernet/sing/common"
 	E "github.com/sagernet/sing/common/exceptions"
 	F "github.com/sagernet/sing/common/format"
-	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/logger"
 	"github.com/sagernet/sing/common/x/list"
 	"github.com/sagernet/sing/service/filemanager"
@@ -132,6 +131,10 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 	}()
 	var digest string
 	var ruleSet option.PlainRuleSetCompat
+	limits, err := ruleSetLimits(s.resourceLimits)
+	if err != nil {
+		return err
+	}
 	switch s.fileFormat {
 	case C.RuleSetFormatSource, "":
 		content, err := readRuleSetFile(s.ctx, path, s.resourceLimits)
@@ -140,7 +143,7 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 		}
 		sum := sha256.Sum256(content)
 		digest = hex.EncodeToString(sum[:])
-		ruleSet, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+		ruleSet, err = srs.ReadSourceContextWithLimits(s.ctx, content, limits)
 		if err != nil {
 			return err
 		}
@@ -151,10 +154,6 @@ func (s *LocalRuleSet) reloadFile(path string) (result error) {
 		}
 		sum := sha256.Sum256(content)
 		digest = hex.EncodeToString(sum[:])
-		limits, limitsErr := ruleSetLimits(s.resourceLimits)
-		if limitsErr != nil {
-			return limitsErr
-		}
 		ruleSet, err = srs.ReadContextWithLimits(s.ctx, bytes.NewReader(content), false, limits)
 		if err != nil {
 			return err

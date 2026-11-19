@@ -8,7 +8,6 @@ import (
 	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
-	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 
@@ -39,7 +38,7 @@ func upgradeRuleSet(sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	plainRuleSetCompat, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+	plainRuleSetCompat, err := decodeRuleSetSource(content)
 	if err != nil {
 		return err
 	}

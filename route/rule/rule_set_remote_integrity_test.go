@@ -288,6 +288,16 @@ func TestRemoteRuleSetOversizedDownloadKeepsPublicationAndETag(t *testing.T) {
 	require.Same(t, old, set.loadSnapshot())
 	require.Equal(t, "old", set.lastEtag)
 	require.Equal(t, time.Unix(100, 0), set.lastUpdated)
+
+	set.options.ResourceLimits = &option.RuleSetResourceLimits{Rules: 1}
+	set.httpClient.Transport = srsTestTransport(func(*http.Request) (*http.Response, error) {
+		content := `{"version":4,"rules":[{"type":"logical","mode":"or","rules":[{"domain":"changed.example"}]}]}`
+		return &http.Response{StatusCode: http.StatusOK, ContentLength: int64(len(content)), Header: http.Header{"Etag": []string{"new"}}, Body: io.NopCloser(strings.NewReader(content))}, nil
+	})
+	require.ErrorIs(t, set.fetch(ctx, false), srs.ErrResourceLimit)
+	require.Same(t, old, set.loadSnapshot())
+	require.Equal(t, "old", set.lastEtag)
+	require.Equal(t, time.Unix(100, 0), set.lastUpdated)
 }
 
 type forbiddenOversizedBody struct {

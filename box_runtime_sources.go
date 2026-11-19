@@ -136,7 +136,11 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 			var compatible option.PlainRuleSetCompat
 			switch source.Format {
 			case C.RuleSetFormatSource, "":
-				compatible, err = json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+				var limits srs.ReadLimits
+				if source.ResourceLimits != nil {
+					limits = *source.ResourceLimits
+				}
+				compatible, err = srs.ReadSourceContextWithLimits(request, content, limits)
 			case C.RuleSetFormatBinary:
 				compatible, err = srs.Read(bytes.NewReader(content), false)
 			default:

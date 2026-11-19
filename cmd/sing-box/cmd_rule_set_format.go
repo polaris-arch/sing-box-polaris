@@ -7,7 +7,6 @@ import (
 
 	"github.com/sagernet/sing-box/common/srs"
 	"github.com/sagernet/sing-box/log"
-	"github.com/sagernet/sing-box/option"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/json"
 
@@ -38,7 +37,7 @@ func formatRuleSet(sourcePath string) error {
 	if err != nil {
 		return err
 	}
-	plainRuleSet, err := json.UnmarshalExtended[option.PlainRuleSetCompat](content)
+	plainRuleSet, err := decodeRuleSetSource(content)
 	if err != nil {
 		return err
 	}
