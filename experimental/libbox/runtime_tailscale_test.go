@@ -37,10 +37,11 @@ func TestRuntimeTailscaleBridgeIsAndroidMainOwnerOptIn(t *testing.T) {
 		name   string
 		server *CommandServer
 	}{
-		{"desktop", &CommandServer{platformWrapper: &platformInterfaceWrapper{}}},
-		{"transient", &CommandServer{transient: true, platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true}}},
-		{"initialized", &CommandServer{platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true, runtimeTailscaleFrozen: true}}},
-		{"closing", &CommandServer{commandIsClosing: true, platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true}}},
+		{"desktop", &CommandServer{strictCleanup: true, platformWrapper: &platformInterfaceWrapper{}}},
+		{"transient", &CommandServer{transient: true, strictCleanup: true, platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true}}},
+		{"non-strict", &CommandServer{platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true}}},
+		{"initialized", &CommandServer{strictCleanup: true, platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true, runtimeTailscaleFrozen: true}}},
+		{"closing", &CommandServer{strictCleanup: true, commandIsClosing: true, platformWrapper: &platformInterfaceWrapper{androidTailscaleHost: true}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if err := test.server.SetRuntimeTailscalePlatform(native); err == nil {
@@ -55,7 +56,7 @@ func TestRuntimeTailscaleBridgeIsAndroidMainOwnerOptIn(t *testing.T) {
 		Tag: "expected", Directories: adapter.RuntimeTailscaleDirectories{State: "/state", Taildrop: "/taildrop"},
 	}
 	w := &platformInterfaceWrapper{androidTailscaleHost: true}
-	server := &CommandServer{platformWrapper: w}
+	server := &CommandServer{platformWrapper: w, strictCleanup: true}
 	if w.ValidateRuntimeTailscaleWriter(scope.Tag, scope.Directories) {
 		t.Fatal("unbound legacy platform allowed a warm writer")
 	}

@@ -45,12 +45,16 @@ type tailscaleRetirementRun struct {
 }
 
 func newTailscaleRetirementRun(content string, options option.Options) (*tailscaleRetirementRun, error) {
+	digest := sha256.Sum256([]byte(content))
+	return newTailscaleRetirementRunWithDigest(hex.EncodeToString(digest[:]), options)
+}
+
+func newTailscaleRetirementRunWithDigest(digest string, options option.Options) (*tailscaleRetirementRun, error) {
 	var nonce [32]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, err
 	}
-	digest := sha256.Sum256([]byte(content))
-	run := &tailscaleRetirementRun{binding: adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: hex.EncodeToString(digest[:])}}
+	run := &tailscaleRetirementRun{binding: adapter.TailscaleStoreRunBinding{RunNonce: hex.EncodeToString(nonce[:]), ConfigDigest: digest}}
 	for index, endpoint := range options.Endpoints {
 		if endpoint.Type != C.TypeTailscale {
 			continue

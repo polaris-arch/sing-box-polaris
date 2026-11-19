@@ -32,6 +32,7 @@ import (
 
 type CommandServer struct {
 	transient       bool
+	strictCleanup   bool
 	directoryDomain *adapter.TailscaleDirectoryDomain
 	*daemon.StartedService
 	ctx                  context.Context
@@ -98,6 +99,7 @@ func newCommandServer(handler CommandServerHandler, platformInterface PlatformIn
 	service.MustRegister[adapter.PlatformInterface](ctx, platformWrapper)
 	server := &CommandServer{
 		transient:         transient,
+		strictCleanup:     strictCleanup,
 		directoryDomain:   domain,
 		ctx:               ctx,
 		handler:           handler,

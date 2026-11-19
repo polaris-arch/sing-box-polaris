@@ -164,7 +164,17 @@ func (p *runtimeEndpointPhysical) close() error {
 		p.mu.Unlock()
 	})
 	<-p.closeDone
-	return p.closeResult()
+	err := p.closeResult()
+	if p.nativeWriter != nil && p.registration != nil {
+		// No physical lock is held and the observer can already inspect CloseDone
+		// and the original CloseResult. Only this opt-in joins the host handoff.
+		if native, ok := p.registration.(adapter.RuntimeTailscaleNativeClose); ok {
+			if nativeErr := native.WaitOriginalNativeClose(); nativeErr != nil {
+				return runtimeTLS.NewRuntimeCleanupError(errors.Join(err, nativeErr))
+			}
+		}
+	}
+	return err
 }
 
 type (
@@ -303,6 +313,11 @@ func (t *Endpoint) RuntimeReservePhysical(ctx context.Context) error {
 		request.NativeWriter = p.nativeWriter
 	}
 	p.registration, err = adapter.RegisterRuntimeTailscaleChild(registrationContext, request)
+	if err == nil && p.nativeWriter != nil {
+		if _, ok := p.registration.(adapter.RuntimeTailscaleNativeClose); !ok {
+			err = errors.New("original native Tailscale close acknowledgement is unavailable")
+		}
+	}
 	p.reservationErr = err
 	return err
 }

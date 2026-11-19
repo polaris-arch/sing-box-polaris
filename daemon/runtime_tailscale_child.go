@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
@@ -47,6 +48,11 @@ type runtimeChildDirectoryPlan interface {
 	preparedDirectoryResources
 	Acquire(context.Context) error
 }
+
+const runtimeTailscaleNativeCloseTimeout = 2 * time.Second
+
+var errRuntimeTailscaleNativeCloseUnknown = errors.New("original native Tailscale closure is unconfirmed")
+
 type runtimeTailscaleChild struct {
 	op                          sync.Mutex // lifecycle operation serialization, never used by context/snapshot callbacks
 	mu                          sync.Mutex
@@ -58,6 +64,10 @@ type runtimeTailscaleChild struct {
 	plan                        runtimeChildDirectoryPlan
 	native                      adapter.RuntimeTailscaleWriterPlatform
 	nativeScope                 adapter.RuntimeTailscaleWriterScope
+	nativeCloseDone             chan struct{}
+	nativeCloseResult           error
+	nativeCloseWait             sync.Once
+	nativeCloseWaitResult       error
 	claimKnown, claimed         bool
 	directoryEntered            bool
 	entered, committed, aborted bool
@@ -96,7 +106,17 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	if !found {
 		return nil, errors.New("tailscale child is absent from captured configuration")
 	}
-	run, err := newTailscaleRetirementRun(string(canonical), option.Options{Endpoints: []option.Endpoint{selected}})
+	runOptions := option.Options{Endpoints: []option.Endpoint{selected}}
+	var run *tailscaleRetirementRun
+	if request.NativeWriter != nil {
+		digest, ok := adapter.RuntimeTailscalePlanDigest(ctx)
+		if !ok {
+			return nil, errors.New("original native Tailscale child lacks the authenticated Plan digest")
+		}
+		run, err = newTailscaleRetirementRunWithDigest(digest, runOptions)
+	} else {
+		run, err = newTailscaleRetirementRun(string(canonical), runOptions)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +134,7 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 			Tag:         request.Tag,
 			Directories: *request.NativeWriter,
 		}
+		child.nativeCloseDone = make(chan struct{})
 	}
 	physicalBase := ctx
 	if base, ok := adapter.RuntimeTailscaleChildBase(ctx); ok {
@@ -259,20 +280,51 @@ func (c *runtimeTailscaleChild) Abort() error {
 }
 
 func (c *runtimeTailscaleChild) observeActualClose() {
+	result := errRuntimeTailscaleNativeCloseUnknown
 	defer func() {
 		if recover() != nil {
 			c.run.freeze(nil, false)
 			c.run.freezeDirectories(nil, false)
 		}
+		if c.nativeCloseDone != nil {
+			c.nativeCloseResult = result
+			close(c.nativeCloseDone)
+		}
 	}()
 	<-c.request.CloseDone
+	proof := c.originalCloseProof()
+	if proof.noAcquisition {
+		if proof.claimed && c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, false) != nil {
+			return
+		}
+		c.run.access.Lock()
+		c.run.runtimeNoAcquisition = true
+		c.run.originalCloseSucceeded = true
+		c.run.final = &tailscaleRetirementInstance{RunNonce: c.run.binding.RunNonce, ConfigDigest: c.run.binding.ConfigDigest, Terminal: "NoStoreConstruction", CensusComplete: true, Nodes: []adapter.TailscaleStoreNode{}}
+		c.run.directoryFinal = &tailscaleDirectoryInstance{RunNonce: c.run.binding.RunNonce, ConfigDigest: c.run.binding.ConfigDigest, Terminal: "NoDirectoryConstruction", CensusComplete: true, Nodes: []adapter.TailscaleDirectoryNode{}}
+		c.run.access.Unlock()
+		result = nil
+		return
+	}
+	// The original child operation lock is released before invoking JNI. Host
+	// release may use its ownership lock, never a lock that joins this Close.
+	if proof.claimed && proof.writerClosed {
+		result = c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, true)
+	}
+}
+
+type runtimeTailscaleCloseProof struct {
+	noAcquisition, writerClosed, claimed bool
+}
+
+func (c *runtimeTailscaleChild) originalCloseProof() runtimeTailscaleCloseProof {
 	c.op.Lock()
 	defer c.op.Unlock()
 	// CloseDone alone cannot supply a missing constructor terminal observation.
 	select {
 	case <-c.request.ConstructionDone:
 	default:
-		return
+		return runtimeTailscaleCloseProof{}
 	}
 	constructionErr, closeErr := c.request.ConstructionResult(), c.request.CloseResult()
 	c.mu.Lock()
@@ -282,16 +334,7 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 	neverEntered := !entered && marker && noAcquisition.RuntimeTailscaleNoAcquisition()
 	nativeNeverEntered := c.native != nil && c.claimKnown && !c.directoryEntered
 	if (neverEntered || nativeNeverEntered) && closeErr == nil && abortErr == nil {
-		if c.claimed && c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, false) != nil {
-			return
-		}
-		c.run.access.Lock()
-		c.run.runtimeNoAcquisition = true
-		c.run.originalCloseSucceeded = true
-		c.run.final = &tailscaleRetirementInstance{RunNonce: c.run.binding.RunNonce, ConfigDigest: c.run.binding.ConfigDigest, Terminal: "NoStoreConstruction", CensusComplete: true, Nodes: []adapter.TailscaleStoreNode{}}
-		c.run.directoryFinal = &tailscaleDirectoryInstance{RunNonce: c.run.binding.RunNonce, ConfigDigest: c.run.binding.ConfigDigest, Terminal: "NoDirectoryConstruction", CensusComplete: true, Nodes: []adapter.TailscaleDirectoryNode{}}
-		c.run.access.Unlock()
-		return
+		return runtimeTailscaleCloseProof{noAcquisition: true, claimed: c.claimed}
 	}
 	c.run.freeze(c.request.StoreScopes(), committed && constructionErr == nil && closeErr == nil && abortErr == nil)
 	c.run.freezeDirectories(c.request.DirectoryScopes(), committed && constructionErr == nil && closeErr == nil && abortErr == nil)
@@ -303,9 +346,25 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 	// deletion authority and must not be promoted to SealedDrained here.
 	writerClosed := c.run.final.CensusComplete && c.run.directoryFinal.CensusComplete
 	c.run.access.Unlock()
-	if c.claimed && writerClosed {
-		// The native host keeps custody if it cannot acknowledge release. Go's
-		// original close observations remain true and are retained separately.
-		_ = c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, true)
-	}
+	return runtimeTailscaleCloseProof{writerClosed: writerClosed, claimed: c.claimed}
+}
+
+func (c *runtimeTailscaleChild) WaitOriginalNativeClose() error {
+	return c.waitOriginalNativeClose(runtimeTailscaleNativeCloseTimeout)
+}
+
+func (c *runtimeTailscaleChild) waitOriginalNativeClose(timeout time.Duration) error {
+	c.nativeCloseWait.Do(func() {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+		select {
+		case <-c.nativeCloseDone:
+			c.nativeCloseWaitResult = c.nativeCloseResult
+		case <-timer.C:
+			// A later callback still belongs to the original host scope. It
+			// cannot turn this already timed-out Close into an acknowledgement.
+			c.nativeCloseWaitResult = errRuntimeTailscaleNativeCloseUnknown
+		}
+	})
+	return c.nativeCloseWaitResult
 }

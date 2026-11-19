@@ -9,9 +9,11 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
+	runtimeTLS "github.com/sagernet/sing-box/common/tls"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service"
@@ -145,6 +147,58 @@ func TestReleasedBindingCannotFallbackToPublishedGeneration(t *testing.T) {
 func newRuntimePhysicalFixture() *runtimeEndpointPhysical {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &runtimeEndpointPhysical{ctx: ctx, cancel: cancel, scope: adapter.NewScope(ctx, nil), callbacks: outbound.NewRuntimeIOFence(nil), carriers: outbound.NewRuntimeIOFenceSet(), attachments: make(map[*runtimeEndpointBinding]struct{}), constructionDone: make(chan struct{}), closeDone: make(chan struct{})}
+}
+
+type nativeCloseWaiterFixture struct {
+	adapter.RuntimeTailscaleChildRegistration
+	wait func() error
+}
+
+func (nativeCloseWaiterFixture) Abort() error { return nil }
+func (f nativeCloseWaiterFixture) WaitOriginalNativeClose() error {
+	return f.wait()
+}
+
+func TestRuntimeTailscalePhysicalCloseJoinsOptInAfterOriginalCompletion(t *testing.T) {
+	p := newRuntimePhysicalFixture()
+	p.nativeWriter = &adapter.RuntimeTailscaleDirectories{}
+	closeDoneObserved, acknowledge := make(chan bool, 1), make(chan struct{})
+	defer close(acknowledge)
+	wantErr := errors.New("fixture original native release unknown")
+	p.registration = nativeCloseWaiterFixture{wait: func() error {
+		select {
+		case <-p.closeDone:
+			closeDoneObserved <- p.closeResult() == nil
+		default:
+			closeDoneObserved <- false
+		}
+		<-acknowledge
+		return wantErr
+	}}
+	result := make(chan error, 1)
+	go func() { result <- p.close() }()
+	select {
+	case complete := <-closeDoneObserved:
+		if !complete {
+			t.Fatal("native host joined before the actual physical Close was observable")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("original physical Close did not reach native handoff")
+	}
+	select {
+	case <-result:
+		t.Fatal("physical Close returned before the opt-in handoff acknowledged")
+	default:
+	}
+	acknowledge <- struct{}{}
+	select {
+	case err := <-result:
+		if !errors.Is(err, wantErr) || !runtimeTLS.IsRuntimeCleanupIncomplete(err) {
+			t.Fatalf("native handoff uncertainty was erased: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("physical Close did not finish after native handoff")
+	}
 }
 
 func TestCandidateAbortDoesNotCloseSharedPhysical(t *testing.T) {

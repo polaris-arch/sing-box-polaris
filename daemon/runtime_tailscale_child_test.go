@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -105,6 +106,7 @@ type nativeTailscaleClaimsFixture struct {
 	releases  []bool
 	uncertain bool
 	onClaim   func()
+	onRelease func()
 }
 
 func (*nativeTailscaleClaimsFixture) RequiresRuntimeTailscaleWriter() bool { return true }
@@ -138,6 +140,9 @@ func (p *nativeTailscaleClaimsFixture) ReleaseRuntimeTailscaleWriter(scope adapt
 	if p.owners[scope.Directories.State] != scope {
 		return errors.New("release did not match the original native scope")
 	}
+	if p.onRelease != nil {
+		p.onRelease()
+	}
 	delete(p.owners, scope.Directories.State)
 	p.releases = append(p.releases, acquired)
 	return nil
@@ -145,23 +150,22 @@ func (p *nativeTailscaleClaimsFixture) ReleaseRuntimeTailscaleWriter(scope adapt
 
 type nativeTailscaleChildFixture struct {
 	*runtimeTailscaleChild
-	constructionDone, closeDone, closeObserved chan struct{}
-	constructionErr, closeErr                  error
-	checkedWriter, finished                    bool
+	constructionDone, closeDone chan struct{}
+	constructionErr, closeErr   error
+	checkedWriter, finished     bool
 }
+
+var fixtureAcceptedTailscaleDigest = strings.Repeat("a", 64)
 
 func registerNativeTailscaleFixture(t *testing.T, host *StartedService, dirs adapter.RuntimeTailscaleDirectories) *nativeTailscaleChildFixture {
 	t.Helper()
-	fixture := &nativeTailscaleChildFixture{constructionDone: make(chan struct{}), closeDone: make(chan struct{}), closeObserved: make(chan struct{})}
+	fixture := &nativeTailscaleChildFixture{constructionDone: make(chan struct{}), closeDone: make(chan struct{})}
 	request := adapter.RuntimeTailscaleChildRequest{
 		ResourceID: standaloneTailscaleSource{}.ID(), Generation: 1, Tag: "child",
 		StateDirectory: "fixture-state", TaildropDirectory: "fixture-taildrop", NativeWriter: &dirs,
 		ConstructionDone: fixture.constructionDone, CloseDone: fixture.closeDone,
 		ConstructionResult: func() error { return fixture.constructionErr },
-		CloseResult: func() error {
-			close(fixture.closeObserved)
-			return fixture.closeErr
-		},
+		CloseResult:        func() error { return fixture.closeErr },
 		StoreScopes: func() []adapter.TailscaleStoreNode {
 			if !fixture.checkedWriter {
 				return nil
@@ -179,7 +183,8 @@ func registerNativeTailscaleFixture(t *testing.T, host *StartedService, dirs ada
 				StateDirectory: scope.Directories.State, CensusVersion: 1, WriterState: "Unknown"}}
 		},
 	}
-	registration, err := adapter.RegisterRuntimeTailscaleChild(host.runtimeTailscaleContext(standaloneTailscaleContext()), request)
+	ctx := adapter.ContextWithRuntimeTailscalePlanDigest(standaloneTailscaleContext(), fixtureAcceptedTailscaleDigest)
+	registration, err := adapter.RegisterRuntimeTailscaleChild(host.runtimeTailscaleContext(ctx), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +197,7 @@ func registerNativeTailscaleFixture(t *testing.T, host *StartedService, dirs ada
 	return fixture
 }
 
-func (fixture *nativeTailscaleChildFixture) finish(t *testing.T, constructionErr, closeErr error, checkedWriter bool) {
+func (fixture *nativeTailscaleChildFixture) signalClose(t *testing.T, constructionErr, closeErr error, checkedWriter bool) {
 	t.Helper()
 	fixture.finished = true
 	fixture.constructionErr, fixture.closeErr, fixture.checkedWriter = constructionErr, closeErr, checkedWriter
@@ -203,13 +208,16 @@ func (fixture *nativeTailscaleChildFixture) finish(t *testing.T, constructionErr
 		}
 	}
 	close(fixture.closeDone)
+}
+
+func (fixture *nativeTailscaleChildFixture) finish(t *testing.T, constructionErr, closeErr error, checkedWriter bool) {
+	t.Helper()
+	fixture.signalClose(t, constructionErr, closeErr, checkedWriter)
 	select {
-	case <-fixture.closeObserved:
+	case <-fixture.nativeCloseDone:
 	case <-time.After(5 * time.Second):
-		t.Fatal("original close observer did not start")
+		t.Fatal("original native close observer did not complete")
 	}
-	fixture.op.Lock()
-	fixture.op.Unlock()
 }
 
 func TestRuntimeTailscaleNativePlanChecksCapacityWithoutPruning(t *testing.T) {
@@ -248,6 +256,11 @@ func TestRuntimeTailscaleNativeSameDirectoryConflictThenOriginalCloseReleases(t 
 	if err := first.Prepare(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	claimedScope := platform.owners[dirs.State]
+	if claimedScope.Binding.ConfigDigest != fixtureAcceptedTailscaleDigest ||
+		first.run.binding != claimedScope.Binding || service.PtrFromContext[adapter.TailscaleStoreRunBinding](first.Context()).ConfigDigest != fixtureAcceptedTailscaleDigest {
+		t.Fatal("native scope and original Store use different canonical Plan bindings")
+	}
 	if err := concurrent.Prepare(context.Background()); err == nil || concurrent.directoryEntered {
 		t.Fatal("second owner entered directory preparation")
 	}
@@ -255,12 +268,59 @@ func TestRuntimeTailscaleNativeSameDirectoryConflictThenOriginalCloseReleases(t 
 		t.Fatal("main and other child did not have distinct original claims")
 	}
 	first.finish(t, nil, nil, true)
-	if len(platform.releases) != 1 || !platform.releases[0] {
+	if err := first.WaitOriginalNativeClose(); err != nil || len(platform.releases) != 1 || !platform.releases[0] {
 		t.Fatal("checked original writer Close was not acknowledged")
 	}
 	retry := registerNativeTailscaleFixture(t, other, dirs)
 	if err := retry.Prepare(context.Background()); err != nil || !retry.claimed {
 		t.Fatal("fresh child could not claim released path", err)
+	}
+}
+
+func TestRuntimeTailscaleNativeCloseWaitIsStickyWhenOriginalReleaseStalls(t *testing.T) {
+	releaseEntered, allowRelease := make(chan bool, 1), make(chan struct{})
+	defer close(allowRelease)
+	platform := &nativeTailscaleClaimsFixture{owners: make(map[string]adapter.RuntimeTailscaleWriterScope)}
+	host := &StartedService{ctx: service.ContextWith[adapter.PlatformInterface](context.Background(), platform)}
+	root := t.TempDir()
+	child := registerNativeTailscaleFixture(t, host, adapter.RuntimeTailscaleDirectories{State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop")})
+	platform.onRelease = func() {
+		unlocked := child.op.TryLock()
+		if unlocked {
+			child.op.Unlock()
+		}
+		releaseEntered <- unlocked
+		<-allowRelease
+	}
+	if err := child.Prepare(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	child.signalClose(t, nil, nil, true)
+	select {
+	case unlocked := <-releaseEntered:
+		if !unlocked {
+			t.Fatal("native callback ran under the original child operation lock")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("original writer release never started")
+	}
+	if err := child.waitOriginalNativeClose(5 * time.Millisecond); !errors.Is(err, errRuntimeTailscaleNativeCloseUnknown) {
+		t.Fatalf("unfinished native release was acknowledged: %v", err)
+	}
+	select {
+	case <-child.nativeCloseDone:
+		t.Fatal("stalled native release published completion")
+	default:
+	}
+	// Let the old callback complete independently after the observed timeout.
+	allowRelease <- struct{}{}
+	select {
+	case <-child.nativeCloseDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("old release did not complete")
+	}
+	if child.nativeCloseResult != nil || !errors.Is(child.WaitOriginalNativeClose(), errRuntimeTailscaleNativeCloseUnknown) {
+		t.Fatal("late original release rewrote the returned Close acknowledgement")
 	}
 }
 

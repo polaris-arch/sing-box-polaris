@@ -37,8 +37,8 @@ import (
 
 const runtimeResourceLimit = 1024
 
-func (s *Box) prepareRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, sources ...runtimeSourceSnapshot) (*preparedRuntimeGraph, error) {
-	prepared, err := s.constructRuntimeGraphWithSelections(request, identity, options, intents, sources...)
+func (s *Box) prepareRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, planCanonical []byte, sources ...runtimeSourceSnapshot) (*preparedRuntimeGraph, error) {
+	prepared, err := s.constructRuntimeGraphWithSelections(request, identity, options, intents, planCanonical, sources...)
 	if err != nil {
 		return prepared, err
 	}
@@ -71,10 +71,10 @@ func (s *Box) prepareRuntimeGraphWithSelections(request context.Context, identit
 }
 
 func (s *Box) constructRuntimeGraph(request context.Context, identity RuntimeIdentity, options option.Options, sources ...runtimeSourceSnapshot) (prepared *preparedRuntimeGraph, err error) {
-	return s.constructRuntimeGraphWithSelections(request, identity, options, nil, sources...)
+	return s.constructRuntimeGraphWithSelections(request, identity, options, nil, nil, sources...)
 }
 
-func (s *Box) constructRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, sources ...runtimeSourceSnapshot) (prepared *preparedRuntimeGraph, err error) {
+func (s *Box) constructRuntimeGraphWithSelections(request context.Context, identity RuntimeIdentity, options option.Options, intents []RuntimeSelectorIntent, planCanonical []byte, sources ...runtimeSourceSnapshot) (prepared *preparedRuntimeGraph, err error) {
 	c := s.runtime
 	options = runtimeResolveGraphDefaults(options)
 	// An internal watcher may recognize an already accepted policy1 graph,
@@ -286,6 +286,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		preparedIDs[resource.id] = true
 	}
 	contexts := make(map[string]context.Context)
+	var tailscalePlanDigest string
 	componentContext := func(name string) (context.Context, error) {
 		resource := bindings[name]
 		networkOwner := adapter.NetworkManager(s.network)
@@ -310,6 +311,15 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		// Other components must not each retain a private full-config copy.
 		if config.endpoint != nil && config.endpoint.Type == C.TypeTailscale {
 			ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, canonical)
+			if !prepared.initial && adapter.RuntimeTailscaleWriterFromContext(c.ctx) != nil {
+				if tailscalePlanDigest == "" {
+					tailscalePlanDigest = runtimeDigest(planCanonical)
+					if len(planCanonical) == 0 || tailscalePlanDigest != identity.EffectiveDigest {
+						return nil, errors.New("native Tailscale writer lacks the accepted runtime Plan configuration")
+					}
+				}
+				ctx = adapter.ContextWithRuntimeTailscalePlanDigest(ctx, tailscalePlanDigest)
+			}
 		}
 		ctx = adapter.ContextWithRuntimePreparedResourceCheck(ctx, func(id adapter.RuntimeResourceID) bool { return preparedIDs[id] })
 		ctx = adapter.ContextWithRuntimeControl(ctx, c)

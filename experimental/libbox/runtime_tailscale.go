@@ -21,28 +21,30 @@ type RuntimeTailscalePlatform interface {
 }
 
 // RuntimeTailscaleScope is immutable and issued only by the original Go child
-// registrar. The configuration digest covers that child's canonical graph.
+// registrar. Its digest identifies the accepted Plan configuration.
 type RuntimeTailscaleScope struct {
 	scope adapter.RuntimeTailscaleWriterScope
 }
 
 func (s *RuntimeTailscaleScope) Incarnation() string     { return s.scope.ResourceID.Incarnation }
 func (s *RuntimeTailscaleScope) ResourceSequence() int64 { return int64(s.scope.ResourceID.Sequence) }
-func (s *RuntimeTailscaleScope) Generation() int64       { return int64(s.scope.Generation) }
-func (s *RuntimeTailscaleScope) RunNonce() string        { return s.scope.Binding.RunNonce }
-func (s *RuntimeTailscaleScope) ConfigDigest() string    { return s.scope.Binding.ConfigDigest }
-func (s *RuntimeTailscaleScope) Tag() string             { return s.scope.Tag }
-func (s *RuntimeTailscaleScope) StateDirectory() string  { return s.scope.Directories.State }
+
+// Generation is the physical holder's counter.
+func (s *RuntimeTailscaleScope) Generation() int64      { return int64(s.scope.Generation) }
+func (s *RuntimeTailscaleScope) RunNonce() string       { return s.scope.Binding.RunNonce }
+func (s *RuntimeTailscaleScope) ConfigDigest() string   { return s.scope.Binding.ConfigDigest }
+func (s *RuntimeTailscaleScope) Tag() string            { return s.scope.Tag }
+func (s *RuntimeTailscaleScope) StateDirectory() string { return s.scope.Directories.State }
 func (s *RuntimeTailscaleScope) TaildropDirectory() string {
 	return s.scope.Directories.Taildrop
 }
 
-// SetRuntimeTailscalePlatform installs a typed opt-in before the original Box
-// initializes. An existing PlatformInterface alone cannot admit warm writers.
+// SetRuntimeTailscalePlatform installs a typed opt-in on the strict Android
+// main server, before the original Box initializes.
 func (s *CommandServer) SetRuntimeTailscalePlatform(platform RuntimeTailscalePlatform) error {
 	w := s.platformWrapper
-	if w == nil || !w.androidTailscaleHost || s.transient || platform == nil {
-		return errors.New("native Tailscale registration requires the original Android main command owner")
+	if w == nil || !w.androidTailscaleHost || !s.strictCleanup || s.transient || platform == nil {
+		return errors.New("native Tailscale registration requires the strict original Android main command owner")
 	}
 	if platform.RuntimeTailscaleVersion() != 1 {
 		return errors.New("unsupported native Tailscale bridge version")

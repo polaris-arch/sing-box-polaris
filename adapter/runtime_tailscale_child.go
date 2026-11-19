@@ -59,6 +59,12 @@ type RuntimeTailscaleChildRegistration interface {
 	Constructed() error
 	Abort() error
 }
+
+// RuntimeTailscaleNativeClose observes completion of the native writer host
+// after the physical owner's own CloseDone. The wait is bounded and sticky.
+type RuntimeTailscaleNativeClose interface {
+	WaitOriginalNativeClose() error
+}
 type (
 	RuntimeTailscaleChildRegistrar    func(context.Context, RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error)
 	runtimeTailscaleChildRegistrarKey struct{}
@@ -114,6 +120,19 @@ func ContextWithRuntimeTailscaleConfiguration(ctx context.Context, canonical []b
 func RuntimeTailscaleConfiguration(ctx context.Context) ([]byte, bool) {
 	canonical, ok := ctx.Value(runtimeTailscaleConfigurationKey{}).([]byte)
 	return append([]byte(nil), canonical...), ok && len(canonical) > 0
+}
+
+type runtimeTailscalePlanDigestKey struct{}
+
+// The Plan digest identifies the exact accepted canonical configuration. It is
+// distinct from construction options that already embed frozen source data.
+func ContextWithRuntimeTailscalePlanDigest(ctx context.Context, digest string) context.Context {
+	return context.WithValue(ctx, runtimeTailscalePlanDigestKey{}, digest)
+}
+
+func RuntimeTailscalePlanDigest(ctx context.Context) (string, bool) {
+	digest, _ := ctx.Value(runtimeTailscalePlanDigestKey{}).(string)
+	return digest, digest != ""
 }
 
 // The registration context still identifies the original logical birth and

@@ -237,7 +237,14 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 	}
 	c := s.runtime
 	platform := adapter.RuntimeTailscaleWriterFromContext(c.ctx)
-	if len(inputs) == 0 && platform == nil {
+	if len(inputs) == 0 {
+		if platform != nil {
+			c.access.Lock()
+			defer c.access.Unlock()
+			for _, old := range runtimeTailscaleParticipants(c.resources) {
+				return runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
+			}
+		}
 		return nil
 	}
 	c.access.Lock()
