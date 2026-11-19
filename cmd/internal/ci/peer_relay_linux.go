@@ -300,10 +300,12 @@ func peerSocketRowDiagnostics(rows []peerUDPRow, owned map[string]bool, local, r
 func (relay *peerRelay) sourceInode(port int, previous *peerRelaySlot) (inode string, err error) {
 	owner := relay.owner
 	relay.identityOperation = "ordering_gate"
-	relay.predicates = map[string]any{"slotPresent": previous != nil, "priorSlotRetired": nil,
+	relay.predicates = map[string]any{
+		"slotPresent": previous != nil, "priorSlotRetired": nil,
 		"ownerBeforeMatches": nil, "ownerAfterMatches": nil, "sampledSocketInodes": nil, "samePortRows": nil,
 		"ipv4Rows": nil, "ipv6Rows": nil, "uniqueIPv4": nil, "localExpected": nil, "rowInOwnerFdSet": nil,
-		"remoteAllowed": nil, "priorInodeMatches": nil, "failedPredicate": nil}
+		"remoteAllowed": nil, "priorInodeMatches": nil, "failedPredicate": nil,
+	}
 	if previous != nil {
 		relay.predicates["priorSlotRetired"] = previous.retired
 	}
@@ -332,13 +334,15 @@ func (relay *peerRelay) sourceInode(port int, previous *peerRelaySlot) (inode st
 		if !errors.As(err, &errno) || allowed[errno] == "" {
 			return
 		}
-		relay.gap = map[string]any{"actor": "udp_observer", "category": "retirement_inspection_unavailable",
+		relay.gap = map[string]any{
+			"actor": "udp_observer", "category": "retirement_inspection_unavailable",
 			"identityOperation": relay.identityOperation, "errnoClass": allowed[errno], "errno": int(errno),
 			"readStartedMonotonic": start, "readFinishedMonotonic": relay.readEnd,
 			"sigtermSucceededMonotonic": signal.MonotonicSec, "expectedOwnerExitAtReadStart": true,
 			"ownerPID": owner.identity.PID, "ownerStartTicks": owner.identity.StartTicks,
 			"previouslyProvenInode": previous.inode, "resolution": "pending_owned_retirement",
-			"forwardingDisabled": true, "newSourceAdmissionDisabled": true}
+			"forwardingDisabled": true, "newSourceAdmissionDisabled": true,
+		}
 		relay.pendingExit, inode, err = true, "", nil
 	}()
 	relay.identityOperation = "owner_poll"
@@ -411,8 +415,10 @@ func (relay *peerRelay) sourceInode(port int, previous *peerRelaySlot) (inode st
 		name, field string
 		good        bool
 	}{
-		{"single_socket_row", "", len(distinct) == 1}, {"socket_family", "uniqueIPv4", row.family == "udp"},
-		{"socket_local", "localExpected", row.local == local}, {"socket_owner_inode", "rowInOwnerFdSet", inodes[row.inode]},
+		{"single_socket_row", "", len(distinct) == 1},
+		{"socket_family", "uniqueIPv4", row.family == "udp"},
+		{"socket_local", "localExpected", row.local == local},
+		{"socket_owner_inode", "rowInOwnerFdSet", inodes[row.inode]},
 		{"socket_remote", "remoteAllowed", row.remote == remote || row.remote == "00000000:0000"},
 	} {
 		relay.identityOperation = predicate.name
@@ -637,8 +643,10 @@ func (relay *peerRelay) recordFailure(err error) {
 	class := "not_os_error"
 	if errors.As(err, &errno) {
 		code = int(errno)
-		class = map[unix.Errno]string{unix.ECONNREFUSED: "connection_refused", unix.EBADF: "bad_fd", unix.EINTR: "interrupted",
-			unix.EPERM: "permission", unix.EACCES: "permission", unix.ENETUNREACH: "network_unreachable", unix.ETIMEDOUT: "timeout"}[errno]
+		class = map[unix.Errno]string{
+			unix.ECONNREFUSED: "connection_refused", unix.EBADF: "bad_fd", unix.EINTR: "interrupted",
+			unix.EPERM: "permission", unix.EACCES: "permission", unix.ENETUNREACH: "network_unreachable", unix.ETIMEDOUT: "timeout",
+		}[errno]
 		if class == "" {
 			class = "other_os_error"
 		}
@@ -647,11 +655,13 @@ func (relay *peerRelay) recordFailure(err error) {
 	if failure == "" {
 		failure = "operation_error"
 	}
-	relay.failures = append(relay.failures, map[string]any{"actor": "udp_observer", "phase": relay.phase, "operation": relay.operation,
+	relay.failures = append(relay.failures, map[string]any{
+		"actor": "udp_observer", "phase": relay.phase, "operation": relay.operation,
 		"direction": relay.direction, "category": failure, "errnoClass": class, "errno": code, "monotonicSeconds": peerMonotonic(),
 		"identityOperation": relay.identityOperation, "identityReadStartedMonotonic": relay.readStart,
 		"identityReadFinishedMonotonic": relay.readEnd, "sigtermSucceededAtReadStart": relay.signalAtStart, "expectedOwnerExit": relay.expectedExit,
-		"identityGateWaitStartedMonotonic": relay.gateStart, "identityGateWaitFinishedMonotonic": relay.gateEnd, "sourcePredicates": relay.predicates})
+		"identityGateWaitStartedMonotonic": relay.gateStart, "identityGateWaitFinishedMonotonic": relay.gateEnd, "sourcePredicates": relay.predicates,
+	})
 }
 
 func (relay *peerRelay) datagrams() [2]int {
@@ -670,8 +680,10 @@ func (relay *peerRelay) close(wait time.Duration) (map[string]any, error) {
 		if !closed {
 			faults = append(faults, "socket_close_failed")
 		}
-		return map[string]any{"actor": "udp_observer", "snapshotUnavailable": true,
-				"threadJoined": false, "terminalAcknowledged": false, "allSocketsClosed": closed, "closeFaults": faults},
+		return map[string]any{
+				"actor": "udp_observer", "snapshotUnavailable": true,
+				"threadJoined": false, "terminalAcknowledged": false, "allSocketsClosed": closed, "closeFaults": faults,
+			},
 			fmt.Errorf("UDP observer did not join")
 	}
 
@@ -714,17 +726,21 @@ func (relay *peerRelay) close(wait time.Duration) (map[string]any, error) {
 		if slot.retired {
 			retired++
 		}
-		sources = append(sources, map[string]any{"ordinal": index, "inode": slot.inode, "retired": slot.retired,
-			"retirementReason": slot.retirementReason, "receivedDatagrams": slot.received, "forwardedDatagrams": slot.forwarded})
+		sources = append(sources, map[string]any{
+			"ordinal": index, "inode": slot.inode, "retired": slot.retired,
+			"retirementReason": slot.retirementReason, "receivedDatagrams": slot.received, "forwardedDatagrams": slot.forwarded,
+		})
 	}
-	observation := map[string]any{"actor": "udp_observer", "atomic": false, "identityUncertain": relay.identityUncertain,
+	observation := map[string]any{
+		"actor": "udp_observer", "atomic": false, "identityUncertain": relay.identityUncertain,
 		"maximumSources": peerRelayMaxSources, "maximumSockets": peerRelayMaxSources + 1, "sourceCount": len(sources),
 		"sourceIdentities": sources, "allSocketsClosed": allClosed, "retiredSources": retired,
 		"receivedDatagrams": relay.received, "forwardedDatagrams": relay.datagrams(), "retiredSourceDrops": relay.retired,
 		"quarantinedDatagramsNotForwarded": relay.quarantined, "inspectionGap": relay.gap, "expectedOwnerExit": relay.expectedExit,
 		"ownerExitObserved": relay.seenExit, "ownerExitPending": relay.pendingExit, "ownerRetirementConfirmed": relay.retirementConfirmed,
 		"ownerPID": pid, "ownerStartTicks": ticks, "terminal": relay.terminal, "terminalAcknowledged": true, "threadJoined": true,
-		"errors": relay.failures, "closeFaults": relay.closeFaults}
+		"errors": relay.failures, "closeFaults": relay.closeFaults,
+	}
 	if relay.terminal != "stopped" || len(relay.failures) != 0 || relay.pendingExit || len(relay.closeFaults) != 0 || relay.identityUncertain {
 		return observation, fmt.Errorf("UDP observer cleanup or transport failed")
 	}

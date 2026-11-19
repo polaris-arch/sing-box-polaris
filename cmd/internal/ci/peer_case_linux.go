@@ -134,8 +134,10 @@ func (product peerProduct) mappedLibrary(process *peerNativeProcess) (map[string
 	if err != nil || hash != product.sidecarPin["sha256"] || !executable {
 		return nil, fmt.Errorf("actual native Cronet mapping not proven")
 	}
-	return map[string]any{"linkage": "shared-purego", "pid": pid, "startIdentity": process.identity,
-		"sha256": hash, "device": [2]uint32{major, minor}, "inode": stat.Ino, "mappedExecutable": true}, nil
+	return map[string]any{
+		"linkage": "shared-purego", "pid": pid, "startIdentity": process.identity,
+		"sha256": hash, "device": [2]uint32{major, minor}, "inode": stat.Ino, "mappedExecutable": true,
+	}, nil
 }
 
 type peerCaseFixture struct {
@@ -163,8 +165,10 @@ func (fixture peerCaseFixture) configs(protocol peerProtocol, relayPort, mixed i
 	if protocol.udp() {
 		alpn, network = "h3", "udp"
 	}
-	tls := map[string]any{"enabled": true, "certificate": []string{fixture.cert.leaf},
-		"key": []string{fixture.cert.key}, "alpn": []string{alpn}}
+	tls := map[string]any{
+		"enabled": true, "certificate": []string{fixture.cert.leaf},
+		"key": []string{fixture.cert.key}, "alpn": []string{alpn},
+	}
 	const user = "controlled-peer"
 	ports := []int{fixture.tcpEcho, fixture.udpEcho}
 	common := func(inbound, outbound, destination string) map[string]any {
@@ -197,19 +201,25 @@ func (fixture peerCaseFixture) configs(protocol peerProtocol, relayPort, mixed i
 	users := []map[string]string{{"username": user, "password": fixture.password}}
 	client = common("mixed-test", "controlled-peer", protocol.target())
 	client["inbounds"] = []map[string]any{{"type": "mixed", "tag": "mixed-test", "listen": peerLoopback, "listen_port": mixed}}
-	outbound := map[string]any{"tag": "controlled-peer", "server": peerLoopback,
+	outbound := map[string]any{
+		"tag": "controlled-peer", "server": peerLoopback,
 		"server_port": relayPort, "username": user, "password": password,
-		"tls": map[string]any{"enabled": true, "server_name": serverName, "certificate": []string{ca}}, "connect_timeout": "5s"}
+		"tls": map[string]any{"enabled": true, "server_name": serverName, "certificate": []string{ca}}, "connect_timeout": "5s",
+	}
 	if protocol.masque() {
-		peer["endpoints"] = []map[string]any{{"type": "masque-server", "tag": "peer", "listen": peerLoopback, "listen_port": fixture.peerPort,
+		peer["endpoints"] = []map[string]any{{
+			"type": "masque-server", "tag": "peer", "listen": peerLoopback, "listen_port": fixture.peerPort,
 			"system": false, "mtu": 1280, "path": "/controlled-ip/", "address": []string{"198.18.0.1/24"}, "advertise_routes": []string{"198.18.0.1/32"},
-			"version": []int{3}, "users": users, "tls": tls}}
+			"version": []int{3}, "users": users, "tls": tls,
+		}}
 		outbound["type"], outbound["system"], outbound["mtu"], outbound["version"] = "masque-client", false, 1280, 3
 		outbound["path"], outbound["disable_version_fallback"], outbound["on_demand"] = requestPath, true, protocol.onDemand()
 		client["endpoints"] = []map[string]any{outbound}
 	} else {
-		peer["inbounds"] = []map[string]any{{"type": "naive", "tag": "peer", "listen": peerLoopback,
-			"listen_port": fixture.peerPort, "network": network, "users": users, "tls": tls}}
+		peer["inbounds"] = []map[string]any{{
+			"type": "naive", "tag": "peer", "listen": peerLoopback,
+			"listen_port": fixture.peerPort, "network": network, "users": users, "tls": tls,
+		}}
 		outbound["type"], outbound["quic"] = "naive", protocol.udp()
 		client["outbounds"] = []map[string]any{outbound}
 	}
@@ -263,9 +273,11 @@ func peerMutationProof(healthy, negative map[string]any, mutation string) (map[s
 	if !equal {
 		return nil, fmt.Errorf("negative changed more than its one controlled field")
 	}
-	return map[string]any{"singleFieldMutation": mutation, "healthyTrustSHA256": sha256Hex(before),
+	return map[string]any{
+		"singleFieldMutation": mutation, "healthyTrustSHA256": sha256Hex(before),
 		"negativeTrustSHA256": sha256Hex(after), "healthyConfigurationSHA256": sha256Hex(healthyRaw),
-		"negativeConfigurationSHA256": sha256Hex(actualRaw), "operationalPortChangesOnly": true}, nil
+		"negativeConfigurationSHA256": sha256Hex(actualRaw), "operationalPortChangesOnly": true,
+	}, nil
 }
 
 type peerCase struct {
@@ -406,8 +418,10 @@ func (state *peerCase) start(ctx context.Context, product peerProduct, role stri
 		return nil, &peerDiagnosticError{"IdentityFailure", "actual native process identity unavailable"}
 	}
 	state.owners = append(state.owners, owner)
-	state.configs = append(state.configs, map[string]any{"role": role, "pid": owner.identity.PID,
-		"startIdentity": owner.identity, "sha256": fact.SHA256, "bytes": fact.Bytes})
+	state.configs = append(state.configs, map[string]any{
+		"role": role, "pid": owner.identity.PID,
+		"startIdentity": owner.identity, "sha256": fact.SHA256, "bytes": fact.Bytes,
+	})
 	trace.event(role+".process.identity", map[string]any{"pid": owner.identity.PID, "startTicks": owner.identity.StartTicks, "coreSHA256": owner.core})
 	return owner, nil
 }
@@ -429,8 +443,10 @@ func (state *peerCase) closeOwner(owner *peerNativeProcess) (*peerProcessCleanup
 			fact["monotonicSeconds"] = action.MonotonicSec
 		}
 	}
-	state.trace.event(owner.role+".process.close.observed", map[string]any{"exitCode": result.ExitCode,
-		"forcedKill": result.ForcedKill, "cleanupErrorLog": result.CleanupErrorLog})
+	state.trace.event(owner.role+".process.close.observed", map[string]any{
+		"exitCode":   result.ExitCode,
+		"forcedKill": result.ForcedKill, "cleanupErrorLog": result.CleanupErrorLog,
+	})
 	return result, err
 }
 
@@ -448,8 +464,10 @@ func (state *peerCase) execute(ctx context.Context, product peerProduct, openssl
 	if err != nil {
 		return err
 	}
-	receipt["certificateFixture"] = map[string]any{"peerLeafSHA256": sha256Hex([]byte(cert.leaf)),
-		"healthyTrustSHA256": sha256Hex([]byte(cert.ca)), "fixedHealthySNI": "controlled.invalid", "fixedNegativeSNI": "wrong.invalid"}
+	receipt["certificateFixture"] = map[string]any{
+		"peerLeafSHA256":     sha256Hex([]byte(cert.leaf)),
+		"healthyTrustSHA256": sha256Hex([]byte(cert.ca)), "fixedHealthySNI": "controlled.invalid", "fixedNegativeSNI": "wrong.invalid",
+	}
 	secret := make([]byte, 24)
 	if _, err := rand.Read(secret); err != nil {
 		return err
@@ -476,8 +494,10 @@ func (state *peerCase) execute(ctx context.Context, product peerProduct, openssl
 	if err != nil {
 		return err
 	}
-	fixture := peerCaseFixture{cert: cert, password: hex.EncodeToString(secret), peerPort: state.peerPort,
-		tcpEcho: state.tcpEcho, udpEcho: state.udpEcho}
+	fixture := peerCaseFixture{
+		cert: cert, password: hex.EncodeToString(secret), peerPort: state.peerPort,
+		tcpEcho: state.tcpEcho, udpEcho: state.udpEcho,
+	}
 	peerConfig, _ := fixture.configs(protocol, state.clientPeerPort(), 1, nil, "")
 	peer, err := state.start(ctx, product, "peer", peerConfig)
 	if err != nil {

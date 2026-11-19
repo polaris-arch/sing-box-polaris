@@ -274,8 +274,10 @@ func admitLocalNativeSource(ctx context.Context, path string, pin localNativeSou
 	defer cancel()
 	env := localNativeEnvironment()
 	git := func(limit int, args ...string) (string, error) {
-		command := append([]string{"git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
-			"-c", "core.untrackedCache=false", "-c", "core.ignoreStat=false", "-c", "core.filemode=true", "-c", "core.attributesFile=/dev/null"}, args...)
+		command := append([]string{
+			"git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+			"-c", "core.untrackedCache=false", "-c", "core.ignoreStat=false", "-c", "core.filemode=true", "-c", "core.attributesFile=/dev/null",
+		}, args...)
 		raw, _, code, err := sourceCommandOutput(window, path, env, limit, command...)
 		if err != nil {
 			return "", err
@@ -402,10 +404,12 @@ func collectLocalNative(ctx context.Context, paths localNativePaths, coreOutput,
 		}
 	}()
 	built := filepath.Join(private, "sing-box")
-	command := []string{"go", "build", "-mod=readonly", "-buildvcs=true", "-trimpath", "-p=1", "-tags=" + strings.Join(recipe.Tags, ","),
+	command := []string{
+		"go", "build", "-mod=readonly", "-buildvcs=true", "-trimpath", "-p=1", "-tags=" + strings.Join(recipe.Tags, ","),
 		"-ldflags=-s -w -checklinkname=0 -X runtime.godebugDefault=multipathtcp=0,tlssha1=1 -X github.com/sagernet/sing-box/constant.Version=" +
 			recipe.Version + " -X github.com/sagernet/sing-box/constant.SourceRevision=" + recipe.CoreSource.Commit,
-		"-o", built, "./cmd/sing-box"}
+		"-o", built, "./cmd/sing-box",
+	}
 	fmt.Fprintf(os.Stderr, "LOCAL_CORE_BUILD %s\n", strings.Join(command, " "))
 	buildContext, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	stdout, stderr, status, err := sourceCommandOutput(buildContext, paths.CoreSourceRoot, localNativeEnvironment(), 2<<20, command...)
@@ -520,11 +524,15 @@ func createLocalNativeArchive(directory, source, version string, core, library [
 		data []byte
 		mode int64
 	}{
-		{"sing-box", core, 0o755}, {"libcronet.so", library, 0o644},
-		{"LICENSE", license, 0o644}, {"TLS-DEPENDENCY-NOTICES.txt", notices, 0o644},
+		{"sing-box", core, 0o755},
+		{"libcronet.so", library, 0o644},
+		{"LICENSE", license, 0o644},
+		{"TLS-DEPENDENCY-NOTICES.txt", notices, 0o644},
 	} {
-		if err := archive.WriteHeader(&tar.Header{Name: root + "/" + member.name, Mode: member.mode,
-			Size: int64(len(member.data)), Typeflag: tar.TypeReg, Format: tar.FormatPAX}); err != nil {
+		if err := archive.WriteHeader(&tar.Header{
+			Name: root + "/" + member.name, Mode: member.mode,
+			Size: int64(len(member.data)), Typeflag: tar.TypeReg, Format: tar.FormatPAX,
+		}); err != nil {
 			return nil, nil, errors.Join(err, archive.Close(), compressed.Close())
 		}
 		if _, err := archive.Write(member.data); err != nil {
@@ -549,8 +557,10 @@ func createLocalNativeArchive(directory, source, version string, core, library [
 	for member, data := range members {
 		hashes[root+"/"+member] = sha256Hex(data)
 	}
-	return map[string]any{"name": name, "bytes": json.Number(fmt.Sprint(len(raw))), "sha256": sha256Hex(raw),
-		"root": root, "members": hashes}, members, nil
+	return map[string]any{
+		"name": name, "bytes": json.Number(fmt.Sprint(len(raw))), "sha256": sha256Hex(raw),
+		"root": root, "members": hashes,
+	}, members, nil
 }
 
 func readLocalNativeJSON(path string, target any) error {

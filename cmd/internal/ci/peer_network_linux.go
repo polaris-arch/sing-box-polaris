@@ -18,6 +18,7 @@ import (
 
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/protocol/socks/socks5"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -158,8 +159,10 @@ func peerSOCKSConnect(ctx context.Context, mixed, port int, target string, trace
 	if err := peerSOCKSAuth(conn, trace, label); err != nil {
 		return fail(err)
 	}
-	request := socks5.Request{Command: socks5.CommandConnect,
-		Destination: M.Socksaddr{Addr: netip.MustParseAddr(target), Port: uint16(port)}}
+	request := socks5.Request{
+		Command:     socks5.CommandConnect,
+		Destination: M.Socksaddr{Addr: netip.MustParseAddr(target), Port: uint16(port)},
+	}
 	if err := peerSOCKSRequest(conn, request, trace, label+".connect.send"); err != nil {
 		return fail(err)
 	}
@@ -386,8 +389,10 @@ func peerSOCKSUDP(ctx context.Context, mixed int, trace *peerTrace, label string
 	if err := peerSOCKSAuth(control, trace, label); err != nil {
 		return session, err
 	}
-	request := socks5.Request{Command: socks5.CommandUDPAssociate,
-		Destination: M.Socksaddr{Addr: netip.MustParseAddr(peerLoopback), Port: uint16(udp.LocalAddr().(*net.UDPAddr).Port)}}
+	request := socks5.Request{
+		Command:     socks5.CommandUDPAssociate,
+		Destination: M.Socksaddr{Addr: netip.MustParseAddr(peerLoopback), Port: uint16(udp.LocalAddr().(*net.UDPAddr).Port)},
+	}
 	if err := peerSOCKSRequest(control, request, trace, label+".request.send"); err != nil {
 		return session, err
 	}

@@ -50,13 +50,19 @@ func createPeerCertificate(ctx context.Context, openssl, directory, name string)
 		serial.SetInt64(1)
 	}
 	for _, args := range [][]string{
-		{openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-sha256",
+		{
+			openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-sha256",
 			"-subj", "/CN=Controlled Peer Temporary CA", "-addext", "basicConstraints=critical,CA:TRUE",
-			"-addext", "keyUsage=critical,keyCertSign,cRLSign", "-keyout", caKey, "-out", ca},
-		{openssl, "req", "-new", "-newkey", "rsa:2048", "-nodes", "-sha256",
-			"-subj", "/CN=controlled.invalid", "-keyout", key, "-out", csr},
-		{openssl, "x509", "-req", "-in", csr, "-CA", ca, "-CAkey", caKey,
-			"-set_serial", serial.String(), "-days", "1", "-sha256", "-extfile", ext, "-out", leaf},
+			"-addext", "keyUsage=critical,keyCertSign,cRLSign", "-keyout", caKey, "-out", ca,
+		},
+		{
+			openssl, "req", "-new", "-newkey", "rsa:2048", "-nodes", "-sha256",
+			"-subj", "/CN=controlled.invalid", "-keyout", key, "-out", csr,
+		},
+		{
+			openssl, "x509", "-req", "-in", csr, "-CA", ca, "-CAkey", caKey,
+			"-set_serial", serial.String(), "-days", "1", "-sha256", "-extfile", ext, "-out", leaf,
+		},
 	} {
 		step, cancel := context.WithTimeout(ctx, 25*time.Second)
 		_, code, err := sourceCombinedOutput(step, directory, peerCoreEnvironment(directory, ""), 1<<20, args...)

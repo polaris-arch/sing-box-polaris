@@ -30,9 +30,11 @@ func observePeerNativeProtocol(raw []byte, expected string) map[string]any {
 		observed = append(observed, []any{protocol, status})
 		success = success || protocol == expected && status == 200
 	}
-	return map[string]any{"expectedNativeCallbackProtocol": expected, "observedAllowlistedProtocolAndStatus": observed,
+	return map[string]any{
+		"expectedNativeCallbackProtocol": expected, "observedAllowlistedProtocolAndStatus": observed,
 		"unrecognizedObservationCount": unknown, "successfulExpectedProtocolObserved": success,
-		"privateRawLogSHA256": sha256Hex(raw), "privateRawLogBytes": len(raw)}
+		"privateRawLogSHA256": sha256Hex(raw), "privateRawLogBytes": len(raw),
+	}
 }
 
 var peerRejections = map[string]*regexp.Regexp{
@@ -65,10 +67,12 @@ func observePeerRejection(protocol peerProtocol, mutation string, client, peer [
 		if end-start > 256 {
 			return nil, &peerDiagnosticError{"RuntimeError", "rejection evidence fragment exceeded bound"}
 		}
-		return map[string]any{"category": mutation, "specificRejectionObserved": true, "logRole": log.role,
+		return map[string]any{
+			"category": mutation, "specificRejectionObserved": true, "logRole": log.role,
 			"privateRawLogSHA256": sha256Hex(log.raw), "privateRawLogBytes": len(log.raw), "windowStartByte": log.offset,
 			"byteOffset": start, "matchedAllowlistedFragment": string(log.raw[start:end]),
-			"matcher": strings.TrimPrefix(matcher.String(), "(?i)")}, nil
+			"matcher": strings.TrimPrefix(matcher.String(), "(?i)"),
+		}, nil
 	}
 	return nil, &peerDiagnosticError{"RuntimeError", "negative lacks actual peer TLS/auth/path rejection evidence"}
 }
@@ -91,10 +95,12 @@ var peerLogCategories = []struct{ name, text string }{
 	{"cleanup_snapshot_encoding_unavailable", "runtime cleanup snapshot encoding unavailable"},
 	{"native_close_timeout", "sing-box did not close!"},
 	{"tls_unknown_ca", "certificate signed by unknown authority"},
-	{"http_auth407", "status: 407"}, {"http_auth401", "unexpected status: 401"},
+	{"http_auth407", "status: 407"},
+	{"http_auth401", "unexpected status: 401"},
 	{"http_path404", "unexpected status: 404"},
 	{"quic_idle_timeout", "timeout: no recent network activity"},
-	{"connection_refused", "connection refused"}, {"connection_reset", "connection reset by peer"},
+	{"connection_refused", "connection refused"},
+	{"connection_reset", "connection reset by peer"},
 }
 
 var (
@@ -166,9 +172,11 @@ func safePeerLog(raw []byte, root string) map[string]any {
 		frames = safePeerFrames(raw, root)
 	}
 	snapshots, rejected := peerCleanupSnapshots(raw)
-	return map[string]any{"sha256": sha256Hex(raw), "bytes": len(raw), "categories": categories, "goFrames": frames,
+	return map[string]any{
+		"sha256": sha256Hex(raw), "bytes": len(raw), "categories": categories, "goFrames": frames,
 		"panicMarker": panicMarker, "fatalMarker": fatalMarker, "cleanupSnapshots": snapshots,
-		"cleanupSnapshotsRejected": rejected, "unknownTextRetained": false}
+		"cleanupSnapshotsRejected": rejected, "unknownTextRetained": false,
+	}
 }
 
 func safePeerFrames(raw []byte, root string) []map[string]any {
