@@ -240,6 +240,43 @@ func TestRuntimeTailscaleNativePlanChecksCapacityWithoutPruning(t *testing.T) {
 	}
 }
 
+func TestRuntimeTailscaleNativeUnclassifiedCapacityReleasedOnlyByOriginalNoAcquisition(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		closeErr error
+	}{
+		{name: "original unused"},
+		{name: "unknown original close", closeErr: errors.New("close could not be checked")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			platform := &nativeTailscaleClaimsFixture{owners: make(map[string]adapter.RuntimeTailscaleWriterScope)}
+			host := &StartedService{ctx: service.ContextWith[adapter.PlatformInterface](context.Background(), platform)}
+			for range maxTailscaleRetirementRuns - 1 {
+				host.tailscaleRetirementRuns = append(host.tailscaleRetirementRuns, &tailscaleRetirementRun{})
+			}
+			root := t.TempDir()
+			child := registerNativeTailscaleFixture(t, host, adapter.RuntimeTailscaleDirectories{State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop")})
+			if host.runtimeTailscaleChildHasCapacity() || host.appendTailscaleRetirementRun(&tailscaleRetirementRun{}) == nil {
+				t.Fatal("an unclassified child did not reserve the last original census slot")
+			}
+			if len(host.snapshotTailscaleRetirementRuns()) != maxTailscaleRetirementRuns-1 {
+				t.Fatal("capacity reservation appeared in the export")
+			}
+			child.finish(t, runtimeNoAcquisitionFixture{}, test.closeErr, false)
+			if err := child.WaitOriginalNativeClose(); (err != nil) != (test.closeErr != nil) {
+				t.Fatalf("original close acknowledgement = %v", err)
+			}
+			if host.runtimeTailscaleChildHasCapacity() != (test.closeErr == nil) {
+				t.Fatal("admission capacity did not follow exact no-acquisition evidence")
+			}
+			runs := host.snapshotTailscaleRetirementRuns()
+			if test.closeErr != nil && (len(runs) != maxTailscaleRetirementRuns || runs[len(runs)-1] != child.run || child.run.snapshot().CensusComplete) {
+				t.Fatal("unknown original close was omitted or promoted")
+			}
+		})
+	}
+}
+
 func TestRuntimeTailscaleNativeSameDirectoryConflictThenOriginalCloseReleases(t *testing.T) {
 	root := t.TempDir()
 	dirs := adapter.RuntimeTailscaleDirectories{State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop")}
@@ -253,16 +290,27 @@ func TestRuntimeTailscaleNativeSameDirectoryConflictThenOriginalCloseReleases(t 
 	}
 	first := registerNativeTailscaleFixture(t, main, dirs)
 	concurrent := registerNativeTailscaleFixture(t, other, dirs)
+	if len(main.snapshotTailscaleRetirementRuns()) != 0 || len(other.snapshotTailscaleRetirementRuns()) != 0 {
+		t.Fatal("registrar published an unclassified native reservation")
+	}
 	if err := first.Prepare(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+	if runs := main.snapshotTailscaleRetirementRuns(); len(runs) != 1 || runs[0] != first.run {
+		t.Fatal("admitted writer was not recorded before native directory preparation")
 	}
 	claimedScope := platform.owners[dirs.State]
 	if claimedScope.Binding.ConfigDigest != fixtureAcceptedTailscaleDigest ||
 		first.run.binding != claimedScope.Binding || service.PtrFromContext[adapter.TailscaleStoreRunBinding](first.Context()).ConfigDigest != fixtureAcceptedTailscaleDigest {
 		t.Fatal("native scope and original Store use different canonical Plan bindings")
 	}
-	if err := concurrent.Prepare(context.Background()); err == nil || concurrent.directoryEntered {
+	denied := concurrent.Prepare(context.Background())
+	if denied == nil || concurrent.directoryEntered {
 		t.Fatal("second owner entered directory preparation")
+	}
+	concurrent.finish(t, denied, nil, false)
+	if concurrent.WaitOriginalNativeClose() != nil || len(other.snapshotTailscaleRetirementRuns()) != 0 {
+		t.Fatal("rejected claim added an unadmitted row to the original writer history")
 	}
 	if first.nativeScope.Binding.RunNonce == concurrent.nativeScope.Binding.RunNonce || !first.claimed {
 		t.Fatal("main and other child did not have distinct original claims")
@@ -358,6 +406,19 @@ func TestRuntimeTailscaleNativeReleaseRequiresOriginalNoAcquisitionOrCheckedClos
 			}
 			if test.wantRelease && (len(platform.releases) != 1 || platform.releases[0]) {
 				t.Fatal("never-entered preparation was reported as physical acquisition")
+			}
+			proof := child.run.snapshot()
+			if test.wantRelease && (proof.Terminal != "NoStoreConstruction" || !proof.CensusComplete || len(proof.Nodes) != 0) {
+				t.Fatal("original claimed run lacks its checked empty constructor proof")
+			}
+			if test.uncertainClaim && (proof.Terminal != "Unknown" || proof.CensusComplete) {
+				t.Fatal("unknown native claim was recast as no acquisition")
+			}
+			if err := host.appendTailscaleRetirementRun(&tailscaleRetirementRun{}); err != nil {
+				t.Fatal(err)
+			}
+			if runs := host.snapshotTailscaleRetirementRuns(); len(runs) != 2 || runs[0] != child.run {
+				t.Fatal("claimed or uncertain original run was omitted or pruned")
 			}
 		})
 	}

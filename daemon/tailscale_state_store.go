@@ -32,6 +32,7 @@ type tailscaleRetirementRun struct {
 	closeFinished           <-chan struct{}
 	originalCloseSucceeded  bool
 	runtimeNoAcquisition    bool // exact runtime child marker plus actual never-entered preparation
+	nativeWriter            bool // once published, preserve the original native admission history
 	directoryPreparation    preparedDirectoryResources
 	directoryAuthority      *adapter.TailscaleDirectoryDomain
 	directoryAuthorityBound bool
@@ -159,6 +160,12 @@ func (s *StartedService) admitTailscaleRetirementRun() error {
 	s.serviceAccess.Unlock()
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
+	return s.checkTailscaleRetirementAdmissionLocked(live)
+}
+
+// Construction admission is the only pruning boundary. Count native
+// reservations even though they have no writer history until classified.
+func (s *StartedService) checkTailscaleRetirementAdmissionLocked(live *tailscaleRetirementRun) error {
 	retained := s.tailscaleRetirementRuns[:0]
 	for _, run := range s.tailscaleRetirementRuns {
 		if run == live || !run.reclaimableEmptyRun() {
@@ -167,7 +174,7 @@ func (s *StartedService) admitTailscaleRetirementRun() error {
 	}
 	clear(s.tailscaleRetirementRuns[len(retained):])
 	s.tailscaleRetirementRuns = retained
-	if len(retained) >= maxTailscaleRetirementRuns {
+	if len(retained)+s.tailscaleReservedRuns >= maxTailscaleRetirementRuns {
 		return fmt.Errorf("tailscale retirement census capacity reached")
 	}
 	return nil
@@ -181,7 +188,7 @@ func (r *tailscaleRetirementRun) reclaimableEmptyRun() bool {
 	default:
 		return false
 	}
-	return r.originalCloseSucceeded && (len(r.expected) == 0 || r.runtimeNoAcquisition) &&
+	return !r.nativeWriter && r.originalCloseSucceeded && (len(r.expected) == 0 || r.runtimeNoAcquisition) &&
 		r.final != nil && r.final.CensusComplete && r.final.Terminal == "NoStoreConstruction" && len(r.final.Nodes) == 0 &&
 		r.directoryFinal != nil && r.directoryFinal.CensusComplete && r.directoryFinal.Terminal == "NoDirectoryConstruction" && len(r.directoryFinal.Nodes) == 0
 }
@@ -198,18 +205,40 @@ func (s *StartedService) snapshotTailscaleRetirementRuns() []*tailscaleRetiremen
 func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRun) error {
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	// This is a new construction admission, the only allowed pruning boundary.
-	retained := s.tailscaleRetirementRuns[:0]
-	for _, original := range s.tailscaleRetirementRuns {
-		if !original.reclaimableEmptyRun() {
-			retained = append(retained, original)
-		}
-	}
-	clear(s.tailscaleRetirementRuns[len(retained):])
-	s.tailscaleRetirementRuns = retained
-	if len(s.tailscaleRetirementRuns) >= maxTailscaleRetirementRuns {
-		return fmt.Errorf("tailscale retirement census capacity reached")
+	if err := s.checkTailscaleRetirementAdmissionLocked(nil); err != nil {
+		return err
 	}
 	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, run)
 	return nil
+}
+
+type nativeTailscaleRunReservation struct {
+	once sync.Once
+	host *StartedService
+	run  *tailscaleRetirementRun
+}
+
+func (s *StartedService) reserveNativeTailscaleRetirementRun(run *tailscaleRetirementRun) (*nativeTailscaleRunReservation, error) {
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	if err := s.checkTailscaleRetirementAdmissionLocked(nil); err != nil {
+		return nil, err
+	}
+	run.nativeWriter = true
+	s.tailscaleReservedRuns++
+	return &nativeTailscaleRunReservation{host: s, run: run}, nil
+}
+
+func (r *nativeTailscaleRunReservation) finish(retain bool) {
+	if r == nil {
+		return
+	}
+	r.once.Do(func() {
+		r.host.tailscaleRetirementAccess.Lock()
+		defer r.host.tailscaleRetirementAccess.Unlock()
+		if retain {
+			r.host.tailscaleRetirementRuns = append(r.host.tailscaleRetirementRuns, r.run)
+		}
+		r.host.tailscaleReservedRuns--
+	})
 }

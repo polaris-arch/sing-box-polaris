@@ -30,12 +30,11 @@ func (s *StartedService) runtimeTailscaleContext(ctx context.Context) context.Co
 	return adapter.ContextWithRuntimeTailscaleChildCapacity(ctx, s.runtimeTailscaleChildHasCapacity)
 }
 
-// Plan may inspect capacity without reserving or pruning original runs. Apply
-// still requires an actual slot via appendTailscaleRetirementRun.
+// Plan may inspect capacity without reserving or pruning original runs.
 func (s *StartedService) runtimeTailscaleChildHasCapacity() bool {
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	retained := 0
+	retained := s.tailscaleReservedRuns
 	for _, run := range s.tailscaleRetirementRuns {
 		if !run.reclaimableEmptyRun() {
 			retained++
@@ -64,6 +63,7 @@ type runtimeTailscaleChild struct {
 	plan                        runtimeChildDirectoryPlan
 	native                      adapter.RuntimeTailscaleWriterPlatform
 	nativeScope                 adapter.RuntimeTailscaleWriterScope
+	nativeReservation           *nativeTailscaleRunReservation
 	nativeCloseDone             chan struct{}
 	nativeCloseResult           error
 	nativeCloseWait             sync.Once
@@ -144,8 +144,14 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	// from the first logical graph. ResourceID validation remains in the registrar.
 	physicalBase = adapter.ContextWithRuntimeTailscaleConfiguration(physicalBase, canonical)
 	child.ctx = service.ContextWithPtr(service.ExtendContext(physicalBase), &run.binding)
-	// Register the immutable original birth before any mapping/lease acquisition.
-	if err = s.appendTailscaleRetirementRun(run); err != nil {
+	// A native claim needs an original identity and a slot before admission.
+	// The row is published once the host could have acquired the claim.
+	if child.native != nil {
+		child.nativeReservation, err = s.reserveNativeTailscaleRetirementRun(run)
+	} else {
+		err = s.appendTailscaleRetirementRun(run)
+	}
+	if err != nil {
 		return nil, err
 	}
 	go child.observeActualClose()
@@ -176,6 +182,11 @@ func (c *runtimeTailscaleChild) Prepare(request context.Context) error {
 			return err
 		}
 		c.claimKnown = false
+		defer func() {
+			if !c.claimKnown {
+				c.nativeReservation.finish(true)
+			}
+		}()
 		claimed, err := c.native.ClaimRuntimeTailscaleWriter(c.nativeScope)
 		if err != nil {
 			return err // an uncertain host claim stays with this original child
@@ -184,6 +195,7 @@ func (c *runtimeTailscaleChild) Prepare(request context.Context) error {
 		if !claimed {
 			return errors.New("native Tailscale writer is already owned or unavailable")
 		}
+		c.nativeReservation.finish(true)
 		if err := request.Err(); err != nil {
 			return err
 		}
@@ -286,6 +298,9 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 			c.run.freeze(nil, false)
 			c.run.freezeDirectories(nil, false)
 		}
+		// A definitive no-acquisition close can omit an unpublished row. Missing
+		// preparation or close proof retains it as original unknown evidence.
+		c.nativeReservation.finish(result != nil)
 		if c.nativeCloseDone != nil {
 			c.nativeCloseResult = result
 			close(c.nativeCloseDone)
@@ -332,9 +347,11 @@ func (c *runtimeTailscaleChild) originalCloseProof() runtimeTailscaleCloseProof 
 	c.mu.Unlock()
 	noAcquisition, marker := constructionErr.(interface{ RuntimeTailscaleNoAcquisition() bool })
 	neverEntered := !entered && marker && noAcquisition.RuntimeTailscaleNoAcquisition()
-	nativeNeverEntered := c.native != nil && c.claimKnown && !c.directoryEntered
+	nativeNeverEntered := c.native != nil && c.claimKnown && !c.directoryEntered && constructionErr != nil
 	if (neverEntered || nativeNeverEntered) && closeErr == nil && abortErr == nil {
-		return runtimeTailscaleCloseProof{noAcquisition: true, claimed: c.claimed}
+		if c.native == nil || (len(c.request.StoreScopes()) == 0 && len(c.request.DirectoryScopes()) == 0) {
+			return runtimeTailscaleCloseProof{noAcquisition: true, claimed: c.claimed}
+		}
 	}
 	c.run.freeze(c.request.StoreScopes(), committed && constructionErr == nil && closeErr == nil && abortErr == nil)
 	c.run.freezeDirectories(c.request.DirectoryScopes(), committed && constructionErr == nil && closeErr == nil && abortErr == nil)
@@ -363,6 +380,7 @@ func (c *runtimeTailscaleChild) waitOriginalNativeClose(timeout time.Duration) e
 		case <-timer.C:
 			// A later callback still belongs to the original host scope. It
 			// cannot turn this already timed-out Close into an acknowledgement.
+			c.nativeReservation.finish(true)
 			c.nativeCloseWaitResult = errRuntimeTailscaleNativeCloseUnknown
 		}
 	})

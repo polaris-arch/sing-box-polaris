@@ -67,6 +67,7 @@ type StartedService struct {
 	cleanupErr                error                     // protected by lifecycleAccess; sticky for strict transient hosts
 	tailscaleRetirementAccess sync.Mutex                // registry only; no native callbacks under this guard
 	tailscaleRetirementRuns   []*tailscaleRetirementRun // immutable original births; registry guard
+	tailscaleReservedRuns     int                       // unclassified opt-in births; registry guard
 	startInterrupted          bool
 	serviceStatus             *ServiceStatus
 	serviceStatusSubscriber   *observable.Subscriber[*ServiceStatus]
