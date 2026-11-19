@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box"
+	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
@@ -139,6 +140,12 @@ func create(options option.Options, persist func(box.RuntimeIdentity, []byte) er
 		options.Log.DisableColor = true
 	}
 	ctx, cancel := context.WithCancel(service.ExtendContext(globalCtx))
+	if envelope := options.PolarisWindowsDirectory; envelope != nil &&
+		envelope.Version == option.WindowsDirectoryEmptyStandaloneVersion &&
+		workingDir != "" && resourceDirectory != "" &&
+		len(configPaths) == 1 && configPaths[0] == "stdin" && len(configDirectories) == 0 {
+		ctx = adapter.ContextWithTailscaleWindowsStartupRoot(ctx, resourceDirectory)
+	}
 	if disableColor {
 		ctx = box.ContextWithRuntimeLogDisableColor(ctx)
 	}

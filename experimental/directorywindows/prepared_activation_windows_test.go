@@ -378,3 +378,99 @@ func TestPrepareOrdinaryNoTokenBehaviorAndNoConfigCapability(t *testing.T) {
 		t.Fatal("ordinary context acquired a token")
 	}
 }
+
+func TestEmptyStandaloneStartupBindsOnlyOriginalWindowsDirectoryAuthority(t *testing.T) {
+	_, options, source, info := preparedActivationFixture(t)
+	envelope := options.PolarisWindowsDirectory
+	envelope.Version = option.WindowsDirectoryEmptyStandaloneVersion
+	options.Endpoints = nil
+	ctx := adapter.ContextWithTailscaleWindowsStartupRoot(context.Background(), envelope.Root)
+	setActivationFixtureRaw(t, ctx, &options)
+	result, err := prepareUnpreparedWithSource(ctx, options, func(string) error {
+		t.Error("an empty startup attempted a durable failure write")
+		return nil
+	}, source, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	domain := adapter.TailscaleDirectoryDomainFromContext(result)
+	mapping := adapter.TailscaleDirectoryMappingFromContext(result)
+	if domain == nil || !domain.Active() || domain.OwnerNonce() != envelope.RunNonce ||
+		domain.PhysicalRoot() != filepath.Join(envelope.Root, "tailscale-windows-v1") ||
+		mapping == nil || mapping.Domain() != domain || HasPreparedActivation(result) {
+		t.Fatal("empty startup lost original in-memory authority or minted a prepared child token")
+	}
+	state := filepath.Join(envelope.Root, "tailscale", "unsupplied")
+	if _, _, ok := mapping.Resolve(state, filepath.Join(state, "Taildrop")); ok {
+		t.Fatal("empty startup admitted an unlisted child")
+	}
+	digest := sha256.Sum256(options.RawMessage)
+	binding := service.PtrFromContext[adapter.TailscaleStoreRunBinding](result)
+	if binding == nil || binding.RunNonce != envelope.RunNonce || binding.ConfigDigest != hex.EncodeToString(digest[:]) {
+		t.Fatal("empty startup replaced the original run binding")
+	}
+}
+
+func TestEmptyStandaloneStartupRejectsGenericAndChangedAuthority(t *testing.T) {
+	for _, failure := range []string{
+		"no-standalone-root", "foreign-root", "foreign-source", "invalid-nonce", "inherited-binding",
+		"missing-raw", "different-raw-envelope", "raw-endpoint", "effective-endpoint", "raw-reserved",
+		"effective-reserved", "v1-empty", "prepared-v1", "prepared-v2",
+	} {
+		t.Run(failure, func(t *testing.T) {
+			original, options, source, info := preparedActivationFixture(t)
+			envelope := options.PolarisWindowsDirectory
+			envelope.Version = option.WindowsDirectoryEmptyStandaloneVersion
+			ts := options.Endpoints
+			options.Endpoints = nil
+			ctx := adapter.ContextWithTailscaleWindowsStartupRoot(context.Background(), envelope.Root)
+			setActivationFixtureRaw(t, ctx, &options)
+			poison := func(string) error {
+				t.Error("validation failure attempted a durable failure write")
+				return nil
+			}
+			switch failure {
+			case "no-standalone-root":
+				ctx = context.Background()
+			case "foreign-root":
+				ctx = adapter.ContextWithTailscaleWindowsStartupRoot(ctx, `C:\different-resource-root`)
+			case "foreign-source":
+				envelope.ExpectedSource = strings.Repeat("f", 40)
+				setActivationFixtureRaw(t, ctx, &options)
+			case "invalid-nonce":
+				envelope.RunNonce = ""
+				setActivationFixtureRaw(t, ctx, &options)
+			case "inherited-binding":
+				ctx = service.ContextWithPtr(ctx, service.PtrFromContext[adapter.TailscaleStoreRunBinding](original))
+			case "missing-raw":
+				options.RawMessage = nil
+			case "different-raw-envelope":
+				envelope.RunNonce = strings.Repeat("3", 32)
+			case "raw-endpoint":
+				options.Endpoints = ts
+				setActivationFixtureRaw(t, ctx, &options)
+				options.Endpoints = nil
+			case "effective-endpoint":
+				options.Endpoints = ts
+			case "raw-reserved", "effective-reserved":
+				options.Log = &option.LogOptions{Output: `C:\polaris\tailscale-windows-v1\log`}
+				if failure == "raw-reserved" {
+					setActivationFixtureRaw(t, ctx, &options)
+					options.Log = nil
+				}
+			case "v1-empty", "prepared-v1":
+				envelope.Version = 1
+				setActivationFixtureRaw(t, ctx, &options)
+			}
+			if strings.HasPrefix(failure, "prepared-") {
+				if _, err := prepareActivationWithSource(original, options, poison, source, info); err == nil {
+					t.Fatal("empty inventory relaxed the prepared child path")
+				}
+				return
+			}
+			if _, err := prepareUnpreparedWithSource(ctx, options, poison, source, info); err == nil {
+				t.Fatal("invalid startup established directory authority")
+			}
+		})
+	}
+}

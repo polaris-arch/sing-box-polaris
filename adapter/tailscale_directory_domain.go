@@ -152,9 +152,21 @@ func (d *TailscaleDirectoryDomain) PhysicalRoot() string { return d.physicalRoot
 func (d *TailscaleDirectoryDomain) OwnerNonce() string   { return d.ownerNonce }
 
 type (
-	tailscaleDirectoryDomainKey  struct{}
-	tailscaleDirectoryMappingKey struct{}
+	tailscaleWindowsStartupRootKey struct{}
+	tailscaleDirectoryDomainKey    struct{}
+	tailscaleDirectoryMappingKey   struct{}
 )
+
+// ContextWithTailscaleWindowsStartupRoot carries the explicit resource directory
+// of a standalone stdin launch. Only the Windows empty startup path consumes it.
+func ContextWithTailscaleWindowsStartupRoot(ctx context.Context, root string) context.Context {
+	return context.WithValue(ctx, tailscaleWindowsStartupRootKey{}, root)
+}
+
+func TailscaleWindowsStartupRootFromContext(ctx context.Context) string {
+	root, _ := ctx.Value(tailscaleWindowsStartupRootKey{}).(string)
+	return root
+}
 
 func ContextWithTailscaleDirectoryDomain(ctx context.Context, d *TailscaleDirectoryDomain) context.Context {
 	return context.WithValue(ctx, tailscaleDirectoryDomainKey{}, d)
