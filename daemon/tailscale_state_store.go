@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
@@ -32,7 +33,8 @@ type tailscaleRetirementRun struct {
 	closeFinished           <-chan struct{}
 	originalCloseSucceeded  bool
 	runtimeNoAcquisition    bool // exact runtime child marker plus actual never-entered preparation
-	nativeWriter            bool // once published, preserve the original native admission history
+	nativeHistoryPinned     bool // original census observed with a retained native writer
+	nativeChildReservations int
 	directoryPreparation    preparedDirectoryResources
 	directoryAuthority      *adapter.TailscaleDirectoryDomain
 	directoryAuthorityBound bool
@@ -188,7 +190,8 @@ func (r *tailscaleRetirementRun) reclaimableEmptyRun() bool {
 	default:
 		return false
 	}
-	return !r.nativeWriter && r.originalCloseSucceeded && (len(r.expected) == 0 || r.runtimeNoAcquisition) &&
+	return !r.nativeHistoryPinned && r.nativeChildReservations == 0 && r.originalCloseSucceeded &&
+		(len(r.expected) == 0 || r.runtimeNoAcquisition) &&
 		r.final != nil && r.final.CensusComplete && r.final.Terminal == "NoStoreConstruction" && len(r.final.Nodes) == 0 &&
 		r.directoryFinal != nil && r.directoryFinal.CensusComplete && r.directoryFinal.Terminal == "NoDirectoryConstruction" && len(r.directoryFinal.Nodes) == 0
 }
@@ -213,20 +216,29 @@ func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRu
 }
 
 type nativeTailscaleRunReservation struct {
-	once sync.Once
-	host *StartedService
-	run  *tailscaleRetirementRun
+	once   sync.Once
+	host   *StartedService
+	run    *tailscaleRetirementRun
+	parent *tailscaleRetirementRun
 }
 
-func (s *StartedService) reserveNativeTailscaleRetirementRun(run *tailscaleRetirementRun) (*nativeTailscaleRunReservation, error) {
+func (s *StartedService) reserveNativeTailscaleRetirementRun(run, parent *tailscaleRetirementRun) (*nativeTailscaleRunReservation, error) {
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	if err := s.checkTailscaleRetirementAdmissionLocked(nil); err != nil {
+	if parent != nil && !slices.Contains(s.tailscaleRetirementRuns, parent) {
+		return nil, fmt.Errorf("original native Tailscale parent census is unavailable")
+	}
+	if err := s.checkTailscaleRetirementAdmissionLocked(parent); err != nil {
 		return nil, err
 	}
-	run.nativeWriter = true
+	if parent != nil {
+		parent.access.Lock()
+		parent.nativeChildReservations++
+		parent.access.Unlock()
+	}
+	run.nativeHistoryPinned = true
 	s.tailscaleReservedRuns++
-	return &nativeTailscaleRunReservation{host: s, run: run}, nil
+	return &nativeTailscaleRunReservation{host: s, run: run, parent: parent}, nil
 }
 
 func (r *nativeTailscaleRunReservation) finish(retain bool) {
@@ -236,6 +248,16 @@ func (r *nativeTailscaleRunReservation) finish(retain bool) {
 	r.once.Do(func() {
 		r.host.tailscaleRetirementAccess.Lock()
 		defer r.host.tailscaleRetirementAccess.Unlock()
+		if r.parent != nil {
+			r.parent.access.Lock()
+			r.parent.nativeChildReservations--
+			if retain {
+				// The host native ledger can observe both original rows. Keep the
+				// empty parent even when the old Box closes at strict Reload.
+				r.parent.nativeHistoryPinned = true
+			}
+			r.parent.access.Unlock()
+		}
 		if retain {
 			r.host.tailscaleRetirementRuns = append(r.host.tailscaleRetirementRuns, r.run)
 		}

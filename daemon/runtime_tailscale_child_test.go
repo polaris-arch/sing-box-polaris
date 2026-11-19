@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/service"
 )
 
@@ -100,7 +101,7 @@ func TestRuntimeCloseObserverPanicKeepsUnknownEvidence(t *testing.T) {
 }
 
 type nativeTailscaleClaimsFixture struct {
-	adapter.PlatformInterface
+	runtimeURLTestPlatform
 	mu        sync.Mutex
 	owners    map[string]adapter.RuntimeTailscaleWriterScope
 	releases  []bool
@@ -159,6 +160,11 @@ var fixtureAcceptedTailscaleDigest = strings.Repeat("a", 64)
 
 func registerNativeTailscaleFixture(t *testing.T, host *StartedService, dirs adapter.RuntimeTailscaleDirectories) *nativeTailscaleChildFixture {
 	t.Helper()
+	return registerNativeTailscaleFixtureInContext(t, host.runtimeTailscaleContext(standaloneTailscaleContext(), nil), dirs)
+}
+
+func registerNativeTailscaleFixtureInContext(t *testing.T, ctx context.Context, dirs adapter.RuntimeTailscaleDirectories) *nativeTailscaleChildFixture {
+	t.Helper()
 	fixture := &nativeTailscaleChildFixture{constructionDone: make(chan struct{}), closeDone: make(chan struct{})}
 	request := adapter.RuntimeTailscaleChildRequest{
 		ResourceID: standaloneTailscaleSource{}.ID(), Generation: 1, Tag: "child",
@@ -183,8 +189,10 @@ func registerNativeTailscaleFixture(t *testing.T, host *StartedService, dirs ada
 				StateDirectory: scope.Directories.State, CensusVersion: 1, WriterState: "Unknown"}}
 		},
 	}
-	ctx := adapter.ContextWithRuntimeTailscalePlanDigest(standaloneTailscaleContext(), fixtureAcceptedTailscaleDigest)
-	registration, err := adapter.RegisterRuntimeTailscaleChild(host.runtimeTailscaleContext(ctx), request)
+	ctx = adapter.ContextWithRuntimeResourceSource(ctx, standaloneTailscaleSource{})
+	ctx = adapter.ContextWithRuntimeTailscaleConfiguration(ctx, []byte(standaloneTailscaleConfig))
+	ctx = adapter.ContextWithRuntimeTailscalePlanDigest(ctx, fixtureAcceptedTailscaleDigest)
+	registration, err := adapter.RegisterRuntimeTailscaleChild(ctx, request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,6 +228,69 @@ func (fixture *nativeTailscaleChildFixture) finish(t *testing.T, constructionErr
 	}
 }
 
+func TestRuntimeTailscaleNativeStrictReloadRetainsOriginalWarmParent(t *testing.T) {
+	for _, claimed := range []bool{true, false} {
+		name := "held original native writer"
+		if !claimed {
+			name = "never entered native preparation"
+		}
+		t.Run(name, func(t *testing.T) {
+			host, _ := retirementPureHost(t)
+			platform := &nativeTailscaleClaimsFixture{owners: make(map[string]adapter.RuntimeTailscaleWriterScope)}
+			host.ctx = service.ContextWith[adapter.PlatformInterface](host.ctx, platform)
+			host.ctx = service.ContextWith[option.EndpointOptionsRegistry](host.ctx,
+				service.FromContext[option.EndpointOptionsRegistry](standaloneTailscaleContext()))
+			const coldConfig = `{"log":{"disabled":true}}`
+			if err := host.StartOrReloadService(context.Background(), coldConfig, nil); err != nil {
+				t.Fatal(err)
+			}
+			parent := host.instance.tailscaleRetirement
+			before := parent.snapshot()
+			if len(before.Nodes) != 0 || before.CensusComplete {
+				t.Fatal("cold parent census already has an endpoint or terminal")
+			}
+			root := t.TempDir()
+			child := registerNativeTailscaleFixtureInContext(t, host.instance.ctx, adapter.RuntimeTailscaleDirectories{
+				State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop"),
+			})
+			if claimed {
+				if err := child.Prepare(context.Background()); err != nil {
+					t.Fatal(err)
+				}
+				child.finish(t, nil, nil, true)
+			} else {
+				child.finish(t, runtimeNoAcquisitionFixture{}, nil, false)
+			}
+			if err := child.WaitOriginalNativeClose(); err != nil {
+				t.Fatal(err)
+			}
+			if err := host.StartOrReloadService(context.Background(), coldConfig, nil); err != nil {
+				t.Fatal(err)
+			}
+			runs := host.snapshotTailscaleRetirementRuns()
+			replacement := host.instance.tailscaleRetirement
+			if !claimed {
+				if len(runs) != 1 || runs[0] != replacement {
+					t.Fatal("unclaimed child kept ordinary empty history")
+				}
+				return
+			}
+			if len(runs) != 3 || runs[0] != parent || runs[1] != child.run || runs[2] != replacement {
+				t.Fatal("strict reload lost or reordered the original native parent and child")
+			}
+			after := parent.snapshot()
+			if after.RunNonce != before.RunNonce || after.ConfigDigest != before.ConfigDigest ||
+				!after.CensusComplete || after.Terminal != "NoStoreConstruction" || len(after.Nodes) != 0 {
+				t.Fatalf("empty original cold census was not terminal: %+v", after)
+			}
+			if warm := child.run.snapshot(); !warm.CensusComplete || len(warm.Nodes) != 1 ||
+				warm.RunNonce != child.nativeScope.Binding.RunNonce || warm.ConfigDigest != fixtureAcceptedTailscaleDigest {
+				t.Fatalf("warm child lost its original native binding: %+v", warm)
+			}
+		})
+	}
+}
+
 func TestRuntimeTailscaleNativePlanChecksCapacityWithoutPruning(t *testing.T) {
 	host := &StartedService{tailscaleRetirementRuns: make([]*tailscaleRetirementRun, maxTailscaleRetirementRuns)}
 	for index := range host.tailscaleRetirementRuns {
@@ -251,11 +322,14 @@ func TestRuntimeTailscaleNativeUnclassifiedCapacityReleasedOnlyByOriginalNoAcqui
 		t.Run(test.name, func(t *testing.T) {
 			platform := &nativeTailscaleClaimsFixture{owners: make(map[string]adapter.RuntimeTailscaleWriterScope)}
 			host := &StartedService{ctx: service.ContextWith[adapter.PlatformInterface](context.Background(), platform)}
-			for range maxTailscaleRetirementRuns - 1 {
+			parent := completedEmptyRetirementRun(t)
+			host.tailscaleRetirementRuns = append(host.tailscaleRetirementRuns, parent)
+			for range maxTailscaleRetirementRuns - 2 {
 				host.tailscaleRetirementRuns = append(host.tailscaleRetirementRuns, &tailscaleRetirementRun{})
 			}
 			root := t.TempDir()
-			child := registerNativeTailscaleFixture(t, host, adapter.RuntimeTailscaleDirectories{State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop")})
+			ctx := host.runtimeTailscaleContext(standaloneTailscaleContext(), parent)
+			child := registerNativeTailscaleFixtureInContext(t, ctx, adapter.RuntimeTailscaleDirectories{State: filepath.Join(root, "state"), Taildrop: filepath.Join(root, "taildrop")})
 			if host.runtimeTailscaleChildHasCapacity() || host.appendTailscaleRetirementRun(&tailscaleRetirementRun{}) == nil {
 				t.Fatal("an unclassified child did not reserve the last original census slot")
 			}
@@ -270,8 +344,17 @@ func TestRuntimeTailscaleNativeUnclassifiedCapacityReleasedOnlyByOriginalNoAcqui
 				t.Fatal("admission capacity did not follow exact no-acquisition evidence")
 			}
 			runs := host.snapshotTailscaleRetirementRuns()
-			if test.closeErr != nil && (len(runs) != maxTailscaleRetirementRuns || runs[len(runs)-1] != child.run || child.run.snapshot().CensusComplete) {
-				t.Fatal("unknown original close was omitted or promoted")
+			if test.closeErr != nil {
+				if len(runs) != maxTailscaleRetirementRuns || runs[0] != parent || runs[len(runs)-1] != child.run || child.run.snapshot().CensusComplete {
+					t.Fatal("unknown original close or its cold parent was omitted or promoted")
+				}
+			} else {
+				if err := host.appendTailscaleRetirementRun(&tailscaleRetirementRun{}); err != nil {
+					t.Fatal(err)
+				}
+				if host.snapshotTailscaleRetirementRuns()[0] == parent {
+					t.Fatal("unacquired reservation permanently pinned its empty parent")
+				}
 			}
 		})
 	}

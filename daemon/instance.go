@@ -169,9 +169,6 @@ func (s *StartedService) newInstance(ctx context.Context, profileContent string,
 
 func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloading bool) (*Instance, error) {
 	ctx, profileContent, options := prepared.ctx, prepared.profileContent, prepared.options
-	if prepared.runtimeGraph {
-		ctx = s.runtimeTailscaleContext(ctx)
-	}
 	if domain := adapter.TailscaleDirectoryDomainFromContext(s.ctx); domain != nil && prepared.directoryPlan == nil {
 		if !domain.Activated() {
 			return nil, E.New("managed directory domain is not activated")
@@ -211,6 +208,9 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 			cancel()
 			return nil, err
 		}
+	}
+	if prepared.runtimeGraph {
+		ctx = s.runtimeTailscaleContext(ctx, retirement)
 	}
 	urlTestHistoryStorage := urltest.NewHistoryStorage()
 	ctx = service.ContextWithPtr(ctx, urlTestHistoryStorage)

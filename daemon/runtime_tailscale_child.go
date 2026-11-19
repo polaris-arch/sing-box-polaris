@@ -22,11 +22,13 @@ import (
 // same original signals, validation and capacity limits as StartedService.
 func ContextWithRuntimeTailscaleChildren(ctx context.Context) context.Context {
 	host := &StartedService{}
-	return host.runtimeTailscaleContext(ctx)
+	return host.runtimeTailscaleContext(ctx, nil)
 }
 
-func (s *StartedService) runtimeTailscaleContext(ctx context.Context) context.Context {
-	ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, s.registerRuntimeTailscaleChild)
+func (s *StartedService) runtimeTailscaleContext(ctx context.Context, parent *tailscaleRetirementRun) context.Context {
+	ctx = adapter.ContextWithRuntimeTailscaleChildRegistrar(ctx, func(ctx context.Context, request adapter.RuntimeTailscaleChildRequest) (adapter.RuntimeTailscaleChildRegistration, error) {
+		return s.registerRuntimeTailscaleChild(ctx, request, parent)
+	})
 	return adapter.ContextWithRuntimeTailscaleChildCapacity(ctx, s.runtimeTailscaleChildHasCapacity)
 }
 
@@ -74,7 +76,7 @@ type runtimeTailscaleChild struct {
 	abortErr                    error
 }
 
-func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, request adapter.RuntimeTailscaleChildRequest) (adapter.RuntimeTailscaleChildRegistration, error) {
+func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, request adapter.RuntimeTailscaleChildRequest, parent *tailscaleRetirementRun) (adapter.RuntimeTailscaleChildRegistration, error) {
 	canonical, ok := adapter.RuntimeTailscaleConfiguration(ctx)
 	if !ok {
 		return nil, errors.New("tailscale child lacks captured whole configuration")
@@ -147,7 +149,7 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	// A native claim needs an original identity and a slot before admission.
 	// The row is published once the host could have acquired the claim.
 	if child.native != nil {
-		child.nativeReservation, err = s.reserveNativeTailscaleRetirementRun(run)
+		child.nativeReservation, err = s.reserveNativeTailscaleRetirementRun(run, parent)
 	} else {
 		err = s.appendTailscaleRetirementRun(run)
 	}
