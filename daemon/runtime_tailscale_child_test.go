@@ -177,16 +177,20 @@ func registerNativeTailscaleFixtureInContext(t *testing.T, ctx context.Context, 
 				return nil
 			}
 			scope := fixture.nativeScope
-			return []adapter.TailscaleStoreNode{{Tag: scope.Tag, RunNonce: scope.Binding.RunNonce, ConfigDigest: scope.Binding.ConfigDigest,
-				StateFile: filepath.Join(scope.Directories.State, "tailscaled.state"), WriterState: "NoStoreConstruction"}}
+			return []adapter.TailscaleStoreNode{{
+				Tag: scope.Tag, RunNonce: scope.Binding.RunNonce, ConfigDigest: scope.Binding.ConfigDigest,
+				StateFile: filepath.Join(scope.Directories.State, "tailscaled.state"), WriterState: "NoStoreConstruction",
+			}}
 		},
 		DirectoryScopes: func() []adapter.TailscaleDirectoryNode {
 			if !fixture.checkedWriter {
 				return nil
 			}
 			scope := fixture.nativeScope
-			return []adapter.TailscaleDirectoryNode{{Tag: scope.Tag, RunNonce: scope.Binding.RunNonce, ConfigDigest: scope.Binding.ConfigDigest,
-				StateDirectory: scope.Directories.State, CensusVersion: 1, WriterState: "Unknown"}}
+			return []adapter.TailscaleDirectoryNode{{
+				Tag: scope.Tag, RunNonce: scope.Binding.RunNonce, ConfigDigest: scope.Binding.ConfigDigest,
+				StateDirectory: scope.Directories.State, CensusVersion: 1, WriterState: "Unknown",
+			}}
 		},
 	}
 	ctx = adapter.ContextWithRuntimeResourceSource(ctx, standaloneTailscaleSource{})
