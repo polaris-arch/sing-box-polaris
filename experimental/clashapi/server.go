@@ -168,6 +168,7 @@ func (s *Server) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 		if err != nil {
 			return E.Cause(err, "external controller listen error")
 		}
+		s.httpServer.BaseContext = func(net.Listener) context.Context { return scope.Context() }
 		scope.Add(s.httpServer.Close)
 		s.logger.Info("restful api listening at ", listener.Addr())
 		go func() {
