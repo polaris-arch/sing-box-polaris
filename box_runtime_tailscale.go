@@ -23,6 +23,11 @@ type runtimeTailscaleEndpointTransaction struct {
 	publication *protocolTS.RuntimeEndpointPublication
 }
 
+type runtimeTailscaleInput struct {
+	tag     string
+	options option.TailscaleEndpointOptions
+}
+
 func runtimeTailscaleParticipants(resources []*runtimeResource) []*protocolTS.Endpoint {
 	var result []*protocolTS.Endpoint
 	seen := make(map[*protocolTS.Endpoint]bool)
@@ -35,6 +40,68 @@ func runtimeTailscaleParticipants(resources []*runtimeResource) []*protocolTS.En
 		}
 	}
 	return result
+}
+
+// Rebuilding a logical cohort can keep its original physical writer. Native
+// writers also require the original tag and exactly one current owner.
+func matchRuntimeTailscaleWriters(inputs []runtimeTailscaleInput, prior []*protocolTS.Endpoint, kept map[*protocolTS.Endpoint]bool, native bool) (map[string]*protocolTS.Endpoint, error) {
+	matches := make(map[string]*protocolTS.Endpoint)
+	shared := make(map[*protocolTS.Endpoint]bool)
+	matched := make(map[*protocolTS.Endpoint]bool)
+	for _, input := range inputs {
+		var physical *protocolTS.Endpoint
+		var match *protocolTS.Endpoint
+		for _, old := range prior {
+			if !old.RuntimeCanSharePhysical(input.tag, input.options) {
+				continue
+			}
+			if kept[old] {
+				return nil, runtimeEndpointRestart(input.tag, "Tailscale physical identity cannot have two active logical endpoints")
+			}
+			if native && old.Tag() != input.tag {
+				continue
+			}
+			owner, _ := old.NATIdentity().(*protocolTS.Endpoint)
+			if owner == nil || match != nil && (native || physical != owner) {
+				return nil, runtimeEndpointRestart(input.tag, "Tailscale physical identity has ambiguous prior ownership")
+			}
+			physical = owner
+			match = old
+		}
+		if physical != nil {
+			if shared[physical] {
+				return nil, runtimeEndpointRestart(input.tag, "Tailscale candidate duplicates a shared physical identity")
+			}
+			shared[physical] = true
+			matched[match] = true
+			matches[input.tag] = match
+		}
+	}
+	if native {
+		for _, old := range prior {
+			if !kept[old] && !matched[old] {
+				return nil, runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
+			}
+		}
+	}
+	return matches, nil
+}
+
+func validateRuntimeTailscaleAdditions(ctx context.Context, platform adapter.RuntimeTailscaleWriterPlatform, inputs []runtimeTailscaleInput, matches map[string]*protocolTS.Endpoint) (bool, error) {
+	var first runtimeTailscaleInput
+	additions := 0
+	for _, input := range inputs {
+		if matches[input.tag] == nil {
+			if additions == 0 {
+				first = input
+			}
+			additions++
+		}
+	}
+	if additions == 0 {
+		return false, nil
+	}
+	return true, validateRuntimeTailscaleWriter(ctx, platform, additions, first.tag, first.options)
 }
 
 func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRuntimeGraph, current, retained []*runtimeResource) (*runtimeTailscaleEndpointTransaction, error) {
@@ -51,51 +118,26 @@ func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRun
 			kept[value] = true
 		}
 	}
-	if platform := adapter.RuntimeTailscaleWriterFromContext(s.runtime.ctx); !g.initial && platform != nil {
-		for _, old := range prior {
-			if !kept[old] {
-				return t, runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
-			}
-		}
-		if len(t.next) > 0 {
-			value := t.next[0]
-			if err := validateRuntimeTailscaleWriter(s.runtime.ctx, platform, len(t.next), value.Tag(), value.RuntimePhysicalOptions()); err != nil {
-				return t, err
-			}
-			ctx = adapter.ContextWithRuntimeTailscaleNativeWriter(ctx)
-		}
-	}
-	selected := make(map[*protocolTS.Endpoint]*protocolTS.Endpoint)
-	// Validate and select all physical owners before opening a new native child.
+	inputs := make([]runtimeTailscaleInput, 0, len(t.next))
 	for _, value := range t.next {
 		if err := value.RuntimeValidate(); err != nil {
 			return t, err
 		}
-		options := value.RuntimePhysicalOptions()
-		var match *protocolTS.Endpoint
-		for _, old := range prior {
-			if !old.RuntimeCanSharePhysical(value.Tag(), options) {
-				continue
-			}
-			if kept[old] {
-				return t, runtimeEndpointRestart(value.Tag(), "Tailscale physical identity cannot have two active logical endpoints")
-			}
-			if match != nil && match.NATIdentity() != old.NATIdentity() {
-				return t, runtimeEndpointRestart(value.Tag(), "Tailscale physical identity has ambiguous prior ownership")
-			}
-			match = old
-		}
-		selected[value] = match
+		inputs = append(inputs, runtimeTailscaleInput{value.Tag(), value.RuntimePhysicalOptions()})
 	}
-	// Two private candidates cannot publish different active bindings to the same
-	// physical child, even when neither old logical owner survives in the graph.
-	for i, value := range t.next {
-		if selected[value] != nil {
-			for _, other := range t.next[:i] {
-				if selected[other] != nil && selected[other].NATIdentity() == selected[value].NATIdentity() {
-					return t, runtimeEndpointRestart(value.Tag(), "Tailscale candidate duplicates a shared physical identity")
-				}
-			}
+	platform := adapter.RuntimeTailscaleWriterFromContext(s.runtime.ctx)
+	native := !g.initial && platform != nil
+	selected, err := matchRuntimeTailscaleWriters(inputs, prior, kept, native)
+	if err != nil {
+		return t, err
+	}
+	if native {
+		addition, err := validateRuntimeTailscaleAdditions(s.runtime.ctx, platform, inputs, selected)
+		if err != nil {
+			return t, err
+		}
+		if addition {
+			ctx = adapter.ContextWithRuntimeTailscaleNativeWriter(ctx)
 		}
 	}
 	for index, value := range t.next {
@@ -116,7 +158,7 @@ func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRun
 			if !overlap {
 				continue
 			}
-			if selected[value] != nil && selected[value].NATIdentity() != nil && selected[value].NATIdentity() == old.NATIdentity() {
+			if match := selected[value.Tag()]; match != nil && match.NATIdentity() != nil && match.NATIdentity() == old.NATIdentity() {
 				continue
 			}
 			return t, runtimeEndpointRestart(value.Tag(), "Tailscale state or Taildrop directory is still owned by an incompatible physical identity")
@@ -126,7 +168,7 @@ func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRun
 		if err := ctx.Err(); err != nil {
 			return t, err
 		}
-		if selected[value] != nil {
+		if selected[value.Tag()] != nil {
 			continue
 		}
 		// Graph-facing policies are supplied by concrete per-generation hooks. The
@@ -145,7 +187,7 @@ func (s *Box) stageRuntimeTailscaleEndpoints(ctx context.Context, g *preparedRun
 		if err := ctx.Err(); err != nil {
 			return t, err
 		}
-		if old := selected[value]; old != nil {
+		if old := selected[value.Tag()]; old != nil {
 			if err := value.RuntimeStageSharedPhysical(ctx, old); err != nil {
 				return t, err
 			}
@@ -216,11 +258,7 @@ func runtimeTailscaleOptionsOverlap(ctx context.Context, a, b option.TailscaleEn
 }
 
 func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options option.Options, intents []RuntimeSelectorIntent, rootDigest [32]byte) error {
-	type input struct {
-		tag     string
-		options option.TailscaleEndpointOptions
-	}
-	var inputs []input
+	var inputs []runtimeTailscaleInput
 	for index, endpoint := range options.Endpoints {
 		if endpoint.Type != C.TypeTailscale {
 			continue
@@ -233,7 +271,7 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 		if tag == "" {
 			tag = fmt.Sprint(index)
 		}
-		inputs = append(inputs, input{tag, *value})
+		inputs = append(inputs, runtimeTailscaleInput{tag, *value})
 	}
 	c := s.runtime
 	platform := adapter.RuntimeTailscaleWriterFromContext(c.ctx)
@@ -261,31 +299,34 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 	if err != nil {
 		return err
 	}
-	kept := make(map[string]bool)
-	additions := 0
+	prior := runtimeTailscaleParticipants(current)
+	kept := make(map[*protocolTS.Endpoint]bool)
+	var changed []runtimeTailscaleInput
 	for _, value := range inputs {
-		if !replaced["endpoint:"+value.tag] {
-			kept[value.tag] = true
-		} else {
-			additions++
+		if replaced["endpoint:"+value.tag] {
+			changed = append(changed, value)
+			continue
+		}
+		for _, old := range prior {
+			if old.Tag() == value.tag {
+				kept[old] = true
+			}
 		}
 	}
+	selected, err := matchRuntimeTailscaleWriters(changed, prior, kept, platform != nil)
+	if err != nil {
+		return err
+	}
 	if platform != nil {
-		for _, old := range runtimeTailscaleParticipants(current) {
-			if !kept[old.Tag()] {
-				return runtimeEndpointRestart(old.Tag(), "Android warm Tailscale requires retaining existing endpoint writers")
-			}
+		if _, err := validateRuntimeTailscaleAdditions(c.ctx, platform, changed, selected); err != nil {
+			return err
 		}
 	}
 	for index, value := range inputs {
 		if !replaced["endpoint:"+value.tag] {
 			continue
 		}
-		if platform != nil {
-			if err := validateRuntimeTailscaleWriter(c.ctx, platform, additions, value.tag, value.options); err != nil {
-				return err
-			}
-		}
+		match := selected[value.tag]
 		// No candidate may publish two logical bindings for one directory identity.
 		for otherIndex, other := range inputs {
 			if otherIndex == index {
@@ -298,19 +339,6 @@ func (s *Box) preflightRuntimeTailscaleEndpoints(ctx context.Context, options op
 			if overlap {
 				return runtimeEndpointRestart(value.tag, "Tailscale candidate directory identities overlap")
 			}
-		}
-		var match *protocolTS.Endpoint
-		for _, old := range runtimeTailscaleParticipants(current) {
-			if !old.RuntimeCanSharePhysical(value.tag, value.options) {
-				continue
-			}
-			if kept[old.Tag()] {
-				return runtimeEndpointRestart(value.tag, "Tailscale physical identity cannot have two active logical endpoints")
-			}
-			if match != nil && match.NATIdentity() != old.NATIdentity() {
-				return runtimeEndpointRestart(value.tag, "Tailscale physical identity has ambiguous prior ownership")
-			}
-			match = old
 		}
 		for _, old := range runtimeTailscaleParticipants(retained) {
 			overlap, err := runtimeTailscaleOptionsOverlap(c.ctx, value.options, old.RuntimePhysicalOptions())
