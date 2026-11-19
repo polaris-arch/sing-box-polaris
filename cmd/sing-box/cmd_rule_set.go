@@ -38,11 +38,16 @@ func readRuleSetContent(path string, limit int64) ([]byte, error) {
 }
 
 func decodeRuleSetSource(content []byte) (option.PlainRuleSetCompat, error) {
+	remainingRules := srs.DefaultReadLimits().Rules
+	return decodeRuleSetSourceWithRuleBudget(content, &remainingRules)
+}
+
+func decodeRuleSetSourceWithRuleBudget(content []byte, remainingRules *uint64) (option.PlainRuleSetCompat, error) {
 	ctx := globalCtx
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	// The file/stdin byte limit was applied before acquisition. The normalized
 	// merge output is an internal value; the rule tree still has the same cap.
-	return srs.ReadSourceContextWithLimits(ctx, content, srs.ReadLimits{InputBytes: int64(len(content))})
+	return srs.ReadSourceContextWithRuleBudget(ctx, content, int64(len(content)), remainingRules)
 }

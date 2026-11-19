@@ -48,17 +48,18 @@ type RuleSetEntry struct {
 
 func readRuleSet() ([]*RuleSetEntry, error) {
 	var optionsList []*RuleSetEntry
-	remaining := srs.DefaultInputBytes
+	remainingBytes := srs.DefaultInputBytes
+	remainingRules := srs.DefaultReadLimits().Rules
 	readEntry := func(path string) error {
-		if remaining == 0 {
+		if remainingBytes == 0 {
 			return E.Cause(srs.ErrResourceLimit, "read config at ", path)
 		}
-		content, err := readRuleSetContent(path, remaining)
+		content, err := readRuleSetContent(path, remainingBytes)
 		if err != nil {
 			return E.Cause(err, "read config at ", path)
 		}
-		remaining -= int64(len(content))
-		options, err := decodeRuleSetSource(content)
+		remainingBytes -= int64(len(content))
+		options, err := decodeRuleSetSourceWithRuleBudget(content, &remainingRules)
 		if err != nil {
 			return E.Cause(err, "decode config at ", path)
 		}

@@ -57,14 +57,21 @@ func ResolveReadLimits(l ReadLimits) (ReadLimits, error) {
 // limits before decoding a JSON rule-set. The remaining limits describe
 // allocations and recovery from the binary representation.
 func ReadSourceContextWithLimits(ctx context.Context, content []byte, limits ReadLimits) (option.PlainRuleSetCompat, error) {
-	var empty option.PlainRuleSetCompat
 	limits, err := ResolveReadLimits(limits)
 	if err != nil {
-		return empty, err
+		return option.PlainRuleSetCompat{}, err
 	}
-	if int64(len(content)) > limits.InputBytes {
+	return ReadSourceContextWithRuleBudget(ctx, content, limits.InputBytes, &limits.Rules)
+}
+
+// ReadSourceContextWithRuleBudget debits the declared rule nodes after a
+// successful decode. A zero remaining budget admits only empty rule sets.
+func ReadSourceContextWithRuleBudget(ctx context.Context, content []byte, inputBytes int64, remainingRules *uint64) (option.PlainRuleSetCompat, error) {
+	var empty option.PlainRuleSetCompat
+	if int64(len(content)) > inputBytes {
 		return empty, limitError("input bytes")
 	}
+	remaining := *remainingRules
 	decoder := json.NewDecoder(contextReader{ctx, bytes.NewReader(content)})
 	token, err := decoder.Token()
 	if err != nil {
@@ -73,7 +80,7 @@ func ReadSourceContextWithLimits(ctx context.Context, content []byte, limits Rea
 	if token != json.Delim('{') {
 		return empty, errors.New("rule-set source must be an object")
 	}
-	if err := checkSourceRuleObject(ctx, decoder, &limits.Rules, 0); err != nil {
+	if err := checkSourceRuleObject(ctx, decoder, &remaining, 0); err != nil {
 		return empty, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -86,6 +93,7 @@ func ReadSourceContextWithLimits(ctx context.Context, content []byte, limits Rea
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
+	*remainingRules = remaining
 	return ruleSet, nil
 }
 

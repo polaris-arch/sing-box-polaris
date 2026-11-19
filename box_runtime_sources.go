@@ -146,6 +146,9 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 			default:
 				err = fmt.Errorf("unsupported source format")
 			}
+			if request.Err() != nil {
+				return options, nil, "", []RuntimePlanError{{Code: "CANCELED", Path: "route.rule_set"}}
+			}
 			if err != nil {
 				return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE", Path: fmt.Sprintf("route.rule_set[%d]", i)}}
 			}

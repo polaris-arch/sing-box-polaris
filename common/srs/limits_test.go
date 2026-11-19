@@ -81,7 +81,15 @@ func TestSRSBudgetsAreCumulativeAndExplicitlyAdjustable(t *testing.T) {
 	if _, err := ReadSourceContextWithLimits(context.Background(), source, ReadLimits{Rules: 2}); !errors.Is(err, ErrResourceLimit) {
 		t.Fatal(err)
 	}
-	if _, err := ReadSourceContextWithLimits(context.Background(), source, ReadLimits{Rules: 3}); err != nil {
+	remaining := uint64(3)
+	if _, err := ReadSourceContextWithRuleBudget(context.Background(), source, int64(len(source)), &remaining); err != nil || remaining != 0 {
+		t.Fatalf("exact source budget left %d rules: %v", remaining, err)
+	}
+	empty := []byte(`{"version":1,"rules":[]}`)
+	if _, err := ReadSourceContextWithRuleBudget(context.Background(), empty, int64(len(empty)), &remaining); err != nil || remaining != 0 {
+		t.Fatalf("empty source with exhausted budget left %d rules: %v", remaining, err)
+	}
+	if _, err := ReadSourceContextWithRuleBudget(context.Background(), source, int64(len(source)), &remaining); !errors.Is(err, ErrResourceLimit) || remaining != 0 {
 		t.Fatal(err)
 	}
 	var nesting bytes.Buffer

@@ -150,6 +150,22 @@ func TestRuleSetMergeAggregateSourceBudget(t *testing.T) {
 	if content, err := os.ReadFile(outputPath); err != nil || !bytes.Equal(content, merged) {
 		t.Fatalf("existing output changed: %q, %v", content, err)
 	}
+
+	nodes := int(srs.DefaultReadLimits().Rules)
+	firstRules := `{"version":1,"rules":[` + strings.Repeat(`{"domain":"first.example"},`, nodes-2) + `{"domain":"last.example"}]}`
+	secondRules := `{"version":2,"rules":[{"type":"logical","mode":"and","rules":[{"domain":"second.example"}]}]}`
+	if err := os.WriteFile(firstPath, []byte(firstRules), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second.Name(), []byte(secondRules), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := mergeRuleSet(outputPath); !errors.Is(err, srs.ErrResourceLimit) || !strings.Contains(err.Error(), "decode config at "+second.Name()) {
+		t.Fatalf("expected cumulative node budget to reject the second source before merging, got %v", err)
+	}
+	if content, err := os.ReadFile(outputPath); err != nil || !bytes.Equal(content, merged) {
+		t.Fatalf("existing output changed: %q, %v", content, err)
+	}
 }
 
 func TestRuleSetConvertSourceBudgetAndScanFailures(t *testing.T) {
