@@ -39,6 +39,20 @@ func (s *Box) AcquireRuntimeAPI() (lease adapter.RuntimeLease, changed <-chan st
 	return lease, changed, true, err
 }
 
+// LookupPublicDNS runs the configured dial-side DNS lookup against the admitted graph.
+func (s *Box) LookupPublicDNS(ctx context.Context, domain string) ([]netip.Addr, error) {
+	lease, _, connected, err := s.AcquireRuntimeAPI()
+	if err != nil {
+		return nil, err
+	}
+	options := adapter.DNSQueryOptions{UseRules: true}
+	if connected {
+		defer lease.Release()
+		return lease.View().DNSRouter().Lookup(adapter.ContextWithRuntimeLease(ctx, lease), domain, options)
+	}
+	return s.dnsRouter.Lookup(ctx, domain, options)
+}
+
 // Only the App's explicit inline detour-only client has a stable adapter. Check
 // the complete structure, including fields deliberately omitted from JSON.
 func runtimeStableDashboard(options *option.APIDashboardOptions) bool {

@@ -13,6 +13,7 @@ service RuntimeConfigService {
   rpc RetryRuntimePersistence(RuntimePersistenceRetryRequest) returns (RuntimeConfigOperation);
   rpc AcknowledgeRuntimePersistence(RuntimePersistenceAcknowledgementRequest) returns (RuntimeConfigOperation);
   rpc ProbeExitIP(ProbeExitIPRequest) returns (ProbeExitIPResponse);
+  rpc LookupPublicDns(LookupPublicDnsRequest) returns (LookupPublicDnsResponse);
 }
 message RuntimeIdentity { string incarnation = 1; uint64 applied_revision = 2; string effective_digest = 3; }
 enum RuntimeUpdateClass { RUNTIME_UPDATE_UNSPECIFIED = 0; IN_PLACE = 1; LOCAL_REPLACE = 2; AFFECTED_RECONNECT = 3; PENDING_ADAPTER = 4; RESTART_REQUIRED = 5; }
@@ -46,6 +47,8 @@ message ProbeExitIPResponse {
   string leaf_tag = 3;
   bytes trace_body = 4;
 }
+message LookupPublicDnsRequest { string domain = 1; }
+message LookupPublicDnsResponse { repeated string addresses = 1; uint32 version = 2; }
 // Explicit snapshot; absent and empty package lists retain their protobuf
 // semantics. Native directory custody is never accepted through this message.
 message RuntimeOverrideOptions { bool auto_redirect = 1; repeated string include_package = 2; repeated string exclude_package = 3; }

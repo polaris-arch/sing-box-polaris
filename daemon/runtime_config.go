@@ -6,7 +6,9 @@ import (
 
 	box "github.com/sagernet/sing-box"
 	boxtls "github.com/sagernet/sing-box/common/tls"
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing/common/json"
+	M "github.com/sagernet/sing/common/metadata"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -140,6 +142,38 @@ func (s *StartedService) ProbeExitIP(ctx context.Context, request *ProbeExitIPRe
 		_ = grpc.SetTrailer(ctx, metadata.Pairs("polaris-exit-ip-result", "drained"))
 		return nil, status.Error(codes.Unavailable, box.ErrRuntimeExitIPUnavailable.Error())
 	}
+}
+
+func (s *StartedService) LookupPublicDns(ctx context.Context, request *LookupPublicDnsRequest) (*LookupPublicDnsResponse, error) {
+	if _, err := runtimeActor(ctx); err != nil {
+		return nil, err
+	}
+	domain := request.GetDomain()
+	if len(domain) > 254 || domain == "." || !M.IsDomainName(domain) {
+		return nil, status.Error(codes.InvalidArgument, "invalid DNS lookup domain")
+	}
+	instance, err := s.readStartedInstance()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, C.DNSTimeout)
+	defer cancel()
+	addresses, err := instance.instance.LookupPublicDNS(ctx, domain)
+	if ctx.Err() != nil {
+		return nil, status.FromContextError(ctx.Err()).Err()
+	}
+	if err != nil || len(addresses) == 0 {
+		return nil, status.Error(codes.Unavailable, "DNS lookup failed")
+	}
+	if len(addresses) > 64 {
+		return nil, status.Error(codes.ResourceExhausted, "DNS answer exceeds address limit")
+	}
+	// The App checks the complete answer, including mixed public and private addresses.
+	response := &LookupPublicDnsResponse{Version: 1, Addresses: make([]string, len(addresses))}
+	for index, address := range addresses {
+		response.Addresses[index] = address.String()
+	}
+	return response, nil
 }
 
 func (s *StartedService) PlanRuntimeConfig(ctx context.Context, request *PlanRuntimeConfigRequest) (*RuntimeConfigPlan, error) {
