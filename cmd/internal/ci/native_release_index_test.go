@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -235,6 +236,49 @@ func TestDistributionLicenseFilesAreSourceText(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestIOSCPUPatchExactPinnedInputs(t *testing.T) {
+	const version = "go1.27.4"
+	const patch = "--- a/src/internal/cpu/other.go\n+++ b/src/internal/cpu/other.go\n@@ -1 +1 @@\n-before\n+after\n" +
+		"--- a/src/internal/cpu/ios.go\n+++ b/src/internal/cpu/ios.go\n@@ -0,0 +1 @@\n+ios\n"
+	const other = "src/internal/cpu/other.go"
+	const ios = "src/internal/cpu/ios.go"
+	source, goRoot := t.TempDir(), t.TempDir()
+	fixtureFile(t, source, ".github/go-toolchains.json", fmt.Sprintf(`{
+		"version":"1.27.4", "iosCPU":{
+			"patch":".github/toolchain.patch", "patchSHA256":%q,
+			"before":{%q:%q, %q:null}, "after":{%q:%q, %q:%q}, "features":["AES"]
+		}}`, sha256Hex([]byte(patch)), other, sha256Hex([]byte("before\n")), ios,
+		other, sha256Hex([]byte("after\n")), ios, sha256Hex([]byte("ios\n"))))
+	fixtureFile(t, goRoot, other, "before\n")
+	fixtureFile(t, source, ".github/toolchain.patch", patch+"\n")
+	reject := func(goversion, want string) {
+		t.Helper()
+		if _, err := applyIOSCPUPatch(source, goRoot, goversion); err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("patch returned %v, want %q", err, want)
+		}
+	}
+	reject("go1.27.3", "source-owned Go version")
+	reject(version, "input hash mismatch")
+	fixtureFile(t, source, ".github/toolchain.patch", patch)
+	fixtureFile(t, goRoot, ios, "ios\n")
+	reject(version, "partial, unexpected or corrupt")
+	if data, err := os.ReadFile(filepath.Join(goRoot, other)); err != nil || string(data) != "before\n" {
+		t.Fatalf("partial input changed to %q, %v", data, err)
+	}
+	if err := os.Remove(filepath.Join(goRoot, ios)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := exec.LookPath("patch"); err != nil {
+		t.Skip("host patch unavailable for application and replay")
+	}
+	for range 2 {
+		features, err := applyIOSCPUPatch(source, goRoot, version)
+		if err != nil || !reflect.DeepEqual(features, []string{"AES"}) {
+			t.Fatalf("patch returned %q, %v", features, err)
+		}
 	}
 }
 

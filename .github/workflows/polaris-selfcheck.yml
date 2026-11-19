@@ -113,11 +113,16 @@ jobs:
         run: |
           go test -mod=readonly ./cmd/internal/ci
           go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci" ./cmd/internal/ci
+      - name: Compile shared CI tooling for iOS validation on Intel macOS
+        if: ${{ (github.event_name != 'workflow_dispatch' || !inputs.patch_only) && inputs.source_role != 'desktop' }}
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -mod=readonly -o "$RUNNER_TEMP/polaris-ci-darwin-amd64" ./cmd/internal/ci
       - name: Share workflow tooling for exact historical source checkouts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: polaris-ci-tooling
-          path: ${{ runner.temp }}/polaris-ci
+          path: |
+            ${{ runner.temp }}/polaris-ci
+            ${{ runner.temp }}/polaris-ci-darwin-amd64
           if-no-files-found: error
           retention-days: 1
       - name: Checkout exact source for cheap formatting
@@ -412,9 +417,15 @@ jobs:
             -run '^(TestMonitor|TestConstructionScope)' \
             -tags "$(cat release/DEFAULT_BUILD_TAGS),with_purego" \
             -ldflags "$(cat release/LDFLAGS)" ./experimental/libbox/ ./adapter/
+      - uses: actions/download-artifact@v5
+        with:
+          name: polaris-ci-tooling
+          path: ${{ runner.temp }}/polaris-ci-tooling
       - name: Patch Go for iOS
         timeout-minutes: 5
-        run: .github/patch_go_for_ios.sh
+        run: |
+          chmod 700 "$RUNNER_TEMP/polaris-ci-tooling/polaris-ci-darwin-amd64"
+          "$RUNNER_TEMP/polaris-ci-tooling/polaris-ci-darwin-amd64" patch-ios-go
       - name: Build
         timeout-minutes: 77
         run: |

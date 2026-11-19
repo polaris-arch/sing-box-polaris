@@ -33,6 +33,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "patch-packages":
 		return patchPackages(args[1:])
+	case "patch-ios-go":
+		return patchIOSGo(args[1:])
 	case "g4-candidate":
 		return g4Candidate(args[1:])
 	case "check-sdk-selection":
