@@ -71,6 +71,152 @@ func TestWebSocketMessageBoundIncludesFragments(t *testing.T) {
 	}
 }
 
+func TestWebSocketResponseHeadLimitPreservesFramesAndUsage(t *testing.T) {
+	const firstPad = "first-padding"
+	const secondPad = "second-padding"
+	for _, test := range []struct {
+		name      string
+		headBytes int
+		split     bool
+	}{
+		{name: "buffered first frame"},
+		{name: "exact head limit", headBytes: http.DefaultMaxHeaderBytes},
+		{name: "overlong header", headBytes: http.DefaultMaxHeaderBytes + 1024},
+		{name: "aggregate header limit", headBytes: http.DefaultMaxHeaderBytes + 1, split: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, upstream := net.Pipe()
+			defer client.Close()
+			defer upstream.Close()
+			served := make(chan error, 1)
+			go func() {
+				defer upstream.Close()
+				var wire bytes.Buffer
+				upgrader := ws.Upgrader{Header: ws.HandshakeHeaderHTTP(http.Header{
+					"X-Test-First":                     {firstPad},
+					"X-Test-Second":                    {secondPad},
+					"X-Codex-Active-Limit":             {"other"},
+					"X-Codex-Secondary-Window-Minutes": {"10080"},
+					"X-Codex-Secondary-Reset-At":       {"1700000000"},
+				})}
+				if _, err := upgrader.Upgrade(struct {
+					io.Reader
+					io.Writer
+				}{upstream, &wire}); err != nil {
+					served <- err
+					return
+				}
+				head := wire.Bytes()
+				if test.headBytes != 0 {
+					extra := test.headBytes - len(head)
+					first, second := extra, 0
+					if test.split {
+						first, second = extra/2, extra-extra/2
+					}
+					head = bytes.Replace(head, []byte(firstPad), bytes.Repeat([]byte("a"), len(firstPad)+first), 1)
+					head = bytes.Replace(head, []byte(secondPad), bytes.Repeat([]byte("b"), len(secondPad)+second), 1)
+				}
+				response := bytes.NewBuffer(head)
+				if err := ws.WriteFrame(response, ws.NewTextFrame([]byte("first frame"))); err != nil {
+					served <- err
+					return
+				}
+				_, err := upstream.Write(response.Bytes())
+				served <- err
+			}()
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			headers := make(http.Header)
+			conn, buffered, err := dialWebSocketWithResponseLimit(ctx, ws.Dialer{
+				NetDial: func(context.Context, string, string) (net.Conn, error) {
+					return client, nil
+				},
+				OnHeader: func(key, value []byte) error {
+					headers.Add(string(key), string(value))
+					return nil
+				},
+			}, "ws://fixture.test")
+			if test.headBytes > http.DefaultMaxHeaderBytes {
+				if !errors.Is(err, errWebSocketResponseHeadTooLarge) || conn != nil || buffered != nil {
+					t.Fatalf("oversized response head did not fail admission: %v", err)
+				}
+				if !test.split && headers.Get("X-Test-First") != "" {
+					t.Fatal("overlong header was admitted to the callback")
+				}
+				if err := <-served; !errors.Is(err, io.ErrClosedPipe) {
+					t.Fatalf("oversized response socket was not closed: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("valid response head rejected: %v", err)
+			}
+			cancel()
+			if hint := extractWeeklyCycleHint(headers); hint == nil || hint.WindowMinutes != 10080 || hint.ResetAt.Unix() != 1700000000 {
+				t.Fatalf("usage header fallback changed: %+v", hint)
+			}
+			var source io.Reader = conn
+			if buffered != nil {
+				source = buffered
+			} else if test.headBytes == 0 {
+				t.Fatal("fixture did not deliver a frame buffered during upgrade")
+			}
+			frame, err := ws.ReadFrame(source)
+			if err != nil || frame.Header.OpCode != ws.OpText || string(frame.Payload) != "first frame" {
+				t.Fatalf("first frame changed after head admission: %q, %v, %v", frame.Payload, frame.Header.OpCode, err)
+			}
+			if err := <-served; err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+type webSocketNoDeadlineConn struct{ net.Conn }
+
+func (webSocketNoDeadlineConn) SetDeadline(time.Time) error      { return errors.ErrUnsupported }
+func (webSocketNoDeadlineConn) SetReadDeadline(time.Time) error  { return errors.ErrUnsupported }
+func (webSocketNoDeadlineConn) SetWriteDeadline(time.Time) error { return errors.ErrUnsupported }
+
+func TestWebSocketAdmissionCancelsRoutedConnWithoutDeadlines(t *testing.T) {
+	for _, scheme := range []string{"ws", "wss"} {
+		t.Run(scheme, func(t *testing.T) {
+			client, upstream := net.Pipe()
+			defer client.Close()
+			defer upstream.Close()
+			if err := upstream.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			finished := make(chan error, 1)
+			go func() {
+				_, _, err := dialWebSocketWithResponseLimit(ctx, ws.Dialer{
+					NetDial: func(context.Context, string, string) (net.Conn, error) {
+						return webSocketNoDeadlineConn{client}, nil
+					},
+				}, scheme+"://fixture.test")
+				finished <- err
+			}()
+			// Enter the HTTP upgrade or TLS exchange, then leave it blocked
+			// on the pipe until the original caller cancels the handshake.
+			var prefix [1]byte
+			if _, err := io.ReadFull(upstream, prefix[:]); err != nil {
+				t.Fatal(err)
+			}
+			cancel()
+			select {
+			case err := <-finished:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatalf("expected canceled handshake, got %v", err)
+				}
+			case <-time.After(3 * time.Second):
+				t.Fatal("cancellation failed to close the routed stream")
+			}
+		})
+	}
+}
+
 func TestWebSocketLimitReportsMessageTooBig(t *testing.T) {
 	for _, state := range []ws.State{ws.StateServerSide, ws.StateClientSide} {
 		sender, peer := net.Pipe()

@@ -1,6 +1,7 @@
 package ocm
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	stdTLS "crypto/tls"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sagernet/sing-box/adapter"
+	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
 	M "github.com/sagernet/sing/common/metadata"
 	"github.com/sagernet/sing/common/ntp"
@@ -24,6 +26,8 @@ import (
 )
 
 const maxWebSocketMessageBytes = 16 * 1024 * 1024
+
+var errWebSocketResponseHeadTooLarge = errors.New("websocket response head exceeds HTTP header limit")
 
 var errWebSocketMessageTooLarge = errors.New("websocket message exceeds 16 MiB")
 
@@ -82,6 +86,69 @@ func isForwardableWebSocketRequestHeader(key string) bool {
 	}
 }
 
+type webSocketResponseHeadConn struct {
+	net.Conn
+	remaining int
+}
+
+func (c *webSocketResponseHeadConn) Read(p []byte) (int, error) {
+	if c.remaining < 0 {
+		return c.Conn.Read(p)
+	}
+	if c.remaining == 0 {
+		return 0, errWebSocketResponseHeadTooLarge
+	}
+	n, err := c.Conn.Read(p[:min(len(p), c.remaining)])
+	c.remaining -= n
+	return n, err
+}
+
+func dialWebSocketWithResponseLimit(ctx context.Context, dialer ws.Dialer, upstreamURL string) (net.Conn, *bufio.Reader, error) {
+	ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
+
+	dial := dialer.NetDial
+	if dial == nil {
+		dial = (&net.Dialer{}).DialContext
+	}
+	var routedConn net.Conn
+	var stopClose func() bool
+	dialer.NetDial = func(dialCtx context.Context, network, address string) (net.Conn, error) {
+		conn, err := dial(dialCtx, network, address)
+		if err == nil {
+			routedConn = conn
+			// Some routed streams do not support deadlines. Close the raw
+			// stream on cancellation, even while the TLS layer is stalled.
+			stopClose = context.AfterFunc(ctx, func() { _ = conn.Close() })
+		}
+		return conn, err
+	}
+	// Wrap the plaintext stream, before the dialer reads the status line or
+	// headers. OnHeader only runs after a full line has already been buffered.
+	dialer.WrapConn = func(conn net.Conn) net.Conn {
+		return &webSocketResponseHeadConn{Conn: conn, remaining: http.DefaultMaxHeaderBytes}
+	}
+	conn, reader, _, err := dialer.Dial(ctx, upstreamURL)
+	// Only the live relay owns an accepted connection. If cancellation
+	// already started to close it, keep it out of the relay entirely.
+	if stopClose != nil && !stopClose() {
+		return nil, nil, ctx.Err()
+	}
+	if contextErr := ctx.Err(); contextErr != nil {
+		if err == nil {
+			_ = routedConn.Close()
+		}
+		return nil, nil, contextErr
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	// Keep any frame bytes already buffered during the upgrade. The same
+	// reader can continue reading frames after the response-head limit ends.
+	conn.(*webSocketResponseHeadConn).remaining = -1
+	return conn, reader, nil
+}
+
 func (s *Service) handleWebSocket(w http.ResponseWriter, r *http.Request, proxyPath string, username string) {
 	accessToken, err := s.getAccessToken(r.Context())
 	if err != nil {
@@ -126,7 +193,7 @@ func (s *Service) handleWebSocket(w http.ResponseWriter, r *http.Request, proxyP
 		},
 	}
 
-	upstreamConn, upstreamBufferedReader, _, err := upstreamDialer.Dial(r.Context(), upstreamURL)
+	upstreamConn, upstreamBufferedReader, err := dialWebSocketWithResponseLimit(r.Context(), upstreamDialer, upstreamURL)
 	if err != nil {
 		s.logger.Error("dial upstream websocket: ", err)
 		writeJSONError(w, r, http.StatusBadGateway, "api_error", "upstream websocket connection failed")
