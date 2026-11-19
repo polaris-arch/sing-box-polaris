@@ -287,6 +287,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				coordinator.options = record.options
 				coordinator.currentSources = append([]runtimeSourceSnapshot(nil), record.sources...)
 				coordinator.canonical = append([]byte(nil), record.canonical...)
+				coordinator.cancelRuntimeExitIPProbeLocked()
 				coordinator.active = next
 				coordinator.pendingPersistence = nil
 				if !runtimeSourceOnlyRecord(record) {

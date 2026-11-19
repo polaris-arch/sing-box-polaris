@@ -26,6 +26,7 @@ const (
 	RuntimeConfigService_GetRuntimeConfigStatus_FullMethodName        = "/daemon.RuntimeConfigService/GetRuntimeConfigStatus"
 	RuntimeConfigService_RetryRuntimePersistence_FullMethodName       = "/daemon.RuntimeConfigService/RetryRuntimePersistence"
 	RuntimeConfigService_AcknowledgeRuntimePersistence_FullMethodName = "/daemon.RuntimeConfigService/AcknowledgeRuntimePersistence"
+	RuntimeConfigService_ProbeExitIP_FullMethodName                   = "/daemon.RuntimeConfigService/ProbeExitIP"
 )
 
 // RuntimeConfigServiceClient is the client API for RuntimeConfigService service.
@@ -41,6 +42,7 @@ type RuntimeConfigServiceClient interface {
 	GetRuntimeConfigStatus(ctx context.Context, in *RuntimeConfigStatusRequest, opts ...grpc.CallOption) (*RuntimeConfigStatus, error)
 	RetryRuntimePersistence(ctx context.Context, in *RuntimePersistenceRetryRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error)
 	AcknowledgeRuntimePersistence(ctx context.Context, in *RuntimePersistenceAcknowledgementRequest, opts ...grpc.CallOption) (*RuntimeConfigOperation, error)
+	ProbeExitIP(ctx context.Context, in *ProbeExitIPRequest, opts ...grpc.CallOption) (*ProbeExitIPResponse, error)
 }
 
 type runtimeConfigServiceClient struct {
@@ -111,6 +113,16 @@ func (c *runtimeConfigServiceClient) AcknowledgeRuntimePersistence(ctx context.C
 	return out, nil
 }
 
+func (c *runtimeConfigServiceClient) ProbeExitIP(ctx context.Context, in *ProbeExitIPRequest, opts ...grpc.CallOption) (*ProbeExitIPResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProbeExitIPResponse)
+	err := c.cc.Invoke(ctx, RuntimeConfigService_ProbeExitIP_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuntimeConfigServiceServer is the server API for RuntimeConfigService service.
 // All implementations must embed UnimplementedRuntimeConfigServiceServer
 // for forward compatibility.
@@ -124,6 +136,7 @@ type RuntimeConfigServiceServer interface {
 	GetRuntimeConfigStatus(context.Context, *RuntimeConfigStatusRequest) (*RuntimeConfigStatus, error)
 	RetryRuntimePersistence(context.Context, *RuntimePersistenceRetryRequest) (*RuntimeConfigOperation, error)
 	AcknowledgeRuntimePersistence(context.Context, *RuntimePersistenceAcknowledgementRequest) (*RuntimeConfigOperation, error)
+	ProbeExitIP(context.Context, *ProbeExitIPRequest) (*ProbeExitIPResponse, error)
 	mustEmbedUnimplementedRuntimeConfigServiceServer()
 }
 
@@ -151,6 +164,9 @@ func (UnimplementedRuntimeConfigServiceServer) RetryRuntimePersistence(context.C
 }
 func (UnimplementedRuntimeConfigServiceServer) AcknowledgeRuntimePersistence(context.Context, *RuntimePersistenceAcknowledgementRequest) (*RuntimeConfigOperation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AcknowledgeRuntimePersistence not implemented")
+}
+func (UnimplementedRuntimeConfigServiceServer) ProbeExitIP(context.Context, *ProbeExitIPRequest) (*ProbeExitIPResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProbeExitIP not implemented")
 }
 func (UnimplementedRuntimeConfigServiceServer) mustEmbedUnimplementedRuntimeConfigServiceServer() {}
 func (UnimplementedRuntimeConfigServiceServer) testEmbeddedByValue()                              {}
@@ -281,6 +297,24 @@ func _RuntimeConfigService_AcknowledgeRuntimePersistence_Handler(srv interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuntimeConfigService_ProbeExitIP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProbeExitIPRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuntimeConfigServiceServer).ProbeExitIP(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuntimeConfigService_ProbeExitIP_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuntimeConfigServiceServer).ProbeExitIP(ctx, req.(*ProbeExitIPRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RuntimeConfigService_ServiceDesc is the grpc.ServiceDesc for RuntimeConfigService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -311,6 +345,10 @@ var RuntimeConfigService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcknowledgeRuntimePersistence",
 			Handler:    _RuntimeConfigService_AcknowledgeRuntimePersistence_Handler,
+		},
+		{
+			MethodName: "ProbeExitIP",
+			Handler:    _RuntimeConfigService_ProbeExitIP_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

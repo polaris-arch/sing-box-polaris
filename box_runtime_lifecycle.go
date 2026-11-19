@@ -249,6 +249,7 @@ func (s *Box) closeRuntimeResourcesContext(ctx context.Context) error {
 		}
 		c.access.Lock()
 		c.stopped = true
+		c.cancelRuntimeExitIPProbeLocked()
 		if c.sourceDriver != nil {
 			c.sourceDriver.cancel()
 		}
