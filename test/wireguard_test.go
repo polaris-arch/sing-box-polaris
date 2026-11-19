@@ -67,7 +67,14 @@ func TestWireGuardEndpointDataPlane(t *testing.T) {
 				Outbounds: []option.Outbound{{Type: C.TypeDirect, Tag: "direct", Options: &option.DirectOutboundOptions{}}},
 				Route:     &option.RouteOptions{Final: "direct"},
 			})
-			endpoint, loaded := instance.Endpoint().Get("client")
+			manager := instance.Endpoint()
+			lease, _, connected, err := instance.AcquireRuntimeAPI()
+			require.NoError(test, err)
+			if connected {
+				test.Cleanup(lease.Release)
+				manager = lease.View().EndpointManager()
+			}
+			endpoint, loaded := manager.Get("client")
 			require.True(test, loaded)
 			for index, address := range serverAddresses {
 				for _, network := range []string{"tcp", "udp", "packet"} {
