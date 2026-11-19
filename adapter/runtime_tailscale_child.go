@@ -65,6 +65,12 @@ type RuntimeTailscaleChildRegistration interface {
 type RuntimeTailscaleNativeClose interface {
 	WaitOriginalNativeClose() error
 }
+
+// RuntimeTailscaleStartupClose optionally joins the original startup census
+// observer after the physical owner's CloseDone. It does not release a JNI claim.
+type RuntimeTailscaleStartupClose interface {
+	WaitOriginalStartupClose() error
+}
 type (
 	RuntimeTailscaleChildRegistrar    func(context.Context, RuntimeTailscaleChildRequest) (RuntimeTailscaleChildRegistration, error)
 	runtimeTailscaleChildRegistrarKey struct{}

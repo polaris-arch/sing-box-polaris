@@ -167,11 +167,15 @@ func (p *runtimeEndpointPhysical) close() error {
 	err := p.closeResult()
 	if p.nativeWriter != nil && p.registration != nil {
 		// No physical lock is held and the observer can already inspect CloseDone
-		// and the original CloseResult. Only this opt-in joins the host handoff.
+		// and the original CloseResult. Only this opt-in joins the native handoff.
 		if native, ok := p.registration.(adapter.RuntimeTailscaleNativeClose); ok {
 			if nativeErr := native.WaitOriginalNativeClose(); nativeErr != nil {
 				return runtimeTLS.NewRuntimeCleanupError(errors.Join(err, nativeErr))
 			}
+		}
+	} else if startup, ok := p.registration.(adapter.RuntimeTailscaleStartupClose); ok {
+		if startupErr := startup.WaitOriginalStartupClose(); startupErr != nil {
+			return runtimeTLS.NewRuntimeCleanupError(errors.Join(err, startupErr))
 		}
 	}
 	return err

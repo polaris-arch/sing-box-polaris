@@ -124,6 +124,7 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	}
 	run.closeFinished = request.CloseDone
 	child := &runtimeTailscaleChild{run: run, request: request, options: options, selected: selected}
+	startupChild := parent != nil && request.NativeWriter == nil && adapter.RuntimeTailscaleStartupChild(ctx)
 	if request.NativeWriter != nil {
 		child.native = adapter.RuntimeTailscaleWriterFromContext(s.ctx)
 		if child.native == nil {
@@ -150,13 +151,16 @@ func (s *StartedService) registerRuntimeTailscaleChild(ctx context.Context, requ
 	// The row is published once the host could have acquired the claim.
 	if child.native != nil {
 		child.nativeReservation, err = s.reserveNativeTailscaleRetirementRun(run, parent)
+	} else if startupChild && parent.startupReservation != nil {
+		child.nativeCloseDone = make(chan struct{})
+		err = parent.startupReservation.consume(run)
 	} else {
 		err = s.appendTailscaleRetirementRun(run)
 	}
 	if err != nil {
 		return nil, err
 	}
-	if parent != nil && request.NativeWriter == nil && adapter.RuntimeTailscaleStartupChild(ctx) {
+	if startupChild {
 		parent.recordStartupChild(run)
 	}
 	go child.observeActualClose()
@@ -330,6 +334,8 @@ func (c *runtimeTailscaleChild) observeActualClose() {
 	// release may use its ownership lock, never a lock that joins this Close.
 	if proof.claimed && proof.writerClosed {
 		result = c.native.ReleaseRuntimeTailscaleWriter(c.nativeScope, true)
+	} else if c.native == nil && c.nativeCloseDone != nil && proof.writerClosed {
+		result = nil // exact typed initial child's observer, with no native callback
 	}
 }
 
@@ -372,6 +378,13 @@ func (c *runtimeTailscaleChild) originalCloseProof() runtimeTailscaleCloseProof 
 }
 
 func (c *runtimeTailscaleChild) WaitOriginalNativeClose() error {
+	return c.waitOriginalNativeClose(runtimeTailscaleNativeCloseTimeout)
+}
+
+func (c *runtimeTailscaleChild) WaitOriginalStartupClose() error {
+	if c.nativeCloseDone == nil {
+		return nil // ordinary untyped children retain their existing close behavior
+	}
 	return c.waitOriginalNativeClose(runtimeTailscaleNativeCloseTimeout)
 }
 

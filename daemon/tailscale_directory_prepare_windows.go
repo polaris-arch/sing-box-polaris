@@ -45,7 +45,7 @@ func (s *StartedService) prepareManagedDirectories(request context.Context, p *p
 	run.installPreparedDirectories(plan, adapter.TailscaleDirectoryDomainFromContext(ctx))
 	// Admission was checked by the lifecycle caller before this phase. Append
 	// the actual original run before the first lease acquisition.
-	if err = s.appendTailscaleRetirementRun(run); err != nil {
+	if err = p.appendRetirementRun(s, run); err != nil {
 		cancel()
 		return err
 	}
@@ -93,7 +93,7 @@ func (s *StartedService) prepareRuntimeDirectoryEnvelope(request context.Context
 	run.closeFinished = finished
 	run.directoryAuthority = adapter.TailscaleDirectoryDomainFromContext(ctx)
 	run.directoryAuthorityBound = true
-	if err = s.appendTailscaleRetirementRun(run); err != nil {
+	if err = p.appendRetirementRun(s, run); err != nil {
 		cancel()
 		return err
 	}

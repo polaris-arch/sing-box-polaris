@@ -96,6 +96,7 @@ type OverrideOptions struct {
 type preparedInstance struct {
 	runtimeOverrides   *OverrideOptions
 	runtimeGraph       bool
+	startupReservation *startupRetirementReservation
 	ctx                context.Context
 	profileContent     string
 	options            option.Options
@@ -106,6 +107,14 @@ type preparedInstance struct {
 	directoryWatch     *directoryPreparationCancellation
 	directoryCommitted bool
 	directoryFinished  chan struct{}
+}
+
+func (p *preparedInstance) appendRetirementRun(s *StartedService, run *tailscaleRetirementRun) error {
+	if p.startupReservation == nil {
+		return s.appendTailscaleRetirementRun(run)
+	}
+	run.startupReservation = p.startupReservation
+	return p.startupReservation.consume(run)
 }
 
 // prepareInstance decodes once and changes only its fresh options graph. It must
@@ -198,7 +207,7 @@ func (s *StartedService) newPreparedInstance(prepared *preparedInstance, reloadi
 			cancel()
 			return nil, err
 		}
-		if err = s.appendTailscaleRetirementRun(retirement); err != nil {
+		if err = prepared.appendRetirementRun(s, retirement); err != nil {
 			cancel()
 			return nil, err
 		}

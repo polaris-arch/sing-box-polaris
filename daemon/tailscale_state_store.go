@@ -49,6 +49,7 @@ type tailscaleRetirementRun struct {
 	startupExpected         []string
 	startupChildren         []*tailscaleRetirementRun
 	startupSealed           bool
+	startupReservation      *startupRetirementReservation
 	active                  []adapter.TailscaleStoreNode
 	final                   *tailscaleRetirementInstance
 }
@@ -245,20 +246,64 @@ func (s *StartedService) ExportTailscaleStoreRetirement() string {
 // lifecycleAccess. Never prune at stop/export: native prepareStop and terminal
 // receipts require the same original run census, including empty runs.
 func (s *StartedService) admitTailscaleRetirementRun() error {
-	s.serviceAccess.Lock()
-	var live *tailscaleRetirementRun
-	if s.instance != nil {
-		live = s.instance.tailscaleRetirement
-	}
-	s.serviceAccess.Unlock()
+	live := s.liveTailscaleRetirementRun()
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	return s.checkTailscaleRetirementAdmissionLocked(live)
+	return s.checkTailscaleRetirementAdmissionLocked(live, 1)
+}
+
+func (s *StartedService) liveTailscaleRetirementRun() *tailscaleRetirementRun {
+	s.serviceAccess.Lock()
+	defer s.serviceAccess.Unlock()
+	if s.instance != nil {
+		return s.instance.tailscaleRetirement
+	}
+	return nil
+}
+
+type startupRetirementReservation struct {
+	host      *StartedService
+	remaining int // protected by the original host retirement lock
+}
+
+// Reserve the full initial construction before detaching the old instance.
+// Warm native reservations use the same capacity and cannot steal these slots.
+func (s *StartedService) reserveTailscaleStartupRuns(count int) (*startupRetirementReservation, error) {
+	live := s.liveTailscaleRetirementRun()
+	s.tailscaleRetirementAccess.Lock()
+	defer s.tailscaleRetirementAccess.Unlock()
+	if err := s.checkTailscaleRetirementAdmissionLocked(live, count); err != nil {
+		return nil, err
+	}
+	s.tailscaleReservedRuns += count
+	return &startupRetirementReservation{host: s, remaining: count}, nil
+}
+
+func (r *startupRetirementReservation) consume(run *tailscaleRetirementRun) error {
+	r.host.tailscaleRetirementAccess.Lock()
+	defer r.host.tailscaleRetirementAccess.Unlock()
+	if r.remaining == 0 {
+		return fmt.Errorf("original startup Tailscale census reservation exhausted")
+	}
+	if err := r.host.checkTailscaleRetirementAdmissionLocked(nil, 0); err != nil {
+		return err
+	}
+	r.remaining--
+	r.host.tailscaleReservedRuns--
+	r.host.tailscaleRetirementRuns = append(r.host.tailscaleRetirementRuns, run)
+	return nil
+}
+
+func (r *startupRetirementReservation) releaseUnused() {
+	r.host.tailscaleRetirementAccess.Lock()
+	defer r.host.tailscaleRetirementAccess.Unlock()
+	r.host.tailscaleReservedRuns -= r.remaining
+	r.remaining = 0
 }
 
 // Construction admission is the only pruning boundary. Count native
 // reservations even though they have no writer history until classified.
-func (s *StartedService) checkTailscaleRetirementAdmissionLocked(live *tailscaleRetirementRun) error {
+func (s *StartedService) checkTailscaleRetirementAdmissionLocked(live *tailscaleRetirementRun, required int) error {
 	retained := s.tailscaleRetirementRuns[:0]
 	for _, run := range s.tailscaleRetirementRuns {
 		if run == live || !run.reclaimableEmptyRun() {
@@ -267,7 +312,7 @@ func (s *StartedService) checkTailscaleRetirementAdmissionLocked(live *tailscale
 	}
 	clear(s.tailscaleRetirementRuns[len(retained):])
 	s.tailscaleRetirementRuns = retained
-	if len(retained)+s.tailscaleReservedRuns >= maxTailscaleRetirementRuns {
+	if len(retained)+s.tailscaleReservedRuns+required > maxTailscaleRetirementRuns {
 		return fmt.Errorf("tailscale retirement census capacity reached")
 	}
 	return nil
@@ -299,7 +344,7 @@ func (s *StartedService) snapshotTailscaleRetirementRuns() []*tailscaleRetiremen
 func (s *StartedService) appendTailscaleRetirementRun(run *tailscaleRetirementRun) error {
 	s.tailscaleRetirementAccess.Lock()
 	defer s.tailscaleRetirementAccess.Unlock()
-	if err := s.checkTailscaleRetirementAdmissionLocked(nil); err != nil {
+	if err := s.checkTailscaleRetirementAdmissionLocked(nil, 1); err != nil {
 		return err
 	}
 	s.tailscaleRetirementRuns = append(s.tailscaleRetirementRuns, run)
@@ -319,7 +364,7 @@ func (s *StartedService) reserveNativeTailscaleRetirementRun(run, parent *tailsc
 	if parent != nil && !slices.Contains(s.tailscaleRetirementRuns, parent) {
 		return nil, fmt.Errorf("original native Tailscale parent census is unavailable")
 	}
-	if err := s.checkTailscaleRetirementAdmissionLocked(parent); err != nil {
+	if err := s.checkTailscaleRetirementAdmissionLocked(parent, 1); err != nil {
 		return nil, err
 	}
 	if parent != nil {

@@ -376,7 +376,18 @@ func (s *StartedService) startOrReloadService(ctx context.Context, profileConten
 		}
 		return err
 	}
-	if err := s.admitTailscaleRetirementRun(); err != nil {
+	if startup != nil {
+		count := 1 // the original whole-configuration parent
+		if prepared.runtimeGraph {
+			count += len(tailscaleRetirementTags(prepared.options.Endpoints))
+		}
+		reservation, err := s.reserveTailscaleStartupRuns(count)
+		if err != nil {
+			return err
+		}
+		prepared.startupReservation = reservation
+		defer reservation.releaseUnused()
+	} else if err := s.admitTailscaleRetirementRun(); err != nil {
 		return err
 	}
 	if err := s.prepareReloadAdmission(ctx, prepared, beforeStart, s.prepareManagedDirectories); err != nil {
