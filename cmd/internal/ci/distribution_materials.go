@@ -3,12 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"maps"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"unicode/utf16"
@@ -111,6 +109,55 @@ func (notice distributionNotices) slice(record noticeRecord) []byte {
 	return notice.data[*record.ByteOffset : *record.ByteOffset+*record.Bytes]
 }
 
+func distributionProducerInputs(root string, trusted bool) ([]string, error) {
+	const (
+		historicalOverlay   = "scripts/ci/cronet_windows_overlay.py"
+		historicalPublisher = "scripts/ci/github_release.py"
+		historicalIndex     = "scripts/ci/native_release_index.py"
+		historicalIdentity  = "scripts/ci/release_identity.py"
+		historicalTLS       = "scripts/ci/tls_fingerprint_probe.py"
+		producerDirectory   = "cmd/internal/ci/"
+	)
+	// Assembly and publication have already selected the producer checkout.
+	// Untracked files must not change which historical material it asserts.
+	output, err := git(root, "ls-tree", "-r", "-z", "--full-tree", "--name-only", "HEAD", "--", producerDirectory, "scripts/ci/")
+	if err != nil {
+		return nil, err
+	}
+	tracked := make(map[string]bool)
+	var paths []string
+	for name := range strings.SplitSeq(string(output), "\x00") {
+		tracked[name] = true
+		file, producer := strings.CutPrefix(name, producerDirectory)
+		if producer && !strings.Contains(file, "/") && strings.HasSuffix(file, ".go") && !strings.HasSuffix(file, "_test.go") {
+			paths = append(paths, name)
+		}
+	}
+	legacy := tracked[historicalIndex]
+	if tracked[historicalIdentity] != legacy || tracked[historicalTLS] != legacy {
+		return nil, fmt.Errorf("incomplete historical Python producer roster")
+	}
+	if legacy {
+		paths = append(paths, historicalIndex)
+	}
+	// The older overlay verifier filled the identity slot in the original receipt.
+	if tracked[historicalOverlay] {
+		paths = append(paths, historicalOverlay)
+	} else if legacy {
+		paths = append(paths, historicalIdentity)
+	}
+	if tracked[historicalPublisher] {
+		paths = append(paths, historicalPublisher)
+	}
+	if trusted {
+		if legacy {
+			paths = append(paths, historicalTLS)
+		}
+		paths = append(paths, nativeIndexSchema)
+	}
+	return paths, nil
+}
+
 func distributionInputHashes(root, iosPatch string, trusted bool) (map[string]any, error) {
 	overlay, err := validateCronetOverlay(root)
 	if err != nil {
@@ -129,45 +176,18 @@ func distributionInputHashes(root, iosPatch string, trusted bool) (map[string]an
 		"release/dependency-sources/windivert/fixed-source-availability-proof.json",
 		"release/dependency-sources/windivert/upstream-release-driver-proof.json",
 		"release/polaris-cronet-materials.json", "release/polaris-cronet-graph-kernel-materials.json",
-		"scripts/ci/native_release_index.py",
 		"release/GO_VERSION", "common/badversion/version.go", "common/badversion/version_json.go",
 		".github/workflows/build.yml", iosPatch,
 	}
-	// Select the producer's source inputs from the immutable source. Older
-	// indexes pin the Python overlay verifier, which preceded the Go verifier.
-	const (
-		historicalOverlay   = "scripts/ci/cronet_windows_overlay.py"
-		historicalPublisher = "scripts/ci/github_release.py"
-	)
-	if _, err := os.Lstat(filepath.Join(root, historicalOverlay)); err == nil {
-		paths = append(paths, historicalOverlay)
-	} else if errors.Is(err, os.ErrNotExist) {
-		paths = append(paths, "scripts/ci/release_identity.py")
-	} else {
-		return nil, err
-	}
-	if _, err := os.Lstat(filepath.Join(root, historicalPublisher)); err == nil {
-		paths = append(paths, historicalPublisher)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, err
-	}
-	goFiles, err := filepath.Glob(filepath.Join(root, "cmd", "internal", "ci", "*.go"))
+	producerPaths, err := distributionProducerInputs(root, trusted)
 	if err != nil {
 		return nil, err
-	}
-	for _, name := range goFiles {
-		if !strings.HasSuffix(name, "_test.go") {
-			paths = append(paths, "cmd/internal/ci/"+filepath.Base(name))
-		}
-	}
-	if trusted {
-		paths = append(paths, "scripts/ci/tls_fingerprint_probe.py", nativeIndexSchema)
 	}
 	inputs := make(map[string]any)
 	for path, hash := range overlay {
 		inputs[path] = hash
 	}
-	for _, path := range paths {
+	for _, path := range append(paths, producerPaths...) {
 		if _, exists := inputs[path]; exists {
 			continue
 		}

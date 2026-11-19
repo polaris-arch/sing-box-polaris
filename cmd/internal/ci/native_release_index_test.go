@@ -238,6 +238,53 @@ func TestDistributionLicenseFilesAreSourceText(t *testing.T) {
 	}
 }
 
+func TestDistributionProducerInputsUseCommittedRoster(t *testing.T) {
+	root := t.TempDir()
+	fixtureSourceGit(t, root, "init", "-q")
+	commit := func() {
+		t.Helper()
+		fixtureSourceGit(t, root, "add", "-A")
+		fixtureSourceGit(t, root, "-c", "commit.gpgsign=false", "commit", "-qm", "producer roster")
+	}
+	check := func(trusted bool, expected ...string) {
+		t.Helper()
+		actual, err := distributionProducerInputs(root, trusted)
+		if err != nil || !reflect.DeepEqual(actual, expected) {
+			t.Fatalf("producer roster = %q, %v; want %q", actual, err, expected)
+		}
+	}
+	const producer = "cmd/internal/ci/main.go"
+	const overlay = "scripts/ci/cronet_windows_overlay.py"
+	const publisher = "scripts/ci/github_release.py"
+	const index = "scripts/ci/native_release_index.py"
+	const identity = "scripts/ci/release_identity.py"
+	const tls = "scripts/ci/tls_fingerprint_probe.py"
+	for _, name := range []string{producer, "cmd/internal/ci/main_test.go", "cmd/internal/ci/sub/nested.go", overlay, publisher, index, identity, tls} {
+		fixtureFile(t, root, name, "committed producer fixture\n")
+	}
+	commit()
+	check(true, producer, index, overlay, publisher, tls, nativeIndexSchema)
+	check(false, producer, index, overlay, publisher)
+
+	fixtureSourceGit(t, root, "rm", "--", overlay, publisher)
+	commit()
+	check(true, producer, index, identity, tls, nativeIndexSchema)
+
+	fixtureSourceGit(t, root, "rm", "--", identity)
+	commit()
+	if _, err := distributionProducerInputs(root, true); err == nil {
+		t.Fatal("accepted a partial historical Python roster")
+	}
+
+	fixtureSourceGit(t, root, "rm", "--", index, tls)
+	commit()
+	for _, name := range []string{overlay, publisher, index, identity, tls, "cmd/internal/ci/untracked.go"} {
+		fixtureFile(t, root, name, "untracked producer fixture\n")
+	}
+	check(true, producer, nativeIndexSchema)
+	check(false, producer)
+}
+
 func TestNativeIndexRetainsProducerBindings(t *testing.T) {
 	root, err := filepath.Abs("../../..")
 	if err != nil {
