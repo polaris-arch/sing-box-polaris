@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	C "github.com/sagernet/sing-box/constant"
 	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/service/filemanager"
 )
@@ -18,6 +19,7 @@ import (
 const (
 	oauth2ClientID           = "app_EMoamEEZ73f0CkXaXp7hrann"
 	oauth2TokenURL           = "https://auth.openai.com/oauth/token"
+	maxOAuthResponseBytes    = 1 << 20
 	openaiAPIBaseURL         = "https://api.openai.com"
 	chatGPTBackendURL        = "https://chatgpt.com/backend-api/codex"
 	tokenRefreshIntervalDays = 8
@@ -127,6 +129,8 @@ func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oau
 		return nil, E.Cause(err, "marshal request")
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
+	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, "POST", oauth2TokenURL, bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
@@ -140,9 +144,17 @@ func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oau
 	}
 	defer response.Body.Close()
 
+	// Admit the whole body before accepting any tokens, even when a valid
+	// JSON object comes before an oversized or interrupted remainder.
+	body, err := io.ReadAll(http.MaxBytesReader(nil, response.Body, maxOAuthResponseBytes))
 	if response.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, E.Cause(err, "refresh failed: ", response.Status)
+		}
 		return nil, E.New("refresh failed: ", response.Status, " ", string(body))
+	}
+	if err != nil {
+		return nil, E.Cause(err, "read response")
 	}
 
 	var tokenResponse struct {
@@ -150,8 +162,7 @@ func refreshToken(ctx context.Context, httpClient *http.Client, credentials *oau
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 	}
-	err = json.NewDecoder(response.Body).Decode(&tokenResponse)
-	if err != nil {
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
 		return nil, E.Cause(err, "decode response")
 	}
 
