@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
@@ -206,6 +207,33 @@ func TestRuntimeExitIPUnconfirmedCleanupQuarantinesFastSlot(t *testing.T) {
 	selectExitIPTestLeaf(t, f, "b")
 	if _, err := f.box.probeRuntimeExitIP(ctx, f.identity(), "b", fetch); !errors.Is(err, ErrRuntimeExitIPBusy) || calls != 1 {
 		t.Fatalf("quarantined fast slot was readmitted: calls=%d err=%v", calls, err)
+	}
+}
+
+func TestRuntimeExitIPCallerDeadlineReservesDrainTime(t *testing.T) {
+	f := newExitIPRuntimeFixture(t)
+	short, cancelShort := context.WithTimeout(runtimeTestContext(t), runtimeExitIPDrainWindow)
+	defer cancelShort()
+	if _, err := f.box.probeRuntimeExitIP(short, f.identity(), "a", func(context.Context, adapter.Outbound) ([]byte, error) {
+		t.Fatal("provider started without a drain window")
+		return nil, nil
+	}); !errors.Is(err, ErrRuntimeExitIPNotAdmitted) {
+		t.Fatalf("unexpected result with exhausted provider time: %v", err)
+	}
+
+	caller, cancelCaller := context.WithTimeout(runtimeTestContext(t), time.Second)
+	defer cancelCaller()
+	responseDeadline, _ := caller.Deadline()
+	_, err := f.box.probeRuntimeExitIP(caller, f.identity(), "a", func(ctx context.Context, _ adapter.Outbound) ([]byte, error) {
+		providerDeadline, _ := ctx.Deadline()
+		if !providerDeadline.Equal(responseDeadline.Add(-runtimeExitIPDrainWindow)) {
+			t.Fatalf("provider deadline %v, caller %v", providerDeadline, responseDeadline)
+		}
+		<-ctx.Done()
+		return nil, ctx.Err()
+	})
+	if !errors.Is(err, ErrRuntimeExitIPUnavailable) || caller.Err() != nil {
+		t.Fatalf("clean provider deadline failed to leave time for a drain witness: err=%v caller=%v", err, caller.Err())
 	}
 }
 

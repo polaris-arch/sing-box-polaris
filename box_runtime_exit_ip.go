@@ -31,6 +31,7 @@ import (
 const (
 	RuntimeExitIPProbeVersion = 1
 	runtimeExitIPProbeTimeout = 4 * time.Second
+	runtimeExitIPDrainWindow  = 250 * time.Millisecond
 	runtimeExitIPSelector     = "proxy-selector"
 	runtimeExitIPHost         = "cloudflare.com"
 	runtimeExitIPURL          = "https://" + runtimeExitIPHost + "/cdn-cgi/trace"
@@ -57,7 +58,20 @@ func (s *Box) probeRuntimeExitIP(ctx context.Context, expected RuntimeIdentity, 
 		return nil, ErrRuntimeExitIPNotAdmitted
 	}
 	c := s.runtime
-	request, cancel := context.WithTimeout(ctx, runtimeExitIPProbeTimeout)
+	now := time.Now()
+	providerDeadline := now.Add(runtimeExitIPProbeTimeout)
+	if callerDeadline, ok := ctx.Deadline(); ok {
+		// Keep time to close the actual socket and return its drain witness
+		// while the authenticated transport can still carry it.
+		beforeDrain := callerDeadline.Add(-runtimeExitIPDrainWindow)
+		if !beforeDrain.After(now) {
+			return nil, ErrRuntimeExitIPNotAdmitted
+		}
+		if beforeDrain.Before(providerDeadline) {
+			providerDeadline = beforeDrain
+		}
+	}
+	request, cancel := context.WithDeadline(ctx, providerDeadline)
 	defer cancel()
 	probe, err := c.admitRuntimeExitIP(request, cancel, expected, leafTag)
 	if err != nil {
