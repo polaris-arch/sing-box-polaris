@@ -23,20 +23,26 @@ func WrapConnection[G carrierGate](ctx context.Context, conn net.Conn, onClose N
 	}
 	physical, fence := outbound.WrapRuntimeOwnedConn(conn)
 	wrapped := outbound.WrapRuntimeConn(owned, release, physical)
-	result := &inboundHandshakeConn[G]{Conn: wrapped, physical: conn, ctx: owned, fence: fence, gate: gate}
-	return result, N.OnceClose(func(err error) {
-		// Accessing the embedded connection directly keeps the generic dictionary out of this closure.
-		_ = result.Conn.Close()
+	result := &inboundHandshakeConn[G]{carrierConn: carrierConn{Conn: wrapped}, physical: conn, ctx: owned, fence: fence, gate: gate}
+	return result, result.carrierConn.closeHandler(onClose), nil
+}
+
+type carrierConn struct{ net.Conn }
+
+// The non-generic receiver keeps the close callback from capturing the gate's type dictionary.
+func (c *carrierConn) closeHandler(onClose N.CloseHandlerFunc) N.CloseHandlerFunc {
+	return N.OnceClose(func(err error) {
+		_ = c.Close()
 		if onClose != nil {
 			onClose(err)
 		}
-	}), nil
+	})
 }
 
 // The concrete gate pointer avoids binding a method value on every stream.
 // Only handshake methods reach the physical connection, under its I/O fence.
 type inboundHandshakeConn[G carrierGate] struct {
-	net.Conn
+	carrierConn
 	physical net.Conn
 	ctx      context.Context
 	fence    *outbound.RuntimeIOFence
