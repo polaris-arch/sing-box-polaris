@@ -217,37 +217,3 @@ func runtimePersistSelectorIntents(ctx context.Context, intents []RuntimeSelecto
 	}
 	return nil
 }
-
-func (c *runtimeCoordinator) persistRuntimeTransaction(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error) error {
-	if err := c.controlEffects.LockContext(ctx); err != nil {
-		return err
-	}
-	defer c.controlEffects.Unlock()
-	return c.persistRuntimeTransactionLocked(ctx, identity, canonical, intents, persist)
-}
-
-// The caller owns controlEffects for the entire synchronous durability tail.
-func (c *runtimeCoordinator) persistRuntimeTransactionLocked(ctx context.Context, identity RuntimeIdentity, canonical []byte, intents []RuntimeSelectorIntent, persist func(RuntimeIdentity, []byte) error) (err error) {
-	defer func() {
-		if recover() != nil {
-			err = errors.New("runtime persistence tail panicked; durability remains pending")
-		}
-	}()
-	c.access.Lock()
-	current := !c.stopped && c.active == identity
-	c.access.Unlock()
-	if !current {
-		return errors.New("newer runtime control superseded durable transaction")
-	}
-	if err := runtimePersistSelectorIntents(ctx, intents); err != nil {
-		return err
-	}
-	checkedPersist := func(id RuntimeIdentity, content []byte) error {
-		err := persist(id, content)
-		if err == nil && c.persistenceMode == "app_authoritative_regeneration" {
-			return errors.New("owner reload receipt is required before desired-state acknowledgement")
-		}
-		return err
-	}
-	return runtimePersistCommitted(identity, canonical, checkedPersist)
-}
