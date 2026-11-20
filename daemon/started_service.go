@@ -1190,11 +1190,11 @@ func (s *StartedService) applyConnectionEvent(event trafficcontrol.ConnectionEve
 
 func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, snapshots map[uuid.UUID]connectionSnapshot) []*ConnectionEvent {
 	activeConnections := manager.Connections()
-	activeIndex := make(map[uuid.UUID]*trafficcontrol.TrackerMetadata, len(activeConnections))
+	previousCount := len(snapshots)
+	matched := 0
 	var events []*ConnectionEvent
 
 	for _, metadata := range activeConnections {
-		activeIndex[metadata.ID] = metadata
 		currentUpload := metadata.Upload.Load()
 		currentDownload := metadata.Download.Load()
 		snapshot, exists := snapshots[metadata.ID]
@@ -1210,6 +1210,7 @@ func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, sn
 			})
 			continue
 		}
+		matched++
 		uplinkDelta := currentUpload - snapshot.uplink
 		downlinkDelta := currentDownload - snapshot.downlink
 		if uplinkDelta < 0 || downlinkDelta < 0 {
@@ -1254,6 +1255,15 @@ func (s *StartedService) buildTrafficUpdates(manager *trafficcontrol.Manager, sn
 		}
 	}
 
+	// A matching sample has no missed close to reconcile. Build the index only
+	// for the recovery path, using the same sample used for traffic deltas.
+	if matched == previousCount {
+		return events
+	}
+	activeIndex := make(map[uuid.UUID]struct{}, len(activeConnections))
+	for _, metadata := range activeConnections {
+		activeIndex[metadata.ID] = struct{}{}
+	}
 	var closedIndex map[uuid.UUID]*trafficcontrol.TrackerMetadata
 	for id := range snapshots {
 		if _, exists := activeIndex[id]; exists {
