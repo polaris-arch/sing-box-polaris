@@ -10,6 +10,12 @@ All three CLI presets and the Android/Apple build helper retain `with_gvisor`; t
 
 Source inventory plus per-file upstream differences supports the periodic semantic review; it cannot decide that upstream replaced a patch. The reviewer compares actual normal/error/cancellation/default/platform behavior and the patch's regression assertions at the selected released commit. Record retained/adjusted/retired decisions with exact source, upstream evidence and rationale. Do this at startup and once before candidate freeze; after freeze do not switch input beneath in-flight gates. Additional scheduled monitoring or an automatic force-sync bot is not implied by this maintenance contract.
 
+## Go source and test ownership
+
+Preserve upstream source paths, including `box.go`. Keep newly added diagnostics with the component that reports them, and test-only helpers with the tests they support. Keep Box assembly, lifecycle, and runtime coordinator tests in `internal/boxruntime`. Put reusable graph algorithms and their tests in `internal/runtimegraph`, and keep platform or protocol behavior with its existing owner. The separate `test` module covers end-to-end scenarios through the public API and runs through its own test entry point.
+
+Extend an existing test or fixture when it covers the same contract. Add a file or case when it covers a distinct behavior or requires a different build constraint. Use Go for fork-owned checks and keep CI tooling and its tests in `cmd/internal/ci`. Preserve upstream and vendored fixture ownership. Verify the affected packages and their regular CI entry points when moving code or tests.
+
 ## Authorized baseline migration
 
 1. Record current released baseline, actual upstream tag object/peeled commit/tree, live testing heads, active consumer tags/releases and fixed source receipt identities. Check the complete source/module/preset/CLI/API/tests/documentation impact; neither a mutable testing tip nor a GitHub compare merge-base summary is sufficient.

@@ -38,27 +38,10 @@ func RegisterDNSTransport(registry *boxDNS.TransportRegistry) {
 }
 
 type DNSTransport struct {
-	idleAccess             sync.Mutex
-	disableIdleConnections bool
-	idleResolvers          map[adapter.IdleConnectionKeeper]struct{}
-	idleCleanupErr         error
-	work                   lifecycle.Work
-	producers              lifecycle.Work
-	scopes                 lifecycle.Scopes
-	resource               adapter.RuntimeResourceSource
-	operationCtx           context.Context
-	operationCancel        context.CancelFunc
-	producerCtx            context.Context
-	producerCancel         context.CancelFunc
-	closeOnce              sync.Once
-	closeErr               error
-	constructionOwned      bool
-	endpointUnlink         func()
-	startOnce              sync.Once
-	startErr               error
+	dnsLifecycle lifecycle.EndpointResolvers
+	resource     adapter.RuntimeResourceSource
 
 	boxDNS.TransportAdapter
-	ctx                    context.Context
 	logger                 logger.ContextLogger
 	endpointTag            string
 	acceptDefaultResolvers bool
@@ -81,7 +64,6 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 	}
 	t := &DNSTransport{
 		TransportAdapter:       boxDNS.NewTransportAdapter(C.DNSTypeOpenVPN, tag, nil),
-		ctx:                    ctx,
 		logger:                 logger,
 		endpointTag:            options.Endpoint,
 		acceptDefaultResolvers: options.AcceptDefaultResolvers,
@@ -89,28 +71,16 @@ func NewDNSTransport(ctx context.Context, logger log.ContextLogger, tag string, 
 		endpointManager:        service.FromContext[adapter.EndpointManager](ctx),
 	}
 	t.resource, _ = adapter.RuntimeResourceSourceFromContext(ctx)
-	t.operationCtx, t.operationCancel = context.WithCancel(ctx)
-	t.producerCtx, t.producerCancel = context.WithCancel(t.operationCtx)
-	var err error
-	t.constructionOwned, err = lifecycle.ConstructionCleanup(ctx, t.close)
-	if err != nil {
+	if err := t.dnsLifecycle.Init(ctx, logger, t.snapshotResolvers, t.clearResolverSnapshot); err != nil {
 		return nil, err
 	}
 	return t, nil
 }
 
 func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
-	t.startOnce.Do(func() {
-		if !t.constructionOwned {
-			_, t.startErr = lifecycle.ConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), t.close)
-		}
-	})
-	if t.startErr != nil {
-		return t.startErr
-	}
-	done, ok := t.work.Reserve()
-	if !ok {
-		return lifecycle.ErrStopped
+	done, err := t.dnsLifecycle.ReserveStart(scope)
+	if err != nil {
+		return err
 	}
 	defer done()
 
@@ -129,12 +99,11 @@ func (t *DNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) err
 		return E.New("endpoint DNS callback requires the same runtime resource cohort")
 	}
 	if endpoint.runtime != nil {
-		t.producerCtx, t.endpointUnlink = lifecycle.LinkCancellation(t.producerCtx, endpoint.runtime.ctx)
+		t.dnsLifecycle.LinkProducer(endpoint.runtime.ctx)
 	}
 	t.dialer = endpoint
 
-	err := endpoint.installDNSTransport(t)
-	if err != nil {
+	if err := endpoint.installDNSTransport(t); err != nil {
 		return err
 	}
 	scope.Add(func() error {
@@ -152,7 +121,7 @@ func (t *DNSTransport) onReconfiguration(configuration ovpntransport.Configurati
 }
 
 func (t *DNSTransport) updateResolvers(configuration ovpntransport.Configuration) error {
-	done, ok := t.producers.Reserve()
+	done, ok := t.dnsLifecycle.ReserveProducer()
 	if !ok {
 		return lifecycle.ErrStopped
 	}
@@ -169,10 +138,10 @@ func (t *DNSTransport) updateResolvers(configuration ovpntransport.Configuration
 	routes := make(map[string][]adapter.DNSTransport)
 	searchDomains := normalizeOpenVPNDomains(configuration.SearchDomains)
 	var defaultResolvers []adapter.DNSTransport
-	if err := t.scopes.WaitReady(t.producerCtx); err != nil {
+	if err := t.dnsLifecycle.WaitReady(); err != nil {
 		return err
 	}
-	resolverScope, scopeErr := t.scopes.New(t.operationCtx, t.logger)
+	resolverScope, scopeErr := t.dnsLifecycle.NewScope()
 	if scopeErr != nil {
 		return scopeErr
 	}
@@ -192,7 +161,7 @@ func (t *DNSTransport) updateResolvers(configuration ovpntransport.Configuration
 			if err != nil {
 				return t.failResolverUpdate(resolverScope, err)
 			}
-			err = t.startDNSResolver(resolver, resolverScope)
+			err = t.dnsLifecycle.StartResolver(resolver, resolverScope)
 			if err != nil {
 				return t.failResolverUpdate(resolverScope, err)
 			}
@@ -215,7 +184,7 @@ func (t *DNSTransport) updateResolvers(configuration ovpntransport.Configuration
 	} else {
 		for _, address := range configuration.DNS {
 			resolver := dnsTransport.NewUDPRaw(t.logger, t.TransportAdapter, t.dialer, M.SocksaddrFrom(address, 53))
-			err := t.startDNSResolver(resolver, resolverScope)
+			err := t.dnsLifecycle.StartResolver(resolver, resolverScope)
 			if err != nil {
 				return t.failResolverUpdate(resolverScope, err)
 			}
@@ -252,14 +221,14 @@ func (t *DNSTransport) updateResolvers(configuration ovpntransport.Configuration
 	t.resolverScope = resolverScope
 	t.access.Unlock()
 	if oldResolverScope != nil {
-		t.scopes.Retire(oldResolverScope)
+		t.dnsLifecycle.Retire(oldResolverScope)
 	}
 	t.logger.Info("updated ", len(routes), " DNS routes, ", len(searchDomains), " search domains and ", len(defaultResolvers), " default resolvers")
 	return nil
 }
 
 func (t *DNSTransport) failResolverUpdate(resolverScope *adapter.Scope, updateErr error) error {
-	t.scopes.Retire(resolverScope)
+	t.dnsLifecycle.Retire(resolverScope)
 	t.access.Lock()
 	oldResolverScope := t.resolverScope
 	t.routes = nil
@@ -269,7 +238,7 @@ func (t *DNSTransport) failResolverUpdate(resolverScope *adapter.Scope, updateEr
 	t.resolverScope = nil
 	t.access.Unlock()
 	if oldResolverScope != nil {
-		t.scopes.Retire(oldResolverScope)
+		t.dnsLifecycle.Retire(oldResolverScope)
 	}
 	return updateErr
 }
@@ -298,7 +267,7 @@ func (t *DNSTransport) createResolver(resolverScope *adapter.Scope, server ovpnt
 		if port == 0 {
 			port = 853
 		}
-		tlsConfig, err := boxTLS.NewClient(adapter.ContextWithConstructionScope(t.operationCtx, resolverScope), t.logger, serverName, option.OutboundTLSOptions{
+		tlsConfig, err := boxTLS.NewClient(adapter.ContextWithConstructionScope(t.dnsLifecycle.OperationContext(), resolverScope), t.logger, serverName, option.OutboundTLSOptions{
 			Enabled:    true,
 			ServerName: serverName,
 		})
@@ -310,7 +279,7 @@ func (t *DNSTransport) createResolver(resolverScope *adapter.Scope, server ovpnt
 	if port == 0 {
 		port = 443
 	}
-	tlsConfig, err := boxTLS.NewClient(adapter.ContextWithConstructionScope(t.operationCtx, resolverScope), t.logger, serverName, option.OutboundTLSOptions{
+	tlsConfig, err := boxTLS.NewClient(adapter.ContextWithConstructionScope(t.dnsLifecycle.OperationContext(), resolverScope), t.logger, serverName, option.OutboundTLSOptions{
 		Enabled:    true,
 		ServerName: serverName,
 		ALPN:       []string{http2.NextProtoTLS, "http/1.1"},
@@ -329,7 +298,7 @@ func (t *DNSTransport) createResolver(resolverScope *adapter.Scope, server ovpnt
 }
 
 func (t *DNSTransport) Reset() {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return
 	}
@@ -347,7 +316,7 @@ func (t *DNSTransport) Raw() bool {
 }
 
 func (t *DNSTransport) ServerAddresses() []netip.Addr {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return nil
 	}
@@ -358,7 +327,7 @@ func (t *DNSTransport) ServerAddresses() []netip.Addr {
 }
 
 func (t *DNSTransport) SearchDomains() []string {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return nil
 	}
@@ -369,7 +338,7 @@ func (t *DNSTransport) SearchDomains() []string {
 }
 
 func (t *DNSTransport) PreferredDomain(domain string) bool {
-	_, done, err := t.work.Operation(context.Background(), t.resource)
+	_, done, err := t.dnsLifecycle.Operation(context.Background(), t.resource)
 	if err != nil {
 		return false
 	}
@@ -398,18 +367,18 @@ func (t *DNSTransport) Exchange(ctx context.Context, message *mDNS.Msg) (*mDNS.M
 }
 
 func (t *DNSTransport) ExchangeAsync(ctx context.Context, message *mDNS.Msg, callback func(response *mDNS.Msg, err error)) {
-	ctx, releaseCall, err := t.work.Operation(ctx, t.resource)
+	ctx, releaseCall, err := t.dnsLifecycle.Operation(ctx, t.resource)
 	if err != nil {
 		callback(nil, err)
 		return
 	}
 	defer releaseCall()
-	ctx, releaseCallback, err := t.work.Operation(ctx, t.resource)
+	ctx, releaseCallback, err := t.dnsLifecycle.Operation(ctx, t.resource)
 	if err != nil {
 		callback(nil, err)
 		return
 	}
-	ctx, unlink := lifecycle.LinkCancellation(ctx, t.operationCtx)
+	ctx, unlink := lifecycle.LinkCancellation(ctx, t.dnsLifecycle.OperationContext())
 	original := callback
 	var called atomic.Bool
 	callback = func(response *mDNS.Msg, err error) {
@@ -492,6 +461,39 @@ func openVPNResolverExchangers(resolvers []adapter.DNSTransport, message *mDNS.M
 			resolver.ExchangeAsync(ctx, message, callback)
 		}
 	})
+}
+
+func (t *DNSTransport) StopRuntimeProducers() {
+	t.dnsLifecycle.StopRuntimeProducers()
+}
+
+func (t *DNSTransport) StopRuntimeOperations() {
+	t.dnsLifecycle.StopRuntimeOperations()
+}
+
+func (t *DNSTransport) SetKeepIdleConnections(keep bool) {
+	t.dnsLifecycle.SetKeepIdleConnections(keep)
+}
+
+func (t *DNSTransport) CloseIdleConnections() {
+	t.dnsLifecycle.CloseIdleConnections()
+}
+
+func (t *DNSTransport) snapshotResolvers() []adapter.DNSTransport {
+	t.access.RLock()
+	defer t.access.RUnlock()
+	return t.collectResolversLocked()
+}
+
+func (t *DNSTransport) clearResolverSnapshot() {
+	t.access.Lock()
+	t.closed = true
+	t.routes = nil
+	t.searchDomains = nil
+	t.serverAddresses = nil
+	t.defaultResolvers = nil
+	t.resolverScope = nil
+	t.access.Unlock()
 }
 
 func (t *DNSTransport) collectResolversLocked() []adapter.DNSTransport {

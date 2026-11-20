@@ -4,7 +4,6 @@ package hysteria2
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/pem"
@@ -55,48 +54,6 @@ func TestRuntimeQUICConstructorAndPrepareRemainPrivate(t *testing.T) {
 	}
 	if f.graphAcquires.Load() != 0 || f.sourceAcquires.Load() != 0 {
 		t.Fatal("private preparation admitted a request")
-	}
-}
-
-func TestSessionContextBorrowsPhysicalLifetimeRatherThanSetupTask(t *testing.T) {
-	f := newIngressFixture()
-	physical, graph := f.context()
-	defer graph.Release()
-	physical, cancel := context.WithCancel(physical)
-	defer cancel()
-	fallback := context.WithValue(context.Background(), ingressTestContextKey{}, "service")
-	binding := new(inboundRuntimeTLS)
-	session, err := binding.sessionContext(fallback, physical)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if session.Value(ingressTestContextKey{}) != "service" {
-		t.Fatal("constructor services lost")
-	}
-	ctx, release, err := adapter.AcquireRuntimeOperation(session, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	release()
-	// The outer setup task is gone; a child still forks the physical session.
-	_, childRelease, err := adapter.AcquireRuntimeOperation(session, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	childRelease()
-	if _, _, err := adapter.AcquireRuntimeOperation(ctx, nil); err == nil {
-		t.Fatal("released setup task remained reusable")
-	}
-	cancel()
-	if session.Err() != context.Canceled {
-		t.Fatal("physical cancellation lost")
-	}
-}
-
-func TestSessionContextRejectsMissingPhysicalAdmission(t *testing.T) {
-	binding := new(inboundRuntimeTLS)
-	if _, err := binding.sessionContext(context.Background(), context.Background()); err == nil {
-		t.Fatal("missing lineage accepted")
 	}
 }
 

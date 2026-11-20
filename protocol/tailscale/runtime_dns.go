@@ -15,7 +15,6 @@ import (
 	"github.com/sagernet/sing-box/adapter/outbound"
 	"github.com/sagernet/sing-box/common/dialer"
 	runtimeTLS "github.com/sagernet/sing-box/common/tls"
-	"github.com/sagernet/sing-box/dns/transport/lifecycle"
 	"github.com/sagernet/sing-box/option"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -386,9 +385,7 @@ func (t *DNSTransport) closeRuntimeDNS() error {
 		r.mu.Lock()
 		r.closeErr = errors.Join(callbackErr, r.cleanupErr)
 		r.mu.Unlock()
-		t.idleAccess.Lock()
-		r.closeErr = errors.Join(r.closeErr, t.idleCleanupErr)
-		t.idleAccess.Unlock()
+		r.closeErr = errors.Join(r.closeErr, t.idleWork.CleanupError())
 		if r.closeErr != nil {
 			r.closeErr = runtimeTLS.NewRuntimeCleanupError(r.closeErr)
 		}
@@ -452,75 +449,14 @@ func (d *runtimeDNSDialer) ListenPacket(ctx context.Context, address M.Socksaddr
 	return conn, nil
 }
 
-// Idle policy covers all children owned by this wrapper, including candidates
-// and retired cohorts whose in-flight queries have not finished. It never uses
-// Reset: only each child knows which carriers are currently idle.
 func (t *DNSTransport) SetKeepIdleConnections(keep bool) {
-	done, ok := t.idleWork.Reserve()
-	if !ok {
-		return
-	}
-	defer done()
-	t.idleAccess.Lock()
-	defer t.idleAccess.Unlock()
-	t.disableIdleConnections = !keep
-	for resolver := range t.idleResolvers {
-		resolver.SetKeepIdleConnections(keep)
-	}
+	t.idleWork.SetKeepIdleConnections(keep)
 }
 
 func (t *DNSTransport) CloseIdleConnections() {
-	done, ok := t.idleWork.Reserve()
-	if !ok {
-		return
-	}
-	defer done()
-	t.idleAccess.Lock()
-	defer t.idleAccess.Unlock()
-	for resolver := range t.idleResolvers {
-		resolver.CloseIdleConnections()
-	}
+	t.idleWork.CloseIdleConnections()
 }
 
-// The private start scope is not published until Start returns. This prevents
-// a retiring owner from closing a partly initialized child and losing a cleanup
-// registered by Start after the owner's scope has already drained.
 func (t *DNSTransport) startDNSResolver(resolver adapter.DNSTransport, scope *adapter.Scope) error {
-	done, ok := t.idleWork.Reserve()
-	if !ok {
-		return lifecycle.ErrStopped
-	}
-	defer done()
-	keeper, ok := resolver.(adapter.IdleConnectionKeeper)
-	if !ok {
-		return errors.New("endpoint DNS resolver requires idle-only connection control")
-	}
-	childScope := adapter.NewScope(scope.Context(), t.logger)
-	startErr := resolver.Start(adapter.StartStateStart, childScope)
-	if startErr == nil {
-		// Registration and policy application are atomic with a concurrent
-		// setter, and complete before route/default publication.
-		t.idleAccess.Lock()
-		keeper.SetKeepIdleConnections(!t.disableIdleConnections)
-		if t.idleResolvers == nil {
-			t.idleResolvers = make(map[adapter.IdleConnectionKeeper]struct{})
-		}
-		t.idleResolvers[keeper] = struct{}{}
-		t.idleAccess.Unlock()
-	}
-	cleanupErr := adapter.DeferConstructionCleanup(adapter.ContextWithConstructionScope(context.Background(), scope), func() error {
-		// Serialize removal with admitted idle calls, then close outside the
-		// registry lock. New callers can no longer reach this child.
-		t.idleAccess.Lock()
-		delete(t.idleResolvers, keeper)
-		t.idleAccess.Unlock()
-		err := lifecycle.Uncertain("endpoint DNS child resolver", childScope.Close())
-		if err != nil {
-			t.idleAccess.Lock()
-			t.idleCleanupErr = errors.Join(t.idleCleanupErr, err)
-			t.idleAccess.Unlock()
-		}
-		return err
-	})
-	return errors.Join(startErr, cleanupErr, scope.Context().Err())
+	return t.idleWork.Start(resolver, scope, t.logger)
 }

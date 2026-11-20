@@ -117,7 +117,7 @@ jobs:
           -tags "$tags" -ldflags "$(cat release/LDFLAGS) -X github.com/sagernet/sing-box/constant.SourceRevision=$GITHUB_SHA" \
           . ./daemon ./experimental/libbox ./experimental/cachefile ./service/api ./adapter ./adapter/inbound ./adapter/outbound \
           ./adapter/endpoint ./adapter/certificate ./common/runtimeclock ./common/certificate \
-          ./internal/runtimegraph ./log ./route ./dns/transport/... \
+          ./internal/boxruntime ./internal/runtimegraph ./log ./route ./dns/transport/... \
           ./protocol/openconnect ./protocol/openvpn ./protocol/tailscale \
           | tee "$evidence/tests.jsonl"
         test -z "$(git status --porcelain --untracked-files=all)"

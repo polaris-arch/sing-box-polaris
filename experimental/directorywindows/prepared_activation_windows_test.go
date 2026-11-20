@@ -20,6 +20,48 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
+func TestWindowsDirectorySourceContract(t *testing.T) {
+	source := strings.Repeat("a", 40)
+	clean := &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs", Value: "git"}, {Key: "vcs.revision", Value: source}, {Key: "vcs.modified", Value: "false"}}}
+	if err := ValidateSource(source, source, clean); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateSource(source, source, nil); err != nil {
+		t.Fatal("clean-source ldflag contract without optional VCS", err)
+	}
+	for _, x := range []struct {
+		expected, actual string
+		info             *debug.BuildInfo
+	}{
+		{source, "", nil},
+		{"", source, nil},
+		{source, strings.Repeat("b", 40), nil},
+		{strings.ToUpper(source), source, nil},
+		{source, source, &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs", Value: "git"}}}},
+		{source, source, &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs", Value: "git"}, {Key: "vcs.revision", Value: source}, {Key: "vcs.modified", Value: "true"}}}},
+		{source, source, &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs", Value: "git"}, {Key: "vcs.revision", Value: source}, {Key: "vcs.modified", Value: "false"}, {Key: "vcs.modified", Value: "false"}}}},
+	} {
+		if err := ValidateSource(x.expected, x.actual, x.info); err == nil {
+			t.Fatalf("accepted invalid identity: %+v", x)
+		}
+	}
+}
+
+func TestWindowsDirectoryReservedNamespaceWholeConfig(t *testing.T) {
+	for _, raw := range []string{`{"log":{"output":"C:\\x\\tailscale-windows-v1\\log"}}`, `{"cache":"TAILSCALE-WINDOWS-V1"}`, `{"other":"tailscale\u002dwindows-v1"}`} {
+		if err := RejectReservedPaths([]byte(raw)); err == nil {
+			t.Fatalf("accepted %s", raw)
+		}
+	}
+	t.Setenv("POLARIS_TEST_PATH", "C:\\tailscale-windows-v1")
+	if err := RejectReservedPaths([]byte(`{"other":"${POLARIS_TEST_PATH}"}`)); err == nil {
+		t.Fatal("env-expanded physical path accepted")
+	}
+	if err := RejectReservedPaths([]byte(`{"other":"tailscale","nested":["normal"]}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // These fixtures author only in-memory activation/mapping operations. No lease,
 // SDK, store, root marker, native API, directory or disk poison operation is used.
 // Explicit clean provenance exercises the production validation core without

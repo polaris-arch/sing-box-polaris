@@ -22,6 +22,12 @@ func RuntimeDashboardHTTPDetour(dashboard *option.APIDashboardOptions) string {
 	return dashboard.HTTPClient.Detour
 }
 
+// Only the App's explicit inline detour-only client has a stable adapter. Check
+// the complete structure, including fields deliberately omitted from JSON.
+func runtimeStableDashboard(options *option.APIDashboardOptions) bool {
+	return options == nil || !options.Enabled || RuntimeDashboardHTTPDetour(options) != ""
+}
+
 // The dashboard toggle requires the client's bounded configuration on both sides.
 func RuntimeDashboardToggleEligible(before, after option.APIServiceOptions) bool {
 	shape := func(value option.APIServiceOptions) (bool, bool) {

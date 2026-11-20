@@ -12,6 +12,7 @@ import (
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing-box/transport/runtimeingress"
 	"github.com/sagernet/sing-quic/hysteria"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/auth"
@@ -25,7 +26,7 @@ func RegisterInbound(registry *inbound.Registry) {
 
 type Inbound struct {
 	runtime     *inboundRuntime
-	protocolTLS *inboundRuntimeTLS
+	protocolTLS *runtimeingress.QUICServerTLS
 	inbound.Adapter
 	router       adapter.Router
 	logger       log.ContextLogger
@@ -67,7 +68,13 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 		if err := inbound.listener.DeclareRuntimePacketTransport(); err != nil {
 			return nil, err
 		}
-		inbound.protocolTLS = &inboundRuntimeTLS{ServerConfig: tlsConfig, runtime: runtime, listener: inbound.listener}
+		inbound.protocolTLS = runtimeingress.NewQUICServerTLS(tlsConfig, runtimeingress.QUICServerTLSOptions{
+			Listener:      inbound.listener,
+			Context:       runtime.ctx,
+			Failed:        runtime.failed,
+			RecordFailure: runtime.record,
+			RunTask:       runtime.runTask,
+		})
 		tlsConfig = inbound.protocolTLS
 	}
 

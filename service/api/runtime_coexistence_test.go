@@ -214,7 +214,7 @@ func TestRuntimeDesktopDefaultAPIUsesOwningGraphAndExistingRPCs(t *testing.T) {
 				t.Fatal(err)
 			}
 			if capabilities.Active == nil || capabilities.Active.Incarnation == "" || capabilities.Active.AppliedRevision != 1 || !capabilities.ConnectedHotEnabled {
-				t.Fatalf("attached owning identity/public gate mismatch: %+v", capabilities)
+				t.Fatalf("attached owning identity/public gate mismatch: %+v", &capabilities)
 			}
 			mark("owning capabilities")
 			expectedRuleStatus := func() adapter.RuleSetLoadStatus {

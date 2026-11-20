@@ -146,6 +146,15 @@ func (r *runtimeClientState) close() error {
 	return r.closeErr
 }
 
+// RuntimeCleanupObservation exposes only finite source-defined states. It does
+// not call the endpoint/device/native client or borrow a resource lease.
+func (c *ClientEndpoint) RuntimeCleanupObservation() (uint32, bool) {
+	if c.runtime == nil {
+		return 0, false
+	}
+	return c.runtime.diagnosticPhase.Load(), c.runtime.diagnosticFailed.Load()
+}
+
 func (c *ClientEndpoint) RuntimeValidate() error {
 	if c.runtime == nil {
 		return errors.New("endpoint lacks prepared userspace ownership")

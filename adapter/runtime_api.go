@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"net/netip"
 
+	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/common/json/badoption"
@@ -35,6 +36,19 @@ type RuntimeAPIHandoff interface {
 
 type RuntimeAPIService interface {
 	PrepareRuntimeAPI(context.Context, option.APIServiceOptions) (RuntimeAPIHandoff, error)
+}
+
+// RuntimeStableAPIService reports whether a local API can use the stable
+// ingress. Daemon operations and supported dashboard downloads borrow current
+// graph snapshots. Other dashboard clients and TLS retain the legacy path.
+func RuntimeStableAPIService(item option.Service) bool {
+	options, ok := item.Options.(*option.APIServiceOptions)
+	if item.Type != C.TypeAPI || !ok || options.Listen == nil || (!netip.Addr(*options.Listen).Unmap().IsLoopback() || netip.Addr(*options.Listen).Zone() != "") {
+		return false
+	}
+	return options.TLS == nil && runtimeStableDashboard(options.Dashboard) &&
+		options.Detour == "" && options.NetNs == "" && options.BindInterface == "" &&
+		options.RoutingMark == 0 && !options.ReuseAddr && !options.TCPFastOpen && !options.TCPMultiPath
 }
 
 func NormalizeRuntimeAPIOptions(options option.APIServiceOptions) option.APIServiceOptions {
