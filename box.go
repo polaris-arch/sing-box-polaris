@@ -62,6 +62,7 @@ type Box struct {
 	internalService     []adapter.LifecycleService
 	ntpService          *ntp.Service
 	scope               *adapter.Scope
+	legacyCacheScope    *adapter.Scope
 	tsStoreMu           sync.Mutex
 	tsStores            []adapter.Endpoint
 	tsCaptured          bool
@@ -261,6 +262,13 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		}
 	}
 
+	var legacyCacheScope *adapter.Scope
+	if needCacheFile {
+		// Constructor-owned transports write final metadata during cleanup.
+		// Keep the cache open until those earlier acquisitions have closed.
+		legacyCacheScope = adapter.NewScope(scope.Context(), logFactory.Logger())
+		scope.Add(legacyCacheScope.Close)
+	}
 	var internalServices []adapter.LifecycleService
 	routeOptions := common.PtrValueOrDefault(options.Route)
 	certificateOptions := common.PtrValueOrDefault(options.Certificate)
@@ -566,6 +574,7 @@ func newBox(options Options, constructionScope **adapter.Scope) (*Box, error) {
 		internalService:     internalServices,
 		ntpService:          ntpService,
 		scope:               scope,
+		legacyCacheScope:    legacyCacheScope,
 
 		runtimeEligibilityErrors: runtimeEligibilityErrors,
 	}
@@ -611,7 +620,11 @@ func (s *Box) startComponents(stage adapter.StartStage, components ...boxCompone
 
 func (s *Box) startInternalServices(stage adapter.StartStage) error {
 	for _, lifecycleService := range s.internalService {
-		err := s.scope.Start(lifecycleService.Name(), lifecycleService, stage)
+		scope := s.scope
+		if _, isCache := lifecycleService.(*cachefile.CacheFile); isCache {
+			scope = s.legacyCacheScope
+		}
+		err := scope.Start(lifecycleService.Name(), lifecycleService, stage)
 		if err != nil {
 			return err
 		}
