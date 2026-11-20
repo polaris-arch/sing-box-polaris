@@ -72,11 +72,15 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 	if options.Route == nil {
 		return options, nil, runtimeDigest(nil), nil
 	}
-	encodedCandidate, candidateErr := json.MarshalContext(registry, options)
-	if candidateErr != nil {
-		return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE_PROVENANCE", Path: "route.rule_set"}}
+	var candidateDigest string
+	if len(trusted) != 0 {
+		// Only prepared remote snapshots need proof of the full candidate.
+		encodedCandidate, candidateErr := json.MarshalContext(registry, options)
+		if candidateErr != nil {
+			return options, nil, "", []RuntimePlanError{{Code: "INVALID_SOURCE_PROVENANCE", Path: "route.rule_set"}}
+		}
+		candidateDigest = runtimeDigest(encodedCandidate)
 	}
-	candidateDigest := runtimeDigest(encodedCandidate)
 	routeOptions := *options.Route
 	options.Route = &routeOptions
 	var frozen []option.RuleSet

@@ -244,6 +244,10 @@ func (s *Box) preflightRuntimeCertificates(ctx context.Context, options option.O
 	}
 	s.runtime.access.Lock()
 	s.runtime.pruneRuntimeCatalogLocked()
+	if len(claims) == 0 {
+		s.runtime.access.Unlock()
+		return nil, nil
+	}
 	current := append([]*runtimeResource(nil), s.runtime.resources...)
 	live := s.runtime.runtimeCertificateLiveLocked()
 	s.runtime.access.Unlock()
