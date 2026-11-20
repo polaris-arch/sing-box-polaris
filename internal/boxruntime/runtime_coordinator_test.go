@@ -5,6 +5,7 @@ import (
 	"context"
 	stdjson "encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -526,6 +527,34 @@ func TestRuntimePostPublicationPanicReleasesConstructionWithoutAborting(t *testi
 	defer lease.Release()
 	if view.Identity() != operation.Active.graphRevision() || f.identity() != operation.Active {
 		t.Fatal("published view and operation disagree after panic")
+	}
+}
+
+func TestRuntimeApplyReusesResourcesBeyondHalfCatalogCapacity(t *testing.T) {
+	const bulkCount = 600
+	var bulk strings.Builder
+	for index := range bulkCount {
+		fmt.Fprintf(&bulk, `{"type":"socks","tag":"bulk-%d","server":"192.0.2.3","server_port":1080},`, index)
+	}
+	initial := bytes.Replace(runtimeTestConfig(1080, "example.org"), []byte(`"outbounds":[`), []byte(`"outbounds":[`+bulk.String()), 1)
+	candidate := bytes.Replace(initial, []byte(`"tag":"b","server":"192.0.2.2","server_port":1080`), []byte(`"tag":"b","server":"192.0.2.2","server_port":1081`), 1)
+	f := newRuntimeTestFixture(t, initial, nil)
+	f.start(t)
+	_, before := f.acquire(t)
+	_, request := f.plan(t, candidate)
+	operation, err := f.box.applyRuntimeConfig(context.Background(), "actor-a", request)
+	if err != nil || operation.State != "COMMITTED_DURABILITY_PENDING" {
+		t.Fatalf("one replacement in a large graph did not commit: %+v, %v", operation, err)
+	}
+	_, after := f.acquire(t)
+	if before.componentIDs["outbound:b"] == after.componentIDs["outbound:b"] {
+		t.Fatal("changed outbound reused its old resource")
+	}
+	for index := range bulkCount {
+		name := fmt.Sprintf("outbound:bulk-%d", index)
+		if old, ok := before.componentIDs[name]; !ok || old != after.componentIDs[name] {
+			t.Fatalf("unchanged outbound %s was not reused", name)
+		}
 	}
 }
 

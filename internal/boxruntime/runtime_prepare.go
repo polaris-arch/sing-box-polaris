@@ -91,6 +91,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	// Give panic recovery and constructor rollback custody before any preparation callback.
 	c.access.Lock()
 	c.pendingPrepared = prepared
+	c.pruneRuntimeCatalogLocked()
 	c.access.Unlock()
 	logLevel := ""
 	if options.Log != nil {
@@ -154,13 +155,8 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return prepared, err
 	}
 	c.access.Lock()
-	c.pruneRuntimeCatalogLocked()
 	old := append([]*runtimeResource(nil), c.resources...)
 	provisioned := c.platformRequirements
-	if len(c.catalog)+len(cohorts) > runtimeResourceLimit {
-		c.access.Unlock()
-		return prepared, errors.New("runtime resource capacity exhausted")
-	}
 	c.access.Unlock()
 	if !prepared.initial {
 		after := route.RuntimeRequirementsFor(common.PtrValueOrDefault(options.Route), common.PtrValueOrDefault(options.DNS))
@@ -208,12 +204,19 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		resource := byFingerprint[fingerprint]
 		if resource == nil {
 			c.access.Lock()
-			if c.stopped || c.resourceSequence == math.MaxUint64 {
+			var admissionErr error
+			switch {
+			case c.stopped || c.resourceSequence == math.MaxUint64:
+				admissionErr = errors.New("runtime resource admission stopped")
+			case len(c.catalog) >= runtimeResourceLimit:
+				admissionErr = errors.New("runtime resource capacity exhausted")
+			}
+			if admissionErr != nil {
 				c.access.Unlock()
 				for _, held := range dependencies {
 					held.Release()
 				}
-				return prepared, errors.New("runtime resource admission stopped")
+				return prepared, admissionErr
 			}
 			c.resourceSequence++
 			id := adapter.RuntimeResourceID{Incarnation: identity.Incarnation, Sequence: c.resourceSequence}
