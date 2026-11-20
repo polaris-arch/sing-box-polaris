@@ -343,7 +343,7 @@ func TestRuntimeEmptySourceDoesNotReuseOwnerForInvalidRules(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if invalidNodes["rule-set:sites"].node.fingerprint == validNodes["rule-set:sites"].node.fingerprint {
+		if invalidNodes["rule-set:sites"].node.Fingerprint == validNodes["rule-set:sites"].node.Fingerprint {
 			t.Fatal("invalid rule reused the empty rule-set fingerprint")
 		}
 		plan, request := f.plan(t, config)
@@ -611,7 +611,7 @@ func TestRuntimePrivateSRSFingerprintVersionsAndRoles(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						fingerprints[i] = nodes["rule-set:sites"].node.fingerprint
+						fingerprints[i] = nodes["rule-set:sites"].node.Fingerprint
 						set, err := R.NewRuleSet(fixture.ctx, logger.NOP(), "sites", frozen.Route.RuleSet[0])
 						if err != nil {
 							t.Fatal(err)

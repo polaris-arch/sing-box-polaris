@@ -9,12 +9,13 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-tun"
 	"github.com/sagernet/sing/service"
 )
 
-func tunDependencyFixtureNode(t *testing.T, ctx context.Context, options option.Options) runtimeDependencyNode {
+func tunDependencyFixtureNode(t *testing.T, ctx context.Context, options option.Options) runtimegraph.DependencyNode {
 	t.Helper()
 	_, configs, err := runtimeConfigNodes(ctx, options)
 	if err != nil {
@@ -29,12 +30,12 @@ func TestRuntimeTunDoesNotCaptureDefaultResolverOrProxyConfiguration(t *testing.
 	options.Route = &option.RouteOptions{DefaultDomainResolver: &option.DomainResolveOptions{Server: "resolver"}}
 	options.DNS = &option.DNSOptions{Servers: []option.DNSServerOptions{{Type: C.DNSTypeUDP, Tag: "resolver", Options: &option.RemoteDNSServerOptions{}}}}
 	after := tunDependencyFixtureNode(t, context.Background(), options)
-	if before.fingerprint != after.fingerprint {
+	if before.Fingerprint != after.Fingerprint {
 		t.Fatal("default DNS policy recreated unchanged TUN")
 	}
 	options.Outbounds = append(options.Outbounds, option.Outbound{Type: C.TypeVLESS, Tag: "new-proxy", Options: map[string]any{"server": "example.invalid"}})
 	more := tunDependencyFixtureNode(t, context.Background(), options)
-	if after.fingerprint != more.fingerprint {
+	if after.Fingerprint != more.Fingerprint {
 		t.Fatal("ordinary proxy addition recreated unchanged TUN")
 	}
 }
@@ -42,9 +43,9 @@ func TestRuntimeTunDoesNotCaptureDefaultResolverOrProxyConfiguration(t *testing.
 func TestRuntimeTunKeepsExplicitRouteSetDependencies(t *testing.T) {
 	options := option.Options{Inbounds: []option.Inbound{{Type: C.TypeTun, Tag: "tun", Options: &option.TunInboundOptions{RouteAddressSet: []string{"include"}, RouteExcludeAddressSet: []string{"exclude"}}}}}
 	node := tunDependencyFixtureNode(t, context.Background(), options)
-	joined := strings.Join(node.dependencies, ",")
+	joined := strings.Join(node.Dependencies, ",")
 	if !strings.Contains(joined, "rule-set:include") || !strings.Contains(joined, "rule-set:exclude") {
-		t.Fatal("physical route set dependency omitted", node.dependencies)
+		t.Fatal("physical route set dependency omitted", node.Dependencies)
 	}
 }
 

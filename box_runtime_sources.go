@@ -17,6 +17,7 @@ import (
 
 	"github.com/sagernet/sing-box/common/srs"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service/filemanager"
@@ -104,7 +105,7 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 				inline := source
 				inline.Tag = []string{tag}
 				frozen = append(frozen, inline)
-				runtimeHashField(hash, identity)
+				runtimegraph.HashField(hash, identity)
 				continue
 			case C.RuleSetTypeLocal:
 				path = filemanager.BasePath(registry, strings.ReplaceAll(source.LocalOptions.Path, C.RuleSetTagPlaceholder, tag))
@@ -177,12 +178,12 @@ func runtimeSnapshotSources(request context.Context, registry context.Context, o
 				snapshot.candidateDigest = prepared.candidateDigest
 				snapshot.downloadDependencyDigest = prepared.downloadDependencyDigest
 				snapshot.updateInterval = prepared.updateInterval
-				runtimeHashField(hash, snapshot.remoteURL)
-				runtimeHashField(hash, snapshot.downloadDependencyDigest)
+				runtimegraph.HashField(hash, snapshot.remoteURL)
+				runtimegraph.HashField(hash, snapshot.downloadDependencyDigest)
 			}
 			snapshots = append(snapshots, snapshot)
-			runtimeHashField(hash, identity)
-			runtimeHashField(hash, digest)
+			runtimegraph.HashField(hash, identity)
+			runtimegraph.HashField(hash, digest)
 		}
 	}
 	options.Route.RuleSet = frozen

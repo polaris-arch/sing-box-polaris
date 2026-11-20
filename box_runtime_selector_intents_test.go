@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -37,9 +38,9 @@ func TestSelectorIntentSnapshotOwnsCallerPath(t *testing.T) {
 }
 
 func TestSelectorIntentFingerprintOnlyChangesTarget(t *testing.T) {
-	nodes := []runtimeDependencyNode{{name: "outbound:default", fingerprint: "same"}, {name: "outbound:rule", fingerprint: "same"}}
+	nodes := []runtimegraph.DependencyNode{{Name: "outbound:default", Fingerprint: "same"}, {Name: "outbound:rule", Fingerprint: "same"}}
 	runtimeBindSelectorIntentFingerprints(nodes, []RuntimeSelectorIntent{{Group: "default", Selected: "a"}})
-	if nodes[0].fingerprint == "same" || nodes[1].fingerprint != "same" {
+	if nodes[0].Fingerprint == "same" || nodes[1].Fingerprint != "same" {
 		t.Fatal("selection scope crossed independent rule group")
 	}
 }

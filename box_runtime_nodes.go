@@ -11,6 +11,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/common/ipset"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/route"
 	"github.com/sagernet/sing/common"
@@ -20,7 +21,7 @@ import (
 )
 
 type runtimeNodeOptions struct {
-	node      runtimeDependencyNode
+	node      runtimegraph.DependencyNode
 	service   *option.Service
 	endpoint  *option.Endpoint
 	inbound   *option.Inbound
@@ -31,7 +32,7 @@ type runtimeNodeOptions struct {
 	index     int
 }
 
-func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeDependencyNode, map[string]runtimeNodeOptions, error) {
+func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimegraph.DependencyNode, map[string]runtimeNodeOptions, error) {
 	configs := make(map[string]runtimeNodeOptions)
 	routeOptions := common.PtrValueOrDefault(options.Route)
 	dnsOptions := common.PtrValueOrDefault(options.DNS)
@@ -51,16 +52,16 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	if err != nil {
 		return nil, nil, err
 	}
-	makeNode := func(name string, config any, dependencies []string, capturesDefaults bool) (runtimeDependencyNode, error) {
+	makeNode := func(name string, config any, dependencies []string, capturesDefaults bool) (runtimegraph.DependencyNode, error) {
 		encoded, err := json.MarshalContext(ctx, config)
 		if err != nil {
-			return runtimeDependencyNode{}, err
+			return runtimegraph.DependencyNode{}, err
 		}
 		if capturesDefaults {
 			encoded = append(append(encoded, '\n'), defaultsBytes...)
 		}
 		sort.Strings(dependencies)
-		return runtimeDependencyNode{name: name, fingerprint: runtimeDigest(encoded), dependencies: dependencies}, nil
+		return runtimegraph.DependencyNode{Name: name, Fingerprint: runtimeDigest(encoded), Dependencies: dependencies}, nil
 	}
 	var sets, transports, outbounds, inbounds []string
 	endpointDNSConsumers := make(map[string][]string)
@@ -123,7 +124,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		}
 		// Frozen SRS predicates live in private matcher fields, not JSON. Bind
 		// their contents to this resource before looking up reusable owners.
-		node.fingerprint = runtimeDigest([]byte(node.fingerprint + ":" + runtimeRuleSetPrivateFingerprint(set.InlineOptions.Rules)))
+		node.Fingerprint = runtimeDigest([]byte(node.Fingerprint + ":" + runtimeRuleSetPrivateFingerprint(set.InlineOptions.Rules)))
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime source")
 		}
@@ -264,7 +265,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			return nil, nil, err
 		}
 		if tunPhysical != nil {
-			node.fingerprint = runtimeDigest(append(append([]byte(node.fingerprint), '\n'), tunPhysical...))
+			node.Fingerprint = runtimeDigest(append(append([]byte(node.Fingerprint), '\n'), tunPhysical...))
 		}
 		if _, exists := configs[name]; exists {
 			return nil, nil, fmt.Errorf("duplicate runtime inbound")
@@ -447,7 +448,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			if !exists {
 				return nil, nil, fmt.Errorf("service managed inbound absent: %s", inboundName)
 			}
-			config.node.dependencies = append(config.node.dependencies, name)
+			config.node.Dependencies = append(config.node.Dependencies, name)
 			configs[inboundName] = config
 		}
 	}
@@ -478,7 +479,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			}
 			switch kind {
 			case "wireguard", "tailscale", "tailcat", "openvpn", "openconnect", "masque":
-				config.node.dependencies = append(config.node.dependencies, oomName)
+				config.node.Dependencies = append(config.node.Dependencies, oomName)
 				configs[name] = config
 			}
 		}
@@ -543,7 +544,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 	// These are constructor-only controls intentionally omitted from option JSON.
 	// They must still invalidate a programmatically constructed receiving owner.
 	for _, client := range allHTTP {
-		httpNode.fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:%t:%t:%t:%t", httpNode.fingerprint, client.DefaultOutbound, client.ResolveOnDetour, client.DirectResolver, client.DisableEmptyDirectCheck)))
+		httpNode.Fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:%t:%t:%t:%t", httpNode.Fingerprint, client.DefaultOutbound, client.ResolveOnDetour, client.DirectResolver, client.DisableEmptyDirectCheck)))
 	}
 	configs["http-manager"] = runtimeNodeOptions{node: httpNode}
 	dnsDeps := append(append([]string(nil), sets...), transports...)
@@ -591,7 +592,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 				consumes = true
 			}
 			if consumes {
-				config.node.dependencies = append(config.node.dependencies, "ntp")
+				config.node.Dependencies = append(config.node.Dependencies, "ntp")
 				configs[name] = config
 			}
 		}
@@ -607,7 +608,7 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 			capture = true
 		}
 		if capture {
-			config.node.dependencies = append(config.node.dependencies, "platform-runtime")
+			config.node.Dependencies = append(config.node.Dependencies, "platform-runtime")
 			configs[name] = config
 		}
 	}
@@ -623,9 +624,9 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 		}
 	}
 	for name, config := range configs {
-		for i, dependency := range config.node.dependencies {
+		for i, dependency := range config.node.Dependencies {
 			if endpointName, ok := endpointNames[dependency]; ok {
-				config.node.dependencies[i] = endpointName
+				config.node.Dependencies[i] = endpointName
 			}
 		}
 		configs[name] = config
@@ -648,24 +649,24 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 				return fmt.Errorf("missing runtime Realm dependency: %s", dependency)
 			}
 			seen[dependency] = true
-			for _, next := range config.node.dependencies {
+			for _, next := range config.node.Dependencies {
 				if err := visit(next); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
-		for _, dependency := range configs[name].node.dependencies {
+		for _, dependency := range configs[name].node.Dependencies {
 			if err := visit(dependency); err != nil {
 				return nil, nil, err
 			}
 		}
 	}
-	var nodes []runtimeDependencyNode
+	var nodes []runtimegraph.DependencyNode
 	for _, config := range configs {
 		nodes = append(nodes, config.node)
 	}
-	sort.Slice(nodes, func(i, j int) bool { return nodes[i].name < nodes[j].name })
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].Name < nodes[j].Name })
 	return nodes, configs, nil
 }
 
@@ -673,14 +674,14 @@ func runtimeConfigNodes(ctx context.Context, options option.Options) ([]runtimeD
 // dumping domains. Derived indexes and storage addresses are not predicates.
 func runtimeRuleSetPrivateFingerprint(rules []option.HeadlessRule) string {
 	h := sha256.New()
-	runtimeHashField(h, "rule-set-private-conditions-v1")
+	runtimegraph.HashField(h, "rule-set-private-conditions-v1")
 	var word [8]byte
 	number := func(value uint64) {
 		binary.BigEndian.PutUint64(word[:], value)
 		h.Write(word[:])
 	}
 	matcher := func(name string, data domain.Mmap) {
-		runtimeHashField(h, name)
+		runtimegraph.HashField(h, name)
 		for _, values := range [][]uint64{data.Leaves, data.LabelBitmap} {
 			number(uint64(len(values)))
 			for _, value := range values {
@@ -691,7 +692,7 @@ func runtimeRuleSetPrivateFingerprint(rules []option.HeadlessRule) string {
 		h.Write(data.Labels)
 	}
 	addresses := func(name string, set *ipset.Set) {
-		runtimeHashField(h, name)
+		runtimegraph.HashField(h, name)
 		number(uint64(len(set.Ranges4())))
 		for _, value := range set.Ranges4() {
 			number(uint64(value.From))
@@ -708,11 +709,11 @@ func runtimeRuleSetPrivateFingerprint(rules []option.HeadlessRule) string {
 		number(uint64(len(rules)))
 		for _, rule := range rules {
 			if rule.Type == C.RuleTypeLogical {
-				runtimeHashField(h, C.RuleTypeLogical)
+				runtimegraph.HashField(h, C.RuleTypeLogical)
 				visit(rule.LogicalOptions.Rules)
 				continue
 			}
-			runtimeHashField(h, C.RuleTypeDefault)
+			runtimegraph.HashField(h, C.RuleTypeDefault)
 			options := rule.DefaultOptions
 			// These precedence rules mirror NewDefaultHeadlessRule: a public
 			// predicate takes precedence over its private compiled equivalent.
@@ -727,10 +728,10 @@ func runtimeRuleSetPrivateFingerprint(rules []option.HeadlessRule) string {
 			}
 			if len(options.AdGuardDomain) > 0 {
 				// AdGuard source predicates are also excluded from JSON.
-				runtimeHashField(h, "adguard-source")
+				runtimegraph.HashField(h, "adguard-source")
 				number(uint64(len(options.AdGuardDomain)))
 				for _, value := range options.AdGuardDomain {
-					runtimeHashField(h, value)
+					runtimegraph.HashField(h, value)
 				}
 			} else if options.AdGuardDomainMatcher != nil {
 				matcher("adguard", options.AdGuardDomainMatcher.Mmap())

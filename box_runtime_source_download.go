@@ -13,6 +13,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 )
@@ -81,9 +82,9 @@ func (s *Box) prepareRuntimeSourceDownload(expected RuntimeIdentity, candidate [
 		return reject("SOURCE_PREPARATION_UNAVAILABLE", "retained source HTTP owner is unavailable")
 	}
 	hash := sha256.New()
-	runtimeHashField(hash, "active-source-download-v1")
-	runtimeHashField(hash, fmt.Sprint(id.Incarnation, ":", id.Sequence))
-	runtimeHashField(hash, resource.fingerprint)
+	runtimegraph.HashField(hash, "active-source-download-v1")
+	runtimegraph.HashField(hash, fmt.Sprint(id.Incarnation, ":", id.Sequence))
+	runtimegraph.HashField(hash, resource.fingerprint)
 	if options.Route != nil {
 		for _, source := range options.Route.RuleSet {
 			if source.Type != C.RuleSetTypeRemote {
@@ -94,7 +95,7 @@ func (s *Box) prepareRuntimeSourceDownload(expected RuntimeIdentity, candidate [
 				lease.Release()
 				return reject("INVALID_SOURCE", "source HTTP selection is invalid")
 			}
-			runtimeHashField(hash, string(encoded))
+			runtimegraph.HashField(hash, string(encoded))
 		}
 	}
 	var once sync.Once

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -15,15 +16,15 @@ func TestRuntimeRootSnapshotFingerprintRebuildsConsumersOnly(t *testing.T) {
 		"inbound:http": {inbound: &option.Inbound{Type: C.TypeHTTP}},
 		"outbound:tls": {outbound: &option.Outbound{Type: C.TypeHTTP}},
 	}
-	nodes := []runtimeDependencyNode{{name: "http-manager", fingerprint: "http"}, {name: "inbound:tun", fingerprint: "tun"}, {name: "inbound:http", fingerprint: "in"}, {name: "outbound:tls", fingerprint: "out"}, {name: "rule-set:test", fingerprint: "set"}}
-	first := append([]runtimeDependencyNode(nil), nodes...)
-	second := append([]runtimeDependencyNode(nil), nodes...)
+	nodes := []runtimegraph.DependencyNode{{Name: "http-manager", Fingerprint: "http"}, {Name: "inbound:tun", Fingerprint: "tun"}, {Name: "inbound:http", Fingerprint: "in"}, {Name: "outbound:tls", Fingerprint: "out"}, {Name: "rule-set:test", Fingerprint: "set"}}
+	first := append([]runtimegraph.DependencyNode(nil), nodes...)
+	second := append([]runtimegraph.DependencyNode(nil), nodes...)
 	runtimeBindRootFingerprints(first, configs, [32]byte{1})
 	runtimeBindRootFingerprints(second, configs, [32]byte{2})
 	for i := range nodes {
 		capture := i == 0 || i == 2 || i == 3
-		if (first[i].fingerprint != second[i].fingerprint) != capture {
-			t.Fatalf("unexpected root dependency for %s", nodes[i].name)
+		if (first[i].Fingerprint != second[i].Fingerprint) != capture {
+			t.Fatalf("unexpected root dependency for %s", nodes[i].Name)
 		}
 	}
 }

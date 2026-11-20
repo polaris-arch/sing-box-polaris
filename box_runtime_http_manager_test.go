@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/adapter/outbound"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/log"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing-box/protocol/hysteria2"
@@ -164,19 +165,19 @@ func TestRuntimeRealmActualConstructorPlanApplyRetainsExactOldClosure(t *testing
 	}
 }
 
-func runtimeHTTPNode(t *testing.T, options option.Options, name string) runtimeDependencyNode {
+func runtimeHTTPNode(t *testing.T, options option.Options, name string) runtimegraph.DependencyNode {
 	t.Helper()
 	nodes, _, err := runtimeConfigNodes(context.Background(), runtimeResolveGraphDefaults(options))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, node := range nodes {
-		if node.name == name {
+		if node.Name == name {
 			return node
 		}
 	}
 	t.Fatalf("missing component %q", name)
-	return runtimeDependencyNode{}
+	return runtimegraph.DependencyNode{}
 }
 
 func TestRuntimeRealmLiteralDiscoveryDoesNotCaptureUnusedDNS(t *testing.T) {
@@ -199,7 +200,7 @@ func TestRuntimeRealmLiteralDiscoveryDoesNotCaptureUnusedDNS(t *testing.T) {
 		options.DNS.Servers[i].Options.(*option.RemoteDNSServerOptions).Detour = "realm"
 	}
 	node := runtimeHTTPNode(t, options, "outbound:realm")
-	if slices.Contains(node.dependencies, "dns-router") || !slices.Contains(node.dependencies, "http-manager") {
+	if slices.Contains(node.Dependencies, "dns-router") || !slices.Contains(node.Dependencies, "http-manager") {
 		t.Fatal("literal-only discovery captured unused DNS or lost its HTTP owner", node)
 	}
 	registry := service.FromContext[adapter.OutboundRegistry](f.ctx).(*outbound.Registry)
@@ -308,8 +309,8 @@ func TestRuntimeRealmLiteralSTUNMappingCapturesEffectiveResolver(t *testing.T) {
 			}
 			found := false
 			for _, node := range nodes {
-				if node.name == "outbound:realm" {
-					found = slices.Contains(node.dependencies, want) && slices.Contains(node.dependencies, "dns-router")
+				if node.Name == "outbound:realm" {
+					found = slices.Contains(node.Dependencies, want) && slices.Contains(node.Dependencies, "dns-router")
 				}
 			}
 			if !found {
@@ -341,22 +342,49 @@ func TestRuntimeRealmHTTPAndSTUNCaptureWithoutServer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := runtimeCohorts(nodes); err != nil {
+			if _, err := runtimegraph.DependencyCohorts(nodes); err != nil {
 				t.Fatal(err)
 			}
 			for _, dependency := range []string{"http-manager", "dns-router", "dns-transport:bootstrap", "outbound:carrier-b"} {
-				if !slices.Contains(configs["outbound:realm"].node.dependencies, dependency) {
+				if !slices.Contains(configs["outbound:realm"].node.Dependencies, dependency) {
 					t.Fatalf("empty Server lost %s: %+v", dependency, configs["outbound:realm"].node)
 				}
 			}
 			if mode != "default" {
 				for _, dependency := range []string{"outbound:carrier-a", "dns-router", "dns-transport:replacement"} {
-					if !slices.Contains(configs["http-manager"].node.dependencies, dependency) {
+					if !slices.Contains(configs["http-manager"].node.Dependencies, dependency) {
 						t.Fatalf("HTTP manager lost %s: %+v", dependency, configs["http-manager"].node)
 					}
 				}
 			}
 		})
+	}
+}
+
+func TestRuntimeRealmDependencyClosurePreservesOrdinaryDNSOwnershipCycle(t *testing.T) {
+	options := runtimeRealmDependencyOptions()
+	options.DNS.Servers[0].Options.(*option.RemoteDNSServerOptions).Detour = "carrier-a"
+	nodes, _, err := runtimeConfigNodes(context.Background(), runtimeResolveGraphDefaults(options))
+	if err != nil {
+		t.Fatal("ordinary DNS/direct cycle was rejected", err)
+	}
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	membership := make(map[string]int)
+	for index, cohort := range cohorts {
+		for _, name := range cohort.Members {
+			membership[name] = index
+		}
+	}
+	if membership["dns-router"] != membership["outbound:carrier-a"] {
+		t.Fatal("existing DNS/direct cycle was split")
+	}
+	realm := membership["outbound:realm"]
+	http := membership["http-manager"]
+	if realm == http || realm == membership["dns-router"] || !slices.Contains(cohorts[realm].Dependencies, http) {
+		t.Fatal("Realm did not retain the independent receiving-manager closure", cohorts)
 	}
 }
 
@@ -371,10 +399,10 @@ func TestRuntimeRealmSTUNAndMappingCaptureOnlyRequiredDNS(t *testing.T) {
 				realm.Realm.PortMapping = &option.Hysteria2RealmPortMapping{Enabled: mapping}
 				node := runtimeHTTPNode(t, options, "outbound:realm")
 				needsDNS := realm.Realm.STUNServersIsDomain() || mapping
-				if slices.Contains(node.dependencies, "dns-router") != needsDNS || slices.Contains(node.dependencies, "dns-transport:bootstrap") != needsDNS {
+				if slices.Contains(node.Dependencies, "dns-router") != needsDNS || slices.Contains(node.Dependencies, "dns-transport:bootstrap") != needsDNS {
 					t.Fatal("Realm DNS closure differs from actual hostname/device discovery", server, version, mapping, node)
 				}
-				if !slices.Contains(node.dependencies, "http-manager") {
+				if !slices.Contains(node.Dependencies, "http-manager") {
 					t.Fatal("Realm lost its captured HTTP manager", server, version, mapping)
 				}
 				// Dependency projection remains pure even for the separately rejected
@@ -431,10 +459,10 @@ func TestRuntimeRealmInlineHTTPChangesInvalidateReceivingManager(t *testing.T) {
 				options.Route.DefaultDomainResolver = &option.DomainResolveOptions{Server: "replacement"}
 			}
 			after := runtimeHTTPNode(t, options, "http-manager")
-			if before.fingerprint == after.fingerprint && slices.Equal(before.dependencies, after.dependencies) {
+			if before.Fingerprint == after.Fingerprint && slices.Equal(before.Dependencies, after.Dependencies) {
 				t.Fatal("receiving HTTP manager retained constructor capture after", change)
 			}
-			if !slices.Contains(beforeRealm.dependencies, "http-manager") || !slices.Contains(before.dependencies, "outbound:carrier-a") || slices.Contains(before.dependencies, "dns-transport:replacement") {
+			if !slices.Contains(beforeRealm.Dependencies, "http-manager") || !slices.Contains(before.Dependencies, "outbound:carrier-a") || slices.Contains(before.Dependencies, "dns-transport:replacement") {
 				t.Fatal("new closure mutated or disconnected the retained old generation")
 			}
 			changed, err := runtimePlannedDependencyDigest(context.Background(), options, "frozen")
@@ -502,11 +530,11 @@ func TestRuntimeRealmDefaultResolverAndNamedFlagsAreConstructorInputs(t *testing
 	realm.Detour = "carrier-a"
 	options.Route.DefaultDomainResolver = &option.DomainResolveOptions{Server: "replacement"}
 	node := runtimeHTTPNode(t, options, "outbound:realm")
-	if !slices.Contains(node.dependencies, "dns-transport:replacement") {
+	if !slices.Contains(node.Dependencies, "dns-transport:replacement") {
 		t.Fatal("STUN on a detour lost the effective default resolver", node)
 	}
 	manager := runtimeHTTPNode(t, options, "http-manager")
-	if !slices.Contains(manager.dependencies, "dns-transport:replacement") {
+	if !slices.Contains(manager.Dependencies, "dns-transport:replacement") {
 		t.Fatal("inline HTTP lost the effective default resolver", manager)
 	}
 	options.Route.DefaultDomainResolver.Server = "absent"
@@ -525,11 +553,11 @@ func TestRuntimeRealmDefaultResolverAndNamedFlagsAreConstructorInputs(t *testing
 	beforeRealm := runtimeHTTPNode(t, options, "outbound:realm")
 	realm.Realm.HTTPClient.Tag = "two"
 	after := runtimeHTTPNode(t, options, "http-manager")
-	if before.fingerprint != after.fingerprint || beforeRealm.fingerprint == runtimeHTTPNode(t, options, "outbound:realm").fingerprint {
+	if before.Fingerprint != after.Fingerprint || beforeRealm.Fingerprint == runtimeHTTPNode(t, options, "outbound:realm").Fingerprint {
 		t.Fatal("plain reference switch changed shared definitions or reused old consumer")
 	}
 	realm.Realm.HTTPClient.ResolveOnDetour = true
-	if after.fingerprint == runtimeHTTPNode(t, options, "http-manager").fingerprint {
+	if after.Fingerprint == runtimeHTTPNode(t, options, "http-manager").Fingerprint {
 		t.Fatal("constructor-only named ResolveOnDetour reused the old receiving manager")
 	}
 }
@@ -540,11 +568,11 @@ func TestRuntimeHTTPImplicitDefaultCapturesSourceOrderFinal(t *testing.T) {
 		{Type: "direct", Tag: "a-second", Options: &option.DirectOutboundOptions{}},
 	}}
 	manager := runtimeHTTPNode(t, options, "http-manager")
-	if !slices.Contains(manager.dependencies, "outbound:z-first") || slices.Contains(manager.dependencies, "outbound:a-second") {
-		t.Fatalf("incorrect implicit capture: %v", manager.dependencies)
+	if !slices.Contains(manager.Dependencies, "outbound:z-first") || slices.Contains(manager.Dependencies, "outbound:a-second") {
+		t.Fatalf("incorrect implicit capture: %v", manager.Dependencies)
 	}
 	router := runtimeHTTPNode(t, options, "route-router")
-	if !slices.Contains(router.dependencies, "http-manager") {
+	if !slices.Contains(router.Dependencies, "http-manager") {
 		t.Fatal("router's HTTP manager capture is missing")
 	}
 }
@@ -553,16 +581,16 @@ func TestRuntimeHTTPNamedDefinitionsCaptureResolverAndDetour(t *testing.T) {
 	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "updates", Detour: "proxy", DomainResolver: &option.DomainResolveOptions{Server: "bootstrap"}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:proxy", "dns-router", "dns-transport:bootstrap"} {
-		if !slices.Contains(node.dependencies, dependency) {
-			t.Fatalf("missing %q: %v", dependency, node.dependencies)
+		if !slices.Contains(node.Dependencies, dependency) {
+			t.Fatalf("missing %q: %v", dependency, node.Dependencies)
 		}
 	}
 	options.HTTPClients[0].DomainResolver = &option.DomainResolveOptions{Server: "replacement"}
 	changed := runtimeHTTPNode(t, options, "http-manager")
-	if node.fingerprint == changed.fingerprint {
+	if node.Fingerprint == changed.Fingerprint {
 		t.Fatal("HTTP definition edit did not invalidate owner")
 	}
-	if slices.Contains(node.dependencies, "dns-transport:replacement") {
+	if slices.Contains(node.Dependencies, "dns-transport:replacement") {
 		t.Fatal("detached dependency snapshot was mutated")
 	}
 }
@@ -572,7 +600,7 @@ func TestRuntimeHTTPDefaultSelectionAffectsFingerprint(t *testing.T) {
 	first := runtimeHTTPNode(t, options, "http-manager")
 	options.Route.DefaultHTTPClient = "b"
 	second := runtimeHTTPNode(t, options, "http-manager")
-	if first.fingerprint == second.fingerprint {
+	if first.Fingerprint == second.Fingerprint {
 		t.Fatal("HTTP default selection missing from owner identity")
 	}
 }
@@ -582,20 +610,20 @@ func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) 
 	options := option.Options{CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: client}}}}
 	first := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:issuer-proxy", "dns-router", "dns-transport:issuer-dns"} {
-		if !slices.Contains(first.dependencies, dependency) {
+		if !slices.Contains(first.Dependencies, dependency) {
 			t.Fatalf("missing inline provider capture %q", dependency)
 		}
 	}
 	provider := runtimeHTTPNode(t, options, "certificate-provider:cert")
-	if !slices.Contains(provider.dependencies, "http-manager") {
+	if !slices.Contains(provider.Dependencies, "http-manager") {
 		t.Fatal("provider must retain its actual manager")
 	}
 	client.Detour = "new-proxy"
 	second := runtimeHTTPNode(t, options, "http-manager")
-	if first.fingerprint == second.fingerprint {
+	if first.Fingerprint == second.Fingerprint {
 		t.Fatal("inline provider changed but receiving manager was reused")
 	}
-	if slices.Contains(first.dependencies, "outbound:new-proxy") {
+	if slices.Contains(first.Dependencies, "outbound:new-proxy") {
 		t.Fatal("old dependency snapshot mutated")
 	}
 }
@@ -603,16 +631,16 @@ func TestRuntimeInlineProviderHTTPCapturesReceivingManagerClosure(t *testing.T) 
 func TestRuntimeNamedProviderHTTPReferenceDoesNotCreateInlineTransport(t *testing.T) {
 	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "shared-proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "acme", Tag: "cert", Options: &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "issuer"}}}}}
 	node := runtimeHTTPNode(t, options, "http-manager")
-	if !slices.Contains(node.dependencies, "outbound:shared-proxy") {
+	if !slices.Contains(node.Dependencies, "outbound:shared-proxy") {
 		t.Fatal("shared HTTP definition lost")
 	}
 	options.CertificateProviders[0].Options = &option.ACMECertificateProviderOptions{HTTPClient: &option.HTTPClientOptions{Tag: "other"}}
 	changed := runtimeHTTPNode(t, options, "http-manager")
-	if changed.fingerprint != node.fingerprint {
+	if changed.Fingerprint != node.Fingerprint {
 		t.Fatal("reference-only change recreated unchanged HTTP definitions")
 	}
 	provider := runtimeHTTPNode(t, options, "certificate-provider:cert")
-	if !slices.Contains(provider.dependencies, "http-manager") {
+	if !slices.Contains(provider.Dependencies, "http-manager") {
 		t.Fatal("reference lacks manager ownership")
 	}
 }
@@ -622,13 +650,13 @@ func TestRuntimeHTTPResolveOnDetourCapturesNamedDefinitionAndProgrammaticFlags(t
 	options := option.Options{HTTPClients: []option.HTTPClient{{Tag: "issuer", Detour: "proxy"}}, CertificateProviders: []option.CertificateProvider{{Type: "cloudflare-origin-ca", Tag: "cert", Options: &option.CloudflareOriginCACertificateProviderOptions{HTTPClient: client}}}}
 	before := runtimeHTTPNode(t, options, "http-manager")
 	for _, dependency := range []string{"outbound:proxy", "dns-router"} {
-		if !slices.Contains(before.dependencies, dependency) {
-			t.Fatal("named ResolveOnDetour omitted receiving-manager capture", before.dependencies)
+		if !slices.Contains(before.Dependencies, dependency) {
+			t.Fatal("named ResolveOnDetour omitted receiving-manager capture", before.Dependencies)
 		}
 	}
 	client.ResolveOnDetour = false
 	after := runtimeHTTPNode(t, options, "http-manager")
-	if after.fingerprint == before.fingerprint {
+	if after.Fingerprint == before.Fingerprint {
 		t.Fatal("constructor-only ResolveOnDetour did not invalidate HTTP owner")
 	}
 }

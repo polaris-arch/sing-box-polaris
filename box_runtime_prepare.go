@@ -134,8 +134,8 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	// a later graph merely because its requirement fingerprint is unchanged.
 	if prepared.initial {
 		for index := range nodes {
-			if nodes[index].name == "platform-runtime" {
-				nodes[index].fingerprint = runtimeDigest([]byte("bootstrap:" + nodes[index].fingerprint))
+			if nodes[index].Name == "platform-runtime" {
+				nodes[index].Fingerprint = runtimeDigest([]byte("bootstrap:" + nodes[index].Fingerprint))
 			}
 		}
 	}
@@ -143,12 +143,12 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	runtimeBindSelectorIntentFingerprints(nodes, intents)
 	for _, intent := range intents {
 		for index := range nodes {
-			if nodes[index].name == "outbound:"+intent.Group {
-				nodes[index].fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:selection-revision:%d", nodes[index].fingerprint, identity.Revision)))
+			if nodes[index].Name == "outbound:"+intent.Group {
+				nodes[index].Fingerprint = runtimeDigest([]byte(fmt.Sprintf("%s:selection-revision:%d", nodes[index].Fingerprint, identity.Revision)))
 			}
 		}
 	}
-	cohorts, err := runtimeCohorts(nodes)
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
 	if err != nil {
 		return prepared, err
 	}
@@ -178,7 +178,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			return prepared, err
 		}
 		hash := sha256.New()
-		runtimeHashField(hash, cohort.fingerprint)
+		runtimegraph.HashField(hash, cohort.Fingerprint)
 		var dependencies []adapter.RuntimeResourceLease
 		stableLease, stableErr := c.stable.owner.Acquire()
 		if stableErr != nil {
@@ -191,9 +191,9 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			return prepared, rootErr
 		}
 		dependencies = append(dependencies, rootLease)
-		for _, index := range cohort.dependencies {
+		for _, index := range cohort.Dependencies {
 			dependency := prepared.resources[index]
-			runtimeHashField(hash, fmt.Sprint(dependency.id.Sequence))
+			runtimegraph.HashField(hash, fmt.Sprint(dependency.id.Sequence))
 			lease, acquireErr := dependency.owner.Acquire()
 			if acquireErr != nil {
 				for _, held := range dependencies {
@@ -242,7 +242,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}
 		prepared.construction = append(prepared.construction, reservation)
 		prepared.resources = append(prepared.resources, resource)
-		for _, name := range cohorts[i].members {
+		for _, name := range cohorts[i].Members {
 			bindings[name] = resource
 		}
 	}
@@ -495,13 +495,13 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	}
 	var ruleSets []adapter.RuleSet
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.ruleSet == nil {
 			continue
 		}
-		component := getComponent(node.name)
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		component := getComponent(node.Name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
@@ -510,7 +510,7 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 				return prepared, createErr
 			}
 			component.ruleSet = set
-			bindings[node.name].scope.Add(set.Close)
+			bindings[node.Name].scope.Add(set.Close)
 		}
 		ruleSets = append(ruleSets, component.ruleSet)
 	}
@@ -520,28 +520,28 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}
 	}
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.transport == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
-			value, createErr := transportRegistry.CreateDNSTransport(ctx, s.logFactory.NewLogger(node.name), config.transport.Tag, config.transport.Type, config.transport.Options)
+			value, createErr := transportRegistry.CreateDNSTransport(ctx, s.logFactory.NewLogger(node.Name), config.transport.Tag, config.transport.Type, config.transport.Options)
 			if createErr != nil {
 				return prepared, createErr
 			}
 			component.transport = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 			if producer, ok := value.(interface {
 				StopRuntimeProducers()
 				StopRuntimeOperations()
 			}); ok {
-				bindings[node.name].addRuntimeStop(producer.StopRuntimeProducers, producer.StopRuntimeOperations)
+				bindings[node.Name].addRuntimeStop(producer.StopRuntimeProducers, producer.StopRuntimeOperations)
 			}
 		}
 		if err := transportManager.Insert(component.transport, scope); err != nil {
@@ -557,28 +557,28 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		}
 	}
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.endpoint == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
-			value, createErr := service.FromContext[adapter.EndpointRegistry](ctx).Create(ctx, c.gateway, s.logFactory.NewLogger(node.name), config.endpoint.Tag, config.endpoint.Type, config.endpoint.Options)
+			value, createErr := service.FromContext[adapter.EndpointRegistry](ctx).Create(ctx, c.gateway, s.logFactory.NewLogger(node.Name), config.endpoint.Tag, config.endpoint.Type, config.endpoint.Options)
 			if createErr != nil {
 				return prepared, E.Cause(createErr, "initialize endpoint[", config.index, "]")
 			}
 			component.endpoint = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 			if activate, ok := value.(interface{ RuntimeActivate() }); ok {
 				prepared.activate = append(prepared.activate, activate.RuntimeActivate)
 			}
 			if producer, ok := value.(interface{ RuntimeStop() }); ok {
-				bindings[node.name].addRuntimeStop(producer.RuntimeStop, nil)
+				bindings[node.Name].addRuntimeStop(producer.RuntimeStop, nil)
 			}
 		}
 		if err := endpointManager.Insert(component.endpoint, scope); err != nil {
@@ -589,36 +589,36 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return prepared, err
 	}
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.outbound == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
 			component.history = urltest.NewIncarnationHistory(service.PtrFromContext[urltest.HistoryStorage](c.ctx))
 			service.MustRegisterPtr(ctx, component.history)
-			bindings[node.name].scope.Add(component.history.Close)
-			value, createErr := outboundRegistry.CreateOutbound(ctx, leaf, s.logFactory.NewLogger(node.name), config.outbound.Tag, config.outbound.Type, config.outbound.Options)
+			bindings[node.Name].scope.Add(component.history.Close)
+			value, createErr := outboundRegistry.CreateOutbound(ctx, leaf, s.logFactory.NewLogger(node.Name), config.outbound.Tag, config.outbound.Type, config.outbound.Options)
 			if createErr != nil {
 				return prepared, E.Cause(createErr, "initialize outbound[", config.index, "]")
 			}
 			component.outbound = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 			if operations, ok := value.(interface{ StopRuntimeOperations() }); ok {
-				bindings[node.name].addRuntimeStop(nil, operations.StopRuntimeOperations)
+				bindings[node.Name].addRuntimeStop(nil, operations.StopRuntimeOperations)
 			}
 			if producer, ok := value.(interface {
 				RuntimeActivate()
 				RuntimeStop()
 			}); ok {
 				prepared.activate = append(prepared.activate, producer.RuntimeActivate)
-				previousStop := bindings[node.name].stop
-				bindings[node.name].stop = func() {
+				previousStop := bindings[node.Name].stop
+				bindings[node.Name].stop = func() {
 					if previousStop != nil {
 						previousStop()
 					}
@@ -662,26 +662,26 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	}
 
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.provider == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
+		if owned[bindings[node.Name]] {
 			if providerRegistry == nil {
 				return prepared, errors.New("missing certificate provider registry")
 			}
-			ctx, contextErr := componentContext(node.name)
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
-			value, createErr := providerRegistry.Create(ctx, s.logFactory.NewLogger(node.name), config.provider.Tag, config.provider.Type, config.provider.Options)
+			value, createErr := providerRegistry.Create(ctx, s.logFactory.NewLogger(node.Name), config.provider.Tag, config.provider.Type, config.provider.Options)
 			if createErr != nil {
 				return prepared, createErr
 			}
 			component.provider = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 		}
 		if err := certificateManager.Insert(component.provider, scope); err != nil {
 			return prepared, err
@@ -701,14 +701,14 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 	}
 
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.inbound == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
@@ -717,14 +717,14 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 			for _, set := range ruleSets {
 				inboundRouter.rules[set.Name()] = set
 			}
-			value, createErr := inboundRegistry.Create(ctx, inboundRouter, s.logFactory.NewLogger(node.name), config.inbound.Tag, config.inbound.Type, config.inbound.Options)
+			value, createErr := inboundRegistry.Create(ctx, inboundRouter, s.logFactory.NewLogger(node.Name), config.inbound.Tag, config.inbound.Type, config.inbound.Options)
 			if createErr != nil {
 				return prepared, E.Cause(createErr, "initialize inbound[", config.index, "]")
 			}
 			component.inbound = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 			if producer, ok := value.(interface{ RuntimeStop() }); ok {
-				bindings[node.name].addRuntimeStop(producer.RuntimeStop, nil)
+				bindings[node.Name].addRuntimeStop(producer.RuntimeStop, nil)
 			}
 		}
 		if err := inboundManager.Insert(component.inbound, scope); err != nil {
@@ -735,30 +735,30 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return prepared, err
 	}
 	for _, node := range nodes {
-		config := configs[node.name]
+		config := configs[node.Name]
 		if config.service == nil {
 			continue
 		}
-		component := getComponent(node.name)
+		component := getComponent(node.Name)
 		var scope *adapter.Scope
-		if owned[bindings[node.name]] {
-			ctx, contextErr := componentContext(node.name)
+		if owned[bindings[node.Name]] {
+			ctx, contextErr := componentContext(node.Name)
 			if contextErr != nil {
 				return prepared, contextErr
 			}
 			ctx = listener.ContextWithRuntimeBinding(ctx, listener.RuntimeBinding{Admission: c.store})
-			value, createErr := service.FromContext[adapter.ServiceRegistry](ctx).Create(ctx, s.logFactory.NewLogger(node.name), config.service.Tag, config.service.Type, config.service.Options)
+			value, createErr := service.FromContext[adapter.ServiceRegistry](ctx).Create(ctx, s.logFactory.NewLogger(node.Name), config.service.Tag, config.service.Type, config.service.Options)
 			if createErr != nil {
 				return prepared, createErr
 			}
 			component.service = value
-			scope = bindings[node.name].scope
+			scope = bindings[node.Name].scope
 			if producer, ok := value.(interface {
 				RuntimeActivate()
 				RuntimeStop()
 			}); ok {
 				prepared.activate = append(prepared.activate, producer.RuntimeActivate)
-				bindings[node.name].addRuntimeStop(producer.RuntimeStop, nil)
+				bindings[node.Name].addRuntimeStop(producer.RuntimeStop, nil)
 			}
 		}
 		if err := serviceManager.Insert(component.service, scope); err != nil {

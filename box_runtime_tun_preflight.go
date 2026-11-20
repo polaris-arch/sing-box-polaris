@@ -9,6 +9,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	"github.com/sagernet/sing/service"
@@ -21,7 +22,7 @@ func runtimeTunDependencySignatures(ctx context.Context, options option.Options)
 	if err != nil {
 		return nil, err
 	}
-	cohorts, err := runtimeCohorts(nodes)
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -29,12 +30,12 @@ func runtimeTunDependencySignatures(ctx context.Context, options option.Options)
 	result := make(map[string]string)
 	for index, cohort := range cohorts {
 		hash := sha256.New()
-		runtimeHashField(hash, cohort.fingerprint)
-		for _, dependency := range cohort.dependencies {
-			runtimeHashField(hash, hashes[dependency])
+		runtimegraph.HashField(hash, cohort.Fingerprint)
+		for _, dependency := range cohort.Dependencies {
+			runtimegraph.HashField(hash, hashes[dependency])
 		}
 		hashes[index] = hex.EncodeToString(hash.Sum(nil))
-		for _, name := range cohort.members {
+		for _, name := range cohort.Members {
 			config := configs[name]
 			if config.inbound != nil && config.inbound.Type == C.TypeTun {
 				result[name] = hashes[index]

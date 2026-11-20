@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -17,19 +18,19 @@ func runtimePlannedDependencyDigest(ctx context.Context, options option.Options,
 	if err != nil {
 		return "", err
 	}
-	cohorts, err := runtimeCohorts(nodes)
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
 	if err != nil {
 		return "", err
 	}
 	hash := sha256.New()
-	runtimeHashField(hash, "runtime-dependencies-v1")
-	runtimeHashField(hash, sourceDigest)
-	runtimeHashField(hash, strconv.Itoa(len(cohorts)))
+	runtimegraph.HashField(hash, "runtime-dependencies-v1")
+	runtimegraph.HashField(hash, sourceDigest)
+	runtimegraph.HashField(hash, strconv.Itoa(len(cohorts)))
 	for _, cohort := range cohorts {
-		runtimeHashField(hash, cohort.fingerprint)
-		runtimeHashField(hash, strconv.Itoa(len(cohort.dependencies)))
-		for _, dependency := range cohort.dependencies {
-			runtimeHashField(hash, strconv.Itoa(dependency))
+		runtimegraph.HashField(hash, cohort.Fingerprint)
+		runtimegraph.HashField(hash, strconv.Itoa(len(cohort.Dependencies)))
+		for _, dependency := range cohort.Dependencies {
+			runtimegraph.HashField(hash, strconv.Itoa(dependency))
 		}
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil

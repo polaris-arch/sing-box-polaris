@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -22,8 +23,8 @@ func TestRuntimeEndpointReferencesUseActualEndpointCohort(t *testing.T) {
 	}
 	found := false
 	for _, node := range nodes {
-		if node.name == "outbound:select" {
-			for _, dependency := range node.dependencies {
+		if node.Name == "outbound:select" {
+			for _, dependency := range node.Dependencies {
 				if dependency == "outbound:vpn" {
 					t.Fatal("endpoint reference retained wrong namespace")
 				}
@@ -36,7 +37,7 @@ func TestRuntimeEndpointReferencesUseActualEndpointCohort(t *testing.T) {
 	if !found {
 		t.Fatal("selector did not retain endpoint dependency")
 	}
-	if _, err := runtimeCohorts(nodes); err != nil {
+	if _, err := runtimegraph.DependencyCohorts(nodes); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -58,7 +59,7 @@ func TestRuntimeTailscaleDNSCapturesEndpointAndResolverRouter(t *testing.T) {
 		t.Fatal(err)
 	}
 	foundEndpoint, foundRouter := false, false
-	for _, dependency := range configs["dns-transport:tail-dns"].node.dependencies {
+	for _, dependency := range configs["dns-transport:tail-dns"].node.Dependencies {
 		if dependency == "endpoint:tail" {
 			foundEndpoint = true
 		}
@@ -69,7 +70,7 @@ func TestRuntimeTailscaleDNSCapturesEndpointAndResolverRouter(t *testing.T) {
 	if !foundEndpoint || !foundRouter {
 		t.Fatal("Tailscale DNS omitted its actual constructor captures")
 	}
-	if _, err := runtimeCohorts(nodes); err != nil {
+	if _, err := runtimegraph.DependencyCohorts(nodes); err != nil {
 		t.Fatal(err)
 	}
 	options.DNS.Servers[0].Options = &option.TailscaleDNSServerOptions{}
@@ -87,14 +88,14 @@ func TestRuntimePushedDNSAndEndpointShareCallbackCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cohorts, err := runtimeCohorts(nodes)
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
 	if err != nil {
 		t.Fatal(err)
 	}
 	paired := false
 	for _, cohort := range cohorts {
 		endpoint, dns := false, false
-		for _, name := range cohort.members {
+		for _, name := range cohort.Members {
 			endpoint = endpoint || name == "endpoint:vpn"
 			dns = dns || name == "dns-transport:pushed"
 		}

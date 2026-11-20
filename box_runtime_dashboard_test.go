@@ -51,7 +51,7 @@ func TestRuntimeDashboardDerivedDependenciesAndNamespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	httpNode := nodes["http-manager"].node
-	if !slices.Contains(httpNode.dependencies, "outbound:select") {
+	if !slices.Contains(httpNode.Dependencies, "outbound:select") {
 		t.Fatal("dashboard detour missing from graph closure")
 	}
 	if _, exists := nodes["service:0"]; exists {
@@ -67,12 +67,12 @@ func TestRuntimeDashboardDerivedDependenciesAndNamespace(t *testing.T) {
 	}
 	options.Services[0].Tag = "default"
 	_, renamed, err := runtimeConfigNodes(f.ctx, options.Options)
-	if err != nil || renamed["http-manager"].node.fingerprint == httpNode.fingerprint {
+	if err != nil || renamed["http-manager"].node.Fingerprint == httpNode.Fingerprint {
 		t.Fatalf("owner key missing from fingerprint: %v", err)
 	}
 	options.Services[0].Options.(*option.APIServiceOptions).Dashboard.HTTPClient.Detour = "a"
 	_, changed, err := runtimeConfigNodes(f.ctx, options.Options)
-	if err != nil || !slices.Contains(changed["http-manager"].node.dependencies, "outbound:a") || changed["http-manager"].node.fingerprint == renamed["http-manager"].node.fingerprint {
+	if err != nil || !slices.Contains(changed["http-manager"].node.Dependencies, "outbound:a") || changed["http-manager"].node.Fingerprint == renamed["http-manager"].node.Fingerprint {
 		t.Fatalf("client missing from dependency/fingerprint: %v", err)
 	}
 	options.Services[0].Tag = ""

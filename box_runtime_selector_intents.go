@@ -8,6 +8,7 @@ import (
 
 	"github.com/sagernet/sing-box/adapter"
 	C "github.com/sagernet/sing-box/constant"
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 	"github.com/sagernet/sing/common/json"
 	N "github.com/sagernet/sing/common/network"
@@ -85,12 +86,12 @@ func runtimeValidateSelectorIntents(options option.Options, intents []RuntimeSel
 	return nil
 }
 
-func runtimeBindSelectorIntentFingerprints(nodes []runtimeDependencyNode, intents []RuntimeSelectorIntent) {
+func runtimeBindSelectorIntentFingerprints(nodes []runtimegraph.DependencyNode, intents []RuntimeSelectorIntent) {
 	for _, intent := range intents {
 		encoded, _ := json.Marshal(intent)
 		for index := range nodes {
-			if nodes[index].name == "outbound:"+intent.Group {
-				nodes[index].fingerprint = runtimeDigest(append(append([]byte(nodes[index].fingerprint), 0), encoded...))
+			if nodes[index].Name == "outbound:"+intent.Group {
+				nodes[index].Fingerprint = runtimeDigest(append(append([]byte(nodes[index].Fingerprint), 0), encoded...))
 			}
 		}
 	}

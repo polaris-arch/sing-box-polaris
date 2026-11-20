@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/sagernet/sing-box/internal/runtimegraph"
 	"github.com/sagernet/sing-box/option"
 )
 
@@ -25,7 +26,7 @@ func runtimeReplacementNames(ctx context.Context, options option.Options, intent
 	for _, intent := range intents {
 		selected["outbound:"+intent.Group] = true
 	}
-	cohorts, err := runtimeCohorts(nodes)
+	cohorts, err := runtimegraph.DependencyCohorts(nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -37,24 +38,24 @@ func runtimeReplacementNames(ctx context.Context, options option.Options, intent
 	replace := make(map[string]bool)
 	for index, cohort := range cohorts {
 		hash := sha256.New()
-		runtimeHashField(hash, cohort.fingerprint)
+		runtimegraph.HashField(hash, cohort.Fingerprint)
 		eligible := true
-		for _, name := range cohort.members {
+		for _, name := range cohort.Members {
 			if selected[name] {
 				eligible = false
 			}
 		}
-		for _, dependency := range cohort.dependencies {
+		for _, dependency := range cohort.Dependencies {
 			if reused[dependency] == nil {
 				eligible = false
 				continue
 			}
-			runtimeHashField(hash, fmt.Sprint(reused[dependency].id.Sequence))
+			runtimegraph.HashField(hash, fmt.Sprint(reused[dependency].id.Sequence))
 		}
 		if eligible {
 			reused[index] = byFingerprint[hex.EncodeToString(hash.Sum(nil))]
 		}
-		for _, name := range cohort.members {
+		for _, name := range cohort.Members {
 			if reused[index] == nil {
 				replace[name] = true
 			}

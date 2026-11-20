@@ -97,15 +97,15 @@ func (s *Box) prepareRuntimeRootStore(ctx context.Context, g *preparedRuntimeGra
 // TLS-bearing constructors snapshot roots. Their reverse dependency closures
 // then rebuild through normal cohort hashing. Physical TUN inputs do not capture
 // certificate pools and must not be replaced merely for a trust-store refresh.
-func runtimeBindRootFingerprints(nodes []runtimeDependencyNode, configs map[string]runtimeNodeOptions, digest [32]byte) {
+func runtimeBindRootFingerprints(nodes []runtimegraph.DependencyNode, configs map[string]runtimeNodeOptions, digest [32]byte) {
 	for i := range nodes {
-		config := configs[nodes[i].name]
-		consumes := nodes[i].name == "http-manager" || config.service != nil || config.provider != nil || (config.endpoint != nil && config.endpoint.Type != C.TypeWireGuard) || config.outbound != nil || config.transport != nil
+		config := configs[nodes[i].Name]
+		consumes := nodes[i].Name == "http-manager" || config.service != nil || config.provider != nil || (config.endpoint != nil && config.endpoint.Type != C.TypeWireGuard) || config.outbound != nil || config.transport != nil
 		if config.inbound != nil && config.inbound.Type != C.TypeTun {
 			consumes = true
 		}
 		if consumes {
-			nodes[i].fingerprint = runtimeDigest(append(append([]byte(nodes[i].fingerprint), 0), digest[:]...))
+			nodes[i].Fingerprint = runtimeDigest(append(append([]byte(nodes[i].Fingerprint), 0), digest[:]...))
 		}
 	}
 }
