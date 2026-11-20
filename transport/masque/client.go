@@ -39,6 +39,7 @@ type ClientOptions struct {
 	Path            string
 	AdvertiseRoutes []netip.Prefix
 	Handler         ClientHandler
+	StartSuspended  bool
 }
 
 type Client struct {
@@ -84,6 +85,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 		template:        template,
 		advertiseRoutes: advertiseRoutes,
 		handler:         options.Handler,
+		suspended:       options.StartSuspended,
 		stateUpdated:    make(chan struct{}),
 	}, nil
 }

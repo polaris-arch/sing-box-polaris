@@ -161,6 +161,8 @@ func NewClientEndpoint(ctx context.Context, router adapter.Router, logger log.Co
 		Path:            options.Path,
 		AdvertiseRoutes: options.AdvertiseRoutes,
 		Handler:         clientEndpoint,
+		// The reference manager can resume this client after PostStart.
+		StartSuspended: clientEndpoint.onDemand,
 	})
 	if err != nil {
 		return nil, E.Errors(err, httpClient.Close())
