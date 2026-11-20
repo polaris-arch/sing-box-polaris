@@ -128,6 +128,7 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	record.inFlight = true
 	record.fingerprint = fingerprint
 	record.operation = &RuntimeConfigOperation{ContractVersion: RuntimeConfigContractVersion, TransactionID: request.TransactionID, State: "PREPARING", PersistenceMode: coordinator.persistenceMode, Before: coordinator.active, Active: coordinator.active, CandidateDigest: record.plan.CandidateDigest, ImpactDigest: record.plan.ImpactDigest, Impacts: cloneRuntimeImpacts(record.plan.Impacts)}
+	coordinator.pendingPrepared = nil
 	coordinator.preparing = true
 	coordinator.workDone = make(chan struct{})
 	next := coordinator.active
@@ -138,6 +139,13 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 	}
 	coordinator.access.Unlock()
 
+	defer func() {
+		coordinator.access.Lock()
+		coordinator.pendingPrepared = nil
+		coordinator.preparing = false
+		close(coordinator.workDone)
+		coordinator.access.Unlock()
+	}()
 	published := false
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -154,7 +162,10 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			}
 			result = cloneRuntimeOperation(*record.operation)
 			coordinator.access.Unlock()
-			if !committed {
+			if committed {
+				// A published graph has its own reservations. Only release preparation's copy.
+				pending.releaseConstruction()
+			} else {
 				if pending != nil {
 					pending.abort()
 					s.recordRuntimeCertificateEffects(record, pending)
@@ -164,10 +175,6 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 			}
 			resultErr = nil
 		}
-		coordinator.access.Lock()
-		coordinator.preparing = false
-		close(coordinator.workDone)
-		coordinator.access.Unlock()
 	}()
 	// Only preparation work observes request cancellation. Committed component
 	// contexts are constructed under coordinator.ctx by prepareRuntimeGraphWithSelections.
@@ -287,7 +294,6 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 				coordinator.options = record.options
 				coordinator.currentSources = append([]runtimeSourceSnapshot(nil), record.sources...)
 				coordinator.canonical = append([]byte(nil), record.canonical...)
-				coordinator.cancelRuntimeExitIPProbeLocked()
 				coordinator.active = next
 				coordinator.pendingPersistence = nil
 				if !runtimeSourceOnlyRecord(record) {
@@ -299,13 +305,14 @@ func (s *Box) applyRuntimeConfig(ctx context.Context, actor string, request Runt
 					}
 				}
 				record.sourceDriverEpoch = coordinator.sourceIntentEpoch
-				if coordinator.clashMode != nil {
-					coordinator.clashMode.RuntimeReplaceModes(clashmode.CalculateModeList(record.options))
-				}
 				record.operation.apiHandoffs = prepared.apiHandoffs
 				record.operation.Active = next
 				record.operation.State = "COMMITTED_DURABILITY_PENDING"
 				record.operation.RetirementState = "PENDING"
+				coordinator.cancelRuntimeExitIPProbeLocked()
+				if coordinator.clashMode != nil {
+					coordinator.clashMode.RuntimeReplaceModes(clashmode.CalculateModeList(record.options))
+				}
 				if runtimeSourceOnlyRecord(record) {
 					// Complete the resource receipt and child lineage before controls
 					// can advance the published identity. A post-publication invariant

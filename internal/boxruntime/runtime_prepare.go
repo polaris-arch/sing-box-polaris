@@ -88,6 +88,10 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		return nil, marshalErr
 	}
 	prepared = &preparedRuntimeGraph{platformRequest: request, options: options, initial: identity.Revision == 1, clientImpactPolicy: runtimeClientImpactPolicyFromContext(request)}
+	// Give panic recovery and constructor rollback custody before any preparation callback.
+	c.access.Lock()
+	c.pendingPrepared = prepared
+	c.access.Unlock()
 	logLevel := ""
 	if options.Log != nil {
 		logLevel = options.Log.Level
@@ -111,9 +115,6 @@ func (s *Box) constructRuntimeGraphWithSelections(request context.Context, ident
 		prepared.effectRegistrationClosed = true
 		prepared.effectAccess.Unlock()
 	}()
-	c.access.Lock()
-	c.pendingPrepared = prepared
-	c.access.Unlock()
 	if err := s.prepareRuntimeFakeIP(request, prepared); err != nil {
 		return prepared, err
 	}
